@@ -55,6 +55,10 @@ Do not add hooks, plugins, event buses for user code, a JavaScript VM, user migr
 - Store manual test data and test credentials in regular `.md` files in the repository.
 - Never commit production data, backups or anything taken from them. The staging copy of production data lives outside the repository, and its outbound settings (S3 backups, SMTP) are disabled before any server runs on it (`docs/design/10-decisions.md` D20).
 
+## Work split
+
+The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker follows its brief and the worker rules there, and changes only the modules the task owns.
+
 ## Verification
 
 Until the M0 skeleton exists, changes are documentation only: check links, file names and `git status`. After M0, the commands are listed here and in `package.json`.

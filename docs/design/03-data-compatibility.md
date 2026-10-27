@@ -51,7 +51,7 @@ These are created on a fresh install and checked on open. Their DDL is copied fr
 
 | Table | File | Notes |
 |---|---|---|
-| `_migrations` | both | `file VARCHAR(255) PRIMARY KEY, applied INTEGER` (microseconds) |
+| `_migrations` | `data.db` | `file VARCHAR(255) PRIMARY KEY, applied INTEGER` (microseconds) |
 | `_collections` | `data.db` | `id`, `system`, `type`, `name`, `fields` (JSON), five rule columns, `options` (JSON), `indexes` (JSON), `created`, `updated` |
 | `_params` | `data.db` | key-value; row `settings` holds the settings JSON, possibly encrypted |
 | `_superusers` | `data.db` | auth collection table |

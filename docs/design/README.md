@@ -15,6 +15,7 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 | 9 | [Port plan](09-port-plan.md) | Upstream baseline, what is ported, milestones, testing strategy |
 | 10 | [Decisions](10-decisions.md) | Short decision records with reasons |
 | 11 | [Open questions](11-open-questions.md) | What still needs the owner |
+| 12 | [Work plan](12-work-plan.md) | How the port is split into tasks for agents, briefed, reviewed and merged |
 
 ## Decisions at a glance
 
@@ -32,4 +33,4 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 
 ## Status
 
-Design phase. No code. The [port plan](09-port-plan.md) starts with the skeleton and the spikes that settle the two provisional decisions (D8 SQLite access, D10 thumbnails).
+Design phase. No code. The [port plan](09-port-plan.md) starts with the skeleton and the spikes that settle the two provisional decisions (D8 SQLite access, D10 thumbnails). The [work plan](12-work-plan.md) splits it into tasks.

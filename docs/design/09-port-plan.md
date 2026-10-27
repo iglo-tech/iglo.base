@@ -32,7 +32,7 @@ Not ported: `plugins/jsvm`, `plugins/migratecmd`, `plugins/ghupdate` (the `updat
 
 ## Milestones
 
-Each milestone ends with something usable and tested.
+Each milestone ends with something usable and tested. The [work plan](12-work-plan.md) splits them into tasks.
 
 | # | Milestone | Done when |
 |---|---|---|
