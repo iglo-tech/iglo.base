@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { run, startServer, tempDir } from "@test/support/executable";
+import { freePort, run, startServer, tempDir } from "@test/support/executable";
 
 const logLine = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /;
 
@@ -203,6 +203,27 @@ describe("serve command", () => {
     const result = await server.stop();
     expect(result.exitCode).toBe(0);
   });
+
+  test("a signed numeric port is a port, as Go's parsePort", async () => {
+    const port = await freePort();
+    const server = await startServer([], join(tempDir(), "pb_data"), "127.0.0.1", {
+      name: `+${port}`,
+      urlPort: port,
+    });
+    const res = await fetch(`${server.url}/api/health`);
+    expect(res.status).toBe(200);
+    const result = await server.stop();
+    expect(result.exitCode).toBe(0);
+  });
+
+  for (const port of ["-1", "65536", "+99999"]) {
+    test(`port ${port} is invalid`, async () => {
+      await expectError(
+        ["serve", "--http", `127.0.0.1:${port}`, "--dir", join(tempDir(), "pb_data")],
+        `listen tcp: address ${port}: invalid port`,
+      );
+    });
+  }
 
   test("an unknown service name as port fails", async () => {
     await expectError(

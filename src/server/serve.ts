@@ -112,9 +112,14 @@ function parseListenAddr(addr: string): { hostname: string; port: number } {
   let portNumber: number;
   if (port === "") {
     portNumber = 0;
-  } else if (/^[0-9]+$/.test(port)) {
-    portNumber = Number(port);
-    if (portNumber > 65535) {
+  } else if (/^[+-]?[0-9]*$/.test(port)) {
+    // Go's parsePort: an optional sign, then digits ("+" alone is 0)
+    const digits = port.replace(/^[+-]/, "");
+    portNumber = digits === "" ? 0 : Number(digits);
+    if (port.startsWith("-") && portNumber !== 0) {
+      portNumber = -portNumber;
+    }
+    if (portNumber < 0 || portNumber > 65535) {
       throw new Error(`listen tcp: address ${port}: invalid port`);
     }
   } else {
