@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| none | | | | |
+| M0.5 | worker | branch `task/M0.5-differential-harness` | 0 | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
 
 ## Done
 
@@ -46,6 +46,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-27 (M0.4): dbx v1.13.0 is MIT (Copyright (c) 2016, Qiang Xue). Its notice is kept with the translated files.
 
 - 2026-10-28 (host): `/tmp` (a RAM-backed tmpfs) was 100% full with 73 leftover `iglo-base-build-*` test executables (~105 MB each). The test helper `test/support/executable.ts` never deletes them. The lead removed the ones older than 15 minutes that no process used: `/tmp` went from 7.8 GB to 0.9 GB used. They are regenerable outputs of this repository's tests. Fixed by lead maintenance PR [#5](https://github.com/iglo-tech/iglo.base/pull/5): each `bun test` run uses one `iglo-base-run-*` temp root (via TMPDIR), deleted by a global `afterAll`. The older small `iglo-base-test-*` dirs remain in `/tmp`.
+
+- 2026-10-28 (M0.5 brief): upstream's `tests/data` fixture (MIT, about 700 KB, pinned commit) is vendored in `test/fixtures/pocketbase/`, so that scenarios run against iglo.base alone in plain `bun test` with no network. A `test:reference` test keeps it byte-identical to the pinned source. Scenario data is typed TypeScript. A `pending` marker (task id, reason) lets a scenario that iglo.base cannot pass yet run and be reported; the test fails once it starts to pass. The superuser health scenario is pending on M2.3.
 
 ## Paused until
 
