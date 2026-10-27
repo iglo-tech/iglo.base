@@ -8,12 +8,13 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.4 | merge | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 3 done (Opus APPROVE `332dec4`; Sol CHANGES, one finding fixed by the lead at `be42b5b`). Lead decision: merge when CI is green on `be42b5b`, with no fourth round | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
+| none | | | | |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M0.4 | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 2026-10-28 (`54c1ecb`) | Three council rounds. Round 1: both CHANGES (macOS read-only WAL open, prepared statements after the transaction ended, lossy integers, eager rows, dbx notice). Round 2: Opus APPROVE, Sol CHANGES (lastInsertId, multi-statement scripts, rowsAffected, duplicate columns, `__proto__`). Round 3: Opus APPROVE, Sol one finding (Object.prototype keyword lookup), fixed by the lead at `be42b5b` and merged by lead decision with no fourth round. dbx's MIT notice added to `LICENSE`. Carried: PRAGMA/RETURNING with duplicate column names read eagerly; reads on the main thread until M0.6; `_defensive=1` not settable in bun:sqlite |
 | M0.3 | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 2026-10-27 (`d623b82`) | Three council rounds, all CHANGES from both members. Merged by lead decision after round 3 with no fourth round ([decision](https://github.com/iglo-tech/iglo.base/pull/3#issuecomment-6454783462)). The round-3 findings (JSON name folding, XML text, names and numbers, JSON BOM and trailing bytes, signed NaN) were fixed at `aebad19`. Carried gaps: quoted multipart boundaries (M0.8/M3.2); XML into `any` fields; rare Unicode folds |
 | M0.2 | [#2](https://github.com/iglo-tech/iglo.base/pull/2) | 2026-10-27 (`ca2cd61`) | Two council rounds. Round 1: Sol APPROVE, Opus CHANGES (upstream's first-start installer opened a browser and created its superuser after tests began); fixed by the lead with no-op `open`/`xdg-open` on the child PATH and a wait for the installer. Round 2: both APPROVE. PocketBase publishes no checksums, so its archive hashes come from single downloads |
 | M0.1 | [#1](https://github.com/iglo-tech/iglo.base/pull/1) | 2026-10-27 (`f324454`) | Three council rounds. Opus approved every head; Sol's findings (GET 404 text, Go int/CSV flag values, service-name and signed ports, host name address family) were fixed by the lead. Merged by lead decision after round 3 ([comment](https://github.com/iglo-tech/iglo.base/pull/1#issuecomment-6449746607)). Known small gaps for M0.3: `0/tcp` service entries, service names over 25 bytes, Go vs getaddrinfo resolver order |
