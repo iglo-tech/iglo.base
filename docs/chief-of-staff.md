@@ -17,7 +17,7 @@ The lead role from the [work plan](design/12-work-plan.md), run by a scheduled a
 
 | Stage | What the lead does |
 |---|---|
-| `brief` | Write the brief from the work plan's template: exact upstream files at v0.41.0 (read them in `/home/t3-code/upstream/pocketbase`), owned paths, acceptance commands. Record the task as active in `status.md`, commit and push |
+| `brief` | Write the brief from the work plan's template: exact upstream files at v0.41.0 (read them in `.upstream/pocketbase` after `bun run upstream:prepare`, or the same pinned checkout at `/home/t3-code/upstream/pocketbase` on this host), owned paths, acceptance commands. Record the task as active in `status.md`, commit and push |
 | `worker` | Start the worker with `delegate_task`, `isolation: "worktree"`, model from the work plan's model table. The brief is its whole context, followed by the worker instructions below |
 | `ci` | When the worker reports its PR, check `gh pr checks`. If CI fails, send the failure to a fixer (same model as the worker, `isolation: "worktree"`, on the same branch) or fix a small issue yourself |
 | `council` | Start both council members at once, each with its own `delegate_task`, `isolation: "worktree"`, `role: "review"`, the council instructions below, the PR URL and head commit, and nothing about your own opinion |
@@ -43,7 +43,7 @@ Append to every worker and fixer brief:
 ```text
 You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the task yourself.
 - Read AGENTS.md and the docs named in the brief first. Follow the "Rules for workers" in docs/design/12-work-plan.md.
-- Upstream PocketBase v0.41.0 source: /home/t3-code/upstream/pocketbase (read only). Read it; never port from memory.
+- Upstream PocketBase v0.41.0 source: .upstream/pocketbase after `bun run upstream:prepare` (the same pinned commit is at /home/t3-code/upstream/pocketbase on this host; read only). Read it; never port from memory.
 - Use Claude Haiku 5.5 subagents for bulk mechanical work (for example converting upstream table tests to scenario data); keep the judgment calls yourself.
 - Work on branch task/<id>-<slug> from origin/main. Commit with short messages. Push and open one PR titled "<id>: <title>" against main. The PR body maps each upstream file to its iglo.base file and lists anything left out, with a reason.
 - Run the acceptance commands and the full local check before you finish. Do not merge. Do not watch the PR.
@@ -57,7 +57,7 @@ You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the t
 You are one member of a two-member review council for iglo.base (https://github.com/iglo-tech/iglo.base). Review only; do not change code or push.
 PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md.
 - Check out the PR head in your worktree (gh pr checkout <number>). Read AGENTS.md, docs/design/12-work-plan.md (the task row and the worker rules) and the design docs the change touches.
-- Compare the change with the upstream PocketBase v0.41.0 files it ports, in /home/t3-code/upstream/pocketbase. Behavior must match upstream; the data and API contracts in AGENTS.md override style and convenience.
+- Compare the change with the upstream PocketBase v0.41.0 files it ports, in .upstream/pocketbase (after `bun run upstream:prepare`) or /home/t3-code/upstream/pocketbase (same pinned commit). Run `bun run test:reference` when the change touches tests or reference tooling. Behavior must match upstream; the data and API contracts in AGENTS.md override style and convenience.
 - Check: correctness against upstream, scope respected, no extension surface or hook remnants, tests through public boundaries only, acceptance check really passes (run it), design docs still match the code.
 - Report only real problems, each with file, line and the concrete failure. Do not ask for optional style changes.
 - Post exactly one PR comment, starting with the first line
