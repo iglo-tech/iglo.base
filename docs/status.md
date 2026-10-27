@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.3 | council | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 3 (head `e191103`, CI green; rounds 1–2: both CHANGES, fixed; round 3 is the last before the lead decides) | [Brief](briefs/M0.3.md). Worker: Claude Opus 5.5, medium |
+| M0.3 | fix | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 3 done (both CHANGES at `e191103`); lead decided ([comment](https://github.com/iglo-tech/iglo.base/pull/3#issuecomment-6454783462)): an Opus fixer fixes Opus 1 and Sol 2–8, then the lead checks the result and merges with no fourth round | [Brief](briefs/M0.3.md). Worker: Claude Opus 5.5, medium |
 
 ## Done
 
@@ -34,6 +34,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-27 (M0.1 merge): after three council rounds the lead merged without a fourth round; the last Sol finding was fixed and every earlier head had Opus approval. Reasoning in the PR.
 - 2026-10-27 (M0.1): `migrate` is rejected like `update`, naming `01-scope.md`; `superuser`, `--https` and domain arguments fail with "not implemented yet" until M6.2 and M6.3; tests use an `@test/*` alias next to `@/`; oxfmt skips Markdown so it does not rewrite docs owned by other tasks; a wildcard `--http` host (`:port`, `0.0.0.0:port`) listens on IPv4 and IPv6, as Go does, and a host name listens on its first IPv4 address (lead fixes on the PR); unknown GET/HEAD paths answer `File not found.` like the prebuilt binary's static fallback, until pb_public serving lands in M5.7.
 - 2026-10-27 (M0.1): the pre-commit hook is enabled through `git config core.hooksPath .githooks`, which is shared by every worktree of the local clone.
+
+- 2026-10-27 (M0.3, after round 3): the lead decided with no fourth council round. Every reproduced XML, JSON, form and case-folding mismatch is fixed in the PR. Temporary gap: quoted multipart boundaries that contain `;`, `"` or `\` are rejected by Bun's `formData()` but accepted upstream. M0.8 (multipart spike) and M3.2 own that path; M3.2 must close the gap or list it in `04-api-compatibility.md`.
 
 ## Paused until
 
