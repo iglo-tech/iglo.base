@@ -9,12 +9,15 @@ export interface Child {
   stop(): Promise<void>;
 }
 
-export function spawnChild(command: string[], options: { cwd: string }): Child {
+export function spawnChild(
+  command: string[],
+  options: { cwd: string; env?: Record<string, string> },
+): Child {
   const proc = Bun.spawn(command, {
     cwd: options.cwd,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, NO_COLOR: "1" },
+    env: { ...process.env, NO_COLOR: "1", ...options.env },
   });
 
   let output = "";
