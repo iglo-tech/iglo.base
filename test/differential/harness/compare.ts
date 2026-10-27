@@ -55,13 +55,15 @@ export interface StartingData {
 }
 
 // Reads the starting data from a pb_data directory that no server uses
-// (opening it may add -shm and -wal files).
+// (opening it may add -shm and -wal files). The copy is opened read-write:
+// macOS's system SQLite cannot open a WAL database read-only without an
+// existing -shm file.
 export function readStartingData(dataDir: string): StartingData {
   const bytes = Buffer.concat(
     ["data.db", "auxiliary.db"].map((name) => readFileSync(join(dataDir, name))),
   );
   const jsonFields = new Map<string, Set<string>>();
-  const db = new Database(join(dataDir, "data.db"), { readonly: true });
+  const db = new Database(join(dataDir, "data.db"));
   try {
     const rows = db.query("SELECT id, fields FROM _collections").all() as {
       id: string;
