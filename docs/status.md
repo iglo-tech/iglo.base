@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.4 | council | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 3 (head `332dec4`, all three CI jobs green; round 2: Opus APPROVE, Sol CHANGES, all fixed; round 3 is the last before the lead decides. After merge, the lead adds dbx's notice to `LICENSE`) | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
+| M0.4 | merge | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 3 done (Opus APPROVE `332dec4`; Sol CHANGES, one finding fixed by the lead at `be42b5b`). Lead decision: merge when CI is green on `be42b5b`, with no fourth round | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
 
 ## Done
 
