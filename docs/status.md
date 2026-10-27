@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.5 | worker | branch `task/M0.5-differential-harness` | 0 | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
+| M0.5 | ci | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 0 (worker head `edc6359` failed macOS reference: the fixture was opened read-only with WAL; lead fix at `0467cde`; waiting for CI, then council round 1. One local `bun test` failure at `0467cde` did not come back in three reruns, so it is flaky and not yet identified) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
 
 ## Done
 
