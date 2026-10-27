@@ -59,6 +59,24 @@ describe("GET /api/health", () => {
   });
 });
 
+describe("wildcard listen address", () => {
+  // Go's net.Listen("tcp", ":port") and "0.0.0.0:port" accept IPv4 and IPv6
+  for (const host of ["", "0.0.0.0"]) {
+    test(`--http ${host}:<port> serves IPv4 and IPv6 loopback`, async () => {
+      const wildcard = await startServer([], join(tempDir(), "pb_data"), host);
+      try {
+        const port = new URL(wildcard.url).port;
+        for (const url of [`http://127.0.0.1:${port}`, `http://[::1]:${port}`]) {
+          const res = await fetch(`${url}/api/health`);
+          expect(res.status).toBe(200);
+        }
+      } finally {
+        await wildcard.stop();
+      }
+    });
+  }
+});
+
 describe("unknown routes", () => {
   for (const [method, path] of [
     ["GET", "/"],

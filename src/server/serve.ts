@@ -83,8 +83,9 @@ function parseListenAddr(addr: string): { hostname: string; port: number } {
     throw new Error(`listen tcp: lookup tcp/${port}: unknown port`);
   }
 
-  // an empty host listens on all interfaces
-  return { hostname: host === "" ? "0.0.0.0" : host, port: portNumber };
+  // an empty or 0.0.0.0 host listens on all interfaces, IPv4 and IPv6,
+  // as Go's net.Listen("tcp", ...) does for a wildcard address
+  return { hostname: host === "" || host === "0.0.0.0" ? "::" : host, port: portNumber };
 }
 
 // serverAddrToHost loosely converts the server address into a host to print.

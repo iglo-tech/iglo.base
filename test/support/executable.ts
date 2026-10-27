@@ -71,12 +71,16 @@ export interface RunningServer {
   stop(): Promise<RunResult>;
 }
 
-// Starts `serve --http 127.0.0.1:<free port>` with the extra args and waits
-// for the start banner.
-export async function startServer(args: string[], dataDir: string): Promise<RunningServer> {
+// Starts `serve --http <host>:<free port>` with the extra args and waits
+// for the start banner. The returned url always uses 127.0.0.1.
+export async function startServer(
+  args: string[],
+  dataDir: string,
+  host = "127.0.0.1",
+): Promise<RunningServer> {
   const port = await freePort();
   const proc = Bun.spawn(
-    [await executable(), "serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, ...args],
+    [await executable(), "serve", "--http", `${host}:${port}`, "--dir", dataDir, ...args],
     {
       cwd: tempDir(),
       stdout: "pipe",
