@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.4 | fix | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 2 → fix (round 2 at `f3fd190`: Opus APPROVE, Sol CHANGES: lossless lastInsertId, multi-statement scripts, last-statement rowsAffected, incremental reads with duplicate column names, `__proto__` identifiers. An Opus fixer is working on these plus Opus's non-blocking rows() iterator note; next: council round 3. After merge, the lead adds dbx's notice to `LICENSE`) | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
+| M0.4 | council | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 3 (head `332dec4`, all three CI jobs green; round 2: Opus APPROVE, Sol CHANGES, all fixed; round 3 is the last before the lead decides. After merge, the lead adds dbx's notice to `LICENSE`) | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
 
 ## Done
 
@@ -43,6 +43,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-27 (M0.4 PR): the lead accepted the worker's open points. `bun:sqlite` cannot set SQLITE_DBCONFIG_DEFENSIVE (`_defensive=1`); this is documented in `03-data-compatibility.md` and no native addon is added. The fixture tests live in `test/differential/db/`, because only `test:reference` prepares upstream's `tests/data`. The one-line fix to `05-rules-and-filters.md` is accepted. Reading integers above 2^53 without losing precision was first left for M1.8; after council round 1, the lead decided that the db layer reads integers losslessly: `number` within the safe range, `bigint` outside it.
 
 - 2026-10-27 (M0.4): dbx v1.13.0 is MIT (Copyright (c) 2016, Qiang Xue). Its notice is kept with the translated files.
+
+- 2026-10-28 (host): `/tmp` (a RAM-backed tmpfs) was 100% full with 73 leftover `iglo-base-build-*` test executables (~105 MB each). The test helper `test/support/executable.ts` never deletes them. The lead removed the ones older than 15 minutes that no process used: `/tmp` went from 7.8 GB to 0.9 GB used. They are regenerable outputs of this repository's tests. Follow-up after M0.4: a small lead PR makes the test helpers delete their temp directories (about 5,500 small `iglo-base-test-*` dirs remain). Council members run tests with a TMPDIR inside their worktree until then.
 
 ## Paused until
 
