@@ -61,82 +61,91 @@ function parseBool(value: string): boolean | undefined {
 }
 
 // strconv.ParseInt(s, 0, 64): optional sign, base prefixes 0x, 0o, 0b and a
-// leading 0 for octal, underscores only between digits when a prefix is used.
-function parseGoInt(value: string): number | undefined {
-  const match = /^([+-]?)(0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|0[0-7_]*|[1-9][0-9]*)$/.exec(
-    value,
-  );
+// leading 0 for octal; with base 0, underscores may follow a base prefix or
+// separate digits (underscoreOK).
+function parseGoInt(value: string): number | "range" | undefined {
+  const match =
+    /^([+-]?)(0[xX](?:_?[0-9a-fA-F])+|0[oO](?:_?[0-7])+|0[bB](?:_?[01])+|0(?:_?[0-7])*|[1-9](?:_?[0-9])*)$/.exec(
+      value,
+    );
   if (!match) {
     return undefined;
   }
-  const sign = match[1] === "-" ? -1n : 1n;
-  let digits = match[2] ?? "";
-  const hasPrefix = digits.length > 1 && digits.startsWith("0");
-  if (digits.includes("_")) {
-    // underscores must separate digits and are only allowed with a base prefix
-    if (!hasPrefix || /__|_$/.test(digits) || /^0[xXoObB]?_?$/.test(digits)) {
-      return undefined;
-    }
-    digits = digits.replaceAll("_", "");
-  }
+  const digits = (match[2] ?? "").replaceAll("_", "");
   let parsed: bigint;
-  if (/^0[xX]/.test(digits)) {
-    parsed = BigInt(`0x${digits.slice(2)}`);
-  } else if (/^0[oO]/.test(digits)) {
-    parsed = BigInt(`0o${digits.slice(2)}`);
-  } else if (/^0[bB]/.test(digits)) {
-    parsed = BigInt(`0b${digits.slice(2)}`);
-  } else if (digits.length > 1 && digits.startsWith("0")) {
-    parsed = BigInt(`0o${digits.slice(1)}`);
+  if (/^0[xXoObB]/.test(digits)) {
+    parsed = BigInt(`0${digits[1]?.toLowerCase()}${digits.slice(2)}`);
+  } else if (digits.length > 1) {
+    parsed = digits.startsWith("0") ? BigInt(`0o${digits.slice(1)}`) : BigInt(digits);
   } else {
     parsed = BigInt(digits);
   }
-  parsed *= sign;
+  if (match[1] === "-") {
+    parsed = -parsed;
+  }
   if (parsed > 9223372036854775807n || parsed < -9223372036854775808n) {
-    return undefined;
+    return "range";
   }
   return Number(parsed);
 }
 
-// encoding/csv Reader.Read for a single record, as pflag's readAsCSV uses it.
-function readAsCSV(value: string): string[] | undefined {
+// encoding/csv Reader.Read for the first record, as pflag's readAsCSV uses
+// it: "\r\n" reads as "\n", a final "\r" is dropped, blank lines before the
+// record are skipped, the record ends at a newline outside quotes, and quoted
+// fields may span lines. Returns "EOF" when there is no record.
+function readAsCSV(value: string): string[] | "EOF" | undefined {
   if (value === "") {
     return [];
   }
-  const fields: string[] = [];
+  let input = value.replaceAll("\r\n", "\n");
+  if (input.endsWith("\r")) {
+    input = input.slice(0, -1);
+  }
   let i = 0;
+  while (input[i] === "\n") {
+    i++;
+  }
+  if (i >= input.length) {
+    return "EOF";
+  }
+  const fields: string[] = [];
   for (;;) {
     let field = "";
-    if (value[i] === '"') {
+    let end: string | undefined;
+    if (input[i] === '"') {
       i++;
       for (;;) {
-        const quote = value.indexOf('"', i);
+        const quote = input.indexOf('"', i);
         if (quote === -1) {
           return undefined; // extraneous or missing " in quoted-field
         }
-        field += value.slice(i, quote);
+        field += input.slice(i, quote);
         i = quote + 1;
-        if (value[i] === '"') {
+        if (input[i] === '"') {
           field += '"';
           i++;
           continue;
         }
-        if (i < value.length && value[i] !== ",") {
+        end = input[i];
+        if (end !== undefined && end !== "," && end !== "\n") {
           return undefined;
         }
         break;
       }
     } else {
-      const comma = value.indexOf(",", i);
-      const end = comma === -1 ? value.length : comma;
-      field = value.slice(i, end);
+      let stop = i;
+      while (stop < input.length && input[stop] !== "," && input[stop] !== "\n") {
+        stop++;
+      }
+      field = input.slice(i, stop);
       if (field.includes('"')) {
         return undefined; // bare " in non-quoted-field
       }
-      i = end;
+      i = stop;
+      end = input[i];
     }
     fields.push(field);
-    if (i >= value.length) {
+    if (end !== ",") {
       return fields;
     }
     i++; // skip the comma
@@ -168,6 +177,9 @@ function setValue(values: Map<string, FlagValue>, spec: FlagSpec, raw: string): 
       if (parsed === undefined) {
         throw invalid(`strconv.ParseInt: parsing ${JSON.stringify(raw)}: invalid syntax`);
       }
+      if (parsed === "range") {
+        throw invalid(`strconv.ParseInt: parsing ${JSON.stringify(raw)}: value out of range`);
+      }
       values.set(spec.name, parsed);
       return;
     }
@@ -175,6 +187,9 @@ function setValue(values: Map<string, FlagValue>, spec: FlagSpec, raw: string): 
       const parsed = readAsCSV(raw);
       if (parsed === undefined) {
         throw invalid("parse error: invalid quoted field");
+      }
+      if (parsed === "EOF") {
+        throw invalid("EOF");
       }
       // the first --flag replaces the default, later ones append
       const previous = values.get(spec.name);

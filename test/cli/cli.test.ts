@@ -2,7 +2,7 @@
 // lookup, help, version and flag errors.
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { run, startServer, tempDir } from "@test/support/executable";
@@ -83,6 +83,58 @@ describe("root command", () => {
   });
 });
 
+describe("flag values parsed as pflag does", () => {
+  for (const value of ["1_000", "0x_1F", "0b1_0", "0_7", "-1_0"]) {
+    test(`--queryTimeout=${value} is accepted`, async () => {
+      const result = await run(["serve", `--queryTimeout=${value}`, "--help"]);
+      expect(result.exitCode).toBe(0);
+    });
+  }
+
+  for (const value of ["1__0", "1_", "_1", "0x", "08", "1e3"]) {
+    test(`--queryTimeout=${value} is invalid syntax`, async () => {
+      const result = await run(["serve", `--queryTimeout=${value}`, "--help"]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain(
+        `strconv.ParseInt: parsing ${JSON.stringify(value)}: invalid syntax`,
+      );
+    });
+  }
+
+  test("--queryTimeout out of int64 range", async () => {
+    const result = await run(["serve", "--queryTimeout=9223372036854775808", "--help"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      'strconv.ParseInt: parsing "9223372036854775808": value out of range',
+    );
+  });
+
+  for (const value of [
+    '"https://a.test"\r\n',
+    "https://a.test\n",
+    '\n"https://a.test",b\nc',
+    '"a\nb"',
+  ]) {
+    test(`--origins ${JSON.stringify(value)} is a valid CSV record`, async () => {
+      const result = await run(["serve", "--origins", value, "--help"]);
+      expect(result.exitCode).toBe(0);
+    });
+  }
+
+  for (const value of ['"a"b', 'a"b', '"a']) {
+    test(`--origins ${JSON.stringify(value)} is invalid CSV`, async () => {
+      const result = await run(["serve", "--origins", value, "--help"]);
+      expect(result.exitCode).toBe(1);
+    });
+  }
+
+  test("--origins with only newlines has no record", async () => {
+    const result = await run(["serve", "--origins", "\r\n\n", "--help"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("flag: EOF");
+  });
+});
+
 describe("serve command", () => {
   test("--help", async () => {
     const result = await run(["serve", "--help"]);
@@ -146,6 +198,32 @@ describe("serve command", () => {
       ],
       dataDir,
     );
+    const res = await fetch(`${server.url}/api/health`);
+    expect(res.status).toBe(200);
+    const result = await server.stop();
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("an unknown service name as port fails", async () => {
+    await expectError(
+      ["serve", "--http", "127.0.0.1:no-such-service", "--dir", join(tempDir(), "pb_data")],
+      "listen tcp: lookup tcp/no-such-service: unknown port",
+    );
+  });
+
+  // Go resolves service names through /etc/services (http-alt is 8080 there)
+  const hasHttpAlt = (() => {
+    try {
+      return /^http-alt\s+8080\/tcp/m.test(readFileSync("/etc/services", "utf8"));
+    } catch {
+      return false;
+    }
+  })();
+  test.skipIf(!hasHttpAlt)("a service name from /etc/services as port", async () => {
+    const server = await startServer([], join(tempDir(), "pb_data"), "127.0.0.1", {
+      name: "HTTP-ALT",
+      urlPort: 8080,
+    });
     const res = await fetch(`${server.url}/api/health`);
     expect(res.status).toBe(200);
     const result = await server.stop();

@@ -17,6 +17,10 @@ afterAll(async () => {
   await server.stop();
 });
 
+// GET and HEAD fall through to the binary's GET /{path...} static route
+// (examples/base/main.go), which answers router.ErrFileNotFound when there
+// is no matching file; other methods reach the router's catch-all.
+const fileNotFoundBody = { data: {}, message: "File not found.", status: 404 };
 const notFoundBody = {
   data: {},
   message: "The requested resource wasn't found.",
@@ -78,18 +82,25 @@ describe("wildcard listen address", () => {
 });
 
 describe("unknown routes", () => {
-  for (const [method, path] of [
-    ["GET", "/"],
-    ["GET", "/api/missing"],
-    ["GET", "/api/health/"],
-    ["POST", "/api/health"],
-    ["DELETE", "/api/health"],
+  for (const [method, path, body] of [
+    ["GET", "/", fileNotFoundBody],
+    ["GET", "/api/missing", fileNotFoundBody],
+    ["GET", "/api/health/", fileNotFoundBody],
+    ["POST", "/api/health", notFoundBody],
+    ["POST", "/api/missing", notFoundBody],
+    ["DELETE", "/api/health", notFoundBody],
   ] as const) {
     test(`${method} ${path} returns the 404 error body`, async () => {
       const res = await fetch(`${server.url}${path}`, { method });
       expect(res.status).toBe(404);
       expect(res.headers.get("content-type")).toBe("application/json");
-      expect(await res.json()).toEqual(notFoundBody);
+      expect(await res.json()).toEqual(body);
     });
   }
+
+  test("HEAD of an unknown path is a 404 without a body", async () => {
+    const res = await fetch(`${server.url}/api/missing`, { method: "HEAD" });
+    expect(res.status).toBe(404);
+    expect(await res.text()).toBe("");
+  });
 });

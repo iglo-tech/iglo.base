@@ -6,6 +6,8 @@
 // pb_data (M0.4), CORS (M5.7), the dashboard (M6.1), the installer (M6.2),
 // automatic HTTPS (M6.3).
 
+import { readFileSync } from "node:fs";
+
 import { healthCheck } from "@/apis/health";
 
 export interface Output {
@@ -35,6 +37,46 @@ function pad(n: number): string {
 // log.LstdFlags prefix: "2006/01/02 15:04:05", local time.
 export function logTime(now: Date): string {
   return `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
+// Go's net.LookupPort for "tcp": its built-in table, extended by
+// /etc/services, matched case-insensitively.
+function lookupTCPService(name: string): number | undefined {
+  const services = new Map<string, number>([
+    ["ftp", 21],
+    ["ftps", 990],
+    ["gopher", 70],
+    ["http", 80],
+    ["https", 443],
+    ["imap2", 143],
+    ["imap3", 220],
+    ["imaps", 993],
+    ["pop3", 110],
+    ["pop3s", 995],
+    ["smtp", 25],
+    ["submissions", 465],
+    ["ssh", 22],
+    ["telnet", 23],
+  ]);
+  let file = "";
+  try {
+    file = readFileSync("/etc/services", "utf8");
+  } catch {
+    // no services file: the built-in table only
+  }
+  for (const rawLine of file.split("\n")) {
+    const line = rawLine.split("#", 1)[0] ?? "";
+    const [serviceName, portProto, ...aliases] = line.trim().split(/\s+/);
+    const match = /^([0-9]+)\/tcp$/.exec(portProto ?? "");
+    if (!serviceName || !match) {
+      continue;
+    }
+    const servicePort = Number(match[1]);
+    for (const alias of [serviceName, ...aliases]) {
+      services.set(alias, servicePort);
+    }
+  }
+  return services.get(name.toLowerCase());
 }
 
 // Go's net.SplitHostPort plus the port lookup net.Listen does.
@@ -75,12 +117,12 @@ function parseListenAddr(addr: string): { hostname: string; port: number } {
     if (portNumber > 65535) {
       throw new Error(`listen tcp: address ${port}: invalid port`);
     }
-  } else if (port === "http") {
-    portNumber = 80;
-  } else if (port === "https") {
-    portNumber = 443;
   } else {
-    throw new Error(`listen tcp: lookup tcp/${port}: unknown port`);
+    const service = lookupTCPService(port);
+    if (service === undefined) {
+      throw new Error(`listen tcp: lookup tcp/${port}: unknown port`);
+    }
+    portNumber = service;
   }
 
   // an empty or 0.0.0.0 host listens on all interfaces, IPv4 and IPv6,
@@ -96,23 +138,26 @@ function serverAddrToHost(addr: string): string {
   return addr;
 }
 
-function notFound(): Response {
-  // router.NewNotFoundError("", nil), same key order as upstream's ApiError
-  const body = JSON.stringify({
-    data: {},
-    message: "The requested resource wasn't found.",
-    status: 404,
-  });
+function notFound(message: string): Response {
+  // router.NewNotFoundError, same key order as upstream's ApiError
+  const body = JSON.stringify({ data: {}, message, status: 404 });
   return new Response(body, { status: 404, headers: { "Content-Type": "application/json" } });
 }
 
 // Temporary dispatch, replaced by the router in M0.3.
 function handle(request: Request): Response {
   const { pathname } = new URL(request.url);
-  if ((request.method === "GET" || request.method === "HEAD") && pathname === "/api/health") {
+  const isGet = request.method === "GET" || request.method === "HEAD";
+  if (isGet && pathname === "/api/health") {
     return healthCheck();
   }
-  return notFound();
+  if (isGet) {
+    // examples/base/main.go registers GET /{path...} with apis.Static on
+    // --publicDir; without a matching file it returns router.ErrFileNotFound.
+    // Serving pb_public itself is M5.7.
+    return notFound("File not found.");
+  }
+  return notFound("The requested resource wasn't found.");
 }
 
 function startBanner(out: Output, baseURL: string): void {
