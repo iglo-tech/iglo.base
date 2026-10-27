@@ -1,6 +1,6 @@
 # Work plan
 
-How the [port plan](09-port-plan.md) is split into tasks that agents can do one at a time and in parallel, and how each task is briefed, checked and merged.
+How the [port plan](09-port-plan.md) is split into tasks that agents do one at a time, and how each task is briefed, reviewed by the council and merged without the owner.
 
 ## How work is handled
 
@@ -8,16 +8,26 @@ How the [port plan](09-port-plan.md) is split into tasks that agents can do one 
 
 | Role | Who | Does |
 |---|---|---|
-| Owner | the project owner | Decides scope and design changes, deliberate API differences, anything touching production data or real credentials. Approves the start of each wave |
-| Lead | one agent session | Keeps this plan current, writes task briefs, starts workers, reviews and merges their PRs, resolves conflicts between tasks, escalates to the owner |
+| Owner | the project owner | Sets direction. Is not asked for approvals: agents merge and decide on their own, and log decisions for later review. Takes part only in M7.4 (production data) |
+| Lead (chief of staff) | a scheduled agent run, every 45 minutes ([runbook](../chief-of-staff.md)) | Keeps this plan and [`docs/status.md`](../status.md) current, writes task briefs, starts workers and the council, merges, decides design questions |
 | Worker | one agent per task | Does one task in its own branch and worktree, opens one PR |
-| Reviewer | a fresh agent, never the worker | Reviews one PR against upstream's source and these docs |
+| Council | two fresh agents, never the worker: Claude Opus 5.5 (medium effort) and GPT-6.1 Sol (xhigh reasoning) | Reviews each finished PR independently against upstream's source and these docs. A PR merges only when both approve the same commit |
+
+### Models
+
+| Work | Model |
+|---|---|
+| Lead | Claude Opus 5.5 |
+| Workers on core, security- or format-critical code (data layer, filters, resolver, tokens, auth flows, realtime, files, backups) | Claude Opus 5.5, medium effort |
+| Workers on mechanical tasks (M0.2, M4.6, M4.7, M5.8, M7.2) and any bulk work inside other tasks (converting upstream table tests to scenario data, reading large files, summarizing logs and CI output) | Claude Haiku 5.5 |
+| Council | Claude Opus 5.5 at medium effort and GPT-6.1 Sol at xhigh reasoning |
 
 ### One task
 
 - **Size:** one upstream area that a single agent can port and test in one session: usually up to about 1,500 upstream Go lines plus their tests.
 - **Branch and worktree:** `task/<id>-<slug>`, created from the current `main`. One PR per task.
 - **Write scope:** the task names the modules it owns. A worker changes only those, plus new tests. A change to a module another task owns, or to a shared contract (below), goes back to the lead.
+- **Decisions:** design questions are decided by the lead, never left waiting. Each one is recorded in [Decisions](10-decisions.md) as "decided by agents, for owner review" and listed in `docs/status.md`.
 - **Done:** the acceptance check in the brief passes in CI, the design docs that the task touches still match the code, and the PR description lists what was ported (upstream file → iglo.base file) and anything left out with a reason.
 
 ### Task brief
@@ -38,9 +48,10 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 
 ### Rules for workers
 
-- Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (task M0.2), never from memory.
+- Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`/home/t3-code/upstream/pocketbase` until M0.2 adds the fetch script), never from memory.
+- Hand bulk mechanical work to Claude Haiku 5.5 subagents, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
-- If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. Do not decide it.
+- If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.
 - No new runtime dependency, no change to a decision record, no change to another task's module without the lead.
 - Never use production data. Fixtures are upstream's `tests/data`, fresh installs and generated data.
 
@@ -55,14 +66,21 @@ These are created in M0 and change only through a small task of their own, becau
 
 ### Review and merge
 
-1. CI is green: lint, format, typecheck, unit tests, the task's scenarios against iglo.base, and the differential suite for the touched areas.
-2. A reviewer agent reads the PR next to the upstream files it ports and checks: behavior matches upstream, rules from `AGENTS.md`, no hook remnants or extension surface, tests through public boundaries only.
-3. The lead fixes small findings itself, sends larger ones back to the worker, and merges with a squash commit. `main` stays green.
-4. Escalations wait for the owner; other tasks continue.
+1. The worker finishes when its PR is open, CI is green and its acceptance check passes.
+2. **Council:** both council members review the PR independently. Each checks the diff next to the upstream files it ports and against these docs and `AGENTS.md`: behavior matches upstream, no hook remnants or extension surface, tests through public boundaries only, the task's scope respected. Each posts one PR comment with a verdict, `APPROVE` or `CHANGES`, for the exact head commit.
+3. **Fix loop:** on `CHANGES`, the lead fixes small findings itself and sends larger ones to a fixer agent on the same branch. Then both members review the new head again. A PR merges only when both approve the same commit.
+4. **Deadlock:** after three rounds without agreement, the lead decides. Upstream's binary (the scenarios and the differential suite) is the tiebreaker, and the reasoning goes in the PR.
+5. The lead squash-merges, deletes the branch and updates `docs/status.md`. `main` stays green.
 
-### Parallelism
+### Pace
 
-Tasks run in waves. A task starts when everything it depends on is merged. The lead runs at most four workers at once at first, and raises that once the shared contracts are stable. Tasks in the same wave own disjoint modules, so they do not conflict.
+Correct first time over fast. One task at a time, end to end; the next one starts after the previous one is merged. At most three agents run at once (the worker, or the two council members), plus short lead-run helpers. If any agent hits a usage or rate limit, the lead pauses new work for an hour instead of retrying. Parallel tasks are considered only after M1 is merged, and still at most two workers.
+
+### Hard limits
+
+- No agent reads, copies or uses production data. M7.4 waits for the owner.
+- No real credentials and no external services except GitHub and the upstream forge.
+- Nothing destructive outside the repository. The host rules in `/home/t3-code/AGENTS.md` apply (no Docker disk accounting, no broad disk scans, low-priority bounded diagnostics).
 
 ## Tasks
 

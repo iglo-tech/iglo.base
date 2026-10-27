@@ -57,7 +57,7 @@ Do not add hooks, plugins, event buses for user code, a JavaScript VM, user migr
 
 ## Work split
 
-The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker follows its brief and the worker rules there, and changes only the modules the task owns.
+The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker follows its brief and the worker rules there, and changes only the modules the task owns. The chief of staff follows `docs/chief-of-staff.md` and keeps `docs/status.md` current. Agents decide and merge without the owner; decisions are logged for later review.
 
 ## Verification
 
