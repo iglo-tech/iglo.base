@@ -37,7 +37,7 @@ Other files in `pb_data` are left alone and included in backups, as upstream doe
 
 ## SQLite settings
 
-Both files are opened with upstream's pragmas, in upstream's order: `busy_timeout=10000`, `journal_mode=WAL`, `journal_size_limit=200000000`, `synchronous=NORMAL`, `foreign_keys=ON`, `temp_store=MEMORY`, `cache_size=-32000`. Upstream also enables `SQLITE_DBCONFIG_DEFENSIVE`; iglo.base sets it if `bun:sqlite` exposes it, and otherwise rejects the statements defensive mode blocks (writable `sqlite_schema`, `PRAGMA writable_schema`) in the SQL console.
+Both files are opened with upstream's pragmas, in upstream's order: `busy_timeout=10000`, `journal_mode=WAL`, `journal_size_limit=200000000`, `synchronous=NORMAL`, `foreign_keys=ON`, `temp_store=MEMORY`, `cache_size=-32000`. Upstream also enables `SQLITE_DBCONFIG_DEFENSIVE` (`_defensive=1`). `bun:sqlite` does not expose it (no `sqlite3_db_config` call, and the setting has no pragma; checked with Bun 1.4.4), so iglo.base cannot set it without a native addon. Instead the SQL console rejects the statements defensive mode blocks (writable `sqlite_schema`, `PRAGMA writable_schema`).
 
 Bun bundles SQLite 3.53.4 (checked with Bun 1.4.4 on Linux), with math and JSON functions, which upstream's filters use (`acos`, `radians`, `json_extract`, `->>`). On macOS, `bun:sqlite` uses the system SQLite by default; the release build calls `Database.setCustomSQLite` with a bundled library so behavior does not depend on the macOS version (verified in M0).
 

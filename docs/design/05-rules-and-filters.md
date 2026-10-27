@@ -38,7 +38,7 @@ These are the places a naive port goes wrong. Each one gets dedicated differenti
 
 ## Query building
 
-Upstream builds SQL with `pocketbase/dbx` (MIT). iglo.base ports the small subset of the builder it uses (select, joins, `WHERE` expressions, `IN`, `EXISTS`, ordering, limits, named parameters) as `src/db/builder.ts`. The goal is the same SQL text, which makes differential debugging easy: for a given filter and collection schema, iglo.base can print its SQL (with `--dev`, as upstream) and the two can be compared directly.
+Upstream builds SQL with `pocketbase/dbx` (MIT). iglo.base ports the small subset of the builder it uses (select, joins, `WHERE` expressions, `IN`, `EXISTS`, ordering, limits, named parameters) in `src/db/dbx/`, one file per dbx file. The goal is the same SQL text, which makes differential debugging easy: for a given filter and collection schema, iglo.base can print its SQL (with `--dev`, as upstream) and the two can be compared directly.
 
 ## Testing
 
