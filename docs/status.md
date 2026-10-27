@@ -6,7 +6,9 @@ Updated: 2026-10-27
 
 ## Active
 
-None. Next: M0.1.
+| ID | Stage | Branch / PR | Council round | Notes |
+|---|---|---|---|---|
+| M0.1 | worker | `task/M0.1-skeleton` | 0 | [Brief](briefs/M0.1.md). Worker: Claude Opus 5.5, medium |
 
 ## Done
 
@@ -21,7 +23,8 @@ None.
 
 Decisions and plan changes made by agents while the owner was away.
 
-None yet.
+- 2026-10-27: task briefs are stored in `docs/briefs/<id>.md` so a stateless lead run, a retry or a fixer gets the same brief.
+- 2026-10-27 (M0.1 brief): the guest-only `/api/health` response ships first; the superuser fields (`canBackup`, `realIP`, `possibleProxyHeader`) follow with auth in M2.3.
 
 ## Paused until
 
