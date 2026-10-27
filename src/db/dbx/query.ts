@@ -33,15 +33,27 @@
 // safeIntegers, and the row readers (rows.ts) narrow every integer inside
 // Number.MAX_SAFE_INTEGER to a number. Integers outside it stay bigint, as
 // Go's int64 and NullStringMap keep them exact, and binding a bigint stores
-// the exact value. M1.8 maps them to record values.
+// the exact value. M1.8 maps them to record values. A generated rowid
+// (lastInsertId) is narrowed the same way.
+//
+// A SQL text with several statements runs as Go's SQLite driver runs it
+// (driver.ts): Execute() runs them all and reports the last one's result,
+// and the rows come from the last statement.
 //
 // Maps keyed by SQL identifiers (params, rows, columns) are written with
 // setOwn, so that a name like "__proto__" is an ordinary key.
 
-import type { SQLQueryBindings, Statement } from "bun:sqlite";
+import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
 
 import type { DB } from "@/db/dbx/db";
-import { Rows } from "@/db/dbx/rows";
+import {
+  execStatements,
+  isSingle,
+  queryStatements,
+  splitStatements,
+  type ScriptPart,
+} from "@/db/dbx/driver";
+import type { Rows } from "@/db/dbx/rows";
 import { isStructModel, scanStruct, type StructModel } from "@/db/dbx/struct";
 
 // Params represents a list of parameter values to be bound to a SQL statement.
@@ -76,7 +88,8 @@ export function assignOwn(target: Record<string, unknown>, source: Record<string
 // sql.Result
 export interface ExecResult {
   rowsAffected: number;
-  lastInsertId: number;
+  // a bigint outside Number.MAX_SAFE_INTEGER
+  lastInsertId: number | bigint;
 }
 
 // Executor prepares, executes, or queries a SQL statement
@@ -84,8 +97,10 @@ export interface ExecResult {
 export interface Executor {
   // Exec executes a SQL statement (or several, separated by semicolons)
   exec(sql: string, args: SQLQueryBindings[]): ExecResult;
-  // a cached statement for a single query
-  statement(sql: string): Statement;
+  // Query executes a query that returns rows. With `own`, the rows get a
+  // statement of their own, so other queries can run while they are read;
+  // otherwise a single statement may be the connection's cached one.
+  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows;
   // Prepare creates a prepared statement that the caller closes
   prepare(sql: string): Stmt;
 }
@@ -93,17 +108,36 @@ export interface Executor {
 // sql.Stmt: a prepared statement. A statement prepared in a transaction is
 // closed when the transaction ends (sql.Tx closes its statements on Commit
 // and Rollback), so it cannot run outside it.
+//
+// Like the driver's newStmt, a single statement is prepared once; a script
+// has its first statement checked now and every statement prepared when it
+// runs.
 export class Stmt {
   private closed = false;
+  private readonly parts: ScriptPart[];
+  private readonly single: Statement | null = null;
 
-  constructor(private readonly stmt: Statement) {}
-
-  // the statement to run; throws once the statement is closed
-  use(): Statement {
-    if (this.closed) {
-      throw new Error("sql: statement is closed");
+  constructor(
+    private readonly conn: Database,
+    sql: string,
+  ) {
+    const parts = splitStatements(sql);
+    this.parts = parts;
+    if (isSingle(parts)) {
+      this.single = conn.prepare(parts[0].sql).safeIntegers(true);
+    } else if (parts.length > 0) {
+      conn.prepare(parts[0]!.sql).finalize();
     }
-    return this.stmt;
+  }
+
+  exec(args: SQLQueryBindings[]): ExecResult {
+    this.checkClosed();
+    return execStatements(this.conn, this.parts, args, this.single);
+  }
+
+  query(args: SQLQueryBindings[]): Rows {
+    this.checkClosed();
+    return queryStatements(this.conn, this.parts, args, this.single, false);
   }
 
   close(): void {
@@ -111,7 +145,13 @@ export class Stmt {
       return;
     }
     this.closed = true;
-    this.stmt.finalize();
+    this.single?.finalize();
+  }
+
+  private checkClosed(): void {
+    if (this.closed) {
+      throw new Error("sql: statement is closed");
+    }
   }
 }
 
@@ -290,7 +330,7 @@ export class Query {
       if (this.stmt === null) {
         result = this.executor.exec(this.rawSql, args);
       } else {
-        result = toExecResult(this.stmt.use().run(...args));
+        result = this.stmt.exec(args);
       }
       return result;
     } catch (e) {
@@ -308,7 +348,7 @@ export class Query {
     let result: unknown = undefined;
     this.execWrap(() => {
       const op = (b: unknown): unknown => {
-        const row = this.rowsOp().first();
+        const row = this.rowsOp(false).first();
         if (isStructModel(b)) {
           scanStruct(b, row);
           return b;
@@ -327,7 +367,7 @@ export class Query {
     let result: unknown = [];
     this.execWrap(() => {
       const op = (b: unknown): unknown[] => {
-        const rows = this.rowsOp().all();
+        const rows = this.rowsOp(false).all();
         if (typeof b === "function") {
           return rows.map((row) => {
             const model = (b as () => StructModel)();
@@ -347,7 +387,7 @@ export class Query {
   row(): unknown[] {
     let result: unknown[] = [];
     this.execWrap(() => {
-      result = this.rowsOp().firstValues();
+      result = this.rowsOp(false).firstValues();
     });
     return result;
   }
@@ -356,25 +396,30 @@ export class Query {
   column<T = unknown>(): T[] {
     let result: unknown[] = [];
     this.execWrap(() => {
-      result = this.rowsOp().column();
+      result = this.rowsOp(false).column();
     });
     return result as T[];
   }
 
   // Rows executes the SQL statement and returns a Rows object to allow retrieving data row by row.
+  // The rows have a statement of their own, so other queries (even the
+  // same SQL) can run while they are read. Iterate them to the end or
+  // close them.
   rows(): Rows {
-    return this.rowsOp();
+    return this.rowsOp(true);
   }
 
-  private rowsOp(): Rows {
+  private rowsOp(own: boolean): Rows {
     this.takeLastError();
     const args = replacePlaceholders(this.placeholders, this.boundParams);
 
     const start = performance.now();
     let err: unknown = null;
     try {
-      const stmt = this.stmt?.use() ?? this.executor.statement(this.rawSql);
-      return new Rows(stmt, args);
+      if (this.stmt !== null) {
+        return this.stmt.query(args);
+      }
+      return this.executor.query(this.rawSql, args, own);
     } catch (e) {
       err = e;
       throw e;
@@ -398,13 +443,6 @@ export class Query {
     }
     op();
   }
-}
-
-export function toExecResult(changes: {
-  changes: number;
-  lastInsertRowid: number | bigint;
-}): ExecResult {
-  return { rowsAffected: changes.changes, lastInsertId: Number(changes.lastInsertRowid) };
 }
 
 // replacePlaceholders converts a list of named parameters into a list of anonymous parameters.

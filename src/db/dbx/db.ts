@@ -26,19 +26,20 @@
 // share the connection. Only the SQLite and standard builders are ported;
 // the MySQL, PostgreSQL, MSSQL and OCI ones are not used by PocketBase.
 
-import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
+import type { Database, SQLQueryBindings } from "bun:sqlite";
 
 import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
 import { SqliteBuilder } from "@/db/dbx/builder-sqlite";
 import { StandardBuilder } from "@/db/dbx/builder-standard";
+import { execStatements, queryStatements, splitStatements } from "@/db/dbx/driver";
 import {
   Stmt,
-  toExecResult,
   type ExecLogFunc,
   type ExecResult,
   type Executor,
   type QueryLogFunc,
 } from "@/db/dbx/query";
+import type { Rows } from "@/db/dbx/rows";
 import { Tx, TxDoneError, TxExecutor } from "@/db/dbx/tx";
 
 // BuilderFunc creates a Builder instance using the given DB instance and Executor.
@@ -63,15 +64,15 @@ class ConnExecutor implements Executor {
   constructor(private readonly conn: Database) {}
 
   exec(sql: string, args: SQLQueryBindings[]): ExecResult {
-    return toExecResult(this.conn.run(sql, args));
+    return execStatements(this.conn, splitStatements(sql), args, null);
   }
 
-  statement(sql: string): Statement {
-    return this.conn.query(sql).safeIntegers(true);
+  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows {
+    return queryStatements(this.conn, splitStatements(sql), args, null, own);
   }
 
   prepare(sql: string): Stmt {
-    return new Stmt(this.conn.prepare(sql).safeIntegers(true));
+    return new Stmt(this.conn, sql);
   }
 }
 

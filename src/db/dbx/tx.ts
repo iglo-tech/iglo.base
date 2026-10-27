@@ -25,10 +25,12 @@
 // using it after Commit or Rollback fails with sql.ErrTxDone, and the
 // statements prepared in it are closed when it ends.
 
-import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
+import type { Database, SQLQueryBindings } from "bun:sqlite";
 
 import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
-import { Stmt, toExecResult, type ExecResult, type Executor } from "@/db/dbx/query";
+import { execStatements, queryStatements, splitStatements } from "@/db/dbx/driver";
+import { Stmt, type ExecResult, type Executor } from "@/db/dbx/query";
+import type { Rows } from "@/db/dbx/rows";
 
 // sql.ErrTxDone
 export class TxDoneError extends Error {
@@ -46,17 +48,17 @@ export class TxExecutor implements Executor {
 
   exec(sql: string, args: SQLQueryBindings[]): ExecResult {
     this.checkDone();
-    return toExecResult(this.conn.run(sql, args));
+    return execStatements(this.conn, splitStatements(sql), args, null);
   }
 
-  statement(sql: string): Statement {
+  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows {
     this.checkDone();
-    return this.conn.query(sql).safeIntegers(true);
+    return queryStatements(this.conn, splitStatements(sql), args, null, own);
   }
 
   prepare(sql: string): Stmt {
     this.checkDone();
-    const stmt = new Stmt(this.conn.prepare(sql).safeIntegers(true));
+    const stmt = new Stmt(this.conn, sql);
     this.stmts.push(stmt);
     return stmt;
   }

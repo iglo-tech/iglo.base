@@ -32,8 +32,9 @@ import { describe, expect, test } from "bun:test";
 
 import type { SqliteBuilder } from "@/db/dbx/builder-sqlite";
 import { HashExp } from "@/db/dbx/expression";
-import { Query, replacePlaceholders, type Row } from "@/db/dbx/query";
+import { Query, replacePlaceholders, type Params, type Row } from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
+import type { StructModel } from "@/db/dbx/struct";
 import { Customer, User } from "@test/db/dbx/models";
 import { getDB, getPreparedDB } from "@test/db/support";
 
@@ -431,5 +432,185 @@ describe("integers are read losslessly", () => {
     const [v] = db.newQuery("SELECT v FROM t").row();
     expect(v).toBe(big);
     expect(db.newQuery("SELECT CAST(v AS TEXT) FROM t").row()).toEqual(["9007199254740993"]);
+  });
+});
+
+// an AUTOINCREMENT table whose next rowid is 2^53 + 1
+function bigDB(): ReturnType<typeof getDB> {
+  const db = getDB();
+  db.conn().run(`
+    CREATE TABLE big (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+    INSERT INTO big (id, v) VALUES (9007199254740992, 'seed');
+  `);
+  return db;
+}
+
+// dbx's insertAndReturnPK keeps the int64 rowid
+describe("generated rowids are kept exactly", () => {
+  class Big implements StructModel {
+    id: number | bigint = 0;
+    v = "";
+
+    tableName(): string {
+      return "big";
+    }
+
+    dbColumns(): Params {
+      return { id: this.id, v: this.v };
+    }
+
+    dbScan(row: Row): void {
+      if ("id" in row) this.id = row.id as number | bigint;
+      if ("v" in row) this.v = String(row.v);
+    }
+  }
+
+  test("lastInsertId", () => {
+    const db = bigDB();
+    expect(db.insert("big", { v: "a" }).execute().lastInsertId).toBe(9007199254740993n);
+    expect(db.insert("big", { v: "b" }).prepare().execute().lastInsertId).toBe(9007199254740994n);
+    db.transactional((tx) => {
+      expect(tx.insert("big", { v: "c" }).execute().lastInsertId).toBe(9007199254740995n);
+    });
+    expect(getPreparedDB().insert("item", { name: "x" }).execute().lastInsertId).toBe(6);
+  });
+
+  test("a model update after insert changes the new row", () => {
+    const db = bigDB();
+    const m = new Big();
+    m.v = "inserted";
+    db.model(m).insert();
+    expect(m.id).toBe(9007199254740993n);
+    m.v = "updated";
+    db.model(m).update();
+    expect(db.newQuery("SELECT id, v FROM big ORDER BY id").all()).toEqual([
+      { id: 9007199254740992n, v: "seed" },
+      { id: 9007199254740993n, v: "updated" },
+    ]);
+  });
+});
+
+// Go's SQLite driver runs every statement of a SQL text; the rows come from
+// the last one, and Execute() reports the last one's result. Compared with
+// the reference binary in test/differential/db/script.test.ts.
+describe("SQL texts with several statements", () => {
+  test("rows come from the last statement", () => {
+    const db = getDB();
+    expect(db.newQuery("SELECT 1 AS a; SELECT 2 AS b").all()).toEqual([{ b: 2 }]);
+    expect(db.newQuery("PRAGMA cache_size(-12345); PRAGMA cache_size").row()).toEqual([-12345]);
+    expect(db.newQuery("SELECT 1 AS a; SELECT 2 AS b WHERE 0").rows().columns()).toEqual(["b"]);
+    expect(db.newQuery("SELECT 1 AS a; -- comment").row()).toEqual([1]);
+    expect(db.newQuery("SELECT 1 AS a; SELECT 2 AS b").prepare().row()).toEqual([2]);
+    db.transactional((tx) => {
+      expect(tx.newQuery("SELECT 1 AS a; SELECT 2 AS b").column()).toEqual([2]);
+    });
+  });
+
+  test("earlier statements run, with the same arguments", () => {
+    const db = getDB();
+    db.newQuery("CREATE TABLE t (v)").execute();
+    expect(
+      db
+        .newQuery("INSERT INTO t VALUES ({:v}); SELECT v, count(*) AS n FROM t WHERE v = {:w}")
+        .bind({ v: "x", w: "y" })
+        .one(),
+    ).toEqual({ v: "x", n: 1 });
+  });
+
+  test("semicolons in comments, strings and quoted names do not split", () => {
+    const db = getDB();
+    expect(
+      db
+        .newQuery(
+          "  /* ; */ SELECT 1 AS a -- ;\n; SELECT ';' AS \"b;\", 'it''s;' AS [c;], 2 AS `d;`;  ",
+        )
+        .one(),
+    ).toEqual({ "b;": ";", "c;": "it's;", "d;": 2 });
+    expect(db.newQuery("SELECT 1 AS a;;; -- only a comment").row()).toEqual([1]);
+    expect(db.newQuery("  -- nothing to run").execute()).toEqual({
+      rowsAffected: 0,
+      lastInsertId: 0,
+    });
+  });
+
+  test("a trigger body is one statement", () => {
+    const db = getDB();
+    db.newQuery(`
+      CREATE TABLE t (v);
+      CREATE TRIGGER t_ins AFTER INSERT ON t BEGIN UPDATE t SET v = v || ';' WHERE rowid = new.rowid; END;
+      INSERT INTO t VALUES ('a')
+    `).execute();
+    expect(db.newQuery("SELECT v FROM t").column()).toEqual(["a;"]);
+  });
+
+  test("rowsAffected is the last statement's", () => {
+    const db = getDB();
+    db.newQuery("CREATE TABLE t (v); INSERT INTO t VALUES ('a'), ('b')").execute();
+    expect(db.newQuery("UPDATE t SET v = 'c'; DELETE FROM t WHERE 0").execute().rowsAffected).toBe(
+      0,
+    );
+    expect(
+      db.newQuery("INSERT INTO t VALUES ('d'); INSERT INTO t VALUES ('e')").execute().rowsAffected,
+    ).toBe(1);
+    expect(
+      db.newQuery("UPDATE t SET v = 'f'; DELETE FROM t WHERE 0").prepare().execute().rowsAffected,
+    ).toBe(0);
+    db.transactional((tx) => {
+      expect(
+        tx.newQuery("UPDATE t SET v = 'g'; DELETE FROM t WHERE 0").execute().rowsAffected,
+      ).toBe(0);
+      expect(
+        tx.newQuery("INSERT INTO t VALUES ('h'); INSERT INTO t VALUES ('i')").execute(),
+      ).toEqual({ rowsAffected: 1, lastInsertId: 6 });
+    });
+  });
+});
+
+describe("duplicate column names are read incrementally", () => {
+  const sql = "SELECT 1 AS a, 2 AS a UNION ALL SELECT abs(-9223372036854775808), 0";
+
+  test("row()", () => {
+    expect(getDB().newQuery(sql).row()).toEqual([1, 2]);
+  });
+
+  test("an iteration that stops early", () => {
+    const seen: unknown[][] = [];
+    for (const values of getDB().newQuery(sql).rows()) {
+      seen.push(values);
+      break;
+    }
+    expect(seen).toEqual([[1, 2]]);
+  });
+
+  test("one() keeps the last duplicate, as Go's NullStringMap", () => {
+    expect(getDB().newQuery(sql).one()).toEqual({ a: 2 });
+  });
+
+  test("a join and a column named like SQLite's renaming", () => {
+    const db = getPreparedDB();
+    expect(
+      db
+        .newQuery(
+          'SELECT c.id, o.id, 7 AS "id:1" FROM customer c JOIN "order" o ON o.customer_id = c.id ORDER BY o.id',
+        )
+        .row(),
+    ).toEqual([1, 1, 7]);
+    expect(db.newQuery("SELECT 1 AS a, 2 AS a").rows().columns()).toEqual(["a", "a"]);
+  });
+});
+
+describe("rows() has a statement of its own", () => {
+  test("the same SQL runs inside the loop", () => {
+    const db = getPreparedDB();
+    const sql = "SELECT id FROM customer ORDER BY id";
+    const seen: unknown[] = [];
+    for (const [id] of db.newQuery(sql).rows()) {
+      seen.push([id, db.newQuery(sql).row()[0], db.newQuery(sql).column().length]);
+    }
+    expect(seen).toEqual([
+      [1, 1, 3],
+      [2, 1, 3],
+      [3, 1, 3],
+    ]);
   });
 });
