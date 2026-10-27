@@ -5,11 +5,12 @@
 //
 // JSON.parse is not used for values: it loses number text and key order.
 
+// `start` is the offset of `raw` in the parsed text.
 export type JsonNode =
-  | { kind: "null" | "true" | "false" | "number"; raw: string }
-  | { kind: "string"; raw: string; value: string }
-  | { kind: "array"; raw: string; items: JsonNode[] }
-  | { kind: "object"; raw: string; entries: [name: string, value: JsonNode][] };
+  | { kind: "null" | "true" | "false" | "number"; start: number; raw: string }
+  | { kind: "string"; start: number; raw: string; value: string }
+  | { kind: "array"; start: number; raw: string; items: JsonNode[] }
+  | { kind: "object"; start: number; raw: string; entries: [name: string, value: JsonNode][] };
 
 export class JsonSyntaxError extends Error {}
 
@@ -56,15 +57,15 @@ class Parser {
     }
     if (c === '"') {
       const raw = this.match(stringPattern, "string");
-      return { kind: "string", raw, value: JSON.parse(raw) as string };
+      return { kind: "string", start, raw, value: JSON.parse(raw) as string };
     }
     for (const literal of ["null", "true", "false"] as const) {
       if (this.text.startsWith(literal, this.pos)) {
         this.pos += literal.length;
-        return { kind: literal, raw: literal };
+        return { kind: literal, start, raw: literal };
       }
     }
-    return { kind: "number", raw: this.match(numberPattern, "value") };
+    return { kind: "number", start, raw: this.match(numberPattern, "value") };
   }
 
   private match(pattern: RegExp, what: string): string {
@@ -104,7 +105,7 @@ class Parser {
       }
     }
     this.expect("}");
-    return { kind: "object", raw: this.text.slice(start, this.pos), entries };
+    return { kind: "object", start, raw: this.text.slice(start, this.pos), entries };
   }
 
   private array(start: number): JsonNode {
@@ -123,7 +124,7 @@ class Parser {
       }
     }
     this.expect("]");
-    return { kind: "array", raw: this.text.slice(start, this.pos), items };
+    return { kind: "array", start, raw: this.text.slice(start, this.pos), items };
   }
 }
 

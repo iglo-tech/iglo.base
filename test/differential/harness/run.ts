@@ -73,7 +73,9 @@ export async function runDifferential(scenario: Scenario): Promise<DifferentialR
       ]);
       if (!scenario.difference && !("error" in upRes) && !("error" in igRes)) {
         igloBaseFailures.push(
-          ...compareResponses(upRes, igRes, start).map((d) => `differs from upstream: ${d}`),
+          ...compareResponses(upRes, igRes, { start, request: scenario }).map(
+            (d) => `differs from upstream: ${d}`,
+          ),
         );
       }
       return { upstreamFailures, igloBaseFailures };
