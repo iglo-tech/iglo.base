@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.4 | worker | branch `task/M0.4-db-layer` | 0 | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
+| M0.4 | council | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 1 (head `7072d27`; check and reference-ubuntu green, macOS was still queued when the council started; it must be green before merge) | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
 
 ## Done
 
@@ -39,6 +39,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-27 (M0.3, after round 3): the lead decided with no fourth council round. Every reproduced XML, JSON, form and case-folding mismatch is fixed in the PR. Temporary gap: quoted multipart boundaries that contain `;`, `"` or `\` are rejected by Bun's `formData()` but accepted upstream. M0.8 (multipart spike) and M3.2 own that path; M3.2 must close the gap or list it in `04-api-compatibility.md`.
 
 - 2026-10-27 (M0.4 brief): M0.4 builds src/db and its tests but does not wire the databases into `serve`. M1.2 does that together with the system migrations, so `serve` never creates an unmigrated pb_data. Reads run on the main-thread connection behind upstream's concurrent/nonconcurrent API until the M0.6 spike decides D8. dbx v1.13.0 is read from the pinned checkout `/home/t3-code/upstream/dbx`.
+
+- 2026-10-27 (M0.4 PR): the lead accepted the worker's open points. `bun:sqlite` cannot set SQLITE_DBCONFIG_DEFENSIVE (`_defensive=1`); this is documented in `03-data-compatibility.md` and no native addon is added. The fixture tests live in `test/differential/db/`, because only `test:reference` prepares upstream's `tests/data`. The one-line fix to `05-rules-and-filters.md` is accepted. Reading integers above 2^53 without losing precision is left for M1.8 to decide.
 
 ## Paused until
 
