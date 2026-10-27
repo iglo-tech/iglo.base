@@ -26,25 +26,102 @@ export class XmlSyntaxError extends Error {
   }
 }
 
-function decodeEntities(s: string): string {
-  return s.replace(/&(#x[0-9a-fA-F]+|#[0-9]+|lt|gt|amp|quot|apos);/g, (_, e: string) => {
-    switch (e) {
-      case "lt":
-        return "<";
-      case "gt":
-        return ">";
-      case "amp":
-        return "&";
-      case "quot":
-        return '"';
-      case "apos":
-        return "'";
-      default:
-        return String.fromCodePoint(
-          e.startsWith("#x") ? Number.parseInt(e.slice(2), 16) : Number(e.slice(1)),
-        );
+// the predefined entities; strict mode knows no others
+const entity: Record<string, string> = { lt: "<", gt: ">", amp: "&", apos: "'", quot: '"' };
+
+// xml isNameByte, plus any non-ASCII character (readName accepts them)
+function isNameChar(c: string): boolean {
+  return /^[A-Za-z0-9_:.-]$/.test(c) || c >= "\u0080";
+}
+
+// xml isInCharacterRange: the Char production of XML 1.0, section 2.2
+function isInCharacterRange(r: number): boolean {
+  return (
+    r === 0x09 ||
+    r === 0x0a ||
+    r === 0x0d ||
+    (r >= 0x20 && r <= 0xd7ff) ||
+    (r >= 0xe000 && r <= 0xfffd) ||
+    (r >= 0x10000 && r <= 0x10ffff)
+  );
+}
+
+// Decoder.text (strict mode) for one run of element text or a CDATA
+// section: entity and character references are resolved (outside CDATA),
+// "\r\n" and "\r" become "\n", and the result must hold only XML
+// characters.
+function decodeText(raw: string, cdata: boolean): string {
+  if (!cdata && raw.includes("]]>")) {
+    throw new XmlSyntaxError("unescaped ]]> not in CDATA section");
+  }
+  let out = "";
+  let prev = "";
+  for (let i = 0; i < raw.length;) {
+    const c = raw[i] as string;
+    if (c === "&" && !cdata) {
+      let j = i + 1;
+      let text: string | undefined;
+      if (raw[j] === "#") {
+        j++;
+        let base = 10;
+        if (raw[j] === "x") {
+          base = 16;
+          j++;
+        }
+        const start = j;
+        while (j < raw.length && (base === 16 ? /[0-9a-fA-F]/ : /[0-9]/).test(raw[j] as string)) {
+          j++;
+        }
+        if (raw[j] === ";") {
+          const digits = raw.slice(start, j);
+          if (digits !== "") {
+            const n = BigInt(base === 16 ? `0x${digits}` : digits);
+            if (n <= 0x10ffffn) {
+              // string(rune(n)): surrogate halves become U+FFFD
+              const r = Number(n);
+              text = r >= 0xd800 && r <= 0xdfff ? "\ufffd" : String.fromCodePoint(r);
+            }
+          }
+        }
+      } else {
+        while (j < raw.length && isNameChar(raw[j] as string)) {
+          j++;
+        }
+        if (raw[j] === ";") {
+          text = Object.hasOwn(entity, raw.slice(i + 1, j))
+            ? entity[raw.slice(i + 1, j)]
+            : undefined;
+        }
+      }
+      if (text === undefined) {
+        const ent = raw[j] === ";" ? raw.slice(i, j + 1) : `${raw.slice(i, j)} (no semicolon)`;
+        throw new XmlSyntaxError(`invalid character entity ${ent}`);
+      }
+      out += text;
+      prev = "";
+      i = j + 1;
+      continue;
     }
-  });
+    // We must rewrite unescaped \r and \r\n into \n.
+    if (c === "\r") {
+      out += "\n";
+    } else if (!(prev === "\r" && c === "\n")) {
+      out += c;
+    }
+    prev = c;
+    i++;
+  }
+
+  // Inspect each rune for being a disallowed character.
+  for (const ch of out) {
+    const r = ch.codePointAt(0) as number;
+    if (!isInCharacterRange(r)) {
+      throw new XmlSyntaxError(
+        `illegal character code U+${r.toString(16).toUpperCase().padStart(4, "0")}`,
+      );
+    }
+  }
+  return out;
 }
 
 // parses the first element of the document
@@ -105,7 +182,7 @@ function parseDocument(src: string): XmlElement {
         if (end < 0) {
           throw new XmlSyntaxError("unexpected EOF in CDATA section");
         }
-        el.text += src.slice(i + 9, end);
+        el.text += decodeText(src.slice(i + 9, end), true);
         i = end + 3;
         continue;
       }
@@ -119,7 +196,7 @@ function parseDocument(src: string): XmlElement {
       }
       const next = src.indexOf("<", i);
       const end = next < 0 ? src.length : next;
-      el.text += decodeEntities(src.slice(i, end));
+      el.text += decodeText(src.slice(i, end), false);
       i = end;
     }
   };

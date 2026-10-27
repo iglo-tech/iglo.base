@@ -13,7 +13,7 @@ import { describe, expect, test } from "bun:test";
 
 import { ErrInvalidRedirectStatusCode, Event } from "@/server/event";
 import { ResponseWriter } from "@/server/router";
-import { pointerTo, structOf, type StructType } from "@/server/unmarshal-request-data";
+import { pointerTo, structOf, type MapRef, type StructType } from "@/server/unmarshal-request-data";
 import { newTestRequest, type TestRequest } from "@test/support/router";
 
 function newEvent(init: TestRequest = { target: "/" }, onCommit?: (r: Response) => void): Event {
@@ -375,6 +375,8 @@ describe("ApiError helpers", () => {
   }
 });
 
+const xmlOf = (text: string): string => `<root><c>${text}</c></root>`;
+
 describe("BindBody", () => {
   const testDstStruct: StructType = structOf([
     { name: "A", type: "int", tags: { json: "a", xml: "a", form: "a" } },
@@ -486,13 +488,13 @@ describe("BindBody", () => {
       headers: { "content-type": "application/json" },
       body: `{"a":1} trailing`,
     });
-    const first: Record<string, unknown> = {};
+    const first: MapRef = { map: {} };
     expect(await e.bindBody(first)).toBeUndefined();
-    expect(first).toEqual({ a: 1 });
+    expect(first.map).toEqual({ a: 1 });
 
-    const second: Record<string, unknown> = {};
+    const second: MapRef = { map: {} };
     expect(await e.bindBody(second)).toBeUndefined();
-    expect(second).toEqual({ a: 1 });
+    expect(second.map).toEqual({ a: 1 });
   });
 
   test("duplicate JSON names and type mismatches are errors", async () => {
@@ -507,6 +509,94 @@ describe("BindBody", () => {
     }
   });
 
+  // json/v2 tracks duplicates by the resolved field, not the literal name
+  test("JSON members resolving to the same field are duplicates", async () => {
+    for (const body of [`{"a":1,"A":2}`, `{"c":"x","_C_":"y"}`, `{"A":1,"a":2}`]) {
+      const e = newEvent({
+        method: "POST",
+        target: "/",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+      expect(await e.bindBody({}, testDstStruct)).toBeInstanceOf(Error);
+    }
+  });
+
+  test("a folded JSON name matching two fields is ambiguous", async () => {
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": "application/json" },
+      body: `{"ab":1}`,
+    });
+    const type = structOf([
+      { name: "X", type: "int", tags: { json: "a_b" } },
+      { name: "Y", type: "int", tags: { json: "A-B" } },
+    ]);
+    expect(await e.bindBody({}, type)).toBeInstanceOf(Error);
+  });
+
+  test("a top-level JSON null resets the struct to its zero value", async () => {
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": "application/json" },
+      body: "null",
+    });
+    const dst: Record<string, unknown> = { ...filledDst };
+    expect(await e.bindBody(dst, testDstStruct)).toBeUndefined();
+    expect(dst).toEqual(emptyDst);
+  });
+
+  const bind = async (body: string): Promise<[Error | undefined, unknown]> => {
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": "text/xml" },
+      body,
+    });
+    const dst: Record<string, unknown> = { ...emptyDst };
+    const err = await e.bindBody(dst, testDstStruct);
+    return [err, dst.C];
+  };
+
+  describe("XML element text follows encoding/xml's strict rules", () => {
+    for (const [text, expected] of [
+      ["&lt;&gt;&amp;&apos;&quot;", `<>&'"`],
+      ["&#65;&#x42;&#x0043;", "ABC"],
+      ["&#xD800;", "\ufffd"],
+      ["a\r\nb\rc", "a\nb\nc"],
+      ["&#13;", "\r"],
+      ["<![CDATA[&bogus; ]]]]>", "&bogus; ]]"],
+    ] as const) {
+      test(`accepted: ${JSON.stringify(text)}`, async () => {
+        expect(await bind(xmlOf(text))).toEqual([undefined, expected]);
+      });
+    }
+
+    for (const text of [
+      "&bogus;",
+      "&nbsp;",
+      "&lt",
+      "& x",
+      "&#0;",
+      "&#1;",
+      "&#xFFFE;",
+      "&#x110000;",
+      "&#;",
+      "&#x;",
+      "&#X41;",
+      "&#12a;",
+      "]]>",
+      "\u0001",
+      "<![CDATA[\u0001]]>",
+    ]) {
+      test(`rejected: ${JSON.stringify(text)}`, async () => {
+        expect((await bind(xmlOf(text)))[0]).toBeInstanceOf(Error);
+      });
+    }
+  });
+
   test("XML into a map is an error", async () => {
     const e = newEvent({
       method: "POST",
@@ -514,7 +604,7 @@ describe("BindBody", () => {
       headers: { "content-type": "text/xml" },
       body: xmlDst,
     });
-    expect(await e.bindBody({})).toBeInstanceOf(Error);
+    expect(await e.bindBody({ map: {} })).toBeInstanceOf(Error);
   });
 
   test("urlencoded bodies are read only for POST, PUT and PATCH", async () => {
