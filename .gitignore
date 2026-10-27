@@ -1,3 +1,7 @@
 # Production pb_data and backups never belong in the repository (D20).
 /pb_data/
 /*.zip
+
+# Dependencies and build output.
+/node_modules/
+/dist/
