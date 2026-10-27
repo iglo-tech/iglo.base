@@ -252,14 +252,97 @@ class Parser {
 
 // Decodes the first JSON value of text and ignores what follows it, as a
 // single jsontext.Decoder read does. An input with only whitespace fails
-// with EOF.
+// with EOF. text comes from decodeUTF8Bytes: only the consumed value must
+// be valid UTF-8, so invalid bytes after it are ignored.
 export function decodeFirstValue(text: string): JsonValue {
   const p = new Parser(text);
   p.skipWhitespace();
   if (p.i >= text.length) {
     throw new JsonEOFError(false);
   }
-  return p.value();
+  const value = p.value();
+  if (hasInvalidUTF8(text.slice(0, p.i))) {
+    throw new JsonSyntaxError("invalid UTF-8 within string");
+  }
+  return value;
+}
+
+// Decodes bytes as Go reads them: a leading BOM is kept, and each byte that
+// utf8.DecodeRune rejects (RuneError of size 1) becomes the lone surrogate
+// U+DC00+byte. Valid UTF-8 never yields a lone surrogate, so decoders can
+// reject invalid UTF-8 only where Go checks it (hasInvalidUTF8).
+export function decodeUTF8Bytes(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    // fall through to the byte-by-byte decoder
+  }
+  let out = "";
+  let chunk: number[] = [];
+  for (let i = 0; i < bytes.length;) {
+    const [r, size] = decodeRune(bytes, i);
+    chunk.push(r);
+    i += size;
+    if (chunk.length >= 4096) {
+      out += String.fromCodePoint(...chunk);
+      chunk = [];
+    }
+  }
+  return out + String.fromCodePoint(...chunk);
+}
+
+// utf8.DecodeRune at bytes[i]; an invalid byte gives [0xdc00 + byte, 1]
+function decodeRune(bytes: Uint8Array, i: number): [number, number] {
+  const b0 = bytes[i] as number;
+  if (b0 < 0x80) {
+    return [b0, 1];
+  }
+  const invalid: [number, number] = [0xdc00 + b0, 1];
+  // utf8 first and acceptRanges: sequence size and the second byte's range
+  let size: number;
+  let lo = 0x80;
+  let hi = 0xbf;
+  if (b0 >= 0xc2 && b0 <= 0xdf) {
+    size = 2;
+  } else if (b0 >= 0xe0 && b0 <= 0xef) {
+    size = 3;
+    if (b0 === 0xe0) {
+      lo = 0xa0;
+    } else if (b0 === 0xed) {
+      hi = 0x9f;
+    }
+  } else if (b0 >= 0xf0 && b0 <= 0xf4) {
+    size = 4;
+    if (b0 === 0xf0) {
+      lo = 0x90;
+    } else if (b0 === 0xf4) {
+      hi = 0x8f;
+    }
+  } else {
+    return invalid;
+  }
+  if (i + size > bytes.length) {
+    return invalid;
+  }
+  const b1 = bytes[i + 1] as number;
+  if (b1 < lo || b1 > hi) {
+    return invalid;
+  }
+  let r = b0 & (0xff >> (size + 1));
+  r = (r << 6) | (b1 & 0x3f);
+  for (let k = 2; k < size; k++) {
+    const b = bytes[i + k] as number;
+    if (b < 0x80 || b > 0xbf) {
+      return invalid;
+    }
+    r = (r << 6) | (b & 0x3f);
+  }
+  return [r, size];
+}
+
+// whether text from decodeUTF8Bytes held invalid UTF-8 (a lone surrogate)
+export function hasInvalidUTF8(text: string): boolean {
+  return /[\ud800-\udfff]/u.test(text);
 }
 
 // Decodes text that must hold exactly one JSON value (json.Unmarshal).

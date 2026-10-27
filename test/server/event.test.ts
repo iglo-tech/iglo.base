@@ -375,6 +375,17 @@ describe("ApiError helpers", () => {
   }
 });
 
+const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
+const concat = (...parts: Uint8Array[]): Uint8Array => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let offset = 0;
+  for (const p of parts) {
+    out.set(p, offset);
+    offset += p.length;
+  }
+  return out;
+};
+
 const xmlOf = (text: string): string => `<root><c>${text}</c></root>`;
 
 describe("BindBody", () => {
@@ -522,6 +533,33 @@ describe("BindBody", () => {
     }
   });
 
+  // json/v2 foldRune: the smallest member of the unicode.SimpleFold orbit
+  describe("JSON names fold to the smallest character of their case orbit", () => {
+    const type = structOf([
+      { name: "Token", type: "string", tags: { json: "token" } },
+      { name: "Size", type: "string", tags: { json: "\u00c5ngstr\u00f6m" } },
+    ]);
+    for (const [body, expected] of [
+      // U+212A KELVIN SIGN folds to "K", as "k" does
+      [`{"to\u212aen":"a"}`, { Token: "a" }],
+      // U+212B ANGSTROM SIGN folds to U+00C5, as U+00E5 does
+      [`{"\u212bngstr\u00f6m":"b"}`, { Size: "b" }],
+      [`{"\u00e5NGSTR\u00d6M":"c"}`, { Size: "c" }],
+    ] as const) {
+      test(body, async () => {
+        const e = newEvent({
+          method: "POST",
+          target: "/",
+          headers: { "content-type": "application/json" },
+          body,
+        });
+        const dst: Record<string, unknown> = {};
+        expect(await e.bindBody(dst, type)).toBeUndefined();
+        expect(dst).toEqual(expected);
+      });
+    }
+  });
+
   test("a folded JSON name matching two fields is ambiguous", async () => {
     const e = newEvent({
       method: "POST",
@@ -595,6 +633,166 @@ describe("BindBody", () => {
         expect((await bind(xmlOf(text)))[0]).toBeInstanceOf(Error);
       });
     }
+  });
+
+  // Go's text() keeps all character data; comments and PIs only split it
+  test("XML text around comments and processing instructions is kept", async () => {
+    for (const [text, expected] of [
+      ["a<!--c--> b", "a b"],
+      ["a<?pi c?> b", "a b"],
+      ["a <!--c-->\n<?pi?>\tb", "a \n\tb"],
+    ] as const) {
+      expect(await bind(xmlOf(text))).toEqual([undefined, expected]);
+    }
+  });
+
+  const bindBytes = async (body: Uint8Array, contentType: string): Promise<Error | undefined> => {
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": contentType },
+      body,
+    });
+    return e.bindBody({ ...emptyDst }, testDstStruct);
+  };
+
+  test("invalid UTF-8 in XML text, attribute values and names is an error", async () => {
+    for (const [before, after] of [
+      ["<root><c>", "</c></root>"],
+      ["<root><c><![CDATA[", "]]></c></root>"],
+      ['<root><c x="', '">a</c></root>'],
+      ["<root><c", ">a</c></root>"],
+      ["", "<root/>"],
+    ]) {
+      const body = concat(utf8(before as string), new Uint8Array([0xff]), utf8(after as string));
+      expect(await bindBytes(body, "text/xml")).toBeInstanceOf(Error);
+    }
+    // like Go, comments are not checked
+    const comment = concat(utf8("<root><!--"), new Uint8Array([0xff]), utf8("--><c>a</c></root>"));
+    expect(await bindBytes(comment, "text/xml")).toBeUndefined();
+  });
+
+  describe("XML names are validated like encoding/xml", () => {
+    for (const body of [
+      "<root><c>ok</c><1bad/></root>",
+      "<root><c>ok</c><bad?name/></root>",
+      "<root><c>ok</c><a:b:c/></root>",
+      "<root><c>ok</c><-x/></root>",
+      "<root><c 1x='a'>ok</c></root>",
+      "<root><c x=a>ok</c></root>",
+      "<root><c x>ok</c></root>",
+      "<root><c x='<'>ok</c></root>",
+      "<root><c>ok</c ></root",
+      "<root><c>ok</c><x/ ></root>",
+      "<root><c>ok</c></ root>",
+      "<root><?1pi?><c>ok</c></root>",
+      "<root><!--a--b--><c>ok</c></root>",
+      "<root><!-x--><c>ok</c></root>",
+      "<root><![CDATX[a]]><c>ok</c></root>",
+      '<?xml version="1.1"?><root/>',
+      '<?xml version="1.0" encoding="latin1"?><root/>',
+      "</x><root/>",
+    ]) {
+      test(`rejected: ${JSON.stringify(body)}`, async () => {
+        expect((await bind(body))[0]).toBeInstanceOf(Error);
+      });
+    }
+
+    for (const [body, expected] of [
+      ["<root><c>ok</c><x:y/><\u00e9t\u00e9/><_a.b-c/></root>", "ok"],
+      ["<root x='1' y=\"]]>\"><c a = 'v' >ok</c ></root>", "ok"],
+      ["<root><c>ok</c></root>trailing <garbage", "ok"],
+      ["leading text <root><c>ok</c></root>", "ok"],
+      [
+        '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE root [<!ENTITY e "x">]><root><c>ok</c></root>',
+        "ok",
+      ],
+    ] as const) {
+      test(`accepted: ${JSON.stringify(body)}`, async () => {
+        expect(await bind(body)).toEqual([undefined, expected]);
+      });
+    }
+  });
+
+  describe("XML scalars follow strconv", () => {
+    const numbers: StructType = structOf([
+      { name: "F", type: "float64" },
+      { name: "G", type: "float32" },
+      { name: "N", type: "int8" },
+      { name: "U", type: "uint" },
+      { name: "B", type: "bool" },
+    ]);
+    const bindNumbers = async (inner: string): Promise<[Error | undefined, unknown]> => {
+      const e = newEvent({
+        method: "POST",
+        target: "/",
+        headers: { "content-type": "text/xml" },
+        body: `<root>${inner}</root>`,
+      });
+      const dst: Record<string, unknown> = {};
+      return [await e.bindBody(dst, numbers), dst];
+    };
+
+    for (const [inner, expected] of [
+      ["<F>0x1p2</F>", { F: 4 }],
+      ["<F> -0X1.8P1 </F>", { F: -3 }],
+      ["<F>1_000.5</F>", { F: 1000.5 }],
+      ["<F>-Inf</F>", { F: -Infinity }],
+      ["<F></F><G/><N></N><U/><B></B>", { F: 0, G: 0, N: 0, U: 0, B: false }],
+      ["<G>3.4e38</G>", { G: Math.fround(3.4e38) }],
+      ["<N>\n-128\t</N><U>18</U><B> T </B>", { N: -128, U: 18, B: true }],
+    ] as const) {
+      test(`accepted: ${JSON.stringify(inner)}`, async () => {
+        expect(await bindNumbers(inner)).toEqual([undefined, expected]);
+      });
+    }
+
+    for (const inner of [
+      "<F>1e400</F>",
+      "<F>-1e400</F>",
+      "<F>0x1p2000</F>",
+      "<G>1e39</G>",
+      "<F> </F>",
+      "<F>+NaN</F>",
+      "<F>0x1</F>",
+      "<N> </N>",
+      "<N>128</N>",
+      "<N>0x1</N>",
+      "<N>1_0</N>",
+      "<U>+1</U>",
+      "<U>-1</U>",
+      "<B> </B>",
+    ]) {
+      test(`rejected: ${JSON.stringify(inner)}`, async () => {
+        expect((await bindNumbers(inner))[0]).toBeInstanceOf(Error);
+      });
+    }
+  });
+
+  test("a leading UTF-8 BOM in a JSON body is rejected", async () => {
+    const body = concat(new Uint8Array([0xef, 0xbb, 0xbf]), utf8(`{"a":1}`));
+    expect(await bindBytes(body, "application/json")).toBeInstanceOf(Error);
+  });
+
+  test("only the first JSON value must be valid UTF-8", async () => {
+    const trailing = concat(utf8(`{"a":1}`), new Uint8Array([0xff]));
+    expect(await bindBytes(trailing, "application/json")).toBeUndefined();
+    const trailingSpace = concat(utf8(`{"a":1} `), new Uint8Array([0xc3]));
+    expect(await bindBytes(trailingSpace, "application/json")).toBeUndefined();
+    const inside = concat(utf8(`{"c":"`), new Uint8Array([0xff]), utf8(`"}`));
+    expect(await bindBytes(inside, "application/json")).toBeInstanceOf(Error);
+    const surrogate = concat(utf8(`{"c":"`), new Uint8Array([0xed, 0xa0, 0x80]), utf8(`"}`));
+    expect(await bindBytes(surrogate, "application/json")).toBeInstanceOf(Error);
+    // valid multi-byte characters are kept
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": "application/json" },
+      body: concat(utf8(`{"c":"\u00e9\u{1f600}"}`), new Uint8Array([0xff])),
+    });
+    const dst: Record<string, unknown> = {};
+    expect(await e.bindBody(dst, testDstStruct)).toBeUndefined();
+    expect(dst.C).toBe("\u00e9\u{1f600}");
   });
 
   test("XML into a map is an error", async () => {

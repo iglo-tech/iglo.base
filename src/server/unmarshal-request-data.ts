@@ -334,9 +334,9 @@ function regularValue(kind: Kind, value: string): unknown {
     case "uint64":
       return Number(BigInt.asUintN(intBits(kind), parseUint64(value === "" ? "0" : value)));
     case "float32":
-      return Math.fround(parseFloat64(value === "" ? "0" : value));
+      return Math.fround(parseGoFloat(value === "" ? "0" : value, 64));
     case "float64":
-      return parseFloat64(value === "" ? "0" : value);
+      return parseGoFloat(value === "" ? "0" : value, 64);
     case "any":
       return inferValue(value);
   }
@@ -444,40 +444,42 @@ function parseUint64(s: string): bigint {
   return value;
 }
 
-// strconv.ParseFloat(s, 64): decimal and hexadecimal Go float literals,
-// "inf", "infinity" and "nan" (case-insensitive) with an optional sign.
-function parseFloat64(s: string): number {
-  const special = /^([+-]?)(inf|infinity|nan)$/i.exec(s);
+// strconv.ParseFloat(s, bitSize): decimal and hexadecimal Go float
+// literals, "inf" and "infinity" with an optional sign and unsigned "nan"
+// (case-insensitive). A value that overflows the bitSize float is an error.
+export function parseGoFloat(s: string, bitSize: 32 | 64): number {
+  if (/^nan$/i.test(s)) {
+    return Number.NaN;
+  }
+  const special = /^([+-]?)(inf|infinity)$/i.exec(s);
   if (special) {
-    if ((special[2] as string).toLowerCase() === "nan") {
-      return Number.NaN;
-    }
     return special[1] === "-" ? -Infinity : Infinity;
   }
   const decimal =
     /^[+-]?(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[eE][+-]?[0-9](?:_?[0-9])*)?$/;
   const hex =
     /^([+-]?)0[xX]((?:_?[0-9a-fA-F])*)(?:\.((?:[0-9a-fA-F](?:_?[0-9a-fA-F])*)?))?[pP]([+-]?[0-9](?:_?[0-9])*)$/;
+  let value: number | undefined;
   if (decimal.test(s)) {
-    const value = Number(s.replaceAll("_", ""));
-    if (!Number.isFinite(value)) {
-      throw new NumError("ParseFloat", s, "value out of range");
+    value = Number(s.replaceAll("_", ""));
+  } else {
+    const h = hex.exec(s);
+    if (h && (h[2] !== "" || (h[3] ?? "") !== "")) {
+      const intPart = (h[2] as string).replaceAll("_", "");
+      const fracPart = (h[3] ?? "").replaceAll("_", "");
+      const mantissa = BigInt(`0x${intPart || "0"}${fracPart}`);
+      const exponent = Number((h[4] as string).replaceAll("_", "")) - 4 * fracPart.length;
+      value = Number(mantissa) * 2 ** exponent;
+      value = h[1] === "-" ? -value : value;
     }
-    return value;
   }
-  const h = hex.exec(s);
-  if (h && (h[2] !== "" || (h[3] ?? "") !== "")) {
-    const intPart = (h[2] as string).replaceAll("_", "");
-    const fracPart = (h[3] ?? "").replaceAll("_", "");
-    const mantissa = BigInt(`0x${intPart || "0"}${fracPart}`);
-    const exponent = Number((h[4] as string).replaceAll("_", "")) - 4 * fracPart.length;
-    const value = Number(mantissa) * 2 ** exponent;
-    if (!Number.isFinite(value)) {
-      throw new NumError("ParseFloat", s, "value out of range");
-    }
-    return h[1] === "-" ? -value : value;
+  if (value === undefined) {
+    throw new NumError("ParseFloat", s, "invalid syntax");
   }
-  throw new NumError("ParseFloat", s, "invalid syntax");
+  if (!Number.isFinite(bitSize === 32 ? Math.fround(value) : value)) {
+    throw new NumError("ParseFloat", s, "value out of range");
+  }
+  return value;
 }
 
 const inferNumberCharsRegex = /^[-.\d]+$/;
@@ -507,7 +509,7 @@ export function inferValue(raw: string): unknown {
       if ((first === "-" || (first >= "0" && first <= "9")) && inferNumberCharsRegex.test(raw)) {
         let v: number | undefined;
         try {
-          v = parseFloat64(raw);
+          v = parseGoFloat(raw, 64);
         } catch {
           v = undefined;
         }
@@ -583,8 +585,7 @@ function cannot(value: JsonValue, goType: string): JsonSemanticError {
 }
 
 // json/v2 foldName: ASCII letters upper-cased, dashes and underscores
-// dropped, other characters folded to the smallest of their case variants
-// (an approximation of unicode.SimpleFold's orbit).
+// dropped, other characters folded by foldRune.
 function foldName(name: string): string {
   let out = "";
   for (const c of name) {
@@ -595,18 +596,33 @@ function foldName(name: string): string {
       out += c >= "a" && c <= "z" ? c.toUpperCase() : c;
       continue;
     }
-    let folded = c;
-    for (const variant of [c.toLowerCase(), c.toUpperCase()]) {
-      if (
-        [...variant].length === 1 &&
-        (variant.codePointAt(0) as number) < (folded.codePointAt(0) as number)
-      ) {
-        folded = variant;
-      }
-    }
-    out += folded;
+    out += foldRune(c);
   }
   return out;
+}
+
+// json/v2 foldRune: the smallest character of c's unicode.SimpleFold
+// orbit. The orbit is approximated by closing over JS single-character
+// lower and upper case mappings, so U+212A KELVIN SIGN reaches "K" through
+// "k", and U+212B ANGSTROM SIGN reaches "Å" through "å".
+function foldRune(c: string): string {
+  const orbit = new Set([c]);
+  const pending = [c];
+  for (let x = pending.pop(); x !== undefined; x = pending.pop()) {
+    for (const variant of [x.toLowerCase(), x.toUpperCase()]) {
+      if ([...variant].length === 1 && !orbit.has(variant)) {
+        orbit.add(variant);
+        pending.push(variant);
+      }
+    }
+  }
+  let smallest = c;
+  for (const member of orbit) {
+    if ((member.codePointAt(0) as number) < (smallest.codePointAt(0) as number)) {
+      smallest = member;
+    }
+  }
+  return smallest;
 }
 
 interface JsonField {

@@ -19,7 +19,7 @@ import {
   newUnauthorizedError,
   type ApiError,
 } from "@/server/error";
-import { decodeFirstValue } from "@/server/json-decode";
+import { decodeFirstValue, decodeUTF8Bytes } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
 import { readAll } from "@/server/rereadable-read-closer";
 import type { ResponseWriter } from "@/server/router";
@@ -246,7 +246,7 @@ export class Event extends Resolver {
 
     try {
       if (contentType.startsWith("application/json")) {
-        const text = decodeUTF8(await readAll(this.request.body));
+        const text = decodeUTF8Bytes(await readAll(this.request.body));
         if (type) {
           unmarshalJSON(decodeFirstValue(text), dst as Record<string, unknown>, type, true);
         } else {
@@ -278,11 +278,7 @@ export class Event extends Resolver {
         if (!type) {
           return new Error("xml: unsupported type: map[string]interface {}");
         }
-        unmarshalXML(
-          new TextDecoder().decode(await readAll(this.request.body)),
-          dst as Record<string, unknown>,
-          type,
-        );
+        unmarshalXML(await readAll(this.request.body), dst as Record<string, unknown>, type);
         return undefined;
       }
     } catch (err) {
@@ -303,11 +299,6 @@ function bindRequestData(
   } else {
     unmarshalRequestData(data, dst as MapRef);
   }
-}
-
-// JSON input must be valid UTF-8 (jsontext rejects invalid UTF-8)
-function decodeUTF8(bytes: Uint8Array): string {
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
 // net.SplitHostPort host part ("" on error)

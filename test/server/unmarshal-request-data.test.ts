@@ -592,3 +592,16 @@ test("unexported fields are not set", () => {
 
   expect(dst).toEqual({ Exported: "test" });
 });
+
+// strconv.ParseFloat accepts only an unsigned "nan"
+test("signed NaN is rejected in float fields", () => {
+  const type = structOf([{ name: "F", type: "float64" }]);
+  for (const value of ["+NaN", "-NaN", "+nan", "-nan"]) {
+    expect(() => unmarshalRequestData({ F: [value] }, {}, type)).toThrow("invalid syntax");
+  }
+  for (const value of ["NaN", "nan", "NAN"]) {
+    const dst: Record<string, unknown> = {};
+    unmarshalRequestData({ F: [value] }, dst, type);
+    expect(dst.F).toBeNaN();
+  }
+});
