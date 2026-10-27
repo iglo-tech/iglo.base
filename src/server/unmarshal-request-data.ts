@@ -13,6 +13,7 @@ import {
   decodeValue,
   isJsonObject,
   JsonNumber,
+  JsonSyntaxError,
   setOwn,
   toAny,
   type JsonValue,
@@ -82,6 +83,12 @@ export const JSONPayloadKey = "@jsonPayload";
 
 export type RequestData = Map<string, string[]> | Record<string, string[]>;
 
+// MapRef is a *map[string]any destination: unmarshaling a JSON null into it
+// sets the map to nil (null), as json/v2 does.
+export interface MapRef {
+  map: Record<string, unknown> | null;
+}
+
 function getValues(data: RequestData, key: string): string[] | undefined {
   return data instanceof Map ? data.get(key) : Object.hasOwn(data, key) ? data[key] : undefined;
 }
@@ -102,9 +109,17 @@ function entries(data: RequestData): [string, string[]][] {
 // targets nested struct fields; structPrefix is prepended to every key.
 // The special "@jsonPayload" key holds serialized JSON that is unmarshaled
 // into dst without normalization.
+export function unmarshalRequestData(data: RequestData | undefined, dst: MapRef): void;
 export function unmarshalRequestData(
   data: RequestData | undefined,
   dst: Record<string, unknown>,
+  type: StructType,
+  structTagKey?: string,
+  structPrefix?: string,
+): void;
+export function unmarshalRequestData(
+  data: RequestData | undefined,
+  dst: MapRef | Record<string, unknown>,
   type?: StructType,
   structTagKey = "",
   structPrefix = "",
@@ -114,19 +129,27 @@ export function unmarshalRequestData(
   }
 
   if (!type) {
+    const ref = dst as MapRef;
+    ref.map ??= {};
     for (const [k, v] of entries(data)) {
       if (k === JSONPayloadKey) {
         continue; // unmarshaled separately
       }
       if (v.length === 1) {
-        setOwn(dst, k, inferValue(v[0] as string));
+        setOwn(ref.map, k, inferValue(v[0] as string));
       } else {
-        setOwn(dst, k, v.map(inferValue));
+        setOwn(ref.map, k, v.map(inferValue));
       }
     }
   } else {
     // set a default tag key
-    unmarshalInStructValue(data, dst, type, structTagKey || "form", structPrefix);
+    unmarshalInStructValue(
+      data,
+      dst as Record<string, unknown>,
+      type,
+      structTagKey || "form",
+      structPrefix,
+    );
   }
 
   // @jsonPayload
@@ -134,7 +157,11 @@ export function unmarshalRequestData(
   // Special case to scan serialized json string without
   // normalization alongside the other data values
   for (const payload of getValues(data, JSONPayloadKey) ?? []) {
-    unmarshalJSON(decodeValue(payload), dst, type, false);
+    if (type) {
+      unmarshalJSON(decodeValue(payload), dst as Record<string, unknown>, type, false);
+    } else {
+      unmarshalJSON(decodeValue(payload), dst as MapRef, undefined, false);
+    }
   }
 }
 
@@ -555,14 +582,38 @@ function cannot(value: JsonValue, goType: string): JsonSemanticError {
   return new JsonSemanticError(`cannot unmarshal JSON ${jsonKind(value)} into Go ${goType}`);
 }
 
-// foldName: case-insensitive, ignoring dashes and underscores (json/v2)
+// json/v2 foldName: ASCII letters upper-cased, dashes and underscores
+// dropped, other characters folded to the smallest of their case variants
+// (an approximation of unicode.SimpleFold's orbit).
 function foldName(name: string): string {
-  return name.replace(/[-_]/g, "").toUpperCase();
+  let out = "";
+  for (const c of name) {
+    if (c === "-" || c === "_") {
+      continue;
+    }
+    if (c < "\u0080") {
+      out += c >= "a" && c <= "z" ? c.toUpperCase() : c;
+      continue;
+    }
+    let folded = c;
+    for (const variant of [c.toLowerCase(), c.toUpperCase()]) {
+      if (
+        [...variant].length === 1 &&
+        (variant.codePointAt(0) as number) < (folded.codePointAt(0) as number)
+      ) {
+        folded = variant;
+      }
+    }
+    out += folded;
+  }
+  return out;
 }
 
 interface JsonField {
   jsonName: string;
   field: StructField;
+  // the `case:ignore` / `case:strict` tag option
+  casing: "" | "ignore" | "strict";
   // the object that holds the field's property (an inlined embedded struct
   // is stored under its type name)
   holder: (dst: Record<string, unknown>) => Record<string, unknown>;
@@ -573,7 +624,7 @@ function jsonFields(type: StructType): JsonField[] {
   const out: JsonField[] = [];
   for (const field of type.fields) {
     const tag = field.tags?.json ?? "";
-    const tagName = tag.split(",")[0] ?? "";
+    const [tagName = "", ...options] = tag.split(",");
     if (tag === "-") {
       continue;
     }
@@ -591,42 +642,91 @@ function jsonFields(type: StructType): JsonField[] {
     if (!isExported(field.name)) {
       continue;
     }
-    out.push({ jsonName: tagName || field.name, field, holder: (dst) => dst });
+    const casing = options.includes("case:ignore")
+      ? "ignore"
+      : options.includes("case:strict")
+        ? "strict"
+        : "";
+    out.push({ jsonName: tagName || field.name, field, casing, holder: (dst) => dst });
   }
   return out;
 }
 
-// Unmarshals a decoded JSON value into dst: a map[string]any without a
-// struct type (members are merged in), or the struct's fields.
-// caseInsensitive is json.MatchCaseInsensitiveNames.
+// the fields' Go zero values, as reflect.Value.SetZero leaves a struct
+function resetStruct(dst: Record<string, unknown>, type: StructType): void {
+  for (const field of type.fields) {
+    setOwn(dst, field.name, zeroValue(field.type));
+  }
+}
+
+// Unmarshals a decoded JSON value into dst: a *map[string]any (MapRef)
+// without a struct type, or the struct's fields. Object members are merged
+// into the existing map or struct values; a JSON null sets the map to nil
+// or the struct to its zero value. caseInsensitive is
+// json.MatchCaseInsensitiveNames.
+export function unmarshalJSON(
+  value: JsonValue,
+  dst: MapRef,
+  type: undefined,
+  caseInsensitive: boolean,
+): void;
 export function unmarshalJSON(
   value: JsonValue,
   dst: Record<string, unknown>,
+  type: StructType,
+  caseInsensitive: boolean,
+): void;
+export function unmarshalJSON(
+  value: JsonValue,
+  dst: MapRef | Record<string, unknown>,
   type: StructType | undefined,
   caseInsensitive: boolean,
 ): void {
+  if (!type) {
+    const ref = dst as MapRef;
+    ref.map = unmarshalMap(value, ref.map);
+    return;
+  }
+  unmarshalStruct(value, dst as Record<string, unknown>, type, caseInsensitive);
+}
+
+function unmarshalStruct(
+  value: JsonValue,
+  dst: Record<string, unknown>,
+  type: StructType,
+  caseInsensitive: boolean,
+): void {
   if (value === null) {
+    resetStruct(dst, type);
     return;
   }
   if (!isJsonObject(value)) {
-    throw cannot(value, type ? "struct" : "map[string]any");
-  }
-  if (!type) {
-    for (const [name, member] of value.members) {
-      setOwn(dst, name, toAny(member));
-    }
-    return;
+    throw cannot(value, "struct");
   }
   const fields = jsonFields(type);
+  const seen = new Set<JsonField>();
   for (const [name, member] of value.members) {
     let f = fields.find((candidate) => candidate.jsonName === name);
-    if (!f && caseInsensitive) {
+    if (!f) {
       const folded = foldName(name);
-      f = fields.find((candidate) => foldName(candidate.jsonName) === folded);
+      const matches = fields.filter(
+        (candidate) =>
+          foldName(candidate.jsonName) === folded &&
+          (candidate.casing === "ignore" || (caseInsensitive && candidate.casing !== "strict")),
+      );
+      if (matches.length > 1) {
+        throw new JsonSemanticError("cannot unmarshal into Go struct: ambiguous name");
+      }
+      f = matches[0];
     }
     if (!f) {
       continue; // unknown members are ignored
     }
+    // two members (e.g. "n" and "N") must not set the same field
+    if (seen.has(f)) {
+      throw new JsonSyntaxError(`duplicate object member name ${JSON.stringify(name)}`);
+    }
+    seen.add(f);
     const holder = f.holder(dst);
     setOwn(
       holder,
@@ -634,6 +734,75 @@ export function unmarshalJSON(
       jsonFieldValue(member, f.field.type, holder[f.field.name], caseInsensitive),
     );
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+// json/v2 into a map[string]any: null gives a nil map, an object's members
+// are unmarshaled into the existing entries (see unmarshalAny).
+function unmarshalMap(
+  value: JsonValue,
+  current: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (value === null) {
+    return null;
+  }
+  if (!isJsonObject(value)) {
+    throw cannot(value, "map[string]any");
+  }
+  const target = current ?? {};
+  for (const [name, member] of value.members) {
+    const existing = Object.hasOwn(target, name) ? target[name] : undefined;
+    setOwn(target, name, unmarshalAny(member, existing));
+  }
+  return target;
+}
+
+// json/v2 into an `any` that may already hold a value: null resets it;
+// otherwise a held value keeps its Go type (bool, string, float64, []any,
+// map[string]any) and the JSON value must fit it. Maps are merged, slices
+// are replaced. An empty `any` gets a fresh value.
+function unmarshalAny(value: JsonValue, current: unknown): unknown {
+  if (value === null) {
+    return null;
+  }
+  if (current === null || current === undefined) {
+    return toAny(value);
+  }
+  if (typeof current === "boolean") {
+    if (typeof value !== "boolean") {
+      throw cannot(value, "bool");
+    }
+    return value;
+  }
+  if (typeof current === "string") {
+    if (typeof value !== "string") {
+      throw cannot(value, "string");
+    }
+    return value;
+  }
+  if (typeof current === "number") {
+    if (!(value instanceof JsonNumber)) {
+      throw cannot(value, "float64");
+    }
+    return toAny(value);
+  }
+  if (Array.isArray(current)) {
+    if (!Array.isArray(value)) {
+      throw cannot(value, "[]any");
+    }
+    return toAny(value);
+  }
+  if (isPlainObject(current)) {
+    return unmarshalMap(value, current);
+  }
+  return toAny(value);
 }
 
 const intRanges: Record<string, [bigint, bigint]> = {
@@ -662,7 +831,7 @@ function jsonFieldValue(
   if (typeof type === "string") {
     switch (type) {
       case "any":
-        return toAny(value);
+        return unmarshalAny(value, current);
       case "string":
         if (typeof value !== "string") {
           throw cannot(value, type);
@@ -713,7 +882,7 @@ function jsonFieldValue(
     case "struct": {
       const target =
         typeof current === "object" && current !== null ? (current as Record<string, unknown>) : {};
-      unmarshalJSON(value, target, type, caseInsensitive);
+      unmarshalStruct(value, target, type, caseInsensitive);
       return target;
     }
   }

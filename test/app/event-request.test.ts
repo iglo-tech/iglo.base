@@ -153,7 +153,7 @@ test("RequestInfo.Clone", async () => {
   // modify the clone fields to ensure that it is a shallow copy
   clone.headers.new_header = "test";
   clone.query.new_query = "test";
-  clone.body.new_body = "test";
+  (clone.body as Record<string, unknown>).new_body = "test";
   (clone.auth as TestRecord).id = "user2"; // should be a fresh copy of the record
 
   expect(plain(info)).toEqual({
@@ -197,6 +197,20 @@ describe("snakecase", () => {
     });
   }
 });
+
+async function bodyOf(contentType: string, body: string): Promise<unknown> {
+  const e = newEvent({
+    method: "POST",
+    target: "/",
+    headers: { "content-type": contentType },
+    body,
+  });
+  const info = await e.requestInfo();
+  return info instanceof Error ? info : info.body;
+}
+
+const urlencoded = "application/x-www-form-urlencoded";
+const payload = (json: string): string => `%40jsonPayload=${encodeURIComponent(json)}`;
 
 // Council findings on PR #3, checked against upstream's json/v2, mime and
 // RequestInfo behavior.
@@ -259,6 +273,79 @@ describe("RequestInfo body and query edge cases", () => {
       expect((info as RequestInfo).body).toEqual({ a: 1 });
     });
   }
+
+  // round 2
+  test("repeated @jsonPayload objects merge into existing map values", async () => {
+    expect(
+      await bodyOf(urlencoded, `${payload(`{"a":{"x":1}}`)}&${payload(`{"a":{"y":2},"b":[1]}`)}`),
+    ).toEqual({ a: { x: 1, y: 2 }, b: [1] });
+  });
+
+  test("an existing slice value is replaced", async () => {
+    expect(await bodyOf(urlencoded, `a=1&a=2&${payload(`{"a":[3]}`)}`)).toEqual({ a: [3] });
+  });
+
+  test("an existing value keeps its type", async () => {
+    expect(await bodyOf(urlencoded, `a=x&${payload(`{"a":"y"}`)}`)).toEqual({ a: "y" });
+    expect(await bodyOf(urlencoded, `a=1&${payload(`{"a":2}`)}`)).toEqual({ a: 2 });
+    expect(await bodyOf(urlencoded, `a=true&${payload(`{"a":false}`)}`)).toEqual({ a: false });
+    // a null resets it, so any type fits afterwards
+    expect(
+      await bodyOf(urlencoded, `a=1&${payload(`{"a":null}`)}&${payload(`{"a":"x"}`)}`),
+    ).toEqual({ a: "x" });
+    for (const body of [
+      `a=1&${payload(`{"a":"x"}`)}`,
+      `a=x&${payload(`{"a":1}`)}`,
+      `a=true&${payload(`{"a":"true"}`)}`,
+      `a=1&a=2&${payload(`{"a":{"x":1}}`)}`,
+      `${payload(`{"a":{"x":1}}`)}&${payload(`{"a":[1]}`)}`,
+      `${payload(`{"a":{"x":1}}`)}&${payload(`{"a":{"x":"y"}}`)}`,
+    ]) {
+      expect(await bodyOf(urlencoded, body)).toBeInstanceOf(Error);
+    }
+  });
+
+  test("a top-level JSON null gives a null body", async () => {
+    expect(await bodyOf(urlencoded, `a=1&${payload("null")}`)).toBeNull();
+    expect(await bodyOf(urlencoded, `a=1&${payload("null")}&${payload(`{"b":2}`)}`)).toEqual({
+      b: 2,
+    });
+    expect(await bodyOf("application/json", "null")).toBeNull();
+    expect(await bodyOf("application/json", "  null  ")).toBeNull();
+
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": "application/json" },
+      body: "null",
+    });
+    const info = (await e.requestInfo()) as RequestInfo;
+    expect(info.clone().body).toBeNull();
+  });
+
+  for (const contentType of [
+    "multipart/form-data; boundary*=utf-8''XYZ",
+    "multipart/form-data; boundary*=UTF-8'en'X%59Z",
+    "multipart/form-data; boundary*0=XY; boundary*1=Z",
+    "multipart/form-data; boundary*0*=us-ascii''X%59; boundary*1*=%5A",
+    "multipart/form-data; boundary=ignored; boundary*=utf-8''XYZ",
+  ]) {
+    test(`RFC 2231 multipart boundary: ${contentType}`, async () => {
+      const body = '--XYZ\r\nContent-Disposition: form-data; name="a"\r\n\r\n1\r\n--XYZ--\r\n';
+      expect(await bodyOf(contentType, body)).toEqual({ a: 1 });
+    });
+  }
+
+  test("an RFC 2231 boundary with an unsupported charset is missing", async () => {
+    const body = '--XYZ\r\nContent-Disposition: form-data; name="a"\r\n\r\n1\r\n--XYZ--\r\n';
+    expect(await bodyOf("multipart/form-data; boundary*=latin1''XYZ", body)).toBeInstanceOf(Error);
+  });
+
+  test("a quoted boundary with spaces is passed on as parsed", async () => {
+    const body = '--a b:c\r\nContent-Disposition: form-data; name="a"\r\n\r\n1\r\n--a b:c--\r\n';
+    expect(await bodyOf('multipart/form-data; boundary="a b:c"', body)).toEqual({ a: 1 });
+    expect(await bodyOf("multipart/form-data; boundary*=utf-8''a%20b%3Ac", body)).toEqual({ a: 1 });
+  });
 
   test("query keys like __proto__ are kept as submitted", async () => {
     const e = newEvent({ target: "/?__proto__=test&constructor=x" });

@@ -20,6 +20,7 @@ import {
   structOf,
   textOf,
   unmarshalRequestData,
+  type MapRef,
   type RequestData,
   type StructType,
 } from "@/server/unmarshal-request-data";
@@ -353,14 +354,15 @@ const structData: RequestData = {
 };
 
 test("nil data leaves the destination untouched", () => {
-  const dst: Record<string, unknown> = {};
+  const dst: MapRef = { map: {} };
   unmarshalRequestData(undefined, dst);
-  expect(dst).toEqual({});
+  expect(dst.map).toEqual({});
 });
 
 test("map destination infers values from the data", () => {
-  const dst: Record<string, unknown> = {};
-  unmarshalRequestData(mapData, dst);
+  const ref: MapRef = { map: {} };
+  unmarshalRequestData(mapData, ref);
+  const dst = ref.map as Record<string, unknown>;
 
   // -0 is checked separately: toEqual does not tell -0 and 0 apart
   const number4 = dst.number4 as number[];

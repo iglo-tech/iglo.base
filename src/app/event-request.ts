@@ -9,6 +9,7 @@ import { Event } from "@/server/event";
 import { setOwn } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
+import type { MapRef } from "@/server/unmarshal-request-data";
 
 // Common request store keys used by the middlewares and api handlers.
 export const RequestEventKeyInfoContext = "infoContext";
@@ -36,7 +37,8 @@ export const RequestInfoContextPasswordAuth = "password";
 export class RequestInfo {
   query: Record<string, string> = {};
   headers: Record<string, string> = {};
-  body: Record<string, unknown> = {};
+  // null when the body unmarshals a JSON null (a nil map upstream)
+  body: Record<string, unknown> | null = {};
   auth: AuthRecord | undefined;
   method = "";
   context = "";
@@ -53,7 +55,7 @@ export class RequestInfo {
     clone.method = this.method;
     clone.context = this.context;
     clone.query = { ...this.query };
-    clone.body = { ...this.body };
+    clone.body = this.body === null ? null : { ...this.body };
     clone.headers = { ...this.headers };
     if (this.auth) {
       clone.auth = this.auth.fresh();
@@ -119,10 +121,12 @@ export class RequestEvent extends Event {
     info.context = infoCtx as string;
     info.method = this.request.method;
 
-    const err = await this.bindBody(info.body);
+    const body: MapRef = { map: {} };
+    const err = await this.bindBody(body);
     if (err) {
       return err;
     }
+    info.body = body.map;
 
     // extract the first value of all query params
     for (const [k, v] of this.request.query()) {

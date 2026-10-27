@@ -26,6 +26,8 @@ import type { ResponseWriter } from "@/server/router";
 import {
   unmarshalJSON,
   unmarshalRequestData,
+  type MapRef,
+  type RequestData,
   type StructType,
 } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
@@ -220,8 +222,9 @@ export class Event extends Resolver {
   // Binders
   // -------------------------------------------------------------------
 
-  // BindBody unmarshals the request body into dst: a map[string]any when
-  // type is omitted, otherwise the struct the type describes.
+  // BindBody unmarshals the request body into dst: a *map[string]any
+  // (MapRef, a JSON null body sets it to null) when type is omitted,
+  // otherwise the struct the type describes.
   //
   // The rules depend on the request Content-Type:
   //   - application/json: json/v2 with case-insensitive field names;
@@ -229,7 +232,12 @@ export class Event extends Resolver {
   //   - text/xml, application/xml: the `xml` tags (structs only)
   //   - multipart/form-data, application/x-www-form-urlencoded: the `form`
   //     tags, see unmarshalRequestData
-  async bindBody(dst: Record<string, unknown>, type?: StructType): Promise<Error | undefined> {
+  async bindBody(dst: MapRef): Promise<Error | undefined>;
+  async bindBody(dst: Record<string, unknown>, type: StructType): Promise<Error | undefined>;
+  async bindBody(
+    dst: MapRef | Record<string, unknown>,
+    type?: StructType,
+  ): Promise<Error | undefined> {
     if (this.request.contentLength === 0) {
       return undefined;
     }
@@ -239,7 +247,11 @@ export class Event extends Resolver {
     try {
       if (contentType.startsWith("application/json")) {
         const text = decodeUTF8(await readAll(this.request.body));
-        unmarshalJSON(decodeFirstValue(text), dst, type, true);
+        if (type) {
+          unmarshalJSON(decodeFirstValue(text), dst as Record<string, unknown>, type, true);
+        } else {
+          unmarshalJSON(decodeFirstValue(text), dst as MapRef, undefined, true);
+        }
         // reading to EOF already rewound the body for the next read
         return undefined;
       }
@@ -249,7 +261,7 @@ export class Event extends Resolver {
         if (err) {
           return err;
         }
-        unmarshalRequestData(this.request.form, dst, type, "", "");
+        bindRequestData(this.request.form, dst, type);
         return undefined;
       }
 
@@ -258,7 +270,7 @@ export class Event extends Resolver {
         if (err) {
           return err;
         }
-        unmarshalRequestData(this.request.form, dst, type, "", "");
+        bindRequestData(this.request.form, dst, type);
         return undefined;
       }
 
@@ -266,7 +278,11 @@ export class Event extends Resolver {
         if (!type) {
           return new Error("xml: unsupported type: map[string]interface {}");
         }
-        unmarshalXML(new TextDecoder().decode(await readAll(this.request.body)), dst, type);
+        unmarshalXML(
+          new TextDecoder().decode(await readAll(this.request.body)),
+          dst as Record<string, unknown>,
+          type,
+        );
         return undefined;
       }
     } catch (err) {
@@ -274,6 +290,18 @@ export class Event extends Resolver {
     }
 
     return ErrUnsupportedContentType;
+  }
+}
+
+function bindRequestData(
+  data: RequestData | undefined,
+  dst: MapRef | Record<string, unknown>,
+  type: StructType | undefined,
+): void {
+  if (type) {
+    unmarshalRequestData(data, dst as Record<string, unknown>, type, "", "");
+  } else {
+    unmarshalRequestData(data, dst as MapRef);
   }
 }
 
