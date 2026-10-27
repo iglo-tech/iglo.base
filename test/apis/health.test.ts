@@ -1,11 +1,13 @@
 // Upstream: apis/health_test.go (guest and regular user scenarios; the
-// superuser scenario needs auth, M2.3) and the catch-all 404 from
-// tools/router/router.go BuildMux.
+// superuser scenario needs auth, M2.3), the catch-all 404 from
+// tools/router/router.go BuildMux, the securityHeaders middleware
+// (apis/middlewares.go) and Go's ServeMux path cleaning.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
 import { startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { rawRequest } from "@test/support/raw-http";
 
 let server: RunningServer;
 
@@ -27,11 +29,20 @@ const notFoundBody = {
   status: 404,
 };
 
+// securityHeaders, bound to every route
+function expectSecurityHeaders(res: Response): void {
+  expect(res.headers.get("x-xss-protection")).toBe("1; mode=block");
+  expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+  expect(res.headers.get("cross-origin-opener-policy")).toBe("same-origin");
+}
+
 describe("GET /api/health", () => {
   test("guest", async () => {
     const res = await fetch(`${server.url}/api/health`);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/json");
+    expectSecurityHeaders(res);
     const text = await res.text();
     expect(JSON.parse(text)).toEqual({ message: "API is healthy.", code: 200, data: {} });
     for (const hidden of ["canBackup", "realIP", "possibleProxyHeader"]) {
@@ -59,6 +70,8 @@ describe("GET /api/health", () => {
   test("HEAD matches like GET, without a body", async () => {
     const res = await fetch(`${server.url}/api/health`, { method: "HEAD" });
     expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expectSecurityHeaders(res);
     expect(await res.text()).toBe("");
   });
 });
@@ -107,6 +120,7 @@ describe("unknown routes", () => {
       const res = await fetch(`${server.url}${path}`, { method });
       expect(res.status).toBe(404);
       expect(res.headers.get("content-type")).toBe("application/json");
+      expectSecurityHeaders(res);
       expect(await res.json()).toEqual(body);
     });
   }
@@ -114,6 +128,30 @@ describe("unknown routes", () => {
   test("HEAD of an unknown path is a 404 without a body", async () => {
     const res = await fetch(`${server.url}/api/missing`, { method: "HEAD" });
     expect(res.status).toBe(404);
+    expectSecurityHeaders(res);
     expect(await res.text()).toBe("");
+  });
+});
+
+describe("request targets", () => {
+  // fetch() normalizes URLs, so these go over a raw socket
+  test("//api/health redirects to the clean path with 307", async () => {
+    const res = await rawRequest(server.url, "GET", "//api/health?a=b");
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("/api/health?a=b");
+    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(res.body).toBe(`<a href="/api/health?a=b">Temporary Redirect</a>.\n\n`);
+  });
+
+  test("an escaped slash is not a separator", async () => {
+    const res = await rawRequest(server.url, "GET", "/api%2Fhealth");
+    expect(res.status).toBe(404);
+    expect(JSON.parse(res.body)).toEqual(fileNotFoundBody);
+  });
+
+  test("an invalid escape is a 400 before routing", async () => {
+    const res = await rawRequest(server.url, "GET", "/a%zz");
+    expect(res.status).toBe(400);
+    expect(res.body).toBe("400 Bad Request");
   });
 });

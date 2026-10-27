@@ -151,3 +151,16 @@ Decided 2026-10-27, before any code.
   - the dashboard dropped dprint from its build and has small UI fixes.
   The rest (module move, `Event.Extra`, `ServeEvent.StartBannerFunc`, goja and JS VM types) belongs to the extension surface and is not ported.
 - **Why:** it is the current upstream release, so the port starts current at no format cost. Data written by v0.40.x opens unchanged, and rollback works to v0.41.0 or v0.40.x.
+
+## D22. Requests are normalized by `Bun.serve`
+
+Decided by agents on 2026-10-27, for owner review (M0.3, [PR #3](https://github.com/iglo-tech/iglo.base/pull/3)).
+
+- **Context:** `Bun.serve` hands the handler a parsed `Request`, not the raw request line and header list. Three things are already normalized by then, and none can be recovered:
+  - `.` and `..` path segments, including percent-encoded `%2e%2e`, are resolved. Upstream's Go `ServeMux` answers such paths with a `307` redirect to the cleaned path, and does not treat `%2e%2e` as a dot segment (`/x/%2e%2e/api/health` is a 404 upstream).
+  - `\` in the path becomes `/` (WHATWG URL parsing). Upstream treats it as an ordinary character, so `/api\health` is a 404 `File not found.` upstream.
+  - Repeated request header lines are joined into one value with `", "`. Upstream's request info (`@request.headers.*` in rules) takes the first line only.
+- **Decision:** keep `Bun.serve` (AGENTS.md stack) and accept these differences: iglo.base answers the normalized path, and sees a repeated header as the joined value. Recorded in [API compatibility](04-api-compatibility.md#deliberate-differences) and checked in `test/differential/router.test.ts` where HTTP can observe them.
+- **Why:** the alternative, serving through Bun's `node:http` to see the raw request, changes the HTTP stack for every request to match inputs that SDKs and browsers do not send (they normalize URLs and do not repeat these headers). The normalized path still goes through the same route matching, rules and auth, so no check is skipped. A joined header value grants nothing a client could not already send as a single header. `pb_public` file serving (M5.7) must stay inside its root either way.
+- **For later tasks:** M5.7 (trusted proxy `RealIP`) must decide how a joined value of a single-address header such as `X-Real-IP` is read, and record it here.
+- **Revisit:** if a later `Bun.serve` exposes the raw request target and header lines, match upstream and remove the rows.

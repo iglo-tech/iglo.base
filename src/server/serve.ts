@@ -1,16 +1,21 @@
 // Upstream: apis/serve.go (the start banner and the http/https listener
 // address handling only).
 //
-// Minimal bootstrap until the router, middlewares and app context land in
-// M0.3: the dispatch below is temporary. Not ported yet: migrations and
-// pb_data (M0.4), CORS (M5.7), the dashboard (M6.1), the installer (M6.2),
-// automatic HTTPS (M6.3).
+// Builds the router (@/apis/base) for the app and serves it with Bun.serve.
+// Not ported yet: migrations and pb_data (M0.4), CORS, gzip and trusted
+// proxies (M5.7), the dashboard (M6.1), the installer (M6.2), automatic
+// HTTPS (M6.3).
 
 import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 
-import { healthCheck } from "@/apis/health";
+import { newRouter } from "@/apis/base";
+import type { App } from "@/app/app";
+import { unescapeBytes } from "@/server/mux";
+import { HttpRequest } from "@/server/request";
+import { RereadableReadCloser, streamReader } from "@/server/rereadable-read-closer";
+import { ResponseWriter, type Mux } from "@/server/router";
 
 export interface Output {
   stdout(text: string): void;
@@ -164,26 +169,92 @@ function serverAddrToHost(addr: string): string {
   return addr;
 }
 
-function notFound(message: string): Response {
-  // router.NewNotFoundError, same key order as upstream's ApiError
-  const body = JSON.stringify({ data: {}, message, status: 404 });
-  return new Response(body, { status: 404, headers: { "Content-Type": "application/json" } });
+// Go's server answers a request target it cannot parse (an invalid
+// percent escape in the path) before any handler runs.
+function badRequest(): Response {
+  return new Response("400 Bad Request", {
+    status: 400,
+    headers: { "Content-Type": "text/plain; charset=utf-8", Connection: "close" },
+  });
 }
 
-// Temporary dispatch, replaced by the router in M0.3.
-function handle(request: Request): Response {
-  const { pathname } = new URL(request.url);
-  const isGet = request.method === "GET" || request.method === "HEAD";
-  if (isGet && pathname === "/api/health") {
-    return healthCheck();
+// net.Conn.RemoteAddr().String() for the client: IPv4 clients of a
+// dual-stack listener are reported as IPv4, as Go does.
+function remoteAddr(address: { address: string; port: number } | null): string {
+  if (!address) {
+    return "";
   }
-  if (isGet) {
-    // examples/base/main.go registers GET /{path...} with apis.Static on
-    // --publicDir; without a matching file it returns router.ErrFileNotFound.
-    // Serving pb_public itself is M5.7.
-    return notFound("File not found.");
+  const ip = address.address.replace(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i, "$1");
+  return ip.includes(":") ? `[${ip}]:${address.port}` : `${ip}:${address.port}`;
+}
+
+// Converts a Bun request into the router's request, runs it through the
+// mux and resolves with the response: at the first flush for streamed
+// responses, or when the handler returns.
+export async function handleRequest(
+  app: App,
+  mux: Mux,
+  request: Request,
+  client: { address: string; port: number } | null,
+): Promise<Response> {
+  // the origin-form request target; Bun.serve has already resolved "." and
+  // ".." segments in it (see the PR notes on path cleaning)
+  const url = request.url;
+  const target = url.slice(url.indexOf("/", url.indexOf("//") + 2));
+  const q = target.indexOf("?");
+  const escapedPath = q === -1 ? target : target.slice(0, q);
+  const rawQuery = q === -1 ? "" : target.slice(q + 1);
+  if (unescapeBytes(escapedPath) === undefined) {
+    return badRequest();
   }
-  return notFound("The requested resource wasn't found.");
+
+  const contentLengthHeader = request.headers.get("Content-Length");
+  let contentLength = 0;
+  if (contentLengthHeader !== null) {
+    contentLength = Number(contentLengthHeader);
+  } else if (request.headers.has("Transfer-Encoding")) {
+    contentLength = -1;
+  }
+
+  // Go keeps the Host header in r.Host and drops Transfer-Encoding from r.Header
+  const headers = new Headers(request.headers);
+  headers.delete("Host");
+  headers.delete("Transfer-Encoding");
+
+  const req = new HttpRequest({
+    method: request.method,
+    host: request.headers.get("Host") ?? "",
+    escapedPath,
+    rawQuery,
+    headers,
+    body: new RereadableReadCloser(streamReader(request.body)),
+    contentLength,
+    remoteAddr: remoteAddr(client),
+    tls: false,
+  });
+
+  return new Promise<Response>((resolve, reject) => {
+    const rw = new ResponseWriter(resolve);
+    mux.serveHTTP(rw, req).then(
+      () => {
+        try {
+          const response = rw.finish();
+          if (response) {
+            resolve(response);
+          }
+        } catch (err) {
+          // a status Bun cannot send (outside 200-599)
+          reject(err);
+        }
+      },
+      (err: unknown) => {
+        // a panic that no middleware recovered
+        app.logger.error(`http: panic serving ${req.remoteAddr}`, err);
+        rw.finish();
+        reject(err);
+      },
+    );
+  });
 }
 
 function startBanner(out: Output, baseURL: string): void {
@@ -195,6 +266,7 @@ function startBanner(out: Output, baseURL: string): void {
 
 // Starts the web server and resolves after it stops once shutdown is aborted.
 export async function serve(
+  app: App,
   config: ServeConfig,
   out: Output,
   shutdown: AbortSignal,
@@ -205,6 +277,8 @@ export async function serve(
     );
   }
 
+  const mux = newRouter(app).buildMux();
+
   const mainAddr = config.httpAddr;
   const parsed = parseListenAddr(mainAddr === "" ? ":http" : mainAddr);
   const hostname = await listenHost(parsed.hostname);
@@ -212,7 +286,12 @@ export async function serve(
 
   let server: ReturnType<typeof Bun.serve>;
   try {
-    server = Bun.serve({ hostname, port, development: false, fetch: handle });
+    server = Bun.serve({
+      hostname,
+      port,
+      development: false,
+      fetch: (request, bunServer) => handleRequest(app, mux, request, bunServer.requestIP(request)),
+    });
   } catch (err) {
     if ((err as { code?: string }).code === "EADDRINUSE") {
       throw new Error(`listen tcp ${mainAddr}: bind: address already in use`, { cause: err });

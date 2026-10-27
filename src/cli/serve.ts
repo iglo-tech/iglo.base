@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { ignoredDirsWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
+import { newApp } from "@/app/app";
 import { logTime, serve } from "@/server/serve";
 
 export const serveShort =
@@ -67,7 +68,24 @@ export async function runServeCommand(
     ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirsWarning(ignored)}\n`);
   }
 
+  const appContext = newApp({
+    dataDir: app.dataDir,
+    isDev: app.isDev,
+    encryptionEnv: app.encryptionEnv,
+    queryTimeout: app.queryTimeout,
+    clock: { now: () => ctx.out.now() },
+    logger: {
+      error: (message, cause) => {
+        const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
+        ctx.out.stderr(
+          `${logTime(ctx.out.now())} ERROR ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
+        );
+      },
+    },
+  });
+
   await serve(
+    appContext,
     {
       httpAddr,
       httpsAddr,
