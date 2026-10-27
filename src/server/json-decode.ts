@@ -294,7 +294,12 @@ export function isJsonObject(
 // numbers float64.
 export function toAny(value: JsonValue): unknown {
   if (value instanceof JsonNumber) {
-    return Number(value.literal);
+    const n = Number(value.literal);
+    if (!Number.isFinite(n)) {
+      // out of float64 range: json/v2 fails instead of storing ±Inf
+      throw new Error("json: cannot unmarshal JSON number into Go float64");
+    }
+    return n;
   }
   if (Array.isArray(value)) {
     return value.map(toAny);

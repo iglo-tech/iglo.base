@@ -75,7 +75,7 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 ## Deliberate differences
 
-These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), except the request-path normalization row, which follows from the HTTP runtime (D22). Each is marked in the differential test suite.
+These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), except the two request normalization rows, which follow from the HTTP runtime (D22). Each is marked in the differential test suite.
 
 | Area | PocketBase v0.41.0 | iglo.base |
 |---|---|---|
@@ -87,7 +87,8 @@ These are the only intended differences. Each one follows from removing extensio
 | Logs `data` | may include hook-written entries | iglo.base entries only, with upstream's shapes |
 | `Server`-identifying output (`serve` banner, `--version`) | PocketBase | iglo.base, with the PocketBase compatibility version (`compatible with PocketBase v0.41.0`) |
 | `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
-| Request paths with `.` or `..` segments (also `%2e%2e`) | `307` redirect to the cleaned path; a `%2e%2e` segment is not resolved | answered as the resolved path, without a redirect ([D22](10-decisions.md#d22-request-paths-are-normalized-by-bunserve)) |
+| Request paths with `.` or `..` segments (also `%2e%2e`) or `\` | `307` redirect to the cleaned path; `%2e%2e` and `\` are not resolved | answered as the normalized path, without a redirect ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |
+| Repeated request header lines | `@request.headers.*` sees the first line | sees the lines joined with `, ` ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |
 
 The JavaScript SDK's `pb.send()` for custom routes keeps working against routes that exist; there just are none beyond upstream's.
 

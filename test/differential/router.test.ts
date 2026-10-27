@@ -82,14 +82,16 @@ describe("router", () => {
 
   // Deliberate difference D22 (docs/design/04-api-compatibility.md):
   // Bun.serve resolves "." and ".." segments (also %2e%2e) before the handler
-  // sees the request, so iglo.base answers the resolved path directly where
-  // upstream redirects to the clean path (or, for %2e%2e, does not match).
+  // sees the request (and turns "\\" into "/"), so iglo.base answers the
+  // resolved path directly where upstream redirects to the clean path (or,
+  // for %2e%2e and "\\", does not match).
   // Each case checks both sides of the recorded difference.
   const dotSegments: [string, string, string, number][] = [
     ["GET", "/api/../api/health", "/api/health", 307],
     ["GET", "/api/health/.", "/api/health/", 307],
     ["GET", "/./api/health", "/api/health", 307],
     ["GET", "/x/%2e%2e/api/health", "/api/health", 404],
+    ["GET", "/api\\health", "/api/health", 404],
   ];
   for (const [method, target, resolved, upstreamStatus] of dotSegments) {
     test(`${method} ${target} (D22: answered as ${resolved})`, async () => {

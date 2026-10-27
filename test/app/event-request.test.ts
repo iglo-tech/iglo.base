@@ -197,3 +197,74 @@ describe("snakecase", () => {
     });
   }
 });
+
+// Council findings on PR #3, checked against upstream's json/v2, mime and
+// RequestInfo behavior.
+describe("RequestInfo body and query edge cases", () => {
+  for (const body of [`{"n":1e400}`, `{"n":[1,-1e400]}`]) {
+    test(`JSON number out of float64 range fails: ${body}`, async () => {
+      const e = newEvent({
+        method: "POST",
+        target: "/",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+      expect(await e.requestInfo()).toBeInstanceOf(Error);
+    });
+  }
+
+  test("JSON number that underflows binds as 0", async () => {
+    const e = newEvent({
+      method: "POST",
+      target: "/",
+      headers: { "content-type": "application/json" },
+      body: `{"n":1e-400}`,
+    });
+    const info = await e.requestInfo();
+    expect(info).toBeInstanceOf(RequestInfo);
+    expect((info as RequestInfo).body).toEqual({ n: 0 });
+  });
+
+  for (const contentType of [
+    "application/x-www-form-urlencoded; broken",
+    'application/x-www-form-urlencoded; charset="utf-8',
+    "application/x-www-form-urlencoded; charset=a; charset=b",
+    "application/x-www-form-urlencoded/x",
+  ]) {
+    test(`malformed media type fails form binding: ${contentType}`, async () => {
+      const e = newEvent({
+        method: "POST",
+        target: "/",
+        headers: { "content-type": contentType },
+        body: "a=1",
+      });
+      expect(await e.requestInfo()).toBeInstanceOf(Error);
+    });
+  }
+
+  for (const contentType of [
+    "application/x-www-form-urlencoded;",
+    "application/x-www-form-urlencoded; charset=utf-8; charset=utf-8",
+    'application/x-www-form-urlencoded; charset="utf-8"',
+  ]) {
+    test(`valid media type binds the form: ${contentType}`, async () => {
+      const e = newEvent({
+        method: "POST",
+        target: "/",
+        headers: { "content-type": contentType },
+        body: "a=1",
+      });
+      const info = await e.requestInfo();
+      expect(info).toBeInstanceOf(RequestInfo);
+      expect((info as RequestInfo).body).toEqual({ a: 1 });
+    });
+  }
+
+  test("query keys like __proto__ are kept as submitted", async () => {
+    const e = newEvent({ target: "/?__proto__=test&constructor=x" });
+    const info = (await e.requestInfo()) as RequestInfo;
+    expect(Object.hasOwn(info.query, "__proto__")).toBe(true);
+    expect(info.query["__proto__"]).toBe("test");
+    expect(info.query["constructor"]).toBe("x");
+  });
+});

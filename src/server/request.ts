@@ -119,11 +119,11 @@ export class HttpRequest {
     if (ct === "") {
       ct = "application/octet-stream";
     }
-    const mediaType = parseMediaType(ct);
-    if (mediaType === undefined) {
-      return { values: undefined, err: new Error("mime: invalid media parameter") };
+    const parsedType = parseMediaType(ct);
+    if ("err" in parsedType) {
+      return { values: undefined, err: parsedType.err };
     }
-    if (mediaType !== "application/x-www-form-urlencoded") {
+    if (parsedType.mediaType !== "application/x-www-form-urlencoded") {
       // multipart/form-data is handled by parseMultipartForm
       return { values: undefined, err: undefined };
     }
@@ -148,11 +148,11 @@ export class HttpRequest {
     }
 
     const ct = this.headers.get("Content-Type") ?? "";
-    const mediaType = parseMediaType(ct);
-    if (ct === "" || mediaType !== "multipart/form-data") {
+    const parsedType = parseMediaType(ct);
+    if (ct === "" || "err" in parsedType || parsedType.mediaType !== "multipart/form-data") {
       return new Error("request Content-Type isn't multipart/form-data");
     }
-    if (!/;\s*boundary=/i.test(ct)) {
+    if (!parsedType.params.has("boundary")) {
       return new Error("no multipart boundary param in Content-Type");
     }
 
@@ -263,12 +263,135 @@ function escapeAt(s: string): string {
   return i < 0 ? s : s.slice(i, i + 3);
 }
 
-// mime.ParseMediaType: the lower-cased media type, or undefined when it is
-// malformed.
-export function parseMediaType(v: string): string | undefined {
-  const mediaType = (v.split(";", 1)[0] ?? "").trim().toLowerCase();
-  if (!/^[!#$%&'*+\-.^_`|~0-9a-z]+(?:\/[!#$%&'*+\-.^_`|~0-9a-z]+)?$/.test(mediaType)) {
-    return undefined;
+// unicode.IsSpace
+const spaceRun = /^[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*/;
+function trimLeftSpace(s: string): string {
+  return s.slice((spaceRun.exec(s)?.[0] ?? "").length);
+}
+
+const tspecials = '()<>@,;:\\"/[]?=';
+function isTokenChar(c: string): boolean {
+  const code = c.charCodeAt(0);
+  return code > 0x20 && code < 0x7f && !tspecials.includes(c);
+}
+
+// mime consumeToken: the leading run of token characters and the rest.
+function consumeToken(v: string): [string, string] {
+  let i = 0;
+  while (i < v.length && isTokenChar(v[i] as string)) {
+    i++;
   }
-  return mediaType;
+  return [v.slice(0, i), v.slice(i)];
+}
+
+// mime consumeValue: a token or a quoted-string, and the rest; ["", v] when
+// a quoted-string is not terminated or contains CR/LF.
+function consumeValue(v: string): [string, string] {
+  if (v === "") {
+    return ["", ""];
+  }
+  if (v[0] !== '"') {
+    return consumeToken(v);
+  }
+  let out = "";
+  for (let i = 1; i < v.length; i++) {
+    const r = v[i] as string;
+    if (r === '"') {
+      return [out, v.slice(i + 1)];
+    }
+    // an escape is only honored before a tspecial (MSIE literal backslashes)
+    if (r === "\\" && i + 1 < v.length && tspecials.includes(v[i + 1] as string)) {
+      out += v[i + 1];
+      i++;
+      continue;
+    }
+    if (r === "\r" || r === "\n") {
+      return ["", v];
+    }
+    out += r;
+  }
+  return ["", v];
+}
+
+// mime consumeMediaParam: ["", "", v] when v does not start with a valid
+// "; name=value" parameter.
+function consumeMediaParam(v: string): [string, string, string] {
+  let rest = trimLeftSpace(v);
+  if (!rest.startsWith(";")) {
+    return ["", "", v];
+  }
+  rest = trimLeftSpace(rest.slice(1));
+  let param: string;
+  [param, rest] = consumeToken(rest);
+  param = param.toLowerCase();
+  if (param === "") {
+    return ["", "", v];
+  }
+  rest = trimLeftSpace(rest);
+  if (!rest.startsWith("=")) {
+    return ["", "", v];
+  }
+  rest = trimLeftSpace(rest.slice(1));
+  const [value, rest2] = consumeValue(rest);
+  if (value === "" && rest2 === rest) {
+    return ["", "", v];
+  }
+  return [param, value, rest2];
+}
+
+// mime.ParseMediaType: the lower-cased media type and its parameters, or an
+// error for a malformed type or parameter list. RFC 2231 continuations are
+// only checked for duplicates, not decoded (no caller reads them).
+export function parseMediaType(
+  v: string,
+): { mediaType: string; params: Map<string, string> } | { err: Error } {
+  const base = v.split(";", 1)[0] ?? "";
+  const mediaType = base.toLowerCase().trim();
+  const [typ, afterType] = consumeToken(mediaType);
+  if (typ === "") {
+    return { err: new Error("mime: no media type") };
+  }
+  if (afterType !== "") {
+    if (!afterType.startsWith("/")) {
+      return { err: new Error("mime: expected slash after first token") };
+    }
+    const [subtype, afterSubtype] = consumeToken(afterType.slice(1));
+    if (subtype === "") {
+      return { err: new Error("mime: expected token after slash") };
+    }
+    if (afterSubtype !== "") {
+      return { err: new Error("mime: unexpected content after media subtype") };
+    }
+  }
+
+  const params = new Map<string, string>();
+  const continuation = new Map<string, Map<string, string>>();
+  let rest = v.slice(base.length);
+  while (rest.length > 0) {
+    rest = trimLeftSpace(rest);
+    if (rest.length === 0) {
+      break;
+    }
+    const [key, value, next] = consumeMediaParam(rest);
+    if (key === "") {
+      if (next.trim() === ";") {
+        break; // a trailing semicolon is not an error
+      }
+      return { err: new Error("mime: invalid media parameter") };
+    }
+    let pmap = params;
+    const star = key.indexOf("*");
+    if (star >= 0) {
+      const baseName = key.slice(0, star);
+      pmap = continuation.get(baseName) ?? new Map<string, string>();
+      continuation.set(baseName, pmap);
+    }
+    const existing = pmap.get(key);
+    if (existing !== undefined && existing !== value) {
+      return { err: new Error("mime: duplicate parameter name") };
+    }
+    pmap.set(key, value);
+    rest = next;
+  }
+  return { mediaType, params };
 }

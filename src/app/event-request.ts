@@ -6,6 +6,7 @@
 
 import type { App } from "@/app/app";
 import { Event } from "@/server/event";
+import { setOwn } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
 
@@ -126,14 +127,16 @@ export class RequestEvent extends Event {
     // extract the first value of all query params
     for (const [k, v] of this.request.query()) {
       if (v.length > 0) {
-        info.query[k] = v[0] as string;
+        // own property, so keys like "__proto__" are kept as submitted
+        setOwn(info.query, k, v[0] as string);
       }
     }
 
     // extract the first value of all headers and normalizes the keys
     // ("X-Token" is converted to "x_token")
     for (const [k, v] of this.request.headers) {
-      info.headers[snakecase(k)] = v;
+      // Bun.serve joins repeated header lines with ", " (D22)
+      setOwn(info.headers, snakecase(k), v);
     }
 
     info.auth = this.auth;
