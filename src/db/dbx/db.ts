@@ -214,7 +214,7 @@ export function newFromDB(sqlDB: Database, driverName: string): DB {
   return new DB(sqlDB, driverName);
 }
 
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+export function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return (
     typeof value === "object" &&
     value !== null &&

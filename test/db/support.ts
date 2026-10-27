@@ -1,12 +1,13 @@
 // Helpers for the db tests: in-memory dbx databases with the dbx test
-// fixture (dbx testdata/mysql.sql, translated to SQLite) and temporary
-// pb_data directories.
+// fixture (dbx testdata/mysql.sql, translated to SQLite), and Databases on
+// temporary pb_data directories.
 
 import { Database } from "bun:sqlite";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { Databases } from "@/db/base";
 import { newFromDB, type DB } from "@/db/dbx/db";
 
 // dbx testdata/mysql.sql in SQLite syntax: same tables, columns and rows
@@ -89,4 +90,32 @@ export function getPreparedDB(): DB {
 
 export function tempDir(prefix = "iglo-base-db-"): string {
   return mkdtempSync(join(tmpdir(), prefix));
+}
+
+// Databases on a new temporary pb_data directory, with a "demo" table in
+// data.db and a "logs" table in auxiliary.db. The busy-retry waits are
+// recorded instead of slept, then passed to onSleep.
+export function openTempDatabases(onSleep: (ms: number) => void = () => {}): {
+  app: Databases;
+  dataDir: string;
+  sleeps: number[];
+} {
+  const dataDir = tempDir("iglo-base-pb_data-");
+  const sleeps: number[] = [];
+  const app = Databases.open({
+    dataDir,
+    sleep: (ms) => {
+      sleeps.push(ms);
+      onSleep(ms);
+    },
+  });
+  app
+    .nonconcurrentDB()
+    .newQuery("CREATE TABLE demo (id TEXT PRIMARY KEY NOT NULL, title TEXT DEFAULT '' NOT NULL)")
+    .execute();
+  app
+    .auxNonconcurrentDB()
+    .newQuery("CREATE TABLE logs (id TEXT PRIMARY KEY NOT NULL, message TEXT DEFAULT '' NOT NULL)")
+    .execute();
+  return { app, dataDir, sleeps };
 }
