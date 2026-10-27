@@ -75,7 +75,7 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 ## Deliberate differences
 
-These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), except the two request normalization rows, which follow from the HTTP runtime (D22). Each is marked in the differential test suite.
+These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), except the two request normalization rows, which follow from the HTTP runtime (D22). Each is marked in the differential test suite, except the repeated-header row: no endpoint exposes request headers yet, so it gets its differential case with the first task that exposes `@request.headers` in rules (M2.2/M2.4).
 
 | Area | PocketBase v0.41.0 | iglo.base |
 |---|---|---|
@@ -88,7 +88,7 @@ These are the only intended differences. Each one follows from removing extensio
 | `Server`-identifying output (`serve` banner, `--version`) | PocketBase | iglo.base, with the PocketBase compatibility version (`compatible with PocketBase v0.41.0`) |
 | `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
 | Request paths with `.` or `..` segments (also `%2e%2e`) or `\` | `307` redirect to the cleaned path; `%2e%2e` and `\` are not resolved | answered as the normalized path, without a redirect ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |
-| Repeated request header lines | `@request.headers.*` sees the first line | sees the lines joined with `, ` ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |
+| Repeated request header lines | `@request.headers.*` sees the first line | sees the lines joined with `, ` ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)); differential case added with the first task that exposes `@request.headers` in rules (M2.2/M2.4) |
 
 The JavaScript SDK's `pb.send()` for custom routes keeps working against routes that exist; there just are none beyond upstream's.
 
