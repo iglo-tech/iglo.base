@@ -5,3 +5,6 @@
 # Dependencies and build output.
 /node_modules/
 /dist/
+
+# Reference tools and the upstream source checkout (bun run upstream:prepare).
+/.upstream/

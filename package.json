@@ -11,7 +11,9 @@
     "test": "bun test",
     "build": "bun build --compile src/main.ts --outfile dist/iglo-base",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build",
-    "hooks:install": "sh scripts/install-git-hooks.sh"
+    "hooks:install": "sh scripts/install-git-hooks.sh",
+    "upstream:prepare": "bun scripts/upstream/prepare.ts",
+    "test:reference": "bun run upstream:prepare && bun test --path-ignore-patterns \"\" test/differential"
   },
   "devDependencies": {
     "@types/bun": "1.4.4",
