@@ -55,8 +55,9 @@ Names follow upstream packages so each file can be reviewed side by side with it
 
 ```text
 src/
+  app/                app context passed to every module (data dir, flags, clock, error logger) and the request event (upstream core/app.go, core/event_request.go)
   cli/                serve, superuser; flag parsing (upstream cmd/, pocketbase.go)
-  server/             Bun.serve setup, router, route table, static pb_public, HTTPS and autocert
+  server/             Bun.serve setup, router (upstream tools/router on Go's ServeMux), request event, API errors, request body helpers, static pb_public, HTTPS and autocert
   middlewares/        CORS, gzip, body limit, rate limit, activity log, panic recovery, superuser IP check
   db/                 connections, read pool, transactions, busy retry, query builder helpers (upstream dbx usage)
   migrations/         system migrations with upstream file names (upstream migrations/)

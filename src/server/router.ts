@@ -63,7 +63,12 @@ export class ResponseWriter {
       return undefined;
     }
     if (this.#controller) {
-      this.#controller.enqueue(bytes);
+      try {
+        this.#controller.enqueue(bytes);
+      } catch (err) {
+        // the client went away
+        return err instanceof Error ? err : new Error(String(err));
+      }
     } else {
       this.#chunks.push(bytes);
     }

@@ -5,8 +5,8 @@
 // Go binds into typed structs through reflection. TypeScript has no runtime
 // types, so a struct is described by a StructType: its fields in declaration
 // order, with their Go names (also the property set on the destination
-// object), types and tags. Embedded struct fields are stored flattened on
-// the parent object. Integers are stored as numbers (int64 and uint64
+// object), types and tags. An embedded struct is stored under its type name,
+// as Go lays it out. Integers are stored as numbers (int64 and uint64
 // values beyond 2^53 lose precision).
 
 import {
@@ -194,7 +194,7 @@ function unmarshalInStructValue(
     // dereference: a nil pointer field is allocated
     if (typeof ft === "object" && ft.kind === "pointer") {
       ft = ft.elem;
-      if (!field.embedded && (dst[field.name] === undefined || dst[field.name] === null)) {
+      if (dst[field.name] === undefined || dst[field.name] === null) {
         setOwn(dst, field.name, zeroValue(stripPointers(ft)));
       }
     }
@@ -271,18 +271,19 @@ function unmarshalInStructValue(
       structPrefix = name; // name is empty for anonymous structs -> no prefix
     }
 
-    let target = dst;
-    if (!field.embedded) {
-      const current = dst[field.name];
-      if (typeof current === "object" && current !== null) {
-        target = current as Record<string, unknown>;
-      } else {
-        target = {};
-        setOwn(dst, field.name, target);
-      }
-    }
-    unmarshalInStructValue(data, target, ft, structTagKey, structPrefix);
+    unmarshalInStructValue(data, structValue(dst, field.name), ft, structTagKey, structPrefix);
   }
+}
+
+// the (embedded or nested) struct object stored in dst[name], allocated if missing
+export function structValue(dst: Record<string, unknown>, name: string): Record<string, unknown> {
+  const current = dst[name];
+  if (typeof current === "object" && current !== null) {
+    return current as Record<string, unknown>;
+  }
+  const value: Record<string, unknown> = {};
+  setOwn(dst, name, value);
+  return value;
 }
 
 // setRegularReflectedValue: value cast to kind.
@@ -562,7 +563,8 @@ function foldName(name: string): string {
 interface JsonField {
   jsonName: string;
   field: StructField;
-  // the object that holds the field's property (embedded fields are flattened)
+  // the object that holds the field's property (an inlined embedded struct
+  // is stored under its type name)
   holder: (dst: Record<string, unknown>) => Record<string, unknown>;
 }
 
@@ -577,8 +579,13 @@ function jsonFields(type: StructType): JsonField[] {
     }
     const base = stripPointers(field.type);
     if (field.embedded && tagName === "" && typeof base === "object" && base.kind === "struct") {
-      // inlined: the embedded fields are stored on the parent object
-      out.push(...jsonFields(base));
+      // inlined: the embedded fields are JSON members of the parent object
+      for (const inner of jsonFields(base)) {
+        out.push({
+          ...inner,
+          holder: (dst) => inner.holder(structValue(dst, field.name)),
+        });
+      }
       continue;
     }
     if (!isExported(field.name)) {

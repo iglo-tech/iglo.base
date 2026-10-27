@@ -6,6 +6,7 @@
 
 import {
   NumError,
+  structValue,
   type FieldType,
   type StructField,
   type StructType,
@@ -139,31 +140,43 @@ export function unmarshalXML(src: string, dst: Record<string, unknown>, type: St
   fillStruct(parseDocument(src), dst, type);
 }
 
-function xmlFields(type: StructType): StructField[] {
-  const out: StructField[] = [];
+interface XmlField {
+  field: StructField;
+  // the object that holds the field (embedded structs are stored under their type name)
+  holder: (dst: Record<string, unknown>) => Record<string, unknown>;
+}
+
+function xmlFields(type: StructType): XmlField[] {
+  const out: XmlField[] = [];
   for (const field of type.fields) {
     const tag = field.tags?.xml ?? "";
     if (tag === "-") {
       continue;
     }
     if (field.embedded && typeof field.type === "object" && field.type.kind === "struct") {
-      out.push(...xmlFields(field.type));
+      for (const inner of xmlFields(field.type)) {
+        out.push({ ...inner, holder: (dst) => inner.holder(structValue(dst, field.name)) });
+      }
       continue;
     }
     if (isExported(field.name)) {
-      out.push(field);
+      out.push({ field, holder: (dst) => dst });
     }
   }
   return out;
 }
 
-function fillStruct(el: XmlElement, dst: Record<string, unknown>, type: StructType): void {
+function fillStruct(el: XmlElement, root: Record<string, unknown>, type: StructType): void {
   const fields = xmlFields(type);
   for (const child of el.children) {
-    const field = fields.find((f) => (f.tags?.xml?.split(",")[0] || f.name) === child.name);
-    if (!field) {
+    const found = fields.find(
+      (f) => (f.field.tags?.xml?.split(",")[0] || f.field.name) === child.name,
+    );
+    if (!found) {
       continue;
     }
+    const { field } = found;
+    const dst = found.holder(root);
     let t: FieldType = field.type;
     while (typeof t === "object" && t.kind === "pointer") {
       t = t.elem;

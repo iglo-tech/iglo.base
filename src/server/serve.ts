@@ -216,12 +216,17 @@ export async function handleRequest(
     contentLength = -1;
   }
 
+  // Go keeps the Host header in r.Host and drops Transfer-Encoding from r.Header
+  const headers = new Headers(request.headers);
+  headers.delete("Host");
+  headers.delete("Transfer-Encoding");
+
   const req = new HttpRequest({
     method: request.method,
     host: request.headers.get("Host") ?? "",
     escapedPath,
     rawQuery,
-    headers: request.headers,
+    headers,
     body: new RereadableReadCloser(streamReader(request.body)),
     contentLength,
     remoteAddr: remoteAddr(client),
@@ -232,9 +237,14 @@ export async function handleRequest(
     const rw = new ResponseWriter(resolve);
     mux.serveHTTP(rw, req).then(
       () => {
-        const response = rw.finish();
-        if (response) {
-          resolve(response);
+        try {
+          const response = rw.finish();
+          if (response) {
+            resolve(response);
+          }
+        } catch (err) {
+          // a status Bun cannot send (outside 200-599)
+          reject(err);
         }
       },
       (err: unknown) => {
