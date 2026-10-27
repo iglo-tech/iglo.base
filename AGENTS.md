@@ -53,6 +53,7 @@ Do not add hooks, plugins, event buses for user code, a JavaScript VM, user migr
 - Time-dependent behavior is tested with an injected clock, not by sleeping.
 - Use `agent-browser` to verify the admin dashboard.
 - Store manual test data and test credentials in regular `.md` files in the repository.
+- Never commit production data, backups or anything taken from them. The staging copy of production data lives outside the repository, and its outbound settings (S3 backups, SMTP) are disabled before any server runs on it (`docs/design/10-decisions.md` D20).
 
 ## Verification
 

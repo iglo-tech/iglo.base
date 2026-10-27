@@ -75,7 +75,7 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 ## Deliberate differences
 
-These are the only intended differences. Each one follows from removing extensions, and each is marked in the differential test suite.
+These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), and each is marked in the differential test suite.
 
 | Area | PocketBase v0.40.6 | iglo.base |
 |---|---|---|
@@ -86,9 +86,10 @@ These are the only intended differences. Each one follows from removing extensio
 | `GET /api/crons` | built-in and user jobs | built-in jobs only |
 | Logs `data` | may include hook-written entries | iglo.base entries only, with upstream's shapes |
 | `Server`-identifying output (`serve` banner, `--version`) | PocketBase | iglo.base, with the PocketBase compatibility version (`compatible with PocketBase v0.40.6`) |
+| `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
 
 The JavaScript SDK's `pb.send()` for custom routes keeps working against routes that exist; there just are none beyond upstream's.
 
 ## API documentation
 
-The dashboard's built-in API preview (`ui/src/apiPreview`) documents every endpoint and stays accurate, because the API does not change. iglo.base does not publish a separate API reference; it links to upstream's [Web APIs reference](https://pocketbase.io/docs/api-records/) for v0.40.
+The dashboard's built-in API preview (`ui/src/apiPreview`) documents every endpoint and stays accurate, because the API does not change. The dashboard's documentation links point to iglo.base's own user documentation ([D17](10-decisions.md#d17-dashboard-branding-iglobase-only)); where it lives is an [open question](11-open-questions.md). Upstream's [Web APIs reference](https://pocketbase.io/docs/api-records/) for v0.40 describes the same API.

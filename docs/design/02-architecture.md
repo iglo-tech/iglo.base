@@ -55,7 +55,7 @@ Names follow upstream packages so each file can be reviewed side by side with it
 
 ```text
 src/
-  cli/                serve, superuser, update; flag parsing (upstream cmd/, pocketbase.go)
+  cli/                serve, superuser; flag parsing (upstream cmd/, pocketbase.go)
   server/             Bun.serve setup, router, route table, static pb_public, HTTPS and autocert
   middlewares/        CORS, gzip, body limit, rate limit, activity log, panic recovery, superuser IP check
   db/                 connections, read pool, transactions, busy retry, query builder helpers (upstream dbx usage)

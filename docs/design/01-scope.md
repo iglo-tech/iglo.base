@@ -2,7 +2,7 @@
 
 ## Goals
 
-1. **Drop-in replacement for PocketBase v0.40.6.** Same REST API, realtime protocol, admin dashboard, CLI and environment, so apps and SDKs do not change.
+1. **Drop-in replacement for PocketBase v0.40.6.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19) and environment, so apps and SDKs do not change.
 2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.40.6, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
 3. **No extension surface.** No Go framework mode, JavaScript hooks, user migrations or dashboard extensions. Behavior is fixed and fully covered by tests.
 4. **One stack:** Bun, TypeScript, SQLite, one executable, shared conventions with other iglo.\* projects.
@@ -10,14 +10,14 @@
 ## Non-goals
 
 - New features in v1. Anything PocketBase v0.40.6 does not do is out of scope until 1.0 ships.
-- Tracking upstream automatically. Upstream releases after v0.40.6 are reviewed by hand; see [Open questions](11-open-questions.md).
+- Tracking upstream automatically. Upstream releases after v0.40.6 are reviewed by hand for security and bug fixes ([D16](10-decisions.md#d16-upstream-releases-after-v0406-fixes-only-by-hand)).
 - Any database other than SQLite. Multi-node, replication or horizontal scaling.
 - Byte-identical output where it does not affect clients (JSON key spacing, header order, thumbnail encoder bytes). Semantic equality is the bar; see [API compatibility](04-api-compatibility.md).
 - A public community project: no support process, no release promise, no community governance files (same stance as iglo.monitor).
 
 ## Removed: the extension surface
 
-Everything described under [Extending PocketBase](https://pocketbase.io/docs/use-as-framework/) is removed. That is the only removed functionality.
+Everything described under [Extending PocketBase](https://pocketbase.io/docs/use-as-framework/) is removed. The only other removal is the `update` command ([below](#removed-the-update-command)).
 
 | Upstream mechanism | Where it lives upstream | In iglo.base |
 |---|---|---|
@@ -34,14 +34,17 @@ Not removed, because they are product features, not extension mechanisms:
 - collections and fields edited in the dashboard or through `/api/collections` (including import and export of collection definitions);
 - API rules and filters;
 - `pb_public` static file serving (`--publicDir`, `--indexFallback`), which upstream's prebuilt binary includes;
-- the superuser SQL console (`POST /api/sql`);
-- the `update` command, which downloads iglo.base releases instead of PocketBase ones.
+- the superuser SQL console (`POST /api/sql`).
 
 **Data from deployments that used hooks or migrations is still compatible.** The hooks simply stop running. Logic that lived in hooks must move into the app (usually a small service using the API and realtime). The [cutover checklist](03-data-compatibility.md#cutover-checklist) covers it.
 
+## Removed: the `update` command
+
+Upstream's `update` command (`plugins/ghupdate`) replaces the executable with a newer release. iglo.base runs inside a container image that is rebuilt on every deploy, so the command is not ported ([D19](10-decisions.md#d19-drop-the-update-command)). `iglo.base update` fails with an error that names this document.
+
 ## Kept: everything else
 
-**v1** ships in the first usable release (1.0). Nothing is dropped beyond the table above.
+**v1** ships in the first usable release (1.0). Nothing is dropped beyond the extension surface and the `update` command.
 
 | Area | v1 |
 |---|---|
@@ -59,9 +62,9 @@ Not removed, because they are product features, not extension mechanisms:
 | Jobs | built-in cron jobs (logs cleanup, DB optimize, MFA and OTP cleanup, rate-limiter cleanup, auto backups) and `/api/crons` |
 | Settings | `meta`, `smtp`, `s3`, `backups`, `rateLimits`, `trustedProxy`, `batch`, `logs`, `superuserIPs`; optional encryption with `--encryptionEnv` |
 | HTTP | CORS (`--origins`), gzip, body limits, rate limits, trusted proxy headers, HTTPS with automatic Let's Encrypt certificates (`serve example.com`), `/api/health` |
-| CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `update`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback` |
+| CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback` |
 | Admin dashboard | upstream's `/_/` dashboard, including the installer link for the first superuser ([Admin UI](08-admin-ui.md)) |
-| Platforms | linux-x64, linux-arm64, darwin-arm64 release binaries; others are an [open question](11-open-questions.md) |
+| Platforms | linux-x64, linux-arm64, darwin-arm64 release binaries ([D18](10-decisions.md#d18-release-platforms)) |
 
 ## Compatibility promise
 
@@ -69,4 +72,4 @@ For 1.x:
 
 - a `pb_data` directory written by PocketBase v0.40.6 opens in iglo.base, and one written by iglo.base opens in PocketBase v0.40.6;
 - a client written against PocketBase v0.40.6 (official JS and Dart SDKs, community SDKs, raw HTTP) works against iglo.base without changes;
-- the only API differences are the ones listed in [API compatibility](04-api-compatibility.md#deliberate-differences), all of which follow from removing extensions.
+- the only API differences are the ones listed in [API compatibility](04-api-compatibility.md#deliberate-differences), all of which follow from removing extensions and the `update` command.

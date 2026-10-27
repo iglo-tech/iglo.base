@@ -1,0 +1,3 @@
+# Production pb_data and backups never belong in the repository (D20).
+/pb_data/
+/*.zip

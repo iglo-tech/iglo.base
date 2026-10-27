@@ -12,7 +12,7 @@ This is a contract, not a best effort. It decides most storage questions in this
 | Accepted on open | `pb_data` written by PocketBase v0.40.x with all system migrations applied |
 | Written | the same format; PocketBase v0.40.6 opens it without running anything new |
 
-Older PocketBase data (for example v0.22 or an early v0.3x) is upgraded first by running PocketBase v0.40.6 once on it. iglo.base does not port upstream's historical upgrade migrations (`1717233556_v0.23_migrate*.go` and older). See [Decisions](10-decisions.md) D12.
+Older PocketBase data (for example v0.22 or an early v0.3x) is upgraded first by running PocketBase v0.40.6 once on it. iglo.base does not port upstream's historical upgrade migrations (`1717233556_v0.23_migrate*.go` and older). See [Decisions](10-decisions.md) D12. The first data to be moved is already v0.40.x ([D15](10-decisions.md#d15-source-data-is-plain-v040x)).
 
 ## The `pb_data` directory
 
@@ -27,6 +27,8 @@ pb_data/
   .autocert_cache/
   .pb_temp_to_delete/           removed at startup
 ```
+
+Other files in `pb_data` are left alone and included in backups, as upstream does. Real deployments have them: `types.d.ts` written by upstream's JS VM plugin, stale `logs.db-wal`/`-shm` files from before v0.23, or files a deploy tool keeps there.
 
 - **File names** keep upstream's sanitized form (`<base>_<10 random chars>.<ext>`), generated the same way.
 - **`.attrs` sidecar files** are written for every stored file, as upstream's file blob store does: JSON with `user.cache_control`, `user.content_disposition`, `user.content_encoding`, `user.content_language`, `user.content_type`, `user.metadata` and `md5` (base64). PocketBase reads `content_type` from them when serving files, so they are part of the format.
@@ -88,12 +90,14 @@ Each collection has a table named after it (a view for `view` collections), with
 There is no migration system for users. There are only upstream's system migrations, under their upstream file names:
 
 ```text
-data.db       1640988000_init.go
-              1717233556_v0.23_migrate.go … 1717233559_v0.23_migrate4.go
-              1763020353_update_default_auth_alert_templates.go
-              1778828400_normalize_indexes.go
-auxiliary.db  1640988000_aux_init.go
+1640988000_init.go
+1640988000_aux_init.go          creates _logs in auxiliary.db
+1717233556_v0.23_migrate.go … 1717233559_v0.23_migrate4.go
+1763020353_update_default_auth_alert_templates.go
+1778828400_normalize_indexes.go
 ```
+
+All rows, including `1640988000_aux_init.go`, are in `data.db`'s `_migrations` table. `auxiliary.db` has no `_migrations` table (checked on real v0.40.x data).
 
 On open:
 
@@ -141,5 +145,5 @@ For moving an existing PocketBase deployment:
 2. If you use `pb_migrations`, make sure all of them are applied (`pocketbase migrate up`). iglo.base will not run them.
 3. If you use `pb_hooks` or a custom Go build, list what the hooks do. Each one moves into your app, a separate service, or a [rule](05-rules-and-filters.md). iglo.base starts without them.
 4. Stop PocketBase and take a backup (copy `pb_data`, or use the dashboard backup).
-5. Replace the executable and keep the same flags. Remove `--hooksDir`, `--hooksWatch`, `--hooksPool`, `--migrationsDir` and `--automigrate`.
+5. Replace the executable and keep the same flags. Remove `--hooksDir`, `--hooksWatch`, `--hooksPool`, `--migrationsDir` and `--automigrate`. Replace any use of `pocketbase update` with rebuilding the image on a new iglo.base release ([D19](10-decisions.md#d19-drop-the-update-command)).
 6. Start iglo.base. To roll back, stop it and start PocketBase v0.40.6 on the same directory.

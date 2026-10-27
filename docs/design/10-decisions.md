@@ -6,7 +6,7 @@ Short records. Each one says what was decided, why, and what was considered inst
 
 Decided 2026-10-27.
 
-- **Decision:** port PocketBase v0.40.6 to TypeScript and own the result. Do not track upstream automatically; review later upstream releases by hand ([Open questions](11-open-questions.md)).
+- **Decision:** port PocketBase v0.40.6 to TypeScript and own the result. Do not track upstream automatically; review later upstream releases by hand ([D16](#d16-upstream-releases-after-v0406-fixes-only-by-hand)).
 - **Why:** the stack differs (Go upstream, Bun here), so a tracking fork is impossible anyway. v0.40.6 is a natural baseline: it is the last release on GitHub before upstream moved hosts, and its data format is stable within v0.40.x.
 - **Considered:**
   - a Go fork with the extension code deleted, which keeps a second language and toolchain;
@@ -89,3 +89,51 @@ Provisional until the M0 spike.
 
 - **Decision:** values of `json` fields, `_params.value` and collection `fields`/`options` JSON are kept as raw text and only re-serialized when changed.
 - **Why:** upstream keeps raw JSON (`types.JSONRaw`). `JSON.parse` loses precision above 2^53 and moves integer-like keys first, which would silently change user data and API output.
+
+## D15. Source data is plain v0.40.x
+
+Decided 2026-10-27, after reading a production backup.
+
+- **Decision:** the first data to be moved is treated as standard PocketBase v0.40.x data: the stock binary, no `pb_hooks`, no custom Go build, files on local storage, backups uploaded to S3.
+- **Checked in the backup:** all v0.40.6 system migrations are recorded (the newest is `1778828400_normalize_indexes.go`); `s3.enabled` is false and files are under `storage/`; `backups.s3.enabled` is true with a weekly schedule.
+- **`pb_migrations` rows:** the data also records 58 `*.js` migrations. Upstream's dashboard wrote them automatically on every schema change (`--automigrate`); nobody wrote them by hand. They are not needed to run: the schema itself lives in `_collections` and the tables. iglo.base keeps the rows, ignores them ([Data compatibility](03-data-compatibility.md#migrations)) and does not write migration files when the schema changes (D5).
+- **Consequence:** S3 backups are tested early in M5, before S3 file storage.
+
+## D16. Upstream releases after v0.40.6: fixes only, by hand
+
+Decided 2026-10-27.
+
+- **Decision:** review each upstream release by hand. Port security fixes and bug fixes that do not change the data format or the API. Data-format and API changes are not followed in 1.x; following them would be a new compatibility target and a new major version.
+- **Why:** the compatibility contracts are fixed to v0.40.6. Following upstream automatically is impossible across languages (D1), and following its format changes would break rollback to v0.40.6.
+- **Consequence:** apps that upgrade their SDKs past the v0.40 era may expect newer server behavior. That is checked per app, not followed by default.
+
+## D17. Dashboard branding: iglo.base only
+
+Decided 2026-10-27.
+
+- **Decision:** the dashboard shows only iglo.base: name, logo, page title and footer. No "PocketBase-compatible" label or PocketBase link in the dashboard. Its documentation links point to iglo.base's own documentation ([Open questions](11-open-questions.md) has where it lives).
+- **Why:** users see one product. Credit to PocketBase stays where the license requires it (`LICENSE`) and in the README and docs.
+- **Consequence:** the documentation pages the dashboard links to must exist by 1.0.
+
+## D18. Release platforms
+
+Decided 2026-10-27.
+
+- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only.
+- **Why:** these are the platforms iglo.\* projects ship and deployments use. Windows needs extra work (no `sendmail`, restart by re-exec, file locking during restore) for no current user. Upstream's other targets (Windows, FreeBSD, 32-bit ARM and others) are dropped.
+
+## D19. Drop the `update` command
+
+Decided 2026-10-27.
+
+- **Decision:** iglo.base has no `update` command. `plugins/ghupdate` is not ported.
+- **Why:** deployments run iglo.base inside a container image that is rebuilt on every deploy, so a binary that replaces itself does nothing useful. Dropping it removes a network feature and a release-download path.
+- **Consequence:** this is the one removal beyond the extension surface. Scripts that call `pocketbase update` change to rebuilding the image with a new iglo.base release.
+
+## D20. Rehearse the cutover on a staging copy of production data
+
+Decided 2026-10-27.
+
+- **Decision:** compatibility is proven by upstream's test suite and the differential suite (D6). In addition, a copy of a real production backup is used locally in M7 to rehearse the move to iglo.base and the rollback to PocketBase v0.40.6. The first instance runs locally.
+- **Handling:** the copy is production data. It is kept outside the repository and never committed, quoted or uploaded. Before either server is started on it, the copy's settings are changed so nothing leaves the machine: scheduled backups off, backup S3 upload off, SMTP pointed at Mailpit. Backups are never uploaded to the bucket the production settings name. If an S3 run is needed, the owner provides a separate test bucket; otherwise the local S3 test server is used.
+- **Why:** real data catches field and rule combinations no fixture has. Production settings also schedule outbound work (S3 uploads, email) that a local run must not trigger.

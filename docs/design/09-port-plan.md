@@ -28,7 +28,7 @@ What gets ported, by upstream path (non-test Go lines):
 | `apis/*_test.go` | about 21,000, about 720 named scenarios | `test/scenarios` as data |
 | `tests/data` | fixture `pb_data` | `test/fixtures/upstream` |
 
-Not ported: `plugins/jsvm`, `plugins/migratecmd`, `plugins/ghupdate`, `tools/hook`, the hook and event plumbing in `core/events.go` and `core/event_*.go`, `tools/template` (only used by hooks), and the type generator (`tygoja`). That is roughly 6,000 lines of Go plus generated typings, and a large share of the indirection in `core`.
+Not ported: `plugins/jsvm`, `plugins/migratecmd`, `plugins/ghupdate` (the `update` command, D19), `tools/hook`, the hook and event plumbing in `core/events.go` and `core/event_*.go`, `tools/template` (only used by hooks), and the type generator (`tygoja`). That is roughly 6,000 lines of Go plus generated typings, and a large share of the indirection in `core`.
 
 ## Milestones
 
@@ -42,10 +42,10 @@ Each milestone ends with something usable and tested.
 | M3 | **Write path:** create, update, delete, validation messages, `+`/`-` modifiers, cascade delete, local file uploads and deletion, `.attrs`, batch API, collections write/import/truncate endpoints, settings API | Ported record, collection, batch and settings scenarios pass; the data round-trip suite passes |
 | M4 | **Auth and mail:** password, refresh, verification, password reset, email change, OTP, MFA, auth origins and alerts, impersonation, OAuth2 with all providers, SMTP and sendmail, email templates, rate limits, superuser IPs | Ported auth scenarios pass; emails in Mailpit match upstream's |
 | M5 | **Realtime and operations:** realtime SSE and permission-aware broadcast, files endpoint with thumbnails and protected files, S3 storage, backups (local and S3, scheduled, restore), logs and stats, crons, `/api/sql`, trusted proxy, gzip, CORS | The JS SDK scenario suite and realtime scenarios pass against iglo.base; backups restore across both servers |
-| M6 | **Dashboard and CLI:** vendored UI with the patch set, installer, `superuser` commands, `serve` with automatic HTTPS, `update` from iglo-tech releases | The dashboard checklist passes in `agent-browser` |
-| M7 | **1.0:** performance comparison against upstream ([Architecture](02-architecture.md#performance-bar)), operations guide (install, systemd unit, backups, cutover from PocketBase, rollback), release workflow on `v*` tags | Tagged release with binaries for linux-x64, linux-arm64 and darwin-arm64; the first real `pb_data` moved and rolled back once on a staging copy |
+| M6 | **Dashboard and CLI:** vendored UI with the patch set, installer, `superuser` commands, `serve` with automatic HTTPS | The dashboard checklist passes in `agent-browser` |
+| M7 | **1.0:** performance comparison against upstream ([Architecture](02-architecture.md#performance-bar)), operations guide (install, systemd unit, backups, cutover from PocketBase, rollback), user documentation linked from the dashboard (D17), release workflow on `v*` tags | Tagged release with binaries for linux-x64, linux-arm64 and darwin-arm64 (D18); a local copy of a production backup moved to iglo.base and rolled back to PocketBase once, with outbound settings disabled first (D20) |
 
-M2 and M3 are the critical path. M4 and the S3/backups parts of M5 can run in parallel once M3's write path exists.
+M2 and M3 are the critical path. M4 and the S3/backups parts of M5 can run in parallel once M3's write path exists. Within M5, S3 backups come before S3 file storage, because the first real deployment uploads backups to S3 and keeps files local (D15).
 
 ## Testing strategy
 
