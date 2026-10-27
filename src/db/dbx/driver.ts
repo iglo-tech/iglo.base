@@ -60,14 +60,15 @@ const trans: readonly (readonly number[])[] = [
   /* 7     END */ [1, 7, 5, 5, 5, 5, 5, 5],
 ];
 
-const keywords: Readonly<Record<string, number>> = {
-  create: tkCREATE,
-  trigger: tkTRIGGER,
-  temp: tkTEMP,
-  temporary: tkTEMP,
-  end: tkEND,
-  explain: tkEXPLAIN,
-};
+// a Map, so identifiers such as "constructor" or "__proto__" stay tkOTHER
+const keywords: ReadonlyMap<string, number> = new Map([
+  ["create", tkCREATE],
+  ["trigger", tkTRIGGER],
+  ["temp", tkTEMP],
+  ["temporary", tkTEMP],
+  ["end", tkEND],
+  ["explain", tkEXPLAIN],
+]);
 
 // IdChar: letters, digits, "_", "$" and every non-ASCII character
 function isIdChar(code: number): boolean {
@@ -165,7 +166,7 @@ export function splitStatements(sql: string): ScriptPart[] {
         while (j < n && isIdChar(sql.charCodeAt(j))) {
           j++;
         }
-        token = keywords[sql.slice(i, j).toLowerCase()] ?? tkOTHER;
+        token = keywords.get(sql.slice(i, j).toLowerCase()) ?? tkOTHER;
         i = j - 1;
         break;
       }

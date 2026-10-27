@@ -365,6 +365,12 @@ describe("TestQueryWithAllHook", () => {
   });
 });
 
+// Object.prototype names are ordinary identifiers to the statement splitter.
+test("unquoted identifiers named like Object.prototype members", () => {
+  expect(getDB().newQuery("SELECT 1 AS constructor;").all()).toEqual([{ constructor: 1 }]);
+  expect(getDB().newQuery("SELECT 1 AS toString; SELECT 2 AS valueOf").row()).toEqual([2]);
+});
+
 // Go's Rows step one row at a time: Row() scans the first row and closes,
 // so a later row that fails to evaluate is never reached.
 describe("rows are read incrementally", () => {

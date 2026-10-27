@@ -87,6 +87,9 @@ const queries = [
   "SELECT 'x;y' AS a, \"v\" FROM script_probe ORDER BY id",
   "CREATE TRIGGER script_probe_t AFTER INSERT ON script_probe BEGIN UPDATE script_probe SET v = 'g' WHERE id = new.id; END; INSERT INTO script_probe (v) VALUES ('h')",
   "SELECT id, v FROM script_probe ORDER BY id",
+  "SELECT 1 AS constructor;",
+  "SELECT 1 AS __proto__;",
+  "SELECT 1 AS toString; SELECT 2 AS hasOwnProperty",
 ];
 
 let upstreamCopy: FixtureCopy;
