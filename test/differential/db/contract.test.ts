@@ -36,7 +36,7 @@ function snapshot(dataDir: string): Snapshot {
   const schema: Record<string, unknown[]> = {};
   let migrations: unknown[] = [];
   for (const name of [dataDBFilename, auxDBFilename]) {
-    const conn = new Database(join(dataDir, name), { readonly: true });
+    const conn = new Database(join(dataDir, name));
     try {
       schema[name] = conn
         .query("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name")
@@ -55,7 +55,7 @@ function snapshot(dataDir: string): Snapshot {
 }
 
 function integrityCheck(path: string): unknown {
-  const conn = new Database(path, { readonly: true });
+  const conn = new Database(path);
   try {
     return conn.query("PRAGMA integrity_check").values();
   } finally {
