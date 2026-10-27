@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.2 | ci | [#2](https://github.com/iglo-tech/iglo.base/pull/2) | 0 | [Brief](briefs/M0.2.md). Worker: Claude Haiku 5.5, medium (work plan: mechanical task) |
+| M0.2 | council | [#2](https://github.com/iglo-tech/iglo.base/pull/2) | 1 (head `c21335b`) | [Brief](briefs/M0.2.md). Worker: Claude Haiku 5.5, medium (work plan: mechanical task) |
 
 ## Done
 
