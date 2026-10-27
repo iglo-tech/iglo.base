@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.1 | council | [#1](https://github.com/iglo-tech/iglo.base/pull/1) | 2 (head `80f9a38`; round 1: Opus APPROVE, Sol CHANGES, fixed by the lead) | [Brief](briefs/M0.1.md). Worker: Claude Opus 5.5, medium |
+| M0.1 | council | [#1](https://github.com/iglo-tech/iglo.base/pull/1) | 3 (head `ba25b3f`; rounds 1–2: Opus APPROVE, Sol CHANGES, fixed by the lead) | [Brief](briefs/M0.1.md). Worker: Claude Opus 5.5, medium |
 
 ## Done
 
