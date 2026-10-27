@@ -29,6 +29,9 @@
 // firstValues() and an iteration that stops early evaluate no further
 // rows. bun:sqlite only steps row objects incrementally, so a result with
 // duplicate column names is read as arrays in one go (all rows).
+//
+// Statements run with safeIntegers; every reader narrows the integers inside
+// Number.MAX_SAFE_INTEGER to numbers and keeps the others as exact bigints.
 
 import type { SQLQueryBindings, Statement } from "bun:sqlite";
 
@@ -44,6 +47,38 @@ export class NoRowsError extends Error {
 
 export function isNoRowsError(err: unknown): boolean {
   return err instanceof NoRowsError;
+}
+
+// a number for a safe integer, the bigint itself otherwise (an unsafe
+// bigint converts to a number of at least 2^53, which is not safe either)
+export function narrowInteger(value: unknown): unknown {
+  if (typeof value === "bigint") {
+    const n = Number(value);
+    if (Number.isSafeInteger(n)) {
+      return n;
+    }
+  }
+  return value;
+}
+
+function narrowRow(row: Row, keys: string[]): Row {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "bigint") {
+      row[key] = narrowInteger(value);
+    }
+  }
+  return row;
+}
+
+function narrowValues(values: unknown[]): unknown[] {
+  for (let i = 0; i < values.length; i++) {
+    const value = values[i];
+    if (typeof value === "bigint") {
+      values[i] = narrowInteger(value);
+    }
+  }
+  return values;
 }
 
 function hasDuplicates(names: string[]): boolean {
@@ -71,12 +106,12 @@ export class Rows implements Iterable<unknown[]> {
     const names = this.stmt.columnNames;
     if (hasDuplicates(names)) {
       for (const values of this.stmt.values(...this.args)) {
-        yield values;
+        yield narrowValues(values);
       }
       return;
     }
     for (const row of this.stmt.iterate(...this.args) as Iterable<Row>) {
-      yield names.map((name) => row[name]);
+      yield names.map((name) => narrowInteger(row[name]));
     }
   }
 
@@ -86,7 +121,7 @@ export class Rows implements Iterable<unknown[]> {
     if (row === null) {
       throw new NoRowsError();
     }
-    return row;
+    return narrowRow(row, this.stmt.columnNames);
   }
 
   // the values of the first row; throws NoRowsError when there is none
@@ -98,7 +133,12 @@ export class Rows implements Iterable<unknown[]> {
   }
 
   all(): Row[] {
-    return this.stmt.all(...this.args) as Row[];
+    const rows = this.stmt.all(...this.args) as Row[];
+    const keys = this.stmt.columnNames;
+    for (const row of rows) {
+      narrowRow(row, keys);
+    }
+    return rows;
   }
 
   // the first column of every row

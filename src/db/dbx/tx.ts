@@ -51,12 +51,12 @@ export class TxExecutor implements Executor {
 
   statement(sql: string): Statement {
     this.checkDone();
-    return this.conn.query(sql);
+    return this.conn.query(sql).safeIntegers(true);
   }
 
   prepare(sql: string): Stmt {
     this.checkDone();
-    const stmt = new Stmt(this.conn.prepare(sql));
+    const stmt = new Stmt(this.conn.prepare(sql).safeIntegers(true));
     this.stmts.push(stmt);
     return stmt;
   }

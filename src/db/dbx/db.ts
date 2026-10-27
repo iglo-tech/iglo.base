@@ -67,11 +67,11 @@ class ConnExecutor implements Executor {
   }
 
   statement(sql: string): Statement {
-    return this.conn.query(sql);
+    return this.conn.query(sql).safeIntegers(true);
   }
 
   prepare(sql: string): Stmt {
-    return new Stmt(this.conn.prepare(sql));
+    return new Stmt(this.conn.prepare(sql).safeIntegers(true));
   }
 }
 

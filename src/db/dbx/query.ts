@@ -28,6 +28,12 @@
 // One() a row object (or the given StructModel), All() an array, Row() the
 // first row's values, Column() the first column's values. Queries have no
 // context.Context: query timeouts are left to M0.6 (D8).
+//
+// Integers are read losslessly: statements run with bun:sqlite's
+// safeIntegers, and the row readers (rows.ts) narrow every integer inside
+// Number.MAX_SAFE_INTEGER to a number. Integers outside it stay bigint, as
+// Go's int64 and NullStringMap keep them exact, and binding a bigint stores
+// the exact value. M1.8 maps them to record values.
 
 import type { SQLQueryBindings, Statement } from "bun:sqlite";
 

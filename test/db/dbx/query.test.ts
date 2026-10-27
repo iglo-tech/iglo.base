@@ -404,3 +404,32 @@ describe("rows are read incrementally", () => {
     ]);
   });
 });
+
+// Go reads INTEGER columns as int64; safe integers come back as numbers
+// and the others as exact bigints.
+describe("integers are read losslessly", () => {
+  const big = 9007199254740993n;
+  const sql =
+    "SELECT 9007199254740993 AS big, -9223372036854775808 AS min, 42 AS small, 1.5 AS real";
+  const expected = { big, min: -9223372036854775808n, small: 42, real: 1.5 };
+
+  test("every reader", () => {
+    const db = getDB();
+    expect(db.newQuery(sql).one()).toEqual(expected);
+    expect(db.newQuery(sql).all()).toEqual([expected]);
+    expect(db.newQuery(sql).row()).toEqual(Object.values(expected));
+    expect([...db.newQuery(sql).rows()]).toEqual([Object.values(expected)]);
+    expect(db.newQuery(sql).column()).toEqual([big]);
+    expect(db.newQuery(sql).prepare().row()).toEqual(Object.values(expected));
+    expect(db.newQuery("SELECT 9007199254740991 AS n").row()).toEqual([9007199254740991]);
+  });
+
+  test("a bigint is written back exactly", () => {
+    const db = getDB();
+    db.newQuery("CREATE TABLE t (v)").execute();
+    db.insert("t", { v: big }).execute();
+    const [v] = db.newQuery("SELECT v FROM t").row();
+    expect(v).toBe(big);
+    expect(db.newQuery("SELECT CAST(v AS TEXT) FROM t").row()).toEqual(["9007199254740993"]);
+  });
+});
