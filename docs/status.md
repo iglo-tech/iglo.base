@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.3 | council | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 2 (head `081caa4`; round 1: both CHANGES, fixed by the lead) | [Brief](briefs/M0.3.md). Worker: Claude Opus 5.5, medium |
+| M0.3 | council | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 2 → fix (head `081caa4`; rounds 1–2: both CHANGES; round-2 body-binding findings sent to an Opus fixer) | [Brief](briefs/M0.3.md). Worker: Claude Opus 5.5, medium |
 
 ## Done
 
