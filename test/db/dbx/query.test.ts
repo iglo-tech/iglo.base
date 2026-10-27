@@ -363,3 +363,44 @@ describe("TestQueryWithAllHook", () => {
     expect(other[1]!.id).toBe(2);
   });
 });
+
+// Go's Rows step one row at a time: Row() scans the first row and closes,
+// so a later row that fails to evaluate is never reached.
+describe("rows are read incrementally", () => {
+  const sql = "SELECT 1 AS n UNION ALL SELECT json_extract('x', '$')";
+
+  test("row()", () => {
+    expect(getDB().newQuery(sql).row()).toEqual([1]);
+  });
+
+  test("one()", () => {
+    expect(getDB().newQuery(sql).one()).toEqual({ n: 1 });
+  });
+
+  test("an iteration that stops early", () => {
+    const db = getDB();
+    const seen: unknown[][] = [];
+    for (const values of db.newQuery(sql).rows()) {
+      seen.push(values);
+      break;
+    }
+    expect(seen).toEqual([[1]]);
+    // the cached statement is usable again
+    expect(db.newQuery(sql).row()).toEqual([1]);
+  });
+
+  test("a later row that fails still fails all() and column()", () => {
+    const db = getDB();
+    expect(() => db.newQuery(sql).all()).toThrow("malformed JSON");
+    expect(() => db.newQuery(sql).column()).toThrow("malformed JSON");
+  });
+
+  test("duplicate column names stay distinct", () => {
+    const db = getDB();
+    expect(db.newQuery("SELECT 1 AS a, 2 AS a").row()).toEqual([1, 2]);
+    expect([...db.newQuery("SELECT 1 AS a, 2 AS a UNION ALL SELECT 3, 4").rows()]).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+});

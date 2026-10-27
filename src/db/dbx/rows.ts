@@ -25,6 +25,10 @@
 // Rows wraps a bun:sqlite statement and its bound arguments. Row values are
 // read when a resolver asks for them; iterating a Rows object yields each
 // row's values in column order (duplicate column names stay distinct).
+// Rows are stepped one at a time, as Go's Rows.Next does: first(),
+// firstValues() and an iteration that stops early evaluate no further
+// rows. bun:sqlite only steps row objects incrementally, so a result with
+// duplicate column names is read as arrays in one go (all rows).
 
 import type { SQLQueryBindings, Statement } from "bun:sqlite";
 
@@ -40,6 +44,10 @@ export class NoRowsError extends Error {
 
 export function isNoRowsError(err: unknown): boolean {
   return err instanceof NoRowsError;
+}
+
+function hasDuplicates(names: string[]): boolean {
+  return new Set(names).size !== names.length;
 }
 
 export class Rows implements Iterable<unknown[]> {
@@ -60,7 +68,16 @@ export class Rows implements Iterable<unknown[]> {
   }
 
   *[Symbol.iterator](): Iterator<unknown[]> {
-    yield* this.stmt.values(...this.args);
+    const names = this.stmt.columnNames;
+    if (hasDuplicates(names)) {
+      for (const values of this.stmt.values(...this.args)) {
+        yield values;
+      }
+      return;
+    }
+    for (const row of this.stmt.iterate(...this.args) as Iterable<Row>) {
+      yield names.map((name) => row[name]);
+    }
   }
 
   // the first row; throws NoRowsError when there is none
@@ -74,12 +91,10 @@ export class Rows implements Iterable<unknown[]> {
 
   // the values of the first row; throws NoRowsError when there is none
   firstValues(): unknown[] {
-    const values = this.stmt.values(...this.args);
-    const first = values[0];
-    if (first === undefined) {
-      throw new NoRowsError();
+    for (const values of this) {
+      return values;
     }
-    return first;
+    throw new NoRowsError();
   }
 
   all(): Row[] {
@@ -88,6 +103,10 @@ export class Rows implements Iterable<unknown[]> {
 
   // the first column of every row
   column(): unknown[] {
-    return this.stmt.values(...this.args).map((values) => values[0]);
+    const result: unknown[] = [];
+    for (const values of this) {
+      result.push(values[0]);
+    }
+    return result;
   }
 }
