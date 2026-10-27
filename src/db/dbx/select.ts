@@ -28,7 +28,7 @@
 
 import type { Builder } from "@/db/dbx/builder";
 import { and, HashExp, or, type Expression } from "@/db/dbx/expression";
-import type { Params, Query, Row } from "@/db/dbx/query";
+import { assignOwn, type Params, type Query, type Row } from "@/db/dbx/query";
 import type { JoinInfo, UnionInfo } from "@/db/dbx/query-builder";
 import type { Rows } from "@/db/dbx/rows";
 import { primaryKeyNames, type StructModel } from "@/db/dbx/struct";
@@ -298,7 +298,7 @@ export class SelectQuery {
     if (Object.keys(this.boundParams).length === 0) {
       this.boundParams = params;
     } else {
-      Object.assign(this.boundParams, params);
+      assignOwn(this.boundParams, params);
     }
     return this;
   }

@@ -3,6 +3,7 @@
 import type { Databases } from "@/db/base";
 import type { Builder } from "@/db/dbx/builder";
 import { HashExp, newExp } from "@/db/dbx/expression";
+import { setOwn } from "@/db/dbx/query";
 
 // TableColumns returns all column names of a single table by its name.
 export function tableColumns(app: Databases, tableName: string): string[] {
@@ -73,7 +74,7 @@ export function tableIndexes(app: Databases, tableName: string): Record<string, 
   const result: Record<string, string> = {};
 
   for (const idx of indexes) {
-    result[idx.name] = idx.sql;
+    setOwn(result, idx.name, idx.sql);
   }
 
   return result;

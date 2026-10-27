@@ -30,7 +30,7 @@
 // are used everywhere dbx uses struct field names (Insert/Update attrs,
 // Exclude).
 
-import type { Params, Row } from "@/db/dbx/query";
+import { setOwn, type Params, type Row } from "@/db/dbx/query";
 
 // TableModel is the interface that should be implemented by models which have unconventional table names.
 export interface TableModel {
@@ -92,7 +92,7 @@ export function structColumns(model: StructModel, include: string[], exclude: st
   } else {
     for (const attr of include) {
       if (Object.hasOwn(all, attr)) {
-        v[attr] = all[attr];
+        setOwn(v, attr, all[attr]);
       }
     }
   }

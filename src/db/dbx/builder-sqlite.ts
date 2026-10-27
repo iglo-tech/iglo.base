@@ -25,7 +25,7 @@
 import { BaseBuilder } from "@/db/dbx/builder";
 import type { DB } from "@/db/dbx/db";
 import { ModelQuery } from "@/db/dbx/model-query";
-import type { Executor, Params, Query } from "@/db/dbx/query";
+import { assignOwn, type Executor, type Params, type Query } from "@/db/dbx/query";
 import { BaseQueryBuilder, type QueryBuilder, type UnionInfo } from "@/db/dbx/query-builder";
 import { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
@@ -47,7 +47,7 @@ export class SqliteQueryBuilder extends BaseQueryBuilder {
         sql += " ";
       }
 
-      Object.assign(params, union.query.params());
+      assignOwn(params, union.query.params());
 
       const u = union.all ? "UNION ALL" : "UNION";
 

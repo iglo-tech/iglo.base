@@ -25,7 +25,7 @@
 // `In` is a reserved word in JavaScript, so dbx's In() is inExp() here.
 
 import type { DB } from "@/db/dbx/db";
-import type { Params } from "@/db/dbx/query";
+import { assignOwn, type Params } from "@/db/dbx/query";
 
 // Expression represents a DB expression that can be embedded in a SQL statement.
 export interface Expression {
@@ -162,7 +162,7 @@ export class Exp implements Expression {
     if (this.params === null || paramsLen(this.params) === 0) {
       return this.e;
     }
-    Object.assign(params, this.params);
+    assignOwn(params, this.params);
     return this.e;
   }
 }

@@ -34,6 +34,9 @@
 // Number.MAX_SAFE_INTEGER to a number. Integers outside it stay bigint, as
 // Go's int64 and NullStringMap keep them exact, and binding a bigint stores
 // the exact value. M1.8 maps them to record values.
+//
+// Maps keyed by SQL identifiers (params, rows, columns) are written with
+// setOwn, so that a name like "__proto__" is an ordinary key.
 
 import type { SQLQueryBindings, Statement } from "bun:sqlite";
 
@@ -47,6 +50,28 @@ export type Params = Record<string, unknown>;
 
 // a result row keyed by column name, as bun:sqlite returns it
 export type Row = Record<string, unknown>;
+
+// sets map[key] as an own data property: plain assignment would call the
+// __proto__ setter for the key "__proto__"
+export function setOwn(map: Record<string, unknown>, key: string, value: unknown): void {
+  if (key === "__proto__") {
+    Object.defineProperty(map, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  } else {
+    map[key] = value;
+  }
+}
+
+// Object.assign with setOwn
+export function assignOwn(target: Record<string, unknown>, source: Record<string, unknown>): void {
+  for (const key of Object.keys(source)) {
+    setOwn(target, key, source[key]);
+  }
+}
 
 // sql.Result
 export interface ExecResult {
@@ -240,7 +265,7 @@ export class Query {
     if (Object.keys(this.boundParams).length === 0) {
       this.boundParams = params;
     } else {
-      Object.assign(this.boundParams, params);
+      assignOwn(this.boundParams, params);
     }
     return this;
   }

@@ -24,7 +24,7 @@
 
 import type { DB } from "@/db/dbx/db";
 import type { Expression } from "@/db/dbx/expression";
-import type { Params, Query } from "@/db/dbx/query";
+import { assignOwn, type Params, type Query } from "@/db/dbx/query";
 
 // JoinInfo contains the specification for a JOIN clause.
 export interface JoinInfo {
@@ -190,7 +190,7 @@ export class BaseQueryBuilder implements QueryBuilder {
       if (i > 0) {
         sql += " ";
       }
-      Object.assign(params, union.query.params());
+      assignOwn(params, union.query.params());
       const u = union.all ? "UNION ALL" : "UNION";
       sql += `${u} (${union.query.sql()})`;
     });

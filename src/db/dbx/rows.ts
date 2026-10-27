@@ -35,7 +35,7 @@
 
 import type { SQLQueryBindings, Statement } from "bun:sqlite";
 
-import type { Row } from "@/db/dbx/query";
+import { setOwn, type Row } from "@/db/dbx/query";
 
 // sql.ErrNoRows
 export class NoRowsError extends Error {
@@ -65,7 +65,7 @@ function narrowRow(row: Row, keys: string[]): Row {
   for (const key of keys) {
     const value = row[key];
     if (typeof value === "bigint") {
-      row[key] = narrowInteger(value);
+      setOwn(row, key, narrowInteger(value));
     }
   }
   return row;
