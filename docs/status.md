@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.5 | council | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 1 (head `0467cde`, all three CI jobs green. The worker head failed macOS (fixture opened read-only with WAL); the lead fixed it. One local `bun test` failure did not come back in three reruns, so it is flaky and not yet identified) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
+| M0.5 | fix | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 1 → fix (round 1 at `0467cde`: Opus APPROVE; Sol CHANGES: ordinary strings were compared by format as if generated, and `?fields=` projections hid raw `json` bytes. An Opus fixer is working on both; next: council round 2. A flaky local `bun test` failure is not yet identified) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
 
 ## Done
 
@@ -48,6 +48,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (host): `/tmp` (a RAM-backed tmpfs) was 100% full with 73 leftover `iglo-base-build-*` test executables (~105 MB each). The test helper `test/support/executable.ts` never deletes them. The lead removed the ones older than 15 minutes that no process used: `/tmp` went from 7.8 GB to 0.9 GB used. They are regenerable outputs of this repository's tests. Fixed by lead maintenance PR [#5](https://github.com/iglo-tech/iglo.base/pull/5): each `bun test` run uses one `iglo-base-run-*` temp root (via TMPDIR), deleted by a global `afterAll`. The older small `iglo-base-test-*` dirs remain in `/tmp`.
 
 - 2026-10-28 (M0.5 brief): upstream's `tests/data` fixture (MIT, about 700 KB, pinned commit) is vendored in `test/fixtures/pocketbase/`, so that scenarios run against iglo.base alone in plain `bun test` with no network. A `test:reference` test keeps it byte-identical to the pinned source. Scenario data is typed TypeScript. A `pending` marker (task id, reason) lets a scenario that iglo.base cannot pass yet run and be reported; the test fails once it starts to pass. The superuser health scenario is pending on M2.3.
+
+- 2026-10-28 (M0.5 round 1): the differential harness compares a value by format only if it is generated. That means it sits at a key upstream generates (`id`, `created`, `updated`, `token`, …) or equals a value already paired as generated in the same scenario. Request data is never treated as generated. Bodies are compared as bytes after the paired values are replaced by placeholders, so `json` bytes are checked under any `fields` projection.
 
 ## Paused until
 
