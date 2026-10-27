@@ -1,6 +1,6 @@
 # API compatibility
 
-Every client written for PocketBase v0.40.6 must work against iglo.base unchanged: the official JavaScript and Dart SDKs, community SDKs, the dashboard, and raw HTTP. The reference is the upstream binary, not the documentation. Where the docs and the binary disagree, the binary wins.
+Every client written for PocketBase v0.41.0 must work against iglo.base unchanged: the official JavaScript and Dart SDKs, community SDKs, the dashboard, and raw HTTP. The reference is the upstream binary, not the documentation. Where the docs and the binary disagree, the binary wins.
 
 ## What "compatible" means
 
@@ -77,7 +77,7 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), and each is marked in the differential test suite.
 
-| Area | PocketBase v0.40.6 | iglo.base |
+| Area | PocketBase v0.41.0 | iglo.base |
 |---|---|---|
 | Custom routes from hooks or Go | whatever the app registered | 404, like any unknown route |
 | Hook side effects | hook-modified requests, responses and records | none |
@@ -85,7 +85,7 @@ These are the only intended differences. Each one follows from removing extensio
 | `GET /_/extensions/{name}/*` | extension static files | 404 |
 | `GET /api/crons` | built-in and user jobs | built-in jobs only |
 | Logs `data` | may include hook-written entries | iglo.base entries only, with upstream's shapes |
-| `Server`-identifying output (`serve` banner, `--version`) | PocketBase | iglo.base, with the PocketBase compatibility version (`compatible with PocketBase v0.40.6`) |
+| `Server`-identifying output (`serve` banner, `--version`) | PocketBase | iglo.base, with the PocketBase compatibility version (`compatible with PocketBase v0.41.0`) |
 | `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
 
 The JavaScript SDK's `pb.send()` for custom routes keeps working against routes that exist; there just are none beyond upstream's.

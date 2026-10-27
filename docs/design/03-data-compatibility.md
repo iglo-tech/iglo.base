@@ -1,6 +1,6 @@
 # Data compatibility
 
-The goal: stop PocketBase, start iglo.base on the same `pb_data`, and have everything work. Stop iglo.base, start PocketBase v0.40.6 on the same `pb_data`, and have everything work. No import, export, conversion or migration step in either direction.
+The goal: stop PocketBase, start iglo.base on the same `pb_data`, and have everything work. Stop iglo.base, start PocketBase v0.41.0 on the same `pb_data`, and have everything work. No import, export, conversion or migration step in either direction.
 
 This is a contract, not a best effort. It decides most storage questions in this project: when in doubt, do what upstream does, byte for byte.
 
@@ -8,11 +8,11 @@ This is a contract, not a best effort. It decides most storage questions in this
 
 | | |
 |---|---|
-| Format version | PocketBase **v0.40.6** (`9d281cc`, 2026-10-23) |
-| Accepted on open | `pb_data` written by PocketBase v0.40.x with all system migrations applied |
-| Written | the same format; PocketBase v0.40.6 opens it without running anything new |
+| Format version | PocketBase **v0.41.0** (`f6baa0c`, 2026-10-26), the same as v0.40.x |
+| Accepted on open | `pb_data` written by PocketBase v0.40.x or v0.41.0 with all system migrations applied |
+| Written | the same format; PocketBase v0.41.0 and v0.40.x open it without running anything new |
 
-Older PocketBase data (for example v0.22 or an early v0.3x) is upgraded first by running PocketBase v0.40.6 once on it. iglo.base does not port upstream's historical upgrade migrations (`1717233556_v0.23_migrate*.go` and older). See [Decisions](10-decisions.md) D12. The first data to be moved is already v0.40.x ([D15](10-decisions.md#d15-source-data-is-plain-v040x)).
+Older PocketBase data (for example v0.22 or an early v0.3x) is upgraded first by running PocketBase v0.41.0 once on it. iglo.base does not port upstream's historical upgrade migrations (`1717233556_v0.23_migrate*.go` and older). See [Decisions](10-decisions.md) D12. The first data to be moved is already v0.40.x ([D15](10-decisions.md#d15-source-data-is-plain-v040x)).
 
 ## The `pb_data` directory
 
@@ -101,8 +101,8 @@ All rows, including `1640988000_aux_init.go`, are in `data.db`'s `_migrations` t
 
 On open:
 
-1. **Empty data directory:** create the v0.40.6 schema directly (the end state of all system migrations, taken from a fresh upstream v0.40.6 install), then insert the `_migrations` rows above, so PocketBase sees nothing pending.
-2. **Existing data:** check that every system migration above is recorded and the system collections match the expected shape. If any is missing, refuse to start with: "This pb_data was written by an older PocketBase. Run PocketBase v0.40.6 on it once, then start iglo.base."
+1. **Empty data directory:** create the v0.41.0 schema directly (the end state of all system migrations, taken from a fresh upstream v0.41.0 install), then insert the `_migrations` rows above, so PocketBase sees nothing pending.
+2. **Existing data:** check that every system migration above is recorded and the system collections match the expected shape. If any is missing, refuse to start with: "This pb_data was written by an older PocketBase. Run PocketBase v0.41.0 on it once, then start iglo.base."
 3. **Other rows** in `_migrations` (user `.js` or Go migrations, historical system migrations) are kept and ignored. If unknown rows look newer than the baseline (timestamp after `1778828400` with a `.go` suffix), start with one warning: the data may come from a newer PocketBase.
 
 iglo.base never adds `_migrations` rows of its own. If iglo.base ever needs a format change, it needs a new decision record and a new major version, because it breaks going back to PocketBase.
@@ -131,19 +131,19 @@ Signed tokens survive a switch: a user logged in through PocketBase stays logged
 
 The [port plan](09-port-plan.md#testing-strategy) has a round-trip suite that runs on every change to storage code:
 
-1. Start upstream v0.40.6 on a fixture, run a write-heavy scenario, stop.
+1. Start upstream v0.41.0 on a fixture, run a write-heavy scenario, stop.
 2. Start iglo.base on the result, verify the data through the API, run the same scenario, stop.
 3. Start upstream again, verify everything iglo.base wrote, and compare `sqlite_schema`, `PRAGMA integrity_check`, `_params` and `storage/` (including `.attrs`) with what upstream alone would have produced.
 
-Fixtures: upstream's `tests/data` (MIT), a fresh v0.40.6 install, and a large generated dataset.
+Fixtures: upstream's `tests/data` (MIT), a fresh v0.41.0 install, and a large generated dataset.
 
 ## Cutover checklist
 
 For moving an existing PocketBase deployment:
 
-1. Upgrade to PocketBase v0.40.6 and let it run its migrations.
+1. Upgrade to PocketBase v0.40.x or v0.41.0 and let it run its migrations.
 2. If you use `pb_migrations`, make sure all of them are applied (`pocketbase migrate up`). iglo.base will not run them.
 3. If you use `pb_hooks` or a custom Go build, list what the hooks do. Each one moves into your app, a separate service, or a [rule](05-rules-and-filters.md). iglo.base starts without them.
 4. Stop PocketBase and take a backup (copy `pb_data`, or use the dashboard backup).
 5. Replace the executable and keep the same flags. Remove `--hooksDir`, `--hooksWatch`, `--hooksPool`, `--migrationsDir` and `--automigrate`. Replace any use of `pocketbase update` with rebuilding the image on a new iglo.base release ([D19](10-decisions.md#d19-drop-the-update-command)).
-6. Start iglo.base. To roll back, stop it and start PocketBase v0.40.6 on the same directory.
+6. Start iglo.base. To roll back, stop it and start PocketBase v0.41.0 (or the v0.40.x you came from) on the same directory.

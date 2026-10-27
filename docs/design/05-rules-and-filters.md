@@ -6,7 +6,7 @@ API rules and the `filter` query parameter share one language. It is the most su
 
 | Upstream | Lines (non-test) | Becomes |
 |---|---|---|
-| `github.com/ganigeorgiev/fexpr` (tokenizer and parser, BSD-3-Clause, archived 2026-10-26) | small | `src/search/fexpr/` with its license notice |
+| `ganigeorgiev.com/fexpr` v0.7.0 (tokenizer and parser, BSD-3-Clause; moved from `github.com/ganigeorgiev/fexpr`, archived 2026-10-26, with no code change) | small | `src/search/fexpr/` with its license notice |
 | `tools/search` (`filter.go`, `sort.go`, `provider.go`, `identifier_macros.go`, `token_functions.go`, `multi_match_subquery.go`, `simple_field_resolver.go`) | about 1,700 | `src/search/` |
 | `core/record_field_resolver*.go` | about 1,500 | `src/resolver/` |
 | `tools/search/*_test.go`, `core/record_field_resolver_test.go` | about 3,000 | ported table tests |

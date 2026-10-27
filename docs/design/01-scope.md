@@ -2,15 +2,15 @@
 
 ## Goals
 
-1. **Drop-in replacement for PocketBase v0.40.6.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19) and environment, so apps and SDKs do not change.
-2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.40.6, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
+1. **Drop-in replacement for PocketBase v0.41.0.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19) and environment, so apps and SDKs do not change.
+2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.41.0, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
 3. **No extension surface.** No Go framework mode, JavaScript hooks, user migrations or dashboard extensions. Behavior is fixed and fully covered by tests.
 4. **One stack:** Bun, TypeScript, SQLite, one executable, shared conventions with other iglo.\* projects.
 
 ## Non-goals
 
-- New features in v1. Anything PocketBase v0.40.6 does not do is out of scope until 1.0 ships.
-- Tracking upstream automatically. Upstream releases after v0.40.6 are reviewed by hand for security and bug fixes ([D16](10-decisions.md#d16-upstream-releases-after-v0406-fixes-only-by-hand)).
+- New features in v1. Anything PocketBase v0.41.0 does not do is out of scope until 1.0 ships.
+- Tracking upstream automatically. Upstream releases after v0.41.0 are reviewed by hand for security and bug fixes ([D16](10-decisions.md#d16-upstream-releases-after-v0410-fixes-only-by-hand)).
 - Any database other than SQLite. Multi-node, replication or horizontal scaling.
 - Byte-identical output where it does not affect clients (JSON key spacing, header order, thumbnail encoder bytes). Semantic equality is the bar; see [API compatibility](04-api-compatibility.md).
 - A public community project: no support process, no release promise, no community governance files (same stance as iglo.monitor).
@@ -21,7 +21,7 @@ Everything described under [Extending PocketBase](https://pocketbase.io/docs/use
 
 | Upstream mechanism | Where it lives upstream | In iglo.base |
 |---|---|---|
-| Go framework: `import "github.com/pocketbase/pocketbase"`, `app.OnXxx()` hooks, `e.Router.GET(...)` custom routes, custom console commands, `app.Cron().Add`, Go migrations, record proxies, `RootCmd` flags | `core`, `apis`, `tools/hook`, `pocketbase.go` | No public package. Internal modules are not an API and are not versioned |
+| Go framework: `import "ganigeorgiev.com/pocketbase/pocketbase"`, `app.OnXxx()` hooks, `e.Router.GET(...)` custom routes, custom console commands, `app.Cron().Add`, Go migrations, record proxies, `RootCmd` flags | `core`, `apis`, `tools/hook`, `pocketbase.go` | No public package. Internal modules are not an API and are not versioned |
 | JavaScript hooks in `pb_hooks/*.pb.js` (event hooks, `routerAdd`, `cronAdd`, `$app`, `$http`, `$template`, `$os`, …) | `plugins/jsvm` (goja), about 3,600 lines plus generated types | Removed. No JS VM is embedded |
 | JavaScript migrations in `pb_migrations/*.js` | `plugins/jsvm`, `plugins/migratecmd` | Removed. Only built-in system migrations exist |
 | `migrate` command (`up`, `down`, `create`, `collections`, `history-sync`) and `--automigrate` (the dashboard writing migration files on schema change) | `plugins/migratecmd` | Removed. System migrations run automatically at startup, as upstream |
@@ -70,6 +70,6 @@ Upstream's `update` command (`plugins/ghupdate`) replaces the executable with a 
 
 For 1.x:
 
-- a `pb_data` directory written by PocketBase v0.40.6 opens in iglo.base, and one written by iglo.base opens in PocketBase v0.40.6;
-- a client written against PocketBase v0.40.6 (official JS and Dart SDKs, community SDKs, raw HTTP) works against iglo.base without changes;
+- a `pb_data` directory written by PocketBase v0.41.0 opens in iglo.base, and one written by iglo.base opens in PocketBase v0.41.0;
+- a client written against PocketBase v0.41.0 (official JS and Dart SDKs, community SDKs, raw HTTP) works against iglo.base without changes;
 - the only API differences are the ones listed in [API compatibility](04-api-compatibility.md#deliberate-differences), all of which follow from removing extensions and the `update` command.

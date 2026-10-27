@@ -4,7 +4,7 @@
 
 Canonical repository: [iglo-tech/iglo.base](https://github.com/iglo-tech/iglo.base). The default branch is `main`.
 
-It is an independently maintained port of [PocketBase](https://pocketbase.io) v0.40.6 to Bun and TypeScript. The REST API, realtime API, admin dashboard and `pb_data` directory format stay the same, so existing apps, SDKs and data work without changes. iglo.base removes PocketBase's extension surface: there is no Go framework mode, no JavaScript hooks (`pb_hooks`), no user migrations (`pb_migrations`) and no dashboard extensions. It also drops the self-`update` command; update by rebuilding your image with a new release.
+It is an independently maintained port of [PocketBase](https://pocketbase.io) v0.41.0 to Bun and TypeScript. The REST API, realtime API, admin dashboard and `pb_data` directory format stay the same, so existing apps, SDKs and data work without changes. iglo.base removes PocketBase's extension surface: there is no Go framework mode, no JavaScript hooks (`pb_hooks`), no user migrations (`pb_migrations`) and no dashboard extensions. It also drops the self-`update` command; update by rebuilding your image with a new release.
 
 > **Status: design phase.** There is no code yet. Start with the [design docs](docs/design/README.md).
 

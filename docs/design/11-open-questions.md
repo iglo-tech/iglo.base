@@ -13,7 +13,7 @@ Answered by the owner on 2026-10-27:
 | Question | Answer |
 |---|---|
 | Which PocketBase version and features does the data to be moved use? | v0.40.x, no hooks, no custom build, local file storage, backups on S3 ([D15](10-decisions.md#d15-source-data-is-plain-v040x)) |
-| What happens with upstream releases after v0.40.6? | Manual review, port security and bug fixes only ([D16](10-decisions.md#d16-upstream-releases-after-v0406-fixes-only-by-hand)) |
+| What happens with upstream releases after v0.41.0? | Manual review, port security and bug fixes only ([D16](10-decisions.md#d16-upstream-releases-after-v0410-fixes-only-by-hand)) |
 | Dashboard branding | iglo.base only, links to iglo.base docs ([D17](10-decisions.md#d17-dashboard-branding-iglobase-only)) |
 | Which platforms get release binaries? | linux-x64, linux-arm64, darwin-arm64 ([D18](10-decisions.md#d18-release-platforms)) |
 | Is the `update` command needed? | No, dropped ([D19](10-decisions.md#d19-drop-the-update-command)) |

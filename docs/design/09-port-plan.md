@@ -4,13 +4,13 @@
 
 | | |
 |---|---|
-| Repository | https://ganigeorgiev.com/pocketbase/pocketbase (current home). Read-only archive with the same tag: https://github.com/pocketbase/pocketbase |
-| Tag | `v0.40.6` |
-| Commit | `9d281ccaba65f2686eb7b0b614ccda72d1116a1b` (2026-10-23) |
+| Repository | https://ganigeorgiev.com/pocketbase/pocketbase (current home), cloned from `https://ganigeorgiev.com/git/pocketbase/pocketbase`. The GitHub archive (https://github.com/pocketbase/pocketbase) ends at v0.40.6 |
+| Tag | `v0.41.0` |
+| Commit | `f6baa0c43f379de21cd806de97ad6a2b8ca97b83` (2026-10-26) |
 | License | MIT |
-| Notes | The GitHub archive's `master` is one commit ahead (a README note about the move). The new host is a web forge without a git endpoint at the time of writing; the GitHub tag is the source for porting |
+| Notes | v0.41.0 has the same data format and REST API as v0.40.6 ([D21](10-decisions.md#d21-baseline-moved-from-v0406-to-v0410)). Its Go dependencies (fexpr, dbx, ozzo-validation) moved to the same host; their sources are under `https://ganigeorgiev.com/git/<project>/<repo>` (`fexpr/fexpr`, `pocketbase/dbx`) |
 
-Release binaries of v0.40.6 for each platform are pinned by SHA-256 in `test/differential/upstream.lock` and used as the reference server.
+Release binaries of v0.41.0 for each platform are pinned by SHA-256 in `test/differential/upstream.lock` and used as the reference server. Upstream's stable download URL is `https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/{tag}/{filename}`.
 
 What gets ported, by upstream path (non-test Go lines):
 
@@ -43,9 +43,11 @@ Each milestone ends with something usable and tested.
 | M4 | **Auth and mail:** password, refresh, verification, password reset, email change, OTP, MFA, auth origins and alerts, impersonation, OAuth2 with all providers, SMTP and sendmail, email templates, rate limits, superuser IPs | Ported auth scenarios pass; emails in Mailpit match upstream's |
 | M5 | **Realtime and operations:** realtime SSE and permission-aware broadcast, files endpoint with thumbnails and protected files, S3 storage, backups (local and S3, scheduled, restore), logs and stats, crons, `/api/sql`, trusted proxy, gzip, CORS | The JS SDK scenario suite and realtime scenarios pass against iglo.base; backups restore across both servers |
 | M6 | **Dashboard and CLI:** vendored UI with the patch set, installer, `superuser` commands, `serve` with automatic HTTPS | The dashboard checklist passes in `agent-browser` |
-| M7 | **1.0:** performance comparison against upstream ([Architecture](02-architecture.md#performance-bar)), operations guide (install, systemd unit, backups, cutover from PocketBase, rollback), user documentation linked from the dashboard (D17), release workflow on `v*` tags | Tagged release with binaries for linux-x64, linux-arm64 and darwin-arm64 (D18); a local copy of a production backup moved to iglo.base and rolled back to PocketBase once, with outbound settings disabled first (D20) |
+| M7 | **1.0 (MVP):** performance comparison against upstream ([Architecture](02-architecture.md#performance-bar)), operations guide (install, systemd unit, backups, cutover from PocketBase, rollback), user documentation linked from the dashboard (D17), release workflow on `v*` tags | Tagged release with binaries for linux-x64, linux-arm64 and darwin-arm64 (D18); a local copy of a production backup moved to iglo.base and rolled back to PocketBase once, with outbound settings disabled first (D20) |
 
 M2 and M3 are the critical path. M4 and the S3/backups parts of M5 can run in parallel once M3's write path exists. Within M5, S3 backups come before S3 file storage, because the first real deployment uploads backups to S3 and keeps files local (D15).
+
+After 1.0 (post-MVP): an official Docker image that wraps the same executable ([D3](10-decisions.md#d3-bun-typescript-one-executable)).
 
 ## Testing strategy
 
@@ -53,7 +55,7 @@ Compatibility is proven by running both servers, not by reading code.
 
 ### Differential suite
 
-- A scenario is a sequence of HTTP requests (and realtime subscriptions) plus a fixture. The harness copies the fixture twice, starts upstream v0.40.6 on one copy and iglo.base on the other, sends the same requests to both and compares responses after normalization (IDs, tokens and timestamps compared by format; `json` field values compared as bytes).
+- A scenario is a sequence of HTTP requests (and realtime subscriptions) plus a fixture. The harness copies the fixture twice, starts upstream v0.41.0 on one copy and iglo.base on the other, sends the same requests to both and compares responses after normalization (IDs, tokens and timestamps compared by format; `json` field values compared as bytes).
 - Most scenarios are generated from upstream's `apis/*_test.go` table tests (`Name`, `Method`, `URL`, `Body`, `Headers`, `ExpectedStatus`, `ExpectedContent`, `NotExpectedContent`). Their `ExpectedEvents` (hook counts) are dropped. Each scenario also keeps its upstream expectations, so it can run against iglo.base alone in fast CI.
 - Deliberate differences ([API compatibility](04-api-compatibility.md#deliberate-differences)) are marked per scenario.
 

@@ -36,12 +36,12 @@ Behavior copied from upstream's `CreateThumb`:
 - Output format: JPEG, GIF (first frame), TIFF and BMP stay in their format; everything else, including WebP, becomes PNG with `Content-Type: image/png`.
 - Only sizes listed in the field's `thumbs` option, plus the default `100x100`, are generated; others serve the original.
 - Generated once, stored under `thumbs_<filename>/`, then served from storage.
-- Limits from upstream: `PB_THUMBS_MAX_SOURCE_PIXELS` (default 262,144,000 pixels), `PB_THUMBS_MAX_WORKERS`, `PB_THUMBS_MAX_WAIT`. Over the limit, the original is served.
+- Limits from upstream: `PB_THUMBS_MAX_SOURCE_PIXELS` (default 104,857,600 pixels, `100 << 20`, since v0.41.0), `PB_THUMBS_MAX_WORKERS`, `PB_THUMBS_MAX_WAIT`. Over the limit, the original is served.
 - Decoding and encoding run in a worker so a large image cannot stall requests. The library is chosen in M0 (D10). The acceptance test compares output dimensions, format and a perceptual difference against upstream's thumbnails, not bytes.
 
 ## Mail
 
-- **Transport:** `nodemailer`. SMTP when `smtp.enabled` (`host`, `port`, `username`, `password`, `authMethod` `PLAIN` or `LOGIN`, `tls`, `localName`); otherwise the `sendmail` binary with `-i -t`, as upstream.
+- **Transport:** `nodemailer`. SMTP when `smtp.enabled` (`host`, `port`, `username`, `password`, `authMethod` `PLAIN` or `LOGIN`, `tls`, `localName`); otherwise the `sendmail` binary with `-i -t`, as upstream. Since v0.41.0 an empty HTML body is not sent as an HTML part; `sendmail` messages without HTML are `text/plain`, carry custom headers and get a random `Message-ID`.
 - **Sender:** `meta.senderName` and `meta.senderAddress`.
 - **Messages:** verification, password reset, email change confirmation, OTP, login alert, and the settings test email, with upstream's subjects, bodies and placeholders ([Auth](06-auth.md#email-templates)).
 - **Tests** read messages from Mailpit and compare headers, recipients and bodies to upstream's output.

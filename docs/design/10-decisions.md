@@ -2,12 +2,12 @@
 
 Short records. Each one says what was decided, why, and what was considered instead. Change a decision by editing its record and noting the date.
 
-## D1. Port of PocketBase v0.40.6, not a tracking fork
+## D1. Port of PocketBase v0.41.0, not a tracking fork
 
 Decided 2026-10-27.
 
-- **Decision:** port PocketBase v0.40.6 to TypeScript and own the result. Do not track upstream automatically; review later upstream releases by hand ([D16](#d16-upstream-releases-after-v0406-fixes-only-by-hand)).
-- **Why:** the stack differs (Go upstream, Bun here), so a tracking fork is impossible anyway. v0.40.6 is a natural baseline: it is the last release on GitHub before upstream moved hosts, and its data format is stable within v0.40.x.
+- **Decision:** port PocketBase v0.41.0 to TypeScript and own the result. Do not track upstream automatically; review later upstream releases by hand ([D16](#d16-upstream-releases-after-v0410-fixes-only-by-hand)).
+- **Why:** the stack differs (Go upstream, Bun here), so a tracking fork is impossible anyway. v0.41.0 is the current release and the first on upstream's new host. Its data format and REST API are the same as v0.40.6's ([D21](#d21-baseline-moved-from-v0406-to-v0410)).
 - **Considered:**
   - a Go fork with the extension code deleted, which keeps a second language and toolchain;
   - a clean-room reimplementation from the docs, which would miss the undocumented behavior that compatibility depends on.
@@ -19,12 +19,13 @@ Decided 2026-10-27.
 
 ## D3. Bun, TypeScript, one executable
 
-- **Decision:** Bun ≥ 1.4 and TypeScript, shipped as one compiled executable with the dashboard embedded. No Docker image.
+- **Decision:** Bun ≥ 1.4 and TypeScript, shipped as one compiled executable with the dashboard embedded. The MVP ships only that executable.
+- **Post-MVP:** an official Docker image that wraps the same executable. Not before the executable works and 1.0 ships.
 - **Why:** the same stack and release model as iglo.monitor and iglo.email. Bun's server, SQLite, S3 client, password hashing and bundler cover most of what upstream needs third-party Go modules for. PocketBase is also one executable, so the deployment model does not change.
 
 ## D4. PocketBase's data format, unchanged and two-way
 
-- **Decision:** read and write `pb_data` exactly as PocketBase v0.40.6 does. No iglo-specific tables, columns, `_params` rows or `_migrations` rows.
+- **Decision:** read and write `pb_data` exactly as PocketBase v0.41.0 does. No iglo-specific tables, columns, `_params` rows or `_migrations` rows.
 - **Why:** moving without migrations was the main requirement. Keeping the format two-way also makes rollback trivial and lets upstream be the test oracle on the same files.
 - **Considered:** an own schema with an importer. Rejected: it turns every move into a migration project and removes the easy rollback.
 
@@ -40,7 +41,7 @@ Decided 2026-10-27.
 
 ## D6. Upstream's binary is the specification
 
-- **Decision:** API behavior is defined by what upstream v0.40.6 does, checked by the differential suite, not by the docs or by reading code.
+- **Decision:** API behavior is defined by what upstream v0.41.0 does, checked by the differential suite, not by the docs or by reading code.
 - **Why:** "100% compatible" can only be shown by comparison. Upstream's ~720 API scenarios give a large head start.
 
 ## D7. Reuse upstream's dashboard
@@ -77,7 +78,7 @@ Provisional until the M0 spike.
 
 ## D12. Accept only v0.40.x data
 
-- **Decision:** refuse to open data that has not run all v0.40.6 system migrations; tell the user to run PocketBase v0.40.6 on it once.
+- **Decision:** refuse to open data that has not run all v0.41.0 system migrations; tell the user to run PocketBase v0.41.0 on it once. v0.40.x data has the same system migrations (the newest, `1778828400_normalize_indexes.go`, shipped in v0.38.1) and opens directly.
 - **Why:** upstream's historical upgrade migrations (v0.22 → v0.23 and later) are large, one-off and well tested upstream. Porting them adds risk for no lasting value.
 
 ## D13. No Effect, plain TypeScript
@@ -95,17 +96,17 @@ Provisional until the M0 spike.
 Decided 2026-10-27, after reading a production backup.
 
 - **Decision:** the first data to be moved is treated as standard PocketBase v0.40.x data: the stock binary, no `pb_hooks`, no custom Go build, files on local storage, backups uploaded to S3.
-- **Checked in the backup:** all v0.40.6 system migrations are recorded (the newest is `1778828400_normalize_indexes.go`); `s3.enabled` is false and files are under `storage/`; `backups.s3.enabled` is true with a weekly schedule.
+- **Checked in the backup:** all v0.41.0 system migrations are recorded (the newest is `1778828400_normalize_indexes.go`); `s3.enabled` is false and files are under `storage/`; `backups.s3.enabled` is true with a weekly schedule.
 - **`pb_migrations` rows:** the data also records 58 `*.js` migrations. Upstream's dashboard wrote them automatically on every schema change (`--automigrate`); nobody wrote them by hand. They are not needed to run: the schema itself lives in `_collections` and the tables. iglo.base keeps the rows, ignores them ([Data compatibility](03-data-compatibility.md#migrations)) and does not write migration files when the schema changes (D5).
 - **Consequence:** S3 backups are tested early in M5, before S3 file storage.
 
-## D16. Upstream releases after v0.40.6: fixes only, by hand
+## D16. Upstream releases after v0.41.0: fixes only, by hand
 
 Decided 2026-10-27.
 
 - **Decision:** review each upstream release by hand. Port security fixes and bug fixes that do not change the data format or the API. Data-format and API changes are not followed in 1.x; following them would be a new compatibility target and a new major version.
-- **Why:** the compatibility contracts are fixed to v0.40.6. Following upstream automatically is impossible across languages (D1), and following its format changes would break rollback to v0.40.6.
-- **Consequence:** apps that upgrade their SDKs past the v0.40 era may expect newer server behavior. That is checked per app, not followed by default.
+- **Why:** the compatibility contracts are fixed to v0.41.0. Following upstream automatically is impossible across languages (D1), and following its format changes would break rollback to v0.41.0.
+- **Consequence:** apps that upgrade their SDKs past the v0.41 era may expect newer server behavior. That is checked per app, not followed by default.
 
 ## D17. Dashboard branding: iglo.base only
 
@@ -134,6 +135,19 @@ Decided 2026-10-27.
 
 Decided 2026-10-27.
 
-- **Decision:** compatibility is proven by upstream's test suite and the differential suite (D6). In addition, a copy of a real production backup is used locally in M7 to rehearse the move to iglo.base and the rollback to PocketBase v0.40.6. The first instance runs locally.
+- **Decision:** compatibility is proven by upstream's test suite and the differential suite (D6). In addition, a copy of a real production backup is used locally in M7 to rehearse the move to iglo.base and the rollback to PocketBase v0.41.0. The first instance runs locally.
 - **Handling:** the copy is production data. It is kept outside the repository and never committed, quoted or uploaded. Before either server is started on it, the copy's settings are changed so nothing leaves the machine: scheduled backups off, backup S3 upload off, SMTP pointed at Mailpit. Backups are never uploaded to the bucket the production settings name. If an S3 run is needed, the owner provides a separate test bucket; otherwise the local S3 test server is used.
 - **Why:** real data catches field and rule combinations no fixture has. Production settings also schedule outbound work (S3 uploads, email) that a local run must not trigger.
+
+## D21. Baseline moved from v0.40.6 to v0.41.0
+
+Decided 2026-10-27, before any code.
+
+- **Decision:** port PocketBase v0.41.0 (`f6baa0c43f379de21cd806de97ad6a2b8ca97b83`, 2026-10-26) instead of v0.40.6. Source: `https://ganigeorgiev.com/git/pocketbase/pocketbase`, tag `v0.41.0`.
+- **Checked:** the 11 commits between the tags change no system migration (comments only) and no REST endpoint, field or status code. The fexpr, dbx and ozzo-validation bumps only change their import paths to the new host. What changed for iglo.base:
+  - `PB_THUMBS_MAX_SOURCE_PIXELS` defaults to `100 << 20` (104,857,600) instead of `250 << 20`;
+  - mail: SMTP no longer sets an empty HTML part; `sendmail` sends `text/plain` when there is no HTML, adds custom headers and a random `Message-ID`;
+  - the `serve` banner uses `>` lines instead of tree characters;
+  - the dashboard dropped dprint from its build and has small UI fixes.
+  The rest (module move, `Event.Extra`, `ServeEvent.StartBannerFunc`, goja and JS VM types) belongs to the extension surface and is not ported.
+- **Why:** it is the current upstream release, so the port starts current at no format cost. Data written by v0.40.x opens unchanged, and rollback works to v0.41.0 or v0.40.x.

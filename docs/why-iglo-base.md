@@ -29,11 +29,11 @@ In the iglo.\* projects, custom logic belongs in the app that owns it, talking t
 
 ### Upstream moved and is pre-1.0
 
-On 2026-10-23 PocketBase v0.40.6 was announced as most likely the last release on GitHub. The repository is archived and development continues on its author's own host. PocketBase is still pre-1.0 and says that full backward compatibility is not guaranteed. iglo.base pins one version's API and data format and keeps it.
+On 2026-10-23 PocketBase v0.40.6 was announced as most likely the last release on GitHub. The repository is archived and development continues on its author's own host, where v0.41.0 followed on 2026-10-26. PocketBase is still pre-1.0 and says that full backward compatibility is not guaranteed. iglo.base pins one version's API and data format and keeps it.
 
 ## Scope
 
-iglo.base aims for exact parity with PocketBase v0.40.6 for everything that is not an extension mechanism; see [Scope](design/01-scope.md). It does not add features in v1. It is not a Firebase or Supabase replacement and does not plan Postgres, multi-node or multi-tenant modes.
+iglo.base aims for exact parity with PocketBase v0.41.0 for everything that is not an extension mechanism; see [Scope](design/01-scope.md). It does not add features in v1. It is not a Firebase or Supabase replacement and does not plan Postgres, multi-node or multi-tenant modes.
 
 ## Credit and independence
 

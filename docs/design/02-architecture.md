@@ -41,7 +41,7 @@ Graceful shutdown: on SIGTERM/SIGINT, stop accepting requests, close realtime st
 
 ## Performance bar
 
-Measured against upstream PocketBase v0.40.6 on the same machine and data:
+Measured against upstream PocketBase v0.41.0 on the same machine and data:
 
 - records list, view and create p50/p95 latency within 1.5× of upstream at 50 concurrent clients;
 - 1,000 open realtime connections with fan-out of record changes;
@@ -120,4 +120,4 @@ Small and justified. v1 runtime dependencies:
 
 Built-in Bun or Web APIs cover the rest: bcrypt (`Bun.password`), HMAC-SHA256 JWTs and AES-GCM (Web Crypto), S3 (`Bun.S3Client`), gzip (`Bun.gzipSync` and streams), zip for backups (in-house, store or deflate via `Bun.deflateSync`, or a small dependency if justified), MIME sniffing (upstream uses `gabriel-vasile/mimetype`; the signatures needed for `mimeTypes` validation are ported, or a small library such as `file-type` is justified in a decision record), cron expressions (ported, about 500 lines upstream).
 
-The admin dashboard has its own build-time dependencies (Vite, dprint, Leaflet, TinyMCE, the PocketBase JS SDK), kept in `ui/` as upstream has them.
+The admin dashboard has its own build-time dependencies (Vite, Leaflet, TinyMCE, the PocketBase JS SDK), kept in `ui/` as upstream has them.

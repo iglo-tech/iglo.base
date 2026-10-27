@@ -47,7 +47,7 @@ Each provider is tested against a local mock that replays upstream's test fixtur
 
 ## Email templates
 
-Placeholders as upstream: `{APP_NAME}`, `{APP_URL}`, `{TOKEN}`, `{OTP}`, `{OTP_ID}`, `{ALERT_INFO}`, and `{RECORD:<field>}`. Defaults are upstream's v0.40.6 templates, including the auth-alert template update applied by system migration `1763020353_update_default_auth_alert_templates.go`. Templates are plain string replacement, not a template language, as upstream.
+Placeholders as upstream: `{APP_NAME}`, `{APP_URL}`, `{TOKEN}`, `{OTP}`, `{OTP_ID}`, `{ALERT_INFO}`, and `{RECORD:<field>}`. Defaults are upstream's v0.41.0 templates, including the auth-alert template update applied by system migration `1763020353_update_default_auth_alert_templates.go`. Templates are plain string replacement, not a template language, as upstream.
 
 ## Rate limits and abuse
 
