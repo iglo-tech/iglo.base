@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| none | | | | |
+| M0.4 | worker | branch `task/M0.4-db-layer` | 0 | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
 
 ## Done
 
@@ -37,6 +37,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-27 (M0.1): the pre-commit hook is enabled through `git config core.hooksPath .githooks`, which is shared by every worktree of the local clone.
 
 - 2026-10-27 (M0.3, after round 3): the lead decided with no fourth council round. Every reproduced XML, JSON, form and case-folding mismatch is fixed in the PR. Temporary gap: quoted multipart boundaries that contain `;`, `"` or `\` are rejected by Bun's `formData()` but accepted upstream. M0.8 (multipart spike) and M3.2 own that path; M3.2 must close the gap or list it in `04-api-compatibility.md`.
+
+- 2026-10-27 (M0.4 brief): M0.4 builds src/db and its tests but does not wire the databases into `serve`. M1.2 does that together with the system migrations, so `serve` never creates an unmigrated pb_data. Reads run on the main-thread connection behind upstream's concurrent/nonconcurrent API until the M0.6 spike decides D8. dbx v1.13.0 is read from the pinned checkout `/home/t3-code/upstream/dbx`.
 
 ## Paused until
 
