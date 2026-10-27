@@ -1,0 +1,69 @@
+{
+  "upstream": {
+    "repository": "https://ganigeorgiev.com/git/pocketbase/pocketbase",
+    "tag": "v0.41.0",
+    "commit": "f6baa0c43f379de21cd806de97ad6a2b8ca97b83",
+    "downloadBase": "https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.41.0",
+    "platforms": {
+      "linux-x64": {
+        "archive": "pocketbase_0.41.0_linux_amd64.zip",
+        "sha256": "89c8de9cc1bc7f2c1e2f3c4290927b450ef1719713677e982b9c3dc175bc60af",
+        "binaryPath": "pocketbase"
+      },
+      "linux-arm64": {
+        "archive": "pocketbase_0.41.0_linux_arm64.zip",
+        "sha256": "d547713b4833905e043516fb92b6f7dac3be928fbcd5c15f387333216bf5cb64",
+        "binaryPath": "pocketbase"
+      },
+      "darwin-arm64": {
+        "archive": "pocketbase_0.41.0_darwin_arm64.zip",
+        "sha256": "6d78c270adfeb1076fe6eb236e270994ba1ab84dfa0c0e7b9b30db7740b1982c",
+        "binaryPath": "pocketbase"
+      }
+    }
+  },
+  "mailpit": {
+    "version": "v1.32.0",
+    "repository": "https://github.com/axllent/mailpit",
+    "downloadBase": "https://github.com/axllent/mailpit/releases/download/v1.32.0",
+    "platforms": {
+      "linux-x64": {
+        "archive": "mailpit-linux-amd64.tar.gz",
+        "sha256": "4b5993c978e8604c70d43927e2ad103b311bba3b1822fa0cf1d4ee4ec890a93c",
+        "binaryPath": "mailpit"
+      },
+      "linux-arm64": {
+        "archive": "mailpit-linux-arm64.tar.gz",
+        "sha256": "e1e45d1dc72bd497fb262a1e4100178eee057c42c5fc36d143eb8621769e1137",
+        "binaryPath": "mailpit"
+      },
+      "darwin-arm64": {
+        "archive": "mailpit-darwin-arm64.tar.gz",
+        "sha256": "23709bd727f20da2290de6a2a40c4685c48a3127586d77370efd1a3a595f9ef6",
+        "binaryPath": "mailpit"
+      }
+    }
+  },
+  "versitygw": {
+    "version": "v1.10.0",
+    "repository": "https://github.com/versity/versitygw",
+    "downloadBase": "https://github.com/versity/versitygw/releases/download/v1.10.0",
+    "platforms": {
+      "linux-x64": {
+        "archive": "versitygw_v1.10.0_Linux_x86_64.tar.gz",
+        "sha256": "8f9869752939d4dc9cfe1bddb935a02cc6610e95319a3a9fc2947d2a6ebd2c91",
+        "binaryPath": "versitygw_v1.10.0_Linux_x86_64/versitygw"
+      },
+      "linux-arm64": {
+        "archive": "versitygw_v1.10.0_Linux_arm64.tar.gz",
+        "sha256": "6307b377caee30c1f0fc8950e62ba684e0440a92f8e6a3a06bee1b83a857f03a",
+        "binaryPath": "versitygw_v1.10.0_Linux_arm64/versitygw"
+      },
+      "darwin-arm64": {
+        "archive": "versitygw_v1.10.0_Darwin_arm64.tar.gz",
+        "sha256": "2234e3151e8f1ab8c143cdab541a91f10e394c75670a43ab46ee89195a3d8707",
+        "binaryPath": "versitygw_v1.10.0_Darwin_arm64/versitygw"
+      }
+    }
+  }
+}

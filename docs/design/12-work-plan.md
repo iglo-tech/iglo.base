@@ -48,7 +48,7 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 
 ### Rules for workers
 
-- Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`/home/t3-code/upstream/pocketbase` until M0.2 adds the fetch script), never from memory.
+- Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
 - Hand bulk mechanical work to Claude Haiku 5.5 subagents, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
 - If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.

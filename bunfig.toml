@@ -1,0 +1,4 @@
+# test/differential needs the reference tools in .upstream/, so plain `bun test`
+# skips it. `bun run test:reference` runs it after `bun run upstream:prepare`.
+[test]
+pathIgnorePatterns = ["test/differential/**", ".upstream/**"]
