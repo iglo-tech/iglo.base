@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.4 | council | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 1 (head `7072d27`; check and reference-ubuntu green, macOS was still queued when the council started; it must be green before merge) | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
+| M0.4 | fix | [#4](https://github.com/iglo-tech/iglo.base/pull/4) | 1 → fix (round 1 at `7072d27`: both CHANGES. Opus: the contract test fails on macOS CI. Sol: prepared statements outlive their transaction, integers are not read losslessly, rows are read eagerly, dbx copyright notice. An Opus fixer is working on all five; next: council round 2) | [Brief](briefs/M0.4.md). Worker: Claude Opus 5.5, medium. Chosen as the next critical-path task (M1 depends on it) |
 
 ## Done
 
@@ -40,7 +40,9 @@ Decisions and plan changes made by agents while the owner was away.
 
 - 2026-10-27 (M0.4 brief): M0.4 builds src/db and its tests but does not wire the databases into `serve`. M1.2 does that together with the system migrations, so `serve` never creates an unmigrated pb_data. Reads run on the main-thread connection behind upstream's concurrent/nonconcurrent API until the M0.6 spike decides D8. dbx v1.13.0 is read from the pinned checkout `/home/t3-code/upstream/dbx`.
 
-- 2026-10-27 (M0.4 PR): the lead accepted the worker's open points. `bun:sqlite` cannot set SQLITE_DBCONFIG_DEFENSIVE (`_defensive=1`); this is documented in `03-data-compatibility.md` and no native addon is added. The fixture tests live in `test/differential/db/`, because only `test:reference` prepares upstream's `tests/data`. The one-line fix to `05-rules-and-filters.md` is accepted. Reading integers above 2^53 without losing precision is left for M1.8 to decide.
+- 2026-10-27 (M0.4 PR): the lead accepted the worker's open points. `bun:sqlite` cannot set SQLITE_DBCONFIG_DEFENSIVE (`_defensive=1`); this is documented in `03-data-compatibility.md` and no native addon is added. The fixture tests live in `test/differential/db/`, because only `test:reference` prepares upstream's `tests/data`. The one-line fix to `05-rules-and-filters.md` is accepted. Reading integers above 2^53 without losing precision was first left for M1.8; after council round 1, the lead decided that the db layer reads integers losslessly: `number` within the safe range, `bigint` outside it.
+
+- 2026-10-27 (M0.4): dbx v1.13.0 is MIT (Copyright (c) 2016, Qiang Xue). Its notice is kept with the translated files.
 
 ## Paused until
 
