@@ -1,0 +1,27 @@
+#!/bin/sh
+# Formats staged files with oxfmt and re-stages them.
+# A file that also has unstaged changes is only checked, so a partial
+# staging is never committed with unrelated hunks.
+set -eu
+
+files=$(git diff --cached --name-only --diff-filter=ACMR -z | tr '\0' '\n' | grep -E '\.(ts|tsx|js|mjs|cjs|json|jsonc|yml|yaml|toml|css|html)$' || true)
+[ -z "$files" ] && exit 0
+
+partial=$(git diff --name-only | tr '\n' ' ')
+status=0
+echo "$files" | while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  case " $partial " in
+    *" $file "*)
+      bunx oxfmt --check "$file" >/dev/null || {
+        echo "pre-commit: $file is not formatted and has unstaged changes; run 'bun run format'" >&2
+        exit 1
+      }
+      ;;
+    *)
+      bunx oxfmt "$file" >/dev/null
+      git add -- "$file"
+      ;;
+  esac
+done || status=1
+exit $status

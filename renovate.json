@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "description": "One PR for all dev dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "dev dependencies"
+    },
+    {
+      "description": "Keep the Bun version in packageManager and engines together",
+      "matchPackageNames": ["bun"],
+      "groupName": "bun"
+    }
+  ]
+}

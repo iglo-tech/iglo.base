@@ -1,0 +1,26 @@
+{
+  "name": "iglo.base",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --deny-warnings",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "build": "bun build --compile src/main.ts --outfile dist/iglo-base",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build",
+    "hooks:install": "sh scripts/install-git-hooks.sh"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "packageManager": "bun@1.4.4"
+}

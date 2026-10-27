@@ -61,6 +61,17 @@ The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker f
 
 ## Verification
 
-Until the M0 skeleton exists, changes are documentation only: check links, file names and `git status`. After M0, the commands are listed here and in `package.json`.
+Run from the repository root. CI (`.github/workflows/ci.yml`) runs the same commands.
+
+```sh
+bun install --frozen-lockfile   # install
+bun run lint                    # oxlint --deny-warnings
+bun run format:check            # oxfmt --check (bun run format writes)
+bun run typecheck               # tsc --noEmit
+bun run test                    # bun test; builds the executable and tests it
+bun run build                   # bun build --compile src/main.ts --outfile dist/iglo-base
+```
+
+`bun run check` runs all of them after install. `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
 
 Changes to the database access layer, filters, realtime or file handling must include before/after measurements, stored under `docs/perf/`.

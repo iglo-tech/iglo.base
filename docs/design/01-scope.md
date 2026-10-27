@@ -38,9 +38,28 @@ Not removed, because they are product features, not extension mechanisms:
 
 **Data from deployments that used hooks or migrations is still compatible.** The hooks simply stop running. Logic that lived in hooks must move into the app (usually a small service using the API and realtime). The [cutover checklist](03-data-compatibility.md#cutover-checklist) covers it.
 
+### Exact CLI messages
+
+These texts are what the executable prints (on stderr, after upstream's `log.Fatal` timestamp, exit code 1). Each removed flag is rejected in every form (`--flag`, `--flag=value`, `--flag value`), before or after the command, unless it follows `--`:
+
+```text
+flag --<name> is not supported: iglo.base has no JavaScript hooks or user migrations. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-the-extension-surface
+command "migrate" is not supported: iglo.base has no user migrations; system migrations run automatically at startup. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-the-extension-surface
+```
+
+When `pb_hooks` or `pb_migrations` exists next to `pb_data` (upstream's defaults, `pb_data/../pb_hooks` and `pb_data/../pb_migrations`), `serve` logs one line on stderr and starts normally:
+
+```text
+<time> WARN <dir> [and <dir>] is|are ignored: iglo.base does not run JavaScript hooks or user migrations. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-the-extension-surface
+```
+
 ## Removed: the `update` command
 
-Upstream's `update` command (`plugins/ghupdate`) replaces the executable with a newer release. iglo.base runs inside a container image that is rebuilt on every deploy, so the command is not ported ([D19](10-decisions.md#d19-drop-the-update-command)). `iglo.base update` fails with an error that names this document.
+Upstream's `update` command (`plugins/ghupdate`) replaces the executable with a newer release. iglo.base runs inside a container image that is rebuilt on every deploy, so the command is not ported ([D19](10-decisions.md#d19-drop-the-update-command)). `iglo.base update` fails with an error that names this document:
+
+```text
+command "update" is not supported: iglo.base does not replace its own executable; deploy a new release instead. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-the-update-command
+```
 
 ## Kept: everything else
 
