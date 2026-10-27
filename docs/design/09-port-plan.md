@@ -53,6 +53,10 @@ After 1.0 (post-MVP): an official Docker image that wraps the same executable ([
 
 Compatibility is proven by running both servers, not by reading code.
 
+### Reference tools
+
+`bun run upstream:prepare` puts the pinned reference tools in `.upstream/` (git-ignored): the v0.41.0 source checkout at `.upstream/pocketbase`, and the host's `pocketbase`, `mailpit` and `versitygw` binaries in `.upstream/bin/`. Each archive is checked against its SHA-256 in `test/differential/upstream.lock`. `bun run test:reference` runs it and the smoke tests in `test/differential/`. Plain `bun test` needs none of this.
+
 ### Differential suite
 
 - A scenario is a sequence of HTTP requests (and realtime subscriptions) plus a fixture. The harness copies the fixture twice, starts upstream v0.41.0 on one copy and iglo.base on the other, sends the same requests to both and compares responses after normalization (IDs, tokens and timestamps compared by format; `json` field values compared as bytes).
