@@ -151,3 +151,12 @@ Decided 2026-10-27, before any code.
   - the dashboard dropped dprint from its build and has small UI fixes.
   The rest (module move, `Event.Extra`, `ServeEvent.StartBannerFunc`, goja and JS VM types) belongs to the extension surface and is not ported.
 - **Why:** it is the current upstream release, so the port starts current at no format cost. Data written by v0.40.x opens unchanged, and rollback works to v0.41.0 or v0.40.x.
+
+## D22. Request paths are normalized by `Bun.serve`
+
+Decided by agents on 2026-10-27, for owner review (M0.3, [PR #3](https://github.com/iglo-tech/iglo.base/pull/3)).
+
+- **Context:** `Bun.serve` resolves `.` and `..` path segments, including percent-encoded `%2e%2e`, in `request.url` before the handler runs. Upstream's Go `ServeMux` answers such paths with a `307` redirect to the cleaned path, and does not treat `%2e%2e` as a dot segment (so `/x/%2e%2e/api/health` is a 404 upstream).
+- **Decision:** keep `Bun.serve` (AGENTS.md stack) and accept the difference: iglo.base answers the resolved path directly. Recorded in [API compatibility](04-api-compatibility.md#deliberate-differences) and checked both ways in `test/differential/router.test.ts`.
+- **Why:** the alternative, serving through Bun's `node:http` to see the raw request target, changes the HTTP stack for every request to match paths that SDKs and browsers never send (they normalize URLs themselves). The resolved path still goes through the same route matching, rules and auth, so no check is skipped; `pb_public` file serving (M5.7) already has to stay inside its root either way.
+- **Revisit:** if a later `Bun.serve` exposes the raw request target, match upstream and remove the row.

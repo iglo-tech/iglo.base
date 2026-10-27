@@ -80,20 +80,26 @@ describe("router", () => {
     test(`${method} ${target}`, () => compare(method, target));
   }
 
-  // Bun.serve resolves "." and ".." segments (also %2e%2e) in the request
-  // URL before the handler sees it, so the 307 redirect to the clean path
-  // never happens: iglo.base answers the resolved path directly. Reported
-  // in the M0.3 PR for the lead; these flip to passing once the raw request
-  // target is available.
-  const dotSegments: [string, string][] = [
-    ["GET", "/api/../api/health"],
-    ["GET", "/api/health/."],
-    ["GET", "/./api/health"],
-    ["GET", "/x/%2e%2e/api/health"],
+  // Deliberate difference D22 (docs/design/04-api-compatibility.md):
+  // Bun.serve resolves "." and ".." segments (also %2e%2e) before the handler
+  // sees the request, so iglo.base answers the resolved path directly where
+  // upstream redirects to the clean path (or, for %2e%2e, does not match).
+  // Each case checks both sides of the recorded difference.
+  const dotSegments: [string, string, string, number][] = [
+    ["GET", "/api/../api/health", "/api/health", 307],
+    ["GET", "/api/health/.", "/api/health/", 307],
+    ["GET", "/./api/health", "/api/health", 307],
+    ["GET", "/x/%2e%2e/api/health", "/api/health", 404],
   ];
-  for (const [method, target] of dotSegments) {
-    test.failing(`${method} ${target} (Bun.serve resolves dot segments)`, () =>
-      compare(method, target),
-    );
+  for (const [method, target, resolved, upstreamStatus] of dotSegments) {
+    test(`${method} ${target} (D22: answered as ${resolved})`, async () => {
+      const [want, got, gotResolved] = await Promise.all([
+        rawRequest(upstream.url, method, target),
+        rawRequest(iglo.url, method, target),
+        rawRequest(iglo.url, method, resolved),
+      ]);
+      expect(want.status).toBe(upstreamStatus);
+      expect(normalize(got)).toEqual(normalize(gotResolved));
+    });
   }
 });
