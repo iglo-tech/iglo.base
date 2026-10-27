@@ -32,6 +32,7 @@ import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
 import { SqliteBuilder } from "@/db/dbx/builder-sqlite";
 import { StandardBuilder } from "@/db/dbx/builder-standard";
 import {
+  Stmt,
   toExecResult,
   type ExecLogFunc,
   type ExecResult,
@@ -69,8 +70,8 @@ class ConnExecutor implements Executor {
     return this.conn.query(sql);
   }
 
-  prepare(sql: string): Statement {
-    return this.conn.prepare(sql);
+  prepare(sql: string): Stmt {
+    return new Stmt(this.conn.prepare(sql));
   }
 }
 

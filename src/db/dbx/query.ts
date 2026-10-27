@@ -55,8 +55,33 @@ export interface Executor {
   exec(sql: string, args: SQLQueryBindings[]): ExecResult;
   // a cached statement for a single query
   statement(sql: string): Statement;
-  // Prepare creates a prepared statement that the caller finalizes
-  prepare(sql: string): Statement;
+  // Prepare creates a prepared statement that the caller closes
+  prepare(sql: string): Stmt;
+}
+
+// sql.Stmt: a prepared statement. A statement prepared in a transaction is
+// closed when the transaction ends (sql.Tx closes its statements on Commit
+// and Rollback), so it cannot run outside it.
+export class Stmt {
+  private closed = false;
+
+  constructor(private readonly stmt: Statement) {}
+
+  // the statement to run; throws once the statement is closed
+  use(): Statement {
+    if (this.closed) {
+      throw new Error("sql: statement is closed");
+    }
+    return this.stmt;
+  }
+
+  close(): void {
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
+    this.stmt.finalize();
+  }
 }
 
 // ExecHookFunc executes before op allowing custom handling like auto fail/retry.
@@ -92,7 +117,7 @@ export class Query {
   private rawSql: string;
   private readonly placeholders: string[];
   private boundParams: Params = {};
-  private stmt: Statement | null = null;
+  private stmt: Stmt | null = null;
 
   private execHook: ExecHookFunc | null = null;
   private oneHook: OneHookFunc | null = null;
@@ -200,7 +225,7 @@ export class Query {
     }
     const stmt = this.stmt;
     this.stmt = null;
-    stmt.finalize();
+    stmt.close();
   }
 
   // Bind sets the parameters that should be bound to the SQL statement.
@@ -234,7 +259,7 @@ export class Query {
       if (this.stmt === null) {
         result = this.executor.exec(this.rawSql, args);
       } else {
-        result = toExecResult(this.stmt.run(...args));
+        result = toExecResult(this.stmt.use().run(...args));
       }
       return result;
     } catch (e) {
@@ -317,7 +342,7 @@ export class Query {
     const start = performance.now();
     let err: unknown = null;
     try {
-      const stmt = this.stmt ?? this.executor.statement(this.rawSql);
+      const stmt = this.stmt?.use() ?? this.executor.statement(this.rawSql);
       return new Rows(stmt, args);
     } catch (e) {
       err = e;

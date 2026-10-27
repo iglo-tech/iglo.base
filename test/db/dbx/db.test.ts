@@ -252,3 +252,39 @@ function deferredFKDB(): DB {
   `);
   return db;
 }
+
+// Go's sql.Tx closes the statements prepared in it when it ends, so a
+// prepared query cannot run outside its transaction.
+describe("prepared queries end with their transaction", () => {
+  for (const end of ["commit", "rollback"] as const) {
+    test(end, () => {
+      const db = getPreparedDB();
+      const tx = db.begin();
+      const update = tx.newQuery("UPDATE item SET name={:name} WHERE id=1").prepare();
+      const select = tx.newQuery("SELECT name FROM item WHERE id=1").prepare();
+      update.bind({ name: "in tx" }).execute();
+      expect(select.row()).toEqual(["in tx"]);
+      tx[end]();
+
+      expect(() => update.bind({ name: "after tx" }).execute()).toThrow("sql: statement is closed");
+      expect(() => select.row()).toThrow("sql: statement is closed");
+      expect(() => select.one()).toThrow("sql: statement is closed");
+      expect(() => select.all()).toThrow("sql: statement is closed");
+      expect(() => select.column()).toThrow("sql: statement is closed");
+      update.close();
+      select.close();
+
+      const [name] = db.newQuery("SELECT name FROM item WHERE id=1").row();
+      expect(name).toBe(end === "commit" ? "in tx" : "The Go Programming Language");
+    });
+  }
+
+  test("a statement prepared on the connection outlives a transaction", () => {
+    const db = getPreparedDB();
+    const q = db.newQuery("SELECT COUNT(*) FROM item").prepare();
+    const tx = db.begin();
+    tx.commit();
+    expect(q.row()).toEqual([5]);
+    q.close();
+  });
+});

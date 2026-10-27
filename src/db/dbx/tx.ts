@@ -21,13 +21,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Upstream: pocketbase/dbx v1.13.0 tx.go, with the parts of Go's sql.Tx it
-// relies on: a transaction is BEGIN/COMMIT/ROLLBACK on the connection, and
-// using it after Commit or Rollback fails with sql.ErrTxDone.
+// relies on: a transaction is BEGIN/COMMIT/ROLLBACK on the connection,
+// using it after Commit or Rollback fails with sql.ErrTxDone, and the
+// statements prepared in it are closed when it ends.
 
 import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
 
 import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
-import { toExecResult, type ExecResult, type Executor } from "@/db/dbx/query";
+import { Stmt, toExecResult, type ExecResult, type Executor } from "@/db/dbx/query";
 
 // sql.ErrTxDone
 export class TxDoneError extends Error {
@@ -39,6 +40,7 @@ export class TxDoneError extends Error {
 
 export class TxExecutor implements Executor {
   done = false;
+  private readonly stmts: Stmt[] = [];
 
   constructor(readonly conn: Database) {}
 
@@ -52,9 +54,21 @@ export class TxExecutor implements Executor {
     return this.conn.query(sql);
   }
 
-  prepare(sql: string): Statement {
+  prepare(sql: string): Stmt {
     this.checkDone();
-    return this.conn.prepare(sql);
+    const stmt = new Stmt(this.conn.prepare(sql));
+    this.stmts.push(stmt);
+    return stmt;
+  }
+
+  // marks the transaction done and closes its prepared statements
+  // (sql.Tx.closePrepared)
+  end(): void {
+    this.checkDone();
+    this.done = true;
+    for (const stmt of this.stmts.splice(0)) {
+      stmt.close();
+    }
   }
 
   private checkDone(): void {
@@ -105,9 +119,6 @@ export class Tx extends EmbeddedBuilder {
   }
 
   private end(): void {
-    if (this.tx.done) {
-      throw new TxDoneError();
-    }
-    this.tx.done = true;
+    this.tx.end();
   }
 }
