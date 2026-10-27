@@ -152,14 +152,18 @@ export class HttpRequest {
     if (ct === "" || "err" in parsedType || parsedType.mediaType !== "multipart/form-data") {
       return new Error("request Content-Type isn't multipart/form-data");
     }
-    if (!parsedType.params.has("boundary")) {
+    const boundary = parsedType.params.get("boundary");
+    if (boundary === undefined) {
       return new Error("no multipart boundary param in Content-Type");
     }
 
     let formData: [string, string | File][];
     try {
       const bytes = await readAll(this.body);
-      const parsed = await new Response(bytes, { headers: { "Content-Type": ct } }).formData();
+      // the parsed (and RFC 2231 decoded) boundary, not the raw header
+      const parsed = await new Response(bytes, {
+        headers: { "Content-Type": `multipart/form-data; boundary=${quoteParamValue(boundary)}` },
+      }).formData();
       formData = [];
       parsed.forEach((value, key) => {
         formData.push([key, value as string | File]);
@@ -191,6 +195,15 @@ export class HttpRequest {
 
     return parseFormErr;
   }
+}
+
+// a media type parameter value: a token as it is, anything else as a
+// quoted-string
+function quoteParamValue(value: string): string {
+  if (value !== "" && consumeToken(value)[1] === "") {
+    return value;
+  }
+  return `"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 
 function appendValue(values: Values, key: string, value: string): void {
@@ -340,8 +353,9 @@ function consumeMediaParam(v: string): [string, string, string] {
 }
 
 // mime.ParseMediaType: the lower-cased media type and its parameters, or an
-// error for a malformed type or parameter list. RFC 2231 continuations are
-// only checked for duplicates, not decoded (no caller reads them).
+// error for a malformed type or parameter list. RFC 2231 extended and
+// continued parameters ("name*=utf-8''%41", "name*0=", "name*1*=") are
+// decoded into params under their base name.
 export function parseMediaType(
   v: string,
 ): { mediaType: string; params: Map<string, string> } | { err: Error } {
@@ -393,5 +407,104 @@ export function parseMediaType(
     pmap.set(key, value);
     rest = next;
   }
+
+  // Stitch together any continuations or things with stars
+  // (i.e. RFC 2231 things with stars: "foo*0" or "foo*")
+  for (const [key, pieceMap] of continuation) {
+    const singlePart = pieceMap.get(`${key}*`);
+    if (singlePart !== undefined) {
+      const decoded = decode2231Enc(singlePart);
+      if (decoded !== undefined) {
+        params.set(key, decoded);
+      }
+      continue;
+    }
+
+    let buf = "";
+    let valid = false;
+    for (let n = 0; ; n++) {
+      const simplePart = `${key}*${n}`;
+      const simple = pieceMap.get(simplePart);
+      if (simple !== undefined) {
+        valid = true;
+        buf += simple;
+        continue;
+      }
+      const encoded = pieceMap.get(`${simplePart}*`);
+      if (encoded === undefined) {
+        break;
+      }
+      valid = true;
+      if (n === 0) {
+        buf += decode2231Enc(encoded) ?? "";
+      } else {
+        buf += percentHexUnescape(encoded) ?? "";
+      }
+    }
+    if (valid) {
+      params.set(key, buf);
+    }
+  }
+
   return { mediaType, params };
+}
+
+// mime decode2231Enc: an RFC 2231 "charset'language'pct-encoded" value;
+// undefined for a missing part or a charset other than utf-8 and us-ascii.
+function decode2231Enc(v: string): string | undefined {
+  const first = v.indexOf("'");
+  if (first < 0) {
+    return undefined;
+  }
+  const charset = v.slice(0, first).toLowerCase();
+  const rest = v.slice(first + 1);
+  // the language part is ignored
+  const second = rest.indexOf("'");
+  if (second < 0) {
+    return undefined;
+  }
+  if (charset !== "us-ascii" && charset !== "utf-8") {
+    return undefined; // empty or unsupported encoding
+  }
+  return percentHexUnescape(rest.slice(second + 1));
+}
+
+// mime percentHexUnescape: undefined when a "%" is not followed by two hex
+// digits. The decoded bytes are read as UTF-8, as Go strings are.
+function percentHexUnescape(s: string): string | undefined {
+  // Count %, check that they're well-formed.
+  let percents = 0;
+  for (let i = 0; i < s.length;) {
+    if (s[i] !== "%") {
+      i++;
+      continue;
+    }
+    percents++;
+    if (i + 2 >= s.length || !isHex(s[i + 1] as string) || !isHex(s[i + 2] as string)) {
+      return undefined;
+    }
+    i += 3;
+  }
+  if (percents === 0) {
+    return s;
+  }
+
+  const encoder = new TextEncoder();
+  const bytes: number[] = [];
+  for (let i = 0; i < s.length;) {
+    if (s[i] === "%") {
+      bytes.push(Number.parseInt(s.slice(i + 1, i + 3), 16));
+      i += 3;
+    } else {
+      const cp = s.codePointAt(i) as number;
+      const ch = String.fromCodePoint(cp);
+      bytes.push(...encoder.encode(ch));
+      i += ch.length;
+    }
+  }
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
+function isHex(c: string): boolean {
+  return /^[0-9a-fA-F]$/.test(c);
 }
