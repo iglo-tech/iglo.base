@@ -8,7 +8,7 @@ Updated: 2026-10-27
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.3 | council | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 2 → fix (head `081caa4`; rounds 1–2: both CHANGES; round-2 body-binding findings sent to an Opus fixer; the fixer failed on a rate limit, restart it after the pause) | [Brief](briefs/M0.3.md). Worker: Claude Opus 5.5, medium |
+| M0.3 | council | [#3](https://github.com/iglo-tech/iglo.base/pull/3) | 2 → fix (head `081caa4`; rounds 1–2: both CHANGES; round-2 findings fixed by an Opus fixer at `e191103`, CI green; next: council round 3, the last before the lead decides) | [Brief](briefs/M0.3.md). Worker: Claude Opus 5.5, medium |
 
 ## Done
 
@@ -37,4 +37,4 @@ Decisions and plan changes made by agents while the owner was away.
 
 ## Paused until
 
-Paused until 2026-10-27T22:30:14+01:00 (the M0.3 round-2 fixer hit a Claude API rate limit). The next run restarts the fixer with the same findings on PR #3; see the PR's round-2 council comments.
+Paused until 2026-10-27T22:30:14+01:00 (the M0.3 round-2 fixer hit a Claude API rate limit). The fixer resumed by itself after the limit and finished: PR #3 head `e191103`, CI green, fixes listed in its PR comment. The next run starts council round 3 on that head.
