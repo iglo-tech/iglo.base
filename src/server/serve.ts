@@ -6,7 +6,9 @@
 // pb_data (M0.4), CORS (M5.7), the dashboard (M6.1), the installer (M6.2),
 // automatic HTTPS (M6.3).
 
+import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
+import { isIP } from "node:net";
 
 import { healthCheck } from "@/apis/health";
 
@@ -77,6 +79,25 @@ function lookupTCPService(name: string): number | undefined {
     }
   }
   return services.get(name.toLowerCase());
+}
+
+// Go's net.Listen("tcp", ...) resolves a host name and listens on its first
+// IPv4 address, or on its first address when it has no IPv4 one.
+async function listenHost(host: string): Promise<string> {
+  if (isIP(host) !== 0) {
+    return host;
+  }
+  let addresses: { address: string; family: number }[];
+  try {
+    addresses = await lookup(host, { all: true, verbatim: true });
+  } catch (err) {
+    throw new Error(`listen tcp: lookup ${host}: no such host`, { cause: err });
+  }
+  const chosen = addresses.find((a) => a.family === 4) ?? addresses[0];
+  if (!chosen) {
+    throw new Error(`listen tcp: lookup ${host}: no such host`);
+  }
+  return chosen.address;
 }
 
 // Go's net.SplitHostPort plus the port lookup net.Listen does.
@@ -185,7 +206,9 @@ export async function serve(
   }
 
   const mainAddr = config.httpAddr;
-  const { hostname, port } = parseListenAddr(mainAddr === "" ? ":http" : mainAddr);
+  const parsed = parseListenAddr(mainAddr === "" ? ":http" : mainAddr);
+  const hostname = await listenHost(parsed.hostname);
+  const { port } = parsed;
 
   let server: ReturnType<typeof Bun.serve>;
   try {

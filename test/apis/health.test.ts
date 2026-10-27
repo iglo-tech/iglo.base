@@ -81,6 +81,19 @@ describe("wildcard listen address", () => {
   }
 });
 
+describe("host name listen address", () => {
+  // Go's net.Listen picks the first IPv4 address of a host name
+  test("--http localhost:<port> serves IPv4 loopback", async () => {
+    const named = await startServer([], join(tempDir(), "pb_data"), "localhost");
+    try {
+      const res = await fetch(`${named.url}/api/health`);
+      expect(res.status).toBe(200);
+    } finally {
+      await named.stop();
+    }
+  });
+});
+
 describe("unknown routes", () => {
   for (const [method, path, body] of [
     ["GET", "/", fileNotFoundBody],
