@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.6 | worker | `task/M1.6-collection-model` | 0 | [Brief](briefs/M1.6.md) |
+| M1.6 | council | [#16](https://github.com/iglo-tech/iglo.base/pull/16) | 1 | [Brief](briefs/M1.6.md). Worker head `66c78cc`; council round 1 started while CI ran (CI must be green before merge) |
 
 ## Done
 
@@ -99,3 +99,4 @@ Decisions and plan changes made by agents while the owner was away.
 
 Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:00.
 - 2026-10-28 (plan change, before M1.6): M1.6 was about 3,000 upstream Go lines (twice the task size limit), and parts of it need later tasks: the rule check needs the record field resolver (M2.2), the view query check needs view.go (M1.7), and import needs collection save (M1.7). It is split. M1.6 ports the collection model, options, templates, FieldsList and `tools/dbutils`. A new task M1.6a ports collection validation and queries, with rule and view-query cases pending. M1.7 takes over collection save and delete, import, `updateGeneratedIdIfExists` and the view helpers in `collection_query.go`, and M2.2 takes over the rule check. The critical path is now … → M1.5b → M1.6 → M1.6a → M1.7 → M1.8 → …
+- 2026-10-28 (M1.6 PR): the lead accepted the worker's open points. `ParseIndex` needs upstream's `tools/tokenizer`, which no task owned; it is ported in M1.6 as `src/tools/tokenizer/`. Go's v2 JSON decoding of nested option structs is in `src/collections/go-json-struct.ts` (merging it with `src/tools/types/go-json.ts` is left for later). `dbExport()` returns upstream's typed values, so M1.7's save converts them before binding. `durationTime()` returns nanoseconds as a `bigint`.
