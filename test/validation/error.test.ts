@@ -210,3 +210,19 @@ describe("template subset and API error data", () => {
     );
   });
 });
+
+describe("council round 1 regressions", () => {
+  test("a __proto__ field stays a JSON member", () => {
+    const err = ValidateStruct(Field("__proto__", "", Required)) as Errors;
+    expect(err.error()).toBe("__proto__: cannot be blank.");
+    expect(err.marshalJSON()).toBe(`{"__proto__":"cannot be blank"}`);
+  });
+
+  test("the message is rendered from the current params", () => {
+    const err = Length(1, 3).validate("long") as ErrorObject;
+    expect(err.error()).toBe("the length must be between 1 and 3");
+    err.params().max = 5;
+    expect(err.error()).toBe("the length must be between 1 and 5");
+    expect(err.message).toBe("the length must be between 1 and 5");
+  });
+});

@@ -56,11 +56,18 @@ export class ErrorObject extends globalThis.Error implements Error {
   readonly #params: Record<string, unknown> | null;
 
   constructor(code: string, message: string, params: Record<string, unknown> | null = null) {
-    super(errorText(message, params));
+    super();
     this.name = "ErrorObject";
     this.#code = code;
     this.#message = message;
     this.#params = params;
+    // ozzo's Error() executes the template on every call against the same
+    // params map, so the message follows later changes to params()
+    Object.defineProperty(this, "message", {
+      get: () => errorText(this.#message, this.#params),
+      configurable: true,
+      enumerable: false,
+    });
   }
 
   // SetCode set the error's translation code.
@@ -178,7 +185,8 @@ export class Errors extends ValidationErrors {
 
   // MarshalJSON converts the Errors into a valid JSON.
   marshalJSON(): string {
-    const errs: Record<string, unknown> = {};
+    // a null-prototype object, so that a "__proto__" key stays a member
+    const errs: Record<string, unknown> = Object.create(null);
     for (const [key, err] of Object.entries(this.errors)) {
       if (err instanceof Errors) {
         errs[key] = err;
