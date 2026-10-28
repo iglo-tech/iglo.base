@@ -1,6 +1,6 @@
 // Upstream: ozzo-validation v4.4.1 minmax_test.go
 //
-// Dropped rows (see the reply): t2.6 of TestMin and TestMax (the uint64 name
+// Dropped rows: t2.6 of TestMin and TestMax (the uint64 name
 // in the message: uint and int are both JS integers here) and t4.7 of TestMin
 // (the Go anonymous struct type name "struct {}").
 
