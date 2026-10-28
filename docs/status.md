@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan |
+| M1.1a | worker | `task/M1.1a-regexp-syntax` ([brief](briefs/M1.1a.md)) | 0 | Go `regexp/syntax` parser (go1.27.2), Unicode tables generated from Go's, `RandomStringByRegex` |
 
 ## Done
 
@@ -67,6 +67,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1 brief): the base tools live in `src/tools/<package>/`, mirroring upstream's `tools/` packages; their ported unit tables are allowed as internal tests in `test/tools/`, as for the shared contracts in M0.3. Go dependencies the tools inherit behavior from (spf13/cast v1.10.0, golang-jwt v5.3.1, the Go standard library) are read from shallow GitHub clones in a git-ignored `.upstream/deps/`.
 - 2026-10-28 (M1.1 PR): the lead accepted the worker's open points. `parseJWT` does not check `iat`, as upstream's `ParseJWT` does not; the brief was wrong there, and `parseUnverifiedJWT` does check it. Go zone abbreviations (`MST`) are read as UTC, so only a server whose local zone is not UTC could see a difference. `src/tools/types/go-json.ts` reuses `decodeUTF8Bytes` from `src/server/json-decode.ts`; merging the two JSON readers is left for later. A JS `number` given to `DateTime.scan` is treated as Go's float64 (zero time), while a `bigint` is Unix seconds.
 - 2026-10-28 (M1.1 round 2): the round-1 assumption that the server time zone is UTC is withdrawn. DateTime models Go's UTC, Local and fixed-offset locations, so AddDate follows the local zone's DST rules as upstream does. JSONRaw hands out its exact bytes; writing invalid UTF-8 as TEXT (for example `CAST(? AS TEXT)` with a blob parameter) is carried to M1.8's record write path.
+- 2026-10-28 (M1.1a brief): Go's `regexp/syntax` and `unicode` packages (BSD-3-Clause, The Go Authors) are translated in `src/tools/regexp/syntax/`, and Go's notice goes into `LICENSE`. The Unicode tables are generated from Go's `unicode/tables.go` at go1.27.2, the toolchain the upstream binary was built with, not from JS `\p{…}`. Matching patterns with Go semantics stays with M1.4.
 
 ## Paused until
 
