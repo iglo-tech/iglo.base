@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| none | | | | |
+| M0.6 | worker | branch `task/M0.6-read-path` | 0 | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
 
 ## Done
 
