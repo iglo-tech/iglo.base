@@ -125,7 +125,7 @@ export const generatedKeys = new Map<string, Format>([
 export interface Context {
   start: StartingData;
   // the scenario's request
-  request: Pick<Scenario, "url" | "body">;
+  request: Pick<Scenario, "url" | "body" | "headers">;
 }
 
 // where a value is in a body
@@ -308,11 +308,21 @@ function isApiJson(upstream: ScenarioResponse, context: Context): boolean {
   if (!/^application\/json\b/i.test(type)) {
     return false;
   }
-  return !(requestUrl(context)?.pathname ?? "").startsWith("/api/files/");
+  return !isFileDownload(context);
+}
+
+// GET/HEAD /api/files/{collection}/{record}/{filename} (apis/file.go); the
+// file token endpoint, POST /api/files/token, answers API JSON
+function isFileDownload(context: Context): boolean {
+  const path = requestUrl(context)?.pathname ?? "";
+  return /^\/api\/files\/[^/]+\/[^/]+\/[^/]+$/.test(path);
 }
 
 // whether the scenario's request carries the value: in the URL (raw or
-// percent-decoded), in the raw body, or as a decoded string of a JSON body
+// percent-decoded) or the raw body, or decoded from the body as upstream
+// reads it (tools/router/unmarshal_request_data.go): a JSON string, a
+// urlencoded form name or value, or a multipart part's text, including the
+// strings of a JSON part such as @jsonPayload
 function sent(value: string, { request }: Context): boolean {
   let url = request.url;
   try {
@@ -322,7 +332,42 @@ function sent(value: string, { request }: Context): boolean {
   }
   const body =
     typeof request.body === "string" ? request.body : new TextDecoder().decode(request.body);
-  return url.includes(value) || body.includes(value) || jsonStrings(body).has(value);
+  return url.includes(value) || body.includes(value) || bodyStrings(body, request).has(value);
+}
+
+function bodyStrings(body: string, request: Context["request"]): Set<string> {
+  const found = jsonStrings(body);
+  const type = requestHeader(request, "content-type") ?? "";
+  if (/^application\/x-www-form-urlencoded\b/i.test(type)) {
+    for (const [name, v] of new URLSearchParams(body)) {
+      found.add(name);
+      found.add(v);
+    }
+  }
+  const boundary = /^multipart\/form-data\b.*?;\s*boundary="?([^";]+)"?/i.exec(type)?.[1];
+  if (boundary) {
+    for (const part of body.split(`--${boundary}`)) {
+      const split = part.indexOf("\r\n\r\n");
+      if (split === -1) {
+        continue;
+      }
+      const name = /\bname="([^"]*)"/.exec(part.slice(0, split))?.[1];
+      const content = part.slice(split + 4).replace(/\r\n$/, "");
+      if (name !== undefined) {
+        found.add(name);
+      }
+      found.add(content);
+      for (const s of jsonStrings(content)) {
+        found.add(s);
+      }
+    }
+  }
+  return found;
+}
+
+function requestHeader(request: Context["request"], name: string): string | undefined {
+  const entry = Object.entries(request.headers ?? {}).find(([key]) => key.toLowerCase() === name);
+  return entry?.[1];
 }
 
 // the decoded string values (and member names) of a JSON text, if it is JSON

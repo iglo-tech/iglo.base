@@ -244,3 +244,44 @@ describe("council round 2", () => {
     expect(diff(res('{"a":1}\n'), res('{"a":1}\n'))).toEqual([]);
   });
 });
+
+// Council round 3 on PR #6 (Opus 1, Sol 1 and 2).
+describe("council round 3", () => {
+  test("the file token endpoint answers API JSON with a generated token", () => {
+    expect(
+      diff(res('{"token":"a.b.c"}'), res('{"token":"x.y.z"}'), { url: "/api/files/token" }),
+    ).toEqual([]);
+  });
+
+  test("a value sent percent-encoded in a urlencoded form compares exactly", () => {
+    expect(
+      diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), {
+        url: "/api/collections/demo2/records",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: "id=%61aaaaaaaaaaaaaa&title=review",
+      }),
+    ).toEqual([
+      'body id: different strings: upstream "aaaaaaaaaaaaaaa", iglo.base "bbbbbbbbbbbbbbb"',
+    ]);
+  });
+
+  test("a value sent escaped in a multipart @jsonPayload part compares exactly", () => {
+    const body = [
+      "--b0",
+      'Content-Disposition: form-data; name="@jsonPayload"',
+      "",
+      '{"id":"\\u0061aaaaaaaaaaaaaa"}',
+      "--b0--",
+      "",
+    ].join("\r\n");
+    expect(
+      diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), {
+        url: "/api/collections/demo2/records",
+        headers: { "Content-Type": "multipart/form-data; boundary=b0" },
+        body,
+      }),
+    ).toEqual([
+      'body id: different strings: upstream "aaaaaaaaaaaaaaa", iglo.base "bbbbbbbbbbbbbbb"',
+    ]);
+  });
+});
