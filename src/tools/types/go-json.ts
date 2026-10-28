@@ -85,6 +85,10 @@ export interface MarshalOptions {
   legacy?: boolean;
   // jsontext.AllowInvalidUTF8(true)
   allowInvalidUTF8?: boolean;
+  // jsontext.AllowDuplicateNames(true): duplicate object member names
+  // (in a marshaler's output, or names equal after invalid UTF-8 is
+  // replaced) are written as they are instead of failing
+  allowDuplicateNames?: boolean;
 }
 
 interface EncodeFlags {
@@ -101,7 +105,7 @@ function encodeFlags(opts: MarshalOptions): EncodeFlags {
     escapeForHTML: legacy,
     escapeForJS: legacy,
     allowInvalidUTF8: legacy || opts.allowInvalidUTF8 === true,
-    allowDuplicateNames: legacy,
+    allowDuplicateNames: legacy || opts.allowDuplicateNames === true,
     preserveRawStrings: legacy,
   };
 }

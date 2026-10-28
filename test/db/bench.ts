@@ -143,6 +143,28 @@ withCopy((dataDir) => {
       );
     }
     report("10,000-row select (median of 20)", `${median(samples).toFixed(2)} ms`);
+
+    // the same rows read withExactIntegers (no integer narrowing)
+    const exactSamples: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      exactSamples.push(
+        time(() => {
+          const rows = app
+            .db()
+            .select("id", "title", "n")
+            .from("bench")
+            .limit(10_000)
+            .build()
+            .withExactIntegers()
+            .all();
+          if (rows.length !== 10_000) throw new Error(`got ${rows.length} rows`);
+        }),
+      );
+    }
+    report(
+      "10,000-row select withExactIntegers (median of 20)",
+      `${median(exactSamples).toFixed(2)} ms`,
+    );
   } finally {
     app.close();
   }

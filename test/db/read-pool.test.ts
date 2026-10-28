@@ -90,6 +90,14 @@ test("the async resolvers read on the pool what the synchronous ones read", asyn
   expect(await q().oneAsync()).toEqual({ id: "a", title: "first", n: 2n ** 60n });
   expect(await q().rowAsync()).toEqual(["a", "first", 2n ** 60n]);
   expect(await q().columnAsync()).toEqual(["a", "b"]);
+  // withExactIntegers reaches the pool
+  const exact = () => q().build().withExactIntegers();
+  expect(await exact().allAsync()).toEqual([
+    { id: "a", title: "first", n: 2n ** 60n },
+    { id: "b", title: "second", n: 7n },
+  ]);
+  expect(await exact().allAsync()).toEqual(exact().all());
+  expect(await exact().rowAsync()).toEqual(["a", "first", 2n ** 60n]);
   expect(
     await q()
       .where(new HashExp({ id: "missing" }))
