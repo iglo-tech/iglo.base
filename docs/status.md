@@ -4,11 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-28
 
+**Paused until 2026-10-28T22:30:42Z** (Claude API rate limit on the M2.1 Opus council review).
+
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.1 | council | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 2 | [Brief](briefs/M2.1.md). Round 1 at `352cbe1`: both CHANGES (numeric filter literals bound as INTEGER instead of upstream's float64 REAL). Fixed by an Opus fixer at `e832407` with a `Float64` dbx param (bound as `+CAST(? AS REAL)`; additive, lead-approved; 23 new reference cases fail without it). Council round 2 started while CI ran |
+| M2.1 | council | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 2 | [Brief](briefs/M2.1.md). Round 1 at `352cbe1`: both CHANGES (numeric filter literals bound as INTEGER instead of REAL). Fixed at `e832407` with a `Float64` dbx param. Round 2: Sol APPROVE at `e832407`, CI green; the Opus round-2 review failed with a Claude rate limit before posting. **Next: start a fresh Opus council review of `e832407`**; merge if it approves |
 
 ## Done
 
