@@ -284,6 +284,8 @@ export class machine {
   pool: thread[] = []; // pool of available threads
   matched = false; // whether a match was found
   matchcap: number[] = []; // capture information for the match
+  addStack: number[] = []; // add's pending pcs and capture restores
+  addSaved: (thread | null)[] = []; // add's threads to resume after a Capture
 
   constructor(p: Prog) {
     this.p = p;
@@ -499,6 +501,15 @@ export class machine {
   // It also recursively adds an entry for all instructions reachable from pc by following
   // empty-width conditions satisfied by cond.  pos gives the current position
   // in the input.
+  //
+  // Go's add recurses into InstAlt's Out and InstCapture's Out; a valid
+  // pattern such as (?:a??){1000} repeated can chain tens of thousands of
+  // those at one position, which Go's growing goroutine stacks absorb and a
+  // fixed JS call stack does not. This add walks the same instructions in the
+  // same order with an explicit stack, as RE2's AddToThreadq does: an Alt
+  // pushes Arg and follows Out, and a Capture pushes a restore marker (the old
+  // cap value and the thread t it was entered with) and follows Out with no
+  // thread, as Go's recursive call does with nil.
   add(
     q: queue,
     pc: number,
@@ -508,70 +519,92 @@ export class machine {
     cond2: number,
     t: thread | null,
   ): thread | null {
-    for (;;) {
-      if (pc === 0) {
-        return t;
+    const stack = this.addStack;
+    const saved = this.addSaved;
+    let sp = 0;
+    stack[sp++] = pc;
+    while (sp > 0) {
+      pc = stack[--sp] as number;
+      if (pc === addRestore) {
+        // the end of a Capture's Out: Go's recursive add has returned
+        const arg = stack[--sp] as number;
+        cap[arg] = stack[--sp] as number;
+        t = saved.pop() as thread | null;
+        continue;
       }
-      const k = q.sparse[pc] as number;
-      if (k < q.size && q.pcs[k] === pc) {
-        return t;
-      }
+      for (;;) {
+        if (pc === 0) {
+          break;
+        }
+        const k = q.sparse[pc] as number;
+        if (k < q.size && q.pcs[k] === pc) {
+          break;
+        }
 
-      const j = q.size++;
-      q.ts[j] = null;
-      q.pcs[j] = pc;
-      q.sparse[pc] = j;
+        const j = q.size++;
+        q.ts[j] = null;
+        q.pcs[j] = pc;
+        q.sparse[pc] = j;
 
-      const i = this.p.inst[pc] as Inst;
-      switch (i.op) {
-        default:
-          throw new Error("unhandled");
-        case InstFail:
-          // nothing
-          return t;
-        case InstAlt:
-        case InstAltMatch:
-          t = this.add(q, i.out, pos, cap, cond1, cond2, t);
-          pc = i.arg;
-          continue;
-        case InstEmptyWidth:
-          if (flagMatch(i.arg, cond1, cond2)) {
+        const i = this.p.inst[pc] as Inst;
+        switch (i.op) {
+          default:
+            throw new Error("unhandled");
+          case InstFail:
+            // nothing
+            break;
+          case InstAlt:
+          case InstAltMatch:
+            stack[sp++] = i.arg;
             pc = i.out;
             continue;
-          }
-          return t;
-        case InstNop:
-          pc = i.out;
-          continue;
-        case InstCapture:
-          if (i.arg < cap.length) {
-            const opos = cap[i.arg] as number;
-            cap[i.arg] = pos;
-            this.add(q, i.out, pos, cap, cond1, cond2, null);
-            cap[i.arg] = opos;
-            return t;
-          }
-          pc = i.out;
-          continue;
-        case InstMatch:
-        case InstRune:
-        case InstRune1:
-        case InstRuneAny:
-        case InstRuneAnyNotNL:
-          if (t === null) {
-            t = this.alloc(i);
-          } else {
-            t.inst = i;
-          }
-          if (cap.length > 0 && t.cap !== cap) {
-            copy(t.cap, cap);
-          }
-          q.ts[j] = t;
-          return null;
+          case InstEmptyWidth:
+            if (flagMatch(i.arg, cond1, cond2)) {
+              pc = i.out;
+              continue;
+            }
+            break;
+          case InstNop:
+            pc = i.out;
+            continue;
+          case InstCapture:
+            if (i.arg < cap.length) {
+              stack[sp++] = cap[i.arg] as number;
+              stack[sp++] = i.arg;
+              stack[sp++] = addRestore;
+              saved.push(t);
+              cap[i.arg] = pos;
+              t = null;
+            }
+            pc = i.out;
+            continue;
+          case InstMatch:
+          case InstRune:
+          case InstRune1:
+          case InstRuneAny:
+          case InstRuneAnyNotNL:
+            if (t === null) {
+              t = this.alloc(i);
+            } else {
+              t.inst = i;
+            }
+            if (cap.length > 0 && t.cap !== cap) {
+              copy(t.cap, cap);
+            }
+            q.ts[j] = t;
+            t = null;
+            break;
+        }
+        break;
       }
     }
+    return t;
   }
 }
+
+// The restore marker on machine.addStack; pcs and capture indexes are never
+// negative, and the cap value it restores sits below the index.
+const addRestore = -1;
 
 function copy(dst: number[], src: readonly number[]): void {
   const n = Math.min(dst.length, src.length);

@@ -70,6 +70,8 @@ const cases: [string, string[]][] = [
   ["foo", ["xfoox", "fo"]],
   [String.raw`^[\w.+-]+@[\w-]+(\.[\w-]+)+$`, ["a.b+c@example.com", "a@b", "a b@example.com"]],
   ["^[a-z0-9]{15}$", ["abcdefghij12345", "abcdefghij1234"]],
+  // about 30,000 empty-width instructions in a row at one position
+  ["(?:a??){1000}".repeat(30) + "b", ["b", "c"]],
 ];
 
 let upstream: UpstreamServer;
