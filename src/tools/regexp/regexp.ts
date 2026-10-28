@@ -385,7 +385,10 @@ export class Regexp {
   // with the replacement string repl. The replacement repl is substituted directly,
   // without using Expand.
   replaceAllLiteralString(src: string, repl: string): string {
-    return this.#replaceAll(src, 2, () => repl);
+    // normalized like every other input, so that a lone high surrogate in
+    // repl cannot pair with an invalid byte (U+DC80+n) of src
+    const literal = goString(repl);
+    return this.#replaceAll(src, 2, () => literal);
   }
 
   // ReplaceAllStringFunc returns a copy of src in which all matches of the
@@ -393,7 +396,9 @@ export class Regexp {
   // to the matched substring. The replacement returned by repl is substituted
   // directly, without using Expand.
   replaceAllStringFunc(src: string, repl: (s: string) => string): string {
-    return this.#replaceAll(src, 2, (t, m) => repl(t.slice(m[0] as number, m[1] as number)));
+    return this.#replaceAll(src, 2, (t, m) =>
+      goString(repl(t.slice(m[0] as number, m[1] as number))),
+    );
   }
 
   #replaceAll(src: string, nmatch: number, repl: (t: text, m: number[]) => string): string {

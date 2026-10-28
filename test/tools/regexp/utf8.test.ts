@@ -56,4 +56,11 @@ describe("UTF-8", () => {
     expect(compile("x").replaceAllString("x\udcffx", "<$0>")).toBe("<x>\udcff<x>");
     expect(compile(",").split("a,\udcc3,😀", -1)).toEqual(["a", "\udcc3", "😀"]);
   });
+  test("literal and callback replacements are normalized before joining", () => {
+    // a lone high surrogate in the replacement is U+FFFD (EF BF BD) and must
+    // not pair with the invalid byte 0x80 (U+DC80) after it
+    expect(compile("x").replaceAllLiteralString("x\uDC80", "\uD800")).toBe("\uFFFD\uDC80");
+    expect(compile("x").replaceAllStringFunc("x\uDC80", () => "\uD800")).toBe("\uFFFD\uDC80");
+    expect(compile("x").replaceAllString("x\uDC80", "\uD800")).toBe("\uFFFD\uDC80");
+  });
 });
