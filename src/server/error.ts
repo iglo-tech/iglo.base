@@ -89,7 +89,8 @@ function sortKeys(value: unknown): unknown {
     return value.map(sortKeys);
   }
   if (isPlainObject(value)) {
-    const sorted: Record<string, unknown> = {};
+    // null prototype, so that a "__proto__" field name stays a member
+    const sorted: Record<string, unknown> = Object.create(null);
     for (const key of Object.keys(value).toSorted()) {
       sorted[key] = sortKeys(value[key]);
     }
@@ -334,7 +335,8 @@ function safeErrorsData(data: unknown): Record<string, unknown> {
 }
 
 function resolveSafeErrorsData(data: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
+  // null prototype, so that a "__proto__" field name stays a member
+  const result: Record<string, unknown> = Object.create(null);
   for (const [name, err] of Object.entries(data)) {
     if (isNestedError(err)) {
       result[name] = safeErrorsData(err);

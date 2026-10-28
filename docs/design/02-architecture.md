@@ -77,6 +77,8 @@ src/
   cron/               scheduler and built-in jobs
   logs/               logger, buffered writer, queries, stats
   apis/               HTTP handlers, one file per upstream apis/*.go file
+  validation/         the ozzo-validation v4.4.1 subset upstream uses (Error, Errors, Validate, ValidateStruct, the rules); is/ holds the is rules upstream uses (Domain, EmailFormat, HexColor, Host, JSON, URL) with the govalidator functions behind them and the Go net/url and net/netip parsing they need
+  validators/         upstream core/validators without file.go: UniqueId, NormalizeUniqueIndexError, Equal, IsRegex, IPOrSubnet, JoinValidationErrors
   tools/              upstream's small tools/ packages, one directory each: types (DateTime with nanoseconds, JSONRaw, JSONArray, JSONMap, GeoPoint, and the Go JSON, time.Parse and spf13/cast behavior they inherit), security (hashes, AES-GCM, HS256 JWT with golang-jwt's rules, random strings, RandomStringByRegex), list, inflector, store; regexp (Go's regexp: the regexp/syntax parser with Go's trees and error texts, Simplify, the compiler to Go's Prog, and Go's NFA and one-pass matchers, so patterns match as upstream's do, in linear time) and unicode (the parts of Go's unicode and unicode/utf8 it uses, with tables generated from Go's tables.go)
 ui/                   vendored upstream dashboard (see 08-admin-ui.md)
 test/
