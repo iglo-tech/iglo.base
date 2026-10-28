@@ -9,6 +9,7 @@
 
 import { Store } from "@/tools/store/store";
 import { toStringSlice } from "@/tools/types/cast";
+import { GeoPoint } from "@/tools/types/geo-point";
 import { isJSONMarshaler, stringType, unmarshalSlicePartial } from "@/tools/types/go-json";
 
 const cachedPatterns = new Store<string, RegExp>();
@@ -135,7 +136,9 @@ export function toUniqueStringSlice(value: unknown): string[] {
     }
   } else if (Array.isArray(value)) {
     result = toStringSlice(value);
-  } else if (isJSONMarshaler(value)) {
+  } else if (isJSONMarshaler(value) && !(value instanceof GeoPoint)) {
+    // upstream's GeoPoint is not a json.Marshaler (its marshalJSON here is
+    // only the encoding adapter), so it takes the cast branch below
     result =
       (unmarshalSlicePartial(value.marshalJSON(), stringType)[0] as string[] | undefined) ?? [];
   } else {

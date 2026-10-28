@@ -10,6 +10,7 @@ import {
   anyType,
   bytesToText,
   marshal,
+  marshalPartial,
   sliceOf,
   unmarshal,
 } from "@/tools/types/go-json";
@@ -22,13 +23,13 @@ export function jsonArrayMarshalJSON(m: readonly unknown[] | undefined): string 
   return marshal(m ?? [], { allowInvalidUTF8: true });
 }
 
-// String returns the string representation of the array ("" when it cannot
-// be marshaled).
+// String returns the string representation of the array (the bytes written before the error when it cannot
+// be marshaled, as json.Marshal returns them).
 export function jsonArrayString(m: readonly unknown[] | undefined): string {
   try {
     return jsonArrayMarshalJSON(m);
-  } catch {
-    return "";
+  } catch (err) {
+    return marshalPartial(err);
   }
 }
 

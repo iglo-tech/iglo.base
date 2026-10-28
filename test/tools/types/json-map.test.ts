@@ -5,6 +5,7 @@
 
 import { describe, expect, test } from "bun:test";
 
+import { GeoPoint } from "@/tools/types/geo-point";
 import { anyType, marshal } from "@/tools/types/go-json";
 import {
   type JSONMap,
@@ -170,7 +171,14 @@ describe("JSONMap Go bytes", () => {
 
   test("NaN cannot be marshaled", () => {
     expect(() => jsonMapMarshalJSON({ a: Number.NaN })).toThrow();
-    expect(jsonMapString({ a: Number.NaN })).toBe("");
+    // String keeps the bytes json.Marshal wrote before the error
+    // (checked against the upstream binary)
+    expect(jsonMapString({ a: Number.NaN })).toBe(`{"a"`);
+    expect(jsonMapString({ b: Number.NaN, a: 1 })).toBe(`{"a":1,"b"`);
+    expect(jsonMapString({ a: 1, b: { c: Number.NaN } })).toBe(`{"a":1,"b":{"c"`);
+    expect(jsonMapString({ a: 1, b: new GeoPoint(2, Number.NaN) })).toBe(
+      `{"a":1,"b":{"lon":2,"lat"`,
+    );
   });
 
   test("raw values from marshalJSON are compacted and canonicalized", () => {

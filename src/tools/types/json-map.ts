@@ -11,6 +11,7 @@ import {
   anyType,
   bytesToText,
   marshal,
+  marshalPartial,
   setOwn,
   unmarshalMapInto,
 } from "@/tools/types/go-json";
@@ -34,13 +35,13 @@ export function jsonMapMarshalJSON(m: JSONMap<unknown> | undefined): string {
   return marshal(m ?? {}, { allowInvalidUTF8: true });
 }
 
-// String returns the string representation of the map ("" when it cannot be
-// marshaled).
+// String returns the string representation of the map (the bytes written before the error when it
+// cannot be marshaled, as json.Marshal returns them).
 export function jsonMapString(m: JSONMap<unknown> | undefined): string {
   try {
     return jsonMapMarshalJSON(m);
-  } catch {
-    return "";
+  } catch (err) {
+    return marshalPartial(err);
   }
 }
 

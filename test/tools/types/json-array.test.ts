@@ -46,6 +46,14 @@ describe("JSONArrayString", () => {
       expect(jsonArrayString(json)).toBe(expected);
     });
   });
+
+  test("keeps the bytes json.Marshal wrote before an error", () => {
+    // checked against the upstream binary
+    expect(jsonArrayString([1, NaN])).toBe(`[1`);
+    expect(jsonArrayString([NaN])).toBe(`[`);
+    expect(jsonArrayString([1, [2, NaN]])).toBe(`[1,[2`);
+    expect(jsonArrayString([1, { a: NaN }])).toBe(`[1,{"a"`);
+  });
 });
 
 describe("JSONArrayValue", () => {

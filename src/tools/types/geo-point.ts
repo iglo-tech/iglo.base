@@ -10,6 +10,7 @@ import {
   float64Type,
   formatFloat,
   marshal,
+  marshalPartial,
   unmarshalStruct,
 } from "@/tools/types/go-json";
 
@@ -19,14 +20,14 @@ export class GeoPoint implements JSONMarshaler {
     public lat = 0,
   ) {}
 
-  // String returns the json form, in the Go struct field order; "" when it
-  // cannot be marshaled (a NaN or infinite coordinate), as upstream ignores
-  // json.Marshal's error.
+  // String returns the json form, in the Go struct field order. Upstream
+  // ignores json.Marshal's error and keeps the bytes written before it, so
+  // a NaN or infinite coordinate gives a partial object ({"lon":1,"lat").
   string(): string {
     try {
       return this.marshalJSON();
-    } catch {
-      return "";
+    } catch (err) {
+      return marshalPartial(err);
     }
   }
 
@@ -34,9 +35,26 @@ export class GeoPoint implements JSONMarshaler {
     return this.string();
   }
 
-  // json.Marshal of the struct: throws on a NaN or infinite coordinate.
+  // json.Marshal of the struct: throws on a NaN or infinite coordinate,
+  // with the bytes written before it (marshalPartial). Upstream's GeoPoint
+  // has no MarshalJSON method; this adapter only encodes the struct fields.
   marshalJSON(): string {
-    return `{"lon":${formatFloat(this.lon)},"lat":${formatFloat(this.lat)}}`;
+    let out = '{"lon"';
+    for (const [name, n] of [
+      ["lon", this.lon],
+      ["lat", this.lat],
+    ] as const) {
+      if (name === "lat") {
+        out += ',"lat"';
+      }
+      try {
+        out += ":" + formatFloat(n);
+      } catch (err) {
+        (err as { partial?: string }).partial = out;
+        throw err;
+      }
+    }
+    return out + "}";
   }
 
   // AsMap returns a value suitable to be used in an API rule expression.

@@ -59,6 +59,22 @@ export class JSONSemanticError extends Error {
   }
 }
 
+// json.Marshal returns the bytes written before an error together with the
+// error. A throw from marshal carries them here: delimiters (`,` and `:`)
+// are written with the token that follows, so a value that fails leaves no
+// delimiter behind it.
+export function marshalPartial(err: unknown): string {
+  return err instanceof Error ? ((err as { partial?: string }).partial ?? "") : "";
+}
+
+function withPartial(err: unknown, prefix: string, delim: string): unknown {
+  if (err instanceof Error) {
+    const child = (err as { partial?: string }).partial ?? "";
+    (err as { partial?: string }).partial = child === "" ? prefix : prefix + delim + child;
+  }
+  return err;
+}
+
 // jsontext's maxNestingDepth
 const maxNestingDepth = 10000;
 
@@ -122,7 +138,16 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
     return reformatValue(value.marshalJSON(), flags, depth);
   }
   if (Array.isArray(value)) {
-    return "[" + value.map((item) => encodeValue(item, flags, depth + 1)).join(",") + "]";
+    let out = "[";
+    for (let i = 0; i < value.length; i++) {
+      try {
+        const item = encodeValue(value[i], flags, depth + 1);
+        out += (i > 0 ? "," : "") + item;
+      } catch (err) {
+        throw withPartial(err, out, i > 0 ? "," : "");
+      }
+    }
+    return out + "]";
   }
   if (value instanceof Uint8Array) {
     // []byte is a base64 (StdEncoding) string
@@ -151,7 +176,7 @@ function encodeObject(entries: [string, unknown][], flags: EncodeFlags, depth: n
     value,
   ]);
   members.sort((a, b) => compareUTF8(a[1], b[1]));
-  const out: string[] = [];
+  let out = "{";
   for (let i = 0; i < members.length; i++) {
     const [quoted, name, value] = members[i] as [string, string, unknown];
     if (
@@ -159,11 +184,17 @@ function encodeObject(entries: [string, unknown][], flags: EncodeFlags, depth: n
       i > 0 &&
       (members[i - 1] as [string, string, unknown])[1] === name
     ) {
-      throw new JSONSyntaxError(`duplicate object member name ${quoted}`);
+      throw withPartial(new JSONSyntaxError(`duplicate object member name ${quoted}`), out, "");
     }
-    out.push(quoted + ":" + encodeValue(value, flags, depth + 1));
+    // the name is written before its value is encoded
+    out += (i > 0 ? "," : "") + quoted;
+    try {
+      out += ":" + encodeValue(value, flags, depth + 1);
+    } catch (err) {
+      throw withPartial(err, out, ":");
+    }
   }
-  return "{" + out.join(",") + "}";
+  return out + "}";
 }
 
 // compares two strings by their UTF-8 bytes (= by code points), as Go's

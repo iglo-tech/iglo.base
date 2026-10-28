@@ -1,6 +1,7 @@
 // Upstream: tools/list/list_test.go
 
 import { describe, expect, test } from "bun:test";
+import { GeoPoint } from "@/tools/types/geo-point";
 
 import {
   existInSlice,
@@ -229,6 +230,11 @@ describe("ToUniqueStringSlice JSON strings", () => {
 
   test("a marshaler's JSON is decoded", () => {
     expect(toUniqueStringSlice({ marshalJSON: () => `["x","y","x"]` })).toEqual(["x", "y"]);
+  });
+
+  test("a GeoPoint takes the cast branch, as upstream's is not a json.Marshaler", () => {
+    // checked against the upstream binary (Record.GetStringSlice on a geoPoint field)
+    expect(toUniqueStringSlice(new GeoPoint(1, 2))).toEqual([`{"lon":1,"lat":2}`]);
   });
 
   test("an array with a value cast cannot convert is empty", () => {

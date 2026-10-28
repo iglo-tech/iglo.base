@@ -38,17 +38,19 @@ describe("GeoPointStringAndValue", () => {
 // Not in upstream's tests: json.Marshal fails on NaN and ±Inf, String
 // ignores the error and Value returns it.
 describe("GeoPoint with a non-finite coordinate", () => {
-  const scenarios: [string, GeoPoint][] = [
-    ["lon NaN", new GeoPoint(NaN, 1)],
-    ["lat NaN", new GeoPoint(1, NaN)],
-    ["lon +Inf", new GeoPoint(Infinity, 1)],
-    ["lat -Inf", new GeoPoint(1, -Infinity)],
+  // json.Marshal keeps the bytes written before the error, and String
+  // returns them (checked against the upstream binary)
+  const scenarios: [string, GeoPoint, string][] = [
+    ["lon NaN", new GeoPoint(NaN, 1), `{"lon"`],
+    ["lat NaN", new GeoPoint(1, NaN), `{"lon":1,"lat"`],
+    ["lon +Inf", new GeoPoint(Infinity, 1), `{"lon"`],
+    ["lat -Inf", new GeoPoint(1, -Infinity), `{"lon":1,"lat"`],
   ];
 
-  for (const [name, point] of scenarios) {
+  for (const [name, point, partial] of scenarios) {
     test(name, () => {
-      expect(point.string()).toBe("");
-      expect(String(point)).toBe("");
+      expect(point.string()).toBe(partial);
+      expect(String(point)).toBe(partial);
       expect(() => point.value()).toThrow();
       expect(() => point.marshalJSON()).toThrow();
       expect(() => marshal({ p: point })).toThrow();
