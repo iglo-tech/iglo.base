@@ -187,7 +187,7 @@ SOFTWARE.
 
 ---
 
-src/search/fexpr/ and test/search/fexpr/ are translated from fexpr v0.7.0 (https://ganigeorgiev.com/git/fexpr,
+src/search/fexpr/ and test/search/fexpr/ are translated from fexpr v0.7.0 (https://ganigeorgiev.com/git/fexpr/fexpr,
 previously github.com/ganigeorgiev/fexpr), distributed under this license:
 
 BSD 3-Clause License
