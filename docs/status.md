@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: M2.3 (council round 1).
+Active: none.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.3 | council | [#25](https://github.com/iglo-tech/iglo.base/pull/25) | 1 | [Brief](briefs/M2.3.md). Worker head `8a36622`: check and test:reference pass locally; CI pending. Council round 1 started at `8a36622` |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M2.3 | [#25](https://github.com/iglo-tech/iglo.base/pull/25) | 2026-10-29 (`fbae8cd`) | One council round: both APPROVE at `8a36622`. Six token types, FindAuthRecordByToken, loadAuthToken and the five `Require*` guards; `RequestEvent.auth`/`RequestInfo.auth` are Records. Reference: every upstream token type (verification, reset and email-change via Mailpit) loads the same record in iglo.base; iglo.base tokens are byte-identical at the same issue second and accepted by upstream; 30 Authorization headers × 5 guarded endpoints give the same bytes. Carried for M1.2: bind `loadAuthToken` with the app (no-op until then); health superuser scenario pending on M1.2. Superuser IP check moved to M1.3 |
 | M2.2 | [#24](https://github.com/iglo-tech/iglo.base/pull/24) | 2026-10-29 (`f6aeb26`) | Three council rounds. Round 1 at `9bd5b5d`: Sol APPROVE, Opus CHANGES (one of 63 UpdateQuery cases missing; misplaced `02-architecture.md` sentence); round 2 at `12c8d80`: Opus APPROVE, Sol CHANGES (`05-rules-and-filters.md` claimed `:isset` on `@request.context`/`method`); both fixed by the lead (test and docs only). Round 3: both APPROVE at `53ee1c1`. Resolver in `src/resolver/`, filter finders and CanAccessRecord (sync and async) in `src/records/record-query-filter.ts`; the M1.6a rule cases pass. 163 superuser filters and 103 rules × 5 identities match upstream. Carried for M2.3: `RequestInfo.auth` should become `Record`. The reference test runs `ANALYZE` after loading data, because upstream's `PRAGMA optimize` on collection save can change the order of ambiguous sorts |
 | M2.1 | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 2026-10-28 (`a2601bd`) | Two council rounds. Round 1 at `352cbe1`: both CHANGES (numeric filter literals bound as SQLite INTEGER instead of upstream's float64 REAL, changing TEXT-affinity matches). Fixed by an Opus fixer at `e832407` with a `Float64` dbx param (`+CAST(? AS REAL)`). Round 2: both APPROVE at `e832407` (the Opus review resumed after a rate limit). fexpr v0.7.0 and tools/search; 120 + 34 list cases match upstream's `/api/collections` and records list. Carried: `url.Values.Encode` for M2.4/M2.5; invalid UTF-8 counted as 3 bytes toward the filter limit; M1.1's module-level regex cache |
 | M1.8c | [#22](https://github.com/iglo-tech/iglo.base/pull/22) | 2026-10-28 (`70ab7d6`) | Two council rounds. Round 1 at `c287565`: Opus APPROVE, Sol CHANGES (`__proto__` field write lost; installer lookup saw uncommitted rows; deep cascades overflowed the stack). Fixed by an Opus fixer at `8455c4b`. Round 2: both APPROVE at `8455c4b`. 102-step write sequence matches upstream row for row (values and `typeof()`) over 15 tables; upstream reads back every record identically. Carried for M3.2: the file interceptor must stay synchronous inside write transactions; for M4: the auth-model rules in `src/records/record-auth-refs.ts` |
