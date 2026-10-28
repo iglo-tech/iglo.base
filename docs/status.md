@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8a | worker | — | 0 | [Brief](briefs/M1.8a.md). Unblocked by the owner's return to Anthropic models (2026-10-28 16:35 UTC). Two Terra workers had stopped without code; a local empty branch `task/M1.8a-record-model` may exist in an old worktree (nothing pushed). **Next: start a Claude Opus 5.5 worker (medium effort) with the brief** |
+| M1.8a | worker | `task/M1.8a-record-model` | 0 | [Brief](briefs/M1.8a.md). Claude Opus 5.5 worker started 2026-10-28 16:37 UTC, after two Terra workers had stopped without code |
 
 ## Done
 
