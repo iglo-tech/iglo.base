@@ -19,6 +19,9 @@ import { newProvider } from "@/search/provider";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 import { parseSortFromString } from "@/search/sort";
 
+// Provider.sort is upstream's setter, not Array#sort
+/* oxlint-disable unicorn/no-array-sort */
+
 const clock: Clock = { now: () => new Date() };
 
 function median(xs: number[]): number {
