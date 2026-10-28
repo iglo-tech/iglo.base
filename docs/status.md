@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.6 | worker | branch `task/M0.6-read-path` | 0 | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
+| M0.6 | council | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 1 (head `e077482`, all three CI jobs green. Decision proposed in the PR: a synchronous main-thread API, plus async pooled reads (4 workers) for reads that may be slow; `--queryTimeout` fails pooled reads at the deadline) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
 
 ## Done
 
@@ -53,6 +53,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M0.5 round 1): the differential harness compares a value by format only if it is generated. That means it sits at a key upstream generates (`id`, `created`, `updated`, `token`, …) or equals a value already paired as generated in the same scenario. Request data is never treated as generated. Bodies are compared as bytes after the paired values are replaced by placeholders, so `json` bytes are checked under any `fields` projection.
 
 - 2026-10-28 (M0.5): the API contract in `04-api-compatibility.md` is now byte-level: bodies must be byte-identical after generated values are normalized. Objects that upstream writes in random order (Go maps, such as `fields` projections and the superuser health data) are compared with their members sorted. This replaces "JSON is compared after parsing".
+
+- 2026-10-28 (M0.6 PR): the lead accepted the build change: `bun build --compile` takes `src/db/read-worker.ts` as a second entry point (`package.json`, `test/support/executable.ts`, the AGENTS.md build line), because a compiled executable cannot otherwise find the worker.
 
 ## Paused until
 
