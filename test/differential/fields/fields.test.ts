@@ -436,7 +436,9 @@ describe("stored data", () => {
   beforeAll(async () => {
     await upstream?.stop();
     upstream = undefined;
-    db = new Database(join(dataDir, "data.db"), { readonly: true });
+    // read-write: a read-only connection cannot create the WAL index (-shm)
+    // on macOS; this is a temporary copy that no server uses any more
+    db = new Database(join(dataDir, "data.db"));
   });
 
   afterAll(() => {

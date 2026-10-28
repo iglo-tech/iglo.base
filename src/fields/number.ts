@@ -335,13 +335,23 @@ function float64Pointer(v: unknown): number | null {
 
 const two63 = 2 ** 63;
 
-// float64(int64(v)) as the amd64 upstream binary computes it: in-range
-// values are truncated; NaN and values outside the int64 range convert to
-// the "integer indefinite" value -2^63 (CVTTSD2SQ). (On arm64 they
-// saturate instead; upstream's own builds differ there.)
+// float64(int64(v)) as the upstream binary for this CPU computes it.
+// In-range values are truncated. Out-of-range values differ by
+// architecture, as in Go: on amd64 NaN and values outside the int64 range
+// convert to the "integer indefinite" value -2^63 (CVTTSD2SQ); on arm64
+// they saturate to the int64 bounds and NaN converts to 0 (FCVTZS).
+const saturatingConversion = process.arch === "arm64";
+
 function float64OfInt64(v: number): number {
-  if (!(v >= -two63 && v < two63)) {
+  if (v >= -two63 && v < two63) {
+    return Math.trunc(v);
+  }
+  if (!saturatingConversion) {
     return -two63;
   }
-  return Math.trunc(v);
+  if (Number.isNaN(v)) {
+    return 0;
+  }
+  // float64(math.MaxInt64) and float64(math.MinInt64) are ±2^63
+  return v > 0 ? two63 : -two63;
 }
