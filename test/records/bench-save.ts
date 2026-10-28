@@ -83,10 +83,12 @@ const wideUpdate = (i: number) => ({
 });
 
 const cascadeChildren = 1_000;
+const chainDepth = 1_000;
 const truncateRows = 10_000;
 
 const insertParent = `INSERT INTO cparents (id, name) VALUES ('p00000000000001', 'parent')`;
 const insertChildren = `INSERT INTO cchildren (id, parent) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${cascadeChildren}) SELECT printf('c%014d', x), 'p00000000000001' FROM c`;
+const insertChain = `INSERT INTO cchain (id, parent) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${chainDepth}) SELECT printf('n%014d', x), CASE x WHEN 1 THEN '' ELSE printf('n%014d', x - 1) END FROM c`;
 const insertTruncate = `INSERT INTO trunc (id, title) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${truncateRows}) SELECT printf('t%014d', x), 'title ' || x FROM c`;
 
 function median(values: number[]): number {
@@ -175,6 +177,22 @@ try {
         },
       ],
     });
+    const chainId = (
+      JSON.parse(await call("POST", "/api/collections", { name: "cchain", type: "base" })) as {
+        id: string;
+      }
+    ).id;
+    await call("PATCH", `/api/collections/${chainId}`, {
+      fields: [
+        {
+          name: "parent",
+          type: "relation",
+          collectionId: chainId,
+          maxSelect: 1,
+          cascadeDelete: true,
+        },
+      ],
+    });
     await call("POST", "/api/collections", {
       name: "trunc",
       type: "base",
@@ -207,6 +225,19 @@ try {
         async () => {
           await call("POST", "/api/sql", { query: insertParent });
           await call("POST", "/api/sql", { query: insertChildren });
+        },
+      ),
+    ]);
+    results.push([
+      `delete with a cascade down a chain of ${chainDepth.toLocaleString("en")} records`,
+      "DELETE /records/{id}",
+      await time(
+        5,
+        async () => {
+          await call("DELETE", "/api/collections/cchain/records/n00000000000001");
+        },
+        async () => {
+          await call("POST", "/api/sql", { query: insertChain });
         },
       ),
     ]);
@@ -258,6 +289,15 @@ try {
         async () => {
           sql(insertParent);
           sql(insertChildren);
+        },
+      ),
+      await time(
+        5,
+        async () => {
+          await deleteRecord(app, findRecordById(app, "cchain", "n00000000000001"));
+        },
+        async () => {
+          sql(insertChain);
         },
       ),
       await time(

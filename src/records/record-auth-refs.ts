@@ -39,7 +39,14 @@ import {
   recordsTarget,
   type RecordsApp,
 } from "@/records/record-query";
-import { deleteStep, type Next, runSync, type Step } from "@/records/record-save";
+import {
+  call,
+  deleteStep,
+  inTransaction,
+  type Next,
+  runSync,
+  type Step,
+} from "@/records/record-save";
 import { Errors, NewError } from "@/validation/error";
 import { ErrInInvalid } from "@/validation/in";
 import { Required } from "@/validation/required";
@@ -288,8 +295,8 @@ function* refOnDeleteExecute(app: RecordsApp, record: Record, i: number, next: N
     return;
   }
 
-  runInAppTransaction(app, (txApp) => {
-    runSync(nextRef(txApp));
+  yield* inTransaction(app, function* (txApp) {
+    yield* nextRef(txApp);
 
     const rels = findAllRecords(
       txApp,
@@ -301,7 +308,7 @@ function* refOnDeleteExecute(app: RecordsApp, record: Record, i: number, next: N
     );
 
     for (const rel of rels) {
-      runSync(deleteStep(txApp, rel));
+      yield call(deleteStep(txApp, rel));
     }
   });
 }

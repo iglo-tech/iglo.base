@@ -422,6 +422,35 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
   });
 });
 
+// not in upstream's tests: a cascade as deep as Go's growing stack allows
+describe("deep relation cascade", () => {
+  for (const depth of [1_000, 10_000]) {
+    test(`a self-relation chain of ${depth} records`, async () => {
+      const app = newTestApp();
+
+      const collection = newBaseCollection("chain");
+      saveCollection(app, collection);
+      collection.fields.add(
+        new RelationField({ name: "parent", collectionId: collection.id, cascadeDelete: true }),
+      );
+      saveCollection(app, collection);
+
+      // record n references n-1; the root has none
+      const db = app.databases.nonconcurrentDB();
+      const ids = Array.from({ length: depth }, (_, i) => "r" + String(i).padStart(14, "0"));
+      db.newQuery("BEGIN").execute();
+      for (const [i, id] of ids.entries()) {
+        db.insert("chain", { id, parent: i === 0 ? "" : ids[i - 1] }).execute();
+      }
+      db.newQuery("COMMIT").execute();
+
+      await deleteRecord(app, findRecordById(app, collection, ids[0] as string));
+
+      expect(findAllRecords(app, collection).length).toBe(0);
+    }, 120_000);
+  }
+});
+
 describe("TestRecordDeleteBatchProcessing", () => {
   test("batches", async () => {
     const app = newTestApp();
@@ -612,5 +641,30 @@ describe("stored values", () => {
     expect((record.dbExport().json as JSONRaw).value()).toEqual(
       new Uint8Array([0x22, 0x61, 0xff, 0x22]),
     );
+  });
+
+  test("a field named __proto__ is stored", async () => {
+    const app = newTestApp();
+
+    const collection = newBaseCollection("protos");
+    collection.fields.add(new TextField({ name: "__proto__" }));
+    saveCollection(app, collection);
+
+    const record = newRecord(collection);
+    record.set("__proto__", "keep-me");
+    await saveRecord(app, record);
+
+    const stored = () =>
+      app.databases
+        .concurrentDB()
+        .newQuery("SELECT [[__proto__]] v FROM protos WHERE id = {:id}")
+        .bind({ id: record.id })
+        .column<string>();
+    expect(stored()).toEqual(["keep-me"]);
+    expect(findRecordById(app, collection, record.id).getString("__proto__")).toBe("keep-me");
+
+    record.set("__proto__", "updated");
+    await saveRecord(app, record);
+    expect(stored()).toEqual(["updated"]);
   });
 });

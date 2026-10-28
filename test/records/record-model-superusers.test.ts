@@ -6,11 +6,11 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { findCollectionByNameOrId } from "@/collections/collection-query";
+import { findCollectionByNameOrId, runInAppTransaction } from "@/collections/collection-query";
 import { newRecord } from "@/records/record-model";
 import { CollectionNameSuperusers, DefaultInstallerEmail } from "@/records/record-model-superusers";
 import { countRecords, findAuthRecordByEmail, findRecordById } from "@/records/record-query";
-import { deleteRecord, saveRecord } from "@/records/record-save";
+import { deleteRecord, saveRecord, saveRecordSync } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
@@ -83,6 +83,41 @@ describe("superusers record checks", () => {
     created.setEmail("installed@example.com");
     created.setPassword("1234567890");
     await saveRecord(app, created);
+    expect(() => findRecordById(app, CollectionNameSuperusers, installer.id)).toThrow(
+      "sql: no rows in result set",
+    );
+    expect(app.logged).toEqual([]);
+  });
+
+  test("an installer created in the same transaction is kept", () => {
+    const collection = findCollectionByNameOrId(app, CollectionNameSuperusers);
+
+    // upstream looks the installer up through the root app, which does not
+    // see the transaction's writes (a batch request creating both keeps it)
+    const installer = newRecord(collection);
+    const created = newRecord(collection);
+    runInAppTransaction(app, (txApp) => {
+      installer.setEmail(DefaultInstallerEmail);
+      installer.setPassword("1234567890");
+      saveRecordSync(txApp, installer);
+
+      created.setEmail("tx-created@example.com");
+      created.setPassword("1234567890");
+      saveRecordSync(txApp, created);
+    });
+    expect(findRecordById(app, CollectionNameSuperusers, installer.id).id).toBe(installer.id);
+    expect(findRecordById(app, CollectionNameSuperusers, created.id).id).toBe(created.id);
+
+    // a committed installer is deleted by a new superuser in a transaction
+    const created2 = newRecord(collection);
+    runInAppTransaction(app, (txApp) => {
+      created2.setEmail("tx-created2@example.com");
+      created2.setPassword("1234567890");
+      saveRecordSync(txApp, created2);
+      expect(() => findRecordById(txApp, CollectionNameSuperusers, installer.id)).toThrow(
+        "sql: no rows in result set",
+      );
+    });
     expect(() => findRecordById(app, CollectionNameSuperusers, installer.id)).toThrow(
       "sql: no rows in result set",
     );

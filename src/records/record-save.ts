@@ -60,12 +60,23 @@
 // return a promise; the *Sync variants are for callers inside a
 // transaction.
 //
+// Deep cascades: upstream deletes a cascaded record from inside its
+// parent's delete (Go's stack grows as needed). Here a step yields
+// call(step) where the chain recurses (a cascaded or ref delete), and
+// run() keeps the called steps on its own stack, so the JS call stack does
+// not grow per related record. On that path nothing else nests: a
+// RunInTransaction inside a transaction is the same transaction
+// (inTransaction runs it inline), and the "delete" and "deleteExecute"
+// interceptors are called in their order before the action runs instead
+// of around it. Every field passes these two actions through to
+// actionFunc unchanged, as upstream's fields do (their Intercept default
+// case), so the action and its errors are the same.
+//
 // Upstream's `e.App` is the app argument: a hook that opens a transaction
 // passes the transaction's app to the rest of the chain, as upstream sets
 // e.App to txApp. The superusers save hook finds the installer with the
-// app it was registered on (never a transaction app); here it uses the
-// chain's app, so inside a transaction the lookup sees the transaction's
-// writes.
+// app it was registered on (never a transaction app): committed data only
+// (record-model-superusers.ts).
 //
 // Values are written as Go's driver binds them: Record.dbExport() returns
 // upstream's typed values, and recordRow converts each to its driver value
@@ -92,7 +103,7 @@ import { joinErrors, wrapError } from "@/collections/view";
 import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
 import { Errors as JoinedErrors } from "@/db/dbx/db";
 import { exists, HashExp, newExp, not } from "@/db/dbx/expression";
-import type { Params } from "@/db/dbx/query";
+import { type Params, setOwn } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 import type { Model } from "@/db/model";
 import {
@@ -115,6 +126,7 @@ import {
   isRecordInterceptor,
 } from "@/fields/field";
 import { RelationField } from "@/fields/relation";
+import { Tx } from "@/db/dbx/tx";
 import {
   authOriginsOnUpdate,
   externalAuthsOnUpdateExecute,
@@ -149,47 +161,97 @@ export type Step = Generator<unknown, void, unknown>;
 // a step's continuation; app is the chain's current app
 export type Next = (app: RecordsApp) => Step;
 
+// yielded by a step to run another step as `yield*` would, without
+// growing the JS call stack (run keeps it on its own stack)
+class Call {
+  constructor(readonly step: Step) {}
+}
+
+export function call(step: Step): Call {
+  return new Call(step);
+}
+
+// a step's state in run: the steps called and not yet returned (the
+// last one runs), and what the running one gets back next
+interface RunState {
+  readonly stack: Step[];
+  input: unknown;
+  failed: boolean;
+}
+
 // run drives a step synchronously until it yields a promise, and
 // asynchronously from there.
 export function run(step: Step): void | Promise<void> {
-  let input: unknown = undefined;
-  let failed = false;
+  const state: RunState = { stack: [step], input: undefined, failed: false };
   for (;;) {
-    const res = failed ? step.throw(input) : step.next(input);
-    if (res.done === true) {
+    const pending = advance(state);
+    if (pending === null) {
       return;
     }
-    if (res.value instanceof Promise) {
-      return runAsync(step, res.value);
+    if (pending instanceof Promise) {
+      return runAsync(state, pending);
     }
-    input = res.value;
-    failed = false;
   }
 }
 
-async function runAsync(step: Step, pending: Promise<unknown>): Promise<void> {
-  let input: unknown;
-  let failed: boolean;
-  try {
-    input = await pending;
-    failed = false;
-  } catch (err) {
-    input = err;
-    failed = true;
-  }
+async function runAsync(state: RunState, pending: Promise<unknown>): Promise<void> {
   for (;;) {
-    const res = failed ? step.throw(input) : step.next(input);
-    if (res.done === true) {
-      return;
-    }
     try {
-      input = await res.value;
-      failed = false;
+      state.input = await pending;
+      state.failed = false;
     } catch (err) {
-      input = err;
-      failed = true;
+      state.input = err;
+      state.failed = true;
+    }
+    for (;;) {
+      const next = advance(state);
+      if (next === null) {
+        return;
+      }
+      if (next instanceof Promise) {
+        pending = next;
+        break;
+      }
     }
   }
+}
+
+// advance resumes the running step once. Returns null when the first step
+// returned, a promise the step yielded, or undefined to go on. Throws the
+// first step's error.
+function advance(state: RunState): Promise<unknown> | null | undefined {
+  const stack = state.stack;
+  const step = stack[stack.length - 1] as Step;
+  let res: IteratorResult<unknown, void>;
+  try {
+    res = state.failed ? step.throw(state.input) : step.next(state.input);
+  } catch (err) {
+    stack.pop();
+    if (stack.length === 0) {
+      throw err;
+    }
+    // the calling step gets the error
+    state.input = err;
+    state.failed = true;
+    return undefined;
+  }
+
+  state.input = undefined;
+  state.failed = false;
+
+  if (res.done === true) {
+    stack.pop();
+    return stack.length === 0 ? null : undefined;
+  }
+  if (res.value instanceof Call) {
+    stack.push(res.value.step);
+    return undefined;
+  }
+  if (res.value instanceof Promise) {
+    return res.value;
+  }
+  state.input = res.value;
+  return undefined;
 }
 
 // runSync runs a step inside a write transaction, where the chain must
@@ -260,6 +322,31 @@ export function* callFieldInterceptors(
 ): Step {
   const fa = fieldApp(app);
 
+  // the cascade path: the interceptors pass the action through, so it runs
+  // after them (see the top of the file)
+  if (actionName === InterceptorActionDelete || actionName === InterceptorActionDeleteExecute) {
+    let proceed = false;
+    let fn: () => void | Promise<void> = () => {
+      proceed = true;
+    };
+    for (const field of record.collection().fields) {
+      if (isRecordInterceptor(field)) {
+        const oldfn = fn;
+        fn = () => field.intercept(fa, record, actionName, oldfn);
+      }
+    }
+
+    const result = fn();
+    if (result instanceof Promise) {
+      yield result;
+    }
+
+    if (proceed) {
+      yield* actionFunc();
+    }
+    return;
+  }
+
   // the firing order of the fields doesn't matter
   let fn: () => void | Promise<void> = () => run(actionFunc());
   for (const field of record.collection().fields) {
@@ -269,7 +356,11 @@ export function* callFieldInterceptors(
     }
   }
 
-  yield fn();
+  // a synchronous result needs no round trip through the runner
+  const result = fn();
+  if (result instanceof Promise) {
+    yield result;
+  }
 }
 
 // a synchronous part of the chain, run when the chain reaches it
@@ -280,6 +371,19 @@ export function* syncStep(fn: () => void): Step {
 
 function noop(): Step {
   return syncStep(() => {});
+}
+
+// RunInTransaction for a step: inside a transaction it is the same
+// transaction (src/db/tx.ts), so the step runs inline.
+export function* inTransaction(app: RecordsApp, fn: Next): Step {
+  if (app.databases.nonconcurrentDB() instanceof Tx) {
+    yield* fn(app);
+    return;
+  }
+
+  runInAppTransaction(app, (txApp) => {
+    runSync(fn(txApp));
+  });
 }
 
 // -------------------------------------------------------------------
@@ -510,10 +614,8 @@ export function* deleteStep(app: RecordsApp, record: Record): Step {
 
         // db write: OnRecordDeleteExecute
         yield* callFieldInterceptors(deleteApp, record, InterceptorActionDeleteExecute, () =>
-          syncStep(() =>
-            onRecordDeleteExecute(deleteApp, record, (txApp) =>
-              refsOnDeleteExecute(txApp, record, (rowApp) => dbDelete(rowApp, record)),
-            ),
+          onRecordDeleteExecute(deleteApp, record, (txApp) =>
+            refsOnDeleteExecute(txApp, record, (rowApp) => dbDelete(rowApp, record)),
           ),
         );
       });
@@ -531,19 +633,19 @@ function dbDelete(app: RecordsApp, record: Record): Step {
   });
 }
 
-function onRecordDeleteExecute(app: RecordsApp, record: Record, next: Next): void {
+function* onRecordDeleteExecute(app: RecordsApp, record: Record, next: Next): Step {
   // fetch rel references (if any)
   //
   // note: the select is outside of the transaction to minimize
   // SQLITE_BUSY errors when mixing read&write in a single transaction
   const refs = withDriverErrors(() => findCachedCollectionReferences(app, record.collection()));
 
-  runInAppTransaction(app, (txApp) => {
+  yield* inTransaction(app, function* (txApp) {
     // delete the record before the relation references to ensure that there
     // will be no "A<->B" relations to prevent deadlock when calling DeleteRecord recursively
-    runSync(next(txApp));
+    yield* next(txApp);
 
-    runSync(cascadeRecordDelete(txApp, record, refs));
+    yield* cascadeRecordDelete(txApp, record, refs);
   });
 }
 
@@ -656,7 +758,7 @@ function* deleteRefRecords(
     // cascade delete the reference
     // (only if there are no other active references in case of multiple select)
     if (relField.cascadeDelete && ids.length === 0) {
-      yield* deleteStep(app, refRecord);
+      yield call(deleteStep(app, refRecord));
       // no further actions are needed (the reference is deleted)
       continue;
     }
@@ -729,7 +831,7 @@ function recordRow(record: Record): Model & DBExporter {
 function driverValues(data: Params): Params {
   const result: Params = {};
   for (const [key, value] of Object.entries(data)) {
-    result[key] = driverValue(key, value);
+    setOwn(result, key, driverValue(key, value));
   }
   return result;
 }

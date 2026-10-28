@@ -12,12 +12,16 @@
 // UpdateExecute) belongs to the collection save path. Not here: the
 // installer's password reset mail check (OnMailerRecordPasswordResetSend,
 // the mails task).
+//
+// The installer cleanup looks the installer up through upstream's root app
+// (the app the hook was bound to), whose concurrent pool never sees an
+// open transaction's writes: here app.databases.committedReads(). It
+// deletes through the chain's app (upstream's e.App).
 
-import { runInAppTransaction } from "@/collections/collection-query";
 import { wrapError } from "@/collections/view";
 import type { Record } from "@/records/record-model";
 import { countRecords, findAuthRecordByEmail, type RecordsApp } from "@/records/record-query";
-import { deleteStep, isNoRows, type Next, runSync, type Step } from "@/records/record-save";
+import { deleteStep, inTransaction, isNoRows, type Next, type Step } from "@/records/record-save";
 import { newBadRequestError } from "@/server/error";
 
 export const CollectionNameSuperusers = "_superusers";
@@ -39,7 +43,7 @@ export function* superusersOnDelete(app: RecordsApp, record: Record, next: Next)
     return;
   }
 
-  runInAppTransaction(app, (txApp) => {
+  yield* inTransaction(app, function* (txApp) {
     let total: number;
     try {
       total = countRecords(txApp, CollectionNameSuperusers);
@@ -51,7 +55,7 @@ export function* superusersOnDelete(app: RecordsApp, record: Record, next: Next)
       throw newBadRequestError("You can't delete the only existing superuser", null);
     }
 
-    runSync(next(txApp));
+    yield* next(txApp);
   });
 }
 
@@ -85,7 +89,11 @@ function* superusersSaveExecute(
   if (isCreate && record.email() !== DefaultInstallerEmail) {
     let installer: Record;
     try {
-      installer = findAuthRecordByEmail(app, CollectionNameSuperusers, DefaultInstallerEmail);
+      installer = findAuthRecordByEmail(
+        { ...app, databases: app.databases.committedReads() },
+        CollectionNameSuperusers,
+        DefaultInstallerEmail,
+      );
     } catch (err) {
       if (!isNoRows(err)) {
         app.logger.error("Failed to fetch installer superuser", err);

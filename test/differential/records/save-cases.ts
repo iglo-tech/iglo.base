@@ -5,6 +5,10 @@
 // refer to them; a few creates leave the id to the server, and the test
 // aliases those ids. "$main" is the id of the superuser the fresh install
 // created (the same on both copies).
+//
+// A "chain" step creates records one by one, each referencing the one
+// before it; a "batch" step runs its creates in one transaction (upstream:
+// POST /api/batch).
 
 // a collection created through POST /api/collections (and then PATCHed with
 // `patch`, for fields that refer to the collection itself)
@@ -28,6 +32,8 @@ export const ids = {
   notes: "notescoll000001",
   links: "linkscoll000001",
   nodes: "nodescoll000001",
+  chain: "chaincoll000001",
+  protos: "protoscoll00001",
   peopleView: "peopleviewcoll1",
 };
 
@@ -198,6 +204,34 @@ export const collections: CollectionCase[] = [
   },
   {
     body: {
+      id: ids.chain,
+      name: "chain",
+      type: "base",
+      fields: [...autodates],
+    },
+    patch: {
+      fields: [
+        ...autodates,
+        {
+          name: "parent",
+          type: "relation",
+          collectionId: ids.chain,
+          maxSelect: 1,
+          cascadeDelete: true,
+        },
+      ],
+    },
+  },
+  {
+    body: {
+      id: ids.protos,
+      name: "protos",
+      type: "base",
+      fields: [{ name: "__proto__", type: "text" }, ...autodates],
+    },
+  },
+  {
+    body: {
       id: ids.peopleView,
       name: "people_view",
       type: "view",
@@ -218,6 +252,8 @@ export const tables = [
   "notes",
   "links",
   "nodes",
+  "chain",
+  "protos",
   "_superusers",
   "_externalAuths",
   "_mfas",
@@ -232,7 +268,9 @@ export type Step =
   | { kind: "create"; collection: string; body: { [key: string]: unknown } }
   | { kind: "update"; collection: string; id: string; body: { [key: string]: unknown } }
   | { kind: "delete"; collection: string; id: string }
-  | { kind: "truncate"; collection: string };
+  | { kind: "truncate"; collection: string }
+  | { kind: "chain"; collection: string; field: string; ids: string[] }
+  | { kind: "batch"; creates: { collection: string; body: { [key: string]: unknown } }[] };
 
 const pw = { password: "1234567890", passwordConfirm: "1234567890" };
 
@@ -262,6 +300,16 @@ const update = (collection: string, id: string, body: { [key: string]: unknown }
 });
 const del = (collection: string, id: string): Step => ({ kind: "delete", collection, id });
 const truncate = (collection: string): Step => ({ kind: "truncate", collection });
+
+// a body with a "__proto__" member (an object literal would set the prototype)
+const protoBody = (value: string): { [key: string]: unknown } => {
+  const body: { [key: string]: unknown } = {};
+  Object.defineProperty(body, "__proto__", { value, enumerable: true, writable: true });
+  return body;
+};
+
+// 1,000 records, record n references n-1 (upstream deletes them all)
+const chainIds = Array.from({ length: 1000 }, (_, i) => "cn" + String(i).padStart(13, "0"));
 
 export const steps: Step[] = [
   // auth records
@@ -395,6 +443,13 @@ export const steps: Step[] = [
   update("nodes", nd(5), { next: nd(5), peers: [nd(5), nd(4)] }),
   del("nodes", nd(1)),
   del("nodes", nd(5)),
+  { kind: "chain", collection: "chain", field: "parent", ids: chainIds },
+  del("chain", chainIds[0] as string),
+
+  // a field named __proto__
+  create("protos", { id: "pr0000000000001", ...protoBody("keep-me") }),
+  update("protos", "pr0000000000001", protoBody("updated")),
+  create("protos", { id: "pr0000000000002", ...protoBody("kept") }),
 
   // superusers
   create("_superusers", { email: "__pbinstaller@example.com", ...pw }),
@@ -408,6 +463,21 @@ export const steps: Step[] = [
   update("_superusers", "su0000000000002", { password: "short", passwordConfirm: "short" }),
   del("_superusers", "su0000000000002"),
   del("_superusers", "$main"),
+  // an installer created in the same transaction is kept
+  {
+    kind: "batch",
+    creates: [
+      {
+        collection: "_superusers",
+        body: { id: "su0000000000003", email: "__pbinstaller@example.com", ...pw },
+      },
+      {
+        collection: "_superusers",
+        body: { id: "su0000000000004", email: "su4@example.com", ...pw },
+      },
+    ],
+  },
+  create("_superusers", { id: "su0000000000005", email: "su5@example.com", ...pw }),
 
   // truncate
   truncate("tags"),

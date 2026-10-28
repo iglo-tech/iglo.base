@@ -25,6 +25,11 @@
 // At the end, upstream serves iglo.base's pb_data: its integrity check
 // passes, and its GET bodies of every record equal those of upstream's own
 // pb_data (ids aliased, created/updated, tokenKey and hashes normalized).
+//
+// A "chain" step is its creates one by one, compared once at the end. A
+// "batch" step is upstream's POST /api/batch (enabled in upstream's
+// settings for the test) and iglo.base's creates in one transaction
+// (saveRecordSync in runInAppTransaction); only its success is modeled.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -37,13 +42,14 @@ import {
   findCachedCollectionByNameOrId,
   findCollectionByNameOrId,
   reloadCachedCollections,
+  runInAppTransaction,
   truncateCollection,
 } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { FieldNameExpand } from "@/fields/field";
 import { type DataMap, type Record, newRecord } from "@/records/record-model";
 import { findRecordById } from "@/records/record-query";
-import { deleteRecord, saveRecord } from "@/records/record-save";
+import { deleteRecord, saveRecord, saveRecordSync } from "@/records/record-save";
 import { ApiError, newBadRequestError, newNotFoundError } from "@/server/error";
 import { decodeValue, toAny } from "@/server/json-decode";
 
@@ -140,6 +146,13 @@ beforeAll(async () => {
 
   upstream = await startUpstream({ dataDir: upstreamDir });
   token = await login(upstream);
+  const settings = await request(
+    upstream,
+    "PATCH",
+    "/api/settings",
+    JSON.stringify({ batch: { enabled: true } }),
+  );
+  expect(settings.status).toBe(200);
 
   app = openDataDir(igloDir);
   // the bootstrap cache load
@@ -164,6 +177,11 @@ interface Outcome {
   id?: string;
 }
 
+// obj[key] = value as an own property, also for the key "__proto__"
+function setOwn<T>(obj: { [key: string]: T }, key: string, value: T): void {
+  Object.defineProperty(obj, key, { value, enumerable: true, writable: true, configurable: true });
+}
+
 // JSON text with the object members sorted (Go writes maps in random order)
 function sortedJSON(text: string): string {
   const sort = (v: unknown): unknown => {
@@ -173,7 +191,7 @@ function sortedJSON(text: string): string {
     if (v !== null && typeof v === "object") {
       const out: { [key: string]: unknown } = {};
       for (const key of Object.keys(v).toSorted()) {
-        out[key] = sort((v as { [key: string]: unknown })[key]);
+        setOwn(out, key, sort((v as { [key: string]: unknown })[key]));
       }
       return out;
     }
@@ -237,6 +255,33 @@ async function upstreamStep(step: Step, resolve: (id: string) => string): Promis
     case "truncate":
       res = await request(server(), "DELETE", `/api/collections/${step.collection}/truncate`);
       break;
+    case "chain":
+      for (const [i, id] of step.ids.entries()) {
+        res = await request(
+          server(),
+          "POST",
+          `/api/collections/${step.collection}/records`,
+          JSON.stringify({ id, [step.field]: i === 0 ? "" : step.ids[i - 1] }),
+        );
+        if (res.status !== 200) {
+          return { status: res.status, body: sortedJSON(res.text) };
+        }
+      }
+      return { status: 200, body: "" };
+    case "batch":
+      res = await request(
+        server(),
+        "POST",
+        "/api/batch",
+        JSON.stringify({
+          requests: step.creates.map((c) => ({
+            method: "POST",
+            url: `/api/collections/${c.collection}/records`,
+            body: c.body,
+          })),
+        }),
+      );
+      return { status: res.status, body: res.status === 200 ? "" : sortedJSON(res.text) };
   }
   if (res.status === 200 || res.status === 204) {
     const outcome: Outcome = { status: res.status, body: "" };
@@ -274,6 +319,34 @@ function formLoad(record: Record, data: DataMap): void {
 }
 
 async function modelStep(step: Step, resolve: (id: string) => string): Promise<Outcome> {
+  if (step.kind === "chain") {
+    for (const [i, id] of step.ids.entries()) {
+      const outcome = await modelStep(
+        {
+          kind: "create",
+          collection: step.collection,
+          body: { id, [step.field]: i === 0 ? "" : step.ids[i - 1] },
+        },
+        resolve,
+      );
+      if (outcome.status !== 200) {
+        return outcome;
+      }
+    }
+    return { status: 200, body: "" };
+  }
+
+  if (step.kind === "batch") {
+    runInAppTransaction(model(), (txApp) => {
+      for (const c of step.creates) {
+        const record = newRecord(findCachedCollectionByNameOrId(txApp, c.collection));
+        formLoad(record, record.replaceModifiers(requestBody(c.body)));
+        saveRecordSync(txApp, record);
+      }
+    });
+    return { status: 200, body: "" };
+  }
+
   let collection;
   try {
     collection = findCachedCollectionByNameOrId(model(), step.collection);
@@ -377,7 +450,7 @@ function snapshot(db: Database): Snapshot {
         } else if (typeof v === "bigint") {
           v = `${v}n`;
         }
-        row[c] = [String(values[2 * i]), v];
+        setOwn(row, c, [String(values[2 * i]), v]);
       }
       if (table === "_authOrigins" && row.collectionRef?.[1] === superusersCollectionId) {
         continue;
@@ -417,9 +490,9 @@ function normalize(
       for (const [c, [type, v]] of Object.entries(row)) {
         if (volatileColumns.includes(c)) {
           const state = prevRow === undefined ? "new" : prevRow[c]?.[1] === v ? "same" : "changed";
-          norm[c] = [type, v === "" ? "<empty>" : state];
+          setOwn(norm, c, [type, v === "" ? "<empty>" : state]);
         } else {
-          norm[c] = [type, alias(v)];
+          setOwn(norm, c, [type, alias(v)]);
         }
       }
       list.push(norm);
