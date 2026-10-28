@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.4 | worker | `task/M1.4-simple-fields` | 0 | [Brief](briefs/M1.4.md). Opus worker started 2026-10-28 |
+| M1.4 | council | [#12](https://github.com/iglo-tech/iglo.base/pull/12) | 1 | [Brief](briefs/M1.4.md). Worker head `e8288b1`; council round 1 started while CI ran (CI must be green before merge) |
 
 ## Done
 
