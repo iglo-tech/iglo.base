@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1c | council | [#11](https://github.com/iglo-tech/iglo.base/pull/11) ([brief](briefs/M1.1c.md)) | 1 | ozzo-validation v4.4.1 subset, `is` rules with govalidator `a9d515a`, `core/validators` (without file.go). CI green at `ea00ce8`; round 1 started for that head |
+| M1.1c | ci | [#11](https://github.com/iglo-tech/iglo.base/pull/11) ([brief](briefs/M1.1c.md)) | 1 | ozzo-validation v4.4.1 subset, `is` rules with govalidator `a9d515a`, `core/validators` (without file.go). Round 1 at `ea00ce8`: Opus APPROVE, Sol CHANGES (`__proto__` lost when marshaling Errors, ErrorObject message not rendered from current params); fixed by the lead at `758b382`. Round 2 starts when CI is green |
 
 ## Done
 
