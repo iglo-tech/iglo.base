@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8a | brief | — | 0 | [Brief](briefs/M1.8a.md). The first Terra worker stopped after 21 s with no code and no reason (no limit reached); its empty local branch was deleted. **Next run: start one Terra worker with the same brief.** If it again stops within minutes without code, mark M1.8a blocked on the worker model and start no more Terra port workers until the owner reviews the note under "For owner review" |
+| M1.8a | worker | task/M1.8a-record-model (no PR yet) | 0 | [Brief](briefs/M1.8a.md). The first Terra worker stopped after 21 s with no code and no reason (no limit reached); its empty local branch was deleted. Retry worker (Terra, high) started 2026-10-28 16:31 UTC with the same brief and an explicit "do not stop silently" note. If it again stops within minutes without code, mark M1.8a blocked on the worker model and start no more Terra port workers until the owner reviews the note under "For owner review" |
 
 ## Done
 
