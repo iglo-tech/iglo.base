@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5 | fix | [#13](https://github.com/iglo-tech/iglo.base/pull/13) | 1 | [Brief](briefs/M1.5.md). Round 1 (`e9655ce`): Opus CHANGES (the Passwords row in `03-data-compatibility.md` contradicts the code), Sol CHANGES (hashes whose salt holds CR/LF, which Go decodes to a shorter salt, are rejected but upstream authenticates them). Opus fixer started: Go bcrypt/blowfish port as the fallback for hashes Bun cannot take, doc row rewritten |
+| M1.5 | council | [#13](https://github.com/iglo-tech/iglo.base/pull/13) | 2 | [Brief](briefs/M1.5.md). Round 1 (`e9655ce`): Opus CHANGES (the Passwords row in `03-data-compatibility.md` contradicts the code), Sol CHANGES (hashes whose salt holds CR/LF, which Go decodes to a shorter salt, are rejected but upstream authenticates them). Fixed by an Opus fixer at `558d37f`: Go bcrypt/blowfish port as the fallback for hashes Bun cannot take, doc row rewritten. Round 2 started |
 
 ## Done
 
