@@ -15,14 +15,16 @@
 // `readWorkers`, the concurrent builders' async resolvers (OneAsync,
 // AllAsync, RowAsync, ColumnAsync) read on the read worker pool instead
 // (read-pool.ts); in a transaction both builders are the transaction, so
-// its reads stay on its connection. QueryTimeout (--queryTimeout) is the
+// its reads stay on its connection. committedReads() gives the reads of
+// upstream's root app inside a transaction (a separate read-only
+// connection, opened on first use). QueryTimeout (--queryTimeout) is the
 // deadline ModelQuery and AuxModelQuery give their queries (db.ts).
 
 import { join } from "node:path";
 
-import { defaultDBConnect, type DBConnectFunc } from "@/db/connect";
+import { defaultDBConnect, type DBConnectFunc, openReadOnly } from "@/db/connect";
 import type { Builder } from "@/db/dbx/builder";
-import { Errors, type DB } from "@/db/dbx/db";
+import { Errors, newFromDB, type DB } from "@/db/dbx/db";
 import type { Tx } from "@/db/dbx/tx";
 import { DualDBBuilder } from "@/db/dual-builder";
 import { ReadPool } from "@/db/read-pool";
@@ -74,6 +76,10 @@ interface Shared {
   poolClosed: Promise<void>;
   // the distinct connections, closed once
   readonly dbs: DB[];
+  readonly dataPath: string;
+  readonly logSQL: ((ms: number, sql: string) => void) | null;
+  // the read-only data.db connection of committedReads(), once opened
+  committedDB: DB | null;
   closed: boolean;
 }
 
@@ -104,9 +110,10 @@ export class Databases {
     // initDataDB
     const dataDB = connect(dataPath);
     const nonconcurrentDB = dataDB.clone();
+    let logSQL: ((ms: number, sql: string) => void) | null = null;
     if (config.devSQLLog) {
       const log = config.devSQLLog;
-      const logSQL = (ms: number, sql: string): void => {
+      logSQL = (ms: number, sql: string): void => {
         log(`[${Math.trunc(ms).toFixed(2)}ms] ${normalizeSQLLog(sql)}`);
       };
       for (const db of [dataDB, nonconcurrentDB]) {
@@ -151,6 +158,9 @@ export class Databases {
         pool,
         poolClosed: Promise.resolve(),
         dbs: [dataDB, auxDB],
+        dataPath,
+        logSQL,
+        committedDB: null,
         closed: false,
       },
       null,
@@ -211,6 +221,37 @@ export class Databases {
   // In a transaction the AuxConcurrentDB() and AuxNonconcurrentDB() refer to the same *dbx.TX instance.
   auxNonconcurrentDB(): Builder {
     return this.open().auxNonconcurrentDB;
+  }
+
+  // The reads upstream makes through the root app (the app a hook was
+  // bound to) while a transaction runs: upstream's concurrent pool
+  // connections never see the transaction's uncommitted writes. Outside a
+  // transaction this is the app itself. In a data.db transaction it is the
+  // app the transaction started from, without the transaction, whose
+  // data.db concurrent builder is a read-only main-thread connection
+  // (opened on first use), so its synchronous reads see data.db as last
+  // committed. Only for reads: its other builders are the root app's.
+  committedReads(): Databases {
+    if (this.tx === null || this.tx.isForAuxDB) {
+      return this;
+    }
+    const root = this.tx.parent;
+    return new Databases({ ...root.open(), concurrentDB: this.committedDB() }, this.shared, null);
+  }
+
+  private committedDB(): DB {
+    this.open();
+    let db = this.shared.committedDB;
+    if (db === null) {
+      db = newFromDB(openReadOnly(this.shared.dataPath), "sqlite");
+      if (this.shared.logSQL !== null) {
+        db.queryLogFunc = this.shared.logSQL;
+        db.execLogFunc = this.shared.logSQL;
+      }
+      this.shared.committedDB = db;
+      this.shared.dbs.push(db);
+    }
+    return db;
   }
 
   // TxInfo returns the transaction associated with the current app instance (if any).

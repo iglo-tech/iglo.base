@@ -8,6 +8,8 @@ import { join } from "node:path";
 
 import { auxDBFilename, Databases, dataDBFilename, normalizeSQLLog } from "@/db/base";
 import { DualDBBuilder, hasPrefixFold, trimLeftSpaces } from "@/db/dual-builder";
+import { runInTransaction } from "@/db/tx";
+
 import { getDB, openTempDatabases, tempDir } from "@test/db/support";
 
 // the values upstream's DSN pragmas leave on a connection
@@ -137,5 +139,35 @@ describe("--dev SQL log", () => {
     expect(normalizeSQLLog("SELECT {{a}}.* FROM {{a.b}} WHERE [[c.d]]=1 AND x=<nil>")).toBe(
       "SELECT `a`.* FROM `a`.`b` WHERE `c`.`d`=1 AND x=NULL",
     );
+  });
+});
+
+function titles(dbs: Databases): string[] {
+  return dbs.concurrentDB().newQuery("SELECT title FROM demo ORDER BY id").column<string>();
+}
+
+describe("committedReads", () => {
+  test("reads data.db as last committed while a transaction runs", () => {
+    const { app } = openTempDatabases();
+
+    app.nonconcurrentDB().newQuery("INSERT INTO demo (id, title) VALUES ('a', 'old')").execute();
+    expect(app.committedReads()).toBe(app);
+
+    runInTransaction(app, (txApp) => {
+      txApp.nonconcurrentDB().newQuery("UPDATE demo SET title = 'new'").execute();
+      txApp.nonconcurrentDB().newQuery("INSERT INTO demo (id, title) VALUES ('b', 'b')").execute();
+      expect(titles(txApp)).toEqual(["new", "b"]);
+
+      const committed = txApp.committedReads();
+      expect(committed.isTransactional()).toBe(false);
+      expect(titles(committed)).toEqual(["old"]);
+      // the same connection on later calls
+      expect(committed.concurrentDB()).toBe(txApp.committedReads().concurrentDB());
+    });
+
+    runInTransaction(app, (txApp) => {
+      expect(titles(txApp.committedReads())).toEqual(["new", "b"]);
+    });
+    app.close();
   });
 });
