@@ -1,5 +1,6 @@
-// Upstream: Go go1.27.2 src/strings/strings.go (ToLower, EqualFold) and
-// src/unicode/letter.go (ToLower)
+// Upstream: Go go1.27.2 src/strings/strings.go (ToLower, EqualFold,
+// TrimSpace, Trim), src/unicode/letter.go (ToLower) and
+// src/unicode/graphic.go (IsSpace)
 //
 // The collection validator and queries lower names with Go's
 // strings.ToLower and compare them with strings.EqualFold. JS's
@@ -124,4 +125,58 @@ export function equalFold(s: string, t: string): boolean {
     }
   }
   return true;
+}
+
+// unicode.IsSpace: the White_Space property ('\t', '\n', '\v', '\f',
+// '\r', ' ', U+0085, U+00A0 and the Z category spaces). JS's trim() also
+// removes U+FEFF and keeps U+0085.
+function isSpace(r: number): boolean {
+  switch (r) {
+    case 0x09:
+    case 0x0a:
+    case 0x0b:
+    case 0x0c:
+    case 0x0d:
+    case 0x20:
+    case 0x85:
+    case 0xa0:
+    case 0x1680:
+    case 0x2028:
+    case 0x2029:
+    case 0x202f:
+    case 0x205f:
+    case 0x3000:
+      return true;
+  }
+  return r >= 0x2000 && r <= 0x200a;
+}
+
+// strings.TrimSpace returns s with all leading and trailing white space
+// removed, as defined by Unicode.
+export function trimSpace(s: string): string {
+  let start = 0;
+  let end = s.length;
+  while (start < end && isSpace(s.charCodeAt(start))) {
+    start++;
+  }
+  while (end > start && isSpace(s.charCodeAt(end - 1))) {
+    end--;
+  }
+  return s.slice(start, end);
+}
+
+// strings.Trim returns s with all leading and trailing code points
+// contained in cutset removed.
+export function trim(s: string, cutset: string): string {
+  const cut = new Set(cutset);
+  const chars = [...s];
+  let start = 0;
+  let end = chars.length;
+  while (start < end && cut.has(chars[start] as string)) {
+    start++;
+  }
+  while (end > start && cut.has(chars[end - 1] as string)) {
+    end--;
+  }
+  return chars.slice(start, end).join("");
 }

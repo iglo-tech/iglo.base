@@ -38,10 +38,6 @@ export const pendingRule: Pending = {
   task: "M2.2",
   reason: "rule check needs the record field resolver",
 };
-export const pendingView: Pending = {
-  task: "M1.7",
-  reason: "view fields and the view query check need view.go",
-};
 
 export const setupCollections: ((ctx: Ctx) => unknown)[] = [
   (ctx) => ({
@@ -704,7 +700,6 @@ export const validateCases: ValidateCase[] = [
     target: "posts_view",
     body: () => ({ fields: [] }),
     valid: true,
-    pending: pendingView,
   },
 
   // -----------------------------------------------------------------
@@ -1084,26 +1079,22 @@ export const validateCases: ValidateCase[] = [
     name: "create: view with an invalid query",
     body: () => ({ name: "c_view2", type: "view", viewQuery: "invalid" }),
     valid: false,
-    pending: pendingView,
   },
   {
     name: "create: view with a valid query",
     body: () => ({ name: "c_view3", type: "view", viewQuery: "select id, title from posts" }),
     valid: true,
-    pending: pendingView,
   },
   {
     name: "update: view with an invalid query",
     target: "posts_view",
     body: () => ({ viewQuery: "select missing from posts" }),
     valid: false,
-    pending: pendingView,
   },
   {
     name: "update: view with an empty query",
     target: "posts_view",
     body: () => ({ viewQuery: "" }),
     valid: false,
-    pending: pendingView,
   },
 ];

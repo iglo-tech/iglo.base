@@ -13,20 +13,33 @@
 // FindCollectionReferences returns a Map whose keys are the collections
 // in the order the query returns them (Go's map order is random).
 //
-// Not here: TruncateCollection, normalizeViewQueryId and
-// resaveViewsWithChangedFields (M1.7).
+// normalizeViewQueryId and resaveViewsWithChangedFields are at the end.
+// runInAppTransaction is app.RunInTransaction: the callback's txApp is the
+// app with the transaction's databases (src/db/tx.ts).
+//
+// Not here: TruncateCollection (M1.8).
 
+import type { ErrorLogger } from "@/app/app";
 import type { Clock } from "@/app/clock";
-import { Collection } from "@/collections/collection-model";
-import { toLower, equalFold } from "@/collections/go-strings";
+import { Collection, CollectionTypeView } from "@/collections/collection-model";
+import { saveCollection } from "@/collections/collection-save";
+import { withDriverErrors } from "@/collections/driver-error";
+import { toLower, equalFold, trim, trimSpace } from "@/collections/go-strings";
+import {
+  IdentifiersParser,
+  createViewFields,
+  getQueryTableInfo,
+  joinErrors,
+} from "@/collections/view";
 import type { Databases } from "@/db/base";
 import { modelQuery } from "@/db/db";
 import { inExp, newExp, notIn } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
+import { runInTransaction } from "@/db/tx";
 import type { SelectQuery } from "@/db/dbx/select";
-import type { Field, FieldApp } from "@/fields/field";
+import { type Field, type FieldApp, FieldNameId } from "@/fields/field";
 import { RelationField } from "@/fields/relation";
-import { nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
+import { existInSlice, nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
 import type { Store } from "@/tools/store/store";
 
 export const StoreKeyCachedCollections = "pbAppCachedCollections";
@@ -40,6 +53,20 @@ export interface CollectionsApp {
   readonly store: Store<string, unknown>;
   // the clock that replaces upstream's time.Now()
   readonly clock: Clock;
+  // receives upstream's Logger().Warn calls (errors the save path only
+  // reports)
+  readonly logger: ErrorLogger;
+}
+
+// RunInTransaction wraps fn into a transaction for the regular app
+// database; nested calls run in the existing transaction.
+export function runInAppTransaction(
+  app: CollectionsApp,
+  fn: (txApp: CollectionsApp) => void,
+): void {
+  runInTransaction(app.databases, (txDatabases) => {
+    fn(txDatabases === app.databases ? app : { ...app, databases: txDatabases });
+  });
 }
 
 // CollectionQuery returns a new Collection select query.
@@ -255,4 +282,91 @@ export function fieldApp(app: CollectionsApp): FieldApp {
     findCollectionByNameOrId: (nameOrId) => findCollectionByNameOrId(app, nameOrId),
     findCachedCollectionByNameOrId: (nameOrId) => findCachedCollectionByNameOrId(app, nameOrId),
   };
+}
+
+// -------------------------------------------------------------------
+
+// normalizeViewQueryId wraps (if necessary) the provided view query
+// with a subselect to ensure that the id column is a text since
+// currently we don't support non-string model ids
+// (see https://ganigeorgiev.com/pocketbase/discussions/3110).
+export function normalizeViewQueryId(app: CollectionsApp, query: string): string {
+  query = trim(trimSpace(query), ";");
+
+  const info = getQueryTableInfo(app, query);
+
+  for (const row of info) {
+    if (equalFold(row.name, FieldNameId) && equalFold(row.type, "TEXT")) {
+      return query; // no wrapping needed
+    }
+  }
+
+  // raw parse to preserve the columns order
+  const rawParsed = new IdentifiersParser();
+  rawParsed.parse(query);
+
+  const columns: string[] = [];
+  for (const col of rawParsed.columns) {
+    if (col.alias === FieldNameId) {
+      columns.push(`CAST([[${col.alias}]] as TEXT) [[${col.alias}]]`);
+    } else {
+      columns.push("[[" + col.alias + "]]");
+    }
+  }
+
+  return `SELECT ${columns.join(",")} FROM (${query})`;
+}
+
+// resaveViewsWithChangedFields updates all view collections with changed fields.
+export function resaveViewsWithChangedFields(app: CollectionsApp, ...excludeIds: string[]): void {
+  const collections = withDriverErrors(() => findAllCollections(app, CollectionTypeView));
+
+  runInAppTransaction(app, (txApp) => {
+    const collectionErrors: Error[] = [];
+
+    for (const collection of collections) {
+      if (excludeIds.length > 0 && existInSlice(collection.id, excludeIds)) {
+        continue;
+      }
+
+      const check = (): void => {
+        // clone the existing fields for temp modifications
+        const oldFields = collection.fields.clone();
+
+        // generate new fields from the query
+        const [newFields, err] = createViewFields(txApp, collection.viewQuery);
+        if (err !== null) {
+          throw err;
+        }
+
+        // unset the fields' ids to exclude from the comparison
+        for (const f of oldFields) {
+          f.setId("");
+        }
+        for (const f of newFields) {
+          f.setId("");
+        }
+
+        const encodedNewFields = newFields.marshalJSON();
+        const encodedOldFields = oldFields.marshalJSON();
+
+        if (equalFold(encodedNewFields, encodedOldFields)) {
+          return; // no changes
+        }
+
+        saveCollection(txApp, collection);
+      };
+
+      try {
+        check();
+      } catch (err) {
+        const cause = err instanceof Error ? err : new Error(String(err));
+        collectionErrors.push(new Error(`[${collection.name}] ${cause.message}`, { cause }));
+      }
+    }
+
+    if (collectionErrors.length > 0) {
+      throw joinErrors(collectionErrors);
+    }
+  });
 }

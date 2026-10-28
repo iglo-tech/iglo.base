@@ -10,14 +10,14 @@ import { join } from "node:path";
 
 import type { Clock } from "@/app/clock";
 import { type CollectionsApp, reloadCachedCollections } from "@/collections/collection-query";
-import type { Collection } from "@/collections/collection-model";
 import { Databases } from "@/db/base";
-import { HashExp } from "@/db/dbx/expression";
 import { Store } from "@/tools/store/store";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
 export interface TestCollectionsApp extends CollectionsApp {
+  // what the app logged (upstream's Logger().Warn calls)
+  readonly logged: { message: string; cause: unknown }[];
   cleanup(): void;
 }
 
@@ -28,6 +28,7 @@ const systemClock: Clock = { now: () => new Date() };
 export function openTestApp(
   clock: Clock = systemClock,
   queryLog?: (line: string) => void,
+  queryTimeout?: number,
 ): TestCollectionsApp {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-collections-"));
   const dataDir = join(root, "pb_data");
@@ -37,6 +38,7 @@ export function openTestApp(
     clock,
     () => rmSync(root, { recursive: true, force: true }),
     queryLog,
+    queryTimeout,
   );
   reloadCachedCollections(app);
   return app;
@@ -49,32 +51,19 @@ export function openDataDir(
   clock: Clock = systemClock,
   onCleanup: () => void = () => {},
   queryLog?: (line: string) => void,
+  queryTimeout?: number,
 ): TestCollectionsApp {
-  const databases = Databases.open(
-    queryLog === undefined ? { dataDir } : { dataDir, devSQLLog: queryLog },
-  );
+  const databases = Databases.open({ dataDir, devSQLLog: queryLog, queryTimeout });
+  const logged: { message: string; cause: unknown }[] = [];
   return {
     databases,
     store: new Store<string, unknown>(),
     clock,
+    logger: { error: (message, cause) => logged.push({ message, cause }) },
+    logged,
     cleanup() {
       databases.close();
       onCleanup();
     },
   };
-}
-
-// Stands in for app.Save(collection) where an upstream test saves a
-// collection only to change its stored fields (collection save is M1.7's):
-// writes the collection's fields to its `_collections` row.
-export function storeFields(app: CollectionsApp, collection: Collection): void {
-  app.databases
-    .nonconcurrentDB()
-    .update(
-      "_collections",
-      { fields: collection.fields.value() },
-      new HashExp({ id: collection.id }),
-    )
-    .execute();
-  reloadCachedCollections(app);
 }

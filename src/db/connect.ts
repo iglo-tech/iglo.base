@@ -21,6 +21,8 @@ export const connectPragmas: readonly string[] = Object.freeze([
   "journal_size_limit(200000000)",
   "synchronous(NORMAL)",
   "foreign_keys(ON)",
+  // SQLite defaults to OFF, as upstream does; macOS system SQLite defaults to ON.
+  "legacy_alter_table(OFF)",
   "temp_store(MEMORY)",
   "cache_size(-32000)",
 ]);

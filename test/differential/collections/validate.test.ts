@@ -14,11 +14,10 @@
 //     name) from the body's type and name, then the body unmarshaled into
 //     it; update (collectionUpdate): the stored collection
 //     (FindCollectionByNameOrId) with the body unmarshaled into it;
-//   - onCollectionSave (core/collection_model.go, M1.7's save step, done
-//     here by the test): the default type, the default id of a new
-//     collection, NewFieldsList over the fields, the default fields,
-//     unsetMissingOAuth2MappedFields, updateGeneratedIdIfExists and the
-//     index table names;
+//   - onCollectionSave (src/collections/collection-save.ts): the default
+//     type, the default id of a new collection, NewFieldsList over the
+//     fields, the default fields, unsetMissingOAuth2MappedFields,
+//     updateGeneratedIdIfExists and the index table names;
 //
 // and then validateCollection. A validation error must give upstream's
 // 400 body: `{"data":…,"message":"Failed to create collection.",
@@ -27,23 +26,20 @@
 // with their object members sorted; every code, message and param is
 // compared as it is. No error must mean upstream's 200.
 //
-// Cases that need the rule check (M2.2) or view field generation and the
-// view query check (M1.7) run as test.failing: they pass while the model
-// differs and fail once it agrees.
+// Cases that need the rule check (M2.2) run as test.failing: they pass
+// while the model differs and fail once it agrees.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { unsetMissingOAuth2MappedFields } from "@/collections/collection-model-auth-options";
-import { Collection, CollectionTypeBase, newCollection } from "@/collections/collection-model";
+import { Collection, newCollection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import { onCollectionSave } from "@/collections/collection-save";
 import { validateCollection } from "@/collections/collection-validate";
-import { newFieldsList } from "@/collections/fields-list";
 import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
 import { newBadRequestError } from "@/server/error";
-import { parseIndex } from "@/tools/dbutils/index";
 import { Errors } from "@/validation/error";
 
 import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
@@ -160,48 +156,6 @@ function model(): TestCollectionsApp {
   return app;
 }
 
-// onCollectionSave (core/collection_model.go) up to the validation
-function prepareForSave(c: Collection): void {
-  if (c.type === "") {
-    c.type = CollectionTypeBase;
-  }
-
-  if (c.isNew()) {
-    c.initDefaultId();
-  }
-
-  // recreate the fields list to ensure that all normalizations
-  // like default field id are applied
-  c.fields = newFieldsList(...c.fields);
-
-  c.initDefaultFields();
-
-  if (c.isAuth()) {
-    unsetMissingOAuth2MappedFields(c);
-  }
-
-  c.updateGeneratedIdIfExists(model());
-
-  // normalize indexes table name
-  for (const [i, raw] of c.indexes.entries()) {
-    const parsed = parseIndex(raw);
-
-    // no need to normalize
-    if (parsed.tableName === c.name) {
-      continue;
-    }
-
-    parsed.tableName = c.name;
-
-    const normalized = parsed.build();
-    if (normalized === "") {
-      continue; // leave to the model validator to decide whether to return an error
-    }
-
-    c.indexes[i] = normalized;
-  }
-}
-
 // the model's collection for a case: the handler's collection with the
 // body applied
 function modelCollection(c: ValidateCase, body: string): Collection {
@@ -255,7 +209,7 @@ interface Outcome {
 
 function modelOutcome(c: ValidateCase, body: string): Outcome {
   const collection = modelCollection(c, body);
-  prepareForSave(collection);
+  onCollectionSave(model(), collection);
   const err = validateCollection(model(), collection);
   if (err === null) {
     return { status: 200, body: "" };

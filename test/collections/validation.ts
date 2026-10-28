@@ -30,10 +30,6 @@ export function expectValidationErrors(
 
 // The later tasks that complete a check of the collection validator.
 export const pendingRule = { task: "M2.2", reason: "rule check needs the record field resolver" };
-export const pendingView = {
-  task: "M1.7",
-  reason: "view fields and the view query check need view.go",
-};
 
 export interface Pending {
   task: string;

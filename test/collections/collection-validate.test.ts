@@ -3,9 +3,7 @@
 // Each case runs on a fresh copy of the vendored fixture (openTestApp), as
 // upstream's tests.NewTestApp does, and validates with validateCollection
 // (app.Validate → onCollectionValidate). Cases that need the rule check
-// (M2.2) or view field generation and the view query check (M1.7) are
-// pending (caseTest). Where upstream calls app.Save only to change a
-// collection's stored fields, storeFields writes them (save is M1.7's).
+// (M2.2) are pending (caseTest).
 
 import { describe } from "bun:test";
 
@@ -16,6 +14,7 @@ import {
   newViewCollection,
 } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import { saveCollection } from "@/collections/collection-save";
 import { validateCollection } from "@/collections/collection-validate";
 import { FieldsList, newFieldsList } from "@/collections/fields-list";
 import { BoolField } from "@/fields/bool";
@@ -23,13 +22,12 @@ import { EmailField } from "@/fields/email";
 import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
 
-import { openTestApp, storeFields, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
 import {
   type Pending,
   caseTest,
   expectValidationErrors,
   pendingRule,
-  pendingView,
 } from "@test/collections/validation";
 
 interface Scenario {
@@ -111,7 +109,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: ["indexes", "name", "fields", "viewQuery"],
-    pending: pendingView,
   },
   {
     name: "auth with invalid fields",
@@ -161,7 +158,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: [],
-    pending: pendingView,
   },
   {
     name: "auth type",
@@ -368,7 +364,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: ["createRule", "updateRule", "deleteRule"],
-    pending: pendingView,
   },
   {
     name: "view with nil create/update/delete rules",
@@ -380,7 +375,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: [],
-    pending: pendingView,
   },
   {
     name: "changing api rules",
@@ -553,7 +547,7 @@ const scenarios: Scenario[] = [
 
       // mark the title field as system
       demo2.fields.getByName("title")!.setSystem(true);
-      storeFields(app, demo2);
+      saveCollection(app, demo2);
 
       // refresh
       demo2 = findCollectionByNameOrId(app, "demo2");
@@ -571,7 +565,7 @@ const scenarios: Scenario[] = [
 
       // mark the title field as system
       demo2.fields.getByName("title")!.setSystem(true);
-      storeFields(app, demo2);
+      saveCollection(app, demo2);
 
       // refresh
       demo2 = findCollectionByNameOrId(app, "demo2");
@@ -591,7 +585,7 @@ const scenarios: Scenario[] = [
 
       // mark the title field as system
       demo2.fields.getByName("title")!.setSystem(true);
-      storeFields(app, demo2);
+      saveCollection(app, demo2);
 
       // refresh
       demo2 = findCollectionByNameOrId(app, "demo2");
@@ -611,7 +605,7 @@ const scenarios: Scenario[] = [
 
       // mark the title field as system
       demo2.fields.getByName("title")!.setSystem(true);
-      storeFields(app, demo2);
+      saveCollection(app, demo2);
 
       // refresh
       demo2 = findCollectionByNameOrId(app, "demo2");
@@ -631,7 +625,7 @@ const scenarios: Scenario[] = [
 
       // mark the title field as system
       demo2.fields.getByName("title")!.setSystem(true);
-      storeFields(app, demo2);
+      saveCollection(app, demo2);
 
       // refresh
       demo2 = findCollectionByNameOrId(app, "demo2");
@@ -756,7 +750,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: [],
-    pending: pendingView,
   },
   {
     name: "with reserved auth only field name (passwordConfirm)",

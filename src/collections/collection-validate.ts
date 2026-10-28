@@ -5,13 +5,12 @@
 // Upstream runs it from the OnCollectionValidate hook; there is no hook
 // system (D5), so the save step (M1.7) calls it directly.
 //
-// Two checks wait for later tasks and keep their place in upstream's rule
-// order:
-//   - checkRuleExpr: building the rule with the record field resolver
-//     (M2.2). Until then a non-empty rule passes.
-//   - createViewFields and dryRunView: generating a view's fields from its
-//     query and running the query (M1.7). Until then a view's fields are
-//     left as submitted and the view query check passes.
+// One check waits for a later task and keeps its place in upstream's rule
+// order: checkRuleExpr, building the rule with the record field resolver
+// (M2.2). Until then a non-empty rule passes.
+//
+// A view's fields are generated from its query (createViewFields) and the
+// query is run (dryRunView) with view.ts.
 
 import {
   type AuthOptionsValidator,
@@ -34,6 +33,7 @@ import {
   isCollectionNameUnique,
 } from "@/collections/collection-query";
 import { FieldsList } from "@/collections/fields-list";
+import { createViewFields, dryRunView } from "@/collections/view";
 import { equalFold, toLower } from "@/collections/go-strings";
 import { modelQuery } from "@/db/db";
 import { HashExp, newExp } from "@/db/dbx/expression";
@@ -121,8 +121,8 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
 
     // generate fields from the query (overwriting any explicit user defined fields)
     if (this.newC.isView()) {
-      const [fields] = createViewFields(this.app, this.newC);
-      this.newC.fields = fields ?? new FieldsList();
+      const [fields] = createViewFields(this.app, this.newC.viewQuery);
+      this.newC.fields = fields;
     }
 
     // validate base fields
@@ -383,9 +383,14 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
       return null; // nothing to check
     }
 
-    const err = dryRunView(this.app, v, 10);
+    let err: unknown = null;
+    try {
+      dryRunView(this.app, v, 10);
+    } catch (e) {
+      err = e;
+    }
     if (err !== null) {
-      let rawErr = err.message;
+      let rawErr = err instanceof Error ? err.message : String(err);
       const rawBytes = textToBytes(rawErr);
       if (rawBytes.length > 500) {
         // restrict just as an extra precaution
@@ -796,7 +801,7 @@ function checkForVia(value: unknown): ValidationError | null {
 }
 
 // -------------------------------------------------------------------
-// The parts that later tasks complete. Each keeps its place in
+// The part that a later task completes. It keeps its place in
 // upstream's rule order.
 
 // checkRule's rule expression check: upstream builds the rule with
@@ -810,22 +815,5 @@ function checkRuleExpr(
   _collection: Collection,
   _rule: string,
 ): ValidationError | null {
-  return null;
-}
-
-// app.CreateViewFields(viewQuery): the fields generated from the view
-// query, or an error (with nil fields). View field generation is M1.7's;
-// until then a view keeps the fields it was submitted with.
-function createViewFields(
-  _app: CollectionsApp,
-  collection: Collection,
-): [FieldsList | null, Error | null] {
-  return [collection.fields, null];
-}
-
-// app.DryRunView(query, 10): runs the view query in a transaction that is
-// rolled back, returning its error. DryRunView is M1.7's; until then every
-// non-empty query passes.
-function dryRunView(_app: CollectionsApp, _query: string, _limit: number): Error | null {
   return null;
 }
