@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.4 | council | [#12](https://github.com/iglo-tech/iglo.base/pull/12) | 1 | [Brief](briefs/M1.4.md). Worker head `e8288b1`; council round 1 started while CI ran (CI must be green before merge) |
+| M1.4 | council | [#12](https://github.com/iglo-tech/iglo.base/pull/12) | 2 | [Brief](briefs/M1.4.md). Round 1 (`e8288b1`): both CHANGES, same two findings (arm64 `onlyInt` conversion, read-only WAL open on macOS); fixed by the lead at `71eb2d7`. Round 2 started |
 
 ## Done
 
@@ -78,6 +78,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1c brief): ozzo-validation and its `is` rules live in `src/validation/` (the library upstream imports), and `core/validators` in `src/validators/`. ozzo-validation (MIT, Qiang Xue) and govalidator (MIT, Alex Saskevich) notices go into `LICENSE`. `src/server/error.ts` (shared contract, M0.3) may import the ported `Errors` and `Error` types instead of its own structural definitions, as long as its tests still pass unchanged. `core/validators/file.go` waits for the filesystem tasks.
 - 2026-10-28 (M1.1c PR): the lead accepted the worker's open points. `Length` counts bytes, as ozzo's `LengthOfValue` does (the brief's "rune counts" was wrong; `RuneLength` counts runes). `src/server/error.ts` is unchanged, and the ported `Errors` extends its `ValidationErrors`. Go types are mapped by convention: `null` is a typed nil, a plain object is `map[string]any`, a JS `Map` holds validatable values, `Float64` marks a Go float64, and `DateTime` stands for `types.DateTime` and `time.Time`. Message templates support only `{{.name}}`. The new Go-derived files (`net/url`, `net/netip` parts) are named in the existing Go notice in `LICENSE`.
 - 2026-10-28 (M1.4 brief): fields live in `src/fields/` and use narrow record, collection and app interfaces declared there, which M1.6 and M1.8 implement. The field type→constructor map is a fixed internal table, not an extensible registry. Ported field tables are allowed as internal tests in `test/fields/`. The reference test compares field JSON, settings errors, value errors and stored values with the upstream binary.
+- 2026-10-28 (M1.4 round 1): Go's out-of-range float64→int64 conversion differs by CPU (amd64 gives -2^63, arm64 saturates). iglo.base follows the upstream binary for the CPU it runs on, not one architecture everywhere. M1.1's `src/tools/security/jwt.ts` still uses the amd64 rule; carried as a follow-up. Also carried: `src/tools/types/cast.ts` imports `parseGoFloat` from `src/server`.
 
 ## Paused until
 
