@@ -1,16 +1,16 @@
 // Upstream: core/view_test.go
 //
-// Left out: TestFindRecordByViewFile (FindRecordByViewFile is M1.8's; it
-// needs records and file lookups).
-//
 // Each Go test function runs on its own copy of the vendored fixture
 // (openTestApp, as tests.NewTestApp); its t.Run subtests run in order on
 // that app. The ensureNoTempViews check runs after the last subtest.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { runInAppTransaction } from "@/collections/collection-query";
-import { createViewFields, dryRunView, saveView } from "@/collections/view";
+import { findCollectionByNameOrId, runInAppTransaction } from "@/collections/collection-query";
+import { type Collection, newViewCollection } from "@/collections/collection-model";
+import { saveCollection } from "@/collections/collection-save";
+import { createViewFields, dryRunView, findRecordByViewFile, saveView } from "@/collections/view";
+import { NoRowsError } from "@/db/dbx/rows";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { deleteView, tableInfo } from "@/db/table";
 import { NumberField } from "@/fields/number";
@@ -660,6 +660,159 @@ describe("TestCreateViewFieldsWithNumberOnlyInt", () => {
   });
 });
 
+describe("TestFindRecordByViewFile", () => {
+  let app: TestCollectionsApp;
+  const totalLevels = 6;
+  const mockCollections: Collection[] = [];
+
+  beforeAll(() => {
+    app = openTestApp();
+
+    let prevCollection: Collection = findCollectionByNameOrId(app, "demo1");
+
+    // create collection view mocks
+    let fileOneAlias = "file_one one0";
+    let fileManyAlias = "file_many many0";
+    for (let i = 0; i <= totalLevels; i++) {
+      const view = newViewCollection(`_test_view${i}`);
+      view.viewQuery = `select id, ${fileOneAlias}, ${fileManyAlias} from ${prevCollection.name}`;
+
+      // save view
+      saveCollection(app, view);
+
+      mockCollections.push(view);
+      prevCollection = view;
+      fileOneAlias = `one${i} one${i + 1}`;
+      fileManyAlias = `many${i} many${i + 1}`;
+    }
+  });
+
+  afterAll(() => {
+    app.cleanup();
+  });
+
+  const fileOneName = "test_d61b33QdDU.txt";
+  const fileManyName = "test_QZFjKjXchk.txt";
+  const expectedRecordId = "84nmscqy84lsi1t";
+
+  const scenarios: {
+    name: string;
+    collectionNameOrId: () => string;
+    fileFieldName: string;
+    filename: string;
+    expectError: boolean;
+    expectRecordId: string;
+    // not upstream's: the error text
+    expectErrorText?: string;
+  }[] = [
+    {
+      name: "missing collection",
+      collectionNameOrId: () => "missing",
+      fileFieldName: "a",
+      filename: fileOneName,
+      expectError: true,
+      expectRecordId: "",
+      expectErrorText: "sql: no rows in result set",
+    },
+    {
+      name: "non-view collection",
+      collectionNameOrId: () => "demo1",
+      fileFieldName: "file_one",
+      filename: fileOneName,
+      expectError: true,
+      expectRecordId: "",
+      expectErrorText: "not a view collection",
+    },
+    {
+      name: "view collection after the max recursion limit",
+      collectionNameOrId: () => mockCollections[totalLevels - 1]!.name,
+      fileFieldName: `one${totalLevels - 1}`,
+      filename: fileOneName,
+      expectError: true,
+      expectRecordId: "",
+      expectErrorText: "reached the max recursion level of view collection file field queries",
+    },
+    {
+      name: "first view collection (single file)",
+      collectionNameOrId: () => mockCollections[0]!.name,
+      fileFieldName: "one0",
+      filename: fileOneName,
+      expectError: false,
+      expectRecordId: expectedRecordId,
+    },
+    {
+      name: "first view collection (many files)",
+      collectionNameOrId: () => mockCollections[0]!.name,
+      fileFieldName: "many0",
+      filename: fileManyName,
+      expectError: false,
+      expectRecordId: expectedRecordId,
+    },
+    {
+      name: "last view collection before the recursion limit (single file)",
+      collectionNameOrId: () => mockCollections[totalLevels - 2]!.name,
+      fileFieldName: `one${totalLevels - 2}`,
+      filename: fileOneName,
+      expectError: false,
+      expectRecordId: expectedRecordId,
+    },
+    {
+      name: "last view collection before the recursion limit (many files)",
+      collectionNameOrId: () => mockCollections[totalLevels - 2]!.name,
+      fileFieldName: `many${totalLevels - 2}`,
+      filename: fileManyName,
+      expectError: false,
+      expectRecordId: expectedRecordId,
+    },
+    // not upstream's: the other error paths
+    {
+      name: "missing file name",
+      collectionNameOrId: () => mockCollections[0]!.name,
+      fileFieldName: "many0",
+      filename: "missing.txt",
+      expectError: true,
+      expectRecordId: "",
+      expectErrorText: "sql: no rows in result set",
+    },
+    {
+      name: "not a file field of the view",
+      collectionNameOrId: () => mockCollections[0]!.name,
+      fileFieldName: "missing",
+      filename: fileOneName,
+      expectError: true,
+      expectRecordId: "",
+      expectErrorText: "no query file field found",
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      let record: ReturnType<typeof findRecordByViewFile> | null = null;
+      const err = errorOf(() => {
+        record = findRecordByViewFile(app, s.collectionNameOrId(), s.fileFieldName, s.filename);
+      });
+
+      expect({ hasErr: err !== null, err: err?.message }).toMatchObject({
+        hasErr: s.expectError,
+      });
+      if (s.expectErrorText !== undefined) {
+        expect(err?.message).toBe(s.expectErrorText);
+      }
+
+      if (err !== null) {
+        if (s.expectErrorText === "sql: no rows in result set") {
+          expect(err).toBeInstanceOf(NoRowsError);
+        }
+        return;
+      }
+
+      const found = record as unknown as ReturnType<typeof findRecordByViewFile>;
+      expect(found.id).toBe(s.expectRecordId);
+      expect(found.collection().name).toBe("demo1");
+    });
+  }
+});
+
 describe("TestDryRunView", () => {
   let app: TestCollectionsApp;
 
@@ -805,6 +958,11 @@ describe("TestDryRunView", () => {
       expect(result.sample).toHaveLength(expectSampleIds.length);
       for (const [i, r] of result.sample.entries()) {
         expect({ i, id: r.id }).toEqual({ i, id: expectSampleIds[i] as string });
+        // the sample holds records of the temporary view collection
+        expect(r.collection().isView()).toBe(true);
+        expect(r.collection().name).toMatch(/^temp_view_[a-zA-Z0-9]{5}$/);
+        expect(r.collection().fields).toBe(result.fields);
+        expect(r.isNew()).toBe(false);
       }
     });
   }

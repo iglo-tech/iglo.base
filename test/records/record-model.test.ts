@@ -1,9 +1,8 @@
 // Upstream: core/record_model_test.go (TestNewRecord through
 // TestRecordReplaceModifiers, without TestRecordHookTags)
 //
-// Records upstream loads with app.FindRecordById or
-// app.FindAuthRecordByEmail are read from a copy of the vendored fixture
-// with newRecordFromNullStringMap (test/records/app.ts). Go's typed
+// Records are loaded with findRecordById and findAuthRecordByEmail from a
+// copy of the vendored fixture. Go's typed
 // integers are bigints, float64 values are numbers, Go's time.Time is a
 // Date, []byte is a Uint8Array, maps are plain objects.
 
@@ -37,7 +36,7 @@ import {
 import { JSONRaw } from "@/tools/types/json-raw";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import { findAuthRecordByEmail, findRecordById } from "@test/records/app";
+import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
 
 // mockField (core/record_model_test.go): a text field with a custom
 // getter and setters
