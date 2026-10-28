@@ -11,16 +11,18 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 | Owner | the project owner | Sets direction. Is not asked for approvals: agents merge and decide on their own, and log decisions for later review. Takes part only in M7.4 (production data) |
 | Lead (chief of staff) | a scheduled agent run, every 45 minutes ([runbook](../chief-of-staff.md)) | Keeps this plan and [`docs/status.md`](../status.md) current, writes task briefs, starts workers and the council, merges, decides design questions |
 | Worker | one agent per task | Does one task in its own branch and worktree, opens one PR |
-| Council | two fresh agents, never the worker: Claude Opus 5.5 (medium effort) and GPT-6.1 Sol (xhigh reasoning) | Reviews each finished PR independently against upstream's source and these docs. A PR merges only when both approve the same commit |
+| Council | two fresh agents, never the worker: two independent GPT-6.1 Sol members (xhigh reasoning) | Reviews each finished PR independently against upstream's source and these docs. A PR merges only when both approve the same commit |
 
 ### Models
 
 | Work | Model |
 |---|---|
-| Lead | Claude Opus 5.5 |
-| Workers on core, security- or format-critical code (data layer, filters, resolver, tokens, auth flows, realtime, files, backups) | Claude Opus 5.5, medium effort |
-| Workers on mechanical tasks (M0.2, M4.6, M4.7, M5.8, M7.2) and any bulk work inside other tasks (converting upstream table tests to scenario data, reading large files, summarizing logs and CI output) | Claude Haiku 5.5 |
-| Council | Claude Opus 5.5 at medium effort and GPT-6.1 Sol at xhigh reasoning |
+| Lead | GPT-6.1 Sol, xhigh reasoning |
+| Workers on core, security- or format-critical code (data layer, filters, resolver, tokens, auth flows, realtime, files, backups) | GPT-6.1 Terra, high reasoning |
+| Workers on mechanical tasks (M0.2, M4.6, M4.7, M5.8, M7.2) and any bulk work inside other tasks (converting upstream table tests to scenario data, reading large files, summarizing logs and CI output) | GPT-6.1 Terra, high reasoning |
+| Council | two independent GPT-6.1 Sol members at xhigh reasoning |
+
+Owner direction on 2026-10-28: no Anthropic (Claude) models until the owner says otherwise. Earlier tasks used Claude Opus 5.5 for the lead, workers and one council seat, and Claude Haiku 5.5 for bulk work.
 
 ### One task
 
@@ -49,7 +51,7 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 ### Rules for workers
 
 - Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
-- Hand bulk mechanical work to Claude Haiku 5.5 subagents, and keep the judgment calls yourself.
+- Hand bulk mechanical work to GPT-6.1 Terra subagents where your tools allow it, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
 - If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.
 - No new runtime dependency, no change to a decision record, no change to another task's module without the lead.
