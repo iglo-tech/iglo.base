@@ -29,9 +29,12 @@
 // first row's values, Column() the first column's values.
 //
 // Go's context.Context is reduced to what PocketBase uses it for, a
-// deadline (WithDeadline, Deadline). A synchronous resolver checks it
-// before the statement runs and after its rows are read: bun:sqlite cannot
-// interrupt a running statement. The async resolvers (OneAsync, AllAsync,
+// deadline (WithDeadline, Deadline). A query with an expired deadline fails
+// before it runs, as QueryContext and ExecContext do. A synchronous resolver
+// and Rows() check it again before and after each step of reading the rows
+// (rows.ts): bun:sqlite cannot interrupt a running statement, so such a
+// read fails only once its statement returns (docs/design/04-api-
+// compatibility.md, Deliberate differences). The async resolvers (OneAsync, AllAsync,
 // RowAsync, ColumnAsync) run the query on the executor's reader when it has
 // one (the read worker pool, src/db/read-pool.ts), which gives up at the
 // deadline; otherwise they run it as the synchronous ones do.
@@ -542,13 +545,10 @@ export class Query {
   }
 
   // runs the query on this thread and reads its rows; a deadline that
-  // passed while they were read fails the query, as an interrupted one
+  // passed while they were read fails the query (rows.ts), as an
+  // interrupted one
   private read(mode: ReadMode): unknown {
-    const deadline = this.ctxDeadline;
-    deadline?.check();
-    const result = readRows(this.rowsOp(false), mode);
-    deadline?.check();
-    return result;
+    return readRows(this.rowsOp(false), mode);
   }
 
   private async readAsync(mode: ReadMode): Promise<unknown> {
@@ -576,17 +576,18 @@ export class Query {
   private rowsOp(own: boolean): Rows {
     this.takeLastError();
     const args = replacePlaceholders(this.placeholders, this.boundParams);
+    const deadline = this.ctxDeadline;
 
     const start = performance.now();
     let err: unknown = null;
     try {
-      if (this.stmt !== null) {
-        return this.stmt.query(args);
-      }
-      return this.executor.query(this.rawSql, args, own);
+      deadline?.check();
+      const rows =
+        this.stmt !== null ? this.stmt.query(args) : this.executor.query(this.rawSql, args, own);
+      return rows.withDeadline(deadline);
     } catch (e) {
-      err = e;
-      throw e;
+      err = deadline?.expired() === true ? new DeadlineExceededError() : e;
+      throw err;
     } finally {
       this.queryLogFunc?.(performance.now() - start, this.logSQL(), err);
     }

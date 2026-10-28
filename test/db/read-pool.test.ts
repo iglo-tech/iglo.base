@@ -13,6 +13,7 @@ import { afterEach, expect, test } from "bun:test";
 import { Databases, defaultQueryTimeout } from "@/db/base";
 import { connectPragmas } from "@/db/connect";
 import type { DB } from "@/db/dbx/db";
+import { Deadline } from "@/db/dbx/query";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import { maxAbandonedPerWorker } from "@/db/read-pool";
@@ -322,6 +323,60 @@ test("timed-out statements never leave the pool without a live worker", async ()
   expect(pool.stats().workers).toBe(1);
   expect(pool.stats().abandoned).toBeLessThanOrEqual(2);
   expect((await cheap()).title).toBe("t7");
+});
+
+test("a single-row read that finds no row past the deadline reports the timeout", () => {
+  let clock = 0;
+  const app = open({ queryTimeout: 80, now: () => clock });
+  fill(app, 3);
+  // each row "takes" two seconds and is rejected
+  (app.concurrentDB() as DB).conn().function("tick", () => {
+    clock += 2000;
+    return 1;
+  });
+  const sql = "SELECT {{demo}}.* FROM `demo` WHERE tick() = 0";
+  const q = () => modelQuery(app, new Demo()).where(newExp("tick() = 0"));
+  expect(() => q().one()).toThrow(`context deadline exceeded; failed query: ${sql}`);
+  expect(() => q().row()).toThrow(`context deadline exceeded; failed query: ${sql}`);
+  // inside the timeout it is the no-rows error, without the failed query
+  clock = 0;
+  expect(() =>
+    modelQuery(app, new Demo())
+      .where(new HashExp({ id: "missing" }))
+      .one(),
+  ).toThrow(new NoRowsError());
+});
+
+test("rows() and reading them honor the query's deadline", () => {
+  let clock = 0;
+  const now = () => clock;
+  const app = open({});
+  const db = app.concurrentDB();
+
+  // an expired deadline fails before the query runs (QueryContext)
+  let logged: unknown = null;
+  const expired = db.newQuery("SELECT 1").withDeadline(new Deadline(-1, now));
+  expired.queryLogFunc = (_ms, _sql, err) => {
+    logged = err;
+  };
+  expect(() => expired.rows()).toThrow("context deadline exceeded");
+  expect((logged as Error).message).toBe("context deadline exceeded");
+  expect(() => db.newQuery("SELECT 1").withDeadline(new Deadline(0, now)).row()).toThrow(
+    "context deadline exceeded",
+  );
+
+  // a deadline that passes while the rows are read fails the next step
+  const rows = db
+    .newQuery("SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3")
+    .withDeadline(new Deadline(1000, now))
+    .rows();
+  const it = rows[Symbol.iterator]();
+  expect(it.next().value).toEqual([1]);
+  clock += 1000;
+  expect(() => it.next()).toThrow("context deadline exceeded");
+
+  // without a deadline nothing changes
+  expect([...db.newQuery("SELECT 1").rows()]).toEqual([[1]]);
 });
 
 test("closing the databases fails the pool's queued and running reads", async () => {

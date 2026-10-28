@@ -36,12 +36,16 @@
 // cannot be a subquery (PRAGMA, RETURNING) with duplicate names are read as
 // arrays in one go (all rows).
 //
+// Rows read with a deadline (Go: rows of QueryContext) fail with
+// DeadlineExceededError once it passes, checked before and after each step:
+// bun:sqlite cannot interrupt a step that is running.
+//
 // Statements run with safeIntegers; every reader narrows the integers inside
 // Number.MAX_SAFE_INTEGER to numbers and keeps the others as exact bigints.
 
 import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
 
-import { setOwn, type Row } from "@/db/dbx/query";
+import { DeadlineExceededError, setOwn, type Deadline, type Row } from "@/db/dbx/query";
 
 // sql.ErrNoRows
 export class NoRowsError extends Error {
@@ -130,6 +134,7 @@ export class Rows implements Iterable<unknown[]> {
   private it: Iterator<unknown> | null = null;
   private ahead: IteratorResult<unknown> | null = null;
   private closed = false;
+  private deadline: Deadline | null = null;
 
   // `sql` is the statement's SQL; `owned`: the statement is finalized when
   // the rows close
@@ -155,6 +160,12 @@ export class Rows implements Iterable<unknown[]> {
     const rows = new Rows(null, null, "", [], false);
     rows.closed = true;
     return rows;
+  }
+
+  // the deadline after which reading the rows fails (null: none)
+  withDeadline(deadline: Deadline | null): this {
+    this.deadline = deadline;
+    return this;
   }
 
   // Columns returns the column names.
@@ -194,7 +205,7 @@ export class Rows implements Iterable<unknown[]> {
   first(): Row {
     if (this.fresh()) {
       try {
-        const row = this.reader!.get(...this.args) as Row | null;
+        const row = this.guard(() => this.reader!.get(...this.args) as Row | null);
         if (row === null) {
           throw new NoRowsError();
         }
@@ -222,7 +233,7 @@ export class Rows implements Iterable<unknown[]> {
   all(): Row[] {
     if (this.fresh()) {
       try {
-        const rows = this.reader!.all(...this.args) as Row[];
+        const rows = this.guard(() => this.reader!.all(...this.args) as Row[]);
         for (const row of rows) {
           narrowRow(row, this.names);
         }
@@ -288,7 +299,7 @@ export class Rows implements Iterable<unknown[]> {
     }
     let next: IteratorResult<unknown>;
     try {
-      next = this.ahead ?? this.open().next();
+      next = this.guard(() => this.ahead ?? this.open().next());
     } catch (err) {
       this.close();
       throw err;
@@ -304,6 +315,27 @@ export class Rows implements Iterable<unknown[]> {
     }
     const row = next.value as Row;
     return keys.map((key) => narrowInteger(row[key]));
+  }
+
+  // runs a read under the deadline: it fails when the deadline passed
+  // before or while it ran, whatever it returned or threw
+  private guard<T>(read: () => T): T {
+    const deadline = this.deadline;
+    if (deadline === null) {
+      return read();
+    }
+    deadline.check();
+    let result: T;
+    try {
+      result = read();
+    } catch (err) {
+      if (deadline.expired()) {
+        throw new DeadlineExceededError();
+      }
+      throw err;
+    }
+    deadline.check();
+    return result;
   }
 
   // a row object; for a repeated column name the last column wins, as in
