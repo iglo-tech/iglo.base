@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5 | council | [#13](https://github.com/iglo-tech/iglo.base/pull/13) | 2 | [Brief](briefs/M1.5.md). Round 1 (`e9655ce`): Opus CHANGES (the Passwords row in `03-data-compatibility.md` contradicts the code), Sol CHANGES (hashes whose salt holds CR/LF, which Go decodes to a shorter salt, are rejected but upstream authenticates them). Fixed by an Opus fixer at `558d37f`: Go bcrypt/blowfish port as the fallback for hashes Bun cannot take, doc row rewritten. Round 2 started |
+| M1.5 | fix | [#13](https://github.com/iglo-tech/iglo.base/pull/13) | 2 | [Brief](briefs/M1.5.md). Round 1 (`e9655ce`): Opus CHANGES (the Passwords row in `03-data-compatibility.md` contradicts the code), Sol CHANGES (hashes whose salt holds CR/LF, which Go decodes to a shorter salt, are rejected but upstream authenticates them). Fixed by an Opus fixer at `558d37f`: Go bcrypt/blowfish port as the fallback for hashes Bun cannot take, doc row rewritten. Round 2 (`558d37f`): Opus APPROVE, Sol CHANGES (Go `int` settings above 2^53 lose precision, so iglo.base accepts relation limits upstream rejects). Second Opus fixer started for every field's `int` settings |
 
 ## Done
 
@@ -83,6 +83,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (plan change, after M1.4): M1.6 needs the password field (auth collections) and the relation and file fields (collection validation and fixtures), so it now depends on M1.5. The old M1.5 (file, relation, password: about 1,500 Go lines plus 2,300 test lines, and the file field needs `filesystem.File`, `core/validators/file.go` and MIME sniffing) is split: M1.5 is relation and password, the new M1.5a is the file field without storage (M3.2 keeps storing and deleting files). M1.6 depends on M1.5 and M1.5a; M1.8 and M3.2 depend on M1.5a. The critical path is … → M1.4 → M1.5 → M1.5a → M1.6 → …
 - 2026-10-28 (M1.5 brief): password hashes are written with Bun.password in Go's `$2a$` form at the field's cost, and verification accepts what Go's bcrypt accepts. The relation field adds `findCachedCollectionByNameOrId` to M1.4's FieldApp interface.
 - 2026-10-28 (M1.5 PR): the lead accepted the worker's open points. `FieldCollection` also gets `isNew()` (upstream's relation settings check needs it). Bun.password hashes and verifies; Go hash forms Bun rejects (`$2$`, salts with trailing bits) are normalized first, and passwords are cut at 72 bytes before verification, as Go's CompareHashAndPassword ignores bytes past 72 (the brief was wrong: only hashing returns ErrPasswordTooLong). After round 1 the lead withdrew the accepted gap for salts with `\r`/`\n`: iglo.base matches upstream with a TypeScript port of Go's bcrypt and blowfish (`src/tools/crypto/`) for the hashes Bun.password cannot verify.
+- 2026-10-28 (M1.5 round 2): Go `int` field settings (text min/max, select and relation minSelect/maxSelect, editor and json maxSize, password min/max/cost) keep exact int64 values, using the db layer's convention (`number` in the safe range, `bigint` outside it). The fix covers M1.4's fields in the M1.5 PR, because they share the same decoder.
 
 ## Paused until
 
