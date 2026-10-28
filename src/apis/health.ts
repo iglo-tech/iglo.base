@@ -1,7 +1,8 @@
 // Upstream: apis/health.go
 //
 // Only the guest response is ported. The superuser response (canBackup,
-// realIP, possibleProxyHeader in "data") needs auth and lands in M2.3.
+// realIP, possibleProxyHeader in "data") needs the auth that serve loads
+// once it opens pb_data, and the app store; it lands with M1.2.
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";

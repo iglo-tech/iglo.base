@@ -1,10 +1,12 @@
 // Upstream: core/event_request.go
 //
-// RequestEvent is the app's router handler event. Auth loading lands in
-// M2.3 (records and tokens) and trusted proxy headers for RealIP in M5.7
-// (settings); until then auth is always undefined and RealIP is RemoteIP.
+// RequestEvent is the app's router handler event. The auth record is set by
+// the loadAuthToken middleware (src/middlewares/load-auth-token.ts). Trusted
+// proxy headers for RealIP land in M5.7 (settings); until then RealIP is
+// RemoteIP.
 
 import type { App } from "@/app/app";
+import type { Record } from "@/records/record-model";
 import { Event } from "@/server/event";
 import { setOwn } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
@@ -13,13 +15,6 @@ import type { MapRef } from "@/server/unmarshal-request-data";
 
 // Common request store keys used by the middlewares and api handlers.
 export const RequestEventKeyInfoContext = "infoContext";
-
-// The auth record placeholder until records exist (M2.3).
-export interface AuthRecord {
-  isSuperuser(): boolean;
-  // a shallow copy of the record
-  fresh(): AuthRecord;
-}
 
 export const RequestInfoContextDefault = "default";
 export const RequestInfoContextExpand = "expand";
@@ -35,11 +30,11 @@ export const RequestInfoContextPasswordAuth = "password";
 //
 // The query and headers fields contain only the first value for each found entry.
 export class RequestInfo {
-  query: Record<string, string> = {};
-  headers: Record<string, string> = {};
+  query: { [key: string]: string } = {};
+  headers: { [key: string]: string } = {};
   // null when the body unmarshals a JSON null (a nil map upstream)
-  body: Record<string, unknown> | null = {};
-  auth: AuthRecord | undefined;
+  body: { [key: string]: unknown } | null = {};
+  auth: Record | undefined;
   method = "";
   context = "";
 
@@ -66,7 +61,7 @@ export class RequestInfo {
 
 export class RequestEvent extends Event {
   readonly app: App;
-  auth: AuthRecord | undefined;
+  auth: Record | undefined;
 
   #cachedRequestInfo: RequestInfo | undefined;
 

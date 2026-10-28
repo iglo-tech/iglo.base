@@ -1,5 +1,5 @@
 // Upstream: apis/health_test.go (guest and regular user scenarios; the
-// superuser scenario needs auth, M2.3), the catch-all 404 from
+// superuser scenario needs serve to open pb_data, M1.2), the catch-all 404 from
 // tools/router/router.go BuildMux, the securityHeaders middleware
 // (apis/middlewares.go) and Go's ServeMux path cleaning.
 
@@ -65,7 +65,7 @@ describe("GET /api/health", () => {
     }
   });
 
-  test.todo("superuser gets canBackup, realIP and possibleProxyHeader (M2.3)");
+  test.todo("superuser gets canBackup, realIP and possibleProxyHeader (M1.2)");
 
   test("HEAD matches like GET, without a body", async () => {
     const res = await fetch(`${server.url}/api/health`, { method: "HEAD" });

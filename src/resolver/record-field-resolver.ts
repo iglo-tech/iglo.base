@@ -12,10 +12,6 @@
 // field) is a Go float64 and is bound as Float64 (REAL); a bigint is an
 // int64; the :each data is bound as a []byte (a BLOB).
 //
-// RequestInfo.auth holds a Record (src/app keeps a placeholder type for it
-// until M2.3); an auth value that is not a Record has no collection and
-// resolves like a missing one.
-//
 // Not ported: preferGroupBy and the commented-out GROUP BY branch of
 // updateQueryWithDeduplicateConstraint (unused upstream), and the debug
 // log of resolveStaticRequestField's graceful fallback (application code
@@ -422,8 +418,7 @@ export class RecordFieldResolver implements FieldResolver {
 
 // the auth Record of a RequestInfo (null for none)
 export function requestAuthRecord(requestInfo: RequestInfo | null): Record | null {
-  const auth = requestInfo?.auth;
-  return auth instanceof Record ? auth : null;
+  return requestInfo?.auth ?? null;
 }
 
 // a request info value as Go's driver binds it: a JS number is a float64

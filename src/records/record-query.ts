@@ -1,11 +1,12 @@
 // Upstream: core/record_query.go (RecordQuery, resolveRecordOneHook,
 // resolveRecordAllHook, getCollectionByModelOrIdentifier, FindRecordById,
 // FindRecordsByIds, FindAllRecords, FindFirstRecordByData, CountRecords,
-// FindAuthRecordByEmail)
+// FindAuthRecordByToken, FindAuthRecordByEmail)
 //
 // Upstream's methods are on BaseApp. Here they are functions of the narrow
 // RecordsApp below (the CollectionsApp of src/collections: the databases,
-// the store with the collections cache and the clock).
+// the store with the collections cache and the clock). The token checks
+// read the app clock where golang-jwt reads time.Now().
 //
 // Go's (value, error) results are the value, and the error is thrown; a
 // record that is not found throws src/db's NoRowsError (sql.ErrNoRows).
@@ -23,7 +24,7 @@
 // run through execLockRetry with the app's query timeout.
 //
 // Not here: FindRecordsByFilter, FindFirstRecordByFilter and
-// CanAccessRecord (record-query-filter.ts), FindAuthRecordByToken (M2.3).
+// CanAccessRecord (record-query-filter.ts).
 // Not ported: the RecordProxy
 // branches of the One/All hooks (custom Go structs that embed a Record; a
 // library API) and the non-pointer *[]Record slice (Go only).
@@ -48,9 +49,20 @@ import {
   newRecordsFromNullStringMaps,
   nullStringMapFromRow,
 } from "@/records/record-model";
+import {
+  TokenClaimCollectionId,
+  TokenClaimId,
+  TokenClaimType,
+  TokenTypeAuth,
+  TokenTypeEmailChange,
+  TokenTypeFile,
+  TokenTypePasswordReset,
+  TokenTypeVerification,
+} from "@/records/record-tokens";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { columnify } from "@/tools/inflector/inflector";
-import { toInterfaceSlice } from "@/tools/list/list";
+import { existInSlice, toInterfaceSlice } from "@/tools/list/list";
+import { parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
 
 // The app members the record queries use (core/app.go).
 export type RecordsApp = CollectionsApp;
@@ -293,6 +305,79 @@ export function countRecords(
   const [total] = q.row();
 
   return Number(total as bigint);
+}
+
+// FindAuthRecordByToken finds the auth record associated with the provided JWT
+// (auth, file, verifyEmail, changeEmail, passwordReset types).
+//
+// Optionally specify a list of validTypes to check tokens only from those types.
+//
+// Throws if the token is invalid, expired or not associated to an auth collection record.
+export function findAuthRecordByToken(
+  app: RecordsApp,
+  token: string,
+  ...validTypes: string[]
+): Record {
+  if (token === "") {
+    throw new Error("missing token");
+  }
+
+  const unverifiedClaims = parseUnverifiedJWT(token, app.clock);
+
+  // check required claims
+  const id = stringClaim(unverifiedClaims, TokenClaimId);
+  const collectionId = stringClaim(unverifiedClaims, TokenClaimCollectionId);
+  const tokenType = stringClaim(unverifiedClaims, TokenClaimType);
+  if (id === "" || collectionId === "" || tokenType === "") {
+    throw new Error("missing or invalid token claims");
+  }
+
+  // check types (if explicitly set)
+  if (validTypes.length > 0 && !existInSlice(tokenType, validTypes)) {
+    throw new Error(
+      `invalid token type ${goQuote(tokenType)}, expects ${goQuote(validTypes.join(","))}`,
+    );
+  }
+
+  const record = findRecordById(app, collectionId, id);
+
+  if (!record.collection().isAuth()) {
+    throw new Error("the token is not associated to an auth collection record");
+  }
+
+  let baseTokenKey: string;
+  switch (tokenType) {
+    case TokenTypeAuth:
+      baseTokenKey = record.collection().authToken.secret;
+      break;
+    case TokenTypeFile:
+      baseTokenKey = record.collection().fileToken.secret;
+      break;
+    case TokenTypeVerification:
+      baseTokenKey = record.collection().verificationToken.secret;
+      break;
+    case TokenTypePasswordReset:
+      baseTokenKey = record.collection().passwordResetToken.secret;
+      break;
+    case TokenTypeEmailChange:
+      baseTokenKey = record.collection().emailChangeToken.secret;
+      break;
+    default:
+      throw new Error("unknown token type " + tokenType);
+  }
+
+  const secret = record.tokenKey() + baseTokenKey;
+
+  // verify token signature
+  parseJWT(token, secret, app.clock);
+
+  return record;
+}
+
+// claims[key].(string): the claim if it is a string, else ""
+function stringClaim(claims: { [key: string]: unknown }, key: string): string {
+  const v = Object.hasOwn(claims, key) ? claims[key] : undefined;
+  return typeof v === "string" ? v : "";
 }
 
 // FindAuthRecordByEmail finds the auth record associated with the provided email.

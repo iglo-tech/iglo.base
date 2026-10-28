@@ -46,8 +46,9 @@ export const healthAPI: Suite = {
         `"possibleProxyHeader"`,
       ],
       pending: {
-        task: "M2.3",
-        reason: "the superuser fields of /api/health need auth (docs/status.md)",
+        task: "M1.2",
+        reason:
+          "serve opens no pb_data until M1.2, so it loads no auth; canBackup also needs the app store",
       },
     },
   ],

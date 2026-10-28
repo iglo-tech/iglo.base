@@ -1,13 +1,14 @@
 // Upstream: core/record_query_test.go (TestRecordQueryWithDifferentCollectionValues,
 // TestRecordQueryOne, TestRecordQueryAll, TestFindRecordById,
 // TestFindRecordsByIds, TestFindAllRecords, TestFindFirstRecordByData,
-// TestCountRecords, TestFindAuthRecordByEmail)
+// TestCountRecords, TestFindAuthRecordByToken, TestFindAuthRecordByEmail)
 //
 // Left out: the RecordProxy cases of TestRecordQueryOne/All (a library
 // API, not ported) and the Go-only non-pointer []Record slice; the custom
 // struct cases scan plain rows. TestFindRecordsByFilter,
 // TestFindFirstRecordByFilter and TestCanAccessRecord are in
-// record-query-filter.test.ts, TestFindAuthRecordByToken is M2.3's.
+// record-query-filter.test.ts. TestFindAuthRecordByToken runs with a fixed
+// app clock (the Go test runs before its tokens' 2050 exp).
 //
 // Each Go test function runs on its own copy of the vendored fixture
 // (openTestApp, as tests.NewTestApp). The error texts and kinds are
@@ -30,6 +31,7 @@ import {
   countRecords,
   findAllRecords,
   findAuthRecordByEmail,
+  findAuthRecordByToken,
   findFirstRecordByData,
   findRecordById,
   findRecordsByIds,
@@ -38,6 +40,7 @@ import {
   recordTarget,
 } from "@/records/record-query";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
+import { newJWT } from "@/tools/security/jwt";
 import { equalFold } from "@/collections/go-strings";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
@@ -866,6 +869,182 @@ describe("TestFindAuthRecordByEmail", () => {
         }
 
         expect(equalFold(record!.email(), s.email)).toBe(true);
+      } finally {
+        app.cleanup();
+      }
+    });
+  }
+});
+
+describe("TestFindAuthRecordByToken", () => {
+  // 2026-10-29T00:00:00Z, before the fixture tokens' exp (2050-01-01)
+  const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };
+  // after it
+  const lateClock = { now: () => new Date(Date.UTC(2050, 0, 1, 0, 1, 1)) };
+
+  const validAuthToken =
+    "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo";
+
+  // a token for claims, signed with a key that does not verify
+  const unsigned = (claims: { [key: string]: unknown }): string =>
+    newJWT(claims, "test", 3600n * 1_000_000_000n, clock);
+
+  const scenarios: {
+    name: string;
+    token: string;
+    types: string[];
+    expectedId: string;
+    // not upstream's: the error text, and another clock
+    expectErrorText?: string;
+    clock?: { now(): Date };
+  }[] = [
+    {
+      name: "empty token",
+      token: "",
+      types: [],
+      expectedId: "",
+      expectErrorText: "missing token",
+    },
+    {
+      name: "invalid token",
+      token: "invalid",
+      types: [],
+      expectedId: "",
+      expectErrorText: "token is malformed: token contains an invalid number of segments",
+    },
+    {
+      name: "expired token",
+      token:
+        "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoxNjQwOTkxNjYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.2D3tmqPn3vc5LoqqCz8V-iCDVXo9soYiH0d32G7FQT4",
+      types: [],
+      expectedId: "",
+      expectErrorText: "token has invalid claims: token is expired",
+    },
+    {
+      name: "valid auth token",
+      token: validAuthToken,
+      types: [],
+      expectedId: "4q1xlclmfloku33",
+    },
+    {
+      name: "valid verification token",
+      token:
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImRjNDlrNmpnZWpuNDBoMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InZlcmlmaWNhdGlvbiIsImNvbGxlY3Rpb25JZCI6ImtwdjcwOXNrMmxxYnFrOCIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSJ9.5GmuZr4vmwk3Cb_3ZZWNxwbE75KZC-j71xxIPR9AsVw",
+      types: [],
+      expectedId: "dc49k6jgejn40h3",
+    },
+    {
+      name: "auth token with file type only check",
+      token: validAuthToken,
+      types: ["file"],
+      expectedId: "",
+      expectErrorText: `invalid token type "auth", expects "file"`,
+    },
+    {
+      name: "auth token with file and auth type check",
+      token: validAuthToken,
+      types: ["file", "auth"],
+      expectedId: "4q1xlclmfloku33",
+    },
+    // not upstream's
+    {
+      name: "auth token with file and verification type check",
+      token: validAuthToken,
+      types: ["file", "verification"],
+      expectedId: "",
+      expectErrorText: `invalid token type "auth", expects "file,verification"`,
+    },
+    {
+      name: "valid auth token after its exp",
+      token: validAuthToken,
+      types: [],
+      expectedId: "",
+      expectErrorText: "token has invalid claims: token is expired",
+      clock: lateClock,
+    },
+    {
+      name: "tampered signature",
+      token: validAuthToken.slice(0, -2) + "xx",
+      types: [],
+      expectedId: "",
+      expectErrorText: "token signature is invalid: signature is invalid",
+    },
+    {
+      name: "missing id claim",
+      token: unsigned({ type: "auth", collectionId: "_pb_users_auth_" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "missing or invalid token claims",
+    },
+    {
+      name: "non-string id claim",
+      token: unsigned({ id: 1, type: "auth", collectionId: "_pb_users_auth_" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "missing or invalid token claims",
+    },
+    {
+      name: "missing type claim",
+      token: unsigned({ id: "4q1xlclmfloku33", collectionId: "_pb_users_auth_" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "missing or invalid token claims",
+    },
+    {
+      name: "unknown type",
+      token: unsigned({ id: "4q1xlclmfloku33", type: "other", collectionId: "_pb_users_auth_" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "unknown token type other",
+    },
+    {
+      name: "missing record",
+      token: unsigned({ id: "missing", type: "auth", collectionId: "_pb_users_auth_" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "sql: no rows in result set",
+    },
+    {
+      name: "missing collection",
+      token: unsigned({ id: "4q1xlclmfloku33", type: "auth", collectionId: "missing" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "sql: no rows in result set",
+    },
+    {
+      name: "non-auth collection record",
+      token: unsigned({ id: "84nmscqy84lsi1t", type: "auth", collectionId: "demo1" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "the token is not associated to an auth collection record",
+    },
+    {
+      name: "collection name instead of id",
+      token: unsigned({ id: "4q1xlclmfloku33", type: "auth", collectionId: "users" }),
+      types: [],
+      expectedId: "",
+      expectErrorText: "token signature is invalid: signature is invalid",
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const app = openTestApp(s.clock ?? clock);
+      try {
+        const [record, err] = resultOf(() => findAuthRecordByToken(app, s.token, ...s.types));
+
+        const hasErr = err !== null;
+        const expectErr = s.expectedId === "";
+        expect({ hasErr, err: err?.message }).toMatchObject({ hasErr: expectErr });
+        if (s.expectErrorText !== undefined) {
+          expect(err?.message).toBe(s.expectErrorText);
+        }
+
+        if (hasErr) {
+          return;
+        }
+
+        expect(record!.id).toBe(s.expectedId);
       } finally {
         app.cleanup();
       }
