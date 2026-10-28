@@ -22,7 +22,7 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 - Port of PocketBase **v0.41.0** (`f6baa0c`, 2026-10-26), not an upstream-tracking fork. Same data format as v0.40.x (D21).
 - **MIT**, inherited from PocketBase, with its copyright notice kept.
 - **Bun ≥ 1.4, TypeScript, one compiled executable.** An official Docker image comes after the MVP (D3).
-- **The extension surface is removed:** no Go framework mode, `pb_hooks`, `pb_migrations`, `migrate` command or dashboard extensions. The `update` command is also dropped (D19). Nothing else is removed.
+- **The extension surface is removed:** no Go framework mode, `pb_hooks` or dashboard extensions. JavaScript migrations (`pb_migrations`, the `migrate` command, `--automigrate`) are kept (D23). The `update` command is also dropped (D19). Nothing else is removed.
 - **PocketBase's `pb_data` format, unchanged and two-way:** open existing data without migration, and leave it readable by PocketBase for rollback.
 - **PocketBase's API, verified against the upstream binary** by a differential test suite seeded with upstream's ~720 API scenarios.
 - **Upstream's dashboard is reused** with a small, listed patch set and iglo.base branding only (D17).

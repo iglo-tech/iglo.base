@@ -38,6 +38,7 @@ Decided 2026-10-27.
   - an embedded JS VM is the riskiest and largest dependency to port;
   - custom logic belongs in the apps, talking to iglo.base over its API and realtime stream.
 - **Consequence:** deployments that used hooks must move that logic out first ([Data compatibility](03-data-compatibility.md#cutover-checklist)).
+- **Changed by D23 (2026-10-28):** user migrations (`pb_migrations`, the `migrate` command, `--migrationsDir`, `--automigrate`) are supported again; the rest of this decision stands.
 
 ## D6. Upstream's binary is the specification
 
@@ -115,7 +116,7 @@ Decided 2026-10-27, after reading a production backup.
 
 - **Decision:** the first data to be moved is treated as standard PocketBase v0.40.x data: the stock binary, no `pb_hooks`, no custom Go build, files on local storage, backups uploaded to S3.
 - **Checked in the backup:** all v0.41.0 system migrations are recorded (the newest is `1778828400_normalize_indexes.go`); `s3.enabled` is false and files are under `storage/`; `backups.s3.enabled` is true with a weekly schedule.
-- **`pb_migrations` rows:** the data also records 58 `*.js` migrations. Upstream's dashboard wrote them automatically on every schema change (`--automigrate`); nobody wrote them by hand. They are not needed to run: the schema itself lives in `_collections` and the tables. iglo.base keeps the rows, ignores them ([Data compatibility](03-data-compatibility.md#migrations)) and does not write migration files when the schema changes (D5).
+- **`pb_migrations` rows:** the data also records 58 `*.js` migrations. Upstream's dashboard wrote them automatically on every schema change (`--automigrate`); nobody wrote them by hand. They are not needed to run: the schema itself lives in `_collections` and the tables. iglo.base keeps the rows. Since D23 it also runs `pb_migrations` and writes migration files on schema changes, as upstream (the original text said it ignored them, per D5).
 - **Consequence:** S3 backups are tested early in M5, before S3 file storage.
 
 ## D16. Upstream releases after v0.41.0: fixes only, by hand
@@ -182,3 +183,12 @@ Decided by agents on 2026-10-27, for owner review (M0.3, [PR #3](https://github.
 - **Why:** the alternative, serving through Bun's `node:http` to see the raw request, changes the HTTP stack for every request to match inputs that SDKs and browsers do not send (they normalize URLs and do not repeat these headers). The normalized path still goes through the same route matching, rules and auth, so no check is skipped. A joined header value grants nothing a client could not already send as a single header. `pb_public` file serving (M5.7) must stay inside its root either way.
 - **For later tasks:** M5.7 (trusted proxy `RealIP`) must decide how a joined value of a single-address header such as `X-Real-IP` is read, and record it here.
 - **Revisit:** if a later `Bun.serve` exposes the raw request target and header lines, match upstream and remove the rows.
+
+## D23. JavaScript migrations are supported
+
+Decided by the owner on 2026-10-28.
+
+- **Decision:** support upstream's JavaScript migrations: `pb_migrations/*.js` applied at startup and recorded in `_migrations`, the `migrate` command (`up`, `down`, `create`, `collections`, `history-sync`), `--migrationsDir` and `--automigrate`, with the globals upstream gives migration files ([Scope](01-scope.md#kept-javascript-migrations)). `pb_hooks` stays removed (D5).
+- **Why:** the owner asked for it: only `pb_hooks` was meant to go. Existing deployments keep their migration workflow, and the 58 recorded `*.js` migrations in the source data (D15) stay meaningful.
+- **How:** migration files are JavaScript modules run by Bun itself, so no JS VM is embedded. The globals are thin bindings over the internal modules (collections, records, fields, db, security), which stay internal; the bindings are the only surface, and only migration files see them.
+- **Consequence:** a new task (M3.7) ports `plugins/migratecmd` and the migration bindings from `plugins/jsvm`. Until it lands, iglo.base keeps the current behavior (it warns about and ignores `pb_migrations`, and rejects `migrate`, `--migrationsDir` and `--automigrate`).

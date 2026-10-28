@@ -36,6 +36,8 @@ None.
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-28 (owner direction): **`pb_migrations` is supported; only `pb_hooks` is removed.** Recorded as D23 (decided by the owner) and applied to `01-scope.md`, D5, D15, `03-data-compatibility.md`, `02-architecture.md`, `08-admin-ui.md`, `09-port-plan.md`, the design README, `AGENTS.md` and `README.md`. A new task M3.7 (after M3.4) ports `plugins/migratecmd` and the migration bindings from `plugins/jsvm`: startup application, `_migrations` rows, the `migrate` command, `--migrationsDir`, `--automigrate`. Migration files run as JavaScript modules on Bun, so no JS VM is embedded. Until M3.7, the executable keeps the M0.1 behavior (warns about `pb_migrations`, rejects `migrate` and the two flags).
+
 - 2026-10-27: task briefs are stored in `docs/briefs/<id>.md` so a stateless lead run, a retry or a fixer gets the same brief.
 - 2026-10-27 (M0.1 brief): the guest-only `/api/health` response ships first; the superuser fields (`canBackup`, `realIP`, `possibleProxyHeader`) follow with auth in M2.3.
 - 2026-10-27 (M0.2 brief): test tools are Mailpit and versitygw (posix backend) as the S3 test server, both from GitHub releases pinned by SHA-256 in `test/differential/upstream.lock`; everything is prepared into git-ignored `.upstream/` by `bun run upstream:prepare`. Network-needing smoke tests run as `bun run test:reference`, separate from `bun run check`.

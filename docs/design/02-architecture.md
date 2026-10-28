@@ -96,7 +96,7 @@ Identical to upstream, so service files and scripts keep working:
 - **Flags:** `--dir` (default `pb_data` next to the executable), `--dev`, `--encryptionEnv`, `--queryTimeout`, and for `serve`: `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback`, plus positional domains for automatic HTTPS.
 - **Environment:** the `PB_*` variables upstream reads (`PB_THUMBS_MAX_SOURCE_PIXELS`, `PB_THUMBS_MAX_WORKERS`, `PB_THUMBS_MAX_WAIT`, `PB_FILES_DELETE_MAX_WORKERS`, `PB_ID_TOKEN_LEEWAY`) and the variable named by `--encryptionEnv`.
 - **Everything else** lives in `_params` settings and is edited in the dashboard, as upstream.
-- Removed extension flags fail fast with a message ([Scope](01-scope.md#removed-the-extension-surface)). If `pb_hooks` or `pb_migrations` directories exist next to `pb_data`, `serve` logs one warning that they are ignored.
+- Removed extension flags fail fast with a message ([Scope](01-scope.md#removed-the-extension-surface)). If a `pb_hooks` directory exists next to `pb_data`, `serve` logs one warning that it is ignored. `pb_migrations` is applied at startup (D23, task M3.7).
 
 ## Data directory
 

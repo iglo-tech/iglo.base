@@ -28,7 +28,7 @@ What gets ported, by upstream path (non-test Go lines):
 | `apis/*_test.go` | about 21,000, about 720 named scenarios | `test/scenarios` as data |
 | `tests/data` | fixture `pb_data` | `test/fixtures/pocketbase` (vendored byte for byte) |
 
-Not ported: `plugins/jsvm`, `plugins/migratecmd`, `plugins/ghupdate` (the `update` command, D19), `tools/hook`, the hook and event plumbing in `core/events.go` and `core/event_*.go`, `tools/template` (only used by hooks), and the type generator (`tygoja`). That is roughly 6,000 lines of Go plus generated typings, and a large share of the indirection in `core`.
+Not ported: `plugins/jsvm` except the bindings migration files use, which M3.7 ports together with `plugins/migratecmd` (D23); `plugins/ghupdate` (the `update` command, D19), `tools/hook`, the hook and event plumbing in `core/events.go` and `core/event_*.go`, `tools/template` (only used by hooks), and the type generator (`tygoja`). That is roughly 6,000 lines of Go plus generated typings, and a large share of the indirection in `core`.
 
 ## Milestones
 

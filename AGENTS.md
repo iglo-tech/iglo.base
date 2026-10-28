@@ -21,7 +21,7 @@ These override convenience, style and performance. Read `docs/design/03-data-com
 
 ## No extension surface
 
-Do not add hooks, plugins, event buses for user code, a JavaScript VM, user migrations, custom route registration, dashboard extensions, a public library API or "escape hatch" configuration that runs user code. See `docs/design/01-scope.md` and decision D5. Internal modules may call each other; that is not an extension API.
+Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM, custom route registration, dashboard extensions, a public library API or "escape hatch" configuration that runs user code. See `docs/design/01-scope.md` and decision D5. The one exception is JavaScript migrations in `pb_migrations` (D23), run by Bun with the bindings upstream gives migration files. Internal modules may call each other; that is not an extension API.
 
 ## Stack
 

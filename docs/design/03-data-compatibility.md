@@ -87,7 +87,7 @@ Each collection has a table named after it (a view for `view` collections), with
 
 ## Migrations
 
-There is no migration system for users. There are only upstream's system migrations, under their upstream file names:
+User migrations in `pb_migrations` run as upstream runs them and are recorded in `_migrations` under their file names ([D23](10-decisions.md#d23-javascript-migrations-are-supported), task M3.7). The system migrations keep their upstream file names:
 
 ```text
 1640988000_init.go
@@ -142,8 +142,8 @@ Fixtures: upstream's `tests/data` (MIT), a fresh v0.41.0 install, and a large ge
 For moving an existing PocketBase deployment:
 
 1. Upgrade to PocketBase v0.40.x or v0.41.0 and let it run its migrations.
-2. If you use `pb_migrations`, make sure all of them are applied (`pocketbase migrate up`). iglo.base will not run them.
+2. If you use `pb_migrations`, keep the directory next to `pb_data` (or pass the same `--migrationsDir`); iglo.base applies pending ones at startup as upstream does ([D23](10-decisions.md#d23-javascript-migrations-are-supported)).
 3. If you use `pb_hooks` or a custom Go build, list what the hooks do. Each one moves into your app, a separate service, or a [rule](05-rules-and-filters.md). iglo.base starts without them.
 4. Stop PocketBase and take a backup (copy `pb_data`, or use the dashboard backup).
-5. Replace the executable and keep the same flags. Remove `--hooksDir`, `--hooksWatch`, `--hooksPool`, `--migrationsDir` and `--automigrate`. Replace any use of `pocketbase update` with rebuilding the image on a new iglo.base release ([D19](10-decisions.md#d19-drop-the-update-command)).
+5. Replace the executable and keep the same flags. Remove `--hooksDir`, `--hooksWatch` and `--hooksPool`. Replace any use of `pocketbase update` with rebuilding the image on a new iglo.base release ([D19](10-decisions.md#d19-drop-the-update-command)).
 6. Start iglo.base. To roll back, stop it and start PocketBase v0.41.0 (or the v0.40.x you came from) on the same directory.

@@ -20,7 +20,7 @@ Changes to upstream's `ui/` are kept small and listed in `ui/PATCHES.md`, one en
 | Change | Why |
 |---|---|
 | Stop loading `/_/extensions.js` in `src/main.js` | No dashboard extensions. The endpoint still returns an empty script for cached old builds |
-| Settings → Import collections: replace the "use Go or JS migrations" hint with a note that iglo.base has no user migrations | The linked features do not exist |
+| Settings → Import collections: drop the Go part of the "use Go or JS migrations" hint; JS migrations are supported (D23) | Go migrations do not exist |
 | Backups → restore modal: reword "applies all migrations that are missing" to "applies system migrations"| Only system migrations exist |
 | Product name, logo, page title and footer: "iglo.base" only, no PocketBase label or link | One product for users ([D17](10-decisions.md#d17-dashboard-branding-iglobase-only)); credit stays in `LICENSE` and the README |
 | Documentation links (`PB_DOCS_URL`): point at iglo.base's documentation | D17; where it lives is an [open question](11-open-questions.md) |
