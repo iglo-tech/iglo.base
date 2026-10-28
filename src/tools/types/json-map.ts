@@ -52,8 +52,10 @@ export function jsonMapValue(m: JSONMap<unknown> | undefined): string {
 // Scan decodes a string or bytes value (empty means "{}", nil is empty)
 // into `into` (merged, as Go's json v2 does with an existing map) or into a
 // new map, and returns it. Anything else, invalid JSON or a value that is
-// not an elem fails; Go then resets the map to empty, so on a throw the
-// caller keeps an empty map.
+// not an elem fails. Go's streaming decoding has then already changed the
+// map, so upstream resets it to empty: on a throw `into` is emptied in
+// place (Go assigns a new empty map; no ported caller keeps another
+// reference to the old one).
 export function scanJSONMap<T = unknown>(
   value: unknown,
   elem: GoType = anyType,
@@ -70,5 +72,12 @@ export function scanJSONMap<T = unknown>(
   if (data.length === 0) {
     data = "{}";
   }
-  return (unmarshalMapInto(data, elem, into) as JSONMap<T> | undefined) ?? {};
+  try {
+    return (unmarshalMapInto(data, elem, into) as JSONMap<T> | undefined) ?? {};
+  } catch (err) {
+    for (const key of Object.keys(into)) {
+      delete into[key];
+    }
+    throw err;
+  }
 }

@@ -202,6 +202,23 @@ describe("JSONMapScan Go decoding", () => {
     expect(scanJSONMap(`{"a":null}`, anyType, { a: 1 } as JSONMap<unknown>)).toEqual({ a: null });
   });
 
+  // upstream resets the map whenever decoding fails
+  const failing: [string, string][] = [
+    ["a number out of range", `{"a":2,"b":1e400}`],
+    ["malformed syntax", `{"a":2,`],
+    ["an incomplete number", `{"a":2,"b":5.}`],
+    ["a wrong type for an existing value", `{"a":2,"old":"x"}`],
+    ["a duplicate name", `{"a":2,"a":3}`],
+    ["not an object", `[1]`],
+  ];
+  for (const [name, text] of failing) {
+    test(`${name} resets a non-empty destination`, () => {
+      const into: JSONMap<unknown> = { old: 1, a: 1 };
+      expect(() => scanJSONMap(text, anyType, into)).toThrow();
+      expect(into).toEqual({});
+    });
+  }
+
   test("duplicate names fail", () => {
     expect(() => scanJSONMap(`{"a":1,"a":2}`)).toThrow();
   });
