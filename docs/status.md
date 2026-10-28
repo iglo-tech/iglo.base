@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.7 | fix | [#18](https://github.com/iglo-tech/iglo.base/pull/18) | 1 | [Brief](briefs/M1.7.md), [fix brief](briefs/M1.7-fix1.md). Round 1 at `979fd1b`: Opus CHANGES (dependent-view error prefix `[name]:` instead of upstream's `[name] `), Sol CHANGES (the same prefix; `null` import entries throw a TypeError instead of upstream's validation error). macOS reference CI fails 12 steps of the save sequence from a SQLite rename error (macOS `bun:sqlite` uses the system SQLite). The Opus fixer was cancelled on the owner's model change after pushing a TEMP diagnostics commit `9b82f50`. **Next: start a Terra fixer with the fix brief**, then a round-2 council of two Sol members |
+| M1.7 | fix | [#18](https://github.com/iglo-tech/iglo.base/pull/18) | 1 | [Brief](briefs/M1.7.md), [fix brief](briefs/M1.7-fix1.md). Round 1 at `979fd1b`: Opus CHANGES (dependent-view error prefix `[name]:` instead of upstream's `[name] `), Sol CHANGES (the same prefix; `null` import entries throw a TypeError instead of upstream's validation error). macOS reference CI fails 12 steps of the save sequence from a SQLite rename error (macOS `bun:sqlite` uses the system SQLite). The Opus fixer was cancelled on the owner's model change after pushing a TEMP diagnostics commit `9b82f50`. A Terra fixer was started on 2026-10-28 with the fix brief. **Next: when it reports, check CI**, then a round-2 council of two Sol members |
 
 ## Done
 
