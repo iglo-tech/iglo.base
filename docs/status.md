@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1 | council | [#8](https://github.com/iglo-tech/iglo.base/pull/8) ([brief](briefs/M1.1.md)) | 2 | Base tools: types, security (without random_by_regex), list, inflector, store. Round 1 at `d3d9209`: Opus APPROVE (NaN GeoPoint string, minor), Sol CHANGES (v1 duplicate JSON keys in JWTs, DateTime location lost for AddDate). Fixed by an Opus fixer at `931a457`. Round 2: Opus APPROVE, Sol CHANGES (JSONRaw invalid UTF-8 bytes lost on write, incomplete number tokens applied, JSONMap not reset on error, Go `time.Local` rules for AddDate). Stage fix: Opus fixer on the branch |
+| M1.1 | council | [#8](https://github.com/iglo-tech/iglo.base/pull/8) ([brief](briefs/M1.1.md)) | 3 | Base tools: types, security (without random_by_regex), list, inflector, store. Round 1 at `d3d9209`: Opus APPROVE (NaN GeoPoint string, minor), Sol CHANGES (v1 duplicate JSON keys in JWTs, DateTime location lost for AddDate). Fixed by an Opus fixer at `931a457`. Round 2: Opus APPROVE, Sol CHANGES (JSONRaw invalid UTF-8 bytes lost on write, incomplete number tokens applied, JSONMap not reset on error, Go `time.Local` rules for AddDate). Fixed by an Opus fixer at `6218d9c` (CI green; Go zone code ported in `go-zoneinfo.ts`); round 3 started for that head |
 
 ## Done
 
