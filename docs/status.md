@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1b | council | [#10](https://github.com/iglo-tech/iglo.base/pull/10) ([brief](briefs/M1.1b.md)) | 1 | Go `regexp` matching (compile, prog, NFA, onepass) on the M1.1a parser. Round 1 at `1ee8c1d`: Opus APPROVE (stale test comment, minor), Sol CHANGES (the NFA's recursive add overflows Bun's call stack on an upstream-valid pattern). Stage fix: Opus fixer on the branch, also auditing other recursion |
+| M1.1b | council | [#10](https://github.com/iglo-tech/iglo.base/pull/10) ([brief](briefs/M1.1b.md)) | 2 | Go `regexp` matching (compile, prog, NFA, onepass) on the M1.1a parser. Round 1 at `1ee8c1d`: Opus APPROVE (stale test comment, minor), Sol CHANGES (the NFA's recursive add overflows Bun's call stack on an upstream-valid pattern). Fixed by an Opus fixer at `3f809cd` (explicit stack in the NFA's add; audit found no other overflow; CI green); round 2 started for that head |
 
 ## Done
 
