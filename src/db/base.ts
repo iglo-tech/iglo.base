@@ -9,11 +9,14 @@
 //
 // Upstream opens two connection pools per file: a concurrent one for reads
 // (DefaultDataMaxOpenConns 120 / DefaultAuxMaxOpenConns 20 connections) and
-// a nonconcurrent one with a single connection for writes. bun:sqlite is
-// synchronous, so here both builders of a file share one main-thread
-// connection; the read worker pool and --queryTimeout (DefaultQueryTimeout,
-// 30s) are decided by the M0.6 spike (D8), which can swap the concurrent
-// builders without changing this API.
+// a nonconcurrent one with a single connection for writes. Here (D8) both
+// builders of a file share one main-thread connection, which runs every
+// write, every transaction and every synchronous resolver. With
+// `readWorkers`, the concurrent builders' async resolvers (OneAsync,
+// AllAsync, RowAsync, ColumnAsync) read on the read worker pool instead
+// (read-pool.ts); in a transaction both builders are the transaction, so
+// its reads stay on its connection. QueryTimeout (--queryTimeout) is the
+// deadline ModelQuery and AuxModelQuery give their queries (db.ts).
 
 import { join } from "node:path";
 
@@ -22,11 +25,22 @@ import type { Builder } from "@/db/dbx/builder";
 import { Errors, type DB } from "@/db/dbx/db";
 import type { Tx } from "@/db/dbx/tx";
 import { DualDBBuilder } from "@/db/dual-builder";
-import { defaultSleep, type SleepFunc } from "@/db/retry";
+import { ReadPool } from "@/db/read-pool";
+import {
+  defaultAsyncSleep,
+  defaultNow,
+  defaultSleep,
+  type AsyncSleepFunc,
+  type NowFunc,
+  type SleepFunc,
+} from "@/db/retry";
 import { TxAppInfo } from "@/db/tx";
 
 export const dataDBFilename = "data.db";
 export const auxDBFilename = "auxiliary.db";
+
+// DefaultQueryTimeout, in milliseconds
+export const defaultQueryTimeout = 30_000;
 
 export interface DatabasesConfig {
   // the pb_data directory; it must exist (upstream's bootstrap creates it)
@@ -35,12 +49,26 @@ export interface DatabasesConfig {
   dbConnect?: DBConnectFunc;
   // the wait between busy retries; Bun.sleepSync unless set
   sleep?: SleepFunc;
+  // the wait between busy retries of the async resolvers; Bun.sleep unless set
+  asyncSleep?: AsyncSleepFunc;
+  // the clock of query deadlines (monotonic ms); performance.now unless set
+  now?: NowFunc;
+  // QueryTimeout in milliseconds (--queryTimeout); 0 or less: DefaultQueryTimeout
+  queryTimeout?: number;
+  // the number of read workers (D8); 0 or unset: no pool, the async
+  // resolvers read on the main-thread connection
+  readWorkers?: number;
   // --dev: receives every data.db statement, as upstream prints it
   devSQLLog?: (line: string) => void;
 }
 
 interface Shared {
   readonly sleep: SleepFunc;
+  readonly asyncSleep: AsyncSleepFunc;
+  readonly now: NowFunc;
+  readonly queryTimeout: number;
+  readonly pool: ReadPool | null;
+  poolClosed: Promise<void>;
   // the distinct connections, closed once
   readonly dbs: DB[];
   closed: boolean;
@@ -63,16 +91,22 @@ export class Databases {
   static open(config: DatabasesConfig): Databases {
     const connect = config.dbConnect ?? defaultDBConnect;
     const sleep = config.sleep ?? defaultSleep;
+    const queryTimeout =
+      config.queryTimeout !== undefined && config.queryTimeout > 0
+        ? config.queryTimeout
+        : defaultQueryTimeout;
+    const dataPath = join(config.dataDir, dataDBFilename);
+    const auxPath = join(config.dataDir, auxDBFilename);
 
     // initDataDB
-    const concurrentDB = connect(join(config.dataDir, dataDBFilename));
-    const nonconcurrentDB = concurrentDB.clone();
+    const dataDB = connect(dataPath);
+    const nonconcurrentDB = dataDB.clone();
     if (config.devSQLLog) {
       const log = config.devSQLLog;
       const logSQL = (ms: number, sql: string): void => {
         log(`[${Math.trunc(ms).toFixed(2)}ms] ${normalizeSQLLog(sql)}`);
       };
-      for (const db of [concurrentDB, nonconcurrentDB]) {
+      for (const db of [dataDB, nonconcurrentDB]) {
         db.queryLogFunc = logSQL;
         db.execLogFunc = logSQL;
       }
@@ -80,18 +114,42 @@ export class Databases {
 
     // initAuxDB
     // note: renamed to "auxiliary" because "aux" is a reserved Windows filename
-    let auxConcurrentDB: DB;
+    let auxDB: DB;
     try {
-      auxConcurrentDB = connect(join(config.dataDir, auxDBFilename));
+      auxDB = connect(auxPath);
     } catch (err) {
-      concurrentDB.close();
+      dataDB.close();
       throw err;
     }
-    const auxNonconcurrentDB = auxConcurrentDB.clone();
+    const auxNonconcurrentDB = auxDB.clone();
+
+    // the read pool opens its connections after the write connections,
+    // which put the files in WAL mode
+    let pool: ReadPool | null = null;
+    if (config.readWorkers !== undefined && config.readWorkers > 0) {
+      try {
+        pool = ReadPool.open(config.readWorkers);
+      } catch (err) {
+        dataDB.close();
+        auxDB.close();
+        throw err;
+      }
+    }
+    const concurrentDB = pool === null ? dataDB : dataDB.withReader(pool.reader(dataPath));
+    const auxConcurrentDB = pool === null ? auxDB : auxDB.withReader(pool.reader(auxPath));
 
     return new Databases(
       { concurrentDB, nonconcurrentDB, auxConcurrentDB, auxNonconcurrentDB },
-      { sleep, dbs: [concurrentDB, auxConcurrentDB], closed: false },
+      {
+        sleep,
+        asyncSleep: config.asyncSleep ?? defaultAsyncSleep,
+        now: config.now ?? defaultNow,
+        queryTimeout,
+        pool,
+        poolClosed: Promise.resolve(),
+        dbs: [dataDB, auxDB],
+        closed: false,
+      },
       null,
     );
   }
@@ -167,6 +225,27 @@ export class Databases {
     this.shared.sleep(ms);
   }
 
+  // the wait between busy retries of the async resolvers
+  asyncSleep(ms: number): Promise<void> {
+    return this.shared.asyncSleep(ms);
+  }
+
+  // the clock of query deadlines (monotonic ms)
+  now(): number {
+    return this.shared.now();
+  }
+
+  // QueryTimeout in milliseconds
+  queryTimeout(): number {
+    return this.shared.queryTimeout;
+  }
+
+  // the read worker pool, null when the async resolvers read on the
+  // main-thread connection
+  readPool(): ReadPool | null {
+    return this.shared.pool;
+  }
+
   // createTxApp shallow clones the current app and assigns a new tx state.
   createTxApp(tx: Tx, isForAuxDB: boolean): Databases {
     const handles = isForAuxDB
@@ -176,13 +255,17 @@ export class Databases {
   }
 
   // ClearBootstrap releases the databases (closing the db connections).
-  // Closing again is a no-op.
+  // Closing again is a no-op. The read pool's queries fail; its worker
+  // threads exit in the background (see closed()).
   close(): void {
     if (this.shared.closed) {
       return;
     }
     this.shared.closed = true;
 
+    if (this.shared.pool !== null) {
+      this.shared.poolClosed = this.shared.pool.close();
+    }
     const errs: unknown[] = [];
     for (const db of this.shared.dbs) {
       try {
@@ -194,6 +277,12 @@ export class Databases {
     if (errs.length > 0) {
       throw new Errors(errs);
     }
+  }
+
+  // resolves once close() was called and every read worker thread has
+  // exited (a thread running a timed-out statement exits when it returns)
+  closed(): Promise<void> {
+    return this.shared.poolClosed;
   }
 
   private open(): Handles {

@@ -101,6 +101,24 @@ function hasDuplicates(names: string[]): boolean {
   return false;
 }
 
+// what a query resolver reads from its rows: One() the first row object,
+// All() every row object, Row() the first row's values, Column() the first
+// column's values
+export type ReadMode = "one" | "all" | "row" | "column";
+
+export function readRows(rows: Rows, mode: ReadMode): unknown {
+  switch (mode) {
+    case "one":
+      return rows.first();
+    case "all":
+      return rows.all();
+    case "row":
+      return rows.firstValues();
+    case "column":
+      return rows.column();
+  }
+}
+
 export class Rows implements Iterable<unknown[]> {
   private readonly names: string[];
   // the statement rows are stepped on: stmt, or stmt wrapped in a subquery

@@ -352,6 +352,14 @@ export class SelectQuery {
     return this.build().one<T>(a);
   }
 
+  // OneAsync is One, run on the builder's read worker pool when it has one.
+  oneAsync<T = Row>(a?: StructModel): Promise<T> {
+    if (this.fromTables.length === 0 && a !== undefined) {
+      this.fromTables = [a.tableName()];
+    }
+    return this.build().oneAsync<T>(a);
+  }
+
   // Model selects the row with the specified primary key and populates the model with the row data.
   //
   // If the query does not specify a "from" clause, it will use the model to
@@ -382,6 +390,14 @@ export class SelectQuery {
     return this.build().all<T>(factory);
   }
 
+  // AllAsync is All, run on the builder's read worker pool when it has one.
+  allAsync<T = Row>(factory?: () => StructModel): Promise<T[]> {
+    if (this.fromTables.length === 0 && factory !== undefined) {
+      this.fromTables = [factory().tableName()];
+    }
+    return this.build().allAsync<T>(factory);
+  }
+
   // Rows builds and executes the SELECT query and returns a Rows object for data retrieval purpose.
   // This is a shortcut to SelectQuery.Build().Rows()
   rows(): Rows {
@@ -398,6 +414,16 @@ export class SelectQuery {
   // This is a shortcut to SelectQuery.Build().Column()
   column<T = unknown>(): T[] {
     return this.build().column<T>();
+  }
+
+  // RowAsync is Row, run on the builder's read worker pool when it has one.
+  rowAsync(): Promise<unknown[]> {
+    return this.build().rowAsync();
+  }
+
+  // ColumnAsync is Column, run on the builder's read worker pool when it has one.
+  columnAsync<T = unknown>(): Promise<T[]> {
+    return this.build().columnAsync<T>();
   }
 
   // Info exports common SelectQuery fields allowing to inspect the

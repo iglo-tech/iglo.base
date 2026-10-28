@@ -25,6 +25,10 @@
 // A DB wraps one bun:sqlite connection (Go wraps a *sql.DB pool). Clones
 // share the connection. Only the SQLite and standard builders are ported;
 // the MySQL, PostgreSQL, MSSQL and OCI ones are not used by PocketBase.
+//
+// A DB can also have an AsyncReader (the read worker pool): its queries'
+// async resolvers then read on the pool's connections, while everything
+// else, including the synchronous resolvers, uses the DB's connection.
 
 import type { Database, SQLQueryBindings } from "bun:sqlite";
 
@@ -34,6 +38,7 @@ import { StandardBuilder } from "@/db/dbx/builder-standard";
 import { execStatements, queryStatements, splitStatements } from "@/db/dbx/driver";
 import {
   Stmt,
+  type AsyncReader,
   type ExecLogFunc,
   type ExecResult,
   type Executor,
@@ -61,7 +66,16 @@ export class Errors extends Error {
 }
 
 class ConnExecutor implements Executor {
-  constructor(private readonly conn: Database) {}
+  readonly reader?: AsyncReader;
+
+  constructor(
+    private readonly conn: Database,
+    reader: AsyncReader | null,
+  ) {
+    if (reader !== null) {
+      this.reader = reader;
+    }
+  }
 
   exec(sql: string, args: SQLQueryBindings[]): ExecResult {
     return execStatements(this.conn, splitStatements(sql), args, null);
@@ -91,18 +105,30 @@ export class DB extends EmbeddedBuilder {
   constructor(
     private readonly sqlDB: Database,
     private readonly driver: string,
+    private readonly asyncReader: AsyncReader | null = null,
   ) {
     super();
-    this.executor = new ConnExecutor(sqlDB);
+    this.executor = new ConnExecutor(sqlDB, asyncReader);
     this.builder = this.newBuilder(this.executor);
   }
 
   // Clone makes a shallow copy of DB.
   clone(): DB {
-    const db2 = new DB(this.sqlDB, this.driver);
+    return this.withReader(this.asyncReader);
+  }
+
+  // a copy of the DB whose queries' async resolvers read with the given
+  // reader (null: on the DB's connection)
+  withReader(reader: AsyncReader | null): DB {
+    const db2 = new DB(this.sqlDB, this.driver, reader);
     db2.queryLogFunc = this.queryLogFunc;
     db2.execLogFunc = this.execLogFunc;
     return db2;
+  }
+
+  // the reader of the async resolvers, null when they read on the DB's connection
+  reader(): AsyncReader | null {
+    return this.asyncReader;
   }
 
   // DB returns the bun:sqlite connection encapsulated by dbx.DB.

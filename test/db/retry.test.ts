@@ -83,7 +83,10 @@ test("gives up after the max retries with upstream's waits", () => {
 test("execLockRetry adds the failed query to the error", () => {
   const db = getPreparedDB();
   expect(() =>
-    db.newQuery("SELECT * FROM missing").withExecHook(execLockRetry(12, noSleep)).execute(),
+    db
+      .newQuery("SELECT * FROM missing")
+      .withExecHook(execLockRetry(30_000, 12, noSleep, () => 0))
+      .execute(),
   ).toThrow("no such table: missing; failed query: SELECT * FROM missing");
 });
 

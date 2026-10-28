@@ -26,8 +26,15 @@
 // statements. Errors are thrown instead of returned, and the query
 // resolvers return what they read instead of scanning into pointers:
 // One() a row object (or the given StructModel), All() an array, Row() the
-// first row's values, Column() the first column's values. Queries have no
-// context.Context: query timeouts are left to M0.6 (D8).
+// first row's values, Column() the first column's values.
+//
+// Go's context.Context is reduced to what PocketBase uses it for, a
+// deadline (WithDeadline, Deadline). A synchronous resolver checks it
+// before the statement runs and after its rows are read: bun:sqlite cannot
+// interrupt a running statement. The async resolvers (OneAsync, AllAsync,
+// RowAsync, ColumnAsync) run the query on the executor's reader when it has
+// one (the read worker pool, src/db/read-pool.ts), which gives up at the
+// deadline; otherwise they run it as the synchronous ones do.
 //
 // Integers are read losslessly: statements run with bun:sqlite's
 // safeIntegers, and the row readers (rows.ts) narrow every integer inside
@@ -53,7 +60,7 @@ import {
   splitStatements,
   type ScriptPart,
 } from "@/db/dbx/driver";
-import type { Rows } from "@/db/dbx/rows";
+import { readRows, type ReadMode, type Rows } from "@/db/dbx/rows";
 import { isStructModel, scanStruct, type StructModel } from "@/db/dbx/struct";
 
 // Params represents a list of parameter values to be bound to a SQL statement.
@@ -103,6 +110,58 @@ export interface Executor {
   query(sql: string, args: SQLQueryBindings[], own: boolean): Rows;
   // Prepare creates a prepared statement that the caller closes
   prepare(sql: string): Stmt;
+  // Reads the result of a query that returns rows on another connection
+  // (the read worker pool); an executor without it reads synchronously
+  readonly reader?: AsyncReader;
+}
+
+// AsyncReader runs a query that returns rows somewhere else than the
+// calling thread and resolves with what readRows(rows, mode) returns.
+export interface AsyncReader {
+  read(
+    sql: string,
+    args: SQLQueryBindings[],
+    mode: ReadMode,
+    deadline: Deadline | null,
+  ): Promise<unknown>;
+}
+
+// context.DeadlineExceeded
+export class DeadlineExceededError extends Error {
+  constructor() {
+    super("context deadline exceeded");
+    this.name = "DeadlineExceededError";
+  }
+}
+
+// Deadline is the part of a Go context.Context with a timeout
+// (context.WithTimeout) that queries use: the time after which they fail.
+export class Deadline {
+  private readonly at: number;
+
+  // timeout in milliseconds; now returns monotonic milliseconds
+  constructor(
+    timeout: number,
+    private readonly now: () => number,
+  ) {
+    this.at = now() + timeout;
+  }
+
+  // the milliseconds left, 0 once expired
+  remaining(): number {
+    return Math.max(0, this.at - this.now());
+  }
+
+  expired(): boolean {
+    return this.now() >= this.at;
+  }
+
+  // throws DeadlineExceededError once expired (ctx.Err())
+  check(): void {
+    if (this.expired()) {
+      throw new DeadlineExceededError();
+    }
+  }
 }
 
 // sql.Stmt: a prepared statement. A statement prepared in a transaction is
@@ -158,6 +217,9 @@ export class Stmt {
 // ExecHookFunc executes before op allowing custom handling like auto fail/retry.
 export type ExecHookFunc = (q: Query, op: () => void) => void;
 
+// AsyncExecHookFunc is ExecHookFunc for the async resolvers.
+export type AsyncExecHookFunc = (q: Query, op: () => Promise<void>) => Promise<void>;
+
 // OneHookFunc executes right before the query populate the row result from One() call (aka. op).
 // Its return value is what One() returns.
 export type OneHookFunc = (q: Query, a: unknown, op: (b: unknown) => unknown) => unknown;
@@ -190,7 +252,9 @@ export class Query {
   private boundParams: Params = {};
   private stmt: Stmt | null = null;
 
+  private ctxDeadline: Deadline | null = null;
   private execHook: ExecHookFunc | null = null;
+  private asyncExecHook: AsyncExecHookFunc | null = null;
   private oneHook: OneHookFunc | null = null;
   private allHook: AllHookFunc | null = null;
 
@@ -227,12 +291,32 @@ export class Query {
     return this.rawSql;
   }
 
+  // Deadline returns the query's deadline (Go: Context), null when none.
+  deadline(): Deadline | null {
+    return this.ctxDeadline;
+  }
+
+  // WithDeadline associates a deadline with the query (Go: WithContext with
+  // a context.WithTimeout one); null removes it.
+  withDeadline(deadline: Deadline | null): this {
+    this.ctxDeadline = deadline;
+    return this;
+  }
+
   // WithExecHook associates the provided exec hook function with the query.
   //
   // It is called for every Query resolver (Execute(), One(), All(), Row(), Column()),
   // allowing you to implement auto fail/retry or any other additional handling.
   withExecHook(fn: ExecHookFunc | null): this {
     this.execHook = fn;
+    return this;
+  }
+
+  // WithAsyncExecHook associates the exec hook of the async resolvers
+  // (OneAsync(), AllAsync(), RowAsync(), ColumnAsync()) with the query. A
+  // query with a synchronous exec hook only cannot use them.
+  withAsyncExecHook(fn: AsyncExecHookFunc | null): this {
+    this.asyncExecHook = fn;
     return this;
   }
 
@@ -322,6 +406,8 @@ export class Query {
   private executeOp(): ExecResult {
     this.takeLastError();
     const args = replacePlaceholders(this.placeholders, this.boundParams);
+    // a statement that writes is never failed after it ran
+    this.ctxDeadline?.check();
 
     const start = performance.now();
     let result: ExecResult | null = null;
@@ -347,17 +433,31 @@ export class Query {
   one<T = Row>(a?: StructModel): T {
     let result: unknown = undefined;
     this.execWrap(() => {
-      const op = (b: unknown): unknown => {
-        const row = this.rowsOp(false).first();
-        if (isStructModel(b)) {
-          scanStruct(b, row);
-          return b;
-        }
-        return row;
-      };
-      result = this.oneHook !== null ? this.oneHook(this, a, op) : op(a);
+      const row = this.read("one") as Row;
+      result = this.populateOne(row, a);
     });
     return result as T;
+  }
+
+  // OneAsync is One, run on the executor's reader when it has one.
+  async oneAsync<T = Row>(a?: StructModel): Promise<T> {
+    let result: unknown = undefined;
+    await this.execWrapAsync(async () => {
+      const row = (await this.readAsync("one")) as Row;
+      result = this.populateOne(row, a);
+    });
+    return result as T;
+  }
+
+  private populateOne(row: Row, a: StructModel | undefined): unknown {
+    const op = (b: unknown): unknown => {
+      if (isStructModel(b)) {
+        scanStruct(b, row);
+        return b;
+      }
+      return row;
+    };
+    return this.oneHook !== null ? this.oneHook(this, a, op) : op(a);
   }
 
   // All executes the SQL statement and returns all the resulting rows:
@@ -366,20 +466,34 @@ export class Query {
   all<T = Row>(factory?: () => StructModel): T[] {
     let result: unknown = [];
     this.execWrap(() => {
-      const op = (b: unknown): unknown[] => {
-        const rows = this.rowsOp(false).all();
-        if (typeof b === "function") {
-          return rows.map((row) => {
-            const model = (b as () => StructModel)();
-            scanStruct(model, row);
-            return model;
-          });
-        }
-        return rows;
-      };
-      result = this.allHook !== null ? this.allHook(this, factory, op) : op(factory);
+      const rows = this.read("all") as Row[];
+      result = this.populateAll(rows, factory);
     });
     return result as T[];
+  }
+
+  // AllAsync is All, run on the executor's reader when it has one.
+  async allAsync<T = Row>(factory?: () => StructModel): Promise<T[]> {
+    let result: unknown = [];
+    await this.execWrapAsync(async () => {
+      const rows = (await this.readAsync("all")) as Row[];
+      result = this.populateAll(rows, factory);
+    });
+    return result as T[];
+  }
+
+  private populateAll(rows: Row[], factory: (() => StructModel) | undefined): unknown {
+    const op = (b: unknown): unknown[] => {
+      if (typeof b === "function") {
+        return rows.map((row) => {
+          const model = (b as () => StructModel)();
+          scanStruct(model, row);
+          return model;
+        });
+      }
+      return rows;
+    };
+    return this.allHook !== null ? this.allHook(this, factory, op) : op(factory);
   }
 
   // Row executes the SQL statement and returns the values of the first row.
@@ -387,7 +501,16 @@ export class Query {
   row(): unknown[] {
     let result: unknown[] = [];
     this.execWrap(() => {
-      result = this.rowsOp(false).firstValues();
+      result = this.read("row") as unknown[];
+    });
+    return result;
+  }
+
+  // RowAsync is Row, run on the executor's reader when it has one.
+  async rowAsync(): Promise<unknown[]> {
+    let result: unknown[] = [];
+    await this.execWrapAsync(async () => {
+      result = (await this.readAsync("row")) as unknown[];
     });
     return result;
   }
@@ -396,7 +519,16 @@ export class Query {
   column<T = unknown>(): T[] {
     let result: unknown[] = [];
     this.execWrap(() => {
-      result = this.rowsOp(false).column();
+      result = this.read("column") as unknown[];
+    });
+    return result as T[];
+  }
+
+  // ColumnAsync is Column, run on the executor's reader when it has one.
+  async columnAsync<T = unknown>(): Promise<T[]> {
+    let result: unknown[] = [];
+    await this.execWrapAsync(async () => {
+      result = (await this.readAsync("column")) as unknown[];
     });
     return result as T[];
   }
@@ -407,6 +539,38 @@ export class Query {
   // close them.
   rows(): Rows {
     return this.rowsOp(true);
+  }
+
+  // runs the query on this thread and reads its rows; a deadline that
+  // passed while they were read fails the query, as an interrupted one
+  private read(mode: ReadMode): unknown {
+    const deadline = this.ctxDeadline;
+    deadline?.check();
+    const result = readRows(this.rowsOp(false), mode);
+    deadline?.check();
+    return result;
+  }
+
+  private async readAsync(mode: ReadMode): Promise<unknown> {
+    const reader = this.executor.reader;
+    if (reader === undefined || this.stmt !== null) {
+      return this.read(mode);
+    }
+    this.takeLastError();
+    const args = replacePlaceholders(this.placeholders, this.boundParams);
+    const deadline = this.ctxDeadline;
+    deadline?.check();
+
+    const start = performance.now();
+    let err: unknown = null;
+    try {
+      return await reader.read(this.rawSql, args, mode, deadline);
+    } catch (e) {
+      err = e;
+      throw e;
+    } finally {
+      this.queryLogFunc?.(performance.now() - start, this.logSQL(), err);
+    }
   }
 
   private rowsOp(own: boolean): Rows {
@@ -442,6 +606,17 @@ export class Query {
       return;
     }
     op();
+  }
+
+  private async execWrapAsync(op: () => Promise<void>): Promise<void> {
+    if (this.asyncExecHook !== null) {
+      await this.asyncExecHook(this, op);
+      return;
+    }
+    if (this.execHook !== null) {
+      throw new Error("dbx: the query has no async exec hook; use the synchronous resolvers");
+    }
+    await op();
   }
 }
 
