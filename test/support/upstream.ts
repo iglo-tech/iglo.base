@@ -8,6 +8,8 @@
 // `open` (macOS) or `xdg-open` (tools/osutils/cmd.go). The helper puts no-op
 // `open` and `xdg-open` first on the child's PATH, and waits for the
 // installer's printed hint, so the starting data is settled before tests run.
+// A given pb_data directory (a fixture copy) is expected to have superusers,
+// so then the helper waits only for /api/health.
 
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -23,10 +25,12 @@ export interface UpstreamServer {
   stop(): Promise<void>;
 }
 
-export async function startUpstream(layout: Layout = defaultLayout): Promise<UpstreamServer> {
-  const binary = requireTool("pocketbase", layout);
+export async function startUpstream(
+  options: { layout?: Layout; dataDir?: string } = {},
+): Promise<UpstreamServer> {
+  const binary = requireTool("pocketbase", options.layout ?? defaultLayout);
   const root = mkdtempSync(join(tmpdir(), "iglo-base-upstream-"));
-  const dataDir = join(root, "pb_data");
+  const dataDir = options.dataDir ?? join(root, "pb_data");
   const noBrowserDir = join(root, "no-browser");
   mkdirSync(noBrowserDir);
   for (const name of ["open", "xdg-open"]) {
@@ -46,10 +50,12 @@ export async function startUpstream(layout: Layout = defaultLayout): Promise<Ups
       const res = await fetch(`${url}/api/health`);
       return res.ok;
     });
-    // the installer prints this hint after the installer superuser exists
-    await waitUntilReady(child, "upstream pocketbase installer", async () =>
-      child.output().includes("superuser upsert"),
-    );
+    if (options.dataDir === undefined) {
+      // the installer prints this hint after the installer superuser exists
+      await waitUntilReady(child, "upstream pocketbase installer", async () =>
+        child.output().includes("superuser upsert"),
+      );
+    }
   } catch (error) {
     await child.stop();
     rmSync(root, { recursive: true, force: true });

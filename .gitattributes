@@ -1,0 +1,2 @@
+# upstream's fixture is kept byte for byte (test/fixtures/pocketbase/README.md)
+test/fixtures/pocketbase/** -text
