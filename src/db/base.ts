@@ -42,6 +42,9 @@ export const auxDBFilename = "auxiliary.db";
 // DefaultQueryTimeout, in milliseconds
 export const defaultQueryTimeout = 30_000;
 
+// the read pool size `serve` uses (D8, docs/perf/M0.6-read-path.md)
+export const defaultReadWorkers = 4;
+
 export interface DatabasesConfig {
   // the pb_data directory; it must exist (upstream's bootstrap creates it)
   dataDir: string;

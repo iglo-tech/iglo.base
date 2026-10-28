@@ -50,13 +50,31 @@ Decided 2026-10-27.
 - **Why:** it is a pure API client, so it works unchanged against a compatible server, and it is about 35,000 lines that would otherwise be rewritten for no product gain.
 - **Considered:** rewriting it in the style of iglo.email (server-rendered TSX) or iglo.monitor (Vue). Rejected: large cost, and it would lose the dashboard as a compatibility check.
 
-## D8. SQLite access: main-thread writer, worker read pool
+## D8. SQLite access: main-thread connection, read worker pool for timed reads
 
-Provisional until the M0 spike.
+Decided by agents on 2026-10-28, for owner review (M0.6 spike, [report](../perf/M0.6-read-path.md)).
 
-- **Decision:** one write connection per database file on the main thread; reads that may be slow (lists, filters, expands, logs) run on a small pool of Bun workers with read-only connections. `--queryTimeout` terminates and replaces a worker.
-- **Why:** `bun:sqlite` is synchronous. Upstream relies on many concurrent connections and context-cancelled queries; a single main-thread connection would let one slow filter block all requests, and could not honor `--queryTimeout`.
-- **Considered:** everything on the main thread (simplest, fastest for small queries, no timeout); one worker per request (too much overhead). The spike measures both the pool and the main-thread option on the fixture and a 1-million-record dataset.
+- **Decision:**
+  - One connection per database file on the main thread runs every write, every transaction and every synchronous read, as upstream's nonconcurrent DB does. The db API stays synchronous.
+  - The concurrent builders also have async resolvers (`oneAsync`, `allAsync`, `rowAsync`, `columnAsync`). Outside a transaction these run on a pool of Bun workers, each with read-only connections to both files, with upstream's pragmas. Request-path reads that can be slow use them: lists, views, counts, expands, logs, and rule checks outside write transactions. In a transaction both builders are the transaction, so its reads stay on its connection and run synchronously.
+  - Default pool size: 4 workers (`defaultReadWorkers`). Queries wait in a queue for a free worker, as Go's `database/sql` waits for a free connection.
+  - `--queryTimeout`: as upstream, `ModelQuery`, `AuxModelQuery` (and M1.8's `RecordQuery`) give their query a deadline of the timeout (≤ 0 means 30 s) for all lock-retry attempts. On the pool, a query still running at the deadline, or still queued, fails at the deadline with upstream's error, `context deadline exceeded; failed query: <SQL>`. The worker that runs it is terminated and replaced at once. A synchronous query (main thread or transaction) is checked before it runs and after its rows are read. It fails with the same error, but late, because it cannot be interrupted.
+- **Why:**
+  - **Small reads are faster on the main thread.** A lookup by id takes 0.011 ms there and 0.13–0.18 ms through a worker. The hop costs 0.06–0.11 ms per query. Moving every read to the pool would slow the many tiny internal reads (settings, collection cache, auth lookups) and would force an async API onto transactions, which must stay synchronous on the single write connection.
+  - **Slow reads must leave the main thread.** An unindexed filter over 1M rows takes about 610 ms. On the main thread, a trivial request waits for every such query in front of it: the event loop lagged 3 s with 8 queued. On the pool, the event loop lag stays under 3 ms, and throughput grows with the pool size (indexed 30-row page on 1M rows: 359 q/s main, 576/1,039/1,288 q/s with 2/4/6 workers).
+  - **The pool is the only way to meet the timeout without blocking.** `bun:sqlite` (Bun 1.4.4) has no `sqlite3_interrupt` and no progress handler, the bun binary exports no SQLite symbols for `bun:ffi`, and `Worker.terminate()` does not stop a running statement. Only a worker lets the caller get upstream's error at the deadline while other requests go on.
+  - Each worker costs about 12 MiB idle and about 40 MiB with its page caches warm on the 1M-row database. Going from 4 to 6 workers added 24 % page throughput for 80 MiB.
+- **Costs and limits:**
+  - **A timed-out statement keeps running.** Its terminated thread uses one core and holds its WAL read snapshot until the statement returns. The pool keeps at most as many abandoned threads as workers; beyond that, replacements wait for one to exit.
+  - **Reads on the pool see committed data only.** A read sees what the main thread committed before it was issued, because each statement starts its own read transaction in WAL. Uncommitted writes of a running transaction are visible only through that transaction's builders.
+  - **Pool connections are read-only.** A statement that writes (for example `INSERT … RETURNING` through `concurrentDB().newQuery(...).allAsync()`) fails there with "attempt to write a readonly database". Upstream's concurrent connections can write.
+  - **No early interrupt for synchronous reads.** A read in a write transaction is not interrupted at the deadline as upstream's is: it fails after it finishes.
+  - **Extra build entry point.** `bun build --compile` needs `src/db/read-worker.ts` as a second entry point (`package.json` `build`).
+- **Considered:**
+  - Everything on the main thread: simplest and fastest for small queries, but one slow filter stalls every request, and `--queryTimeout` cannot hold.
+  - Every read on the pool: costs the hop on every small read, and makes transactions async.
+  - A pool of child processes: killing a process does stop its statement, but it costs a process per connection and IPC serialization. Not needed while a terminated worker's statement is bounded by the data.
+  - One worker per request: too much startup overhead.
 
 ## D9. Port the filter language, do not redesign it
 
