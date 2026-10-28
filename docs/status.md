@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8 | worker | `task/M1.8-records` | 0 | [Brief](briefs/M1.8.md). The first Terra worker stopped after 25 s with no code (no limit hit); retry with a sharper preamble ([brief, Retry section](briefs/M1.8.md)) started 2026-10-28. Its first attempt could not create the branch, which the first worker's stale worktree still held (empty, never pushed); the lead detached that worktree, deleted the local branch and restarted the same retry. A second failure of the retry marks M1.8 blocked |
+| M1.8a | worker | `task/M1.8a-record-model` | 0 | [Brief](briefs/M1.8a.md). First part of the M1.8 split. Terra worker started 2026-10-28 |
 
 ## Done
 
@@ -34,7 +34,9 @@ Updated: 2026-10-28
 
 ## Blocked
 
-None.
+| ID | Since | Reason |
+|---|---|---|
+| M1.8 | 2026-10-28 | The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
 
 ## For owner review
 
@@ -110,4 +112,5 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (M1.7 fix round 1): macOS system SQLite (3.51.0 on the CI runner) defaults `legacy_alter_table` to ON, so a column rename that breaks a view of a view succeeds there and leaves a broken view, while upstream's SQLite (and Bun's bundled 3.53.4 on Linux) reject it. The lead decided that every connection sets `legacy_alter_table(OFF)`, SQLite's default and upstream's effective value, rather than treating it as a platform difference or waiting for M0.8's `setCustomSQLite`. It is a one-line change in `src/db/connect.ts` made in M1.7 with lead approval.
 - 2026-10-28 (M1.7 round 3 CI): the Linux `reference` job at `6d37f09` failed one M0.5 harness self-test, `a new record's title that looks like an id compares exactly` (`test/differential/harness/upstream-compare.test.ts:74`): the two upstream runs wrote the same millisecond `updated` timestamp, and the pairing rule reported "timestamps not paired consistently". M1.7 does not touch the harness; the lead re-ran the job. This is probably the unidentified flaky failure noted for M0.5. Carried as a small harness fix (the timestamp pairing must allow equal generated values in the two runs).
 - 2026-10-28 (plan change, before M1.8): M1.8 keeps `core/record_model*.go`, the plain record queries, `TruncateCollection` and `FindRecordByViewFile` (about 1,500 upstream lines once the hook registrations are dropped). `FindRecordsByFilter`, `FindFirstRecordByFilter` and `CanAccessRecord` need the field resolver and move to M2.2; `FindAuthRecordByToken` needs tokens and moves to M2.3; expand stays with M2.4. Records get a new `src/records/` module.
+- 2026-10-28 (plan change, M1.8 blocked): M1.8 is split into M1.8a (record model: accessors, DBExport, PublicExport, JSON, auth accessors), M1.8b (RecordQuery and the plain finders, FindRecordByViewFile, DryRunView's sample) and M1.8c (save, validate and delete with cascade, superuser protections, TruncateCollection, perf measurements), in that order on the critical path. M2.2 and M2.3 now depend on M1.8c. Reason: two Terra workers stopped on the large M1.8 brief before writing code, while Terra completed every smaller fix brief.
 - 2026-10-28 (owner direction): no Anthropic (Claude) models until the owner says otherwise. The lead (the scheduled task, via the project's default model) is GPT-6.1 Sol at xhigh reasoning; workers, fixers and helpers are GPT-6.1 Terra at high reasoning (effort chosen by the lead); the council is two independent GPT-6.1 Sol members at xhigh reasoning, verdict lines `COUNCIL gpt-6.1-sol#1` and `#2`. The runbook, the work plan's model table and the scheduled task prompt are updated. Earlier rows record Opus verdicts from before this change.
