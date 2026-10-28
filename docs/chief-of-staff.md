@@ -32,10 +32,9 @@ Call `orchestrator_capabilities` once per run before the first `delegate_task`.
 
 | Agent | `target` |
 |---|---|
-| Worker, fixer or helper (Terra) | `{ "providerInstanceId": "codex", "model": "gpt-6.1-terra", "options": { "reasoningEffort": "high" } }` |
-| Council member (Sol; two independent members per round) | `{ "providerInstanceId": "codex", "model": "gpt-6.1-sol", "options": { "reasoningEffort": "xhigh" } }` |
-
-Owner direction on 2026-10-28: no Anthropic (Claude) agents until the owner says otherwise. The lead itself runs as GPT-6.1 Sol at xhigh reasoning (the project default model used by the scheduled task). Each council round starts two separate Sol members; each posts its own verdict comment, the first as `COUNCIL gpt-6.1-sol#1` and the second as `COUNCIL gpt-6.1-sol#2`.
+| Opus worker or fixer, council member | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "medium" } }` |
+| Haiku worker or helper | `{ "providerInstanceId": "claudeAgent", "model": "claude-haiku-5-5", "options": { "effort": "medium" } }` |
+| Sol council member | `{ "providerInstanceId": "codex", "model": "gpt-6.1-sol", "options": { "reasoningEffort": "xhigh" } }` |
 
 ### Worker instructions
 
@@ -45,7 +44,7 @@ Append to every worker and fixer brief:
 You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the task yourself.
 - Read AGENTS.md and the docs named in the brief first. Follow the "Rules for workers" in docs/design/12-work-plan.md.
 - Upstream PocketBase v0.41.0 source: .upstream/pocketbase after `bun run upstream:prepare` (the same pinned commit is at /home/t3-code/upstream/pocketbase on this host; read only). Read it; never port from memory.
-- Do the bulk mechanical work yourself or with GPT-6.1 Terra subagents if your tools allow it (no Anthropic models); keep the judgment calls yourself.
+- Use Claude Haiku 5.5 subagents for bulk mechanical work (for example converting upstream table tests to scenario data); keep the judgment calls yourself.
 - Work on branch task/<id>-<slug> from origin/main. Commit with short messages. Push and open one PR titled "<id>: <title>" against main. The PR body maps each upstream file to its iglo.base file and lists anything left out, with a reason.
 - Run the acceptance commands and the full local check before you finish. Do not merge. Do not watch the PR.
 - Never touch production data, real credentials or anything outside this repository and your worktree.
@@ -62,9 +61,9 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md.
 - Check: correctness against upstream, scope respected, no extension surface or hook remnants, tests through public boundaries only, acceptance check really passes (run it), design docs still match the code.
 - Report only real problems, each with file, line and the concrete failure. Do not ask for optional style changes.
 - Post exactly one PR comment, starting with the first line
-  COUNCIL <your member name> VERDICT: APPROVE <SHA>
+  COUNCIL <your model> VERDICT: APPROVE <SHA>
   or
-  COUNCIL <your member name> VERDICT: CHANGES <SHA>
+  COUNCIL <your model> VERDICT: CHANGES <SHA>
   followed by the findings. Then reply with the same verdict line.
 ```
 
