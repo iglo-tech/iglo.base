@@ -148,7 +148,7 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
     expect((canceled as Error).cause).toBeInstanceOf(NoRowsError);
 
     const invalid = errorOf(() => recordQuery(app, null).one(recordTarget));
-    expect((invalid?.cause as Error).cause).toEqual(
+    expect(((invalid as Error).cause as Error).cause).toEqual(
       new Error("unknown collection identifier - must be collection model, id or name"),
     );
   });
@@ -157,7 +157,7 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
     const app = getApp();
 
     const records = await recordQuery(app, "demo1").allAsync<Record>(recordsTarget);
-    expect(records.map((r) => r.id).sort()).toEqual([
+    expect(records.map((r) => r.id).toSorted()).toEqual([
       "84nmscqy84lsi1t",
       "al1h9ijdeojtsjy",
       "imy661ixudk5izi",
@@ -250,19 +250,20 @@ describe("TestRecordQueryAll", () => {
   }
 });
 
+function titleFilter(title: string): RecordQueryFilter {
+  return (q: SelectQuery) => {
+    q.andWhere(new HashExp({ title }));
+  };
+}
+
+function activeFilter(active: boolean): RecordQueryFilter {
+  return (q: SelectQuery) => {
+    q.andWhere(new HashExp({ active }));
+  };
+}
+
 describe("TestFindRecordById", () => {
   const getApp = useApp();
-
-  const titleFilter =
-    (title: string): RecordQueryFilter =>
-    (q: SelectQuery) => {
-      q.andWhere(new HashExp({ title }));
-    };
-  const activeFilter =
-    (active: boolean): RecordQueryFilter =>
-    (q: SelectQuery) => {
-      q.andWhere(new HashExp({ active }));
-    };
 
   const scenarios: {
     collectionIdOrName: string;

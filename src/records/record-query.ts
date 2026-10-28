@@ -72,10 +72,11 @@ export class ContextCanceledError extends Error {
 // a StructModel that is never scanned: the targets below are only markers
 // for RecordQuery's hooks
 function markerModel(): StructModel {
-  const fail = (): never => {
-    throw new Error("the record target is only for queries built by RecordQuery");
-  };
-  return { tableName: fail, dbColumns: fail, dbScan: fail };
+  return { tableName: notScanned, dbColumns: notScanned, dbScan: notScanned };
+}
+
+function notScanned(): never {
+  throw new Error("the record target is only for queries built by RecordQuery");
 }
 
 // One()'s target for a Record (Go: &core.Record{})
@@ -130,16 +131,16 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
       now,
     );
     q.withExactIntegers()
-      .withExecHook((q, op) =>
-        retry(q, () => {
+      .withExecHook((built, op) =>
+        retry(built, () => {
           if (cancelled !== null) {
             throw cancelled;
           }
           withDriverErrors(op);
         }),
       )
-      .withAsyncExecHook((q, op) =>
-        retryAsync(q, async () => {
+      .withAsyncExecHook((built, op) =>
+        retryAsync(built, async () => {
           if (cancelled !== null) {
             throw cancelled;
           }
