@@ -61,7 +61,7 @@ The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker f
 
 ## Verification
 
-Run from the repository root. CI (`.github/workflows/ci.yml`) runs the same commands; the `reference` job runs `bun run test:reference` on Linux and macOS.
+Run from the repository root. CI (`.github/workflows/ci.yml`) runs the same commands, including `bun run test:reference`, in one Linux x64 job. The MVP targets linux-x64 only (D24); macOS and arm64 come after 1.0.
 
 ```sh
 bun install --frozen-lockfile   # install
@@ -74,6 +74,6 @@ bun run upstream:prepare        # pinned reference tools into .upstream/ (networ
 bun run test:reference          # upstream:prepare, then the smoke tests in test/differential/
 ```
 
-`bun run check` runs lint, format:check, typecheck, test and build after install; `bun test` skips `test/differential/` (see `bunfig.toml`). `bun run test:reference` needs `git`, `unzip` and `tar`, which Linux and macOS have; Windows is out of scope (D18). `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
+`bun run check` runs lint, format:check, typecheck, test and build after install; `bun test` skips `test/differential/` (see `bunfig.toml`). `bun run test:reference` needs `git`, `unzip` and `tar`; Windows is out of scope (D18). `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
 
 Changes to the database access layer, filters, realtime or file handling must include before/after measurements, stored under `docs/perf/`.

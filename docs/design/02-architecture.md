@@ -5,7 +5,7 @@
 - **Runtime:** Bun ≥ 1.4, TypeScript, native ESM.
 - **HTTP:** `Bun.serve` with a small router that matches upstream's route patterns (`/api/collections/{collection}/records/{id}`). No Express or other framework.
 - **Database:** `bun:sqlite`, the two upstream files `pb_data/data.db` and `pb_data/auxiliary.db`, with upstream's pragmas ([Data compatibility](03-data-compatibility.md#sqlite-settings)).
-- **Distribution:** one executable from `bun build --compile`, with the admin dashboard, system migrations and email templates embedded. linux-x64, linux-arm64 and darwin-arm64.
+- **Distribution:** one executable from `bun build --compile`, with the admin dashboard, system migrations and email templates embedded. linux-x64 for the MVP; linux-arm64 and darwin-arm64 after 1.0 (D24).
 - **No external services** apart from the optional SMTP server, S3 bucket, OAuth2 providers and Let's Encrypt.
 
 ## Shared ground with other iglo.\* projects

@@ -91,7 +91,7 @@ command "update" is not supported: iglo.base does not replace its own executable
 | HTTP | CORS (`--origins`), gzip, body limits, rate limits, trusted proxy headers, HTTPS with automatic Let's Encrypt certificates (`serve example.com`), `/api/health` |
 | CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback` |
 | Admin dashboard | upstream's `/_/` dashboard, including the installer link for the first superuser ([Admin UI](08-admin-ui.md)) |
-| Platforms | linux-x64, linux-arm64, darwin-arm64 release binaries ([D18](10-decisions.md#d18-release-platforms)) |
+| Platforms | linux-x64 release binary for the MVP; linux-arm64 and darwin-arm64 after 1.0 ([D18](10-decisions.md#d18-release-platforms), [D24](10-decisions.md#d24-mvp-targets-linux-x64-only)) |
 
 ## Compatibility promise
 

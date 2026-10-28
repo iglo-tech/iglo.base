@@ -139,7 +139,7 @@ Decided 2026-10-27.
 
 Decided 2026-10-27.
 
-- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only.
+- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only. Amended by [D24](#d24-mvp-targets-linux-x64-only): the MVP ships linux-x64 only; linux-arm64 and darwin-arm64 come after 1.0.
 - **Why:** these are the platforms iglo.\* projects ship and deployments use. Windows needs extra work (no `sendmail`, restart by re-exec, file locking during restore) for no current user. Upstream's other targets (Windows, FreeBSD, 32-bit ARM and others) are dropped.
 
 ## D19. Drop the `update` command
@@ -192,3 +192,12 @@ Decided by the owner on 2026-10-28.
 - **Why:** the owner asked for it: only `pb_hooks` was meant to go. Existing deployments keep their migration workflow, and the 58 recorded `*.js` migrations in the source data (D15) stay meaningful.
 - **How:** migration files are JavaScript modules run by Bun itself, so no JS VM is embedded. The globals are thin bindings over the internal modules (collections, records, fields, db, security), which stay internal; the bindings are the only surface, and only migration files see them.
 - **Consequence:** a new task (M3.7) ports `plugins/migratecmd` and the migration bindings from `plugins/jsvm`. Until it lands, iglo.base keeps the current behavior (it warns about and ignores `pb_migrations`, and rejects `migrate`, `--migrationsDir` and `--automigrate`).
+
+## D24. MVP targets Linux x64 only
+
+Decided by the owner on 2026-10-28.
+
+- **Decision:** the MVP (1.0) is built, tested and released for linux-x64 only. CI runs one Linux x64 job (`bun run check` and `bun run test:reference`); the macOS job is removed. macOS (darwin-arm64) and linux-arm64 builds, the bundled SQLite for macOS (`Database.setCustomSQLite`) and macOS CI move to after 1.0 (task P.2).
+- **Why:** the owner wants a working MVP for x86 Linux first, with a lean CI, and no time spent on other platforms until then.
+- **Consequence:** workers, fixers and the council do not investigate or fix macOS-only behavior before 1.0. Code that already handles macOS (for example `legacy_alter_table=OFF`, read-only WAL fixtures) stays. Amends D18.
+

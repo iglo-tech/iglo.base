@@ -27,7 +27,7 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 - **PocketBase's API, verified against the upstream binary** by a differential test suite seeded with upstream's ~720 API scenarios.
 - **Upstream's dashboard is reused** with a small, listed patch set and iglo.base branding only (D17).
 - **Upstream releases after v0.41.0:** security and bug fixes ported by hand (D16).
-- **Release binaries:** linux-x64, linux-arm64, darwin-arm64 (D18).
+- **Release binaries:** linux-x64 for the MVP; linux-arm64 and darwin-arm64 after 1.0 (D18, D24).
 - **Filters and rules are ported file by file,** aiming for the same SQL, because they are security boundaries.
 - **Upstream's names stay:** `pb_data`, `pb_public`, `PB_*` variables, flags and commands.
 

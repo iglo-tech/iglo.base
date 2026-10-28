@@ -99,7 +99,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M0.5 | Differential harness and scenario format: run a scenario against upstream and iglo.base on copies of a fixture, normalize, compare; run against iglo.base alone in fast CI | `tests/api.go`, `tests/app.go` | M0.2, M0.3 | The 3 health scenarios run against both servers |
 | M0.6 | Spike D8: read worker pool vs main-thread reads, `--queryTimeout` | none | M0.4 | Report in `docs/perf/`; D8 updated |
 | M0.7 | Spike D10: thumbnail library | `tools/filesystem` thumbs | M0.1 | Report; D10 updated |
-| M0.8 | Spikes: multipart memory near 32 MiB, 1,000 SSE connections, bcrypt `$2b$` round trip through upstream, `setCustomSQLite` on macOS | none | M0.1, M0.2 | One report each; follow-up decisions recorded |
+| M0.8 | Spikes: multipart memory near 32 MiB, 1,000 SSE connections, bcrypt `$2b$` round trip through upstream (`setCustomSQLite` on macOS moved to P.2, D24) | none | M0.1, M0.2 | One report each; follow-up decisions recorded |
 
 ### M1: data layer
 
@@ -188,7 +188,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 |---|---|---|---|---|
 | M7.1 | Performance comparison against upstream | none | M5.8 | Numbers in `docs/perf/` meet the [performance bar](02-architecture.md#performance-bar) |
 | M7.2 | User documentation linked from the dashboard, operations guide | none | M6.4 | Every dashboard documentation link resolves |
-| M7.3 | Release workflow: three binaries on `v*` tags, bundled SQLite on macOS | none | M0.8 | A test tag produces three working binaries |
+| M7.3 | Release workflow: the linux-x64 binary on `v*` tags (D24) | none | M0.8 | A test tag produces a working linux-x64 binary |
 | M7.4 | Cutover rehearsal on the staging copy, with the owner (D20) | none | M7.3 | Move and rollback done once; outbound settings disabled before the first start |
 
 M7.4 is the only task that touches production data. It is run with the owner, never by an unattended worker.
@@ -198,6 +198,7 @@ M7.4 is the only task that touches production data. It is run with the owner, ne
 | ID | Task | Depends on |
 |---|---|---|
 | P.1 | Official Docker image that wraps the release executable (D3) | M7.3 |
+| P.2 | macOS (darwin-arm64) and linux-arm64 builds: release binaries, bundled SQLite on macOS through `Database.setCustomSQLite`, macOS CI job for `test:reference` (D24) | M7.3 |
 
 ## Order
 

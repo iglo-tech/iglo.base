@@ -69,6 +69,8 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md.
 
 ## Rules
 
+- **Focus (owner direction, 2026-10-28).** Ship a working MVP for linux-x64 (D24). Follow the critical path; do not spend agents on macOS, arm64, optional cleanups or carried notes unless they block the current task. CI is one Linux x64 job; a check is green when that job passes.
+
 - **No owner input.** Every question is decided by the lead. Design decisions go into `docs/design/10-decisions.md` marked "Decided by agents on <date>, for owner review" and are listed in `status.md`.
 - **Pace.** One task at a time. At most three agents at once. If an agent fails with a usage or rate limit, write "Paused until <now + 60 min>" in `status.md`, commit, push, release the lock and end the run. Do not retry in a loop.
 - **Failures.** A worker that ends without a usable PR gets one retry with a sharper brief. After that, mark the task blocked in `status.md` with the reason and move to the next task whose dependencies are met.
