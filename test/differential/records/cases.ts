@@ -278,3 +278,64 @@ export function allUpdates(userIds: readonly string[]): [number, Payload][] {
     [33, { json: { data: `{"10":1,"1":2,"b":3,"a":4}` } }],
   ];
 }
+
+// ---------------------------------------------------------------------
+// numbers by storage class
+
+// a json and a number field, whose columns (JSON, NUMERIC) store whole
+// numbers as INTEGER and the others as REAL; the rows are read back by
+// storage class (INTEGER in decimal, REAL with Go's float formatting)
+export const numsCollection = "ref_nums";
+export const numsFields: FieldDef[] = [
+  { name: "j", type: "json" },
+  { name: "n", type: "number" },
+];
+
+// JSON number text, saved through the API as both fields' value
+export const numberTexts = [
+  "1234567",
+  "-1000000",
+  "999999",
+  "1000000",
+  "9007199254740991",
+  "-9007199254740991",
+  "9223372036854775807",
+  "-9223372036854775808",
+  "0",
+  "-0.0",
+  "5.0",
+  "1e21",
+  "1.5e-7",
+  "123456789.0",
+  "123456789.5",
+];
+
+export function numsPayloads(): Payload[] {
+  return numberTexts.map((text) => ({ json: { j: text, n: text } }));
+}
+
+// rows inserted with SQL on upstream's data.db: [id, j, n] as SQL literals.
+// A number column holds an exact INTEGER the API, which saves a float64,
+// cannot store (within 2^53, where the float64 DBExport stores it back as
+// the same INTEGER).
+export const numsSQLRows: [string, string, string][] = [
+  ["sqlnum000000001", "1234567", "1234567"],
+  ["sqlnum000000002", "-1000000", "-1000000"],
+  ["sqlnum000000003", "9007199254740991", "9007199254740991"],
+  ["sqlnum000000004", "-9007199254740991", "-9007199254740991"],
+  ["sqlnum000000005", "9223372036854775807", "1000000"],
+  ["sqlnum000000006", "-9223372036854775808", "999999"],
+  ["sqlnum000000007", "1e21", "1e21"],
+  ["sqlnum000000008", "-0.0", "-0.0"],
+  ["sqlnum000000009", "1.5e-7", "1.5e-7"],
+  ["sqlnum000000010", "123456789.0", "123456789.0"],
+  ["sqlnum000000011", "'[1234567,1e6,5.0]'", "0"],
+  ["sqlnum000000012", "NULL", "0"],
+];
+
+// a view over the numbers whose expression columns have no affinity, so
+// that whole REAL values (5.0, 1000000.0) stay REAL
+export const numsViewCollection = "ref_nums_view";
+export const numsViewQuery =
+  "SELECT id, 5.0 AS a, 123456789.0 AS b, -0.0 AS c, 1e21 AS d, 1.5e-7 AS e, 1000000.0 AS f, " +
+  "999999.0 AS g, 1234567 AS h, -9223372036854775808 AS i, j, n FROM ref_nums";

@@ -18,6 +18,11 @@
 //     table with the fields' column types, must equal the stored columns
 //     (typeof and value).
 //
+// A numbers collection (a json and a number field) gets its values through
+// the API and, for INTEGER values the API cannot store, through SQL on
+// upstream's data.db; a view over it has expression columns that keep whole
+// REAL values REAL. Views are not saved, so their DBExport is not compared.
+//
 // Upstream marshals maps with json.Deterministic, so no member order needs
 // normalizing.
 
@@ -44,6 +49,12 @@ import {
   allFields,
   allPayloads,
   allUpdates,
+  numsCollection,
+  numsFields,
+  numsPayloads,
+  numsSQLRows,
+  numsViewCollection,
+  numsViewQuery,
   usersCollection,
   usersFields,
   userPayloads,
@@ -206,9 +217,41 @@ describe("upstream", () => {
       saves++;
     }
 
+    await createCollection({
+      name: numsCollection,
+      type: "base",
+      listRule: "",
+      viewRule: "",
+      fields: numsFields,
+    });
+    const numIds: string[] = [];
+    for (const p of numsPayloads()) {
+      numIds.push(await saveRecord(numsCollection, p));
+      saves++;
+    }
+    const live = new Database(join(dataDir, "data.db"));
+    try {
+      live.run("PRAGMA busy_timeout = 10000");
+      for (const [id, j, n] of numsSQLRows) {
+        live.run(`INSERT INTO "${numsCollection}" (id, j, n) VALUES ('${id}', ${j}, ${n})`);
+        numIds.push(id);
+      }
+    } finally {
+      live.close();
+    }
+    await createCollection({
+      name: numsViewCollection,
+      type: "view",
+      listRule: "",
+      viewRule: "",
+      viewQuery: numsViewQuery,
+    });
+
     for (const [collection, ids] of [
       [usersCollection, userIds],
       [allCollection, allIds],
+      [numsCollection, numIds],
+      [numsViewCollection, numIds],
     ] as const) {
       for (const id of ids) {
         const path = `/api/collections/${collection}/records/${id}`;
@@ -234,7 +277,7 @@ describe("records read from data.db", () => {
     // on macOS; this is a temporary copy that no server uses any more
     db = new Database(join(dataDir, "data.db"), { safeIntegers: true });
     app = openDataDir(dataDir);
-    for (const name of [usersCollection, allCollection]) {
+    for (const name of [usersCollection, allCollection, numsCollection, numsViewCollection]) {
       collections.set(name, findCollectionByNameOrId(app, name));
     }
   });
@@ -276,6 +319,20 @@ describe("records read from data.db", () => {
       saved.every((s) => !s.guestBody.includes(`"secret":`) && !s.guestBody.includes(`"note":`)),
     ).toBe(true);
     expect(all.filter((s) => s.guestBody.includes(`"docs":["`)).length).toBeGreaterThan(3);
+    expect(saved.filter((s) => s.collection === numsViewCollection).length).toBeGreaterThan(20);
+  });
+
+  test("the numbers are stored as INTEGER and REAL", () => {
+    const stored = classes(db, `SELECT typeof(j), j FROM "${numsCollection}"`);
+    expect(stored).toContain("integer 1234567");
+    expect(stored).toContain("integer 9223372036854775807");
+    expect(stored).toContain("real 1e+21");
+    expect(classes(db, `SELECT typeof(n), n FROM "${numsCollection}"`)).toContain(
+      "integer 1000000",
+    );
+    expect(classes(db, `SELECT typeof(a), a FROM "${numsViewCollection}" LIMIT 1`)).toEqual([
+      "real 5",
+    ]);
   });
 
   test("MarshalJSON equals the guest GET body", () => {
@@ -298,7 +355,7 @@ describe("records read from data.db", () => {
   });
 
   test("DBExport values equal the stored columns", () => {
-    for (const s of saved) {
+    for (const s of saved.filter((v) => v.collection !== numsViewCollection)) {
       const collection = collections.get(s.collection) as Collection;
       const record = readRecord(s.collection, s.id);
       const exported = record.dbExport();
@@ -311,6 +368,14 @@ describe("records read from data.db", () => {
     }
   });
 });
+
+// "<typeof> <value>" of each row of a two-column select
+function classes(db: Database, sql: string): string[] {
+  return db
+    .prepare(sql)
+    .values()
+    .map(([t, v]) => `${String(t)} ${String(v)}`);
+}
 
 // the driver value a DBExport value is bound with: the value's own
 // driver.Valuer (DateTime, JSONRaw, GeoPoint; JSONArray for arrays)
