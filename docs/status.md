@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan (M1.4 is next on the critical path) |
+| M1.4 | worker | `task/M1.4-simple-fields` | 0 | [Brief](briefs/M1.4.md). Opus worker started 2026-10-28 |
 
 ## Done
 
@@ -77,6 +77,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1b PR): the lead accepted the worker's choices. Regexp indexes are Go byte offsets of the UTF-8 encoding, and a lone surrogate U+DC80+n stands for the invalid byte 0x80+n. Go's one-pass machine is ported because it changes `literalPrefix()`; the backtracker is not, because it never changes a result and the NFA's worst case at 1 KiB is about 0.5 ms. Plain `bun test` samples every 10th RE2 exhaustive case (`RE2_EXHAUSTIVE=1` runs all of them). Note for porters: Bun's transpiler rewrites non-ASCII text inside `String.raw` templates as `\uXXXX` escapes.
 - 2026-10-28 (M1.1c brief): ozzo-validation and its `is` rules live in `src/validation/` (the library upstream imports), and `core/validators` in `src/validators/`. ozzo-validation (MIT, Qiang Xue) and govalidator (MIT, Alex Saskevich) notices go into `LICENSE`. `src/server/error.ts` (shared contract, M0.3) may import the ported `Errors` and `Error` types instead of its own structural definitions, as long as its tests still pass unchanged. `core/validators/file.go` waits for the filesystem tasks.
 - 2026-10-28 (M1.1c PR): the lead accepted the worker's open points. `Length` counts bytes, as ozzo's `LengthOfValue` does (the brief's "rune counts" was wrong; `RuneLength` counts runes). `src/server/error.ts` is unchanged, and the ported `Errors` extends its `ValidationErrors`. Go types are mapped by convention: `null` is a typed nil, a plain object is `map[string]any`, a JS `Map` holds validatable values, `Float64` marks a Go float64, and `DateTime` stands for `types.DateTime` and `time.Time`. Message templates support only `{{.name}}`. The new Go-derived files (`net/url`, `net/netip` parts) are named in the existing Go notice in `LICENSE`.
+- 2026-10-28 (M1.4 brief): fields live in `src/fields/` and use narrow record, collection and app interfaces declared there, which M1.6 and M1.8 implement. The field type→constructor map is a fixed internal table, not an extensible registry. Ported field tables are allowed as internal tests in `test/fields/`. The reference test compares field JSON, settings errors, value errors and stored values with the upstream binary.
 
 ## Paused until
 
