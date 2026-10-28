@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8b | worker | `task/M1.8b-record-queries` | 0 | [Brief](briefs/M1.8b.md) |
+| M1.8b | council | [#21](https://github.com/iglo-tech/iglo.base/pull/21) | 1 | [Brief](briefs/M1.8b.md). Opus worker head `2985949`; council round 1 started while CI ran |
 
 ## Done
 
@@ -123,3 +123,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (M1.8a PR): the lead accepted the worker's open points. M1.1's `src/tools/types/go-json.ts` gets an `allowDuplicateNames` option (separate commit), which upstream's record MarshalJSON needs for json values with duplicate member names. spf13/cast conversions the getters need live in `src/records/cast.ts` for now (they belong in `src/tools/types/cast.ts`). Carried for M1.8b: M1.7's `view.ts` formats floats with JS exponent rules (switch at 1e21, Go's at 1e6); replace it with the new row helper.
 - 2026-10-28 (M1.8a fix round 1): the lead approved an additive change to the shared db layer: `Query.withExactIntegers()` reads every SQLite INTEGER as a `bigint`, so a JS `number` is always a REAL, also through the read pool. Other callers are unchanged. Records (and M1.8b's RecordQuery) read rows this way, so each value is converted by storage class, as upstream's driver does.
 - 2026-10-28 (owner direction, D24): the MVP targets linux-x64 only. CI is one Linux x64 job (`check`: lint, format, typecheck, test, build, then `test:reference`); the macOS job is removed. macOS and linux-arm64 builds, macOS CI and the bundled macOS SQLite move to post-MVP task P.2; M7.3 releases the linux-x64 binary only. The runbook gains a focus rule: critical path to a working Linux MVP, no agents on macOS, arm64 or optional cleanups unless they block the current task.
+- 2026-10-28 (M1.8b PR): the lead accepted the worker's choices. RecordQuery hydrates Records through `recordTarget`/`recordsTarget` passed to `one()`/`all()`; the RecordProxy branches (custom Go structs, a library API) are not ported. Carried for M2/M3 handlers: `isNoRowsError` in src/db does not unwrap causes like Go's `errors.Is`, so wrapped not-found errors (for example from `findAuthRecordByEmail`) must be checked through the cause chain.
