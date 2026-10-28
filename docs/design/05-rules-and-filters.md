@@ -17,7 +17,7 @@ API rules and the `filter` query parameter share one language. It is the most su
 - **Operands:** field paths (`author.name`, back-relations `comments_via_post.message`), `@request.*`, `@collection.<name>.<field>` (with `:alias`), string, number, `true`, `false`, `null`, date macros, functions.
 - **`@request.*`:** `auth.*` (the authenticated record, including `collectionName` and `collectionId`), `body.*`, `query.*`, `headers.*` (lowercased, `-` → `_`), `method`, `context` (`default`, `expand`, `realtime`, `protectedFile`, `batch`, `oauth2`, `otp`, `password`).
 - **Modifiers:** `:isset` (on `@request.body.*`), `:changed` (on `@request.body.*`), `:length` and `:each` (on multi-value fields and body values), `:lower`.
-- **Macros:** `@now`, `@second`, `@minute`, `@hour`, `@weekday`, `@day`, `@month`, `@year`, `@yesterday`, `@tomorrow`, `@todayStart`, `@todayEnd`, `@monthStart`, `@monthEnd`, `@yearStart`, `@yearEnd`, all in UTC, evaluated once per request.
+- **Macros:** `@now`, `@second`, `@minute`, `@hour`, `@weekday`, `@day`, `@month`, `@year`, `@yesterday`, `@tomorrow`, `@todayStart`, `@todayEnd`, `@monthStart`, `@monthEnd`, `@yearStart`, `@yearEnd`, all in UTC, read from the injected clock when the filter is built (upstream reads `time.Now()` at each macro).
 - **Functions:** `geoDistance(lonA, latA, lonB, latB)` (Haversine in kilometers, with the arccosine clamped to [-1, 1] as in v0.40.3), `strftime(format, time-value, modifiers...)`.
 - **Rule values:** `null` (superusers only), `""` (everyone), or an expression. A failed rule on list returns an empty list, on view/update/delete returns 404, on create returns 400, as upstream.
 
@@ -33,7 +33,7 @@ These are the places a naive port goes wrong. Each one gets dedicated differenti
 6. **Joins and deduplication.** Relations and back-relations become `LEFT JOIN`s with aliases; the list query selects `DISTINCT` record rows. `@collection.*` joins are independent per alias.
 7. **Hidden fields.** Filtering on a hidden field is allowed only for superusers. `password` and `tokenKey` are never filterable. `email` on auth collections respects `emailVisibility` for non-owners.
 8. **Expression limits.** Max filter length 3,500 characters, 200 filter expressions, 8 sort expressions, and the error messages when exceeded.
-9. **Parameters.** User values are always bound parameters (`{:p0}` placeholders upstream), never interpolated.
+9. **Parameters.** User values are always bound parameters (`{:t…}` placeholders with random names upstream), never interpolated.
 10. **Sort.** `@random`, `@rowid`, relation paths in sort, and the implicit tie-breaker.
 
 ## Query building

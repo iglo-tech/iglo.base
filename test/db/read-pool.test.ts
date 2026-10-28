@@ -13,7 +13,7 @@ import { afterEach, expect, test } from "bun:test";
 import { Databases, defaultQueryTimeout } from "@/db/base";
 import { connectPragmas } from "@/db/connect";
 import type { DB } from "@/db/dbx/db";
-import { ContextCanceledError, Deadline } from "@/db/dbx/query";
+import { ContextCanceledError, Deadline, Float64 } from "@/db/dbx/query";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import { maxAbandonedPerWorker } from "@/db/read-pool";
@@ -123,6 +123,17 @@ test("the async resolvers read on the pool what the synchronous ones read", asyn
     "no such column: missing_column; failed query: SELECT {{demo}}.* FROM `demo` WHERE missing_column = 1",
   );
   expect((err.cause as { code?: string }).code).toBe("SQLITE_ERROR");
+});
+
+test("a Float64 param binds as REAL on the pool", async () => {
+  const app = open({ readWorkers: 1 });
+  const q = () =>
+    app
+      .db()
+      .newQuery("SELECT typeof({:f}) AS f, typeof({:n}) AS n")
+      .bind({ f: new Float64(5), n: 5 });
+  expect(await q().oneAsync()).toEqual({ f: "real", n: "integer" });
+  expect(await q().prepare().oneAsync()).toEqual({ f: "real", n: "integer" });
 });
 
 test("the pool's connections are read-only and use upstream's pragmas", async () => {
