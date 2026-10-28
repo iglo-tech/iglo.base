@@ -1,12 +1,13 @@
 // Upstream: github.com/spf13/cast v1.10.0, the parts the ported tools use:
 // time.go (ToTimeE, StringToDateInDefaultLocation with time.UTC),
-// internal/time.go (TimeFormats, ParseDateWith), basic.go (ToStringE) and
-// slice.go (ToStringSliceE).
+// internal/time.go (TimeFormats, ParseDateWith), basic.go (ToStringE,
+// ToBoolE), number.go (ToFloat64E) and slice.go (ToStringSliceE).
 //
 // Go's static types become JS runtime types: number is float64, bigint is a
 // Go integer (int, int64, ...), Uint8Array is []byte, Date is time.Time, an
 // object with a string() method is a fmt.Stringer and an Error is an error.
 
+import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { bytesToText } from "@/tools/types/go-json";
 import { type Instant, date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
 import { type Location, UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
@@ -235,4 +236,95 @@ const goSpace = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u
 // strings.Fields: s split around runs of unicode.IsSpace
 function fields(s: string): string[] {
   return s.split(new RegExp(goSpace.source + "+")).filter((f) => f !== "");
+}
+
+// ToFloat64E (number.go toNumberE[float64]): numbers as they are (a
+// bigint, a Go integer, converted), booleans as 1 or 0, nil as 0, strings
+// with strconv.ParseFloat (an empty string is 0); anything else fails.
+export function toFloat64E(i: unknown): number {
+  switch (typeof i) {
+    case "number":
+      return i;
+    case "bigint":
+      return Number(i);
+    case "boolean":
+      return i ? 1 : 0;
+    case "undefined":
+      return 0;
+    case "string":
+      if (i === "") {
+        return 0;
+      }
+      try {
+        return parseGoFloat(i, 64);
+      } catch (err) {
+        throw new CastError(
+          `unable to cast ${JSON.stringify(i)} of type string to float64: ${(err as Error).message}`,
+        );
+      }
+  }
+  if (i === null) {
+    return 0;
+  }
+  throw new CastError(`unable to cast ${String(i)} of type ${typeof i} to float64`);
+}
+
+// ToFloat64: ToFloat64E without the error (0 instead)
+export function toFloat64(i: unknown): number {
+  try {
+    return toFloat64E(i);
+  } catch {
+    return 0;
+  }
+}
+
+// ToBoolE (basic.go): booleans as they are, nil as false, numbers as != 0,
+// strings with strconv.ParseBool; anything else fails.
+export function toBoolE(i: unknown): boolean {
+  switch (typeof i) {
+    case "boolean":
+      return i;
+    case "undefined":
+      return false;
+    case "number":
+      return i !== 0;
+    case "bigint":
+      return i !== 0n;
+    case "string":
+      return parseBool(i);
+  }
+  if (i === null) {
+    return false;
+  }
+  throw new CastError(`unable to cast ${String(i)} of type ${typeof i} to bool`);
+}
+
+// ToBool: ToBoolE without the error (false instead)
+export function toBool(i: unknown): boolean {
+  try {
+    return toBoolE(i);
+  } catch {
+    return false;
+  }
+}
+
+// strconv.ParseBool
+function parseBool(str: string): boolean {
+  switch (str) {
+    case "1":
+    case "t":
+    case "T":
+    case "true":
+    case "TRUE":
+    case "True":
+      return true;
+    case "0":
+    case "f":
+    case "F":
+    case "false":
+    case "FALSE":
+    case "False":
+      return false;
+  }
+  throw new CastError(`strconv.ParseBool: parsing ${JSON.stringify(str)}: invalid syntax`);
 }

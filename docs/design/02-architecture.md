@@ -62,7 +62,7 @@ src/
   db/                 connections and pragmas, the read worker pool and query deadlines (D8), transactions, busy retry, tables, model save/delete (upstream core/db*.go); db/dbx/ is the ported pocketbase/dbx subset (SQLite and standard builders)
   migrations/         system migrations with upstream file names (upstream migrations/)
   collections/        model, options, validation, table sync, view collections, import, scaffolds
-  fields/             the 14 field types: storage, validation, value normalization
+  fields/             the 14 field types (upstream core/field*.go): field.ts is the Field contract, the optional interfaces (setters, getters, driver values, interceptors) and the narrow record, collection and app interfaces the fields call, which collections/ and records/ implement; fields.ts is the fixed type → constructor table; one file per type with its column type, value normalization, value and settings validation and stored JSON (the simple types from M1.4; file, relation and password with M1.5)
   records/            CRUD, expand, fields picker, cascade, record response shaping
   search/             fexpr tokenizer and parser, filter-to-SQL, sort, pagination (upstream tools/search, fexpr)
   resolver/           record field resolver for rules and filters (upstream core/record_field_resolver*)
