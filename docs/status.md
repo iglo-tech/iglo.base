@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-28
 
-Active: M2.2 (worker).
+Active: M2.2 (council round 1).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.2 | worker | `task/M2.2-record-field-resolver` | 0 | [Brief](briefs/M2.2.md). Opus worker started 2026-10-28 |
+| M2.2 | council | [#24](https://github.com/iglo-tech/iglo.base/pull/24) | 1 | [Brief](briefs/M2.2.md). Worker head `9bd5b5d`: check and test:reference pass locally; CI pending. Council round 1 started at `9bd5b5d` |
 
 ## Done
 
