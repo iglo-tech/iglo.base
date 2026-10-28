@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan |
+| M1.1c | worker | `task/M1.1c-validation` ([brief](briefs/M1.1c.md)) | 0 | ozzo-validation v4.4.1 subset, `is` rules with govalidator `a9d515a`, `core/validators` (without file.go) |
 
 ## Done
 
@@ -74,6 +74,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (plan change, before M1.4): no task owned Go regexp matching or validation, which M1.4's fields need. Two tasks are added. M1.1b ports Go's `regexp` matcher (compile, prog, NFA) on the M1.1a parse tree. M1.1c ports the ozzo-validation v4.4.1 subset, the `is` rules with govalidator `a9d515a`, and `core/validators`. M1.4 now depends on both, and M1.3 on M1.1c. The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → …
 - 2026-10-28 (M1.1b brief): user patterns are matched with a port of Go's own matcher, not translated into JS RegExp. They must accept exactly what upstream accepts, and RE2 runs in linear time, while a JS RegExp can be driven into exponential backtracking by a record value.
 - 2026-10-28 (M1.1b PR): the lead accepted the worker's choices. Regexp indexes are Go byte offsets of the UTF-8 encoding, and a lone surrogate U+DC80+n stands for the invalid byte 0x80+n. Go's one-pass machine is ported because it changes `literalPrefix()`; the backtracker is not, because it never changes a result and the NFA's worst case at 1 KiB is about 0.5 ms. Plain `bun test` samples every 10th RE2 exhaustive case (`RE2_EXHAUSTIVE=1` runs all of them). Note for porters: Bun's transpiler rewrites non-ASCII text inside `String.raw` templates as `\uXXXX` escapes.
+- 2026-10-28 (M1.1c brief): ozzo-validation and its `is` rules live in `src/validation/` (the library upstream imports), and `core/validators` in `src/validators/`. ozzo-validation (MIT, Qiang Xue) and govalidator (MIT, Alex Saskevich) notices go into `LICENSE`. `src/server/error.ts` (shared contract, M0.3) may import the ported `Errors` and `Error` types instead of its own structural definitions, as long as its tests still pass unchanged. `core/validators/file.go` waits for the filesystem tasks.
 
 ## Paused until
 
