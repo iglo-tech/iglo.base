@@ -2,6 +2,7 @@
 //
 // Go's invalid UTF-8 byte "\xc3" is a lone surrogate in a JS string.
 
+import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 
 import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
@@ -138,6 +139,21 @@ describe("JSONRawScan", () => {
   });
 });
 
+// value() hands out the original bytes; bound as a blob and cast to TEXT
+// they are stored unchanged with typeof 'text', as upstream stores them.
+const hex = (b: Uint8Array): string => Buffer.from(b).toString("hex").toUpperCase();
+const store = (value: unknown): { h: string; t: string } => {
+  const db = new Database(":memory:");
+  db.run("CREATE TABLE t (v TEXT)");
+  db.query("INSERT INTO t (v) VALUES (CAST(? AS TEXT))").run(value as string);
+  const row = db.query("SELECT hex(v) AS h, typeof(v) AS t FROM t").get() as {
+    h: string;
+    t: string;
+  };
+  db.close();
+  return row;
+};
+
 // Not in upstream's tests: the raw text survives byte for byte.
 describe("JSONRaw round trip", () => {
   const scenarios: [string, string][] = [
@@ -161,5 +177,28 @@ describe("JSONRaw round trip", () => {
   test("invalid UTF-8 bytes stay distinguishable", () => {
     const raw = parseJSONRaw(new Uint8Array([0x22, 0xff, 0x22]));
     expect(raw.bytes()).toBe('"\udcff"');
+  });
+
+  const invalid: [string, number[]][] = [
+    ["lone 0xff", [0x7b, 0x22, 0x61, 0x22, 0x3a, 0x22, 0xff, 0x22, 0x7d]],
+    ["truncated sequence", [0x22, 0xe2, 0x82, 0x22]],
+    ["surrogate half encoded", [0x22, 0xed, 0xa0, 0x80, 0x22]],
+    ["mixed valid and invalid", [0x22, 0xc3, 0xa9, 0xc3, 0xf0, 0x9f, 0x98, 0x80, 0x80, 0x22]],
+  ];
+  for (const [name, input] of invalid) {
+    test(`invalid UTF-8 value keeps the bytes: ${name}`, () => {
+      const original = Uint8Array.from(input);
+      const value = parseJSONRaw(original).value();
+      expect(value).toBeInstanceOf(Uint8Array);
+      expect(hex(value as Uint8Array)).toBe(hex(original));
+      expect(store(value)).toEqual({ h: hex(original), t: "text" });
+    });
+  }
+
+  test("valid UTF-8 values stay plain strings", () => {
+    const original = bytes(`{"a":"é😀"}`);
+    const value = parseJSONRaw(original).value();
+    expect(typeof value).toBe("string");
+    expect(store(value)).toEqual({ h: hex(original), t: "text" });
   });
 });

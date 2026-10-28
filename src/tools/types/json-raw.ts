@@ -4,8 +4,16 @@
 // []byte): it is never parsed, so integer-like keys keep their order and
 // large numbers their digits. Bytes are converted to text the way Go reads
 // them (bytesToText), so invalid UTF-8 survives as lone surrogates.
+//
+// A JS string cannot carry invalid UTF-8 into SQLite (bun:sqlite binds a
+// lone surrogate as U+FFFD), so value() returns the original bytes as a
+// Uint8Array when they are not valid UTF-8, and a string otherwise. Writing
+// such a value as TEXT (for example `CAST(? AS TEXT)` with the bytes bound
+// as a blob, which keeps the bytes and gives typeof 'text', as Go's driver
+// does for a []byte stored in a TEXT column) is the record write path's job.
 
-import { type JSONMarshaler, bytesToText, marshal } from "@/tools/types/go-json";
+import { hasInvalidUTF8 } from "@/server/json-decode";
+import { type JSONMarshaler, bytesToText, marshal, textToBytes } from "@/tools/types/go-json";
 
 // ParseJSONRaw (parseJSONRaw) creates a new JSONRaw from the provided
 // value (a JSONRaw, number, string, Uint8Array, etc.).
@@ -42,9 +50,13 @@ export class JSONRaw implements JSONMarshaler {
     this.raw = b === null || b === undefined ? "" : bytesToText(b);
   }
 
-  // Value implements the db driver Valuer: null when empty, else the text.
-  value(): string | null {
-    return this.raw.length === 0 ? null : this.string();
+  // Value implements the db driver Valuer: null when empty, else the text,
+  // or the original bytes when they are not valid UTF-8.
+  value(): string | Uint8Array | null {
+    if (this.raw.length === 0) {
+      return null;
+    }
+    return hasInvalidUTF8(this.raw) ? textToBytes(this.raw) : this.raw;
   }
 
   // Scan stores strings, bytes and JSONRaw values as they are and marshals

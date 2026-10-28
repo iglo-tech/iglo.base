@@ -612,6 +612,37 @@ export function bytesToText(data: string | Uint8Array): string {
   return typeof data === "string" ? data : decodeUTF8Bytes(data);
 }
 
+// The inverse of bytesToText: the lone surrogate U+DC80+n (an invalid byte
+// from decodeUTF8Bytes) becomes the byte 0x80+n, the rest is UTF-8 (other
+// lone surrogates, which bytesToText never yields, become U+FFFD).
+export function textToBytes(text: string): Uint8Array {
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const next = text.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        i++;
+      }
+      continue;
+    }
+    if (c >= 0xdc80 && c <= 0xdcff) {
+      parts.push(encoder.encode(text.slice(start, i)), Uint8Array.of(c - 0xdc00));
+      start = i + 1;
+    }
+  }
+  parts.push(encoder.encode(text.slice(start)));
+  const out = new Uint8Array(parts.reduce((n, part) => n + part.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
 class Parser {
   i = 0;
   constructor(
