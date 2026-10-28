@@ -2,7 +2,7 @@
 //
 // Placeholder: holds the middleware's id and priority in the default chain
 // and only calls the next handler. The middleware itself is ported in
-// M2.3 (superuser IP check).
+// M1.3 (settings), which owns the SuperuserIPs setting it reads.
 
 import type { RequestEvent } from "@/app/event-request";
 import type { Handler } from "@/server/handler";
