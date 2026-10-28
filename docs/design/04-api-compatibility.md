@@ -14,7 +14,7 @@ For every endpoint below, iglo.base matches upstream on:
 - headers that clients or browsers act on: `Content-Type`, CORS headers, `Cache-Control`, `Content-Disposition`, `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `X-Accel-Buffering`, rate-limit `429` responses;
 - realtime event names, payloads and timing rules.
 
-Compared semantically: JSON is compared after parsing, except values from `json` fields, which must be byte-identical. Header order and JSON whitespace are not compared. Generated IDs, tokens and timestamps are compared by format, not value.
+Compared as bytes after normalization: generated IDs, tokens and timestamps are compared by format, not value, and are replaced by the same placeholder on both sides. The bodies must then be byte-identical, including member order, escaping, number text and the bytes of `json` field values. Objects that upstream writes in random member order (Go maps with no fixed order, such as `fields`-projected records and the superuser `/api/health` data) are compared with their members sorted by name. Header order is not compared. The exact rules are in `test/differential/harness/compare.ts`.
 
 ## Endpoints
 
