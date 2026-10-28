@@ -226,15 +226,16 @@ export function parseJWT(token: string, verificationKey: string, clock: Clock): 
 }
 
 // NewJWT generates a new HS256 signed JWT. exp is now + duration
-// (nanoseconds) in Unix seconds, unless payload sets its own exp.
+// (nanoseconds, a number or Go's int64 time.Duration as a bigint) in Unix
+// seconds, unless payload sets its own exp.
 export function newJWT(
   payload: MapClaims,
   signingKey: string,
-  duration: number,
+  duration: number | bigint,
   clock: Clock,
 ): string {
   const nowNs = BigInt(clock.now().getTime()) * 1_000_000n;
-  const expNs = nowNs + BigInt(Math.trunc(duration));
+  const expNs = nowNs + (typeof duration === "bigint" ? duration : BigInt(Math.trunc(duration)));
   // time.Time.Unix: floor division
   let exp = expNs / 1_000_000_000n;
   if (expNs % 1_000_000_000n < 0n) {
