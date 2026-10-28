@@ -11,9 +11,14 @@
 // never modifies them (secrets are left out of the output instead of
 // being cleared on a copy).
 //
-// Not here: the Validate methods, collectionAuthOptions.validate,
-// checkForDuplicatedProviders and checkProviderName (M1.6a), and
-// OAuth2ProviderConfig.InitProvider (M4, with the providers).
+// The Validate methods make the option classes Validatable (src/validation:
+// ozzo's Validate calls a value's validate()). collectionAuthOptions.validate
+// is validateAuthOptions; it reads the collection validator's rule checks
+// through AuthOptionsValidator (collection-validate.ts implements it).
+// checkProviderName checks the name against upstream's registered provider
+// names (src/oauth2/provider-names.ts) until M4.5 ports the providers.
+//
+// Not here: OAuth2ProviderConfig.InitProvider (M4, with the providers).
 
 import type { Field } from "@/fields/field";
 import { FieldNameEmail, marshalStruct } from "@/fields/field";
@@ -37,6 +42,8 @@ import {
   decodeString,
   unmarshalGoStruct,
 } from "@/collections/go-json-struct";
+import { isProviderName } from "@/oauth2/provider-names";
+import { toUniqueStringSlice } from "@/tools/list/list";
 import { randomString } from "@/tools/security/random";
 import { toString as castToString } from "@/tools/types/cast";
 import {
@@ -48,6 +55,14 @@ import {
   stringType,
   unmarshalMapInto,
 } from "@/tools/types/go-json";
+import { Errors, NewError, type Error as ValidationError } from "@/validation/error";
+import { URL } from "@/validation/is/rules";
+import { Length } from "@/validation/length";
+import { Max, Min } from "@/validation/minmax";
+import { NilOrNotEmpty, Required } from "@/validation/required";
+import { Field as StructField, ValidateStruct } from "@/validation/struct";
+import { By, Validate, type RuleFunc } from "@/validation/validation";
+import { When } from "@/validation/when";
 
 // the collection members the two helpers below read
 interface AuthOptionsCollection extends CollectionAuthOptions {
@@ -290,6 +305,119 @@ export function unmarshalAuthOptions(o: CollectionAuthOptions, data: string | Ui
   unmarshalGoStruct(data, authOptionsDecoders(o), () => setAuthOptions(o, zeroAuthOptions()));
 }
 
+// The collection validator members collectionAuthOptions.validate uses
+// (core/collection_validate.go collectionValidator).
+export interface AuthOptionsValidator {
+  // the collection state before the change (a new collection of the same
+  // type when it is created)
+  readonly original: CollectionAuthOptions;
+  // checkRule checks a rule (*string or string) against the collection.
+  checkRule: RuleFunc;
+  // ensureNoSystemRuleChange rejects a change of oldRule on a system
+  // collection.
+  ensureNoSystemRuleChange(oldRule: string | null): RuleFunc;
+  // checkFieldsForUniqueIndex requires every listed field to exist and to
+  // have a single column UNIQUE index.
+  checkFieldsForUniqueIndex: RuleFunc;
+}
+
+// collectionAuthOptions.validate
+export function validateAuthOptions(
+  o: CollectionAuthOptions,
+  cv: AuthOptionsValidator,
+): Error | null {
+  const err = ValidateStruct(
+    StructField(
+      "authRule",
+      o.authRule,
+      By(cv.checkRule),
+      By(cv.ensureNoSystemRuleChange(cv.original.authRule)),
+    ),
+    StructField(
+      "manageRule",
+      o.manageRule,
+      NilOrNotEmpty,
+      By(cv.checkRule),
+      By(cv.ensureNoSystemRuleChange(cv.original.manageRule)),
+    ),
+    StructField("authAlert", o.authAlert),
+    StructField("passwordAuth", o.passwordAuth),
+    StructField("oauth2", o.oauth2),
+    StructField("otp", o.otp),
+    StructField("mfa", o.mfa),
+    StructField("authToken", o.authToken),
+    StructField("passwordResetToken", o.passwordResetToken),
+    StructField("emailChangeToken", o.emailChangeToken),
+    StructField("verificationToken", o.verificationToken),
+    StructField("fileToken", o.fileToken),
+    StructField("verificationTemplate", o.verificationTemplate, Required),
+    StructField("resetPasswordTemplate", o.resetPasswordTemplate, Required),
+    StructField("confirmEmailChangeTemplate", o.confirmEmailChangeTemplate, Required),
+  );
+  if (err !== null) {
+    return err;
+  }
+
+  if (o.mfa.enabled) {
+    // if MFA is enabled require at least 2 auth methods
+    //
+    // @todo maybe consider disabling the check because if custom auth methods
+    // are registered it may fail since we don't have mechanism to detect them at the moment
+    let authsEnabled = 0;
+    if (o.passwordAuth.enabled) {
+      authsEnabled++;
+    }
+    if (o.oauth2.enabled) {
+      authsEnabled++;
+    }
+    if (o.otp.enabled) {
+      authsEnabled++;
+    }
+    if (authsEnabled < 2) {
+      return new Errors({
+        mfa: new Errors({
+          enabled: NewError(
+            "validation_mfa_not_enough_auths",
+            "MFA requires at least 2 auth methods to be enabled.",
+          ),
+        }),
+      });
+    }
+
+    if (o.mfa.rule !== "") {
+      const mfaRuleValidators: RuleFunc[] = [
+        cv.checkRule,
+        cv.ensureNoSystemRuleChange(cv.original.mfa.rule),
+      ];
+
+      for (const validator of mfaRuleValidators) {
+        const ruleErr = validator(o.mfa.rule);
+        if (ruleErr !== null) {
+          return new Errors({
+            mfa: new Errors({
+              rule: ruleErr,
+            }),
+          });
+        }
+      }
+    }
+  }
+
+  // extra check to ensure that only unique identity fields are used
+  if (o.passwordAuth.enabled) {
+    const fieldsErr = Validate(o.passwordAuth.identityFields, By(cv.checkFieldsForUniqueIndex));
+    if (fieldsErr !== null) {
+      return new Errors({
+        passwordAuth: new Errors({
+          identityFields: fieldsErr,
+        }),
+      });
+    }
+  }
+
+  return null;
+}
+
 // time.Duration(seconds) * time.Second: nanoseconds as Go's int64 (which
 // wraps around on overflow)
 function durationTime(seconds: GoInt): bigint {
@@ -338,6 +466,14 @@ export class EmailTemplate {
     }
 
     return [subject, body];
+  }
+
+  // Validate makes EmailTemplate validatable (validation.Validatable).
+  validate(): Error | null {
+    return ValidateStruct(
+      StructField("subject", this.subject, Required),
+      StructField("body", this.body, Required),
+    );
   }
 
   marshalJSON(): string {
@@ -389,6 +525,15 @@ export class AuthAlertConfig {
     });
   }
 
+  // Validate makes AuthAlertConfig validatable (validation.Validatable).
+  validate(): Error | null {
+    return ValidateStruct(
+      // note: for now always run the email template validations even
+      // if not enabled since it could be used separately
+      StructField("emailTemplate", this.emailTemplate),
+    );
+  }
+
   marshalJSON(): string {
     return marshalStruct([
       ["enabled", this.enabled],
@@ -428,6 +573,14 @@ export class TokenConfig {
   // (nanoseconds).
   durationTime(): bigint {
     return durationTime(this.duration);
+  }
+
+  // Validate makes TokenConfig validatable (validation.Validatable).
+  validate(): Error | null {
+    return ValidateStruct(
+      StructField("secret", this.secret, Required, Length(30, 255)),
+      StructField("duration", this.duration, Required, Min(10), Max(94670856)), // ~3y max
+    );
   }
 
   marshalJSON(): string {
@@ -484,6 +637,17 @@ export class OTPConfig {
     return durationTime(this.duration);
   }
 
+  // Validate makes OTPConfig validatable (validation.Validatable).
+  validate(): Error | null {
+    return ValidateStruct(
+      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86400))),
+      StructField("length", this.length, When(this.enabled, Required, Min(4))),
+      // note: for now always run the email template validations even
+      // if not enabled since it could be used separately
+      StructField("emailTemplate", this.emailTemplate),
+    );
+  }
+
   marshalJSON(): string {
     return marshalStruct([
       ["enabled", this.enabled],
@@ -534,6 +698,13 @@ export class MFAConfig {
     return durationTime(this.duration);
   }
 
+  // Validate makes MFAConfig validatable (validation.Validatable).
+  validate(): Error | null {
+    return ValidateStruct(
+      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86400))),
+    );
+  }
+
   marshalJSON(): string {
     return marshalStruct([
       ["enabled", this.enabled],
@@ -577,6 +748,18 @@ export class PasswordAuthConfig {
       enabled: this.enabled,
       identityFields: [...this.identityFields],
     });
+  }
+
+  // Validate makes PasswordAuthConfig validatable (validation.Validatable).
+  validate(): Error | null {
+    // strip duplicated values (on Go's copy of the config)
+    const identityFields = toUniqueStringSlice(this.identityFields);
+
+    if (!this.enabled) {
+      return null; // no need to validate
+    }
+
+    return ValidateStruct(StructField("identityFields", identityFields, Required));
   }
 
   marshalJSON(): string {
@@ -676,6 +859,18 @@ export class OAuth2Config {
       mappedFields: this.mappedFields,
       enabled: this.enabled,
     });
+  }
+
+  // Validate makes OAuth2Config validatable (validation.Validatable).
+  validate(): Error | null {
+    if (!this.enabled) {
+      return null; // no need to validate
+    }
+
+    return ValidateStruct(
+      // note: don't require providers for now as they could be externally registered/removed
+      StructField("providers", this.providers, By(checkForDuplicatedProviders)),
+    );
   }
 
   marshalJSON(): string {
@@ -783,6 +978,31 @@ export class OAuth2Config {
   }
 }
 
+function checkForDuplicatedProviders(value: unknown): ValidationError | Errors | null {
+  const configs = Array.isArray(value) ? (value as OAuth2ProviderConfig[]) : [];
+
+  const existing = new Set<string>();
+
+  for (const [i, c] of configs.entries()) {
+    if (c.name === "") {
+      continue; // the name nonempty state is validated separately
+    }
+    if (existing.has(c.name)) {
+      return new Errors({
+        [String(i)]: new Errors({
+          name: NewError(
+            "validation_duplicated_provider",
+            "The provider {{.name}} is already registered.",
+          ).setParams({ name: c.name }),
+        }),
+      });
+    }
+    existing.add(c.name);
+  }
+
+  return null;
+}
+
 export class OAuth2ProviderConfig {
   // PKCE overwrites the default provider PKCE config option.
   //
@@ -820,6 +1040,18 @@ export class OAuth2ProviderConfig {
   // Go's struct copy: the PKCE pointer and the Extra map are shared
   clone(): OAuth2ProviderConfig {
     return new OAuth2ProviderConfig(this);
+  }
+
+  // Validate makes OAuth2ProviderConfig validatable (validation.Validatable).
+  validate(): Error | null {
+    return ValidateStruct(
+      StructField("name", this.name, Required, By(checkProviderName)),
+      StructField("clientId", this.clientId, Required),
+      StructField("clientSecret", this.clientSecret, Required),
+      StructField("authURL", this.authURL, URL),
+      StructField("tokenURL", this.tokenURL, URL),
+      StructField("userInfoURL", this.userInfoURL, URL),
+    );
   }
 
   marshalJSON(): string {
@@ -886,3 +1118,20 @@ type OAuth2ProviderSettings = Pick<
   | "displayName"
   | "extra"
 >;
+
+function checkProviderName(value: unknown): ValidationError | null {
+  const name = typeof value === "string" ? value : "";
+  if (name === "") {
+    return null; // nothing to check
+  }
+
+  // auth.NewProviderByName(name) (src/oauth2/provider-names.ts until M4.5)
+  if (!isProviderName(name)) {
+    return NewError(
+      "validation_missing_provider",
+      "Invalid or missing provider with name {{.name}}.",
+    ).setParams({ name });
+  }
+
+  return null;
+}
