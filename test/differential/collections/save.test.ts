@@ -509,6 +509,11 @@ describe("collection save sequence against upstream", () => {
 
         const expected = await upstreamOutcome(step, body);
         const got = modelOutcome(step, body);
+        // DryRunView generates a fresh temporary name on each side.
+        if (step.name === "reject malformed JSON in view sample") {
+          expected.body = expected.body.replace(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
+          got.body = got.body.replace(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
+        }
 
         // upstream's outcome is the step's expectation
         const ok = expected.status < 300;

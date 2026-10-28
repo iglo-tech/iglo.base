@@ -55,6 +55,16 @@ function userCollections(ctx: Ctx, except: string[] = []): Record<string, unknow
 }
 
 export const steps: Step[] = [
+  {
+    name: "reject malformed JSON in view sample",
+    kind: "create",
+    ok: false,
+    body: () => ({
+      name: "bad_json_view",
+      type: "view",
+      viewQuery: "select 'a' as id, json('invalid') as value",
+    }),
+  },
   // ---------------------------------------------------------------
   // create
   {

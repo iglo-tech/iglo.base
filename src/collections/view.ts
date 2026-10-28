@@ -29,6 +29,7 @@ import { FieldsList, newFieldsList } from "@/collections/fields-list";
 import { equalFold, toLower, trim, trimSpace } from "@/collections/go-strings";
 import { withDriverErrors } from "@/collections/driver-error";
 import { inExp } from "@/db/dbx/expression";
+import { defaultMaxLockRetries, execLockRetry } from "@/db/retry";
 import { deleteView, tableInfo, type TableInfoRow } from "@/db/table";
 import { BoolField } from "@/fields/bool";
 import { type Field, FieldNameId, goQuote } from "@/fields/field";
@@ -199,6 +200,15 @@ export function dryRunView(
         // measure to discourage multiple inline sql statements execution
         .from("(SELECT * FROM (" + dangerousSelectQuery + ")) as " + tempName)
         .limit(sampleSize)
+        .withBuildHook((query) => {
+          const retry = execLockRetry(
+            app.databases.queryTimeout(),
+            defaultMaxLockRetries,
+            (ms) => app.databases.sleep(ms),
+            () => app.databases.now(),
+          );
+          query.withExecHook((q, op) => retry(q, () => withDriverErrors(op)));
+        })
         .all<Record<string, unknown>>(),
     );
     records = rows.map((row) => ({ id: nullStringText(row[FieldNameId]) }));

@@ -798,3 +798,25 @@ describe("TestDryRunView", () => {
     });
   }
 });
+
+test("dry run reports query errors and timeouts", () => {
+  const app = openTestApp(undefined, undefined, 1);
+  try {
+    const malformed = errorOf(() =>
+      dryRunView(app, "select 'a' as id, json('invalid') as value", 10),
+    );
+    expect(malformed?.message).toMatch(
+      /SQL logic error: malformed JSON \(1\); failed query: SELECT/,
+    );
+    const timeout = errorOf(() =>
+      dryRunView(
+        app,
+        "SELECT 'a' as id, (WITH RECURSIVE t(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM t WHERE n<1000000) SELECT sum(n) FROM t) as total",
+        10,
+      ),
+    );
+    expect(timeout?.message).toContain("context deadline exceeded; failed query: SELECT");
+  } finally {
+    app.cleanup();
+  }
+});

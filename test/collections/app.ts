@@ -28,6 +28,7 @@ const systemClock: Clock = { now: () => new Date() };
 export function openTestApp(
   clock: Clock = systemClock,
   queryLog?: (line: string) => void,
+  queryTimeout?: number,
 ): TestCollectionsApp {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-collections-"));
   const dataDir = join(root, "pb_data");
@@ -37,6 +38,7 @@ export function openTestApp(
     clock,
     () => rmSync(root, { recursive: true, force: true }),
     queryLog,
+    queryTimeout,
   );
   reloadCachedCollections(app);
   return app;
@@ -49,10 +51,9 @@ export function openDataDir(
   clock: Clock = systemClock,
   onCleanup: () => void = () => {},
   queryLog?: (line: string) => void,
+  queryTimeout?: number,
 ): TestCollectionsApp {
-  const databases = Databases.open(
-    queryLog === undefined ? { dataDir } : { dataDir, devSQLLog: queryLog },
-  );
+  const databases = Databases.open({ dataDir, devSQLLog: queryLog, queryTimeout });
   const logged: { message: string; cause: unknown }[] = [];
   return {
     databases,
