@@ -563,10 +563,11 @@ describe("record save and delete", () => {
 
   test("the sample is large enough", () => {
     expect(steps.length).toBeGreaterThanOrEqual(60);
-    const kinds = (status: number) => outcomes.filter((o) => o.upstream.status === status).length;
-    expect(kinds(200)).toBeGreaterThan(30); // creates and updates
-    expect(kinds(204)).toBeGreaterThan(10); // deletes and truncates
-    expect(kinds(400)).toBeGreaterThan(15); // validation and delete failures
+    const statuses = outcomes.map((o) => o.upstream.status);
+    const count = (status: number) => statuses.filter((s) => s === status).length;
+    expect(count(200)).toBeGreaterThan(30); // creates and updates
+    expect(count(204)).toBeGreaterThan(10); // deletes and truncates
+    expect(count(400)).toBeGreaterThan(15); // validation and delete failures
     expect(upstreamAliases.size).toBeGreaterThan(1);
   });
 

@@ -339,7 +339,7 @@ export const steps: Step[] = [
     owner: p1,
     tags: [t1, t2],
   }),
-  create("items", { id: i2, title: "Second", amount: 12345678901234567 }),
+  create("items", { id: i2, title: "Second", amount: 12345678901234568 }),
   create("items", { title: "Third", amount: 1e21, meta: "text", spot: { lon: 0, lat: 90 } }),
   create("items", {
     title: "ab",
