@@ -115,8 +115,9 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M1.5 | Complex fields: relation and password (bcrypt hashes in Go's `$2a$` form) | `core/field_relation.go`, `field_password.go` | M1.4 | Ported field tests pass; password hashes written by either server verify in the other |
 | M1.5a | MIME detection: a port of `gabriel-vasile/mimetype` v1.4.15 (the whole detection tree, `Detect`, `DetectReader`, `Is`, `Extension`, aliases and the 4096-byte read limit), used by file uploads, file serving, mail attachments and file names | `gabriel-vasile/mimetype` v1.4.15 | M1.1 | Its test tables and testdata pass; the upstream binary accepts and rejects the same uploads by `mimeTypes` as iglo.base's detection predicts |
 | M1.5b | File field: settings, value normalization and modifiers, upload size and MIME checks (`core/validators/file.go`, the `filesystem.File` model); storing and deleting files stays with M3.2 | `core/field_file.go`, `core/validators/file.go`, `tools/filesystem/file.go` | M1.5, M1.5a | Ported field and validator tests pass; the same uploads are accepted or rejected as by the upstream binary |
-| M1.6 | Collections model, options (including auth options), validation, import | `core/collection_model*.go`, `collection_validate.go`, `collection_import.go` | M1.5, M1.5b | Ported collection tests pass |
-| M1.7 | Table sync and view collections | `core/collection_record_table_sync.go`, `core/view.go` | M1.6 | Same `sqlite_schema` and `_collections` rows as upstream for the same create, update and delete sequence |
+| M1.6 | Collection model: `Collection` and its constructors, JSON (options flattened as upstream), `PostScan`, `DBExport`, index helpers, default system fields and id, base, view and auth options with their defaults and auth email templates; `FieldsList`; `tools/dbutils` | `core/collection_model.go` (model part), `collection_model_*_options.go`, `collection_model_auth_templates.go`, `core/fields_list.go`, `tools/dbutils` | M1.5, M1.5b | Ported model, FieldsList and dbutils tests pass; `_collections` rows written by upstream read back and export byte for byte |
+| M1.6a | Collection validation and queries: `collectionValidator`, the options' `Validate` methods, find/cache/references/unique-name queries; the rule check waits for M2.2 and the view query check for M1.7 | `core/collection_validate.go`, the `Validate` parts of `collection_model_*_options.go`, `core/collection_query.go` (find, cache, references, unique name) | M1.6 | Ported validation and query tests pass, except rule and view-query cases, which are marked pending; validation errors (code, message, params) match upstream's |
+| M1.7 | Table sync, view collections, collection save and delete, import | `core/collection_record_table_sync.go`, `core/view.go`, the save and delete part of `core/collection_model.go`, `core/collection_import.go`, `normalizeViewQueryId` and `resaveViewsWithChangedFields` and `TruncateCollection` in `core/collection_query.go`; M1.6a's view query check | M1.6a | Same `sqlite_schema` and `_collections` rows as upstream for the same create, update and delete sequence; ported save, delete and import tests pass |
 | M1.8 | Record model and queries (internal CRUD, no HTTP) | `core/record_model*.go`, `core/record_query*.go` | M1.5b, M1.7 | Records written internally read back identically in upstream |
 
 ### M2: read path
@@ -124,7 +125,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | ID | Task | Upstream | Depends on | Acceptance |
 |---|---|---|---|---|
 | M2.1 | fexpr and `tools/search`: tokenizer, parser, filter-to-SQL, sort, macros, functions | `fexpr`, `tools/search` | M0.4, M1.1 | Ported SQL tables pass |
-| M2.2 | Record field resolver | `core/record_field_resolver*.go` | M2.1, M1.8 | Ported resolver tables pass |
+| M2.2 | Record field resolver, and the collection rule check M1.6a leaves pending | `core/record_field_resolver*.go` | M2.1, M1.8 | Ported resolver tables pass |
 | M2.3 | Tokens and auth loading: token parsing and signing, `Authorization` loading, superuser IP check | `core/record_tokens.go`, auth middleware | M1.8, M0.3 | Tokens from upstream verify in iglo.base and the reverse |
 | M2.4 | Records list and view: expand, fields picker, `skipTotal`, list and view rules | `apis/record_crud.go` (read), `apis/record_helpers.go`, `core/record_query_expand.go`, `tools/picker` | M2.2, M2.3 | Ported list and view scenarios from `record_crud_test.go` pass in both servers |
 | M2.5 | Collections read endpoints, scaffolds, OAuth2 providers metadata | `apis/collection.go` (read) | M1.7, M2.3 | Ported read scenarios from `collection_test.go` pass |
@@ -200,11 +201,11 @@ M7.4 is the only task that touches production data. It is run with the owner, ne
 ```text
 M0.1 ─ M0.2 ─ M0.3 ─ M0.4 ─ M0.5          (serial, then spikes M0.6–M0.8 in parallel)
 M1.1 ─┬─ M1.2 ─ M1.3
-      └─ M1.1a ─ M1.1b ─ M1.1c ─ M1.4 ─ M1.5 ─ M1.5a ─ M1.5b ─ M1.6 ─ M1.7 ─ M1.8
+      └─ M1.1a ─ M1.1b ─ M1.1c ─ M1.4 ─ M1.5 ─ M1.5a ─ M1.5b ─ M1.6 ─ M1.6a ─ M1.7 ─ M1.8
 M2.1 ─ M2.2 ─ M2.4 ─ M2.6     M2.3, M2.5 alongside
 M3.1 ─ M3.3, M4.1 …           M3.2, M3.4, M3.5 alongside; M3.6 when M3.1 and M3.2 are in
 M4 and M5 run in parallel once M3.1 is merged; M6.1 can start any time after M0.1
 M7 last
 ```
 
-The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.5 → M1.5a → M1.5b → M1.6 → M1.7 → M1.8 → M2.2 → M2.4 → M3.1. Everything else is scheduled around it.
+The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.5 → M1.5a → M1.5b → M1.6 → M1.6a → M1.7 → M1.8 → M2.2 → M2.4 → M3.1. Everything else is scheduled around it.
