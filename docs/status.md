@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8a | council | [#20](https://github.com/iglo-tech/iglo.base/pull/20) | 1 | [Brief](briefs/M1.8a.md). Opus worker head `5a447a3`; council round 1 started while CI ran (CI must be green before merge) |
+| M1.8a | fix | [#20](https://github.com/iglo-tech/iglo.base/pull/20) | 1 | [Brief](briefs/M1.8a.md). Round 1 at `5a447a3`: Sol APPROVE, Opus CHANGES (INTEGER column values in the safe range are formatted as floats, e.g. `1.234567e+06`, in `nullStringText`, so JSON output and DBExport differ from upstream). Opus fixer started |
 
 ## Done
 
