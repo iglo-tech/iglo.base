@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.1 | council | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 1 | [Brief](briefs/M2.1.md). Opus worker head `352cbe1`; council round 1 started while CI ran |
+| M2.1 | fix | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 1 | [Brief](briefs/M2.1.md). Round 1 at `352cbe1`: both CHANGES with the same finding (numeric filter literals bind as SQLite INTEGER instead of upstream's float64 REAL, so comparisons with TEXT columns match different rows: `name = 5` matches `'5'` here, `'5.0'` upstream). Opus fixer started |
 
 ## Done
 
