@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-28
 
-**Paused until 2026-10-28T22:30:42Z** (Claude API rate limit on the M2.1 Opus council review; M2.1 merged since). Next after the pause: M2.2 brief.
+Active: M2.2 (worker).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M2.2 | worker | `task/M2.2-record-field-resolver` | 0 | [Brief](briefs/M2.2.md). Opus worker started 2026-10-28 |
 
 ## Done
 
@@ -134,3 +135,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (M1.8c fix round 1): the lead accepted two choices. (1) An additive db-layer method `Databases.committedReads()`: outside a transaction it is the app itself; inside one it reads through a separate read-only data.db connection, so lookups that upstream does through the root app (the installer superuser) do not see uncommitted rows. (2) For the `delete` and `deleteExecute` actions, field interceptors run in order before the action instead of wrapping it, so a cascade does not grow the call stack. This equals upstream because every upstream field, the file field included, passes these two actions through unchanged; a future field that acts after a delete would need the wrapping back.
 - 2026-10-28 (M2.1 PR): the lead accepted the worker's choices: the clock and an optional parse cache are passed in (no package state); `Provider.exec` runs the count and page queries concurrently as upstream's goroutines do; offsets above 2^53−1 are clamped (the page is empty either way); `05-rules-and-filters.md` corrected (macros read the clock per macro; placeholders are random `{:t…}` names). Carried: `url.Values.Encode` for M2.4/M2.5 in `src/server`; invalid UTF-8 in a query string counts as 3 bytes toward the 3,500-byte filter limit; `existInSliceWithRegex` (M1.1) keeps a module-level pattern cache.
 - 2026-10-28 (M2.1 fix round 1): the lead approved an additive db-layer param type `Float64` in `src/db/dbx/query.ts`. bun:sqlite binds integral numbers as INTEGER, so a query with a Float64 param writes that placeholder as `+CAST(? AS REAL)`, which gives a REAL with no affinity, as Go's driver binds a float64. Queries without it are unchanged; logged SQL shows the plain number.
+- 2026-10-28 (M2.2 brief): the resolver lives in `src/resolver/` as `02-architecture.md` names it. M2.2 has no HTTP endpoint, so the repeated-request-header differential case (D22) goes to M2.4. Rules are checked against upstream through its records list endpoint (superuser filters, and guest/user/superuser rule matrices with upstream tokens); iglo.base evaluates the same rules through FindRecordsByFilter, the list query and CanAccessRecord with an equivalent RequestInfo. `@request.body` rules get HTTP cases with M3.1.
