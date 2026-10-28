@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5a | council | [#14](https://github.com/iglo-tech/iglo.base/pull/14) | 1 | [Brief](briefs/M1.5a.md). Worker head `5e051b3`; council round 1 started while CI ran (CI must be green before merge) |
+| M1.5a | council | [#14](https://github.com/iglo-tech/iglo.base/pull/14) | 2 | [Brief](briefs/M1.5a.md). Round 1 (`5e051b3`): both CHANGES with the same two findings (`detectReader` dropped stream bytes past the limit; the reference test's concurrent collection creation raced upstream's cache reload, failing macOS). Fixed by the lead at `29622d7`: Blob-only `detectReader`, serialized collection setup. Round 2 started |
 
 ## Done
 
@@ -87,6 +87,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.5 round 2): Go `int` field settings (text min/max, select and relation minSelect/maxSelect, editor and json maxSize, password min/max/cost) keep exact int64 values, using the db layer's convention (`number` in the safe range, `bigint` outside it). The fix covers M1.4's fields in the M1.5 PR, because they share the same decoder.
 - 2026-10-28 (plan change, after M1.5): the file field's `mimeTypes` check calls mimetype v1.4.15's `DetectReader` and `Is`, and a user may list any type, so the accept/reject result depends on the library's whole detection tree (about 5,900 Go lines). Upstream also uses it for served content types, mail attachments and file extensions. MIME detection is now its own task M1.5a, a full port in `src/tools/mimetype/` (MIT notice in `LICENSE`), not a signature subset or the `file-type` library. The file field moves to M1.5b. M1.6, M1.8 and M3.2 depend on M1.5b. The critical path is … → M1.5 → M1.5a → M1.5b → M1.6 → …
 - 2026-10-28 (M1.5a PR): the lead accepted the worker's correction: mimetype v1.4.15 reads 4096 bytes (`defaultLimit`), not 3072 as the brief said; the brief and the work plan are corrected. The port includes Go's `mime.ParseMediaType`, which `is()` depends on. Go-stdlib expected values in a few ported tests (csv, json, zip) were computed with Go 1.27.2 and hard-coded.
+- 2026-10-28 (M1.5a round 1): `detectReader` accepts only a Blob (sliced, never consumed). Upstream rewinds the file after detection, and a web stream cannot give unread bytes back; iglo.base's callers all hold Blobs.
 
 ## Paused until
 
