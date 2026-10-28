@@ -24,11 +24,20 @@ export interface TestCollectionsApp extends CollectionsApp {
 const systemClock: Clock = { now: () => new Date() };
 
 // a copy of the vendored fixture, with the collections cache loaded
-export function openTestApp(clock: Clock = systemClock): TestCollectionsApp {
+// (queryLog, when set, receives every data.db statement)
+export function openTestApp(
+  clock: Clock = systemClock,
+  queryLog?: (line: string) => void,
+): TestCollectionsApp {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-collections-"));
   const dataDir = join(root, "pb_data");
   copyDataDir(fixtureDir, dataDir);
-  const app = openDataDir(dataDir, clock, () => rmSync(root, { recursive: true, force: true }));
+  const app = openDataDir(
+    dataDir,
+    clock,
+    () => rmSync(root, { recursive: true, force: true }),
+    queryLog,
+  );
   reloadCachedCollections(app);
   return app;
 }
@@ -39,8 +48,11 @@ export function openDataDir(
   dataDir: string,
   clock: Clock = systemClock,
   onCleanup: () => void = () => {},
+  queryLog?: (line: string) => void,
 ): TestCollectionsApp {
-  const databases = Databases.open({ dataDir });
+  const databases = Databases.open(
+    queryLog === undefined ? { dataDir } : { dataDir, devSQLLog: queryLog },
+  );
   return {
     databases,
     store: new Store<string, unknown>(),
