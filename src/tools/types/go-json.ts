@@ -623,6 +623,9 @@ export interface UnmarshalOptions {
   // encoding/json (v1) semantics: duplicate names allowed (last wins),
   // invalid UTF-8 replaced with U+FFFD
   legacy?: boolean;
+  // jsontext.AllowInvalidUTF8(true): invalid UTF-8 and lone surrogate
+  // escapes become U+FFFD instead of failing (duplicate names still fail)
+  allowInvalidUTF8?: boolean;
 }
 
 // The Go destination types the ported code unmarshals into.
@@ -690,6 +693,7 @@ class Parser {
   constructor(
     readonly s: string,
     readonly legacy: boolean,
+    readonly allowInvalidUTF8 = false,
   ) {}
 
   skipWhitespace(): void {
@@ -731,7 +735,7 @@ class Parser {
   }
 
   string(): string {
-    const [value, end] = scanString(this.s, this.i, !this.legacy);
+    const [value, end] = scanString(this.s, this.i, !this.legacy && !this.allowInvalidUTF8);
     this.i = end;
     return value;
   }
@@ -830,7 +834,7 @@ class Parser {
 }
 
 function parse(data: string | Uint8Array, opts: UnmarshalOptions): Node {
-  const p = new Parser(bytesToText(data), opts.legacy === true);
+  const p = new Parser(bytesToText(data), opts.legacy === true, opts.allowInvalidUTF8 === true);
   const node = p.value(0);
   p.end();
   return node;
