@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8c | council | [#22](https://github.com/iglo-tech/iglo.base/pull/22) | 1 | [Brief](briefs/M1.8c.md). Opus worker head `c287565`; council round 1 started while CI ran |
+| M1.8c | fix | [#22](https://github.com/iglo-tech/iglo.base/pull/22) | 1 | [Brief](briefs/M1.8c.md). Round 1 at `c287565`: Opus APPROVE, Sol CHANGES (a field named `__proto__` loses its write in `driverValues`; the installer lookup reads uncommitted rows through the transaction app where upstream uses the root app; a 1,000-deep self-relation cascade overflows the JS stack). Opus fixer started |
 
 ## Done
 
