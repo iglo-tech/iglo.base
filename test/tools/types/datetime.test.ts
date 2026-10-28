@@ -87,6 +87,73 @@ describe("DateTimeAddDate", () => {
     expect(d1.string()).toBe("2024-01-01 10:00:00.123Z");
     expect(d2.string()).toBe("2025-03-04 10:00:00.123Z");
   });
+
+  // Not in upstream's tests: time.Time.AddDate works on the calendar of the
+  // parsed location, so a fixed offset that puts the value on another UTC
+  // date changes the result.
+  const scenarios: [string, unknown, [number, number, number], string][] = [
+    [
+      "negative offset, next UTC day",
+      "2024-01-31T23:30:00-02:00",
+      [0, 1, 0],
+      "2024-03-03 01:30:00.000Z",
+    ],
+    [
+      "positive offset, previous UTC day",
+      "2024-03-01T00:30:00+02:00",
+      [1, 0, 0],
+      "2025-02-28 22:30:00.000Z",
+    ],
+    [
+      "time.Time.String layout",
+      "2024-01-31 23:30:00 -0200 XYZ",
+      [0, 1, 0],
+      "2024-03-03 01:30:00.000Z",
+    ],
+    [
+      "named zone relocated to UTC",
+      "Wed, 31 Jan 2024 23:30:00 PST",
+      [0, 1, 0],
+      "2024-03-02 23:30:00.000Z",
+    ],
+    [
+      "location kept by Scan of a DateTime",
+      parseDateTime("2024-01-31T23:30:00-02:00"),
+      [0, 1, 0],
+      "2024-03-03 01:30:00.000Z",
+    ],
+    [
+      "location kept by Add",
+      parseDateTime("2024-01-31T21:30:00-02:00").add(2 * Hour),
+      [0, 1, 0],
+      "2024-03-03 01:30:00.000Z",
+    ],
+    [
+      "location kept by AddDate",
+      parseDateTime("2024-01-30T23:30:00-02:00").addDate(0, 0, 1),
+      [0, 1, 0],
+      "2024-03-03 01:30:00.000Z",
+    ],
+  ];
+
+  for (const [name, value, [years, months, days], expected] of scenarios) {
+    test(name, () => {
+      expect(parseDateTime(value).addDate(years, months, days).string()).toBe(expected);
+    });
+  }
+
+  test("the location does not change the instant", () => {
+    const local = parseDateTime("2024-01-31T23:30:00-02:00");
+    const utc = parseDateTime("2024-02-01 01:30:00.000Z");
+    expect(local.string()).toBe("2024-02-01 01:30:00.000Z");
+    expect(local.equal(utc)).toBe(true);
+    expect(local.compare(utc)).toBe(0);
+    expect(local.unix()).toBe(utc.unix());
+    expect(local.sub(utc)).toBe(0);
+    expect(local.time()).toEqual(utc.time());
+    expect(local.zoneOffset()).toBe(-7200);
+    expect(utc.zoneOffset()).toBe(0);
+  });
 });
 
 const d1 = parseDateTime("2024-01-01 10:00:00.123Z");

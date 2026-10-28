@@ -60,6 +60,13 @@ export class CastError extends Error {
 // (ParseDateWith relocates them); the others give the instant of their
 // offset. Time-only layouts are in year 0.
 export function stringToDate(s: string): Instant {
+  return stringToDateLocated(s)[0];
+}
+
+// stringToDate with the offset (seconds east of UTC) of the time.Time's
+// location: time.Parse keeps a numeric zone as a fixed zone (or Local, which
+// is UTC here, when the offset is 0); relocated layouts are in UTC.
+export function stringToDateLocated(s: string): [Instant, number] {
   for (const [layout, typ] of timeFormats) {
     let p;
     try {
@@ -68,10 +75,12 @@ export function stringToDate(s: string): Instant {
       continue;
     }
     const t = date(p.year, p.month, p.day, p.hour, p.min, p.sec, p.nsec);
+    let offset = 0;
     if (typ > namedTimezone) {
-      t.sec -= p.zoneOffset ?? 0;
+      offset = p.zoneOffset ?? 0;
+      t.sec -= offset;
     }
-    return t;
+    return [t, offset];
   }
   throw new CastError(`unable to parse date: ${s}`);
 }
@@ -102,6 +111,19 @@ export function toTime(i: unknown): Instant {
     return toTimeE(i);
   } catch {
     return { ...zeroInstant };
+  }
+}
+
+// toTime with the offset of the time.Time's location (see
+// stringToDateLocated); only strings can have a zone other than UTC
+export function toTimeLocated(i: unknown): [Instant, number] {
+  if (typeof i !== "string") {
+    return [toTime(i), 0];
+  }
+  try {
+    return stringToDateLocated(i);
+  } catch {
+    return [{ ...zeroInstant }, 0];
   }
 }
 

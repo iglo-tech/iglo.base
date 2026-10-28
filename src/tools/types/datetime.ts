@@ -9,11 +9,18 @@
 // a Go integer (Unix seconds), a number a float64 (cast to a string first,
 // which never parses as a date, as upstream), a string is parsed, a Date is a
 // time.Time.
+//
+// Like Go's time.Time, a DateTime also keeps the location it was parsed in.
+// Every location cast and time.Parse give here is UTC or a fixed offset
+// (named zones are relocated to UTC, see cast.ts and go-time.ts), so the
+// location is that offset. Only AddDate depends on it (calendar arithmetic
+// is done in the location); comparisons are on the instant and String is in
+// UTC.
 
 import type { Clock } from "@/app/clock";
 import {
   toString as castToString,
-  toTime as castToTime,
+  toTimeLocated as castToTimeLocated,
   fromDate,
   zeroInstant,
 } from "@/tools/types/cast";
@@ -62,11 +69,15 @@ export class DateTime {
   // Unix seconds and nanoseconds in [0, 1e9); Go's zero time by default
   private sec = zeroInstant.sec;
   private nsec = 0;
+  // the location's offset in seconds east of UTC
+  private offset = 0;
 
-  static fromInstant(t: Instant): DateTime {
+  // the instant in UTC, or in the fixed zone of offset (seconds east of UTC)
+  static fromInstant(t: Instant, offset = 0): DateTime {
     const d = new DateTime();
     d.sec = t.sec + Math.floor(t.nsec / 1e9);
     d.nsec = ((t.nsec % 1e9) + 1e9) % 1e9;
+    d.offset = offset;
     return d;
   }
 
@@ -84,11 +95,19 @@ export class DateTime {
     return { sec: this.sec, nsec: this.nsec };
   }
 
+  // the offset in seconds east of UTC of the location (Time().Zone())
+  zoneOffset(): number {
+    return this.offset;
+  }
+
   // Add returns a new DateTime based on the current DateTime + the
   // duration (nanoseconds).
   add(duration: number): DateTime {
     const sec = Math.trunc(duration / 1e9);
-    return DateTime.fromInstant({ sec: this.sec + sec, nsec: this.nsec + (duration - sec * 1e9) });
+    return DateTime.fromInstant(
+      { sec: this.sec + sec, nsec: this.nsec + (duration - sec * 1e9) },
+      this.offset,
+    );
   }
 
   // Sub returns the duration (nanoseconds) between the current DateTime and
@@ -99,12 +118,13 @@ export class DateTime {
   }
 
   // AddDate returns a new DateTime with the years, months and days added,
-  // normalized as time.AddDate does (October 31 + 1 month is December 1).
+  // normalized as time.AddDate does (October 31 + 1 month is December 1),
+  // on the calendar of the DateTime's location.
   addDate(years: number, months: number, days: number): DateTime {
-    const f = fieldsOf(this.instant());
-    return DateTime.fromInstant(
-      date(f.year + years, f.month + months, f.day + days, f.hour, f.min, f.sec, this.nsec),
-    );
+    const f = fieldsOf({ sec: this.sec + this.offset, nsec: this.nsec });
+    const t = date(f.year + years, f.month + months, f.day + days, f.hour, f.min, f.sec, this.nsec);
+    t.sec -= this.offset;
+    return DateTime.fromInstant(t, this.offset);
   }
 
   after(u: DateTime): boolean {
@@ -187,29 +207,33 @@ export class DateTime {
   // give the zero time, as cast.ToTime does).
   scan(value: unknown): void {
     let t: Instant;
+    let offset = 0;
     if (value instanceof DateTime) {
       t = value.instant();
+      offset = value.offset;
     } else if (value instanceof Date) {
       t = fromDate(value);
     } else if (typeof value === "string") {
-      t = value === "" ? { ...zeroInstant } : parseDefaultOrCast(value);
+      [t, offset] = value === "" ? [{ ...zeroInstant }, 0] : parseDefaultOrCast(value);
     } else if (typeof value === "bigint") {
-      t = castToTime(value);
+      [t, offset] = castToTimeLocated(value);
     } else {
       const str = castToString(value);
-      t = str === "" ? { ...zeroInstant } : castToTime(str);
+      [t, offset] = str === "" ? [{ ...zeroInstant }, 0] : castToTimeLocated(str);
     }
-    const d = DateTime.fromInstant(t);
+    const d = DateTime.fromInstant(t, offset);
     this.sec = d.sec;
     this.nsec = d.nsec;
+    this.offset = d.offset;
   }
 }
 
-function parseDefaultOrCast(v: string): Instant {
+// DefaultDateLayout ends in a literal "Z", so it parses in UTC
+function parseDefaultOrCast(v: string): [Instant, number] {
   try {
-    return instantOf(parse(DefaultDateLayout, v));
+    return [instantOf(parse(DefaultDateLayout, v)), 0];
   } catch {
     // other common date layouts
-    return castToTime(v);
+    return castToTimeLocated(v);
   }
 }
