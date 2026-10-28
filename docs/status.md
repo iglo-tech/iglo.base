@@ -8,6 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M1.7 | worker | `task/M1.7-collection-save` | 0 | [Brief](briefs/M1.7.md) |
 
 ## Done
 
@@ -103,3 +104,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (M1.6 PR): the lead accepted the worker's open points. `ParseIndex` needs upstream's `tools/tokenizer`, which no task owned; it is ported in M1.6 as `src/tools/tokenizer/`. Go's v2 JSON decoding of nested option structs is in `src/collections/go-json-struct.ts` (merging it with `src/tools/types/go-json.ts` is left for later). `dbExport()` returns upstream's typed values, so M1.7's save converts them before binding. `durationTime()` returns nanoseconds as a `bigint`.
 - 2026-10-28 (M1.6a brief): `updateGeneratedIdIfExists` moves from M1.7 to M1.6a, because the validator calls it. Until M4.5 ports the OAuth2 providers, `checkProviderName` checks against upstream's fixed list of registered provider names in `src/oauth2/provider-names.ts`. The rule check (M2.2) and the view field generation and view-query check (M1.7) stay as small functions that pass until those tasks complete them; their test cases run as pending. No collections API exists before M2.5, so these gaps are not reachable.
 - 2026-10-28 (M1.6a PR): the lead accepted the worker's open points. Go's `strings.ToLower`/`unicode.ToLower`/`strings.EqualFold` are in `src/collections/go-strings.ts` for now (they belong in `src/tools/unicode/`; moving them is left for later). `checkForVia` is duplicated in the validator because `src/fields/field.ts` does not export it. Error bodies in the reference test are compared with object members sorted, as upstream writes Go maps in random order. An update that changes a collection id is covered by unit tables only, because upstream's API answers 404 before validation.
+- 2026-10-28 (plan change, before M1.7): `TruncateCollection` and `FindRecordByViewFile` need records, so they move from M1.7 to M1.8. M1.2 now depends on M1.7, because upstream's init migration (and later system migrations) save collections through the collection save path; the order diagram shows M1.2 → M1.3 after M1.7. M1.7's reference test starts from a pb_data created by a fresh upstream install, because M1.2's migrations are not ported yet.
