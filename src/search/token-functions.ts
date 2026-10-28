@@ -3,7 +3,7 @@
 // Upstream's TokenFunctions is an exported, writable map; here it is a
 // read-only map (no extension surface, AGENTS.md).
 
-import { type Params, setOwn } from "@/db/dbx/query";
+import { Float64, type Params, setOwn } from "@/db/dbx/query";
 import {
   type Token,
   TokenIdentifier,
@@ -225,9 +225,17 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
   ],
 ]);
 
+// Go's != on the param values: a Float64 compares by its number
+function sameParam(a: unknown, b: unknown): boolean {
+  if (a instanceof Float64 && b instanceof Float64) {
+    return a.value === b.value;
+  }
+  return a === b;
+}
+
 function concatUniqueParams(destParams: Params, newParams: Params | null | undefined): void {
   for (const [k, v] of Object.entries(newParams ?? {})) {
-    if (Object.hasOwn(destParams, k) && v !== destParams[k]) {
+    if (Object.hasOwn(destParams, k) && !sameParam(v, destParams[k])) {
       throw new Error(`conflicting param key ${k}`);
     }
 

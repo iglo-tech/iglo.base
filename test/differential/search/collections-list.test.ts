@@ -17,6 +17,12 @@
 // copy of the pb_data directory, once on the main thread and once through
 // the read worker pool. The returned ids in order, the page fields and the
 // error bodies (status, message, data) must be equal.
+//
+// The record cases list the records of the base collection `texts` (a text
+// field `value`) through upstream's records list endpoint as a superuser,
+// and through Provider.ParseAndExec over `SELECT texts.* FROM texts` with a
+// simple field resolver for id and value here. A number literal is a Go
+// float64, which compares with TEXT as its REAL text ('5.0', not '5').
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -62,6 +68,13 @@ const collections: object[] = [
   { name: "x1", type: "base" },
   { name: "x10", type: "base" },
   { name: "x2", type: "base" },
+  // a numeric name: `name = 5` compares it with REAL 5 ('5.0')
+  { name: "5", type: "base" },
+  {
+    name: "texts",
+    type: "base",
+    fields: [{ name: "value", type: "text" }],
+  },
   { name: "posts_view", type: "view", viewQuery: "select id from posts" },
   { name: "authors_view", type: "view", viewQuery: "select id, email from Authors" },
 ];
@@ -105,6 +118,15 @@ const cases: [string, string, boolean?][] = [
   ["any not like", f("name ?!~ 'x'")],
   ["any lt", f("name ?< 'c'")],
   ["number vs text", f("name = 1")],
+  ["number vs numeric name", f("name = 5")],
+  ["real vs numeric name", f("name = 5.0")],
+  ["number neq numeric name", f("name != 5")],
+  ["number gt name", f("name > 5")],
+  ["number lt name", f("name < 5")],
+  ["number like name", f("name ~ 5")],
+  ["number not like name", f("name !~ 5")],
+  ["any eq number", f("name ?= 5")],
+  ["any neq number", f("name ?!= 5")],
   ["double quotes", f(`name = "posts"`)],
   ["escaped quote", f("name = 'po\\'sts'")],
   // bools, null, empty
@@ -214,6 +236,41 @@ const cases: [string, string, boolean?][] = [
   ["empty key", "=x&&sort=name"],
 ];
 
+// the `value` of each record in `texts`
+const textValues = ["1", "1.0", "5", "5.0", "5.5", "10", "-1", "-1.0", "0", "0.0", "1e1", "a", ""];
+
+const r = (filter: string): string => q({ filter, perPage: "100" });
+
+// [name, raw query string] against the texts records; ids compared as a set
+const recordCases: [string, string][] = [
+  ["eq 1", r("value = 1")],
+  ["eq 1.0", r("value = 1.0")],
+  ["eq 5.5", r("value = 5.5")],
+  ["eq 10", r("value = 10")],
+  ["eq -1", r("value = -1")],
+  ["eq 0", r("value = 0")],
+  ["eq reversed", r("1 = value")],
+  ["neq 1", r("value != 1")],
+  ["neq 5.5", r("value != 5.5")],
+  ["neq 0", r("value != 0")],
+  ["gt 1", r("value > 1")],
+  ["gte 5", r("value >= 5")],
+  ["lt 5", r("value < 5")],
+  ["lte 1.0", r("value <= 1.0")],
+  ["like 1", r("value ~ 1")],
+  ["like 1.0", r("value ~ 1.0")],
+  ["like 5.5", r("value ~ 5.5")],
+  ["not like 5", r("value !~ 5")],
+  ["any eq 1", r("value ?= 1")],
+  ["any eq 5.5", r("value ?= 5.5")],
+  ["any neq 5", r("value ?!= 5")],
+  ["any gt 1", r("value ?> 1")],
+  ["any like 0", r("value ?~ 0")],
+  ["text or number vs number", r("value = 'a' || 1 = 1.0")],
+  ["geoDistance with integers", r("geoDistance(0, 0, 0, 1) > 111 && value = 1")],
+  ["strftime with a number", r("strftime('%Y', 0) = '-4713' && value = 5")],
+];
+
 interface Outcome {
   status: number;
   // the list fields or the error body
@@ -238,6 +295,11 @@ function listBody(
 }
 
 const upstreamOutcomes = new Map<string, Outcome>();
+
+// an upstream list body
+function upstreamList(name: string): { ids: string[] } {
+  return upstreamOutcomes.get(name)?.body as { ids: string[] };
+}
 // the raw query strings as fetch sent them
 const sentQueries = new Map<string, string>();
 
@@ -270,8 +332,23 @@ beforeAll(async () => {
     });
   }
 
-  for (const [name, raw, asSet] of cases) {
-    const url = new URL(`${upstream.url}/api/collections?${raw}`);
+  for (const value of textValues) {
+    res = await fetch(`${upstream.url}/api/collections/texts/records`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: token },
+      body: JSON.stringify({ value }),
+    });
+    expect(res.status).toBe(200);
+  }
+
+  const all: (readonly [string, string, boolean | undefined, string])[] = [
+    ...cases.map(([name, raw, asSet]) => [name, raw, asSet, "collections"] as const),
+    ...recordCases.map(
+      ([name, raw]) => ["records " + name, raw, true, "collections/texts/records"] as const,
+    ),
+  ];
+  for (const [name, raw, asSet, path] of all) {
+    const url = new URL(`${upstream.url}/api/${path}?${raw}`);
     sentQueries.set(name, url.search.slice(1));
     res = await fetch(url, { headers: { authorization: token } });
     // the body is parsed with integers kept as text (page can be past 2^53)
@@ -350,19 +427,19 @@ async function igloOutcome(
   cache: ParsedFilterCache,
   rawQuery: string,
   asSet: boolean,
+  records = false,
 ): Promise<Outcome> {
-  const fieldResolver = newSimpleFieldResolver(
-    "id",
-    "created",
-    "updated",
-    "name",
-    "system",
-    "type",
-  );
+  const fieldResolver = records
+    ? newSimpleFieldResolver("id", "value")
+    : newSimpleFieldResolver("id", "created", "updated", "name", "system", "type");
   try {
-    const result = await newProvider(fieldResolver, { clock, cache })
-      .query(collectionQuery(app))
-      .parseAndExec<Collection>(queryEncode(rawQuery), () => new Collection());
+    const result = records
+      ? await newProvider(fieldResolver, { clock, cache })
+          .query(app.databases.concurrentDB().select("texts.*").from("texts"))
+          .parseAndExec<{ id: string }>(queryEncode(rawQuery))
+      : await newProvider(fieldResolver, { clock, cache })
+          .query(collectionQuery(app))
+          .parseAndExec<Collection>(queryEncode(rawQuery), () => new Collection());
     return {
       status: 200,
       body: listBody(
@@ -404,7 +481,11 @@ describe("collections list", () => {
         const cache = new ParsedFilterCache();
         try {
           const mismatches: unknown[] = [];
-          for (const [name, , asSet] of cases) {
+          const all: (readonly [string, boolean, boolean])[] = [
+            ...cases.map(([name, , asSet]) => [name, asSet === true, false] as const),
+            ...recordCases.map(([name]) => ["records " + name, true, true] as const),
+          ];
+          for (const [name, asSet, records] of all) {
             const expected = upstreamOutcomes.get(name);
             // twice: the second run reads the parsed filter from the cache
             for (let i = 0; i < 2; i++) {
@@ -412,7 +493,8 @@ describe("collections list", () => {
                 app,
                 cache,
                 sentQueries.get(name) ?? "",
-                asSet === true,
+                asSet,
+                records,
               );
               if (!Bun.deepEquals(got, expected)) {
                 mismatches.push({ name, run: i, expected, got });
@@ -427,6 +509,13 @@ describe("collections list", () => {
       60_000,
     );
   }
+
+  // the REAL comparisons pick other rows than INTEGER ones would
+  test("number literals compare as REAL", () => {
+    expect(upstreamList("number vs numeric name").ids).toEqual([]);
+    expect(upstreamList("records eq 1").ids.length).toBe(1);
+    expect(upstreamList("records eq 5.5").ids.length).toBe(1);
+  });
 
   test("the cases cover lists and errors", () => {
     const statuses = [...upstreamOutcomes.values()].map((o) => o.status);

@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import type { Clock } from "@/app/clock";
 import { type DB, newFromDB } from "@/db/dbx/db";
 import type { Expression } from "@/db/dbx/expression";
-import type { Params } from "@/db/dbx/query";
+import { Float64, type Params } from "@/db/dbx/query";
 import {
   type FilterData,
   filterBuildExpr,
@@ -297,4 +297,82 @@ test("Like params wrapping", () => {
   let expectedQuery = String.raw`SELECT * WHERE ([[test1]] LIKE '%abc%' ESCAPE '\' OR [[test2]] LIKE 'ab%c' ESCAPE '\' OR [[test3]] LIKE '%ab\%c%' ESCAPE '\' OR [[test4]] LIKE '%ab\%c' ESCAPE '\' OR [[test5]] LIKE 'ab\\%c' ESCAPE '\' OR [[test6]] LIKE '%ab\\\%c%' ESCAPE '\' OR [[test7]] LIKE '%ab\_c%' ESCAPE '\' OR [[test8]] LIKE '%ab\_c%' ESCAPE '\' OR [[test9]] LIKE '%ab_c' ESCAPE '\' OR [[test10]] LIKE '%ab\\c%' ESCAPE '\' OR [[test11]] LIKE '%\_ab\\c\_%' ESCAPE '\' OR [[test12]] LIKE 'ab\c%' ESCAPE '\' OR [[test13]] LIKE '%a`;
   expectedQuery += "\n" + String.raw`b\\%' ESCAPE '\')`;
   expect(loggedSelect(expr)).toBe(expectedQuery);
+});
+
+// upstream binds a number token as cast.ToFloat64(literal), which Go's
+// SQLite driver binds as REAL (1 too); the macros give Go ints (INTEGER)
+describe("bound param types", () => {
+  const resolver = newSimpleFieldResolver("test1");
+
+  function boundParams(filter: FilterData): unknown[] {
+    const params: Params = {};
+    filterBuildExpr(filter, resolver, { clock }).build(newDB(), params);
+    return Object.values(params);
+  }
+
+  test("a number token is a Float64", () => {
+    expect(boundParams("test1 = 1")).toEqual([new Float64(1)]);
+    expect(boundParams("test1 = 1.0")).toEqual([new Float64(1)]);
+    expect(boundParams("test1 = -2.5")).toEqual([new Float64(-2.5)]);
+  });
+
+  test("a number placeholder replacement is a Float64", () => {
+    const params: Params = {};
+    filterBuildExpr("test1 = {:p}", resolver, { clock }, { p: 5 }).build(newDB(), params);
+    expect(Object.values(params)).toEqual([new Float64(5)]);
+  });
+
+  test("an int macro is a number", () => {
+    expect(boundParams("test1 = @second")).toEqual([6]);
+    expect(boundParams("test1 = @year")).toEqual([2023]);
+  });
+
+  test("bound in SQLite", () => {
+    const db = newDB();
+    const typeOf = (filter: FilterData) => {
+      const params: Params = {};
+      const sql = filterBuildExpr(filter, resolver, { clock }).build(db, params);
+      const placeholder = sql.match(/\{:\w+\}/)?.[0] ?? "";
+      return db.newQuery(`SELECT typeof(${placeholder})`).bind(params).row()[0];
+    };
+    expect(typeOf("test1 = 1")).toBe("real");
+    expect(typeOf("test1 = 1.5")).toBe("real");
+    expect(typeOf("test1 = @second")).toBe("integer");
+  });
+});
+
+// a REAL compares with a TEXT column as its text ('1.0', not '1')
+describe("number tokens against a TEXT column", () => {
+  const resolver = newSimpleFieldResolver("test1");
+  const values = ["1", "1.0", "10", "5", "5.5", "a"];
+
+  function matching(filter: FilterData): string[] {
+    const db = newDB();
+    db.newQuery("CREATE TABLE t (test1 TEXT)").execute();
+    for (const v of values) {
+      db.insert("t", { test1: v }).execute();
+    }
+    const expr = filterBuildExpr(filter, resolver, { clock });
+    return db.select("test1").from("t").where(expr).orderBy("test1").column<string>();
+  }
+
+  const scenarios: [FilterData, string[]][] = [
+    ["test1 = 1", ["1.0"]],
+    ["test1 = 1.0", ["1.0"]],
+    ["test1 = 5.5", ["5.5"]],
+    ["1 = test1", ["1.0"]],
+    ["test1 != 1", ["1", "10", "5", "5.5", "a"]],
+    ["test1 > 1", ["10", "5", "5.5", "a"]],
+    ["test1 < 5", ["1", "1.0", "10", "5"]],
+    ["test1 ~ 1", ["1", "1.0", "10"]],
+    // cast.ToString(float64(1)) is "1"
+    ["test1 ~ 1.0", ["1", "1.0", "10"]],
+    ["test1 !~ 5", ["1", "1.0", "10", "a"]],
+  ];
+
+  for (const [filter, expected] of scenarios) {
+    test(filter, () => {
+      expect(matching(filter)).toEqual(expected);
+    });
+  }
 });

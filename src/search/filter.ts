@@ -13,7 +13,7 @@ import type { Clock } from "@/app/clock";
 import { equalFold, toLower } from "@/collections/go-strings";
 import type { DB } from "@/db/dbx/db";
 import { and, enclose, type Expression, newExp, not } from "@/db/dbx/expression";
-import { assignOwn, type Params, setOwn } from "@/db/dbx/query";
+import { assignOwn, Float64, type Params, setOwn } from "@/db/dbx/query";
 import { goQuote } from "@/fields/field";
 import { type Expr, type ExprGroup, ErrEmpty, parse } from "@/search/fexpr/parser";
 import {
@@ -491,7 +491,9 @@ function resolveToken(
 
       return {
         identifier: "{:" + placeholder + "}",
-        params: paramsOf(placeholder, toFloat64(token.literal)),
+        // a Go float64, which the SQLite driver binds as REAL (5 compares
+        // as '5.0' under TEXT affinity)
+        params: paramsOf(placeholder, new Float64(toFloat64(token.literal))),
       };
     }
     case TokenFunction: {
@@ -682,7 +684,7 @@ function wrapLikeParams(params: Params | null | undefined): Params {
   const result: Params = {};
 
   for (const [k, v] of Object.entries(params ?? {})) {
-    let vStr = toString(v);
+    let vStr = toString(v instanceof Float64 ? v.value : v);
     if (!containsUnescapedChar(vStr, "%")) {
       // note: this is done to minimize the breaking changes and to preserve the original autoescape behavior
       vStr = escapeUnescapedChars(vStr, "\\", "%", "_");
