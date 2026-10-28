@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1a | worker | `task/M1.1a-regexp-syntax` ([brief](briefs/M1.1a.md)) | 0 | Go `regexp/syntax` parser (go1.27.2), Unicode tables generated from Go's, `RandomStringByRegex` |
+| M1.1a | council | [#9](https://github.com/iglo-tech/iglo.base/pull/9) ([brief](briefs/M1.1a.md)) | 1 | Go `regexp/syntax` parser (go1.27.2), Unicode tables generated from Go's, `RandomStringByRegex`. CI green at `9b9dc79`; round 1 started for that head |
 
 ## Done
 
@@ -68,6 +68,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1 PR): the lead accepted the worker's open points. `parseJWT` does not check `iat`, as upstream's `ParseJWT` does not; the brief was wrong there, and `parseUnverifiedJWT` does check it. Go zone abbreviations (`MST`) are read as UTC, so only a server whose local zone is not UTC could see a difference. `src/tools/types/go-json.ts` reuses `decodeUTF8Bytes` from `src/server/json-decode.ts`; merging the two JSON readers is left for later. A JS `number` given to `DateTime.scan` is treated as Go's float64 (zero time), while a `bigint` is Unix seconds.
 - 2026-10-28 (M1.1 round 2): the round-1 assumption that the server time zone is UTC is withdrawn. DateTime models Go's UTC, Local and fixed-offset locations, so AddDate follows the local zone's DST rules as upstream does. JSONRaw hands out its exact bytes; writing invalid UTF-8 as TEXT (for example `CAST(? AS TEXT)` with a blob parameter) is carried to M1.8's record write path.
 - 2026-10-28 (M1.1a brief): Go's `regexp/syntax` and `unicode` packages (BSD-3-Clause, The Go Authors) are translated in `src/tools/regexp/syntax/`, and Go's notice goes into `LICENSE`. The Unicode tables are generated from Go's `unicode/tables.go` at go1.27.2, the toolchain the upstream binary was built with, not from JS `\p{…}`. Matching patterns with Go semantics stays with M1.4.
+- 2026-10-28 (M1.1a PR): the lead accepted the worker's open points. The Unicode tables and helpers live in `src/tools/unicode/`, mirroring Go's `unicode` package (Unicode 17.0.0 at go1.27.2). Go's `syntax.Error` is `RegexpSyntaxError`. `secureIntN` is exported from M1.1's `random.ts`. POSIX-only errors and invalid UTF-8 cannot reach upstream through its API, so unit tests cover them. The `\pL`×27000 "expression too large" case peaks at about 460 MB for half a second (Go: about 134 MB); it is left out of the reference test, and M1.4 should consider a pattern length limit before parsing only if upstream has one.
 
 ## Paused until
 
