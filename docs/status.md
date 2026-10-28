@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8b | council | [#21](https://github.com/iglo-tech/iglo.base/pull/21) | 1 | [Brief](briefs/M1.8b.md). Opus worker head `2985949`; council round 1 started while CI ran |
+| M1.8b | fix | [#21](https://github.com/iglo-tech/iglo.base/pull/21) | 1 | [Brief](briefs/M1.8b.md). Round 1 at `2985949`: Opus APPROVE, Sol CHANGES (the invalid-collection cancellation is not applied to `rows()`, which runs SQL and can return rows from another table). Opus fixer started |
 
 ## Done
 
