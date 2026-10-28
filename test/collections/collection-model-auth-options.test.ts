@@ -26,12 +26,7 @@ import { TextField } from "@/fields/text";
 import { marshal } from "@/tools/types/go-json";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import {
-  type Pending,
-  caseTest,
-  expectValidationErrors,
-  pendingRule,
-} from "@test/collections/validation";
+import { type Pending, caseTest, expectValidationErrors } from "@test/collections/validation";
 
 const second = 1_000_000_000n;
 
@@ -275,7 +270,6 @@ describe("TestCollectionAuthOptionsValidate", () => {
         return c;
       },
       expectedErrors: ["authRule"],
-      pending: pendingRule,
     },
     {
       name: "valid authRule",
@@ -314,7 +308,6 @@ describe("TestCollectionAuthOptionsValidate", () => {
         return c;
       },
       expectedErrors: ["manageRule"],
-      pending: pendingRule,
     },
     {
       name: "valid manageRule",
@@ -446,7 +439,6 @@ describe("TestCollectionAuthOptionsValidate", () => {
         return c;
       },
       expectedErrors: ["mfa"],
-      pending: pendingRule,
     },
     {
       name: "mfa enabled with valid rule",

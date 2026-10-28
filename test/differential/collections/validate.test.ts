@@ -26,8 +26,8 @@
 // with their object members sorted; every code, message and param is
 // compared as it is. No error must mean upstream's 200.
 //
-// Cases that need the rule check (M2.2) run as test.failing: they pass
-// while the model differs and fail once it agrees.
+// A case marked pending on a later task runs as test.failing: it passes
+// while the model differs and fails once it agrees.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";

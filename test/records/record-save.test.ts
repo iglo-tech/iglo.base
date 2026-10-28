@@ -8,10 +8,6 @@
 // Left out: TestRecordModelEventSync (the hook events only). The forced
 // update failure of TestAutodateRecordResave binds a failing hook
 // upstream; here a temporary trigger on the test copy fails the update.
-// TestRecordSaveWithAutoTokenKeyRefresh finds the first "nologin" record
-// with "1=1" (FindFirstRecordByFilter, M2.2); here the first row of a
-// plain record query.
-//
 // Each Go test function runs on its own copy of the vendored fixture
 // (openTestApp, as tests.NewTestApp).
 
@@ -31,10 +27,9 @@ import {
   findAuthRecordByEmail,
   findFirstRecordByData,
   findRecordById,
-  recordQuery,
-  recordTarget,
   type RecordsApp,
 } from "@/records/record-query";
+import { findFirstRecordByFilter } from "@/records/record-query-filter";
 import {
   deleteRecord,
   saveRecord,
@@ -288,7 +283,7 @@ describe("TestRecordSaveWithAutoTokenKeyRefresh", () => {
 
   for (const [name, payload, expectedChange] of scenarios) {
     test(name, async () => {
-      const record = recordQuery(app(), "nologin").limit(1).one<Record>(recordTarget);
+      const record = findFirstRecordByFilter(app(), "nologin", "1=1");
 
       const originalTokenKey = record.tokenKey();
 

@@ -6,8 +6,8 @@
 // Left out: the RecordProxy cases of TestRecordQueryOne/All (a library
 // API, not ported) and the Go-only non-pointer []Record slice; the custom
 // struct cases scan plain rows. TestFindRecordsByFilter,
-// TestFindFirstRecordByFilter and TestCanAccessRecord are M2.2's,
-// TestFindAuthRecordByToken M2.3's.
+// TestFindFirstRecordByFilter and TestCanAccessRecord are in
+// record-query-filter.test.ts, TestFindAuthRecordByToken is M2.3's.
 //
 // Each Go test function runs on its own copy of the vendored fixture
 // (openTestApp, as tests.NewTestApp). The error texts and kinds are
