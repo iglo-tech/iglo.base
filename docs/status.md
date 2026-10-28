@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1b | worker | `task/M1.1b-regexp` ([brief](briefs/M1.1b.md)) | 0 | Go `regexp` matching (compile, prog, NFA) on the M1.1a parser |
+| M1.1b | council | [#10](https://github.com/iglo-tech/iglo.base/pull/10) ([brief](briefs/M1.1b.md)) | 1 | Go `regexp` matching (compile, prog, NFA, onepass) on the M1.1a parser. CI green at `1ee8c1d`; round 1 started for that head |
 
 ## Done
 
@@ -72,6 +72,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1a PR): the lead accepted the worker's open points. The Unicode tables and helpers live in `src/tools/unicode/`, mirroring Go's `unicode` package (Unicode 17.0.0 at go1.27.2). Go's `syntax.Error` is `RegexpSyntaxError`. `secureIntN` is exported from M1.1's `random.ts`. POSIX-only errors and invalid UTF-8 cannot reach upstream through its API, so unit tests cover them. The `\pL`×27000 "expression too large" case peaks at about 460 MB for half a second (Go: about 134 MB); it is left out of the reference test, and M1.4 should consider a pattern length limit before parsing only if upstream has one.
 - 2026-10-28 (plan change, before M1.4): no task owned Go regexp matching or validation, which M1.4's fields need. Two tasks are added. M1.1b ports Go's `regexp` matcher (compile, prog, NFA) on the M1.1a parse tree. M1.1c ports the ozzo-validation v4.4.1 subset, the `is` rules with govalidator `a9d515a`, and `core/validators`. M1.4 now depends on both, and M1.3 on M1.1c. The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → …
 - 2026-10-28 (M1.1b brief): user patterns are matched with a port of Go's own matcher, not translated into JS RegExp. They must accept exactly what upstream accepts, and RE2 runs in linear time, while a JS RegExp can be driven into exponential backtracking by a record value.
+- 2026-10-28 (M1.1b PR): the lead accepted the worker's choices. Regexp indexes are Go byte offsets of the UTF-8 encoding, and a lone surrogate U+DC80+n stands for the invalid byte 0x80+n. Go's one-pass machine is ported because it changes `literalPrefix()`; the backtracker is not, because it never changes a result and the NFA's worst case at 1 KiB is about 0.5 ms. Plain `bun test` samples every 10th RE2 exhaustive case (`RE2_EXHAUSTIVE=1` runs all of them). Note for porters: Bun's transpiler rewrites non-ASCII text inside `String.raw` templates as `\uXXXX` escapes.
 
 ## Paused until
 
