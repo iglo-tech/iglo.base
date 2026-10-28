@@ -39,3 +39,14 @@ Time grows linearly with the input for every pattern. The unanchored NFA case, t
 ## Linear time
 
 `test/tools/regexp/linear.test.ts` checks that patterns which take exponential time in a backtracking engine (`(a+)+$`, `(a|aa)*b`, `(x+x+)+y`, `^(a|a?)+$`) take about the same time per byte on 30 and 3,000 characters. Measured once with `findStringSubmatchIndex` and `matchString` per run: `(a+)+$` 0.011 ms at 30 characters and 0.80 ms at 3,000; `(a|aa)*b` 0.015 ms and 1.12 ms.
+
+## NFA add without recursion
+
+Go's `add` recurses into the `Out` of each `InstAlt` and `InstCapture`. A valid pattern such as `(?:a??){1000}` repeated 30 times chains about 30,000 of them at one input position and overflowed Bun's call stack; `add` now walks the same instructions in the same order with an explicit stack. Measured the same way, two alternating runs each of the commit before and after; the one-pass rows do not use `add`.
+
+| Pattern | Input | 16 B | 1 KiB | 64 KiB |
+|---|---|---:|---:|---:|
+| 50-alternation, before | unanchored, no match | 11.0 µs (9.2 µs) | 552 µs (512 µs) | 32.4 ms (32.5 ms) |
+| 50-alternation, after | unanchored, no match | 9.0 µs (9.0 µs) | 478 µs (476 µs) | 30.9 ms (29.7 ms) |
+
+The difference is within the run-to-run spread of the baseline above.
