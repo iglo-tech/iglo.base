@@ -3,10 +3,8 @@
 // re2-exhaustive.txt (see testdata/README.md), TestFowler, TestLongest and
 // TestProgramTooLongForBacktrack.
 //
-// The full re2-exhaustive.txt runs when RE2_EXHAUSTIVE names the
-// decompressed file (bzcat .upstream/deps/go/src/regexp/testdata/
-// re2-exhaustive.txt.bz2 > file); it takes minutes, so it is not part of
-// `bun test`.
+// RE2_EXHAUSTIVE=1 runs every regexp of re2-exhaustive.txt instead of
+// every 10th; it takes minutes, so it is not part of `bun test`.
 
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
