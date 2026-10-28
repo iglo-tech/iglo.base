@@ -12,7 +12,8 @@
 //     jsontext does with Encoder.WriteValue;
 //   - unmarshal: strict v2 decoding (duplicate names and invalid UTF-8 are
 //     errors, numbers out of float64 range fail), or v1 decoding with
-//     `legacy` (duplicates allowed, last wins; invalid UTF-8 becomes U+FFFD),
+//     `legacy` (duplicates allowed, the last replaces earlier ones whatever
+//     their type; invalid UTF-8 becomes U+FFFD),
 //     as golang-jwt's json.Unmarshal does.
 //
 // JS has no Go types, so the decoder takes a GoType that names the Go
@@ -903,8 +904,9 @@ function mismatch(node: Node, goType: string): JSONSemanticError {
 }
 
 // existing is the current Go value of the destination, used by `any`
-// (whose dynamic type is kept when set) and maps (merged into). legacy:
-// v1 semantics, where a member of the wrong type does not stop decoding.
+// (whose dynamic type is kept when set) and maps (merged into); v1 map
+// entries are always decoded from zero. legacy: v1 semantics, where a
+// member of the wrong type does not stop decoding.
 function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unknown {
   switch (t.kind) {
     case "any":
@@ -976,17 +978,20 @@ function convertObject(
   }
   let firstError: unknown;
   for (const [name, value] of node.members) {
-    const old = Object.hasOwn(target, name) ? target[name] : undefined;
-    if (!legacy) {
-      setOwn(target, name, convert(value, elem, old, legacy));
+    if (legacy) {
+      // v1 (MergeWithLegacySemantics) zeroes an existing map entry before
+      // decoding into it, so a duplicate name replaces the earlier value
+      // whatever its type
+      try {
+        setOwn(target, name, convert(value, elem, undefined, legacy));
+      } catch (err) {
+        // v1: a semantic error does not stop the remaining members
+        firstError ??= err;
+      }
       continue;
     }
-    try {
-      setOwn(target, name, convert(value, elem, old, legacy));
-    } catch (err) {
-      // v1: a semantic error does not stop the remaining members
-      firstError ??= err;
-    }
+    const old = Object.hasOwn(target, name) ? target[name] : undefined;
+    setOwn(target, name, convert(value, elem, old, legacy));
   }
   if (firstError !== undefined) {
     throw firstError;

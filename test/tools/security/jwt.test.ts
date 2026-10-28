@@ -253,6 +253,20 @@ describe("ParseJWT and ParseUnverifiedJWT edge cases", () => {
     ["alg missing", tok(`{"typ":"JWT"}`, `{"id":"a"}`), false, false],
     ["alg not a string", tok(`{"alg":256}`, `{"id":"a"}`), false, false],
     ["duplicate alg, last wins", tok(`{"alg":"none","alg":"HS256"}`, `{"id":"a"}`), true, true],
+    [
+      "duplicate alg, number then string",
+      tok(`{"alg":256,"alg":"HS256"}`, `{"id":"a"}`),
+      true,
+      true,
+    ],
+    [
+      "duplicate alg, string then number",
+      tok(`{"alg":"HS256","alg":256}`, `{"id":"a"}`),
+      false,
+      false,
+    ],
+    ["duplicate exp, string then number", tok(H, `{"exp":"old","exp":${now + 60}}`), true, true],
+    ["duplicate exp, number then string", tok(H, `{"exp":${now + 60},"exp":"old"}`), false, false],
     ["header null", tok(`null`, `{"id":"a"}`), false, false],
     ["header array", tok(`["HS256"]`, `{"id":"a"}`), false, false],
     ["claims null", tok(H, `null`), true, true],
@@ -307,6 +321,13 @@ describe("ParseJWT and ParseUnverifiedJWT edge cases", () => {
       true,
     ],
   ];
+
+  test("duplicate claims replace earlier values of any type", () => {
+    const token = tok(H, `{"a":{"x":1},"a":{"y":2},"b":[1],"b":"s","c":"s","c":{"z":3}}`);
+    const expected = { a: { y: 2 }, b: "s", c: { z: 3 } };
+    expect(parseUnverifiedJWT(token, at)).toEqual(expected);
+    expect(parseJWT(token, key, at)).toEqual(expected);
+  });
 
   for (const [name, token, unverifiedOk, verifiedOk] of scenarios) {
     test(name, () => {
