@@ -9,11 +9,8 @@
 // to UTC). Instants are Unix seconds plus nanoseconds, so nothing is lost
 // to JS Date's millisecond precision.
 //
-// time.Local: a zone abbreviation (MST) is looked up in the Local location
-// by Go. iglo.base treats Local as UTC (the usual server setting), where
-// only "UTC" is known; other abbreviations get a zero offset, as Go does
-// for unknown ones. The only callers (cast.ToTime's named-zone layouts)
-// keep the wall clock and drop the zone anyway.
+// The location time.Parse gives the fields (UTC, Local or a fixed zone) is
+// chosen by parsedTime in go-zoneinfo.ts, which knows time.Local.
 
 // time.Time's instant: Unix seconds and nanoseconds in [0, 1e9).
 export interface Instant {
@@ -35,6 +32,10 @@ export interface ParsedTime {
   // offset in seconds east of UTC when the value had one ("Z" and "UTC" are
   // 0), undefined when it had none or only a zone name
   zoneOffset: number | undefined;
+  // whether the zone was "Z" or "UTC" (Go's z = UTC)
+  utc: boolean;
+  // the zone abbreviation, "" when there was none
+  zoneName: string;
 }
 
 export class ParseError extends Error {
@@ -375,7 +376,7 @@ function leadingInt(s: string): [bigint, string] {
 }
 
 // atoi: an optional sign and digits, nothing else
-function atoi(s: string): number {
+export function atoi(s: string): number {
   let neg = false;
   if (s.length > 0 && (s[0] === "-" || s[0] === "+")) {
     neg = s[0] === "-";
@@ -467,7 +468,7 @@ export function isLeap(year: number): boolean {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
-const daysBefore = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
+export const daysBefore = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
 
 export function daysIn(month: number, year: number): number {
   if (month === 2 && isLeap(year)) {
@@ -816,12 +817,8 @@ export function parse(layout: string, value: string): ParsedTime {
     offset = 0;
   } else if (zoneOffset !== -1) {
     offset = zoneOffset;
-  } else if (zoneName !== "") {
-    // Local (UTC) knows no abbreviation but "UTC" (handled above); Go
-    // keeps an unknown one with a zero offset, GMT±h with its hours
-    offset = undefined;
   }
-  return { year, month, day, hour, min, sec, nsec, zoneOffset: offset };
+  return { year, month, day, hour, min, sec, nsec, zoneOffset: offset, utc, zoneName };
 }
 
 // days from 1970-01-01 to y-m-d in the proleptic Gregorian calendar
@@ -870,14 +867,6 @@ export function date(
   nsec = ((nsec % 1e9) + 1e9) % 1e9;
   const days = daysFromCivil(year, month, day);
   return { sec: days * 86400 + hour * 3600 + min * 60 + sec, nsec };
-}
-
-// the instant of parsed fields; when the value had no numeric offset the
-// fields are taken as UTC
-export function instantOf(p: ParsedTime): Instant {
-  const t = date(p.year, p.month, p.day, p.hour, p.min, p.sec, p.nsec);
-  t.sec -= p.zoneOffset ?? 0;
-  return t;
 }
 
 // the UTC calendar fields of an instant

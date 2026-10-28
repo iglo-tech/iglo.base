@@ -8,7 +8,8 @@
 // object with a string() method is a fmt.Stringer and an Error is an error.
 
 import { bytesToText } from "@/tools/types/go-json";
-import { type Instant, date, parse, unixToInternal } from "@/tools/types/go-time";
+import { type Instant, date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
+import { type Location, UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
 
 // how the time zone of a layout is applied (internal.TimeFormatType)
 const noTimezone = 0;
@@ -63,10 +64,11 @@ export function stringToDate(s: string): Instant {
   return stringToDateLocated(s)[0];
 }
 
-// stringToDate with the offset (seconds east of UTC) of the time.Time's
-// location: time.Parse keeps a numeric zone as a fixed zone (or Local, which
-// is UTC here, when the offset is 0); relocated layouts are in UTC.
-export function stringToDateLocated(s: string): [Instant, number] {
+// stringToDate with the time.Time's location: time.Parse's (see
+// parsedTime: UTC, Local or a fixed zone) for layouts with a numeric zone;
+// the others are relocated to UTC with the wall clock time.Parse gave them
+// in its location.
+export function stringToDateLocated(s: string): [Instant, Location] {
   for (const [layout, typ] of timeFormats) {
     let p;
     try {
@@ -74,13 +76,12 @@ export function stringToDateLocated(s: string): [Instant, number] {
     } catch {
       continue;
     }
-    const t = date(p.year, p.month, p.day, p.hour, p.min, p.sec, p.nsec);
-    let offset = 0;
+    const [t, loc] = parsedTime(p);
     if (typ > namedTimezone) {
-      offset = p.zoneOffset ?? 0;
-      t.sec -= offset;
+      return [t, loc];
     }
-    return [t, offset];
+    const f = fieldsOf({ sec: t.sec + lookup(loc, t.sec).offset, nsec: 0 });
+    return [date(f.year, f.month, f.day, f.hour, f.min, f.sec, t.nsec), UTC];
   }
   throw new CastError(`unable to parse date: ${s}`);
 }
@@ -114,17 +115,21 @@ export function toTime(i: unknown): Instant {
   }
 }
 
-// toTime with the offset of the time.Time's location (see
-// stringToDateLocated); only strings can have a zone other than UTC
-export function toTimeLocated(i: unknown): [Instant, number] {
-  if (typeof i !== "string") {
-    return [toTime(i), 0];
+// toTime with the time.Time's location (see stringToDateLocated): Go
+// integers are time.Unix values, in Local; Dates are times from the clock
+// (time.Now), in Local; the zero time is UTC.
+export function toTimeLocated(i: unknown): [Instant, Location] {
+  if (typeof i === "string") {
+    try {
+      return stringToDateLocated(i);
+    } catch {
+      return [{ ...zeroInstant }, UTC];
+    }
   }
-  try {
-    return stringToDateLocated(i);
-  } catch {
-    return [{ ...zeroInstant }, 0];
+  if (typeof i === "bigint" || i instanceof Date) {
+    return [toTime(i), localLocation()];
   }
+  return [toTime(i), UTC];
 }
 
 export function fromDate(d: Date): Instant {
