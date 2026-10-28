@@ -25,7 +25,7 @@ import {
   type SetterFinder,
   type SetterFunc,
 } from "@/fields/field";
-import { boolType, intType, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import { boolType, intType, stringType, unmarshalStruct, type GoInt } from "@/tools/types/go-json";
 import { matchString } from "@/tools/regexp/regexp";
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
 import { toString as castToString } from "@/tools/types/cast";
@@ -137,12 +137,12 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
   // Min specifies the minimum required string characters.
   //
   // if zero value, no min limit is applied.
-  min = 0;
+  min: GoInt = 0;
 
   // Max specifies the maximum allowed string characters.
   //
   // If zero, a default limit of 5000 is applied.
-  max = 0;
+  max: GoInt = 0;
 
   // Pattern specifies an optional regex pattern to match against the field
   // value.
@@ -532,8 +532,8 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
         hidden: (v) => (this.hidden = v as boolean),
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
-        min: (v) => (this.min = v as number),
-        max: (v) => (this.max = v as number),
+        min: (v) => (this.min = v as GoInt),
+        max: (v) => (this.max = v as GoInt),
         pattern: (v) => (this.pattern = v as string),
         autogeneratePattern: (v) => (this.autogeneratePattern = v as string),
         required: (v) => (this.required = v as boolean),

@@ -18,10 +18,11 @@ import {
 import {
   anyType,
   boolType,
-  intType,
+  int64Type,
   stringType,
   unmarshal,
   unmarshalStruct,
+  type GoInt,
 } from "@/tools/types/go-json";
 import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
 import { NewError } from "@/validation/error";
@@ -72,7 +73,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
   // bytes and up to 2^53-1).
   //
   // If zero, a default limit of 1MB is applied.
-  maxSize = 0;
+  maxSize: GoInt = 0;
 
   // Required will require the field value to be non-empty JSON value (aka.
   // not "null", `""`, "[]", "{}").
@@ -223,7 +224,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
   }
 
   // CalculateMaxBodySize implements the [MaxBodySizeCalculator] interface.
-  calculateMaxBodySize(): number {
+  calculateMaxBodySize(): GoInt {
     if (this.maxSize <= 0) {
       return DefaultJSONFieldMaxSize;
     }
@@ -256,7 +257,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
         hidden: (v) => (this.hidden = v as boolean),
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
-        maxSize: (v) => (this.maxSize = v as number),
+        maxSize: (v) => (this.maxSize = v as GoInt),
         required: (v) => (this.required = v as boolean),
       },
       {
@@ -266,7 +267,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
         hidden: boolType,
         presentable: boolType,
         help: stringType,
-        maxSize: intType,
+        maxSize: int64Type,
         required: boolType,
       },
       () => Object.assign(this, new JSONField()),

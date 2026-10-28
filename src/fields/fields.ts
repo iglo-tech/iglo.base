@@ -3,8 +3,7 @@
 //
 // The field type → constructor table. Upstream's map is open for Go code
 // to register custom fields; here it is a fixed table of upstream's types,
-// with no way to add to it. The file, relation and password fields join it
-// with M1.5.
+// with no way to add to it. The file field joins it with M1.5a.
 
 import { AutodateField, FieldTypeAutodate } from "@/fields/autodate";
 import { BoolField, FieldTypeBool } from "@/fields/bool";
@@ -15,6 +14,8 @@ import type { Field } from "@/fields/field";
 import { FieldTypeGeoPoint, GeoPointField } from "@/fields/geo-point";
 import { FieldTypeJSON, JSONField } from "@/fields/json";
 import { FieldTypeNumber, NumberField } from "@/fields/number";
+import { FieldTypePassword, PasswordField } from "@/fields/password";
+import { FieldTypeRelation, RelationField } from "@/fields/relation";
 import { FieldTypeSelect, SelectField } from "@/fields/select";
 import { FieldTypeText, TextField } from "@/fields/text";
 import { FieldTypeURL, URLField } from "@/fields/url";
@@ -36,6 +37,8 @@ export const Fields: Readonly<Record<string, FieldFactoryFunc>> = Object.freeze(
   [FieldTypeSelect]: () => new SelectField(),
   [FieldTypeJSON]: () => new JSONField(),
   [FieldTypeGeoPoint]: () => new GeoPointField(),
+  [FieldTypeRelation]: () => new RelationField(),
+  [FieldTypePassword]: () => new PasswordField(),
 });
 
 // the factory of a field type, or undefined for an unknown type (Go's

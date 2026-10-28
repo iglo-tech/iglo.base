@@ -118,12 +118,23 @@ export class TestCollection implements FieldCollection {
   name: string;
   type: string;
   fields: TestFieldsList;
+  // BaseModel's lastSavedPK: "" while the collection is new
+  savedPK = "";
 
   constructor(type: string, name: string, id = "", fields: TestFieldsList = new TestFieldsList()) {
     this.type = type;
     this.name = name;
     this.id = id === "" ? "pbc_" + crc32Checksum(type + name) : id;
     this.fields = fields;
+  }
+
+  isNew(): boolean {
+    return this.savedPK === "";
+  }
+
+  // PostScan/MarkAsNotNew: marks the collection as saved with its id
+  markAsNotNew(): void {
+    this.savedPK = this.id;
   }
 }
 
@@ -273,7 +284,9 @@ export function fixedClock(iso: string): Clock {
 // tests.NewTestApp: a copy of the vendored fixture opened with src/db.
 // Collections are read from its _collections table on every call, as
 // upstream's FindCollectionByNameOrId does (fields of the types not ported
-// yet are skipped).
+// yet are skipped). There is no collections cache:
+// FindCachedCollectionByNameOrId reads the table too, as upstream does
+// before the cache is loaded.
 export class TestApp implements FieldApp {
   private constructor(
     private readonly dbs: Databases,
@@ -288,6 +301,11 @@ export class TestApp implements FieldApp {
     const root = mkdtempSync(join(tmpdir(), "iglo-base-fields-"));
     const dataDir = join(root, "pb_data");
     copyDataDir(fixtureDir, dataDir);
+    return TestApp.openDir(dataDir, clock);
+  }
+
+  // an app on an existing pb_data directory (not copied)
+  static openDir(dataDir: string, clock: Clock = { now: () => new Date() }): TestApp {
     return new TestApp(Databases.open({ dataDir }), clock);
   }
 
@@ -319,7 +337,13 @@ export class TestApp implements FieldApp {
       field.unmarshalJSON(marshal(data));
       fields.add(field);
     }
-    return new TestCollection(type, name, id, fields);
+    const collection = new TestCollection(type, name, id, fields);
+    collection.markAsNotNew();
+    return collection;
+  }
+
+  findCachedCollectionByNameOrId(nameOrId: string): TestCollection {
+    return this.findCollectionByNameOrId(nameOrId);
   }
 
   // FindFirstRecordByFilter(collection, "id != ''"): the first record id
@@ -344,6 +368,9 @@ export function noDBApp(clock: Clock = { now: () => new Date() }): FieldApp {
     },
     clock,
     findCollectionByNameOrId(nameOrId: string): FieldCollection {
+      throw new Error(`no collection ${JSON.stringify(nameOrId)}`);
+    },
+    findCachedCollectionByNameOrId(nameOrId: string): FieldCollection {
       throw new Error(`no collection ${JSON.stringify(nameOrId)}`);
     },
   };

@@ -15,7 +15,15 @@ import {
   type SetterFunc,
 } from "@/fields/field";
 import { subtractSlice, toUniqueStringSlice } from "@/tools/list/list";
-import { boolType, intType, sliceOf, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import {
+  boolType,
+  intType,
+  maxGoInt,
+  sliceOf,
+  stringType,
+  unmarshalStruct,
+  type GoInt,
+} from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
@@ -92,7 +100,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
   //
   // For multiple select the value must be > 1, otherwise fallbacks to
   // single (default).
-  maxSelect = 0;
+  maxSelect: GoInt = 0;
 
   // Required will require the field value to be non-empty.
   required = false;
@@ -207,7 +215,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
       return null; // nothing to check
     }
 
-    const maxSelect = Math.max(this.maxSelect, 1);
+    const maxSelect = maxGoInt(this.maxSelect, 1);
 
     // check max selected items
     if (normalizedVal.length > maxSelect) {
@@ -312,7 +320,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
         values: (v) => (this.values = (v as string[] | undefined) ?? []),
-        maxSelect: (v) => (this.maxSelect = v as number),
+        maxSelect: (v) => (this.maxSelect = v as GoInt),
         required: (v) => (this.required = v as boolean),
       },
       {

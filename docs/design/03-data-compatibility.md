@@ -82,7 +82,7 @@ Each collection has a table named after it (a view for `view` collections), with
 | Booleans | `0`/`1` |
 | Multi-value fields | JSON arrays, normalized as upstream does when `maxSelect` changes |
 | `json` fields | raw JSON text, stored as received after validation. Never parsed and re-serialized, because `JSON.parse` loses large-number precision and reorders integer-like keys |
-| Passwords | bcrypt, upstream's cost (`cost` option, default 10). Bun's `Bun.password.verify` accepts Go's `$2a$` hashes (checked against upstream's fixture). New hashes use `$2b$`; Go's bcrypt accepts that prefix, and the round-trip test proves it. Passwords are capped at 71 bytes as upstream, which also avoids Bun's long-password pre-hashing |
+| Passwords | bcrypt. New hashes are written as `$2a$` with the field's `cost` (default 10), computed by `Bun.password` (which writes `$2b$`; only the prefix differs). Stored hashes are parsed with Go's rules (`golang.org/x/crypto/bcrypt`: a version byte up to `2` with an optional minor byte, two cost digits, a 22-character salt, at least 31 hash characters with any bytes after them ignored). They are verified with `Bun.password` after normalization to the canonical `$2b$` form, or, for forms `Bun.password` cannot take (a salt with `\r` or `\n`, which Go's base64 decoder skips, so it decodes to fewer than 16 bytes), with the ported Go bcrypt in `src/tools/crypto/` and a constant-time comparison. The field's `max` is 71 characters (runes) by default and at most 71; hashing refuses passwords over 72 bytes (`ErrPasswordTooLong`), and verification uses only the first 72 bytes, as Go does |
 | `tokenKey` | random string per auth record, part of every token signature |
 
 ## Migrations

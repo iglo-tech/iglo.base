@@ -8,6 +8,9 @@ import {
   InterceptorActionValidate,
 } from "@/fields/field";
 import { FieldTypeText, TextField } from "@/fields/text";
+import { newBadRequestError } from "@/server/error";
+import { Errors } from "@/validation/error";
+import { marshal } from "@/tools/types/go-json";
 
 import {
   TestApp,
@@ -521,4 +524,59 @@ describe("TestTextFieldFindSetter", () => {
       expect(record.getString(s.field.name)).toBe(s.expected);
     });
   }
+});
+
+// Go int settings above 2^53 keep their exact value (a bigint outside the
+// safe range): in the stored JSON, comparisons and error params/messages.
+const largeIntValueErrors = (err: Error | null): string =>
+  err === null ? "null" : marshal(newBadRequestError("", new Errors({ test: err })).data);
+
+const loadLargeInt = (settings: string): TextField => {
+  const field = new TextField();
+  field.unmarshalJSON(`{"id":"test","name":"test",${settings}}`);
+  return field;
+};
+
+describe("TextField large integers", () => {
+  const app = noDBApp();
+
+  const settingsErrors = (field: TextField): string | null => {
+    const collection = newBaseCollection("test_collection");
+    collection.fields.add(field);
+    const err = field.validateSettings(app, collection);
+    return err === null ? null : marshal(newBadRequestError("", err).data);
+  };
+
+  test("min/max keep their exact values", () => {
+    const field = loadLargeInt(`"min":9007199254740993,"max":9223372036854775807`);
+    expect(field.marshalJSON()).toContain(`"min":9007199254740993,"max":9223372036854775807,`);
+    expect(settingsErrors(field)).toBe(
+      `{"max":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 9007199254740991.","params":{"threshold":9007199254740991}},"min":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 9007199254740991.","params":{"threshold":9007199254740991}}}`,
+    );
+
+    // max is compared with the exact min
+    const below = loadLargeInt(`"min":9007199254740992,"max":9007199254740991`);
+    expect(settingsErrors(below)).toBe(
+      `{"max":{"code":"validation_min_greater_equal_than_required","message":"Must be no less than 9007199254740992.","params":{"threshold":9007199254740992}},"min":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 9007199254740991.","params":{"threshold":9007199254740991}}}`,
+    );
+  });
+
+  test("out of int64 range is a decode error", () => {
+    expect(() => loadLargeInt(`"max":9223372036854775808`)).toThrow(
+      "json: cannot unmarshal JSON number 9223372036854775808 into Go int: value out of range",
+    );
+  });
+
+  test("value limits use the exact settings", () => {
+    const collection = newBaseCollection("test_collection");
+    const record = new TestRecord(collection);
+    record.setRaw("test", "abc");
+    expect(
+      largeIntValueErrors(loadLargeInt(`"min":9007199254740993`).validateValue(app, record)),
+    ).toBe(
+      `{"test":{"code":"validation_min_text_constraint","message":"Must be at least 9007199254740993 character(s).","params":{"min":9007199254740993}}}`,
+    );
+    // a negative max disables the max check
+    expect(loadLargeInt(`"max":-9223372036854775808`).validateValue(app, record)).toBeNull();
+  });
 });

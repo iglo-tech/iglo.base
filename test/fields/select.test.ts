@@ -3,6 +3,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { FieldTypeSelect, SelectField } from "@/fields/select";
+import { newBadRequestError } from "@/server/error";
+import { Errors } from "@/validation/error";
 import { marshal } from "@/tools/types/go-json";
 
 import {
@@ -385,4 +387,48 @@ describe("TestSelectFieldFindSetter", () => {
       expect(marshal(record.get(s.field.getName()))).toBe(s.expected);
     });
   }
+});
+
+// Go int settings above 2^53 keep their exact value (a bigint outside the
+// safe range): in the stored JSON, comparisons and error params/messages.
+const largeIntValueErrors = (err: Error | null): string =>
+  err === null ? "null" : marshal(newBadRequestError("", new Errors({ test: err })).data);
+
+const loadLargeInt = (settings: string): SelectField => {
+  const field = new SelectField();
+  field.unmarshalJSON(`{"id":"test","name":"test","values":["a","b"],${settings}}`);
+  return field;
+};
+
+describe("SelectField large integers", () => {
+  const app = noDBApp();
+
+  test("maxSelect keeps its exact value", () => {
+    const field = loadLargeInt(`"maxSelect":9007199254740993`);
+    expect(field.marshalJSON()).toContain(`"maxSelect":9007199254740993,`);
+    const collection = newBaseCollection("test_collection");
+    collection.fields.add(field);
+    expect(marshal(newBadRequestError("", field.validateSettings(app, collection)).data)).toBe(
+      `{"maxSelect":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 2.","params":{"threshold":2}}}`,
+    );
+  });
+
+  test("out of int64 range is a decode error", () => {
+    expect(() => loadLargeInt(`"maxSelect":-9223372036854775809`)).toThrow(
+      "json: cannot unmarshal JSON number -9223372036854775809 into Go int: value out of range",
+    );
+  });
+
+  test("max(maxSelect, 1) uses the exact value", () => {
+    const record = new TestRecord(newBaseCollection("test_collection"));
+    record.setRaw("test", ["a", "b"]);
+    expect(loadLargeInt(`"maxSelect":9223372036854775807`).validateValue(app, record)).toBeNull();
+    expect(
+      largeIntValueErrors(
+        loadLargeInt(`"maxSelect":-9223372036854775808`).validateValue(app, record),
+      ),
+    ).toBe(
+      `{"test":{"code":"validation_too_many_values","message":"Select no more than 1.","params":{"maxSelect":1}}}`,
+    );
+  });
 });
