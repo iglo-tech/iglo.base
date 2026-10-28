@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8 | worker | `task/M1.8-records` | 0 | [Brief](briefs/M1.8.md). The first Terra worker stopped after 25 s with no code (no limit hit); retry with a sharper preamble ([brief, Retry section](briefs/M1.8.md)) started 2026-10-28. A second failure marks M1.8 blocked |
+| M1.8 | worker | `task/M1.8-records` | 0 | [Brief](briefs/M1.8.md). The first Terra worker stopped after 25 s with no code (no limit hit); retry with a sharper preamble ([brief, Retry section](briefs/M1.8.md)) started 2026-10-28. Its first attempt could not create the branch, which the first worker's stale worktree still held (empty, never pushed); the lead detached that worktree, deleted the local branch and restarted the same retry. A second failure of the retry marks M1.8 blocked |
 
 ## Done
 
