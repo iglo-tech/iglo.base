@@ -73,7 +73,7 @@ function q(params: Record<string, string>): string {
 }
 
 const f = (filter: string): string => q({ filter, sort: "name" });
-const s = (sort: string): string => q({ sort });
+const sortQuery = (sort: string): string => q({ sort });
 
 function exprs(n: number): string {
   return Array.from({ length: n }, (_, i) => `name != 'n${i}'`).join(" && ");
@@ -171,21 +171,21 @@ const cases: [string, string, boolean?][] = [
   ["3500 bytes", f("name != '" + "a".repeat(3489) + "'")],
   ["3501 bytes", f("name != '" + "a".repeat(3490) + "'")],
   // sort
-  ["sort name", s("name")],
-  ["sort -name", s("-name")],
-  ["sort created", s("-created,name")],
-  ["sort rowid", s("@rowid")],
-  ["sort -rowid", s("-@rowid")],
-  ["sort random", s("@random"), true],
-  ["sort unknown", s("unknown")],
-  ["sort three", s("type,-name,+id")],
-  ["sort 8", s("type,name,id,created,updated,system,-name,-type")],
-  ["sort 9", s("type,name,id,created,updated,system,-name,-type,id")],
-  ["sort spaces", s(" name , -type ")],
-  ["sort empty name", s("-")],
-  ["sort null", s("null")],
-  ["sort empty item", s("name,,type")],
-  ["sort long", s("a".repeat(256))],
+  ["sort name", sortQuery("name")],
+  ["sort -name", sortQuery("-name")],
+  ["sort created", sortQuery("-created,name")],
+  ["sort rowid", sortQuery("@rowid")],
+  ["sort -rowid", sortQuery("-@rowid")],
+  ["sort random", sortQuery("@random"), true],
+  ["sort unknown", sortQuery("unknown")],
+  ["sort three", sortQuery("type,-name,+id")],
+  ["sort 8", sortQuery("type,name,id,created,updated,system,-name,-type")],
+  ["sort 9", sortQuery("type,name,id,created,updated,system,-name,-type,id")],
+  ["sort spaces", sortQuery(" name , -type ")],
+  ["sort empty name", sortQuery("-")],
+  ["sort null", sortQuery("null")],
+  ["sort empty item", sortQuery("name,,type")],
+  ["sort long", sortQuery("a".repeat(256))],
   // pages
   ["page 2", q({ page: "2", perPage: "3", sort: "name" })],
   ["page 0", q({ page: "0", perPage: "4", sort: "name" })],
