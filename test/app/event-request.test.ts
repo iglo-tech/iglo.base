@@ -1,7 +1,6 @@
 // Upstream: core/event_request_test.go
 //
-// Records and settings do not exist yet: the auth record is a stand-in with
-// isSuperuser() and fresh(), and the trusted proxy scenarios of
+// Settings do not exist yet: the trusted proxy scenarios of
 // TestEventRequestRealIP move to M5.7 (settings.TrustedProxy).
 
 import { describe, expect, test } from "bun:test";
@@ -12,24 +11,17 @@ import {
   RequestEventKeyInfoContext,
   RequestInfo,
   snakecase,
-  type AuthRecord,
 } from "@/app/event-request";
+import { newAuthCollection } from "@/collections/collection-model";
+import { newRecord, type Record } from "@/records/record-model";
 import { ResponseWriter } from "@/server/router";
 import { newTestRequest, type TestRequest } from "@test/support/router";
 
-class TestRecord implements AuthRecord {
-  constructor(
-    public id: string,
-    readonly collectionName: string,
-  ) {}
-
-  isSuperuser(): boolean {
-    return this.collectionName === "_superusers";
-  }
-
-  fresh(): TestRecord {
-    return new TestRecord(this.id, this.collectionName);
-  }
+// an auth record of a new auth collection with the given name
+function authRecord(id: string, collectionName: string): Record {
+  const record = newRecord(newAuthCollection(collectionName));
+  record.id = id;
+  return record;
 }
 
 const app = newApp({
@@ -57,7 +49,7 @@ function plain(info: RequestInfo): unknown {
     query: info.query,
     headers: info.headers,
     body: info.body,
-    auth: (info.auth as TestRecord | undefined)?.id,
+    auth: info.auth?.id,
     method: info.method,
     context: info.context,
   };
@@ -73,10 +65,10 @@ test("RealIP without trusted proxy headers is the remote IP", () => {
 });
 
 describe("HasSuperuserAuth", () => {
-  const scenarios: [string, AuthRecord | undefined, boolean][] = [
+  const scenarios: [string, Record | undefined, boolean][] = [
     ["nil record", undefined, false],
-    ["regular user record", new TestRecord("u", "users"), false],
-    ["superuser record", new TestRecord("s", "_superusers"), true],
+    ["regular user record", authRecord("u", "users"), false],
+    ["superuser record", authRecord("s", "_superusers"), true],
   ];
   for (const [name, record, expected] of scenarios) {
     test(name, () => {
@@ -93,7 +85,7 @@ test("RequestInfo", async () => {
     headers: { ...testRequest.headers, "x-test": "test" },
   });
   e.set(RequestEventKeyInfoContext, "test");
-  e.auth = new TestRecord("user1", "users");
+  e.auth = authRecord("user1", "users");
 
   // init
   let info = await e.requestInfo();
@@ -109,7 +101,7 @@ test("RequestInfo", async () => {
 
   // change user and context
   e.set(RequestEventKeyInfoContext, "test2");
-  e.auth = new TestRecord("user2", "users");
+  e.auth = authRecord("user2", "users");
 
   info = await e.requestInfo();
   expect(plain(info as RequestInfo)).toEqual({
@@ -129,10 +121,10 @@ test("RequestInfo fails with the body binding error", async () => {
 
 describe("RequestInfo.HasSuperuserAuth", () => {
   const e = newEvent(testRequest);
-  const scenarios: [string, AuthRecord | undefined, boolean][] = [
+  const scenarios: [string, Record | undefined, boolean][] = [
     ["nil record", undefined, false],
-    ["regular user record", new TestRecord("u", "users"), false],
-    ["superuser record", new TestRecord("s", "_superusers"), true],
+    ["regular user record", authRecord("u", "users"), false],
+    ["superuser record", authRecord("s", "_superusers"), true],
   ];
   for (const [name, record, expected] of scenarios) {
     test(name, async () => {
@@ -145,7 +137,7 @@ describe("RequestInfo.HasSuperuserAuth", () => {
 
 test("RequestInfo.Clone", async () => {
   const e = newEvent(testRequest);
-  e.auth = new TestRecord("user1", "users");
+  e.auth = authRecord("user1", "users");
 
   const info = (await e.requestInfo()) as RequestInfo;
   const clone = info.clone();
@@ -153,8 +145,8 @@ test("RequestInfo.Clone", async () => {
   // modify the clone fields to ensure that it is a shallow copy
   clone.headers.new_header = "test";
   clone.query.new_query = "test";
-  (clone.body as Record<string, unknown>).new_body = "test";
-  (clone.auth as TestRecord).id = "user2"; // should be a fresh copy of the record
+  (clone.body as { [key: string]: unknown }).new_body = "test";
+  (clone.auth as Record).id = "user2"; // should be a fresh copy of the record
 
   expect(plain(info)).toEqual({
     query: { q1: "123", q2: "456" },
