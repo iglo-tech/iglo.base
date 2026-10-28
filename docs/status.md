@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-28
 
-Active: M2.2 (council round 2).
+Active: M2.2 (council round 3).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.2 | council | [#24](https://github.com/iglo-tech/iglo.base/pull/24) | 2 | [Brief](briefs/M2.2.md). Round 1 at `9bd5b5d`: Sol APPROVE, Opus CHANGES (one of upstream's 63 UpdateQuery cases missing; misplaced sentence in `02-architecture.md`), fixed by the lead at `12c8d80`. Round 2 started at `12c8d80` |
+| M2.2 | council | [#24](https://github.com/iglo-tech/iglo.base/pull/24) | 3 | [Brief](briefs/M2.2.md). Round 1 at `9bd5b5d`: Sol APPROVE, Opus CHANGES (one of upstream's 63 UpdateQuery cases missing; misplaced sentence in `02-architecture.md`), fixed by the lead at `12c8d80`. Round 2 at `12c8d80`: Opus APPROVE, Sol CHANGES (`05-rules-and-filters.md` said `:isset` works on `@request.context`/`@request.method`; upstream rejects any modifier there), fixed by the lead at `53ee1c1` (docs only). Round 3 started at `53ee1c1` |
 
 ## Done
 
