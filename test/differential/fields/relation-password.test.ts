@@ -66,10 +66,14 @@ import {
 import { TestApp, TestCollection, TestRecord, newBaseCollection } from "@test/support/fields";
 import { startUpstream, type UpstreamServer } from "@test/support/upstream";
 
+// the hooks create collections and records through upstream and start and
+// stop it, which is slow on the macOS runners
+const hookTimeout = 60_000;
+
 const email = "fields@example.com";
 const password = "1234567890";
 
-let root: string;
+let root: string | undefined;
 let dataDir: string;
 let upstream: UpstreamServer | undefined;
 let token: string;
@@ -161,13 +165,15 @@ beforeAll(async () => {
   placeholders.set("$T", targets).set("$V", view).set("$U", users);
 
   app = TestApp.openDir(dataDir);
-});
+}, hookTimeout);
 
 afterAll(async () => {
   app?.cleanup();
   await upstream?.stop();
-  rmSync(root, { recursive: true, force: true });
-});
+  if (root !== undefined) {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, hookTimeout);
 
 function resolve(def: FieldDef): FieldDef {
   const collectionId = def.collectionId;
@@ -495,7 +501,7 @@ describe("values", () => {
       const id = await create("/api/collections", { name, type: "base", fields: defs });
       valueModels.set(name, { model: collection, id });
     }
-  });
+  }, hookTimeout);
 
   for (const [i, [collectionName, key, valueJSON]] of valueCases.entries()) {
     test(`${i} ${collectionName}.${key} = ${valueJSON.slice(0, 60)}`, async () => {
@@ -578,7 +584,14 @@ function goHash(cost: number, salt: string, plain: string): string {
 
 describe("stored data", () => {
   const authCases: AuthCase[] = [];
-  let db: Database;
+  let storedDb: Database | undefined;
+  // the database read after upstream stops (set by the setup hook)
+  const db = (): Database => {
+    if (storedDb === undefined) {
+      throw new Error("the setup hook did not finish");
+    }
+    return storedDb;
+  };
 
   // "known" users with an upstream hash of their password, created before
   // upstream stops
@@ -600,17 +613,17 @@ describe("stored data", () => {
     upstream = undefined;
     // read-write: a read-only connection cannot create the WAL index (-shm)
     // on macOS; this is a temporary copy that no server uses any more
-    db = new Database(join(dataDir, "data.db"));
-  });
+    storedDb = new Database(join(dataDir, "data.db"));
+  }, hookTimeout);
 
   afterAll(() => {
-    db.close();
+    storedDb?.close();
   });
 
   test("_collections.fields of the accepted collections", () => {
     expect(createdCollections.length).toBe(validSettings.length);
     for (const collection of createdCollections) {
-      const row = db
+      const row = db()
         .query("SELECT fields FROM _collections WHERE name = ?")
         .get(collection.name) as { fields: string };
       expect({ name: collection.name, fields: row.fields }).toEqual({
@@ -623,7 +636,7 @@ describe("stored data", () => {
   test("record columns", () => {
     expect(storedRecords.length).toBeGreaterThan(30);
     for (const { collection, id, columns, passwords } of storedRecords) {
-      const stored = readColumns(db, collection.name, Object.keys(columns), id);
+      const stored = readColumns(db(), collection.name, Object.keys(columns), id);
       expect({ collection: collection.name, id, columns: stored }).toEqual({
         collection: collection.name,
         id,
@@ -632,7 +645,7 @@ describe("stored data", () => {
 
       for (const [name, [plain, modelHash]] of Object.entries(passwords)) {
         const field = collection.fields.getByName(name) as PasswordField;
-        const [type, upstreamHash] = readColumns(db, collection.name, [name], id)[name] as [
+        const [type, upstreamHash] = readColumns(db(), collection.name, [name], id)[name] as [
           string,
           string,
         ];
@@ -656,7 +669,9 @@ describe("stored data", () => {
   });
 
   test("upstream's hashes verify with PasswordFieldValue.validate", () => {
-    const rows = db.query("SELECT email, password FROM users WHERE email LIKE 'known%'").all() as {
+    const rows = db()
+      .query("SELECT email, password FROM users WHERE email LIKE 'known%'")
+      .all() as {
       email: string;
       password: string;
     }[];
@@ -670,7 +685,7 @@ describe("stored data", () => {
   });
 
   test("hashes written to upstream's data", () => {
-    const users = db.query("SELECT fields FROM _collections WHERE name = 'users'").get() as {
+    const users = db().query("SELECT fields FROM _collections WHERE name = 'users'").get() as {
       fields: string;
     };
     const usersCollection = new TestCollection("auth", "users", "users");
@@ -681,7 +696,7 @@ describe("stored data", () => {
     }
     const passwordField = usersCollection.fields.getByName("password") as PasswordField;
 
-    const rows = db
+    const rows = db()
       .query("SELECT email, password FROM users WHERE email LIKE 'known%' ORDER BY email")
       .all() as { email: string; password: string }[];
     const upstreamHash = (rows[0] as { password: string }).password;
@@ -738,7 +753,7 @@ describe("stored data", () => {
     ];
     expect(variants.length).toBe(knownUsers);
 
-    const update = db.prepare("UPDATE users SET password = ? WHERE email = ?");
+    const update = db().prepare("UPDATE users SET password = ? WHERE email = ?");
     for (const [i, [h, plain]] of variants.entries()) {
       const { email: userEmail } = rows[i] as { email: string };
       update.run(h, userEmail);
@@ -750,35 +765,40 @@ describe("stored data", () => {
     }
   });
 
-  test("upstream authenticates exactly where PasswordFieldValue.validate accepts", async () => {
-    expect(authCases.length).toBe(knownUsers);
-    db.close();
-    db = new Database(":memory:");
-    upstream = await startUpstream({ dataDir });
+  test(
+    "upstream authenticates exactly where PasswordFieldValue.validate accepts",
+    async () => {
+      expect(authCases.length).toBe(knownUsers);
+      db().close();
+      storedDb = new Database(":memory:");
+      upstream = await startUpstream({ dataDir });
 
-    const results: { email: string; hash: string; upstream: number; iglo: boolean }[] = [];
-    for (const c of authCases) {
-      const res = await request(
-        "POST",
-        "/api/collections/users/auth-with-password",
-        JSON.stringify({ identity: c.email, password: c.password }),
-        false,
+      const results: { email: string; hash: string; upstream: number; iglo: boolean }[] = [];
+      for (const c of authCases) {
+        const res = await request(
+          "POST",
+          "/api/collections/users/auth-with-password",
+          JSON.stringify({ identity: c.email, password: c.password }),
+          false,
+        );
+        results.push({
+          email: c.email,
+          hash: c.hash,
+          upstream: res.status,
+          iglo: new PasswordFieldValue({ hash: c.hash }).validate(c.password),
+        });
+      }
+      expect(results.map((r) => ({ ...r, upstream: r.upstream === 200 }))).toEqual(
+        results.map((r) => ({ ...r, upstream: r.iglo })),
       );
-      results.push({
-        email: c.email,
-        hash: c.hash,
-        upstream: res.status,
-        iglo: new PasswordFieldValue({ hash: c.hash }).validate(c.password),
-      });
-    }
-    expect(results.map((r) => ({ ...r, upstream: r.upstream === 200 }))).toEqual(
-      results.map((r) => ({ ...r, upstream: r.iglo })),
-    );
-    // both kinds of answers are covered
-    expect(results.filter((r) => r.iglo).length).toBeGreaterThan(8);
-    expect(results.filter((r) => !r.iglo).length).toBeGreaterThan(2);
-    expect(results.every((r) => r.upstream === 200 || r.upstream === 400)).toBe(true);
-  });
+      // both kinds of answers are covered
+      expect(results.filter((r) => r.iglo).length).toBeGreaterThan(8);
+      expect(results.filter((r) => !r.iglo).length).toBeGreaterThan(2);
+      expect(results.every((r) => r.upstream === 200 || r.upstream === 400)).toBe(true);
+      // it starts upstream and authenticates against bcrypt hashes
+    },
+    hookTimeout,
+  );
 });
 
 test("the sample is large enough", () => {
