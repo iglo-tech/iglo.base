@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5b | worker | `task/M1.5b-file-field` | 0 | [Brief](briefs/M1.5b.md). Opus worker started 2026-10-28 |
+| M1.5b | worker | `task/M1.5b-file-field` | 0 | [Brief](briefs/M1.5b.md). Opus worker started 2026-10-28; its first turn ended before pushing (reference suite still running), so the lead sent it back to finish in the same worktree (not counted as a retry) |
 
 ## Done
 
