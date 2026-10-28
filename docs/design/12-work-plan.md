@@ -112,10 +112,11 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M1.2 | System schema and migrations: fresh-install schema, `_migrations` rows, open-time checks and refusal message | `migrations/`, `core/migrations*.go` | M0.4 | `sqlite_schema` of a fresh install equals upstream's; upstream v0.41.0 opens it with nothing pending; v0.40.x data opens; older data is refused |
 | M1.3 | Settings: model, defaults, validation, encryption, `_params` | `core/settings*.go` | M1.1, M1.1c, M1.2 | Settings written by either server read back identically, encrypted and plain |
 | M1.4 | Simple fields: text, editor, number, bool, email, url, date, autodate, select, json, geoPoint | `core/field_*.go` | M1.1, M1.1a, M1.1b, M1.1c | Ported field tests pass |
-| M1.5 | Complex fields: file, relation, password | `core/field_file.go`, `field_relation.go`, `field_password.go` | M1.4 | Ported field tests pass |
-| M1.6 | Collections model, options (including auth options), validation, import | `core/collection_model*.go`, `collection_validate.go`, `collection_import.go` | M1.4 | Ported collection tests pass |
+| M1.5 | Complex fields: relation and password (bcrypt hashes in Go's `$2a$` form) | `core/field_relation.go`, `field_password.go` | M1.4 | Ported field tests pass; password hashes written by either server verify in the other |
+| M1.5a | File field: settings, value normalization and modifiers, upload size and MIME checks (`core/validators/file.go`, the `filesystem.File` model and the MIME sniffing it needs); storing and deleting files stays with M3.2 | `core/field_file.go`, `core/validators/file.go`, `tools/filesystem/file.go`, `gabriel-vasile/mimetype` (used subset) | M1.5 | Ported field and validator tests pass; the same uploads are accepted or rejected as by the upstream binary |
+| M1.6 | Collections model, options (including auth options), validation, import | `core/collection_model*.go`, `collection_validate.go`, `collection_import.go` | M1.5, M1.5a | Ported collection tests pass |
 | M1.7 | Table sync and view collections | `core/collection_record_table_sync.go`, `core/view.go` | M1.6 | Same `sqlite_schema` and `_collections` rows as upstream for the same create, update and delete sequence |
-| M1.8 | Record model and queries (internal CRUD, no HTTP) | `core/record_model*.go`, `core/record_query*.go` | M1.5, M1.7 | Records written internally read back identically in upstream |
+| M1.8 | Record model and queries (internal CRUD, no HTTP) | `core/record_model*.go`, `core/record_query*.go` | M1.5a, M1.7 | Records written internally read back identically in upstream |
 
 ### M2: read path
 
@@ -133,7 +134,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | ID | Task | Upstream | Depends on | Acceptance |
 |---|---|---|---|---|
 | M3.1 | Records create, update, delete: validation messages, `+`/`-` modifiers, cascade delete, create/update/delete rules | `apis/record_crud.go` (write), `forms/record_upsert.go` | M2.4 | Remaining `record_crud_test.go` scenarios (145 in the file) and the 16 `record_crud_superuser_test.go` scenarios pass |
-| M3.2 | Local files: blob store, `.attrs`, uploads, file names, deletion worker | `tools/filesystem` (local), `core/field_file.go` save path | M1.5, M0.8 | Files and `.attrs` written by iglo.base are served by upstream |
+| M3.2 | Local files: blob store, `.attrs`, uploads, file names, deletion worker | `tools/filesystem` (local), `core/field_file.go` save path | M1.5a, M0.8 | Files and `.attrs` written by iglo.base are served by upstream |
 | M3.3 | Batch API | `apis/batch.go` | M3.1 | 15 batch scenarios pass |
 | M3.4 | Collections write, import, truncate, view dry run | `apis/collection.go` (write), `apis/collection_import.go` | M2.5, M1.7 | Remaining collection scenarios and 8 import scenarios pass |
 | M3.5 | Settings API (S3 and email test endpoints stubbed until M4.4 and M5.4) | `apis/settings.go` | M1.3, M0.3 | Settings scenarios pass except the test endpoints |
@@ -197,11 +198,11 @@ M7.4 is the only task that touches production data. It is run with the owner, ne
 ```text
 M0.1 ─ M0.2 ─ M0.3 ─ M0.4 ─ M0.5          (serial, then spikes M0.6–M0.8 in parallel)
 M1.1 ─┬─ M1.2 ─ M1.3
-      └─ M1.1a ─ M1.1b ─ M1.1c ─ M1.4 ─ M1.5, M1.6 ─ M1.7 ─ M1.8
+      └─ M1.1a ─ M1.1b ─ M1.1c ─ M1.4 ─ M1.5 ─ M1.5a ─ M1.6 ─ M1.7 ─ M1.8
 M2.1 ─ M2.2 ─ M2.4 ─ M2.6     M2.3, M2.5 alongside
 M3.1 ─ M3.3, M4.1 …           M3.2, M3.4, M3.5 alongside; M3.6 when M3.1 and M3.2 are in
 M4 and M5 run in parallel once M3.1 is merged; M6.1 can start any time after M0.1
 M7 last
 ```
 
-The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.6 → M1.7 → M1.8 → M2.2 → M2.4 → M3.1. Everything else is scheduled around it.
+The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.5 → M1.5a → M1.6 → M1.7 → M1.8 → M2.2 → M2.4 → M3.1. Everything else is scheduled around it.

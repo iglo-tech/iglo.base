@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan (M1.6 is next on the critical path; M1.5 and M1.2 are also unblocked) |
+| M1.5 | worker | `task/M1.5-relation-password-fields` | 0 | [Brief](briefs/M1.5.md). Opus worker started 2026-10-28 |
 
 ## Done
 
@@ -80,6 +80,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1c PR): the lead accepted the worker's open points. `Length` counts bytes, as ozzo's `LengthOfValue` does (the brief's "rune counts" was wrong; `RuneLength` counts runes). `src/server/error.ts` is unchanged, and the ported `Errors` extends its `ValidationErrors`. Go types are mapped by convention: `null` is a typed nil, a plain object is `map[string]any`, a JS `Map` holds validatable values, `Float64` marks a Go float64, and `DateTime` stands for `types.DateTime` and `time.Time`. Message templates support only `{{.name}}`. The new Go-derived files (`net/url`, `net/netip` parts) are named in the existing Go notice in `LICENSE`.
 - 2026-10-28 (M1.4 brief): fields live in `src/fields/` and use narrow record, collection and app interfaces declared there, which M1.6 and M1.8 implement. The field type→constructor map is a fixed internal table, not an extensible registry. Ported field tables are allowed as internal tests in `test/fields/`. The reference test compares field JSON, settings errors, value errors and stored values with the upstream binary.
 - 2026-10-28 (M1.4 round 1): Go's out-of-range float64→int64 conversion differs by CPU (amd64 gives -2^63, arm64 saturates). iglo.base follows the upstream binary for the CPU it runs on, not one architecture everywhere. M1.1's `src/tools/security/jwt.ts` still uses the amd64 rule; carried as a follow-up. Also carried: `src/tools/types/cast.ts` imports `parseGoFloat` from `src/server`.
+- 2026-10-28 (plan change, after M1.4): M1.6 needs the password field (auth collections) and the relation and file fields (collection validation and fixtures), so it now depends on M1.5. The old M1.5 (file, relation, password: about 1,500 Go lines plus 2,300 test lines, and the file field needs `filesystem.File`, `core/validators/file.go` and MIME sniffing) is split: M1.5 is relation and password, the new M1.5a is the file field without storage (M3.2 keeps storing and deleting files). M1.6 depends on M1.5 and M1.5a; M1.8 and M3.2 depend on M1.5a. The critical path is … → M1.4 → M1.5 → M1.5a → M1.6 → …
+- 2026-10-28 (M1.5 brief): password hashes are written with Bun.password in Go's `$2a$` form at the field's cost, and verification accepts what Go's bcrypt accepts. The relation field adds `findCachedCollectionByNameOrId` to M1.4's FieldApp interface.
 
 ## Paused until
 
