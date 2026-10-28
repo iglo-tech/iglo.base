@@ -252,6 +252,8 @@ describe("records read from data.db", () => {
       .from(collection.name)
       .where(new HashExp({ id }))
       .limit(1)
+      .build()
+      .withExactIntegers()
       .one();
     return newRecordFromNullStringMap(collection, nullStringMapFromRow(row));
   }

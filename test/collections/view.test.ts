@@ -751,6 +751,17 @@ describe("TestDryRunView", () => {
       expectFields: { id: "text" },
       expectSampleIds: ["a", "b", "c"],
     },
+    // not upstream's: a numeric id is cast to TEXT (normalizeViewQueryId),
+    // so its sample id is SQLite's text of the value
+    {
+      name: "numeric ids scanned as Go's driver gives them",
+      query:
+        "select id from (select 1000000 as id UNION ALL select 1000000.0 as id UNION ALL select 9223372036854775807 as id UNION ALL select 1.5e-7 as id)",
+      sampleSize: 10,
+      expectError: false,
+      expectFields: { id: "text" },
+      expectSampleIds: ["1000000", "1000000.0", "9223372036854775807", "1.5e-07"],
+    },
   ];
 
   for (const s of scenarios) {

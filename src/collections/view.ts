@@ -41,6 +41,7 @@ import { mustCompile } from "@/tools/regexp/regexp";
 import { pseudorandomString, randomString } from "@/tools/security/random";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import { bytesToText } from "@/tools/types/go-json";
+import { formatFloatV } from "@/validation/error";
 
 // SaveView creates (or updates already existing) persistent SQL view.
 //
@@ -207,7 +208,7 @@ export function dryRunView(
             (ms) => app.databases.sleep(ms),
             () => app.databases.now(),
           );
-          query.withExecHook((q, op) => retry(q, () => withDriverErrors(op)));
+          query.withExactIntegers().withExecHook((q, op) => retry(q, () => withDriverErrors(op)));
         })
         .all<Record<string, unknown>>(),
     );
@@ -235,8 +236,10 @@ export function dryRunView(
   return { fields, sample: records };
 }
 
-// a column value as dbx's NullStringMap scans it (database/sql's
-// conversion to a string; NULL is not Valid and gives "")
+// a column value as dbx's NullStringMap scans it, on a row read
+// withExactIntegers: Go's SQLite driver gives INTEGER as int64 (decimal)
+// and REAL as float64 (strconv.FormatFloat(f, 'g', -1, 64)); NULL is not
+// Valid and gives ""
 function nullStringText(v: unknown): string {
   if (v === null || v === undefined) {
     return "";
@@ -248,22 +251,9 @@ function nullStringText(v: unknown): string {
     return v.toString();
   }
   if (typeof v === "number") {
-    return Number.isInteger(v) ? String(v) : formatFloatG(v);
+    return formatFloatV(v);
   }
   return String(v);
-}
-
-// strconv.FormatFloat(f, 'g', -1, 64)
-function formatFloatG(f: number): string {
-  const exp = f === 0 ? 0 : Math.floor(Math.log10(Math.abs(f)));
-  if (exp < -4 || exp >= 21) {
-    // shortest digits in exponent form, with Go's two digit exponent
-    const [mantissa, e] = f.toExponential().split("e") as [string, string];
-    const sign = e.startsWith("-") ? "-" : "+";
-    const digits = e.replace(/^[+-]/, "");
-    return `${mantissa}e${sign}${digits.padStart(2, "0")}`;
-  }
-  return String(f);
 }
 
 // -------------------------------------------------------------------

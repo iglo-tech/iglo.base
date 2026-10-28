@@ -17,7 +17,8 @@
 //
 // newRecordFromNullStringMap reads a row as dbx scans it into a
 // NullStringMap: each column as database/sql converts it to a string
-// (nullStringMapFromRow), a NULL column not Valid.
+// (nullStringMapFromRow, on a row read withExactIntegers), a NULL column
+// not Valid.
 //
 // Not ported: registerRecordHooks and the save, validate and delete chain
 // (callFieldInterceptors on, M1.8c), HookTags (hooks only). GetUploadedFiles
@@ -88,10 +89,16 @@ export type DataMap = { [key: string]: unknown };
 // Valid). A column that is not in the map is not "ok".
 export type NullStringMap = { readonly [column: string]: string | null };
 
-// The NullStringMap dbx scans a row into: database/sql converts each
-// driver value to a string (integers in decimal, floats with
-// strconv.FormatFloat(f, 'g', -1, 64), text and blobs as their bytes,
-// booleans as "true"/"false"); NULL is not Valid.
+// The NullStringMap dbx scans a row into. Go's SQLite driver
+// (modernc.org/sqlite rows.go Next) returns each column by its storage
+// class: INTEGER as int64, REAL as float64, TEXT as string, BLOB as
+// []byte, NULL as nil; database/sql (convert.go asString) converts them
+// to strings: int64 in decimal, float64 with strconv.FormatFloat(f, 'g',
+// -1, 64), text and blobs as their bytes. NULL is not Valid.
+//
+// The row must be read withExactIntegers (src/db/dbx/query.ts), so that
+// every INTEGER value is a bigint and every number a REAL value: a narrowed
+// integer from 1e6 on would be formatted as a float ("1.234567e+06").
 export function nullStringMapFromRow(row: Row): NullStringMap {
   const out: { [column: string]: string | null } = {};
   for (const [column, v] of Object.entries(row)) {
@@ -100,16 +107,19 @@ export function nullStringMapFromRow(row: Row): NullStringMap {
   return out;
 }
 
-function nullStringText(v: unknown): string | null {
+// one column value as NullString scans it (null: not Valid)
+export function nullStringText(v: unknown): string | null {
   if (v === null || v === undefined) {
     return null;
   }
   if (typeof v === "string" || v instanceof Uint8Array) {
     return bytesToText(v);
   }
+  // INTEGER (int64)
   if (typeof v === "bigint") {
     return v.toString();
   }
+  // REAL (float64)
   if (typeof v === "number") {
     return formatFloatV(v);
   }
