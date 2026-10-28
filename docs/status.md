@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8 | worker | `task/M1.8-records` | 0 | [Brief](briefs/M1.8.md). Terra worker started 2026-10-28 |
+| M1.8 | worker | `task/M1.8-records` | 0 | [Brief](briefs/M1.8.md). The first Terra worker stopped after 25 s with no code (no limit hit); retry with a sharper preamble ([brief, Retry section](briefs/M1.8.md)) started 2026-10-28. A second failure marks M1.8 blocked |
 
 ## Done
 
