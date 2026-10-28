@@ -300,7 +300,11 @@ describe("collection validation against upstream", () => {
         res.status === 200
           ? { status: 200, body: "" }
           : { status: 400, body: sortedJSON(res.text) };
-      expect({ case: c.name, body, ...got }).toEqual({ case: c.name, body, ...expected });
+      expect({ case: c.name, payload: body, ...got }).toEqual({
+        case: c.name,
+        payload: body,
+        ...expected,
+      });
     };
 
     if (c.pending === undefined) {

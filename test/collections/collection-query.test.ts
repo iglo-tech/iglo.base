@@ -153,48 +153,48 @@ describe("TestFindCollectionByNameOrId", () => {
   }
 });
 
+function runFindCachedCollectionByNameOrId(withCache: boolean): void {
+  let expectedTotalQueries: number;
+
+  if (withCache) {
+    reloadCachedCollections(app);
+    expectedTotalQueries = 0;
+  } else {
+    app.store.reset();
+    expectedTotalQueries = nameOrIdScenarios.length;
+  }
+
+  totalQueries = 0;
+
+  for (const s of nameOrIdScenarios) {
+    let err: unknown = null;
+    let model = null;
+    try {
+      model = findCachedCollectionByNameOrId(app, s.nameOrId);
+    } catch (e) {
+      err = e;
+    }
+
+    expect({ nameOrId: s.nameOrId, hasErr: err !== null }).toEqual({
+      nameOrId: s.nameOrId,
+      hasErr: s.expectError,
+    });
+    if (err !== null) {
+      expect(isNoRowsError(err)).toBe(true);
+    }
+
+    if (model !== null) {
+      expect(model.id === s.nameOrId || equalFold(model.name, s.nameOrId)).toBe(true);
+    }
+  }
+
+  expect(totalQueries).toBe(expectedTotalQueries);
+}
+
 describe("TestFindCachedCollectionByNameOrId", () => {
-  const run = (withCache: boolean) => {
-    let expectedTotalQueries: number;
+  test("with cache", () => runFindCachedCollectionByNameOrId(true));
 
-    if (withCache) {
-      reloadCachedCollections(app);
-      expectedTotalQueries = 0;
-    } else {
-      app.store.reset();
-      expectedTotalQueries = nameOrIdScenarios.length;
-    }
-
-    totalQueries = 0;
-
-    for (const s of nameOrIdScenarios) {
-      let err: unknown = null;
-      let model = null;
-      try {
-        model = findCachedCollectionByNameOrId(app, s.nameOrId);
-      } catch (e) {
-        err = e;
-      }
-
-      expect({ nameOrId: s.nameOrId, hasErr: err !== null }).toEqual({
-        nameOrId: s.nameOrId,
-        hasErr: s.expectError,
-      });
-      if (err !== null) {
-        expect(isNoRowsError(err)).toBe(true);
-      }
-
-      if (model !== null) {
-        expect(model.id === s.nameOrId || equalFold(model.name, s.nameOrId)).toBe(true);
-      }
-    }
-
-    expect(totalQueries).toBe(expectedTotalQueries);
-  };
-
-  test("with cache", () => run(true));
-
-  test("without cache", () => run(false));
+  test("without cache", () => runFindCachedCollectionByNameOrId(false));
 });
 
 const expectedReferenceFields = [
@@ -228,54 +228,59 @@ test("TestFindCollectionReferences", () => {
   }
 });
 
+function runFindCachedCollectionReferences(withCache: boolean): void {
+  const collection = findCollectionByNameOrId(app, "demo3");
+
+  let expectedTotalQueries: number;
+
+  if (withCache) {
+    reloadCachedCollections(app);
+    expectedTotalQueries = 0;
+  } else {
+    app.store.reset();
+    expectedTotalQueries = 1;
+  }
+
+  totalQueries = 0;
+
+  const result = findCachedCollectionReferences(
+    app,
+    collection,
+    collection.id,
+    // test whether "nonempty" exclude ids condition will be skipped
+    "",
+    "",
+  );
+
+  expect(result.size).toBe(1);
+
+  for (const [col, fields] of result) {
+    expect(col.name).toBe("demo4");
+    expect(fields.map((f) => f.getName()).toSorted()).toEqual(expectedReferenceFields.toSorted());
+  }
+
+  expect(totalQueries).toBe(expectedTotalQueries);
+}
+
+// collection name → its referencing field names
+function referenceNames(
+  refs: Map<{ name: string }, { getName(): string }[]>,
+): (string | string[])[][] {
+  return [...refs].map(([col, fields]) => [col.name, fields.map((f) => f.getName())]);
+}
+
 describe("TestFindCachedCollectionReferences", () => {
-  const run = (withCache: boolean) => {
-    const collection = findCollectionByNameOrId(app, "demo3");
+  test("with cache", () => runFindCachedCollectionReferences(true));
 
-    let expectedTotalQueries: number;
-
-    if (withCache) {
-      reloadCachedCollections(app);
-      expectedTotalQueries = 0;
-    } else {
-      app.store.reset();
-      expectedTotalQueries = 1;
-    }
-
-    totalQueries = 0;
-
-    const result = findCachedCollectionReferences(
-      app,
-      collection,
-      collection.id,
-      // test whether "nonempty" exclude ids condition will be skipped
-      "",
-      "",
-    );
-
-    expect(result.size).toBe(1);
-
-    for (const [col, fields] of result) {
-      expect(col.name).toBe("demo4");
-      expect(fields.map((f) => f.getName()).toSorted()).toEqual(expectedReferenceFields.toSorted());
-    }
-
-    expect(totalQueries).toBe(expectedTotalQueries);
-  };
-
-  test("with cache", () => run(true));
-
-  test("without cache", () => run(false));
+  test("without cache", () => runFindCachedCollectionReferences(false));
 
   test("the cached references are the queried ones", () => {
     reloadCachedCollections(app);
     for (const name of ["demo3", "demo4", "users"]) {
       const c = findCollectionByNameOrId(app, name);
       for (const exclude of [[], [c.id]]) {
-        const names = (refs: Map<{ name: string }, { getName(): string }[]>) =>
-          [...refs].map(([col, fields]) => [col.name, fields.map((f) => f.getName())]);
-        expect(names(findCachedCollectionReferences(app, c, ...exclude))).toEqual(
-          names(findCollectionReferences(app, c, ...exclude)),
+        expect(referenceNames(findCachedCollectionReferences(app, c, ...exclude))).toEqual(
+          referenceNames(findCollectionReferences(app, c, ...exclude)),
         );
       }
     }

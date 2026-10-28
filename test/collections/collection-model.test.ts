@@ -2,11 +2,9 @@
 // TestCollectionIndexHelpers; TestCollectionDelete, ModelEventSync and the
 // Save* tests are M1.7's)
 //
-// The tests that need upstream's test app read the vendored fixture
-// (test/fixtures/pocketbase/) through src/db. FindCollectionByNameOrId and
-// the collections cache come with M1.6a; until then a collection is read
-// from its `_collections` row with the model's own dbx scan (dbScan and
-// postScan), which is what upstream's lookup does.
+// The tests that need upstream's test app read a copy of the vendored
+// fixture (test/fixtures/pocketbase/) through src/db (openTestApp), and
+// look collections up with findCollectionByNameOrId.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -21,7 +19,7 @@ import {
   newCollection,
   newViewCollection,
 } from "@/collections/collection-model";
-import { HashExp } from "@/db/dbx/expression";
+import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { BoolField } from "@/fields/bool";
 import { anyType, marshal, unmarshal } from "@/tools/types/go-json";
 import { DateTime, parseDateTime } from "@/tools/types/datetime";
@@ -32,23 +30,21 @@ import {
   oauth2UpdateCreateBody,
   oauth2UpdatePatchBody,
 } from "@test/differential/collections/cases";
-import { TestApp } from "@test/support/fields";
+import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
 
-let app: TestApp;
+let app: TestCollectionsApp;
 
 beforeAll(() => {
-  app = TestApp.open();
+  app = openTestApp();
 });
 
 afterAll(() => {
   app.cleanup();
 });
 
-// app.FindCollectionByNameOrId(name), read through the model's dbx scan
+// app.FindCollectionByNameOrId(name)
 function findCollection(name: string): Collection {
-  const c = new Collection();
-  app.concurrentDB().select("*").from("_collections").where(new HashExp({ name })).one(c);
-  return c;
+  return findCollectionByNameOrId(app, name);
 }
 
 function expectParts(
@@ -587,7 +583,11 @@ test("CollectionIndexHelpers", () => {
 
 describe("fixture _collections rows", () => {
   test("every row scans, marshals to JSON and exports its columns back", () => {
-    const rows = app.concurrentDB().select("*").from("_collections").all<Record<string, unknown>>();
+    const rows = app.databases
+      .concurrentDB()
+      .select("*")
+      .from("_collections")
+      .all<Record<string, unknown>>();
     expect(rows.length).toBeGreaterThan(10);
 
     for (const row of rows) {
