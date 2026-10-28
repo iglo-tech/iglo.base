@@ -19,7 +19,8 @@
 // abandoned at once (maxAbandoned). At that limit a worker whose query timed
 // out is not terminated: the query still fails at its deadline, and the
 // worker takes queries again once its statement returns, or is replaced as
-// soon as an abandoned thread exits.
+// soon as an abandoned thread exits. A result that comes in after the
+// deadline, before its timer ran, fails the query too.
 
 import type { SQLQueryBindings } from "bun:sqlite";
 
@@ -50,6 +51,7 @@ interface Request {
   readonly message: ReadRequestMessage;
   readonly resolve: (value: unknown) => void;
   readonly reject: (err: unknown) => void;
+  readonly deadline: Deadline | null;
   timer: ReturnType<typeof setTimeout> | null;
   slot: Slot | null;
   expired: boolean;
@@ -192,6 +194,7 @@ export class ReadPool {
         message: { id, path, sql, args, mode },
         resolve,
         reject,
+        deadline,
         timer: null,
         slot: null,
         expired: false,
@@ -227,7 +230,11 @@ export class ReadPool {
       this.settle(request);
       worker.unref();
       const res = event.data;
-      if (res.ok) {
+      if (request.deadline?.expired() === true) {
+        // the result came in before the overdue timer ran (a busy main
+        // thread): the query still fails, as its context expired
+        request.reject(new DeadlineExceededError());
+      } else if (res.ok) {
         request.resolve(res.value);
       } else {
         request.reject(deserializeError(res.error));

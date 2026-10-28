@@ -257,6 +257,32 @@ test("a prepared query's async resolvers read on the pool and honor the deadline
   view.close();
 });
 
+test("a pooled result that arrives after the deadline fails the query", async () => {
+  let clock = 0;
+  const app = open({ readWorkers: 1, queryTimeout: 10_000, now: () => clock });
+  fill(app, 3);
+  const q = () => modelQuery(app, new Demo()).where(new HashExp({ id: "id1" }));
+  // warm the worker
+  expect(await q().oneAsync()).toMatchObject({ id: "id1" });
+
+  // the main thread is busy past the deadline while the worker reads, so
+  // its result is delivered before the timer runs
+  const pending = q()
+    .oneAsync()
+    .catch((e) => e as Error);
+  clock += 20_000;
+  const start = performance.now();
+  const err = await pending;
+  expect(performance.now() - start).toBeLessThan(1000);
+  expect((err as Error).message).toBe(
+    "context deadline exceeded; failed query: SELECT {{demo}}.* FROM `demo` WHERE `id`={:p0}",
+  );
+  // the worker finished its statement and stays in the pool
+  expect(app.readPool()!.stats()).toEqual({ workers: 1, busy: 0, queued: 0, abandoned: 0 });
+  clock = 0;
+  expect(await q().oneAsync()).toMatchObject({ id: "id1" });
+});
+
 test("waiting for a free worker counts towards the deadline", async () => {
   const app = open({ readWorkers: 1, queryTimeout: 250 });
   fill(app, 3000);
