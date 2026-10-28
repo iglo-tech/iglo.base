@@ -106,6 +106,17 @@ describe("GeoPointScan Go decoding", () => {
     ["a map is marshaled first", { lon: 8, lat: 9 }, false, `{"lon":8,"lat":9}`],
     ["negative zero and exponents", `{"lon":-0,"lat":1e21}`, false, `{"lon":-0,"lat":1e+21}`],
     ["small numbers", `{"lon":0.0000001,"lat":-1.5e-10}`, false, `{"lon":1e-7,"lat":-1.5e-10}`],
+    // the whole number token is checked before the field is set
+    ["a dot without digits", `{"lon":50.}`, true, `{"lon":1,"lat":2}`],
+    ["an exponent without digits", `{"lon":50e}`, true, `{"lon":1,"lat":2}`],
+    ["a signed exponent without digits", `{"lon":50e+}`, true, `{"lon":1,"lat":2}`],
+    ["a dot before the exponent", `{"lon":1.e5}`, true, `{"lon":1,"lat":2}`],
+    ["a lone minus", `{"lon":-}`, true, `{"lon":1,"lat":2}`],
+    ["an incomplete number at the end", `{"lon":50.`, true, `{"lon":1,"lat":2}`],
+    ["an incomplete number after a member", `{"lat":7,"lon":5E-}`, true, `{"lon":1,"lat":7}`],
+    // `0` is a complete number; the `1` after it is the syntax error
+    ["a leading zero", `{"lon":01}`, true, `{"lon":0,"lat":2}`],
+    ["a second fraction", `{"lon":1.5.2}`, true, `{"lon":1.5,"lat":2}`],
   ];
 
   for (const [name, value, expectErr, expectStr] of scenarios) {

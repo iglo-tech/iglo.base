@@ -425,15 +425,26 @@ function isWhitespace(c: number): boolean {
   return c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d;
 }
 
-// jsonwire.ConsumeNumber: the length of the JSON number at s[i:]
+// jsonwire.ConsumeNumber: the length of the JSON number at s[i:]. The
+// whole token is checked before it is returned: a fraction or exponent
+// without digits (`50.`, `50e`, `50e+`, `1.e5`) and a lone `-` are errors,
+// so no prefix of them is applied. Anything else ends the number (`01` is
+// `0`, `1.5.` is `1.5`), as in Go; the caller fails on what follows.
 function consumeNumber(s: string, i: number): number {
-  const m = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+  const m = /-?(?:0|[1-9][0-9]*)(\.[0-9]*)?([eE][+-]?[0-9]*)?/y;
   m.lastIndex = i;
   const match = m.exec(s);
   if (!match || match[0] === "" || match[0] === "-") {
     throw new JSONSyntaxError(`invalid character at offset ${i} at start of value`);
   }
-  return match[0].length;
+  const [token, fraction, exponent] = match;
+  if (fraction === "." || (exponent !== undefined && !/[0-9]$/.test(exponent))) {
+    const end = i + token.length;
+    throw new JSONSyntaxError(
+      end >= s.length ? "unexpected EOF" : `invalid character in number at offset ${end}`,
+    );
+  }
+  return token.length;
 }
 
 // jsonwire.ConsumeString and AppendUnquote: the unquoted value, the end
