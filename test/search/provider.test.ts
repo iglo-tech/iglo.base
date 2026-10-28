@@ -84,6 +84,14 @@ function baseQuery(testDB: TestDB): SelectQuery {
     .orderBy("test1 ASC");
 }
 
+function filterOf(n: number): FilterData {
+  return Array(n).fill("1=1").join(" && ");
+}
+
+function sortOf(n: number): SortField[] {
+  return Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc }));
+}
+
 async function execError(p: Provider): Promise<unknown> {
   try {
     await p.exec();
@@ -118,18 +126,14 @@ describe("NewProvider", () => {
   test("default limits", async () => {
     const testDB = createTestDB();
     try {
-      const filter = (n: number): FilterData => Array(n).fill("1=1").join(" && ");
-      const sort = (n: number): SortField[] =>
-        Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc }));
-
       const p = (): Provider =>
         newProvider(new TestFieldResolver(), { clock }).query(baseQuery(testDB));
-      expect(await execError(p().filter([filter(DefaultFilterExprLimit)]))).toBeUndefined();
-      expect(await execError(p().filter([filter(DefaultFilterExprLimit + 1)]))).toBe(
+      expect(await execError(p().filter([filterOf(DefaultFilterExprLimit)]))).toBeUndefined();
+      expect(await execError(p().filter([filterOf(DefaultFilterExprLimit + 1)]))).toBe(
         ErrFilterExprLimit,
       );
-      expect(await execError(p().sort(sort(DefaultSortExprLimit)))).toBeUndefined();
-      expect(await execError(p().sort(sort(DefaultSortExprLimit + 1)))).toBe(ErrSortExprLimit);
+      expect(await execError(p().sort(sortOf(DefaultSortExprLimit)))).toBeUndefined();
+      expect(await execError(p().sort(sortOf(DefaultSortExprLimit + 1)))).toBe(ErrSortExprLimit);
     } finally {
       testDB.close();
     }
