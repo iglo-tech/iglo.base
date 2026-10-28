@@ -15,6 +15,7 @@ import { connectPragmas } from "@/db/connect";
 import type { DB } from "@/db/dbx/db";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
+import { maxAbandonedPerWorker } from "@/db/read-pool";
 import { auxModelQuery, modelQuery } from "@/db/db";
 import { runInTransaction } from "@/db/tx";
 import { Demo, Log } from "@test/db/models";
@@ -278,6 +279,49 @@ test("a synchronous read that ends past the deadline fails as upstream's", () =>
   const q = modelQuery(app, new Demo()).build();
   q.all();
   expect(q.deadline()).toBeNull();
+});
+
+test("timed-out statements never leave the pool without a live worker", async () => {
+  const app = open({ readWorkers: 1, queryTimeout: 80 });
+  fill(app, 3000);
+  const pool = app.readPool()!;
+  expect(maxAbandonedPerWorker).toBe(2);
+  expect(pool.maxAbandoned).toBe(2);
+  const slow = () =>
+    modelQuery(app, new Demo())
+      .where(slowWhere)
+      .allAsync()
+      .catch((e: Error) => e.message);
+  const cheap = () =>
+    modelQuery(app, new Demo())
+      .where(new HashExp({ id: "id7" }))
+      .limit(1)
+      .oneAsync<{ title: string }>();
+  const timedOut =
+    "context deadline exceeded; failed query: SELECT {{demo}}.* FROM `demo` WHERE EXISTS (SELECT 1 FROM [[demo]] a, [[demo]] b WHERE a.title || b.title LIKE '%zz%')";
+
+  // two timeouts in a row abandon two threads; a new worker takes the next read
+  expect(await slow()).toBe(timedOut);
+  expect(await slow()).toBe(timedOut);
+  expect(pool.stats()).toEqual({ workers: 1, busy: 0, queued: 0, abandoned: 2 });
+  expect((await cheap()).title).toBe("t7");
+
+  // at the limit the timed-out worker is kept until its statement returns,
+  // or until an abandoned thread exits and it can be replaced; an untimed
+  // read waits for it
+  expect(await slow()).toBe(timedOut);
+  expect(pool.stats()).toEqual({ workers: 1, busy: 1, queued: 0, abandoned: 2 });
+  expect(
+    await app
+      .concurrentDB()
+      .select("title")
+      .from("demo")
+      .where(new HashExp({ id: "id7" }))
+      .rowAsync(),
+  ).toEqual(["t7"]);
+  expect(pool.stats().workers).toBe(1);
+  expect(pool.stats().abandoned).toBeLessThanOrEqual(2);
+  expect((await cheap()).title).toBe("t7");
 });
 
 test("closing the databases fails the pool's queued and running reads", async () => {

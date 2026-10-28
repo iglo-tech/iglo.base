@@ -13,10 +13,13 @@
 // a worker does not stop a statement that is running: the thread finishes
 // the statement step before it exits (docs/perf/M0.6-read-path.md). So at a
 // query's deadline the pool rejects it with DeadlineExceededError, as the
-// Go driver does, terminates that worker and starts a replacement. The
-// terminated ("abandoned") thread keeps one core busy until its statement
-// returns. At most `size` threads are abandoned at once: beyond that no
-// replacement starts until one exits, and queued queries wait or time out.
+// Go driver does, terminates that worker and starts a replacement: the pool
+// always has `size` live workers. The terminated ("abandoned") thread keeps
+// one core busy until its statement returns. At most 2 × `size` threads are
+// abandoned at once (maxAbandoned). At that limit a worker whose query timed
+// out is not terminated: the query still fails at its deadline, and the
+// worker takes queries again once its statement returns, or is replaced as
+// soon as an abandoned thread exits.
 
 import type { SQLQueryBindings } from "bun:sqlite";
 
@@ -49,10 +52,13 @@ interface Request {
   readonly reject: (err: unknown) => void;
   timer: ReturnType<typeof setTimeout> | null;
   slot: Slot | null;
+  expired: boolean;
 }
 
 interface Slot {
   readonly worker: Worker;
+  // the running request; a timed-out one (expired) until its statement
+  // returns, when the worker could not be abandoned
   request: Request | null;
 }
 
@@ -88,8 +94,11 @@ function workerURL(): string {
   return new URL("read-worker.ts", import.meta.url).href;
 }
 
+// the most terminated threads that may still run a statement, per worker
+export const maxAbandonedPerWorker = 2;
+
 export interface ReadPoolStats {
-  // live workers taking queries
+  // live workers (idle or busy)
   workers: number;
   busy: number;
   queued: number;
@@ -105,7 +114,12 @@ export class ReadPool {
   private nextId = 1;
   private closed = false;
 
-  private constructor(readonly size: number) {}
+  // the most abandoned threads at once
+  readonly maxAbandoned: number;
+
+  private constructor(readonly size: number) {
+    this.maxAbandoned = maxAbandonedPerWorker * size;
+  }
 
   // starts `size` workers; their connections open on first use
   static open(size: number): ReadPool {
@@ -180,6 +194,7 @@ export class ReadPool {
         reject,
         timer: null,
         slot: null,
+        expired: false,
       };
       if (deadline !== null) {
         request.timer = setTimeout(() => this.expire(request), deadline.remaining());
@@ -220,9 +235,12 @@ export class ReadPool {
       this.pump();
     });
     worker.addEventListener("error", (event: ErrorEvent) => {
-      // the worker's thread failed outside a query; replace it
+      // the worker's thread failed outside a query and exits; replace it
       const request = slot.request;
-      this.retire(slot);
+      this.removeSlot(slot);
+      slot.request = null;
+      worker.terminate();
+      worker.unref();
       if (request !== null) {
         this.settle(request);
         request.reject(new Error(`read worker failed: ${event.message}`));
@@ -249,16 +267,17 @@ export class ReadPool {
     }
   }
 
-  // the query's deadline passed: fail it, and stop its worker if it runs
+  // the query's deadline passed: fail it, and replace its worker if it runs
   private expire(request: Request): void {
     request.timer = null;
+    request.expired = true;
     const slot = request.slot;
     if (slot === null) {
       const i = this.queue.indexOf(request);
       if (i !== -1) {
         this.queue.splice(i, 1);
       }
-    } else {
+    } else if (this.abandoned.size < this.maxAbandoned) {
       this.retire(slot);
       this.refill();
     }
@@ -267,6 +286,9 @@ export class ReadPool {
 
   // terminates a worker; its thread exits once its statement returns
   private retire(slot: Slot): void {
+    if (slot.request !== null) {
+      slot.request.slot = null;
+    }
     this.removeSlot(slot);
     slot.request = null;
     slot.worker.terminate();
@@ -274,14 +296,21 @@ export class ReadPool {
     this.abandoned.add(slot.worker);
   }
 
+  // keeps `size` live workers, and replaces workers still running a
+  // timed-out query while abandoned threads stay under the limit
   private refill(): void {
     if (this.closed) {
       return;
     }
-    while (
-      this.slots.length < this.size &&
-      this.abandoned.size + this.slots.length < 2 * this.size
-    ) {
+    for (const slot of this.slots.slice()) {
+      if (this.abandoned.size >= this.maxAbandoned) {
+        break;
+      }
+      if (slot.request?.expired === true) {
+        this.retire(slot);
+      }
+    }
+    while (this.slots.length < this.size) {
       this.spawn();
     }
     this.pump();
