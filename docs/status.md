@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5b | worker | `task/M1.5b-file-field` | 0 | [Brief](briefs/M1.5b.md). Opus worker started 2026-10-28; its first turn ended before pushing (reference suite still running), so the lead sent it back to finish in the same worktree (not counted as a retry) |
+| M1.5b | council | [#15](https://github.com/iglo-tech/iglo.base/pull/15) | 1 | [Brief](briefs/M1.5b.md). Worker head `01c25f8` (after one continuation); council round 1 started while CI ran (CI must be green before merge) |
 
 ## Done
 
@@ -90,6 +90,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.5a PR): the lead accepted the worker's correction: mimetype v1.4.15 reads 4096 bytes (`defaultLimit`), not 3072 as the brief said; the brief and the work plan are corrected. The port includes Go's `mime.ParseMediaType`, which `is()` depends on. Go-stdlib expected values in a few ported tests (csv, json, zip) were computed with Go 1.27.2 and hard-coded.
 - 2026-10-28 (M1.5a round 1): `detectReader` accepts only a Blob (sliced, never consumed). Upstream rewinds the file after detection, and a web stream cannot give unread bytes back; iglo.base's callers all hold Blobs.
 - 2026-10-28 (M1.5b brief): the file field's Intercept and storage helpers wait for M3.2 with the filesystem; `filesystem.File` uses a Blob as its reader; `NewFileFromURL` waits for M4.5.
+- 2026-10-28 (M1.5b PR): the lead accepted the worker's open points. A `File` reads the first 4096 bytes of its Blob when it is created, so the synchronous `validateValue` can run the MIME check (the shared Field interface stays synchronous). Directory parts of uploaded file names are dropped, as Go's multipart reader does and Bun's `formData()` does not. `src/validators/file.ts` imports `goQuote` from `src/fields/field.ts` (carried with the same note for `bcrypt.ts`). The `:uploaded` getter's deprecation log line is left out (fields have no logger). Carried for M3.2: upstream stores the first 255 bytes of the original name as metadata, which must be valid UTF-8; a cut inside a multi-byte character makes the upload fail with a plain 400.
 
 ## Paused until
 
