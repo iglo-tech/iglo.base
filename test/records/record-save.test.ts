@@ -41,6 +41,7 @@ import {
   saveRecordNoValidate,
   validateRecord,
 } from "@/records/record-save";
+import type { JSONRaw } from "@/tools/types/json-raw";
 import { Errors } from "@/validation/error";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
@@ -580,5 +581,36 @@ describe("TestAutodateRecordResave", () => {
 
     newUpdated = record.getDateTime("updated");
     expect(newUpdated.equal(lastUpdated)).toBe(false); // [4]
+  });
+});
+
+// not in upstream's tests: the stored storage classes of the write path
+describe("stored values", () => {
+  test("JSONRaw bytes that are not valid UTF-8 are stored as TEXT", async () => {
+    const app = newTestApp();
+
+    const collection = findCollectionByNameOrId(app, "demo1");
+    const record = newRecord(collection);
+    record.id = "utf8test0000001";
+    record.set("text", "x");
+    // a quoted string with the byte 0xff, as Go keeps it in a JSONRaw
+    record.set("json", new Uint8Array([0x22, 0x61, 0xff, 0x22]));
+    record.set("bool", true);
+    record.set("number", 1.5);
+    await saveRecordNoValidate(app, record);
+
+    const row = app.databases
+      .concurrentDB()
+      .newQuery(
+        "SELECT typeof([[json]]) a, hex([[json]]) b, typeof([[bool]]) c, [[bool]] d, typeof([[number]]) e, typeof([[datetime]]) f FROM demo1 WHERE id = {:id}",
+      )
+      .bind({ id: record.id })
+      .one();
+    expect(row).toEqual({ a: "text", b: "2261FF22", c: "integer", d: 1, e: "real", f: "text" });
+
+    // the record keeps the bytes it wrote
+    expect((record.dbExport().json as JSONRaw).value()).toEqual(
+      new Uint8Array([0x22, 0x61, 0xff, 0x22]),
+    );
   });
 });
