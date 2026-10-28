@@ -621,3 +621,56 @@ describe("fixture _collections rows", () => {
     }
   });
 });
+
+// Not upstream tests: the json v2 rules Collection.unmarshalJSON follows
+// (go-json-struct.ts)
+describe("CollectionUnmarshalJSON json v2 rules", () => {
+  test("nested structs merge, null zeroes, unknown and differently cased names are ignored", () => {
+    const c = newAuthCollection("test");
+    c.unmarshalJSON(
+      `{"mfa":{"rule":"x"},"authAlert":null,"Name":"other","unknown":{"a":[1e400]},"otp":{"length":9007199254740993}}`,
+    );
+    expect(marshal(c.mfa)).toBe(`{"enabled":false,"duration":600,"rule":"x"}`);
+    expect(marshal(c.authAlert)).toBe(`{"enabled":false,"emailTemplate":{"subject":"","body":""}}`);
+    expect(c.name).toBe("test");
+    expect(c.otp.length).toBe(9007199254740993n);
+    expect(c.otp.duration).toBe(180);
+  });
+
+  test("a member of the wrong Go type fails", () => {
+    for (const raw of [
+      `{"mfa":{"duration":1.5}}`,
+      `{"otp":{"length":9223372036854775808}}`,
+      `{"name":1}`,
+      `{"listRule":true}`,
+      `{"oauth2":{"providers":[{"pkce":"yes"}]}}`,
+      `{"fields":{}}`,
+      `{"indexes":[1]}`,
+      `{"name":"a","name":"b"}`,
+      `[]`,
+    ]) {
+      expect(() => newAuthCollection("test").unmarshalJSON(raw)).toThrow();
+    }
+  });
+
+  test("submitted OAuth2 providers merge into the existing ones with the same name", () => {
+    const c = newAuthCollection("test");
+    c.unmarshalJSON(
+      `{"oauth2":{"providers":[{"name":"google","clientId":"a","clientSecret":"s","extra":{"x":1}}]}}`,
+    );
+    c.unmarshalJSON(`{"oauth2":{"providers":[{"name":"google","extra":{"y":2}}]}}`);
+    const providers = c.oauth2.providers ?? [];
+    expect(providers.length).toBe(1);
+    expect(marshal(providers[0])).toBe(
+      `{"pkce":null,"name":"google","clientId":"a","clientSecret":"s","authURL":"","tokenURL":"","userInfoURL":"","displayName":"","extra":{"x":1,"y":2}}`,
+    );
+  });
+
+  test("the generated index names are cut at 64 bytes", () => {
+    const c = newAuthCollection("x", "a".repeat(70));
+    expect(c.indexes).toEqual([
+      "CREATE UNIQUE INDEX `idx_tokenKey_" + "a".repeat(51) + "` ON `x` (`tokenKey`)",
+      "CREATE UNIQUE INDEX `idx_email_" + "a".repeat(54) + "` ON `x` (`email`) WHERE `email` != ''",
+    ]);
+  });
+});
