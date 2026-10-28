@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan (M1.5a, the file field, is next on the critical path) |
+| M1.5a | worker | `task/M1.5a-mime-detection` | 0 | [Brief](briefs/M1.5a.md). Opus worker started 2026-10-28 |
 
 ## Done
 
@@ -85,6 +85,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.5 brief): password hashes are written with Bun.password in Go's `$2a$` form at the field's cost, and verification accepts what Go's bcrypt accepts. The relation field adds `findCachedCollectionByNameOrId` to M1.4's FieldApp interface.
 - 2026-10-28 (M1.5 PR): the lead accepted the worker's open points. `FieldCollection` also gets `isNew()` (upstream's relation settings check needs it). Bun.password hashes and verifies; Go hash forms Bun rejects (`$2$`, salts with trailing bits) are normalized first, and passwords are cut at 72 bytes before verification, as Go's CompareHashAndPassword ignores bytes past 72 (the brief was wrong: only hashing returns ErrPasswordTooLong). After round 1 the lead withdrew the accepted gap for salts with `\r`/`\n`: iglo.base matches upstream with a TypeScript port of Go's bcrypt and blowfish (`src/tools/crypto/`) for the hashes Bun.password cannot verify.
 - 2026-10-28 (M1.5 round 2): Go `int` field settings (text min/max, select and relation minSelect/maxSelect, editor and json maxSize, password min/max/cost) keep exact int64 values, using the db layer's convention (`number` in the safe range, `bigint` outside it). The fix covers M1.4's fields in the M1.5 PR, because they share the same decoder.
+- 2026-10-28 (plan change, after M1.5): the file field's `mimeTypes` check calls mimetype v1.4.15's `DetectReader` and `Is`, and a user may list any type, so the accept/reject result depends on the library's whole detection tree (about 5,900 Go lines). Upstream also uses it for served content types, mail attachments and file extensions. MIME detection is now its own task M1.5a, a full port in `src/tools/mimetype/` (MIT notice in `LICENSE`), not a signature subset or the `file-type` library. The file field moves to M1.5b. M1.6, M1.8 and M3.2 depend on M1.5b. The critical path is … → M1.5 → M1.5a → M1.5b → M1.6 → …
 
 ## Paused until
 
