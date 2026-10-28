@@ -4,6 +4,9 @@
 // sort, filter, the limits); here the same settings are observed through
 // Exec: the returned page fields and the SQL of the queries it runs.
 
+// Provider.sort is upstream's setter, not Array#sort
+/* oxlint-disable unicorn/no-array-sort */
+
 import { describe, expect, test } from "bun:test";
 
 import type { Clock } from "@/app/clock";
@@ -568,7 +571,7 @@ describe("Provider.Exec non-empty query", () => {
     name,
     page,
     perPage,
-    sort,
+    sortFields,
     filter,
     skipTotal,
     expectError,
@@ -583,7 +586,7 @@ describe("Provider.Exec non-empty query", () => {
         .query(query)
         .page(page)
         .perPage(perPage)
-        .sort(sort)
+        .sort(sortFields)
         .skipTotal(skipTotal)
         .filter(filter);
 
@@ -720,11 +723,18 @@ describe("Provider filter and sort limits", () => {
   const testDB = createTestDB();
   const query = baseQuery(testDB);
 
-  for (const [name, filter, sort, maxFilterExprLimit, maxSortExprLimit, expectError] of scenarios) {
+  for (const [
+    name,
+    filter,
+    sortFields,
+    maxFilterExprLimit,
+    maxSortExprLimit,
+    expectError,
+  ] of scenarios) {
     test(name, async () => {
       const p = newProvider(new TestFieldResolver(), { clock })
         .query(query)
-        .sort(sort)
+        .sort(sortFields)
         .filter(filter)
         .maxFilterExprLimit(maxFilterExprLimit)
         .maxSortExprLimit(maxSortExprLimit);
