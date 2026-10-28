@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1 | council | [#8](https://github.com/iglo-tech/iglo.base/pull/8) ([brief](briefs/M1.1.md)) | 2 | Base tools: types, security (without random_by_regex), list, inflector, store. Round 1 at `d3d9209`: Opus APPROVE (NaN GeoPoint string, minor), Sol CHANGES (v1 duplicate JSON keys in JWTs, DateTime location lost for AddDate). Fixed by an Opus fixer at `931a457` (CI green); round 2 started for that head |
+| M1.1 | council | [#8](https://github.com/iglo-tech/iglo.base/pull/8) ([brief](briefs/M1.1.md)) | 2 | Base tools: types, security (without random_by_regex), list, inflector, store. Round 1 at `d3d9209`: Opus APPROVE (NaN GeoPoint string, minor), Sol CHANGES (v1 duplicate JSON keys in JWTs, DateTime location lost for AddDate). Fixed by an Opus fixer at `931a457`. Round 2: Opus APPROVE, Sol CHANGES (JSONRaw invalid UTF-8 bytes lost on write, incomplete number tokens applied, JSONMap not reset on error, Go `time.Local` rules for AddDate). Stage fix: Opus fixer on the branch |
 
 ## Done
 
@@ -65,6 +65,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (plan change): `random_by_regex.go` needs a port of Go's `regexp/syntax` parser (patterns are user input; parse errors reach validation messages). It moved out of M1.1 into a new task M1.1a, which M1.4 now depends on. The critical path is M0 → M1.1 → M1.1a → M1.4 → …
 - 2026-10-28 (M1.1 brief): the base tools live in `src/tools/<package>/`, mirroring upstream's `tools/` packages; their ported unit tables are allowed as internal tests in `test/tools/`, as for the shared contracts in M0.3. Go dependencies the tools inherit behavior from (spf13/cast v1.10.0, golang-jwt v5.3.1, the Go standard library) are read from shallow GitHub clones in a git-ignored `.upstream/deps/`.
 - 2026-10-28 (M1.1 PR): the lead accepted the worker's open points. `parseJWT` does not check `iat`, as upstream's `ParseJWT` does not; the brief was wrong there, and `parseUnverifiedJWT` does check it. Go zone abbreviations (`MST`) are read as UTC, so only a server whose local zone is not UTC could see a difference. `src/tools/types/go-json.ts` reuses `decodeUTF8Bytes` from `src/server/json-decode.ts`; merging the two JSON readers is left for later. A JS `number` given to `DateTime.scan` is treated as Go's float64 (zero time), while a `bigint` is Unix seconds.
+- 2026-10-28 (M1.1 round 2): the round-1 assumption that the server time zone is UTC is withdrawn. DateTime models Go's UTC, Local and fixed-offset locations, so AddDate follows the local zone's DST rules as upstream does. JSONRaw hands out its exact bytes; writing invalid UTF-8 as TEXT (for example `CAST(? AS TEXT)` with a blob parameter) is carried to M1.8's record write path.
 
 ## Paused until
 
