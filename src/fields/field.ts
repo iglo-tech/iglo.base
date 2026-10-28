@@ -10,10 +10,11 @@
 //
 //   - FieldRecord: getRaw, setRaw, getDateTime, isNew, original,
 //     lastSavedPK, tableName (core/record_model.go);
-//   - FieldCollection: id, name, type, fields (core/collection_model.go),
-//     with FieldsListReader's getById and iteration (core/fields_list.go);
-//   - FieldApp: concurrentDB, clock and findCollectionByNameOrId
-//     (core/app.go). Upstream reads the time from time.Now(); here it comes
+//   - FieldCollection: id, name, type, fields, isNew
+//     (core/collection_model.go), with FieldsListReader's getById and
+//     iteration (core/fields_list.go);
+//   - FieldApp: concurrentDB, clock, findCollectionByNameOrId and
+//     findCachedCollectionByNameOrId (core/app.go). Upstream reads the time from time.Now(); here it comes
 //     from the app's clock.
 //
 // Go's (value, error) results are kept as they are where a caller may use
@@ -137,6 +138,8 @@ export interface FieldCollection {
   readonly name: string;
   readonly type: string;
   readonly fields: FieldsListReader;
+  // IsNew reports whether the collection has not been saved yet.
+  isNew(): boolean;
 }
 
 // The app members the fields use (core/app.go).
@@ -148,6 +151,10 @@ export interface FieldApp {
   // FindCollectionByNameOrId finds a single collection by its name
   // (case insensitive) or id. Throws when it is not found (Go's error).
   findCollectionByNameOrId(nameOrId: string): FieldCollection;
+  // FindCachedCollectionByNameOrId is similar to FindCollectionByNameOrId
+  // but retrieves the collection from the app collections cache (name case
+  // insensitive). Throws when it is not found (Go's error).
+  findCachedCollectionByNameOrId(nameOrId: string): FieldCollection;
 }
 
 // Field defines a common interface that all Collection fields should
