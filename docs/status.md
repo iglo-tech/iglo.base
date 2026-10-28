@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-28
 
-Active: M2.2 (council round 1).
+Active: M2.2 (council round 2).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.2 | council | [#24](https://github.com/iglo-tech/iglo.base/pull/24) | 1 | [Brief](briefs/M2.2.md). Worker head `9bd5b5d`: check and test:reference pass locally; CI pending. Council round 1 started at `9bd5b5d` |
+| M2.2 | council | [#24](https://github.com/iglo-tech/iglo.base/pull/24) | 2 | [Brief](briefs/M2.2.md). Round 1 at `9bd5b5d`: Sol APPROVE, Opus CHANGES (one of upstream's 63 UpdateQuery cases missing; misplaced sentence in `02-architecture.md`), fixed by the lead at `12c8d80`. Round 2 started at `12c8d80` |
 
 ## Done
 
