@@ -34,11 +34,6 @@ export interface ValidateCase {
   pending?: Pending;
 }
 
-export const pendingRule: Pending = {
-  task: "M2.2",
-  reason: "rule check needs the record field resolver",
-};
-
 export const setupCollections: ((ctx: Ctx) => unknown)[] = [
   (ctx) => ({
     name: "posts",
@@ -322,13 +317,11 @@ export const validateCases: ValidateCase[] = [
     name: "create: invalid list rule syntax",
     body: () => ({ name: "c_rule1", listRule: "(id=1" }),
     valid: false,
-    pending: pendingRule,
   },
   {
     name: "create: rule with a missing field",
     body: () => ({ name: "c_rule2", viewRule: "missing = 1" }),
     valid: false,
-    pending: pendingRule,
   },
   {
     name: "create: all base rules invalid",
@@ -341,7 +334,6 @@ export const validateCases: ValidateCase[] = [
       deleteRule: "(id=123",
     }),
     valid: false,
-    pending: pendingRule,
   },
   {
     name: "create: valid rules",
@@ -826,7 +818,6 @@ export const validateCases: ValidateCase[] = [
     name: "create: auth invalid auth rule",
     body: () => ({ name: "c_auth2", type: "auth", authRule: "missing > 1" }),
     valid: false,
-    pending: pendingRule,
   },
   {
     name: "update: password auth without identity fields",
@@ -987,7 +978,6 @@ export const validateCases: ValidateCase[] = [
       otp: { enabled: true },
     }),
     valid: false,
-    pending: pendingRule,
   },
   {
     name: "update: auth token secret too short",

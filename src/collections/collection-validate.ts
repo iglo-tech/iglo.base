@@ -5,9 +5,8 @@
 // Upstream runs it from the OnCollectionValidate hook; there is no hook
 // system (D5), so the save step (M1.7) calls it directly.
 //
-// One check waits for a later task and keeps its place in upstream's rule
-// order: checkRuleExpr, building the rule with the record field resolver
-// (M2.2). Until then a non-empty rule passes.
+// checkRule's expression check (checkRuleExpr) builds the rule with the
+// record field resolver (src/resolver/) and an empty RequestInfo.
 //
 // A view's fields are generated from its query (createViewFields) and the
 // query is run (dryRunView) with view.ts.
@@ -33,6 +32,7 @@ import {
   isCollectionNameUnique,
 } from "@/collections/collection-query";
 import { FieldsList } from "@/collections/fields-list";
+import { RequestInfo } from "@/app/event-request";
 import { createViewFields, dryRunView } from "@/collections/view";
 import { equalFold, toLower } from "@/collections/go-strings";
 import { modelQuery } from "@/db/db";
@@ -53,6 +53,8 @@ import {
 } from "@/fields/field";
 import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
+import { newRecordFieldResolver } from "@/resolver/record-field-resolver";
+import { filterBuildExpr } from "@/search/filter";
 import { findSingleColumnUniqueIndex, parseIndex } from "@/tools/dbutils/index";
 import { existInSlice } from "@/tools/list/list";
 import { mustCompile } from "@/tools/regexp/regexp";
@@ -801,19 +803,23 @@ function checkForVia(value: unknown): ValidationError | null {
 }
 
 // -------------------------------------------------------------------
-// The part that a later task completes. It keeps its place in
-// upstream's rule order.
 
-// checkRule's rule expression check: upstream builds the rule with
+// checkRule's rule expression check: the rule is built with
 // NewRecordFieldResolver(app, collection, &RequestInfo{}, true) and
-// search.FilterData(rule).BuildExpr(r), and returns
-// NewError("validation_invalid_rule", "Invalid rule. Raw error: "+err.Error())
-// when that fails. The resolver and the filter parser are M2.2's; until
-// then every non-empty rule passes.
+// search.FilterData(rule).BuildExpr(r); an error is a
+// "validation_invalid_rule" error with the raw error text.
 function checkRuleExpr(
-  _app: CollectionsApp,
-  _collection: Collection,
-  _rule: string,
+  app: CollectionsApp,
+  collection: Collection,
+  rule: string,
 ): ValidationError | null {
+  const r = newRecordFieldResolver(app, collection, new RequestInfo(), true);
+  try {
+    filterBuildExpr(rule, r, r.filterOptions());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NewError("validation_invalid_rule", "Invalid rule. Raw error: " + message);
+  }
+
   return null;
 }

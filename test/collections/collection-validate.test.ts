@@ -2,8 +2,7 @@
 //
 // Each case runs on a fresh copy of the vendored fixture (openTestApp), as
 // upstream's tests.NewTestApp does, and validates with validateCollection
-// (app.Validate → onCollectionValidate). Cases that need the rule check
-// (M2.2) are pending (caseTest).
+// (app.Validate → onCollectionValidate).
 
 import { describe } from "bun:test";
 
@@ -23,12 +22,7 @@ import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import {
-  type Pending,
-  caseTest,
-  expectValidationErrors,
-  pendingRule,
-} from "@test/collections/validation";
+import { type Pending, caseTest, expectValidationErrors } from "@test/collections/validation";
 
 interface Scenario {
   name: string;
@@ -80,7 +74,6 @@ const scenarios: Scenario[] = [
       "deleteRule",
       "fields", // no default fields because the type is unknown
     ],
-    pending: pendingRule,
   },
   {
     name: "base with invalid fields",
@@ -123,7 +116,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: ["indexes", "name", "authRule"],
-    pending: pendingRule,
   },
 
   // type checks
@@ -335,7 +327,6 @@ const scenarios: Scenario[] = [
       return c;
     },
     expectedErrors: ["listRule", "viewRule", "createRule", "updateRule", "deleteRule"],
-    pending: pendingRule,
   },
   {
     name: "valid base rules",

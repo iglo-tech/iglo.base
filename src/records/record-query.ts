@@ -22,8 +22,9 @@
 // The synchronous resolvers and the async ones (on the read pool) both
 // run through execLockRetry with the app's query timeout.
 //
-// Not here: FindRecordsByFilter, FindFirstRecordByFilter, CanAccessRecord
-// (M2.2), FindAuthRecordByToken (M2.3). Not ported: the RecordProxy
+// Not here: FindRecordsByFilter, FindFirstRecordByFilter and
+// CanAccessRecord (record-query-filter.ts), FindAuthRecordByToken (M2.3).
+// Not ported: the RecordProxy
 // branches of the One/All hooks (custom Go structs that embed a Record; a
 // library API) and the non-pointer *[]Record slice (Go only).
 

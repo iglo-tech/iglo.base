@@ -28,9 +28,6 @@ export function expectValidationErrors(
   });
 }
 
-// The later tasks that complete a check of the collection validator.
-export const pendingRule = { task: "M2.2", reason: "rule check needs the record field resolver" };
-
 export interface Pending {
   task: string;
   reason: string;
