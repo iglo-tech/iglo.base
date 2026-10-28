@@ -129,6 +129,7 @@ test("the pool's connections are read-only and use upstream's pragmas", async ()
       journal_size_limit: 200000000,
       synchronous: 1,
       foreign_keys: 1,
+      legacy_alter_table: 0,
       temp_store: 2,
       cache_size: -32000,
     };

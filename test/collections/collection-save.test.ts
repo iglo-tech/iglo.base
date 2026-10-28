@@ -51,6 +51,20 @@ function errorOf(fn: () => void): unknown {
 }
 
 describe("TestCollectionDelete", () => {
+  test("reports the raw dependent view error", () => {
+    withApp((app) => {
+      const parent = newBaseCollection("council_parent");
+      saveCollection(app, parent);
+      const view = newViewCollection("council_view");
+      view.viewQuery = "select id from council_parent";
+      saveCollection(app, view);
+      expect(() => deleteCollection(app, parent)).toThrow(
+        "[council_parent] failed to delete due to existing view dependency: [council_view] SQL logic error: no such table: main.council_parent (1)",
+      );
+      expect(hasTable(app.databases, "council_parent")).toBe(true);
+    });
+  });
+
   const scenarios: {
     name: string;
     collection: string;

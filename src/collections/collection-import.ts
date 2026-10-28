@@ -40,8 +40,9 @@ export function importCollectionsByMarshaledJSON(
   deleteMissing: boolean,
 ): void {
   const data =
-    (unmarshal(rawSliceOfMaps, sliceOf(mapOf(anyType))) as Record<string, unknown>[] | undefined) ??
-    [];
+    (unmarshal(rawSliceOfMaps, sliceOf(mapOf(anyType))) as
+      | (Record<string, unknown> | null)[]
+      | undefined) ?? [];
 
   importCollections(app, data, deleteMissing);
 }
@@ -55,7 +56,7 @@ export function importCollectionsByMarshaledJSON(
 // (this includes their related records data).
 export function importCollections(
   app: CollectionsApp,
-  toImport: readonly Record<string, unknown>[],
+  toImport: readonly (Record<string, unknown> | null)[],
   deleteMissing: boolean,
 ): void {
   if (toImport.length === 0) {
@@ -71,9 +72,9 @@ export function importCollections(
   for (const data of toImport) {
     let imported: Collection;
 
-    let identifier = toString(data.id);
+    let identifier = toString(data?.id);
     if (identifier === "") {
-      identifier = toString(data.name);
+      identifier = toString(data?.name);
     }
 
     let existing: Collection | null = null;
@@ -90,7 +91,7 @@ export function importCollections(
       imported = withDriverErrors(() => findCollectionByNameOrId(app, existing.id));
 
       // ensure that the fields will be cleared
-      if ((data.fields === null || data.fields === undefined) && deleteMissing) {
+      if (data !== null && (data.fields === null || data.fields === undefined) && deleteMissing) {
         data.fields = [];
       }
 

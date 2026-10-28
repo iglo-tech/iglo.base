@@ -469,6 +469,12 @@ export const steps: Step[] = [
   // ---------------------------------------------------------------
   // import
   {
+    name: "import null collection",
+    ok: false,
+    kind: "import",
+    body: () => ({ collections: [null], deleteMissing: false }),
+  },
+  {
     name: "import without deleteMissing",
     kind: "import",
     ok: true,

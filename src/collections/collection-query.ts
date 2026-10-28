@@ -30,7 +30,6 @@ import {
   createViewFields,
   getQueryTableInfo,
   joinErrors,
-  wrapError,
 } from "@/collections/view";
 import type { Databases } from "@/db/base";
 import { modelQuery } from "@/db/db";
@@ -361,7 +360,8 @@ export function resaveViewsWithChangedFields(app: CollectionsApp, ...excludeIds:
       try {
         check();
       } catch (err) {
-        collectionErrors.push(wrapError(`[${collection.name}]`, err));
+        const cause = err instanceof Error ? err : new Error(String(err));
+        collectionErrors.push(new Error(`[${collection.name}] ${cause.message}`, { cause }));
       }
     }
 
