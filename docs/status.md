@@ -8,6 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M1.8b | worker | `task/M1.8b-record-queries` | 0 | [Brief](briefs/M1.8b.md) |
 
 ## Done
 
