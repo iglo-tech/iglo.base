@@ -277,12 +277,12 @@ export class PasswordField
   }
 
   // Intercept implements the [RecordInterceptor] interface.
-  async intercept(
+  intercept(
     _app: FieldApp,
     record: FieldRecord,
     actionName: string,
-    actionFunc: () => Promise<void>,
-  ): Promise<void> {
+    actionFunc: () => void | Promise<void>,
+  ): void | Promise<void> {
     switch (actionName) {
       case InterceptorActionAfterCreate:
       case InterceptorActionAfterUpdate: {

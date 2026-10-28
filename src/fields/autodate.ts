@@ -182,12 +182,12 @@ export class AutodateField implements Field, SetterFinder, RecordInterceptor {
   }
 
   // Intercept implements the [RecordInterceptor] interface.
-  async intercept(
+  intercept(
     app: FieldApp,
     record: FieldRecord,
     actionName: string,
-    actionFunc: () => Promise<void>,
-  ): Promise<void> {
+    actionFunc: () => void | Promise<void>,
+  ): void | Promise<void> {
     switch (actionName) {
       case InterceptorActionCreateExecute: {
         // ignore if a date different from the old one was manually set with SetRaw
@@ -197,11 +197,9 @@ export class AutodateField implements Field, SetterFinder, RecordInterceptor {
           record.setRaw(autodateLastKnownPrefix + this.name, now); // eagerly set so that it can be renewed on resave after failure
         }
 
-        await actionFunc();
-
-        record.setRaw(autodateLastKnownPrefix + this.name, record.getRaw(this.name));
-
-        return;
+        return afterAction(actionFunc(), () => {
+          record.setRaw(autodateLastKnownPrefix + this.name, record.getRaw(this.name));
+        });
       }
       case InterceptorActionUpdateExecute: {
         // ignore if a date different from the old one was manually set with SetRaw
@@ -211,11 +209,9 @@ export class AutodateField implements Field, SetterFinder, RecordInterceptor {
           record.setRaw(autodateLastKnownPrefix + this.name, now); // eagerly set so that it can be renewed on resave after failure
         }
 
-        await actionFunc();
-
-        record.setRaw(autodateLastKnownPrefix + this.name, record.getRaw(this.name));
-
-        return;
+        return afterAction(actionFunc(), () => {
+          record.setRaw(autodateLastKnownPrefix + this.name, record.getRaw(this.name));
+        });
       }
       default:
         return actionFunc();
@@ -275,3 +271,12 @@ export type AutodateFieldSettings = Pick<
   AutodateField,
   "name" | "id" | "system" | "hidden" | "presentable" | "onCreate" | "onUpdate"
 >;
+
+// runs after when the action succeeds, after the action's promise when it
+// is async
+function afterAction(result: void | Promise<void>, after: () => void): void | Promise<void> {
+  if (result instanceof Promise) {
+    return result.then(after);
+  }
+  after();
+}

@@ -1,7 +1,8 @@
 // Upstream: core/collection_query.go (CollectionQuery, FindAllCollections,
 // ReloadCachedCollections, FindCollectionByNameOrId,
 // FindCachedCollectionByNameOrId, FindCollectionReferences,
-// FindCachedCollectionReferences, IsCollectionNameUnique)
+// FindCachedCollectionReferences, IsCollectionNameUnique,
+// TruncateCollection)
 //
 // Upstream's methods are on BaseApp. Here they are functions of the narrow
 // CollectionsApp below: the databases (src/db), the app store holding the
@@ -17,7 +18,8 @@
 // runInAppTransaction is app.RunInTransaction: the callback's txApp is the
 // app with the transaction's databases (src/db/tx.ts).
 //
-// Not here: TruncateCollection (M1.8).
+// TruncateCollection deletes through the record delete chain of
+// src/records (record-save.ts).
 
 import type { ErrorLogger } from "@/app/app";
 import type { Clock } from "@/app/clock";
@@ -39,6 +41,9 @@ import { runInTransaction } from "@/db/tx";
 import type { SelectQuery } from "@/db/dbx/select";
 import { type Field, type FieldApp, FieldNameId } from "@/fields/field";
 import { RelationField } from "@/fields/relation";
+import type { Record } from "@/records/record-model";
+import { recordQuery, recordsTarget } from "@/records/record-query";
+import { deleteTruncatedRecords } from "@/records/record-save";
 import { existInSlice, nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
 import type { Store } from "@/tools/store/store";
 
@@ -271,6 +276,33 @@ export function isCollectionNameUnique(
   } catch {
     return false;
   }
+}
+
+// TruncateCollection deletes all records associated with the provided collection.
+//
+// The truncate operation is executed in a single transaction,
+// aka. either everything is deleted or none.
+//
+// Note that this method will also trigger the records related
+// cascade and file delete actions.
+export function truncateCollection(app: CollectionsApp, collection: Collection): void {
+  if (collection.isView()) {
+    throw new Error(
+      "view collections cannot be truncated since they don't store their own records",
+    );
+  }
+
+  runInAppTransaction(app, (txApp) => {
+    for (;;) {
+      const records = recordQuery(txApp, collection).limit(500).all<Record>(recordsTarget);
+
+      if (records.length === 0) {
+        return;
+      }
+
+      deleteTruncatedRecords(txApp, records);
+    }
+  });
 }
 
 // The FieldApp the fields' ValidateSettings use: the collection lookups

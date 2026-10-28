@@ -1,5 +1,8 @@
-// Upstream: core/collection_query_test.go (all but TestFindCollectionTruncate,
-// which is M1.7's)
+// Upstream: core/collection_query_test.go
+//
+// TestFindCollectionTruncate runs on its own fixture copy. Its file counts
+// (the truncated records' files are deleted) wait for the file storage
+// task (M3.2); the records are counted.
 //
 // Each test runs on a copy of the vendored fixture with the collections
 // cache loaded (openTestApp, as tests.NewTestApp). Upstream counts the
@@ -19,9 +22,11 @@ import {
   findCollectionReferences,
   isCollectionNameUnique,
   reloadCachedCollections,
+  truncateCollection,
 } from "@/collections/collection-query";
 import { equalFold } from "@/collections/go-strings";
 import { isNoRowsError } from "@/db/dbx/rows";
+import { countRecords } from "@/records/record-query";
 import { nonzeroUniques } from "@/tools/list/list";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
@@ -311,5 +316,51 @@ describe("Go's strings.ToLower on the looked up name", () => {
 
   test("IsCollectionNameUnique", () => {
     expect(isCollectionNameUnique(app, "CL\u0130ENTS")).toBe(false);
+  });
+});
+
+describe("TestFindCollectionTruncate", () => {
+  let truncateApp: TestCollectionsApp;
+
+  beforeAll(() => {
+    truncateApp = openTestApp();
+  });
+
+  afterAll(() => {
+    truncateApp.cleanup();
+  });
+
+  test("truncate view", () => {
+    const view2 = findCollectionByNameOrId(truncateApp, "view2");
+
+    // view collections can't be truncated
+    expect(() => truncateCollection(truncateApp, view2)).toThrow(
+      "view collections cannot be truncated since they don't store their own records",
+    );
+  });
+
+  test("truncate failure", () => {
+    const demo3 = findCollectionByNameOrId(truncateApp, "demo3");
+
+    const originalTotalRecords = countRecords(truncateApp, demo3);
+
+    // cascade delete failed required constraint
+    expect(() => truncateCollection(truncateApp, demo3)).toThrow(
+      "the record cannot be deleted because it is part of a required reference in record",
+    );
+
+    expect(countRecords(truncateApp, demo3)).toBe(originalTotalRecords);
+  });
+
+  test("truncate success", () => {
+    const demo5 = findCollectionByNameOrId(truncateApp, "demo5");
+    expect(countRecords(truncateApp, demo5)).toBeGreaterThan(0);
+
+    truncateCollection(truncateApp, demo5);
+
+    expect(countRecords(truncateApp, demo5)).toBe(0);
+
+    // try to truncate again (shouldn't return an error)
+    truncateCollection(truncateApp, demo5);
   });
 });
