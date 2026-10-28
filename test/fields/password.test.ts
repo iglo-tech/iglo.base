@@ -9,9 +9,10 @@ import {
   type Field,
 } from "@/fields/field";
 import { FieldTypePassword, PasswordField, PasswordFieldValue } from "@/fields/password";
+import { newBadRequestError } from "@/server/error";
 import { Cost, DefaultCost, ErrPasswordTooLong, MaxCost, MinCost } from "@/tools/crypto/bcrypt";
 import { marshal, textToBytes } from "@/tools/types/go-json";
-import { NewError } from "@/validation/error";
+import { Errors, NewError } from "@/validation/error";
 
 import {
   TestRecord,
@@ -533,6 +534,61 @@ describe("PasswordFieldValue.validate", () => {
     expect(new PasswordFieldValue().validate("")).toBe(false);
     expect(new PasswordFieldValue({ hash, lastError: new Error("x") }).validate("allmine")).toBe(
       false,
+    );
+  });
+});
+
+// Go int settings above 2^53 keep their exact value (a bigint outside the
+// safe range): in the stored JSON, comparisons and error params/messages.
+const loadLargeInt = (settings: string): PasswordField => {
+  const field = new PasswordField();
+  field.unmarshalJSON(`{"id":"test","name":"test",${settings}}`);
+  return field;
+};
+
+const largeIntValueErrors = (err: Error | null): string =>
+  err === null ? "null" : marshal(newBadRequestError("", new Errors({ test: err })).data);
+
+describe("PasswordField large integers", () => {
+  const app = noDBApp();
+
+  test("min/max/cost keep their exact values", () => {
+    const field = loadLargeInt(
+      `"min":9007199254740993,"max":9007199254740992,"cost":-9223372036854775808`,
+    );
+    expect(field.marshalJSON()).toContain(
+      `"min":9007199254740993,"max":9007199254740992,"cost":-9223372036854775808,`,
+    );
+    const collection = newBaseCollection("test_collection");
+    collection.fields.add(field);
+    expect(marshal(newBadRequestError("", field.validateSettings(app, collection)).data)).toBe(
+      `{"cost":{"code":"validation_min_greater_equal_than_required","message":"Must be no less than 4.","params":{"threshold":4}},"max":{"code":"validation_min_greater_equal_than_required","message":"Must be no less than 9007199254740993.","params":{"threshold":9007199254740993}},"min":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 71.","params":{"threshold":71}}}`,
+    );
+  });
+
+  test("out of int64 range is a decode error", () => {
+    expect(() => loadLargeInt(`"cost":9223372036854775808`)).toThrow(
+      "json: cannot unmarshal JSON number 9223372036854775808 into Go int: value out of range",
+    );
+  });
+
+  test("value limits use the exact settings", () => {
+    const field = loadLargeInt(`"min":9007199254740993`);
+    const record = new TestRecord(newBaseCollection("test_collection"));
+    record.setRaw("test", new PasswordFieldValue({ plain: "abc" }));
+    expect(largeIntValueErrors(field.validateValue(app, record))).toBe(
+      `{"test":{"code":"validation_min_text_constraint","message":"Must be at least 9007199254740993 character(s)."}}`,
+    );
+  });
+
+  test("a cost above bcrypt's range is a hashing error", () => {
+    const field = loadLargeInt(`"cost":9223372036854775807`);
+    const record = new TestRecord(newBaseCollection("test_collection"));
+    field.findSetter("test")?.(record, "abc");
+    const value = record.getRaw("test") as PasswordFieldValue;
+    expect(value.hash).toBe("");
+    expect(value.lastError?.message).toBe(
+      "crypto/bcrypt: cost 9223372036854775807 is outside allowed inclusive range 4..31",
     );
   });
 });

@@ -4,6 +4,8 @@ import { afterAll, describe, expect, test } from "bun:test";
 
 import type { Field } from "@/fields/field";
 import { FieldTypeRelation, RelationField } from "@/fields/relation";
+import { newBadRequestError } from "@/server/error";
+import { Errors } from "@/validation/error";
 import { marshal } from "@/tools/types/go-json";
 
 import {
@@ -467,4 +469,81 @@ describe("TestRelationFieldFindSetter", () => {
       expect(marshal(record.get(s.field.getName()))).toBe(s.expected);
     });
   }
+});
+
+// Go int settings above 2^53 keep their exact value (a bigint outside the
+// safe range): in the stored JSON, comparisons and error params/messages.
+const largeIntValueErrors = (err: Error | null): string =>
+  err === null ? "null" : marshal(newBadRequestError("", new Errors({ test: err })).data);
+
+describe("RelationField large integers", () => {
+  const app = TestApp.open();
+  afterAll(() => app.cleanup());
+
+  const demo1 = app.findCollectionByNameOrId("demo1");
+
+  const load = (settings: string): RelationField => {
+    const field = new RelationField();
+    field.unmarshalJSON(`{"id":"test","name":"test","collectionId":"${demo1.id}",${settings}}`);
+    return field;
+  };
+
+  const settingsErrors = (field: RelationField): string | null => {
+    const collection = newBaseCollection("test_collection");
+    collection.fields.add(field);
+    const err = field.validateSettings(app, collection);
+    return err === null ? null : marshal(newBadRequestError("", err).data);
+  };
+
+  test("minSelect above 2^53 is compared exactly", () => {
+    const field = load(`"minSelect":9007199254740993,"maxSelect":9007199254740992`);
+    expect(field.minSelect).toBe(9007199254740993n);
+    expect(field.maxSelect).toBe(9007199254740992n);
+    expect(field.marshalJSON()).toContain(
+      `"minSelect":9007199254740993,"maxSelect":9007199254740992,`,
+    );
+    expect(settingsErrors(field)).toBe(
+      `{"maxSelect":{"code":"validation_min_greater_equal_than_required","message":"Must be no less than 9007199254740993.","params":{"threshold":9007199254740993}}}`,
+    );
+  });
+
+  test("int64 bounds are accepted", () => {
+    const field = load(`"minSelect":9223372036854775807,"maxSelect":9223372036854775807`);
+    expect(field.marshalJSON()).toContain(
+      `"minSelect":9223372036854775807,"maxSelect":9223372036854775807,`,
+    );
+    expect(settingsErrors(field)).toBeNull();
+    expect(field.isMultiple()).toBe(true);
+
+    const negative = load(`"minSelect":-9223372036854775808`);
+    expect(settingsErrors(negative)).toBe(
+      `{"minSelect":{"code":"validation_min_greater_equal_than_required","message":"Must be no less than 0.","params":{"threshold":0}}}`,
+    );
+  });
+
+  test("out of int64 range, fractions and exponents are decode errors", () => {
+    for (const [literal, msg] of [
+      ["9223372036854775808", "value out of range"],
+      ["-9223372036854775809", "value out of range"],
+      ["1.0", "invalid syntax"],
+      ["1e3", "invalid syntax"],
+    ]) {
+      expect(() => load(`"maxSelect":${literal}`)).toThrow(
+        `json: cannot unmarshal JSON number ${literal} into Go int: ${msg}`,
+      );
+    }
+  });
+
+  test("value limits use the exact settings", () => {
+    const record = withValue(["a", "b"])();
+    expect(
+      largeIntValueErrors(load(`"minSelect":9007199254740993`).validateValue(app, record)),
+    ).toBe(
+      `{"test":{"code":"validation_not_enough_values","message":"Select at least 9007199254740993.","params":{"minSelect":9007199254740993}}}`,
+    );
+    const negative = load(`"maxSelect":-9223372036854775808`);
+    expect(largeIntValueErrors(negative.validateValue(app, record))).toBe(
+      `{"test":{"code":"validation_too_many_values","message":"Select no more than 1.","params":{"maxSelect":1}}}`,
+    );
+  });
 });

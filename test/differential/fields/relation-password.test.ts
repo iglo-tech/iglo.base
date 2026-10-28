@@ -9,6 +9,9 @@
 //   - settings: collections created through POST /api/collections (and
 //     one collectionId change through PATCH) give the same field JSON or
 //     the same error `data` as the model, byte for byte;
+//   - raw settings: field JSON texts with large Go int settings, sent
+//     unchanged. A text the model cannot decode must get upstream's whole
+//     400 "invalid formatting" body; the others are compared as settings;
 //   - values: records created through POST
 //     /api/collections/{c}/records give the same error `data`, stored
 //     relation columns and GET bodies as the model. Password columns hold
@@ -53,6 +56,7 @@ import { runUpstream } from "@test/differential/db/fixture";
 import type { FieldDef } from "@test/differential/fields/cases";
 import {
   invalidSettings,
+  rawSettings,
   targetIds,
   userId,
   validSettings,
@@ -198,6 +202,19 @@ function modelField(def: unknown): Field {
   return field;
 }
 
+// a field read from its JSON text (unmarshalJSON throws as Go's decoding
+// fails)
+function rawField(text: string): Field {
+  const { type } = unmarshal(text, mapOf(anyType)) as { type: string };
+  const factory = fieldFactory(type);
+  if (factory === undefined) {
+    throw new Error(`unknown field type ${type}`);
+  }
+  const field = factory();
+  field.unmarshalJSON(text);
+  return field;
+}
+
 function modelCollection(name: string, defs: FieldDef[]): TestCollection {
   const collection = newBaseCollection(name);
   for (const def of defs) {
@@ -312,6 +329,50 @@ describe("settings", () => {
 
     expect(await checkCollection("PATCH", "/api/collections/ok_0", { fields }, changed)).toBe(400);
   });
+});
+
+describe("raw settings", () => {
+  for (const [i, raw] of rawSettings.entries()) {
+    test(`raw ${i} ${raw}`, async () => {
+      const name = `raw_${i}`;
+      const field = raw.replace(`"$T"`, JSON.stringify(placeholders.get("$T")));
+      const body = `{"name":"${name}","type":"base","fields":[${field}]}`;
+
+      let collection: TestCollection;
+      try {
+        collection = newBaseCollection(name);
+        collection.fields.add(rawField(field));
+      } catch (err) {
+        // BindBody fails: upstream answers before validating
+        const res = await request("POST", "/api/collections", body);
+        expect({ status: res.status, body: res.text }).toEqual({
+          status: 400,
+          body: marshal(
+            newBadRequestError(
+              "Failed to load the submitted data due to invalid formatting.",
+              err,
+            ).toJSON(),
+          ),
+        });
+        return;
+      }
+
+      const errs = settingsErrors(collection);
+      const res = await request("POST", "/api/collections", body);
+      if (errs !== null) {
+        expect({
+          status: res.status,
+          data: res.status === 400 ? errorData(res.text) : res.text,
+        }).toEqual({ status: 400, data: modelErrorData(new Errors({ fields: errs })) });
+        return;
+      }
+      expect({ status: res.status, body: res.status === 200 ? "" : res.text }).toEqual({
+        status: 200,
+        body: "",
+      });
+      expect(responseFields(res.text)).toBe(fieldsListJSON(collection));
+    });
+  }
 });
 
 // ---------------------------------------------------------------------

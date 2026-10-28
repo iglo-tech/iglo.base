@@ -29,7 +29,14 @@ import {
 } from "@/tools/crypto/bcrypt";
 import { matchString } from "@/tools/regexp/regexp";
 import { toString as castToString } from "@/tools/types/cast";
-import { boolType, intType, stringType, textToBytes, unmarshalStruct } from "@/tools/types/go-json";
+import {
+  boolType,
+  intType,
+  stringType,
+  textToBytes,
+  unmarshalStruct,
+  type GoInt,
+} from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 import { Required } from "@/validation/required";
@@ -97,19 +104,19 @@ export class PasswordField
   pattern = "";
 
   // Min specifies an optional required field string length.
-  min = 0;
+  min: GoInt = 0;
 
   // Max specifies an optional required field string length.
   //
   // If zero, fallback to max 71 bytes.
-  max = 0;
+  max: GoInt = 0;
 
   // Cost specifies the cost/weight/iteration/etc. bcrypt factor.
   //
   // If zero, fallback to [DefaultCost].
   //
   // If explicitly set, must be between [MinCost] and [MaxCost].
-  cost = 0;
+  cost: GoInt = 0;
 
   // Required will require the field value to be non-empty string.
   required = false;
@@ -360,9 +367,9 @@ export class PasswordField
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
         pattern: (v) => (this.pattern = v as string),
-        min: (v) => (this.min = v as number),
-        max: (v) => (this.max = v as number),
-        cost: (v) => (this.cost = v as number),
+        min: (v) => (this.min = v as GoInt),
+        max: (v) => (this.max = v as GoInt),
+        cost: (v) => (this.cost = v as GoInt),
         required: (v) => (this.required = v as boolean),
       },
       {

@@ -60,7 +60,7 @@ export class InvalidHashPrefixError extends Error {
 }
 
 export class InvalidCostError extends Error {
-  constructor(readonly cost: number) {
+  constructor(readonly cost: number | bigint) {
     super(`crypto/bcrypt: cost ${cost} is outside allowed inclusive range ${MinCost}..${MaxCost}`);
   }
 }
@@ -93,7 +93,7 @@ export const ErrPasswordTooLong = new Error("bcrypt: password length exceeds 72 
 // to DefaultCost, instead. GenerateFromPassword does not accept passwords
 // longer than 72 bytes, which is the longest password bcrypt will operate
 // on. Throws the error.
-export function generateFromPassword(password: Uint8Array, cost: number): string {
+export function generateFromPassword(password: Uint8Array, cost: number | bigint): string {
   if (password.length > maxKeySize) {
     throw ErrPasswordTooLong;
   }
@@ -102,7 +102,10 @@ export function generateFromPassword(password: Uint8Array, cost: number): string
   }
   checkCost(cost);
 
-  const hash = Bun.password.hashSync(bunPassword(password), { algorithm: "bcrypt", cost });
+  const hash = Bun.password.hashSync(bunPassword(password), {
+    algorithm: "bcrypt",
+    cost: Number(cost),
+  });
 
   // Bun writes "$2b$"; the computation is the same, Go writes "$2a$"
   return "$2a$" + hash.slice("$2b$".length);
@@ -274,7 +277,7 @@ function hashBytes(p: Hashed): Uint8Array {
   return arr.subarray(0, n);
 }
 
-function checkCost(cost: number): void {
+function checkCost(cost: number | bigint): void {
   if (cost < MinCost || cost > MaxCost) {
     throw new InvalidCostError(cost);
   }

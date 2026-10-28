@@ -16,7 +16,14 @@ import {
   type SetterFunc,
 } from "@/fields/field";
 import { subtractSlice, toInterfaceSlice, toUniqueStringSlice } from "@/tools/list/list";
-import { boolType, intType, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import {
+  boolType,
+  intType,
+  maxGoInt,
+  stringType,
+  unmarshalStruct,
+  type GoInt,
+} from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { NewError } from "@/validation/error";
 import { Min } from "@/validation/minmax";
@@ -99,7 +106,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
   // could be linked to the main model.
   //
   // No min limit is applied if it is zero or negative value.
-  minSelect = 0;
+  minSelect: GoInt = 0;
 
   // MaxSelect indicates the max number of allowed relation records that
   // could be linked to the main model.
@@ -108,7 +115,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
   // single (default).
   //
   // If MinSelect is set, MaxSelect must be at least >= MinSelect.
-  maxSelect = 0;
+  maxSelect: GoInt = 0;
 
   // Required will require the field value to be non-empty.
   required = false;
@@ -229,7 +236,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
       });
     }
 
-    const maxSelect = Math.max(this.maxSelect, 1);
+    const maxSelect = maxGoInt(this.maxSelect, 1);
     if (ids.length > maxSelect) {
       return NewError("validation_too_many_values", "Select no more than {{.maxSelect}}").setParams(
         { maxSelect },
@@ -423,8 +430,8 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
         help: (v) => (this.help = v as string),
         collectionId: (v) => (this.collectionId = v as string),
         cascadeDelete: (v) => (this.cascadeDelete = v as boolean),
-        minSelect: (v) => (this.minSelect = v as number),
-        maxSelect: (v) => (this.maxSelect = v as number),
+        minSelect: (v) => (this.minSelect = v as GoInt),
+        maxSelect: (v) => (this.maxSelect = v as GoInt),
         required: (v) => (this.required = v as boolean),
       },
       {

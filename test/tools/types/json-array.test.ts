@@ -114,6 +114,13 @@ describe("JSONArrayScan typed", () => {
     ["int rejects a fraction", `[1.0]`, intType, true, []],
     ["int rejects an exponent", `[1e2]`, intType, true, []],
     ["int rejects overflow", `[9223372036854775808]`, intType, true, []],
+    [
+      "int beyond 2^53 is an exact bigint",
+      `[9007199254740991,9007199254740993,-9223372036854775808]`,
+      intType,
+      false,
+      [9007199254740991, 9007199254740993n, -9223372036854775808n],
+    ],
     ["null array is empty", `null`, anyType, false, []],
     ["duplicate names fail", `[{"a":1,"a":2}]`, anyType, true, []],
     ["float64 overflow fails", `[1e400]`, anyType, true, []],

@@ -190,3 +190,39 @@ export const valueCases: ValueCase[] = [
   ...cases("pw_a", "p:hash", [q("$2a$10$XajjQvNhvvRt5GSeFk1xFeyqRrsxkhBkUiQeg0dt.wU1qD4aFDcga")]),
   ...cases("pw_req", "p", [q(""), q("x"), q("xy"), "null"]),
 ];
+
+// Field JSON texts with Go int settings around 2^53 and the int64 bounds,
+// sent as they are (one collection each, "$T" replaced in the text).
+// Upstream decodes them into Go int / int64: out of range, fractions and
+// exponents fail when the body is read; the other values are compared
+// exactly by the settings validators.
+export const rawSettings: string[] = [
+  // relation minSelect/maxSelect (int)
+  `{"name":"r","type":"relation","collectionId":"$T","minSelect":9007199254740993,"maxSelect":9007199254740992}`,
+  `{"name":"r","type":"relation","collectionId":"$T","minSelect":9007199254740992,"maxSelect":9007199254740993}`,
+  `{"name":"r","type":"relation","collectionId":"$T","minSelect":-9223372036854775808,"maxSelect":9223372036854775807}`,
+  `{"name":"r","type":"relation","collectionId":"$T","maxSelect":9223372036854775808}`,
+  `{"name":"r","type":"relation","collectionId":"$T","minSelect":-9223372036854775809}`,
+  `{"name":"r","type":"relation","collectionId":"$T","maxSelect":2.0}`,
+  `{"name":"r","type":"relation","collectionId":"$T","maxSelect":1e3}`,
+  // text min/max (int)
+  `{"name":"t","type":"text","min":9007199254740991,"max":9007199254740991}`,
+  `{"name":"t","type":"text","min":9007199254740993,"max":9223372036854775807}`,
+  `{"name":"t","type":"text","min":9007199254740992,"max":9007199254740991}`,
+  `{"name":"t","type":"text","min":-9223372036854775808}`,
+  `{"name":"t","type":"text","max":-9223372036854775809}`,
+  // select maxSelect (int)
+  `{"name":"s","type":"select","values":["a","b"],"maxSelect":9007199254740993}`,
+  `{"name":"s","type":"select","values":["a","b"],"maxSelect":-9223372036854775808}`,
+  `{"name":"s","type":"select","values":["a","b"],"maxSelect":9223372036854775808}`,
+  // json and editor maxSize (int64)
+  `{"name":"j","type":"json","maxSize":9007199254740991}`,
+  `{"name":"j","type":"json","maxSize":9007199254740992}`,
+  `{"name":"j","type":"json","maxSize":-9223372036854775808}`,
+  `{"name":"e","type":"editor","maxSize":9223372036854775807}`,
+  `{"name":"e","type":"editor","maxSize":9223372036854775808}`,
+  // password min/max/cost (int)
+  `{"name":"p","type":"password","min":9007199254740993,"max":9007199254740992,"cost":-9223372036854775808}`,
+  `{"name":"p","type":"password","cost":9223372036854775807}`,
+  `{"name":"p","type":"password","cost":1e1}`,
+];

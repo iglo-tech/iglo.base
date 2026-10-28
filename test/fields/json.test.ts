@@ -3,6 +3,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { FieldTypeJSON, JSONField, DefaultJSONFieldMaxSize } from "@/fields/json";
+import { newBadRequestError } from "@/server/error";
+import { marshal } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
 import {
@@ -204,4 +206,51 @@ describe("TestJSONFieldCalculateMaxBodySize", () => {
       expect(result).toBe(s.expected);
     });
   }
+});
+
+// Go int settings above 2^53 keep their exact value (a bigint outside the
+// safe range): in the stored JSON, comparisons and error params/messages.
+const loadLargeInt = (settings: string): JSONField => {
+  const field = new JSONField();
+  field.unmarshalJSON(`{"id":"test","name":"test",${settings}}`);
+  return field;
+};
+
+describe("JSONField large integers", () => {
+  const app = noDBApp();
+
+  const settingsErrors = (field: JSONField): string | null => {
+    const collection = newBaseCollection("test_collection");
+    collection.fields.add(field);
+    const err = field.validateSettings(app, collection);
+    return err === null ? null : marshal(newBadRequestError("", err).data);
+  };
+
+  test("maxSize keeps its exact value", () => {
+    expect(settingsErrors(loadLargeInt(`"maxSize":9007199254740991`))).toBeNull();
+    const field = loadLargeInt(`"maxSize":9007199254740993`);
+    expect(field.marshalJSON()).toContain(`"maxSize":9007199254740993`);
+    expect(field.calculateMaxBodySize()).toBe(9007199254740993n);
+    expect(settingsErrors(field)).toBe(
+      `{"maxSize":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 9007199254740991.","params":{"threshold":9007199254740991}}}`,
+    );
+    expect(loadLargeInt(`"maxSize":-9223372036854775808`).calculateMaxBodySize()).toBe(
+      DefaultJSONFieldMaxSize,
+    );
+  });
+
+  test("out of int64 range is a decode error", () => {
+    expect(() => loadLargeInt(`"maxSize":9223372036854775808`)).toThrow(
+      "json: cannot unmarshal JSON number 9223372036854775808 into Go int64: value out of range",
+    );
+    expect(() => loadLargeInt(`"maxSize":1e3`)).toThrow(
+      "json: cannot unmarshal JSON number 1e3 into Go int64: invalid syntax",
+    );
+  });
+
+  test("the value size is compared with the exact maxSize", () => {
+    const record = new TestRecord(newBaseCollection("test_collection"));
+    record.setRaw("test", new JSONRaw("[1]"));
+    expect(loadLargeInt(`"maxSize":9223372036854775807`).validateValue(app, record)).toBeNull();
+  });
 });

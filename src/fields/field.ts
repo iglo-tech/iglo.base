@@ -31,7 +31,7 @@ import type { Clock } from "@/app/clock";
 import type { Builder } from "@/db/dbx/builder";
 import { mustCompile } from "@/tools/regexp/regexp";
 import type { DateTime } from "@/tools/types/datetime";
-import { marshal, quote } from "@/tools/types/go-json";
+import { marshal, quote, type GoInt } from "@/tools/types/go-json";
 import { IsPrint } from "@/tools/unicode/letter";
 import { NewError, type Error as ValidationError } from "@/validation/error";
 import { Length } from "@/validation/length";
@@ -214,7 +214,7 @@ export interface Field {
 export interface MaxBodySizeCalculator {
   // CalculateMaxBodySize returns the approximate max body size of a field
   // value.
-  calculateMaxBodySize(): number;
+  calculateMaxBodySize(): GoInt;
 }
 
 export type SetterFunc = (record: FieldRecord, raw: unknown) => void;

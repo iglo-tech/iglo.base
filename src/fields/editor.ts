@@ -13,7 +13,13 @@ import {
   type MaxBodySizeCalculator,
 } from "@/fields/field";
 import { toString as castToString } from "@/tools/types/cast";
-import { boolType, intType, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import {
+  boolType,
+  int64Type,
+  stringType,
+  unmarshalStruct,
+  type GoInt,
+} from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 import { Required } from "@/validation/required";
@@ -60,7 +66,7 @@ export class EditorField implements Field, MaxBodySizeCalculator {
   // bytes and up to 2^53-1).
   //
   // If zero, a default limit of ~5MB is applied.
-  maxSize = 0;
+  maxSize: GoInt = 0;
 
   // ConvertURLs is usually used to instruct the editor whether to apply
   // url conversion (eg. stripping the domain name in case the urls are
@@ -168,7 +174,7 @@ export class EditorField implements Field, MaxBodySizeCalculator {
   }
 
   // CalculateMaxBodySize implements the [MaxBodySizeCalculator] interface.
-  calculateMaxBodySize(): number {
+  calculateMaxBodySize(): GoInt {
     if (this.maxSize <= 0) {
       return DefaultEditorFieldMaxSize;
     }
@@ -202,7 +208,7 @@ export class EditorField implements Field, MaxBodySizeCalculator {
         hidden: (v) => (this.hidden = v as boolean),
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
-        maxSize: (v) => (this.maxSize = v as number),
+        maxSize: (v) => (this.maxSize = v as GoInt),
         convertURLs: (v) => (this.convertURLs = v as boolean),
         required: (v) => (this.required = v as boolean),
       },
@@ -213,7 +219,7 @@ export class EditorField implements Field, MaxBodySizeCalculator {
         hidden: boolType,
         presentable: boolType,
         help: stringType,
-        maxSize: intType,
+        maxSize: int64Type,
         convertURLs: boolType,
         required: boolType,
       },

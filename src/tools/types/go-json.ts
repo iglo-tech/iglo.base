@@ -18,8 +18,9 @@
 //
 // JS has no Go types, so the decoder takes a GoType that names the Go
 // destination type, and values map to JS this way: float64 is number, int
-// is number (values beyond 2^53 lose precision, as in any JS number), Go
-// int64/uint64 values that must stay exact are bigint, string is string,
+// and int64 are GoInt (a number inside Number.MAX_SAFE_INTEGER, the exact
+// bigint outside it, as src/db reads integers), Go int64/uint64 values that
+// must stay exact are bigint, string is string,
 // []T is an array, map[string]T and struct-less `any` objects are plain
 // objects. A JS string can only hold invalid UTF-8 as a lone surrogate:
 // decodeUTF8Bytes maps each invalid byte to one, so a lone surrogate is
@@ -633,6 +634,7 @@ export type GoType =
   | { kind: "any" }
   | { kind: "string" }
   | { kind: "int" }
+  | { kind: "int64" }
   | { kind: "float64" }
   | { kind: "bool" }
   | { kind: "slice"; elem: GoType }
@@ -641,6 +643,7 @@ export type GoType =
 export const anyType: GoType = { kind: "any" };
 export const stringType: GoType = { kind: "string" };
 export const intType: GoType = { kind: "int" };
+export const int64Type: GoType = { kind: "int64" };
 export const float64Type: GoType = { kind: "float64" };
 export const boolType: GoType = { kind: "bool" };
 
@@ -1013,13 +1016,14 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       }
       return parseFloat64(node.literal);
     case "int":
+    case "int64":
       if (node === null) {
         return 0;
       }
       if (!(node instanceof NumberNode)) {
-        throw mismatch(node, "int");
+        throw mismatch(node, t.kind);
       }
-      return parseInt64(node.literal);
+      return parseInt64(node.literal, t.kind);
     case "slice": {
       if (node === null) {
         return undefined; // nil slice
@@ -1128,21 +1132,38 @@ function parseFloat64(literal: string): number {
   return n;
 }
 
+// A Go int or int64 (int is 64 bits on the platforms upstream builds for):
+// a number inside Number.MAX_SAFE_INTEGER, the exact bigint outside it.
+// JS comparisons between numbers and bigints are exact, so GoInt values
+// compare with < and > directly; arithmetic needs the helpers below.
+export type GoInt = number | bigint;
+
+// a number for a safe integer, the bigint otherwise
+export function goInt(v: bigint): GoInt {
+  const n = Number(v);
+  return Number.isSafeInteger(n) ? n : v;
+}
+
+// Go's built-in max for integers
+export function maxGoInt(a: GoInt, b: GoInt): GoInt {
+  return a >= b ? a : b;
+}
+
 // the int arshaler: only integer digits (no fraction or exponent), in the
 // int64 range
-function parseInt64(literal: string): number {
+function parseInt64(literal: string, goType: string): GoInt {
   if (!/^-?(?:0|[1-9][0-9]*)$/.test(literal)) {
     throw new JSONSemanticError(
-      `cannot unmarshal JSON number ${literal} into Go int: invalid syntax`,
+      `cannot unmarshal JSON number ${literal} into Go ${goType}: invalid syntax`,
     );
   }
   const v = BigInt(literal);
   if (v < -(1n << 63n) || v >= 1n << 63n) {
     throw new JSONSemanticError(
-      `cannot unmarshal JSON number ${literal} into Go int: value out of range`,
+      `cannot unmarshal JSON number ${literal} into Go ${goType}: value out of range`,
     );
   }
-  return Number(v);
+  return goInt(v);
 }
 
 // Sets an own enumerable property, also for names like "__proto__".
