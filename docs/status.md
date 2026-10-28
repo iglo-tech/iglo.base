@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan (M1.5b, the file field, is next on the critical path) |
+| M1.5b | worker | `task/M1.5b-file-field` | 0 | [Brief](briefs/M1.5b.md). Opus worker started 2026-10-28 |
 
 ## Done
 
@@ -89,6 +89,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (plan change, after M1.5): the file field's `mimeTypes` check calls mimetype v1.4.15's `DetectReader` and `Is`, and a user may list any type, so the accept/reject result depends on the library's whole detection tree (about 5,900 Go lines). Upstream also uses it for served content types, mail attachments and file extensions. MIME detection is now its own task M1.5a, a full port in `src/tools/mimetype/` (MIT notice in `LICENSE`), not a signature subset or the `file-type` library. The file field moves to M1.5b. M1.6, M1.8 and M3.2 depend on M1.5b. The critical path is … → M1.5 → M1.5a → M1.5b → M1.6 → …
 - 2026-10-28 (M1.5a PR): the lead accepted the worker's correction: mimetype v1.4.15 reads 4096 bytes (`defaultLimit`), not 3072 as the brief said; the brief and the work plan are corrected. The port includes Go's `mime.ParseMediaType`, which `is()` depends on. Go-stdlib expected values in a few ported tests (csv, json, zip) were computed with Go 1.27.2 and hard-coded.
 - 2026-10-28 (M1.5a round 1): `detectReader` accepts only a Blob (sliced, never consumed). Upstream rewinds the file after detection, and a web stream cannot give unread bytes back; iglo.base's callers all hold Blobs.
+- 2026-10-28 (M1.5b brief): the file field's Intercept and storage helpers wait for M3.2 with the filesystem; `filesystem.File` uses a Blob as its reader; `NewFileFromURL` waits for M4.5.
 
 ## Paused until
 
