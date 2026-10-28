@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-28
 
-**Paused until 2026-10-28T22:30:42Z** (Claude API rate limit on the M2.1 Opus council review).
+**Paused until 2026-10-28T22:30:42Z** (Claude API rate limit on the M2.1 Opus council review; M2.1 merged since). Next after the pause: M2.2 brief.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.1 | council | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 2 | [Brief](briefs/M2.1.md). Round 1 at `352cbe1`: both CHANGES (numeric filter literals bound as INTEGER instead of REAL). Fixed at `e832407` with a `Float64` dbx param. Round 2: Sol APPROVE at `e832407`, CI green; the Opus round-2 review failed with a Claude rate limit before posting. **Next: start a fresh Opus council review of `e832407`**; merge if it approves |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M2.1 | [#23](https://github.com/iglo-tech/iglo.base/pull/23) | 2026-10-28 (`a2601bd`) | Two council rounds. Round 1 at `352cbe1`: both CHANGES (numeric filter literals bound as SQLite INTEGER instead of upstream's float64 REAL, changing TEXT-affinity matches). Fixed by an Opus fixer at `e832407` with a `Float64` dbx param (`+CAST(? AS REAL)`). Round 2: both APPROVE at `e832407` (the Opus review resumed after a rate limit). fexpr v0.7.0 and tools/search; 120 + 34 list cases match upstream's `/api/collections` and records list. Carried: `url.Values.Encode` for M2.4/M2.5; invalid UTF-8 counted as 3 bytes toward the filter limit; M1.1's module-level regex cache |
 | M1.8c | [#22](https://github.com/iglo-tech/iglo.base/pull/22) | 2026-10-28 (`70ab7d6`) | Two council rounds. Round 1 at `c287565`: Opus APPROVE, Sol CHANGES (`__proto__` field write lost; installer lookup saw uncommitted rows; deep cascades overflowed the stack). Fixed by an Opus fixer at `8455c4b`. Round 2: both APPROVE at `8455c4b`. 102-step write sequence matches upstream row for row (values and `typeof()`) over 15 tables; upstream reads back every record identically. Carried for M3.2: the file interceptor must stay synchronous inside write transactions; for M4: the auth-model rules in `src/records/record-auth-refs.ts` |
 | M1.8b | [#21](https://github.com/iglo-tech/iglo.base/pull/21) | 2026-10-28 (`ec091c3`) | Two council rounds. Round 1 at `2985949`: Opus APPROVE, Sol CHANGES (invalid-collection cancellation skipped by `rows()`, which could return rows from another table). Fixed by an Opus fixer at `f57f706` with a cancelled-context concept in the dbx port (`withCancelCause`). Round 2: both APPROVE at `f57f706`; one Linux CI job green. RecordQuery and the plain finders, FindRecordByViewFile, DryRunView's record sample; finders match upstream's list/GET results, counts, email lookups and 96 view file lookups. Carried for M2/M3: `isNoRowsError` does not unwrap causes |
 | M1.8a | [#20](https://github.com/iglo-tech/iglo.base/pull/20) | 2026-10-28 (`fae0962`) | Two council rounds; first port task after the return to Anthropic models (two Terra workers had stopped without code). Round 1 at `5a447a3`: Sol APPROVE, Opus CHANGES (INTEGER values in the safe range formatted as floats). Fixed by an Opus fixer at `0a720b4` with an opt-in `withExactIntegers()` read mode in src/db and conversion by SQLite storage class, as modernc.org/sqlite + NullString do. Round 2: both APPROVE at `0a720b4`. 66 records, 22 updates and 27 numeric edge rows match upstream's GET bodies and stored values. The macOS reference job once waited 15 minutes for a runner and was cancelled before any step; a re-run passed. Carried: M1.8b's RecordQuery reads with `withExactIntegers()`; cast helpers in `src/records/cast.ts` belong in `src/tools/types/` |
