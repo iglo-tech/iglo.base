@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.6 | council | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 2 (head `f9685b0`, all three CI jobs green. Round 1: Opus APPROVE, Sol CHANGES. `sqlite3_interrupt` is unreachable from bun:sqlite (no `sqlite3*` handle; SQLite is linked into the bun binary on Linux), so the fallback applies: synchronous and transaction reads are a deliberate difference in `04-api-compatibility.md`; the pool always keeps its full size, with at most 2×size abandoned threads; the deadline is checked on the no-rows path and in `rows()`. Opus note for M1.2/M1.8: the pool ignores `dbConnect`) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
+| M0.6 | council | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 3 (head `8f53de9`. Round 2 on `f9685b0`: Sol CHANGES (prepared async reads bypassed the pool and blocked the event loop past the timeout), fixed by the lead: prepared queries' async resolvers read on the pool, with a regression test. The round-2 Opus review was orphaned when the previous lead thread failed; it reviews a superseded head and is ignored. Round 1: Opus APPROVE, Sol CHANGES. `sqlite3_interrupt` is unreachable from bun:sqlite, so synchronous and transaction reads are a deliberate difference in `04-api-compatibility.md`. Opus note for M1.2/M1.8: the pool ignores `dbConnect`) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
 
 ## Done
 
@@ -57,6 +57,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M0.6 PR): the lead accepted the build change: `bun build --compile` takes `src/db/read-worker.ts` as a second entry point (`package.json`, `test/support/executable.ts`, the AGENTS.md build line), because a compiled executable cannot otherwise find the worker.
 
 - 2026-10-28 (M0.6 round 1): if `sqlite3_interrupt` can be reached through `bun:ffi` on Linux and macOS, `--queryTimeout` interrupts reads at the deadline, as upstream does. Otherwise synchronous and transaction reads are checked only after they return, and that is listed as a deliberate difference in `04-api-compatibility.md`. The pool always keeps its full size of live workers, with an exact limit on abandoned threads.
+
+- 2026-10-28 (lead takeover): the lead thread holding the M0.6 lock failed after starting council round 2. A new lead thread adopted the lock (same run) instead of waiting 90 minutes for it to go stale, because the failed thread could no longer receive its agents' completions.
 
 ## Paused until
 
