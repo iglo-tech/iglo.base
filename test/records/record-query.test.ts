@@ -19,14 +19,13 @@ import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { type Expression, HashExp, like, not } from "@/db/dbx/expression";
-import type { Params, Row } from "@/db/dbx/query";
+import { ContextCanceledError, type Params, type Row } from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { FieldNameEmail } from "@/fields/field";
 import type { Record } from "@/records/record-model";
 import {
-  ContextCanceledError,
   type RecordQueryFilter,
   countRecords,
   findAllRecords,
@@ -54,6 +53,16 @@ function errorOf(fn: () => unknown): Error | null {
 }
 
 // Go's (value, error) result
+// the error of a cancelled RecordQuery: context.Canceled, alone or wrapped
+// with the failed query, caused by the collection lookup's NoRowsError
+function expectCanceled(err: unknown, message: string): void {
+  expect(err).toBeInstanceOf(Error);
+  expect((err as Error).message).toBe(message);
+  const canceled = err instanceof ContextCanceledError ? err : (err as Error).cause;
+  expect(canceled).toBeInstanceOf(ContextCanceledError);
+  expect((canceled as Error).cause).toBeInstanceOf(NoRowsError);
+}
+
 function resultOf<T>(fn: () => T): [T | null, Error | null] {
   try {
     return [fn(), null];
@@ -151,6 +160,84 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
     expect(((invalid as Error).cause as Error).cause).toEqual(
       new Error("unknown collection identifier - must be collection model, id or name"),
     );
+  });
+
+  // not upstream's: every execution path of the cancelled query fails with
+  // context.Canceled before its SQL runs, as dbx's QueryContext and
+  // ExecContext do with upstream's cancelled context; the resolvers wrapped
+  // by execLockRetry add the failed query, Rows() is not wrapped
+  test("every execution path of the cancelled query fails before its SQL runs", async () => {
+    const app = getApp();
+    const failedQuery =
+      "context canceled; failed query: SELECT `@@__invalidCollectionModelOrIdentifier`.* FROM `@@__invalidCollectionModelOrIdentifier`";
+
+    const missing = (): SelectQuery => recordQuery(app, "missing");
+
+    // the reproductions: Rows() neither reaches the fake table nor reads
+    // the table the query was changed to
+    expectCanceled(
+      errorOf(() => missing().rows()),
+      "context canceled",
+    );
+    expectCanceled(
+      errorOf(() => missing().select("id").from("demo1").rows().first()),
+      "context canceled",
+    );
+
+    for (const run of [
+      () => missing().one(recordTarget),
+      () => missing().one(),
+      () => missing().all(recordsTarget),
+      () => missing().all(),
+      () => missing().row(),
+      () => missing().column(),
+      () => missing().build().execute(),
+    ]) {
+      expectCanceled(errorOf(run), failedQuery);
+    }
+
+    // changed with select/from/where, the query is still cancelled
+    const changed = (): SelectQuery =>
+      missing()
+        .select("id")
+        .from("demo1")
+        .where(new HashExp({ id: "84nmscqy84lsi1t" }));
+    const changedQuery =
+      "context canceled; failed query: SELECT `id` FROM `demo1` WHERE `id`={:p0}";
+    for (const run of [
+      () => changed().one(),
+      () => changed().all(),
+      () => changed().row(),
+      () => changed().column(),
+      () => changed().clone().one(),
+      // Prepare() takes no context (dbx); the prepared query is cancelled
+      () => changed().build().prepare().row(),
+    ]) {
+      expectCanceled(errorOf(run), changedQuery);
+    }
+    expectCanceled(
+      errorOf(() => changed().rows()),
+      "context canceled",
+    );
+
+    for (const run of [
+      () => missing().oneAsync(recordTarget),
+      () => missing().allAsync(recordsTarget),
+      () => missing().rowAsync(),
+      () => missing().columnAsync(),
+      () => changed().oneAsync(),
+      () => changed().allAsync(),
+    ]) {
+      const err = await run().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect((err as Error).message).toStartWith("context canceled; failed query: ");
+      expect((err as Error).cause).toBeInstanceOf(ContextCanceledError);
+    }
+
+    // a query of an existing collection is not cancelled
+    expect([...recordQuery(app, "demo1").select("id").rows()].length).toBe(3);
   });
 
   test("the async resolvers hydrate records and fail the same way", async () => {

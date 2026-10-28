@@ -60,15 +60,6 @@ export type CollectionModelOrIdentifier = Collection | string;
 // Go's optional query filter: changes the query, throws to fail the find
 export type RecordQueryFilter = ((q: SelectQuery) => void) | null | undefined;
 
-// context.Canceled, the error of a query whose context was cancelled; the
-// cause is the context's cause (context.Cause)
-export class ContextCanceledError extends Error {
-  constructor(cause: unknown) {
-    super("context canceled", { cause });
-    this.name = "ContextCanceledError";
-  }
-}
-
 // a StructModel that is never scanned: the targets below are only markers
 // for RecordQuery's hooks
 function markerModel(): StructModel {
@@ -111,9 +102,10 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   const db = app.databases.concurrentDB();
   const query = db.select(db.quoteSimpleColumnName(tableName) + ".*").from(tableName);
 
-  // in case of an error the query fails as one with a cancelled context:
-  // database/sql returns context.Canceled before it runs the statement
-  const cancelled = collectionErr !== null ? new ContextCanceledError(collectionErr) : null;
+  // in case of an error attach a new context and cancel it immediately with the error
+  if (collectionErr !== null) {
+    query.withCancelCause(collectionErr);
+  }
 
   return query.withBuildHook((q) => {
     const databases = app.databases;
@@ -131,19 +123,9 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
       now,
     );
     q.withExactIntegers()
-      .withExecHook((built, op) =>
-        retry(built, () => {
-          if (cancelled !== null) {
-            throw cancelled;
-          }
-          withDriverErrors(op);
-        }),
-      )
+      .withExecHook((built, op) => retry(built, () => withDriverErrors(op)))
       .withAsyncExecHook((built, op) =>
         retryAsync(built, async () => {
-          if (cancelled !== null) {
-            throw cancelled;
-          }
           try {
             await op();
           } catch (err) {
