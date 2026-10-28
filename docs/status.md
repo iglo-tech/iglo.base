@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.6 | fix | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 1 → fix (round 1 at `e077482`: Opus APPROVE; Sol CHANGES: synchronous and transaction reads block past the timeout, timeouts exhaust the pool, the no-rows path hides the timeout, `rows()` ignores the deadline. An Opus fixer first tries `sqlite3_interrupt` through `bun:ffi`, with a fallback rule set by the lead; next: council round 2. Opus note for M1.2/M1.8: the pool ignores `dbConnect`) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
+| M0.6 | council | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 2 (head `f9685b0`, all three CI jobs green. Round 1: Opus APPROVE, Sol CHANGES. `sqlite3_interrupt` is unreachable from bun:sqlite (no `sqlite3*` handle; SQLite is linked into the bun binary on Linux), so the fallback applies: synchronous and transaction reads are a deliberate difference in `04-api-compatibility.md`; the pool always keeps its full size, with at most 2×size abandoned threads; the deadline is checked on the no-rows path and in `rows()`. Opus note for M1.2/M1.8: the pool ignores `dbConnect`) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
 
 ## Done
 
