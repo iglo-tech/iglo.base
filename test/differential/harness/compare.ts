@@ -14,6 +14,11 @@
 //   contract, whatever `fields` projects. When the bodies differ, a
 //   structural diff reports where (see compareJson).
 //
+// Only API JSON responses are normalized: upstream's content-type is
+// application/json and the request is not a file download (/api/files/...,
+// whose bytes are the stored file's, whatever it contains). Every other body
+// is compared byte for byte as it is.
+//
 // Generated values: a value upstream generates while serving the request
 // (a new record's id, its created and updated timestamps, an auth token)
 // differs from run to run, so it is compared by format only. When both
@@ -213,6 +218,15 @@ export function compareResponses(
     }
   }
 
+  if (!isApiJson(upstream, context)) {
+    if (!Buffer.from(upstream.body).equals(Buffer.from(igloBase.body))) {
+      differences.push(
+        `body: upstream ${show(text(upstream.body))}, iglo.base ${show(text(igloBase.body))}`,
+      );
+    }
+    return differences;
+  }
+
   const upText = utf8Text(upstream.body);
   const igText = utf8Text(igloBase.body);
   const upJson = upText === undefined ? undefined : tryParse(upText);
@@ -220,8 +234,8 @@ export function compareResponses(
   if (upJson && igJson) {
     const root: Location = { path: [], parents: [], context, status: upstream.status };
     pairGenerated(upJson, igJson, root, pairing, differences);
-    const upNormal = normalize(upJson, upText as string, root, pairing.upstream);
-    const igNormal = normalize(igJson, igText as string, root, pairing.igloBase);
+    const upNormal = normalizeBody(upJson, upText as string, root, pairing.upstream);
+    const igNormal = normalizeBody(igJson, igText as string, root, pairing.igloBase);
     if (upNormal !== igNormal) {
       const before = differences.length;
       compareJson(parseJson(upNormal), parseJson(igNormal), [], differences);
@@ -288,7 +302,17 @@ function isGenerated(format: Format, value: string, context: Context): boolean {
   return format.pattern.test(value) && !context.start.contains(value) && !sent(value, context);
 }
 
-// whether the scenario's request carries the value
+// whether upstream's response is API JSON that may carry generated values
+function isApiJson(upstream: ScenarioResponse, context: Context): boolean {
+  const type = upstream.headers.get("content-type") ?? "";
+  if (!/^application\/json\b/i.test(type)) {
+    return false;
+  }
+  return !(requestUrl(context)?.pathname ?? "").startsWith("/api/files/");
+}
+
+// whether the scenario's request carries the value: in the URL (raw or
+// percent-decoded), in the raw body, or as a decoded string of a JSON body
 function sent(value: string, { request }: Context): boolean {
   let url = request.url;
   try {
@@ -298,7 +322,29 @@ function sent(value: string, { request }: Context): boolean {
   }
   const body =
     typeof request.body === "string" ? request.body : new TextDecoder().decode(request.body);
-  return url.includes(value) || body.includes(value);
+  return url.includes(value) || body.includes(value) || jsonStrings(body).has(value);
+}
+
+// the decoded string values (and member names) of a JSON text, if it is JSON
+function jsonStrings(json: string): Set<string> {
+  const found = new Set<string>();
+  const node = json === "" ? undefined : tryParse(json);
+  const walk = (n: JsonNode): void => {
+    if (n.kind === "string") {
+      found.add(n.value);
+    } else if (n.kind === "array") {
+      n.items.forEach(walk);
+    } else if (n.kind === "object") {
+      for (const [name, v] of n.entries) {
+        found.add(name);
+        walk(v);
+      }
+    }
+  };
+  if (node) {
+    walk(node);
+  }
+  return found;
 }
 
 function member(at: Location, object: JsonNode & { kind: "object" }, name: string): Location {
@@ -307,6 +353,17 @@ function member(at: Location, object: JsonNode & { kind: "object" }, name: strin
 
 function end(node: JsonNode): number {
   return node.start + node.raw.length;
+}
+
+// The whole body text, normalized: the bytes before and after the root value
+// stay as they are.
+function normalizeBody(
+  root: JsonNode,
+  json: string,
+  at: Location,
+  replace: Map<string, string>,
+): string {
+  return json.slice(0, root.start) + normalize(root, json, at, replace) + json.slice(end(root));
 }
 
 // The body text with paired generated values replaced by their placeholder

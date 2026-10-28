@@ -211,3 +211,36 @@ describe("generated values", () => {
     ]);
   });
 });
+
+// Sol's council round-2 findings on PR #6.
+describe("council round 2", () => {
+  test("file downloads are compared byte for byte, even when they hold JSON", () => {
+    const url = "/api/files/wsmn24bux7wo113/84nmscqy84lsi1t/test_MaWC6mWyrP.txt";
+    const plain = { "content-type": "text/plain; charset=utf-8" };
+    expect(
+      diff(res('{"id":"aaaaaaaaaaaaaaa"}', plain), res('{"id":"bbbbbbbbbbbbbbb"}', plain), { url }),
+    ).toEqual([
+      'body: upstream "{\\"id\\":\\"aaaaaaaaaaaaaaa\\"}", iglo.base "{\\"id\\":\\"bbbbbbbbbbbbbbb\\"}"',
+    ]);
+    expect(
+      diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), { url }),
+    ).toHaveLength(1);
+  });
+
+  test("a value sent with JSON string escapes compares exactly", () => {
+    const body = '{"id":"\\u0061aaaaaaaaaaaaaa","title":"review"}';
+    expect(
+      diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), {
+        url: "/api/collections/demo2/records",
+        body,
+      }),
+    ).toEqual([
+      'body id: different strings: upstream "aaaaaaaaaaaaaaa", iglo.base "bbbbbbbbbbbbbbb"',
+    ]);
+  });
+
+  test("bytes around the top-level value are compared", () => {
+    expect(diff(res('{"a":1}'), res(' \n{"a":1}\n '))).toHaveLength(1);
+    expect(diff(res('{"a":1}\n'), res('{"a":1}\n'))).toEqual([]);
+  });
+});
