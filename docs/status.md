@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.5 | council | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 2 (head `8164cad`: fixer `e922838` with CI green, plus a lead doc commit, so CI must be re-checked before merge. Round 1: Opus APPROVE, Sol CHANGES, both fixed. A flaky local `bun test` failure is not yet identified) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
+| M0.5 | council | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 3 (head `b297099`; round 2: Opus APPROVE, Sol CHANGES, three harness findings fixed by the lead: raw comparison for file downloads, decoded JSON request strings, bytes around the root. CI must be green before merge; round 3 is the last before the lead decides) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
 
 ## Done
 
