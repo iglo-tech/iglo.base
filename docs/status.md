@@ -8,6 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M1.6a | worker | `task/M1.6a-collection-validation` | 0 | [Brief](briefs/M1.6a.md) |
 
 ## Done
 
@@ -100,3 +101,4 @@ Decisions and plan changes made by agents while the owner was away.
 Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:00.
 - 2026-10-28 (plan change, before M1.6): M1.6 was about 3,000 upstream Go lines (twice the task size limit), and parts of it need later tasks: the rule check needs the record field resolver (M2.2), the view query check needs view.go (M1.7), and import needs collection save (M1.7). It is split. M1.6 ports the collection model, options, templates, FieldsList and `tools/dbutils`. A new task M1.6a ports collection validation and queries, with rule and view-query cases pending. M1.7 takes over collection save and delete, import, `updateGeneratedIdIfExists` and the view helpers in `collection_query.go`, and M2.2 takes over the rule check. The critical path is now … → M1.5b → M1.6 → M1.6a → M1.7 → M1.8 → …
 - 2026-10-28 (M1.6 PR): the lead accepted the worker's open points. `ParseIndex` needs upstream's `tools/tokenizer`, which no task owned; it is ported in M1.6 as `src/tools/tokenizer/`. Go's v2 JSON decoding of nested option structs is in `src/collections/go-json-struct.ts` (merging it with `src/tools/types/go-json.ts` is left for later). `dbExport()` returns upstream's typed values, so M1.7's save converts them before binding. `durationTime()` returns nanoseconds as a `bigint`.
+- 2026-10-28 (M1.6a brief): `updateGeneratedIdIfExists` moves from M1.7 to M1.6a, because the validator calls it. Until M4.5 ports the OAuth2 providers, `checkProviderName` checks against upstream's fixed list of registered provider names in `src/oauth2/provider-names.ts`. The rule check (M2.2) and the view field generation and view-query check (M1.7) stay as small functions that pass until those tasks complete them; their test cases run as pending. No collections API exists before M2.5, so these gaps are not reachable.
