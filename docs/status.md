@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5b | council | [#15](https://github.com/iglo-tech/iglo.base/pull/15) | 1 | [Brief](briefs/M1.5b.md). Worker head `01c25f8` (after one continuation); council round 1 started while CI ran (CI must be green before merge) |
+| M1.5b | council | [#15](https://github.com/iglo-tech/iglo.base/pull/15) | 2 | [Brief](briefs/M1.5b.md). Round 1 at `01c25f8`: Opus APPROVE, Sol CHANGES (path-backed File read its head once), fixed by the lead at `889df72`; Sol APPROVE at `889df72`, CI green. Round 2: Opus re-review of `889df72` (lead thread lost after the fix; lock adopted after it went stale) |
 
 ## Done
 
