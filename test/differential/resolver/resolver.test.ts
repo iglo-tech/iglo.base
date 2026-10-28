@@ -155,6 +155,17 @@ async function ok(method: string, path: string, body?: unknown): Promise<unknown
   return res.json;
 }
 
+async function signIn(collection: string, email: string): Promise<string> {
+  const res = await api(
+    "POST",
+    `/api/collections/${collection}/auth-with-password`,
+    { identity: email, password },
+    "",
+  );
+  expect(res.status).toBe(200);
+  return (res.json as { token: string }).token;
+}
+
 function qs(params: { [key: string]: string }): string {
   return Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
@@ -228,16 +239,6 @@ beforeAll(async () => {
   expect(upsert.exitCode).toBe(0);
   upstream = await startUpstream({ dataDir });
 
-  const signIn = async (collection: string, email: string): Promise<string> => {
-    const res = await api(
-      "POST",
-      `/api/collections/${collection}/auth-with-password`,
-      { identity: email, password },
-      "",
-    );
-    expect(res.status).toBe(200);
-    return (res.json as { token: string }).token;
-  };
   tokens.set("superuser", await signIn("_superusers", superEmail));
 
   const readIds = async (): Promise<void> => {
