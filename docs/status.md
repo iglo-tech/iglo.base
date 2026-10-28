@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8a | worker | task/M1.8a-record-model (no PR yet) | 0 | [Brief](briefs/M1.8a.md). The first Terra worker stopped after 21 s with no code and no reason (no limit reached); its empty local branch was deleted. Retry worker (Terra, high) started 2026-10-28 16:31 UTC with the same brief and an explicit "do not stop silently" note. If it again stops within minutes without code, mark M1.8a blocked on the worker model and start no more Terra port workers until the owner reviews the note under "For owner review" |
+| M1.8a | blocked (worker model) | — | 0 | [Brief](briefs/M1.8a.md). Two Terra (high) workers stopped within about a minute with no code. The first gave no reason; the retry (2026-10-28 16:31 UTC) said "the available execution context was exhausted" and called it an execution limit, not a design blocker. It created the local branch `task/M1.8a-record-model` at `9d9016f` with no commits; nothing was pushed. Per the rule recorded before the retry, no more Terra port workers start until the owner reviews the note under "For owner review". The next run does nothing for M1.8a until then |
 
 ## Done
 
@@ -41,6 +41,8 @@ Updated: 2026-10-28
 ## For owner review
 
 Decisions and plan changes made by agents while the owner was away.
+
+- 2026-10-28 (M1.8a, for owner review): **Terra port workers are stopped.** Two GPT-6.1 Terra (high) workers for M1.8a ended within about a minute without code (the second reported its execution context as exhausted). Every remaining task needs a Terra worker, and Anthropic agents are not allowed, so the port stops here. Options for the owner: a different worker model or reasoning setting, splitting M1.8a further, or allowing Anthropic workers again. The lead did not mark this as a usage-limit pause because neither worker reported a usage or rate limit.
 
 - 2026-10-28 (owner direction): **`pb_migrations` is supported; only `pb_hooks` is removed.** Recorded as D23 (decided by the owner) and applied to `01-scope.md`, D5, D15, `03-data-compatibility.md`, `02-architecture.md`, `08-admin-ui.md`, `09-port-plan.md`, the design README, `AGENTS.md` and `README.md`. A new task M3.7 (after M3.4) ports `plugins/migratecmd` and the migration bindings from `plugins/jsvm`: startup application, `_migrations` rows, the `migrate` command, `--migrationsDir`, `--automigrate`. Migration files run as JavaScript modules on Bun, so no JS VM is embedded. Until M3.7, the executable keeps the M0.1 behavior (warns about `pb_migrations`, rejects `migrate` and the two flags).
 
