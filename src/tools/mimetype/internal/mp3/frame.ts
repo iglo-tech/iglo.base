@@ -8,11 +8,12 @@ const minTruncatedSyncMatches = 2;
 export function extractFrame(b: Uint8Array): [start: number, size: number] {
   const limit = Math.min(b.length, 2048 + headerSize);
   for (let i = 0; i < limit - headerSize; i++) {
-    const j = b.subarray(i, limit - headerSize).indexOf(0xff);
-    if (j < 0) {
+    // bytes.IndexByte(b[i:limit-headerSize], 0xFF)
+    const j = b.indexOf(0xff, i);
+    if (j < 0 || j >= limit - headerSize) {
       break;
     }
-    i += j;
+    i = j;
     const hdr = new header(b, i);
     if (!hdr.valid()) {
       continue;

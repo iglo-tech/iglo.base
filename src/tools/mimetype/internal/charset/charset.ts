@@ -131,7 +131,7 @@ const xmlDecl = lit("<?xml");
 const encodingName = lit("encoding");
 
 // fromXML in Go.
-function fromXMLHeader(s: Bytes): string {
+export function fromXMLHeader(s: Bytes): string {
   const lxml = xmlDecl.length;
   for (;;) {
     s.trimLWS();
@@ -184,7 +184,7 @@ const bodyTag = lit("<BODY");
 const contentType = lit("CONTENT-TYPE");
 
 // fromHTML in Go.
-function fromHTMLMeta(s: Bytes): string {
+export function fromHTMLMeta(s: Bytes): string {
   const lmeta = metaTag.length;
   for (;;) {
     if (skipAComment(s)) {

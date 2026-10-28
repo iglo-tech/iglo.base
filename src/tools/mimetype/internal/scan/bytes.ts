@@ -100,7 +100,7 @@ export class Bytes {
     if (this.b.length === 0) {
       return new Bytes();
     }
-    let i = this.b.findIndex((c) => stopAt.includes(c));
+    let i = stopAt.length === 1 ? this.b.indexOf(stopAt[0] as number) : indexAny(this.b, stopAt);
     if (i === -1) {
       i = this.b.length;
     }
@@ -190,7 +190,7 @@ export class Bytes {
       if (lb - i < lp) {
         return [-1, 0];
       }
-      const l = new Bytes(this.b.subarray(i)).match(p, flags);
+      const l = matchAt(this.b, i, p, flags);
       if (l !== -1) {
         return [i, l];
       }
@@ -202,65 +202,83 @@ export class Bytes {
   // Match returns how many bytes were needed to match pattern p.
   // It returns -1 if p does not match b.
   match(p: Uint8Array, flags: number): number {
-    const l = this.b.length;
-    if (p.length === 0) {
-      return 0;
-    }
-    if (l === 0) {
-      return -1;
-    }
-    const b = new Bytes(this.b);
-    // Some cases we can handle with a simple bytes.HasPrefix.
-    if (flags === 0 || flags === FullWord) {
-      if (!hasPrefix(b.b, p)) {
-        return -1;
-      }
-      b.b = b.b.subarray(p.length);
-      p = p.subarray(p.length);
-    } else {
-      while (b.b.length > 0) {
-        // If we finished all we were looking for from p.
-        if (p.length === 0) {
-          break;
-        }
-        const p0 = p[0] as number;
-        const b0 = b.b[0] as number;
-        if ((flags & IgnoreCase) > 0 && isUpper(p0)) {
-          if (upper(b0) !== p0) {
-            return -1;
-          }
-          b.b = b.b.subarray(1);
-          p = p.subarray(1);
-        } else if ((flags & CompactWS) > 0 && byteIsWS(p0)) {
-          p = p.subarray(1);
-          if (!byteIsWS(b0)) {
-            return -1;
-          }
-          b.b = b.b.subarray(1);
-          if (p.length > 0 && !byteIsWS(p[0] as number)) {
-            b.trimLWS();
-          }
-        } else {
-          if (b0 !== p0) {
-            return -1;
-          }
-          b.b = b.b.subarray(1);
-          p = p.subarray(1);
-        }
-      }
-    }
-    // out:
-    // If p still has leftover characters, it means it didn't fully match b.
-    if (p.length > 0) {
-      return -1;
-    }
-    if ((flags & FullWord) > 0) {
-      if (b.b.length > 0 && !byteIsWS(b.b[0] as number)) {
-        return -1;
-      }
-    }
-    return l - b.b.length;
+    return matchAt(this.b, 0, p, flags);
   }
+}
+
+// Match on b[start:], walking indices instead of reslicing b and p.
+function matchAt(b: Uint8Array, start: number, p: Uint8Array, flags: number): number {
+  const lb = b.length;
+  const lp = p.length;
+  if (lp === 0) {
+    return 0;
+  }
+  if (lb - start === 0) {
+    return -1;
+  }
+  let bi = start;
+  let pi = 0;
+  // Some cases we can handle with a simple bytes.HasPrefix.
+  if (flags === 0 || flags === FullWord) {
+    if (!hasPrefix(b.subarray(start), p)) {
+      return -1;
+    }
+    bi += lp;
+    pi = lp;
+  } else {
+    while (bi < lb) {
+      // If we finished all we were looking for from p.
+      if (pi === lp) {
+        break;
+      }
+      const p0 = p[pi] as number;
+      const b0 = b[bi] as number;
+      if ((flags & IgnoreCase) > 0 && isUpper(p0)) {
+        if (upper(b0) !== p0) {
+          return -1;
+        }
+        bi++;
+        pi++;
+      } else if ((flags & CompactWS) > 0 && byteIsWS(p0)) {
+        pi++;
+        if (!byteIsWS(b0)) {
+          return -1;
+        }
+        bi++;
+        if (pi < lp && !byteIsWS(p[pi] as number)) {
+          while (bi < lb && byteIsWS(b[bi] as number)) {
+            bi++;
+          }
+        }
+      } else {
+        if (b0 !== p0) {
+          return -1;
+        }
+        bi++;
+        pi++;
+      }
+    }
+  }
+  // out:
+  // If p still has leftover characters, it means it didn't fully match b.
+  if (pi < lp) {
+    return -1;
+  }
+  if ((flags & FullWord) > 0) {
+    if (bi < lb && !byteIsWS(b[bi] as number)) {
+      return -1;
+    }
+  }
+  return bi - start;
+}
+
+function indexAny(b: Uint8Array, chars: number[]): number {
+  for (let i = 0; i < b.length; i++) {
+    if (chars.includes(b[i] as number)) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 // CompactWS will make one whitespace from pattern to match one or more spaces from input.
