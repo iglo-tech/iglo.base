@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.5 | worker | `task/M1.5-relation-password-fields` | 0 | [Brief](briefs/M1.5.md). Opus worker started 2026-10-28 |
+| M1.5 | council | [#13](https://github.com/iglo-tech/iglo.base/pull/13) | 1 | [Brief](briefs/M1.5.md). Worker head `e9655ce`; council round 1 started while CI ran (CI must be green before merge) |
 
 ## Done
 
@@ -82,6 +82,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.4 round 1): Go's out-of-range float64→int64 conversion differs by CPU (amd64 gives -2^63, arm64 saturates). iglo.base follows the upstream binary for the CPU it runs on, not one architecture everywhere. M1.1's `src/tools/security/jwt.ts` still uses the amd64 rule; carried as a follow-up. Also carried: `src/tools/types/cast.ts` imports `parseGoFloat` from `src/server`.
 - 2026-10-28 (plan change, after M1.4): M1.6 needs the password field (auth collections) and the relation and file fields (collection validation and fixtures), so it now depends on M1.5. The old M1.5 (file, relation, password: about 1,500 Go lines plus 2,300 test lines, and the file field needs `filesystem.File`, `core/validators/file.go` and MIME sniffing) is split: M1.5 is relation and password, the new M1.5a is the file field without storage (M3.2 keeps storing and deleting files). M1.6 depends on M1.5 and M1.5a; M1.8 and M3.2 depend on M1.5a. The critical path is … → M1.4 → M1.5 → M1.5a → M1.6 → …
 - 2026-10-28 (M1.5 brief): password hashes are written with Bun.password in Go's `$2a$` form at the field's cost, and verification accepts what Go's bcrypt accepts. The relation field adds `findCachedCollectionByNameOrId` to M1.4's FieldApp interface.
+- 2026-10-28 (M1.5 PR): the lead accepted the worker's open points. `FieldCollection` also gets `isNew()` (upstream's relation settings check needs it). Bun.password hashes and verifies; Go hash forms Bun rejects (`$2$`, salts with trailing bits) are normalized first, and passwords are cut at 72 bytes before verification, as Go's CompareHashAndPassword ignores bytes past 72 (the brief was wrong: only hashing returns ErrPasswordTooLong). Known gap: a hash whose salt holds `\r`/`\n` is rejected; no bcrypt implementation writes one.
 
 ## Paused until
 
