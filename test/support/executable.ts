@@ -16,7 +16,15 @@ export function executable(): Promise<string> {
   built ??= (async () => {
     const outfile = join(mkdtempSync(join(tmpdir(), "iglo-base-build-")), "iglo-base");
     const proc = Bun.spawn(
-      [process.execPath, "build", "--compile", "src/main.ts", "--outfile", outfile],
+      [
+        process.execPath,
+        "build",
+        "--compile",
+        "src/main.ts",
+        "src/db/read-worker.ts",
+        "--outfile",
+        outfile,
+      ],
       { cwd: repoRoot, stdout: "pipe", stderr: "pipe" },
     );
     if ((await proc.exited) !== 0) {

@@ -12,7 +12,12 @@ import type { Params } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
 import { isStructModel } from "@/db/dbx/struct";
 import type { Model } from "@/db/model";
-import { baseLockRetry, defaultMaxLockRetries, execLockRetry } from "@/db/retry";
+import {
+  baseLockRetry,
+  defaultMaxLockRetries,
+  execLockRetry,
+  execLockRetryAsync,
+} from "@/db/retry";
 
 const idColumn = "id";
 
@@ -71,7 +76,19 @@ function modelQueryOn(app: Databases, db: Builder, m: Model): SelectQuery {
     .select("{{" + tableName + "}}.*")
     .from(tableName)
     .withBuildHook((query) => {
-      query.withExecHook(execLockRetry(defaultMaxLockRetries, (ms) => app.sleep(ms)));
+      const now = (): number => app.now();
+      query
+        .withExecHook(
+          execLockRetry(app.queryTimeout(), defaultMaxLockRetries, (ms) => app.sleep(ms), now),
+        )
+        .withAsyncExecHook(
+          execLockRetryAsync(
+            app.queryTimeout(),
+            defaultMaxLockRetries,
+            (ms) => app.asyncSleep(ms),
+            now,
+          ),
+        );
     });
 }
 

@@ -29,7 +29,21 @@ export const connectPragmas: readonly string[] = Object.freeze([
 export type DBConnectFunc = (dbPath: string) => DB;
 
 export function defaultDBConnect(dbPath: string): DB {
-  const conn = new Database(dbPath, { create: true, readwrite: true });
+  return newFromDB(
+    openWithPragmas(new Database(dbPath, { create: true, readwrite: true })),
+    "sqlite",
+  );
+}
+
+// a read-only connection of the read worker pool (src/db/read-worker.ts),
+// with the same pragmas: upstream's concurrent pool connections use the
+// same DSN. The file must exist and be in WAL mode already (the write
+// connection opens first), so journal_mode(WAL) changes nothing.
+export function openReadOnly(dbPath: string): Database {
+  return openWithPragmas(new Database(dbPath, { readonly: true }));
+}
+
+function openWithPragmas(conn: Database): Database {
   try {
     for (const pragma of connectPragmas) {
       conn.run(`PRAGMA ${pragma}`);
@@ -38,5 +52,5 @@ export function defaultDBConnect(dbPath: string): DB {
     conn.close();
     throw err;
   }
-  return newFromDB(conn, "sqlite");
+  return conn;
 }

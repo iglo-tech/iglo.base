@@ -29,13 +29,13 @@ One process. Upstream runs everything in goroutines; iglo.base runs it on Bun's 
 | Part | Runs on | Notes |
 |---|---|---|
 | HTTP and realtime | main thread | `Bun.serve`. SSE streams are `ReadableStream`s with the per-request timeout disabled |
-| Database writes | main thread, one write connection per database file | All writes and write transactions, as upstream's "nonconcurrent" DB |
-| Database reads | a pool of read workers, each with read-only connections to both files | Lists, views, expands, rule checks outside write transactions. Lets `--queryTimeout` cancel a query by terminating the worker, and keeps a slow query from blocking the event loop. Decided after the M0 spike (D8) |
+| Database writes and synchronous reads | main thread, one connection per database file | All writes, write transactions (and the reads in them), and small internal reads, as upstream's "nonconcurrent" DB |
+| Database reads that may be slow | a pool of read workers (default 4), each with read-only connections to both files | The concurrent builders' async resolvers outside a transaction: lists, views, counts, expands, logs, rule checks outside write transactions. A query past `--queryTimeout` fails at the deadline and its worker is replaced; the pool always keeps its live workers and at most 2 × size abandoned threads ([D8](10-decisions.md#d8-sqlite-access-main-thread-connection-read-worker-pool-for-timed-reads)) |
 | Thumbnails | worker pool | Bounded by `PB_THUMBS_MAX_WORKERS`, `PB_THUMBS_MAX_WAIT` and `PB_THUMBS_MAX_SOURCE_PIXELS`, as upstream |
 | Cron jobs | main thread timers | Built-in jobs only ([Files, mail, backups, jobs and logs](07-files-mail-backups-jobs.md#jobs)) |
 | Request log writer | main thread, batched | Writes to `auxiliary.db` in batches, as upstream's buffered logger |
 
-`bun:sqlite` is synchronous. Upstream uses up to 120 concurrent read connections to `data.db`, 20 to `auxiliary.db` and a 30-second default query timeout. A synchronous query on the main thread cannot be interrupted, and a long filter on a large table would stall every request. Hence the read pool. If the spike shows the worker hop costs more than it saves for typical queries, the fallback is reads on the main thread with a statement-level time limit, and the [Decisions](10-decisions.md) record is updated with measurements.
+`bun:sqlite` is synchronous and cannot interrupt a statement: it has no `sqlite3_interrupt` or progress handler, it exposes no `sqlite3*` pointer for `bun:ffi` (and on Linux the embedded SQLite exports no symbols), and terminating a worker does not stop a running statement. Upstream uses up to 120 concurrent read connections to `data.db`, 20 to `auxiliary.db` and a 30-second default query timeout. The M0.6 spike ([report](../perf/M0.6-read-path.md)) measured a worker hop of about 0.1 ms. That is ten times a main-thread lookup by id, but a long filter on a large table run on the main thread stalls every request. So the db API stays synchronous on the main-thread connection, and request-path reads that may be slow use the async resolvers, which run on the read pool. At `--queryTimeout`, a pooled query fails with upstream's error and its worker is replaced. The terminated thread finishes its statement in the background; at most 2 × size such threads run at once. A synchronous query that runs past the timeout fails after it returns, which is a [deliberate difference](04-api-compatibility.md#deliberate-differences).
 
 Graceful shutdown: on SIGTERM/SIGINT, stop accepting requests, close realtime streams, flush the log buffer, run `PRAGMA wal_checkpoint(TRUNCATE)` on both files and close connections, as upstream's terminate path does.
 
@@ -59,7 +59,7 @@ src/
   cli/                serve, superuser; flag parsing (upstream cmd/, pocketbase.go)
   server/             Bun.serve setup, router (upstream tools/router on Go's ServeMux), request event, API errors, request body helpers, static pb_public, HTTPS and autocert
   middlewares/        CORS, gzip, body limit, rate limit, activity log, panic recovery, superuser IP check
-  db/                 connections and pragmas, read pool (M0.6), transactions, busy retry, tables, model save/delete (upstream core/db*.go); db/dbx/ is the ported pocketbase/dbx subset (SQLite and standard builders)
+  db/                 connections and pragmas, the read worker pool and query deadlines (D8), transactions, busy retry, tables, model save/delete (upstream core/db*.go); db/dbx/ is the ported pocketbase/dbx subset (SQLite and standard builders)
   migrations/         system migrations with upstream file names (upstream migrations/)
   collections/        model, options, validation, table sync, view collections, import, scaffolds
   fields/             the 14 field types: storage, validation, value normalization
