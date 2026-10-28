@@ -107,9 +107,11 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 |---|---|---|---|---|
 | M1.1 | Base tools: `types` (DateTime, JSONRaw, JSONArray, GeoPoint), `security` (random, JWT, AES-GCM), `list`, `inflector`, `store` | `tools/types`, `tools/security`, small tools | M0.1 | Ported unit tables pass; JSON raw text round-trips byte for byte |
 | M1.1a | Go `regexp/syntax` parser subset (Perl flags, the parse tree, Go's error texts) and `security.RandomStringByRegex` on it; the same tree later lets M1.4 check text `pattern` values with Go's semantics | `tools/security/random_by_regex.go`, Go `regexp/syntax` | M1.1 | Ported random-by-regex tests pass; the same patterns are accepted, and rejected with upstream's error text, as the upstream binary does |
+| M1.1b | Go `regexp` matching on the M1.1a parse tree: `syntax` compile and prog, the NFA (`exec.go`), `Compile`, `MatchString`, `QuoteMeta`, submatches, `ReplaceAllString`, `Split`. Linear time, as Go, so user patterns (text and password field `pattern`) cannot backtrack exponentially | Go `regexp`, `regexp/syntax` compile and prog | M1.1a | Go's `regexp` test tables for the ported functions pass (`find_test.go`, `all_test.go`, `exec_test.go`'s RE2 search tests); field patterns behave as in the upstream binary |
+| M1.1c | Validation: the ozzo-validation v4.4.1 subset upstream uses (rules, `Errors`, error codes, messages and params), the `is` rules upstream uses with govalidator `a9d515a`, and `core/validators` | `ozzo-validation`, `is`, govalidator (used subset), `core/validators` | M1.1b | Ported unit tables pass; validation error JSON (code, message) matches upstream's |
 | M1.2 | System schema and migrations: fresh-install schema, `_migrations` rows, open-time checks and refusal message | `migrations/`, `core/migrations*.go` | M0.4 | `sqlite_schema` of a fresh install equals upstream's; upstream v0.41.0 opens it with nothing pending; v0.40.x data opens; older data is refused |
-| M1.3 | Settings: model, defaults, validation, encryption, `_params` | `core/settings*.go` | M1.1, M1.2 | Settings written by either server read back identically, encrypted and plain |
-| M1.4 | Simple fields: text, editor, number, bool, email, url, date, autodate, select, json, geoPoint | `core/field_*.go` | M1.1, M1.1a | Ported field tests pass |
+| M1.3 | Settings: model, defaults, validation, encryption, `_params` | `core/settings*.go` | M1.1, M1.1c, M1.2 | Settings written by either server read back identically, encrypted and plain |
+| M1.4 | Simple fields: text, editor, number, bool, email, url, date, autodate, select, json, geoPoint | `core/field_*.go` | M1.1, M1.1a, M1.1b, M1.1c | Ported field tests pass |
 | M1.5 | Complex fields: file, relation, password | `core/field_file.go`, `field_relation.go`, `field_password.go` | M1.4 | Ported field tests pass |
 | M1.6 | Collections model, options (including auth options), validation, import | `core/collection_model*.go`, `collection_validate.go`, `collection_import.go` | M1.4 | Ported collection tests pass |
 | M1.7 | Table sync and view collections | `core/collection_record_table_sync.go`, `core/view.go` | M1.6 | Same `sqlite_schema` and `_collections` rows as upstream for the same create, update and delete sequence |
@@ -195,11 +197,11 @@ M7.4 is the only task that touches production data. It is run with the owner, ne
 ```text
 M0.1 ─ M0.2 ─ M0.3 ─ M0.4 ─ M0.5          (serial, then spikes M0.6–M0.8 in parallel)
 M1.1 ─┬─ M1.2 ─ M1.3
-      └─ M1.1a ─ M1.4 ─ M1.5, M1.6 ─ M1.7 ─ M1.8
+      └─ M1.1a ─ M1.1b ─ M1.1c ─ M1.4 ─ M1.5, M1.6 ─ M1.7 ─ M1.8
 M2.1 ─ M2.2 ─ M2.4 ─ M2.6     M2.3, M2.5 alongside
 M3.1 ─ M3.3, M4.1 …           M3.2, M3.4, M3.5 alongside; M3.6 when M3.1 and M3.2 are in
 M4 and M5 run in parallel once M3.1 is merged; M6.1 can start any time after M0.1
 M7 last
 ```
 
-The critical path is M0 → M1.1 → M1.1a → M1.4 → M1.6 → M1.7 → M1.8 → M2.2 → M2.4 → M3.1. Everything else is scheduled around it.
+The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.6 → M1.7 → M1.8 → M2.2 → M2.4 → M3.1. Everything else is scheduled around it.

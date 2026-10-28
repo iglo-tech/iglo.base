@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan |
+| M1.1b | worker | `task/M1.1b-regexp` ([brief](briefs/M1.1b.md)) | 0 | Go `regexp` matching (compile, prog, NFA) on the M1.1a parser |
 
 ## Done
 
@@ -70,6 +70,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1 round 2): the round-1 assumption that the server time zone is UTC is withdrawn. DateTime models Go's UTC, Local and fixed-offset locations, so AddDate follows the local zone's DST rules as upstream does. JSONRaw hands out its exact bytes; writing invalid UTF-8 as TEXT (for example `CAST(? AS TEXT)` with a blob parameter) is carried to M1.8's record write path.
 - 2026-10-28 (M1.1a brief): Go's `regexp/syntax` and `unicode` packages (BSD-3-Clause, The Go Authors) are translated in `src/tools/regexp/syntax/`, and Go's notice goes into `LICENSE`. The Unicode tables are generated from Go's `unicode/tables.go` at go1.27.2, the toolchain the upstream binary was built with, not from JS `\p{…}`. Matching patterns with Go semantics stays with M1.4.
 - 2026-10-28 (M1.1a PR): the lead accepted the worker's open points. The Unicode tables and helpers live in `src/tools/unicode/`, mirroring Go's `unicode` package (Unicode 17.0.0 at go1.27.2). Go's `syntax.Error` is `RegexpSyntaxError`. `secureIntN` is exported from M1.1's `random.ts`. POSIX-only errors and invalid UTF-8 cannot reach upstream through its API, so unit tests cover them. The `\pL`×27000 "expression too large" case peaks at about 460 MB for half a second (Go: about 134 MB); it is left out of the reference test, and M1.4 should consider a pattern length limit before parsing only if upstream has one.
+- 2026-10-28 (plan change, before M1.4): no task owned Go regexp matching or validation, which M1.4's fields need. Two tasks are added. M1.1b ports Go's `regexp` matcher (compile, prog, NFA) on the M1.1a parse tree. M1.1c ports the ozzo-validation v4.4.1 subset, the `is` rules with govalidator `a9d515a`, and `core/validators`. M1.4 now depends on both, and M1.3 on M1.1c. The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → …
+- 2026-10-28 (M1.1b brief): user patterns are matched with a port of Go's own matcher, not translated into JS RegExp. They must accept exactly what upstream accepts, and RE2 runs in linear time, while a JS RegExp can be driven into exponential backtracking by a record value.
 
 ## Paused until
 
