@@ -16,7 +16,9 @@
 //     ("$2a$", the field's cost) and verify the submitted password with
 //     PasswordFieldValue.validate;
 //   - hashes: with upstream stopped, auth records get hashes written by
-//     iglo.base and variants of upstream's hashes; after a restart,
+//     iglo.base, variants of upstream's hashes and hashes with '\r' or
+//     '\n' in the salt (which Go's bcrypt decodes to a shorter salt or
+//     rejects); after a restart,
 //     POST /api/collections/{c}/auth-with-password must succeed exactly
 //     when PasswordFieldValue.validate accepts the password.
 
@@ -35,7 +37,15 @@ import {
 import { fieldFactory } from "@/fields/fields";
 import { PasswordField, PasswordFieldValue } from "@/fields/password";
 import { newBadRequestError } from "@/server/error";
-import { anyType, mapOf, marshal, unmarshal } from "@/tools/types/go-json";
+import { bcrypt } from "@/tools/crypto/bcrypt";
+import {
+  anyType,
+  bytesToText,
+  mapOf,
+  marshal,
+  textToBytes,
+  unmarshal,
+} from "@/tools/types/go-json";
 import { jsonArrayValue } from "@/tools/types/json-array";
 import { Errors } from "@/validation/error";
 
@@ -499,6 +509,12 @@ interface AuthCase {
   password: string;
 }
 
+// a hash computed by Go's bcrypt (src/tools/crypto/bcrypt.ts)
+function goHash(cost: number, salt: string, plain: string): string {
+  const hash = bcrypt(textToBytes(plain), cost, textToBytes(salt));
+  return `$2a$${String(cost).padStart(2, "0")}$${salt}${bytesToText(hash)}`;
+}
+
 describe("stored data", () => {
   const authCases: AuthCase[] = [];
   let db: Database;
@@ -506,7 +522,7 @@ describe("stored data", () => {
   // "known" users with an upstream hash of their password, created before
   // upstream stops
   const known = "known-password-1";
-  const knownUsers = 16;
+  const knownUsers = 21;
 
   beforeAll(async () => {
     for (let i = 0; i < knownUsers; i++) {
@@ -624,6 +640,9 @@ describe("stored data", () => {
       expect(err).toBeNull();
       return h as string;
     };
+    // upstream PocketBase authenticates "short-salt-password" with it
+    const shortSaltHash =
+      "$2a$04$" + ".".repeat(18) + "\n".repeat(4) + "a0F5K/0ysQILL30JqYxI1CinCna9k0.";
     const p72 = "x".repeat(72);
     const variants: [string, string][] = [
       [igloHash("iglo-password-1"), "iglo-password-1"],
@@ -648,6 +667,13 @@ describe("stored data", () => {
       ["$2a$10$" + salt + hash.slice(0, 30) + lastHash, known],
       ["$2a$10$" + salt.slice(0, 21) + lastSalt + hash, known],
       ["$2a$10$" + salt + hash, known.toUpperCase()],
+      // salts with '\r' or '\n', which Go's base64 decoder skips: shorter
+      // salts (verified with the ported Go bcrypt) or invalid base64
+      [shortSaltHash, "short-salt-password"],
+      [shortSaltHash, "short-salt-password2"],
+      [goHash(4, "\r\nABCDEFGHIJ\r\nKLMN\r\n\r\n", "crlf-password"), "crlf-password"],
+      [goHash(5, "\n".repeat(20) + "ab", "one-byte-salt"), "one-byte-salt"],
+      ["$2a$04$abcdefghijklmnopqrst\r\n" + hash, known],
     ];
     expect(variants.length).toBe(knownUsers);
 

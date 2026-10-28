@@ -1,5 +1,4 @@
-// Upstream: core/field_password_test.go, and golang.org/x/crypto v0.58.0
-// bcrypt/bcrypt_test.go (the hash format and checks the field relies on)
+// Upstream: core/field_password_test.go
 
 import { describe, expect, test } from "bun:test";
 
@@ -9,23 +8,8 @@ import {
   InterceptorActionCreate,
   type Field,
 } from "@/fields/field";
-import {
-  DefaultCost,
-  ErrHashTooShort,
-  ErrMismatchedHashAndPassword,
-  ErrPasswordTooLong,
-  FieldTypePassword,
-  HashVersionTooNewError,
-  InvalidCostError,
-  InvalidHashPrefixError,
-  MaxCost,
-  MinCost,
-  PasswordField,
-  PasswordFieldValue,
-  compareHashAndPassword,
-  Cost,
-  generateFromPassword,
-} from "@/fields/password";
+import { FieldTypePassword, PasswordField, PasswordFieldValue } from "@/fields/password";
+import { Cost, DefaultCost, ErrPasswordTooLong, MaxCost, MinCost } from "@/tools/crypto/bcrypt";
 import { marshal, textToBytes } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 
@@ -550,157 +534,5 @@ describe("PasswordFieldValue.validate", () => {
     expect(new PasswordFieldValue({ hash, lastError: new Error("x") }).validate("allmine")).toBe(
       false,
     );
-  });
-});
-
-// ---------------------------------------------------------------------
-// golang.org/x/crypto/bcrypt/bcrypt_test.go
-
-describe("bcrypt", () => {
-  test("TestBcryptingIsEasy", () => {
-    const pass = bytes("mypassword");
-    const hp = generateFromPassword(pass, MinCost); // upstream: 0 (DefaultCost)
-
-    expect(compareHashAndPassword(bytes(hp), pass)).toBeNull();
-
-    expect(compareHashAndPassword(bytes(hp), bytes("notthepass"))).toBe(
-      ErrMismatchedHashAndPassword,
-    );
-  });
-
-  test("TestBcryptingIsCorrect", () => {
-    const expectedHash = "$2a$10$XajjQvNhvvRt5GSeFk1xFeyqRrsxkhBkUiQeg0dt.wU1qD4aFDcga";
-    expect(compareHashAndPassword(bytes(expectedHash), bytes("allmine"))).toBeNull();
-    expect(Cost(bytes(expectedHash))).toBe(10);
-  });
-
-  test("TestTooLongPasswordsWork", () => {
-    // One byte over the usual 56 byte limit that blowfish has
-    const tooLongPass = bytes("012345678901234567890123456789012345678901234567890123456");
-    const tooLongExpected = "$2a$10$XajjQvNhvvRt5GSeFk1xFe5l47dONXg781AmZtd869sO8zfsHuw7C";
-    expect(compareHashAndPassword(bytes(tooLongExpected), tooLongPass)).toBeNull();
-  });
-
-  test("TestInvalidHashErrors", () => {
-    const invalidTests: [Error, string][] = [
-      [ErrHashTooShort, "$2a$10$fooo"],
-      [ErrHashTooShort, "$2a"],
-      [
-        new HashVersionTooNewError(0x33),
-        "$3a$10$sssssssssssssssssssssshhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
-      ],
-      [
-        new InvalidHashPrefixError(0x25),
-        "%2a$10$sssssssssssssssssssssshhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
-      ],
-      [new InvalidCostError(32), "$2a$32$sssssssssssssssssssssshhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"],
-    ];
-    for (const [expected, hash] of invalidTests) {
-      expect(() => Cost(bytes(hash))).toThrow(expected);
-      const err = compareHashAndPassword(bytes(hash), bytes("anything"));
-      expect(err).toEqual(expected);
-      expect(err?.message).toBe(expected.message);
-    }
-    expect(new HashVersionTooNewError(0x33).message).toBe(
-      "crypto/bcrypt: bcrypt algorithm version '3' requested is newer than current version '2'",
-    );
-    expect(new InvalidHashPrefixError(0x25).message).toBe(
-      "crypto/bcrypt: bcrypt hashes must start with '$', but hashedSecret started with '%'",
-    );
-  });
-
-  test("TestCost", () => {
-    const suffix = "XajjQvNhvvRt5GSeFk1xFe5l47dONXg781AmZtd869sO8zfsHuw7C";
-    for (const vers of ["2a", "2"]) {
-      for (const c of [4, 10]) {
-        expect(Cost(bytes(`$${vers}$${String(c).padStart(2, "0")}$${suffix}`))).toBe(c);
-      }
-    }
-    expect(() => Cost(bytes("$a$a$" + suffix))).toThrow(ErrHashTooShort);
-  });
-
-  test("TestCostValidationInHash", () => {
-    const pass = bytes("mypassword");
-
-    for (let c = 0; c < MinCost; c++) {
-      expect(Cost(bytes(generateFromPassword(pass, c)))).toBe(DefaultCost);
-    }
-
-    expect(() => generateFromPassword(pass, 32)).toThrow(new InvalidCostError(32));
-  });
-
-  test("TestCostReturnsWithLeadingZeroes", () => {
-    const hp = generateFromPassword(bytes("abcdefgh"), 7);
-    expect(hp.slice(4, 7)).toBe("07$");
-  });
-
-  test("TestMinorNotRequired", () => {
-    const noMinorHash = "$2$10$XajjQvNhvvRt5GSeFk1xFeyqRrsxkhBkUiQeg0dt.wU1qD4aFDcga";
-    expect(Cost(bytes(noMinorHash))).toBe(10);
-    expect(compareHashAndPassword(bytes(noMinorHash), bytes("allmine"))).toBeNull();
-  });
-
-  test("TestPasswordTooLong", () => {
-    expect(() => generateFromPassword(new Uint8Array(73), 1)).toThrow(ErrPasswordTooLong);
-  });
-});
-
-// Go's CompareHashAndPassword on hashes Go does not write: the version
-// and the cost are parsed loosely, bytes after the 31 hash characters are
-// ignored, and the password is cut at 72 bytes.
-describe("bcrypt: Go's parsing", () => {
-  const salt = "XajjQvNhvvRt5GSeFk1xFe";
-  const hash = "yqRrsxkhBkUiQeg0dt.wU1qD4aFDcga"; // "allmine" at cost 10
-
-  const scenarios: [string, string, Error | null][] = [
-    ["$2a$10$" + salt + hash, "allmine", null],
-    ["$2b$10$" + salt + hash, "allmine", null],
-    ["$2y$10$" + salt + hash, "allmine", null],
-    ["$2x$10$" + salt + hash, "allmine", null],
-    ["$1a$10$" + salt + hash, "allmine", null],
-    // "+9" is cost 9 (strconv.Atoi), parsed and computed
-    ["$2a$+9$" + salt + hash, "allmine", ErrMismatchedHashAndPassword],
-    ["$2a!10!" + salt + hash, "allmine", null],
-    ["$2a$10$" + salt + hash + "trailing", "allmine", null],
-    ["$2a$10$" + salt + hash.slice(0, 30) + "b", "allmine", ErrMismatchedHashAndPassword],
-    ["$2a$10$" + salt.slice(0, 21) + "f" + hash, "allmine", null], // the same salt bytes
-    ["$2a$10$" + salt.slice(0, 21) + "=" + hash, "allmine", new Error("")],
-    // 59 bytes: parsed, the hash is zero padded
-    ["$2a$10$" + salt + hash.slice(0, 30), "allmine", ErrMismatchedHashAndPassword],
-    ["$2$10$" + salt + hash.slice(0, 30), "allmine", ErrHashTooShort],
-    ["$2a$10$" + salt + hash, "allmine2", ErrMismatchedHashAndPassword],
-    ["$2a$1x$" + salt + hash, "allmine", new Error(`strconv.Atoi: parsing "1x": invalid syntax`)],
-    ["$2a$-4$" + salt + hash, "allmine", new InvalidCostError(-4)],
-  ];
-
-  for (const [i, [h, pass, expected]] of scenarios.entries()) {
-    test(`${i} ${h}`, () => {
-      const err = compareHashAndPassword(bytes(h), bytes(pass));
-      if (expected === null) {
-        expect(err).toBeNull();
-      } else if (expected.message === "") {
-        expect(err).not.toBeNull();
-      } else {
-        expect(err?.message).toBe(expected.message);
-      }
-    });
-  }
-
-  test("passwords are cut at 72 bytes, the empty one is a NUL byte", () => {
-    // crypt_blowfish's test vectors (Openwall)
-    const p72 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const h72 = "$2a$05$abcdefghijklmnopqrstuu5s2v8.iXieOjg/.AySBTTZIIVFJeBui";
-    expect(compareHashAndPassword(bytes(h72), bytes(p72))).toBeNull();
-    expect(
-      compareHashAndPassword(bytes(h72), bytes(p72 + "chars after 72 are ignored")),
-    ).toBeNull();
-
-    const hEmpty = "$2a$05$CCCCCCCCCCCCCCCCCCCCC.7uG0VCzI2bS7j6ymqJi9CdcdxiRTWNy";
-    expect(compareHashAndPassword(bytes(hEmpty), new Uint8Array(0))).toBeNull();
-    expect(compareHashAndPassword(bytes(hEmpty), Uint8Array.of(0))).toBeNull();
-    expect(compareHashAndPassword(bytes(hEmpty), bytes("x"))).toBe(ErrMismatchedHashAndPassword);
-
-    const h8bit = "$2a$05$/OK.fbVrR/bpIqNJ5ianF.Sa7shbm4.OzKpvFnX1pQLmQW96oUlCq";
-    expect(compareHashAndPassword(bytes(h8bit), Uint8Array.of(0xa3))).toBeNull();
   });
 });
