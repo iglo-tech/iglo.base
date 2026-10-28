@@ -3,7 +3,8 @@
 //
 // Left out: Example_extend (Extend is not ported) and the DetectFile part of
 // Example_detect. Example_detectReader keeps the input for reuse with
-// io.TeeReader and io.MultiReader; a ReadableStream does it with tee().
+// io.TeeReader and io.MultiReader; a Blob is not consumed by detectReader,
+// so the same Blob is read again.
 
 import { expect, test } from "bun:test";
 
@@ -57,13 +58,12 @@ test("Example_whitelist", () => {
 });
 
 test("Example_detectReader", async () => {
-  const input = new Blob([testBytes]).stream();
-  const [forDetection, recycledInput] = input.tee();
+  const input = new Blob([testBytes]);
 
-  const [mtype, err] = await detectReader(forDetection);
+  const [mtype, err] = await detectReader(input);
 
-  // Verify recycledInput contains the original input.
-  const text = new Uint8Array(await new Response(recycledInput).arrayBuffer());
+  // Verify input still contains the original input.
+  const text = new Uint8Array(await input.arrayBuffer());
   expect([mtype.string(), Buffer.from(text).equals(testBytes), err]).toEqual([
     "text/plain; charset=utf-8",
     true,

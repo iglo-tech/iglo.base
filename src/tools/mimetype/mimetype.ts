@@ -39,47 +39,22 @@ export function detect(input: Uint8Array): MIME {
 // returned when identification failed with or without an error.
 // Any error returned is related to the reading from the input reader.
 //
-// DetectReader assumes the reader offset is at the start. Only the first
-// readLimit bytes are read: a Blob is sliced to them, and a stream is read
-// until it has them or ends (its lock is then released, the rest unread).
-export async function detectReader(
-  r: ReadableStream<Uint8Array> | Blob,
-): Promise<[MIME, Error | null]> {
+// DetectReader assumes the reader offset is at the start. The reader is a
+// Blob (a Bun file, an upload part, an S3 file): only its first readLimit
+// bytes are read, through a slice, and the Blob itself is left as it was.
+// Upstream's callers rewind the file after detecting; a Blob needs no
+// rewind, while a web stream cannot give unread bytes back, so streams are
+// not accepted.
+export async function detectReader(r: Blob): Promise<[MIME, Error | null]> {
   const l = readLimit;
   let input: Uint8Array;
   try {
-    input = r instanceof Blob ? await readBlob(r, l) : await readStream(r, l);
+    input = new Uint8Array(await r.slice(0, l).arrayBuffer());
   } catch (err) {
     return [errMIME, err instanceof Error ? err : new Error(String(err))];
   }
 
   return [root.match(input, l, root), null];
-}
-
-async function readBlob(b: Blob, l: number): Promise<Uint8Array> {
-  return new Uint8Array(await b.slice(0, l).arrayBuffer());
-}
-
-// io.ReadFull into a buffer of l bytes, where reaching the end early (EOF
-// or ErrUnexpectedEOF) is not an error.
-async function readStream(s: ReadableStream<Uint8Array>, l: number): Promise<Uint8Array> {
-  const reader = s.getReader();
-  const buf = new Uint8Array(l);
-  let n = 0;
-  try {
-    while (n < l) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      const take = Math.min(value.length, l - n);
-      buf.set(value.subarray(0, take), n);
-      n += take;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  return buf.subarray(0, n);
 }
 
 // EqualsAny reports whether s MIME type is equal to any MIME type in mimes.

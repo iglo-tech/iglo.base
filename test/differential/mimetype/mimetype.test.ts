@@ -119,28 +119,42 @@ async function api(method: string, path: string, body: string | FormData) {
   return { status: res.status, text: await res.text() };
 }
 
+// Upstream reloads its whole collection cache after each collection save,
+// from a snapshot read inside the save. Two saves at once can leave a cache
+// without the other one's collection (a 404 "Missing or invalid collection
+// context." on its next upload), so collections are created one at a time;
+// uploads still run concurrently.
+let schemaLock: Promise<unknown> = Promise.resolve();
+function serialized<T>(fn: () => Promise<T>): Promise<T> {
+  const run = schemaLock.then(fn, fn);
+  schemaLock = run.catch(() => undefined);
+  return run;
+}
+
 async function check(sample: Sample, i: number): Promise<string[]> {
   const problems: string[] = [];
   const m = detect(sample.data);
   const fields = fieldsFor(m);
   const name = `m${i}`;
-  const created = await api(
-    "POST",
-    "/api/collections",
-    JSON.stringify({
-      name,
-      type: "base",
-      fields: [
-        { name: "plain", type: "file", maxSelect: 1, maxSize: 1 << 24 },
-        ...fields.map((f) => ({
-          name: f.name,
-          type: "file",
-          maxSelect: 1,
-          maxSize: 1 << 24,
-          mimeTypes: f.mimeTypes,
-        })),
-      ],
-    }),
+  const created = await serialized(() =>
+    api(
+      "POST",
+      "/api/collections",
+      JSON.stringify({
+        name,
+        type: "base",
+        fields: [
+          { name: "plain", type: "file", maxSelect: 1, maxSize: 1 << 24 },
+          ...fields.map((f) => ({
+            name: f.name,
+            type: "file",
+            maxSelect: 1,
+            maxSize: 1 << 24,
+            mimeTypes: f.mimeTypes,
+          })),
+        ],
+      }),
+    ),
   );
   if (created.status !== 200) {
     return [`create collection: ${created.status} ${created.text}`];

@@ -23,19 +23,16 @@ import { testcases } from "@test/tools/mimetype/testcases";
 
 const text = (b: Uint8Array) => bytesToText(b);
 
-function chunks(data: Uint8Array, size: (left: number) => number): ReadableStream<Uint8Array> {
-  let off = 0;
-  return new ReadableStream({
-    pull(controller) {
-      if (off >= data.length) {
-        controller.close();
-        return;
-      }
-      const n = size(data.length - off);
-      controller.enqueue(data.slice(off, off + n));
-      off += n;
-    },
-  });
+// A Blob built from data in pieces of size(left) bytes, as Go's tests read
+// through one-byte and short readers; detectReader takes Blobs only.
+function chunks(data: Uint8Array, size: (left: number) => number): Blob {
+  const parts: Uint8Array[] = [];
+  for (let off = 0; off < data.length;) {
+    const n = size(data.length - off);
+    parts.push(data.slice(off, off + n));
+    off += n;
+  }
+  return new Blob(parts);
 }
 
 describe("TestDetect", () => {
@@ -117,10 +114,11 @@ test("TestEqualsAny", () => {
 });
 
 test("TestFaultyInput", async () => {
-  const failing = new ReadableStream<Uint8Array>({
-    pull() {
-      throw new Error("open inexistent.file: no such file or directory");
-    },
+  const failing = Object.assign(Object.create(new Blob([])) as Blob, {
+    slice: () => ({
+      arrayBuffer: () =>
+        Promise.reject(new Error("open inexistent.file: no such file or directory")),
+    }),
   });
   const [mtype, err] = await detectReader(failing);
   expect(err).not.toBeNull();
@@ -254,33 +252,14 @@ test("TestNDJSONCutOnSecondLine", () => {
 });
 
 // Not in upstream's tests: the read limit is 4096 bytes, and detectReader
-// reads no more than that from a stream or a Blob.
+// reads no more than that from a Blob, which keeps all of its bytes.
 test("read limit", async () => {
   expect(defaultLimit).toBe(4096);
   // a JSON object cut at the limit is JSON; one byte more is not read
   const json = textToBytes(`{"a":"${"x".repeat(5000)}"}`);
   expect(detect(json).string()).toBe("application/json");
 
-  let pulled = 0;
   const big = new Uint8Array(10_000).fill(0x61);
-  const stream = new ReadableStream<Uint8Array>(
-    {
-      pull(controller) {
-        const chunk = big.subarray(pulled, pulled + 1000);
-        pulled += chunk.length;
-        if (chunk.length === 0) {
-          controller.close();
-        } else {
-          controller.enqueue(chunk);
-        }
-      },
-    },
-    { highWaterMark: 0 },
-  );
-  const [mtype] = await detectReader(stream);
-  expect(mtype.string()).toBe("text/plain; charset=utf-8");
-  expect(pulled).toBe(5000); // the chunks holding the first 4096 bytes
-
   const blob = new Blob([big]);
   let sliced = -1;
   const spy = Object.assign(Object.create(blob) as Blob, {
@@ -291,4 +270,5 @@ test("read limit", async () => {
   });
   expect((await detectReader(spy))[0].string()).toBe("text/plain; charset=utf-8");
   expect(sliced).toBe(4096);
+  expect(new Uint8Array(await blob.arrayBuffer())).toEqual(big);
 });
