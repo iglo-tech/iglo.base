@@ -24,7 +24,7 @@ import { SelectField } from "@/fields/select";
 import { TextField } from "@/fields/text";
 import { bytesToText } from "@/tools/types/go-json";
 
-test("Fields holds upstream's field types (file joins with M1.5a)", () => {
+test("Fields holds upstream's field types", () => {
   expect(Object.keys(Fields).toSorted()).toEqual(
     [
       "autodate",
@@ -32,6 +32,7 @@ test("Fields holds upstream's field types (file joins with M1.5a)", () => {
       "date",
       "editor",
       "email",
+      "file",
       "geoPoint",
       "json",
       "number",
@@ -47,7 +48,7 @@ test("Fields holds upstream's field types (file joins with M1.5a)", () => {
     expect(a.type()).toBe(type);
     expect(factory()).not.toBe(a); // a new instance each time
   }
-  expect(fieldFactory("file")).toBeUndefined(); // M1.5a
+  expect(fieldFactory("unknown")).toBeUndefined();
   expect(fieldFactory("toString")).toBeUndefined();
   expect(fieldFactory("__proto__")).toBeUndefined();
 });

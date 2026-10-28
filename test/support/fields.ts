@@ -346,6 +346,32 @@ export class TestApp implements FieldApp {
     return this.findCollectionByNameOrId(nameOrId);
   }
 
+  // FindRecordById: the record's row, each field value through the
+  // field's PrepareValue (as a record loaded from the database), marked as
+  // saved. Throws when the record is missing.
+  findRecordById(collectionNameOrId: string, recordId: string): TestRecord {
+    const collection = this.findCollectionByNameOrId(collectionNameOrId);
+    const fields = [...collection.fields];
+    const row = this.dbs
+      .concurrentDB()
+      .select(...fields.map((f) => f.getName()))
+      .from(collection.name)
+      .where(new HashExp({ id: recordId }))
+      .limit(1)
+      .row();
+    const record = new TestRecord(collection);
+    for (const [i, field] of fields.entries()) {
+      const name = field.getName();
+      if (name === FieldNameId) {
+        record.id = castToString(row[i]);
+        continue;
+      }
+      record.setRaw(name, field.prepareValue(record, row[i])[0]);
+    }
+    record.postScan();
+    return record;
+  }
+
   // FindFirstRecordByFilter(collection, "id != ''"): the first record id
   firstRecordId(collection: TestCollection): string {
     const row = this.dbs
