@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8c | worker | `task/M1.8c-record-save` | 0 | [Brief](briefs/M1.8c.md) |
+| M1.8c | council | [#22](https://github.com/iglo-tech/iglo.base/pull/22) | 1 | [Brief](briefs/M1.8c.md). Opus worker head `c287565`; council round 1 started while CI ran |
 
 ## Done
 
@@ -126,3 +126,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (owner direction, D24): the MVP targets linux-x64 only. CI is one Linux x64 job (`check`: lint, format, typecheck, test, build, then `test:reference`); the macOS job is removed. macOS and linux-arm64 builds, macOS CI and the bundled macOS SQLite move to post-MVP task P.2; M7.3 releases the linux-x64 binary only. The runbook gains a focus rule: critical path to a working Linux MVP, no agents on macOS, arm64 or optional cleanups unless they block the current task.
 - 2026-10-28 (M1.8b PR): the lead accepted the worker's choices. RecordQuery hydrates Records through `recordTarget`/`recordsTarget` passed to `one()`/`all()`; the RecordProxy branches (custom Go structs, a library API) are not ported. Carried for M2/M3 handlers: `isNoRowsError` in src/db does not unwrap causes like Go's `errors.Is`, so wrapped not-found errors (for example from `findAuthRecordByEmail`) must be checked through the cause chain.
 - 2026-10-28 (M1.8b fix round 1): the lead approved an additive change to the shared db layer: `Query.withCancelCause()`/`SelectQuery.withCancelCause()` attach an already cancelled context, checked on every execution path like dbx's QueryContext/ExecContext (`ContextCanceledError`). Other queries are unchanged.
+- 2026-10-28 (M1.8c PR): the lead accepted the worker's choices. The field `intercept` contract may now be synchronous (autodate, text and password are), because upstream runs parts of the record chain inside write transactions, which stay synchronous here (D8); the chain throws if an interceptor returns a promise inside a transaction, so M3.2's file interceptor must keep its in-transaction steps synchronous. The record rules of `_externalAuths`, `_mfas`, `_otps` and `_authOrigins` (ref checks and cleanups on delete, password/token key change, verified upgrade) are in `src/records/record-auth-refs.ts` until the M4 tasks that own those models move them. Invalid UTF-8 in JSONRaw is written as TEXT (closes the M1.1 note); reading it back still yields U+FFFD (M2.4's response path).
