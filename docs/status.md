@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.5 | fix | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 1 → fix (round 1 at `0467cde`: Opus APPROVE; Sol CHANGES: ordinary strings were compared by format as if generated, and `?fields=` projections hid raw `json` bytes. An Opus fixer is working on both; next: council round 2. A flaky local `bun test` failure is not yet identified) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
+| M0.5 | council | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 2 (head `8164cad`: fixer `e922838` with CI green, plus a lead doc commit, so CI must be re-checked before merge. Round 1: Opus APPROVE, Sol CHANGES, both fixed. A flaky local `bun test` failure is not yet identified) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
 
 ## Done
 
@@ -50,6 +50,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M0.5 brief): upstream's `tests/data` fixture (MIT, about 700 KB, pinned commit) is vendored in `test/fixtures/pocketbase/`, so that scenarios run against iglo.base alone in plain `bun test` with no network. A `test:reference` test keeps it byte-identical to the pinned source. Scenario data is typed TypeScript. A `pending` marker (task id, reason) lets a scenario that iglo.base cannot pass yet run and be reported; the test fails once it starts to pass. The superuser health scenario is pending on M2.3.
 
 - 2026-10-28 (M0.5 round 1): the differential harness compares a value by format only if it is generated. That means it sits at a key upstream generates (`id`, `created`, `updated`, `token`, …) or equals a value already paired as generated in the same scenario. Request data is never treated as generated. Bodies are compared as bytes after the paired values are replaced by placeholders, so `json` bytes are checked under any `fields` projection.
+
+- 2026-10-28 (M0.5): the API contract in `04-api-compatibility.md` is now byte-level: bodies must be byte-identical after generated values are normalized. Objects that upstream writes in random order (Go maps, such as `fields` projections and the superuser health data) are compared with their members sorted. This replaces "JSON is compared after parsing".
 
 ## Paused until
 
