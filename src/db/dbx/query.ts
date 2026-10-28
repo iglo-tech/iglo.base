@@ -35,8 +35,8 @@
 // (rows.ts): bun:sqlite cannot interrupt a running statement, so such a
 // read fails only once its statement returns (docs/design/04-api-
 // compatibility.md, Deliberate differences). The async resolvers (OneAsync, AllAsync,
-// RowAsync, ColumnAsync) run the query on the executor's reader when it has
-// one (the read worker pool, src/db/read-pool.ts), which gives up at the
+// RowAsync, ColumnAsync) run the query, prepared or not, on the executor's
+// reader when it has one (the read worker pool, src/db/read-pool.ts), which gives up at the
 // deadline; otherwise they run it as the synchronous ones do.
 //
 // Integers are read losslessly: statements run with bun:sqlite's
@@ -553,9 +553,11 @@ export class Query {
 
   private async readAsync(mode: ReadMode): Promise<unknown> {
     const reader = this.executor.reader;
-    if (reader === undefined || this.stmt !== null) {
+    if (reader === undefined) {
       return this.read(mode);
     }
+    // a prepared query reads on the pool too (dbx's prepared QueryContext
+    // honors the context); the worker prepares the same SQL text itself
     this.takeLastError();
     const args = replacePlaceholders(this.placeholders, this.boundParams);
     const deadline = this.ctxDeadline;

@@ -233,6 +233,30 @@ test("a timed-out read fails at the deadline without blocking other requests", a
   ).toBe("t7");
 });
 
+test("a prepared query's async resolvers read on the pool and honor the deadline", async () => {
+  const app = open({ readWorkers: 1, queryTimeout: 250 });
+  fill(app, 3000);
+
+  const q = modelQuery(app, new Demo()).where(slowWhere).build().prepare();
+  const start = performance.now();
+  const pending = q.allAsync().catch((e) => e as Error);
+  // the statement runs on the worker, not on this thread
+  expect(performance.now() - start).toBeLessThan(100);
+  const err = await pending;
+  expect((err as Error).message).toBe(
+    "context deadline exceeded; failed query: SELECT {{demo}}.* FROM `demo` WHERE EXISTS (SELECT 1 FROM [[demo]] a, [[demo]] b WHERE a.title || b.title LIKE '%zz%')",
+  );
+  expect(performance.now() - start).toBeLessThan(250 + 200);
+  q.close();
+
+  const view = modelQuery(app, new Demo())
+    .where(new HashExp({ id: "id7" }))
+    .build()
+    .prepare();
+  expect((await view.oneAsync<{ title: string }>()).title).toBe("t7");
+  view.close();
+});
+
 test("waiting for a free worker counts towards the deadline", async () => {
   const app = open({ readWorkers: 1, queryTimeout: 250 });
   fill(app, 3000);
