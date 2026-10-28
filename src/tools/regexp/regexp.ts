@@ -446,7 +446,9 @@ export class Regexp {
     // Copy the unmatched characters after the last match.
     buf += t.slice(lastMatchEnd, endPos);
 
-    return buf;
+    // Go appends bytes, so invalid bytes from separate pieces can join into
+    // valid UTF-8 (C3 + A9 = "é"); decode the joined bytes once more.
+    return goString(buf);
   }
 
   // expand of regexp.go: the template with $name and ${name} replaced by

@@ -63,4 +63,13 @@ describe("UTF-8", () => {
     expect(compile("x").replaceAllStringFunc("x\uDC80", () => "\uD800")).toBe("\uFFFD\uDC80");
     expect(compile("x").replaceAllString("x\uDC80", "\uD800")).toBe("\uFFFD\uDC80");
   });
+  test("invalid bytes joined by a replacement are decoded again", () => {
+    // bytes C3 78 A9: deleting x joins C3 A9 into "é", as Go's byte append does
+    expect(compile("x").replaceAllString("\uDCC3x\uDCA9", "")).toBe("é");
+    expect(compile("x").replaceAllLiteralString("\uDCC3x\uDCA9", "")).toBe("é");
+    expect(compile("x").replaceAllStringFunc("\uDCC3x\uDCA9", () => "")).toBe("é");
+    // a replacement ending in an invalid byte joins with the next piece
+    expect(compile("x").replaceAllString("x\uDCA9", "\uDCC3")).toBe("é");
+    expect(compile("(x)").replaceAllString("\uDCC3x\uDCA9", "${1}")).toBe("\uDCC3x\uDCA9");
+  });
 });
