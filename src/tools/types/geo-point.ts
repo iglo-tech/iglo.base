@@ -19,17 +19,24 @@ export class GeoPoint implements JSONMarshaler {
     public lat = 0,
   ) {}
 
-  // String returns the json form, in the Go struct field order.
+  // String returns the json form, in the Go struct field order; "" when it
+  // cannot be marshaled (a NaN or infinite coordinate), as upstream ignores
+  // json.Marshal's error.
   string(): string {
-    return `{"lon":${formatFloat(this.lon)},"lat":${formatFloat(this.lat)}}`;
+    try {
+      return this.marshalJSON();
+    } catch {
+      return "";
+    }
   }
 
   toString(): string {
     return this.string();
   }
 
+  // json.Marshal of the struct: throws on a NaN or infinite coordinate.
   marshalJSON(): string {
-    return this.string();
+    return `{"lon":${formatFloat(this.lon)},"lat":${formatFloat(this.lat)}}`;
   }
 
   // AsMap returns a value suitable to be used in an API rule expression.
@@ -37,9 +44,10 @@ export class GeoPoint implements JSONMarshaler {
     return { lon: this.lon, lat: this.lat };
   }
 
-  // Value implements the db driver Valuer.
+  // Value implements the db driver Valuer: the json form, or json.Marshal's
+  // error.
   value(): string {
-    return this.string();
+    return this.marshalJSON();
   }
 
   // Scan sets the point from nil (no-op), another GeoPoint, or a json object

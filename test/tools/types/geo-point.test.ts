@@ -3,6 +3,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { GeoPoint } from "@/tools/types/geo-point";
+import { marshal } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
@@ -30,6 +31,27 @@ describe("GeoPointStringAndValue", () => {
     test(name, () => {
       expect(point.string()).toBe(point.value());
       expect(point.string()).toBe(expected);
+    });
+  }
+});
+
+// Not in upstream's tests: json.Marshal fails on NaN and ±Inf, String
+// ignores the error and Value returns it.
+describe("GeoPoint with a non-finite coordinate", () => {
+  const scenarios: [string, GeoPoint][] = [
+    ["lon NaN", new GeoPoint(NaN, 1)],
+    ["lat NaN", new GeoPoint(1, NaN)],
+    ["lon +Inf", new GeoPoint(Infinity, 1)],
+    ["lat -Inf", new GeoPoint(1, -Infinity)],
+  ];
+
+  for (const [name, point] of scenarios) {
+    test(name, () => {
+      expect(point.string()).toBe("");
+      expect(String(point)).toBe("");
+      expect(() => point.value()).toThrow();
+      expect(() => point.marshalJSON()).toThrow();
+      expect(() => marshal({ p: point })).toThrow();
     });
   }
 });
