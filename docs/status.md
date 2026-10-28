@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| — | — | — | — | No active task. The next run picks the next task from the work plan |
+| M1.1 | worker | `task/M1.1-base-tools` ([brief](briefs/M1.1.md)) | 0 | Base tools: types, security (without random_by_regex), list, inflector, store |
 
 ## Done
 
@@ -60,6 +60,10 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M0.6 round 1): if `sqlite3_interrupt` can be reached through `bun:ffi` on Linux and macOS, `--queryTimeout` interrupts reads at the deadline, as upstream does. Otherwise synchronous and transaction reads are checked only after they return, and that is listed as a deliberate difference in `04-api-compatibility.md`. The pool always keeps its full size of live workers, with an exact limit on abandoned threads.
 
 - 2026-10-28 (lead takeover): the lead thread holding the M0.6 lock failed after starting council round 2. A new lead thread adopted the lock (same run) instead of waiting 90 minutes for it to go stale, because the failed thread could no longer receive its agents' completions.
+
+- 2026-10-28 (M1.1 pick): M0.7 and M0.8 are spikes off the critical path; the lead started M1.1, the first step of the critical path to M1.4, before them.
+- 2026-10-28 (plan change): `random_by_regex.go` needs a port of Go's `regexp/syntax` parser (patterns are user input; parse errors reach validation messages). It moved out of M1.1 into a new task M1.1a, which M1.4 now depends on. The critical path is M0 → M1.1 → M1.1a → M1.4 → …
+- 2026-10-28 (M1.1 brief): the base tools live in `src/tools/<package>/`, mirroring upstream's `tools/` packages; their ported unit tables are allowed as internal tests in `test/tools/`, as for the shared contracts in M0.3. Go dependencies the tools inherit behavior from (spf13/cast v1.10.0, golang-jwt v5.3.1, the Go standard library) are read from shallow GitHub clones in a git-ignored `.upstream/deps/`.
 
 ## Paused until
 
