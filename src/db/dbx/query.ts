@@ -44,7 +44,9 @@
 // Number.MAX_SAFE_INTEGER to a number. Integers outside it stay bigint, as
 // Go's int64 and NullStringMap keep them exact, and binding a bigint stores
 // the exact value. M1.8 maps them to record values. A generated rowid
-// (lastInsertId) is narrowed the same way.
+// (lastInsertId) is narrowed the same way. A query read withExactIntegers
+// keeps every INTEGER value a bigint, for readers that need the storage
+// class (dbx's NullStringMap scan, M1.8).
 //
 // A SQL text with several statements runs as Go's SQLite driver runs it
 // (driver.ts): Execute() runs them all and reports the last one's result,
@@ -126,6 +128,7 @@ export interface AsyncReader {
     args: SQLQueryBindings[],
     mode: ReadMode,
     deadline: Deadline | null,
+    exactIntegers?: boolean,
   ): Promise<unknown>;
 }
 
@@ -256,6 +259,7 @@ export class Query {
   private stmt: Stmt | null = null;
 
   private ctxDeadline: Deadline | null = null;
+  private exactIntegers = false;
   private execHook: ExecHookFunc | null = null;
   private asyncExecHook: AsyncExecHookFunc | null = null;
   private oneHook: OneHookFunc | null = null;
@@ -303,6 +307,13 @@ export class Query {
   // a context.WithTimeout one); null removes it.
   withDeadline(deadline: Deadline | null): this {
     this.ctxDeadline = deadline;
+    return this;
+  }
+
+  // with `on`, the rows the query returns keep every INTEGER value a bigint
+  // (rows.ts withExactIntegers), on the reader too
+  withExactIntegers(on = true): this {
+    this.exactIntegers = on;
     return this;
   }
 
@@ -566,7 +577,7 @@ export class Query {
     const start = performance.now();
     let err: unknown = null;
     try {
-      return await reader.read(this.rawSql, args, mode, deadline);
+      return await reader.read(this.rawSql, args, mode, deadline, this.exactIntegers);
     } catch (e) {
       err = e;
       throw e;
@@ -586,7 +597,7 @@ export class Query {
       deadline?.check();
       const rows =
         this.stmt !== null ? this.stmt.query(args) : this.executor.query(this.rawSql, args, own);
-      return rows.withDeadline(deadline);
+      return rows.withDeadline(deadline).withExactIntegers(this.exactIntegers);
     } catch (e) {
       err = deadline?.expired() === true ? new DeadlineExceededError() : e;
       throw err;

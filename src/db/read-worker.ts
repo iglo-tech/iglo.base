@@ -46,7 +46,9 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage>) => {
   try {
     const c = conn(req.path);
     const value = readRows(
-      queryStatements(c, splitStatements(req.sql), req.args, null, false),
+      queryStatements(c, splitStatements(req.sql), req.args, null, false).withExactIntegers(
+        req.exactIntegers,
+      ),
       req.mode,
     );
     res = { id: req.id, ok: true, value };

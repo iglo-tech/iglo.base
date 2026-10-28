@@ -33,6 +33,8 @@ export interface ReadRequestMessage {
   sql: string;
   args: SQLQueryBindings[];
   mode: ReadMode;
+  // Query.withExactIntegers
+  exactIntegers: boolean;
 }
 
 export interface SerializedError {
@@ -138,7 +140,8 @@ export class ReadPool {
   // the AsyncReader of one database file
   reader(path: string): AsyncReader {
     return {
-      read: (sql, args, mode, deadline) => this.read(path, sql, args, mode, deadline),
+      read: (sql, args, mode, deadline, exactIntegers = false) =>
+        this.read(path, sql, args, mode, deadline, exactIntegers),
     };
   }
 
@@ -180,6 +183,7 @@ export class ReadPool {
     args: SQLQueryBindings[],
     mode: ReadMode,
     deadline: Deadline | null,
+    exactIntegers: boolean,
   ): Promise<unknown> {
     if (this.closed) {
       return Promise.reject(new Error("sql: database is closed"));
@@ -191,7 +195,7 @@ export class ReadPool {
       const id = this.nextId++;
       const request: Request = {
         id,
-        message: { id, path, sql, args, mode },
+        message: { id, path, sql, args, mode, exactIntegers },
         resolve,
         reject,
         deadline,

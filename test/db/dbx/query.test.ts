@@ -439,6 +439,27 @@ describe("integers are read losslessly", () => {
     expect(v).toBe(big);
     expect(db.newQuery("SELECT CAST(v AS TEXT) FROM t").row()).toEqual(["9007199254740993"]);
   });
+
+  // withExactIntegers: every INTEGER stays a bigint, so a number is a REAL
+  test("withExactIntegers keeps the storage class", () => {
+    const db = getDB();
+    const classes = "SELECT 1234567 AS i, 1234567.0 AS r, -0.0 AS z, 5 AS s, 'x' AS t, NULL AS n";
+    const exact = { i: 1234567n, r: 1234567, z: -0, s: 5n, t: "x", n: null };
+    const q = () => db.newQuery(classes).withExactIntegers();
+    expect(q().one()).toEqual(exact);
+    expect(q().all()).toEqual([exact]);
+    expect(q().row()).toEqual(Object.values(exact));
+    expect([...q().rows()]).toEqual([Object.values(exact)]);
+    expect(q().column()).toEqual([1234567n]);
+    expect(q().prepare().row()).toEqual(Object.values(exact));
+    // duplicate column names read through a subquery
+    expect(db.newQuery("SELECT 1 AS a, 2.0 AS a").withExactIntegers().row()).toEqual([1n, 2]);
+    // multiple statements: the rows of the last one
+    expect(db.newQuery("SELECT 1; SELECT 3 AS v").withExactIntegers().row()).toEqual([3n]);
+    // off by default, and when turned off again
+    expect(db.newQuery(classes).one()).toEqual({ ...exact, i: 1234567, s: 5 });
+    expect(q().withExactIntegers(false).row()).toEqual([1234567, 1234567, -0, 5, "x", null]);
+  });
 });
 
 // an AUTOINCREMENT table whose next rowid is 2^53 + 1

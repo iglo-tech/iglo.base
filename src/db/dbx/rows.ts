@@ -42,6 +42,9 @@
 //
 // Statements run with safeIntegers; every reader narrows the integers inside
 // Number.MAX_SAFE_INTEGER to numbers and keeps the others as exact bigints.
+// Rows read withExactIntegers keep every INTEGER value a bigint, so that a
+// number is always a REAL value: the storage class Go's driver gives its
+// int64 and float64 values by (NullStringMap scans them differently).
 
 import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
 
@@ -135,6 +138,7 @@ export class Rows implements Iterable<unknown[]> {
   private ahead: IteratorResult<unknown> | null = null;
   private closed = false;
   private deadline: Deadline | null = null;
+  private exact = false;
 
   // `sql` is the statement's SQL; `owned`: the statement is finalized when
   // the rows close
@@ -165,6 +169,12 @@ export class Rows implements Iterable<unknown[]> {
   // the deadline after which reading the rows fails (null: none)
   withDeadline(deadline: Deadline | null): this {
     this.deadline = deadline;
+    return this;
+  }
+
+  // with `on`, the rows keep every INTEGER value a bigint (no narrowing)
+  withExactIntegers(on = true): this {
+    this.exact = on;
     return this;
   }
 
@@ -209,7 +219,7 @@ export class Rows implements Iterable<unknown[]> {
         if (row === null) {
           throw new NoRowsError();
         }
-        return narrowRow(row, this.names);
+        return this.exact ? row : narrowRow(row, this.names);
       } finally {
         this.close();
       }
@@ -234,8 +244,10 @@ export class Rows implements Iterable<unknown[]> {
     if (this.fresh()) {
       try {
         const rows = this.guard(() => this.reader!.all(...this.args) as Row[]);
-        for (const row of rows) {
-          narrowRow(row, this.names);
+        if (!this.exact) {
+          for (const row of rows) {
+            narrowRow(row, this.names);
+          }
         }
         return rows;
       } finally {
@@ -311,10 +323,11 @@ export class Rows implements Iterable<unknown[]> {
     }
     const keys = this.keys;
     if (keys === null) {
-      return narrowValues(next.value as unknown[]);
+      const values = next.value as unknown[];
+      return this.exact ? values : narrowValues(values);
     }
     const row = next.value as Row;
-    return keys.map((key) => narrowInteger(row[key]));
+    return this.exact ? keys.map((key) => row[key]) : keys.map((key) => narrowInteger(row[key]));
   }
 
   // runs a read under the deadline: it fails when the deadline passed
