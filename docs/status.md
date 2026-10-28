@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.6 | council | [#16](https://github.com/iglo-tech/iglo.base/pull/16) | 1 | [Brief](briefs/M1.6.md). Worker head `66c78cc`; council round 1 started while CI ran (CI must be green before merge) |
+| M1.6 | fix | [#16](https://github.com/iglo-tech/iglo.base/pull/16) | 1 | [Brief](briefs/M1.6.md). Round 1 at `66c78cc`: Opus APPROVE, Sol CHANGES (OAuth2 provider merge does not keep Go's shared `*bool` PKCE pointer). macOS reference CI timed out in M1.5's `relation-password.test.ts` setup hook (re-run). Opus fixer started |
 
 ## Done
 
