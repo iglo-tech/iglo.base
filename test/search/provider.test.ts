@@ -119,7 +119,8 @@ describe("NewProvider", () => {
     const testDB = createTestDB();
     try {
       const filter = (n: number): FilterData => Array(n).fill("1=1").join(" && ");
-      const sort = (n: number): SortField[] => Array(n).fill({ name: "id", direction: SortAsc });
+      const sort = (n: number): SortField[] =>
+        Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc }));
 
       const p = (): Provider =>
         newProvider(new TestFieldResolver(), { clock }).query(baseQuery(testDB));
@@ -174,7 +175,7 @@ describe("MaxSortExprLimit", () => {
           newProvider(new TestFieldResolver(), { clock })
             .query(baseQuery(testDB))
             .maxSortExprLimit(val)
-            .sort(Array(n).fill({ name: "id", direction: SortAsc }));
+            .sort(Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc })));
         const exprs = Math.max(val, 0);
         expect(await execError(p(exprs))).toBe(val < 0 ? ErrSortExprLimit : undefined);
         expect(await execError(p(exprs + 1))).toBe(ErrSortExprLimit);
