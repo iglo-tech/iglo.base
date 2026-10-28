@@ -1,5 +1,5 @@
-// Upstream: core/view.go (SaveView, CreateViewFields, DryRunView and the
-// raw query to schema helpers)
+// Upstream: core/view.go (SaveView, CreateViewFields, DryRunView,
+// FindRecordByViewFile and the raw query to schema helpers)
 //
 // DeleteView is in src/db/table.ts (M0.4).
 //
