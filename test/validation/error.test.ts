@@ -226,3 +226,15 @@ describe("council round 1 regressions", () => {
     expect(err.message).toBe("the length must be between 1 and 5");
   });
 });
+
+describe("council round 2 regressions", () => {
+  test("a __proto__ field stays in the API error body", () => {
+    const apiErr = newBadRequestError(
+      "Failed to create record.",
+      ValidateStruct(Field("__proto__", "", Required)),
+    );
+    expect(JSON.stringify(apiErr)).toBe(
+      `{"data":{"__proto__":{"code":"validation_required","message":"Cannot be blank."}},"message":"Failed to create record.","status":400}`,
+    );
+  });
+});
