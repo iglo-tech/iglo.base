@@ -35,6 +35,7 @@ import { HashExp } from "@/db/dbx/expression";
 import {
   ContextCanceledError,
   Deadline,
+  Float64,
   Query,
   replacePlaceholders,
   type Params,
@@ -480,6 +481,73 @@ function bigDB(): ReturnType<typeof getDB> {
 }
 
 // dbx's insertAndReturnPK keeps the int64 rowid
+// Not in dbx: Go's SQLite driver binds a float64 as REAL, an integral one
+// too; a Float64 param does the same
+describe("a Float64 param binds as REAL", () => {
+  const sql = "SELECT typeof({:f}) AS f, typeof({:n}) AS n, {:f} AS v";
+  const params = { f: new Float64(5), n: 5 };
+
+  test("every reader", () => {
+    const db = getDB();
+    const expected = { f: "real", n: "integer", v: 5 };
+    const q = () => db.newQuery(sql).bind(params);
+    expect(q().one()).toEqual(expected);
+    expect(q().all()).toEqual([expected]);
+    expect(q().row()).toEqual(Object.values(expected));
+    expect([...q().rows()]).toEqual([Object.values(expected)]);
+    expect(q().column()).toEqual(["real"]);
+    // a prepared query binds it as REAL too
+    expect(q().prepare().row()).toEqual(Object.values(expected));
+    expect(db.newQuery(sql).prepare().bind(params).row()).toEqual(Object.values(expected));
+    // the same SQL text with a plain number binds INTEGER again
+    expect(db.newQuery(sql).bind({ f: 5, n: 5 }).row()).toEqual(["integer", "integer", 5]);
+    // a placeholder used twice and a non-integral value
+    expect(
+      db
+        .newQuery("SELECT typeof({:f}), {:f} + 1")
+        .bind({ f: new Float64(1.5) })
+        .row(),
+    ).toEqual(["real", 2.5]);
+  });
+
+  test("compares as a REAL under TEXT affinity, with no affinity of its own", () => {
+    const db = getDB();
+    db.newQuery("CREATE TABLE t (v TEXT)").execute();
+    db.newQuery("INSERT INTO t (v) VALUES ('5'), ('5.0')").execute();
+    const where = (p: unknown) =>
+      db.newQuery("SELECT v FROM t WHERE v = {:p} ORDER BY v").bind({ p }).column();
+    expect(where(new Float64(5))).toEqual(["5.0"]);
+    expect(where(5)).toEqual(["5"]);
+  });
+
+  test("execute binds it as REAL", () => {
+    const db = getDB();
+    db.newQuery("CREATE TABLE t (v)").execute();
+    db.newQuery("INSERT INTO t (v) VALUES ({:v})")
+      .bind({ v: new Float64(3) })
+      .execute();
+    db.newQuery("INSERT INTO t (v) VALUES ({:v})")
+      .prepare()
+      .bind({ v: new Float64(4) })
+      .execute();
+    expect(db.newQuery("SELECT typeof(v) FROM t").column()).toEqual(["real", "real"]);
+  });
+
+  test("the logged SQL prints its number", () => {
+    const db = getDB();
+    const logged: string[] = [];
+    db.queryLogFunc = (_ms, s) => logged.push(s);
+    db.newQuery("SELECT {:f} AS v")
+      .bind({ f: new Float64(5) })
+      .row();
+    expect(logged).toEqual(["SELECT 5 AS v"]);
+  });
+
+  test("replacePlaceholders gives its number", () => {
+    expect(replacePlaceholders(["f"], { f: new Float64(5) })).toEqual([5]);
+  });
+});
+
 describe("generated rowids are kept exactly", () => {
   class Big implements StructModel {
     id: number | bigint = 0;

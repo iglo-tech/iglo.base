@@ -75,6 +75,16 @@ import { isStructModel, scanStruct, type StructModel } from "@/db/dbx/struct";
 // The map keys are the parameter names while the map values are the corresponding parameter values.
 export type Params = Record<string, unknown>;
 
+// Float64 is a param value bound as Go's SQLite driver binds a float64:
+// always as REAL. bun:sqlite binds an integral number as INTEGER, which
+// compares differently under TEXT affinity (INTEGER 5 is '5', REAL 5 is
+// '5.0'), and has no REAL binding, so a query with a Float64 param runs
+// with its placeholder written as `+CAST(? AS REAL)` (a REAL value with no
+// affinity, as a bound parameter has none). Not in dbx.
+export class Float64 {
+  constructor(readonly value: number) {}
+}
+
 // a result row keyed by column name, as bun:sqlite returns it
 export type Row = Record<string, unknown>;
 
@@ -288,7 +298,7 @@ export class Query {
   execLogFunc: ExecLogFunc | null;
 
   constructor(
-    db: DB,
+    private readonly db: DB,
     private readonly executor: Executor,
     sql: string,
   ) {
@@ -401,6 +411,8 @@ export class Query {
         sv = "0x" + Buffer.from(v).toString("hex");
       } else if (v === null || v === undefined) {
         sv = "<nil>";
+      } else if (v instanceof Float64) {
+        sv = String(v.value);
       } else {
         sv = String(v);
       }
@@ -466,7 +478,10 @@ export class Query {
     let result: ExecResult | null = null;
     let err: unknown = null;
     try {
-      if (this.stmt === null) {
+      const realSql = this.realSql();
+      if (realSql !== null) {
+        result = this.executor.exec(realSql, args);
+      } else if (this.stmt === null) {
         result = this.executor.exec(this.rawSql, args);
       } else {
         result = this.stmt.exec(args);
@@ -616,7 +631,8 @@ export class Query {
     const start = performance.now();
     let err: unknown = null;
     try {
-      return await reader.read(this.rawSql, args, mode, deadline, this.exactIntegers);
+      const sql = this.realSql() ?? this.rawSql;
+      return await reader.read(sql, args, mode, deadline, this.exactIntegers);
     } catch (e) {
       err = e;
       throw e;
@@ -634,8 +650,13 @@ export class Query {
     let err: unknown = null;
     try {
       this.checkContext();
+      const realSql = this.realSql();
       const rows =
-        this.stmt !== null ? this.stmt.query(args) : this.executor.query(this.rawSql, args, own);
+        realSql !== null
+          ? this.executor.query(realSql, args, own)
+          : this.stmt !== null
+            ? this.stmt.query(args)
+            : this.executor.query(this.rawSql, args, own);
       return rows.withDeadline(deadline).withExactIntegers(this.exactIntegers);
     } catch (e) {
       err = !this.ctxCanceled && deadline?.expired() === true ? new DeadlineExceededError() : e;
@@ -643,6 +664,19 @@ export class Query {
     } finally {
       this.queryLogFunc?.(performance.now() - start, this.logSQL(), err);
     }
+  }
+
+  // the SQL text to run when a Float64 param is bound (its placeholders
+  // bind REAL), null otherwise. A prepared statement has plain placeholders,
+  // so such a query runs this text instead.
+  private realSql(): string | null {
+    let reals: Set<string> | null = null;
+    for (const name of this.placeholders) {
+      if (Object.hasOwn(this.boundParams, name) && this.boundParams[name] instanceof Float64) {
+        (reals ??= new Set()).add(name);
+      }
+    }
+    return reals === null ? null : this.db.processSQL(this.sqlText, reals)[0];
   }
 
   private takeLastError(): void {
@@ -681,7 +715,11 @@ export function replacePlaceholders(placeholders: string[], params: Params): SQL
       throw new Error("Named parameter not found: " + name);
     }
     const value = params[name];
-    result.push(value === undefined ? null : (value as SQLQueryBindings));
+    if (value instanceof Float64) {
+      result.push(value.value);
+    } else {
+      result.push(value === undefined ? null : (value as SQLQueryBindings));
+    }
   }
   return result;
 }

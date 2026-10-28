@@ -229,13 +229,19 @@ export class DB extends EmbeddedBuilder {
   // processSQL replaces the named param placeholders in the given SQL with anonymous ones.
   // It also quotes table names and column names found in the SQL if these names are enclosed
   // within double square/curly brackets. The method will return the updated SQL and the list of parameter names.
-  processSQL(s: string): [string, string[]] {
+  //
+  // Not in dbx: a placeholder named in `reals` is given as
+  // `+CAST(placeholder AS REAL)`, a REAL value with no affinity, which is how
+  // the Go SQLite driver binds a float64 (see Float64 in query.ts).
+  processSQL(s: string, reals?: ReadonlySet<string>): [string, string[]] {
     const placeholders: string[] = [];
     let count = 0;
     s = s.replace(plRegex, (m) => {
       count++;
-      placeholders.push(m.slice(2, -1));
-      return this.generatePlaceholder(count);
+      const name = m.slice(2, -1);
+      placeholders.push(name);
+      const placeholder = this.generatePlaceholder(count);
+      return reals?.has(name) === true ? `+CAST(${placeholder} AS REAL)` : placeholder;
     });
     s = s.replace(quoteRegex, (m) => {
       if (m[0] === "{") {
