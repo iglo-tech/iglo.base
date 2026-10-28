@@ -11,8 +11,11 @@
 // read asynchronously, so the constructors read the first
 // mimetype.defaultLimit bytes once, when the File is created (the same
 // bytes DetectReader reads; a read error is kept and returned instead),
-// and detect() runs the detection on them. The content of a Blob does not
-// change, so the result is the one a later read would give.
+// and detect() runs the detection on them. A multipart part or a Blob of
+// bytes does not change, so the result is the one a later read would give.
+// A local path can change after the File is created, and Go's PathReader
+// opens the path again on every read, so a path-backed File reads its
+// first bytes again, synchronously, each time detect() is called.
 //
 // File names are Go strings: the name cut at 300 bytes and the extension
 // and name rules work on UTF-8 bytes, with invalid bytes (a cut inside a
@@ -23,6 +26,7 @@
 // throw where Go returns an error. Not ported: NewFileFromURL, which
 // downloads the file (M4.5, for OAuth2 avatars), and openFuncAsReader.
 
+import { closeSync, openSync, readSync } from "node:fs";
 import { stat } from "node:fs/promises";
 
 import type { MIME } from "@/tools/mimetype/mime";
@@ -52,6 +56,9 @@ export interface FileOptions {
 export class File {
   readonly #reader: Blob;
   readonly #head: Uint8Array | Error;
+  // the local path of a path-backed File (Go's PathReader), read again on
+  // every detect()
+  readonly #path: string | null;
 
   name: string;
   originalName: string;
@@ -63,9 +70,11 @@ export class File {
     name: string,
     originalName: string,
     size: number,
+    path: string | null = null,
   ) {
     this.#reader = reader;
     this.#head = head;
+    this.#path = path;
     this.name = name;
     this.originalName = originalName;
     this.size = size;
@@ -80,10 +89,11 @@ export class File {
   // bytes read when the File was created, and the read error (with
   // application/octet-stream) if that read failed.
   detect(): [MIME, Error | null] {
-    if (this.#head instanceof Error) {
-      return [errMIME, this.#head];
+    const head = this.#path === null ? this.#head : readPathHead(this.#path);
+    if (head instanceof Error) {
+      return [errMIME, head];
     }
-    return [detect(this.#head), null];
+    return [detect(head), null];
   }
 
   // AsMap implements [core.mapExtractor] and returns a value suitable to be
@@ -106,22 +116,50 @@ async function readHead(reader: Blob): Promise<Uint8Array | Error> {
   }
 }
 
+// os.Open(path) and io.ReadFull of the first DetectReader bytes, or the
+// open or read error
+function readPathHead(path: string): Uint8Array | Error {
+  let fd: number;
+  try {
+    fd = openSync(path, "r");
+  } catch (err) {
+    return err instanceof Error ? err : new Error(String(err));
+  }
+  try {
+    const buf = new Uint8Array(defaultLimit);
+    let n = 0;
+    while (n < buf.length) {
+      const read = readSync(fd, buf, n, buf.length - n, n);
+      if (read === 0) {
+        break;
+      }
+      n += read;
+    }
+    return buf.subarray(0, n);
+  } catch (err) {
+    return err instanceof Error ? err : new Error(String(err));
+  } finally {
+    closeSync(fd);
+  }
+}
+
 async function newFile(
   reader: Blob,
   originalName: string,
   size: number,
   opts: FileOptions,
+  path: string | null = null,
 ): Promise<File> {
-  const head = await readHead(reader);
+  const head = path === null ? await readHead(reader) : readPathHead(path);
   const name = normalizeName(head, originalName, opts.random ?? randomStringWithAlphabet);
-  return new File(reader, head, name, originalName, size);
+  return new File(reader, head, name, originalName, size, path);
 }
 
 // NewFileFromPath creates a new File instance from the provided local file
 // path. Throws when the file cannot be stat-ed (os.Stat's error).
 export async function NewFileFromPath(path: string, opts: FileOptions = {}): Promise<File> {
   const info = await stat(path);
-  return newFile(Bun.file(path), goBase(path), Number(info.size), opts);
+  return newFile(Bun.file(path), goBase(path), Number(info.size), opts, path);
 }
 
 // NewFileFromBytes creates a new File instance from the provided byte

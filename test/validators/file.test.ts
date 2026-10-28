@@ -3,9 +3,13 @@
 // The cases after the ported tables check the error codes, messages and
 // params.
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { beforeAll, describe, expect, test } from "bun:test";
 
-import { File, NewFileFromBytes } from "@/tools/filesystem/file";
+import { File, NewFileFromBytes, NewFileFromPath } from "@/tools/filesystem/file";
 import { marshal } from "@/tools/types/go-json";
 import type { Error as ValidationError } from "@/validation/error";
 import { UploadedFileMimeType, UploadedFileSize } from "@/validators/file";
@@ -139,4 +143,34 @@ describe("errors", () => {
       params: "{}",
     });
   });
+});
+
+// Not in upstream's tests (council round 1): Go's PathReader opens the path
+// again for each check, so a path-backed File is checked against the
+// content the path has when the rule runs, not when the File was created.
+test("UploadedFileMimeType reads a path-backed file again", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "iglo-base-file-validator-"));
+  try {
+    const path = join(dir, "sample.png");
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    writeFileSync(path, png);
+    const file = await NewFileFromPath(path);
+    expect(UploadedFileMimeType(["image/png"])(file)).toBeNull();
+
+    writeFileSync(path, "<html><body>changed</body></html>");
+    expect(errorParts(UploadedFileMimeType(["image/png"])(file))).toEqual({
+      code: "validation_invalid_mime_type",
+      message: `"${file.name}" mime type must be one of: image/png.`,
+      params: "{}",
+    });
+
+    rmSync(path);
+    expect(errorParts(UploadedFileMimeType(["image/png"])(file))).toEqual({
+      code: "validation_invalid_mime_type",
+      message: `Failed to upload "sample.png" due to unsupported file type.`,
+      params: "{}",
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
