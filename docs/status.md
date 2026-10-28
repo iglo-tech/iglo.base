@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.1c | worker | `task/M1.1c-validation` ([brief](briefs/M1.1c.md)) | 0 | ozzo-validation v4.4.1 subset, `is` rules with govalidator `a9d515a`, `core/validators` (without file.go) |
+| M1.1c | council | [#11](https://github.com/iglo-tech/iglo.base/pull/11) ([brief](briefs/M1.1c.md)) | 1 | ozzo-validation v4.4.1 subset, `is` rules with govalidator `a9d515a`, `core/validators` (without file.go). CI green at `ea00ce8`; round 1 started for that head |
 
 ## Done
 
@@ -75,6 +75,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.1b brief): user patterns are matched with a port of Go's own matcher, not translated into JS RegExp. They must accept exactly what upstream accepts, and RE2 runs in linear time, while a JS RegExp can be driven into exponential backtracking by a record value.
 - 2026-10-28 (M1.1b PR): the lead accepted the worker's choices. Regexp indexes are Go byte offsets of the UTF-8 encoding, and a lone surrogate U+DC80+n stands for the invalid byte 0x80+n. Go's one-pass machine is ported because it changes `literalPrefix()`; the backtracker is not, because it never changes a result and the NFA's worst case at 1 KiB is about 0.5 ms. Plain `bun test` samples every 10th RE2 exhaustive case (`RE2_EXHAUSTIVE=1` runs all of them). Note for porters: Bun's transpiler rewrites non-ASCII text inside `String.raw` templates as `\uXXXX` escapes.
 - 2026-10-28 (M1.1c brief): ozzo-validation and its `is` rules live in `src/validation/` (the library upstream imports), and `core/validators` in `src/validators/`. ozzo-validation (MIT, Qiang Xue) and govalidator (MIT, Alex Saskevich) notices go into `LICENSE`. `src/server/error.ts` (shared contract, M0.3) may import the ported `Errors` and `Error` types instead of its own structural definitions, as long as its tests still pass unchanged. `core/validators/file.go` waits for the filesystem tasks.
+- 2026-10-28 (M1.1c PR): the lead accepted the worker's open points. `Length` counts bytes, as ozzo's `LengthOfValue` does (the brief's "rune counts" was wrong; `RuneLength` counts runes). `src/server/error.ts` is unchanged, and the ported `Errors` extends its `ValidationErrors`. Go types are mapped by convention: `null` is a typed nil, a plain object is `map[string]any`, a JS `Map` holds validatable values, `Float64` marks a Go float64, and `DateTime` stands for `types.DateTime` and `time.Time`. Message templates support only `{{.name}}`. The new Go-derived files (`net/url`, `net/netip` parts) are named in the existing Go notice in `LICENSE`.
 
 ## Paused until
 
