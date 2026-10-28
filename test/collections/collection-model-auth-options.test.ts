@@ -1,21 +1,37 @@
 // Upstream: core/collection_model_auth_options_test.go (the tests that are
 // not about validation: TestEmailTemplateResolve, the DurationTime tests,
 // TestOAuth2ConfigUnmarshalJSON and TestOAuth2ConfigGetProviderConfig;
-// the Validate tests come with M1.6a, TestOAuth2ProviderConfigInitProvider
-// with M4)
+// the Validate tests TestCollectionAuthOptionsValidate, TestEmailTemplateValidate,
+// TestTokenConfigValidate, TestAuthAlertConfigValidate, TestOTPConfigValidate,
+// TestMFAConfigValidate, TestPasswordAuthConfigValidate, TestOAuth2ConfigValidate
+// and TestOAuth2ProviderConfigValidate come with M1.6a;
+// TestOAuth2ProviderConfigInitProvider with M4)
 
 import { describe, expect, test } from "bun:test";
 
+import { newAuthCollection } from "@/collections/collection-model";
+import { validateCollection } from "@/collections/collection-validate";
 import {
+  AuthAlertConfig,
   EmailTemplate,
   MFAConfig,
   OAuth2Config,
   OAuth2KnownFields,
   OAuth2ProviderConfig,
   OTPConfig,
+  PasswordAuthConfig,
   TokenConfig,
 } from "@/collections/collection-model-auth-options";
+import { TextField } from "@/fields/text";
 import { marshal } from "@/tools/types/go-json";
+
+import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import {
+  type Pending,
+  caseTest,
+  expectValidationErrors,
+  pendingRule,
+} from "@test/collections/validation";
 
 const second = 1_000_000_000n;
 
@@ -219,6 +235,700 @@ describe("OAuth2ConfigGetProviderConfig", () => {
       } else {
         expect(config.name).toBe("");
       }
+    });
+  }
+});
+
+describe("TestCollectionAuthOptionsValidate", () => {
+  interface Scenario {
+    name: string;
+    collection: (app: TestCollectionsApp) => ReturnType<typeof newAuthCollection>;
+    expectedErrors: string[];
+    pending?: Pending;
+  }
+
+  const scenarios: Scenario[] = [
+    // authRule
+    {
+      name: "nil authRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.authRule = null;
+        return c;
+      },
+      expectedErrors: [],
+    },
+    {
+      name: "empty authRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.authRule = "";
+        return c;
+      },
+      expectedErrors: [],
+    },
+    {
+      name: "invalid authRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.authRule = "missing != ''";
+        return c;
+      },
+      expectedErrors: ["authRule"],
+      pending: pendingRule,
+    },
+    {
+      name: "valid authRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.authRule = "id != ''";
+        return c;
+      },
+      expectedErrors: [],
+    },
+
+    // manageRule
+    {
+      name: "nil manageRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.manageRule = null;
+        return c;
+      },
+      expectedErrors: [],
+    },
+    {
+      name: "empty manageRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.manageRule = "";
+        return c;
+      },
+      expectedErrors: ["manageRule"],
+    },
+    {
+      name: "invalid manageRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.manageRule = "missing != ''";
+        return c;
+      },
+      expectedErrors: ["manageRule"],
+      pending: pendingRule,
+    },
+    {
+      name: "valid manageRule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.manageRule = "id != ''";
+        return c;
+      },
+      expectedErrors: [],
+    },
+
+    // passwordAuth
+    {
+      name: "trigger passwordAuth validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.passwordAuth = new PasswordAuthConfig({ enabled: true });
+        return c;
+      },
+      expectedErrors: ["passwordAuth"],
+    },
+    {
+      name: "passwordAuth with non-unique identity fields",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.fields.add(new TextField({ name: "test" }));
+        c.passwordAuth = new PasswordAuthConfig({
+          enabled: true,
+          identityFields: ["email", "test"],
+        });
+        return c;
+      },
+      expectedErrors: ["passwordAuth"],
+    },
+    {
+      name: "passwordAuth with non-unique identity fields",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.fields.add(new TextField({ name: "test" }));
+        c.addIndex("auth_test_idx", true, "test", "");
+        c.passwordAuth = new PasswordAuthConfig({
+          enabled: true,
+          identityFields: ["email", "test"],
+        });
+        return c;
+      },
+      expectedErrors: [],
+    },
+
+    // oauth2
+    {
+      name: "trigger oauth2 validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.oauth2 = new OAuth2Config({
+          enabled: true,
+          providers: [new OAuth2ProviderConfig({ name: "missing" })],
+        });
+        return c;
+      },
+      expectedErrors: ["oauth2"],
+    },
+
+    // otp
+    {
+      name: "trigger otp validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.otp = new OTPConfig({ enabled: true, duration: -10 });
+        return c;
+      },
+      expectedErrors: ["otp"],
+    },
+
+    // mfa
+    {
+      name: "trigger mfa validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.mfa = new MFAConfig({ enabled: true, duration: -10 });
+        return c;
+      },
+      expectedErrors: ["mfa"],
+    },
+    {
+      name: "mfa enabled with < 2 auth methods",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.mfa.enabled = true;
+        c.passwordAuth.enabled = true;
+        c.otp.enabled = false;
+        c.oauth2.enabled = false;
+        return c;
+      },
+      expectedErrors: ["mfa"],
+    },
+    {
+      name: "mfa enabled with >= 2 auth methods",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.mfa.enabled = true;
+        c.passwordAuth.enabled = true;
+        c.otp.enabled = true;
+        c.oauth2.enabled = false;
+        return c;
+      },
+      expectedErrors: [],
+    },
+    {
+      name: "mfa disabled with invalid rule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.passwordAuth.enabled = true;
+        c.otp.enabled = true;
+        c.mfa.enabled = false;
+        c.mfa.rule = "invalid";
+        return c;
+      },
+      expectedErrors: [],
+    },
+    {
+      name: "mfa enabled with invalid rule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.passwordAuth.enabled = true;
+        c.otp.enabled = true;
+        c.mfa.enabled = true;
+        c.mfa.rule = "invalid";
+        return c;
+      },
+      expectedErrors: ["mfa"],
+      pending: pendingRule,
+    },
+    {
+      name: "mfa enabled with valid rule",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.passwordAuth.enabled = true;
+        c.otp.enabled = true;
+        c.mfa.enabled = true;
+        c.mfa.rule = "1=1";
+        return c;
+      },
+      expectedErrors: [],
+    },
+
+    // tokens
+    {
+      name: "trigger authToken validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.authToken.secret = "";
+        return c;
+      },
+      expectedErrors: ["authToken"],
+    },
+    {
+      name: "trigger passwordResetToken validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.passwordResetToken.secret = "";
+        return c;
+      },
+      expectedErrors: ["passwordResetToken"],
+    },
+    {
+      name: "trigger emailChangeToken validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.emailChangeToken.secret = "";
+        return c;
+      },
+      expectedErrors: ["emailChangeToken"],
+    },
+    {
+      name: "trigger verificationToken validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.verificationToken.secret = "";
+        return c;
+      },
+      expectedErrors: ["verificationToken"],
+    },
+    {
+      name: "trigger fileToken validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.fileToken.secret = "";
+        return c;
+      },
+      expectedErrors: ["fileToken"],
+    },
+
+    // templates
+    {
+      name: "trigger verificationTemplate validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.verificationTemplate.body = "";
+        return c;
+      },
+      expectedErrors: ["verificationTemplate"],
+    },
+    {
+      name: "trigger resetPasswordTemplate validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.resetPasswordTemplate.body = "";
+        return c;
+      },
+      expectedErrors: ["resetPasswordTemplate"],
+    },
+    {
+      name: "trigger confirmEmailChangeTemplate validations",
+      collection: () => {
+        const c = newAuthCollection("new_auth");
+        c.confirmEmailChangeTemplate.body = "";
+        return c;
+      },
+      expectedErrors: ["confirmEmailChangeTemplate"],
+    },
+  ];
+
+  for (const s of scenarios) {
+    caseTest(s.name, s.pending, () => {
+      const app = openTestApp();
+      try {
+        const collection = s.collection(app);
+
+        const result = validateCollection(app, collection);
+
+        expectValidationErrors(result, s.expectedErrors);
+      } finally {
+        app.cleanup();
+      }
+    });
+  }
+});
+
+describe("TestEmailTemplateValidate", () => {
+  const scenarios: { name: string; template: EmailTemplate; expectedErrors: string[] }[] = [
+    {
+      name: "zero value",
+      template: new EmailTemplate(),
+      expectedErrors: ["subject", "body"],
+    },
+    {
+      name: "non-empty data",
+      template: new EmailTemplate({ subject: "a", body: "b" }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.template.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestTokenConfigValidate", () => {
+  const scenarios: { name: string; config: TokenConfig; expectedErrors: string[] }[] = [
+    {
+      name: "zero value",
+      config: new TokenConfig(),
+      expectedErrors: ["secret", "duration"],
+    },
+    {
+      name: "invalid data",
+      config: new TokenConfig({
+        secret: "a".repeat(29),
+        duration: 9,
+      }),
+      expectedErrors: ["secret", "duration"],
+    },
+    {
+      name: "valid data",
+      config: new TokenConfig({
+        secret: "a".repeat(30),
+        duration: 10,
+      }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestAuthAlertConfigValidate", () => {
+  const scenarios: { name: string; config: AuthAlertConfig; expectedErrors: string[] }[] = [
+    {
+      name: "zero value (disabled)",
+      config: new AuthAlertConfig(),
+      expectedErrors: ["emailTemplate"],
+    },
+    {
+      name: "zero value (enabled)",
+      config: new AuthAlertConfig({ enabled: true }),
+      expectedErrors: ["emailTemplate"],
+    },
+    {
+      name: "invalid template",
+      config: new AuthAlertConfig({
+        emailTemplate: new EmailTemplate({ body: "", subject: "b" }),
+      }),
+      expectedErrors: ["emailTemplate"],
+    },
+    {
+      name: "valid data",
+      config: new AuthAlertConfig({
+        emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
+      }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestOTPConfigValidate", () => {
+  const scenarios: { name: string; config: OTPConfig; expectedErrors: string[] }[] = [
+    {
+      name: "zero value (disabled)",
+      config: new OTPConfig(),
+      expectedErrors: ["emailTemplate"],
+    },
+    {
+      name: "zero value (enabled)",
+      config: new OTPConfig({ enabled: true }),
+      expectedErrors: ["duration", "length", "emailTemplate"],
+    },
+    {
+      name: "invalid length (< 3)",
+      config: new OTPConfig({
+        enabled: true,
+        emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
+        duration: 100,
+        length: 3,
+      }),
+      expectedErrors: ["length"],
+    },
+    {
+      name: "invalid duration (< 10)",
+      config: new OTPConfig({
+        enabled: true,
+        emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
+        duration: 9,
+        length: 100,
+      }),
+      expectedErrors: ["duration"],
+    },
+    {
+      name: "invalid duration (> 86400)",
+      config: new OTPConfig({
+        enabled: true,
+        emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
+        duration: 86401,
+        length: 100,
+      }),
+      expectedErrors: ["duration"],
+    },
+    {
+      name: "invalid template (triggering EmailTemplate validations)",
+      config: new OTPConfig({
+        enabled: true,
+        emailTemplate: new EmailTemplate({ body: "", subject: "b" }),
+        duration: 86400,
+        length: 4,
+      }),
+      expectedErrors: ["emailTemplate"],
+    },
+    {
+      name: "valid data",
+      config: new OTPConfig({
+        enabled: true,
+        emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
+        duration: 86400,
+        length: 4,
+      }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestMFAConfigValidate", () => {
+  const scenarios: { name: string; config: MFAConfig; expectedErrors: string[] }[] = [
+    {
+      name: "zero value (disabled)",
+      config: new MFAConfig(),
+      expectedErrors: [],
+    },
+    {
+      name: "zero value (enabled)",
+      config: new MFAConfig({ enabled: true }),
+      expectedErrors: ["duration"],
+    },
+    {
+      name: "invalid duration (< 10)",
+      config: new MFAConfig({ enabled: true, duration: 9 }),
+      expectedErrors: ["duration"],
+    },
+    {
+      name: "invalid duration (> 86400)",
+      config: new MFAConfig({ enabled: true, duration: 86401 }),
+      expectedErrors: ["duration"],
+    },
+    {
+      name: "valid data",
+      config: new MFAConfig({ enabled: true, duration: 86400 }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestPasswordAuthConfigValidate", () => {
+  const scenarios: { name: string; config: PasswordAuthConfig; expectedErrors: string[] }[] = [
+    {
+      name: "zero value (disabled)",
+      config: new PasswordAuthConfig(),
+      expectedErrors: [],
+    },
+    {
+      name: "zero value (enabled)",
+      config: new PasswordAuthConfig({ enabled: true }),
+      expectedErrors: ["identityFields"],
+    },
+    {
+      name: "empty values",
+      config: new PasswordAuthConfig({ enabled: true, identityFields: ["", ""] }),
+      expectedErrors: ["identityFields"],
+    },
+    {
+      name: "valid data",
+      config: new PasswordAuthConfig({ enabled: true, identityFields: ["abc"] }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestOAuth2ConfigValidate", () => {
+  const scenarios: { name: string; config: OAuth2Config; expectedErrors: string[] }[] = [
+    {
+      name: "zero value (disabled)",
+      config: new OAuth2Config(),
+      expectedErrors: [],
+    },
+    {
+      name: "zero value (enabled)",
+      config: new OAuth2Config({ enabled: true }),
+      expectedErrors: [],
+    },
+    {
+      name: "unknown provider",
+      config: new OAuth2Config({
+        enabled: true,
+        providers: [
+          new OAuth2ProviderConfig({ name: "missing", clientId: "abc", clientSecret: "456" }),
+        ],
+      }),
+      expectedErrors: ["providers"],
+    },
+    {
+      name: "known provider with invalid data",
+      config: new OAuth2Config({
+        enabled: true,
+        providers: [
+          new OAuth2ProviderConfig({ name: "gitlab", clientId: "abc", tokenURL: "!invalid!" }),
+        ],
+      }),
+      expectedErrors: ["providers"],
+    },
+    {
+      name: "known provider with valid data",
+      config: new OAuth2Config({
+        enabled: true,
+        providers: [
+          new OAuth2ProviderConfig({
+            name: "gitlab",
+            clientId: "abc",
+            clientSecret: "456",
+            tokenURL: "https://example.com",
+          }),
+        ],
+      }),
+      expectedErrors: [],
+    },
+    {
+      name: "known provider with valid data (duplicated)",
+      config: new OAuth2Config({
+        enabled: true,
+        providers: [
+          new OAuth2ProviderConfig({
+            name: "gitlab",
+            clientId: "abc1",
+            clientSecret: "1",
+            tokenURL: "https://example1.com",
+          }),
+          new OAuth2ProviderConfig({
+            name: "google",
+            clientId: "abc2",
+            clientSecret: "2",
+            tokenURL: "https://example2.com",
+          }),
+          new OAuth2ProviderConfig({
+            name: "gitlab",
+            clientId: "abc3",
+            clientSecret: "3",
+            tokenURL: "https://example3.com",
+          }),
+        ],
+      }),
+      expectedErrors: ["providers"],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
+    });
+  }
+});
+
+describe("TestOAuth2ProviderConfigValidate", () => {
+  const scenarios: {
+    name: string;
+    config: OAuth2ProviderConfig;
+    expectedErrors: string[];
+  }[] = [
+    {
+      name: "zero value",
+      config: new OAuth2ProviderConfig(),
+      expectedErrors: ["name", "clientId", "clientSecret"],
+    },
+    {
+      name: "minimum valid data",
+      config: new OAuth2ProviderConfig({ name: "gitlab", clientId: "abc", clientSecret: "456" }),
+      expectedErrors: [],
+    },
+    {
+      name: "non-existing provider",
+      config: new OAuth2ProviderConfig({ name: "missing", clientId: "abc", clientSecret: "456" }),
+      expectedErrors: ["name"],
+    },
+    {
+      name: "invalid urls",
+      config: new OAuth2ProviderConfig({
+        name: "gitlab",
+        clientId: "abc",
+        clientSecret: "456",
+        authURL: "!invalid!",
+        tokenURL: "!invalid!",
+        userInfoURL: "!invalid!",
+      }),
+      expectedErrors: ["authURL", "tokenURL", "userInfoURL"],
+    },
+    {
+      name: "valid urls",
+      config: new OAuth2ProviderConfig({
+        name: "gitlab",
+        clientId: "abc",
+        clientSecret: "456",
+        authURL: "https://example.com/a",
+        tokenURL: "https://example.com/b",
+        userInfoURL: "https://example.com/c",
+      }),
+      expectedErrors: [],
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const result = s.config.validate();
+
+      expectValidationErrors(result, s.expectedErrors);
     });
   }
 });
