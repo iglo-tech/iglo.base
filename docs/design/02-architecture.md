@@ -77,7 +77,7 @@ src/
   cron/               scheduler and built-in jobs
   logs/               logger, buffered writer, queries, stats
   apis/               HTTP handlers, one file per upstream apis/*.go file
-  tools/              upstream's small tools/ packages, one directory each: types (DateTime with nanoseconds, JSONRaw, JSONArray, JSONMap, GeoPoint, and the Go JSON, time.Parse and spf13/cast behavior they inherit), security (hashes, AES-GCM, HS256 JWT with golang-jwt's rules, random strings), list, inflector, store
+  tools/              upstream's small tools/ packages, one directory each: types (DateTime with nanoseconds, JSONRaw, JSONArray, JSONMap, GeoPoint, and the Go JSON, time.Parse and spf13/cast behavior they inherit), security (hashes, AES-GCM, HS256 JWT with golang-jwt's rules, random strings, RandomStringByRegex), list, inflector, store; regexp/syntax (Go's regexp/syntax parser: Go's trees and error texts) and unicode (the parts of Go's unicode and unicode/utf8 it uses, with tables generated from Go's tables.go)
 ui/                   vendored upstream dashboard (see 08-admin-ui.md)
 test/
   differential/       runs the same scenarios against upstream and iglo.base
