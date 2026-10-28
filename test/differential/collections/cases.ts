@@ -229,3 +229,87 @@ export const minimalCases = {
     body: `{"name":"min_view","type":"view","viewQuery":"SELECT id FROM base_only_id"}`,
   },
 };
+
+// OAuth2 provider updates (OAuth2Config.UnmarshalJSON's merge by name): an
+// auth collection with OAuth2 disabled, which allows duplicated providers,
+// is created with `providers` and then updated through PATCH with `update`.
+// A merged provider shares its original's PKCE *bool, so a submitted pkce
+// bool reaches every provider merged from that original; null or a nil
+// original pointer does not. `pkce` is the expected result.
+export interface OAuth2UpdateCase {
+  name: string;
+  providers: string;
+  update: string;
+  pkce: (boolean | null)[];
+}
+
+const pkceOriginals = `[
+  {"name":"google","clientId":"client","clientSecret":"secret","pkce":true},
+  {"name":"github","clientId":"gh","clientSecret":"gh-secret","pkce":false},
+  {"name":"gitlab","clientId":"gl","clientSecret":"gl-secret"}
+]`;
+
+export const oauth2UpdateCases: OAuth2UpdateCase[] = [
+  {
+    name: "auth_pkce_repro",
+    providers: `[{"name":"google","clientId":"client","clientSecret":"secret","pkce":true}]`,
+    update: `[{"name":"google","pkce":false},{"name":"google"}]`,
+    pkce: [false, false],
+  },
+  {
+    name: "auth_pkce_later_write",
+    providers: pkceOriginals,
+    update: `[{"name":"google"},{"name":"google","pkce":false}]`,
+    pkce: [false, false],
+  },
+  {
+    name: "auth_pkce_last_write_wins",
+    providers: pkceOriginals,
+    update: `[{"name":"google","pkce":false},{"name":"google","pkce":true},{"name":"google"}]`,
+    pkce: [true, true, true],
+  },
+  {
+    name: "auth_pkce_null",
+    providers: pkceOriginals,
+    update: `[{"name":"google","pkce":null},{"name":"google"}]`,
+    pkce: [null, true],
+  },
+  {
+    name: "auth_pkce_null_between",
+    providers: pkceOriginals,
+    update: `[{"name":"google","pkce":false},{"name":"google","pkce":null},{"name":"google"}]`,
+    pkce: [false, null, false],
+  },
+  {
+    name: "auth_pkce_missing",
+    providers: pkceOriginals,
+    update: `[{"name":"google"},{"name":"github","clientId":"gh2"},{"name":"gitlab"}]`,
+    pkce: [true, false, null],
+  },
+  {
+    name: "auth_pkce_nil_original",
+    providers: pkceOriginals,
+    update: `[{"name":"gitlab","pkce":true},{"name":"gitlab"},{"name":"gitlab","pkce":false}]`,
+    pkce: [true, null, false],
+  },
+  {
+    name: "auth_pkce_two_originals",
+    providers: pkceOriginals,
+    update: `[{"name":"google","pkce":false},{"name":"github","pkce":true},{"name":"google"},{"name":"github"}]`,
+    pkce: [false, true, false, true],
+  },
+  {
+    name: "auth_pkce_new_providers",
+    providers: pkceOriginals,
+    update: `[{"name":"discord","pkce":true},{"name":"discord"},{"name":"google","pkce":false},{"name":"twitch","clientId":"t","pkce":false},{"name":"google"}]`,
+    pkce: [true, null, false, false, false],
+  },
+];
+
+export function oauth2UpdateCreateBody(c: OAuth2UpdateCase): string {
+  return `{"name":"${c.name}","type":"auth","oauth2":{"enabled":false,"providers":${c.providers}}}`;
+}
+
+export function oauth2UpdatePatchBody(c: OAuth2UpdateCase): string {
+  return `{"oauth2":{"providers":${c.update}}}`;
+}

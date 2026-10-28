@@ -16,6 +16,10 @@
 //     updated, the auth token secrets) are copied from upstream's row. A
 //     view's fields are generated from its query on save (M1.7), so only
 //     its id, indexes and options are compared.
+//   - OAuth2 provider updates: the collections of oauth2UpdateCases are
+//     created, their rows read, and then updated through PATCH. Each
+//     stored row, with the update unmarshaled into it, must export the
+//     updated row and marshal to the updated GET body.
 //   - fixture: every `_collections` row of upstream's test fixture, read
 //     into the model, marshals to upstream's GET body for it.
 
@@ -36,7 +40,13 @@ import { DateTime } from "@/tools/types/datetime";
 import { jsonArrayValue } from "@/tools/types/json-array";
 import { JSONRaw } from "@/tools/types/json-raw";
 
-import { collectionCases, minimalCases } from "@test/differential/collections/cases";
+import {
+  collectionCases,
+  minimalCases,
+  oauth2UpdateCases,
+  oauth2UpdateCreateBody,
+  oauth2UpdatePatchBody,
+} from "@test/differential/collections/cases";
 import {
   copyFixture,
   runUpstream,
@@ -46,10 +56,13 @@ import {
 } from "@test/differential/db/fixture";
 import { startUpstream, type UpstreamServer } from "@test/support/upstream";
 
+// the hooks start and stop upstream, which is slow on the macOS runners
+const hookTimeout = 60_000;
+
 const email = "collections@example.com";
 const password = "1234567890";
 
-let root: string;
+let root: string | undefined;
 let dataDir: string;
 let upstream: UpstreamServer | undefined;
 let token: string;
@@ -70,12 +83,14 @@ beforeAll(async () => {
   });
   expect(res.status).toBe(200);
   token = ((await res.json()) as { token: string }).token;
-});
+}, hookTimeout);
 
 afterAll(async () => {
   await upstream?.stop();
-  rmSync(root, { recursive: true, force: true });
-});
+  if (root !== undefined) {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, hookTimeout);
 
 async function request(
   method: string,
@@ -224,7 +239,7 @@ describe("stored _collections rows", () => {
     await upstream?.stop();
     upstream = undefined;
     rows = readRows(join(dataDir, "data.db"));
-  });
+  }, hookTimeout);
 
   test("enough collections were created", () => {
     expect(created.length).toBe(collectionCases.length);
@@ -287,13 +302,93 @@ describe("stored _collections rows", () => {
   });
 });
 
+describe("OAuth2 provider updates through upstream", () => {
+  interface Updated {
+    name: string;
+    id: string;
+    status: number;
+    patchBody: string;
+    getBody: string;
+  }
+  const updated: Updated[] = [];
+  let before: Map<string, Record<string, unknown>>;
+  let after: Map<string, Record<string, unknown>>;
+
+  beforeAll(async () => {
+    upstream = await startUpstream({ dataDir });
+    const ids = new Map<string, string>();
+    for (const c of oauth2UpdateCases) {
+      const res = await request("POST", "/api/collections", oauth2UpdateCreateBody(c));
+      expect({
+        name: c.name,
+        status: res.status,
+        text: res.status === 200 ? "" : res.text,
+      }).toEqual({ name: c.name, status: 200, text: "" });
+      ids.set(c.name, (JSON.parse(res.text) as { id: string }).id);
+    }
+    await upstream.stop();
+    upstream = undefined;
+    before = readRows(join(dataDir, "data.db"));
+
+    upstream = await startUpstream({ dataDir });
+    for (const c of oauth2UpdateCases) {
+      const id = ids.get(c.name) ?? "";
+      const res = await request("PATCH", `/api/collections/${id}`, oauth2UpdatePatchBody(c));
+      const got = await request("GET", `/api/collections/${id}`);
+      expect(got.status).toBe(200);
+      updated.push({
+        name: c.name,
+        id,
+        status: res.status,
+        patchBody: res.text,
+        getBody: got.text,
+      });
+    }
+    await upstream.stop();
+    upstream = undefined;
+    after = readRows(join(dataDir, "data.db"));
+  }, hookTimeout);
+
+  test("upstream accepts every update with the expected PKCE values", () => {
+    expect(updated.length).toBe(oauth2UpdateCases.length);
+    for (const [i, c] of oauth2UpdateCases.entries()) {
+      const u = updated[i] as Updated;
+      const providers = (JSON.parse(u.getBody) as { oauth2: { providers: { pkce: unknown }[] } })
+        .oauth2.providers;
+      expect({ name: c.name, status: u.status, pkce: providers.map((p) => p.pkce) }).toEqual({
+        name: c.name,
+        status: 200,
+        pkce: c.pkce,
+      });
+      // the update response is the same model
+      expect({ name: c.name, body: u.patchBody }).toEqual({ name: c.name, body: u.getBody });
+    }
+  });
+
+  test("the update unmarshaled into the stored row gives the updated row and GET body", () => {
+    for (const [i, c] of oauth2UpdateCases.entries()) {
+      const u = updated[i] as Updated;
+      const model = modelFromRow(before.get(u.id) as Record<string, unknown>);
+      model.unmarshalJSON(oauth2UpdatePatchBody(c));
+      const row = after.get(u.id) as Record<string, unknown>;
+      withGenerated(model, row);
+      expect({ name: c.name, columns: driverValues(model.dbExport()) }).toEqual({
+        name: c.name,
+        columns: row,
+      });
+      expect({ name: c.name, body: model.string() }).toEqual({ name: c.name, body: u.getBody });
+    }
+  });
+});
+
 describe("upstream's test fixture", () => {
-  let copy: FixtureCopy;
+  let copy: FixtureCopy | undefined;
   const bodies = new Map<string, string>();
 
   beforeAll(async () => {
-    copy = copyFixture();
-    const server = await serveUpstream(copy);
+    const fixture = copyFixture();
+    copy = fixture;
+    const server = await serveUpstream(fixture);
     try {
       const list = await fetch(`${server.url}/api/collections?perPage=500`, {
         headers: { Authorization: superuserToken },
@@ -310,14 +405,16 @@ describe("upstream's test fixture", () => {
     } finally {
       await server.stop();
     }
-  });
+  }, hookTimeout);
 
   afterAll(() => {
-    rmSync(copy.root, { recursive: true, force: true });
+    if (copy !== undefined) {
+      rmSync(copy.root, { recursive: true, force: true });
+    }
   });
 
   test("every row marshals to upstream's GET body", () => {
-    const rows = readRows(join(copy.dataDir, "data.db"));
+    const rows = readRows(join((copy as FixtureCopy).dataDir, "data.db"));
     expect(rows.size).toBe(bodies.size);
     expect(rows.size).toBeGreaterThan(10);
     for (const [id, row] of rows) {

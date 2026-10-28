@@ -27,6 +27,11 @@ import { anyType, marshal, unmarshal } from "@/tools/types/go-json";
 import { DateTime, parseDateTime } from "@/tools/types/datetime";
 import { JSONRaw } from "@/tools/types/json-raw";
 
+import {
+  oauth2UpdateCases,
+  oauth2UpdateCreateBody,
+  oauth2UpdatePatchBody,
+} from "@test/differential/collections/cases";
 import { TestApp } from "@test/support/fields";
 
 let app: TestApp;
@@ -663,6 +668,31 @@ describe("CollectionUnmarshalJSON json v2 rules", () => {
     expect(providers.length).toBe(1);
     expect(marshal(providers[0])).toBe(
       `{"pkce":null,"name":"google","clientId":"a","clientSecret":"s","authURL":"","tokenURL":"","userInfoURL":"","displayName":"","extra":{"x":1,"y":2}}`,
+    );
+  });
+
+  // upstream's *bool: a merged provider shares its original's PKCE value
+  // (cases confirmed by test/differential/collections)
+  test("merged OAuth2 providers share the original's PKCE value", () => {
+    for (const c of oauth2UpdateCases) {
+      const collection = newAuthCollection(c.name);
+      collection.unmarshalJSON(oauth2UpdateCreateBody(c));
+      collection.unmarshalJSON(oauth2UpdatePatchBody(c));
+      expect({
+        name: c.name,
+        pkce: (collection.oauth2.providers ?? []).map((p) => p.pkce),
+      }).toEqual({ name: c.name, pkce: c.pkce });
+    }
+  });
+
+  test("the PKCE regression: a later provider without pkce follows the earlier write", () => {
+    const c = newAuthCollection("test");
+    c.unmarshalJSON(
+      `{"oauth2":{"enabled":false,"providers":[{"name":"google","clientId":"client","clientSecret":"secret","pkce":true}]}}`,
+    );
+    c.unmarshalJSON(`{"oauth2":{"providers":[{"name":"google","pkce":false},{"name":"google"}]}}`);
+    expect(marshal(c.oauth2.providers)).toBe(
+      `[{"pkce":false,"name":"google","clientId":"client","clientSecret":"secret","authURL":"","tokenURL":"","userInfoURL":"","displayName":"","extra":{}},{"pkce":false,"name":"google","clientId":"client","clientSecret":"secret","authURL":"","tokenURL":"","userInfoURL":"","displayName":"","extra":{}}]`,
     );
   });
 

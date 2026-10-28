@@ -654,7 +654,8 @@ export class OAuth2Config {
   }
 
   // a copy with copies of the providers (Go's struct copy and
-  // slices.Clone; each provider's Extra map stays shared, as in Go)
+  // slices.Clone; each provider's PKCE pointer and Extra map stay shared,
+  // as in Go)
   clone(): OAuth2Config {
     return new OAuth2Config({
       providers: this.providers === null ? null : this.providers.map((p) => p.clone()),
@@ -755,7 +756,9 @@ export class OAuth2Config {
           const raw = marshal(plain ?? {});
 
           // unmarshal the new plain data on top of the original one
-          // (the range variable is a copy; its Extra map is shared)
+          // (the range variable is a copy; its PKCE pointer and Extra map
+          // are shared, so a submitted pkce bool changes every provider
+          // merged from the same original, earlier ones included)
           const original = originalProvider.clone();
           original.unmarshalJSON(raw);
 
@@ -786,7 +789,19 @@ export class OAuth2ProviderConfig {
   // This usually shouldn't be needed but some OAuth2 vendors, like the LinkedIn OIDC,
   // may require manual adjustment due to returning error if extra parameters are added to the request
   // (https://ganigeorgiev.com/pocketbase/discussions/3799#discussioncomment-7640312)
-  pkce: boolean | null = null;
+  //
+  // Go's *bool is pkceRef: a copy of the config shares the pointed-to
+  // value, and decoding a JSON bool writes through a non-nil pointer (to
+  // every copy). Assigning pkce points it to a new value, as `&v` would.
+  pkceRef: { value: boolean } | null = null;
+
+  get pkce(): boolean | null {
+    return this.pkceRef === null ? null : this.pkceRef.value;
+  }
+
+  set pkce(v: boolean | null) {
+    this.pkceRef = v === null ? null : { value: v };
+  }
 
   name = "";
   clientId = "";
@@ -802,7 +817,7 @@ export class OAuth2ProviderConfig {
     Object.assign(this, init);
   }
 
-  // Go's struct copy: the Extra map is shared
+  // Go's struct copy: the PKCE pointer and the Extra map are shared
   clone(): OAuth2ProviderConfig {
     return new OAuth2ProviderConfig(this);
   }
@@ -830,7 +845,16 @@ export class OAuth2ProviderConfig {
     unmarshalGoStruct(
       data,
       {
-        pkce: (raw) => (this.pkce = decodeNullableBool(raw)),
+        // null sets the pointer to nil, a bool is written through a
+        // non-nil pointer (a nil one is allocated)
+        pkce: (raw) => {
+          const v = decodeNullableBool(raw);
+          if (v === null || this.pkceRef === null) {
+            this.pkce = v;
+          } else {
+            this.pkceRef.value = v;
+          }
+        },
         name: (raw) => (this.name = decodeString(raw)),
         clientId: (raw) => (this.clientId = decodeString(raw)),
         clientSecret: (raw) => (this.clientSecret = decodeString(raw)),
