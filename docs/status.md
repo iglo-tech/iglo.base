@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.5 | council | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 3 (head `b297099`; round 2: Opus APPROVE, Sol CHANGES, three harness findings fixed by the lead: raw comparison for file downloads, decoded JSON request strings, bytes around the root. CI must be green before merge; round 3 is the last before the lead decides) | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
+| M0.5 | merge | [#6](https://github.com/iglo-tech/iglo.base/pull/6) | 3 done (both CHANGES at `b297099`: file-token normalization, form and multipart request values; fixed by the lead at `58b6320`). Lead decision: merge when CI is green on `58b6320`, with no fourth round | [Brief](briefs/M0.5.md). Worker: Claude Opus 5.5, medium (the scenario format is a shared contract) |
 
 ## Done
 
