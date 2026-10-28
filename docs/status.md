@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.8b | fix | [#21](https://github.com/iglo-tech/iglo.base/pull/21) | 1 | [Brief](briefs/M1.8b.md). Round 1 at `2985949`: Opus APPROVE, Sol CHANGES (the invalid-collection cancellation is not applied to `rows()`, which runs SQL and can return rows from another table). Opus fixer started |
+| M1.8b | council | [#21](https://github.com/iglo-tech/iglo.base/pull/21) | 2 | [Brief](briefs/M1.8b.md). Round 1 at `2985949`: Opus APPROVE, Sol CHANGES (invalid-collection cancellation skipped by `rows()`). Fixed by an Opus fixer at `f57f706` with a cancelled-context concept in the dbx port (`withCancelCause`, checked on every execution path; additive, lead-approved). Council round 2 started while CI ran |
 
 ## Done
 
@@ -124,3 +124,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (M1.8a fix round 1): the lead approved an additive change to the shared db layer: `Query.withExactIntegers()` reads every SQLite INTEGER as a `bigint`, so a JS `number` is always a REAL, also through the read pool. Other callers are unchanged. Records (and M1.8b's RecordQuery) read rows this way, so each value is converted by storage class, as upstream's driver does.
 - 2026-10-28 (owner direction, D24): the MVP targets linux-x64 only. CI is one Linux x64 job (`check`: lint, format, typecheck, test, build, then `test:reference`); the macOS job is removed. macOS and linux-arm64 builds, macOS CI and the bundled macOS SQLite move to post-MVP task P.2; M7.3 releases the linux-x64 binary only. The runbook gains a focus rule: critical path to a working Linux MVP, no agents on macOS, arm64 or optional cleanups unless they block the current task.
 - 2026-10-28 (M1.8b PR): the lead accepted the worker's choices. RecordQuery hydrates Records through `recordTarget`/`recordsTarget` passed to `one()`/`all()`; the RecordProxy branches (custom Go structs, a library API) are not ported. Carried for M2/M3 handlers: `isNoRowsError` in src/db does not unwrap causes like Go's `errors.Is`, so wrapped not-found errors (for example from `findAuthRecordByEmail`) must be checked through the cause chain.
+- 2026-10-28 (M1.8b fix round 1): the lead approved an additive change to the shared db layer: `Query.withCancelCause()`/`SelectQuery.withCancelCause()` attach an already cancelled context, checked on every execution path like dbx's QueryContext/ExecContext (`ContextCanceledError`). Other queries are unchanged.
