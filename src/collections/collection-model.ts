@@ -6,9 +6,10 @@
 // (core.Collection{}); the factories load the defaults.
 //
 // Not here: registerCollectionHooks (there is no hook system; the save,
-// delete and validate steps are called directly by their tasks),
-// onCollectionSave, onCollectionSaveExecute and onCollectionDeleteExecute
-// (M1.7). updateGeneratedIdIfExists is M1.6a's (the validator calls it).
+// delete and validate steps are called directly), onCollectionSave,
+// onCollectionSaveExecute and onCollectionDeleteExecute
+// (collection-save.ts). updateGeneratedIdIfExists is here (the validator
+// calls it).
 //
 // dbExport returns the same values as upstream's DBExport (FieldsList,
 // string[], DateTime, JSONRaw or the `{}` text); each has the db driver

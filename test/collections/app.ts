@@ -10,14 +10,14 @@ import { join } from "node:path";
 
 import type { Clock } from "@/app/clock";
 import { type CollectionsApp, reloadCachedCollections } from "@/collections/collection-query";
-import type { Collection } from "@/collections/collection-model";
 import { Databases } from "@/db/base";
-import { HashExp } from "@/db/dbx/expression";
 import { Store } from "@/tools/store/store";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
 export interface TestCollectionsApp extends CollectionsApp {
+  // what the app logged (upstream's Logger().Warn calls)
+  readonly logged: { message: string; cause: unknown }[];
   cleanup(): void;
 }
 
@@ -53,28 +53,16 @@ export function openDataDir(
   const databases = Databases.open(
     queryLog === undefined ? { dataDir } : { dataDir, devSQLLog: queryLog },
   );
+  const logged: { message: string; cause: unknown }[] = [];
   return {
     databases,
     store: new Store<string, unknown>(),
     clock,
+    logger: { error: (message, cause) => logged.push({ message, cause }) },
+    logged,
     cleanup() {
       databases.close();
       onCleanup();
     },
   };
-}
-
-// Stands in for app.Save(collection) where an upstream test saves a
-// collection only to change its stored fields (collection save is M1.7's):
-// writes the collection's fields to its `_collections` row.
-export function storeFields(app: CollectionsApp, collection: Collection): void {
-  app.databases
-    .nonconcurrentDB()
-    .update(
-      "_collections",
-      { fields: collection.fields.value() },
-      new HashExp({ id: collection.id }),
-    )
-    .execute();
-  reloadCachedCollections(app);
 }
