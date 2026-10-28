@@ -8,7 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.6 | council | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 1 (head `e077482`, all three CI jobs green. Decision proposed in the PR: a synchronous main-thread API, plus async pooled reads (4 workers) for reads that may be slow; `--queryTimeout` fails pooled reads at the deadline) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
+| M0.6 | fix | [#7](https://github.com/iglo-tech/iglo.base/pull/7) | 1 → fix (round 1 at `e077482`: Opus APPROVE; Sol CHANGES: synchronous and transaction reads block past the timeout, timeouts exhaust the pool, the no-rows path hides the timeout, `rows()` ignores the deadline. An Opus fixer first tries `sqlite3_interrupt` through `bun:ffi`, with a fallback rule set by the lead; next: council round 2. Opus note for M1.2/M1.8: the pool ignores `dbConnect`) | [Brief](briefs/M0.6.md). Worker: Claude Opus 5.5, medium (core db). The remaining M0 spikes come before M1.4 on the critical path; M0.6 goes first because it decides the db read API that M1 builds on |
 
 ## Done
 
@@ -55,6 +55,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M0.5): the API contract in `04-api-compatibility.md` is now byte-level: bodies must be byte-identical after generated values are normalized. Objects that upstream writes in random order (Go maps, such as `fields` projections and the superuser health data) are compared with their members sorted. This replaces "JSON is compared after parsing".
 
 - 2026-10-28 (M0.6 PR): the lead accepted the build change: `bun build --compile` takes `src/db/read-worker.ts` as a second entry point (`package.json`, `test/support/executable.ts`, the AGENTS.md build line), because a compiled executable cannot otherwise find the worker.
+
+- 2026-10-28 (M0.6 round 1): if `sqlite3_interrupt` can be reached through `bun:ffi` on Linux and macOS, `--queryTimeout` interrupts reads at the deadline, as upstream does. Otherwise synchronous and transaction reads are checked only after they return, and that is listed as a deliberate difference in `04-api-compatibility.md`. The pool always keeps its full size of live workers, with an exact limit on abandoned threads.
 
 ## Paused until
 
