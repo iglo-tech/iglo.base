@@ -76,6 +76,8 @@ export interface QueryInfo {
 // It can be built into a DB-specific query by calling the Build() method.
 export class SelectQuery {
   private buildHook: BuildHookFunc | null = null;
+  private ctxCanceled = false;
+  private ctxCause: unknown = null;
 
   private preFragmentSQL = "";
   private postFragmentSQL = "";
@@ -99,6 +101,8 @@ export class SelectQuery {
   clone(): SelectQuery {
     const q = new SelectQuery(this.builder);
     q.buildHook = this.buildHook;
+    q.ctxCanceled = this.ctxCanceled;
+    q.ctxCause = this.ctxCause;
     q.preFragmentSQL = this.preFragmentSQL;
     q.postFragmentSQL = this.postFragmentSQL;
     q.selects = [...this.selects];
@@ -121,6 +125,21 @@ export class SelectQuery {
   withBuildHook(fn: BuildHookFunc | null): this {
     this.buildHook = fn;
     return this;
+  }
+
+  // WithCancelCause associates an already cancelled context with the query
+  // (Go: WithContext with a context.WithCancelCause one, cancelled with
+  // cause); Build() passes it to the Query (Query.withCancelCause). null
+  // removes it.
+  withCancelCause(cause: unknown): this {
+    this.ctxCanceled = cause !== null;
+    this.ctxCause = cause;
+    return this;
+  }
+
+  // the cause of the query's cancellation, null when it is not cancelled
+  cancelCause(): unknown {
+    return this.ctxCanceled ? this.ctxCause : null;
   }
 
   // PreFragment sets SQL fragment that should be prepended before the select query (e.g. WITH clause).
@@ -330,6 +349,9 @@ export class SelectQuery {
     sql = qb.combineUnion(sql, qb.buildUnion(this.unions, params));
 
     const query = this.builder.newQuery(sql).bind(params);
+    if (this.ctxCanceled) {
+      query.withCancelCause(this.ctxCause);
+    }
 
     if (this.buildHook !== null) {
       this.buildHook(query);

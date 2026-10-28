@@ -35,7 +35,7 @@ import { describe, expect, test } from "bun:test";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import { CompositePKError, MissingPKError } from "@/db/dbx/select";
-import type { Params, Row } from "@/db/dbx/query";
+import { ContextCanceledError, type Params, type Row } from "@/db/dbx/query";
 import { Customer, CustomerPtr } from "@test/db/dbx/models";
 import { getDB, getPreparedDB } from "@test/db/support";
 
@@ -234,4 +234,58 @@ describe("clone (Go's SelectQuery struct copy)", () => {
       "SELECT * FROM `users` WHERE ()",
     );
   });
+});
+
+// not upstream's: SelectQuery.WithContext with a cancelled context; Build()
+// passes it to the Query (select.go)
+test("a cancelled select query fails every resolver before its SQL runs", async () => {
+  const db = getPreparedDB();
+  const cause = new Error("the cause");
+  const canceled = (): ReturnType<typeof db.select> =>
+    db.select("*").from("missing").withCancelCause(cause);
+
+  expect(canceled().cancelCause()).toBe(cause);
+  expect(canceled().build().cancelCause()).toBe(cause);
+  expect(canceled().clone().cancelCause()).toBe(cause);
+  expect(db.select("*").from("customer").build().cancelCause()).toBe(null);
+
+  const sync: (() => unknown)[] = [
+    () => canceled().one(),
+    () => canceled().all(),
+    () => canceled().row(),
+    () => canceled().column(),
+    () => canceled().rows(),
+    () => canceled().build().execute(),
+    // changed after the cancellation: still cancelled
+    () =>
+      canceled()
+        .select("id")
+        .from("customer")
+        .where(new HashExp({ id: 1 }))
+        .rows(),
+    () => canceled().select("id").from("customer").one(),
+    () => canceled().clone().from("customer").all(),
+  ];
+  for (const run of sync) {
+    expect(run).toThrow(new ContextCanceledError(cause));
+  }
+
+  for (const run of [
+    () => canceled().oneAsync(),
+    () => canceled().allAsync(),
+    () => canceled().rowAsync(),
+    () => canceled().columnAsync(),
+    () => canceled().from("customer").allAsync(),
+  ]) {
+    const err = await run().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ContextCanceledError);
+  }
+
+  // removed again, the query runs
+  expect(canceled().from("customer").withCancelCause(null).all().length).toBeGreaterThan(0);
+
+  db.close();
 });
