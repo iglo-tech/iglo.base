@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: none.
+Active: M2.3 (worker).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M2.3 | worker | `task/M2.3-tokens` | 0 | [Brief](briefs/M2.3.md). Opus worker started 2026-10-29 |
 
 ## Done
 
@@ -137,3 +138,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-28 (M2.1 fix round 1): the lead approved an additive db-layer param type `Float64` in `src/db/dbx/query.ts`. bun:sqlite binds integral numbers as INTEGER, so a query with a Float64 param writes that placeholder as `+CAST(? AS REAL)`, which gives a REAL with no affinity, as Go's driver binds a float64. Queries without it are unchanged; logged SQL shows the plain number.
 - 2026-10-28 (M2.2 brief): the resolver lives in `src/resolver/` as `02-architecture.md` names it. M2.2 has no HTTP endpoint, so the repeated-request-header differential case (D22) goes to M2.4. Rules are checked against upstream through its records list endpoint (superuser filters, and guest/user/superuser rule matrices with upstream tokens); iglo.base evaluates the same rules through FindRecordsByFilter, the list query and CanAccessRecord with an equivalent RequestInfo. `@request.body` rules get HTTP cases with M3.1.
 - 2026-10-29 (M2.2 merge): the lead accepted the worker's choices: sync and `…Async` forms of the filter finders and CanAccessRecord (async reads through the read pool outside transactions); `05-rules-and-filters.md` corrected (superusers may filter hidden fields including `password`/`tokenKey`; rules may use hidden fields; modifier applicability; missing `@request.*` values are NULL). `04-api-compatibility.md` now assigns the repeated-header differential case to M2.4 only.
+- 2026-10-29 (plan change, M2.3 brief): `serve` does not open pb_data until M1.2, so M2.4's "both servers" scenarios need M1.2; M2.4 now depends on M1.2 and the critical path is … → M2.2 → M2.3 → M1.2 → M2.4 → M3.1. The superuser IP check needs the settings model, so it moves from M2.3 to M1.3. M2.3 takes the `Require*` guards from `apis/middlewares.go` (used by M2.4/M2.5 handlers) and replaces the `AuthRecord` placeholder in `src/app/event-request.ts` with Record (lead-approved shared change, own commit).
