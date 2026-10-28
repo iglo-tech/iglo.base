@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import { findAuthRecordByEmail, findRecordById } from "@test/records/app";
+import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
 
 describe("RecordIsSuperUser", () => {
   let app: TestCollectionsApp;

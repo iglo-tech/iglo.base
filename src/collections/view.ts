@@ -1,18 +1,15 @@
-// Upstream: core/view.go (SaveView, CreateViewFields, DryRunView and the
-// raw query to schema helpers)
+// Upstream: core/view.go (SaveView, CreateViewFields, DryRunView,
+// FindRecordByViewFile and the raw query to schema helpers)
 //
-// DeleteView is in src/db/table.ts (M0.4). Not here: FindRecordByViewFile
-// (M1.8, needs records).
+// DeleteView is in src/db/table.ts (M0.4).
 //
 // Go's (value, error) results are the value, and the error is thrown,
 // except CreateViewFields: upstream returns the fields it collected
 // together with its error and the collection validator uses them, so
 // createViewFields returns both.
 //
-// DryRunView reads its sample with upstream's RecordQuery SQL. Records are
-// M1.8's, so the sample holds each row's id only, read as a Record reads
-// it from dbx's NullStringMap (the SQLite text of the value, "" for NULL);
-// only the id checks use it until then.
+// DryRunView and FindRecordByViewFile read through RecordQuery
+// (src/records/record-query.ts).
 //
 // SQLite errors are converted to the Go driver's text (driver-error.ts).
 
@@ -28,11 +25,10 @@ import { Collection, newViewCollection } from "@/collections/collection-model";
 import { FieldsList, newFieldsList } from "@/collections/fields-list";
 import { equalFold, toLower, trim, trimSpace } from "@/collections/go-strings";
 import { withDriverErrors } from "@/collections/driver-error";
-import { inExp } from "@/db/dbx/expression";
-import { defaultMaxLockRetries, execLockRetry } from "@/db/retry";
+import { HashExp, inExp } from "@/db/dbx/expression";
 import { deleteView, tableInfo, type TableInfoRow } from "@/db/table";
 import { BoolField } from "@/fields/bool";
-import { type Field, FieldNameId, goQuote } from "@/fields/field";
+import { type Field, FieldNameId, goQuote, isMultiValuer } from "@/fields/field";
 import { JSONField } from "@/fields/json";
 import { NumberField } from "@/fields/number";
 import { RelationField } from "@/fields/relation";
@@ -40,8 +36,15 @@ import { TextField } from "@/fields/text";
 import { mustCompile } from "@/tools/regexp/regexp";
 import { pseudorandomString, randomString } from "@/tools/security/random";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
-import { bytesToText } from "@/tools/types/go-json";
-import { formatFloatV } from "@/validation/error";
+import type { Record } from "@/records/record-model";
+import {
+  getCollectionByModelOrIdentifier,
+  recordQuery,
+  recordsTarget,
+  recordTarget,
+} from "@/records/record-query";
+import { jsonEach } from "@/tools/dbutils/json";
+import { columnify } from "@/tools/inflector/inflector";
 
 // SaveView creates (or updates already existing) persistent SQL view.
 //
@@ -139,14 +142,9 @@ export function createViewFields(
   return [result, null];
 }
 
-// the sample record of DryRunView (only its id until M1.8 ports records)
-export interface DryRunViewRecord {
-  id: string;
-}
-
 export interface DryRunViewResult {
   fields: FieldsList;
-  sample: DryRunViewRecord[];
+  sample: Record[];
 }
 
 // DryRunView executes the provided query by creating a temporary view
@@ -190,29 +188,14 @@ export function dryRunView(
     throw wrapError("failed to normalize view query id", err);
   }
 
-  let records: DryRunViewRecord[];
+  let records: Record[];
   try {
-    // app.RecordQuery(tempCollection)
-    const db = app.databases.concurrentDB();
-    const rows = withDriverErrors(() =>
-      db
-        .select(db.quoteSimpleColumnName(tempCollection.name) + ".*")
-        // note: the query is wrapped in a secondary SELECT as a rudimentary
-        // measure to discourage multiple inline sql statements execution
-        .from("(SELECT * FROM (" + dangerousSelectQuery + ")) as " + tempName)
-        .limit(sampleSize)
-        .withBuildHook((query) => {
-          const retry = execLockRetry(
-            app.databases.queryTimeout(),
-            defaultMaxLockRetries,
-            (ms) => app.databases.sleep(ms),
-            () => app.databases.now(),
-          );
-          query.withExactIntegers().withExecHook((q, op) => retry(q, () => withDriverErrors(op)));
-        })
-        .all<Record<string, unknown>>(),
-    );
-    records = rows.map((row) => ({ id: nullStringText(row[FieldNameId]) }));
+    records = recordQuery(app, tempCollection)
+      // note: the query is wrapped in a secondary SELECT as a rudimentary
+      // measure to discourage multiple inline sql statements execution
+      .from("(SELECT * FROM (" + dangerousSelectQuery + ")) as " + tempName)
+      .limit(sampleSize)
+      .all<Record>(recordsTarget);
   } catch (err) {
     throw wrapError("failed to retrieve query records", err);
   }
@@ -236,24 +219,66 @@ export function dryRunView(
   return { fields, sample: records };
 }
 
-// a column value as dbx's NullStringMap scans it, on a row read
-// withExactIntegers: Go's SQLite driver gives INTEGER as int64 (decimal)
-// and REAL as float64 (strconv.FormatFloat(f, 'g', -1, 64)); NULL is not
-// Valid and gives ""
-function nullStringText(v: unknown): string {
-  if (v === null || v === undefined) {
-    return "";
+// FindRecordByViewFile returns the original Record of the provided view collection file.
+export function findRecordByViewFile(
+  app: CollectionsApp,
+  viewCollectionModelOrIdentifier: Collection | string,
+  fileFieldName: string,
+  filename: string,
+): Record {
+  let view = getCollectionByModelOrIdentifier(app, viewCollectionModelOrIdentifier);
+
+  if (!view.isView()) {
+    throw new Error("not a view collection");
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
-    return bytesToText(v);
+
+  const findFirstNonViewQueryFileField = (level: number): QueryField => {
+    // check the level depth to prevent infinite circular recursion
+    // (the limit is arbitrary and may change in the future)
+    if (level > 5) {
+      throw new Error("reached the max recursion level of view collection file field queries");
+    }
+
+    const queryFields = parseQueryToFields(app, view.viewQuery);
+
+    for (const item of queryFields.values()) {
+      if (
+        item.collection === null ||
+        item.original === null ||
+        item.field.getName() !== fileFieldName
+      ) {
+        continue;
+      }
+
+      if (item.collection.isView()) {
+        view = item.collection;
+        fileFieldName = item.original.getName();
+        return findFirstNonViewQueryFileField(level + 1);
+      }
+
+      return item;
+    }
+
+    throw new Error("no query file field found");
+  };
+
+  const qf = findFirstNonViewQueryFileField(1);
+  const original = qf.original as Field;
+
+  const cleanFieldName = columnify(original.getName());
+
+  const query = recordQuery(app, qf.collection).limit(1);
+
+  if (!isMultiValuer(original) || !original.isMultiple()) {
+    query.andWhere(new HashExp({ [cleanFieldName]: filename }));
+  } else {
+    query.innerJoin(
+      `${jsonEach(cleanFieldName)} as {{_je_file}}`,
+      new HashExp({ "_je_file.value": filename }),
+    );
   }
-  if (typeof v === "bigint") {
-    return v.toString();
-  }
-  if (typeof v === "number") {
-    return formatFloatV(v);
-  }
-  return String(v);
+
+  return query.one<Record>(recordTarget);
 }
 
 // -------------------------------------------------------------------

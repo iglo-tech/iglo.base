@@ -32,7 +32,14 @@ import { describe, expect, test } from "bun:test";
 
 import type { SqliteBuilder } from "@/db/dbx/builder-sqlite";
 import { HashExp } from "@/db/dbx/expression";
-import { Query, replacePlaceholders, type Params, type Row } from "@/db/dbx/query";
+import {
+  ContextCanceledError,
+  Deadline,
+  Query,
+  replacePlaceholders,
+  type Params,
+  type Row,
+} from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { StructModel } from "@/db/dbx/struct";
 import { Customer, User } from "@test/db/dbx/models";
@@ -639,5 +646,109 @@ describe("rows() has a statement of its own", () => {
       [2, 1, 3],
       [3, 1, 3],
     ]);
+  });
+});
+
+// the error fn throws
+function canceledError(fn: () => unknown): Error {
+  try {
+    fn();
+  } catch (err) {
+    return err as Error;
+  }
+  throw new Error("expected the call to throw");
+}
+
+// not upstream's: a query with a cancelled context (WithContext with a
+// context.WithCancelCause one) fails every execution with context.Canceled
+// before its SQL runs, as database/sql's QueryContext and ExecContext do
+describe("a cancelled query", () => {
+  const cause = new Error("the cause");
+
+  function expectCanceled(err: unknown): void {
+    expect(err).toBeInstanceOf(ContextCanceledError);
+    expect((err as Error).message).toBe("context canceled");
+    expect((err as Error).cause).toBe(cause);
+  }
+
+  test("fails every synchronous execution path before its SQL runs", () => {
+    const db = getPreparedDB();
+    const count = (): unknown => db.newQuery("SELECT COUNT(*) FROM item").row()[0];
+    const before = count();
+
+    const insert = db.newQuery("INSERT INTO item (name) VALUES ('x')").withCancelCause(cause);
+    expect(insert.cancelCause()).toBe(cause);
+    expectCanceled(canceledError(() => insert.execute()));
+    expect(count()).toBe(before);
+
+    // a table that does not exist: the statement is never prepared
+    const missing = (): Query => db.newQuery("SELECT * FROM missing").withCancelCause(cause);
+    expectCanceled(canceledError(() => missing().one()));
+    expectCanceled(canceledError(() => missing().all()));
+    expectCanceled(canceledError(() => missing().row()));
+    expectCanceled(canceledError(() => missing().column()));
+    expectCanceled(canceledError(() => missing().rows()));
+
+    // an existing table returns nothing either
+    const existing = (): Query => db.newQuery("SELECT * FROM item").withCancelCause(cause);
+    expectCanceled(canceledError(() => existing().one()));
+    expectCanceled(canceledError(() => existing().all(() => new Customer())));
+    expectCanceled(canceledError(() => existing().rows()));
+
+    // a prepared statement too (Stmt.QueryContext and Stmt.ExecContext)
+    const prepared = db.newQuery("INSERT INTO item (name) VALUES ('x')").prepare();
+    prepared.withCancelCause(cause);
+    expectCanceled(canceledError(() => prepared.execute()));
+    prepared.withCancelCause(null);
+    expect(prepared.cancelCause()).toBe(null);
+    prepared.execute();
+    prepared.close();
+    expect(count()).toBe(Number(before) + 1);
+    const preparedRows = db.newQuery("SELECT * FROM item").prepare().withCancelCause(cause);
+    expectCanceled(canceledError(() => preparedRows.rows()));
+    preparedRows.close();
+
+    db.close();
+  });
+
+  test("passes the error to the log functions, as QueryContext's caller logs it", () => {
+    const db = getPreparedDB();
+    const q = db.newQuery("SELECT * FROM item").withCancelCause(cause);
+    let logged: unknown = null;
+    q.queryLogFunc = (_ms, _sql, err) => {
+      logged = err;
+    };
+    canceledError(() => q.rows());
+    expectCanceled(logged);
+    db.close();
+  });
+
+  test("fails the async resolvers the same way", async () => {
+    const db = getPreparedDB();
+    const q = (): Query => db.newQuery("SELECT * FROM item").withCancelCause(cause);
+    for (const run of [
+      () => q().oneAsync(),
+      () => q().allAsync(),
+      () => q().rowAsync(),
+      () => q().columnAsync(),
+    ]) {
+      const err = await run().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expectCanceled(err);
+    }
+    db.close();
+  });
+
+  test("the cancellation is checked before the deadline", () => {
+    const db = getPreparedDB();
+    const q = db
+      .newQuery("SELECT * FROM item")
+      .withDeadline(new Deadline(-1, () => 0))
+      .withCancelCause(cause);
+    expectCanceled(canceledError(() => q.row()));
+    expect(() => q.withCancelCause(null).row()).toThrow("context deadline exceeded");
+    db.close();
   });
 });

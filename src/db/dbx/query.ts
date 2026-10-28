@@ -29,8 +29,11 @@
 // first row's values, Column() the first column's values.
 //
 // Go's context.Context is reduced to what PocketBase uses it for, a
-// deadline (WithDeadline, Deadline). A query with an expired deadline fails
-// before it runs, as QueryContext and ExecContext do. A synchronous resolver
+// deadline (WithDeadline, Deadline) and a cancellation with a cause
+// (WithCancelCause, core/record_query.go). A cancelled query, or one with
+// an expired deadline, fails before it runs, as QueryContext and
+// ExecContext do, on every path (Execute, the resolvers, Rows, prepared or
+// not, sync or async). A synchronous resolver
 // and Rows() check it again before and after each step of reading the rows
 // (rows.ts): bun:sqlite cannot interrupt a running statement, so such a
 // read fails only once its statement returns (docs/design/04-api-
@@ -137,6 +140,15 @@ export class DeadlineExceededError extends Error {
   constructor() {
     super("context deadline exceeded");
     this.name = "DeadlineExceededError";
+  }
+}
+
+// context.Canceled, the error of a query whose context was cancelled; the
+// cause is the context's cause (context.Cause)
+export class ContextCanceledError extends Error {
+  constructor(cause: unknown) {
+    super("context canceled", { cause });
+    this.name = "ContextCanceledError";
   }
 }
 
@@ -259,6 +271,8 @@ export class Query {
   private stmt: Stmt | null = null;
 
   private ctxDeadline: Deadline | null = null;
+  private ctxCanceled = false;
+  private ctxCause: unknown = null;
   private exactIntegers = false;
   private execHook: ExecHookFunc | null = null;
   private asyncExecHook: AsyncExecHookFunc | null = null;
@@ -308,6 +322,31 @@ export class Query {
   withDeadline(deadline: Deadline | null): this {
     this.ctxDeadline = deadline;
     return this;
+  }
+
+  // WithCancelCause associates an already cancelled context with the query
+  // (Go: WithContext with a context.WithCancelCause one, cancelled with
+  // cause): every execution fails with ContextCanceledError before its SQL
+  // runs. null removes it.
+  withCancelCause(cause: unknown): this {
+    this.ctxCanceled = cause !== null;
+    this.ctxCause = cause;
+    return this;
+  }
+
+  // the cause of the query's cancellation (context.Cause), null when the
+  // query is not cancelled
+  cancelCause(): unknown {
+    return this.ctxCanceled ? this.ctxCause : null;
+  }
+
+  // throws ctx.Err(): ContextCanceledError when cancelled,
+  // DeadlineExceededError once the deadline expired
+  private checkContext(): void {
+    if (this.ctxCanceled) {
+      throw new ContextCanceledError(this.ctxCause);
+    }
+    this.ctxDeadline?.check();
   }
 
   // with `on`, the rows the query returns keep every INTEGER value a bigint
@@ -421,7 +460,7 @@ export class Query {
     this.takeLastError();
     const args = replacePlaceholders(this.placeholders, this.boundParams);
     // a statement that writes is never failed after it ran
-    this.ctxDeadline?.check();
+    this.checkContext();
 
     const start = performance.now();
     let result: ExecResult | null = null;
@@ -572,7 +611,7 @@ export class Query {
     this.takeLastError();
     const args = replacePlaceholders(this.placeholders, this.boundParams);
     const deadline = this.ctxDeadline;
-    deadline?.check();
+    this.checkContext();
 
     const start = performance.now();
     let err: unknown = null;
@@ -594,12 +633,12 @@ export class Query {
     const start = performance.now();
     let err: unknown = null;
     try {
-      deadline?.check();
+      this.checkContext();
       const rows =
         this.stmt !== null ? this.stmt.query(args) : this.executor.query(this.rawSql, args, own);
       return rows.withDeadline(deadline).withExactIntegers(this.exactIntegers);
     } catch (e) {
-      err = deadline?.expired() === true ? new DeadlineExceededError() : e;
+      err = !this.ctxCanceled && deadline?.expired() === true ? new DeadlineExceededError() : e;
       throw err;
     } finally {
       this.queryLogFunc?.(performance.now() - start, this.logSQL(), err);

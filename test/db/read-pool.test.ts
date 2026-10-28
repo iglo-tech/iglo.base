@@ -13,7 +13,7 @@ import { afterEach, expect, test } from "bun:test";
 import { Databases, defaultQueryTimeout } from "@/db/base";
 import { connectPragmas } from "@/db/connect";
 import type { DB } from "@/db/dbx/db";
-import { Deadline } from "@/db/dbx/query";
+import { ContextCanceledError, Deadline } from "@/db/dbx/query";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import { maxAbandonedPerWorker } from "@/db/read-pool";
@@ -448,4 +448,29 @@ test("closing the databases fails the pool's queued and running reads", async ()
   expect(((await queued.catch((e) => e)) as Error).message).toBe("sql: database is closed");
   await app.closed();
   expect(app.readPool()!.stats()).toEqual({ workers: 0, busy: 0, queued: 0, abandoned: 0 });
+});
+
+// not upstream's: a cancelled query (dbx WithContext with a cancelled
+// context) fails on the pool path before it is sent to a worker
+test("a cancelled query's async resolvers fail before reading on the pool", async () => {
+  const app = open({ readWorkers: 1 });
+  fill(app, 2);
+  const db = app.concurrentDB();
+  const cause = new Error("the cause");
+
+  for (const run of [
+    () => db.select("*").from("demo").withCancelCause(cause).allAsync(),
+    () => db.select("*").from("demo").withCancelCause(cause).oneAsync(),
+    () => db.select("*").from("missing").withCancelCause(cause).rowAsync(),
+    () => db.newQuery("SELECT id FROM demo").prepare().withCancelCause(cause).columnAsync(),
+  ]) {
+    const err = await run().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ContextCanceledError);
+    expect((err as Error).cause).toBe(cause);
+  }
+
+  expect((await db.select("*").from("demo").allAsync()).length).toBe(2);
 });
