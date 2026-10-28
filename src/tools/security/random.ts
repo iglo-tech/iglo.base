@@ -46,7 +46,7 @@ export function pseudorandomStringWithAlphabet(length: number, alphabet: string)
 
 // a uniform integer in [0, max) from crypto.getRandomValues, by rejection
 // sampling over the smallest power-of-two range that holds max
-function secureIntN(max: number): number {
+export function secureIntN(max: number): number {
   if (max <= 0) {
     throw new Error("crypto/rand: argument to Int is <= 0");
   }
