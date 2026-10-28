@@ -8,6 +8,7 @@ Updated: 2026-10-28
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M2.1 | worker | `task/M2.1-search` | 0 | [Brief](briefs/M2.1.md). Next on the critical path: M2.2 needs M2.1 and M1.8c |
 
 ## Done
 
