@@ -84,8 +84,9 @@ export function procStats(pid: number): ProcStats {
 }
 
 // Samples VmRSS every intervalMs and keeps the maximum, as a cross-check of
-// VmHWM; also stops the measurement when MemAvailable drops below minMiB.
-export function sampler(pid: number, intervalMs = 20, minMiB = 1536) {
+// VmHWM. When MemAvailable drops below minMiB it stops sampling and calls
+// onLowMemory once, which must end the measurement at once (kill the server).
+export function sampler(pid: number, onLowMemory: () => void, intervalMs = 20, minMiB = 1536) {
   let peak = 0;
   let lowMem = false;
   const timer = setInterval(() => {
@@ -94,11 +95,16 @@ export function sampler(pid: number, intervalMs = 20, minMiB = 1536) {
     } catch {
       // the process is gone
     }
-    if (memAvailableMiB() < minMiB) {
+    if (!lowMem && memAvailableMiB() < minMiB) {
       lowMem = true;
+      clearInterval(timer);
+      onLowMemory();
     }
   }, intervalMs);
   return {
+    get lowMem(): boolean {
+      return lowMem;
+    },
     stop(): { peakMiB: number; lowMem: boolean } {
       clearInterval(timer);
       return { peakMiB: peak, lowMem };

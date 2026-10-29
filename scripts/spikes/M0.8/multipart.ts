@@ -350,6 +350,7 @@ try {
           target === "upstream"
             ? await startUpstreamServer(copy, spike.root)
             : await startIgloServer(copy, spike.root);
+        let sample: ReturnType<typeof sampler> | undefined;
         try {
           const path = `/api/collections/${c.collection}/records`;
           const warm = await rawRequest(
@@ -359,16 +360,23 @@ try {
             false,
           );
           const base = procStats(server.pid);
-          const sample = sampler(server.pid);
+          // on low memory: kill the server, which ends the requests in flight,
+          // and start no further round
+          sample = sampler(server.pid, () => process.kill(server.pid, "SIGKILL"));
           const results: RawResult[] = [];
           const rounds = concurrency === 1 ? c.repeat : Math.max(1, c.repeat - 1);
-          for (let r = 0; r < rounds; r++) {
+          for (let r = 0; r < rounds && !sample.lowMem; r++) {
             const batch = await Promise.all(
               Array.from({ length: concurrency }, () =>
                 rawRequest(server.port, path, body, c.chunked),
               ),
             );
             results.push(...batch);
+          }
+          if (sample.lowMem) {
+            throw new Error(
+              `MemAvailable dropped below 1.5 GiB during ${c.name} ${target} c=${concurrency}`,
+            );
           }
           await Bun.sleep(200);
           const s = sample.stop();
@@ -395,6 +403,7 @@ try {
             );
           }
         } finally {
+          sample?.stop();
           await server.stop();
         }
       }
