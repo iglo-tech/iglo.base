@@ -218,8 +218,17 @@ test("a JSON body is read only up to the decoder buffer after its first value", 
   expect(read).toBe(64);
 });
 
+// the 32 MiB bodies of the default limit cases take about 5 s, the default
+// test timeout; a timed-out case would keep running next to the following
+// ones and multiply the memory they use
+const caseTimeout = 60_000;
+
 for (const s of scenarios) {
-  test(s.name, async () => {
-    expect(await send(s.url, s.body(), s.lazy)).toBe(s.status);
-  });
+  test(
+    s.name,
+    async () => {
+      expect(await send(s.url, s.body(), s.lazy)).toBe(s.status);
+    },
+    caseTimeout,
+  );
 }
