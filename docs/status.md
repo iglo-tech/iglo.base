@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M4.1 active (review round 1).
+M4.1 merged; next: M0.8 (usable-first order).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.1 | review | [#31](https://github.com/iglo-tech/iglo.base/pull/31) | 1 | [brief](briefs/M4.1.md); lead decision: MFA model/query and checkMFA move from M4.2 into M4.1 |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M4.1 | [#31](https://github.com/iglo-tech/iglo.base/pull/31) | 2026-10-29 (`b30358d`) | One review round: Sol APPROVE at `650cc12`, no findings. Lead decision: MFA model/query and checkMFA moved from M4.2 into M4.1. Carried: new-origin alert mail (M4.4; until then a new origin is not stored, as upstream without a mailer); other OAuth2 providers in auth-methods (M4.5–M4.7); hourly expired-MFA cleanup (M5.6); auth rate-limit rules (M4.8) |
 | M1.3 | [#29](https://github.com/iglo-tech/iglo.base/pull/29) | 2026-10-29 (`335e06b`) | One review round (first under D25): Sol APPROVE at `e1692d8`, no findings. Includes M3.5 (Settings API). Carried: S3 test (M5.4), email test (M4.4), Apple client secret (M4.6) answer 400 placeholders; RealIP ignores trusted proxy headers until M5.7; rate-limit rule relabel on collection rename to M3.4 |
 | M3.1 | [#28](https://github.com/iglo-tech/iglo.base/pull/28) | 2026-10-29 (`299d761`) | Three council rounds, then a lead decision. Carried: multipart parsing about 15 µs per part (M7); throughput under many concurrent writes below the M7 bar (docs/perf/M3.1-records-write.md); `Connection: close` with unread body bytes closes the socket at once (Bun) |
 | M2.4 | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 2026-10-29 (`37d3e79`) | Three council rounds. Carried: hasAuthManageAccess to M3.1; rate limiter cleanup and settings rules to M4.8; throughput under many concurrent requests below the M7 bar (docs/perf/M2.4-records-read.md) |
