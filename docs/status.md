@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: M1.2 (council round 3).
+Active: M1.2 (merge after CI, lead decision).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.2 | council | [#26](https://github.com/iglo-tech/iglo.base/pull/26) | 3 | [Brief](briefs/M1.2.md). Round 1 at `51f083d` (CI green): both CHANGES. A refused open writes to pb_data (creates `auxiliary.db`, switches data.db to WAL) before the check refuses; Sol also: tests read private store keys and pool statistics. Fixed by an Opus fixer at `03c62e6` (read-only preflight before any file is created or pragma applied, with immutable open when there is no WAL; refusal tests compare every file's SHA-256; internal assertions removed). Round 2 at `03c62e6` (CI green): Opus APPROVE, Sol CHANGES (a hot rollback journal makes the read-only preflight fail and the data is classified as fresh; a leftover WAL still gets its -shm rewritten). Fixed at `0f382e4` (inspection errors stop startup; companions inspected on a temp copy; crashed-writer refusal tests). Round 3 started at `0f382e4` |
+| M1.2 | merge | [#26](https://github.com/iglo-tech/iglo.base/pull/26) | 3 | [Brief](briefs/M1.2.md). Round 1 at `51f083d` (CI green): both CHANGES. A refused open writes to pb_data (creates `auxiliary.db`, switches data.db to WAL) before the check refuses; Sol also: tests read private store keys and pool statistics. Fixed by an Opus fixer at `03c62e6` (read-only preflight before any file is created or pragma applied, with immutable open when there is no WAL; refusal tests compare every file's SHA-256; internal assertions removed). Round 2 at `03c62e6` (CI green): Opus APPROVE, Sol CHANGES (a hot rollback journal makes the read-only preflight fail and the data is classified as fresh; a leftover WAL still gets its -shm rewritten). Fixed at `0f382e4` (inspection errors stop startup; companions inspected on a temp copy; crashed-writer refusal tests). Round 3 at `0f382e4`: Sol APPROVE, Opus CHANGES (no temp copy possible → compatible crashed data refused to start). Lead decision at `9a0962b`: check in place when no copy can be made, as upstream; merge on green CI without a fourth round (reasoning in the PR) |
 
 ## Done
 
