@@ -17,7 +17,7 @@ Design phase. The design is in `docs/design/` and is the source of truth until c
 These override convenience, style and performance. Read `docs/design/03-data-compatibility.md` and `docs/design/04-api-compatibility.md` before touching storage or HTTP code.
 
 1. **Data:** iglo.base opens a PocketBase v0.41.0 (or v0.40.x, same format) `pb_data` directory without converting it, and leaves it in a state PocketBase v0.41.0 can open. Never add iglo-specific tables, columns, indexes, triggers, `_params` rows or `_migrations` rows. Never rewrite stored values into a different format.
-2. **API:** every endpoint, field, status code, error body, header and realtime message that PocketBase v0.41.0 exposes behaves the same. The reference is the upstream binary, checked by the differential test suite. Deliberate differences are listed in `docs/design/04-api-compatibility.md` and nowhere else.
+2. **API:** every endpoint, field, status code, error body, header and realtime message that PocketBase v0.41.0 exposes behaves the same for the requests real clients send. Match results, not implementations: port upstream logic where the result depends on it and use Bun and Web APIs elsewhere. Malformed or hand-crafted input must be handled safely but may get a different error (D26). The reference is the upstream binary, checked by the differential test suite. Deliberate differences are listed in `docs/design/04-api-compatibility.md` and nowhere else.
 
 ## No extension surface
 
@@ -61,7 +61,7 @@ The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker f
 
 ## Verification
 
-Run from the repository root. CI (`.github/workflows/ci.yml`) runs the same commands, including `bun run test:reference`, in one Linux x64 job. The MVP targets linux-x64 only (D24); macOS and arm64 come after 1.0.
+Run from the repository root. Verification is local (D25): run `bun run check` and `bun run test:reference` on this host before a PR is ready. CI (`.github/workflows/ci.yml`) runs the same commands only on demand and is not a merge gate. The MVP targets linux-x64 only (D24); macOS and arm64 come after 1.0.
 
 ```sh
 bun install --frozen-lockfile   # install

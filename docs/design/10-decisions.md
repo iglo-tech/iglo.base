@@ -201,3 +201,20 @@ Decided by the owner on 2026-10-28.
 - **Why:** the owner wants a working MVP for x86 Linux first, with a lean CI, and no time spent on other platforms until then.
 - **Consequence:** workers, fixers and the council do not investigate or fix macOS-only behavior before 1.0. Code that already handles macOS (for example `legacy_alter_table=OFF`, read-only WAL fixtures) stays. Amends D18.
 
+
+## D25. One cross-lab reviewer, local verification only
+
+Decided by the owner on 2026-10-29.
+
+- **Decision:** each PR is reviewed by one reviewer from another lab than the lead: GPT-6.1 Sol at xhigh reasoning. The council is the lead and that reviewer: a PR merges when both agree, that is, the reviewer approves the head, or the lead and the reviewer agree that every remaining finding is out of scope (logged in the hardening backlog in `docs/status.md`). No Claude agent reviews Claude work. Verification is local: the worker, fixer and reviewer run `bun run check` and `bun run test:reference` on this host. CI is not a merge gate and runs only on demand (`workflow_dispatch`).
+- **Why:** the Claude reviewer approved almost every head (about 38 approvals and 13 change requests over PRs #1–#28) while Sol raised most findings, so a second Claude review mostly re-checked Claude's own work. CI repeated the local runs on the same single environment and only added waiting.
+- **Consequence:** replaces the two-member council in the [work plan](12-work-plan.md) and the [runbook](../chief-of-staff.md). Amends D24 (CI is no longer run on every push).
+
+## D26. Compatible results, not ported implementations
+
+Decided by the owner on 2026-10-29.
+
+- **Decision:** the API contract is about results for the requests real clients send (the SDKs, the dashboard, browsers, ordinary HTTP tools): the same status codes, bodies, error texts, headers and stored data as upstream. It is not a requirement to port upstream's or Go's implementation. Code ports upstream logic where the result depends on it (rules and filters, field validation and normalization, token formats, bcrypt, Go regexp semantics for stored patterns, the data format) and uses Bun and Web platform APIs elsewhere when they give the same results for those requests.
+- **Exotic input:** malformed or hand-crafted transport input that no normal client produces (unusual multipart encodings, chunked bodies placed at the exact body limit, escapes split at internal read-buffer boundaries, integer arguments at int64 overflow, and similar) must be handled safely: no crash, no corrupted or partial data, no security or rule bypass, bounded memory. Its exact status code and error text may differ from upstream. Such differences are not review blockers; the reviewer reports them as backlog items, and they are listed in the hardening backlog in `docs/status.md`.
+- **Never relaxed:** the data contract (anything written to or read from `pb_data`), access rules and auth, and the results of requests a normal client sends.
+- **Consequence:** reviewers must name the realistic client and request behind a blocking finding. Existing ports of Go standard library code stay unless they cost performance; M7.1 may replace them with native APIs (for example multipart parsing with Bun's `formData()` plus part-count and size checks) while the differential suite stays green. A class row is added to the deliberate differences in [API compatibility](04-api-compatibility.md).

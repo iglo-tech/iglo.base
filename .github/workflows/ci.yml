@@ -1,9 +1,8 @@
 name: CI
 
+# On demand only (D25): verification is local; CI is not a merge gate.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read

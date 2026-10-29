@@ -1,6 +1,6 @@
 # Work plan
 
-How the [port plan](09-port-plan.md) is split into tasks that agents do one at a time, and how each task is briefed, reviewed by the council and merged without the owner.
+How the [port plan](09-port-plan.md) is split into tasks that agents do one at a time, and how each task is briefed, reviewed by the council (the lead and one cross-lab reviewer) and merged without the owner.
 
 ## How work is handled
 
@@ -11,7 +11,7 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 | Owner | the project owner | Sets direction. Is not asked for approvals: agents merge and decide on their own, and log decisions for later review. Takes part only in M7.4 (production data) |
 | Lead (chief of staff) | a scheduled agent run, every 45 minutes ([runbook](../chief-of-staff.md)) | Keeps this plan and [`docs/status.md`](../status.md) current, writes task briefs, starts workers and the council, merges, decides design questions |
 | Worker | one agent per task | Does one task in its own branch and worktree, opens one PR |
-| Council | two fresh agents, never the worker: Claude Opus 5.5 (medium effort) and GPT-6.1 Sol (xhigh reasoning) | Reviews each finished PR independently against upstream's source and these docs. A PR merges only when both approve the same commit |
+| Council | the lead and one fresh reviewer from another lab: GPT-6.1 Sol (xhigh reasoning), never the worker (D25) | The reviewer reviews each finished PR deeply against upstream's source and these docs. A PR merges only when both approve the same commit |
 
 ### Models
 
@@ -20,7 +20,7 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 | Lead | Claude Opus 5.5 |
 | Workers on core, security- or format-critical code (data layer, filters, resolver, tokens, auth flows, realtime, files, backups) | Claude Opus 5.5, medium effort |
 | Workers on mechanical tasks (M0.2, M4.6, M4.7, M5.8, M7.2) and any bulk work inside other tasks (converting upstream table tests to scenario data, reading large files, summarizing logs and CI output) | Claude Haiku 5.5 |
-| Council | Claude Opus 5.5 at medium effort and GPT-6.1 Sol at xhigh reasoning |
+| Reviewer | GPT-6.1 Sol at xhigh reasoning (no Claude reviewer, D25) |
 
 ### One task
 
@@ -28,7 +28,7 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 - **Branch and worktree:** `task/<id>-<slug>`, created from the current `main`. One PR per task.
 - **Write scope:** the task names the modules it owns. A worker changes only those, plus new tests. A change to a module another task owns, or to a shared contract (below), goes back to the lead.
 - **Decisions:** design questions are decided by the lead, never left waiting. Each one is recorded in [Decisions](10-decisions.md) as "decided by agents, for owner review" and listed in `docs/status.md`.
-- **Done:** the acceptance check in the brief passes in CI, the design docs that the task touches still match the code, and the PR description lists what was ported (upstream file → iglo.base file) and anything left out with a reason.
+- **Done:** the acceptance check in the brief passes locally (D25), the design docs that the task touches still match the code, and the PR description lists what was ported (upstream file → iglo.base file) and anything left out with a reason.
 
 ### Task brief
 
@@ -66,15 +66,15 @@ These are created in M0 and change only through a small task of their own, becau
 
 ### Review and merge
 
-1. The worker finishes when its PR is open, CI is green and its acceptance check passes.
-2. **Council:** both council members review the PR independently. Each checks the diff next to the upstream files it ports and against these docs and `AGENTS.md`: behavior matches upstream, no hook remnants or extension surface, tests through public boundaries only, the task's scope respected. Each posts one PR comment with a verdict, `APPROVE` or `CHANGES`, for the exact head commit.
-3. **Fix loop:** on `CHANGES`, the lead fixes small findings itself and sends larger ones to a fixer agent on the same branch. Then both members review the new head again. A PR merges only when both approve the same commit.
-4. **Deadlock:** after three rounds without agreement, the lead decides. Upstream's binary (the scenarios and the differential suite) is the tiebreaker, and the reasoning goes in the PR.
-5. The lead squash-merges, deletes the branch and updates `docs/status.md`. `main` stays green.
+1. The worker finishes when its PR is open and its acceptance check and the full local check (`bun run check`, `bun run test:reference`) pass on this host. CI is not a gate (D25).
+2. **Review:** one reviewer from another lab (GPT-6.1 Sol, D25) reviews the PR deeply: the diff next to the upstream files it ports, these docs and `AGENTS.md`, behavior against upstream, no hook remnants or extension surface, tests through public boundaries only, the task's scope. It posts one PR comment with a verdict, `APPROVE` or `CHANGES`, for the exact head commit. A blocking finding names the realistic client and request behind it; malformed or exotic input that is handled safely is a backlog item, not a blocker (D26).
+3. **Council:** the lead and the reviewer must agree. The lead reads every finding: it fixes or delegates the ones it agrees with, and answers the ones it disagrees with in the PR, with upstream's behavior as the reference. Later rounds verify the fixes and the code they touch, not the whole PR again.
+4. **Deadlock:** after three rounds without agreement, the lead decides. Upstream's binary (the scenarios and the differential suite) is the tiebreaker, D26 decides what counts as a blocker, and the reasoning goes in the PR.
+5. The lead squash-merges, deletes the branch and updates `docs/status.md`. `main` stays green locally.
 
 ### Pace
 
-Correct first time over fast. One task at a time, end to end; the next one starts after the previous one is merged. At most three agents run at once (the worker, or the two council members), plus short lead-run helpers. If any agent hits a usage or rate limit, the lead pauses new work for an hour instead of retrying. Parallel tasks are considered only after M1 is merged, and still at most two workers.
+Correct first time over fast. One task at a time, end to end; the next one starts after the previous one is merged. At most two agents run at once (the worker or a fixer, and the reviewer), plus short lead-run helpers. If any agent hits a usage or rate limit, the lead pauses new work for an hour instead of retrying. Parallel tasks are considered only after M1 is merged, and still at most two workers.
 
 ### Hard limits
 
