@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: M2.4 (council round 1).
+Active: M2.4 (council round 2).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.4 | council | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 1 | [Brief](briefs/M2.4.md). Worker head `5d9c6f6`: check and test:reference pass locally; CI pending. Council round 1 started at `5d9c6f6` |
+| M2.4 | council | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 2 | [Brief](briefs/M2.4.md). Worker head `5d9c6f6`: check and test:reference pass locally; CI pending. Round 1 at `5d9c6f6` (CI green): Opus APPROVE, Sol CHANGES (a `fields` projection through a JSON array mixing objects and scalars returned 200 unprojected; upstream panics, 500). Fixed by the lead at `5e88360` with differential cases. Round 2 started at `5e88360` |
 
 ## Done
 
