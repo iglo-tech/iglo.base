@@ -2,7 +2,8 @@
 // address handling only).
 //
 // Builds the router (@/apis/base) for the app and serves it with Bun.serve.
-// Not ported yet: migrations and pb_data (M0.4), CORS, gzip and trusted
+// The app is bootstrapped before (src/app/bootstrap.ts, called by
+// src/cli/serve.ts). Not ported yet: CORS, gzip and trusted
 // proxies (M5.7), the dashboard (M6.1), the installer (M6.2), automatic
 // HTTPS (M6.3).
 

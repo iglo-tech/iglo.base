@@ -1,4 +1,9 @@
-// Upstream: cmd/serve.go
+// Upstream: cmd/serve.go, with the app bootstrap that pocketbase.go's
+// Execute runs before the command (core/base.go Bootstrap, see
+// @/app/bootstrap) and its ClearBootstrap on termination
+//
+// Only `serve` opens pb_data here; upstream also bootstraps for the root
+// command without --help/--version and for `superuser` (M6.2).
 //
 // Also logs the one warning about pb_hooks and pb_migrations directories,
 // which upstream's prebuilt binary would load (examples/base/main.go, jsvm
@@ -10,7 +15,7 @@ import { join } from "node:path";
 import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { ignoredDirsWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
-import { newApp } from "@/app/app";
+import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { logTime, serve } from "@/server/serve";
 
 export const serveShort =
@@ -68,32 +73,39 @@ export async function runServeCommand(
     ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirsWarning(ignored)}\n`);
   }
 
-  const appContext = newApp({
+  const logError = (message: string, cause?: unknown): void => {
+    const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
+    ctx.out.stderr(
+      `${logTime(ctx.out.now())} ERROR ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
+    );
+  };
+
+  const appContext = bootstrap({
     dataDir: app.dataDir,
     isDev: app.isDev,
     encryptionEnv: app.encryptionEnv,
     queryTimeout: app.queryTimeout,
     clock: { now: () => ctx.out.now() },
-    logger: {
-      error: (message, cause) => {
-        const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
-        ctx.out.stderr(
-          `${logTime(ctx.out.now())} ERROR ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
-        );
-      },
-    },
+    logger: { error: logError },
+    // color.HiBlack, as upstream's dev mode prints the statements
+    devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
+    warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),
   });
 
-  await serve(
-    appContext,
-    {
-      httpAddr,
-      httpsAddr,
-      certificateDomains: domains,
-      allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ["*"],
-      showStartBanner: true,
-    },
-    ctx.out,
-    ctx.shutdown,
-  );
+  try {
+    await serve(
+      appContext,
+      {
+        httpAddr,
+        httpsAddr,
+        certificateDomains: domains,
+        allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ["*"],
+        showStartBanner: true,
+      },
+      ctx.out,
+      ctx.shutdown,
+    );
+  } finally {
+    await clearBootstrap(appContext);
+  }
 }
