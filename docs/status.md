@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M2.4 merged; M3.1 merged. M1.3 (settings, with the Settings API) is with its worker.
+M2.4 merged; M1.3 PR #29 in review round 1 (Sol); lead PR #30 (shared upstream cache) in review.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.3 | worker | task/M1.3-settings | 0 | [Brief](briefs/M1.3.md) (includes M3.5, the Settings API). Opus worker started 2026-10-29 |
+| M1.3 | review | [#29](https://github.com/iglo-tech/iglo.base/pull/29) | 1 | [Brief](briefs/M1.3.md) (includes M3.5). Worker head `e1692d8`: check 16520, test:reference 2147 pass locally. 27 of 29 settings scenarios (2 hook-only), 5 `pending` (4 M4.4 email test, 1 M4.6 Apple secret); about 120 differential cases with stored-row byte checks. Lead-accepted: `03-data-compatibility.md` corrected (upstream drops unknown settings keys on save); outside-path commits (int64 request values, env passthrough, cron schedule parser, test support args). Sol round 1 started |
 
 ## Done
 
@@ -49,6 +49,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-10-29 | Test harness | `freePort()` can race when servers start at once ("address already in use"); seen once in M1.3's test:reference |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
