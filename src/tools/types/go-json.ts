@@ -631,6 +631,10 @@ export interface UnmarshalOptions {
   // jsontext.AllowInvalidUTF8(true): invalid UTF-8 and lone surrogate
   // escapes become U+FFFD instead of failing (duplicate names still fail)
   allowInvalidUTF8?: boolean;
+  // jsontext.AllowDuplicateNames(true): a repeated object member name is
+  // decoded again into the same destination (v2 merge semantics) instead
+  // of failing
+  allowDuplicateNames?: boolean;
 }
 
 // The Go destination types the ported code unmarshals into.
@@ -701,6 +705,7 @@ class Parser {
     readonly s: string,
     readonly legacy: boolean,
     readonly allowInvalidUTF8 = false,
+    readonly allowDuplicateNames = false,
   ) {}
 
   skipWhitespace(): void {
@@ -801,7 +806,7 @@ class Parser {
         throw new JSONSyntaxError("invalid character at start of object name");
       }
       const name = this.string();
-      if (!this.legacy) {
+      if (!this.legacy && !this.allowDuplicateNames) {
         if (seen.has(name)) {
           throw new JSONSyntaxError(`duplicate object member name ${JSON.stringify(name)}`);
         }
@@ -841,7 +846,12 @@ class Parser {
 }
 
 function parse(data: string | Uint8Array, opts: UnmarshalOptions): Node {
-  const p = new Parser(bytesToText(data), opts.legacy === true, opts.allowInvalidUTF8 === true);
+  const p = new Parser(
+    bytesToText(data),
+    opts.legacy === true,
+    opts.allowInvalidUTF8 === true,
+    opts.allowDuplicateNames === true,
+  );
   const node = p.value(0);
   p.end();
   return node;

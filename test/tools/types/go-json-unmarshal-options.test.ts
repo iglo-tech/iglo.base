@@ -25,3 +25,15 @@ describe("unmarshal allowInvalidUTF8", () => {
     );
   });
 });
+
+// jsontext.AllowDuplicateNames(true), as tools/picker's Pick decodes the
+// marshaled response (old `json` field values may repeat a name)
+describe("unmarshal allowDuplicateNames", () => {
+  test("a repeated name is decoded again", () => {
+    expect(() => unmarshal(`{"a":1,"a":2}`, anyType)).toThrow("duplicate object member name");
+    expect(unmarshal(`{"a":1,"b":true,"a":2}`, anyType, { allowDuplicateNames: true })).toEqual({
+      a: 2,
+      b: true,
+    });
+  });
+});

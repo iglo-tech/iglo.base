@@ -3,6 +3,7 @@
 // read this list, so a suite added here runs in both modes.
 
 import { healthAPI } from "@test/scenarios/health";
+import { recordCrudList, recordCrudView } from "@test/scenarios/record-crud";
 import type { Suite } from "@test/scenarios/scenario";
 
-export const suites: Suite[] = [healthAPI];
+export const suites: Suite[] = [healthAPI, recordCrudList, recordCrudView];

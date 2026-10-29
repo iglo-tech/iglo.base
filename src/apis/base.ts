@@ -7,6 +7,7 @@
 import type { App } from "@/app/app";
 import { RequestEvent } from "@/app/event-request";
 import { bindHealthApi } from "@/apis/health";
+import { bindRecordCrudApi, type RecordCrudOptions } from "@/apis/record-crud";
 import { activityLogger } from "@/middlewares/activity-logger";
 import { bodyLimit } from "@/middlewares/body-limit";
 import { loadAuthToken } from "@/middlewares/load-auth-token";
@@ -20,9 +21,16 @@ import { Router } from "@/server/router";
 // StaticWildcardParam is the name of Static handler wildcard parameter.
 export const StaticWildcardParam = "path";
 
+export interface RouterOptions {
+  recordCrud?: RecordCrudOptions;
+}
+
 // NewRouter returns a new router instance loaded with the default app
 // middlewares and routes.
-export function newRouter(app: App): Router<RequestEvent> {
+//
+// options carries test seams of the bound handlers (the records list
+// throttle's sleep).
+export function newRouter(app: App, options: RouterOptions = {}): Router<RequestEvent> {
   const pbRouter = new Router<RequestEvent>((w, r) => [new RequestEvent(app, w, r), undefined]);
 
   // register default middlewares
@@ -36,8 +44,11 @@ export function newRouter(app: App): Router<RequestEvent> {
 
   // API routes
   const apiGroup = pbRouter.group("/api");
-  // settings, collections, records, auth, logs, backups, crons, files,
-  // batch, realtime and SQL are bound by their own tasks, in upstream's order
+  // settings, collections, auth, logs, backups, crons, files, batch,
+  // realtime and SQL are bound by their own tasks, in upstream's order:
+  // settings, collections, record crud, record auth, logs, backups, crons,
+  // files, batch, realtime, health, SQL
+  bindRecordCrudApi(app, apiGroup, options.recordCrud);
   bindHealthApi(app, apiGroup);
 
   // the prebuilt binary's static route (examples/base/main.go), bound after

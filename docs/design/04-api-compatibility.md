@@ -75,7 +75,7 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 ## Deliberate differences
 
-These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), except the two request normalization rows, which follow from the HTTP runtime (D22), and the query timeout row, which follows from `bun:sqlite` (D8). Each is marked in the differential test suite, except the repeated-header row: no endpoint exposes request headers yet, so it gets its differential case with the first task that exposes `@request.headers` in rules (M2.4). The query timeout row is about timing, not response content: `test/db/read-pool.test.ts` checks it.
+These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), except the two request normalization rows, which follow from the HTTP runtime (D22), and the query timeout row, which follows from `bun:sqlite` (D8). Each is marked in the differential test suite; the repeated-header row's case is in `test/differential/records-read/` (M2.4). The query timeout row is about timing, not response content: `test/db/read-pool.test.ts` checks it.
 
 | Area | PocketBase v0.41.0 | iglo.base |
 |---|---|---|
@@ -89,7 +89,7 @@ These are the only intended differences. Each one follows from removing extensio
 | `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
 | Request paths with `.` or `..` segments (also `%2e%2e`) or `\` | `307` redirect to the cleaned path; `%2e%2e` and `\` are not resolved | answered as the normalized path, without a redirect ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |
 | `--queryTimeout` on synchronous reads and reads in a transaction | the statement is interrupted (`sqlite3_interrupt`) at the deadline; other requests go on | the query fails with the same error, `context deadline exceeded; failed query: <SQL>`, but only after its statement returns, and the event loop is blocked meanwhile. Bun 1.4.4's `bun:sqlite` cannot interrupt a statement: no interrupt or progress handler, no `sqlite3*` pointer, and on Linux the embedded SQLite exports no symbols for `bun:ffi` ([D8](10-decisions.md#d8-sqlite-access-main-thread-connection-read-worker-pool-for-timed-reads)). Reads outside transactions through the async resolvers run on the read pool and fail at the deadline, as upstream |
-| Repeated request header lines | `@request.headers.*` sees the first line | sees the lines joined with `, ` ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)); differential case added with the first task that exposes `@request.headers` in rules (M2.4) |
+| Repeated request header lines | `@request.headers.*` sees the first line | sees the lines joined with `, ` ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |
 
 The JavaScript SDK's `pb.send()` for custom routes keeps working against routes that exist; there just are none beyond upstream's.
 

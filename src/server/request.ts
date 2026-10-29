@@ -224,6 +224,49 @@ function copyValues(dst: Values, src: Values): Values {
   return dst;
 }
 
+// url.QueryEscape: the bytes of s with everything but the unreserved
+// characters (A-Z a-z 0-9 - _ . ~) percent-escaped, and spaces as "+".
+export function queryEscape(s: string): string {
+  let out = "";
+  for (const b of new TextEncoder().encode(s)) {
+    if (
+      (b >= 0x41 && b <= 0x5a) ||
+      (b >= 0x61 && b <= 0x7a) ||
+      (b >= 0x30 && b <= 0x39) ||
+      b === 0x2d ||
+      b === 0x5f ||
+      b === 0x2e ||
+      b === 0x7e
+    ) {
+      out += String.fromCharCode(b);
+    } else if (b === 0x20) {
+      out += "+";
+    } else {
+      out += "%" + b.toString(16).toUpperCase().padStart(2, "0");
+    }
+  }
+  return out;
+}
+
+// url.Values.Encode: the values in "URL encoded" form
+// ("bar=baz&foo=quux"), sorted by key (Go's byte order); the values of a
+// key keep their order.
+export function encodeValues(values: Values): string {
+  const encoder = new TextEncoder();
+  const keys = [...values.keys()]
+    .map((k): [string, Uint8Array] => [k, encoder.encode(k)])
+    .toSorted((a, b) => Buffer.compare(a[1], b[1]))
+    .map(([k]) => k);
+  const parts: string[] = [];
+  for (const k of keys) {
+    const keyEscaped = queryEscape(k);
+    for (const v of values.get(k) ?? []) {
+      parts.push(keyEscaped + "=" + queryEscape(v));
+    }
+  }
+  return parts.join("&");
+}
+
 // url.QueryUnescape: "+" is a space; undefined on a malformed escape
 function queryUnescape(s: string): string | undefined {
   return unescapeBytes(s.replaceAll("+", " "));
