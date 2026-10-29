@@ -12,14 +12,14 @@
 // failures are dropped, as upstream drops them from the response. A
 // failed auth alert is reported to the app's error logger.
 //
-// The auth alert email (mails.SendRecordAuthAlert) is a plain internal
-// call, sendRecordAuthAlert below, that the mailer task (M4.4) fills.
+// The auth alert email is mails.SendRecordAuthAlert (src/mail/mails).
 
 import type { App } from "@/app/app";
 import { type RequestEvent, RequestInfo, RequestInfoContextExpand } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
 import { HashExp, inExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
+import { sendRecordAuthAlert } from "@/mail/mails/record";
 import { isIPInList } from "@/middlewares/superuser-ips-whitelist";
 import {
   type AuthOrigin,
@@ -649,8 +649,9 @@ async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
       );
     });
     const err = await Promise.race([
-      sendRecordAuthAlert(e.app, authRecord, alertInfo).catch((sendErr: unknown) =>
-        sendErr instanceof Error ? sendErr : new Error(String(sendErr)),
+      sendRecordAuthAlert(e.app, authRecord, alertInfo).then(
+        () => undefined,
+        (sendErr: unknown) => (sendErr instanceof Error ? sendErr : new Error(String(sendErr))),
       ),
       timeout,
     ]);
@@ -679,21 +680,6 @@ async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
 
   // create/update the origin fingerprint
   await saveAuthOrigin(e.app, currentOrigin);
-}
-
-// mails.SendRecordAuthAlert sends a new device login alert to the
-// specified auth record.
-//
-// The mailer and the alert template are the mailer task's (M4.4), which
-// fills this call. Until then the send fails, as upstream's does without a
-// working mailer (SMTP disabled and no sendmail): the new origin is not
-// stored, so the alert still goes out once mail works.
-async function sendRecordAuthAlert(
-  _app: App,
-  _authRecord: Record,
-  _alertInfo: string,
-): Promise<Error | undefined> {
-  return new Error("the mailer is not available yet (M4.4)");
 }
 
 // security.MD5 of the bytes of a latin1 text (one char per byte)

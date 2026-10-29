@@ -2,7 +2,7 @@
 //
 // The app context passed to every module instead of process-global state.
 // It carries only what exists now; later tasks add their fields
-// (filesystem and backups M5.x) in their own change. The databases,
+// (backups M5.x) in their own change. The databases,
 // the runtime store (with the collections cache) and the clock make it a
 // CollectionsApp (src/collections/collection-query.ts), so the collection
 // and record functions take the app itself. bootstrap() (bootstrap.ts)
@@ -11,6 +11,8 @@
 import type { Clock } from "@/app/clock";
 import { type AppFilesystem, newAppFilesystem } from "@/app/filesystem";
 import type { Databases } from "@/db/base";
+import type { Mailer } from "@/mail/mailer";
+import { newMailClient } from "@/mail/mail-client";
 import { newDefaultSettings, type Settings } from "@/settings/settings-model";
 import type { Store } from "@/tools/store/store";
 
@@ -47,6 +49,9 @@ export interface App {
   // NewFilesystem (pb_data/storage) and the storage cleanup after a
   // record or collection delete
   readonly filesystem: AppFilesystem;
+  // NewMailClient creates a new SMTP or sendmail client from the current
+  // settings (src/mail/mail-client.ts)
+  newMailClient(): Mailer;
 }
 
 export interface AppConfig {
@@ -77,5 +82,6 @@ export function newApp(config: AppConfig): App {
       getenv,
       logger: config.logger,
     }),
+    newMailClient: () => newMailClient(settings, config.clock, getenv),
   });
 }

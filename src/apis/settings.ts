@@ -11,21 +11,29 @@
 // error" that names the task:
 //   - the S3 connection test of an enabled S3 config (TestS3Filesystem.Submit
 //     past the "not enabled" check): M5.4, S3 storage;
-//   - sending the test email (TestEmailSend.Submit past the validation):
-//     M4.4, the mailer;
 //   - signing the Apple client secret (AppleClientSecretCreate.Submit past
 //     the validation): M4.6, the OAuth2 providers.
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import {
+  sendRecordAuthAlert,
+  sendRecordChangeEmail,
+  sendRecordOTP,
+  sendRecordPasswordReset,
+  sendRecordVerification,
+} from "@/mail/mails/record";
 import { requireSuperuserAuth } from "@/middlewares/require-auth";
+import { newRecord } from "@/records/record-model";
+import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
 import { type S3Config, Settings, settingsType } from "@/settings/settings-model";
 import { saveSettings } from "@/settings/settings-query";
 import { mustCompile } from "@/tools/regexp/regexp";
+import { nowDateTime } from "@/tools/types/datetime";
 import { Errors, NewError } from "@/validation/error";
 import { In } from "@/validation/in";
 import { EmailFormat } from "@/validation/is/rules";
@@ -235,14 +243,56 @@ function checkAuthCollection(app: App, value: unknown): Error | null {
 }
 
 // Submit validates and sends a test email to the form.Email address.
-function submitTestEmailSend(app: App, form: TestEmailSend): Error | null {
+async function submitTestEmailSend(app: App, form: TestEmailSend): Promise<Error | null> {
   const err = validateTestEmailSend(app, form);
   if (err !== null) {
     return err;
   }
 
-  // the test record and the template email need the mailer (M4.4)
-  return new Error("the mailer is not available yet (M4.4)");
+  let collectionIdOrName = form.Collection;
+  if (collectionIdOrName === "") {
+    collectionIdOrName = CollectionNameSuperusers;
+  }
+
+  try {
+    const collection = findCollectionByNameOrId(app, collectionIdOrName);
+
+    const record = newRecord(collection);
+    for (const field of collection.fields) {
+      if (field.getHidden()) {
+        continue;
+      }
+      record.set(field.getName(), "__pb_test_" + field.getName() + "__");
+    }
+    record.refreshTokenKey();
+    record.setEmail(form.Email);
+
+    switch (form.Template) {
+      case TestTemplateVerification:
+        await sendRecordVerification(app, record);
+        break;
+      case TestTemplatePasswordReset:
+        await sendRecordPasswordReset(app, record);
+        break;
+      case TestTemplateEmailChange:
+        await sendRecordChangeEmail(app, record, form.Email);
+        break;
+      case TestTemplateOTP:
+        await sendRecordOTP(app, record, "_PB_TEST_OTP_ID_", "123456");
+        break;
+      case TestTemplateAuthAlert: {
+        const testEvent = nowDateTime(app.clock).toString() + " - TEST_IP TEST_USER_AGENT";
+        await sendRecordAuthAlert(app, record, testEvent);
+        break;
+      }
+      default:
+        return new Error("unknown template " + form.Template);
+    }
+  } catch (sendErr) {
+    return sendErr instanceof Error ? sendErr : new Error(String(sendErr));
+  }
+
+  return null;
 }
 
 async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
@@ -255,7 +305,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
   }
 
   // send
-  const err = submitTestEmailSend(e.app, form);
+  const err = await submitTestEmailSend(e.app, form);
   if (err !== null) {
     // form error
     if (err instanceof Errors) {
