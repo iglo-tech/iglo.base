@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M2.5 active (worker), with M3.4 folded in.
+M2.5 active (review round 1), with M3.4 folded in.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.5 | worker | task/M2.5-collections-api | 0 | [brief](briefs/M2.5.md); includes M3.4 |
+| M2.5 | review | [#34](https://github.com/iglo-tech/iglo.base/pull/34) | 1 | [brief](briefs/M2.5.md); includes M3.4 |
 
 ## Done
 
