@@ -177,8 +177,11 @@ export class HttpRequest {
 
     const form: MultipartForm = { value: new Map(), file: new Map() };
     for (const [key, value] of formData) {
-      if (typeof value === "string") {
-        appendValue(form.value, key, value);
+      // Go's ReadForm keeps a part as a value when Part.FileName() is "":
+      // the filename parameter is missing or empty. Bun's formData() makes
+      // a File (with an undefined name) for an empty filename.
+      if (typeof value === "string" || !value.name) {
+        appendValue(form.value, key, typeof value === "string" ? value : await value.text());
       } else {
         const files = form.file.get(key) ?? [];
         files.push(value);

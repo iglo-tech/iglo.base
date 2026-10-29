@@ -118,6 +118,17 @@ describe("FindUploadedFiles", () => {
 
     await expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile);
   });
+
+  // mime/multipart ReadForm: a part with an empty filename is a form value
+  for (const content of ["", "hello"]) {
+    test(`empty filename, content ${JSON.stringify(content)}`, async () => {
+      const event = newEvent(multipartRequest({ field: "test", filename: "", content }));
+
+      await expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile);
+      expect(event.request.multipartForm?.value.get("test")).toEqual([content]);
+      expect(event.request.form?.get("test")).toEqual([content]);
+    });
+  }
 });
 
 describe("Set and Get", () => {
