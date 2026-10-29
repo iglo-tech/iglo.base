@@ -4,16 +4,21 @@ import { describe, expect, test } from "bun:test";
 
 import { type Moment, newMoment, newSchedule, type Schedule } from "@/tools/cron/schedule";
 
-// the Go JSON of a Schedule: map[int]struct{} keys sorted as strings
-function scheduleJSON(s: Schedule): string {
-  const slots = (set: Set<number>) =>
+// the Go JSON of a map[int]struct{}: keys sorted as strings
+function slots(set: Set<number>): string {
+  return (
     "{" +
     [...set]
       .map(String)
       .toSorted()
       .map((k) => `"${k}":{}`)
       .join(",") +
-    "}";
+    "}"
+  );
+}
+
+// the Go JSON of a Schedule
+function scheduleJSON(s: Schedule): string {
   return `{"minutes":${slots(s.minutes)},"hours":${slots(s.hours)},"days":${slots(s.days)},"months":${slots(s.months)},"daysOfWeek":${slots(s.daysOfWeek)}}`;
 }
 
