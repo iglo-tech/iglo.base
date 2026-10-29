@@ -69,6 +69,9 @@ export class ExcerptModifier implements Modifier {
   constructor(
     readonly max: number, // approximate max excerpt length
     readonly withEllipsis: boolean, // if enabled will add ellipsis when the plain text length > max
+    // Go's `m.max+2` on a 64-bit int: it wraps negative for the two
+    // largest valid limits, so the traversal stops at the document node
+    private readonly cutoff: number = max + 2,
   ) {}
 
   // Modify implements the [Modifier.Modify] interface method.
@@ -113,7 +116,7 @@ export class ExcerptModifier implements Modifier {
 
       // excerpt max has been reached => no need to further iterate
       // (+2 for the extra whitespace suffix/prefix that will be trimmed later)
-      if (builderLen > this.max + 2) {
+      if (builderLen > this.cutoff) {
         return;
       }
 
@@ -170,8 +173,8 @@ export function newExcerptModifier(...args: string[]): ExcerptModifier {
     throw new Error("too many arguments - expected (max, withEllipsis?)");
   }
 
-  const max = Number(toInt(args[0]));
-  if (max <= 0) {
+  const max = BigInt(toInt(args[0]));
+  if (max <= 0n) {
     throw new Error("max argument must be > 0");
   }
 
@@ -180,5 +183,5 @@ export function newExcerptModifier(...args: string[]): ExcerptModifier {
     withEllipsis = toBool(args[1]);
   }
 
-  return new ExcerptModifier(max, withEllipsis);
+  return new ExcerptModifier(Number(max), withEllipsis, Number(BigInt.asIntN(64, max + 2n)));
 }

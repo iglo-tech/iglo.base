@@ -184,6 +184,21 @@ export const fixtureCases: ReadCase[] = [
     as: ["superuser"],
   },
   {
+    name: "fields excerpt with the largest int64 limit",
+    url: `/api/collections/demo2/records/0yxhwia2amd8gec?fields=${e("title:excerpt(9223372036854775807)")}`,
+    as: ["guest"],
+  },
+  {
+    name: "fields excerpt with the int64 limit minus one",
+    url: `/api/collections/demo2/records?sort=id&fields=${e("title:excerpt(9223372036854775806)")}`,
+    as: ["guest"],
+  },
+  {
+    name: "fields excerpt with the int64 limit minus two",
+    url: `/api/collections/demo2/records?sort=id&fields=${e("title:excerpt(9223372036854775805)")}`,
+    as: ["guest"],
+  },
+  {
     name: "fields excerpt without arguments",
     url: `/api/collections/demo2/records?fields=${e("title:excerpt")}`,
     as: ["guest"],
