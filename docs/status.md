@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M6.1 (with M6.2) merged; M4.4 (mail, with `mails/`) active.
+M4.4 (mail, with `mails/`) merged; next: M0.7.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.4 | review | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 3 (lead fixed rounds 1–2) | [brief](briefs/M4.4.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M4.4 | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 2026-10-29 (`caf7ca7`) | Three council rounds (lead fixed all; round 3 decided by the lead: SMTP error texts, STARTTLS only when offered, mailyak/Go license notices). Includes `mails/`. Carried: the OTP email's `sentTo` update (M4.2); no differential case for implicit TLS (needs a cert both servers trust); DNS/TLS-handshake/timeout error texts differ (listed in 04-api-compatibility.md) |
 | M6.1 | [#35](https://github.com/iglo-tech/iglo.base/pull/35) | 2026-10-29 (`6c1462d`) | One review round: Sol APPROVE at `ec90f7e`. Includes M6.2 (installer, all six `superuser` commands incl. `otp`). Carried: `Vary: Origin` with CORS (M5.7); backups, crons, logs and file download screens wait for M5.3, M5.6, M5.5, M5.2; docs links point to the repo docs until M7.2 |
 | M2.5 | [#34](https://github.com/iglo-tech/iglo.base/pull/34) | 2026-10-29 (`d38c4d7`) | One review round: Sol APPROVE at `366eb5b`. Includes M3.4 (collections write, import, truncate, dry run) and the M1.3 rate-limit relabel on rename. Carried: upstream's default `--automigrate` writes `pb_migrations` files on collection API changes (M3.7) |
 | M3.2 | [#33](https://github.com/iglo-tech/iglo.base/pull/33) | 2026-10-29 (`22dbd13`) | One review round: Sol APPROVE at `3f4f0a5`. Includes the D27 multipart spill (160 MiB upload +552 → +84 MiB). File storage is synchronous inside write transactions (a large upload blocks the event loop, M7.1); S3 enabled answers "not supported yet (M5.4)". Lead fixed the stale files design paragraph after merge |
