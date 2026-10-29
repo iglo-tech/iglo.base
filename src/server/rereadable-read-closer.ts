@@ -13,6 +13,10 @@ export interface Rereader {
   reread(): void;
 }
 
+export function isRereader(r: unknown): r is Rereader {
+  return typeof (r as Partial<Rereader> | null)?.reread === "function";
+}
+
 export class RereadableReadCloser implements ReadCloser, Rereader {
   #reader: ReadCloser;
   #copy: BufferWithFile | undefined;
@@ -100,10 +104,13 @@ export async function readAll(r: ReadCloser): Promise<Uint8Array> {
   let total = 0;
   const p = new Uint8Array(32 * 1024);
   for (;;) {
-    const { n, eof } = await r.read(p);
+    const { n, eof, err } = await r.read(p);
     if (n > 0) {
       chunks.push(p.slice(0, n));
       total += n;
+    }
+    if (err !== undefined) {
+      throw err;
     }
     if (eof) {
       break;

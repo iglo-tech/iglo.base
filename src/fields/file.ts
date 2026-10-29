@@ -1,6 +1,12 @@
 // Upstream: core/field_file.go
 //
-// Without the storage side: Intercept and its helpers
+// Without the storage side (M3.2): until then Intercept only refuses a
+// create or update that has new files to upload, before the row is
+// written, so that no record points at a file that was not stored; the
+// error is upstream's processFilesToUpload failure path (a 400 "Failed to
+// create record." from the record API). Removed file names are dropped
+// from the row and their files stay on disk. The rest of Intercept and its
+// helpers
 // (processFilesToUpload, processFilesToDelete, rememberFilesToDelete,
 // afterRecordExecuteSuccess, afterRecordExecuteFailure,
 // deleteNewlyUploadedFiles, deleteFilesByNamesList, deleteEmptyRecordDir,
@@ -29,6 +35,8 @@ import {
   DefaultFieldHelpValidationRule,
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
+  InterceptorActionCreateExecute,
+  InterceptorActionUpdateExecute,
   internalCustomFieldKeyPrefix,
   marshalStruct,
   maxSafeJSONInt,
@@ -41,6 +49,7 @@ import {
   type GetterFunc,
   type MaxBodySizeCalculator,
   type MultiValuer,
+  type RecordInterceptor,
   type SetterFinder,
   type SetterFunc,
 } from "@/fields/field";
@@ -120,7 +129,14 @@ export const uploadedFilesPrefix = internalCustomFieldKeyPrefix + "_uploadedFile
 //     // ["old2.txt"]
 //     record.set("documents-", "old1.txt")
 export class FileField
-  implements Field, MultiValuer, DriverValuer, GetterFinder, SetterFinder, MaxBodySizeCalculator
+  implements
+    Field,
+    MultiValuer,
+    DriverValuer,
+    GetterFinder,
+    SetterFinder,
+    MaxBodySizeCalculator,
+    RecordInterceptor
 {
   // Name (required) is the unique name of the field.
   name = "";
@@ -378,6 +394,32 @@ export class FileField
     }
 
     return this.maxSelect;
+  }
+
+  // Intercept implements the [RecordInterceptor] interface.
+  //
+  // Storing the uploads is M3.2: a save with new files fails here, before
+  // actionFunc writes the row.
+  intercept(
+    _app: FieldApp,
+    record: FieldRecord,
+    actionName: string,
+    actionFunc: () => void | Promise<void>,
+  ): void | Promise<void> {
+    switch (actionName) {
+      case InterceptorActionCreateExecute:
+      case InterceptorActionUpdateExecute: {
+        const uploads = this.extractUploadableFiles(this.toSliceValue(record.getRaw(this.name)));
+        if (uploads.length > 0) {
+          throw new Error(
+            `${JSON.stringify(uploads[0]?.name)}: storing uploaded files is not supported yet (M3.2)`,
+          );
+        }
+        return actionFunc();
+      }
+      default:
+        return actionFunc();
+    }
   }
 
   // CalculateMaxBodySize implements the [MaxBodySizeCalculator] interface.

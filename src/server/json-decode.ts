@@ -147,18 +147,27 @@ class Parser {
       const code = this.hex4(this.i + 2);
       this.i += 6;
       if (code >= 0xd800 && code <= 0xdbff) {
-        // a high surrogate must be followed by an escaped low surrogate
-        if (this.s.slice(this.i, this.i + 2) === "\\u") {
-          const low = this.hex4(this.i + 2);
-          if (low >= 0xdc00 && low <= 0xdfff) {
-            out += String.fromCharCode(code, low);
-            this.i += 6;
-            continue;
-          }
+        // a high surrogate must be followed by an escaped low surrogate;
+        // an input that ends within a possible one is truncated
+        // (jsonwire's hasEscapedUTF16Prefix)
+        const next = this.s.slice(this.i, this.i + 6);
+        if (/^\\u[dD][c-fC-F][0-9a-fA-F]{2}$/.test(next)) {
+          out += String.fromCharCode(code, Number.parseInt(next.slice(2), 16));
+          this.i += 6;
+          continue;
+        }
+        if (next.length < 6 && isLowSurrogateEscapePrefix(next)) {
+          throw new JsonEOFError(true);
         }
         throw new JsonSyntaxError(`invalid surrogate pair in string at offset ${start}`);
       }
       if (code >= 0xdc00 && code <= 0xdfff) {
+        // a low surrogate cannot start a pair, but an input that ends
+        // within a possible escape after it is truncated all the same
+        const next = this.s.slice(this.i, this.i + 6);
+        if (next.length < 6 && isLowSurrogateEscapePrefix(next)) {
+          throw new JsonEOFError(true);
+        }
         throw new JsonSyntaxError(`invalid surrogate pair in string at offset ${start}`);
       }
       out += String.fromCharCode(code);
@@ -248,6 +257,11 @@ class Parser {
       }
     }
   }
+}
+
+// whether s is a prefix of an escaped low surrogate (\uDC00 to \uDFFF)
+function isLowSurrogateEscapePrefix(s: string): boolean {
+  return /^(?:\\(?:u(?:[dD](?:[c-fC-F][0-9a-fA-F]{0,2})?)?)?)?$/.test(s);
 }
 
 // Decodes the first JSON value of text and ignores what follows it, as a
