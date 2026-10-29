@@ -27,7 +27,14 @@ import {
 } from "@/search/sort";
 import { aliasOrIdentifier } from "@/tools/dbutils/select";
 import { columnify } from "@/tools/inflector/inflector";
-import { type GoInt, goInt, type JSONMarshaler, marshal, textToBytes } from "@/tools/types/go-json";
+import {
+  type GoInt,
+  goInt,
+  isJSONMarshaler,
+  type JSONMarshaler,
+  marshal,
+  textToBytes,
+} from "@/tools/types/go-json";
 
 // DefaultPerPage specifies the default number of returned search result items.
 export const DefaultPerPage = 30;
@@ -82,9 +89,16 @@ export class SearchResult<T> implements Result<T>, JSONMarshaler {
     public totalPages: number,
   ) {}
 
+  // The items' own JSON (records) is written as it is: it comes from the
+  // same encoder with the same options, so the reformatting Go's encoder
+  // applies to a marshaler's output would not change it.
   marshalJSON(): string {
+    const opts = { allowDuplicateNames: true, allowInvalidUTF8: true };
+    const items = this.items
+      .map((item) => (isJSONMarshaler(item) ? item.marshalJSON() : marshal(item, opts)))
+      .join(",");
     return (
-      `{"items":${marshal(this.items, { allowDuplicateNames: true, allowInvalidUTF8: true })}` +
+      `{"items":[${items}]` +
       `,"page":${marshal(this.page)},"perPage":${marshal(this.perPage)}` +
       `,"totalItems":${marshal(this.totalItems)},"totalPages":${marshal(this.totalPages)}}`
     );
