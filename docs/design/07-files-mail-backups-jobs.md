@@ -17,8 +17,8 @@ Ported from upstream `tools/filesystem` (about 5,100 lines, which include a vend
 
 - Multipart field names and the `+`/`-` modifiers for multi-file fields, `maxSelect`, `maxSize`, `mimeTypes` (sniffed, not trusted from the client), and `protected`.
 - File names: sanitized base name, `_`, 10 random characters, original extension, as upstream.
-- Upload, record save and old-file deletion order follows upstream: new files are written before the record commits; replaced and deleted files are removed after commit by a bounded worker (`PB_FILES_DELETE_MAX_WORKERS`); a failed save removes the files it wrote.
-- Multipart bodies are read by a port of Go's `mime/multipart` (`src/server/multipart.ts`, M3.1), which streams the body with Go's part, header and memory limits and quoted-printable decoding. File parts are kept in memory; Go writes those past 16 MiB to a temporary file. If upload memory is too high, the port writes such parts to `pb_data/.pb_temp_to_delete` instead.
+- Upload, record save and old-file deletion order follows upstream: new files are written before the record commits; files replaced or removed in a save are deleted by the file field after commit; a failed save removes the files it wrote. After a record or collection delete, its storage directory is removed by a bounded background worker (`PB_FILES_DELETE_MAX_WORKERS`).
+- Multipart bodies are read by a port of Go's `mime/multipart` (`src/server/multipart.ts`, M3.1), which streams the body with Go's part, header and memory limits and quoted-printable decoding. As in Go's `ReadForm`, file part bytes past 16 MiB per request go to a temporary file in the OS temp directory, and the temporary files are removed when the request ends (D27, M3.2; [measurements](../perf/M3.2-files.md)).
 
 ### Thumbnails
 

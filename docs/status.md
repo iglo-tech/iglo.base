@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M3.2 active (review round 1).
+M3.2 merged; next: M2.5 (usable-first order).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.2 | review | [#33](https://github.com/iglo-tech/iglo.base/pull/33) | 1 | [brief](briefs/M3.2.md); worker done at `3f4f0a5` |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M3.2 | [#33](https://github.com/iglo-tech/iglo.base/pull/33) | 2026-10-29 (`22dbd13`) | One review round: Sol APPROVE at `3f4f0a5`. Includes the D27 multipart spill (160 MiB upload +552 → +84 MiB). File storage is synchronous inside write transactions (a large upload blocks the event loop, M7.1); S3 enabled answers "not supported yet (M5.4)". Lead fixed the stale files design paragraph after merge |
 | M0.8 | [#32](https://github.com/iglo-tech/iglo.base/pull/32) | 2026-10-29 (`4c23b15`) | Two review rounds (lead fixed round 1: spike memory guard, report wording). Lifted Bun's 128 MiB request cap. Follow-ups decided in D27: multipart spill (M3.2), SSE timeouts and slow-client cap (M5.1), bcrypt off the event loop (M7.1) |
 | M4.1 | [#31](https://github.com/iglo-tech/iglo.base/pull/31) | 2026-10-29 (`b30358d`) | One review round: Sol APPROVE at `650cc12`, no findings. Lead decision: MFA model/query and checkMFA moved from M4.2 into M4.1. Carried: new-origin alert mail (M4.4; until then a new origin is not stored, as upstream without a mailer); other OAuth2 providers in auth-methods (M4.5–M4.7); hourly expired-MFA cleanup (M5.6); auth rate-limit rules (M4.8) |
 | M1.3 | [#29](https://github.com/iglo-tech/iglo.base/pull/29) | 2026-10-29 (`335e06b`) | One review round (first under D25): Sol APPROVE at `e1692d8`, no findings. Includes M3.5 (Settings API). Carried: S3 test (M5.4), email test (M4.4), Apple client secret (M4.6) answer 400 placeholders; RealIP ignores trusted proxy headers until M5.7; rate-limit rule relabel on collection rename to M3.4 |
@@ -53,6 +53,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | Since | Area | Difference |
 |---|---|---|
 | 2026-10-29 | Test harness | `freePort()` can race when servers start at once ("address already in use"); seen once in M1.3's test:reference |
+| 2026-10-29 | Test harness (M3.2) | File-name normalization in `test/differential/files/files.test.ts:99–145` and `harness/compare.ts:207–209` accepts any equal-length lowercase alphanumeric difference; restrict it to the generated 10-character suffix |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
