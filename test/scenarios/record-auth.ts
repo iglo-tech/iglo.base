@@ -11,8 +11,10 @@
 // BeforeTestFunc of "valid identity field (email) and valid password"
 // (it asserts the request info context through OnRecordAuthRequest).
 // The rate limit rules are M4.8. The auth alert emails upstream's test
-// mailer receives (OnMailerRecordAuthAlertSend) are M4.4; the responses do
-// not depend on them.
+// mailer receives (OnMailerRecordAuthAlertSend) are not checked here: the
+// fixture has SMTP disabled and no sendmail, so both servers log the failed
+// send, and the responses do not depend on it. test/differential/mail/
+// checks the alert itself.
 
 import {
   insertMFA,
