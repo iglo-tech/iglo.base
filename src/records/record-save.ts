@@ -87,6 +87,10 @@
 // as Go's driver does, and the NUMERIC column affinity gives a number the
 // storage class Go's float64 gets.
 //
+// After a successful delete (after the transaction, when there is one),
+// the record's storage directory is deleted in the background
+// (deleteRecordFiles: upstream's OnModelAfterDeleteSuccess files handler).
+//
 // Not ported: the hook events, tags and the model events around the
 // record events (D5).
 
@@ -523,6 +527,13 @@ function* afterSuccess(
   const txInfo = app.databases.txInfo();
   if (txInfo === null) {
     yield* callFieldInterceptors(app, record, successAction, noop);
+    if (successAction === InterceptorActionAfterDelete) {
+      // a promise while every delete worker is busy
+      const waiting = deleteRecordFiles(app, record);
+      if (waiting instanceof Promise) {
+        yield waiting;
+      }
+    }
     return;
   }
 
@@ -538,6 +549,10 @@ function* afterSuccess(
       result = run(callFieldInterceptors(parentApp, record, errorAction, noop));
     } else {
       result = run(callFieldInterceptors(parentApp, record, successAction, noop));
+      if (successAction === InterceptorActionAfterDelete) {
+        // the delete does not wait for a busy worker pool here
+        void deleteRecordFiles(parentApp, record);
+      }
     }
 
     // an async interceptor ends after the transaction call returned
@@ -546,6 +561,16 @@ function* afterSuccess(
         app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
       });
     }
+  });
+}
+
+// the storage cleanup after a record delete (registerBaseHooks'
+// "__pbFilesManagerDelete__", src/app/filesystem.ts): the record's files
+// directory, when its collection has a file field
+function deleteRecordFiles(app: RecordsApp, record: Record): void | Promise<void> {
+  return app.filesystem.deleteModelFiles({
+    baseFilesPath: () => record.baseFilesPath(),
+    fieldTypes: () => [...record.collection().fields].map((f) => f.type()),
   });
 }
 

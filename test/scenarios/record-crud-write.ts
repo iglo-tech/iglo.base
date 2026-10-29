@@ -7,8 +7,8 @@
 // the stored state every write scenario leaves are `after` checks through
 // the records API and the pb_data files (test/scenarios/record-checks.ts).
 // The three "OnRecord{Delete,Create,Update}Request tx body write check"
-// scenarios only test an upstream hook and are not ported. Uploading and
-// deleting files is M3.2; the rate limit rules are M4.8.
+// scenarios only test an upstream hook and are not ported. The rate limit
+// rules are M4.8.
 
 import { multipart } from "@test/scenarios/multipart";
 import {
@@ -122,10 +122,6 @@ export const recordCrudDelete: Suite = {
         externalAuthsCount("_pb_users_auth_", "4q1xlclmfloku33", 0),
         filesDeleted("_pb_users_auth_", "4q1xlclmfloku33"),
       ),
-      pending: {
-        task: "M3.2",
-        reason: "deleting a record's files is M3.2: the row is deleted and its files stay on disk",
-      },
       expectedStatus: 204,
     },
     {
@@ -181,10 +177,6 @@ export const recordCrudDelete: Suite = {
         filesDeleted("wsmn24bux7wo113", "84nmscqy84lsi1t"),
         filesDeleted("_pb_users_auth_", "oap640cot4yru2s"),
       ),
-      pending: {
-        task: "M3.2",
-        reason: "deleting a record's files is M3.2: the row is deleted and its files stay on disk",
-      },
       expectedStatus: 204,
     },
 
@@ -394,11 +386,6 @@ export const recordCrudCreate: Suite = {
       body: mpCreate1.body,
       headers: { ...mpCreate1.headers, Authorization: superuserToken },
       after: responseRecordStored("demo3"),
-      pending: {
-        task: "M3.2",
-        reason:
-          "storing uploaded files is M3.2: a create or update with new files fails before the row is written",
-      },
       expectedStatus: 200,
       expectedContent: [`"id":"`, `"title":"title_test"`, `"files":["`],
     },
@@ -425,11 +412,6 @@ export const recordCrudCreate: Suite = {
           col.createRule = "@request.body.testPayload = 123";
         }),
       after: responseRecordStored("demo3"),
-      pending: {
-        task: "M3.2",
-        reason:
-          "storing uploaded files is M3.2: a create or update with new files fails before the row is written",
-      },
       expectedStatus: 200,
       expectedContent: [`"id":"`, `"title":"title_test3"`, `"files":["`],
     },
@@ -960,11 +942,6 @@ export const recordCrudUpdate: Suite = {
       body: mpUpdate1.body,
       headers: { ...mpUpdate1.headers, Authorization: superuserToken },
       after: recordHas("demo3", "mk5fmymtx4wsprk", { title: "title_test" }),
-      pending: {
-        task: "M3.2",
-        reason:
-          "storing uploaded files is M3.2: a create or update with new files fails before the row is written",
-      },
       expectedStatus: 200,
       expectedContent: [`"id":"mk5fmymtx4wsprk"`, `"title":"title_test"`, `"files":["`],
     },
@@ -996,11 +973,6 @@ export const recordCrudUpdate: Suite = {
           col.updateRule = "@request.body.testPayload = 123";
         }),
       after: recordHas("demo3", "mk5fmymtx4wsprk", { title: "title_test3" }),
-      pending: {
-        task: "M3.2",
-        reason:
-          "storing uploaded files is M3.2: a create or update with new files fails before the row is written",
-      },
       expectedStatus: 200,
       expectedContent: [
         `"id":"mk5fmymtx4wsprk"`,
