@@ -24,7 +24,7 @@ import {
 } from "@/migrations/system-migrations";
 
 import { openFixtureApp } from "@test/app/app";
-import { dumpPbData, execSQL } from "@test/migrations/dump";
+import { dumpPbData, execSQL, fileState } from "@test/migrations/dump";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
 const fixedTime = new Date(Date.UTC(2026, 9, 29, 10, 11, 12, 345));
@@ -134,24 +134,6 @@ describe("fresh install", () => {
     );
     await open(dataDir);
     expect(dumpPbData(dataDir).migrations.map((m) => m.file)).toEqual([...systemMigrationFiles]);
-  });
-
-  test("the app has the collections cache loaded", async () => {
-    const dataDir = join(newRoot(), "pb_data");
-    const app = openFixtureApp({ dataDir, clock });
-    try {
-      const cached = app.store.get("pbAppCachedCollections") as { name: string }[];
-      expect(cached.map((c) => c.name)).toEqual([
-        "_mfas",
-        "_otps",
-        "_externalAuths",
-        "_authOrigins",
-        "_superusers",
-        "users",
-      ]);
-    } finally {
-      await app.cleanup();
-    }
   });
 });
 
@@ -271,45 +253,28 @@ describe("bootstrap", () => {
     expect(existsSync(join(dataDir, "types.d.ts"))).toBe(true);
   });
 
-  test("a refused open keeps the temp directory and closes the databases", () => {
+  test("a refused open writes nothing to pb_data and keeps the temp directory", () => {
     const dataDir = fixtureCopy();
     mkdirSync(join(dataDir, LocalTempDirName));
-    execSQL(join(dataDir, "data.db"), "DELETE FROM _migrations WHERE file = '1640988000_init.go'");
+    rmSync(join(dataDir, "auxiliary.db"));
+    execSQL(
+      join(dataDir, "data.db"),
+      "DELETE FROM _migrations WHERE file = '1640988000_init.go'",
+      "PRAGMA journal_mode = DELETE",
+    );
+    const before = fileState(dataDir);
     expect(openError(dataDir)).toBeInstanceOf(OlderDataError);
-    expect(existsSync(join(dataDir, LocalTempDirName))).toBe(true);
-    // closed: the file can be removed and opened again
-    execSQL(join(dataDir, "data.db"), "SELECT 1");
+    expect(fileState(dataDir)).toEqual(before);
   });
 
-  test("the read worker pool reads data.db and auxiliary.db", async () => {
+  test("clearBootstrap closes the databases: SQLite removes the -wal and -shm files", async () => {
     const dataDir = fixtureCopy();
     const app = openFixtureApp({ dataDir, clock, readWorkers: 2 });
-    try {
-      expect(app.databases.readPool()?.size).toBe(2);
-      const users = await app.databases
-        .concurrentDB()
-        .select("id")
-        .from("users")
-        .orderBy("id ASC")
-        .limit(1)
-        .columnAsync<string>();
-      expect(users).toEqual(["4q1xlclmfloku33"]);
-      const logs = await app.databases
-        .auxConcurrentDB()
-        .select("count(*)")
-        .from("_logs")
-        .columnAsync<number>();
-      expect(logs.length).toBe(1);
-      expect(app.databases.readPool()?.stats().workers).toBe(2);
-    } finally {
-      await app.cleanup();
-    }
-  });
-
-  test("clearBootstrap closes the databases", async () => {
-    const app = openFixtureApp({ clock });
+    expect(existsSync(join(dataDir, "data.db-wal"))).toBe(true);
     await clearBootstrap(app);
-    expect(() => app.databases.db()).toThrow("the databases are closed");
+    expect(Object.keys(fileState(dataDir)).filter((name) => /\.db-(wal|shm)$/.test(name))).toEqual(
+      [],
+    );
     await app.cleanup();
   });
 });

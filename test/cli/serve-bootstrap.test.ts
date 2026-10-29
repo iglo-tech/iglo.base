@@ -18,6 +18,20 @@ function fixtureCopy(): string {
   return dataDir;
 }
 
+// the refusal as the executable reports it, and that pb_data is unchanged
+// byte for byte: no file created (auxiliary.db, -wal, -shm), none changed
+// (data.db keeps its journal mode)
+async function expectRefusedWithoutWrites(dataDir: string): Promise<void> {
+  const before = fileState(dataDir);
+  const result = await run(["serve", "--dir", dataDir, "--http", "127.0.0.1:0"]);
+  expect(result.exitCode).toBe(1);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toMatch(
+    /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} This pb_data was written by an older PocketBase\. Run PocketBase v0\.41\.0 on it once, then start iglo\.base\.\n$/,
+  );
+  expect(fileState(dataDir)).toEqual(before);
+}
+
 describe("serve bootstrap", () => {
   test("a new pb_data gets the system schema and serves", async () => {
     const dataDir = join(tempDir(), "pb_data");
@@ -61,20 +75,6 @@ describe("serve bootstrap", () => {
     expect(result.exitCode).toBe(0);
     expect(dumpPbData(dataDir)).toEqual(before);
   });
-
-  // the refusal as the executable reports it, and that pb_data is unchanged
-  // byte for byte: no file created (auxiliary.db, -wal, -shm), none changed
-  // (data.db keeps its journal mode)
-  async function expectRefusedWithoutWrites(dataDir: string): Promise<void> {
-    const before = fileState(dataDir);
-    const result = await run(["serve", "--dir", dataDir, "--http", "127.0.0.1:0"]);
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toMatch(
-      /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} This pb_data was written by an older PocketBase\. Run PocketBase v0\.41\.0 on it once, then start iglo\.base\.\n$/,
-    );
-    expect(fileState(dataDir)).toEqual(before);
-  }
 
   test("older data is refused with the documented message and exit code 1, and nothing is written", async () => {
     const dataDir = fixtureCopy();
