@@ -291,6 +291,8 @@ export async function serve(
       hostname,
       port,
       development: false,
+      // no server-wide cap (Bun's default is 128 MiB): the body limit middleware decides
+      maxRequestBodySize: Number.MAX_SAFE_INTEGER,
       fetch: (request, bunServer) => handleRequest(app, mux, request, bunServer.requestIP(request)),
     });
   } catch (err) {
