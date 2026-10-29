@@ -106,3 +106,27 @@ export function fileState(dir: string): Record<string, string> {
   }
   return state;
 }
+
+// runs SQL on a pb_data file in a child process that is killed (SIGKILL)
+// right after the last statement, without closing the database: the state
+// a crashed writer leaves (a hot -journal for an open DELETE-mode
+// transaction, or -wal/-shm with the committed WAL frames)
+export function crashSQL(path: string, ...statements: string[]): void {
+  const script = `
+    const { Database } = require("bun:sqlite");
+    const [path, statements] = JSON.parse(process.argv[1]);
+    const db = new Database(path);
+    for (const sql of statements) db.run(sql);
+    process.kill(process.pid, "SIGKILL");
+  `;
+  const result = Bun.spawnSync(
+    [process.execPath, "-e", script, JSON.stringify([path, statements])],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+  if (result.signalCode !== "SIGKILL") {
+    throw new Error(`the writer was not killed: ${result.stderr.toString()}`);
+  }
+}

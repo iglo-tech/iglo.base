@@ -4,8 +4,8 @@
 // Bootstrap opens pb_data: it creates the data directory, opens data.db and
 // auxiliary.db (with the read worker pool, D8), runs the system migrations
 // check (src/migrations), loads the collections cache and removes the
-// pb_data temp directory. An existing data.db is checked read only
-// first, so older data is refused before any file is created. Not here yet: the logger's `_logs` writes (M5),
+// pb_data temp directory. An existing data.db is checked without
+// writing to pb_data first, so older data is refused before any file is created. Not here yet: the logger's `_logs` writes (M5),
 // the settings load (ReloadSettings, M1.3; upstream's fresh install also
 // writes the default settings row then) and the multi-instance notify
 // watcher (`.notify`).

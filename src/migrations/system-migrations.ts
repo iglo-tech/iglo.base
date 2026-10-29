@@ -16,17 +16,19 @@
 //  3. other `_migrations` rows are kept; `.go` rows newer than the
 //     baseline produce one warning.
 //
-// The check of step 2 first runs on an existing data.db through a
-// read-only connection without pragmas (checkExistingDataDir), before
-// bootstrap creates auxiliary.db or applies the persistent pragmas
-// (journal_mode=WAL), so a refused open writes nothing to pb_data.
+// The check of step 2 first runs on an existing data.db without writing
+// to pb_data (checkExistingDataDir), before bootstrap creates auxiliary.db
+// or applies the persistent pragmas (journal_mode=WAL), so a refused open
+// writes nothing to pb_data. A data.db that cannot be read fails the start
+// with the SQLite error; it is never taken for a fresh install.
 //
 // 1640988000_aux_init.go keeps upstream's ReapplyCondition: when
 // auxiliary.db has no `_logs` table, the table is created again and the
 // row is re-recorded, as upstream does on every start.
 
 import { Database, constants } from "bun:sqlite";
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CollectionTypeAuth, CollectionTypeBase } from "@/collections/collection-model";
@@ -152,17 +154,46 @@ export function runSystemMigrations(app: CollectionsApp): SystemMigrationsResult
 }
 
 // The open step 2 check on an existing data.db, before anything in pb_data
-// is opened for writing: data.db is read through a read-only connection
-// with no pragmas, so neither the file nor its journal mode changes, and
-// no file is created. Throws OlderDataError when the start is refused.
-// A missing data.db is a fresh install and is not checked here.
+// is opened for writing. Throws OlderDataError when the start is refused,
+// and the SQLite error when data.db cannot be inspected. A missing data.db
+// is a fresh install and is not checked here.
+//
+// Without companion files data.db is opened immutable and read only, so
+// SQLite creates no -wal or -shm file next to it. With a -journal, -wal or
+// -shm (a PocketBase is running or was not closed cleanly) even a read-only
+// connection writes: it rewrites or creates -shm, or fails on a hot
+// journal it cannot roll back. Then data.db and its companions are copied
+// into a private temp directory, and a normal connection there rolls back
+// or replays them; pb_data's files are only read.
 export function checkExistingDataDir(dataDir: string): void {
   const dataPath = join(dataDir, "data.db");
   if (!existsSync(dataPath)) {
     return;
   }
 
-  const conn = openCheckConnection(dataPath);
+  const companions = companionSuffixes.filter((suffix) => existsSync(dataPath + suffix));
+  if (companions.length === 0) {
+    const uri = `file:${encodeURI(dataPath).replace(/[?#]/g, encodeURIComponent)}?immutable=1`;
+    checkDataDBFile(uri, constants.SQLITE_OPEN_READONLY | constants.SQLITE_OPEN_URI);
+    return;
+  }
+
+  const copyDir = mkdtempSync(join(tmpdir(), "iglo-base-check-"));
+  try {
+    const copyPath = join(copyDir, "data.db");
+    for (const suffix of ["", ...companions]) {
+      copyFileSync(dataPath + suffix, copyPath + suffix);
+    }
+    checkDataDBFile(copyPath, constants.SQLITE_OPEN_READWRITE);
+  } finally {
+    rmSync(copyDir, { recursive: true, force: true });
+  }
+}
+
+const companionSuffixes: readonly string[] = Object.freeze(["-journal", "-wal", "-shm"]);
+
+function checkDataDBFile(filename: string, flags: number): void {
+  const conn = new Database(filename, flags);
   try {
     if (checkDataDB(newFromDB(conn, "sqlite")) === "older") {
       throw new OlderDataError();
@@ -170,18 +201,6 @@ export function checkExistingDataDir(dataDir: string): void {
   } finally {
     conn.close();
   }
-}
-
-// Without a -wal or hot -journal file the database is opened immutable,
-// so SQLite creates no -wal or -shm file next to it. Otherwise (a
-// PocketBase is running or was not closed cleanly) a plain read-only
-// connection reads the journal too; it creates no database content.
-function openCheckConnection(dataPath: string): Database {
-  if (existsSync(`${dataPath}-wal`) || existsSync(`${dataPath}-journal`)) {
-    return new Database(dataPath, { readonly: true });
-  }
-  const uri = `file:${encodeURI(dataPath).replace(/[?#]/g, encodeURIComponent)}?immutable=1`;
-  return new Database(uri, constants.SQLITE_OPEN_READONLY | constants.SQLITE_OPEN_URI);
 }
 
 type DataDBCheck = "fresh" | "older" | { readonly applied: readonly string[] };

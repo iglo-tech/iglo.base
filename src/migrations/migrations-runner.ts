@@ -12,6 +12,7 @@ import type { Clock } from "@/app/clock";
 import type { Databases } from "@/db/base";
 import type { Builder } from "@/db/dbx/builder";
 import { HashExp, newExp } from "@/db/dbx/expression";
+import { isNoRowsError } from "@/db/dbx/rows";
 
 export const DefaultMigrationsTable = "_migrations";
 
@@ -70,7 +71,10 @@ export function saveRevertedMigration(txApp: Databases, file: string): void {
 }
 
 // hasTable (core/db_table.go) on a builder: whether a table (or view)
-// with the name exists, case insensitive
+// with the name exists, case insensitive. Unlike upstream, which reads
+// any query error as "no table", only an empty result is false; other
+// errors are thrown, so the open check never takes an unreadable data.db
+// for a fresh one.
 export function builderHasTable(db: Builder, tableName: string): boolean {
   try {
     const [exists] = db
@@ -81,7 +85,10 @@ export function builderHasTable(db: Builder, tableName: string): boolean {
       .limit(1)
       .row();
     return typeof exists === "number" && exists > 0;
-  } catch {
-    return false;
+  } catch (err) {
+    if (isNoRowsError(err)) {
+      return false;
+    }
+    throw err;
   }
 }
