@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: M2.4 (worker).
+Active: M2.4 (council round 1).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.4 | worker | `task/M2.4-records-read` | 0 | [Brief](briefs/M2.4.md). Opus worker started 2026-10-29 |
+| M2.4 | council | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 1 | [Brief](briefs/M2.4.md). Worker head `5d9c6f6`: check and test:reference pass locally; CI pending. Council round 1 started at `5d9c6f6` |
 
 ## Done
 
@@ -148,3 +148,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-29 (M1.2 fix round 2): the lead decided the preflight approach: an inspection error is never "table absent" (startup fails, nothing written); when data.db has a -journal, -wal or -shm companion, the preflight inspects a private copy in a temp directory outside pb_data; otherwise the immutable open stays.
 - 2026-10-29 (M1.2 fix round 2): `builderHasTable` now throws on query errors instead of returning false (upstream returns false for any error); a deliberate safety difference at startup only, noted in the code.
 - 2026-10-29 (M2.4 brief): M2.4 takes the `fields` picker hook in `src/server/event.ts` and `url.Values.Encode` in `src/server` (lead-approved shared changes, own commits). The record enrich hooks are not ported; the default enrich runs directly in upstream's order.
+- 2026-10-29 (M2.4 PR): the lead accepted the worker's choices: a port of golang.org/x/net/html in `src/tools/html/` for the excerpt modifier (a port, not a runtime dependency; html5lib suite passes except Go's own skips); additive changes in their own commits (`allowDuplicateNames` decode option, `SearchResult` with Go's field order, the rate-limit check the list throttle needs in M4.8's `rate-limit.ts`, a sleep option on `newRouter`). The 4 rate-limit list scenarios are pending on M4.8; the 2 "tx body write check" scenarios need an upstream hook and are not ported. Carried for M7: under 8–50 concurrent clients the list endpoint tops out near 1,000 req/s on one event loop (p50 about 5× upstream at 50 clients), short of the 1.5× bar in `02-architecture.md`; nested expand re-formats JSON at every level. Carried for M4.8: the limiter map has no cleanup until then.
