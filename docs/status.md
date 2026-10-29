@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M2.4 merged; M3.1 PR #28: round 1 fix in progress.
+M2.4 merged; M3.1 PR #28: round 1 fixed at `21647dd`, CI then council round 2.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.1 | fix | [#28](https://github.com/iglo-tech/iglo.base/pull/28) | 1 | [Brief](briefs/M3.1.md). Worker head `bcc17db`: check (16235 pass) and test:reference (2063 pass) locally; CI green. Round 1 at `bcc17db`: Opus APPROVE, Sol CHANGES (multipart parts with `filename=""` treated as uploads, upstream treats them as values; the body limit drains chunked JSON past the first value, upstream decodes incrementally and returns 200; harness timestamp normalization accepts a changed persisted `created`). Opus fixer started. 103 of 106 upstream scenarios ported (3 hook-only dropped); 12 `pending` (6 M3.2 file storage, 6 M4.8 rate limit); 266 records-write differential cases |
+| M3.1 | fix | [#28](https://github.com/iglo-tech/iglo.base/pull/28) | 1 | [Brief](briefs/M3.1.md). Worker head `bcc17db`: check (16235 pass) and test:reference (2063 pass) locally; CI green. Round 1 at `bcc17db`: Opus APPROVE, Sol CHANGES (multipart parts with `filename=""` treated as uploads, upstream treats them as values; the body limit drains chunked JSON past the first value, upstream decodes incrementally and returns 200; harness timestamp normalization accepts a changed persisted `created`). Fixed by an Opus fixer at `21647dd` (Go multipart value classification; first JSON value decoded incrementally as Go's decoder; timestamps paired per field and record id); check and test:reference (2072) pass locally. Round 2 after CI. Noted: with `Connection: close` Bun closes the socket right after answering while body bytes are unread (Go lingers); treated as transport behavior, not an API difference. 103 of 106 upstream scenarios ported (3 hook-only dropped); 12 `pending` (6 M3.2 file storage, 6 M4.8 rate limit); 266 records-write differential cases |
 
 ## Done
 
