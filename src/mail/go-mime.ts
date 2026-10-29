@@ -1,7 +1,7 @@
 // Upstream: the Go standard library parts the mailer's output depends on:
 // mime/encodedword.go (WordEncoder.Encode), mime/quotedprintable/writer.go,
 // net/mail/message.go (Address.String), net/http/header.go (Header.Set and
-// Write) and net/textproto (CanonicalMIMEHeaderKey, TrimString), Go 1.27.
+// Write) and net/textproto (CanonicalMIMEHeaderKey, TrimString), Go go1.27.2.
 //
 // Go works on the UTF-8 bytes of a string; so do these ports. Their output
 // is ASCII except where Go writes the input bytes through (an address's

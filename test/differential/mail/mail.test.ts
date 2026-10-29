@@ -460,19 +460,82 @@ describe("SMTP auth and failures", () => {
     timeout,
   );
 
-  test(
-    "a refused connection",
-    async () => {
-      const port = await freePort();
-      const { replies } = await both(
-        (url) => patchSettings(url, smtpTo({ smtpPort: port })),
-        testEmail({ template: "verification", email: "to@example.com" }),
-      );
-      expect(replies[0]?.status).toBe(400);
-      expect(replies[1]).toEqual(replies[0] as Reply);
-    },
-    timeout,
-  );
+  for (const [host, tls] of [
+    ["127.0.0.1", false],
+    ["localhost", false],
+    ["localhost", true],
+  ] as const) {
+    test(
+      `a refused connection (${host}, tls ${tls})`,
+      async () => {
+        const port = await freePort();
+        const { replies } = await both(
+          (url) => patchSettings(url, smtpTo({ smtpPort: port }, { tls }, host)),
+          testEmail({ template: "verification", email: "to@example.com" }),
+        );
+        expect(replies[0]?.status).toBe(400);
+        expect(replies[1]).toEqual(replies[0] as Reply);
+      },
+      timeout,
+    );
+  }
+
+  // a relay on another host that offers STARTTLS but cannot start it: the
+  // server's reply is shown, not the missing-TLS error
+  for (const authMethod of ["PLAIN", "LOGIN"]) {
+    test(
+      `STARTTLS offered but refused with 454 (AUTH ${authMethod})`,
+      async () => {
+        const listener = Bun.listen<{ buffer: string }>({
+          hostname: "127.0.0.2",
+          port: 0,
+          socket: {
+            open(socket) {
+              socket.data = { buffer: "" };
+              socket.write("220 test ESMTP\r\n");
+            },
+            data(socket, chunk) {
+              socket.data.buffer += new TextDecoder().decode(chunk);
+              let eol: number;
+              while ((eol = socket.data.buffer.indexOf("\r\n")) >= 0) {
+                const verb = socket.data.buffer.slice(0, eol).split(" ")[0]?.toUpperCase();
+                socket.data.buffer = socket.data.buffer.slice(eol + 2);
+                if (verb === "EHLO") {
+                  socket.write("250-test\r\n250-STARTTLS\r\n250 AUTH PLAIN LOGIN\r\n");
+                } else if (verb === "STARTTLS") {
+                  socket.write("454 4.7.0 TLS not available due to local problem\r\n");
+                } else if (verb === "QUIT") {
+                  socket.write("221 bye\r\n");
+                  socket.end();
+                } else {
+                  socket.write("502 5.5.1 not implemented\r\n");
+                }
+              }
+            },
+          },
+        });
+        try {
+          const { replies } = await both(
+            (url) =>
+              patchSettings(
+                url,
+                smtpTo(
+                  { smtpPort: listener.port },
+                  { username: "mailer", password: "secret", authMethod },
+                  "127.0.0.2",
+                ),
+              ),
+            testEmail({ template: "otp", email: "to@example.com" }),
+          );
+          expect(replies[0]?.status).toBe(400);
+          expect(replies[1]).toEqual(replies[0] as Reply);
+        } finally {
+          listener.stop(true);
+        }
+      },
+      timeout,
+    );
+  }
 
   const invalid: [string, unknown][] = [
     ["empty body", {}],

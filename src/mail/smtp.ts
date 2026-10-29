@@ -150,7 +150,7 @@ export class SMTPClient implements Mailer {
         raw: Buffer.from(yak.buildMime()),
       });
     } catch (err) {
-      throw goError(err, c.host, c.port, requireTLS);
+      throw goError(err, requireTLS);
     } finally {
       transport.close();
     }
@@ -162,23 +162,41 @@ function isLocalhost(name: string): boolean {
 }
 
 // The errors read as Go's where the test email endpoint shows them: a
-// refused connection as the dial error, a server reply as textproto.Error
-// (`<code> "<message>"`), the missing STARTTLS before AUTH as the auth's
-// "unencrypted connection". Other errors keep nodemailer's text.
-function goError(err: unknown, host: string, port: number, requireTLS: boolean): Error {
+// refused connection as the dial error of the first address tried (Go's
+// dialSerial returns the first error; Node reports a host with several
+// addresses as an AggregateError with an empty message), a server reply as
+// textproto.Error (`<code> "<message>"`), the missing STARTTLS before AUTH
+// as the auth's "unencrypted connection". With requireTLS nodemailer sends
+// STARTTLS even when the server does not advertise it, where Go skips it;
+// such a server answers "command unrecognized" (500) or "not implemented"
+// (502), which reads as Go's missing STARTTLS. Any other STARTTLS reply
+// comes from a server that offered it and is shown as Go shows it. Other
+// errors (DNS, TLS handshake, timeouts) keep nodemailer's text.
+function goError(err: unknown, requireTLS: boolean): Error {
   const e = err instanceof Error ? err : new Error(String(err));
-  const { code, response } = e as { code?: string; response?: unknown };
-  if (code === "ESOCKET" && /ECONNREFUSED/.test(e.message)) {
-    const hostPort = host.includes(":") ? `[${host}]:${port}` : `${host}:${port}`;
+  const { code, response, errors } = e as {
+    code?: string;
+    response?: unknown;
+    errors?: unknown[];
+  };
+  // the first dial error: Node's own error ("connect ECONNREFUSED <ip>:<port>")
+  // or, for one address, nodemailer's ESOCKET copy of it with the same text
+  const dialErr = Array.isArray(errors) && errors.length > 0 ? errors[0] : e;
+  const refused =
+    dialErr instanceof Error ? /^connect ECONNREFUSED (.+):(\d+)$/.exec(dialErr.message) : null;
+  if (code === "ESOCKET" && refused) {
+    const [, addr = "", port = ""] = refused;
+    const hostPort = addr.includes(":") ? `[${addr}]:${port}` : `${addr}:${port}`;
     return new Error(`dial tcp ${hostPort}: connect: connection refused`);
   }
-  if (requireTLS && code === "ETLS") {
+  const reply = typeof response === "string" && /^\d{3}[ -]/.test(response) ? response : "";
+  if (requireTLS && code === "ETLS" && /^50[02]/.test(reply)) {
     return new Error("unencrypted connection");
   }
-  if (typeof response === "string" && /^\d{3}[ -]/.test(response)) {
-    const lines = response.split(/\r?\n/).filter((line) => line !== "");
+  if (reply !== "") {
+    const lines = reply.split(/\r?\n/).filter((line) => line !== "");
     return new Error(
-      `${response.slice(0, 3)} ${quote(lines.map((line) => line.slice(4)).join("\n"))}`,
+      `${reply.slice(0, 3)} ${quote(lines.map((line) => line.slice(4)).join("\n"))}`,
     );
   }
   return e;
