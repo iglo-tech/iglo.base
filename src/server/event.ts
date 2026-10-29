@@ -327,12 +327,13 @@ export class Event extends Resolver {
   //     tags, see unmarshalRequestData
   //
   // A dst with an unmarshalJSON method (Go's json.Unmarshaler, e.g. a
-  // Collection) unmarshals the JSON value's text itself, and the
-  // @jsonPayload values of form data; the type then describes only the
-  // `form` tagged fields of the form data.
+  // Collection) gets the JSON value's text. Only the JSON content type is
+  // bound into it here: its form and XML binding depends on its Go struct
+  // and is the caller's (an other content type answers
+  // ErrUnsupportedContentType).
   async bindBody(dst: MapRef): Promise<Error | undefined>;
   async bindBody(dst: Record<string, unknown>, type: StructType): Promise<Error | undefined>;
-  async bindBody(dst: JSONUnmarshaler, type: StructType): Promise<Error | undefined>;
+  async bindBody(dst: JSONUnmarshaler): Promise<Error | undefined>;
   async bindBody(
     dst: MapRef | Record<string, unknown> | JSONUnmarshaler,
     type?: StructType,
@@ -368,6 +369,10 @@ export class Event extends Resolver {
         return undefined;
       }
 
+      if (isJSONUnmarshaler(dst)) {
+        return ErrUnsupportedContentType;
+      }
+
       if (contentType.startsWith("multipart/form-data")) {
         const err = await this.request.parseMultipartForm(DefaultMaxMemory);
         if (err) {
@@ -390,11 +395,7 @@ export class Event extends Resolver {
         if (!type) {
           return new Error("xml: unsupported type: map[string]interface {}");
         }
-        unmarshalXML(
-          await readAll(this.request.body),
-          dst as unknown as Record<string, unknown>,
-          type,
-        );
+        unmarshalXML(await readAll(this.request.body), dst as Record<string, unknown>, type);
         return undefined;
       }
     } catch (err) {
@@ -638,7 +639,7 @@ function isContainerByte(c: number): boolean {
 
 function bindRequestData(
   data: RequestData | undefined,
-  dst: MapRef | Record<string, unknown> | JSONUnmarshaler,
+  dst: MapRef | Record<string, unknown>,
   type: StructType | undefined,
 ): void {
   if (type) {

@@ -236,6 +236,29 @@ export const sessions: Session[] = [
           { name: "body", type: "editor" },
         ],
       }),
+      su(
+        "form-urlencoded",
+        "POST",
+        "/api/collections",
+        "name=form_created&type=base&listRule=&viewRule=id%3D''&indexes=CREATE+INDEX+idx_form+ON+form_created+(id)&system=false",
+        { "content-type": "application/x-www-form-urlencoded" },
+      ),
+      su(
+        "multipart with @jsonPayload",
+        "POST",
+        "/api/collections",
+        '--X\r\nContent-Disposition: form-data; name="name"\r\n\r\nmp_created\r\n' +
+          '--X\r\nContent-Disposition: form-data; name="@jsonPayload"\r\n\r\n' +
+          '{"name":"mp_created","listRule":"","fields":[{"name":"t","type":"text"}]}\r\n--X--\r\n',
+        { "content-type": "multipart/form-data; boundary=X" },
+      ),
+      su(
+        "form-urlencoded update",
+        "PATCH",
+        "/api/collections/form_created",
+        "listRule=&createRule=id%3D''&name=form_renamed",
+        { "content-type": "application/x-www-form-urlencoded" },
+      ),
       get("view the created auth collection", "/api/collections/members"),
       get("list the created collections", "/api/collections?filter=created>'2024-01-01'&sort=name"),
     ],

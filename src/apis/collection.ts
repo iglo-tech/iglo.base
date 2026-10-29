@@ -8,10 +8,10 @@
 //
 // A collection body is bound as upstream binds it: JSON goes through the
 // Collection's own unmarshalJSON (Collection.UnmarshalJSON), as do the
-// @jsonPayload values of form data. Plain form keys bind only the
-// collection's top-level scalar and string list members (collectionForm);
-// the `fields` list and the nested auth options are not read from form
-// keys.
+// @jsonPayload values of form data, after the plain form keys
+// (bindCollectionBody). Of the plain form keys only the collection's
+// top-level members are read (collectionForm); the nested auth option
+// structs ("passwordAuth.enabled", ...) and the `fields` list are not.
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
@@ -46,7 +46,15 @@ import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { errorsAs } from "@/server/error";
 import { encodeValues } from "@/server/request";
-import { pointerTo, sliceOf, structOf } from "@/server/unmarshal-request-data";
+import { DefaultMaxMemory } from "@/server/buffer-with-file";
+import { decodeValue } from "@/server/json-decode";
+import {
+  JSONPayloadKey,
+  pointerTo,
+  sliceOf,
+  structOf,
+  unmarshalRequestData,
+} from "@/server/unmarshal-request-data";
 import { randomStringWithAlphabet } from "@/tools/security/random";
 import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
@@ -104,24 +112,91 @@ function collectionView(e: RequestEvent): HandlerResult {
   return e.json(200, collection);
 }
 
-// the `form` tagged members of Collection that UnmarshalRequestData binds
-// from plain form keys (BaseModel.Id, baseCollection, collectionAuthOptions
-// and collectionViewOptions)
+// the `form` tagged top-level members of Collection, by their Go names
+// (BaseModel.Id, baseCollection, collectionAuthOptions and
+// collectionViewOptions, in struct order), and the Collection properties
+// they are
+const collectionFormMembers: [goName: string, prop: keyof Collection][] = [
+  ["Id", "id"],
+  ["ListRule", "listRule"],
+  ["ViewRule", "viewRule"],
+  ["CreateRule", "createRule"],
+  ["UpdateRule", "updateRule"],
+  ["DeleteRule", "deleteRule"],
+  ["Name", "name"],
+  ["Type", "type"],
+  ["Indexes", "indexes"],
+  ["System", "system"],
+  ["AuthRule", "authRule"],
+  ["ManageRule", "manageRule"],
+  ["ViewQuery", "viewQuery"],
+];
+
 const collectionForm = structOf([
-  { name: "id", type: "string", tags: { form: "id" } },
-  { name: "listRule", type: pointerTo("string"), tags: { form: "listRule" } },
-  { name: "viewRule", type: pointerTo("string"), tags: { form: "viewRule" } },
-  { name: "createRule", type: pointerTo("string"), tags: { form: "createRule" } },
-  { name: "updateRule", type: pointerTo("string"), tags: { form: "updateRule" } },
-  { name: "deleteRule", type: pointerTo("string"), tags: { form: "deleteRule" } },
-  { name: "name", type: "string", tags: { form: "name" } },
-  { name: "type", type: "string", tags: { form: "type" } },
-  { name: "indexes", type: sliceOf("string"), tags: { form: "indexes" } },
-  { name: "system", type: "bool", tags: { form: "system" } },
-  { name: "authRule", type: pointerTo("string"), tags: { form: "authRule" } },
-  { name: "manageRule", type: pointerTo("string"), tags: { form: "manageRule" } },
-  { name: "viewQuery", type: "string", tags: { form: "viewQuery" } },
+  { name: "Id", type: "string", tags: { form: "id" } },
+  { name: "ListRule", type: pointerTo("string"), tags: { form: "listRule" } },
+  { name: "ViewRule", type: pointerTo("string"), tags: { form: "viewRule" } },
+  { name: "CreateRule", type: pointerTo("string"), tags: { form: "createRule" } },
+  { name: "UpdateRule", type: pointerTo("string"), tags: { form: "updateRule" } },
+  { name: "DeleteRule", type: pointerTo("string"), tags: { form: "deleteRule" } },
+  { name: "Name", type: "string", tags: { form: "name" } },
+  { name: "Type", type: "string", tags: { form: "type" } },
+  { name: "Indexes", type: sliceOf("string"), tags: { form: "indexes" } },
+  { name: "System", type: "bool", tags: { form: "system" } },
+  { name: "AuthRule", type: pointerTo("string"), tags: { form: "authRule" } },
+  { name: "ManageRule", type: pointerTo("string"), tags: { form: "manageRule" } },
+  { name: "ViewQuery", type: "string", tags: { form: "viewQuery" } },
 ]);
+
+// e.BindBody(collection): JSON through the collection's unmarshalJSON;
+// form data as router.UnmarshalRequestData binds it into the Collection
+// struct: the form keys (a nil rule pointer is allocated, so an unsent
+// rule becomes ""), then each @jsonPayload value through unmarshalJSON.
+async function bindCollectionBody(
+  e: RequestEvent,
+  collection: Collection,
+): Promise<Error | undefined> {
+  const contentType = e.request.headers.get("content-type") ?? "";
+  const isMultipart = contentType.startsWith("multipart/form-data");
+  if (
+    e.request.contentLength === 0 ||
+    (!isMultipart && !contentType.startsWith("application/x-www-form-urlencoded"))
+  ) {
+    return e.bindBody(collection);
+  }
+
+  const parseErr = isMultipart
+    ? await e.request.parseMultipartForm(DefaultMaxMemory)
+    : await e.request.parseForm();
+  if (parseErr) {
+    return parseErr;
+  }
+
+  try {
+    const data = new Map(e.request.form);
+    const payloads = data.get(JSONPayloadKey) ?? [];
+    data.delete(JSONPayloadKey);
+
+    const holder: Record<string, unknown> = {};
+    for (const [goName, prop] of collectionFormMembers) {
+      holder[goName] = collection[prop];
+    }
+    unmarshalRequestData(data, holder, collectionForm);
+    for (const [goName, prop] of collectionFormMembers) {
+      (collection as unknown as Record<string, unknown>)[prop] = holder[goName];
+    }
+
+    for (const payload of payloads) {
+      // json.Unmarshal checks the value before calling UnmarshalJSON
+      decodeValue(payload);
+      collection.unmarshalJSON(payload);
+    }
+  } catch (err) {
+    return err instanceof Error ? err : new Error(String(err));
+  }
+
+  return undefined;
+}
 
 const factoryExtractType = structOf([
   { name: "Type", type: "string", tags: { form: "type", json: "type" } },
@@ -143,7 +218,7 @@ async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
   const collection = newCollection(factoryExtract.Type, factoryExtract.Name);
 
   // merge the scaffold with the submitted request data
-  const bindErr = await e.bindBody(collection, collectionForm);
+  const bindErr = await bindCollectionBody(e, collection);
   if (bindErr) {
     return e.badRequestError(
       "Failed to load the submitted data due to invalid formatting.",
@@ -175,7 +250,7 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
     return e.notFoundError("", err);
   }
 
-  const bindErr = await e.bindBody(collection, collectionForm);
+  const bindErr = await bindCollectionBody(e, collection);
   if (bindErr) {
     return e.badRequestError(
       "Failed to load the submitted data due to invalid formatting.",
