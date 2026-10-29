@@ -1,0 +1,16 @@
+{
+    "name": "PocketBase Superuser UI",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build"
+    },
+    "dependencies": {
+        "leaflet": "^1.9.4",
+        "pocketbase": "^0.28.1"
+    },
+    "devDependencies": {
+        "vite": "^8.0.0"
+    }
+}
