@@ -308,7 +308,7 @@ function pairGenerated(
       differ(`not both ${format.name}s`);
     } else if (!isGenerated(format, ig.value, at.context)) {
       differ(`generated ${format.name} expected, iglo.base's is in the starting data or request`);
-    } else if (!pairing.pair(format, up.value, ig.value, slot(at))) {
+    } else if (!pairing.pair(format, up.value, ig.value, slotOf(at))) {
       differ(`${format.name}s not paired consistently`);
     }
   } else if (up.kind === "array" && ig.kind === "array") {
@@ -330,10 +330,10 @@ function pairGenerated(
 
 // the key of a value and the id of the upstream object holding it (the
 // record it belongs to), if it has one
-function slot(at: Location): string {
+function slotOf(at: Location): string {
   const parent = at.parents.at(-1);
-  const id = parent?.entries.find(([name]) => name === "id")?.[1];
-  return JSON.stringify([at.path.at(-1), id?.kind === "string" ? id.value : null]);
+  const recordId = parent?.entries.find(([name]) => name === "id")?.[1];
+  return JSON.stringify([at.path.at(-1), recordId?.kind === "string" ? recordId.value : null]);
 }
 
 function isGenerated(format: Format, value: string, context: Context): boolean {
