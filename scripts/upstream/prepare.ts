@@ -31,7 +31,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { parseArgs } from "node:util";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import {
   defaultLayout,
@@ -54,10 +54,11 @@ const { values } = parseArgs({
 
 async function main(): Promise<void> {
   const lockPath = values.lock ? resolve(values.lock) : defaultLockPath;
-  const layout = values.dir ? layoutFor(resolve(values.dir)) : defaultLayout;
-  if (!values.dir) {
-    linkSharedCache(layout.upstreamDir, lockPath);
-  }
+  // the run works in the concrete cache directory, never through the
+  // .upstream symlink, which a run with another lock may repoint meanwhile
+  const layout = values.dir
+    ? layoutFor(resolve(values.dir))
+    : layoutFor(linkSharedCache(defaultLayout.upstreamDir, lockPath));
   const lock = readLock(lockPath);
   const platform = hostPlatform();
 
@@ -81,7 +82,10 @@ async function main(): Promise<void> {
   // this run's staging for unpacking and the source fetch; staging left by a
   // killed run is removed by the next run
   mkdirSync(layout.upstreamDir, { recursive: true });
-  removeStaleStaging(layout.upstreamDir);
+  removeStaleStaging(layout);
+  if (!values.dir) {
+    removeDeadRunFiles(dirname(defaultLayout.upstreamDir), /^\.upstream\.(\d+)$/);
+  }
   const staging = join(layout.upstreamDir, `tmp-${process.pid}`);
   try {
     await prepareSource(
@@ -99,8 +103,9 @@ async function main(): Promise<void> {
   }
 }
 
-// Points the default .upstream at the shared cache directory for this lock.
-function linkSharedCache(upstreamDir: string, lockPath: string): void {
+// Points the default .upstream at the shared cache directory for this lock
+// and returns that directory (or .upstream itself when it is a real one).
+function linkSharedCache(upstreamDir: string, lockPath: string): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(readFileSync(lockPath));
   const cacheRoot =
@@ -113,14 +118,14 @@ function linkSharedCache(upstreamDir: string, lockPath: string): void {
     const stat = lstatSync(upstreamDir);
     if (!stat.isSymbolicLink()) {
       console.log(`.upstream: using the existing directory ${upstreamDir}`);
-      return;
+      return upstreamDir;
     }
     current = readlinkSync(upstreamDir);
   } catch {
     // no .upstream yet
   }
   if (current === target) {
-    return;
+    return target;
   }
   // replaced through a temporary link, so readers never see it missing
   const link = `${upstreamDir}.${process.pid}`;
@@ -128,12 +133,26 @@ function linkSharedCache(upstreamDir: string, lockPath: string): void {
   symlinkSync(target, link);
   renameSync(link, upstreamDir);
   console.log(`.upstream: linked to the shared cache ${target}`);
+  return target;
 }
 
-// Removes tmp-<pid> staging directories whose run is no longer alive.
-function removeStaleStaging(upstreamDir: string): void {
-  for (const name of readdirSync(upstreamDir)) {
-    const match = /^tmp(?:-(\d+))?$/.exec(name);
+// Removes what runs that are no longer alive left behind: tmp-<pid> staging
+// directories, <archive>.<pid>.partial downloads and <tool>.sha256.<pid>
+// stamps.
+function removeStaleStaging(layout: Layout): void {
+  removeDeadRunFiles(layout.upstreamDir, /^tmp(?:-(\d+))?$/);
+  removeDeadRunFiles(layout.archiveDir, /\.(\d+)\.partial$/);
+  removeDeadRunFiles(layout.binDir, /\.sha256\.(\d+)$/);
+}
+
+// Removes the entries of dir whose name matches pattern and whose captured
+// pid is not a live process other than this one (no pid: always stale).
+function removeDeadRunFiles(dir: string, pattern: RegExp): void {
+  if (!existsSync(dir)) {
+    return;
+  }
+  for (const name of readdirSync(dir)) {
+    const match = pattern.exec(name);
     if (!match) {
       continue;
     }
@@ -141,7 +160,7 @@ function removeStaleStaging(upstreamDir: string): void {
     if (pid !== undefined && pid !== process.pid && isAlive(pid)) {
       continue;
     }
-    rmSync(join(upstreamDir, name), { recursive: true, force: true });
+    rmSync(join(dir, name), { recursive: true, force: true });
   }
 }
 
@@ -207,11 +226,7 @@ async function prepareTool(
   const binary = layout.toolPath(tool);
   // the archive hash this binary was unpacked from; a changed lock replaces it
   const stamp = join(layout.binDir, `${tool}.sha256`);
-  if (
-    existsSync(binary) &&
-    existsSync(stamp) &&
-    readFileSync(stamp, "utf8").trim() === entry.sha256
-  ) {
+  if (existsSync(binary) && readStamp(stamp) === entry.sha256) {
     console.log(`${tool}: present`);
     return;
   }
@@ -227,14 +242,24 @@ async function prepareTool(
     }
     chmodSync(extracted, 0o755);
     mkdirSync(layout.binDir, { recursive: true });
-    rmSync(stamp, { force: true });
     renameSync(extracted, binary);
-    // written through a rename, so a concurrent run never reads half a stamp
+    // replaced through a rename, never removed first, so a concurrent run
+    // reads the old stamp, the new one or none, but never half of one
     writeFileSync(`${stamp}.${process.pid}`, `${entry.sha256}\n`);
     renameSync(`${stamp}.${process.pid}`, stamp);
     console.log(`${tool}: ready at ${binary}`);
   } finally {
     rmSync(staging, { recursive: true, force: true });
+  }
+}
+
+// the archive hash in a stamp, or "" when there is none (a missing stamp is a
+// cache miss)
+function readStamp(stamp: string): string {
+  try {
+    return readFileSync(stamp, "utf8").trim();
+  } catch {
+    return "";
   }
 }
 
