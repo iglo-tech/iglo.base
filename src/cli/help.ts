@@ -10,6 +10,8 @@ export interface CommandHelp {
   // the "Use" line after the command path, e.g. "[domain(s)]"
   use?: string;
   short: string;
+  // cobra's Example, shown under "Examples:"
+  example?: string;
   runnable: boolean;
   subcommands: { name: string; short: string }[];
   localFlags: FlagSpec[];
@@ -67,6 +69,9 @@ export function usageText(cmd: CommandHelp): string {
     for (const sub of cmd.subcommands) {
       out += `\n  ${sub.name.padEnd(padding)} ${sub.short}`;
     }
+  }
+  if (cmd.example) {
+    out += `\n\nExamples:\n${cmd.example}`;
   }
   if (cmd.localFlags.length > 0) {
     out += `\n\nFlags:\n${flagUsages(cmd.localFlags)}`;

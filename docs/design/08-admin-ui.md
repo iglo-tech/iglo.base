@@ -25,8 +25,14 @@ Changes to upstream's `ui/` are kept small and listed in `ui/PATCHES.md`, one en
 | Product name, logo, page title and footer: "iglo.base" only, no PocketBase label or link | One product for users ([D17](10-decisions.md#d17-dashboard-branding-iglobase-only)); credit stays in `LICENSE` and the README |
 | Documentation links (`PB_DOCS_URL`): point at iglo.base's documentation | D17; where it lives is an [open question](11-open-questions.md) |
 | Version shown in the footer: the iglo.base version | D17 |
+| Product name in dashboard text ("By default PocketBase uses ...", the installer title, the trusted proxy help): "iglo.base" | D17. The `PocketBase` SDK class in code samples stays |
+| Build: no `dist/`, `embed.go` or `embed_no_ui.go`; `bun.lock` instead of `package-lock.json` (same resolved versions) | Bun is the package manager; the build output is generated and embedded by `scripts/ui/build.ts` |
 
 No other UI changes in v1. In particular, the API preview panels (`src/apiPreview`) stay as they are: they document the same API.
+
+## Build and embedding
+
+`bun run build` runs `scripts/ui/build.ts` first: `bun install --frozen-lockfile` and `vite build` under Bun in `ui/`, with `PB_VERSION` set to the executable's version, then packs `ui/dist` into `dist/ui.pack`. `src/main.ts` imports the pack as an embedded file (`with { type: "file" }`) and passes it to the CLI, so the executable serves the dashboard with no files beside it. Running from source without a build has no dashboard, as upstream's `no_ui` build: the banner shows only the REST API line and the installer prints the `superuser upsert` hint. An unchanged `ui/` (sources, lockfile, version) is not rebuilt.
 
 ## Installer
 
@@ -38,6 +44,9 @@ On `serve`, if `_superusers` has no superuser other than upstream's installer pl
 
 - `/_/` and assets with `Cache-Control: max-age=1209600, stale-while-revalidate=86400` outside `--dev`, gzip, and upstream's dashboard `Content-Security-Policy`.
 - `X-Frame-Options` and `Cross-Origin-Opener-Policy` as upstream.
+- `/_/{path...}` is upstream's `Static(ui, false)`: directory and `index.html` redirects, 404 JSON for missing files (no index fallback), ranges and preconditions of `http.ServeContent`. The root `/_/` has no `Cache-Control`; every other path, the 404s included, has it outside `--dev`.
+- `/_/extensions.js` is an empty `text/javascript` response with the same headers; `/_/extensions/{name}/...` is the dashboard's 404.
+- `test/ui/` checks these through the executable and `test/differential/ui/` against upstream's binary. `Vary: Origin` (CORS) comes with M5.7.
 
 ## Verification
 

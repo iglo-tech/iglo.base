@@ -22,6 +22,8 @@ import { defaultLayout, requireTool, type Layout } from "@test/support/reference
 export interface UpstreamServer {
   url: string;
   dataDir: string;
+  // the combined standard output and error so far
+  output(): string;
   stop(): Promise<void>;
 }
 
@@ -75,6 +77,7 @@ export async function startUpstream(
   return {
     url,
     dataDir,
+    output: () => child.output(),
     async stop() {
       try {
         await child.stop();

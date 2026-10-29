@@ -1,17 +1,20 @@
-// Upstream: apis/serve.go (the start banner and the http/https listener
-// address handling only).
+// Upstream: apis/serve.go (the start banner, the dashboard routes, the
+// installer start and the http/https listener address handling).
 //
-// Builds the router (@/apis/base) for the app and serves it with Bun.serve.
-// The app is bootstrapped before (src/app/bootstrap.ts, called by
-// src/cli/serve.ts). Not ported yet: CORS, gzip and trusted
-// proxies (M5.7), the dashboard (M6.1), the installer (M6.2), automatic
-// HTTPS (M6.3).
+// Builds the router (@/apis/base) for the app, adds the dashboard routes
+// when the dashboard is embedded (@/apis/serve-ui) and serves it with
+// Bun.serve. The app is bootstrapped before (src/app/bootstrap.ts, called by
+// src/cli/serve.ts). Not ported yet: CORS and trusted proxies (M5.7),
+// automatic HTTPS (M6.3).
 
 import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 
 import { newRouter } from "@/apis/base";
+import { loadInstaller } from "@/apis/installer";
+import { bindDashboard } from "@/apis/serve-ui";
+import type { StaticFS } from "@/apis/ui-pack";
 import type { App } from "@/app/app";
 import { unescapeBytes } from "@/server/mux";
 import { HttpRequest } from "@/server/request";
@@ -36,6 +39,13 @@ export interface ServeConfig {
   // CORS allowed origins
   allowedOrigins: string[];
   showStartBanner: boolean;
+  // the embedded dashboard build; undefined in a build without it (upstream's
+  // no_ui tag)
+  ui: StaticFS | undefined;
+  // the installer's "superuser upsert" hint command (os.Args[0])
+  executablePath: string;
+  // opens the installer URL in a browser when possible
+  launchURL(url: string): void;
 }
 
 function pad(n: number): string {
@@ -258,10 +268,13 @@ export async function handleRequest(
   });
 }
 
-function startBanner(out: Output, baseURL: string): void {
+function startBanner(out: Output, baseURL: string, hasDashboard: boolean): void {
   const bold = (text: string): string => (out.color ? `\x1b[1;32m${text}\x1b[0m` : text);
   const cyan = (text: string): string => (out.color ? `\x1b[36m${text}\x1b[0m` : text);
   out.stdout(bold(`${logTime(out.now())} Server started at ${cyan(baseURL)}\n`));
+  if (hasDashboard) {
+    out.stdout(`> Dashboard: ${cyan(`${baseURL}/_/`)}\n`);
+  }
   out.stdout(`> REST API:  ${cyan(`${baseURL}/api/`)}\n`);
 }
 
@@ -278,7 +291,11 @@ export async function serve(
     );
   }
 
-  const mux = newRouter(app).buildMux();
+  const router = newRouter(app);
+  if (config.ui) {
+    bindDashboard(router, config.ui);
+  }
+  const mux = router.buildMux();
 
   const mainAddr = config.httpAddr;
   const parsed = parseListenAddr(mainAddr === "" ? ":http" : mainAddr);
@@ -302,8 +319,22 @@ export async function serve(
     throw err;
   }
 
+  const baseURL = `http://${serverAddrToHost(mainAddr)}`;
+
   if (config.showStartBanner) {
-    startBanner(out, `http://${serverAddrToHost(mainAddr)}`);
+    startBanner(out, baseURL, config.ui !== undefined);
+  }
+
+  try {
+    await loadInstaller(app, baseURL, {
+      hasDashboard: config.ui !== undefined,
+      executablePath: config.executablePath,
+      launchURL: config.launchURL,
+      stdout: out.stdout,
+      color: out.color,
+    });
+  } catch (err) {
+    app.logger.error("Failed to initialize installer", err);
   }
 
   if (!shutdown.aborted) {

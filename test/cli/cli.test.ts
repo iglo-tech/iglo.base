@@ -253,11 +253,13 @@ describe("serve command", () => {
 
   test("prints the start banner and exits cleanly on SIGTERM", async () => {
     const server = await startServer([], join(tempDir(), "pb_data"));
+    // a fresh pb_data: the installer prints its link after the banner
+    await server.waitForOutput("superuser upsert EMAIL PASS)");
     const result = await server.stop();
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toMatch(
       new RegExp(
-        `^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} Server started at ${server.url}\\n> REST API:  ${server.url}/api/\\n$`,
+        `^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} Server started at ${server.url}\\n> Dashboard: ${server.url}/_/\\n> REST API:  ${server.url}/api/\\n\\n\\(!\\) Launch the URL below`,
       ),
     );
     expect(result.stderr).toBe("");

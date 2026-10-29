@@ -8,7 +8,7 @@
   "env": {
     "builtin": true
   },
-  "ignorePatterns": ["dist/**"],
+  "ignorePatterns": ["dist/**", "ui/**"],
   "rules": {
     "no-restricted-imports": [
       "error",
