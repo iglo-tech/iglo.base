@@ -3,8 +3,11 @@
 // Event is the base route handler event, extended by the app's
 // RequestEvent (@/app/event-request).
 //
+// JSON writes JSONMarshaler values (records, search results) and the
+// output of the "fields" picker with the Go JSON port; other values are
+// plain objects that stand for Go structs, written in their member order.
+//
 // Not ported yet:
-//   - the JSON "fields" picker (tools/picker, M2.4);
 //   - FindUploadedFiles (filesystem.File, M3.2) and FileFS (static files, M5.7);
 //   - XML responses and SetCookie: no upstream endpoint uses them.
 
@@ -31,6 +34,8 @@ import {
   type StructType,
 } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
+import { InvalidModifierDataError, pick } from "@/tools/picker/pick";
+import { isJSONMarshaler, marshal } from "@/tools/types/go-json";
 
 export const ErrUnsupportedContentType = newBadRequestError("Unsupported Content-Type", undefined);
 export const ErrInvalidRedirectStatusCode = newInternalServerError(
@@ -42,6 +47,7 @@ export const ErrFileNotFound = newNotFoundError("File not found", undefined);
 export const IndexPage = "index.html";
 
 const headerContentType = "Content-Type";
+const jsonFieldsParam = "fields";
 
 export class Event extends Resolver {
   response: ResponseWriter;
@@ -137,10 +143,48 @@ export class Event extends Resolver {
 
   // JSON writes a JSON response.
   json(status: number, data: unknown): Error | undefined {
-    // the "fields" query parameter picker lands with tools/picker (M2.4)
+    let picked = false;
+
+    // try to pick only the requested fields (currently allowed only for "success" responses)
+    const rawFields = this.request.query().get(jsonFieldsParam)?.[0] ?? "";
+    if (rawFields !== "" && status >= 200 && status <= 299) {
+      try {
+        data = pick(data, rawFields);
+        picked = true;
+      } catch (err) {
+        if (!(err instanceof InvalidModifierDataError)) {
+          return err instanceof Error ? err : new Error(String(err));
+        }
+        // @todo ignore for now modifier data errors to avoid introducing
+        // breaking changes but once the router is merged with core consider
+        // at least logging for dev purposes
+      }
+    }
+
+    let body: string;
+    try {
+      if (picked) {
+        body = marshal(data, {
+          // for compliance with old data (and slightly better performance)
+          allowDuplicateNames: true,
+          // preserve the old jsonv1 behavior in case of invalid data
+          allowInvalidUTF8: true,
+        });
+      } else if (isJSONMarshaler(data)) {
+        // written as it is: the marshalers here (records, search results)
+        // use the Go JSON port with the same options, so Go's reformatting
+        // of a marshaler's output would not change it
+        body = data.marshalJSON();
+      } else {
+        body = JSON.stringify(data) ?? "null";
+      }
+    } catch (err) {
+      return err instanceof Error ? err : new Error(String(err));
+    }
+
     this.#setResponseHeaderIfEmpty(headerContentType, "application/json");
     this.response.writeHeader(status);
-    return this.response.write(JSON.stringify(data) ?? "null");
+    return this.response.write(body);
   }
 
   // Stream streams the specified reader into the response.
