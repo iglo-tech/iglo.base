@@ -23,8 +23,8 @@ const userToken =
 
 let testApp: TestApp;
 
-beforeAll(() => {
-  testApp = openFixtureApp({ clock });
+beforeAll(async () => {
+  testApp = await openFixtureApp({ clock });
 });
 
 afterAll(() => testApp.cleanup());

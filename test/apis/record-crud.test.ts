@@ -21,9 +21,9 @@ import { serveTest } from "@test/support/router";
 let now = new Date("2030-01-01T00:00:00Z");
 let app: TestApp;
 
-beforeAll(() => {
+beforeAll(async () => {
   // read through a read worker pool, as `serve` does
-  app = openFixtureApp({ clock: { now: () => now }, readWorkers: 2 });
+  app = await openFixtureApp({ clock: { now: () => now }, readWorkers: 2 });
   const demo2 = findCollectionByNameOrId(app, "demo2");
   demo2.listRule = "title != ''";
   saveCollection(app, demo2);

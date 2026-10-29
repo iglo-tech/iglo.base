@@ -32,6 +32,8 @@ export interface CliContext {
   out: Output;
   // aborted on SIGINT or SIGTERM
   shutdown: AbortSignal;
+  // os.Getenv ("" when unset); an empty environment unless set
+  getenv?: (name: string) => string;
 }
 
 // The persistent flags shared by every command.

@@ -3,11 +3,13 @@
 //
 // Bootstrap opens pb_data: it creates the data directory, opens data.db and
 // auxiliary.db (with the read worker pool, D8), runs the system migrations
-// check (src/migrations), loads the collections cache and removes the
-// pb_data temp directory. An existing data.db is checked without
-// writing to pb_data first, so older data is refused before any file is created. Not here yet: the logger's `_logs` writes (M5),
-// the settings load (ReloadSettings, M1.3; upstream's fresh install also
-// writes the default settings row then) and the multi-instance notify
+// check (src/migrations), loads the collections cache, loads the settings
+// (ReloadSettings, src/settings; a pb_data without a settings row gets the
+// default settings written, as upstream's fresh install does) and removes
+// the pb_data temp directory. An existing data.db is checked without
+// writing to pb_data first, so older data is refused before any file is
+// created. Async because the settings may be encrypted (Web Crypto). Not
+// here yet: the logger's `_logs` writes (M5) and the multi-instance notify
 // watcher (`.notify`).
 //
 // ClearBootstrap is clearBootstrap: it closes the databases. On a failed
@@ -18,6 +20,7 @@ import { join } from "node:path";
 
 import { type App, type AppConfig, newApp } from "@/app/app";
 import { loadCollectionsCache } from "@/collections/collection-save";
+import { reloadSettings } from "@/settings/settings-query";
 import { Databases, defaultReadWorkers } from "@/db/base";
 import { checkExistingDataDir, runSystemMigrations } from "@/migrations/system-migrations";
 import { Store } from "@/tools/store/store";
@@ -36,7 +39,7 @@ export interface BootstrapConfig extends Omit<AppConfig, "databases" | "store"> 
 
 // Bootstrap initializes the application
 // (aka. create data dir, open db connections, load settings, etc.).
-export function bootstrap(config: BootstrapConfig): App {
+export async function bootstrap(config: BootstrapConfig): Promise<App> {
   // refuse older data before anything in pb_data is created or changed
   // (03-data-compatibility.md: the refusal writes nothing)
   checkExistingDataDir(config.dataDir);
@@ -60,6 +63,8 @@ export function bootstrap(config: BootstrapConfig): App {
     logger: config.logger,
     databases,
     store: new Store<string, unknown>(),
+    settings: config.settings,
+    getenv: config.getenv,
   });
 
   try {
@@ -69,6 +74,8 @@ export function bootstrap(config: BootstrapConfig): App {
     }
 
     loadCollectionsCache(app);
+
+    await reloadSettings(app);
   } catch (err) {
     try {
       databases.close();

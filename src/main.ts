@@ -22,6 +22,7 @@ const exitCode = await runCli({
     color: process.stdout.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb",
   },
   shutdown: shutdown.signal,
+  getenv: (name) => process.env[name] ?? "",
 });
 
 process.exit(exitCode);

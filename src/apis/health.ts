@@ -1,9 +1,7 @@
 // Upstream: apis/health.go
 //
-// possibleProxyHeader checks upstream's common proxy headers; the
-// configured trusted proxy headers (settings.trustedProxy.headers), which
-// upstream checks first, are added with the settings (M1.3). realIP is
-// RemoteIP until then (src/app/event-request.ts).
+// realIP is RemoteIP until the trusted proxy settings are applied to it
+// (M5.7, src/app/event-request.ts).
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
@@ -33,14 +31,14 @@ function healthCheck(e: RequestEvent): HandlerResult {
     // (usually used in the dashboard to remind superusers in case deployed behind reverse-proxy)
     let possibleProxyHeader = "";
     const headersToCheck = [
-      // the settings' trusted proxy headers come first (M1.3)
+      ...(e.app.settings.TrustedProxy.Headers ?? []),
       // common proxy headers
       "CF-Connecting-IP",
       "Fly-Client-IP",
       "X-Forwarded-For",
     ];
     for (const header of headersToCheck) {
-      if ((e.request.headers.get(header) ?? "") !== "") {
+      if (headerValue(e, header) !== "") {
         possibleProxyHeader = header;
         break;
       }
@@ -53,4 +51,14 @@ function healthCheck(e: RequestEvent): HandlerResult {
 
   // same key order as upstream's struct: message, code, data
   return e.json(200, { message: "API is healthy.", code: 200, data });
+}
+
+// Header.Get: "" for a missing header, and for a configured name that is
+// not a valid header name (which Go never finds and Headers.get rejects)
+function headerValue(e: RequestEvent, name: string): string {
+  try {
+    return e.request.headers.get(name) ?? "";
+  } catch {
+    return "";
+  }
 }

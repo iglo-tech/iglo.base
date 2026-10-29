@@ -9,14 +9,15 @@
 //     which must have upstream's formats. The one schema difference is
 //     `sqlite_stat4`, which upstream's SQLite build creates on PRAGMA
 //     optimize and Bun's (no SQLITE_ENABLE_STAT4) cannot
-//     (03-data-compatibility.md, "SQLite settings"). Upstream also writes
-//     its default settings row; iglo.base's settings load is M1.3.
+//     (03-data-compatibility.md, "SQLite settings"). Both write the
+//     default settings row, with the same value bytes (a BLOB).
 //   - upstream started on iglo.base's fresh pb_data finds nothing pending:
 //     no new `_migrations` rows, no schema or `_collections` change, and
 //     it serves the collections.
 //   - iglo.base started on upstream's fresh pb_data writes nothing.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -114,9 +115,19 @@ test("`_collections` rows equal upstream's but the generated values", () => {
   expect(users(upstreamFresh)?.updated).not.toBe(users(upstreamFresh)?.created);
 });
 
-test("the settings row is upstream's only `_params` row (M1.3 writes it)", () => {
+test("the default settings row is the only `_params` row, with upstream's value", () => {
   expect(upstreamFresh.params).toEqual([{ id: "settings" }]);
-  expect(igloFresh.params).toEqual([]);
+  expect(igloFresh.params).toEqual([{ id: "settings" }]);
+
+  const upstreamRow = readSettingsRow(upstreamDir);
+  const igloRow = readSettingsRow(igloDir);
+  expect(igloRow.type).toBe("blob");
+  expect(upstreamRow.type).toBe("blob");
+  expect(new TextDecoder().decode(igloRow.value)).toBe(new TextDecoder().decode(upstreamRow.value));
+  for (const row of [upstreamRow, igloRow]) {
+    expect(row.created).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z$/);
+    expect(row.updated).toBe(row.created);
+  }
 });
 
 test(
@@ -168,3 +179,23 @@ test(
   },
   hookTimeout,
 );
+
+// the stored settings row of a pb_data
+function readSettingsRow(dir: string): {
+  type: string;
+  value: Uint8Array;
+  created: string;
+  updated: string;
+} {
+  const db = new Database(join(dir, "data.db"), { readonly: true });
+  try {
+    return db.query("SELECT typeof(value) AS type, value, created, updated FROM _params").get() as {
+      type: string;
+      value: Uint8Array;
+      created: string;
+      updated: string;
+    };
+  } finally {
+    db.close();
+  }
+}

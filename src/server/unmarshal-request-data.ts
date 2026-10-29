@@ -6,8 +6,8 @@
 // types, so a struct is described by a StructType: its fields in declaration
 // order, with their Go names (also the property set on the destination
 // object), types and tags. An embedded struct is stored under its type name,
-// as Go lays it out. Integers are stored as numbers (int64 and uint64
-// values beyond 2^53 lose precision).
+// as Go lays it out. Integers are stored as GoInt values (numbers, or the
+// exact bigint beyond 2^53).
 
 import {
   decodeValue,
@@ -18,6 +18,7 @@ import {
   toAny,
   type JsonValue,
 } from "@/server/json-decode";
+import { goInt } from "@/tools/types/go-json";
 
 export type Kind =
   | "bool"
@@ -326,13 +327,13 @@ function regularValue(kind: Kind, value: string): unknown {
     case "int32":
     case "int64":
       // reflect.Value.SetInt truncates to the field's size
-      return Number(BigInt.asIntN(intBits(kind), parseInt64(value === "" ? "0" : value)));
+      return goInt(BigInt.asIntN(intBits(kind), parseInt64(value === "" ? "0" : value)));
     case "uint":
     case "uint8":
     case "uint16":
     case "uint32":
     case "uint64":
-      return Number(BigInt.asUintN(intBits(kind), parseUint64(value === "" ? "0" : value)));
+      return goInt(BigInt.asUintN(intBits(kind), parseUint64(value === "" ? "0" : value)));
     case "float32":
       return Math.fround(parseGoFloat(value === "" ? "0" : value, 64));
     case "float64":
@@ -878,7 +879,7 @@ function jsonFieldValue(
         if (n < min || n > max) {
           throw cannot(value, type);
         }
-        return Number(n);
+        return goInt(n);
       }
     }
   }
