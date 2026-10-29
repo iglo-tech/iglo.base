@@ -167,7 +167,25 @@ const atGeneratedKey: Rule = (_upstream, at) => {
   return typeof key === "string" ? generatedKeys.get(key) : undefined;
 };
 
-export const rules: Rule[] = [atGeneratedKey];
+// apis/record_auth_methods.go: a provider's authURL (and its deprecated
+// copy authUrl) carries the generated state and PKCE code challenge as
+// query values. The URL is a generated value whose format is upstream's
+// URL with exactly those two values left open, so everything else in it
+// (the provider endpoint, client_id, scope, the parameter order) must
+// match byte for byte.
+const authMethodsURL: Rule = (upstream, at) => {
+  const key = at.path.at(-1);
+  if ((key !== "authURL" && key !== "authUrl") || upstream.kind !== "string") {
+    return undefined;
+  }
+  const source = upstream.value
+    .replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&")
+    .replace(/((?:\\\?|&)state=)[A-Za-z0-9]{30}(?=&|$)/, "$1[A-Za-z0-9]{30}")
+    .replace(/((?:\\\?|&)code_challenge=)[A-Za-z0-9_-]{43}(?=&|$)/, "$1[A-Za-z0-9_-]{43}");
+  return { name: "authURL", pattern: new RegExp(`^${source}$`) };
+};
+
+export const rules: Rule[] = [atGeneratedKey, authMethodsURL];
 
 // Whether upstream writes the object's members in a random order.
 export type OrderRule = (object: JsonNode, at: Location) => boolean;
