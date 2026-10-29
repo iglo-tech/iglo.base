@@ -837,8 +837,9 @@ function driverValues(data: Params): Params {
 }
 
 // the driver.Valuer of upstream's typed values; anything else is bound as
-// it is
-function driverValue(key: string, value: unknown): unknown {
+// it is. Exported for the record create rule check (src/apis/record-crud.ts),
+// which binds a record's dbExport() as query parameters.
+export function driverValue(key: string, value: unknown): unknown {
   if (value instanceof DateTime || value instanceof GeoPoint) {
     return value.value();
   }
