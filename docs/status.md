@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: M1.2 (council round 1).
+Active: M1.2 (fix round 1).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.2 | council | [#26](https://github.com/iglo-tech/iglo.base/pull/26) | 1 | [Brief](briefs/M1.2.md). Worker head `51f083d`: check and test:reference pass locally; CI pending. Council round 1 started at `51f083d` |
+| M1.2 | fix | [#26](https://github.com/iglo-tech/iglo.base/pull/26) | 1 | [Brief](briefs/M1.2.md). Round 1 at `51f083d` (CI green): both CHANGES. A refused open writes to pb_data (creates `auxiliary.db`, switches data.db to WAL) before the check refuses; Sol also: tests read private store keys and pool statistics. Opus fixer started |
 
 ## Done
 
