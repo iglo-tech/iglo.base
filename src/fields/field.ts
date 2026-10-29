@@ -20,12 +20,12 @@
 // Go's (value, error) results are kept as they are where a caller may use
 // both (prepareValue returns [value, error]); validation results are the
 // error or null. Go's context.Context arguments are left out: no simple
-// field uses them. Intercept may be async, because the file field (M3.2)
-// uploads and deletes files around the record action (an error then
-// rejects), but it stays synchronous when it does no I/O and its
-// actionFunc is synchronous: the record save chain (src/records) runs the
-// interceptors inside synchronous write transactions (D8) when a delete
-// cascades or a superuser is deleted.
+// field uses them. Intercept may be async (an error then rejects), but it
+// must stay synchronous when its actionFunc is synchronous: the record save
+// chain (src/records) runs the interceptors inside synchronous write
+// transactions (D8) when a delete cascades or a superuser is deleted (and
+// for the batch API). The file field uploads and deletes files with the
+// synchronous storage calls of src/tools/filesystem.
 //
 // Not ported: the Fields map (Go's registry that init() functions fill)
 // lives in src/fields/fields.ts as a fixed table of upstream's types, so

@@ -86,7 +86,7 @@ export const DefaultFileFieldMaxSize = 5 * 2 ** 20;
 const looseFilenameRegex = mustCompile(String.raw`^[^\./\\][^/\\]+$`);
 
 // the record keys of the files to delete after a save and of the files
-// uploaded by it (used by Intercept, M3.2)
+// uploaded by it (used by Intercept)
 export const deletedFilesPrefix = internalCustomFieldKeyPrefix + "_deletedFilesPrefix_";
 export const uploadedFilesPrefix = internalCustomFieldKeyPrefix + "_uploadedFilesPrefix_";
 

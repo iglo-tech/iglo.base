@@ -562,7 +562,7 @@ async function submit(
     return null;
   }
 
-  // upstream's storage (M3.2) keeps the first 255 bytes of the original
+  // upstream's storage keeps the first 255 bytes of the original
   // name as blob metadata, which must be valid UTF-8: the upload fails
   // after the validation and upstream answers with a plain 400
   if (uploads(record).some((f) => !validUTF8(textToBytes(f.originalName).subarray(0, 255)))) {

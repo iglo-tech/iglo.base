@@ -7,8 +7,8 @@
 // output of the "fields" picker with the Go JSON port; other values are
 // plain objects that stand for Go structs, written in their member order.
 //
-// FindUploadedFiles returns the parts as filesystem.File values (M3.1);
-// storing them is M3.2.
+// FindUploadedFiles returns the parts as filesystem.File values (M3.1),
+// read from memory or from the request's multipart temporary file.
 //
 // Not ported yet:
 //   - FileFS (static files, M5.7);

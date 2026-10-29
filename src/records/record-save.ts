@@ -51,8 +51,8 @@
 //	          then cascadeRecordDelete
 //	  then interceptors "afterDeleteError" / "afterDelete", as for saves
 //
-// Interceptors: a field's Intercept may be async (the file field, M3.2),
-// so the chain is written as generators that yield what may be a promise.
+// Interceptors: a field's Intercept may be async (none is now: the file
+// field's storage calls are synchronous), so the chain is written as generators that yield what may be a promise.
 // run() drives a chain synchronously until something actually returns a
 // promise and goes on asynchronously from there; runSync() is for the
 // parts inside a write transaction, which must stay synchronous (D8): it
