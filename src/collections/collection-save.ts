@@ -20,7 +20,9 @@
 //
 //	deleteCollection (app.Delete)
 //	  the primary key check, then onCollectionDeleteExecute around the row
-//	  delete; on error the cache reload as above
+//	  delete, with the auth ref cleanups (the recordRefHooks of
+//	  src/records/record-auth-refs.ts) between them; on error the cache
+//	  reload as above
 //
 // Errors are thrown (Go's returned error). The bootstrap cache load
 // (OnBootstrap: "failed to load collections cache: ...") is
@@ -49,6 +51,7 @@ import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { newFieldsList } from "@/collections/fields-list";
 import { createViewFields, saveView, wrapError } from "@/collections/view";
 import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
+import { refsOnCollectionDeleteExecute } from "@/records/record-auth-refs";
 import type { Params } from "@/db/dbx/query";
 import type { Model } from "@/db/model";
 import { deleteTable, deleteView } from "@/db/table";
@@ -86,7 +89,9 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
     }
 
     onCollectionDeleteExecute(app, collection, (txApp) => {
-      withDriverErrors(() => deleteModel(txApp.databases, collectionRow(collection)));
+      refsOnCollectionDeleteExecute(txApp, collection, (refApp) => {
+        withDriverErrors(() => deleteModel(refApp.databases, collectionRow(collection)));
+      });
     });
   } catch (err) {
     onErrorReloadCachedCollections(app);
