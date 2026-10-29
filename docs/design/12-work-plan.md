@@ -212,4 +212,6 @@ M4 and M5 run in parallel once M3.1 is merged; M6.1 can start any time after M0.
 M7 last
 ```
 
-The critical path is M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.5 → M1.5a → M1.5b → M1.6 → M1.6a → M1.7 → M1.8a → M1.8b → M1.8c → M2.2 → M2.3 → M1.2 → M2.4 → M3.1. Everything else is scheduled around it.
+**Usable first (lead decision, 2026-10-29).** With the critical path through M3.1 merged, the next tasks follow what a real app needs to run on iglo.base, as far as their dependencies allow: M1.3 (settings, with the Settings API) → M4.1 (password auth) → M0.8 → M3.2 (file storage) → M2.5 → M3.4 (collections API) → M6.1 → M6.2 (dashboard and installer) → M4.4 (mail) → M0.7 → M5.2 (file serving) → M5.1 (realtime), then the rest in milestone order.
+
+The critical path was M0 → M1.1 → M1.1a → M1.1b → M1.1c → M1.4 → M1.5 → M1.5a → M1.5b → M1.6 → M1.6a → M1.7 → M1.8a → M1.8b → M1.8c → M2.2 → M2.3 → M1.2 → M2.4 → M3.1. Everything else is scheduled around it.
