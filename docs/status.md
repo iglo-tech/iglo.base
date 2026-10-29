@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M6.1 (with M6.2) merged; next: M4.4 (mail).
+M6.1 (with M6.2) merged; M4.4 (mail, with `mails/`) active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M4.4 | worker | `task/M4.4-mailer` | 0 | [brief](briefs/M4.4.md) |
 
 ## Done
 
@@ -139,6 +140,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-29 (M4.1 brief): `core/mfa_*` and `checkMFA` moved from M4.2 to M4.1, so MFA-enabled collections are never answered with a token after one factor.
 - 2026-10-29 (M0.8): [D27](design/10-decisions.md) records the spike follow-ups for M3.2, M5.1 and M7.1.
 - 2026-10-29 (plan change, before M2.5): M3.4 (collections write, import, truncate, view dry run) is folded into M2.5; both port `apis/collection.go` and run back to back in the usable-first order.
+- 2026-10-29 (plan change, before M4.4): `mails/` moves from M4.3 to M4.4; the test email form sends all five templates and the login alert needs it. M4.3 keeps the endpoints.
 - 2026-10-29 (plan change, before M6.1): M6.2 (installer and `superuser` commands) is folded into M6.1; a fresh install needs the installer to reach the dashboard.
 
 ## Paused until
