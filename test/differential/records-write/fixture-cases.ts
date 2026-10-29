@@ -14,13 +14,22 @@ const demo2 = "/api/collections/demo2/records";
 const demo5 = "/api/collections/demo5/records";
 
 // a multipart body of one part per [name, content], each with an empty
-// filename parameter: Go's ReadForm keeps such parts as form values
+// filename parameter (Go's ReadForm keeps such parts as form values),
+// after plain value parts
 const emptyFilenameBoundary = "4f6a0e9c2d7b1a5e8c3f6d9b2a7e1c4f8d3b6a9e2c5f8b1d4a7e0c3f6b9d";
-function emptyFilenameParts(parts: [string, string][]): {
+function emptyFilenameParts(
+  parts: [string, string][],
+  values: Record<string, string> = {},
+): {
   body: string;
   headers: Record<string, string>;
 } {
   let body = "";
+  for (const [name, content] of Object.entries(values)) {
+    body +=
+      `--${emptyFilenameBoundary}\r\n` +
+      `Content-Disposition: form-data; name="${name}"\r\n\r\n${content}\r\n`;
+  }
   for (const [name, content] of parts) {
     body +=
       `--${emptyFilenameBoundary}\r\n` +
@@ -272,14 +281,14 @@ export const fixtureCases: WriteCase[] = [
     as: "superuser",
     method: "POST",
     url: demo1,
-    ...emptyFilenameParts([["file_one", ""]]),
+    ...emptyFilenameParts([["file_one", ""]], { id: "wfixdemo1000002" }),
   },
   {
     name: "demo2: superuser multipart title with an empty filename",
     as: "superuser",
     method: "POST",
     url: demo2,
-    ...emptyFilenameParts([["title", "hello"]]),
+    ...emptyFilenameParts([["title", "hello"]], { id: "wfixdemo2000010" }),
   },
   {
     name: "demo1: superuser multipart update with empty-filename text and file_many",
@@ -299,7 +308,7 @@ export const fixtureCases: WriteCase[] = [
     method: "POST",
     url: demo2,
     chunked: [
-      [json({ title: "largechunked" }), 1],
+      [json({ id: "wfixdemo2000011", title: "largechunked" }), 1],
       [" ", (32 << 20) + 1],
     ],
   },
@@ -309,8 +318,8 @@ export const fixtureCases: WriteCase[] = [
     method: "POST",
     url: demo2,
     chunked: [
-      [" ", (32 << 20) - json({ title: "chunkedatlimit" }).length],
-      [json({ title: "chunkedatlimit" }), 1],
+      [" ", (32 << 20) - json({ id: "wfixdemo2000012", title: "chunkedatlimit" }).length],
+      [json({ id: "wfixdemo2000012", title: "chunkedatlimit" }), 1],
       [" ", 1000],
     ],
   },
@@ -320,8 +329,8 @@ export const fixtureCases: WriteCase[] = [
     method: "POST",
     url: demo2,
     chunked: [
-      [" ", (32 << 20) + 1 - json({ title: "chunkedpastlimit" }).length],
-      [json({ title: "chunkedpastlimit" }), 1],
+      [" ", (32 << 20) + 1 - json({ id: "wfixdemo2000013", title: "chunkedpastlimit" }).length],
+      [json({ id: "wfixdemo2000013", title: "chunkedpastlimit" }), 1],
       [" ", 1000],
     ],
   },
@@ -331,7 +340,7 @@ export const fixtureCases: WriteCase[] = [
     method: "POST",
     url: demo2,
     chunked: [
-      ['{"title" "x"', 1],
+      ['{"id":"wfixdemo2000014","title" "x"', 1],
       [" ", (32 << 20) + 1],
     ],
   },

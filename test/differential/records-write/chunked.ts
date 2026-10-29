@@ -3,7 +3,11 @@
 // of [text, count] pieces, each text repeated count times, written in
 // 64 KiB chunks as the socket drains, so a body above the 32 MiB limit is
 // never held in memory. Writing stops once the server answers or closes
-// the connection (a server may answer before reading the whole body).
+// the connection (a server may answer before reading the whole body), and
+// the response ends at its framing. The connection is not marked
+// `Connection: close`: Bun.serve then closes it right after answering,
+// with body bytes unread, and the reset can drop the response before the
+// client reads it (Go's server lingers before closing).
 
 import { connect } from "node:net";
 
@@ -50,12 +54,7 @@ export function sendChunked(
   body: ChunkedBody,
 ): Promise<ScenarioResponse> {
   const { hostname, port } = new URL(baseUrl);
-  const head = [
-    `${method} ${url} HTTP/1.1`,
-    "Host: example.com",
-    "Connection: close",
-    "Transfer-Encoding: chunked",
-  ];
+  const head = [`${method} ${url} HTTP/1.1`, "Host: example.com", "Transfer-Encoding: chunked"];
   const all = new Map<string, [string, string]>();
   all.set("content-type", ["content-type", "application/json"]);
   for (const [name, value] of Object.entries(headers)) {
