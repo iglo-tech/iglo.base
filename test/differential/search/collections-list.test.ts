@@ -33,7 +33,7 @@ import type { Clock } from "@/app/clock";
 import { collectionQuery } from "@/collections/collection-query";
 import { Collection } from "@/collections/collection-model";
 import { newBadRequestError } from "@/server/error";
-import { parseQuery } from "@/server/request";
+import { encodeValues, parseQuery } from "@/server/request";
 import { ParsedFilterCache } from "@/search/filter";
 import { newProvider } from "@/search/provider";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
@@ -393,33 +393,10 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-// Go's url.QueryEscape
-function queryEscape(s: string): string {
-  let out = "";
-  for (const b of new TextEncoder().encode(s)) {
-    const c = String.fromCharCode(b);
-    if (/[A-Za-z0-9\-_.~]/.test(c)) {
-      out += c;
-    } else if (c === " ") {
-      out += "+";
-    } else {
-      out += "%" + b.toString(16).toUpperCase().padStart(2, "0");
-    }
-  }
-  return out;
-}
-
 // e.Request.URL.Query().Encode(): the parsed values (errors ignored),
 // sorted by key
 function queryEncode(rawQuery: string): string {
-  const { values } = parseQuery(rawQuery);
-  const parts: string[] = [];
-  for (const key of [...values.keys()].toSorted()) {
-    for (const v of values.get(key) ?? []) {
-      parts.push(queryEscape(key) + "=" + queryEscape(v));
-    }
-  }
-  return parts.join("&");
+  return encodeValues(parseQuery(rawQuery).values);
 }
 
 async function igloOutcome(
