@@ -9,6 +9,7 @@
 // builds the app that `serve` runs on.
 
 import type { Clock } from "@/app/clock";
+import { type AppFilesystem, newAppFilesystem } from "@/app/filesystem";
 import type { Databases } from "@/db/base";
 import { newDefaultSettings, type Settings } from "@/settings/settings-model";
 import type { Store } from "@/tools/store/store";
@@ -43,6 +44,9 @@ export interface App {
   // process environment, passed in by main.ts). Reads the settings
   // encryption key named by encryptionEnv.
   getenv(name: string): string;
+  // NewFilesystem (pb_data/storage) and the storage cleanup after a
+  // record or collection delete
+  readonly filesystem: AppFilesystem;
 }
 
 export interface AppConfig {
@@ -61,9 +65,17 @@ export interface AppConfig {
 }
 
 export function newApp(config: AppConfig): App {
+  const settings = config.settings ?? newDefaultSettings();
+  const getenv = config.getenv ?? (() => "");
   return Object.freeze({
     ...config,
-    settings: config.settings ?? newDefaultSettings(),
-    getenv: config.getenv ?? (() => ""),
+    settings,
+    getenv,
+    filesystem: newAppFilesystem({
+      dataDir: config.dataDir,
+      settings: () => settings,
+      getenv,
+      logger: config.logger,
+    }),
   });
 }

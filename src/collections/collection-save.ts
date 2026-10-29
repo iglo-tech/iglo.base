@@ -22,7 +22,9 @@
 //	  the primary key check, then onCollectionDeleteExecute around the row
 //	  delete, with the auth ref cleanups (the recordRefHooks of
 //	  src/records/record-auth-refs.ts) between them; on error the cache
-//	  reload as above
+//	  reload as above; on success (after the outer transaction, if any)
+//	  the collection's storage directory is deleted in the background
+//	  (src/app/filesystem.ts)
 //
 // Errors are thrown (Go's returned error). The bootstrap cache load
 // (OnBootstrap: "failed to load collections cache: ...") is
@@ -99,6 +101,27 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
   }
 
   afterTransactionError(app, () => {});
+
+  // the storage cleanup after the delete (registerBaseHooks'
+  // "__pbFilesManagerDelete__"; after the outer transaction, if any)
+  const deleteFiles = (): void => {
+    const waiting = app.filesystem.deleteModelFiles({
+      baseFilesPath: () => collection.baseFilesPath(),
+      fieldTypes: () => [...collection.fields].map((f) => f.type()),
+    });
+    // a synchronous delete does not wait for a busy worker pool
+    void waiting;
+  };
+  const txInfo = app.databases.txInfo();
+  if (txInfo === null) {
+    deleteFiles();
+  } else {
+    txInfo.onComplete((txErr) => {
+      if (txErr === null) {
+        deleteFiles();
+      }
+    });
+  }
 }
 
 // The OnBootstrap cache load: loads the collections cache once the app

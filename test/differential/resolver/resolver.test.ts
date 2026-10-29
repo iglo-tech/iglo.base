@@ -32,6 +32,8 @@
 // upstream's for each case.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { newAppFilesystem } from "@/app/filesystem";
+import { newDefaultSettings } from "@/settings/settings-model";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -389,6 +391,12 @@ function openCopy(name: string): TestApp {
     store: new Store<string, unknown>(),
     clock,
     logger: { error: () => {} },
+    filesystem: newAppFilesystem({
+      dataDir: copyDir,
+      settings: () => newDefaultSettings(),
+      getenv: () => "",
+      logger: { error: () => {} },
+    }),
     async cleanup() {
       databases.close();
       await databases.closed();

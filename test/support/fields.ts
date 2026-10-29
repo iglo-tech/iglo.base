@@ -22,6 +22,8 @@ import {
   isSetterFinder,
   type Field,
   type FieldApp,
+  type InterceptorApp,
+  type InterceptorRecord,
   type FieldCollection,
   type FieldRecord,
   type FieldsListReader,
@@ -410,4 +412,44 @@ export function expectValidationErrors(err: Error | null, expectedKeys: readonly
   }
   const keys = err === null ? [] : Object.keys(err.errors);
   expect(keys.toSorted()).toEqual([...expectedKeys].toSorted());
+}
+
+// the arguments of a record interceptor for a test app and record (the
+// members the validate interceptors never call throw)
+export function interceptorArgs(
+  app: FieldApp,
+  record: TestRecord,
+): [InterceptorApp, InterceptorRecord] {
+  const iapp: InterceptorApp = {
+    concurrentDB: () => app.concurrentDB(),
+    clock: app.clock,
+    findCollectionByNameOrId: (nameOrId) => app.findCollectionByNameOrId(nameOrId),
+    findCachedCollectionByNameOrId: (nameOrId) => app.findCachedCollectionByNameOrId(nameOrId),
+    newFilesystem: () => {
+      throw new Error("no filesystem in this test");
+    },
+    findRecordById: () => {
+      throw new Error("no records in this test");
+    },
+    isTransactional: () => false,
+    logger: { error: () => {} },
+  };
+  // the record itself, with collection() and baseFilesPath(): every other
+  // read and write goes to it
+  const irecord = new Proxy(record, {
+    get(target, prop) {
+      if (prop === "collection") {
+        return () => target.collection;
+      }
+      if (prop === "baseFilesPath") {
+        return () => target.collection.id + "/" + target.id;
+      }
+      const v: unknown = Reflect.get(target, prop, target);
+      return typeof v === "function" ? (v as (...args: unknown[]) => unknown).bind(target) : v;
+    },
+    set(target, prop, value) {
+      return Reflect.set(target, prop, value, target);
+    },
+  }) as unknown as InterceptorRecord;
+  return [iapp, irecord];
 }

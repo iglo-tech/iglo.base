@@ -1,8 +1,8 @@
 // Upstream: core/collection_query_test.go
 //
-// TestFindCollectionTruncate runs on its own fixture copy. Its file counts
-// (the truncated records' files are deleted) wait for the file storage
-// task (M3.2); the records are counted.
+// TestFindCollectionTruncate runs on its own fixture copy. Its files are
+// counted after a short delay, as upstream waits for the background file
+// delete.
 //
 // Each test runs on a copy of the vendored fixture with the collections
 // cache loaded (openTestApp, as tests.NewTestApp). Upstream counts the
@@ -10,6 +10,8 @@
 // statement log (Databases' devSQLLog) counts them.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 
 import { CollectionTypeAuth, CollectionTypeView } from "@/collections/collection-model";
 import {
@@ -339,26 +341,39 @@ describe("TestFindCollectionTruncate", () => {
     );
   });
 
-  test("truncate failure", () => {
+  const countFiles = (collectionId: string): number =>
+    readdirSync(join(truncateApp.dataDir, "storage", collectionId)).length;
+
+  test("truncate failure", async () => {
     const demo3 = findCollectionByNameOrId(truncateApp, "demo3");
 
     const originalTotalRecords = countRecords(truncateApp, demo3);
+    const originalTotalFiles = countFiles(demo3.id);
 
     // cascade delete failed required constraint
     expect(() => truncateCollection(truncateApp, demo3)).toThrow(
       "the record cannot be deleted because it is part of a required reference in record",
     );
 
+    // short delay to ensure that the file delete has been executed
+    await Bun.sleep(100);
+
     expect(countRecords(truncateApp, demo3)).toBe(originalTotalRecords);
+    expect(countFiles(demo3.id)).toBe(originalTotalFiles);
   });
 
-  test("truncate success", () => {
+  test("truncate success", async () => {
     const demo5 = findCollectionByNameOrId(truncateApp, "demo5");
     expect(countRecords(truncateApp, demo5)).toBeGreaterThan(0);
+    expect(countFiles(demo5.id)).toBeGreaterThan(0);
 
     truncateCollection(truncateApp, demo5);
 
+    // short delay to ensure that the file delete has been executed
+    await Bun.sleep(100);
+
     expect(countRecords(truncateApp, demo5)).toBe(0);
+    expect(countFiles(demo5.id)).toBe(0);
 
     // try to truncate again (shouldn't return an error)
     truncateCollection(truncateApp, demo5);

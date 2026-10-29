@@ -409,3 +409,43 @@ describe("council round 3", () => {
     ]);
   });
 });
+
+describe("generated file names", () => {
+  test("only the random parts may differ", () => {
+    expect(
+      diff(
+        res('{"f":["my_doc_abcdefghij.txt","ab0123456789_abcdefghij.tar.gz"]}'),
+        res('{"f":["my_doc_0123456789.txt","abzzzzzzzzzz_zzzzzzzzzz.tar.gz"]}'),
+      ),
+    ).toEqual([]);
+    expect(
+      diff(res('{"f":"my_doc_abcdefghij.txt"}'), res('{"f":"my_dox_0123456789.txt"}')),
+    ).toContain(
+      'body f: not both file names: upstream "my_doc_abcdefghij.txt", iglo.base "my_dox_0123456789.txt"',
+    );
+    expect(
+      diff(res('{"f":"my_doc_abcdefghij.txt"}'), res('{"f":"my_doc_0123456789.png"}')),
+    ).toContain(
+      'body f: not both file names: upstream "my_doc_abcdefghij.txt", iglo.base "my_doc_0123456789.png"',
+    );
+  });
+
+  test("names pair consistently", () => {
+    expect(
+      diff(
+        res('{"a":"x_abcdefghij.txt","b":"x_abcdefghij.txt"}'),
+        res('{"a":"x_0123456789.txt","b":"x_9999999999.txt"}'),
+      ),
+    ).toContain(
+      'body b: file names not paired consistently: upstream "x_abcdefghij.txt", iglo.base "x_9999999999.txt"',
+    );
+  });
+
+  test("names sent in the request are compared exactly", () => {
+    expect(
+      diff(res('{"f":"x_abcdefghij.txt"}'), res('{"f":"x_0123456789.txt"}'), {
+        url: "/api/collections/demo2/records/x?f=x_abcdefghij.txt",
+      }),
+    ).not.toEqual([]);
+  });
+});

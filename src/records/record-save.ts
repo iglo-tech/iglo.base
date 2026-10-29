@@ -51,8 +51,8 @@
 //	          then cascadeRecordDelete
 //	  then interceptors "afterDeleteError" / "afterDelete", as for saves
 //
-// Interceptors: a field's Intercept may be async (the file field, M3.2),
-// so the chain is written as generators that yield what may be a promise.
+// Interceptors: a field's Intercept may be async (none is now: the file
+// field's storage calls are synchronous), so the chain is written as generators that yield what may be a promise.
 // run() drives a chain synchronously until something actually returns a
 // promise and goes on asynchronously from there; runSync() is for the
 // parts inside a write transaction, which must stay synchronous (D8): it
@@ -87,9 +87,12 @@
 // as Go's driver does, and the NUMERIC column affinity gives a number the
 // storage class Go's float64 gets.
 //
+// After a successful delete (after the transaction, when there is one),
+// the record's storage directory is deleted in the background
+// (deleteRecordFiles: upstream's OnModelAfterDeleteSuccess files handler).
+//
 // Not ported: the hook events, tags and the model events around the
-// record events (D5). The file field's Intercept (uploads and deletes)
-// comes with M3.2 and runs in the same interceptor slots.
+// record events (D5).
 
 import {
   fieldApp,
@@ -109,6 +112,7 @@ import type { Model } from "@/db/model";
 import {
   type Field,
   FieldNamePassword,
+  type InterceptorApp,
   InterceptorActionAfterCreate,
   InterceptorActionAfterCreateError,
   InterceptorActionAfterDelete,
@@ -314,13 +318,26 @@ export function deleteRecordSync(app: RecordsApp, record: Record): void {
 // -------------------------------------------------------------------
 // interceptors
 
+// the app the interceptors get: FieldApp with the filesystem, the record
+// lookup, the transaction state and the logger of app
+function interceptorApp(app: RecordsApp): InterceptorApp {
+  return {
+    ...fieldApp(app),
+    newFilesystem: () => app.filesystem.newFilesystem(),
+    findRecordById: (collection, recordId) =>
+      findRecordById(app, collection as Collection, recordId),
+    isTransactional: () => app.databases.isTransactional(),
+    logger: app.logger,
+  };
+}
+
 export function* callFieldInterceptors(
   app: RecordsApp,
   record: Record,
   actionName: string,
   actionFunc: () => Step,
 ): Step {
-  const fa = fieldApp(app);
+  const fa = interceptorApp(app);
 
   // the cascade path: the interceptors pass the action through, so it runs
   // after them (see the top of the file)
@@ -399,7 +416,7 @@ export function* validateStep(app: RecordsApp, record: Record): Step {
 function onRecordValidate(app: RecordsApp, record: Record): void {
   const errs = new Errors();
 
-  const fa = fieldApp(app);
+  const fa = interceptorApp(app);
   for (const f of record.collection().fields) {
     const err = f.validateValue(fa, record);
     if (err !== null) {
@@ -510,6 +527,13 @@ function* afterSuccess(
   const txInfo = app.databases.txInfo();
   if (txInfo === null) {
     yield* callFieldInterceptors(app, record, successAction, noop);
+    if (successAction === InterceptorActionAfterDelete) {
+      // a promise while every delete worker is busy
+      const waiting = deleteRecordFiles(app, record);
+      if (waiting instanceof Promise) {
+        yield waiting;
+      }
+    }
     return;
   }
 
@@ -525,6 +549,10 @@ function* afterSuccess(
       result = run(callFieldInterceptors(parentApp, record, errorAction, noop));
     } else {
       result = run(callFieldInterceptors(parentApp, record, successAction, noop));
+      if (successAction === InterceptorActionAfterDelete) {
+        // the delete does not wait for a busy worker pool here
+        void deleteRecordFiles(parentApp, record);
+      }
     }
 
     // an async interceptor ends after the transaction call returned
@@ -533,6 +561,16 @@ function* afterSuccess(
         app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
       });
     }
+  });
+}
+
+// the storage cleanup after a record delete (registerBaseHooks'
+// "__pbFilesManagerDelete__", src/app/filesystem.ts): the record's files
+// directory, when its collection has a file field
+function deleteRecordFiles(app: RecordsApp, record: Record): void | Promise<void> {
+  return app.filesystem.deleteModelFiles({
+    baseFilesPath: () => record.baseFilesPath(),
+    fieldTypes: () => [...record.collection().fields].map((f) => f.type()),
   });
 }
 

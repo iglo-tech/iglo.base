@@ -546,38 +546,33 @@ describe("TestRecordUpsertSubmitFailure", () => {
 });
 
 describe("TestRecordUpsertSubmitSuccess", () => {
-  // the save uploads a file: until M3.2 it fails before the row is written,
-  // so the test runs as test.failing and fails once M3.2 stores files
-  test.failing(
-    "TestRecordUpsertSubmitSuccess (pending on M3.2: storing uploaded files)",
-    async () => {
-      await withApp(async (app) => {
-        const col = findCollectionByNameOrId(app, "demo1");
-        const record = findRecordById(app, "demo1", "imy661ixudk5izi");
+  test("TestRecordUpsertSubmitSuccess", async () => {
+    await withApp(async (app) => {
+      const col = findCollectionByNameOrId(app, "demo1");
+      const record = findRecordById(app, "demo1", "imy661ixudk5izi");
 
-        const file = await NewFileFromBytes(new TextEncoder().encode("test"), "test.txt");
+      const file = await NewFileFromBytes(new TextEncoder().encode("test"), "test.txt");
 
-        const form = new RecordUpsert(app, record);
-        form.load({
-          text: "test_update",
-          file_one: file,
-          select_one: "optionC",
-        });
-
-        const err = await errorOf(form.submit());
-        expect(err).toBeNull();
-
-        // refresh the record to ensure that the changes were persisted
-        const refreshed = findRecordById(app, col.name, record.id);
-
-        expect(refreshed.getString("text")).toBe("test_update");
-        expect(refreshed.getString("select_one")).toBe("optionC");
-        expect(refreshed.getString("file_one")).toBe(file.name);
-
-        testFilesCount(app, refreshed, 2); // the file + attrs
+      const form = new RecordUpsert(app, record);
+      form.load({
+        text: "test_update",
+        file_one: file,
+        select_one: "optionC",
       });
-    },
-  );
+
+      const err = await errorOf(form.submit());
+      expect(err).toBeNull();
+
+      // refresh the record to ensure that the changes were persisted
+      const refreshed = findRecordById(app, col.name, record.id);
+
+      expect(refreshed.getString("text")).toBe("test_update");
+      expect(refreshed.getString("select_one")).toBe("optionC");
+      expect(refreshed.getString("file_one")).toBe(file.name);
+
+      testFilesCount(app, refreshed, 2); // the file + attrs
+    });
+  });
 });
 
 describe("TestRecordUpsertPasswordsSync", () => {

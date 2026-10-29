@@ -55,7 +55,13 @@ import {
   valueCollections,
   type FieldDef,
 } from "@test/differential/fields/cases";
-import { TestRecord, TestCollection, newBaseCollection, noDBApp } from "@test/support/fields";
+import {
+  TestRecord,
+  TestCollection,
+  newBaseCollection,
+  noDBApp,
+  interceptorArgs,
+} from "@test/support/fields";
 import { startUpstream, type UpstreamServer } from "@test/support/upstream";
 
 const email = "fields@example.com";
@@ -391,7 +397,11 @@ describe("values", () => {
       record.set(key, body[key]);
       for (const field of model.fields) {
         if (isRecordInterceptor(field)) {
-          await field.intercept(app, record, InterceptorActionValidate, async () => {});
+          await field.intercept(
+            ...interceptorArgs(app, record),
+            InterceptorActionValidate,
+            async () => {},
+          );
         }
       }
       const errs = new Errors();

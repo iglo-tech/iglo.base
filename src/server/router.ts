@@ -393,6 +393,13 @@ export class Router<T extends Resolver> extends RouterGroup<T> {
           } catch {
             // close errors are ignored, as upstream's deferred Close
           }
+          // remove the multipart form's temporary file (net/http's
+          // finishRequest calls MultipartForm.RemoveAll)
+          try {
+            req.multipartForm?.removeAll();
+          } catch {
+            // ignored, as net/http does
+          }
         }
       });
     }

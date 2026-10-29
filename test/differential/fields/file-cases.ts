@@ -7,9 +7,10 @@
 // text values "$0", "$1", ... stand for the before record's stored file
 // names (of the field the key names).
 //
-// File names avoid `"`, `\` and CR/LF: Bun's formData() and Go's
-// multipart reader decode those differently (quoted multipart parameters
-// are M3.2's, see docs/status.md).
+// File names avoid `"`, `\` and CR/LF: the model reads the request with
+// Bun's formData(), which decodes those differently from Go's multipart
+// reader (iglo.base's server uses a port of Go's reader;
+// test/differential/files covers such names).
 
 import type { FieldDef } from "@test/differential/fields/cases";
 
