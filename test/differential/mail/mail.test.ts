@@ -527,20 +527,23 @@ describe("sendmail", () => {
   }
 });
 
+// a password login of the clients record, which has logged in before (one
+// stored origin)
+function login(userAgent: string): (url: string) => Promise<Reply> {
+  return (url) =>
+    call(
+      url,
+      "POST",
+      "/api/collections/clients/auth-with-password",
+      { identity: "test@example.com", password: "1234567890" },
+      { Authorization: "", "User-Agent": userAgent },
+    );
+}
+
 describe("login alert", () => {
   test(
     "a password login from a new device",
     async () => {
-      // the clients record has logged in before (one stored origin)
-      const login = (userAgent: string) => (url: string) =>
-        call(
-          url,
-          "POST",
-          "/api/collections/clients/auth-with-password",
-          { identity: "test@example.com", password: "1234567890" },
-          { Authorization: "", "User-Agent": userAgent },
-        );
-
       // a login from a new device sends the alert before the response
       const first = await both(
         (url) => patchSettings(url, smtpTo(mailpit)),
