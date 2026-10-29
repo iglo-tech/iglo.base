@@ -22,7 +22,7 @@ import { newBadRequestError } from "@/server/error";
 import { serveTest } from "@test/support/router";
 import { openFixtureApp } from "@test/app/app";
 
-const app = openFixtureApp({ clock: { now: () => new Date(0) } });
+const app = await openFixtureApp({ clock: { now: () => new Date(0) } });
 afterAll(() => app.cleanup());
 
 const securityHeaders = {

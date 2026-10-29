@@ -43,8 +43,8 @@ const testHandler = async (e: RequestEvent) => {
   return e.json(200, result.map);
 };
 
-beforeAll(() => {
-  testApp = openFixtureApp();
+beforeAll(async () => {
+  testApp = await openFixtureApp();
   const pbRouter = newRouter(testApp);
 
   pbRouter.POST("/a", testHandler); // default global BodyLimit check

@@ -30,9 +30,12 @@ export interface TestAppOptions {
   // unless set
   dataDir?: string;
   readWorkers?: number;
+  // the process environment (os.Getenv); empty unless set
+  getenv?: (name: string) => string;
+  encryptionEnv?: string;
 }
 
-export function openFixtureApp(options: TestAppOptions = {}): TestApp {
+export async function openFixtureApp(options: TestAppOptions = {}): Promise<TestApp> {
   let root: string | null = null;
   let dataDir = options.dataDir;
   if (dataDir === undefined) {
@@ -43,10 +46,11 @@ export function openFixtureApp(options: TestAppOptions = {}): TestApp {
 
   const logged: { message: string; cause: unknown }[] = [];
   const warnings: string[] = [];
-  const app = bootstrap({
+  const app = await bootstrap({
     dataDir,
     isDev: false,
-    encryptionEnv: "",
+    encryptionEnv: options.encryptionEnv ?? "",
+    getenv: options.getenv,
     queryTimeout: 30,
     clock: options.clock ?? systemClock,
     logger: { error: (message, cause) => logged.push({ message, cause }) },

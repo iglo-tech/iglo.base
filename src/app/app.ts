@@ -1,8 +1,8 @@
 // Upstream: core/app.go (the App interface; only the parts that exist so far)
 //
 // The app context passed to every module instead of process-global state.
-// It carries only what exists now; later tasks add their fields (settings
-// M1.3, filesystem and backups M5.x) in their own change. The databases,
+// It carries only what exists now; later tasks add their fields
+// (filesystem and backups M5.x) in their own change. The databases,
 // the runtime store (with the collections cache) and the clock make it a
 // CollectionsApp (src/collections/collection-query.ts), so the collection
 // and record functions take the app itself. bootstrap() (bootstrap.ts)
@@ -10,6 +10,7 @@
 
 import type { Clock } from "@/app/clock";
 import type { Databases } from "@/db/base";
+import { newDefaultSettings, type Settings } from "@/settings/settings-model";
 import type { Store } from "@/tools/store/store";
 
 // Reports errors and things that need attention (AGENTS.md: no
@@ -35,6 +36,13 @@ export interface App {
   // Store returns the app runtime store (the collections cache, the
   // active backup key).
   readonly store: Store<string, unknown>;
+  // Settings returns the loaded app settings (src/settings; reloaded in
+  // place by reloadSettings).
+  readonly settings: Settings;
+  // os.Getenv: the value of an environment variable, "" when unset (the
+  // process environment, passed in by main.ts). Reads the settings
+  // encryption key named by encryptionEnv.
+  getenv(name: string): string;
 }
 
 export interface AppConfig {
@@ -46,8 +54,16 @@ export interface AppConfig {
   logger: ErrorLogger;
   databases: Databases;
   store: Store<string, unknown>;
+  // the default settings (newDefaultSettings) unless set
+  settings?: Settings;
+  // an empty environment unless set
+  getenv?: (name: string) => string;
 }
 
 export function newApp(config: AppConfig): App {
-  return Object.freeze({ ...config });
+  return Object.freeze({
+    ...config,
+    settings: config.settings ?? newDefaultSettings(),
+    getenv: config.getenv ?? (() => ""),
+  });
 }

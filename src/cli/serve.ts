@@ -80,13 +80,14 @@ export async function runServeCommand(
     );
   };
 
-  const appContext = bootstrap({
+  const appContext = await bootstrap({
     dataDir: app.dataDir,
     isDev: app.isDev,
     encryptionEnv: app.encryptionEnv,
     queryTimeout: app.queryTimeout,
     clock: { now: () => ctx.out.now() },
     logger: { error: logError },
+    getenv: ctx.getenv,
     // color.HiBlack, as upstream's dev mode prints the statements
     devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
     warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),

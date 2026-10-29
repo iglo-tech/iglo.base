@@ -9,7 +9,7 @@ import { handleRequest } from "@/server/serve";
 import { openFixtureApp } from "@test/app/app";
 import { rawRequest } from "@test/support/raw-http";
 
-const app = openFixtureApp({ clock: { now: () => new Date(0) } });
+const app = await openFixtureApp({ clock: { now: () => new Date(0) } });
 
 let server: ReturnType<typeof Bun.serve>;
 let url: string;

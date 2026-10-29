@@ -24,7 +24,7 @@ function authRecord(id: string, collectionName: string): Record {
   return record;
 }
 
-const app = openFixtureApp({ clock: { now: () => new Date(0) } });
+const app = await openFixtureApp({ clock: { now: () => new Date(0) } });
 afterAll(() => app.cleanup());
 
 function newEvent(init: TestRequest): RequestEvent {
