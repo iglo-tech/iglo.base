@@ -10,8 +10,8 @@
 
 import type { Clock } from "@/app/clock";
 import type { Databases } from "@/db/base";
-import { HashExp } from "@/db/dbx/expression";
-import { hasTable } from "@/db/table";
+import type { Builder } from "@/db/dbx/builder";
+import { HashExp, newExp } from "@/db/dbx/expression";
 
 export const DefaultMigrationsTable = "_migrations";
 
@@ -26,13 +26,13 @@ export function initMigrationsTable(app: Databases): void {
 }
 
 // the recorded migration file names, in rowid order; none when the
-// migrations table does not exist (read only: the table is not created)
-export function appliedMigrationFiles(app: Databases): string[] {
-  if (!hasTable(app, DefaultMigrationsTable)) {
+// migrations table does not exist (read only: the table is not created).
+// It takes a builder so the read-only open check can use it too.
+export function appliedMigrationFiles(db: Builder): string[] {
+  if (!builderHasTable(db, DefaultMigrationsTable)) {
     return [];
   }
-  return app
-    .db()
+  return db
     .select("file")
     .from(DefaultMigrationsTable)
     .orderBy("rowid ASC")
@@ -67,4 +67,21 @@ export function saveAppliedMigration(txApp: Databases, clock: Clock, file: strin
 
 export function saveRevertedMigration(txApp: Databases, file: string): void {
   txApp.db().delete(DefaultMigrationsTable, new HashExp({ file })).execute();
+}
+
+// hasTable (core/db_table.go) on a builder: whether a table (or view)
+// with the name exists, case insensitive
+export function builderHasTable(db: Builder, tableName: string): boolean {
+  try {
+    const [exists] = db
+      .select("(1)")
+      .from("sqlite_schema")
+      .andWhere(new HashExp({ type: ["table", "view"] }))
+      .andWhere(newExp("LOWER([[name]])=LOWER({:tableName})", { tableName }))
+      .limit(1)
+      .row();
+    return typeof exists === "number" && exists > 0;
+  } catch {
+    return false;
+  }
 }

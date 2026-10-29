@@ -4,7 +4,8 @@
 // Bootstrap opens pb_data: it creates the data directory, opens data.db and
 // auxiliary.db (with the read worker pool, D8), runs the system migrations
 // check (src/migrations), loads the collections cache and removes the
-// pb_data temp directory. Not here yet: the logger's `_logs` writes (M5),
+// pb_data temp directory. An existing data.db is checked read only
+// first, so older data is refused before any file is created. Not here yet: the logger's `_logs` writes (M5),
 // the settings load (ReloadSettings, M1.3; upstream's fresh install also
 // writes the default settings row then) and the multi-instance notify
 // watcher (`.notify`).
@@ -18,7 +19,7 @@ import { join } from "node:path";
 import { type App, type AppConfig, newApp } from "@/app/app";
 import { loadCollectionsCache } from "@/collections/collection-save";
 import { Databases, defaultReadWorkers } from "@/db/base";
-import { runSystemMigrations } from "@/migrations/system-migrations";
+import { checkExistingDataDir, runSystemMigrations } from "@/migrations/system-migrations";
 import { Store } from "@/tools/store/store";
 
 // temp pb_data sub directory that will be deleted on each app.Bootstrap()
@@ -36,6 +37,10 @@ export interface BootstrapConfig extends Omit<AppConfig, "databases" | "store"> 
 // Bootstrap initializes the application
 // (aka. create data dir, open db connections, load settings, etc.).
 export function bootstrap(config: BootstrapConfig): App {
+  // refuse older data before anything in pb_data is created or changed
+  // (03-data-compatibility.md: the refusal writes nothing)
+  checkExistingDataDir(config.dataDir);
+
   // ensure that data dir exist
   mkdirSync(config.dataDir, { recursive: true });
 

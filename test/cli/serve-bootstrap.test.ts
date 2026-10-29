@@ -5,11 +5,11 @@
 // clears the pb_data temp directory.
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import { dumpPbData, execSQL } from "@test/migrations/dump";
+import { dumpPbData, execSQL, fileState } from "@test/migrations/dump";
 import { run, startServer, tempDir } from "@test/support/executable";
 
 function fixtureCopy(): string {
@@ -62,18 +62,59 @@ describe("serve bootstrap", () => {
     expect(dumpPbData(dataDir)).toEqual(before);
   });
 
-  test("older data is refused with the documented message and exit code 1", async () => {
-    const dataDir = fixtureCopy();
-    execSQL(
-      join(dataDir, "data.db"),
-      "DELETE FROM _migrations WHERE file = '1778828400_normalize_indexes.go'",
-    );
+  // the refusal as the executable reports it, and that pb_data is unchanged
+  // byte for byte: no file created (auxiliary.db, -wal, -shm), none changed
+  // (data.db keeps its journal mode)
+  async function expectRefusedWithoutWrites(dataDir: string): Promise<void> {
+    const before = fileState(dataDir);
     const result = await run(["serve", "--dir", dataDir, "--http", "127.0.0.1:0"]);
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toBe("");
     expect(result.stderr).toMatch(
       /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} This pb_data was written by an older PocketBase\. Run PocketBase v0\.41\.0 on it once, then start iglo\.base\.\n$/,
     );
+    expect(fileState(dataDir)).toEqual(before);
+  }
+
+  test("older data is refused with the documented message and exit code 1, and nothing is written", async () => {
+    const dataDir = fixtureCopy();
+    execSQL(
+      join(dataDir, "data.db"),
+      "DELETE FROM _migrations WHERE file = '1778828400_normalize_indexes.go'",
+    );
+    await expectRefusedWithoutWrites(dataDir);
+  });
+
+  test("a missing system migration row with no auxiliary.db and a DELETE-mode data.db is refused without writes", async () => {
+    const dataDir = fixtureCopy();
+    rmSync(join(dataDir, "auxiliary.db"));
+    execSQL(
+      join(dataDir, "data.db"),
+      "DELETE FROM _migrations WHERE file = '1778828400_normalize_indexes.go'",
+      "PRAGMA journal_mode = DELETE",
+    );
+    expect(Object.keys(fileState(dataDir)).some((name) => name.startsWith("auxiliary.db"))).toBe(
+      false,
+    );
+    await expectRefusedWithoutWrites(dataDir);
+  });
+
+  test("pre-v0.23-shaped data (logs.db, no auxiliary.db) is refused without writes", async () => {
+    const dataDir = fixtureCopy();
+    rmSync(join(dataDir, "auxiliary.db"));
+    // before v0.23 the request logs were in logs.db and _migrations ended
+    // with the v0.22 rows
+    execSQL(
+      join(dataDir, "logs.db"),
+      "CREATE TABLE `_requests` (`id` TEXT PRIMARY KEY NOT NULL, `url` TEXT DEFAULT '' NOT NULL)",
+      "PRAGMA journal_mode = DELETE",
+    );
+    execSQL(
+      join(dataDir, "data.db"),
+      "DELETE FROM _migrations WHERE file NOT LIKE '16%' AND file NOT LIKE '%.js'",
+      "PRAGMA journal_mode = DELETE",
+    );
+    await expectRefusedWithoutWrites(dataDir);
   });
 
   test("newer migrations produce one warning", async () => {

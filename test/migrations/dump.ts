@@ -4,7 +4,8 @@
 // has stopped (or test copies): the connection is closed before returning.
 
 import { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export interface SchemaRow {
@@ -86,4 +87,22 @@ export function execSQL(path: string, ...statements: string[]): void {
 // (docs/design/03-data-compatibility.md, "SQLite settings")
 export function withoutStat4(rows: SchemaRow[]): SchemaRow[] {
   return rows.filter((row) => row.name !== "sqlite_stat4");
+}
+
+// every entry of a directory, recursively and sorted, with the SHA-256 of
+// each file's bytes ("dir" for a directory): what a refused open must
+// leave unchanged
+export function fileState(dir: string): Record<string, string> {
+  const state: Record<string, string> = {};
+  const entries = readdirSync(dir, { recursive: true, withFileTypes: true }).map((e) => ({
+    path: join(e.parentPath, e.name),
+    isDir: e.isDirectory(),
+  }));
+  entries.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  for (const { path, isDir } of entries) {
+    state[path.slice(dir.length + 1)] = isDir
+      ? "dir"
+      : createHash("sha256").update(readFileSync(path)).digest("hex");
+  }
+  return state;
 }

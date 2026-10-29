@@ -16,15 +16,26 @@
 //  3. other `_migrations` rows are kept; `.go` rows newer than the
 //     baseline produce one warning.
 //
+// The check of step 2 first runs on an existing data.db through a
+// read-only connection without pragmas (checkExistingDataDir), before
+// bootstrap creates auxiliary.db or applies the persistent pragmas
+// (journal_mode=WAL), so a refused open writes nothing to pb_data.
+//
 // 1640988000_aux_init.go keeps upstream's ReapplyCondition: when
 // auxiliary.db has no `_logs` table, the table is created again and the
 // row is re-recorded, as upstream does on every start.
 
+import { Database, constants } from "bun:sqlite";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import { CollectionTypeAuth, CollectionTypeBase } from "@/collections/collection-model";
 import { type CollectionsApp, runInAppTransaction } from "@/collections/collection-query";
+import type { Builder } from "@/db/dbx/builder";
+import { newFromDB } from "@/db/dbx/db";
 import { HashExp } from "@/db/dbx/expression";
 import { auxRunInTransaction } from "@/db/tx";
-import { auxHasTable, hasTable } from "@/db/table";
+import { auxHasTable } from "@/db/table";
 import {
   createInitSchema,
   createLogsTable,
@@ -32,6 +43,7 @@ import {
 } from "@/migrations/baseline";
 import {
   appliedMigrationFiles,
+  builderHasTable,
   initMigrationsTable,
   isMigrationApplied,
   saveAppliedMigration,
@@ -115,22 +127,20 @@ export interface SystemMigrationsResult {
 // RunSystemMigrations: creates the baseline on a fresh data.db, or checks
 // that existing data needs nothing iglo.base does not port.
 export function runSystemMigrations(app: CollectionsApp): SystemMigrationsResult {
-  const applied = appliedMigrationFiles(app.databases);
-  const appliedSet = new Set(applied);
-  const recordedSystem = systemMigrationFiles.filter((file) => appliedSet.has(file));
+  const check = checkDataDB(app.databases.db());
 
-  if (recordedSystem.length === 0 && !baselineTables.some((t) => hasTable(app.databases, t))) {
+  if (check === "fresh") {
     createBaseline(app);
     return { created: true, warnings: [] };
   }
 
-  if (recordedSystem.length !== systemMigrationFiles.length || !hasSystemCollections(app)) {
+  if (check === "older") {
     throw new OlderDataError();
   }
 
   reapplyAuxInit(app);
 
-  const newer = applied.filter((file) => isNewerGoMigration(file));
+  const newer = check.applied.filter((file) => isNewerGoMigration(file));
   const warnings =
     newer.length > 0
       ? [
@@ -139,6 +149,60 @@ export function runSystemMigrations(app: CollectionsApp): SystemMigrationsResult
       : [];
 
   return { created: false, warnings };
+}
+
+// The open step 2 check on an existing data.db, before anything in pb_data
+// is opened for writing: data.db is read through a read-only connection
+// with no pragmas, so neither the file nor its journal mode changes, and
+// no file is created. Throws OlderDataError when the start is refused.
+// A missing data.db is a fresh install and is not checked here.
+export function checkExistingDataDir(dataDir: string): void {
+  const dataPath = join(dataDir, "data.db");
+  if (!existsSync(dataPath)) {
+    return;
+  }
+
+  const conn = openCheckConnection(dataPath);
+  try {
+    if (checkDataDB(newFromDB(conn, "sqlite")) === "older") {
+      throw new OlderDataError();
+    }
+  } finally {
+    conn.close();
+  }
+}
+
+// Without a -wal or hot -journal file the database is opened immutable,
+// so SQLite creates no -wal or -shm file next to it. Otherwise (a
+// PocketBase is running or was not closed cleanly) a plain read-only
+// connection reads the journal too; it creates no database content.
+function openCheckConnection(dataPath: string): Database {
+  if (existsSync(`${dataPath}-wal`) || existsSync(`${dataPath}-journal`)) {
+    return new Database(dataPath, { readonly: true });
+  }
+  const uri = `file:${encodeURI(dataPath).replace(/[?#]/g, encodeURIComponent)}?immutable=1`;
+  return new Database(uri, constants.SQLITE_OPEN_READONLY | constants.SQLITE_OPEN_URI);
+}
+
+type DataDBCheck = "fresh" | "older" | { readonly applied: readonly string[] };
+
+// the open steps 1 and 2 decision, read only: a fresh data.db (no system
+// migration recorded and none of the baseline tables), older data, or
+// current data with its recorded migration files
+function checkDataDB(db: Builder): DataDBCheck {
+  const applied = appliedMigrationFiles(db);
+  const appliedSet = new Set(applied);
+  const recordedSystem = systemMigrationFiles.filter((file) => appliedSet.has(file));
+
+  if (recordedSystem.length === 0 && !baselineTables.some((t) => builderHasTable(db, t))) {
+    return "fresh";
+  }
+
+  if (recordedSystem.length !== systemMigrationFiles.length || !hasSystemCollections(db)) {
+    return "older";
+  }
+
+  return { applied };
 }
 
 // a `.go` row that is not a known system migration and whose timestamp
@@ -151,19 +215,18 @@ function isNewerGoMigration(file: string): boolean {
   return match !== null && Number(match[1]) > baselineTimestamp;
 }
 
-function hasSystemCollections(app: CollectionsApp): boolean {
-  if (!hasTable(app.databases, "_collections") || !hasTable(app.databases, "_params")) {
+function hasSystemCollections(db: Builder): boolean {
+  if (!builderHasTable(db, "_collections") || !builderHasTable(db, "_params")) {
     return false;
   }
   for (const [name, type] of systemCollections) {
-    const rows = app.databases
-      .db()
+    const rows = db
       .select("type")
       .from("_collections")
       .where(new HashExp({ name }))
       .limit(1)
       .column<unknown>();
-    if (rows.length === 0 || String(rows[0]) !== type || !hasTable(app.databases, name)) {
+    if (rows.length === 0 || String(rows[0]) !== type || !builderHasTable(db, name)) {
       return false;
     }
   }
