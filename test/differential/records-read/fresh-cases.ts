@@ -136,6 +136,18 @@ export const freshCases: ReadCase[] = [
     name: "members fields json and geo",
     url: `/api/collections/members/records?sort=id&fields=${e("id,meta,loc,skills,bio:excerpt(5)")}`,
   },
+  {
+    name: "fields through a mixed json array (list)",
+    url: `/api/collections/members/records?filter=${e(`id="${rid("mixedjson")}"`)}&fields=${e("meta.x.a")}`,
+  },
+  {
+    name: "fields through a mixed json array (view)",
+    url: `/api/collections/members/records/${rid("mixedjson")}?fields=${e("meta.x.a")}`,
+  },
+  {
+    name: "fields through a homogeneous json array (view)",
+    url: `/api/collections/members/records/${rid("mixedjson")}?fields=${e("id,meta.y")}`,
+  },
   { name: "post_stats view collection", url: "/api/collections/post_stats/records?sort=id" },
   {
     name: "post_stats view record with expand",

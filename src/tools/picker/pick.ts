@@ -27,6 +27,17 @@ export const ErrInvalidModifierData = new Error(
 );
 
 // a wrapped ErrInvalidModifierData (Go's fmt.Errorf("%w: %w", ...))
+// PickPanic is Go's runtime panic in pickParsedFields (the item.(map[string]any)
+// assertion on a non-map array item). It is never wrapped as
+// InvalidModifierDataError: upstream panics there, and the panic recovery
+// middleware answers 500.
+export class PickPanic extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = "PickPanic";
+  }
+}
+
 export class InvalidModifierDataError extends Error {
   constructor(override readonly cause: unknown) {
     super(
@@ -95,6 +106,9 @@ export function pick(
       pickParsedFields(decoded, parsedFields);
     }
   } catch (err) {
+    if (err instanceof PickPanic) {
+      throw err;
+    }
     throw new InvalidModifierDataError(err);
   }
 
@@ -148,7 +162,7 @@ function pickParsedFields(data: unknown, fields: Fields): void {
     for (const item of data) {
       // Go's item.(map[string]any) assertion panics on a non-map item
       if (!isDataMap(item)) {
-        throw new Error(
+        throw new PickPanic(
           `interface conversion: interface {} is ${goTypeName(item)}, not map[string]interface {}`,
         );
       }

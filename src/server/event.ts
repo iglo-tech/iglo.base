@@ -34,7 +34,7 @@ import {
   type StructType,
 } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
-import { InvalidModifierDataError, pick } from "@/tools/picker/pick";
+import { InvalidModifierDataError, PickPanic, pick } from "@/tools/picker/pick";
 import { isJSONMarshaler, marshal } from "@/tools/types/go-json";
 
 export const ErrUnsupportedContentType = newBadRequestError("Unsupported Content-Type", undefined);
@@ -152,6 +152,9 @@ export class Event extends Resolver {
         data = pick(data, rawFields);
         picked = true;
       } catch (err) {
+        if (err instanceof PickPanic) {
+          throw err; // a Go panic: the panic recovery middleware answers 500
+        }
         if (!(err instanceof InvalidModifierDataError)) {
           return err instanceof Error ? err : new Error(String(err));
         }

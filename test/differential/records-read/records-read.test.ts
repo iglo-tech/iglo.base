@@ -45,6 +45,7 @@ import {
   collectionSteps,
   password,
   recordSteps,
+  rid,
 } from "@test/differential/resolver/schema";
 import { outcome } from "@test/scenarios/expectations";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -249,6 +250,16 @@ describe("fresh install", () => {
           await api("POST", `/api/collections/${step.collection}/records`, body);
         }
       }
+      // a json value whose array mixes objects and scalars: a `fields`
+      // projection through it is a Go panic (500) upstream
+      await api("POST", "/api/collections/members/records", {
+        id: rid("mixedjson"),
+        email: "mixedjson@example.com",
+        password,
+        passwordConfirm: password,
+        meta: { x: [{ a: 1 }, 3] },
+      });
+
       for (const shape of ruleShapes) {
         for (const note of notes) {
           await api("POST", `/api/collections/notes_${shape.shape}/records`, note);
