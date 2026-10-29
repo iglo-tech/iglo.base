@@ -4,6 +4,30 @@
 
 import { healthAPI } from "@test/scenarios/health";
 import { recordCrudList, recordCrudView } from "@test/scenarios/record-crud";
+import {
+  recordCrudSuperuserCreate,
+  recordCrudSuperuserDelete,
+  recordCrudSuperuserList,
+  recordCrudSuperuserUpdate,
+  recordCrudSuperuserView,
+} from "@test/scenarios/record-crud-superuser";
+import {
+  recordCrudCreate,
+  recordCrudDelete,
+  recordCrudUpdate,
+} from "@test/scenarios/record-crud-write";
 import type { Suite } from "@test/scenarios/scenario";
 
-export const suites: Suite[] = [healthAPI, recordCrudList, recordCrudView];
+export const suites: Suite[] = [
+  healthAPI,
+  recordCrudList,
+  recordCrudView,
+  recordCrudDelete,
+  recordCrudCreate,
+  recordCrudUpdate,
+  recordCrudSuperuserList,
+  recordCrudSuperuserView,
+  recordCrudSuperuserDelete,
+  recordCrudSuperuserCreate,
+  recordCrudSuperuserUpdate,
+];
