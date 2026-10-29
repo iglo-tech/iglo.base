@@ -12,6 +12,8 @@
 //    CanAccessRecord, on the main thread and through the read pool.
 
 import { mkdtempSync, rmSync } from "node:fs";
+import { newAppFilesystem } from "@/app/filesystem";
+import { newDefaultSettings } from "@/settings/settings-model";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -67,6 +69,12 @@ function openApp(
     store: new Store<string, unknown>(),
     clock: { now: () => new Date() },
     logger: { error: () => {} },
+    filesystem: newAppFilesystem({
+      dataDir: dataDir,
+      settings: () => newDefaultSettings(),
+      getenv: () => "",
+      logger: { error: () => {} },
+    }),
     async close() {
       databases.close();
       await databases.closed();

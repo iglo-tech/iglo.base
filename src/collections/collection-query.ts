@@ -21,6 +21,7 @@
 // TruncateCollection deletes through the record delete chain of
 // src/records (record-save.ts).
 
+import type { AppFilesystem } from "@/app/filesystem";
 import type { ErrorLogger } from "@/app/app";
 import type { Clock } from "@/app/clock";
 import { Collection, CollectionTypeView } from "@/collections/collection-model";
@@ -61,6 +62,9 @@ export interface CollectionsApp {
   // receives upstream's Logger().Warn calls (errors the save path only
   // reports)
   readonly logger: ErrorLogger;
+  // NewFilesystem and the storage cleanup after a delete
+  // (src/app/filesystem.ts)
+  readonly filesystem: AppFilesystem;
 }
 
 // RunInTransaction wraps fn into a transaction for the regular app

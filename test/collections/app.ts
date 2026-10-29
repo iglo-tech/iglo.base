@@ -5,6 +5,8 @@
 // bootstrap; open() does the same (reloadCachedCollections).
 
 import { mkdtempSync, rmSync } from "node:fs";
+import { newAppFilesystem } from "@/app/filesystem";
+import { newDefaultSettings } from "@/settings/settings-model";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -16,6 +18,8 @@ import { Store } from "@/tools/store/store";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
 export interface TestCollectionsApp extends CollectionsApp {
+  // the pb_data directory
+  readonly dataDir: string;
   // what the app logged (upstream's Logger().Warn calls)
   readonly logged: { message: string; cause: unknown }[];
   cleanup(): void;
@@ -60,7 +64,14 @@ export function openDataDir(
     store: new Store<string, unknown>(),
     clock,
     logger: { error: (message, cause) => logged.push({ message, cause }) },
+    filesystem: newAppFilesystem({
+      dataDir,
+      settings: () => newDefaultSettings(),
+      getenv: () => "",
+      logger: { error: (message, cause) => logged.push({ message, cause }) },
+    }),
     logged,
+    dataDir,
     cleanup() {
       databases.close();
       onCleanup();
