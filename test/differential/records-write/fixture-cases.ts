@@ -13,6 +13,27 @@ const demo1 = "/api/collections/demo1/records";
 const demo2 = "/api/collections/demo2/records";
 const demo5 = "/api/collections/demo5/records";
 
+// a multipart body of one part per [name, content], each with an empty
+// filename parameter: Go's ReadForm keeps such parts as form values
+const emptyFilenameBoundary = "4f6a0e9c2d7b1a5e8c3f6d9b2a7e1c4f8d3b6a9e2c5f8b1d4a7e0c3f6b9d";
+function emptyFilenameParts(parts: [string, string][]): {
+  body: string;
+  headers: Record<string, string>;
+} {
+  let body = "";
+  for (const [name, content] of parts) {
+    body +=
+      `--${emptyFilenameBoundary}\r\n` +
+      `Content-Disposition: form-data; name="${name}"; filename=""\r\n` +
+      `Content-Type: application/octet-stream\r\n\r\n${content}\r\n`;
+  }
+  body += `--${emptyFilenameBoundary}--\r\n`;
+  return {
+    body,
+    headers: { "Content-Type": `multipart/form-data; boundary=${emptyFilenameBoundary}` },
+  };
+}
+
 export const fixtureCases: WriteCase[] = [
   // demo1: nil rules, every field type
   {
@@ -244,6 +265,75 @@ export const fixtureCases: WriteCase[] = [
     as: "superuser",
     method: "DELETE",
     url: "/api/collections/users/records/bgs820n361vj1qd",
+  },
+  // multipart parts with an empty filename are values, not uploads
+  {
+    name: "demo1: superuser multipart file_one with an empty filename and no content",
+    as: "superuser",
+    method: "POST",
+    url: demo1,
+    ...emptyFilenameParts([["file_one", ""]]),
+  },
+  {
+    name: "demo2: superuser multipart title with an empty filename",
+    as: "superuser",
+    method: "POST",
+    url: demo2,
+    ...emptyFilenameParts([["title", "hello"]]),
+  },
+  {
+    name: "demo1: superuser multipart update with empty-filename text and file_many",
+    as: "superuser",
+    method: "PATCH",
+    url: `${demo1}/al1h9ijdeojtsjy`,
+    ...emptyFilenameParts([
+      ["text", "from an empty filename"],
+      ["file_many", ""],
+    ]),
+  },
+  // chunked JSON bodies: only the first value counts against the body
+  // limit (32 MiB for demo2), as jsontext.Decoder reads no further
+  {
+    name: "demo2: guest chunked create with trailing spaces past the body limit",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      [json({ title: "largechunked" }), 1],
+      [" ", (32 << 20) + 1],
+    ],
+  },
+  {
+    name: "demo2: guest chunked create whose value ends at the body limit",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      [" ", (32 << 20) - json({ title: "chunkedatlimit" }).length],
+      [json({ title: "chunkedatlimit" }), 1],
+      [" ", 1000],
+    ],
+  },
+  {
+    name: "demo2: guest chunked create whose value ends past the body limit",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      [" ", (32 << 20) + 1 - json({ title: "chunkedpastlimit" }).length],
+      [json({ title: "chunkedpastlimit" }), 1],
+      [" ", 1000],
+    ],
+  },
+  {
+    name: "demo2: guest chunked create with a syntax error and trailing spaces",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      ['{"title" "x"', 1],
+      [" ", (32 << 20) + 1],
+    ],
   },
   // view collections
   {
