@@ -10,9 +10,14 @@
 // multipartmaxparts), and maxMemory plus 10 MB for the values, names and
 // headers.
 //
-// Go writes file parts past maxMemory to a temporary file. Here a file
-// part's content stays in memory (a Web File); the limits that decide
-// whether a form is accepted are the same.
+// File parts: as Go, the file data of a form is kept in memory up to
+// maxMemory bytes; a part that does not fit is written (all of it) to
+// the form's one temporary file, created as os.CreateTemp("",
+// "multipart-") does (in os.TempDir: $TMPDIR, else /tmp), each such part
+// a section of it (Go's default combined "multipartfiles" mode).
+// Form.removeAll deletes the temporary file; the router calls it when the
+// request ends, as net/http does after the handler (D27). A failed
+// ReadForm removes it at once.
 
 import {
   copyBufferSize,
@@ -33,7 +38,11 @@ import {
   readMIMEHeader,
   Reader as TextprotoReader,
 } from "@/server/textproto";
-import { goBase } from "@/tools/filesystem/file";
+import { closeSync, openSync, rmSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { goBase, type MultipartFileHeader } from "@/tools/filesystem/file";
 
 // ErrMessageTooLarge is returned by ReadForm if the message form data is
 // too large to be processed.
@@ -375,9 +384,74 @@ function stickyErrorReader(r: IoReader): IoReader {
 // Form is a parsed multipart form. Its File parts are Web Files named by
 // the part's FileName(); its Value parts are stored as strings. Both are
 // keyed by field name.
-export interface Form {
-  value: Map<string, string[]>;
-  file: Map<string, globalThis.File[]>;
+export class Form {
+  value = new Map<string, string[]>();
+  file = new Map<string, FileHeader[]>();
+
+  // RemoveAll removes any temporary files associated with a Form. Errors
+  // other than a missing file are thrown (the first one).
+  removeAll(): void {
+    let first: unknown;
+    for (const fhs of this.file.values()) {
+      for (const fh of fhs) {
+        if (fh.tmpfile !== "") {
+          try {
+            rmSync(fh.tmpfile);
+          } catch (err) {
+            if ((err as { code?: string }).code !== "ENOENT" && first === undefined) {
+              first = err;
+            }
+          }
+        }
+      }
+    }
+    if (first !== undefined) {
+      throw first;
+    }
+  }
+}
+
+// A FileHeader describes a file part of a multipart request.
+export class FileHeader implements MultipartFileHeader {
+  readonly filename: string;
+  readonly header: MIMEHeader;
+  size = 0;
+
+  content: Uint8Array | null = null;
+  tmpfile = "";
+  tmpoff = 0;
+
+  constructor(filename: string, header: MIMEHeader) {
+    this.filename = filename;
+    this.header = header;
+  }
+}
+
+// os.CreateTemp(os.TempDir(), "multipart-"): a new file opened for
+// writing (0600), named by the prefix and a random number
+function createTemp(): { fd: number; name: string } {
+  const dir = tmpdir();
+  for (let tries = 0; ; tries++) {
+    const name = join(dir, "multipart-" + String(crypto.getRandomValues(new Uint32Array(1))[0]));
+    try {
+      return { fd: openSync(name, "wx+", 0o600), name };
+    } catch (err) {
+      if ((err as { code?: string }).code === "EEXIST" && tries < 10000) {
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+// the size of the blocks a spilled file part is written in
+const spillBlockSize = 256 << 10;
+
+function writeAll(fd: number, p: Uint8Array): void {
+  let off = 0;
+  while (off < p.length) {
+    off += writeSync(fd, p, off, p.length - off);
+  }
 }
 
 // Reader is an iterator over parts in a MIME multipart body. Reader's
@@ -527,12 +601,60 @@ export class Reader {
   // Content-Disposition of "form-data". It returns ErrMessageTooLarge if
   // all non-file parts can't be stored in maxMemory bytes + 10MB.
   async readForm(maxMemory: number): Promise<[Form | undefined, unknown]> {
-    const form: Form = { value: new Map(), file: new Map() };
+    const form = new Form();
+    let file: { fd: number; name: string } | undefined;
+    let fileOff = 0;
+    let result: [Form | undefined, unknown];
+    try {
+      result = await this.#readForm(
+        form,
+        maxMemory,
+        () => {
+          file ??= createTemp();
+          return file;
+        },
+        (n) => {
+          const off = fileOff;
+          fileOff += n;
+          return off;
+        },
+      );
+    } catch (err) {
+      result = [undefined, err];
+    }
+    if (file !== undefined) {
+      try {
+        closeSync(file.fd);
+      } catch (err) {
+        if (result[1] === undefined) {
+          result = [undefined, err];
+        }
+      }
+    }
+    if (result[1] !== undefined) {
+      try {
+        form.removeAll();
+      } catch {
+        // the read error is the one returned
+      }
+      if (file !== undefined) {
+        rmSync(file.name, { force: true });
+      }
+    }
+    return result;
+  }
+
+  async #readForm(
+    form: Form,
+    maxMemory: number,
+    tempFile: () => { fd: number; name: string },
+    reserve: (n: number) => number,
+  ): Promise<[Form | undefined, unknown]> {
     let maxParts = maxFormParts;
     let maxHeaders = maxMIMEHeaders;
 
     // maxFileMemoryBytes is the maximum bytes of file data we will store
-    // in memory (Go writes the data past it to disk).
+    // in memory. Data past this limit is written to disk.
     //
     // maxMemoryBytes is the maximum bytes we will store in memory,
     // including file content, non-file part values, metadata, and map
@@ -605,22 +727,48 @@ export class Reader {
       for (const [, v] of part.header.entries()) {
         maxHeaders -= v.length;
       }
+      const fh = new FileHeader(filename, part.header);
       const [n, copyErr] = await copyN(b, part, maxFileMemoryBytes + 1, this.copyBuf);
       if (copyErr !== undefined && copyErr !== EOF) {
         return [undefined, copyErr];
       }
       if (n > maxFileMemoryBytes) {
-        // the rest of a file that Go writes to disk
-        const [, restErr] = await copy(b, part, Number.POSITIVE_INFINITY, this.copyBuf);
-        if (restErr !== undefined) {
-          return [undefined, restErr];
+        const file = tempFile();
+        for (const chunk of b.chunks) {
+          writeAll(file.fd, chunk);
         }
+        b.chunks.length = 0;
+        // the part gives at most its peek buffer per read; the bytes are
+        // written in larger blocks
+        const block = new Uint8Array(spillBlockSize);
+        let blockLen = 0;
+        let remainingSize = 0;
+        for (;;) {
+          const [nr, er] = await part.read(block.subarray(blockLen));
+          blockLen += nr;
+          remainingSize += nr;
+          if (blockLen === block.length || (er !== undefined && blockLen > 0)) {
+            writeAll(file.fd, block.subarray(0, blockLen));
+            blockLen = 0;
+          }
+          if (er !== undefined) {
+            if (er !== EOF) {
+              return [undefined, er];
+            }
+            break;
+          }
+        }
+        fh.tmpfile = file.name;
+        fh.size = n + remainingSize;
+        fh.tmpoff = reserve(fh.size);
       } else {
+        fh.content = b.bytes();
+        fh.size = fh.content.length;
         maxFileMemoryBytes -= n;
         maxMemoryBytes -= n;
       }
       const files = form.file.get(name) ?? [];
-      files.push(new globalThis.File(b.chunks, filename));
+      files.push(fh);
       form.file.set(name, files);
     }
 

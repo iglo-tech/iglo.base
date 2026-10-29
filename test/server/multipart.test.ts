@@ -18,8 +18,18 @@
 // from the ported tests: parts are never written to disk here.
 
 import { expect, test } from "bun:test";
+import { existsSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { BytesBuffer, copy, EOF, ErrUnexpectedEOF, type Reader as IoReader } from "@/server/io";
-import { ErrMessageTooLarge, Part, Reader as MultipartReader } from "@/server/multipart";
+import {
+  ErrMessageTooLarge,
+  type FileHeader,
+  Part,
+  Reader as MultipartReader,
+} from "@/server/multipart";
+import { MultipartReader as MultipartFileReader } from "@/tools/filesystem/file";
 import type { MIMEHeader } from "@/server/textproto";
 
 // The byte string of a Go string literal (one character per byte).
@@ -916,10 +926,23 @@ ${textbValue}
 
 // testFile: the name, the size and the content of a file part (Go's
 // fh.Open() reads are the Web File's text here)
-async function testFile(fh: globalThis.File, efn: string, econtent: string): Promise<void> {
-  expect(fh.name).toBe(efn);
+async function testFile(fh: FileHeader, efn: string, econtent: string): Promise<void> {
+  expect(fh.filename).toBe(efn);
   expect(fh.size).toBe(econtent.length);
-  expect(await fh.text()).toBe(econtent);
+  expect(await new MultipartFileReader(fh).blob().text()).toBe(econtent);
+  // Open
+  const r = new MultipartFileReader(fh).open();
+  const buf = new Uint8Array(econtent.length + 10);
+  let n = 0;
+  for (;;) {
+    const read = r.read(buf.subarray(n));
+    if (read === 0) {
+      break;
+    }
+    n += read;
+  }
+  r.close();
+  expect(new TextDecoder().decode(buf.subarray(0, n))).toBe(econtent);
 }
 
 test("TestReadForm", async () => {
@@ -932,10 +955,70 @@ test("TestReadForm", async () => {
   }
   expect(first(f.value.get("texta"))).toBe(textaValue);
   expect(first(f.value.get("textb"))).toBe(textbValue);
-  await testFile(first(f.file.get("filea")), "filea.txt", fileaContents);
-  // Go checks that fileb is an *os.File (written to disk past maxMemory);
-  // here it is an in-memory File like filea.
-  await testFile(first(f.file.get("fileb")), "fileb.txt", filebContents);
+  try {
+    const fa = first(f.file.get("filea"));
+    await testFile(fa, "filea.txt", fileaContents);
+    expect(fa.content).not.toBeNull();
+    const fb = first(f.file.get("fileb"));
+    await testFile(fb, "fileb.txt", filebContents);
+    // written to disk past maxMemory (Go's *os.File)
+    expect(fb.content).toBeNull();
+    expect(fb.tmpfile).toStartWith(join(tmpdir(), "multipart-"));
+    expect(existsSync(fb.tmpfile)).toBe(true);
+  } finally {
+    const tmp = first(f.file.get("fileb")).tmpfile;
+    f.removeAll();
+    expect(existsSync(tmp)).toBe(false);
+  }
+});
+
+// the spilled parts share one temporary file, each a section of it
+// (Go's default combined multipartfiles mode)
+test("ReadForm spills file parts past maxMemory into one temporary file", async () => {
+  const parts = [
+    ["a", "a.txt", "x".repeat(10)],
+    ["b", "b.txt", "y".repeat(300_000)],
+    ["c", "c.txt", "z".repeat(5)],
+    ["d", "d.txt", "w".repeat(70_000)],
+  ];
+  let body = "";
+  for (const [name, filename, content] of parts) {
+    body += `--${boundary}\r\nContent-Disposition: form-data; name="${name}"; filename="${filename}"\r\n\r\n${content}\r\n`;
+  }
+  body += `--${boundary}--\r\n`;
+  const r = new MultipartReader(reader(bytesOf(body)), boundary);
+  const [f, err] = await r.readForm(20);
+  expect(err).toBeUndefined();
+  if (f === undefined) {
+    throw new Error("ReadForm: no form");
+  }
+  const [a, b, c, d] = ["a", "b", "c", "d"].map((k) => first(f.file.get(k)));
+  if (a === undefined || b === undefined || c === undefined || d === undefined) {
+    throw new Error("missing parts");
+  }
+  for (const [i, fh] of [a, b, c, d].entries()) {
+    await testFile(fh, parts[i]?.[1] as string, parts[i]?.[2] as string);
+  }
+  expect(a.content).not.toBeNull();
+  expect(c.content).not.toBeNull();
+  expect(b.tmpfile).not.toBe("");
+  expect(d.tmpfile).toBe(b.tmpfile);
+  expect(b.tmpoff).toBe(0);
+  expect(d.tmpoff).toBe(300_000);
+  f.removeAll();
+  expect(existsSync(b.tmpfile)).toBe(false);
+});
+
+// a ReadForm that fails after a part was spilled removes the temporary file
+test("ReadForm removes the temporary file on error", async () => {
+  const body = `--${boundary}\r\nContent-Disposition: form-data; name="b"; filename="b.txt"\r\n\r\n${"y".repeat(100_000)}`;
+  const before = new Set(readdirSync(tmpdir()).filter((n) => n.startsWith("multipart-")));
+  const r = new MultipartReader(reader(bytesOf(body)), boundary);
+  const [f, err] = await r.readForm(20);
+  expect(f).toBeUndefined();
+  expect(err).toBeDefined();
+  const after = readdirSync(tmpdir()).filter((n) => n.startsWith("multipart-") && !before.has(n));
+  expect(after).toEqual([]);
 });
 
 test("TestReadFormWithNamelessFile", async () => {
