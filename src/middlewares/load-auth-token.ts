@@ -1,13 +1,11 @@
 // Upstream: apis/middlewares.go (loadAuthToken, getAuthTokenFromRequest)
 //
-// The records are looked up in the app passed in (upstream's e.App). Until
-// serve opens pb_data (M1.2), the default router binds it without one and
-// the middleware only calls the next handler. Upstream's debug log of a
-// failed lookup is left out (application code logs only errors).
+// The records are looked up in e.app. Upstream's debug log of a failed
+// lookup is left out (application code logs only errors).
 
 import type { RequestEvent } from "@/app/event-request";
 import { equalFold } from "@/collections/go-strings";
-import { findAuthRecordByToken, type RecordsApp } from "@/records/record-query";
+import { findAuthRecordByToken } from "@/records/record-query";
 import { TokenTypeAuth } from "@/records/record-tokens";
 import type { Handler } from "@/server/handler";
 import {
@@ -25,13 +23,13 @@ import {
 //
 // Note: We don't throw an error on invalid or expired token (upstream
 // leaves the handling to later middlewares).
-export function loadAuthToken(app?: RecordsApp): Handler<RequestEvent> {
+export function loadAuthToken(): Handler<RequestEvent> {
   return {
     id: DefaultLoadAuthTokenMiddlewareId,
     priority: DefaultLoadAuthTokenMiddlewarePriority,
     func: (e) => {
       // already loaded by another middleware
-      if (e.auth !== undefined || app === undefined) {
+      if (e.auth !== undefined) {
         return e.next();
       }
 
@@ -41,7 +39,7 @@ export function loadAuthToken(app?: RecordsApp): Handler<RequestEvent> {
       }
 
       try {
-        e.auth = findAuthRecordByToken(app, token, TokenTypeAuth);
+        e.auth = findAuthRecordByToken(e.app, token, TokenTypeAuth);
       } catch {
         // a missing, invalid or expired token leaves the request a guest
       }

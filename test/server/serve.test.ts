@@ -5,19 +5,11 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { newRouter } from "@/apis/base";
-import { newApp } from "@/app/app";
 import { handleRequest } from "@/server/serve";
+import { openFixtureApp } from "@test/app/app";
 import { rawRequest } from "@test/support/raw-http";
 
-const errors: string[] = [];
-const app = newApp({
-  dataDir: "/tmp/pb_data",
-  isDev: false,
-  encryptionEnv: "",
-  queryTimeout: 30,
-  clock: { now: () => new Date(0) },
-  logger: { error: (message) => errors.push(message) },
-});
+const app = openFixtureApp({ clock: { now: () => new Date(0) } });
 
 let server: ReturnType<typeof Bun.serve>;
 let url: string;
@@ -53,6 +45,7 @@ beforeAll(() => {
 
 afterAll(async () => {
   await server.stop(true);
+  await app.cleanup();
 });
 
 test("a panic inside a handler returns upstream's 500 body", async () => {
@@ -64,7 +57,7 @@ test("a panic inside a handler returns upstream's 500 body", async () => {
     message: "Something went wrong while processing your request.",
     status: 500,
   });
-  expect(errors).toEqual([]);
+  expect(app.logged.map((entry) => entry.message)).toEqual([]);
 });
 
 test("a flushed response is streamed", async () => {

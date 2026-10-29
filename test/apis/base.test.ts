@@ -6,10 +6,9 @@
 // The router is built in-process so that test-only routes (a handler that
 // panics, a middleware order probe) can be added; nothing here ships.
 
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 
 import { newRouter, safeRedirectPath } from "@/apis/base";
-import { newApp } from "@/app/app";
 import {
   DefaultActivityLoggerMiddlewareId,
   DefaultBodyLimitMiddlewareId,
@@ -21,15 +20,10 @@ import {
 } from "@/middlewares/middlewares";
 import { newBadRequestError } from "@/server/error";
 import { serveTest } from "@test/support/router";
+import { openFixtureApp } from "@test/app/app";
 
-const app = newApp({
-  dataDir: "/tmp/pb_data",
-  isDev: false,
-  encryptionEnv: "",
-  queryTimeout: 30,
-  clock: { now: () => new Date(0) },
-  logger: { error: () => {} },
-});
+const app = openFixtureApp({ clock: { now: () => new Date(0) } });
+afterAll(() => app.cleanup());
 
 const securityHeaders = {
   "x-xss-protection": "1; mode=block",
