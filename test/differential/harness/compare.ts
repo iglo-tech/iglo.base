@@ -185,7 +185,36 @@ const authMethodsURL: Rule = (upstream, at) => {
   return { name: "authURL", pattern: new RegExp(`^${source}$`) };
 };
 
-export const rules: Rule[] = [atGeneratedKey, authMethodsURL];
+// a literal text in a regular expression
+function escapeRegExp(s: string): string {
+  return s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+}
+
+// tools/filesystem/file.go normalizeName: an uploaded file's stored name
+// is its cleaned base name, "_", 10 random characters and its extension
+// (a base name shorter than 3 characters gets 10 more random characters).
+// The format is upstream's name with exactly those random parts left open,
+// so the sanitized base, the extension and the length must match.
+const generatedFileName: Rule = (upstream) => {
+  if (upstream.kind !== "string") {
+    return undefined;
+  }
+  const m = /^(.*)_[a-z0-9]{10}((?:\.[^/]*)?)$/.exec(upstream.value);
+  if (m === null || (m[1] as string).includes("/")) {
+    return undefined;
+  }
+  let base = escapeRegExp(m[1] as string);
+  if (/^[a-z0-9]{10,12}$/.test(m[1] as string)) {
+    // a short base name with its own random part
+    base = escapeRegExp((m[1] as string).slice(0, -10)) + "[a-z0-9]{10}";
+  }
+  return {
+    name: "file name",
+    pattern: new RegExp(`^${base}_[a-z0-9]{10}${escapeRegExp(m[2] as string)}$`),
+  };
+};
+
+export const rules: Rule[] = [atGeneratedKey, authMethodsURL, generatedFileName];
 
 // Whether upstream writes the object's members in a random order.
 export type OrderRule = (object: JsonNode, at: Location) => boolean;
