@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: none.
+Active: M2.4 (worker).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M2.4 | worker | `task/M2.4-records-read` | 0 | [Brief](briefs/M2.4.md). Opus worker started 2026-10-29 |
 
 ## Done
 
@@ -146,3 +147,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-29 (M1.2 fix round 1): the lead accepted removing the read-pool and cache-load tests that read internals. No HTTP route reads through the pool or depends on the cache yet; carried for M2.4: its records list/view reference tests must run through the read pool on a served pb_data, which covers both.
 - 2026-10-29 (M1.2 fix round 2): the lead decided the preflight approach: an inspection error is never "table absent" (startup fails, nothing written); when data.db has a -journal, -wal or -shm companion, the preflight inspects a private copy in a temp directory outside pb_data; otherwise the immutable open stays.
 - 2026-10-29 (M1.2 fix round 2): `builderHasTable` now throws on query errors instead of returning false (upstream returns false for any error); a deliberate safety difference at startup only, noted in the code.
+- 2026-10-29 (M2.4 brief): M2.4 takes the `fields` picker hook in `src/server/event.ts` and `url.Values.Encode` in `src/server` (lead-approved shared changes, own commits). The record enrich hooks are not ported; the default enrich runs directly in upstream's order.
