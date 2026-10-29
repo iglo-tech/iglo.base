@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Paused until 2026-10-29T13:47:15Z (Claude API rate limit). M3.2 active: after the pause, resume its worker thread (do not start a new one).
+Paused until 2026-10-29T13:47:15Z (Claude API rate limit). M3.2 active: PR #33 is ready for review round 1 after the pause.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.2 | worker | task/M3.2-local-files | 0 | [brief](briefs/M3.2.md); includes the D27 multipart spill. The worker hit a rate limit, was resumed by the harness and stopped before its final check: 9 commits pushed to the branch at `132de61` (no PR; worktree `t3-99f3cfc1`, thread "M3.2 worker: local files"). Next: send that thread "run `bun run check`, then `bun run test:reference`, in the foreground, then open the PR" |
+| M3.2 | review | [#33](https://github.com/iglo-tech/iglo.base/pull/33) | 0 | [brief](briefs/M3.2.md); worker done at `3f4f0a5`, local check and test:reference pass. Next: start the Sol review (round 1) |
 
 ## Done
 
