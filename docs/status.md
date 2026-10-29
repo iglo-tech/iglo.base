@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-Active: M1.2 (worker).
+Active: M1.2 (council round 1).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.2 | worker | `task/M1.2-schema-bootstrap` | 0 | [Brief](briefs/M1.2.md). Opus worker started 2026-10-29 |
+| M1.2 | council | [#26](https://github.com/iglo-tech/iglo.base/pull/26) | 1 | [Brief](briefs/M1.2.md). Worker head `51f083d`: check and test:reference pass locally; CI pending. Council round 1 started at `51f083d` |
 
 ## Done
 
@@ -142,3 +142,4 @@ Not paused. The last pause (Claude API rate limit) ended 2026-10-27T22:30:14+01:
 - 2026-10-29 (plan change, M2.3 brief): `serve` does not open pb_data until M1.2, so M2.4's "both servers" scenarios need M1.2; M2.4 now depends on M1.2 and the critical path is … → M2.2 → M2.3 → M1.2 → M2.4 → M3.1. The superuser IP check needs the settings model, so it moves from M2.3 to M1.3. M2.3 takes the `Require*` guards from `apis/middlewares.go` (used by M2.4/M2.5 handlers) and replaces the `AuthRecord` placeholder in `src/app/event-request.ts` with Record (lead-approved shared change, own commit).
 - 2026-10-29 (M2.3 PR): the lead accepted the worker's choices. `loadAuthToken(app?)` and `requireSameCollectionContextAuth(app, param)` take the app as an argument because `App` has no databases until M1.2; the default router binds `loadAuthToken` without an app (a no-op). Carried for M1.2: pass the app there, or make `App` a `RecordsApp` and switch both to `e.app`. `newJWT` in `src/tools/security/jwt.ts` (M1.1) accepts a bigint duration (Go int64 nanoseconds); the guard ids live in `src/middlewares/require-auth.ts`.
 - 2026-10-29 (M1.2 brief): M1.2 also takes the app bootstrap that `serve` needs (databases, collection cache, temp dir cleanup, `loadAuthToken` bound with the app); the shared app context in `src/app/app.ts` grows accordingly (lead-approved). A fresh install builds upstream's end-state schema directly and records all system migration rows, as `03-data-compatibility.md` says.
+- 2026-10-29 (M1.2 PR): the lead accepted the worker's choices. (1) Bun's SQLite does not create `sqlite_stat4` (upstream's `PRAGMA optimize` does); it is the only fresh-schema difference, documented and checked to be the only one, and not forced through `writable_schema`. (2) Upstream's fresh install writes the default `settings` row in `_params`; iglo.base writes none until M1.3 (upstream writes it on its next start). (3) Only `serve` opens pb_data for now; upstream also does for the bare root command, `superuser` and before flag errors (M6.2 and the CLI follow-ups). (4) `possibleProxyHeader` checks the common proxy headers; configured trusted-proxy headers come with M1.3. `loadAuthToken` and the guards now read `e.app`. The forge has no v0.40.x downloads; v0.40.6 from the archived GitHub release (SHA-256 checked) was verified by hand and is not in `upstream.lock`.
