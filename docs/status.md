@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M4.4 (mail, with `mails/`) merged; next: M0.7.
+M4.4 (mail, with `mails/`) merged; M0.7 (thumbnail spike) active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M0.7 | worker | `task/M0.7-thumbnails` | 0 | [brief](briefs/M0.7.md) |
 
 ## Done
 
