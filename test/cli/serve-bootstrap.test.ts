@@ -194,6 +194,26 @@ describe("serve bootstrap", () => {
     );
   });
 
+  test("compatible crashed data starts when no private copy can be made (temp dir not writable)", async () => {
+    const dataDir = fixtureCopy();
+    crashSQL(
+      join(dataDir, "data.db"),
+      "INSERT INTO _migrations (file, applied) VALUES ('1700000000_crashed.js', 1)",
+    );
+    expect(existsSync(join(dataDir, "data.db-wal"))).toBe(true);
+
+    const noTemp = join(tempDir(), "missing", "tmp");
+    const server = await startServer([], dataDir, "127.0.0.1", undefined, { TMPDIR: noTemp });
+    const res = await fetch(`${server.url}/api/health`);
+    expect(res.status).toBe(200);
+    const result = await server.stop();
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(dumpPbData(dataDir).migrations.some((m) => m.file === "1700000000_crashed.js")).toBe(
+      true,
+    );
+  });
+
   test("a data.db that cannot be read stops the start with SQLite's error and nothing is written", async () => {
     const dataDir = join(tempDir(), "pb_data");
     mkdirSync(dataDir);

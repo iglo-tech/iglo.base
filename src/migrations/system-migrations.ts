@@ -164,7 +164,8 @@ export function runSystemMigrations(app: CollectionsApp): SystemMigrationsResult
 // connection writes: it rewrites or creates -shm, or fails on a hot
 // journal it cannot roll back. Then data.db and its companions are copied
 // into a private temp directory, and a normal connection there rolls back
-// or replays them; pb_data's files are only read.
+// or replays them; pb_data's files are only read. If the copy cannot be
+// made, data.db is checked in place (see below).
 export function checkExistingDataDir(dataDir: string): void {
   const dataPath = join(dataDir, "data.db");
   if (!existsSync(dataPath)) {
@@ -178,13 +179,27 @@ export function checkExistingDataDir(dataDir: string): void {
     return;
   }
 
-  const copyDir = mkdtempSync(join(tmpdir(), "iglo-base-check-"));
+  let copyDir: string | undefined;
   try {
+    copyDir = mkdtempSync(join(tmpdir(), "iglo-base-check-"));
     const copyPath = join(copyDir, "data.db");
     for (const suffix of ["", ...companions]) {
       copyFileSync(dataPath + suffix, copyPath + suffix);
     }
-    checkDataDBFile(copyPath, constants.SQLITE_OPEN_READWRITE);
+  } catch {
+    // No private copy (temp dir not writable, or too small for data.db):
+    // check in place, as upstream opens it. SQLite's own crash recovery
+    // (rollback of a hot journal, -shm rebuild) may then write to pb_data
+    // before a refusal; the start is never refused for want of temp space.
+    if (copyDir !== undefined) {
+      rmSync(copyDir, { recursive: true, force: true });
+    }
+    checkDataDBFile(dataPath, constants.SQLITE_OPEN_READWRITE);
+    return;
+  }
+
+  try {
+    checkDataDBFile(join(copyDir, "data.db"), constants.SQLITE_OPEN_READWRITE);
   } finally {
     rmSync(copyDir, { recursive: true, force: true });
   }
