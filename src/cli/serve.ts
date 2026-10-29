@@ -2,8 +2,8 @@
 // Execute runs before the command (core/base.go Bootstrap, see
 // @/app/bootstrap) and its ClearBootstrap on termination
 //
-// Only `serve` opens pb_data here; upstream also bootstraps for the root
-// command without --help/--version and for `superuser` (M6.2).
+// `serve` and `superuser` (@/cli/superuser) open pb_data with bootstrapApp;
+// upstream also bootstraps for the root command without --help/--version.
 //
 // Also logs the one warning about pb_hooks and pb_migrations directories,
 // which upstream's prebuilt binary would load (examples/base/main.go, jsvm
@@ -15,6 +15,7 @@ import { join } from "node:path";
 import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { ignoredDirsWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
+import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { logTime, serve } from "@/server/serve";
 
@@ -43,6 +44,36 @@ export const serveFlags: FlagSpec[] = [
       "TCP address to listen for the HTTPS server\n(if domain args are specified - default to 0.0.0.0:443, otherwise - default to empty string, aka. no TLS)\nThe incoming HTTP traffic also will be auto redirected to the HTTPS version",
   },
 ];
+
+// The app bootstrap that pocketbase.go's Execute runs before a command
+// (serve, superuser).
+export async function bootstrapApp(app: AppConfig, ctx: CliContext): Promise<App> {
+  const logError = (message: string, cause?: unknown): void => {
+    const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
+    ctx.out.stderr(
+      `${logTime(ctx.out.now())} ERROR ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
+    );
+  };
+
+  return bootstrap({
+    dataDir: app.dataDir,
+    isDev: app.isDev,
+    encryptionEnv: app.encryptionEnv,
+    queryTimeout: app.queryTimeout,
+    clock: { now: () => ctx.out.now() },
+    logger: { error: logError },
+    getenv: ctx.getenv,
+    // color.HiBlack, as upstream's dev mode prints the statements
+    devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
+    warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),
+  });
+}
+
+// apis/installer.go executablePath: os.Args[0], or how the program runs
+// from source (upstream's "go run .").
+function executablePath(ctx: CliContext): string {
+  return ctx.isCompiled ? ctx.argv0 : "bun src/main.ts";
+}
 
 export async function runServeCommand(
   app: AppConfig,
@@ -73,25 +104,7 @@ export async function runServeCommand(
     ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirsWarning(ignored)}\n`);
   }
 
-  const logError = (message: string, cause?: unknown): void => {
-    const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
-    ctx.out.stderr(
-      `${logTime(ctx.out.now())} ERROR ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
-    );
-  };
-
-  const appContext = await bootstrap({
-    dataDir: app.dataDir,
-    isDev: app.isDev,
-    encryptionEnv: app.encryptionEnv,
-    queryTimeout: app.queryTimeout,
-    clock: { now: () => ctx.out.now() },
-    logger: { error: logError },
-    getenv: ctx.getenv,
-    // color.HiBlack, as upstream's dev mode prints the statements
-    devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
-    warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),
-  });
+  const appContext = await bootstrapApp(app, ctx);
 
   try {
     await serve(
@@ -102,6 +115,9 @@ export async function runServeCommand(
         certificateDomains: domains,
         allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ["*"],
         showStartBanner: true,
+        ui: ctx.ui,
+        executablePath: executablePath(ctx),
+        launchURL: ctx.launchURL ?? (() => {}),
       },
       ctx.out,
       ctx.shutdown,

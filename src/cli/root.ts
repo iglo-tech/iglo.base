@@ -3,8 +3,9 @@
 // --indexFallback flags), with cobra's Execute flow (command lookup, help,
 // version, error output via log.Fatal).
 //
-// Not ported: bootstrap (opening pb_data, M0.4), the superuser command (M6.2),
-// and everything plugin related (see @/cli/removed).
+// The serve and superuser commands are in @/cli/serve and @/cli/superuser.
+// Not ported: the bootstrap of the root command itself (it only prints help
+// or the version), and everything plugin related (see @/cli/removed).
 
 import { basename, dirname, join } from "node:path";
 
@@ -12,7 +13,9 @@ import { argsMinusFirst, FlagError, parseFlags, stripFlags, type FlagSpec } from
 import { helpText, usageText, type CommandHelp } from "@/cli/help";
 import { findRemovedFlag, removedCommandMessage, removedFlagMessage } from "@/cli/removed";
 import { runServeCommand, serveFlags, serveShort, serveUse } from "@/cli/serve";
+import { CommandError, runSuperuserCommand, superuserShort } from "@/cli/superuser";
 import { logTime, type Output } from "@/server/serve";
+import type { StaticFS } from "@/apis/ui-pack";
 
 // Version of iglo.base, set by the release build (M7.3).
 export const version = "(untracked)";
@@ -34,6 +37,11 @@ export interface CliContext {
   shutdown: AbortSignal;
   // os.Getenv ("" when unset); an empty environment unless set
   getenv?: (name: string) => string;
+  // the embedded dashboard build (main.ts); undefined runs without the
+  // dashboard, as upstream's no_ui build
+  ui?: StaticFS;
+  // osutils.LaunchURL: opens a url in a browser when possible
+  launchURL?: (url: string) => void;
 }
 
 // The persistent flags shared by every command.
@@ -57,7 +65,7 @@ class CliError extends Error {
 
 const subcommands = [
   { name: "serve", short: serveShort },
-  { name: "superuser", short: "Manage superusers" },
+  { name: "superuser", short: superuserShort },
 ];
 
 function rootFlags(defaults: AppConfig): FlagSpec[] {
@@ -210,7 +218,8 @@ async function execute(ctx: CliContext): Promise<number> {
   }
 
   if (commandName === "superuser") {
-    throw new CliError(`command "superuser" is not implemented yet`);
+    await runSuperuserCommand((values) => resolveConfig(defaults, values), persistent, ctx, name);
+    return 0;
   }
 
   if (commandName !== undefined) {
@@ -255,7 +264,7 @@ export async function runCli(ctx: CliContext): Promise<number> {
   try {
     return await execute(ctx);
   } catch (err) {
-    if (err instanceof CliError && err.usage) {
+    if ((err instanceof CliError || err instanceof CommandError) && err.usage) {
       ctx.out.stderr(`${err.usage}\n`);
     }
     // log.Fatal
