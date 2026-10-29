@@ -24,6 +24,7 @@ import {
   readdirSync,
   readFileSync,
   readlinkSync,
+  realpathSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -57,7 +58,7 @@ async function main(): Promise<void> {
   // the run works in the concrete cache directory, never through the
   // .upstream symlink, which a run with another lock may repoint meanwhile
   const layout = values.dir
-    ? layoutFor(resolve(values.dir))
+    ? layoutFor(concreteDir(resolve(values.dir)))
     : layoutFor(linkSharedCache(defaultLayout.upstreamDir, lockPath));
   const lock = readLock(lockPath);
   const platform = hostPlatform();
@@ -101,6 +102,13 @@ async function main(): Promise<void> {
   } finally {
     rmSync(staging, { recursive: true, force: true });
   }
+}
+
+// the directory with every symlink in its path resolved, created if missing,
+// so a link replaced later cannot redirect this run's writes
+function concreteDir(dir: string): string {
+  mkdirSync(dir, { recursive: true });
+  return realpathSync(dir);
 }
 
 // Points the default .upstream at the shared cache directory for this lock
@@ -242,9 +250,12 @@ async function prepareTool(
     }
     chmodSync(extracted, 0o755);
     mkdirSync(layout.binDir, { recursive: true });
+    // the old stamp goes first, so a run that fails before the new stamp is
+    // written leaves the binary unstamped (a cache miss), never stamped with
+    // the old hash; a concurrent reader treats the missing stamp as a miss
+    rmSync(stamp, { force: true });
     renameSync(extracted, binary);
-    // replaced through a rename, never removed first, so a concurrent run
-    // reads the old stamp, the new one or none, but never half of one
+    // written through a rename, so no run ever reads half a stamp
     writeFileSync(`${stamp}.${process.pid}`, `${entry.sha256}\n`);
     renameSync(`${stamp}.${process.pid}`, stamp);
     console.log(`${tool}: ready at ${binary}`);
