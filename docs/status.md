@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M0.8 active (review round 2).
+M0.8 merged; next: M3.2 (file storage).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.8 | review | [#32](https://github.com/iglo-tech/iglo.base/pull/32) | 2 | [brief](briefs/M0.8.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M0.8 | [#32](https://github.com/iglo-tech/iglo.base/pull/32) | 2026-10-29 (`4c23b15`) | Two review rounds (lead fixed round 1: spike memory guard, report wording). Lifted Bun's 128 MiB request cap. Follow-ups decided in D27: multipart spill (M3.2), SSE timeouts and slow-client cap (M5.1), bcrypt off the event loop (M7.1) |
 | M4.1 | [#31](https://github.com/iglo-tech/iglo.base/pull/31) | 2026-10-29 (`b30358d`) | One review round: Sol APPROVE at `650cc12`, no findings. Lead decision: MFA model/query and checkMFA moved from M4.2 into M4.1. Carried: new-origin alert mail (M4.4; until then a new origin is not stored, as upstream without a mailer); other OAuth2 providers in auth-methods (M4.5–M4.7); hourly expired-MFA cleanup (M5.6); auth rate-limit rules (M4.8) |
 | M1.3 | [#29](https://github.com/iglo-tech/iglo.base/pull/29) | 2026-10-29 (`335e06b`) | One review round (first under D25): Sol APPROVE at `e1692d8`, no findings. Includes M3.5 (Settings API). Carried: S3 test (M5.4), email test (M4.4), Apple client secret (M4.6) answer 400 placeholders; RealIP ignores trusted proxy headers until M5.7; rate-limit rule relabel on collection rename to M3.4 |
 | M3.1 | [#28](https://github.com/iglo-tech/iglo.base/pull/28) | 2026-10-29 (`299d761`) | Three council rounds, then a lead decision. Carried: multipart parsing about 15 µs per part (M7); throughput under many concurrent writes below the M7 bar (docs/perf/M3.1-records-write.md); `Connection: close` with unread body bytes closes the socket at once (Bun) |
@@ -130,6 +130,8 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.5a round 1): `detectReader` accepts only a Blob (sliced, never consumed). Upstream rewinds the file after detection, and a web stream cannot give unread bytes back; iglo.base's callers all hold Blobs.
 - 2026-10-28 (M1.5b brief): the file field's Intercept and storage helpers wait for M3.2 with the filesystem; `filesystem.File` uses a Blob as its reader; `NewFileFromURL` waits for M4.5.
 - 2026-10-28 (M1.5b PR): the lead accepted the worker's open points. A `File` reads the first 4096 bytes of its Blob when it is created, so the synchronous `validateValue` can run the MIME check (the shared Field interface stays synchronous). Directory parts of uploaded file names are dropped, as Go's multipart reader does and Bun's `formData()` does not. `src/validators/file.ts` imports `goQuote` from `src/fields/field.ts` (carried with the same note for `bcrypt.ts`). The `:uploaded` getter's deprecation log line is left out (fields have no logger). Carried for M3.2: upstream stores the first 255 bytes of the original name as metadata, which must be valid UTF-8; a cut inside a multi-byte character makes the upload fail with a plain 400.
+- 2026-10-29 (M4.1 brief): `core/mfa_*` and `checkMFA` moved from M4.2 to M4.1, so MFA-enabled collections are never answered with a token after one factor.
+- 2026-10-29 (M0.8): [D27](design/10-decisions.md) records the spike follow-ups for M3.2, M5.1 and M7.1.
 
 ## Paused until
 
