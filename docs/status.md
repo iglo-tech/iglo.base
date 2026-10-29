@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M3.2 merged; next: M2.5 (usable-first order).
+M2.5 active (worker), with M3.4 folded in.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M2.5 | worker | task/M2.5-collections-api | 0 | [brief](briefs/M2.5.md); includes M3.4 |
 
 ## Done
 
@@ -134,6 +135,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-28 (M1.5b PR): the lead accepted the worker's open points. A `File` reads the first 4096 bytes of its Blob when it is created, so the synchronous `validateValue` can run the MIME check (the shared Field interface stays synchronous). Directory parts of uploaded file names are dropped, as Go's multipart reader does and Bun's `formData()` does not. `src/validators/file.ts` imports `goQuote` from `src/fields/field.ts` (carried with the same note for `bcrypt.ts`). The `:uploaded` getter's deprecation log line is left out (fields have no logger). Carried for M3.2: upstream stores the first 255 bytes of the original name as metadata, which must be valid UTF-8; a cut inside a multi-byte character makes the upload fail with a plain 400.
 - 2026-10-29 (M4.1 brief): `core/mfa_*` and `checkMFA` moved from M4.2 to M4.1, so MFA-enabled collections are never answered with a token after one factor.
 - 2026-10-29 (M0.8): [D27](design/10-decisions.md) records the spike follow-ups for M3.2, M5.1 and M7.1.
+- 2026-10-29 (plan change, before M2.5): M3.4 (collections write, import, truncate, view dry run) is folded into M2.5; both port `apis/collection.go` and run back to back in the usable-first order.
 
 ## Paused until
 
