@@ -40,6 +40,7 @@ import { inExp, newExp, notIn } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import { runInTransaction } from "@/db/tx";
 import type { SelectQuery } from "@/db/dbx/select";
+import type { Settings } from "@/settings/settings-model";
 import { type Field, type FieldApp, FieldNameId } from "@/fields/field";
 import { RelationField } from "@/fields/relation";
 import type { Record } from "@/records/record-model";
@@ -65,6 +66,12 @@ export interface CollectionsApp {
   // NewFilesystem and the storage cleanup after a delete
   // (src/app/filesystem.ts)
   readonly filesystem: AppFilesystem;
+  // the app settings and what their save reads (the encryption key), for
+  // the rate limit rule relabel after a collection rename; absent where a
+  // pb_data is opened without its settings (test tools)
+  readonly settings?: Settings;
+  readonly encryptionEnv?: string;
+  getenv?(name: string): string;
 }
 
 // RunInTransaction wraps fn into a transaction for the regular app

@@ -46,6 +46,20 @@ export function isJSONMarshaler(value: unknown): value is JSONMarshaler {
   );
 }
 
+// Values that decode their own JSON form, as Go's json.Unmarshaler: they
+// get the text of one valid JSON value and throw on failure.
+export interface JSONUnmarshaler {
+  unmarshalJSON(b: string): void;
+}
+
+export function isJSONUnmarshaler(value: unknown): value is JSONUnmarshaler {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { unmarshalJSON?: unknown }).unmarshalJSON === "function"
+  );
+}
+
 export class JSONSyntaxError extends Error {
   constructor(message: string) {
     super(`jsontext: ${message}`);

@@ -104,7 +104,8 @@ export async function reloadSettings(app: App): Promise<void> {
 // handlers). None exist yet besides the reloaded app settings themselves;
 // they are called from here by the tasks that add them:
 //   - M4.4: reset the mailer client (NewMailClient reads the SMTP config);
-//   - M4.8: reset the rate limiters (rateLimits rules);
+//   - M4.8: reset the rate limiters (rateLimits rules; also after
+//     relabelRateLimitRules, which saves without a reload);
 //   - M5.3: reschedule the backups cron (backups.cron, cronMaxKeep);
 //   - M5.5: apply the logs settings (minLevel, maxDays, logIP, logAuthId);
 //   - M5.7: the trusted proxy settings (read per request, nothing to reset).
@@ -168,6 +169,58 @@ export async function saveSettings(app: App, s: Settings): Promise<void> {
   // the Settings model is the app one or a different one
   app.settings.postScan();
   await reloadSettings(app);
+}
+
+// The app members the synchronous settings save reads.
+export type SettingsSaveApp = Pick<App, "databases" | "clock" | "encryptionEnv" | "getenv">;
+
+// app.Save(settings) from a synchronous save path that may run in a
+// transaction (the rate limit rule relabel of a collection rename): the
+// validation and db write of saveSettings, with the encryption done
+// synchronously. The settings saved are the app ones, changed in place,
+// so the reload from the stored row would give the same values and is not
+// repeated.
+export function saveSettingsSync(app: SettingsSaveApp, s: Settings): void {
+  const validateErr = s.validate();
+  if (validateErr !== null) {
+    throw validateErr;
+  }
+
+  const data = s.dbExportSync(app.clock, app.getenv(app.encryptionEnv));
+
+  saveNoValidate(app.databases, new SettingsExportModel(s, data));
+
+  s.postScan();
+}
+
+// The collection update part of registerSettingsHooks
+// (core/settings_model.go): after a collection rename, the rate limit rules
+// labeled "<old name>:..." are relabeled "<new name>:..." and the settings
+// saved. The rules are changed in place, as upstream changes the app
+// settings' rules slice.
+export function relabelRateLimitRules(
+  app: SettingsSaveApp,
+  settings: Settings,
+  oldName: string,
+  newName: string,
+): void {
+  if (oldName === newName) {
+    return;
+  }
+
+  let hasChange = false;
+
+  const rules = settings.settings.RateLimits.Rules ?? [];
+  for (const rule of rules) {
+    if (rule.Label.startsWith(oldName + ":")) {
+      rule.Label = rule.Label.replace(oldName + ":", () => newName + ":");
+      hasChange = true;
+    }
+  }
+
+  if (hasChange) {
+    saveSettingsSync(app, settings);
+  }
 }
 
 // The db write of the Settings model with its prepared export

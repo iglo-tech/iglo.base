@@ -33,7 +33,7 @@ import {
 import { nowDateTime } from "@/tools/types/datetime";
 import type { Clock } from "@/app/clock";
 import { newSchedule } from "@/tools/cron/schedule";
-import { encrypt } from "@/tools/security/encrypt";
+import { encrypt, encryptSync } from "@/tools/security/encrypt";
 import { type GoInt, quote } from "@/tools/types/go-json";
 import { Errors, NewError } from "@/validation/error";
 import { Each } from "@/validation/each";
@@ -575,22 +575,33 @@ export class Settings {
   // encryptionKey is the value of the app's encryption env variable
   // (os.Getenv(app.EncryptionEnv())); empty stores plain JSON.
   async dbExport(clock: Clock, encryptionKey: string): Promise<SettingsExport> {
+    const [result, encoded] = this.dbExportPlain(clock);
+    if (encryptionKey !== "") {
+      result.value = await encrypt(encoded, encryptionKey);
+    }
+    return result;
+  }
+
+  // dbExport for a synchronous save path (the encryption with node:crypto)
+  dbExportSync(clock: Clock, encryptionKey: string): SettingsExport {
+    const [result, encoded] = this.dbExportPlain(clock);
+    if (encryptionKey !== "") {
+      result.value = encryptSync(encoded, encryptionKey);
+    }
+    return result;
+  }
+
+  private dbExportPlain(clock: Clock): [SettingsExport, Uint8Array<ArrayBuffer>] {
     const now = nowDateTime(clock).string();
 
-    const result: SettingsExport = { id: this.pk(), updated: now, value: "" };
+    const encoded = new TextEncoder().encode(marshalSettingsData(this.settings, false));
+
+    const result: SettingsExport = { id: this.pk(), updated: now, value: encoded };
     if (this.isNew()) {
       result.created = now;
     }
 
-    const encoded = new TextEncoder().encode(marshalSettingsData(this.settings, false));
-
-    if (encryptionKey !== "") {
-      result.value = await encrypt(encoded, encryptionKey);
-    } else {
-      result.value = encoded;
-    }
-
-    return result;
+    return [result, encoded];
   }
 
   // PostValidate implements the [PostValidator] interface and defines

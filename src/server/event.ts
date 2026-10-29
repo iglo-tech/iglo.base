@@ -47,7 +47,12 @@ import {
 import { unmarshalXML } from "@/server/xml-decode";
 import { File, NewFileFromMultipart } from "@/tools/filesystem/file";
 import { InvalidModifierDataError, PickPanic, pick } from "@/tools/picker/pick";
-import { isJSONMarshaler, marshal } from "@/tools/types/go-json";
+import {
+  isJSONMarshaler,
+  isJSONUnmarshaler,
+  type JSONUnmarshaler,
+  marshal,
+} from "@/tools/types/go-json";
 
 export const ErrUnsupportedContentType = newBadRequestError("Unsupported Content-Type", undefined);
 export const ErrInvalidRedirectStatusCode = newInternalServerError(
@@ -320,10 +325,17 @@ export class Event extends Resolver {
   //   - text/xml, application/xml: the `xml` tags (structs only)
   //   - multipart/form-data, application/x-www-form-urlencoded: the `form`
   //     tags, see unmarshalRequestData
+  //
+  // A dst with an unmarshalJSON method (Go's json.Unmarshaler, e.g. a
+  // Collection) gets the JSON value's text. Only the JSON content type is
+  // bound into it here: its form and XML binding depends on its Go struct
+  // and is the caller's (an other content type answers
+  // ErrUnsupportedContentType).
   async bindBody(dst: MapRef): Promise<Error | undefined>;
   async bindBody(dst: Record<string, unknown>, type: StructType): Promise<Error | undefined>;
+  async bindBody(dst: JSONUnmarshaler): Promise<Error | undefined>;
   async bindBody(
-    dst: MapRef | Record<string, unknown>,
+    dst: MapRef | Record<string, unknown> | JSONUnmarshaler,
     type?: StructType,
   ): Promise<Error | undefined> {
     if (this.request.contentLength === 0) {
@@ -334,6 +346,14 @@ export class Event extends Resolver {
 
     try {
       if (contentType.startsWith("application/json")) {
+        if (isJSONUnmarshaler(dst)) {
+          const [, text] = await readFirstJSONText(this.request.body);
+          dst.unmarshalJSON(text);
+          if (isRereader(this.request.body)) {
+            this.request.body.reread();
+          }
+          return undefined;
+        }
         const value = await readFirstJSONValue(this.request.body);
         if (type) {
           unmarshalJSON(value, dst as Record<string, unknown>, type, true);
@@ -347,6 +367,10 @@ export class Event extends Resolver {
           this.request.body.reread();
         }
         return undefined;
+      }
+
+      if (isJSONUnmarshaler(dst)) {
+        return ErrUnsupportedContentType;
       }
 
       if (contentType.startsWith("multipart/form-data")) {
@@ -390,6 +414,12 @@ export class Event extends Resolver {
 // within the limit. An error returned with data is ignored (jsontext's
 // fetch); the next read throws it.
 async function readFirstJSONValue(body: ReadCloser): Promise<JsonValue> {
+  return (await readFirstJSONText(body))[0];
+}
+
+// readFirstJSONValue with the text of the value read (with the whitespace
+// before it), as jsontext.Decoder.ReadValue gives a json.Unmarshaler.
+async function readFirstJSONText(body: ReadCloser): Promise<[JsonValue, string]> {
   let buf = new Uint8Array(64);
   let length = 0;
   const scan = new FirstValueScanner();
@@ -400,10 +430,10 @@ async function readFirstJSONValue(body: ReadCloser): Promise<JsonValue> {
   for (;;) {
     const end = scan.scan(buf, length);
     if (end === "invalid") {
-      return decodeFirstValue(decodeUTF8Bytes(buf.subarray(0, length)));
+      return decodeWithText(decodeUTF8Bytes(buf.subarray(0, length)));
     }
     if (end !== "more") {
-      return decodeFirstValue(decodeUTF8Bytes(buf.subarray(0, end)));
+      return decodeWithText(decodeUTF8Bytes(buf.subarray(0, end)));
     }
     if (length > 0 && length >= nextParse) {
       nextParse = length * 2;
@@ -422,9 +452,13 @@ async function readFirstJSONValue(body: ReadCloser): Promise<JsonValue> {
     }
     if (eof) {
       // a value that ends at EOF, or the EOF error
-      return decodeFirstValue(decodeUTF8Bytes(buf.subarray(0, length)));
+      return decodeWithText(decodeUTF8Bytes(buf.subarray(0, length)));
     }
   }
+}
+
+function decodeWithText(text: string): [JsonValue, string] {
+  return [decodeFirstValue(text), text];
 }
 
 // throws the syntax error of an incomplete JSON prefix, if it has one, as

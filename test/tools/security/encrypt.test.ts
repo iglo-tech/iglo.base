@@ -3,7 +3,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { StdEncoding } from "@/tools/security/base64";
-import { decrypt, encrypt } from "@/tools/security/encrypt";
+import { decrypt, encrypt, encryptSync } from "@/tools/security/encrypt";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -102,5 +102,21 @@ describe("Decrypt", () => {
       "abcdabcdabcdabcdabcdabcdabcdabcd",
     );
     expect(decoder.decode(result)).toBe("123");
+  });
+});
+
+describe("encryptSync", () => {
+  test("decrypts to the data, for every AES key size", async () => {
+    for (const key of ["a".repeat(16), "b".repeat(24), "abcdabcdabcdabcdabcdabcdabcdabcd"]) {
+      const result = encryptSync(encoder.encode("123"), key);
+      expect(StdEncoding.decodeString(result).length).toBe(12 + 3 + 16);
+      expect(decoder.decode(await decrypt(result, key))).toBe("123");
+    }
+  });
+
+  test("an invalid key size fails as encrypt does", () => {
+    expect(() => encryptSync(encoder.encode("123"), "test")).toThrow(
+      "crypto/aes: invalid key size 4",
+    );
   });
 });

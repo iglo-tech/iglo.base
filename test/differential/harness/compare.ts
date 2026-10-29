@@ -214,7 +214,65 @@ const generatedFileName: Rule = (upstream) => {
   };
 };
 
-export const rules: Rule[] = [atGeneratedKey, authMethodsURL, generatedFileName];
+// core/view.go: a view field cloned from a collection field gets the id
+// "_clone_" + 4 random characters (security.PseudorandomString).
+const viewCloneId: Rule = (upstream, at) =>
+  at.path.at(-1) === "id" &&
+  upstream.kind === "string" &&
+  /^_clone_[A-Za-z0-9]{4}$/.test(upstream.value)
+    ? { name: "view clone id", pattern: /^_clone_[A-Za-z0-9]{4}$/ }
+    : undefined;
+
+// core/view.go DryRunView: the temporary view collection is named
+// "temp_view_" + 5 random characters, which shows in the sample records'
+// collectionName and in the failed query of an error message. The format
+// is upstream's text with exactly those parts left open.
+const tempViewName: Rule = (upstream) => {
+  if (upstream.kind !== "string" || !/temp_view_[A-Za-z0-9]{5}/.test(upstream.value)) {
+    return undefined;
+  }
+  const source = escapeRegExp(upstream.value).replace(
+    /temp_view_[A-Za-z0-9]{5}/g,
+    "temp_view_[A-Za-z0-9]{5}",
+  );
+  return { name: "temp view name", pattern: new RegExp(`^${source}$`) };
+};
+
+// ... and the temporary collection's id is "pbc_" + the crc32 checksum of
+// that name (core/collection_model.go initDefaultId).
+const tempViewId: Rule = (upstream, at) =>
+  at.path.at(-1) === "collectionId" &&
+  requestUrl(at.context)?.pathname === "/api/collections/meta/dry-run-view"
+    ? { name: "temp view id", pattern: /^pbc_[0-9]+$/ }
+    : undefined;
+
+// apis/collection.go collectionScaffolds: the scaffolds' default index
+// names end with a random collection id (core.DefaultIdAlphabet, 10
+// characters). The format is upstream's index with that part left open.
+const scaffoldIndex: Rule = (upstream, at) => {
+  if (
+    upstream.kind !== "string" ||
+    requestUrl(at.context)?.pathname !== "/api/collections/meta/scaffolds" ||
+    at.path.at(-2) !== "indexes"
+  ) {
+    return undefined;
+  }
+  const source = escapeRegExp(upstream.value).replace(
+    /(idx_[A-Za-z0-9_]+?_)[a-z0-9]{10}`/g,
+    "$1[a-z0-9]{10}`",
+  );
+  return { name: "scaffold index", pattern: new RegExp(`^${source}$`) };
+};
+
+export const rules: Rule[] = [
+  viewCloneId,
+  tempViewName,
+  tempViewId,
+  scaffoldIndex,
+  atGeneratedKey,
+  authMethodsURL,
+  generatedFileName,
+];
 
 // Whether upstream writes the object's members in a random order.
 export type OrderRule = (object: JsonNode, at: Location) => boolean;
@@ -230,7 +288,14 @@ const pickedFields: OrderRule = (_object, at) =>
 const healthData: OrderRule = (_object, at) =>
   requestUrl(at.context)?.pathname === "/api/health" && at.path.join(".") === "data";
 
-export const unorderedObjects: OrderRule[] = [pickedFields, healthData];
+// apis/collection.go collectionScaffolds: the response is a
+// map[string]*core.Collection.
+const scaffolds: OrderRule = (_object, at) =>
+  requestUrl(at.context)?.pathname === "/api/collections/meta/scaffolds" &&
+  at.path.length === 0 &&
+  at.status === 200;
+
+export const unorderedObjects: OrderRule[] = [pickedFields, healthData, scaffolds];
 
 function requestUrl({ request }: Context): URL | undefined {
   try {
