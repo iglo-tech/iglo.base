@@ -1,29 +1,56 @@
-// Upstream: apis/record_helpers.go (EnrichRecord, EnrichRecords,
+// Upstream: apis/record_helpers.go (RecordAuthResponse,
+// recordAuthResponse, wantsMFA, checkMFA, EnrichRecord, EnrichRecords,
 // defaultEnrichRecords, expandFetch, autoResolveRecordsFlags,
-// checkForSuperuserOnlyRuleFields, firstApiError, execAfterSuccessTx)
+// checkForSuperuserOnlyRuleFields, firstApiError, execAfterSuccessTx,
+// authAlert)
 //
-// The OnRecordEnrich hook chain (triggerRecordEnrichHooks) is not ported
-// (no extension surface): the default enrich runs directly, in upstream's
-// order. The record reads are async and go through the read worker pool.
-// Upstream logs a failed default enrich or expand as a warning in its
-// `_logs` (M5); here those failures are dropped, as upstream drops them
-// from the response. RecordAuthResponse, MFA and the auth alert are M4.
+// The OnRecordEnrich and OnRecordAuthRequest hook chains
+// (triggerRecordEnrichHooks) are not ported (no extension surface): their
+// default actions run directly, in upstream's order. The record reads are
+// async and go through the read worker pool. Upstream logs a failed
+// default enrich or expand as a warning in its `_logs` (M5); here those
+// failures are dropped, as upstream drops them from the response. A
+// failed auth alert is reported to the app's error logger.
+//
+// The auth alert email (mails.SendRecordAuthAlert) is a plain internal
+// call, sendRecordAuthAlert below, that the mailer task (M4.4) fills.
 
 import type { App } from "@/app/app";
 import { type RequestEvent, RequestInfo, RequestInfoContextExpand } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
-import { inExp } from "@/db/dbx/expression";
+import { HashExp, inExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
+import { isIPInList } from "@/middlewares/superuser-ips-whitelist";
+import {
+  type AuthOrigin,
+  deleteAuthOrigin,
+  newAuthOrigin,
+  saveAuthOrigin,
+} from "@/records/auth-origin-model";
+import { findAllAuthOriginsByRecord } from "@/records/auth-origin-query";
+import { deleteMFA, type MFA, newMFA, saveMFA } from "@/records/mfa-model";
+import { findMFAById } from "@/records/mfa-query";
 import type { Record } from "@/records/record-model";
 import { recordQuery, recordsTarget } from "@/records/record-query";
+import { canAccessRecordAsync } from "@/records/record-query-filter";
 import { type ExpandFetchFunc, expandRecords } from "@/records/record-query-expand";
+import { isNoRows } from "@/records/record-save";
+import { newAuthToken } from "@/records/record-tokens";
 import { newRecordFieldResolver } from "@/resolver/record-field-resolver";
 import { ApiError, errorsAs, newForbiddenError, newInternalServerError } from "@/server/error";
+import type { HandlerResult } from "@/server/handler";
+import { structOf } from "@/server/unmarshal-request-data";
 import { filterBuildExpr, ParsedFilterCache } from "@/search/filter";
 import { FilterQueryParam, SortQueryParam } from "@/search/provider";
+import { nowDateTime } from "@/tools/types/datetime";
+import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
 
 export const expandQueryParam = "expand";
 export const fieldsQueryParam = "fields";
+
+// ErrMFA is returned (after the 401 `mfaId` response is written) when the
+// auth requires an extra step.
+export const ErrMFA = new Error("mfa required");
 
 // the app store key of the parsed filters cache that the request handlers
 // share (upstream's package-level cache in tools/search)
@@ -47,6 +74,279 @@ export function newRequestFieldResolver(
   const resolver = newRecordFieldResolver(app, collection, requestInfo, allowHiddenFields);
   resolver.filterCache = parsedFilterCache(app);
   return resolver;
+}
+
+// RecordAuthResponse writes standardized json record auth response
+// into the specified request context.
+//
+// The authMethod argument specify the name of the current authentication method (eg. password, oauth2, etc.)
+// that it is used primarily as an auth identifier during MFA and for login alerts.
+//
+// Set authMethod to empty string if you want to ignore the MFA checks and the login alerts.
+export async function recordAuthResponseWithNewToken(
+  e: RequestEvent,
+  authRecord: Record,
+  authMethod: string,
+  meta: unknown,
+): Promise<HandlerResult> {
+  let token: string;
+  try {
+    token = newAuthToken(authRecord, e.app.clock);
+  } catch (err) {
+    return e.internalServerError("Failed to create auth token.", err);
+  }
+
+  return recordAuthResponse(e, authRecord, token, authMethod, meta);
+}
+
+// recordAuthResponse; meta is omitted from the body when undefined (Go's
+// nil any with omitempty)
+export async function recordAuthResponse(
+  e: RequestEvent,
+  authRecord: Record,
+  token: string,
+  authMethod: string,
+  meta: unknown,
+): Promise<HandlerResult> {
+  if (authRecord.isSuperuser()) {
+    const allowedIPs = e.app.settings.SuperuserIPs ?? [];
+    if (allowedIPs.length > 0 && !isIPInList(allowedIPs, e.realIP())) {
+      return e.forbiddenError("", new Error("superuser IP is not whitelisted"));
+    }
+  }
+
+  const originalRequestInfo = await e.requestInfo();
+  if (originalRequestInfo instanceof Error) {
+    return originalRequestInfo;
+  }
+
+  let ok = false;
+  let accessErr: unknown;
+  try {
+    ok = await canAccessRecordAsync(
+      e.app,
+      authRecord,
+      originalRequestInfo,
+      authRecord.collection().authRule,
+    );
+  } catch (err) {
+    accessErr = err;
+  }
+  if (!ok) {
+    return firstApiError(
+      accessErr,
+      e.forbiddenError(
+        "The request doesn't satisfy the collection requirements to authenticate.",
+        accessErr ?? null,
+      ),
+    );
+  }
+
+  // the OnRecordAuthRequest default action
+  if (e.written()) {
+    return undefined;
+  }
+
+  // MFA
+  // ---
+  const [mfaId, mfaErr] = await checkMFA(e, authRecord, authMethod);
+  if (mfaErr) {
+    return mfaErr;
+  }
+
+  // require additional authentication
+  if (mfaId !== "") {
+    // eagerly write the mfa response and return an err so that
+    // external middlewars are aware that the auth response requires an extra step
+    e.json(401, { mfaId });
+    return ErrMFA;
+  }
+  // ---
+
+  // create a shallow copy of the cached request data and adjust it to the current auth record
+  const requestInfo = Object.assign(new RequestInfo(), originalRequestInfo);
+  requestInfo.auth = authRecord;
+
+  // the OnRecordEnrich default action
+  if (authRecord.isSuperuser()) {
+    authRecord.unhide(...authRecord.collection().fields.fieldNames());
+  }
+
+  // allow always returning the email address of the authenticated model
+  authRecord.ignoreEmailVisibility(true);
+
+  // expand record relations
+  const expands = (e.request.query().get(expandQueryParam)?.[0] ?? "").split(",");
+  if (expands.length > 0) {
+    // failures are only logged upstream ("Failed to expand relations")
+    await expandRecords(e.app, [authRecord], expands, expandFetch(e.app, requestInfo));
+  }
+
+  if (authMethod !== "" && authRecord.collection().authAlert.enabled) {
+    try {
+      await authAlert(e, authRecord);
+    } catch (err) {
+      e.app.logger.error("[recordAuthResponse] Failed to send login alert", err);
+    }
+  }
+
+  // execAfterSuccessTx: the auth handlers never run in a transaction here
+  return e.json(200, new RecordAuthResult(authRecord, token, meta));
+}
+
+// the auth response body: {"meta"?, "record", "token"}, in this order
+class RecordAuthResult implements JSONMarshaler {
+  constructor(
+    readonly record: Record,
+    readonly token: string,
+    readonly meta: unknown,
+  ) {}
+
+  marshalJSON(): string {
+    // marshal writes a plain object's members sorted by name, which is
+    // the struct's field order here
+    const result: { [key: string]: unknown } = { record: this.record, token: this.token };
+    if (this.meta !== undefined && this.meta !== null) {
+      result["meta"] = this.meta;
+    }
+    return marshal(result, { allowDuplicateNames: true, allowInvalidUTF8: true });
+  }
+}
+
+// wantsMFA checks whether to enable MFA for the specified auth record based on its MFA rule
+// (note: throws in case of an error, which checkMFA treats as a failure).
+async function wantsMFA(e: RequestEvent, record: Record): Promise<boolean> {
+  const rule = record.collection().mfa.rule;
+  if (rule === "") {
+    return true;
+  }
+
+  const requestInfo = await e.requestInfo();
+  if (requestInfo instanceof Error) {
+    throw requestInfo;
+  }
+
+  const query = recordQuery(e.app, record.collection())
+    .select("(1)")
+    .andWhere(new HashExp({ [record.collection().name + ".id"]: record.id }));
+
+  // parse and apply the access rule filter
+  const resolver = newRequestFieldResolver(e.app, record.collection(), requestInfo, true);
+  const expr = filterBuildExpr(rule, resolver, resolver.filterOptions());
+
+  resolver.updateQuery(query);
+
+  let exists: unknown = 0;
+  try {
+    [exists] = await query.andWhere(expr).limit(1).rowAsync();
+  } catch (err) {
+    if (!isNoRows(err)) {
+      throw err;
+    }
+  }
+
+  return Number(exists) > 0;
+}
+
+const mfaIdType = structOf([
+  { name: "MfaId", type: "string", tags: { form: "mfaId", json: "mfaId", xml: "mfaId" } },
+]);
+
+// checkMFA handles any MFA auth checks that needs to be performed for the specified request event.
+// Returns the mfaId that needs to be written as response to the user.
+//
+// (note: all auth methods are treated as equal and there is no requirement for "pairing").
+async function checkMFA(
+  e: RequestEvent,
+  authRecord: Record,
+  currentAuthMethod: string,
+): Promise<[string, Error | undefined]> {
+  if (!authRecord.collection().mfa.enabled || currentAuthMethod === "") {
+    return ["", undefined];
+  }
+
+  let ok: boolean;
+  try {
+    ok = await wantsMFA(e, authRecord);
+  } catch (err) {
+    return [
+      "",
+      e.badRequestError(
+        "Failed to authenticate.",
+        new Error(`MFA rule failure: ${errorMessage(err)}`, { cause: err }),
+      ),
+    ];
+  }
+  if (!ok) {
+    return ["", undefined]; // no mfa needed for this auth record
+  }
+
+  // read the mfaId either from the qyery params or request body
+  let mfaId = e.request.query().get("mfaId")?.[0] ?? "";
+  if (mfaId === "") {
+    // check the body
+    const data = { MfaId: "" };
+    const bindErr = await e.bindBody(data, mfaIdType);
+    if (bindErr) {
+      return ["", firstApiError(bindErr, e.badRequestError("Failed to read MFA Id", bindErr))];
+    }
+    mfaId = data.MfaId;
+  }
+
+  // first-time auth
+  // ---
+  if (mfaId === "") {
+    const mfa = newMFA(e.app);
+    mfa.setCollectionRef(authRecord.collection().id);
+    mfa.setRecordRef(authRecord.id);
+    mfa.setMethod(currentAuthMethod);
+    try {
+      await saveMFA(e.app, mfa);
+    } catch (err) {
+      return ["", firstApiError(err, e.internalServerError("Failed to create MFA record", err))];
+    }
+
+    return [mfa.id, undefined];
+  }
+
+  // second-time auth
+  // ---
+  let mfa: MFA | undefined;
+  let findErr: unknown;
+  try {
+    mfa = findMFAById(e.app, mfaId);
+  } catch (err) {
+    findErr = err;
+  }
+  const deleteFoundMFA = async (): Promise<void> => {
+    // try to delete the expired mfa
+    if (mfa !== undefined) {
+      try {
+        await deleteMFA(e.app, mfa);
+      } catch (err) {
+        e.app.logger.error(`Failed to delete expired MFA record (mfaId ${mfa.id})`, err);
+      }
+    }
+  };
+  if (
+    mfa === undefined ||
+    mfa.hasExpired(authRecord.collection().mfa.durationTime(), e.app.clock)
+  ) {
+    await deleteFoundMFA();
+    return ["", e.badRequestError("Invalid or expired MFA session.", findErr ?? null)];
+  }
+
+  if (mfa.recordRef() !== authRecord.id || mfa.collectionRef() !== authRecord.collection().id) {
+    return ["", e.badRequestError("Invalid MFA session.", null)];
+  }
+
+  if (mfa.method() === currentAuthMethod) {
+    return ["", e.badRequestError("A different authentication method is required.", null)];
+  }
+
+  await deleteFoundMFA();
+
+  return ["", undefined];
 }
 
 // EnrichRecord parses the request context and enrich the provided record:
@@ -294,6 +594,113 @@ export function firstApiError(...errs: unknown[]): ApiError {
     "",
     new AggregateError(errs.filter((err) => err !== null && err !== undefined)),
   );
+}
+
+// -------------------------------------------------------------------
+
+const maxAuthOrigins = 5;
+
+// the "fake" timeout of the auth alert email send
+const authAlertSendTimeoutMs = 15_000;
+
+// authAlert stores the auth origin of the request and, for a new origin
+// of a record that logged in before, sends the auth alert email first
+// (a failed send leaves the origin unsaved, as upstream). Throws on
+// failure; the caller only logs it.
+async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
+  // generate fingerprint
+  // ---
+  const ip = e.realIP();
+
+  // header values hold one char per byte (latin1), so the cut and the
+  // hash are over the bytes as upstream's
+  let userAgent = e.request.headers.get("User-Agent") ?? "";
+  if (userAgent.length > 200) {
+    userAgent = userAgent.slice(0, 200) + "...";
+  }
+
+  const fingerprint = md5Bytes(ip + userAgent);
+  const alertInfo = `${nowDateTime(e.app.clock).toString()} - ${ip} ${userAgent}`;
+  // ---
+
+  const origins = findAllAuthOriginsByRecord(e.app, authRecord);
+
+  const isFirstLogin = origins.length === 0;
+
+  let currentOrigin: AuthOrigin | undefined = origins.find((o) => o.fingerprint() === fingerprint);
+  if (currentOrigin === undefined) {
+    currentOrigin = newAuthOrigin(e.app);
+    currentOrigin.setCollectionRef(authRecord.collection().id);
+    currentOrigin.setRecordRef(authRecord.id);
+    currentOrigin.setFingerprint(fingerprint);
+  }
+
+  // send email alert for the new origin auth (skip first login)
+  //
+  // Note: The "fake" timeout is a temp solution to avoid blocking
+  //       for too long when the SMTP server is not accessible (upstream's
+  //       mailer has no context cancellation); the send itself goes on.
+  if (!isFirstLogin && currentOrigin.isNew() && authRecord.email() !== "") {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<Error>((resolve) => {
+      timer = setTimeout(
+        () => resolve(new Error("auth alert mail send wait timeout reached")),
+        authAlertSendTimeoutMs,
+      );
+    });
+    const err = await Promise.race([
+      sendRecordAuthAlert(e.app, authRecord, alertInfo).catch((sendErr: unknown) =>
+        sendErr instanceof Error ? sendErr : new Error(String(sendErr)),
+      ),
+      timeout,
+    ]);
+    clearTimeout(timer);
+    if (err) {
+      throw err;
+    }
+  }
+
+  // try to keep only up to maxAuthOrigins
+  // (pop the last used ones; it is not executed in a transaction to avoid unnecessary locks)
+  if (currentOrigin.isNew() && origins.length >= maxAuthOrigins) {
+    for (let i = origins.length - 1; i >= maxAuthOrigins - 1; i--) {
+      const origin = origins[i] as AuthOrigin;
+      try {
+        await deleteAuthOrigin(e.app, origin);
+      } catch (err) {
+        // treat as non-critical error, just log for now
+        e.app.logger.error(
+          `Failed to delete old AuthOrigin record (authOriginId ${origin.id})`,
+          err,
+        );
+      }
+    }
+  }
+
+  // create/update the origin fingerprint
+  await saveAuthOrigin(e.app, currentOrigin);
+}
+
+// mails.SendRecordAuthAlert sends a new device login alert to the
+// specified auth record.
+//
+// The mailer and the alert template are the mailer task's (M4.4), which
+// fills this call. Until then the send fails, as upstream's does without a
+// working mailer (SMTP disabled and no sendmail): the new origin is not
+// stored, so the alert still goes out once mail works.
+async function sendRecordAuthAlert(
+  _app: App,
+  _authRecord: Record,
+  _alertInfo: string,
+): Promise<Error | undefined> {
+  return new Error("the mailer is not available yet (M4.4)");
+}
+
+// security.MD5 of the bytes of a latin1 text (one char per byte)
+function md5Bytes(text: string): string {
+  const h = new Bun.CryptoHasher("md5");
+  h.update(Buffer.from(text, "latin1"));
+  return h.digest("hex");
 }
 
 function errorMessage(err: unknown): string {
