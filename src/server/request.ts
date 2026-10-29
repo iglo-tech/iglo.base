@@ -4,9 +4,12 @@
 // ParseMultipartForm (request.go).
 //
 // The body is wrapped in a RereadableReadCloser by the router, so it can be
-// read more than once (BindBody, RequestInfo, form parsing).
+// read more than once (BindBody, RequestInfo, form parsing). A middleware
+// may wrap it again (the body limit's reader), as upstream replaces
+// r.Body.
 
-import { readAll, type RereadableReadCloser } from "@/server/rereadable-read-closer";
+import type { ReadCloser } from "@/server/buffer-with-file";
+import { readAll } from "@/server/rereadable-read-closer";
 import { unescapeBytes } from "@/server/mux";
 
 export type Values = Map<string, string[]>;
@@ -23,7 +26,7 @@ export interface HttpRequestInit {
   escapedPath: string;
   rawQuery: string;
   headers: Headers;
-  body: RereadableReadCloser;
+  body: ReadCloser;
   // -1 when unknown (chunked)
   contentLength: number;
   // "ip:port" of the client
@@ -42,7 +45,7 @@ export class HttpRequest {
   readonly path: string;
   rawQuery: string;
   readonly headers: Headers;
-  body: RereadableReadCloser;
+  body: ReadCloser;
   readonly contentLength: number;
   readonly remoteAddr: string;
   readonly tls: boolean;

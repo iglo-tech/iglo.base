@@ -5,13 +5,12 @@
 //     TestEventStatus: Go interface wrapping with no TypeScript equivalent;
 //   - the "fields" picker parts of TestEventJSON, TestEventJSONPickError and
 //     TestEventJSONIgnoredError: tools/picker, M2.4;
-//   - TestFindUploadedFiles(Missing): filesystem.File, M3.2;
 //   - TestEventFileFS: static files, M5.7;
 //   - TestEventXML and TestEventSetCookie: no upstream endpoint uses them.
 
 import { describe, expect, test } from "bun:test";
 
-import { ErrInvalidRedirectStatusCode, Event } from "@/server/event";
+import { ErrInvalidRedirectStatusCode, ErrMissingFile, Event } from "@/server/event";
 import { ResponseWriter } from "@/server/router";
 import { pointerTo, structOf, type MapRef, type StructType } from "@/server/unmarshal-request-data";
 import { newTestRequest, type TestRequest } from "@test/support/router";
@@ -68,6 +67,57 @@ describe("RemoteIP", () => {
       expect(newEvent({ target: "/", remoteAddr }).remoteIP()).toBe(expected);
     });
   }
+});
+
+// a multipart/form-data body as Go's multipart.Writer writes it (one
+// CreateFormFile part, or no parts)
+function multipartRequest(file?: {
+  field: string;
+  filename: string;
+  content: string;
+}): TestRequest {
+  const boundary = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab";
+  let body = "";
+  if (file) {
+    body +=
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="${file.field}"; filename="${file.filename}"\r\n` +
+      `Content-Type: application/octet-stream\r\n\r\n${file.content}`;
+  }
+  body += `\r\n--${boundary}--\r\n`;
+  return {
+    method: "POST",
+    target: "/",
+    headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+    body,
+  };
+}
+
+describe("FindUploadedFiles", () => {
+  const scenarios: [filename: string, expectedPattern: RegExp][] = [
+    ["ab.png", /^ab\w{10}_\w{10}\.png$/],
+    ["test", /^test_\w{10}\.txt$/],
+    ["a b c d!@$.j!@$pg", /^a_b_c_d_\w{10}\.jpg$/],
+    ["a".repeat(150), /^a{100}_\w{10}\.txt$/],
+  ];
+
+  for (const [filename, expectedPattern] of scenarios) {
+    test(filename, async () => {
+      const event = newEvent(multipartRequest({ field: "test", filename, content: "test" }));
+
+      const result = await event.findUploadedFiles("test");
+
+      expect(result.length).toBe(1);
+      expect(result[0]?.size).toBe(4);
+      expect(result[0]?.name).toMatch(expectedPattern);
+    });
+  }
+
+  test("missing", async () => {
+    const event = newEvent(multipartRequest());
+
+    await expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile);
+  });
 });
 
 describe("Set and Get", () => {

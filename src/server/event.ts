@@ -7,8 +7,11 @@
 // output of the "fields" picker with the Go JSON port; other values are
 // plain objects that stand for Go structs, written in their member order.
 //
+// FindUploadedFiles returns the parts as filesystem.File values (M3.1);
+// storing them is M3.2.
+//
 // Not ported yet:
-//   - FindUploadedFiles (filesystem.File, M3.2) and FileFS (static files, M5.7);
+//   - FileFS (static files, M5.7);
 //   - XML responses and SetCookie: no upstream endpoint uses them.
 
 import { Resolver } from "@/server/handler";
@@ -34,6 +37,7 @@ import {
   type StructType,
 } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
+import { File, NewFileFromMultipart } from "@/tools/filesystem/file";
 import { InvalidModifierDataError, PickPanic, pick } from "@/tools/picker/pick";
 import { isJSONMarshaler, marshal } from "@/tools/types/go-json";
 
@@ -43,6 +47,9 @@ export const ErrInvalidRedirectStatusCode = newInternalServerError(
   undefined,
 );
 export const ErrFileNotFound = newNotFoundError("File not found", undefined);
+
+// http.ErrMissingFile
+export const ErrMissingFile = new Error("http: no such file");
 
 export const IndexPage = "index.html";
 
@@ -90,6 +97,32 @@ export class Event extends Resolver {
   // the IP of the last connecting proxy.
   remoteIP(): string {
     return expandIP(splitHost(this.request.remoteAddr));
+  }
+
+  // FindUploadedFiles extracts all form files of "key" from a http request
+  // and returns a slice with filesystem.File instances (if any).
+  //
+  // Fails with ErrMissingFile when the key has no files.
+  async findUploadedFiles(key: string): Promise<File[]> {
+    if (this.request.multipartForm === undefined) {
+      const err = await this.request.parseMultipartForm();
+      if (err) {
+        throw err;
+      }
+    }
+
+    const files = this.request.multipartForm?.file.get(key);
+    if (files === undefined || files.length === 0) {
+      throw ErrMissingFile;
+    }
+
+    const result: File[] = [];
+
+    for (const fh of files) {
+      result.push(await NewFileFromMultipart(fh));
+    }
+
+    return result;
   }
 
   // Store
