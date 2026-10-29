@@ -15,6 +15,9 @@ export interface ReadResult {
   n: number;
   // io.EOF
   eof: boolean;
+  // an error returned together with the n bytes read (Go's (n, err) with
+  // n > 0); a read that fails without data throws instead
+  err?: unknown;
 }
 
 // io.ReadCloser, with Go's Read semantics: read up to p.length bytes into p.

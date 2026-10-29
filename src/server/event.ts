@@ -25,9 +25,15 @@ import {
   newUnauthorizedError,
   type ApiError,
 } from "@/server/error";
-import { decodeFirstValue, decodeUTF8Bytes } from "@/server/json-decode";
+import type { ReadCloser } from "@/server/buffer-with-file";
+import {
+  decodeFirstValue,
+  decodeUTF8Bytes,
+  JsonEOFError,
+  type JsonValue,
+} from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
-import { readAll } from "@/server/rereadable-read-closer";
+import { isRereader, readAll } from "@/server/rereadable-read-closer";
 import type { ResponseWriter } from "@/server/router";
 import {
   unmarshalJSON,
@@ -326,13 +332,18 @@ export class Event extends Resolver {
 
     try {
       if (contentType.startsWith("application/json")) {
-        const text = decodeUTF8Bytes(await readAll(this.request.body));
+        const value = await readFirstJSONValue(this.request.body);
         if (type) {
-          unmarshalJSON(decodeFirstValue(text), dst as Record<string, unknown>, type, true);
+          unmarshalJSON(value, dst as Record<string, unknown>, type, true);
         } else {
-          unmarshalJSON(decodeFirstValue(text), dst as MapRef, undefined, true);
+          unmarshalJSON(value, dst as MapRef, undefined, true);
         }
-        // reading to EOF already rewound the body for the next read
+        // manually rewind because reading the first value doesn't ensure
+        // that the entire body was read (ex. trailing spaces or invalid
+        // trailing parts like: `{"test":1},something`)
+        if (isRereader(this.request.body)) {
+          this.request.body.reread();
+        }
         return undefined;
       }
 
@@ -367,6 +378,177 @@ export class Event extends Resolver {
 
     return ErrUnsupportedContentType;
   }
+}
+
+// Reads the first JSON value of body as a jsontext.Decoder does: in reads
+// into a buffer that starts at 64 bytes and doubles when it is 3/4 full,
+// stopping as soon as the value is complete (a top-level number needs the
+// byte after it, or EOF). Bytes after the value are not read past that
+// buffer, so a body limit only fails a body whose first value does not end
+// within the limit. An error returned with data is ignored (jsontext's
+// fetch); the next read throws it.
+async function readFirstJSONValue(body: ReadCloser): Promise<JsonValue> {
+  let buf = new Uint8Array(64);
+  let length = 0;
+  const scan = new FirstValueScanner();
+  // a parse of the buffered bytes reports syntax errors before the value
+  // ends; it is retried each time the buffer doubles
+  let nextParse = 0;
+
+  for (;;) {
+    const end = scan.scan(buf, length);
+    if (end === "invalid") {
+      return decodeFirstValue(decodeUTF8Bytes(buf.subarray(0, length)));
+    }
+    if (end !== "more") {
+      return decodeFirstValue(decodeUTF8Bytes(buf.subarray(0, end)));
+    }
+    if (length > 0 && length >= nextParse) {
+      nextParse = length * 2;
+      checkPrefix(buf.subarray(0, length));
+    }
+
+    if (length >= (buf.length * 3) / 4) {
+      const grown = new Uint8Array(buf.length * 2);
+      grown.set(buf.subarray(0, length));
+      buf = grown;
+    }
+    const { n, eof } = await body.read(buf.subarray(length));
+    if (n > 0) {
+      length += n;
+      continue;
+    }
+    if (eof) {
+      // a value that ends at EOF, or the EOF error
+      return decodeFirstValue(decodeUTF8Bytes(buf.subarray(0, length)));
+    }
+  }
+}
+
+// throws the syntax error of an incomplete JSON prefix, if it has one; a
+// number cut at the end of the prefix is dropped first (the parser rejects
+// "1." or "-" as invalid numbers)
+function checkPrefix(prefix: Uint8Array): void {
+  let k = prefix.length;
+  while (k > 0 && isNumberByte(prefix[k - 1] as number)) {
+    k--;
+  }
+  try {
+    decodeFirstValue(decodeUTF8Bytes(prefix.subarray(0, k)));
+  } catch (err) {
+    // an incomplete value is EOF; a syntax error is final
+    if (!(err instanceof JsonEOFError)) {
+      throw err;
+    }
+  }
+}
+
+// 0-9 . e E + -
+function isNumberByte(c: number): boolean {
+  return (
+    (c >= 0x30 && c <= 0x39) || c === 0x2e || c === 0x65 || c === 0x45 || c === 0x2b || c === 0x2d
+  );
+}
+
+// Finds where the first JSON value of a growing buffer ends, without
+// validating it: the offset after the value, "more" when the buffer has
+// no complete value yet, or "invalid" at a byte that cannot appear there.
+class FirstValueScanner {
+  #pos = 0;
+  #kind: "none" | "container" | "string" | "number" | "literal" = "none";
+  #depth = 0;
+  #inString = false;
+  #escape = false;
+  #literalEnd = 0;
+
+  scan(buf: Uint8Array, length: number): number | "more" | "invalid" {
+    for (; this.#pos < length; this.#pos++) {
+      const c = buf[this.#pos] as number;
+      switch (this.#kind) {
+        case "none":
+          if (c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d) {
+            continue;
+          }
+          if (c === 0x7b || c === 0x5b) {
+            this.#kind = "container";
+            this.#depth = 1;
+          } else if (c === 0x22) {
+            this.#kind = "string";
+            this.#inString = true;
+          } else if (c === 0x2d || (c >= 0x30 && c <= 0x39)) {
+            this.#kind = "number";
+          } else if (c === 0x74 || c === 0x6e) {
+            // true, null
+            this.#kind = "literal";
+            this.#literalEnd = this.#pos + 4;
+          } else if (c === 0x66) {
+            // false
+            this.#kind = "literal";
+            this.#literalEnd = this.#pos + 5;
+          } else {
+            return "invalid";
+          }
+          continue;
+        case "number":
+          if (!isNumberByte(c)) {
+            return this.#pos;
+          }
+          continue;
+        case "literal":
+          if (this.#pos >= this.#literalEnd) {
+            return this.#literalEnd;
+          }
+          continue;
+        default:
+          break;
+      }
+      // container or string
+      if (this.#inString) {
+        if (this.#escape) {
+          this.#escape = false;
+        } else if (c === 0x5c) {
+          this.#escape = true;
+        } else if (c === 0x22) {
+          this.#inString = false;
+          if (this.#kind === "string") {
+            return this.#pos + 1;
+          }
+        }
+        continue;
+      }
+      if (c === 0x22) {
+        this.#inString = true;
+      } else if (c === 0x7b || c === 0x5b) {
+        this.#depth++;
+      } else if (c === 0x7d || c === 0x5d) {
+        this.#depth--;
+        if (this.#depth === 0) {
+          return this.#pos + 1;
+        }
+      } else if (!isContainerByte(c)) {
+        return "invalid";
+      }
+    }
+    if (this.#kind === "literal" && length >= this.#literalEnd) {
+      return this.#literalEnd;
+    }
+    return "more";
+  }
+}
+
+// a byte outside strings in an object or array: whitespace, separators,
+// numbers and the letters of true, false and null
+function isContainerByte(c: number): boolean {
+  return (
+    c === 0x20 ||
+    c === 0x09 ||
+    c === 0x0a ||
+    c === 0x0d ||
+    c === 0x2c ||
+    c === 0x3a ||
+    isNumberByte(c) ||
+    "truefalsn".includes(String.fromCharCode(c))
+  );
 }
 
 function bindRequestData(

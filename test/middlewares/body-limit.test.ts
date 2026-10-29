@@ -147,6 +147,36 @@ const scenarios: {
     lazy: true,
     status: 413,
   },
+  // BindBody reads only the first JSON value (jsontext.Decoder), so bytes
+  // after it do not count against the limit
+  {
+    name: "(lazy content-length check) with value = custom limit and trailing spaces",
+    url: "/b",
+    body: () => quoted(customLimit - 2) + " ".repeat(1000),
+    lazy: true,
+    status: 200,
+  },
+  {
+    name: "(lazy content-length check) with value < custom limit and trailing garbage",
+    url: "/b",
+    body: () => `{"a":1}x${"y".repeat(1000)}`,
+    lazy: true,
+    status: 200,
+  },
+  {
+    name: "(lazy content-length check) with value ending after custom limit",
+    url: "/b",
+    body: () => `${" ".repeat(customLimit - 6)}{"a":1}${" ".repeat(1000)}`,
+    lazy: true,
+    status: 413,
+  },
+  {
+    name: "(lazy content-length check) with a syntax error before custom limit",
+    url: "/b",
+    body: () => `{"a" "b"${" ".repeat(1000)}`,
+    lazy: true,
+    status: 400,
+  },
   // ---
   {
     name: "io.ReadAll io.EOF exact limit check",
@@ -156,6 +186,37 @@ const scenarios: {
     status: 200,
   },
 ];
+
+test("a JSON body is read only up to the decoder buffer after its first value", async () => {
+  let read = 0;
+  const source = bytesReader(`{"a":1}${" ".repeat(10_000)}`);
+  const counting = {
+    async read(p: Uint8Array) {
+      const result = await source.read(p);
+      read += result.n;
+      return result;
+    },
+    close() {},
+  };
+  const req = new HttpRequest({
+    method: "POST",
+    host: "example.com",
+    escapedPath: "/a",
+    rawQuery: "",
+    headers: new Headers({ "Content-Type": "application/json" }),
+    body: new RereadableReadCloser(counting),
+    contentLength: -1,
+    remoteAddr: "127.0.0.1:12345",
+    tls: false,
+  });
+  const rw = new ResponseWriter(() => {});
+  await mux.serveHTTP(rw, req);
+  const res = rw.finish() as Response;
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ a: 1 });
+  // jsontext's initial buffer
+  expect(read).toBe(64);
+});
 
 for (const s of scenarios) {
   test(s.name, async () => {

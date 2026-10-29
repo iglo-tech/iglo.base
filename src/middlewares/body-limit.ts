@@ -4,7 +4,8 @@
 // The limit is checked first against the request Content-Length; the body
 // is then wrapped in a reader that fails with ErrRequestEntityTooLarge once
 // more than the limit is read (a chunked body, or a Content-Length that
-// does not match). The sizes are int64 sums, wrapping around as in Go.
+// does not match). As in Go, the read that crosses the limit still returns
+// the bytes within it, with the error. The sizes are int64 sums, wrapping around as in Go.
 
 import type { RequestEvent } from "@/app/event-request";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
@@ -16,6 +17,7 @@ import {
 } from "@/middlewares/middlewares";
 import type { ReadCloser, ReadResult } from "@/server/buffer-with-file";
 import { ApiError, newApiError } from "@/server/error";
+import { isRereader, type Rereader } from "@/server/rereadable-read-closer";
 import type { Handler } from "@/server/handler";
 
 export const ErrRequestEntityTooLarge: ApiError = newApiError(
@@ -110,7 +112,7 @@ function newMaxBytesReader(body: ReadCloser, limitBytes: bigint): MaxBytesReader
 //
 // The wrapped body rewinds at its end (RereadableReadCloser); each read
 // pass from there is counted against the limit on its own.
-class MaxBytesReader implements ReadCloser {
+class MaxBytesReader implements ReadCloser, Rereader {
   readonly #reader: ReadCloser;
   readonly limit: bigint;
   #remaining: bigint;
@@ -147,6 +149,9 @@ class MaxBytesReader implements ReadCloser {
 
     if (BigInt(result.n) <= this.#remaining) {
       this.#remaining -= BigInt(result.n);
+      if (result.err !== undefined) {
+        this.#stickyErr = result.err;
+      }
       if (result.eof) {
         // the body rewound for the next read
         this.#remaining = this.limit;
@@ -154,10 +159,24 @@ class MaxBytesReader implements ReadCloser {
       return result;
     }
 
+    // the bytes within the limit are returned with the error
+    const n = Number(this.#remaining);
+
     this.#remaining = 0n;
     this.#stickyErr = ErrRequestEntityTooLarge;
 
-    throw this.#stickyErr;
+    if (n === 0) {
+      throw this.#stickyErr;
+    }
+    return { n, eof: false, err: this.#stickyErr };
+  }
+
+  reread(): void {
+    if (isRereader(this.#reader)) {
+      this.#reader.reread();
+      this.#remaining = this.limit;
+      this.#stickyErr = undefined;
+    }
   }
 
   close(): void {

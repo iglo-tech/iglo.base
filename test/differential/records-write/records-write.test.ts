@@ -27,6 +27,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runUpstream } from "@test/differential/db/fixture";
+import { sendChunked } from "@test/differential/records-write/chunked";
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
 import { type FixtureIdentity, fixtureCases } from "@test/differential/records-write/fixture-cases";
 import {
@@ -138,7 +139,13 @@ async function runCase(
   };
   const start = readStartingData(pair.dataDir);
   const pairing = new Pairing();
-  const [up, ig] = await sendBoth(pair, request);
+  const [up, ig] =
+    c.chunked === undefined
+      ? await sendBoth(pair, request)
+      : await Promise.all([
+          sendChunked(pair.upstream.url, c.method, c.url, headers, c.chunked),
+          sendChunked((pair.igloBase as RunningServer).url, c.method, c.url, headers, c.chunked),
+        ]);
   const differences = compareResponses(up, ig, { start, request }, pairing);
 
   // the records to read back: [upstream's path, iglo.base's path]
