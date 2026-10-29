@@ -10,7 +10,7 @@ M6.1 (with M6.2) merged; M4.4 (mail, with `mails/`) active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.4 | review | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 1 | [brief](briefs/M4.4.md) |
+| M4.4 | review | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 2 (lead fixed round 1) | [brief](briefs/M4.4.md) |
 
 ## Done
 
