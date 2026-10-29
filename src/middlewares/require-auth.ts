@@ -3,14 +3,11 @@
 // RequireSameCollectionContextAuth and their ids)
 //
 // The auth guards that route groups bind. RequireSameCollectionContextAuth
-// looks the path collection up in the app passed in (upstream's e.App).
+// looks the path collection up in e.app.
 
 import type { RequestEvent } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
-import {
-  type CollectionsApp,
-  findCachedCollectionByNameOrId,
-} from "@/collections/collection-query";
+import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { Handler, HandlerFunc } from "@/server/handler";
 
@@ -119,7 +116,6 @@ export function requireSuperuserOrOwnerAuth(ownerIdPathParam: string): Handler<R
 // a valid record Authorization header and the auth record's collection to
 // match the one from the route path parameter (default to "collection" if collectionParam is empty).
 export function requireSameCollectionContextAuth(
-  app: CollectionsApp,
   collectionPathParam: string,
 ): Handler<RequestEvent> {
   return {
@@ -135,7 +131,10 @@ export function requireSameCollectionContextAuth(
 
       let collection: Collection | null = null;
       try {
-        collection = findCachedCollectionByNameOrId(app, e.request.pathValue(collectionPathParam));
+        collection = findCachedCollectionByNameOrId(
+          e.app,
+          e.request.pathValue(collectionPathParam),
+        );
       } catch {
         collection = null;
       }

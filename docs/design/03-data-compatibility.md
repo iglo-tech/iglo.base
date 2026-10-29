@@ -43,6 +43,8 @@ Bun bundles SQLite 3.53.4 (checked with Bun 1.4.4 on Linux), with math and JSON 
 
 No custom SQL functions or collations are needed: upstream registers none.
 
+Bun's SQLite is built without `SQLITE_ENABLE_STAT4`. Upstream's `PRAGMA optimize` after a collection save creates both `sqlite_stat1` and `sqlite_stat4`; iglo.base's creates only `sqlite_stat1` (with the same rows). So a fresh iglo.base `data.db` has upstream's `sqlite_schema` without the `sqlite_stat4` row. Both are SQLite's own optional statistics tables: upstream creates `sqlite_stat4` again on its next `ANALYZE`, and Bun's SQLite ignores an existing one.
+
 ## Schema
 
 ### System tables
@@ -51,7 +53,7 @@ These are created on a fresh install and checked on open. Their DDL is copied fr
 
 | Table | File | Notes |
 |---|---|---|
-| `_migrations` | `data.db` | `file VARCHAR(255) PRIMARY KEY, applied INTEGER` (microseconds) |
+| `_migrations` | `data.db` | `file VARCHAR(255) PRIMARY KEY NOT NULL, applied INTEGER NOT NULL` (microseconds) |
 | `_collections` | `data.db` | `id`, `system`, `type`, `name`, `fields` (JSON), five rule columns, `options` (JSON), `indexes` (JSON), `created`, `updated` |
 | `_params` | `data.db` | key-value; row `settings` holds the settings JSON, possibly encrypted |
 | `_superusers` | `data.db` | auth collection table |
@@ -97,13 +99,14 @@ User migrations in `pb_migrations` run as upstream runs them and are recorded in
 1778828400_normalize_indexes.go
 ```
 
-All rows, including `1640988000_aux_init.go`, are in `data.db`'s `_migrations` table. `auxiliary.db` has no `_migrations` table (checked on real v0.40.x data).
+All rows, including `1640988000_aux_init.go`, are in `data.db`'s `_migrations` table. `auxiliary.db` has no `_migrations` table (checked on real v0.40.x data). PocketBase v0.38.1 through v0.41.0 have the same eight system migrations, and a fresh v0.40.6 install has the same `sqlite_schema`, `_migrations` files and `_collections` rows (but the generated values) as a fresh v0.41.0 install (checked with the v0.40.6 release binary).
 
 On open:
 
-1. **Empty data directory:** create the v0.41.0 schema directly (the end state of all system migrations, taken from a fresh upstream v0.41.0 install), then insert the `_migrations` rows above, so PocketBase sees nothing pending.
-2. **Existing data:** check that every system migration above is recorded and the system collections match the expected shape. If any is missing, refuse to start with: "This pb_data was written by an older PocketBase. Run PocketBase v0.41.0 on it once, then start iglo.base."
+1. **Empty data directory** (no system migration recorded and none of the tables the baseline creates): create the v0.41.0 schema directly (the end state of all system migrations, taken from a fresh upstream v0.41.0 install), then insert the `_migrations` rows above, so PocketBase sees nothing pending. As upstream does, the `_migrations` table is created first and everything else runs in one `auxiliary.db` transaction around one `data.db` transaction; each row's `applied` is the clock's time in microseconds when it is recorded. Upstream's fresh install also writes the default settings row in `_params` (its settings load, M1.3); until M1.3 iglo.base writes none, and PocketBase writes it on its next start.
+2. **Existing data:** check that every system migration above is recorded and that the five system collections (`_superusers`, `_externalAuths`, `_mfas`, `_otps`, `_authOrigins`) exist with their tables and types. If any is missing, refuse to start with: "This pb_data was written by an older PocketBase. Run PocketBase v0.41.0 on it once, then start iglo.base." The refusal writes nothing and exits with code 1. The check only reads `pb_data`: when `data.db` has a `-journal`, `-wal` or `-shm` file (a running or crashed writer), it inspects a copy of them in a temporary directory outside `pb_data`. If that copy cannot be made (the temporary directory is not writable or too small), it checks `data.db` in place as upstream opens it; then SQLite's own crash recovery may write to `pb_data` before a refusal, but compatible data still starts. A `data.db` that cannot be read stops the start with SQLite's error; it is never treated as an empty directory.
 3. **Other rows** in `_migrations` (user `.js` or Go migrations, historical system migrations) are kept and ignored. If unknown rows look newer than the baseline (timestamp after `1778828400` with a `.go` suffix), start with one warning: the data may come from a newer PocketBase.
+4. **`_logs` missing** from `auxiliary.db` (for example a deleted file): `1640988000_aux_init.go`'s reapply condition, as upstream: the table is created again and its row is recorded again with a new `applied`.
 
 iglo.base never adds `_migrations` rows of its own. If iglo.base ever needs a format change, it needs a new decision record and a new major version, because it breaks going back to PocketBase.
 

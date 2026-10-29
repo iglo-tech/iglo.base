@@ -3,9 +3,8 @@
 // Settings do not exist yet: the trusted proxy scenarios of
 // TestEventRequestRealIP move to M5.7 (settings.TrustedProxy).
 
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 
-import { newApp } from "@/app/app";
 import {
   RequestEvent,
   RequestEventKeyInfoContext,
@@ -16,6 +15,7 @@ import { newAuthCollection } from "@/collections/collection-model";
 import { newRecord, type Record } from "@/records/record-model";
 import { ResponseWriter } from "@/server/router";
 import { newTestRequest, type TestRequest } from "@test/support/router";
+import { openFixtureApp } from "@test/app/app";
 
 // an auth record of a new auth collection with the given name
 function authRecord(id: string, collectionName: string): Record {
@@ -24,14 +24,8 @@ function authRecord(id: string, collectionName: string): Record {
   return record;
 }
 
-const app = newApp({
-  dataDir: "/tmp/pb_data",
-  isDev: false,
-  encryptionEnv: "",
-  queryTimeout: 30,
-  clock: { now: () => new Date(0) },
-  logger: { error: () => {} },
-});
+const app = openFixtureApp({ clock: { now: () => new Date(0) } });
+afterAll(() => app.cleanup());
 
 function newEvent(init: TestRequest): RequestEvent {
   return new RequestEvent(app, new ResponseWriter(), newTestRequest(init));

@@ -55,7 +55,6 @@ import {
   findCachedCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
-import { loadAuthToken } from "@/middlewares/load-auth-token";
 import {
   requireAuth,
   requireSameCollectionContextAuth,
@@ -301,7 +300,7 @@ function lookup(app: TestCollectionsApp, token: string, ...types: string[]): str
 const authId = (e: RequestEvent) =>
   e.json(200, { record: { id: e.auth?.id, collectionName: e.auth?.collection().name } });
 
-// iglo.base's default router with loadAuthToken on app and upstream's
+// iglo.base's default router on an App over app's databases and upstream's
 // guarded endpoints as test routes (same paths and guards)
 function guardRouter(app: TestCollectionsApp) {
   const router = newRouter(
@@ -311,15 +310,16 @@ function guardRouter(app: TestCollectionsApp) {
       encryptionEnv: "",
       queryTimeout: 30,
       clock,
-      logger: { error: () => {} },
+      logger: app.logger,
+      databases: app.databases,
+      store: app.store,
     }),
   );
-  router.bind(loadAuthToken(app));
   router.GET("/api/collections", authId).bind(requireSuperuserAuth());
   router.POST("/api/files/token", authId).bind(requireAuth());
   router
     .POST("/api/collections/{collection}/auth-refresh", authId)
-    .bind(requireSameCollectionContextAuth(app, ""));
+    .bind(requireSameCollectionContextAuth(""));
   return router.buildMux();
 }
 

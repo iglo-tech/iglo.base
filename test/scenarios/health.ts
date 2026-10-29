@@ -45,11 +45,6 @@ export const healthAPI: Suite = {
         `"realIP"`,
         `"possibleProxyHeader"`,
       ],
-      pending: {
-        task: "M1.2",
-        reason:
-          "serve opens no pb_data until M1.2, so it loads no auth; canBackup also needs the app store",
-      },
     },
   ],
 };

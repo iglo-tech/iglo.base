@@ -3,19 +3,17 @@
 // Upstream has no test of its own for loadAuthToken; its Require* tests
 // (require-auth.test.ts) go through it. These cases check the loaded
 // record and the cases where the middleware leaves e.auth as it is. The
-// router is the default one (apis/base.ts) with loadAuthToken bound to a
-// test app on a writable copy of the vendored fixture.
+// router is the default one (apis/base.ts) of a test app bootstrapped on a
+// writable copy of the vendored fixture; loadAuthToken reads e.app.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { newRouter } from "@/apis/base";
-import { newApp } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
-import { loadAuthToken } from "@/middlewares/load-auth-token";
 import { findRecordById } from "@/records/record-query";
 import { newFileToken, newVerificationToken } from "@/records/record-tokens";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openFixtureApp, type TestApp } from "@test/app/app";
 import { serveTest } from "@test/support/router";
 
 const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };
@@ -23,34 +21,20 @@ const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };
 const userToken =
   "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo";
 
-const app = newApp({
-  dataDir: "/tmp/pb_data",
-  isDev: false,
-  encryptionEnv: "",
-  queryTimeout: 30,
-  clock,
-  logger: { error: () => {} },
-});
-
-let testApp: TestCollectionsApp;
+let testApp: TestApp;
 
 beforeAll(() => {
-  testApp = openTestApp(clock);
+  testApp = openFixtureApp({ clock });
 });
 
-afterAll(() => {
-  testApp.cleanup();
-});
+afterAll(() => testApp.cleanup());
 
 // the e.auth a test route sees: "collectionName/id", or "" for a guest
 async function authOf(
   token: string | undefined,
-  options: { bindApp?: boolean; preset?: (e: RequestEvent) => void } = {},
+  options: { preset?: (e: RequestEvent) => void } = {},
 ): Promise<string> {
-  const router = newRouter(app);
-  if (options.bindApp !== false) {
-    router.bind(loadAuthToken(testApp));
-  }
+  const router = newRouter(testApp);
   if (options.preset !== undefined) {
     const preset = options.preset;
     // runs before loadAuthToken
@@ -96,8 +80,4 @@ test("an auth record loaded before is kept", async () => {
       },
     }),
   ).toBe("users/oap640cot4yru2s");
-});
-
-test("the default router without pb_data loads no auth (until M1.2)", async () => {
-  expect(await authOf(userToken, { bindApp: false })).toBe("");
 });

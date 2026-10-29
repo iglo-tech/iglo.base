@@ -23,15 +23,20 @@ test("a pending scenario that passes against both servers fails", async () => {
   expect(outcome(scenario, result.igloBaseFailures).ok).toBe(false);
 });
 
-test("a deliberate difference skips the comparison", async () => {
+test("a deliberate difference checks iglo.base against its own expectations", async () => {
   const superuser = healthAPI.scenarios[2] as Scenario;
-  const result = await runDifferential({
+  const difference = (expectedContent: string[]): Scenario => ({
     ...superuser,
-    pending: undefined,
     difference: {
       name: "Hook side effects",
-      igloBase: { expectedStatus: 200, expectedContent: ['"data":{}'] },
+      igloBase: { expectedStatus: 200, expectedContent },
     },
   });
-  expect(result).toEqual({ upstreamFailures: [], igloBaseFailures: [] });
+  expect(await runDifferential(difference(['"canBackup":true']))).toEqual({
+    upstreamFailures: [],
+    igloBaseFailures: [],
+  });
+  const result = await runDifferential(difference(['"data":{}']));
+  expect(result.upstreamFailures).toEqual([]);
+  expect(result.igloBaseFailures).toHaveLength(1);
 });

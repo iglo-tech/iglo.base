@@ -4,9 +4,9 @@
 //
 // As upstream's scenarios, each case registers its test route with the
 // guard on the default router (apis/base.ts newRouter), and requests go
-// through the whole middleware chain. The router's loadAuthToken is bound
-// with a test app on a writable copy of the vendored fixture (serve has no
-// pb_data until M1.2), with a fixed clock before the fixture tokens' exp
+// through the whole middleware chain. The router is a test app's,
+// bootstrapped on a writable copy of the vendored fixture, with a fixed
+// clock before the fixture tokens' exp
 // (2050-01-01). Upstream checks that the body contains `"data":{}`; here
 // the whole body is compared with the ApiError upstream writes for the
 // message in its source. The hook-event expectations are dropped.
@@ -14,9 +14,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { newRouter } from "@/apis/base";
-import { newApp } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
-import { loadAuthToken } from "@/middlewares/load-auth-token";
 import {
   requireAuth,
   requireGuestOnly,
@@ -27,7 +25,7 @@ import {
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { Router } from "@/server/router";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openFixtureApp, type TestApp } from "@test/app/app";
 import { serveTest } from "@test/support/router";
 
 const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };
@@ -56,7 +54,7 @@ interface Scenario {
   url: string;
   token?: string;
   // registers the test route on the router (upstream's BeforeTestFunc)
-  route: (router: Router<RequestEvent>, app: TestCollectionsApp) => void;
+  route: (router: Router<RequestEvent>) => void;
   expectedStatus: number;
   expectedBody: string;
 }
@@ -82,38 +80,25 @@ const ownerRoute =
     router.GET(pattern, handler).bind(requireSuperuserOrOwnerAuth(ownerIdPathParam));
   };
 
-const sameCollectionRoute =
-  (collectionPathParam: string) => (router: Router<RequestEvent>, app: TestCollectionsApp) => {
-    router
-      .GET("/my/test/{collection}", handler)
-      .bind(requireSameCollectionContextAuth(app, collectionPathParam));
-  };
+const sameCollectionRoute = (collectionPathParam: string) => (router: Router<RequestEvent>) => {
+  router
+    .GET("/my/test/{collection}", handler)
+    .bind(requireSameCollectionContextAuth(collectionPathParam));
+};
 
-let testApp: TestCollectionsApp;
+let testApp: TestApp;
 
 beforeAll(() => {
-  testApp = openTestApp(clock);
+  testApp = openFixtureApp({ clock });
 });
 
-afterAll(() => {
-  testApp.cleanup();
-});
+afterAll(() => testApp.cleanup());
 
 function run(scenarios: Scenario[]): void {
   for (const s of scenarios) {
     test(s.name, async () => {
-      const app = newApp({
-        dataDir: "/tmp/pb_data",
-        isDev: false,
-        encryptionEnv: "",
-        queryTimeout: 30,
-        clock,
-        logger: { error: () => {} },
-      });
-      const router = newRouter(app);
-      // replaces the default loadAuthToken in place (same id)
-      router.bind(loadAuthToken(testApp));
-      s.route(router, testApp);
+      const router = newRouter(testApp);
+      s.route(router);
 
       const res = await serveTest(router.buildMux(), {
         target: s.url,

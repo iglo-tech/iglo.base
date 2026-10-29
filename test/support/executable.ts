@@ -87,6 +87,7 @@ export async function startServer(
   dataDir: string,
   host = "127.0.0.1",
   listenPort?: { name: string; urlPort: number },
+  extraEnv: Record<string, string> = {},
 ): Promise<RunningServer> {
   const port = listenPort?.urlPort ?? (await freePort());
   const proc = Bun.spawn(
@@ -103,7 +104,7 @@ export async function startServer(
       cwd: tempDir(),
       stdout: "pipe",
       stderr: "pipe",
-      env: { ...process.env, NO_COLOR: "1" },
+      env: { ...process.env, NO_COLOR: "1", ...extraEnv },
     },
   );
   const stderrText = new Response(proc.stderr).text();
