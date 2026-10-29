@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M2.4 merged; No active task. Next: M4.1 (password auth), per the usable-first order. Lead PR #30 (shared upstream cache) is in review.
+M4.1 active (worker). Lead PR #30 (shared upstream cache) is in review.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M4.1 | worker | task/M4.1-password-auth | 0 | [brief](briefs/M4.1.md); lead decision: MFA model/query and checkMFA move from M4.2 into M4.1 |
 
 ## Done
 
