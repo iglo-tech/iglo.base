@@ -14,6 +14,15 @@ let built: Promise<string> | undefined;
 // the current source on first use.
 export function executable(): Promise<string> {
   built ??= (async () => {
+    // the dashboard pack src/main.ts embeds
+    const ui = Bun.spawn([process.execPath, "scripts/ui/build.ts"], {
+      cwd: repoRoot,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    if ((await ui.exited) !== 0) {
+      throw new Error(`dashboard build failed:\n${await new Response(ui.stderr).text()}`);
+    }
     const outfile = join(mkdtempSync(join(tmpdir(), "iglo-base-build-")), "iglo-base");
     const proc = Bun.spawn(
       [
