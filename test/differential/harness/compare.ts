@@ -31,7 +31,11 @@
 //   request either. Within one scenario the pairing must be consistent: an
 //   upstream value always pairs with the same iglo.base value and the other
 //   way around, so that equal values stay equal and different ones stay
-//   different.
+//   different. Timestamps pair per key and record (the upstream object's
+//   id) instead: upstream reads the clock once per autodate field, so a
+//   new record's created and updated may be equal on one side and not on
+//   the other, but each of them keeps its pairing across the responses
+//   compared with the same Pairing (a write and its read-back).
 // - or it equals, as a whole JSON string, a value paired that way anywhere
 //   in the scenario's responses (a relation to a new record's id).
 //
@@ -82,9 +86,12 @@ export function readStartingData(dataDir: string): StartingData {
 export interface Format {
   name: string;
   pattern: RegExp;
-  // each value is only checked by format: it need not pair with the same
-  // value of the other side as the other values of the format do
-  unpaired?: boolean;
+  // values pair per slot (the key and the upstream record id of the
+  // object holding them) instead of across the whole format: one slot's
+  // upstream value always pairs with the same iglo.base value and back,
+  // while values of different slots may be equal on one side and not on
+  // the other
+  perSlot?: boolean;
 }
 
 // formats of generated values
@@ -93,13 +100,14 @@ const token: Format = {
   name: "token",
   pattern: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
 }; // JWT
-// types.DateTime's JSON form. Unpaired: upstream reads the clock once per
-// autodate field, so a new record's created and updated can differ by a
-// millisecond or more on either side.
+// types.DateTime's JSON form. Paired per slot: upstream reads the clock
+// once per autodate field, so a new record's created and updated can
+// differ by a millisecond or more on either side, but a record's created
+// (or updated) must stay the same across its write response and read-back.
 const timestamp: Format = {
   name: "timestamp",
   pattern: /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/,
-  unpaired: true,
+  perSlot: true,
 };
 const random = (length: number): Format => ({
   name: `random${length}`,
@@ -194,22 +202,26 @@ export class Pairing {
   readonly upstream = new Map<string, string>();
   readonly igloBase = new Map<string, string>();
 
-  // false if either value is already paired with another one
-  pair(format: Format, upstream: string, igloBase: string): boolean {
-    if (format.unpaired === true) {
-      const placeholder = JSON.stringify(`<generated ${format.name}>`);
-      this.upstream.set(JSON.stringify(upstream), placeholder);
-      this.igloBase.set(JSON.stringify(igloBase), placeholder);
-      return true;
-    }
-    const up = `${format.name}:${upstream}`;
-    const ig = `${format.name}:${igloBase}`;
+  // false if either value is already paired with another one; slot is
+  // where the value is, for a perSlot format
+  pair(format: Format, upstream: string, igloBase: string, slot = ""): boolean {
+    const scope = format.perSlot === true ? `${format.name}:${slot}` : format.name;
+    const up = `${scope}:${upstream}`;
+    const ig = `${scope}:${igloBase}`;
     const known = this.forward.get(up);
     if (known !== undefined || this.backward.has(ig)) {
       return known === ig;
     }
     this.forward.set(up, ig);
     this.backward.set(ig, up);
+    if (format.perSlot === true) {
+      // one placeholder for the format: values of different slots may be
+      // equal on one side only
+      const placeholder = JSON.stringify(`<generated ${format.name}>`);
+      this.upstream.set(JSON.stringify(upstream), placeholder);
+      this.igloBase.set(JSON.stringify(igloBase), placeholder);
+      return true;
+    }
     const placeholder = JSON.stringify(`<generated ${format.name} ${this.forward.size}>`);
     this.upstream.set(JSON.stringify(upstream), placeholder);
     this.igloBase.set(JSON.stringify(igloBase), placeholder);
@@ -296,7 +308,7 @@ function pairGenerated(
       differ(`not both ${format.name}s`);
     } else if (!isGenerated(format, ig.value, at.context)) {
       differ(`generated ${format.name} expected, iglo.base's is in the starting data or request`);
-    } else if (!pairing.pair(format, up.value, ig.value)) {
+    } else if (!pairing.pair(format, up.value, ig.value, slot(at))) {
       differ(`${format.name}s not paired consistently`);
     }
   } else if (up.kind === "array" && ig.kind === "array") {
@@ -314,6 +326,14 @@ function pairGenerated(
       }
     }
   }
+}
+
+// the key of a value and the id of the upstream object holding it (the
+// record it belongs to), if it has one
+function slot(at: Location): string {
+  const parent = at.parents.at(-1);
+  const id = parent?.entries.find(([name]) => name === "id")?.[1];
+  return JSON.stringify([at.path.at(-1), id?.kind === "string" ? id.value : null]);
 }
 
 function isGenerated(format: Format, value: string, context: Context): boolean {
