@@ -605,3 +605,29 @@ test("signed NaN is rejected in float fields", () => {
     expect(dst.F).toBeNaN();
   }
 });
+
+// int64 and uint64 values beyond 2^53 stay exact (bigint), smaller ones are
+// numbers, from form values and from JSON
+test("integers beyond 2^53 stay exact", () => {
+  const type = structOf([
+    { name: "I", type: "int64", tags: { json: "i" } },
+    { name: "U", type: "uint64", tags: { json: "u" } },
+    { name: "S", type: "int64", tags: { json: "s" } },
+  ]);
+
+  const dst: Record<string, unknown> = {};
+  unmarshalRequestData(
+    { I: ["-9223372036854775808"], U: ["18446744073709551615"], S: ["123"] },
+    dst,
+    type,
+  );
+  expect(dst).toEqual({ I: -9223372036854775808n, U: 18446744073709551615n, S: 123 });
+
+  const fromJSON: Record<string, unknown> = {};
+  unmarshalRequestData(
+    { "@jsonPayload": ['{"i":9007199254740993,"u":9007199254740991,"s":-1}'] },
+    fromJSON,
+    type,
+  );
+  expect(fromJSON).toEqual({ I: 9007199254740993n, U: 9007199254740991, S: -1 });
+});
