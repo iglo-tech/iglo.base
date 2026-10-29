@@ -26,7 +26,14 @@ export interface UpstreamServer {
 }
 
 export async function startUpstream(
-  options: { layout?: Layout; dataDir?: string } = {},
+  options: {
+    layout?: Layout;
+    dataDir?: string;
+    // more `serve` arguments (e.g. --encryptionEnv)
+    args?: string[];
+    // more environment variables
+    env?: Record<string, string>;
+  } = {},
 ): Promise<UpstreamServer> {
   const binary = requireTool("pocketbase", options.layout ?? defaultLayout);
   const root = mkdtempSync(join(tmpdir(), "iglo-base-upstream-"));
@@ -40,10 +47,13 @@ export async function startUpstream(
   }
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
-  const child = spawnChild([binary, "serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir], {
-    cwd: root,
-    env: { PATH: `${noBrowserDir}:${process.env.PATH ?? ""}` },
-  });
+  const child = spawnChild(
+    [binary, "serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, ...(options.args ?? [])],
+    {
+      cwd: root,
+      env: { ...options.env, PATH: `${noBrowserDir}:${process.env.PATH ?? ""}` },
+    },
+  );
 
   try {
     await waitUntilReady(child, "upstream pocketbase", async () => {
