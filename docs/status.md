@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M4.1 merged; next: M0.8 (usable-first order).
+M0.8 active (worker).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M0.8 | worker | task/M0.8-spikes | 0 | [brief](briefs/M0.8.md) |
 
 ## Done
 
