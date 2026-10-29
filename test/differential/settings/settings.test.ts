@@ -487,23 +487,27 @@ async function startupResult(
   };
 }
 
-describe("startup", () => {
-  const upstreamBinary = (): string[] => [requireTool("pocketbase", defaultLayout)];
-  const igloBinary = async (): Promise<string[]> => [await executable()];
+function upstreamBinary(): string[] {
+  return [requireTool("pocketbase", defaultLayout)];
+}
+async function igloBinary(): Promise<string[]> {
+  return [await executable()];
+}
 
-  // a pb_data with encrypted settings, written by upstream
-  async function encryptedDataDir(key: string): Promise<string> {
-    const dataDir = fixtureCopy();
-    const up = await startUp(dataDir, key);
-    try {
-      await writeAll(up, [`{"meta":{"appName":"encrypted"}}`]);
-    } finally {
-      await stop(up);
-    }
-    expect(storedRow(dataDir)?.type).toBe("text");
-    return dataDir;
+// a pb_data with encrypted settings, written by upstream
+async function encryptedDataDir(key: string): Promise<string> {
+  const dataDir = fixtureCopy();
+  const up = await startUp(dataDir, key);
+  try {
+    await writeAll(up, [`{"meta":{"appName":"encrypted"}}`]);
+  } finally {
+    await stop(up);
   }
+  expect(storedRow(dataDir)?.type).toBe("text");
+  return dataDir;
+}
 
+describe("startup", () => {
   test(
     "a missing, wrong or short key fails both the same way",
     async () => {
