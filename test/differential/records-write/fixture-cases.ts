@@ -45,6 +45,56 @@ function emptyFilenameParts(
 
 const byteLength = (text: string) => new TextEncoder().encode(text).length;
 
+// a multipart body of the given parts, each with its header lines (a
+// Content-Disposition naming a form value is added before them when name
+// is set) and content
+const partsBoundary = "9b3e7d1a5c8f2e6b0d4a7c1f5e8b2d6a";
+interface RawPart {
+  name?: string;
+  headers?: string[];
+  content: string;
+}
+function rawParts(
+  parts: RawPart[],
+  { boundary = partsBoundary, end = `--${partsBoundary}--\r\n` } = {},
+): string {
+  let body = "";
+  for (const part of parts) {
+    const headers = [...(part.headers ?? [])];
+    if (part.name !== undefined) {
+      headers.unshift(`Content-Disposition: form-data; name="${part.name}"`);
+    }
+    body += `--${boundary}\r\n${headers.map((h) => `${h}\r\n`).join("")}\r\n${part.content}\r\n`;
+  }
+  return body + end;
+}
+const partsHeaders = { "Content-Type": `multipart/form-data; boundary=${partsBoundary}` };
+
+// n parts: the id, the title and n - 2 unknown fields
+function manyParts(id: string, n: number): string {
+  const parts: RawPart[] = [
+    { name: "id", content: id },
+    { name: "title", content: "parttest" },
+  ];
+  for (let i = 0; parts.length < n; i++) {
+    parts.push({ name: `unknown${i}`, content: "x" });
+  }
+  return rawParts(parts);
+}
+
+// a title part with n header lines in all (its Content-Disposition and
+// n - 1 more)
+function manyHeaders(id: string, n: number): string {
+  const headers: string[] = [];
+  for (let i = 1; i < n; i++) {
+    headers.push(`X-Extra-${i}: v`);
+  }
+  return rawParts([
+    { name: "id", content: id },
+    { name: "title", headers, content: "headertest" },
+  ]);
+}
+
 // a demo2 create body in which the first `cut` bytes of token end at byte
 // `at`, where jsontext's reads split it (a 64-byte buffer doubling when
 // 3/4 full); the token is in the title, or is the active value, and the
@@ -472,6 +522,198 @@ export const fixtureCases: WriteCase[] = [
     method: "POST",
     url: demo2,
     body: boundaryBody(64, "wfixdemo2000030", "\\ud83dx", 30),
+  },
+  // a number already invalid (a leading 0 before a digit) at the 32 MiB
+  // body limit is a syntax error (400); an incomplete one ("1.") waits for
+  // more input and fails at the limit (413)
+  {
+    name: "demo2: guest chunked create with an invalid number at the body limit",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      [" ", (32 << 20) - '{"id":"wfixdemo2000031","title":"badnum","active":01'.length],
+      ['{"id":"wfixdemo2000031","title":"badnum","active":01', 1],
+      [" ", 1000],
+    ],
+  },
+  {
+    name: "demo2: guest chunked create with an incomplete number at the body limit",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      [" ", (32 << 20) - '{"id":"wfixdemo2000032","title":"incnum","active":1.'.length],
+      ['{"id":"wfixdemo2000032","title":"incnum","active":1.', 1],
+      [" ", 1000],
+    ],
+  },
+  {
+    name: "demo2: guest chunked create with a lone low surrogate escape at the body limit",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    chunked: [
+      [" ", (32 << 20) - '{"id":"wfixdemo2000033","title":"\\udc00'.length],
+      ['{"id":"wfixdemo2000033","title":"\\udc00', 1],
+      ['x"}', 1],
+      [" ", 1000],
+    ],
+  },
+  // multipart bodies as Go's mime/multipart reads them
+  {
+    name: "demo2: guest multipart create with a quoted-printable title",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts([
+      { name: "id", content: "wfixdemo2000034" },
+      {
+        name: "title",
+        headers: ["Content-Transfer-Encoding: quoted-printable"],
+        content: "abc=64",
+      },
+    ]),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with a quoted-printable title with soft line breaks",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts([
+      { name: "id", content: "wfixdemo2000035" },
+      {
+        name: "title",
+        headers: ["content-transfer-encoding: Quoted-Printable"],
+        content: "multi=\r\nline=3D=\r\nqp=C3=A9  \r\nnext",
+      },
+    ]),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with an invalid quoted-printable title",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts([
+      { name: "id", content: "wfixdemo2000036" },
+      {
+        name: "title",
+        headers: ["Content-Transfer-Encoding: quoted-printable"],
+        content: "bad=\x01byte",
+      },
+    ]),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with 1000 parts",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: manyParts("wfixdemo2000037", 1000),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with 1001 parts",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: manyParts("wfixdemo2000038", 1001),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with 10000 headers in a part",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: manyHeaders("wfixdemo2000039", 10000),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with 10001 headers in a part",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: manyHeaders("wfixdemo2000040", 10001),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with a body using another boundary",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts(
+      [
+        { name: "id", content: "wfixdemo2000041" },
+        { name: "title", content: "otherboundary" },
+      ],
+      { boundary: "other", end: "--other--\r\n" },
+    ),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with an empty boundary",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts([{ name: "title", content: "emptyboundary" }], {
+      boundary: "",
+      end: "----\r\n",
+    }),
+    headers: { "Content-Type": 'multipart/form-data; boundary=""' },
+  },
+  {
+    name: "demo2: guest multipart create without the final boundary",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts(
+      [
+        { name: "id", content: "wfixdemo2000042" },
+        { name: "title", content: "nofinal" },
+      ],
+      { end: "" },
+    ),
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create ending within a part's headers",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body:
+      rawParts(
+        [
+          { name: "id", content: "wfixdemo2000043" },
+          { name: "title", content: "cutheaders" },
+        ],
+        { end: "" },
+      ) + `--${partsBoundary}\r\nContent-Disposition: form-data; name="active"`,
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with LF line endings and a preamble",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body:
+      `preamble line\n--${partsBoundary}\nContent-Disposition: form-data; name="id"\n\nwfixdemo2000044` +
+      `\n--${partsBoundary}\nContent-Disposition: form-data; name="title"\n\nlfendings\n--${partsBoundary}--`,
+    headers: partsHeaders,
+  },
+  {
+    name: "demo2: guest multipart create with a part without a name and a non-form-data part",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: rawParts([
+      { name: "id", content: "wfixdemo2000045" },
+      { headers: ["Content-Disposition: form-data"], content: "noname" },
+      { headers: ['Content-Disposition: attachment; name="title"'], content: "attached" },
+      { name: "title", content: "named" },
+    ]),
+    headers: partsHeaders,
   },
   // view collections
   {
