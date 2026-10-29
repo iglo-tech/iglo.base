@@ -1,30 +1,34 @@
 // Upstream: tools/filesystem/file.go
 //
-// A File's reader (Go's FileReader with its PathReader, MultipartReader and
-// BytesReader) is a Blob: a Bun.file for a local path, the File of a
-// multipart form part, or a Blob of the bytes. The storage side (upload,
-// delete, thumbnails) comes with M3.2.
+// A File's reader is Go's FileReader: Open() gives a synchronous reader of
+// the content (PathReader for a local path, BytesReader for bytes,
+// MultipartReader for a multipart form part, kept in memory or in a
+// section of the form's temporary file, as Go's multipart.FileHeader).
+// Reads are synchronous so that the blob store (filesystem.ts) can store a
+// File from inside a write transaction, as upstream does (D8). `reader`
+// also gives the content as a Blob (a Bun.file for a path or a temporary
+// file section).
 //
 // Go's mimetype.DetectReader(reader) is called by the name normalization
 // and by the upload MIME type check (src/validators/file.ts), and the
-// field validation that runs that check is synchronous. A Blob can only be
-// read asynchronously, so the constructors read the first
-// mimetype.defaultLimit bytes once, when the File is created (the same
-// bytes DetectReader reads; a read error is kept and returned instead),
-// and detect() runs the detection on them. A multipart part or a Blob of
-// bytes does not change, so the result is the one a later read would give.
-// A local path can change after the File is created, and Go's PathReader
-// opens the path again on every read, so a path-backed File reads its
-// first bytes again, synchronously, each time detect() is called.
+// field validation that runs that check is synchronous. The constructors
+// read the first mimetype.defaultLimit bytes once, when the File is
+// created (the same bytes DetectReader reads; a read error is kept and
+// returned instead), and detect() runs the detection on them. Bytes and a
+// multipart part do not change, so the result is the one a later read
+// would give. A local path can change after the File is created, and Go's
+// PathReader opens the path again on every read, so a path-backed File
+// reads its first bytes again each time detect() is called.
 //
 // File names are Go strings: the name cut at 300 bytes and the extension
 // and name rules work on UTF-8 bytes, with invalid bytes (a cut inside a
 // multi-byte character) as lone surrogates U+DC80+n, as in
 // src/tools/types/go-json.ts.
 //
-// The constructors are async (they read the head of the content) and
-// throw where Go returns an error. Not ported: NewFileFromURL, which
-// downloads the file (M4.5, for OAuth2 avatars), and openFuncAsReader.
+// The constructors are async (Go returns an error where they throw). Not
+// ported: NewFileFromURL, which downloads the file (M4.5, for OAuth2
+// avatars), and openFuncAsReader (GetReuploadableFile, filesystem.ts, uses
+// a PathReader of the stored file).
 
 import { closeSync, openSync, readSync } from "node:fs";
 import { stat } from "node:fs/promises";
@@ -46,6 +50,154 @@ export interface FileOptions {
   random?: RandomSource;
 }
 
+// An open file content (Go's io.ReadSeekCloser, without Seek: a reader is
+// opened again to read from the start).
+export interface ReadCloser {
+  // reads up to p.length bytes into p; 0 at the end of the content.
+  // Throws a read error.
+  read(p: Uint8Array): number;
+  close(): void;
+}
+
+// FileReader defines an interface for a file resource reader.
+export interface FileReader {
+  // Open opens the content for reading. Throws the open error.
+  open(): ReadCloser;
+  // the content as a Blob
+  blob(): Blob;
+}
+
+// PathReader is a FileReader of a local file path.
+export class PathReader implements FileReader {
+  constructor(readonly path: string) {}
+
+  // Open implements the [FileReader] interface.
+  open(): ReadCloser {
+    return new fdReader(openSync(this.path, "r"), 0, Number.POSITIVE_INFINITY);
+  }
+
+  blob(): Blob {
+    return Bun.file(this.path);
+  }
+}
+
+// BytesReader is a FileReader of bytes.
+export class BytesReader implements FileReader {
+  #blob: Blob | undefined;
+
+  constructor(readonly bytes: Uint8Array) {}
+
+  // Open implements the [FileReader] interface.
+  open(): ReadCloser {
+    const bytes = this.bytes;
+    let offset = 0;
+    return {
+      read(p: Uint8Array): number {
+        const n = Math.min(p.length, bytes.length - offset);
+        p.set(bytes.subarray(offset, offset + n));
+        offset += n;
+        return n;
+      },
+      close(): void {},
+    };
+  }
+
+  blob(): Blob {
+    this.#blob ??= new Blob([this.bytes as Uint8Array<ArrayBuffer>]);
+    return this.#blob;
+  }
+}
+
+// The multipart.FileHeader members a MultipartReader reads: the part's
+// content in memory, or its section of the form's temporary file
+// (src/server/multipart.ts).
+export interface MultipartFileHeader {
+  // Filename: the part's file name (Part.FileName())
+  readonly filename: string;
+  readonly size: number;
+  // the content kept in memory, or null when it is in tmpfile
+  readonly content: Uint8Array | null;
+  readonly tmpfile: string;
+  readonly tmpoff: number;
+}
+
+// MultipartReader is a FileReader of a multipart form file part.
+export class MultipartReader implements FileReader {
+  #bytes: BytesReader | undefined;
+
+  constructor(readonly header: MultipartFileHeader) {
+    if (header.content !== null) {
+      this.#bytes = new BytesReader(header.content);
+    }
+  }
+
+  // Open implements the [FileReader] interface.
+  open(): ReadCloser {
+    if (this.#bytes !== undefined) {
+      return this.#bytes.open();
+    }
+    const h = this.header;
+    return new fdReader(openSync(h.tmpfile, "r"), h.tmpoff, h.size);
+  }
+
+  blob(): Blob {
+    if (this.#bytes !== undefined) {
+      return this.#bytes.blob();
+    }
+    const h = this.header;
+    return Bun.file(h.tmpfile).slice(h.tmpoff, h.tmpoff + h.size);
+  }
+}
+
+// a file descriptor read from offset, at most limit bytes
+class fdReader implements ReadCloser {
+  #fd: number | null;
+  #position: number;
+  #remaining: number;
+
+  constructor(fd: number, offset: number, limit: number) {
+    this.#fd = fd;
+    this.#position = offset;
+    this.#remaining = limit;
+  }
+
+  read(p: Uint8Array): number {
+    if (this.#fd === null) {
+      throw new Error("read: file already closed");
+    }
+    const want = Math.min(p.length, this.#remaining);
+    if (want <= 0) {
+      return 0;
+    }
+    const n = readSync(this.#fd, p, 0, want, this.#position);
+    this.#position += n;
+    this.#remaining -= n;
+    return n;
+  }
+
+  close(): void {
+    if (this.#fd !== null) {
+      const fd = this.#fd;
+      this.#fd = null;
+      closeSync(fd);
+    }
+  }
+}
+
+// a Blob reader for the Files tests build directly: its content can only
+// be read asynchronously, so Open fails
+class blobReader implements FileReader {
+  constructor(readonly content: Blob) {}
+
+  open(): ReadCloser {
+    throw new Error("the content of a Blob cannot be read synchronously");
+  }
+
+  blob(): Blob {
+    return this.content;
+  }
+}
+
 // File defines a single file resource.
 //
 // The file could be from a local path, multipart/form-data header, etc.
@@ -54,42 +206,42 @@ export interface FileOptions {
 // is `json:"-"`); the members are the File's only enumerable properties,
 // and their sorted order is the struct order.
 export class File {
-  readonly #reader: Blob;
+  readonly #reader: FileReader;
   readonly #head: Uint8Array | Error;
-  // the local path of a path-backed File (Go's PathReader), read again on
-  // every detect()
-  readonly #path: string | null;
 
   name: string;
   originalName: string;
   size: number;
 
   constructor(
-    reader: Blob,
+    reader: FileReader | Blob,
     head: Uint8Array | Error,
     name: string,
     originalName: string,
     size: number,
-    path: string | null = null,
   ) {
-    this.#reader = reader;
+    this.#reader = reader instanceof Blob ? new blobReader(reader) : reader;
     this.#head = head;
-    this.#path = path;
     this.name = name;
     this.originalName = originalName;
     this.size = size;
   }
 
-  // Reader: the file content.
+  // Reader: the content as a Blob.
   get reader(): Blob {
-    return this.#reader;
+    return this.#reader.blob();
+  }
+
+  // Reader.Open(): the content, read synchronously. Throws the open error.
+  open(): ReadCloser {
+    return this.#reader.open();
   }
 
   // mimetype.DetectReader(reader): the MIME type of the content, from the
   // bytes read when the File was created, and the read error (with
   // application/octet-stream) if that read failed.
   detect(): [MIME, Error | null] {
-    const head = this.#path === null ? this.#head : readPathHead(this.#path);
+    const head = this.#reader instanceof PathReader ? readHead(this.#reader) : this.#head;
     if (head instanceof Error) {
       return [errMIME, head];
     }
@@ -107,29 +259,20 @@ export class File {
   }
 }
 
-// the first bytes DetectReader reads, or the read error
-async function readHead(reader: Blob): Promise<Uint8Array | Error> {
+// readHead opens reader and reads the first bytes DetectReader reads (Go's
+// io.ReadFull of them), or returns the open or read error.
+export function readHead(reader: FileReader): Uint8Array | Error {
+  let r: ReadCloser;
   try {
-    return new Uint8Array(await reader.slice(0, defaultLimit).arrayBuffer());
+    r = reader.open();
   } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
-  }
-}
-
-// os.Open(path) and io.ReadFull of the first DetectReader bytes, or the
-// open or read error
-function readPathHead(path: string): Uint8Array | Error {
-  let fd: number;
-  try {
-    fd = openSync(path, "r");
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+    return toError(err);
   }
   try {
     const buf = new Uint8Array(defaultLimit);
     let n = 0;
     while (n < buf.length) {
-      const read = readSync(fd, buf, n, buf.length - n, n);
+      const read = r.read(buf.subarray(n));
       if (read === 0) {
         break;
       }
@@ -137,29 +280,38 @@ function readPathHead(path: string): Uint8Array | Error {
     }
     return buf.subarray(0, n);
   } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+    return toError(err);
   } finally {
-    closeSync(fd);
+    try {
+      r.close();
+    } catch {
+      // the read result stands
+    }
   }
 }
 
-async function newFile(
-  reader: Blob,
+function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}
+
+// newFile builds a File of reader (head: its first bytes, read now unless
+// given)
+export function newFile(
+  reader: FileReader,
   originalName: string,
   size: number,
   opts: FileOptions,
-  path: string | null = null,
-): Promise<File> {
-  const head = path === null ? await readHead(reader) : readPathHead(path);
+  head: Uint8Array | Error = readHead(reader),
+): File {
   const name = normalizeName(head, originalName, opts.random ?? randomStringWithAlphabet);
-  return new File(reader, head, name, originalName, size, path);
+  return new File(reader, head, name, originalName, size);
 }
 
 // NewFileFromPath creates a new File instance from the provided local file
 // path. Throws when the file cannot be stat-ed (os.Stat's error).
 export async function NewFileFromPath(path: string, opts: FileOptions = {}): Promise<File> {
   const info = await stat(path);
-  return newFile(Bun.file(path), goBase(path), Number(info.size), opts, path);
+  return newFile(new PathReader(path), goBase(path), Number(info.size), opts);
 }
 
 // NewFileFromBytes creates a new File instance from the provided byte
@@ -174,22 +326,28 @@ export async function NewFileFromBytes(
     throw new Error("cannot create an empty file");
   }
 
-  return newFile(new Blob([b]), name, size, opts);
+  return newFile(new BytesReader(b), name, size, opts);
 }
 
 // NewFileFromMultipart creates a new File from the provided multipart
-// part (Go's multipart.FileHeader).
+// header: a form file part of src/server/multipart.ts (Go's
+// multipart.FileHeader), or a Web File (from Bun's formData(), read into
+// memory here).
 //
 // Go's FileHeader.Filename is Part.FileName(): the directory parts of the
 // submitted file name are dropped (filepath.Base, RFC 7578 section 4.2).
-// A Web File from Bun's formData() keeps them, so they are dropped here
-// (the multipart reader's files are already named by FileName()).
+// A Web File keeps them, so they are dropped here (the multipart reader's
+// files are already named by FileName()).
 export async function NewFileFromMultipart(
-  part: globalThis.File,
+  mh: MultipartFileHeader | globalThis.File,
   opts: FileOptions = {},
 ): Promise<File> {
-  const filename = part.name === "" ? "" : goBase(part.name);
-  return newFile(part, filename, part.size, opts);
+  if (mh instanceof globalThis.File) {
+    const filename = mh.name === "" ? "" : goBase(mh.name);
+    const content = new Uint8Array(await mh.arrayBuffer());
+    return newFile(new BytesReader(content), filename, mh.size, opts);
+  }
+  return newFile(new MultipartReader(mh), mh.filename, mh.size, opts);
 }
 
 // path/filepath.Base on Unix: the last element of path, after trailing

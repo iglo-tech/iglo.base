@@ -98,7 +98,7 @@ test("TestNewFileFromMultipart", async () => {
   expect(f.originalName).toMatch(/^tmpfile-\w+\.txt$/);
   expect(f.name).toMatch(/^tmpfile_\w+_\w{10}\.txt$/);
   expect(f.size).toBe(4);
-  expect(f.reader).toBe(part);
+  expect(await f.reader.text()).toBe("test");
 });
 
 describe("TestFileNameNormalizations", () => {
