@@ -2,6 +2,18 @@
 // (test/scenarios/scenarios.test.ts and test/differential/scenarios.test.ts)
 // read this list, so a suite added here runs in both modes.
 
+import {
+  collectionCreate,
+  collectionDelete,
+  collectionOAuth2Providers,
+  collectionScaffolds,
+  collectionTestView,
+  collectionTruncate,
+  collectionUpdate,
+  collectionView,
+  collectionsList,
+} from "@test/scenarios/collection";
+import { collectionsImport } from "@test/scenarios/collection-import";
 import { healthAPI } from "@test/scenarios/health";
 import { superuserIPsWhitelist } from "@test/scenarios/middlewares";
 import {
@@ -40,6 +52,16 @@ import {
 } from "@test/scenarios/settings";
 
 export const suites: Suite[] = [
+  collectionsList,
+  collectionView,
+  collectionDelete,
+  collectionCreate,
+  collectionUpdate,
+  collectionScaffolds,
+  collectionTruncate,
+  collectionOAuth2Providers,
+  collectionTestView,
+  collectionsImport,
   healthAPI,
   superuserIPsWhitelist,
   recordAuthImpersonate,

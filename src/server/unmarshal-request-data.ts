@@ -18,7 +18,7 @@ import {
   toAny,
   type JsonValue,
 } from "@/server/json-decode";
-import { goInt } from "@/tools/types/go-json";
+import { goInt, isJSONUnmarshaler } from "@/tools/types/go-json";
 
 export type Kind =
   | "bool"
@@ -158,7 +158,11 @@ export function unmarshalRequestData(
   // Special case to scan serialized json string without
   // normalization alongside the other data values
   for (const payload of getValues(data, JSONPayloadKey) ?? []) {
-    if (type) {
+    if (isJSONUnmarshaler(dst)) {
+      // json.Unmarshal checks the value before calling UnmarshalJSON
+      decodeValue(payload);
+      dst.unmarshalJSON(payload);
+    } else if (type) {
       unmarshalJSON(decodeValue(payload), dst as Record<string, unknown>, type, false);
     } else {
       unmarshalJSON(decodeValue(payload), dst as MapRef, undefined, false);
