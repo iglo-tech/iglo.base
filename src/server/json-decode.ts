@@ -162,6 +162,12 @@ class Parser {
         throw new JsonSyntaxError(`invalid surrogate pair in string at offset ${start}`);
       }
       if (code >= 0xdc00 && code <= 0xdfff) {
+        // a low surrogate cannot start a pair, but an input that ends
+        // within a possible escape after it is truncated all the same
+        const next = this.s.slice(this.i, this.i + 6);
+        if (next.length < 6 && isLowSurrogateEscapePrefix(next)) {
+          throw new JsonEOFError(true);
+        }
         throw new JsonSyntaxError(`invalid surrogate pair in string at offset ${start}`);
       }
       out += String.fromCharCode(code);

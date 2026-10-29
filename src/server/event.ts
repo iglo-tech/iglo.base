@@ -430,12 +430,16 @@ async function readFirstJSONValue(body: ReadCloser): Promise<JsonValue> {
 // throws the syntax error of an incomplete JSON prefix, if it has one, as
 // jsontext reports it before the value is complete. A number cut at the
 // end of the prefix is dropped first (the parser rejects "1." or "-" as
-// invalid numbers); a UTF-8 sequence cut at the end is not invalid UTF-8
-// (utf8.FullRune). Other truncated tokens are EOF to the parser.
+// invalid numbers), unless it already is invalid ("01", "1.2."); a UTF-8
+// sequence cut at the end is not invalid UTF-8 (utf8.FullRune). Other
+// truncated tokens are EOF to the parser.
 function checkPrefix(prefix: Uint8Array): void {
   let k = prefix.length;
   while (k > 0 && isNumberByte(prefix[k - 1] as number)) {
     k--;
+  }
+  if (!isNumberPrefix(prefix.subarray(k))) {
+    k = prefix.length;
   }
   const text = decodeUTF8Bytes(prefix.subarray(0, k));
   try {
@@ -479,6 +483,16 @@ function cutRuneLength(b: Uint8Array): number {
     return n;
   }
   return 0;
+}
+
+// whether b is a prefix of a JSON number (jsonwire.ConsumeNumber's
+// grammar: -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?), complete or
+// not: "-", "1.", "1e" and "1e+" may still continue; after a leading 0
+// only "." or an exponent may follow
+function isNumberPrefix(b: Uint8Array): boolean {
+  return /^-?(?:(?:0|[1-9][0-9]*)(?:\.(?:[0-9]+(?:[eE][+-]?[0-9]*)?)?|[eE][+-]?[0-9]*)?)?$/.test(
+    Buffer.from(b.buffer, b.byteOffset, b.length).toString("latin1"),
+  );
 }
 
 // 0-9 . e E + -
