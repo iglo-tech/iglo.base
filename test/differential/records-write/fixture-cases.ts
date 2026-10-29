@@ -1,0 +1,256 @@
+// Records create, update and delete on upstream's fixture
+// (records-write.test.ts), as a guest, users, clients, nologin and a
+// superuser (upstream's fixture tokens), in this order on one pair of
+// servers.
+
+import type { WriteCase } from "@test/differential/records-write/write-case";
+
+export type FixtureIdentity = "guest" | "users" | "clients" | "nologin" | "superuser";
+
+const json = (v: unknown) => JSON.stringify(v);
+
+const demo1 = "/api/collections/demo1/records";
+const demo2 = "/api/collections/demo2/records";
+const demo5 = "/api/collections/demo5/records";
+
+export const fixtureCases: WriteCase[] = [
+  // demo1: nil rules, every field type
+  {
+    name: "demo1: guest create (nil rule)",
+    as: "guest",
+    method: "POST",
+    url: demo1,
+    body: json({ text: "x" }),
+  },
+  {
+    name: "demo1: superuser create with every field",
+    as: "superuser",
+    method: "POST",
+    url: `${demo1}?expand=rel_one,rel_many`,
+    body: json({
+      id: "wfixdemo1000001",
+      text: "hello",
+      bool: true,
+      url: "https://example.com",
+      select_one: "optionB",
+      select_many: ["optionA", "optionC"],
+      number: 12.5,
+      email: "x@example.com",
+      datetime: "2024-05-06 07:08:09.123Z",
+      json: { b: [1, 2], a: { "2": 1, "1": 2 } },
+      rel_one: "imy661ixudk5izi",
+      rel_many: ["oap640cot4yru2s", "4q1xlclmfloku33"],
+      point: { lon: 1.25, lat: -3.5 },
+    }),
+  },
+  {
+    name: "demo1: superuser file names removal",
+    as: "superuser",
+    method: "PATCH",
+    url: `${demo1}/84nmscqy84lsi1t`,
+    body: json({ "file_many-": ["test_QZFjKjXchk.txt", "logo_vcfJJG5TAh.svg"], file_one: null }),
+  },
+  {
+    name: "demo1: superuser select and relation modifiers",
+    as: "superuser",
+    method: "PATCH",
+    url: `${demo1}/al1h9ijdeojtsjy`,
+    body: json({
+      "+select_many": "optionA",
+      "select_many-": "optionB",
+      "rel_many-": ["4q1xlclmfloku33"],
+      "rel_many+": "oap640cot4yru2s",
+      "number+": 5,
+    }),
+  },
+  {
+    name: "demo1: superuser json raw text",
+    as: "superuser",
+    method: "PATCH",
+    url: `${demo1}/imy661ixudk5izi`,
+    body: '{"json":{"z":1,"a":[1.50,2e3,12345678901234567890],"s":"\\u00e9"}}',
+  },
+  {
+    name: "demo1: superuser invalid values",
+    as: "superuser",
+    method: "PATCH",
+    url: `${demo1}/imy661ixudk5izi`,
+    body: json({
+      url: "nope",
+      email: "nope",
+      select_one: "optionZ",
+      datetime: "nope",
+      rel_one: "missing",
+      point: { lon: 500, lat: 0 },
+    }),
+  },
+  {
+    name: "demo1: users update (nil rule)",
+    as: "users",
+    method: "PATCH",
+    url: `${demo1}/imy661ixudk5izi`,
+    body: json({ text: "x" }),
+  },
+  {
+    name: "demo1: superuser delete with references",
+    as: "superuser",
+    method: "DELETE",
+    url: `${demo1}/al1h9ijdeojtsjy`,
+  },
+  // demo2: public rules, required title, unique title index
+  {
+    name: "demo2: guest create",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: json({ id: "wfixdemo2000001", title: "abc", active: "true" }),
+  },
+  {
+    name: "demo2: clients create without a title",
+    as: "clients",
+    method: "POST",
+    url: demo2,
+    body: json({ active: true }),
+  },
+  {
+    name: "demo2: nologin update to a duplicate title",
+    as: "nologin",
+    method: "PATCH",
+    url: `${demo2}/wfixdemo2000001`,
+    body: json({ title: "test1" }),
+  },
+  {
+    name: "demo2: users update with expand and fields",
+    as: "users",
+    method: "PATCH",
+    url: `${demo2}/wfixdemo2000001?fields=id,title`,
+    body: json({ title: "abcd" }),
+  },
+  {
+    name: "demo2: guest delete",
+    as: "guest",
+    method: "DELETE",
+    url: `${demo2}/wfixdemo2000001`,
+  },
+  {
+    name: "demo2: guest delete missing",
+    as: "guest",
+    method: "DELETE",
+    url: `${demo2}/wfixdemo2000001`,
+  },
+  // demo5: @request.body rules with modifiers
+  {
+    name: "demo5: create with select and relation modifiers",
+    as: "guest",
+    method: "POST",
+    url: demo5,
+    body: json({
+      id: "wfixdemo5000001",
+      total: 3,
+      "select_many+": ["a", "b"],
+      "+select_many": "c",
+      "rel_many+": "qzaqccwrmva4o1n",
+    }),
+  },
+  {
+    name: "demo5: update that keeps total (rule on the resolved body)",
+    as: "guest",
+    method: "PATCH",
+    url: `${demo5}/wfixdemo5000001`,
+    body: json({ "select_many-": "a" }),
+  },
+  {
+    name: "demo5: update with total+ resolving to 3",
+    as: "guest",
+    method: "PATCH",
+    url: `${demo5}/la4y2w4o98acwuj`,
+    body: json({ "total+": 1, "select_many+": ["d", "e"] }),
+  },
+  {
+    name: "demo5: update over select maxSelect",
+    as: "guest",
+    method: "PATCH",
+    url: `${demo5}/wfixdemo5000001`,
+    body: json({ total: 3, "select_many+": ["a", "d", "e"] }),
+  },
+  {
+    name: "demo5: delete without the query param",
+    as: "users",
+    method: "DELETE",
+    url: `${demo5}/wfixdemo5000001`,
+  },
+  {
+    name: "demo5: delete with the query param",
+    as: "users",
+    method: "DELETE",
+    url: `${demo5}/wfixdemo5000001?test=`,
+  },
+  // auth collections
+  {
+    name: "nologin: guest create",
+    as: "guest",
+    method: "POST",
+    url: "/api/collections/nologin/records",
+    body: json({
+      id: "wfixnologin0001",
+      email: "fix1@example.com",
+      password: "1234567890",
+      passwordConfirm: "1234567890",
+      username: "fixuser1",
+    }),
+  },
+  {
+    name: "nologin: nologin user updates another record's email",
+    as: "nologin",
+    method: "PATCH",
+    url: "/api/collections/nologin/records/wfixnologin0001",
+    body: json({ email: "fix2@example.com" }),
+  },
+  {
+    name: "clients: superuser create with a duplicated username",
+    as: "superuser",
+    method: "POST",
+    url: "/api/collections/clients/records",
+    body: json({
+      email: "fix3@example.com",
+      password: "1234567890",
+      passwordConfirm: "1234567890",
+      username: "clients57772",
+    }),
+  },
+  {
+    name: "users: superuser creates a user with a relation and expand",
+    as: "superuser",
+    method: "POST",
+    url: "/api/collections/users/records?expand=rel",
+    body: json({
+      id: "wfixusers000001",
+      email: "fix4@example.com",
+      password: "1234567890",
+      passwordConfirm: "1234567890",
+      rel: "llvuca81nly1qls",
+      emailVisibility: true,
+    }),
+  },
+  {
+    name: "users: users token updates its own name",
+    as: "users",
+    method: "PATCH",
+    url: "/api/collections/users/records/4q1xlclmfloku33?expand=rel",
+    body: json({ name: "renamed" }),
+  },
+  {
+    name: "users: superuser delete with external auths",
+    as: "superuser",
+    method: "DELETE",
+    url: "/api/collections/users/records/bgs820n361vj1qd",
+  },
+  // view collections
+  {
+    name: "view1: superuser update",
+    as: "superuser",
+    method: "PATCH",
+    url: "/api/collections/view1/records/84nmscqy84lsi1t",
+    body: json({ text: "x" }),
+  },
+];
