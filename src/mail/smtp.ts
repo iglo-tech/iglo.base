@@ -2,19 +2,18 @@
 // sender_starttls.go, sender_explicit_tls.go) and Go's net/smtp PlainAuth
 //
 // The message is built as mailyak builds it (src/mail/mailyak.ts) and sent
-// as a raw message by nodemailer's SMTP transport, which does the exchange
-// as mailyak does: implicit TLS when TLS is set, otherwise STARTTLS when
-// the server offers it; EHLO with the local name ("localhost" unless set);
-// AUTH PLAIN or LOGIN when a username or password is set, even if the
-// server does not advertise AUTH (Go's client tries it and fails). Go's
-// PLAIN and LOGIN auths refuse to send credentials over an unencrypted
-// connection to a host other than localhost, 127.0.0.1 or ::1; nodemailer
-// gets the same result with requireTLS (the send fails before AUTH when
-// the server cannot upgrade).
+// as a raw message over nodemailer's SMTPConnection, which does the
+// exchange as mailyak does: implicit TLS when TLS is set, otherwise
+// STARTTLS only when the EHLO reply offers it; EHLO with the local name
+// ("localhost" unless set); AUTH PLAIN or LOGIN when a username or password
+// is set, even if the server does not advertise AUTH (Go's client tries it
+// and fails). As Go's PLAIN and LOGIN auths, the send refuses to send
+// credentials over an unencrypted connection to a host other than
+// localhost, 127.0.0.1 or ::1 ("unencrypted connection", before AUTH).
 //
 // Not ported: the OnSend hook (D5).
 
-import { createTransport } from "nodemailer";
+import SMTPConnection from "nodemailer/lib/smtp-connection";
 
 import type { Clock } from "@/app/clock";
 import { quote } from "@/mail/go-mime";
@@ -124,35 +123,64 @@ export class SMTPClient implements Mailer {
     await this.exchange(yak);
   }
 
+  // mailyak's sender: connect (implicit TLS, or STARTTLS when the EHLO
+  // reply offers it), then net/smtp's auth check on the actual connection
+  // state, then MAIL, RCPT, DATA and QUIT.
   private async exchange(yak: MailYak): Promise<void> {
     const c = this.config;
     const hasAuth = c.username !== "" || c.password !== "";
-    const requireTLS = hasAuth && !c.tls && !isLocalhost(c.host);
 
-    const transport = createTransport({
+    const conn = new SMTPConnection({
       host: c.host,
       port: c.port,
       secure: c.tls,
       name: yak.localName || "localhost",
-      ...(hasAuth
-        ? {
-            auth: { user: c.username, pass: c.password },
-            authMethod: c.authMethod === SMTPAuthLogin ? SMTPAuthLogin : SMTPAuthPlain,
-            forceAuth: true,
-            requireTLS,
-          }
-        : {}),
     });
+    // the first error fails the send; the connection reports it once as an
+    // event and again to the pending callback
+    let failure: Error | undefined;
+    const failed = new Promise<never>((_, reject) => {
+      conn.on("error", (err: Error) => {
+        failure ??= err;
+        reject(failure);
+      });
+    });
+    failed.catch(() => {});
+    const step = <T>(run: (done: (err: Error | null, value?: T) => void) => void): Promise<T> =>
+      Promise.race([
+        failed,
+        new Promise<T>((resolve, reject) =>
+          run((err, value) => (err ? reject(failure ?? err) : resolve(value as T))),
+        ),
+      ]);
 
     try {
-      await transport.sendMail({
-        envelope: { from: yak.fromAddr, to: yak.getToAddrs() },
-        raw: Buffer.from(yak.buildMime()),
-      });
+      await step<void>((done) => conn.connect(() => done(null)));
+      if (hasAuth) {
+        // Go's PlainAuth and upstream's LOGIN auth refuse to send
+        // credentials over an unencrypted connection to another host
+        if (!conn.secure && !isLocalhost(c.host)) {
+          throw new Error("unencrypted connection");
+        }
+        await step<unknown>((done) =>
+          conn.login(
+            {
+              user: c.username,
+              pass: c.password,
+              method: c.authMethod === SMTPAuthLogin ? SMTPAuthLogin : SMTPAuthPlain,
+            },
+            done,
+          ),
+        );
+      }
+      await step<unknown>((done) =>
+        conn.send({ from: yak.fromAddr, to: yak.getToAddrs() }, Buffer.from(yak.buildMime()), done),
+      );
+      conn.quit();
     } catch (err) {
-      throw goError(err, requireTLS);
+      throw goError(err);
     } finally {
-      transport.close();
+      conn.close();
     }
   }
 }
@@ -164,15 +192,11 @@ function isLocalhost(name: string): boolean {
 // The errors read as Go's where the test email endpoint shows them: a
 // refused connection as the dial error of the first address tried (Go's
 // dialSerial returns the first error; Node reports a host with several
-// addresses as an AggregateError with an empty message), a server reply as
-// textproto.Error (`<code> "<message>"`), the missing STARTTLS before AUTH
-// as the auth's "unencrypted connection". With requireTLS nodemailer sends
-// STARTTLS even when the server does not advertise it, where Go skips it;
-// such a server answers "command unrecognized" (500) or "not implemented"
-// (502), which reads as Go's missing STARTTLS. Any other STARTTLS reply
-// comes from a server that offered it and is shown as Go shows it. Other
-// errors (DNS, TLS handshake, timeouts) keep nodemailer's text.
-function goError(err: unknown, requireTLS: boolean): Error {
+// addresses as an AggregateError with an empty message), a server reply
+// (including a refused STARTTLS the server offered) as textproto.Error
+// (`<code> "<message>"`). Other errors (DNS, TLS handshake, timeouts) keep
+// nodemailer's text.
+function goError(err: unknown): Error {
   const e = err instanceof Error ? err : new Error(String(err));
   const { code, response, errors } = e as {
     code?: string;
@@ -190,9 +214,6 @@ function goError(err: unknown, requireTLS: boolean): Error {
     return new Error(`dial tcp ${hostPort}: connect: connection refused`);
   }
   const reply = typeof response === "string" && /^\d{3}[ -]/.test(response) ? response : "";
-  if (requireTLS && code === "ETLS" && /^50[02]/.test(reply)) {
-    return new Error("unencrypted connection");
-  }
   if (reply !== "") {
     const lines = reply.split(/\r?\n/).filter((line) => line !== "");
     return new Error(

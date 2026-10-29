@@ -480,11 +480,23 @@ describe("SMTP auth and failures", () => {
     );
   }
 
-  // a relay on another host that offers STARTTLS but cannot start it: the
-  // server's reply is shown, not the missing-TLS error
-  for (const authMethod of ["PLAIN", "LOGIN"]) {
+  // a relay on another host that cannot start TLS: when it offers STARTTLS
+  // its reply is shown; when it does not, upstream never sends STARTTLS and
+  // refuses to authenticate over plaintext ("unencrypted connection")
+  const startTLSReplies = [
+    "454 4.7.0 TLS not available due to local problem",
+    "500 5.5.1 Command unrecognized",
+    "502 5.5.1 Command not implemented",
+    "530 5.7.0 Must issue a STARTTLS command first",
+  ];
+  const startTLSCases = [true, false].flatMap((offered) =>
+    startTLSReplies.flatMap((line) =>
+      ["PLAIN", "LOGIN"].map((method) => [offered, line, method] as const),
+    ),
+  );
+  for (const [advertised, reply, authMethod] of startTLSCases) {
     test(
-      `STARTTLS offered but refused with 454 (AUTH ${authMethod})`,
+      `STARTTLS ${advertised ? "offered" : "not offered"}, reply ${reply.slice(0, 3)} (AUTH ${authMethod})`,
       async () => {
         const listener = Bun.listen<{ buffer: string }>({
           hostname: "127.0.0.2",
@@ -501,9 +513,13 @@ describe("SMTP auth and failures", () => {
                 const verb = socket.data.buffer.slice(0, eol).split(" ")[0]?.toUpperCase();
                 socket.data.buffer = socket.data.buffer.slice(eol + 2);
                 if (verb === "EHLO") {
-                  socket.write("250-test\r\n250-STARTTLS\r\n250 AUTH PLAIN LOGIN\r\n");
+                  socket.write(
+                    advertised
+                      ? "250-test\r\n250-STARTTLS\r\n250 AUTH PLAIN LOGIN\r\n"
+                      : "250-test\r\n250 AUTH PLAIN LOGIN\r\n",
+                  );
                 } else if (verb === "STARTTLS") {
-                  socket.write("454 4.7.0 TLS not available due to local problem\r\n");
+                  socket.write(`${reply}\r\n`);
                 } else if (verb === "QUIT") {
                   socket.write("221 bye\r\n");
                   socket.end();
