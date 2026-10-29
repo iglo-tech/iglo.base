@@ -88,8 +88,7 @@
 // storage class Go's float64 gets.
 //
 // Not ported: the hook events, tags and the model events around the
-// record events (D5). The file field's Intercept (uploads and deletes)
-// comes with M3.2 and runs in the same interceptor slots.
+// record events (D5).
 
 import {
   fieldApp,
@@ -109,6 +108,7 @@ import type { Model } from "@/db/model";
 import {
   type Field,
   FieldNamePassword,
+  type InterceptorApp,
   InterceptorActionAfterCreate,
   InterceptorActionAfterCreateError,
   InterceptorActionAfterDelete,
@@ -314,13 +314,26 @@ export function deleteRecordSync(app: RecordsApp, record: Record): void {
 // -------------------------------------------------------------------
 // interceptors
 
+// the app the interceptors get: FieldApp with the filesystem, the record
+// lookup, the transaction state and the logger of app
+function interceptorApp(app: RecordsApp): InterceptorApp {
+  return {
+    ...fieldApp(app),
+    newFilesystem: () => app.filesystem.newFilesystem(),
+    findRecordById: (collection, recordId) =>
+      findRecordById(app, collection as Collection, recordId),
+    isTransactional: () => app.databases.isTransactional(),
+    logger: app.logger,
+  };
+}
+
 export function* callFieldInterceptors(
   app: RecordsApp,
   record: Record,
   actionName: string,
   actionFunc: () => Step,
 ): Step {
-  const fa = fieldApp(app);
+  const fa = interceptorApp(app);
 
   // the cascade path: the interceptors pass the action through, so it runs
   // after them (see the top of the file)
@@ -399,7 +412,7 @@ export function* validateStep(app: RecordsApp, record: Record): Step {
 function onRecordValidate(app: RecordsApp, record: Record): void {
   const errs = new Errors();
 
-  const fa = fieldApp(app);
+  const fa = interceptorApp(app);
   for (const f of record.collection().fields) {
     const err = f.validateValue(fa, record);
     if (err !== null) {

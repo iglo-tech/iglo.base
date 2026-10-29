@@ -22,6 +22,8 @@ import {
   isSetterFinder,
   type Field,
   type FieldApp,
+  type InterceptorApp,
+  type InterceptorRecord,
   type FieldCollection,
   type FieldRecord,
   type FieldsListReader,
@@ -410,4 +412,31 @@ export function expectValidationErrors(err: Error | null, expectedKeys: readonly
   }
   const keys = err === null ? [] : Object.keys(err.errors);
   expect(keys.toSorted()).toEqual([...expectedKeys].toSorted());
+}
+
+// the arguments of a record interceptor for a test app and record (the
+// members the validate interceptors never call throw)
+export function interceptorArgs(
+  app: FieldApp,
+  record: TestRecord,
+): [InterceptorApp, InterceptorRecord] {
+  const iapp: InterceptorApp = {
+    concurrentDB: () => app.concurrentDB(),
+    clock: app.clock,
+    findCollectionByNameOrId: (nameOrId) => app.findCollectionByNameOrId(nameOrId),
+    findCachedCollectionByNameOrId: (nameOrId) => app.findCachedCollectionByNameOrId(nameOrId),
+    newFilesystem: () => {
+      throw new Error("no filesystem in this test");
+    },
+    findRecordById: () => {
+      throw new Error("no records in this test");
+    },
+    isTransactional: () => false,
+    logger: { error: () => {} },
+  };
+  const irecord = Object.assign(Object.create(record) as TestRecord, {
+    collection: () => record.collection,
+    baseFilesPath: () => record.collection.id + "/" + record.id,
+  }) as unknown as InterceptorRecord;
+  return [iapp, irecord];
 }

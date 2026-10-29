@@ -63,7 +63,13 @@ import {
   valueCases,
   valueCollections,
 } from "@test/differential/fields/relation-password-cases";
-import { TestApp, TestCollection, TestRecord, newBaseCollection } from "@test/support/fields";
+import {
+  TestApp,
+  TestCollection,
+  TestRecord,
+  newBaseCollection,
+  interceptorArgs,
+} from "@test/support/fields";
 import { startUpstream, type UpstreamServer } from "@test/support/upstream";
 
 // the hooks create collections and records through upstream and start and
@@ -518,7 +524,11 @@ describe("values", () => {
       record.set(key, body[key]);
       for (const field of collection.fields) {
         if (isRecordInterceptor(field)) {
-          await field.intercept(model(), record, InterceptorActionValidate, async () => {});
+          await field.intercept(
+            ...interceptorArgs(model(), record),
+            InterceptorActionValidate,
+            async () => {},
+          );
         }
       }
       const errs = new Errors();

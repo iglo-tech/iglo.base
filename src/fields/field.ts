@@ -31,8 +31,10 @@
 // lives in src/fields/fields.ts as a fixed table of upstream's types, so
 // that this module does not import every field type.
 
+import type { ErrorLogger } from "@/app/app";
 import type { Clock } from "@/app/clock";
 import type { Builder } from "@/db/dbx/builder";
+import type { System } from "@/tools/filesystem/filesystem";
 import { mustCompile } from "@/tools/regexp/regexp";
 import type { DateTime } from "@/tools/types/datetime";
 import { marshal, quote, type GoInt } from "@/tools/types/go-json";
@@ -271,6 +273,32 @@ export interface MultiValuer {
   isMultiple(): boolean;
 }
 
+// The app members the record interceptors use besides FieldApp's
+// (core/app.go): the file field stores and deletes files.
+export interface InterceptorApp extends FieldApp {
+  // NewFilesystem creates a new filesystem instance for the record files
+  // (src/app/filesystem.ts). Throws when it cannot be created.
+  newFilesystem(): System;
+  // FindRecordById finds the record of collection by its id. Throws when
+  // it is not found.
+  findRecordById(collection: FieldCollection, recordId: string): FieldRecord;
+  // IsTransactional checks if the current app instance is part of a
+  // transaction.
+  isTransactional(): boolean;
+  // receives upstream's Logger().Warn calls
+  readonly logger: ErrorLogger;
+}
+
+// The record members the record interceptors use besides FieldRecord's.
+export interface InterceptorRecord extends FieldRecord {
+  // the record id
+  readonly id: string;
+  // BaseFilesPath returns the storage dir path used by the record.
+  baseFilesPath(): string;
+  // Collection returns the record's collection.
+  collection(): FieldCollection;
+}
+
 // RecordInterceptor defines a field interface for reacting to various
 // Record related operations (create, delete, validate, etc.).
 export interface RecordInterceptor {
@@ -283,8 +311,8 @@ export interface RecordInterceptor {
   //
   // Returns a promise only when the interceptor or actionFunc is async.
   intercept(
-    app: FieldApp,
-    record: FieldRecord,
+    app: InterceptorApp,
+    record: InterceptorRecord,
     actionName: string,
     actionFunc: () => void | Promise<void>,
   ): void | Promise<void>;
