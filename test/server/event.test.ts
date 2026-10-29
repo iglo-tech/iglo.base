@@ -449,6 +449,27 @@ const concat = (...parts: Uint8Array[]): Uint8Array => {
 
 const xmlOf = (text: string): string => `<root><c>${text}</c></root>`;
 
+// binds {"p":"<pad a's>","v":<tail> as JSON; returns the error and v
+async function bindPadded(
+  pad: number,
+  tail: string | Uint8Array,
+): Promise<{ err: Error | undefined; v: unknown }> {
+  const head = new TextEncoder().encode(`{"p":"${"a".repeat(pad)}","v":`);
+  const rest = typeof tail === "string" ? new TextEncoder().encode(tail) : tail;
+  const body = new Uint8Array(head.length + rest.length);
+  body.set(head);
+  body.set(rest, head.length);
+  const e = newEvent({
+    method: "POST",
+    target: "/",
+    headers: { "content-type": "application/json" },
+    body,
+  });
+  const dst: MapRef = { map: {} };
+  const err = await e.bindBody(dst);
+  return { err, v: (dst.map as Record<string, unknown> | null)?.v };
+}
+
 describe("BindBody", () => {
   const testDstStruct: StructType = structOf([
     { name: "A", type: "int", tags: { json: "a", xml: "a", form: "a" } },
@@ -645,6 +666,49 @@ describe("BindBody", () => {
     const dst: Record<string, unknown> = { ...filledDst };
     expect(await e.bindBody(dst, testDstStruct)).toBeUndefined();
     expect(dst).toEqual(emptyDst);
+  });
+
+  // jsontext reads the body in a 64-byte buffer that doubles when 3/4
+  // full: a token cut by a read boundary is incomplete, not invalid. Each
+  // body is shifted by every padding length, so the 64, 128 and 256 byte
+  // boundaries fall on every byte of the token.
+  describe("JSON tokens cut by a read boundary", () => {
+    for (const [tail, expected] of [
+      [`"\\ud83d\\ude00"}`, "\u{1f600}"],
+      [`"\\uD83D\\uDE00x"}`, "\u{1f600}x"],
+      [`"\\u00e9\\\\\\"\\/"}`, '\u00e9\\"/'],
+      [`"\u{1f600}\u20ac\u00e9"}`, "\u{1f600}\u20ac\u00e9"],
+      [`[true,false,null,-1.5e+3]}`, [true, false, null, -1500]],
+    ] as const) {
+      test(`valid: ${tail}`, async () => {
+        for (let pad = 0; pad <= 280; pad++) {
+          const { err, v } = await bindPadded(pad, tail);
+          expect({ pad, err }).toEqual({ pad, err: undefined });
+          expect(v).toEqual(expected);
+        }
+      });
+    }
+
+    for (const tail of [
+      `"\\ud83dx"}`,
+      `"\\ud83d"}`,
+      `"\\ud83d\\n"}`,
+      `"\\ud83d\\ud83d"}`,
+      `"\\ud83d\\u00e9"}`,
+      `"\\ude00"}`,
+      `"\\u12x4"}`,
+      `"\\x"}`,
+      `[trux]}`,
+      new Uint8Array([0x22, 0xf0, 0x9f, 0x98, 0x22, 0x7d]),
+      new Uint8Array([0x22, 0xff, 0x22, 0x7d]),
+    ]) {
+      test(`invalid: ${typeof tail === "string" ? tail : [...tail].join(",")}`, async () => {
+        for (let pad = 0; pad <= 280; pad++) {
+          const { err } = await bindPadded(pad, tail);
+          expect({ pad, err: err instanceof Error }).toEqual({ pad, err: true });
+        }
+      });
+    }
   });
 
   const bind = async (body: string): Promise<[Error | undefined, unknown]> => {

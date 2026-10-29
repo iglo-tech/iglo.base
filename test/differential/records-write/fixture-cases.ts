@@ -43,6 +43,22 @@ function emptyFilenameParts(
   };
 }
 
+const byteLength = (text: string) => new TextEncoder().encode(text).length;
+
+// a demo2 create body in which the first `cut` bytes of token end at byte
+// `at`, where jsontext's reads split it (a 64-byte buffer doubling when
+// 3/4 full); the token is in the title, or is the active value, and the
+// title is padded to place it
+function boundaryBody(at: number, id: string, token: string, cut: number, inTitle = true): string {
+  const body = (pad: string) =>
+    inTitle
+      ? `{"id":"${id}","title":"${pad}${token}"}`
+      : `{"id":"${id}","title":"${pad}","active":${token}}`;
+  // the bytes before the token
+  const prefix = byteLength(body("")) - byteLength(token) - (inTitle ? 2 : 1);
+  return body("p".repeat(at - cut - prefix));
+}
+
 export const fixtureCases: WriteCase[] = [
   // demo1: nil rules, every field type
   {
@@ -343,6 +359,119 @@ export const fixtureCases: WriteCase[] = [
       ['{"id":"wfixdemo2000014","title" "x"', 1],
       [" ", (32 << 20) + 1],
     ],
+  },
+  // JSON tokens cut by jsontext's read boundaries: incomplete, not invalid
+  {
+    name: "demo2: guest create with a surrogate pair escape cut after the high surrogate at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000015", "\\ud83d\\ude00", 6),
+  },
+  {
+    name: "demo2: guest create with a surrogate pair escape cut after its backslash at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000016", "\\ud83d\\ude00", 7),
+  },
+  {
+    name: "demo2: guest create with a surrogate pair escape cut after \\u at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000017", "\\ud83d\\ude00", 8),
+  },
+  {
+    name: "demo2: guest create with a surrogate pair escape cut in the low half's digits at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000018", "\\ud83d\\ude00", 10),
+  },
+  {
+    name: "demo2: guest create with a \\u escape cut after \\u at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000019", "\\u00e9", 2),
+  },
+  {
+    name: "demo2: guest create with a \\u escape cut in its digits at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000020", "\\ud83d\\ude00", 4),
+  },
+  {
+    name: "demo2: guest create with an escape cut after its backslash at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000021", "\\/", 1),
+  },
+  {
+    name: "demo2: guest create with a 4-byte UTF-8 character cut after 2 bytes at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000022", "\u{1f600}", 2),
+  },
+  {
+    name: "demo2: guest create with a 3-byte UTF-8 character cut after 1 byte at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000023", "\u20ac", 1),
+  },
+  {
+    name: "demo2: guest create with a literal cut after 3 bytes at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000024", "true", 3, false),
+  },
+  {
+    name: "demo2: guest create with a literal cut after 2 bytes at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000025", "null", 2, false),
+  },
+  {
+    name: "demo2: guest create with a surrogate pair escape cut after the high surrogate at 128 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(128, "wfixdemo2000026", "\\ud83d\\ude00", 6),
+  },
+  {
+    name: "demo2: guest create with a 4-byte UTF-8 character cut after 3 bytes at 128 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(128, "wfixdemo2000027", "\u{1f600}", 3),
+  },
+  {
+    name: "demo2: guest create with a surrogate pair escape cut after its backslash at 256 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(256, "wfixdemo2000028", "\\ud83d\\ude00", 7),
+  },
+  {
+    name: "demo2: guest create with a lone high surrogate escape before x at 64 bytes",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000029", "\\ud83dx", 6),
+  },
+  {
+    name: "demo2: guest create with a lone high surrogate escape before x",
+    as: "guest",
+    method: "POST",
+    url: demo2,
+    body: boundaryBody(64, "wfixdemo2000030", "\\ud83dx", 30),
   },
   // view collections
   {

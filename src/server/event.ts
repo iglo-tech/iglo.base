@@ -29,7 +29,9 @@ import type { ReadCloser } from "@/server/buffer-with-file";
 import {
   decodeFirstValue,
   decodeUTF8Bytes,
+  hasInvalidUTF8,
   JsonEOFError,
+  JsonSyntaxError,
   type JsonValue,
 } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
@@ -425,22 +427,58 @@ async function readFirstJSONValue(body: ReadCloser): Promise<JsonValue> {
   }
 }
 
-// throws the syntax error of an incomplete JSON prefix, if it has one; a
-// number cut at the end of the prefix is dropped first (the parser rejects
-// "1." or "-" as invalid numbers)
+// throws the syntax error of an incomplete JSON prefix, if it has one, as
+// jsontext reports it before the value is complete. A number cut at the
+// end of the prefix is dropped first (the parser rejects "1." or "-" as
+// invalid numbers); a UTF-8 sequence cut at the end is not invalid UTF-8
+// (utf8.FullRune). Other truncated tokens are EOF to the parser.
 function checkPrefix(prefix: Uint8Array): void {
   let k = prefix.length;
   while (k > 0 && isNumberByte(prefix[k - 1] as number)) {
     k--;
   }
+  const text = decodeUTF8Bytes(prefix.subarray(0, k));
   try {
-    decodeFirstValue(decodeUTF8Bytes(prefix.subarray(0, k)));
+    decodeFirstValue(text);
   } catch (err) {
     // an incomplete value is EOF; a syntax error is final
     if (!(err instanceof JsonEOFError)) {
       throw err;
     }
   }
+  // invalid UTF-8 outside strings is a syntax error above; within one,
+  // it fails the value, unless the bytes may start a rune
+  const cut = cutRuneLength(prefix.subarray(0, k));
+  if (hasInvalidUTF8(text.slice(0, text.length - cut))) {
+    throw new JsonSyntaxError("invalid UTF-8 within string");
+  }
+}
+
+// the number of bytes at the end of b that are an incomplete but valid
+// start of a UTF-8 sequence (decodeUTF8Bytes makes each a lone surrogate)
+function cutRuneLength(b: Uint8Array): number {
+  for (let n = 1; n <= 3 && n <= b.length; n++) {
+    const c = b[b.length - n] as number;
+    if (c >= 0x80 && c <= 0xbf) {
+      continue; // a continuation byte
+    }
+    const size =
+      c >= 0xc2 && c <= 0xdf ? 2 : c >= 0xe0 && c <= 0xef ? 3 : c >= 0xf0 && c <= 0xf4 ? 4 : 0;
+    if (size <= n) {
+      return 0;
+    }
+    // the second byte's range (utf8 acceptRanges)
+    const second = b[b.length - n + 1];
+    if (second !== undefined) {
+      const lo = c === 0xe0 ? 0xa0 : c === 0xf0 ? 0x90 : 0x80;
+      const hi = c === 0xed ? 0x9f : c === 0xf4 ? 0x8f : 0xbf;
+      if (second < lo || second > hi) {
+        return 0;
+      }
+    }
+    return n;
+  }
+  return 0;
 }
 
 // 0-9 . e E + -
