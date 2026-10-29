@@ -3,6 +3,8 @@
 // its own copy of upstream's fixture. A session's requests change the
 // collections for the ones after them, as a dashboard session would.
 
+import { setRateLimits } from "@test/scenarios/prepare";
+
 export type Identity = "guest" | "users" | "superuser";
 
 export interface ApiCase {
@@ -20,6 +22,8 @@ export interface Session {
   // whether pb_data written by iglo.base is read back by upstream after
   // the session (the cross-server round trip)
   roundTrip?: boolean;
+  // changes the fixture copy before the servers start on it
+  prepare?: (dataDir: string) => void;
 }
 
 const su = (
@@ -56,6 +60,34 @@ const endpoints: [ApiCase["method"], string, string][] = [
 ];
 
 export const sessions: Session[] = [
+  {
+    // registerSettingsHooks (core/settings_model.go): a collection rename
+    // relabels the "<name>:" rate limit rules
+    name: "rate limit rules follow a rename",
+    roundTrip: true,
+    prepare: (dataDir) =>
+      setRateLimits(dataDir, [
+        { label: "demo2:create", maxRequests: 1000 },
+        { label: "demo2:list", maxRequests: 1000, audience: "@guest" },
+        { label: "demo22:list", maxRequests: 1000 },
+        { label: "*:create", maxRequests: 1000 },
+        { label: "clients:auth", maxRequests: 1000 },
+        { label: "/api/demo2:x", maxRequests: 1000 },
+      ]),
+    cases: [
+      su("rename", "PATCH", "/api/collections/demo2", { name: "demo2_new" }),
+      get("relabeled rules", "/api/settings"),
+      su("rename back with another change", "PATCH", "/api/collections/demo2_new", {
+        name: "demo2",
+        listRule: null,
+      }),
+      su("rename through import", "PUT", "/api/collections/import", {
+        collections: [{ id: "v851q4r790rhknl", name: "clients_renamed" }],
+      }),
+      su("a failed rename", "PATCH", "/api/collections/demo2", { name: "users" }),
+      get("rules after the import", "/api/settings"),
+    ],
+  },
   {
     name: "access",
     cases: [

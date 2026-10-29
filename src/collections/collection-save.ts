@@ -54,6 +54,7 @@ import { newFieldsList } from "@/collections/fields-list";
 import { createViewFields, saveView, wrapError } from "@/collections/view";
 import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
 import { refsOnCollectionDeleteExecute } from "@/records/record-auth-refs";
+import { relabelRateLimitRules } from "@/settings/settings-query";
 import type { Params } from "@/db/dbx/query";
 import type { Model } from "@/db/model";
 import { deleteTable, deleteView } from "@/db/table";
@@ -141,6 +142,16 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
   try {
     onCollectionSave(app, collection);
 
+    // the old name for the rate limit rule relabel (registerSettingsHooks)
+    let oldName: string | null = null;
+    if (!isNew && app.settings !== undefined) {
+      try {
+        oldName = findCachedCollectionByNameOrId(app, collection.id).name;
+      } catch (err) {
+        throw wrapError("failed to retrieve old cached collection", err);
+      }
+    }
+
     // run validations (if any)
     if (withValidations) {
       const validateErr = validateCollection(app, collection);
@@ -153,6 +164,21 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
     onCollectionSaveExecute(app, collection, (txApp) => {
       withDriverErrors(() => saveNoValidate(txApp.databases, collectionRow(collection)));
     });
+
+    // update existing rate limit rules on collection rename
+    if (oldName !== null && app.settings !== undefined) {
+      relabelRateLimitRules(
+        {
+          databases: app.databases,
+          clock: app.clock,
+          encryptionEnv: app.encryptionEnv ?? "",
+          getenv: (name) => app.getenv?.(name) ?? "",
+        },
+        app.settings,
+        oldName,
+        collection.name,
+      );
+    }
   } catch (err) {
     if (isNew) {
       collection.markAsNew(); // reset "new" state

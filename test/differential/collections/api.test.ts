@@ -62,6 +62,13 @@ function fixtureCopy(): string {
   return dataDir;
 }
 
+function copyOf(dataDir: string): string {
+  const copy = fixtureCopy();
+  rmSync(copy, { recursive: true });
+  copyDataDir(dataDir, copy);
+  return copy;
+}
+
 async function track<T extends Server>(server: Promise<T>): Promise<T> {
   const s = await server;
   running.add(s);
@@ -207,15 +214,17 @@ function bodyText(res: ScenarioResponse): string {
 // -------------------------------------------------------------------
 
 async function runSession(session: Session): Promise<string[]> {
-  const upstreamDir = fixtureCopy();
-  const igloDir = fixtureCopy();
+  const source = fixtureCopy();
+  session.prepare?.(source);
+  const start = readStartingData(source);
+  const upstreamDir = copyOf(source);
+  const igloDir = copyOf(source);
   const [upstream, iglo] = await Promise.all([
     track(startUpstream({ dataDir: upstreamDir })),
     track(startServer([], igloDir)),
   ]);
 
   const differences: string[] = [];
-  const start = readStartingData(fixtureDir);
   const pairing = new Pairing();
   for (const c of session.cases) {
     const req = request(c);

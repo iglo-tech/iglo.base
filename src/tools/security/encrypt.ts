@@ -6,6 +6,8 @@
 // aes.NewCipher it may be 16, 24 or 32 bytes (AES-128/192/256), upstream
 // uses 32 (AES-256).
 
+import { type CipherGCM, createCipheriv } from "node:crypto";
+
 import { StdEncoding } from "@/tools/security/base64";
 
 const nonceSize = 12;
@@ -34,6 +36,22 @@ export async function encrypt(data: Uint8Array<ArrayBuffer>, key: string): Promi
   const sealed = new Uint8Array(
     await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, cryptoKey, data),
   );
+  const out = new Uint8Array(nonceSize + sealed.length);
+  out.set(nonce);
+  out.set(sealed, nonceSize);
+  return StdEncoding.encodeToString(out);
+}
+
+// encrypt for a synchronous caller (node:crypto's AES-GCM): the same
+// output format.
+export function encryptSync(data: Uint8Array, key: string): string {
+  const raw = new TextEncoder().encode(key);
+  if (raw.length !== 16 && raw.length !== 24 && raw.length !== 32) {
+    throw new KeySizeError(raw.length);
+  }
+  const nonce = crypto.getRandomValues(new Uint8Array(nonceSize));
+  const cipher = createCipheriv(`aes-${raw.length * 8}-gcm`, raw, nonce) as CipherGCM;
+  const sealed = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()]);
   const out = new Uint8Array(nonceSize + sealed.length);
   out.set(nonce);
   out.set(sealed, nonceSize);
