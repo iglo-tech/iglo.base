@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M0.8 merged; next: M3.2 (file storage).
+M3.2 active (worker).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M3.2 | worker | task/M3.2-local-files | 0 | [brief](briefs/M3.2.md); includes the D27 multipart spill |
 
 ## Done
 
