@@ -7,4 +7,5 @@
 /dist/
 
 # Reference tools and the upstream source checkout (bun run upstream:prepare).
-/.upstream/
+/.upstream
+/.upstream.*
