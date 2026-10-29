@@ -1,6 +1,8 @@
 // Starts Mailpit (.upstream/bin/mailpit, see scripts/upstream/prepare.ts) with
 // its SMTP sink and HTTP API on free 127.0.0.1 ports and a database in a temp
 // directory. sendMail() speaks plain SMTP to the sink, as an application would.
+// The options add Mailpit arguments (SMTP auth, ...) and move the SMTP sink to
+// another loopback address.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { createConnection, type Socket } from "node:net";
@@ -18,7 +20,17 @@ export interface Mailpit {
   stop(): Promise<void>;
 }
 
-export async function startMailpit(layout: Layout = defaultLayout): Promise<Mailpit> {
+export interface MailpitOptions {
+  // more mailpit arguments
+  args?: string[];
+  // the SMTP listen address (127.0.0.1 unless set)
+  smtpHost?: string;
+}
+
+export async function startMailpit(
+  layout: Layout = defaultLayout,
+  options: MailpitOptions = {},
+): Promise<Mailpit> {
   const binary = requireTool("mailpit", layout);
   const root = mkdtempSync(join(tmpdir(), "iglo-base-mailpit-"));
   const smtpPort = await freePort();
@@ -28,12 +40,13 @@ export async function startMailpit(layout: Layout = defaultLayout): Promise<Mail
     [
       binary,
       "--smtp",
-      `127.0.0.1:${smtpPort}`,
+      `${options.smtpHost ?? "127.0.0.1"}:${smtpPort}`,
       "--listen",
       `127.0.0.1:${httpPort}`,
       "--database",
       join(root, "mailpit.db"),
       "--quiet",
+      ...(options.args ?? []),
     ],
     { cwd: root },
   );

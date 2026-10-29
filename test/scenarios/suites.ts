@@ -49,6 +49,7 @@ import {
   settingsSet,
   settingsTestEmail,
   settingsTestS3,
+  testEmailSendValidateAndSubmit,
 } from "@test/scenarios/settings";
 
 export const suites: Suite[] = [
@@ -87,5 +88,6 @@ export const suites: Suite[] = [
   settingsSet,
   settingsTestS3,
   settingsTestEmail,
+  testEmailSendValidateAndSubmit,
   generateAppleClientSecret,
 ];

@@ -103,7 +103,10 @@ from Go go1.27.2 src/unicode and src/unicode/utf8, src/validation/is/go-url.ts f
 src/validation/is/go-netip.ts and test/validation/is/go-netip.test.ts from Go go1.27.2 src/net/netip and
 src/net/ip.go, the float formatting in src/validation/error.ts from Go go1.27.2 src/internal/strconv,
 src/tools/mimetype/mediatype.ts from Go go1.27.2 src/mime, and src/tools/mimetype/go-bytes.ts from Go go1.27.2
-src/bytes, src/encoding/binary, src/unicode/utf8 and src/unicode (https://github.com/golang/go), and src/tools/crypto/ (bcrypt.ts, blowfish.ts, blowfish-const.ts) and test/tools/crypto/ from
+src/bytes, src/encoding/binary, src/unicode/utf8 and src/unicode, src/mail/go-mime.ts from Go go1.27.2 src/mime,
+src/mime/quotedprintable, src/net/mail, src/net/http/header.go and src/net/textproto, the PLAIN auth in src/mail/smtp.ts
+from Go go1.27.2 src/net/smtp, the encoded-word and quoted-printable tables in test/mail/mailer.test.ts from those
+packages' tests (https://github.com/golang/go), and src/tools/crypto/ (bcrypt.ts, blowfish.ts, blowfish-const.ts) and test/tools/crypto/ from
 golang.org/x/crypto v0.58.0 bcrypt and blowfish (https://go.googlesource.com/crypto), distributed under this license:
 
 Copyright 2009 The Go Authors.
@@ -219,3 +222,30 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+
+src/mail/mailyak.ts and the SMTP exchange in src/mail/smtp.ts are translated from domodwyer/mailyak v3.6.2
+(https://github.com/domodwyer/mailyak), distributed under this license:
+
+MIT License
+
+Copyright (c) 2016 Dom Dwyer
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

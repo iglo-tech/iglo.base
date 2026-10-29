@@ -1,12 +1,14 @@
 // Upstream: apis/settings_test.go (TestSettingsList, TestSettingsSet,
 // TestSettingsTestS3, TestSettingsTestEmail, TestGenerateAppleClientSecret)
+// and forms/test_email_send_test.go (TestEmailSendValidateAndSubmit, whose
+// form submits become requests to the test email endpoint)
 //
 // The tokens are upstream's fixture tokens (test data, expiring in 2050).
 // Not ported: the two "tx body write check" scenarios, which only test an
 // upstream hook (OnSettingsListRequest, OnSettingsUpdateRequest). The
 // TestMailer of upstream's test app is an in-process SMTP sink here
 // (test/scenarios/settings-prepare.ts), so that upstream meets the
-// scenarios in differential mode; sending the test email is M4.4. The
+// scenarios in differential mode. The
 // Apple client secret is signed with an ES256 key generated in the test;
 // the signing is M4.6.
 
@@ -22,11 +24,6 @@ const validData = `{
 		"s3":{"secret": "new_s3_secret"},
 		"backups":{"s3":{"secret":"new_backups_s3_secret"}}
 	}`;
-
-const pendingMailer = {
-  task: "M4.4",
-  reason: "sending the test email needs the mailer (the handler answers 400 after validation)",
-};
 
 const pendingApple = {
   task: "M4.6",
@@ -236,7 +233,6 @@ export const settingsTestEmail: Suite = {
       headers: { Authorization: superuserToken },
       prepare: smtpToSink(),
       after: mailSent("test@example.com", "Verify"),
-      pending: pendingMailer,
       expectedStatus: 204,
     },
     {
@@ -250,7 +246,6 @@ export const settingsTestEmail: Suite = {
       headers: { Authorization: superuserToken },
       prepare: smtpToSink(),
       after: mailSent("test@example.com", "Reset password"),
-      pending: pendingMailer,
       expectedStatus: 204,
     },
     {
@@ -264,7 +259,6 @@ export const settingsTestEmail: Suite = {
       headers: { Authorization: superuserToken },
       prepare: smtpToSink(),
       after: mailSent("test@example.com", "Confirm new email"),
-      pending: pendingMailer,
       expectedStatus: 204,
     },
     {
@@ -278,10 +272,59 @@ export const settingsTestEmail: Suite = {
       headers: { Authorization: superuserToken },
       prepare: smtpToSink(),
       after: mailSent("test@example.com", "one-time password"),
-      pending: pendingMailer,
       expectedStatus: 204,
     },
   ],
+};
+
+// the TestEmailSendValidateAndSubmit table: [template, email, collection,
+// expected error keys (none: one email sent with the template's text)]
+const testEmailSendCases: [string, string, string, string[] | null][] = [
+  ["", "", "", ["template", "email"]],
+  ["invalid", "test@example.com", "", ["template"]],
+  ["verification", "invalid", "", ["email"]],
+  ["verification", "test@example.com", "invalid", ["collection"]],
+  ["verification", "test@example.com", "demo1", ["collection"]],
+  ["verification", "test@example.com", "users", null],
+  ["password-reset", "test@example.com", "", null],
+  ["email-change", "test@example.com", "", null],
+  ["otp", "test@example.com", "", null],
+  ["login-alert", "test@example.com", "", null],
+];
+
+const testEmailSendContent: Record<string, string> = {
+  "password-reset": "Reset password",
+  "email-change": "Confirm new email",
+  verification: "Verify",
+  otp: "one-time password",
+  "login-alert": "from a new location",
+};
+
+export const testEmailSendValidateAndSubmit: Suite = {
+  file: "forms/test_email_send_test.go",
+  func: "TestEmailSendValidateAndSubmit",
+  scenarios: testEmailSendCases.map(([template, email, collection, expectedErrors], i) =>
+    expectedErrors === null
+      ? {
+          name: `${i}_${template}`,
+          method: "POST",
+          url: "/api/settings/test/email",
+          body: JSON.stringify({ template, email, collection }),
+          headers: { Authorization: superuserToken },
+          prepare: smtpToSink(),
+          after: mailSent(email, testEmailSendContent[template] as string),
+          expectedStatus: 204,
+        }
+      : {
+          name: `${i}_${template}`,
+          method: "POST",
+          url: "/api/settings/test/email",
+          body: JSON.stringify({ template, email, collection }),
+          headers: { Authorization: superuserToken },
+          expectedStatus: 400,
+          expectedContent: expectedErrors.map((key) => `"${key}":{"code":`),
+        },
+  ),
 };
 
 export const generateAppleClientSecret: Suite = {

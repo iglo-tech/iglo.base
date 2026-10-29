@@ -41,10 +41,11 @@ Behavior copied from upstream's `CreateThumb`:
 
 ## Mail
 
-- **Transport:** `nodemailer`. SMTP when `smtp.enabled` (`host`, `port`, `username`, `password`, `authMethod` `PLAIN` or `LOGIN`, `tls`, `localName`); otherwise the `sendmail` binary with `-i -t`, as upstream. Since v0.41.0 an empty HTML body is not sent as an HTML part; `sendmail` messages without HTML are `text/plain`, carry custom headers and get a random `Message-ID`.
+- **Transport:** `nodemailer`'s SMTP transport when `smtp.enabled` (`host`, `port`, `username`, `password`, `authMethod` `PLAIN` (default) or `LOGIN`, `tls`, `localName`), sending the message as upstream's mailyak writes it (`src/mail/mailyak.ts`), so headers, MIME structure and encodings match upstream's apart from the random boundaries and `Message-ID`. `tls` means implicit TLS; otherwise STARTTLS is used when the server offers it. Credentials are only sent over TLS or to `localhost`, `127.0.0.1` or `::1`, as Go's `net/smtp`. Otherwise the `sendmail` binary (`/usr/sbin/sendmail`, `/usr/bin/sendmail`, then `PATH`) with `-i -t`, as upstream. Since v0.41.0 an empty HTML body is not sent as an HTML part; `sendmail` messages without HTML are `text/plain`, carry custom headers and get a random `Message-ID`.
+- **Client:** a new client per send from the current settings (`app.newMailClient()`), as upstream's `NewMailClient`. Upstream's dev-mode console print of each sent mail is an `OnMailerSend` hook default and is not ported (D5, no informational output).
 - **Sender:** `meta.senderName` and `meta.senderAddress`.
-- **Messages:** verification, password reset, email change confirmation, OTP, login alert, and the settings test email, with upstream's subjects, bodies and placeholders ([Auth](06-auth.md#email-templates)).
-- **Tests** read messages from Mailpit and compare headers, recipients and bodies to upstream's output.
+- **Messages:** verification, password reset, email change confirmation, OTP, login alert, and the settings test email (all five templates for a test record), with upstream's subjects, bodies and placeholders ([Auth](06-auth.md#email-templates)). The login alert is sent before the auth response, with upstream's 15 s wait; a failure is logged and the new origin is not stored. The OTP email's `sentTo` update comes with the OTP storage (M4.2).
+- **Tests** read messages from Mailpit and compare the raw messages to upstream's (`test/differential/mail/`).
 
 ## Backups
 
