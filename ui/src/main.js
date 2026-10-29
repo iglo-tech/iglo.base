@@ -133,15 +133,5 @@ watch(
     },
 );
 
-// load extensions
-document.body.appendChild(t.script({
-    type: "module", // allow top-level await
-    src: app.pb.buildURL("/_/extensions.js"),
-    onload: () => {
-        app.store._ready = true;
-    },
-    onerror: (err) => {
-        console.warn("Failed to load extensions:", err);
-        app.store._ready = true;
-    },
-}));
+// iglo.base: no dashboard extensions, so /_/extensions.js is not loaded
+app.store._ready = true;

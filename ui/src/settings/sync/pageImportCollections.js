@@ -328,13 +328,6 @@ export function pageImportCollections(route) {
                                 null,
                                 "You can use the ",
                                 t.a({
-                                    href: `${import.meta.env.PB_DOCS_URL}/go-migrations/`,
-                                    target: "_blank",
-                                    rel: "noopener noreferrer",
-                                    textContent: "Go",
-                                }),
-                                " or ",
-                                t.a({
                                     href: `${import.meta.env.PB_DOCS_URL}/js-migrations/`,
                                     target: "_blank",
                                     rel: "noopener noreferrer",

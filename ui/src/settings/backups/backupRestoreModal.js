@@ -120,7 +120,7 @@ function backupRestoreModal(key) {
                                 t.li(null, "Triggers app restart."),
                                 t.li(
                                     null,
-                                    "Applies all migrations that are missing in the restored ",
+                                    "Applies the system migrations that are missing in the restored ",
                                     t.code(null, "pb_data"),
                                     ".",
                                 ),

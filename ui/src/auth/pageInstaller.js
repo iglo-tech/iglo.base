@@ -10,7 +10,7 @@ export function pageInstaller(route) {
         return;
     }
 
-    app.store.title = "Setup your PocketBase instance";
+    app.store.title = "Setup your iglo.base instance";
 
     const data = store({
         email: "",
