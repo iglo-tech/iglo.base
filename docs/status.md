@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M0.8 active (worker).
+M0.8 active (review round 1).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.8 | worker | task/M0.8-spikes | 0 | [brief](briefs/M0.8.md) |
+| M0.8 | review | [#32](https://github.com/iglo-tech/iglo.base/pull/32) | 1 | [brief](briefs/M0.8.md) |
 
 ## Done
 
