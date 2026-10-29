@@ -30,10 +30,12 @@ import {
   newProvider,
   type Provider,
   type Result,
+  SearchResult,
 } from "@/search/provider";
 import type { FieldResolver, ResolverResult } from "@/search/simple-field-resolver";
 import { type SortField, SortAsc, SortDesc } from "@/search/sort";
 import { existInSliceWithRegex } from "@/tools/list/list";
+import { marshal } from "@/tools/types/go-json";
 
 import { createTestDB, type TestDB } from "@test/search/support";
 
@@ -850,4 +852,11 @@ describe("Provider page arithmetic", () => {
       testDB.close();
     }
   });
+});
+
+test("SearchResult JSON keeps Go's struct member order", () => {
+  const r = new SearchResult([{ marshalJSON: () => `{"b":1,"a":2}` }], 2, 30, -1, -1);
+  expect(marshal(r)).toBe(
+    `{"items":[{"b":1,"a":2}],"page":2,"perPage":30,"totalItems":-1,"totalPages":-1}`,
+  );
 });
