@@ -120,6 +120,15 @@ describe("unordered objects", () => {
   });
 });
 
+// an auth methods provider URL (apis/record_auth_methods.go)
+function authURL(clientId: string, challenge: string, state: string): string {
+  return `https://gitlab.com/oauth/authorize?client_id=${clientId}&code_challenge=${challenge}&code_challenge_method=S256&response_type=code&scope=read_user&state=${state}&redirect_uri=`;
+}
+
+function authMethodsBody(u: string, state: string): string {
+  return JSON.stringify({ state, authURL: u, authUrl: u, legacy: [{ authURL: u }] });
+}
+
 describe("generated values", () => {
   test("new IDs, tokens and timestamps at generated keys are compared by format", () => {
     expect(
@@ -224,6 +233,29 @@ describe("generated values", () => {
     expect(diff(res('{"username":"users12345"}'), res('{"username":"Users67890"}'))).toHaveLength(
       2,
     );
+  });
+
+  test("auth methods URLs compare all but their state and code challenge", () => {
+    const state1 = "XPCatjZu1UhljN91JA8eDalssocVDU";
+    const state2 = "Lu3IMq9sUqKbnpJWTSNVTXLNQEUTy3";
+    const challenge1 = "NowJUF9SooC3NppZdEDMpx2IYzXhIsntBB5U_GJo4SQ";
+    const challenge2 = "yG0NPADHZcoGEoP6pmSHMlN9kt3J_A8N68Gqnp5-IDk";
+    const url = authURL;
+    const body = authMethodsBody;
+    const request = { url: "/api/collections/users/auth-methods" };
+
+    const up = url("test1", challenge1, state1);
+    expect(
+      diff(res(body(up, state1)), res(body(url("test1", challenge2, state2), state2)), request),
+    ).toEqual([]);
+    const formatDiffs = (ig: string, state: string) =>
+      diff(res(body(up, state1)), res(body(ig, state)), request).filter((d) =>
+        d.includes("not both authURLs"),
+      );
+    // anything else in the URL must match
+    expect(formatDiffs(url("test2", challenge2, state2), state2)).toHaveLength(3);
+    // a state of the wrong format
+    expect(formatDiffs(url("test1", challenge2, "short"), state2)).toHaveLength(3);
   });
 
   // Sol's council finding 1 on PR #6: any new string that matched a

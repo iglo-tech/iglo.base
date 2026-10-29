@@ -4,7 +4,20 @@
 
 import { healthAPI } from "@test/scenarios/health";
 import { superuserIPsWhitelist } from "@test/scenarios/middlewares";
+import {
+  recordAuthImpersonate,
+  recordAuthMethodsList,
+  recordAuthRefresh,
+  recordAuthWithPassword,
+} from "@test/scenarios/record-auth";
 import { recordCrudList, recordCrudView } from "@test/scenarios/record-crud";
+import {
+  recordCrudAuthOriginCreate,
+  recordCrudAuthOriginDelete,
+  recordCrudAuthOriginList,
+  recordCrudAuthOriginUpdate,
+  recordCrudAuthOriginView,
+} from "@test/scenarios/record-crud-auth-origin";
 import {
   recordCrudSuperuserCreate,
   recordCrudSuperuserDelete,
@@ -29,6 +42,10 @@ import {
 export const suites: Suite[] = [
   healthAPI,
   superuserIPsWhitelist,
+  recordAuthImpersonate,
+  recordAuthMethodsList,
+  recordAuthRefresh,
+  recordAuthWithPassword,
   recordCrudList,
   recordCrudView,
   recordCrudDelete,
@@ -39,6 +56,11 @@ export const suites: Suite[] = [
   recordCrudSuperuserDelete,
   recordCrudSuperuserCreate,
   recordCrudSuperuserUpdate,
+  recordCrudAuthOriginList,
+  recordCrudAuthOriginView,
+  recordCrudAuthOriginDelete,
+  recordCrudAuthOriginCreate,
+  recordCrudAuthOriginUpdate,
   settingsList,
   settingsSet,
   settingsTestS3,

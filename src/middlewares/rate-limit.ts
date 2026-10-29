@@ -2,10 +2,12 @@
 // rateLimiter, rateClient)
 //
 // rateLimit is a placeholder: it holds the middleware's id and priority in
-// the default chain and only calls the next handler. The middleware, the
-// settings rules (checkCollectionRateLimit, skipRateLimit), the hourly
-// cleanup cron of the limiters and their reset on settings reload are
-// ported in M4.8 (rate limiter, after M1.3's settings).
+// the default chain and only calls the next handler. collectionPathRateLimit
+// has its collection lookup (M4.1, for the auth routes' 404) and calls the
+// next handler. The middleware, the settings rules
+// (checkCollectionRateLimit, skipRateLimit), the hourly cleanup cron of the
+// limiters and their reset on settings reload are ported in M4.8 (rate
+// limiter, after M1.3's settings).
 //
 // checkRateLimit and the fixed window limiters are here already, because
 // recordsList's timing throttle (apis/record_crud.go) uses them with a
@@ -13,6 +15,7 @@
 // time.Now().
 
 import type { App } from "@/app/app";
+import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import type { RequestEvent } from "@/app/event-request";
 import type { ApiError } from "@/server/error";
 import type { Handler } from "@/server/handler";
@@ -44,6 +47,37 @@ export function rateLimit(): Handler<RequestEvent> {
     id: DefaultRateLimitMiddlewareId,
     priority: DefaultRateLimitMiddlewarePriority,
     func: (e) => e.next(),
+  };
+}
+
+// collectionPathRateLimit defines a rate limit middleware for the internal collection handlers
+// (it replaces the default rate limit middleware of the route, having the same id).
+//
+// Until M4.8 it only resolves the path collection: a missing one is
+// answered with 404, before any later middleware runs. baseTags are the
+// rule labels checkCollectionRateLimit (M4.8) checks.
+export function collectionPathRateLimit(
+  collectionPathParam: string,
+  ..._baseTags: string[]
+): Handler<RequestEvent> {
+  if (collectionPathParam === "") {
+    collectionPathParam = "collection";
+  }
+
+  return {
+    id: DefaultRateLimitMiddlewareId,
+    priority: DefaultRateLimitMiddlewarePriority,
+    func: (e) => {
+      try {
+        findCachedCollectionByNameOrId(e.app, e.request.pathValue(collectionPathParam));
+      } catch (err) {
+        return e.notFoundError("Missing or invalid collection context.", err);
+      }
+
+      // checkCollectionRateLimit(e, collection, ...baseTags): M4.8
+
+      return e.next();
+    },
   };
 }
 

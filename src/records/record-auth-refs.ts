@@ -17,10 +17,12 @@
 //
 // The ExternalAuth, MFA, OTP and AuthOrigin models (record proxies with
 // their own accessors) and the auth flows that create those records come
-// with the auth tasks (M4.x); the queries here return Records. Not here:
-// their OnCollectionDeleteExecute handlers (the collection delete path),
-// the expired MFA/OTP cron jobs and the models' PreValidate checks (only
-// for the proxies).
+// with the auth tasks (M4.x: src/records/mfa-model.ts and
+// auth-origin-model.ts so far); the queries here return Records. Their
+// OnCollectionDeleteExecute handlers are refsOnCollectionDeleteExecute,
+// which src/collections/collection-save.ts calls. Not here: the expired
+// MFA/OTP cron jobs (M5.6) and the models' PreValidate checks (in the
+// proxies).
 
 import { CollectionTypeAuth, Collection } from "@/collections/collection-model";
 import {
@@ -309,6 +311,59 @@ function* refOnDeleteExecute(app: RecordsApp, record: Record, i: number, next: N
 
     for (const rel of rels) {
       yield call(deleteStep(txApp, rel));
+    }
+  });
+}
+
+// -------------------------------------------------------------------
+// OnCollectionDeleteExecute (99)
+
+// recordRefHooks of the four collections, in their registration order,
+// for a collection delete: each runs the rest of the chain (next, the
+// `_collections` row delete) and then deletes, in the same transaction,
+// the records of its collection that point to the deleted auth
+// collection. Bound after the collection's own OnCollectionDeleteExecute
+// handler (same priority, registered later), so next runs inside its
+// transaction.
+export function refsOnCollectionDeleteExecute(
+  app: RecordsApp,
+  collection: Collection,
+  next: (txApp: RecordsApp) => void,
+): void {
+  refOnCollectionDeleteExecute(app, collection, 0, next);
+}
+
+function refOnCollectionDeleteExecute(
+  app: RecordsApp,
+  collection: Collection,
+  i: number,
+  next: (txApp: RecordsApp) => void,
+): void {
+  const collectionName = refCollectionNames[i];
+  if (collectionName === undefined) {
+    next(app);
+    return;
+  }
+
+  const nextRef = (refApp: RecordsApp): void =>
+    refOnCollectionDeleteExecute(refApp, collection, i + 1, next);
+
+  if (collection.name === collectionName || collection.type !== CollectionTypeAuth) {
+    nextRef(app);
+    return;
+  }
+
+  runInAppTransaction(app, (txApp) => {
+    nextRef(txApp);
+
+    const rels = findAllRecords(
+      txApp,
+      collectionName,
+      new HashExp({ collectionRef: collection.id }),
+    );
+
+    for (const rel of rels) {
+      runSync(deleteStep(txApp, rel));
     }
   });
 }

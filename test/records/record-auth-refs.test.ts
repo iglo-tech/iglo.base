@@ -7,7 +7,9 @@
 
 import { afterEach, describe, expect, test } from "bun:test";
 
+import { newAuthCollection, newBaseCollection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import { deleteCollection, saveCollection } from "@/collections/collection-save";
 import {
   CollectionNameAuthOrigins,
   CollectionNameExternalAuths,
@@ -149,6 +151,36 @@ describe("ref validation", () => {
 });
 
 describe("cleanups", () => {
+  test("a deleted auth collection takes the refs of its records along", async () => {
+    const app = newTestApp();
+    const collection = newAuthCollection("new_auth");
+    saveCollection(app, collection);
+
+    const user = newRecord(findCollectionByNameOrId(app, "new_auth"));
+    user.load({ email: "new@example.com", password: "1234567890" });
+    await saveRecord(app, user);
+    await addAllRefs(app, user);
+
+    // refs of another collection's record stay
+    const other = findRecordById(app, "users", "oap640cot4yru2s");
+    await addAllRefs(app, other);
+
+    deleteCollection(app, findCollectionByNameOrId(app, "new_auth"));
+    expect(Object.values(refCounts(app, user))).toEqual([0, 0, 0, 0]);
+    expect(Object.values(refCounts(app, other))).toEqual([1, 1, 1, 1]);
+  });
+
+  test("a deleted base collection leaves the refs alone", async () => {
+    const app = newTestApp();
+    const user = findRecordById(app, "users", "oap640cot4yru2s");
+    await addAllRefs(app, user);
+
+    const base = newBaseCollection("new_base");
+    saveCollection(app, base);
+    deleteCollection(app, findCollectionByNameOrId(app, "new_base"));
+    expect(Object.values(refCounts(app, user))).toEqual([1, 1, 1, 1]);
+  });
+
   test("a deleted auth record takes its refs along", async () => {
     const app = newTestApp();
     const user = findRecordById(app, "users", "oap640cot4yru2s");

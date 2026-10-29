@@ -22,7 +22,8 @@
 //       POST /api/files/token; RequireSameCollectionContextAuth: POST
 //       auth-refresh of members, staff and _superusers) and to
 //       iglo.base's default router with the same guards on test routes at
-//       the same paths: the error statuses and bodies must be the same
+//       the same paths (auth-refresh is iglo.base's own route since M4.1):
+//       the error statuses and bodies must be the same
 //       bytes, and the successes must load the same record. (A missing
 //       collection is not compared: upstream's collectionPathRateLimit,
 //       which runs before the guard, answers 404 for it.)
@@ -55,11 +56,7 @@ import {
   findCachedCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
-import {
-  requireAuth,
-  requireSameCollectionContextAuth,
-  requireSuperuserAuth,
-} from "@/middlewares/require-auth";
+import { requireAuth, requireSuperuserAuth } from "@/middlewares/require-auth";
 import type { Record } from "@/records/record-model";
 import { findAuthRecordByEmail, findAuthRecordByToken } from "@/records/record-query";
 import {
@@ -317,9 +314,7 @@ function guardRouter(app: TestCollectionsApp) {
   );
   router.GET("/api/collections", authId).bind(requireSuperuserAuth());
   router.POST("/api/files/token", authId).bind(requireAuth());
-  router
-    .POST("/api/collections/{collection}/auth-refresh", authId)
-    .bind(requireSameCollectionContextAuth(""));
+  // POST /api/collections/{collection}/auth-refresh is the real route (M4.1)
   return router.buildMux();
 }
 
