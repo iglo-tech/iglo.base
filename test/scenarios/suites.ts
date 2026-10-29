@@ -3,6 +3,7 @@
 // read this list, so a suite added here runs in both modes.
 
 import { healthAPI } from "@test/scenarios/health";
+import { superuserIPsWhitelist } from "@test/scenarios/middlewares";
 import { recordCrudList, recordCrudView } from "@test/scenarios/record-crud";
 import {
   recordCrudSuperuserCreate,
@@ -17,9 +18,17 @@ import {
   recordCrudUpdate,
 } from "@test/scenarios/record-crud-write";
 import type { Suite } from "@test/scenarios/scenario";
+import {
+  generateAppleClientSecret,
+  settingsList,
+  settingsSet,
+  settingsTestEmail,
+  settingsTestS3,
+} from "@test/scenarios/settings";
 
 export const suites: Suite[] = [
   healthAPI,
+  superuserIPsWhitelist,
   recordCrudList,
   recordCrudView,
   recordCrudDelete,
@@ -30,4 +39,9 @@ export const suites: Suite[] = [
   recordCrudSuperuserDelete,
   recordCrudSuperuserCreate,
   recordCrudSuperuserUpdate,
+  settingsList,
+  settingsSet,
+  settingsTestS3,
+  settingsTestEmail,
+  generateAppleClientSecret,
 ];
