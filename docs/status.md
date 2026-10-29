@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-**Paused until 2026-10-29T03:30:19Z** (Claude API rate limit on the M2.4 round 2 Opus council review). Next after the pause: M2.4 council round 3 at `c7f16e9` (both members; the round 2 fix is pushed).
+M2.4 council round 3 at `c7f16e9` running (both members started 2026-10-29T04:03Z; CI green at this head).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.4 | council | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 3 | [Brief](briefs/M2.4.md). Worker head `5d9c6f6`: check and test:reference pass locally; CI pending. Round 1 at `5d9c6f6` (CI green): Opus APPROVE, Sol CHANGES (a `fields` projection through a JSON array mixing objects and scalars returned 200 unprojected; upstream panics, 500). Fixed by the lead at `5e88360` with differential cases. Round 2 at `5e88360`: Sol CHANGES (`:excerpt(max)` must keep Go's int64 `max + 2` wraparound: for 9223372036854775806 and …807 upstream returns an empty excerpt, iglo.base the full text; `src/tools/picker/excerpt-modifier.ts:116`, parsed value converted to Number at :173; add HTTP differential cases at both limits and …805 as a control). The Opus review failed on a Claude rate limit, then resumed and approved `5e88360` (superseded by the fix). Fixed by the lead at `c7f16e9` (cutoff computed with 64-bit wrapping; differential cases fail before, pass after; `bun run check` 16084 pass). Round 3 at `c7f16e9` starts after the pause |
+| M2.4 | council | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 3 | [Brief](briefs/M2.4.md). Worker head `5d9c6f6`: check and test:reference pass locally; CI pending. Round 1 at `5d9c6f6` (CI green): Opus APPROVE, Sol CHANGES (a `fields` projection through a JSON array mixing objects and scalars returned 200 unprojected; upstream panics, 500). Fixed by the lead at `5e88360` with differential cases. Round 2 at `5e88360`: Sol CHANGES (`:excerpt(max)` must keep Go's int64 `max + 2` wraparound: for 9223372036854775806 and …807 upstream returns an empty excerpt, iglo.base the full text; `src/tools/picker/excerpt-modifier.ts:116`, parsed value converted to Number at :173; add HTTP differential cases at both limits and …805 as a control). The Opus review failed on a Claude rate limit, then resumed and approved `5e88360` (superseded by the fix). Fixed by the lead at `c7f16e9` (cutoff computed with 64-bit wrapping; differential cases fail before, pass after; `bun run check` 16084 pass). Round 3 at `c7f16e9` (CI green): both members started |
 
 ## Done
 
