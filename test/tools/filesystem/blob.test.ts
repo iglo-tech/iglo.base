@@ -35,8 +35,12 @@ function newDir(): string {
   return dir;
 }
 
+// escape every rune
+function all(): boolean {
+  return true;
+}
+
 describe("HexEscape", () => {
-  const all = (): boolean => true;
   const cases: [string, string][] = [
     ["", ""],
     ["a", "__0x61__"],
