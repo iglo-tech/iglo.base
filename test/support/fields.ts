@@ -434,9 +434,22 @@ export function interceptorArgs(
     isTransactional: () => false,
     logger: { error: () => {} },
   };
-  const irecord = Object.assign(Object.create(record) as TestRecord, {
-    collection: () => record.collection,
-    baseFilesPath: () => record.collection.id + "/" + record.id,
+  // the record itself, with collection() and baseFilesPath(): every other
+  // read and write goes to it
+  const irecord = new Proxy(record, {
+    get(target, prop) {
+      if (prop === "collection") {
+        return () => target.collection;
+      }
+      if (prop === "baseFilesPath") {
+        return () => target.collection.id + "/" + target.id;
+      }
+      const v: unknown = Reflect.get(target, prop, target);
+      return typeof v === "function" ? (v as (...args: unknown[]) => unknown).bind(target) : v;
+    },
+    set(target, prop, value) {
+      return Reflect.set(target, prop, value, target);
+    },
   }) as unknown as InterceptorRecord;
   return [iapp, irecord];
 }
