@@ -56,7 +56,7 @@ import {
   findCachedCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
-import { requireAuth, requireSuperuserAuth } from "@/middlewares/require-auth";
+import { requireAuth } from "@/middlewares/require-auth";
 import type { Record } from "@/records/record-model";
 import { findAuthRecordByEmail, findAuthRecordByToken } from "@/records/record-query";
 import {
@@ -312,9 +312,9 @@ function guardRouter(app: TestCollectionsApp) {
       store: app.store,
     }),
   );
-  router.GET("/api/collections", authId).bind(requireSuperuserAuth());
   router.POST("/api/files/token", authId).bind(requireAuth());
-  // POST /api/collections/{collection}/auth-refresh is the real route (M4.1)
+  // GET /api/collections (M2.5) and POST
+  // /api/collections/{collection}/auth-refresh (M4.1) are the real routes
   return router.buildMux();
 }
 
