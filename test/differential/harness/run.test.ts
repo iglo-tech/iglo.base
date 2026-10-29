@@ -25,7 +25,7 @@ test("a pending scenario that passes against both servers fails", async () => {
 
 test("a deliberate difference checks iglo.base against its own expectations", async () => {
   const superuser = healthAPI.scenarios[2] as Scenario;
-  const difference = (expectedContent: string[]) => ({
+  const difference = (expectedContent: string[]): Scenario => ({
     ...superuser,
     difference: {
       name: "Hook side effects",
