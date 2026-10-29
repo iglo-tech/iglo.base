@@ -1,6 +1,7 @@
 // Layout of the reference tools that scripts/upstream/prepare.ts downloads
 // and verifies from test/differential/upstream.lock. Everything lives under
-// .upstream/ at the repository root, which is git-ignored:
+// .upstream/ at the repository root, which is git-ignored (by default a
+// symlink to a host-wide cache, see scripts/upstream/prepare.ts):
 //
 //   .upstream/pocketbase/        PocketBase v0.41.0 source checkout (read only)
 //   .upstream/bin/<tool>         host binaries: pocketbase, mailpit, versitygw
