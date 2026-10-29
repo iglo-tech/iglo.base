@@ -32,7 +32,7 @@ No other UI changes in v1. In particular, the API preview panels (`src/apiPrevie
 
 ## Build and embedding
 
-`bun run build` runs `scripts/ui/build.ts` first: `bun install --frozen-lockfile` and `vite build` under Bun in `ui/`, with `PB_VERSION` set to the executable's version, then packs `ui/dist` into `dist/ui.pack`. `src/main.ts` imports the pack as an embedded file (`with { type: "file" }`) and passes it to the CLI, so the executable serves the dashboard with no files beside it. Running from source without a build has no dashboard, as upstream's `no_ui` build: the banner shows only the REST API line and the installer prints the `superuser upsert` hint. An unchanged `ui/` (sources, lockfile, version) is not rebuilt.
+`bun run build` runs `scripts/ui/build.ts` first: `bun install --frozen-lockfile` and `vite build` under Bun in `ui/`, with `PB_VERSION` set to the executable's version, then packs `ui/dist` into `dist/ui.pack`. `src/main.ts` imports the pack as an embedded file (`with { type: "file" }`) and passes it to the CLI, so the executable serves the dashboard with no files beside it. Running from source (`bun src/main.ts`) needs `bun run ui:build` first, because `src/main.ts` imports `dist/ui.pack`; without it the process exits with "Cannot find module '@dist/ui.pack'". There is no `no_ui` mode. An unchanged `ui/` (sources, lockfile, version) is not rebuilt.
 
 ## Installer
 
