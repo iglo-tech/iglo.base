@@ -86,6 +86,8 @@ export interface RunningServer {
   url: string;
   // stops the server with SIGTERM and returns its exit code and output
   stop(): Promise<RunResult>;
+  // waits until the standard output so far contains text, and returns it
+  waitForOutput(text: string, timeoutMs?: number): Promise<string>;
 }
 
 // Starts `serve --http <host>:<port>` (a free port unless one is given, by
@@ -135,18 +137,33 @@ export async function startServer(
     stdout += decoder.decode(chunk.value, { stream: true });
   }
 
+  // the rest of the output is read as it comes
+  const pumped = (async () => {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) {
+        break;
+      }
+      stdout += decoder.decode(chunk.value, { stream: true });
+    }
+  })();
+
   return {
     url: `http://127.0.0.1:${port}`,
     async stop() {
       proc.kill("SIGTERM");
-      for (;;) {
-        const chunk = await reader.read();
-        if (chunk.done) {
-          break;
-        }
-        stdout += decoder.decode(chunk.value, { stream: true });
-      }
+      await pumped;
       return { exitCode: await proc.exited, stdout, stderr: await stderrText };
+    },
+    async waitForOutput(text, timeoutMs = 10_000) {
+      const until = Date.now() + timeoutMs;
+      while (!stdout.includes(text)) {
+        if (Date.now() > until) {
+          throw new Error(`no ${JSON.stringify(text)} in the output:\n${stdout}`);
+        }
+        await Bun.sleep(20);
+      }
+      return stdout;
     },
   };
 }
