@@ -182,7 +182,8 @@ export async function NewFileFromBytes(
 //
 // Go's FileHeader.Filename is Part.FileName(): the directory parts of the
 // submitted file name are dropped (filepath.Base, RFC 7578 section 4.2).
-// A Web File from Bun's formData() keeps them, so they are dropped here.
+// A Web File from Bun's formData() keeps them, so they are dropped here
+// (the multipart reader's files are already named by FileName()).
 export async function NewFileFromMultipart(
   part: globalThis.File,
   opts: FileOptions = {},
@@ -193,7 +194,7 @@ export async function NewFileFromMultipart(
 
 // path/filepath.Base on Unix: the last element of path, after trailing
 // slashes are removed ("." for "", "/" for only slashes).
-function goBase(path: string): string {
+export function goBase(path: string): string {
   if (path === "") {
     return ".";
   }

@@ -1,7 +1,7 @@
 // Upstream: the parts of Go's net/http Request and net/url that
 // tools/router uses: URL path and query (url.ParseQuery), Host, RemoteAddr,
 // TLS, ContentLength, PathValue/SetPathValue, ParseForm and
-// ParseMultipartForm (request.go).
+// ParseMultipartForm (request.go, with its multipartReader).
 //
 // The body is wrapped in a RereadableReadCloser by the router, so it can be
 // read more than once (BindBody, RequestInfo, form parsing). A middleware
@@ -9,15 +9,12 @@
 // r.Body.
 
 import type { ReadCloser } from "@/server/buffer-with-file";
+import { bodyReader } from "@/server/io";
+import { type Form, Reader as MultipartReader } from "@/server/multipart";
 import { readAll } from "@/server/rereadable-read-closer";
 import { unescapeBytes } from "@/server/mux";
 
 export type Values = Map<string, string[]>;
-
-export interface MultipartForm {
-  value: Values;
-  file: Map<string, File[]>;
-}
 
 export interface HttpRequestInit {
   method: string;
@@ -56,7 +53,7 @@ export class HttpRequest {
 
   form: Values | undefined;
   postForm: Values | undefined;
-  multipartForm: MultipartForm | undefined;
+  multipartForm: Form | undefined;
 
   constructor(init: HttpRequestInit) {
     this.method = init.method;
@@ -139,8 +136,10 @@ export class HttpRequest {
   }
 
   // ParseMultipartForm parses a multipart/form-data body (after parseForm)
-  // and adds its values to form and postForm.
-  async parseMultipartForm(): Promise<Error | undefined> {
+  // and adds its values to form and postForm. The parts are read with
+  // mime/multipart's ReadForm (src/server/multipart.ts), maxMemory as its
+  // limit.
+  async parseMultipartForm(maxMemory: number): Promise<Error | undefined> {
     let parseFormErr: Error | undefined;
     if (this.form === undefined) {
       // Let errors in parseForm fall through, and just return it at the end.
@@ -160,56 +159,24 @@ export class HttpRequest {
       return new Error("no multipart boundary param in Content-Type");
     }
 
-    let formData: [string, string | File][];
-    try {
-      const bytes = await readAll(this.body);
-      // the parsed (and RFC 2231 decoded) boundary, not the raw header
-      const parsed = await new Response(bytes, {
-        headers: { "Content-Type": `multipart/form-data; boundary=${quoteParamValue(boundary)}` },
-      }).formData();
-      formData = [];
-      parsed.forEach((value, key) => {
-        formData.push([key, value as string | File]);
-      });
-    } catch (err) {
+    const mr = new MultipartReader(bodyReader(this.body), boundary);
+    const [form, err] = await mr.readForm(maxMemory);
+    if (err !== undefined) {
       return err instanceof Error ? err : new Error(String(err));
-    }
-
-    const form: MultipartForm = { value: new Map(), file: new Map() };
-    for (const [key, value] of formData) {
-      // Go's ReadForm keeps a part as a value when Part.FileName() is "":
-      // the filename parameter is missing or empty. Bun's formData() makes
-      // a File (with an undefined name) for an empty filename.
-      if (typeof value === "string" || !value.name) {
-        appendValue(form.value, key, typeof value === "string" ? value : await value.text());
-      } else {
-        const files = form.file.get(key) ?? [];
-        files.push(value);
-        form.file.set(key, files);
-      }
     }
 
     this.postForm ??= new Map();
     this.form ??= new Map();
-    for (const [k, v] of form.value) {
+    for (const [k, v] of (form as Form).value) {
       for (const item of v) {
         appendValue(this.form, k, item);
         appendValue(this.postForm, k, item);
       }
     }
-    this.multipartForm = form;
+    this.multipartForm = form as Form;
 
     return parseFormErr;
   }
-}
-
-// a media type parameter value: a token as it is, anything else as a
-// quoted-string
-function quoteParamValue(value: string): string {
-  if (value !== "" && consumeToken(value)[1] === "") {
-    return value;
-  }
-  return `"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 
 function appendValue(values: Values, key: string, value: string): void {

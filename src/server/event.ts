@@ -25,7 +25,7 @@ import {
   newUnauthorizedError,
   type ApiError,
 } from "@/server/error";
-import type { ReadCloser } from "@/server/buffer-with-file";
+import { DefaultMaxMemory, type ReadCloser } from "@/server/buffer-with-file";
 import {
   decodeFirstValue,
   decodeUTF8Bytes,
@@ -113,7 +113,7 @@ export class Event extends Resolver {
   // Fails with ErrMissingFile when the key has no files.
   async findUploadedFiles(key: string): Promise<File[]> {
     if (this.request.multipartForm === undefined) {
-      const err = await this.request.parseMultipartForm();
+      const err = await this.request.parseMultipartForm(DefaultMaxMemory);
       if (err) {
         throw err;
       }
@@ -350,7 +350,7 @@ export class Event extends Resolver {
       }
 
       if (contentType.startsWith("multipart/form-data")) {
-        const err = await this.request.parseMultipartForm();
+        const err = await this.request.parseMultipartForm(DefaultMaxMemory);
         if (err) {
           return err;
         }
