@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M2.4 merged; M1.3 PR #29 in review round 1 (Sol); lead PR #30 (shared upstream cache) in review.
+M2.4 merged; No active task. Next: M4.1 (password auth), per the usable-first order. Lead PR #30 (shared upstream cache) is in review.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M1.3 | review | [#29](https://github.com/iglo-tech/iglo.base/pull/29) | 1 | [Brief](briefs/M1.3.md) (includes M3.5). Worker head `e1692d8`: check 16520, test:reference 2147 pass locally. 27 of 29 settings scenarios (2 hook-only), 5 `pending` (4 M4.4 email test, 1 M4.6 Apple secret); about 120 differential cases with stored-row byte checks. Lead-accepted: `03-data-compatibility.md` corrected (upstream drops unknown settings keys on save); outside-path commits (int64 request values, env passthrough, cron schedule parser, test support args). Sol round 1 started |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M1.3 | [#29](https://github.com/iglo-tech/iglo.base/pull/29) | 2026-10-29 (`335e06b`) | One review round (first under D25): Sol APPROVE at `e1692d8`, no findings. Includes M3.5 (Settings API). Carried: S3 test (M5.4), email test (M4.4), Apple client secret (M4.6) answer 400 placeholders; RealIP ignores trusted proxy headers until M5.7; rate-limit rule relabel on collection rename to M3.4 |
 | M3.1 | [#28](https://github.com/iglo-tech/iglo.base/pull/28) | 2026-10-29 (`299d761`) | Three council rounds, then a lead decision. Carried: multipart parsing about 15 µs per part (M7); throughput under many concurrent writes below the M7 bar (docs/perf/M3.1-records-write.md); `Connection: close` with unread body bytes closes the socket at once (Bun) |
 | M2.4 | [#27](https://github.com/iglo-tech/iglo.base/pull/27) | 2026-10-29 (`37d3e79`) | Three council rounds. Carried: hasAuthManageAccess to M3.1; rate limiter cleanup and settings rules to M4.8; throughput under many concurrent requests below the M7 bar (docs/perf/M2.4-records-read.md) |
 | M1.2 | [#26](https://github.com/iglo-tech/iglo.base/pull/26) | 2026-10-29 (`5dc4eef`) | Three council rounds, then a lead decision. Carried: M1.3 writes the default settings row and the configured proxy headers; M2.4 covers the read pool through HTTP |
