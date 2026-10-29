@@ -462,6 +462,9 @@ describe("SMTP auth and failures", () => {
 
   for (const [host, tls] of [
     ["127.0.0.1", false],
+    ["127.0.0.1", true],
+    ["::1", false],
+    ["::1", true],
     ["localhost", false],
     ["localhost", true],
   ] as const) {

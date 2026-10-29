@@ -13,6 +13,9 @@
 //
 // Not ported: the OnSend hook (D5).
 
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+
 import SMTPConnection from "nodemailer/lib/smtp-connection";
 
 import type { Clock } from "@/app/clock";
@@ -178,10 +181,27 @@ export class SMTPClient implements Mailer {
       );
       conn.quit();
     } catch (err) {
-      throw goError(err);
+      throw await goError(err, c.host, c.port);
     } finally {
       conn.close();
     }
+  }
+}
+
+// The address Go names in a failed dial: Go returns the first address's
+// error, after sorting the resolved addresses by RFC 6724, which puts IPv6
+// first for loopback and dual-stack hosts. Which address nodemailer and
+// Node try first varies (nodemailer may resolve the name itself), so the
+// name is resolved again here.
+async function goDialAddress(host: string): Promise<string> {
+  if (isIP(host) !== 0) {
+    return host;
+  }
+  try {
+    const addrs = await lookup(host, { all: true, order: "ipv6first" });
+    return addrs[0]?.address ?? host;
+  } catch {
+    return host;
   }
 }
 
@@ -190,26 +210,26 @@ function isLocalhost(name: string): boolean {
 }
 
 // The errors read as Go's where the test email endpoint shows them: a
-// refused connection as the dial error of the first address tried (Go's
-// dialSerial returns the first error; Node reports a host with several
-// addresses as an AggregateError with an empty message), a server reply
-// (including a refused STARTTLS the server offered) as textproto.Error
+// refused connection as Go's dial error, a server reply (including a
+// refused STARTTLS the server offered) as textproto.Error
 // (`<code> "<message>"`). Other errors (DNS, TLS handshake, timeouts) keep
 // nodemailer's text.
-function goError(err: unknown): Error {
+async function goError(err: unknown, host: string, port: number): Promise<Error> {
   const e = err instanceof Error ? err : new Error(String(err));
   const { code, response, errors } = e as {
     code?: string;
     response?: unknown;
     errors?: unknown[];
   };
-  // the first dial error: Node's own error ("connect ECONNREFUSED <ip>:<port>")
-  // or, for one address, nodemailer's ESOCKET copy of it with the same text
-  const dialErr = Array.isArray(errors) && errors.length > 0 ? errors[0] : e;
-  const refused =
-    dialErr instanceof Error ? /^connect ECONNREFUSED (.+):(\d+)$/.exec(dialErr.message) : null;
+  // Node's dial error is "connect ECONNREFUSED <ip>:<port>", or an
+  // AggregateError of them when it tried several addresses; nodemailer
+  // copies it as ESOCKET
+  const dialErrors = Array.isArray(errors) && errors.length > 0 ? errors : [e];
+  const refused = dialErrors.some(
+    (d) => d instanceof Error && d.message.startsWith("connect ECONNREFUSED "),
+  );
   if (code === "ESOCKET" && refused) {
-    const [, addr = "", port = ""] = refused;
+    const addr = await goDialAddress(host);
     const hostPort = addr.includes(":") ? `[${addr}]:${port}` : `${addr}:${port}`;
     return new Error(`dial tcp ${hostPort}: connect: connection refused`);
   }
