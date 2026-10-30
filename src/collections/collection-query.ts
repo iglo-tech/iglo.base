@@ -48,6 +48,7 @@ import { recordQuery, recordsTarget } from "@/records/record-query";
 import { deleteTruncatedRecords } from "@/records/record-save";
 import { existInSlice, nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
 import type { Store } from "@/tools/store/store";
+import type { Broker } from "@/tools/subscriptions/broker";
 
 export const StoreKeyCachedCollections = "pbAppCachedCollections";
 
@@ -72,6 +73,10 @@ export interface CollectionsApp {
   readonly settings?: Settings;
   readonly encryptionEnv?: string;
   getenv?(name: string): string;
+  // the realtime clients the record and collection changes are broadcast
+  // to (src/realtime); absent where a pb_data is opened without a server
+  // (test tools)
+  readonly subscriptionsBroker?: Broker;
 }
 
 // RunInTransaction wraps fn into a transaction for the regular app

@@ -18,13 +18,18 @@
 //	  AfterUpdateError); inside an outer transaction the same runs again
 //	  if that transaction fails (the model's txInfo.OnComplete)
 //
+//	the realtime handlers (src/realtime/realtime-events.ts): an auth
+//	collection update with a new token secret unsets the realtime clients'
+//	auth once saved (OnCollectionUpdate)
+//
 //	deleteCollection (app.Delete)
 //	  the primary key check, then onCollectionDeleteExecute around the row
 //	  delete, with the auth ref cleanups (the recordRefHooks of
 //	  src/records/record-auth-refs.ts) between them; on error the cache
 //	  reload as above; on success (after the outer transaction, if any)
 //	  the collection's storage directory is deleted in the background
-//	  (src/app/filesystem.ts)
+//	  (src/app/filesystem.ts), and the realtime clients authenticated
+//	  with its records lose their auth (OnCollectionAfterDeleteSuccess)
 //
 // Errors are thrown (Go's returned error). The bootstrap cache load
 // (OnBootstrap: "failed to load collections cache: ...") is
@@ -54,6 +59,10 @@ import { newFieldsList } from "@/collections/fields-list";
 import { createViewFields, saveView, wrapError } from "@/collections/view";
 import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
 import { refsOnCollectionDeleteExecute } from "@/records/record-auth-refs";
+import {
+  realtimeCollectionAfterDelete,
+  realtimeCollectionUpdate,
+} from "@/realtime/realtime-events";
 import { relabelRateLimitRules } from "@/settings/settings-query";
 import type { Params } from "@/db/dbx/query";
 import type { Model } from "@/db/model";
@@ -104,8 +113,11 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
   afterTransactionError(app, () => {});
 
   // the storage cleanup after the delete (registerBaseHooks'
-  // "__pbFilesManagerDelete__"; after the outer transaction, if any)
+  // "__pbFilesManagerDelete__"; after the outer transaction, if any),
+  // after the realtime clients' auth reset
   const deleteFiles = (): void => {
+    realtimeCollectionAfterDelete(app, collection);
+
     const waiting = app.filesystem.deleteModelFiles({
       baseFilesPath: () => collection.baseFilesPath(),
       fieldTypes: () => [...collection.fields].map((f) => f.type()),
@@ -141,6 +153,17 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
 
   try {
     onCollectionSave(app, collection);
+
+    // the auth collection as it was, for the realtime auth reset
+    // (bindRealtimeEvents' OnCollectionUpdate)
+    let cachedAuth: Collection | null = null;
+    if (!isNew && collection.isAuth()) {
+      try {
+        cachedAuth = findCachedCollectionByNameOrId(app, collection.id);
+      } catch {
+        // not cached: nothing to compare
+      }
+    }
 
     // the old name for the rate limit rule relabel (registerSettingsHooks)
     let oldName: string | null = null;
@@ -179,6 +202,8 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
         collection.name,
       );
     }
+
+    realtimeCollectionUpdate(app, collection, cachedAuth);
   } catch (err) {
     if (isNew) {
       collection.markAsNew(); // reset "new" state
