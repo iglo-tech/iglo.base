@@ -10,7 +10,7 @@ M5.1 (realtime) merged; M2.6 active, then the rest in milestone order (work plan
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.6 | fix | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 1 | [brief](briefs/M2.6.md); Sol CHANGES at `f92d3c9` (fuzzer oracle too weak on partial pages, replay not stable); fixer running, both seeds rerun |
+| M2.6 | review | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 2 | [brief](briefs/M2.6.md); head `287d0e2`, local checks pass, two 100,000-case seeds clean with the stronger comparison |
 
 ## Done
 
