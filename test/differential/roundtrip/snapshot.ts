@@ -305,6 +305,15 @@ export function isThumb(path: string): boolean {
   return segments.length === 4 && (segments[2] as string).startsWith("thumbs_");
 }
 
+// a thumbnail's own file: not a directory and not a sidecar
+function isThumbBlob(dir: string, path: string): boolean {
+  return (
+    isThumb(path) &&
+    !path.endsWith(".attrs") &&
+    statSync(join(dir, path), { throwIfNoEntry: false })?.isFile() === true
+  );
+}
+
 // raw paths of the thumbnails in a pb_data directory no server uses
 export function thumbPaths(dataDir: string): Set<string> {
   return new Set(walk(join(dataDir, "storage")).filter((p) => isThumb(p) && !p.endsWith("/")));
@@ -447,7 +456,7 @@ function readStorage(dataDir: string, normalizer: Normalizer, options: SnapshotO
       lines.push(normalized);
       continue;
     }
-    if (isThumb(path) && !path.endsWith(".attrs")) {
+    if (isThumbBlob(dir, path)) {
       const bytes = readFileSync(join(dir, path));
       const attrsPath = join(dir, `${path}.attrs`);
       const rawAttrs = existsSync(attrsPath) ? readFileSync(attrsPath, "utf8") : "";
@@ -464,7 +473,7 @@ function readStorage(dataDir: string, normalizer: Normalizer, options: SnapshotO
       continue;
     }
     if (path.endsWith(".attrs")) {
-      if (isThumb(path) && existsSync(join(dir, path.slice(0, -".attrs".length)))) {
+      if (isThumbBlob(dir, path.slice(0, -".attrs".length))) {
         continue; // with its thumbnail
       }
       lines.push(`${normalized} ${normalizer.replaceNames(readFileSync(join(dir, path), "utf8"))}`);

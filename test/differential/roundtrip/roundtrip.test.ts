@@ -16,7 +16,7 @@ import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
 import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import {
   freshStart,
@@ -390,6 +390,22 @@ describe("a fresh install", () => {
       const out = altered((dataDir) => {
         const attrs = storedPaths(dataDir, ".png.attrs").find(thumbFile) as string;
         writeFileSync(attrs.replace(/\.attrs$/, ".stray.attrs"), "{}");
+      });
+      expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);
+    });
+
+    test("a sidecar of a thumbnail's sidecar", () => {
+      const out = altered((dataDir) => {
+        const attrs = storedPaths(dataDir, ".png.attrs").find(thumbFile) as string;
+        writeFileSync(`${attrs}.attrs`, "{}");
+      });
+      expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);
+    });
+
+    test("a sidecar of a thumbnail directory", () => {
+      const out = altered((dataDir) => {
+        const attrs = storedPaths(dataDir, ".png.attrs").find(thumbFile) as string;
+        writeFileSync(join(dirname(attrs), ".attrs"), "{}");
       });
       expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);
     });
