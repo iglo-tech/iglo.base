@@ -34,7 +34,7 @@ export class ResponseWriter {
   #sentHeader: Headers | undefined;
   #chunks: Uint8Array[] = [];
   // a body set by writeBody, sent as it is
-  #body: Blob | null = null;
+  #body: Blob | ReadableStream<Uint8Array> | null = null;
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
   readonly #onCommit: ((response: Response) => void) | undefined;
@@ -80,10 +80,11 @@ export class ResponseWriter {
     return undefined;
   }
 
-  // Sets the whole response body to a Blob (e.g. a stored file), which is
-  // streamed to the client when the handler returns instead of being read
-  // into memory. Only valid before anything else is written or flushed.
-  writeBody(body: Blob): Error | undefined {
+  // Sets the whole response body to a Blob (e.g. a stored file) or a
+  // stream, which is sent to the client as it reads it, once the handler
+  // returns, instead of being read into memory. Only valid before anything
+  // else is written or flushed.
+  writeBody(body: Blob | ReadableStream<Uint8Array>): Error | undefined {
     if (!this.#written) {
       this.writeHeader(200);
     }
@@ -93,7 +94,7 @@ export class ResponseWriter {
     if (this.#committed || this.#chunks.length > 0 || this.#body !== null) {
       return new Error("writeBody after other body writes");
     }
-    if (body.size > 0) {
+    if (!(body instanceof Blob) || body.size > 0) {
       this.#body = body;
     }
     return undefined;

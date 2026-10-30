@@ -536,7 +536,7 @@ export function serveContent(
 
   // handle Content-Range header.
   let sendSize = size;
-  let sendContent: Uint8Array | Blob = content;
+  let sendContent: Uint8Array | Blob | ReadableStream<Uint8Array> = content;
   let ranges: HttpRange[];
   try {
     ranges = parseRange(rangeReq, size);
@@ -593,7 +593,7 @@ export function serveContent(
     sendSize = parts.reduce((n, p) => n + (p instanceof Blob ? p.size : p.length), 0);
     sendContent =
       content instanceof Blob
-        ? new Blob(parts)
+        ? partsStream(parts)
         : new Uint8Array(Buffer.concat(parts as Uint8Array[]));
     code = 206;
     w.header.set("Content-Type", `multipart/byteranges; boundary=${boundary}`);
@@ -613,10 +613,49 @@ export function serveContent(
   w.writeHeader(code);
 
   if (r.method !== "HEAD") {
-    if (sendContent instanceof Blob) {
-      w.writeBody(sendContent);
-    } else {
+    if (sendContent instanceof Uint8Array) {
       w.write(sendContent);
+    } else {
+      w.writeBody(sendContent);
     }
   }
+}
+
+// The parts of a multipart/byteranges body one after the other, each Blob
+// read as the client takes the data (a Blob built from file-backed Blobs
+// would not stream them).
+function partsStream(parts: (Uint8Array | Blob)[]): ReadableStream<Uint8Array> {
+  let i = 0;
+  let reader: {
+    read(): Promise<{ done: boolean; value?: Uint8Array }>;
+    cancel(): Promise<void>;
+  } | null = null;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      for (;;) {
+        if (reader !== null) {
+          const { done, value } = await reader.read();
+          if (!done && value !== undefined) {
+            controller.enqueue(value);
+            return;
+          }
+          reader = null;
+        }
+        const part = parts[i++];
+        if (part === undefined) {
+          controller.close();
+          return;
+        }
+        if (part instanceof Blob) {
+          reader = part.stream().getReader();
+        } else {
+          controller.enqueue(part);
+          return;
+        }
+      }
+    },
+    cancel() {
+      void reader?.cancel();
+    },
+  });
 }
