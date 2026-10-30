@@ -85,7 +85,7 @@ export function dynamicCollectionBodyLimit(collectionPathParam = ""): Handler<Re
   };
 }
 
-function applyBodyLimit(e: RequestEvent, limitBytes: bigint): ApiError | undefined {
+export function applyBodyLimit(e: RequestEvent, limitBytes: bigint): ApiError | undefined {
   // no limit
   if (limitBytes <= 0n) {
     return undefined;

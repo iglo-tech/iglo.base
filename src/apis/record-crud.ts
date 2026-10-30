@@ -4,17 +4,23 @@
 //
 // The OnRecordsListRequest, OnRecordViewRequest, OnRecordCreateRequest,
 // OnRecordUpdateRequest and OnRecordDeleteRequest hooks are not ported (no
-// extension surface): their default actions run directly. The records and
-// the rule checks are read through the async resolvers, on the read worker
-// pool; the saves and deletes go through src/records/record-save.ts. Not
+// extension surface): their default actions run directly. On the routes the
+// records and the rule checks are read through the async resolvers, on the
+// read worker pool; the saves and deletes go through
+// src/records/record-save.ts. Not
 // here yet: checkCollectionRateLimit (the settings rate limit rules,
 // M4.8), so the `<collection>:<action>` rules are not applied.
 //
-// The create, update and delete handlers take upstream's
-// responseWriteAfterTx and optFinalizer parameters for the batch API
-// (M3.3). Without a transaction (the routes here) execAfterSuccessTx writes
-// the response at once. Realtime broadcasts (M5.1) follow the record
-// save/delete after commit, outside these handlers.
+// The create, update and delete handlers are one implementation for the
+// routes and the batch API (D28): each is a step (src/records/record-save.ts)
+// that yields every read and write through a RecordIO. The routes run them
+// with routeIO, on the read pool; src/batch runs them synchronously in its
+// transaction, with txRecordIO. Upstream's responseWriteAfterTx and
+// optFinalizer have no counterpart: a route is never in a transaction, so
+// execAfterSuccessTx writes the response at once, and the batch runs its
+// items in a loop instead of nesting them in optFinalizer (src/batch/batch.ts
+// keeps what that nesting does to a later item's error). Realtime broadcasts
+// (M5.1) follow the record save/delete after commit, outside these handlers.
 //
 // The timing throttle sleeps with the router option's sleep (Bun.sleep
 // unless a test replaces it); its limiter windows read the app clock.
@@ -34,12 +40,16 @@ import { DefaultRateLimitMiddlewareId } from "@/middlewares/middlewares";
 import { checkRateLimit, type RateLimitRule } from "@/middlewares/rate-limit";
 import { type DataMap, newRecord, type Record } from "@/records/record-model";
 import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
-import { deleteRecord, driverValue } from "@/records/record-save";
+import { expandRecordSync } from "@/records/record-query-expand";
+import { deleteRecord, deleteRecordSync, driverValue, run, type Step } from "@/records/record-save";
 import { RecordUpsert } from "@/records/record-upsert";
 import {
+  autoResolveRecordsFlagsSync,
   checkForSuperuserOnlyRuleFields,
   enrichRecord,
   enrichRecords,
+  expandFetchSync,
+  expandQueryParam,
   firstApiError,
   newRequestFieldResolver,
 } from "@/apis/record-helpers";
@@ -56,11 +66,94 @@ import { toUniqueStringSlice } from "@/tools/list/list";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { pseudorandomString, randomString } from "@/tools/security/random";
 
-// the optional finalizer of the create, update and delete handlers (the
-// batch API, M3.3), called with the saved or deleted record
-export type OptFinalizer =
-  | ((data: unknown) => Error | undefined | Promise<Error | undefined>)
-  | null;
+// a handler as a step: yields what RecordIO returns and gets it back resolved
+export type HandlerStep = Generator<unknown, HandlerResult, unknown>;
+
+// What a handler reads and writes (D28). A method's result is yielded, so it
+// may be a promise on the routes and must not be one in a transaction.
+export interface RecordIO {
+  requestInfo(e: RequestEvent): RequestInfo | Error | Promise<RequestInfo | Error>;
+  // FindUploadedFiles: throws ErrMissingFile when the key has no files
+  uploadedFiles(e: RequestEvent, key: string): File[] | Promise<File[]>;
+  row(q: SelectQuery): unknown[] | Promise<unknown[]>;
+  record(q: SelectQuery): Record | Promise<Record>;
+  submit(form: RecordUpsert): void | Promise<void>;
+  deleteRecord(e: RequestEvent, record: Record): void | Promise<void>;
+  enrich(e: RequestEvent, record: Record): Error | undefined | Promise<Error | undefined>;
+}
+
+// the routes: the reads go through the read pool
+const routeIO: RecordIO = {
+  requestInfo: (e) => e.requestInfo(),
+  uploadedFiles: (e, key) => e.findUploadedFiles(key),
+  row: (q) => q.rowAsync(),
+  record: (q) => q.oneAsync<Record>(recordTarget),
+  submit: (form) => form.submit(),
+  deleteRecord: (e, record) => deleteRecord(e.app, record),
+  enrich: (e, record) => enrichRecord(e, record),
+};
+
+// a batch item in its transaction: the reads stay on the transaction's
+// connection, and what needs an await was prepared before the transaction
+// opened
+export function txRecordIO(
+  requestInfo: RequestInfo | Error,
+  uploadedFiles: ReadonlyMap<string, File[]>,
+): RecordIO {
+  return {
+    requestInfo: () => requestInfo,
+    uploadedFiles: (_e, key) => {
+      const files = uploadedFiles.get(key);
+      if (files === undefined || files.length === 0) {
+        throw ErrMissingFile;
+      }
+      return files;
+    },
+    row: (q) => q.row(),
+    record: (q) => q.one<Record>(recordTarget),
+    submit: (form) => {
+      form.submitSync();
+    },
+    deleteRecord: (e, record) => {
+      deleteRecordSync(e.app, record);
+    },
+    enrich: (e, record) =>
+      requestInfo instanceof Error ? requestInfo : enrichRecordSync(e, requestInfo, record),
+  };
+}
+
+// enrichRecord with synchronous reads
+function enrichRecordSync(e: RequestEvent, info: RequestInfo, record: Record): undefined {
+  const param = Object.hasOwn(info.query, expandQueryParam) ? info.query[expandQueryParam] : "";
+  const expands = param !== undefined && param !== "" ? param.split(",") : [];
+
+  try {
+    autoResolveRecordsFlagsSync(e.app, [record], info);
+    if (expands.length > 0) {
+      expandRecordSync(e.app, record, expands, expandFetchSync(e.app, info));
+    }
+  } catch {
+    // only logged upstream because it is not critical
+  }
+
+  return undefined;
+}
+
+// a handler step as a route handler
+function routeHandler(
+  step: (e: RequestEvent, io: RecordIO) => HandlerStep,
+): (e: RequestEvent) => Promise<HandlerResult> {
+  return async (e) => {
+    const result: { value?: HandlerResult } = {};
+    await run(collectResult(step(e, routeIO), result));
+    return result.value;
+  };
+}
+
+// runs a handler step as a chain step that leaves its result in out
+export function* collectResult(step: HandlerStep, out: { value?: HandlerResult }): Step {
+  out.value = yield* step;
+}
 
 export interface RecordCrudOptions {
   // the randomized throttle's sleep (Bun.sleep by default)
@@ -83,9 +176,9 @@ export function bindRecordCrudApi(
     .unbind(DefaultRateLimitMiddlewareId);
   subGroup.GET("", (e) => recordsList(e, sleep));
   subGroup.GET("/{id}", recordView);
-  subGroup.POST("", recordCreate(true, null)).bind(dynamicCollectionBodyLimit(""));
-  subGroup.PATCH("/{id}", recordUpdate(true, null)).bind(dynamicCollectionBodyLimit(""));
-  subGroup.DELETE("/{id}", recordDelete(true, null));
+  subGroup.POST("", routeHandler(recordCreate)).bind(dynamicCollectionBodyLimit(""));
+  subGroup.PATCH("/{id}", routeHandler(recordUpdate)).bind(dynamicCollectionBodyLimit(""));
+  subGroup.DELETE("/{id}", routeHandler(recordDelete));
 }
 
 async function recordsList(
@@ -278,469 +371,408 @@ function asError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
 }
 
-export function recordCreate(
-  _responseWriteAfterTx: boolean,
-  optFinalizer: OptFinalizer,
-): (e: RequestEvent) => Promise<HandlerResult> {
-  return async (e) => {
-    let collection: Collection;
+export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
+  let collection: Collection;
+  try {
+    collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
+  } catch (err) {
+    return e.notFoundError("Missing collection context.", err);
+  }
+
+  if (collection.isView()) {
+    return e.badRequestError("Unsupported collection type.", null);
+  }
+
+  // checkCollectionRateLimit(e, collection, "create") lands with M4.8
+
+  const requestInfo = (yield io.requestInfo(e)) as RequestInfo | Error;
+  if (requestInfo instanceof Error) {
+    return firstApiError(requestInfo, e.badRequestError("", requestInfo));
+  }
+
+  const hasSuperuserAuth = requestInfo.hasSuperuserAuth();
+  if (!hasSuperuserAuth && collection.createRule === null) {
+    return e.forbiddenError("Only superusers can perform this action.", null);
+  }
+
+  const record = newRecord(collection);
+
+  let data: DataMap | null;
+  try {
+    data = yield* recordDataFromRequest(e, record, io);
+  } catch (err) {
+    return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
+  }
+
+  // set a random password for the OAuth2 ignoring its plain password validators
+  let skipPlainPasswordRecordValidators = false;
+  if (requestInfo.context === RequestInfoContextOAuth2) {
+    data ??= {};
+    if (!Object.hasOwn(data, FieldNamePassword)) {
+      data[FieldNamePassword] = randomString(30);
+      data[FieldNamePassword + "Confirm"] = data[FieldNamePassword];
+      skipPlainPasswordRecordValidators = true;
+    }
+  }
+
+  // replace modifiers fields so that the resolved value is always
+  // available when accessing requestInfo.Body
+  requestInfo.body = data;
+
+  const form = new RecordUpsert(e.app, record);
+  if (hasSuperuserAuth) {
+    form.grantSuperuserAccess();
+  }
+  form.load(data);
+
+  if (skipPlainPasswordRecordValidators) {
+    // unset the plain value to skip the plain password field validators
+    const raw = record.getRaw(FieldNamePassword);
+    if (raw instanceof PasswordFieldValue) {
+      raw.plain = "";
+    }
+  }
+
+  // check the request and record data against the create and manage rules
+  if (!hasSuperuserAuth && collection.createRule !== null) {
+    const dummyRecord = record.clone();
+
+    const dummyRandomPart = "__pb_create__" + pseudorandomString(6);
+
+    // set an id if it doesn't have already
+    // (the value doesn't matter; it is used only to minimize the breaking changes with earlier versions)
+    if (dummyRecord.id === "") {
+      dummyRecord.id = "__temp_id__" + dummyRandomPart;
+    }
+
+    // unset the verified field to prevent manage API rule misuse in case the rule relies on it
+    dummyRecord.setVerified(false);
+
+    // export the dummy record data into db params
+    let dummyExport: Params;
     try {
-      collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
+      dummyExport = dummyRecord.dbExport();
     } catch (err) {
-      return e.notFoundError("Missing collection context.", err);
-    }
-
-    if (collection.isView()) {
-      return e.badRequestError("Unsupported collection type.", null);
-    }
-
-    // checkCollectionRateLimit(e, collection, "create") lands with M4.8
-
-    const requestInfo = await e.requestInfo();
-    if (requestInfo instanceof Error) {
-      return firstApiError(requestInfo, e.badRequestError("", requestInfo));
-    }
-
-    const hasSuperuserAuth = requestInfo.hasSuperuserAuth();
-    if (!hasSuperuserAuth && collection.createRule === null) {
-      return e.forbiddenError("Only superusers can perform this action.", null);
-    }
-
-    const record = newRecord(collection);
-
-    let data: DataMap | null;
-    try {
-      data = await recordDataFromRequest(e, record);
-    } catch (err) {
-      return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
-    }
-
-    // set a random password for the OAuth2 ignoring its plain password validators
-    let skipPlainPasswordRecordValidators = false;
-    if (requestInfo.context === RequestInfoContextOAuth2) {
-      data ??= {};
-      if (!Object.hasOwn(data, FieldNamePassword)) {
-        data[FieldNamePassword] = randomString(30);
-        data[FieldNamePassword + "Confirm"] = data[FieldNamePassword];
-        skipPlainPasswordRecordValidators = true;
-      }
-    }
-
-    // replace modifiers fields so that the resolved value is always
-    // available when accessing requestInfo.Body
-    requestInfo.body = data;
-
-    const form = new RecordUpsert(e.app, record);
-    if (hasSuperuserAuth) {
-      form.grantSuperuserAccess();
-    }
-    form.load(data);
-
-    if (skipPlainPasswordRecordValidators) {
-      // unset the plain value to skip the plain password field validators
-      const raw = record.getRaw(FieldNamePassword);
-      if (raw instanceof PasswordFieldValue) {
-        raw.plain = "";
-      }
-    }
-
-    // check the request and record data against the create and manage rules
-    if (!hasSuperuserAuth && collection.createRule !== null) {
-      const dummyRecord = record.clone();
-
-      const dummyRandomPart = "__pb_create__" + pseudorandomString(6);
-
-      // set an id if it doesn't have already
-      // (the value doesn't matter; it is used only to minimize the breaking changes with earlier versions)
-      if (dummyRecord.id === "") {
-        dummyRecord.id = "__temp_id__" + dummyRandomPart;
-      }
-
-      // unset the verified field to prevent manage API rule misuse in case the rule relies on it
-      dummyRecord.setVerified(false);
-
-      // export the dummy record data into db params
-      let dummyExport: Params;
-      try {
-        dummyExport = dummyRecord.dbExport();
-      } catch (err) {
-        return e.badRequestError(
-          "Failed to create record",
-          new Error(`dummy DBExport error: ${errorMessage(err)}`, { cause: err }),
-        );
-      }
-
-      const dummyParams: Params = {};
-      const selects: string[] = [];
-      for (let [k, v] of Object.entries(dummyExport)) {
-        // bound as Go's driver binds the typed values
-        const value = driverValue(k, v);
-        k = columnify(k); // columnify is just as extra measure in case of custom fields
-        const param = "__pb_create__" + k;
-        if (isExpression(value) && v instanceof JSONRaw) {
-          // JSON text that is not valid UTF-8: a Go string with its bytes
-          setOwn(dummyParams, param, v.value());
-          selects.push("CAST({:" + param + "} AS TEXT) AS [[" + k + "]]");
-          continue;
-        }
-        setOwn(dummyParams, param, value);
-        selects.push("{:" + param + "} AS [[" + k + "]]");
-      }
-
-      // shallow clone the current collection
-      const dummyCollection = Object.assign(
-        Object.create(Object.getPrototypeOf(collection) as object) as Collection,
-        collection,
+      return e.badRequestError(
+        "Failed to create record",
+        new Error(`dummy DBExport error: ${errorMessage(err)}`, { cause: err }),
       );
-      dummyCollection.id += dummyRandomPart;
-      dummyCollection.name += columnify(dummyRandomPart);
+    }
 
-      const withFrom = `WITH {{${dummyCollection.name}}} as (SELECT ${selects.join(",")})`;
-
-      // check non-empty create rule
-      if (dummyCollection.createRule !== "") {
-        const ruleQuery = e.app.databases
-          .concurrentDB()
-          .select("(1)")
-          .preFragment(withFrom)
-          .from(dummyCollection.name)
-          .andBind(dummyParams);
-
-        const resolver = newRequestFieldResolver(e.app, dummyCollection, requestInfo, true);
-
-        try {
-          const expr = filterBuildExpr(
-            dummyCollection.createRule as string,
-            resolver,
-            resolver.filterOptions(),
-          );
-          ruleQuery.andWhere(expr);
-        } catch (err) {
-          return e.badRequestError(
-            "Failed to create record",
-            new Error(`create rule build expression failure: ${errorMessage(err)}`, {
-              cause: err,
-            }),
-          );
-        }
-
-        try {
-          resolver.updateQuery(ruleQuery);
-        } catch (err) {
-          return e.badRequestError(
-            "Failed to create record",
-            new Error(`create rule update query failure: ${errorMessage(err)}`, { cause: err }),
-          );
-        }
-
-        let exists = 0;
-        let ruleErr: unknown = null;
-        try {
-          const row = await ruleQuery.limit(1).rowAsync();
-          exists = Number(row[0] ?? 0);
-        } catch (err) {
-          ruleErr = err;
-        }
-        if (ruleErr !== null || exists === 0) {
-          return e.badRequestError(
-            "Failed to create record",
-            new Error(
-              `create rule failure: ${ruleErr === null ? "<nil>" : errorMessage(ruleErr)}`,
-              {
-                cause: ruleErr,
-              },
-            ),
-          );
-        }
+    const dummyParams: Params = {};
+    const selects: string[] = [];
+    for (let [k, v] of Object.entries(dummyExport)) {
+      // bound as Go's driver binds the typed values
+      const value = driverValue(k, v);
+      k = columnify(k); // columnify is just as extra measure in case of custom fields
+      const param = "__pb_create__" + k;
+      if (isExpression(value) && v instanceof JSONRaw) {
+        // JSON text that is not valid UTF-8: a Go string with its bytes
+        setOwn(dummyParams, param, v.value());
+        selects.push("CAST({:" + param + "} AS TEXT) AS [[" + k + "]]");
+        continue;
       }
+      setOwn(dummyParams, param, value);
+      selects.push("{:" + param + "} AS [[" + k + "]]");
+    }
 
-      // check for manage rule access
-      const manageRuleQuery = e.app.databases
+    // shallow clone the current collection
+    const dummyCollection = Object.assign(
+      Object.create(Object.getPrototypeOf(collection) as object) as Collection,
+      collection,
+    );
+    dummyCollection.id += dummyRandomPart;
+    dummyCollection.name += columnify(dummyRandomPart);
+
+    const withFrom = `WITH {{${dummyCollection.name}}} as (SELECT ${selects.join(",")})`;
+
+    // check non-empty create rule
+    if (dummyCollection.createRule !== "") {
+      const ruleQuery = e.app.databases
         .concurrentDB()
         .select("(1)")
         .preFragment(withFrom)
         .from(dummyCollection.name)
         .andBind(dummyParams);
-      if (
-        !form.hasManageAccess() &&
-        (await hasAuthManageAccess(e.app, requestInfo, dummyCollection, manageRuleQuery))
-      ) {
-        form.grantManagerAccess();
+
+      const resolver = newRequestFieldResolver(e.app, dummyCollection, requestInfo, true);
+
+      try {
+        const expr = filterBuildExpr(
+          dummyCollection.createRule as string,
+          resolver,
+          resolver.filterOptions(),
+        );
+        ruleQuery.andWhere(expr);
+      } catch (err) {
+        return e.badRequestError(
+          "Failed to create record",
+          new Error(`create rule build expression failure: ${errorMessage(err)}`, {
+            cause: err,
+          }),
+        );
+      }
+
+      try {
+        resolver.updateQuery(ruleQuery);
+      } catch (err) {
+        return e.badRequestError(
+          "Failed to create record",
+          new Error(`create rule update query failure: ${errorMessage(err)}`, { cause: err }),
+        );
+      }
+
+      let exists = 0;
+      let ruleErr: unknown = null;
+      try {
+        const row = (yield io.row(ruleQuery.limit(1))) as unknown[];
+        exists = Number(row[0] ?? 0);
+      } catch (err) {
+        ruleErr = err;
+      }
+      if (ruleErr !== null || exists === 0) {
+        return e.badRequestError(
+          "Failed to create record",
+          new Error(`create rule failure: ${ruleErr === null ? "<nil>" : errorMessage(ruleErr)}`, {
+            cause: ruleErr,
+          }),
+        );
       }
     }
 
-    // the default OnRecordCreateRequest action
-    form.setApp(e.app);
-    form.setRecord(record);
-
-    try {
-      await form.submit();
-    } catch (err) {
-      return firstApiError(err, e.badRequestError("Failed to create record", err));
-    }
-
-    const enrichErr = await enrichRecord(e, record);
-    if (enrichErr) {
-      return firstApiError(enrichErr, e.internalServerError("Failed to enrich record", enrichErr));
-    }
-
-    // execAfterSuccessTx: the handler never runs in a transaction here
-    const writeErr = e.json(200, record);
-    if (writeErr) {
-      return writeErr;
-    }
-
-    if (optFinalizer !== null) {
-      const err = await optFinalizer(record);
-      if (err) {
-        return firstApiError(err, e.internalServerError("", err));
-      }
-    }
-
-    return undefined;
-  };
-}
-
-export function recordUpdate(
-  _responseWriteAfterTx: boolean,
-  optFinalizer: OptFinalizer,
-): (e: RequestEvent) => Promise<HandlerResult> {
-  return async (e) => {
-    let collection: Collection;
-    try {
-      collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-    } catch (err) {
-      return e.notFoundError("Missing collection context.", err);
-    }
-
-    if (collection.isView()) {
-      return e.badRequestError("Unsupported collection type.", null);
-    }
-
-    // checkCollectionRateLimit(e, collection, "update") lands with M4.8
-
-    const recordId = e.request.pathValue("id");
-    if (recordId === "") {
-      return e.notFoundError("", null);
-    }
-
-    const requestInfo = await e.requestInfo();
-    if (requestInfo instanceof Error) {
-      return firstApiError(requestInfo, e.badRequestError("", requestInfo));
-    }
-
-    const hasSuperuserAuth = requestInfo.hasSuperuserAuth();
-
-    if (!hasSuperuserAuth && collection.updateRule === null) {
-      return firstApiError(
-        undefined,
-        e.forbiddenError("Only superusers can perform this action.", null),
-      );
-    }
-
-    // eager fetch the record so that the modifiers field values can be resolved
-    let record: Record;
-    try {
-      record = await findRecordByIdAsync(e.app, collection, recordId, null);
-    } catch (err) {
-      return firstApiError(err, e.notFoundError("", err));
-    }
-
-    let data: DataMap | null;
-    try {
-      data = await recordDataFromRequest(e, record);
-    } catch (err) {
-      return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
-    }
-
-    // replace modifiers fields so that the resolved value is always
-    // available when accessing requestInfo.Body
-    requestInfo.body = data;
-
-    const ruleFunc = (q: SelectQuery): void => {
-      if (!hasSuperuserAuth && collection.updateRule !== null && collection.updateRule !== "") {
-        const resolver = newRequestFieldResolver(e.app, collection, requestInfo, true);
-
-        const expr = filterBuildExpr(collection.updateRule, resolver, resolver.filterOptions());
-
-        q.andWhere(expr);
-
-        resolver.updateQuery(q);
-      }
-    };
-
-    // refetch with access checks
-    try {
-      record = await findRecordByIdAsync(e.app, collection, recordId, ruleFunc);
-    } catch (err) {
-      return firstApiError(err, e.notFoundError("", err));
-    }
-
-    const form = new RecordUpsert(e.app, record);
-    if (hasSuperuserAuth) {
-      form.grantSuperuserAccess();
-    }
-    form.load(data);
-
+    // check for manage rule access
     const manageRuleQuery = e.app.databases
       .concurrentDB()
       .select("(1)")
-      .from(collection.name)
-      .andWhere(new HashExp({ [collection.name + ".id"]: record.id }));
+      .preFragment(withFrom)
+      .from(dummyCollection.name)
+      .andBind(dummyParams);
     if (
       !form.hasManageAccess() &&
-      (await hasAuthManageAccess(e.app, requestInfo, collection, manageRuleQuery))
+      (yield* hasAuthManageAccess(e.app, requestInfo, dummyCollection, manageRuleQuery, io))
     ) {
       form.grantManagerAccess();
     }
+  }
 
-    // the default OnRecordUpdateRequest action
-    form.setApp(e.app);
-    form.setRecord(record);
+  // the default OnRecordCreateRequest action
+  form.setApp(e.app);
+  form.setRecord(record);
 
-    try {
-      await form.submit();
-    } catch (err) {
-      return firstApiError(err, e.badRequestError("Failed to update record.", err));
-    }
+  try {
+    yield io.submit(form);
+  } catch (err) {
+    return firstApiError(err, e.badRequestError("Failed to create record", err));
+  }
 
-    const enrichErr = await enrichRecord(e, record);
-    if (enrichErr) {
-      return firstApiError(enrichErr, e.internalServerError("Failed to enrich record", enrichErr));
-    }
+  const enrichErr = (yield io.enrich(e, record)) as Error | undefined;
+  if (enrichErr) {
+    return firstApiError(enrichErr, e.internalServerError("Failed to enrich record", enrichErr));
+  }
 
-    // execAfterSuccessTx: the handler never runs in a transaction here
-    const writeErr = e.json(200, record);
-    if (writeErr) {
-      return writeErr;
-    }
-
-    if (optFinalizer !== null) {
-      const err = await optFinalizer(record);
-      if (err) {
-        return firstApiError(
-          err,
-          e.internalServerError(
-            "",
-            new Error(`update optFinalizer error: ${errorMessage(err)}`, { cause: err }),
-          ),
-        );
-      }
-    }
-
-    return undefined;
-  };
+  // execAfterSuccessTx: the response is written at once (see the top of the file)
+  return e.json(200, record);
 }
 
-export function recordDelete(
-  _responseWriteAfterTx: boolean,
-  optFinalizer: OptFinalizer,
-): (e: RequestEvent) => Promise<HandlerResult> {
-  return async (e) => {
-    let collection: Collection;
-    try {
-      collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-    } catch (err) {
-      return e.notFoundError("Missing collection context.", err);
+export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
+  let collection: Collection;
+  try {
+    collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
+  } catch (err) {
+    return e.notFoundError("Missing collection context.", err);
+  }
+
+  if (collection.isView()) {
+    return e.badRequestError("Unsupported collection type.", null);
+  }
+
+  // checkCollectionRateLimit(e, collection, "update") lands with M4.8
+
+  const recordId = e.request.pathValue("id");
+  if (recordId === "") {
+    return e.notFoundError("", null);
+  }
+
+  const requestInfo = (yield io.requestInfo(e)) as RequestInfo | Error;
+  if (requestInfo instanceof Error) {
+    return firstApiError(requestInfo, e.badRequestError("", requestInfo));
+  }
+
+  const hasSuperuserAuth = requestInfo.hasSuperuserAuth();
+
+  if (!hasSuperuserAuth && collection.updateRule === null) {
+    return firstApiError(
+      undefined,
+      e.forbiddenError("Only superusers can perform this action.", null),
+    );
+  }
+
+  // eager fetch the record so that the modifiers field values can be resolved
+  let record: Record;
+  try {
+    record = (yield findRecordByIdIO(e.app, collection, recordId, null, io)) as Record;
+  } catch (err) {
+    return firstApiError(err, e.notFoundError("", err));
+  }
+
+  let data: DataMap | null;
+  try {
+    data = yield* recordDataFromRequest(e, record, io);
+  } catch (err) {
+    return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
+  }
+
+  // replace modifiers fields so that the resolved value is always
+  // available when accessing requestInfo.Body
+  requestInfo.body = data;
+
+  const ruleFunc = (q: SelectQuery): void => {
+    if (!hasSuperuserAuth && collection.updateRule !== null && collection.updateRule !== "") {
+      const resolver = newRequestFieldResolver(e.app, collection, requestInfo, true);
+
+      const expr = filterBuildExpr(collection.updateRule, resolver, resolver.filterOptions());
+
+      q.andWhere(expr);
+
+      resolver.updateQuery(q);
     }
+  };
 
-    if (collection.isView()) {
-      return e.badRequestError("Unsupported collection type.", null);
+  // refetch with access checks
+  try {
+    record = (yield findRecordByIdIO(e.app, collection, recordId, ruleFunc, io)) as Record;
+  } catch (err) {
+    return firstApiError(err, e.notFoundError("", err));
+  }
+
+  const form = new RecordUpsert(e.app, record);
+  if (hasSuperuserAuth) {
+    form.grantSuperuserAccess();
+  }
+  form.load(data);
+
+  const manageRuleQuery = e.app.databases
+    .concurrentDB()
+    .select("(1)")
+    .from(collection.name)
+    .andWhere(new HashExp({ [collection.name + ".id"]: record.id }));
+  if (
+    !form.hasManageAccess() &&
+    (yield* hasAuthManageAccess(e.app, requestInfo, collection, manageRuleQuery, io))
+  ) {
+    form.grantManagerAccess();
+  }
+
+  // the default OnRecordUpdateRequest action
+  form.setApp(e.app);
+  form.setRecord(record);
+
+  try {
+    yield io.submit(form);
+  } catch (err) {
+    return firstApiError(err, e.badRequestError("Failed to update record.", err));
+  }
+
+  const enrichErr = (yield io.enrich(e, record)) as Error | undefined;
+  if (enrichErr) {
+    return firstApiError(enrichErr, e.internalServerError("Failed to enrich record", enrichErr));
+  }
+
+  // execAfterSuccessTx: the response is written at once (see the top of the file)
+  return e.json(200, record);
+}
+
+export function* recordDelete(e: RequestEvent, io: RecordIO): HandlerStep {
+  let collection: Collection;
+  try {
+    collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
+  } catch (err) {
+    return e.notFoundError("Missing collection context.", err);
+  }
+
+  if (collection.isView()) {
+    return e.badRequestError("Unsupported collection type.", null);
+  }
+
+  // checkCollectionRateLimit(e, collection, "delete") lands with M4.8
+
+  const recordId = e.request.pathValue("id");
+  if (recordId === "") {
+    return e.notFoundError("", null);
+  }
+
+  const requestInfo = (yield io.requestInfo(e)) as RequestInfo | Error;
+  if (requestInfo instanceof Error) {
+    return firstApiError(requestInfo, e.badRequestError("", requestInfo));
+  }
+
+  if (!requestInfo.hasSuperuserAuth() && collection.deleteRule === null) {
+    return e.forbiddenError("Only superusers can perform this action.", null);
+  }
+
+  const ruleFunc = (q: SelectQuery): void => {
+    if (
+      !requestInfo.hasSuperuserAuth() &&
+      collection.deleteRule !== null &&
+      collection.deleteRule !== ""
+    ) {
+      const resolver = newRequestFieldResolver(e.app, collection, requestInfo, true);
+
+      const expr = filterBuildExpr(collection.deleteRule, resolver, resolver.filterOptions());
+
+      q.andWhere(expr);
+
+      resolver.updateQuery(q);
     }
+  };
 
-    // checkCollectionRateLimit(e, collection, "delete") lands with M4.8
+  let record: Record;
+  try {
+    record = (yield findRecordByIdIO(e.app, collection, recordId, ruleFunc, io)) as Record;
+  } catch (err) {
+    return e.notFoundError("", err);
+  }
 
-    const recordId = e.request.pathValue("id");
-    if (recordId === "") {
-      return e.notFoundError("", null);
-    }
-
-    const requestInfo = await e.requestInfo();
-    if (requestInfo instanceof Error) {
-      return firstApiError(requestInfo, e.badRequestError("", requestInfo));
-    }
-
-    if (!requestInfo.hasSuperuserAuth() && collection.deleteRule === null) {
-      return e.forbiddenError("Only superusers can perform this action.", null);
-    }
-
-    const ruleFunc = (q: SelectQuery): void => {
-      if (
-        !requestInfo.hasSuperuserAuth() &&
-        collection.deleteRule !== null &&
-        collection.deleteRule !== ""
-      ) {
-        const resolver = newRequestFieldResolver(e.app, collection, requestInfo, true);
-
-        const expr = filterBuildExpr(collection.deleteRule, resolver, resolver.filterOptions());
-
-        q.andWhere(expr);
-
-        resolver.updateQuery(q);
-      }
-    };
-
-    let record: Record;
-    try {
-      record = await findRecordByIdAsync(e.app, collection, recordId, ruleFunc);
-    } catch (err) {
-      return e.notFoundError("", err);
-    }
-
-    // the default OnRecordDeleteRequest action
-    try {
-      await deleteRecord(e.app, record);
-    } catch (err) {
-      return firstApiError(
+  // the default OnRecordDeleteRequest action
+  try {
+    yield io.deleteRecord(e, record);
+  } catch (err) {
+    return firstApiError(
+      err,
+      e.badRequestError(
+        "Failed to delete record. Make sure that the record is not part of a required relation reference.",
         err,
-        e.badRequestError(
-          "Failed to delete record. Make sure that the record is not part of a required relation reference.",
-          err,
-        ),
-      );
-    }
+      ),
+    );
+  }
 
-    // execAfterSuccessTx: the handler never runs in a transaction here
-    const writeErr = e.noContent(204);
-    if (writeErr) {
-      return writeErr;
-    }
-
-    if (optFinalizer !== null) {
-      const err = await optFinalizer(record);
-      if (err) {
-        return firstApiError(
-          err,
-          e.internalServerError(
-            "",
-            new Error(`delete optFinalizer error: ${errorMessage(err)}`, { cause: err }),
-          ),
-        );
-      }
-    }
-
-    return undefined;
-  };
+  // execAfterSuccessTx: the response is written at once (see the top of the file)
+  return e.noContent(204);
 }
 
-// FindRecordById with an optional filter, read through the read pool
-async function findRecordByIdAsync(
+// FindRecordById with an optional filter
+function findRecordByIdIO(
   app: App,
   collection: Collection,
   recordId: string,
   filter: ((q: SelectQuery) => void) | null,
-): Promise<Record> {
+  io: RecordIO,
+): Record | Promise<Record> {
   const q = recordQuery(app, collection).andWhere(
     new HashExp({ [collection.name + ".id"]: recordId }),
   );
   filter?.(q);
-  return q.limit(1).oneAsync<Record>(recordTarget);
+  return io.record(q.limit(1));
 }
 
 // -------------------------------------------------------------------
 
-async function recordDataFromRequest(e: RequestEvent, record: Record): Promise<DataMap | null> {
-  const info = await e.requestInfo();
+function* recordDataFromRequest(
+  e: RequestEvent,
+  record: Record,
+  io: RecordIO,
+): Generator<unknown, DataMap | null, unknown> {
+  const info = (yield io.requestInfo(e)) as RequestInfo | Error;
   if (info instanceof Error) {
     throw info;
   }
@@ -749,7 +781,7 @@ async function recordDataFromRequest(e: RequestEvent, record: Record): Promise<D
   let result = info.body === null ? null : record.replaceModifiers(info.body);
 
   // resolve uploaded files
-  const uploadedFiles = await extractUploadedFiles(e, record.collection(), "");
+  const uploadedFiles = yield* extractUploadedFiles(e, record.collection(), "", io);
   if (uploadedFiles !== null && uploadedFiles.size > 0) {
     result ??= {};
 
@@ -801,11 +833,12 @@ async function recordDataFromRequest(e: RequestEvent, record: Record): Promise<D
   return result;
 }
 
-async function extractUploadedFiles(
+function* extractUploadedFiles(
   re: RequestEvent,
   collection: Collection,
   prefix: string,
-): Promise<Map<string, File[]> | null> {
+  io: RecordIO,
+): Generator<unknown, Map<string, File[]> | null, unknown> {
   const contentType = re.request.headers.get("content-type") ?? "";
   if (!contentType.startsWith("multipart/form-data")) {
     return null; // not multipart/form-data request
@@ -833,7 +866,7 @@ async function extractUploadedFiles(
       }
       let files: File[] = [];
       try {
-        files = await re.findUploadedFiles(k);
+        files = (yield io.uploadedFiles(re, k)) as File[];
       } catch (err) {
         if (err !== ErrMissingFile) {
           throw err;
@@ -851,12 +884,13 @@ async function extractUploadedFiles(
 // hasAuthManageAccess checks whether the client is allowed to have
 // [RecordUpsert] auth management permissions
 // (e.g. allowing to change system auth fields without oldPassword).
-async function hasAuthManageAccess(
+function* hasAuthManageAccess(
   app: App,
   requestInfo: RequestInfo | null,
   collection: Collection,
   query: SelectQuery,
-): Promise<boolean> {
+  io: RecordIO,
+): Generator<unknown, boolean, unknown> {
   if (!collection.isAuth()) {
     return false;
   }
@@ -888,7 +922,7 @@ async function hasAuthManageAccess(
   }
 
   try {
-    const row = await query.limit(1).rowAsync();
+    const row = (yield io.row(query.limit(1))) as unknown[];
     return Number(row[0] ?? 0) > 0;
   } catch {
     return false;

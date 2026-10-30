@@ -214,6 +214,24 @@ const generatedFileName: Rule = (upstream) => {
   };
 };
 
+// apis/batch.go: a file of a batch item is uploaded again under its
+// normalized name, so the name holds two random parts.
+const batchFileName: Rule = (upstream) => {
+  if (upstream.kind !== "string") {
+    return undefined;
+  }
+  const m = /^(.*)_[a-z0-9]{10}_[a-z0-9]{10}((?:\.[^/]*)?)$/.exec(upstream.value);
+  if (m === null || (m[1] as string).includes("/")) {
+    return undefined;
+  }
+  return {
+    name: "batch file name",
+    pattern: new RegExp(
+      `^${escapeRegExp(m[1] as string)}_[a-z0-9]{10}_[a-z0-9]{10}${escapeRegExp(m[2] as string)}$`,
+    ),
+  };
+};
+
 // core/view.go: a view field cloned from a collection field gets the id
 // "_clone_" + 4 random characters (security.PseudorandomString).
 const viewCloneId: Rule = (upstream, at) =>
@@ -271,6 +289,7 @@ export const rules: Rule[] = [
   scaffoldIndex,
   atGeneratedKey,
   authMethodsURL,
+  batchFileName,
   generatedFileName,
 ];
 
@@ -284,6 +303,22 @@ export type OrderRule = (object: JsonNode, at: Location) => boolean;
 const pickedFields: OrderRule = (_object, at) =>
   at.status >= 200 && at.status <= 299 && !!requestUrl(at.context)?.searchParams.get("fields");
 
+// `fields` in a batch item's URL (apis/batch.go): the item's body is picked.
+const batchItemFields: OrderRule = (_object, at) => {
+  const index = at.path[0];
+  const { body } = at.context.request;
+  if (
+    at.status !== 200 ||
+    typeof index !== "number" ||
+    typeof body !== "string" ||
+    requestUrl(at.context)?.pathname !== "/api/batch"
+  ) {
+    return false;
+  }
+  const item = (JSON.parse(body) as { requests?: { url?: string }[] }).requests?.[index];
+  return !!item?.url && new URL(item.url, "http://example.com").searchParams.has("fields");
+};
+
 // apis/health.go: `data` is a map[string]any.
 const healthData: OrderRule = (_object, at) =>
   requestUrl(at.context)?.pathname === "/api/health" && at.path.join(".") === "data";
@@ -295,7 +330,7 @@ const scaffolds: OrderRule = (_object, at) =>
   at.path.length === 0 &&
   at.status === 200;
 
-export const unorderedObjects: OrderRule[] = [pickedFields, healthData, scaffolds];
+export const unorderedObjects: OrderRule[] = [pickedFields, batchItemFields, healthData, scaffolds];
 
 function requestUrl({ request }: Context): URL | undefined {
   try {

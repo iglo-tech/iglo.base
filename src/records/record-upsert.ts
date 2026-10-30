@@ -13,7 +13,7 @@ import { FieldNameExpand, FieldNamePassword } from "@/fields/field";
 import { PasswordFieldValue } from "@/fields/password";
 import type { DataMap, Record } from "@/records/record-model";
 import type { RecordsApp } from "@/records/record-query";
-import { saveRecord } from "@/records/record-save";
+import { saveRecord, saveRecordSync } from "@/records/record-save";
 import { toString } from "@/tools/types/cast";
 import { NewError } from "@/validation/error";
 import { Key, Map as ValidationMap } from "@/validation/map";
@@ -217,6 +217,16 @@ export class RecordUpsert {
 
     // run record validations and persist in db
     await saveRecord(this.#app, this.#record);
+  }
+
+  // Submit inside a transaction (the batch API, D28).
+  submitSync(): void {
+    const err = this.validateFormFields();
+    if (err !== null) {
+      throw err;
+    }
+
+    saveRecordSync(this.#app, this.#record);
   }
 
   // syncPasswordFields syncs the form's auth password fields with their
