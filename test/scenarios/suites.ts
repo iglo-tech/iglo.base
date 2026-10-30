@@ -43,6 +43,7 @@ import {
   recordCrudDelete,
   recordCrudUpdate,
 } from "@test/scenarios/record-crud-write";
+import { batchRequest } from "@test/scenarios/batch";
 import type { Suite } from "@test/scenarios/scenario";
 import {
   generateAppleClientSecret,
@@ -54,6 +55,7 @@ import {
 } from "@test/scenarios/settings";
 
 export const suites: Suite[] = [
+  batchRequest,
   collectionsList,
   collectionView,
   collectionDelete,
