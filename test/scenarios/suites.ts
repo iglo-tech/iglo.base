@@ -14,6 +14,7 @@ import {
   collectionsList,
 } from "@test/scenarios/collection";
 import { collectionsImport } from "@test/scenarios/collection-import";
+import { fileDownload, fileToken } from "@test/scenarios/file";
 import { healthAPI } from "@test/scenarios/health";
 import { superuserIPsWhitelist } from "@test/scenarios/middlewares";
 import {
@@ -63,6 +64,8 @@ export const suites: Suite[] = [
   collectionOAuth2Providers,
   collectionTestView,
   collectionsImport,
+  fileToken,
+  fileDownload,
   healthAPI,
   superuserIPsWhitelist,
   recordAuthImpersonate,
