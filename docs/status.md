@@ -10,7 +10,7 @@ M3.6 (round-trip suite) active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.6 | worker | `task/M3.6-roundtrip` ([brief](briefs/M3.6.md)) | 0 | |
+| M3.6 | review | [#42](https://github.com/iglo-tech/iglo.base/pull/42) ([brief](briefs/M3.6.md)) | 1 | |
 
 ## Done
 
