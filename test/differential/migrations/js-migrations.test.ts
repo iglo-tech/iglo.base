@@ -349,7 +349,7 @@ async function collectionCalls(s: Site): Promise<void> {
         id: "pbc_listing000001",
         type: "view",
         name: "listing",
-        viewQuery: "SELECT id, title FROM articles",
+        viewQuery: "SELECT id, email FROM users",
       }),
       200,
     );
