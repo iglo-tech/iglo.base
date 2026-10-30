@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M5.2 (file serving) in progress.
+M5.2 (file serving) merged; next: M5.1 (realtime).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.2 | review | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 3 | [Brief](briefs/M5.2.md); round 1 CHANGES (bounded thumb header read, multi-range Content-Length, Go int env parsing), fixed in `985b546` (multi-range > 16 MiB via a temp file in `.pb_temp_to_delete`, lead accepted); round 2 CHANGES (GIF read whole), lead fixed in `d28744d` (first frame only; JPEG/PNG/WebP whole read argued bounded); Sol re-review round 3. Lead accepted: 2 rate-limit scenarios pending on M4.8, the thumb-failure log warning waits for M5.5, small edits to router/app/test support |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.2 | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 2026-10-30 (`ab9f728`) | Three council rounds (fixer: bounded header read, multi-range Content-Length via a temp file in `.pb_temp_to_delete`, cast.ToInt64 env limits; lead: GIF first frame only, animated WebP fails before the read; round 3 decided by the lead). Carried: 2 rate-limit scenarios pending on M4.8; the thumb-failure log warning waits for M5.5 |
 | M0.7 | [#37](https://github.com/iglo-tech/iglo.base/pull/37) | 2026-10-30 (`8dc7fbc`) | Two review rounds (fixer: imaging's first-APP1 orientation, Go DecodeConfig sizes for the pixel limit). D10: `Bun.Image` decode/encode + ported imaging Linear resize/crop and Go GIF encoder; 16 MP pre-shrink (lead decision, for owner review); JPEG EOI check. Instructions for M5.2 in `docs/perf/M0.7-thumbnails.md` |
 | M4.4 | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 2026-10-29 (`caf7ca7`) | Three council rounds (lead fixed all; round 3 decided by the lead: SMTP error texts, STARTTLS only when offered, mailyak/Go license notices). Includes `mails/`. Carried: the OTP email's `sentTo` update (M4.2); no differential case for implicit TLS (needs a cert both servers trust); DNS/TLS-handshake/timeout error texts differ (listed in 04-api-compatibility.md) |
 | M6.1 | [#35](https://github.com/iglo-tech/iglo.base/pull/35) | 2026-10-29 (`6c1462d`) | One review round: Sol APPROVE at `ec90f7e`. Includes M6.2 (installer, all six `superuser` commands incl. `otp`). Carried: `Vary: Origin` with CORS (M5.7); backups, crons, logs and file download screens wait for M5.3, M5.6, M5.5, M5.2; docs links point to the repo docs until M7.2 |
