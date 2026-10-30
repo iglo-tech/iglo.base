@@ -87,6 +87,116 @@ function count(o: Observation, name: string): number {
   return (o[name] as unknown[]).length;
 }
 
+// Sequential writes that do not wait for the SSE stream in between (an SDK
+// application awaiting each request): every broadcast must be checked
+// against the database state its own write left, not a later one.
+// Upstream sends each message from its own goroutine, so the events are
+// compared sorted, each as its event name and record data.
+function sortedEvents(list: Observation[]): string[] {
+  return list
+    .map((e) => {
+      const data = JSON.parse(e.data as string) as { action: string; record: object };
+      return `${e.event as string} ${data.action} ${JSON.stringify(sortKeysDeep(data.record))}`;
+    })
+    .toSorted();
+}
+
+function sortKeysDeep(v: unknown): unknown {
+  if (Array.isArray(v)) {
+    return v.map(sortKeysDeep);
+  }
+  if (v !== null && typeof v === "object") {
+    return Object.fromEntries(
+      Object.entries(v)
+        .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([k, x]) => [k, sortKeysDeep(x)]),
+    );
+  }
+  return v;
+}
+
+// rt_review: title and text, with the given rules
+async function createReview(ctx: ScenarioContext, rules: object): Promise<string> {
+  return ctx.createCollection({
+    name: "rt_review",
+    type: "base",
+    fields: [
+      { name: "title", type: "text" },
+      { name: "text", type: "text" },
+    ],
+    ...rules,
+  });
+}
+
+const reviewIds = ["rtreview0000001", "rtreview0000002", "rtreview0000003", "rtreview0000004"];
+const reverseIds = ["rtreverse000001", "rtreverse000002", "rtreverse000003", "rtreverse000004"];
+
+// for each id: a create in one state, then an update to the other, each
+// awaited, without waiting for the stream
+async function draftThenPublish(ctx: ScenarioContext): Promise<Observation[]> {
+  const steps: Observation[] = [];
+  for (const id of reviewIds) {
+    steps.push(
+      response(
+        await ctx.api("POST", "/api/collections/rt_review/records", {
+          id,
+          title: "hidden",
+          text: "PRIVATE DRAFT",
+        }),
+      ),
+    );
+    steps.push(
+      response(
+        await ctx.api("PATCH", `/api/collections/rt_review/records/${id}`, {
+          title: "visible",
+          text: "PUBLISHED",
+        }),
+      ),
+    );
+  }
+  for (const id of reverseIds) {
+    steps.push(
+      response(
+        await ctx.api("POST", "/api/collections/rt_review/records", {
+          id,
+          title: "visible",
+          text: "PUBLISHED",
+        }),
+      ),
+    );
+    steps.push(
+      response(
+        await ctx.api("PATCH", `/api/collections/rt_review/records/${id}`, {
+          title: "hidden",
+          text: "PRIVATE DRAFT",
+        }),
+      ),
+    );
+  }
+  return steps;
+}
+
+// the statuses of the steps and the stream's sorted events
+async function reviewObservation(
+  steps: Observation[],
+  stream: RealtimeStream,
+): Promise<Observation> {
+  return {
+    statuses: steps.map((step) => step.status),
+    events: sortedEvents(await settled(stream)),
+  };
+}
+
+function expectPublishedOnly(o: Observation, perChange: number): void {
+  expect(o.statuses).toEqual(Array(16).fill(200));
+  const list = o.events as string[];
+  // an update for each draft→publish, a create for each publish→hidden
+  expect(list.length).toBe(8 * perChange);
+  expect(list.filter((e) => e.includes(" update ")).length).toBe(4 * perChange);
+  expect(list.filter((e) => e.includes(" create ")).length).toBe(4 * perChange);
+  expect(list.some((e) => e.includes("PRIVATE DRAFT"))).toBe(false);
+}
+
 export const realtimeCases: RealtimeScenario[] = [
   {
     func: "differential",
@@ -676,6 +786,262 @@ export const realtimeCases: RealtimeScenario[] = [
       const demo1 = await subscribed(ctx, ["demo1/*"], superuserToken);
       const del = response(await ctx.api("DELETE", `/api/collections/users/records/${user2Id}`));
       return { del, demo1: events(await demo1.settle()) };
+    },
+  },
+  {
+    func: "differential",
+    name: "sequential writes: listRule checked against each write's state",
+    unorderedData: true,
+    run: async (ctx) => {
+      await createReview(ctx, { listRule: "title = 'visible'", viewRule: "" });
+      // independently filtered widgets: many subscriptions of one guest
+      const topics = Array.from({ length: 50 }, (_, n) =>
+        topic("rt_review/*", {
+          query: { fields: "id,title,text", filter: `title != 'excluded_${n}'` },
+        }),
+      );
+      const stream = await subscribed(ctx, topics);
+      return reviewObservation(await draftThenPublish(ctx), stream);
+    },
+    check: (o) => expectPublishedOnly(o, 50),
+  },
+  {
+    func: "differential",
+    name: "sequential writes: viewRule of record id topics checked against each write's state",
+    unorderedData: true,
+    run: async (ctx) => {
+      await createReview(ctx, { listRule: null, viewRule: "title = 'visible'" });
+      const topics = [...reviewIds, ...reverseIds].flatMap((id) =>
+        Array.from({ length: 10 }, (_, n) =>
+          topic(`rt_review/${id}`, { query: { filter: `title != 'excluded_${n}'` } }),
+        ),
+      );
+      const stream = await subscribed(ctx, topics);
+      return reviewObservation(await draftThenPublish(ctx), stream);
+    },
+    check: (o) => expectPublishedOnly(o, 10),
+  },
+  {
+    func: "differential",
+    name: "sequential writes: subscription filter checked against each write's state",
+    unorderedData: true,
+    run: async (ctx) => {
+      await createReview(ctx, { listRule: "", viewRule: "" });
+      const topics = Array.from({ length: 50 }, (_, n) =>
+        topic("rt_review/*", {
+          query: { filter: `title = 'visible' && title != 'excluded_${n}'` },
+        }),
+      );
+      const stream = await subscribed(ctx, topics);
+      return reviewObservation(await draftThenPublish(ctx), stream);
+    },
+    check: (o) => expectPublishedOnly(o, 50),
+  },
+  {
+    func: "differential",
+    name: "sequential writes: manageRule email visibility checked against each write's state",
+    unorderedData: true,
+    run: async (ctx) => {
+      await ctx.createCollection({
+        name: "rt_members",
+        type: "auth",
+        listRule: "",
+        viewRule: "",
+        manageRule: "managed = true",
+        fields: [{ name: "managed", type: "bool" }],
+      });
+      const topics = Array.from({ length: 50 }, (_, n) =>
+        topic("rt_members/*", { query: { filter: `id != 'excluded_${n}'` } }),
+      );
+      const stream = await subscribed(ctx, topics);
+      const steps: Observation[] = [];
+      for (const [i, id] of ["rtmember0000001", "rtmember0000002"].entries()) {
+        steps.push(
+          response(
+            await ctx.api("POST", "/api/collections/rt_members/records", {
+              id,
+              email: `member${i}@example.com`,
+              password: "1234567890",
+              passwordConfirm: "1234567890",
+              managed: false,
+            }),
+          ),
+        );
+        steps.push(
+          response(
+            await ctx.api("PATCH", `/api/collections/rt_members/records/${id}`, {
+              managed: true,
+            }),
+          ),
+        );
+      }
+      return {
+        statuses: steps.map((step) => step.status),
+        events: sortedEvents(await settled(stream)),
+      };
+    },
+    check: (o) => {
+      expect(o.statuses).toEqual([200, 200, 200, 200]);
+      const list = o.events as string[];
+      expect(list.length).toBe(200);
+      // the private-state creates never show the email; the managed updates do
+      expect(list.filter((e) => e.includes(" create ") && e.includes('"email"')).length).toBe(0);
+      expect(list.filter((e) => e.includes(" update ") && e.includes('"email"')).length).toBe(100);
+    },
+  },
+  {
+    func: "differential",
+    name: "sequential writes: expand reads each write's state",
+    unorderedData: true,
+    run: async (ctx) => {
+      const tagsId = await ctx.createCollection({
+        name: "rt_tags",
+        type: "base",
+        listRule: "",
+        viewRule: "title = 'visible'",
+        fields: [{ name: "title", type: "text" }],
+      });
+      await createReview(ctx, {
+        listRule: "",
+        viewRule: "",
+        fields: [
+          { name: "title", type: "text" },
+          { name: "text", type: "text" },
+          { name: "tag", type: "relation", collectionId: tagsId, maxSelect: 1 },
+        ],
+      });
+      const topics = Array.from({ length: 50 }, (_, n) =>
+        topic("rt_review/*", {
+          query: { expand: "tag", filter: `title != 'excluded_${n}'` },
+        }),
+      );
+      const stream = await subscribed(ctx, topics);
+      const steps: Observation[] = [];
+      for (const id of reviewIds) {
+        const tag = id.replace("rtreview", "rtrevtag");
+        steps.push(
+          response(
+            await ctx.api("POST", "/api/collections/rt_tags/records", {
+              id: tag,
+              title: "visible",
+            }),
+          ),
+        );
+        steps.push(
+          response(
+            await ctx.api("POST", "/api/collections/rt_review/records", {
+              id,
+              title: "a",
+              tag,
+            }),
+          ),
+        );
+        // the tag is hidden from the expand after the create
+        steps.push(
+          response(
+            await ctx.api("PATCH", `/api/collections/rt_tags/records/${tag}`, {
+              title: "hidden",
+            }),
+          ),
+        );
+      }
+      return {
+        statuses: steps.map((step) => step.status),
+        events: sortedEvents(await settled(stream)),
+      };
+    },
+    check: (o) => {
+      expect(o.statuses).toEqual(Array(12).fill(200));
+      const list = o.events as string[];
+      expect(list.length).toBe(200);
+      expect(list.every((e) => e.includes('"expand":{"tag":{'))).toBe(true);
+    },
+  },
+  {
+    func: "differential",
+    name: "a cascade delete expands relations deleted later in the same transaction",
+    unorderedData: true,
+    run: async (ctx) => {
+      const parentId = await ctx.createCollection({
+        name: "rt_parent",
+        type: "base",
+        listRule: "",
+        viewRule: "",
+        fields: [{ name: "title", type: "text" }],
+      });
+      const childId = await ctx.createCollection({
+        name: "rt_child",
+        type: "base",
+        listRule: "",
+        viewRule: "",
+        fields: [
+          { name: "title", type: "text" },
+          {
+            name: "parent",
+            type: "relation",
+            collectionId: parentId,
+            maxSelect: 1,
+            cascadeDelete: true,
+          },
+        ],
+      });
+      await ctx.createCollection({
+        name: "rt_grand",
+        type: "base",
+        listRule: "",
+        viewRule: "",
+        fields: [
+          { name: "title", type: "text" },
+          {
+            name: "child",
+            type: "relation",
+            collectionId: childId,
+            maxSelect: 1,
+            cascadeDelete: true,
+          },
+        ],
+      });
+      const setup = [
+        await ctx.api("POST", "/api/collections/rt_parent/records", {
+          id: "rtcascparent001",
+          title: "p",
+        }),
+        await ctx.api("POST", "/api/collections/rt_child/records", {
+          id: "rtcascchild0001",
+          title: "c",
+          parent: "rtcascparent001",
+        }),
+        await ctx.api("POST", "/api/collections/rt_grand/records", {
+          id: "rtcascgrand0001",
+          title: "g",
+          child: "rtcascchild0001",
+        }),
+      ].map((res) => res.status);
+      const back = await subscribed(ctx, [
+        topic("rt_child/*", { query: { expand: "rt_grand_via_child" } }),
+      ]);
+      const both = await subscribed(ctx, [
+        topic("rt_child/*", {
+          query: {
+            expand: "parent,rt_grand_via_child",
+            fields: "id,expand.parent.title,expand.rt_grand_via_child.title",
+          },
+        }),
+      ]);
+      const grand = await subscribed(ctx, [
+        topic("rt_grand/*", { query: { expand: "child.parent" } }),
+      ]);
+      const del = response(
+        await ctx.api("DELETE", "/api/collections/rt_parent/records/rtcascparent001"),
+      );
+      return { setup, del, ...(await all({ back, both, grand })) };
+    },
+    check: (o) => {
+      expect((o.del as Observation).status).toBe(204);
+      const data = JSON.parse((o.back as { data: string }[])[0]?.data ?? "{}") as {
+        record: { expand: { rt_grand_via_child?: unknown[] } };
+      };
+      expect(data.record.expand.rt_grand_via_child?.length).toBe(1);
     },
   },
 ];

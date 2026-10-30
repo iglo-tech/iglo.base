@@ -3,8 +3,12 @@
 // ExpandRecord and ExpandRecords are functions of the RecordsApp
 // (record-query.ts). The fetch function and the back-relation lookups are
 // async: outside a transaction they read through the read worker pool, as
-// the records list and view handlers need. Go's map of failed expands is a
-// Map in insertion order.
+// the records list and view handlers need. expandRecordSync reads
+// synchronously on the main-thread connection (or the transaction): the
+// realtime broadcasts expand against the database state their write left,
+// before any later write can land (src/realtime/realtime-events.ts). Both
+// run the same steps. Go's map of failed expands is a Map in insertion
+// order.
 //
 // Not ported: the log.Printf deprecation notice of the old
 // `collection(field)` back-relation syntax (the syntax itself is
@@ -32,6 +36,12 @@ const maxNestedRels = 6;
 // ExpandFetchFunc defines the function that is used to fetch the expanded relation records.
 export type ExpandFetchFunc = (relCollection: Collection, relIds: string[]) => Promise<Record[]>;
 
+// The synchronous ExpandFetchFunc of expandRecordSync.
+export type ExpandFetchSyncFunc = (relCollection: Collection, relIds: string[]) => Record[];
+
+// a step of the expand: yields the reads' results, a promise when async
+type ExpandStep<T> = Generator<Record[] | unknown[] | Promise<unknown>, T, unknown>;
+
 // ExpandRecord expands the relations of a single Record model.
 //
 // If optFetchFunc is not set, then a default function will be used
@@ -53,25 +63,81 @@ export function expandRecord(
 // that returns all relation records.
 //
 // Returns a map with the failed expand parameters and their errors.
-export async function expandRecords(
+export function expandRecords(
   app: RecordsApp,
   records: Record[],
   expands: readonly string[],
   optFetchFunc?: ExpandFetchFunc | null,
 ): Promise<Map<string, Error>> {
+  return driveAsync(
+    expandRecordsSteps(app, records, expands, optFetchFunc ?? defaultFetchFunc(app), false),
+  );
+}
+
+// ExpandRecord with synchronous reads: on the main-thread connection
+// outside a transaction, else on the transaction.
+//
+// If optFetchFunc is not set, then a default function will be used
+// that returns all relation records.
+export function expandRecordSync(
+  app: RecordsApp,
+  record: Record,
+  expands: readonly string[],
+  optFetchFunc?: ExpandFetchSyncFunc | null,
+): Map<string, Error> {
+  return driveSync(
+    expandRecordsSteps(app, [record], expands, optFetchFunc ?? defaultFetchSyncFunc(app), true),
+  );
+}
+
+function* expandRecordsSteps(
+  app: RecordsApp,
+  records: Record[],
+  expands: readonly string[],
+  fetch: ExpandFetchFunc | ExpandFetchSyncFunc,
+  sync: boolean,
+): ExpandStep<Map<string, Error>> {
   const normalized = normalizeExpands(expands);
 
   const failed = new Map<string, Error>();
 
   for (const expand of normalized) {
     try {
-      await expandRecordsPath(app, records, expand, optFetchFunc ?? null, 1);
+      yield* expandRecordsPath(app, records, expand, fetch, sync, 1);
     } catch (err) {
       failed.set(expand, err instanceof Error ? err : new Error(String(err)));
     }
   }
 
   return failed;
+}
+
+// runs the steps, awaiting the promises they yield
+async function driveAsync<T>(steps: ExpandStep<T>): Promise<T> {
+  let input: unknown;
+  let failed = false;
+  for (;;) {
+    const res = failed ? steps.throw(input) : steps.next(input);
+    if (res.done === true) {
+      return res.value;
+    }
+    try {
+      input = await res.value;
+      failed = false;
+    } catch (err) {
+      input = err;
+      failed = true;
+    }
+  }
+}
+
+// runs the steps of a synchronous expand (they yield no promises)
+function driveSync<T>(steps: ExpandStep<T>): T {
+  let res = steps.next();
+  while (res.done !== true) {
+    res = steps.next(res.value);
+  }
+  return res.value;
 }
 
 // Deprecated
@@ -86,6 +152,14 @@ function defaultFetchFunc(app: RecordsApp): ExpandFetchFunc {
     recordQuery(app, relCollection)
       .andWhere(inExp(relCollection.name + ".id", ...relIds))
       .allAsync<Record>(recordsTarget);
+}
+
+// the default fetchFunc of expandRecordSync
+function defaultFetchSyncFunc(app: RecordsApp): ExpandFetchSyncFunc {
+  return (relCollection, relIds) =>
+    recordQuery(app, relCollection)
+      .andWhere(inExp(relCollection.name + ".id", ...relIds))
+      .all<Record>(recordsTarget);
 }
 
 // Go's sql Scan of a column into a string
@@ -104,18 +178,18 @@ function scanString(v: unknown): string {
 // expandRecords (unexported in Go)
 //
 // notes:
-// - if fetchFunc is null, FindRecordsByIds will be used
+// - fetch is FindRecordsByIds unless the caller gave its own
 // - all records are expected to be from the same collection
 // - if maxNestedRels(6) is reached, the function returns ignoring the remaining expand path
-async function expandRecordsPath(
+// - sync: fetch is an ExpandFetchSyncFunc and the reads are synchronous
+function* expandRecordsPath(
   app: RecordsApp,
   records: Record[],
   expandPath: string,
-  fetchFunc: ExpandFetchFunc | null,
+  fetch: ExpandFetchFunc | ExpandFetchSyncFunc,
+  sync: boolean,
   recursionLevel: number,
-): Promise<void> {
-  const fetch = fetchFunc ?? defaultFetchFunc(app);
-
+): ExpandStep<void> {
   if (expandPath === "" || recursionLevel > maxNestedRels || records.length === 0) {
     return;
   }
@@ -172,7 +246,10 @@ async function expandRecordsPath(
         q.andWhere(newExp("[[" + indirectRelField.name + "]] = {:id}"));
       }
 
-      const relIds = (await q.bind({ id: record.id }).build().columnAsync()).map(scanString);
+      const query = q.bind({ id: record.id }).build();
+      const relIds = ((yield sync ? query.column() : query.columnAsync()) as unknown[]).map(
+        scanString,
+      );
 
       if (relIds.length > 0) {
         record.set(part0, relIds);
@@ -227,11 +304,11 @@ async function expandRecordsPath(
   }
 
   // fetch rels
-  const rels = await fetch(relCollection, relIds);
+  const rels = (yield fetch(relCollection, relIds)) as Record[];
 
   // expand nested fields
   if (parts.length > 1) {
-    await expandRecordsPath(app, rels, parts[1] as string, fetchFunc, recursionLevel + 1);
+    yield* expandRecordsPath(app, rels, parts[1] as string, fetch, sync, recursionLevel + 1);
   }
 
   // reindex with the rel id

@@ -27,32 +27,36 @@
 // level, which iglo.base does not print).
 //
 // Upstream checks the rules of one broadcast in goroutines, a chunk of 150
-// clients each, and sends every message from its own goroutine. Here the
-// checks read through the async resolvers (the read worker pool), the
-// chunks run concurrently, and the broadcasts of an app are delivered one
-// after the other, so a client gets a record's messages in the order of
-// its changes. Within one broadcast, subscribers whose rule check reads
-// the same values (rule, query, headers, auth record) share one check, and
-// the JSON data of a message is encoded once for the subscribers that get
-// the same bytes (no expand, the same superuser and email visibility state
-// and `fields`); upstream checks and encodes for each
-// (docs/perf/M5.1-realtime.md). Upstream answers the API request after
-// the rule checks; here the broadcast runs after the response.
+// clients each, in the after success path of the request that wrote the
+// record: the request answers only after the checks, so they see the
+// database as that write left it, before the client's next write can
+// land. Here every read of a broadcast (the list/view rule, the
+// subscription's filter, the manage rule for the email visibility, the
+// expand and its view rules) is synchronous on the main-thread connection
+// (D8), right after the commit: no other request runs, so no later write
+// can land before the messages are prepared. Only the delivery is
+// deferred: the prepared messages are sent from a queue, the broadcasts of
+// an app one after the other, so a client gets a record's messages in the
+// order of its changes (upstream sends each from its own goroutine).
+// Within one broadcast, subscribers whose rule check reads the same values
+// (rule, query, headers, auth record) share one check, and the JSON data
+// of a message is encoded once for the subscribers that get the same bytes
+// (no expand, the same superuser and email visibility state and `fields`);
+// upstream checks and encodes for each (docs/perf/M5.1-realtime.md).
 //
 // The delete dry cache runs inside the delete chain, before the row is
-// deleted, so the rules still see the record. Outside a transaction it
-// reads like the broadcasts. Inside one (a cascade delete, a superuser
-// delete) the chain must stay synchronous: the rule checks read the
-// committed data synchronously (upstream's outside-scoped app,
-// Databases.committedReads()), and a subscription's `expand` is applied
-// when the message is sent, after the commit, since the expand reads are
-// async.
+// deleted, so the rules still see the record. It prepares the complete
+// messages there, expand and `fields` included, as upstream does: inside a
+// transaction (a cascade delete) the expand reads through the transaction,
+// so relations deleted later in it are still expanded, while the rule
+// checks read the data as last committed (upstream's outside-scoped app,
+// Databases.committedReads()). The messages are sent after the commit.
 
 import type { App } from "@/app/app";
 import { RequestInfo, RequestInfoContextRealtime } from "@/app/event-request";
 import {
   checkForSuperuserOnlyRuleFields,
-  expandFetch,
+  expandFetchSync,
   expandQueryParam,
   fieldsQueryParam,
   newRequestFieldResolver,
@@ -63,7 +67,7 @@ import { HashExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { Record } from "@/records/record-model";
 import { type RecordsApp, recordQuery } from "@/records/record-query";
-import { expandRecord } from "@/records/record-query-expand";
+import { expandRecordSync } from "@/records/record-query-expand";
 import { filterBuildExpr } from "@/search/filter";
 import { FilterQueryParam } from "@/search/provider";
 import { pick } from "@/tools/picker/pick";
@@ -105,63 +109,42 @@ export function realtimeRecordAfterUpdate(app: RecordsApp, record: Record): void
 }
 
 // OnModelDelete (delete: dry cache): prepares the delete messages while
-// the record still exists. A step of the record delete chain: it yields
-// the promises it waits for (none inside a transaction).
-export function* realtimeRecordDelete(
-  app: RecordsApp,
-  record: Record,
-): Generator<unknown, void, unknown> {
+// the record still exists.
+export function realtimeRecordDelete(app: RecordsApp, record: Record): void {
   try {
-    yield* dryCacheRecordDelete(app, record);
+    dryCacheRecordDelete(app, record);
   } catch (err) {
     // the delete goes on (upstream only logs the error)
     app.logger.error("Failed to dry cache the realtime record delete", err);
   }
 }
 
-function* dryCacheRecordDelete(app: RecordsApp, record: Record): Generator<unknown, void, unknown> {
+function dryCacheRecordDelete(app: RecordsApp, record: Record): void {
   const broker = app.subscriptionsBroker;
   if (broker === undefined || broker.totalClients() === 0) {
     return; // no subscribers
   }
 
-  const sync = app.databases.isTransactional();
-
   // note: use the outside scoped app instance for the access checks so that the API rules
   // are performed out of the delete transaction ensuring that they would still work even if
   // a cascade-deleted record's API rule relies on an already deleted parent record
-  const accessCheckApp: RecordsApp = sync
+  const accessCheckApp: RecordsApp = app.databases.isTransactional()
     ? { ...app, databases: app.databases.committedReads() }
     : app;
 
-  const broadcast = new RecordBroadcast(app, accessCheckApp, "delete", record, sync);
+  const broadcast = new RecordBroadcast(app, accessCheckApp, "delete", record);
   const dryCacheKey = getDryCacheKey("delete", record);
 
-  const cache = (client: Client, messages: DryMessage[]): void => {
-    if (messages.length === 0) {
-      return;
-    }
-    const cached = client.get(dryCacheKey);
-    client.set(dryCacheKey, Array.isArray(cached) ? [...cached, ...messages] : messages);
-  };
-
-  const chunks = broker.chunkedClients(clientsChunkSize);
-  if (sync) {
-    for (const chunk of chunks) {
-      for (const client of chunk) {
-        cache(client, driveSync(broadcast.clientMessages(client)));
+  for (const chunk of broker.chunkedClients(clientsChunkSize)) {
+    for (const client of chunk) {
+      const messages = broadcast.clientMessages(client);
+      if (messages.length === 0) {
+        continue;
       }
+      const cached = client.get(dryCacheKey);
+      client.set(dryCacheKey, Array.isArray(cached) ? [...cached, ...messages] : messages);
     }
-    return;
   }
-
-  yield Promise.all(
-    chunks.map(async (chunk) => {
-      for (const client of chunk) {
-        cache(client, await drive(broadcast.clientMessages(client)));
-      }
-    }),
-  );
 }
 
 // OnModelAfterDeleteSuccess: unsets the auth of the clients of a deleted
@@ -279,19 +262,6 @@ export function isSameAuth(authA: Record | undefined, authB: Record | undefined)
 // -------------------------------------------------------------------
 // the broadcasts
 
-// a dry cached message: ready, or waiting for its expand (prepared inside
-// a transaction)
-type DryMessage = Message | DeferredMessage;
-
-interface DeferredMessage {
-  sub: string;
-  record: Record;
-  requestInfo: RequestInfo;
-  rawExpand: string;
-  rawFields: string;
-  action: string;
-}
-
 // realtimeBroadcastRecord broadcasts the record change to the subscribed
 // clients that may access it, after the broadcasts before it.
 function realtimeBroadcastRecord(app: RecordsApp, action: string, record: Record): void {
@@ -301,19 +271,34 @@ function realtimeBroadcastRecord(app: RecordsApp, action: string, record: Record
   }
 
   // the record as saved: the caller may change the instance afterwards
-  const broadcast = new RecordBroadcast(app, app, action, record.fresh(), false);
+  const broadcast = new RecordBroadcast(app, app, action, record.fresh());
 
-  broadcastQueue(app).add(async () => {
-    const chunks = broker.chunkedClients(clientsChunkSize);
-    await Promise.all(
-      chunks.map(async (chunk) => {
-        for (const client of chunk) {
-          for (const msg of await drive(broadcast.clientMessages(client))) {
-            client.send(msg as Message);
-          }
-        }
-      }),
-    );
+  // prepared now, against the database state this write left
+  const pending: [Client, Message[]][] = [];
+  for (const chunk of broker.chunkedClients(clientsChunkSize)) {
+    for (const client of chunk) {
+      const messages = broadcast.clientMessages(client);
+      if (messages.length > 0) {
+        pending.push([client, messages]);
+      }
+    }
+  }
+
+  sendLater(app, pending);
+}
+
+// sends the prepared messages after the broadcasts before them
+function sendLater(app: RecordsApp, pending: [Client, Message[]][]): void {
+  if (pending.length === 0) {
+    return;
+  }
+
+  broadcastQueue(app).add(() => {
+    for (const [client, messages] of pending) {
+      for (const msg of messages) {
+        client.send(msg);
+      }
+    }
   });
 }
 
@@ -323,7 +308,7 @@ function realtimeBroadcastDryCacheKey(app: RecordsApp, broker: Broker, key: stri
     return; // no subscribers
   }
 
-  const pending: [Client, DryMessage[]][] = [];
+  const pending: [Client, Message[]][] = [];
   for (const client of broker.clients().values()) {
     const messages = client.get(key);
     if (!Array.isArray(messages)) {
@@ -332,21 +317,10 @@ function realtimeBroadcastDryCacheKey(app: RecordsApp, broker: Broker, key: stri
 
     client.unset(key);
 
-    pending.push([client, messages as DryMessage[]]);
+    pending.push([client, messages as Message[]]);
   }
 
-  if (pending.length === 0) {
-    return;
-  }
-
-  broadcastQueue(app).add(async () => {
-    for (const [client, messages] of pending) {
-      for (const msg of messages) {
-        const ready = msg instanceof Message ? msg : await deferredMessage(app, msg);
-        client.send(ready);
-      }
-    }
-  });
+  sendLater(app, pending);
 }
 
 // realtimeUnsetDryCacheKey removes the dry cached key related messages.
@@ -362,21 +336,6 @@ function getDryCacheKey(action: string, record: Record): string {
   return action + "/" + record.tableName() + "/" + record.id;
 }
 
-// a dry cached message whose expand waited for the commit
-async function deferredMessage(app: RecordsApp, msg: DeferredMessage): Promise<Message> {
-  try {
-    await expandRecord(
-      app,
-      msg.record,
-      msg.rawExpand.split(","),
-      expandFetch(app as App, msg.requestInfo),
-    );
-  } catch {
-    // expand errors are only logged upstream
-  }
-  return new Message(msg.sub, encoder.encode(recordData(msg.action, msg.record, msg.rawFields)));
-}
-
 // One record change and what its subscribers get.
 class RecordBroadcast {
   readonly #collection: Collection;
@@ -389,14 +348,13 @@ class RecordBroadcast {
   // the auth records' part of those keys
   readonly #authKeys: WeakMap<Record, string>;
 
-  // app runs the expand; accessCheckApp the rule checks. sync: inside a
-  // transaction, nothing may wait (the expand is deferred).
+  // app runs the expand; accessCheckApp the rule checks. Every read is
+  // synchronous: the messages are prepared before any later write.
   constructor(
     readonly app: RecordsApp,
     readonly accessCheckApp: RecordsApp,
     readonly action: string,
     readonly record: Record,
-    readonly sync: boolean,
   ) {
     const collection = record.collection();
     this.#collection = collection;
@@ -413,11 +371,10 @@ class RecordBroadcast {
     ];
   }
 
-  // the messages of one client, in its subscriptions' order; yields the
-  // promises it waits for
-  *clientMessages(client: Client): Generator<unknown, DryMessage[], unknown> {
+  // the messages of one client, in its subscriptions' order
+  clientMessages(client: Client): Message[] {
     const collection = this.#collection;
-    const messages: DryMessage[] = [];
+    const messages: Message[] = [];
 
     // note: not executed concurrently to avoid races and to ensure
     // that the access checks are applied for the current record db state
@@ -433,7 +390,7 @@ class RecordBroadcast {
         // mock request data
         const requestInfo = subscriptionRequestInfo(options, clientAuth);
 
-        if (!(yield* this.#canAccessRecord(this.record, requestInfo, rule))) {
+        if (!this.#canAccessRecord(this.record, requestInfo, rule)) {
           continue;
         }
 
@@ -449,7 +406,7 @@ class RecordBroadcast {
         if (collection.isAuth()) {
           ignoreEmailVisibility =
             isSameAuth(clientAuth, this.record) ||
-            (yield* this.#canAccessRecord(this.record, requestInfo, collection.manageRule));
+            this.#canAccessRecord(this.record, requestInfo, collection.manageRule);
         }
 
         // the same bytes as an earlier subscriber's
@@ -478,28 +435,13 @@ class RecordBroadcast {
 
         // apply expand
         if (rawExpand !== "") {
-          if (this.sync) {
-            // read once the transaction committed
-            messages.push({
-              sub,
-              record: cleanRecord,
-              requestInfo,
-              rawExpand,
-              rawFields,
-              action: this.action,
-            });
-            continue;
-          }
-          try {
-            yield expandRecord(
-              this.app,
-              cleanRecord,
-              rawExpand.split(","),
-              expandFetch(this.app as App, requestInfo),
-            );
-          } catch {
-            // expand errors are only logged upstream
-          }
+          // expand errors are only logged upstream
+          expandRecordSync(
+            this.app,
+            cleanRecord,
+            rawExpand.split(","),
+            expandFetchSync(this.app as App, requestInfo),
+          );
         }
 
         // check fields
@@ -520,11 +462,7 @@ class RecordBroadcast {
   // query and headers and the client's auth record (what the field
   // resolver reads of it), so the subscribers with the same of these share
   // one check per broadcast (upstream checks each).
-  *#canAccessRecord(
-    record: Record,
-    requestInfo: RequestInfo,
-    accessRule: string | null,
-  ): Generator<unknown, boolean, unknown> {
+  #canAccessRecord(record: Record, requestInfo: RequestInfo, accessRule: string | null): boolean {
     let key: string;
     try {
       key =
@@ -539,11 +477,11 @@ class RecordBroadcast {
         JSON.stringify(requestInfo.headers);
     } catch {
       // an auth record that cannot be encoded: checked on its own
-      return yield* this.#checkAccess(record, requestInfo, accessRule);
+      return this.#checkAccess(record, requestInfo, accessRule);
     }
     let ok = this.#access.get(key);
     if (ok === undefined) {
-      ok = yield* this.#checkAccess(record, requestInfo, accessRule);
+      ok = this.#checkAccess(record, requestInfo, accessRule);
       this.#access.set(key, ok);
     }
     return ok;
@@ -569,11 +507,7 @@ class RecordBroadcast {
     return key;
   }
 
-  *#checkAccess(
-    record: Record,
-    requestInfo: RequestInfo,
-    accessRule: string | null,
-  ): Generator<unknown, boolean, unknown> {
+  #checkAccess(record: Record, requestInfo: RequestInfo, accessRule: string | null): boolean {
     const app = this.accessCheckApp;
 
     // check the access rule (app.CanAccessRecord; false on error)
@@ -585,7 +519,7 @@ class RecordBroadcast {
           return false;
         }
       } else {
-        const row = (yield this.sync ? query.row() : query.rowAsync()) as unknown[];
+        const row = query.row();
         if (!(Number(row[0]) > 0)) {
           return false;
         }
@@ -623,7 +557,7 @@ class RecordBroadcast {
       resolver.updateQuery(q);
 
       q.limit(1);
-      const row = (yield this.sync ? q.row() : q.rowAsync()) as unknown[];
+      const row = q.row();
 
       return Number(row[0]) > 0;
     } catch {
@@ -706,49 +640,11 @@ function recordData(action: string, record: Record, rawFields: string): string {
   return `{"record":${encodedRecord},"action":${JSON.stringify(action)}}`;
 }
 
-// -------------------------------------------------------------------
-// drivers
-
-// runs a generator, awaiting the promises it yields
-async function drive<T>(gen: Generator<unknown, T, unknown>): Promise<T> {
-  let input: unknown;
-  let failed = false;
-  for (;;) {
-    const res = failed ? gen.throw(input) : gen.next(input);
-    if (res.done === true) {
-      return res.value;
-    }
-    failed = false;
-    if (res.value instanceof Promise) {
-      try {
-        input = await res.value;
-      } catch (err) {
-        input = err;
-        failed = true;
-      }
-    } else {
-      input = res.value;
-    }
-  }
-}
-
-// runs a generator that yields no promises (inside a transaction)
-function driveSync<T>(gen: Generator<unknown, T, unknown>): T {
-  let res = gen.next();
-  while (res.done !== true) {
-    if (res.value instanceof Promise) {
-      throw new Error("realtime dry cache must be synchronous inside a transaction");
-    }
-    res = gen.next(res.value);
-  }
-  return res.value;
-}
-
 // The broadcasts of an app, delivered one after the other.
 class BroadcastQueue {
   #tail: Promise<void> = Promise.resolve();
 
-  add(task: () => Promise<void>): void {
+  add(task: () => void): void {
     this.#tail = this.#tail.then(task).catch(() => {
       // a failed broadcast is only logged upstream
     });

@@ -33,7 +33,11 @@ import { findMFAById } from "@/records/mfa-query";
 import type { Record } from "@/records/record-model";
 import { recordQuery, recordsTarget } from "@/records/record-query";
 import { canAccessRecordAsync } from "@/records/record-query-filter";
-import { type ExpandFetchFunc, expandRecords } from "@/records/record-query-expand";
+import {
+  type ExpandFetchFunc,
+  type ExpandFetchSyncFunc,
+  expandRecords,
+} from "@/records/record-query-expand";
 import { isNoRows } from "@/records/record-save";
 import { newAuthToken } from "@/records/record-tokens";
 import { newRecordFieldResolver } from "@/resolver/record-field-resolver";
@@ -421,17 +425,15 @@ async function defaultEnrichRecords(
 
 // expandFetch is the records fetch function that is used to expand related records.
 export function expandFetch(app: App, originalRequestInfo: RequestInfo): ExpandFetchFunc {
-  // shallow clone the provided request info to set an "expand" context
-  const requestInfoPtr = Object.assign(new RequestInfo(), originalRequestInfo);
-  requestInfoPtr.context = RequestInfoContextExpand;
+  const requestInfoPtr = expandRequestInfo(originalRequestInfo);
 
   return async (relCollection, relIds) => {
-    // FindRecordsByIds with the view rule filter
-    const q = recordQuery(app, relCollection).andWhere(
-      inExp(relCollection.name + ".id", ...relIds),
-    );
-    applyViewRule(app, relCollection, requestInfoPtr, q);
-    const records = await q.allAsync<Record>(recordsTarget);
+    const records = await expandFetchQuery(
+      app,
+      relCollection,
+      relIds,
+      requestInfoPtr,
+    ).allAsync<Record>(recordsTarget);
 
     try {
       await autoResolveRecordsFlags(app, records, requestInfoPtr);
@@ -441,6 +443,44 @@ export function expandFetch(app: App, originalRequestInfo: RequestInfo): ExpandF
 
     return records;
   };
+}
+
+// expandFetch with synchronous reads (expandRecordSync)
+export function expandFetchSync(app: App, originalRequestInfo: RequestInfo): ExpandFetchSyncFunc {
+  const requestInfoPtr = expandRequestInfo(originalRequestInfo);
+
+  return (relCollection, relIds) => {
+    const records = expandFetchQuery(app, relCollection, relIds, requestInfoPtr).all<Record>(
+      recordsTarget,
+    );
+
+    try {
+      autoResolveRecordsFlagsSync(app, records, requestInfoPtr);
+    } catch {
+      // non-critical error (logged upstream)
+    }
+
+    return records;
+  };
+}
+
+// shallow clone the provided request info to set an "expand" context
+function expandRequestInfo(originalRequestInfo: RequestInfo): RequestInfo {
+  const requestInfoPtr = Object.assign(new RequestInfo(), originalRequestInfo);
+  requestInfoPtr.context = RequestInfoContextExpand;
+  return requestInfoPtr;
+}
+
+// FindRecordsByIds with the view rule filter
+function expandFetchQuery(
+  app: App,
+  relCollection: Collection,
+  relIds: string[],
+  requestInfo: RequestInfo,
+): SelectQuery {
+  const q = recordQuery(app, relCollection).andWhere(inExp(relCollection.name + ".id", ...relIds));
+  applyViewRule(app, relCollection, requestInfo, q);
+  return q;
 }
 
 function applyViewRule(
@@ -482,8 +522,32 @@ export async function autoResolveRecordsFlags(
   records: Record[],
   requestInfo: RequestInfo,
 ): Promise<void> {
+  const query = resolveRecordsFlags(app, records, requestInfo);
+  if (query !== null) {
+    ignoreManagedEmailVisibility(records, await query.columnAsync<unknown>());
+  }
+}
+
+// autoResolveRecordsFlags with synchronous reads
+export function autoResolveRecordsFlagsSync(
+  app: App,
+  records: Record[],
+  requestInfo: RequestInfo,
+): void {
+  const query = resolveRecordsFlags(app, records, requestInfo);
+  if (query !== null) {
+    ignoreManagedEmailVisibility(records, query.column<unknown>());
+  }
+}
+
+// the flags that need no read; the query of the managed record ids, if any
+function resolveRecordsFlags(
+  app: App,
+  records: Record[],
+  requestInfo: RequestInfo,
+): SelectQuery | null {
   if (records.length === 0) {
-    return; // nothing to resolve
+    return null; // nothing to resolve
   }
 
   const first = records[0] as Record;
@@ -499,24 +563,23 @@ export async function autoResolveRecordsFlags(
   // additional emailVisibility checks
   // ---------------------------------------------------------------
   if (!first.collection().isAuth()) {
-    return; // not auth collection records
+    return null; // not auth collection records
   }
 
   const collection = first.collection();
 
-  const mappedRecords = new Map<string, Record>();
   const recordIds: string[] = [];
   for (const rec of records) {
-    mappedRecords.set(rec.id, rec);
     recordIds.push(rec.id);
   }
 
   if (requestInfo.auth !== undefined) {
-    mappedRecords.get(requestInfo.auth.id)?.ignoreEmailVisibility(true);
+    const authId = requestInfo.auth.id;
+    records.findLast((rec) => rec.id === authId)?.ignoreEmailVisibility(true);
   }
 
   if (collection.manageRule === null || collection.manageRule === "") {
-    return; // no manage rule to check
+    return null; // no manage rule to check
   }
 
   // fetch the ids of the managed records
@@ -533,10 +596,15 @@ export async function autoResolveRecordsFlags(
 
   resolver.updateQuery(query);
 
-  const managedIds = await query.columnAsync<unknown>();
-  // ---
+  return query;
+}
 
-  // ignore the email visibility check for the managed records
+// ignore the email visibility check for the managed records
+function ignoreManagedEmailVisibility(records: Record[], managedIds: unknown[]): void {
+  const mappedRecords = new Map<string, Record>();
+  for (const rec of records) {
+    mappedRecords.set(rec.id, rec);
+  }
   for (const id of managedIds) {
     mappedRecords.get(String(id))?.ignoreEmailVisibility(true);
   }

@@ -92,8 +92,9 @@
 // (deleteRecordFiles: upstream's OnModelAfterDeleteSuccess files handler).
 //
 // The realtime handlers (bindRealtimeEvents, src/realtime/realtime-events.ts)
-// run after the after success interceptors, once the outer transaction has
-// committed: the create and update broadcasts and the delete broadcast of
+// run as the action of the after success interceptors, once the outer
+// transaction has committed: the create and update broadcasts (their rule
+// checks read the state the commit left) and the delete broadcast of
 // the messages the delete dry cache prepared right before the row delete
 // (OnModelDelete, after the "delete" interceptors and the superusers check).
 //
@@ -539,8 +540,12 @@ function* afterSuccess(
 ): Step {
   const txInfo = app.databases.txInfo();
   if (txInfo === null) {
-    yield* callFieldInterceptors(app, record, successAction, noop);
-    realtimeAfterSuccess(app, record, successAction);
+    yield* callFieldInterceptors(
+      app,
+      record,
+      successAction,
+      realtimeStep(app, record, successAction),
+    );
     if (successAction === InterceptorActionAfterDelete) {
       // a promise while every delete worker is busy
       const waiting = deleteRecordFiles(app, record);
@@ -565,12 +570,14 @@ function* afterSuccess(
       }
       result = run(callFieldInterceptors(parentApp, record, errorAction, noop));
     } else {
-      result = run(callFieldInterceptors(parentApp, record, successAction, noop));
-      if (result instanceof Promise) {
-        result = result.then(() => realtimeAfterSuccess(parentApp, record, successAction));
-      } else {
-        realtimeAfterSuccess(parentApp, record, successAction);
-      }
+      result = run(
+        callFieldInterceptors(
+          parentApp,
+          record,
+          successAction,
+          realtimeStep(parentApp, record, successAction),
+        ),
+      );
       if (successAction === InterceptorActionAfterDelete) {
         // the delete does not wait for a busy worker pool here
         void deleteRecordFiles(parentApp, record);
@@ -584,6 +591,14 @@ function* afterSuccess(
       });
     }
   });
+}
+
+// the realtime handlers as the action of the after success interceptors:
+// upstream's OnModelAfter*Success handlers (-99, bound after the record
+// event proxy) run when the record interceptors call e.Next(). They run
+// synchronously, so the broadcast's checks read the state the write left.
+function realtimeStep(app: RecordsApp, record: Record, successAction: string): () => Step {
+  return () => syncStep(() => realtimeAfterSuccess(app, record, successAction));
 }
 
 // the realtime handlers of a successful save or delete
@@ -683,7 +698,7 @@ export function* deleteStep(app: RecordsApp, record: Record): Step {
 
       yield* superusersOnDelete(app, record, function* (deleteApp) {
         // OnModelDelete: the realtime dry cache
-        yield* realtimeRecordDelete(deleteApp, record);
+        realtimeRecordDelete(deleteApp, record);
 
         const pk = record.lastSavedPK();
         if (pk === "") {
