@@ -43,5 +43,5 @@ Upstream builds SQL with `pocketbase/dbx` (MIT). iglo.base ports the small subse
 ## Testing
 
 - **Ported unit tables:** upstream's resolver and filter tests compare generated SQL strings. They are ported first and must pass before any records endpoint is wired.
-- **Differential fuzzing:** a generator produces random filters over a fixture schema (operators, any-of forms, nested relations, back-relations, `@request.*` with random auth, macros with a fixed clock). Each filter runs against upstream and iglo.base; the record ID sets must be equal. Failures are minimized and added to the fixed suite.
+- **Differential fuzzing:** a generator produces random filters over a fixture schema (operators, any-of forms, nested relations, back-relations, `@request.*` with random auth, macros; upstream's binary has no injected clock, so macro forms that can flip between the two calls are avoided, see `docs/perf/M2.6-filter-fuzz.md`). Each filter runs against upstream and iglo.base; the record IDs and page fields must be equal. Failures are minimized and added to the fixed suite.
 - **Rules matrix:** for each fixture collection, guest, regular user, other user and superuser call list, view, create, update and delete; status codes and visible records must match upstream.
