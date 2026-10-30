@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M3.3 (batch) active; the rest follows in milestone order (work plan).
+M3.3 (batch) merged; next: the rest in milestone order (work plan).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.3 | review | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 2 | [brief](briefs/M3.3.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M3.3 | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 2026-10-30 (`166d812`) | Two review rounds: Sol APPROVE at `2dafecd` (lead: the generated Content-Type wins over an item's for rules, rollback tests read through HTTP). D28: handlers share one implementation behind `RecordIO`; `batch.timeout` is checked after each item, and a disconnect is not noticed during a batch (listed in 04-api-compatibility.md). Carried: rate limits (M4.8), S3 (M5.4); the timeout path has no differential case |
 | M2.6 | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 2026-10-30 (`413f9bf`) | Three review rounds, all on the fuzzer's own comparison and replay (fixer, then lead); round 3 repeated after host restarts. Sol APPROVE at `8b68a80`. Seeds 1001 and 2002: 100,000 cases each, 0 differences, no exclusions; no fix needed in `src/`. `bun run fuzz:filters` |
 | M5.1 | [#39](https://github.com/iglo-tech/iglo.base/pull/39) | 2026-10-30 (`0257a28`) | Two review rounds: Sol APPROVE at `6e0ba91` (fixer: broadcasts prepared synchronously right after commit, response follows; cascade-delete payload built in the transaction). 8 MiB unsent bound listed in 04-api-compatibility.md. Carried: `findOAuth2RedirectClient`/`sendOAuth2Redirect` for M4.5; trusted-proxy IP scenario waits for M5.7; batch broadcasts follow when batch is ported |
 | M5.2 | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 2026-10-30 (`ab9f728`) | Three council rounds (fixer: bounded header read, multi-range Content-Length via a temp file in `.pb_temp_to_delete`, cast.ToInt64 env limits; lead: GIF first frame only, animated WebP fails before the read; round 3 decided by the lead). Carried: 2 rate-limit scenarios pending on M4.8; the thumb-failure log warning waits for M5.5 |
@@ -66,6 +66,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-29 | Test harness | The body-limit tests put the host under heavy memory pressure in one `bun run check` (M2.5 review); the reviewer passed with `--smol` |
 | 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
 | 2026-10-30 | Realtime tests (M5.1) | `test/differential/realtime/realtime.test.ts:29`, "a user delete updates the records that reference it": cascade update and delete notifications arrive in varying order; failed 2 of 3 isolated reruns and one full `test:reference` run. Check whether a real client can see a different order before calling it flaky |
+| 2026-10-30 | Batch (M3.3) | Item headers that are not `Content-Type` but normalize to the rule key `content_type` (`CONTENT_TYPE`, `content.type`): upstream accepts or refuses at random (Go map order); iglo.base always uses the generated value |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
