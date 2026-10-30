@@ -44,7 +44,7 @@ import {
 } from "@/tools/filesystem/file";
 import { goQuote } from "@/fields/field";
 import { checkSource } from "@/files/create-thumb";
-import { gifFirstFrameLength, readerSource } from "@/files/image-config";
+import { gifFirstFrameLength, readerSource, webpCheckImageChunk } from "@/files/image-config";
 import type { ThumbSize } from "@/files/imaging";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
@@ -577,13 +577,16 @@ export class System {
     const r = this.getReader(originalKey);
     let originalContentType: string;
     let isGif: boolean;
+    let isWebp: boolean;
     try {
       originalContentType = r.contentType;
       // check image dimensions to minimize excessive memory usage (the
       // header is read in bounded pieces; the original is read only after
       // it passes)
       const src = readerSource(r, r.size);
-      isGif = src.peek(1)[0] === 0x47;
+      const magic = src.peek(12);
+      isGif = magic[0] === 0x47;
+      isWebp = String.fromCharCode(...magic.subarray(8, 12)) === "WEBP";
       checkSource(src, render.maxSourcePixels());
     } finally {
       r.close();
@@ -603,6 +606,16 @@ export class System {
       original.set(await this.#blob(originalKey).slice(0, end).bytes());
       original[end] = 0x3b;
     } else {
+      if (isWebp) {
+        // an original without a VP8 or VP8L chunk (an animated WebP) fails
+        // as upstream's decode does, before it is read whole
+        const w = this.getReader(originalKey);
+        try {
+          webpCheckImageChunk(readerSource(w, w.size));
+        } finally {
+          w.close();
+        }
+      }
       original = await this.#blob(originalKey).bytes();
     }
 

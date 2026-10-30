@@ -99,14 +99,19 @@ export function readerSource(r: { read(p: Uint8Array): number }, size: number): 
   let buf = new Uint8Array(0);
   let pos = 0;
   let o = 0;
+  let scratch: Uint8Array | undefined;
+  let store = new Uint8Array(0);
   // buffers at least n bytes ahead, or what is left
   const fill = (n: number): void => {
     if (buf.length - pos >= n) {
       return;
     }
-    const next = new Uint8Array(Math.max(n, readerChunk));
+    // the backing store is reused while it is large enough
+    const need = Math.max(n, readerChunk);
+    const next = store.length >= need ? store : new Uint8Array(need);
     let have = buf.length - pos;
     next.set(buf.subarray(pos));
+    store = next;
     while (have < n) {
       const k = r.read(next.subarray(have));
       if (k === 0) {
@@ -137,10 +142,23 @@ export function readerSource(r: { read(p: Uint8Array): number }, size: number): 
       return out;
     },
     skip(n: number): void {
-      for (let left = n; left > 0;) {
-        const k = Math.min(left, readerChunk);
-        this.read(k);
+      // the buffered bytes first, then the rest read into one scratch
+      // buffer, so a large skip allocates nothing per piece
+      const buffered = Math.min(n, buf.length - pos);
+      pos += buffered;
+      o += buffered;
+      let left = n - buffered;
+      if (left === 0) {
+        return;
+      }
+      scratch ??= new Uint8Array(readerChunk);
+      while (left > 0) {
+        const k = r.read(scratch.subarray(0, Math.min(left, readerChunk)));
+        if (k === 0) {
+          throw unexpectedEOF();
+        }
         left -= k;
+        o += k;
       }
     },
   };
@@ -454,6 +472,44 @@ export function gifFirstFrameLength(r: ByteSource): number {
       throw new Error("gif: missing image data");
     } else {
       throw new Error(`gif: unknown block type: 0x${(c as number).toString(16)}`);
+    }
+  }
+}
+
+// x/image/webp decode(r, configOnly=false) walks the RIFF chunks to the
+// first VP8 or VP8L chunk and fails when there is none: an animated WebP
+// keeps its frames in ANMF chunks, so upstream cannot decode it and serves
+// the original. The thumb walks the same top-level chunks through the
+// bounded reader first, so such an original fails before it is read whole.
+export function webpCheckImageChunk(r: ByteSource): void {
+  const invalid = new Error("webp: invalid format");
+  const riffLen = view(r.read(12)).getUint32(4, true);
+  if (riffLen < 4) {
+    throw new Error("riff: short chunk data");
+  }
+  let total = riffLen - 4;
+  for (;;) {
+    if (total < 8 || r.offset + 8 > r.size) {
+      throw invalid;
+    }
+    total -= 8;
+    const head = r.read(8);
+    const id = String.fromCharCode(...head.subarray(0, 4));
+    if (id === "VP8 " || id === "VP8L") {
+      return;
+    }
+    const len = view(head).getUint32(4, true);
+    if (len > total || r.offset + len > r.size) {
+      throw invalid;
+    }
+    r.skip(len);
+    total -= len;
+    if (len & 1) {
+      if (total === 0) {
+        throw invalid;
+      }
+      total--;
+      r.skip(1);
     }
   }
 }

@@ -26,6 +26,7 @@ import { join } from "node:path";
 
 import type { FileField } from "@/fields/file";
 import { encodeGif } from "@/files/gif-encode";
+import { encodePng } from "@/files/png-raw";
 
 import { writeLargePng, writeNoise } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -403,4 +404,89 @@ test("only the first frame of an animated GIF original is read", async () => {
       ),
     ),
   ).toBe(true);
+});
+
+const u24 = (v: number): number[] => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff];
+const u32 = (v: number): number[] => [...u24(v), v >>> 24];
+
+// a RIFF chunk with its padding byte
+function riffChunk(id: string, data: Uint8Array): Uint8Array {
+  const out = new Uint8Array(8 + data.length + (data.length & 1));
+  out.set(new TextEncoder().encode(id));
+  out.set(u32(data.length), 4);
+  out.set(data, 8);
+  return out;
+}
+
+// a valid animated WebP: VP8X with the animation flag, ANIM, and frames of
+// 512x512 lossless noise in ANMF chunks (no VP8 or VP8L chunk at the top
+// level), written frame by frame
+async function writeAnimatedWebp(path: string, frames: number): Promise<number> {
+  const pix = new Uint8Array(512 * 512 * 4);
+  let x = 7;
+  for (let i = 0; i < pix.length; i++) {
+    x = (x * 1103515245 + 12345) >>> 0;
+    pix[i] = i % 4 === 3 ? 255 : x >>> 24;
+  }
+  const still = await new Bun.Image(encodePng({ pix, width: 512, height: 512 }))
+    .webp({ lossless: true })
+    .bytes();
+  // the VP8L chunk, header included
+  const vp8l = still.subarray(12);
+  const anmfHead = [...u24(0), ...u24(0), ...u24(511), ...u24(511), ...u24(50), 0];
+  const anmfData = new Uint8Array(anmfHead.length + vp8l.length);
+  anmfData.set(anmfHead);
+  anmfData.set(vp8l, anmfHead.length);
+  const anmf = riffChunk("ANMF", anmfData);
+  const vp8x = riffChunk("VP8X", new Uint8Array([0x02, 0, 0, 0, ...u24(511), ...u24(511)]));
+  const anim = riffChunk("ANIM", new Uint8Array(6));
+  const riffLen = 4 + vp8x.length + anim.length + frames * anmf.length;
+  const fd = openSync(path, "w");
+  try {
+    writeSync(fd, new Uint8Array([...new TextEncoder().encode("RIFF"), ...u32(riffLen)]));
+    writeSync(fd, new TextEncoder().encode("WEBP"));
+    writeSync(fd, vp8x);
+    writeSync(fd, anim);
+    for (let i = 0; i < frames; i++) {
+      writeSync(fd, anmf);
+    }
+  } finally {
+    closeSync(fd);
+  }
+  return 8 + riffLen;
+}
+
+test("an animated WebP original serves the original without being read whole", async () => {
+  const dataDir = fixtureCopy();
+  prepareDemo1Thumbs(dataDir);
+  const original = join(dataDir, "storage", fileKey);
+  const size = await writeAnimatedWebp(original, 700);
+  expect(statSync(original).size).toBe(size);
+  expect(size).toBeGreaterThan(45_000_000);
+  const server = await startProcess(dataDir);
+  const target = server.url + "/api/files/" + fileKey + "?thumb=100x100";
+
+  // the range keeps the served original out of the measurement
+  const warm = await fetch(target, { headers: { Range: "bytes=0-0" } });
+  expect(warm.status).toBe(206);
+  await warm.arrayBuffer();
+  resetPeak(server.pid);
+  const before = peakRss(server.pid);
+  const res = await fetch(target.replace("100x100", "111x222"), {
+    headers: { Range: "bytes=0-0" },
+  });
+  expect(res.status).toBe(206);
+  expect(res.headers.get("content-range")).toBe(`bytes 0-0/${size}`);
+  await res.arrayBuffer();
+  const growth = peakRss(server.pid) - before;
+  // reading the original whole would add at least its size
+  expect(growth).toBeLessThan(size / 4);
+  expect(
+    existsSync(
+      join(
+        dataDir,
+        "storage/wsmn24bux7wo113/al1h9ijdeojtsjy/thumbs_300_Jsjq7RdBgA.png/111x222_300_Jsjq7RdBgA.png",
+      ),
+    ),
+  ).toBe(false);
 });
