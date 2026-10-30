@@ -10,7 +10,7 @@ M4.4 (mail, with `mails/`) merged; M0.7 (thumbnail spike) active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.7 | review | [#37](https://github.com/iglo-tech/iglo.base/pull/37) | 1 | [brief](briefs/M0.7.md) |
+| M0.7 | fix | [#37](https://github.com/iglo-tech/iglo.base/pull/37) | 1 (fixer: orientation, GIF screen) | [brief](briefs/M0.7.md) |
 
 ## Done
 
