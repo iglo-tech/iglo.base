@@ -2,14 +2,15 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-10-29
+Updated: 2026-10-30
 
-M0.7 (thumbnail spike) merged; next: M5.2 (file serving).
+M5.2 (file serving) in progress.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M5.2 | worker | `task/M5.2-files` | 0 | [Brief](briefs/M5.2.md); Opus worker |
 
 ## Done
 
