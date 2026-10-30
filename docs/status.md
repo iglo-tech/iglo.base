@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M2.6 (filter fuzzer) merged; next: the rest in milestone order (work plan).
+M3.3 (batch) active; the rest follows in milestone order (work plan).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M3.3 | worker | task/M3.3-batch | 0 | [brief](briefs/M3.3.md) |
 
 ## Done
 
@@ -77,6 +78,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-30 (M3.3 brief): D28: a batch prepares asynchronously, then runs all items synchronously in one write transaction; `batch.timeout` is checked between items, so it fires late (deliberate difference).
 - 2026-10-29 (plan change, M1.3 brief): M3.5 (Settings API) is folded into M1.3. M1.3's acceptance (settings written by either server read back identically) can only be checked through a public boundary, which is the Settings API. M1.3 is picked next because M3.5, M4.4 and M4.8 (and through M4.4, M4.2 and M4.3) wait on it; the critical path through M3.1 is merged.
 - 2026-10-29 (lead, from the iglo.email lead's waste analysis): fixers and the reviewer handle each finding's whole defect class in one round; every agent deletes `dist/` and its temporary data before its final reply. Next tasks follow a usable-first order (work plan, Order). Host disk had filled (219 MB free): with the owner's approval, the lead removed 46 GiB of regenerable `.upstream` and `dist` directories from inactive worktrees, and [#30](https://github.com/iglo-tech/iglo.base/pull/30) (merged after three Sol rounds) makes `.upstream` a symlink to a shared host cache per lock (`~/.cache/iglo-base/upstream`).
 - 2026-10-29 (owner direction): **one cross-lab reviewer, local verification, results over implementations.** D25: the council is the lead plus one GPT-6.1 Sol reviewer (no Claude reviews Claude); verification is local, CI runs on demand only. D26: the API contract is about results for real client requests; malformed or hand-crafted input must be safe but may get a different error, and is tracked in the hardening backlog. Applied to `AGENTS.md`, the work plan, the runbook, `04-api-compatibility.md` and `ci.yml`. The lead keeps `status.md` short and spends fewer tokens per task.
