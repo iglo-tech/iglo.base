@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M3.3 (batch) merged; next: the rest in milestone order (work plan).
+M3.6 (round-trip suite) active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M3.6 | worker | `task/M3.6-roundtrip` ([brief](briefs/M3.6.md)) | 0 | |
 
 ## Done
 
