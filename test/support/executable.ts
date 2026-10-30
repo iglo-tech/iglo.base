@@ -31,6 +31,7 @@ export function executable(): Promise<string> {
         "--compile",
         "src/main.ts",
         "src/db/read-worker.ts",
+        "src/files/thumb-worker.ts",
         "--outfile",
         outfile,
       ],

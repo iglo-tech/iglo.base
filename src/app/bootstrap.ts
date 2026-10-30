@@ -96,8 +96,10 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 }
 
 // ClearBootstrap releases the initialized core app resources (closing
-// db connections). Resolves once the read worker threads have exited.
+// db connections, stopping the thumb workers). Resolves once the read
+// worker threads have exited.
 export async function clearBootstrap(app: App): Promise<void> {
+  app.thumbs.close();
   try {
     app.databases.close();
   } finally {

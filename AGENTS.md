@@ -69,7 +69,7 @@ bun run lint                    # oxlint --deny-warnings
 bun run format:check            # oxfmt --check (bun run format writes)
 bun run typecheck               # tsc --noEmit
 bun run test                    # bun test; builds the executable and tests it
-bun run build                   # bun build --compile src/main.ts src/db/read-worker.ts --outfile dist/iglo-base
+bun run build                   # bun build --compile src/main.ts src/db/read-worker.ts src/files/thumb-worker.ts --outfile dist/iglo-base
 bun run upstream:prepare        # pinned reference tools into .upstream/ (network; verified by SHA-256)
 bun run test:reference          # upstream:prepare, then the smoke tests in test/differential/
 ```

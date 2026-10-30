@@ -9,6 +9,7 @@
 // builds the app that `serve` runs on.
 
 import type { Clock } from "@/app/clock";
+import { ThumbPool } from "@/files/thumb-pool";
 import { type AppFilesystem, newAppFilesystem } from "@/app/filesystem";
 import type { Databases } from "@/db/base";
 import type { Mailer } from "@/mail/mailer";
@@ -52,6 +53,9 @@ export interface App {
   // NewMailClient creates a new SMTP or sendmail client from the current
   // settings (src/mail/mail-client.ts)
   newMailClient(): Mailer;
+  // the file API's thumb generation: its limits and its lazily started
+  // worker threads (src/files/thumb-pool.ts; ClearBootstrap stops them)
+  readonly thumbs: ThumbPool;
 }
 
 export interface AppConfig {
@@ -83,5 +87,6 @@ export function newApp(config: AppConfig): App {
       logger: config.logger,
     }),
     newMailClient: () => newMailClient(settings, config.clock, getenv),
+    thumbs: new ThumbPool({ getenv }),
   });
 }
