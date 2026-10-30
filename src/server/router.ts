@@ -33,6 +33,8 @@ export class ResponseWriter {
   #status = 0;
   #sentHeader: Headers | undefined;
   #chunks: Uint8Array[] = [];
+  // a body set by writeBody, sent as it is
+  #body: Blob | null = null;
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
   readonly #onCommit: ((response: Response) => void) | undefined;
@@ -58,6 +60,9 @@ export class ResponseWriter {
     if (!bodyAllowedForStatus(this.#sentStatus())) {
       return ErrBodyNotAllowed;
     }
+    if (this.#body !== null) {
+      return new Error("write after writeBody");
+    }
     const bytes = typeof data === "string" ? encoder.encode(data) : data.slice();
     if (bytes.length === 0) {
       return undefined;
@@ -71,6 +76,25 @@ export class ResponseWriter {
       }
     } else {
       this.#chunks.push(bytes);
+    }
+    return undefined;
+  }
+
+  // Sets the whole response body to a Blob (e.g. a stored file), which is
+  // streamed to the client when the handler returns instead of being read
+  // into memory. Only valid before anything else is written or flushed.
+  writeBody(body: Blob): Error | undefined {
+    if (!this.#written) {
+      this.writeHeader(200);
+    }
+    if (!bodyAllowedForStatus(this.#sentStatus())) {
+      return ErrBodyNotAllowed;
+    }
+    if (this.#committed || this.#chunks.length > 0 || this.#body !== null) {
+      return new Error("writeBody after other body writes");
+    }
+    if (body.size > 0) {
+      this.#body = body;
     }
     return undefined;
   }
@@ -140,7 +164,7 @@ export class ResponseWriter {
     if (!this.#written) {
       this.writeHeader(200);
     }
-    const body = this.#chunks.length === 0 ? null : new Blob(this.#chunks);
+    const body = this.#body ?? (this.#chunks.length === 0 ? null : new Blob(this.#chunks));
     return this.#response(bodyAllowedForStatus(this.#sentStatus()) ? body : null);
   }
 
