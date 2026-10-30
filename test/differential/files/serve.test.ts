@@ -74,12 +74,13 @@ const crossSizes = ["60x60", "70x70"];
 // the other sizes of the M0.7 compatibility set's limit cases
 const compatSizes = ["70x50f", "0x50"];
 
-// MAE tolerance per channel (0-255) by the original's format
-function tolerance(contentType: string, name: string): number {
+// MAE tolerance per channel (0-255) by the original's format (note: the
+// test image's description)
+function tolerance(contentType: string, note: string): number {
   if (contentType === "image/jpeg") {
     return 2;
   }
-  if (contentType === "image/webp" && !name.includes("lossless") && name !== "alpha.webp") {
+  if (contentType === "image/webp" && !note.includes("lossless")) {
     return 9;
   }
   return 0.5;
@@ -257,7 +258,7 @@ async function compareThumb(
   const [a, b] = await Promise.all([pixels(up.body), pixels(ig.body)]);
   expect(`${b.width}x${b.height}`).toBe(`${a.width}x${a.height}`);
   const errors = mae(a, b);
-  const tol = tolerance(file.contentType, file.name);
+  const tol = tolerance(file.contentType, file.note);
   report.push(
     `| ${file.name} | ${size} | ${a.width}x${a.height} ${up.headers.get("content-type")} | same | ${errors.map((e) => e.toFixed(2)).join(" / ")} | ${tol} |`,
   );
