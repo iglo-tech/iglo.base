@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M3.6 merged; next: M3.7 (JavaScript migrations).
+M3.7 (JavaScript migrations) active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M3.7 | worker | `task/M3.7-migrations` ([brief](briefs/M3.7.md)) | 0 | |
 
 ## Done
 
@@ -80,6 +81,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-30 (M3.7 brief): migration bindings are synchronous, so an `up` returning a promise fails; `$http` is not provided, because migrations run inside a write transaction; bindings stay out of `globalThis`.
 - 2026-10-30 (lead takeover): the M3.6 lead thread stopped at 18:54 UTC on a permission prompt for its own `rm` of a command-substituted path, which nobody could answer, so its completions stayed queued. A new lead took the lock at 20:17 UTC, 83 minutes after the last heartbeat, instead of waiting for the 90-minute limit. The prompt was left unanswered. If it is approved later, the old thread resumes: cancel it rather than approving. Its `/tmp/m36-lead-dir` pointer file remains. Runbook gap: leads must not chain `rm` on a command substitution in the same call as other steps.
 - 2026-10-30 (M3.3 brief): D28: a batch prepares asynchronously, then runs all items synchronously in one write transaction; `batch.timeout` is checked between items, so it fires late (deliberate difference).
 - 2026-10-29 (plan change, M1.3 brief): M3.5 (Settings API) is folded into M1.3. M1.3's acceptance (settings written by either server read back identically) can only be checked through a public boundary, which is the Settings API. M1.3 is picked next because M3.5, M4.4 and M4.8 (and through M4.4, M4.2 and M4.3) wait on it; the critical path through M3.1 is merged.
