@@ -10,7 +10,7 @@ M5.1 (realtime) merged; M2.6 active, then the rest in milestone order (work plan
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.6 | worker | `task/M2.6-filter-fuzz` | 0 | [brief](briefs/M2.6.md) |
+| M2.6 | review | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 1 | [brief](briefs/M2.6.md); head `f92d3c9`, local checks pass, two 100,000-case seeds clean |
 
 ## Done
 
