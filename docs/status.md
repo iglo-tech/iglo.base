@@ -10,7 +10,7 @@ M5.1 (realtime) in progress.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.1 | review | [#39](https://github.com/iglo-tech/iglo.base/pull/39) | 1 | [Brief](briefs/M5.1.md); Sol review round 1 of `0b20643`. Lead accepted: response before broadcast, per-record commit order, shared rule check per broadcast, small edits to server/app/collections; OAuth2 redirect helpers wait for M4.5; trusted-proxy IP scenario waits for M5.7 |
+| M5.1 | fix | [#39](https://github.com/iglo-tech/iglo.base/pull/39) | 1 | [Brief](briefs/M5.1.md); round 1 CHANGES: rule checks ran against later database state (draft leak; lead withdrew "response before broadcast"), cascade-delete expand prepared after commit; Opus fixer. OAuth2 redirect helpers wait for M4.5; trusted-proxy IP scenario waits for M5.7 |
 
 ## Done
 
