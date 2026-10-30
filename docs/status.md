@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M5.1 (realtime) merged; next: the rest in milestone order (work plan).
+M5.1 (realtime) merged; M2.6 active, then the rest in milestone order (work plan).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M2.6 | worker | `task/M2.6-filter-fuzz` | 0 | [brief](briefs/M2.6.md) |
 
 ## Done
 
