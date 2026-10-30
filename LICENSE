@@ -106,7 +106,11 @@ src/tools/mimetype/mediatype.ts from Go go1.27.2 src/mime, and src/tools/mimetyp
 src/bytes, src/encoding/binary, src/unicode/utf8 and src/unicode, src/mail/go-mime.ts from Go go1.27.2 src/mime,
 src/mime/quotedprintable, src/net/mail, src/net/http/header.go and src/net/textproto, the PLAIN auth in src/mail/smtp.ts
 from Go go1.27.2 src/net/smtp, the encoded-word and quoted-printable tables in test/mail/mailer.test.ts from those
-packages' tests (https://github.com/golang/go), and src/tools/crypto/ (bcrypt.ts, blowfish.ts, blowfish-const.ts) and test/tools/crypto/ from
+packages' tests, src/server/serve-content.ts from Go go1.27.2 src/net/http/fs.go, src/files/image-config.ts from
+Go go1.27.2 src/image, src/image/jpeg, src/image/png and src/image/gif, src/files/gif-encode.ts from Go go1.27.2
+src/image/gif, src/image/draw, src/image/color/palette and src/compress/lzw (https://github.com/golang/go),
+the WebP header reading in src/files/image-config.ts from golang.org/x/image v0.47.0 webp and riff
+(https://go.googlesource.com/image), and src/tools/crypto/ (bcrypt.ts, blowfish.ts, blowfish-const.ts) and test/tools/crypto/ from
 golang.org/x/crypto v0.58.0 bcrypt and blowfish (https://go.googlesource.com/crypto), distributed under this license:
 
 Copyright 2009 The Go Authors.
@@ -249,3 +253,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+src/files/imaging.ts and the EXIF orientation in src/files/image-config.ts are translated from
+disintegration/imaging v1.6.2 (https://github.com/disintegration/imaging), distributed under this license:
+
+The MIT License (MIT)
+
+Copyright (c) 2012 Grigory Dryapak
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

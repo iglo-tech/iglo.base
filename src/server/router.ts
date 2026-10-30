@@ -33,6 +33,10 @@ export class ResponseWriter {
   #status = 0;
   #sentHeader: Headers | undefined;
   #chunks: Uint8Array[] = [];
+  // a body set by writeBody, sent as it is
+  #body: Blob | ReadableStream<Uint8Array> | Promise<Blob> | null = null;
+  // run once the response has been handed to the server
+  #afterResponse: (() => void)[] = [];
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
   readonly #onCommit: ((response: Response) => void) | undefined;
@@ -58,6 +62,9 @@ export class ResponseWriter {
     if (!bodyAllowedForStatus(this.#sentStatus())) {
       return ErrBodyNotAllowed;
     }
+    if (this.#body !== null) {
+      return new Error("write after writeBody");
+    }
     const bytes = typeof data === "string" ? encoder.encode(data) : data.slice();
     if (bytes.length === 0) {
       return undefined;
@@ -73,6 +80,34 @@ export class ResponseWriter {
       this.#chunks.push(bytes);
     }
     return undefined;
+  }
+
+  // Sets the whole response body to a Blob (e.g. a stored file) or a
+  // stream, which is sent to the client as it reads it, once the handler
+  // returns, instead of being read into memory. A promised Blob is awaited
+  // before the response is sent. Only valid before anything else is
+  // written or flushed.
+  writeBody(body: Blob | ReadableStream<Uint8Array> | Promise<Blob>): Error | undefined {
+    if (!this.#written) {
+      this.writeHeader(200);
+    }
+    if (!bodyAllowedForStatus(this.#sentStatus())) {
+      return ErrBodyNotAllowed;
+    }
+    if (this.#committed || this.#chunks.length > 0 || this.#body !== null) {
+      return new Error("writeBody after other body writes");
+    }
+    if (!(body instanceof Blob) || body.size > 0) {
+      this.#body = body;
+    }
+    return undefined;
+  }
+
+  // Runs fn after the response is handed to the server (Bun opens a file
+  // body then), whether or not it is sent, e.g. to remove a temporary file
+  // the body reads.
+  afterResponse(fn: () => void): void {
+    this.#afterResponse.push(fn);
   }
 
   // Written reports whether the current response has been already written.
@@ -127,8 +162,19 @@ export class ResponseWriter {
   }
 
   // Ends the response after the handler returned: closes a flushed stream
-  // and returns undefined, or returns the buffered response.
-  finish(): Response | undefined {
+  // and returns undefined, or returns the buffered response (a promise when
+  // the body is a promised Blob).
+  finish(): Response | Promise<Response> | undefined {
+    let response: Response | Promise<Response> | undefined;
+    try {
+      response = this.#finish();
+    } finally {
+      this.#runAfterResponse(response);
+    }
+    return response;
+  }
+
+  #finish(): Response | Promise<Response> | undefined {
     if (this.#committed) {
       try {
         this.#controller?.close();
@@ -140,8 +186,33 @@ export class ResponseWriter {
     if (!this.#written) {
       this.writeHeader(200);
     }
-    const body = this.#chunks.length === 0 ? null : new Blob(this.#chunks);
-    return this.#response(bodyAllowedForStatus(this.#sentStatus()) ? body : null);
+    const allowed = bodyAllowedForStatus(this.#sentStatus());
+    const body = this.#body ?? (this.#chunks.length === 0 ? null : new Blob(this.#chunks));
+    if (body instanceof Promise) {
+      return body.then((blob) => this.#response(allowed ? blob : null));
+    }
+    return this.#response(allowed ? body : null);
+  }
+
+  // the afterResponse functions, after the response (or its failure) has
+  // reached the server: a timer runs after the promise jobs in which Bun
+  // takes the response
+  #runAfterResponse(response: Response | Promise<Response> | undefined): void {
+    const run = (): void => {
+      if (this.#afterResponse.length === 0) {
+        return;
+      }
+      setTimeout(() => {
+        for (const fn of this.#afterResponse.splice(0)) {
+          try {
+            fn();
+          } catch {
+            // a cleanup failure does not change the response
+          }
+        }
+      }, 0);
+    };
+    Promise.resolve(response).then(run, run);
   }
 
   // The buffered body so far (for tests).

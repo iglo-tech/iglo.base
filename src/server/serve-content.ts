@@ -1,18 +1,21 @@
-// Upstream: Go's net/http fs.go (serveContent, checkPreconditions,
-// parseRange, the multipart/byteranges response) and mime's built-in
-// extension table, as tools/router/event.go FileFS calls them
-// (http.ServeContent with the file name and modification time).
+// Upstream: Go's net/http fs.go (serveContent, setLastModified,
+// checkPreconditions with the date preconditions, parseRange, the
+// multipart/byteranges response), http.ParseTime, and mime's built-in
+// extension table, as tools/router/event.go FileFS and
+// tools/filesystem/filesystem.go Serve call them (http.ServeContent with
+// the file name and modification time).
 //
-// The served files are in memory and have no modification time (as Go's
-// embed.FS), so there is no Last-Modified header and the date
-// preconditions (If-Modified-Since, If-Unmodified-Since, If-Range with a
-// date) behave as Go's do for a zero time. There is no ETag either.
+// The content is either in memory (the dashboard files, as Go's embed.FS:
+// no modification time, so no Last-Modified header and the date
+// preconditions behave as Go's do for a zero time) or a Blob that is
+// streamed to the client (a stored file, with its modification time). No
+// ETag is set by either caller, so the ETag preconditions only match "*".
 //
-// Content-Type comes from the file name's extension: Go's built-in table,
-// plus font/woff2, which upstream's binary gets from the system mime.types
-// file. Go sniffs the content of other files (http.DetectContentType); here
-// they are application/octet-stream. Every file the dashboard build has is
-// in the table (test/ui checks it).
+// Content-Type, when the caller did not set it, comes from the file name's
+// extension: Go's built-in table, plus font/woff2, which upstream's binary
+// gets from the system mime.types file. Go sniffs the content of other
+// files (http.DetectContentType); here they are application/octet-stream.
+// Every file the dashboard build has is in the table (test/ui checks it).
 
 import type { HttpRequest } from "@/server/request";
 import { httpError, type ResponseWriter } from "@/server/router";
@@ -48,7 +51,7 @@ export function typeByExtension(name: string): string {
   return extensionTypes.get(ext) ?? extensionTypes.get(ext.toLowerCase()) ?? "";
 }
 
-interface HttpRange {
+export interface HttpRange {
   start: number;
   length: number;
 }
@@ -225,7 +228,57 @@ function checkIfNoneMatch(r: HttpRequest): Cond {
   return etagListMatchesStar(inm, true);
 }
 
-function checkIfRange(r: HttpRequest): Cond {
+// Go's isZeroTime: the zero time or the Unix epoch (modtime is in Unix
+// nanoseconds, 0 for none)
+function isZeroTime(modtime: bigint): boolean {
+  return modtime === 0n;
+}
+
+// modtime in whole Unix seconds (time.Truncate(time.Second), Unix()),
+// rounding toward negative infinity as Go's do for times before 1970
+function unixSeconds(modtime: bigint): bigint {
+  const s = modtime / 1_000_000_000n;
+  return modtime < 0n && modtime % 1_000_000_000n !== 0n ? s - 1n : s;
+}
+
+function checkIfUnmodifiedSince(r: HttpRequest, modtime: bigint): Cond {
+  const ius = r.headers.get("If-Unmodified-Since") ?? "";
+  if (ius === "" || isZeroTime(modtime)) {
+    return "none";
+  }
+  const t = parseTime(ius);
+  if (t === undefined) {
+    return "none";
+  }
+  // The Last-Modified header truncates sub-second precision so
+  // the modtime needs to be truncated too.
+  if (compareTime(unixSeconds(modtime) * 1_000_000_000n, t) <= 0) {
+    return "true";
+  }
+  return "false";
+}
+
+function checkIfModifiedSince(r: HttpRequest, modtime: bigint): Cond {
+  if (r.method !== "GET" && r.method !== "HEAD") {
+    return "none";
+  }
+  const ims = r.headers.get("If-Modified-Since") ?? "";
+  if (ims === "" || isZeroTime(modtime)) {
+    return "none";
+  }
+  const t = parseTime(ims);
+  if (t === undefined) {
+    return "none";
+  }
+  // The Last-Modified header truncates sub-second precision so
+  // the modtime needs to be truncated too.
+  if (compareTime(unixSeconds(modtime) * 1_000_000_000n, t) <= 0) {
+    return "false";
+  }
+  return "true";
+}
+
+function checkIfRange(r: HttpRequest, modtime: bigint): Cond {
   if (r.method !== "GET" && r.method !== "HEAD") {
     return "none";
   }
@@ -233,9 +286,157 @@ function checkIfRange(r: HttpRequest): Cond {
   if (ir === "") {
     return "none";
   }
-  // an ETag never matches the missing ETag, and a date never matches the
-  // zero modification time
+  const [etag] = scanETag(ir);
+  if (etag !== "") {
+    // an ETag never matches the missing ETag
+    return "false";
+  }
+  // The If-Range value is typically the ETag value, but it may also be
+  // the modtime date. See golang.org/issue/8367.
+  if (modtime === 0n) {
+    return "false";
+  }
+  const t = parseTime(ir);
+  if (t === undefined) {
+    return "false";
+  }
+  if (unixSeconds(t) === unixSeconds(modtime)) {
+    return "true";
+  }
   return "false";
+}
+
+function compareTime(a: bigint, b: bigint): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+const shortDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const longDays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const shortMonths = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+];
+
+// the fractional seconds time.Parse accepts after a layout's seconds
+const fraction = String.raw`(?:[.,](\d+))?`;
+
+// http.ParseTime's layouts: TimeFormat, time.RFC850 and time.ANSIC
+const timeLayouts: { re: RegExp; parts: (m: RegExpExecArray) => TimeParts | undefined }[] = [
+  {
+    // Mon, 02 Jan 2006 15:04:05 GMT
+    re: new RegExp(
+      String.raw`^([A-Za-z]{3}), (\d{2}) ([A-Za-z]{3}) (\d{4}) (\d{1,2}):(\d{2}):(\d{2})${fraction} GMT$`,
+    ),
+    parts: (m) =>
+      shortDays.includes((m[1] as string).toLowerCase())
+        ? timeParts(m[4], m[3], m[2], m[5], m[6], m[7], m[8])
+        : undefined,
+  },
+  {
+    // Monday, 02-Jan-06 15:04:05 MST
+    re: new RegExp(
+      String.raw`^([A-Za-z]+), (\d{2})-([A-Za-z]{3})-(\d{2}) (\d{1,2}):(\d{2}):(\d{2})${fraction} ([A-Z]{3,5}|[+-]\d+)$`,
+    ),
+    parts: (m) => {
+      if (!longDays.includes((m[1] as string).toLowerCase())) {
+        return undefined;
+      }
+      const yy = Number(m[4]);
+      const year = String(yy >= 69 ? yy + 1900 : yy + 2000);
+      return timeParts(year, m[3], m[2], m[5], m[6], m[7], m[8]);
+    },
+  },
+  {
+    // Mon Jan _2 15:04:05 2006
+    re: new RegExp(
+      String.raw`^([A-Za-z]{3}) ([A-Za-z]{3}) ( ?\d{1,2}) (\d{1,2}):(\d{2}):(\d{2})${fraction} (\d{4})$`,
+    ),
+    parts: (m) =>
+      shortDays.includes((m[1] as string).toLowerCase())
+        ? timeParts(m[8], m[2], (m[3] as string).trim(), m[4], m[5], m[6], m[7])
+        : undefined,
+  },
+];
+
+interface TimeParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  nanos: number;
+}
+
+function timeParts(
+  year: string | undefined,
+  month: string | undefined,
+  day: string | undefined,
+  hour: string | undefined,
+  minute: string | undefined,
+  second: string | undefined,
+  frac: string | undefined,
+): TimeParts | undefined {
+  const mi = shortMonths.indexOf((month ?? "").toLowerCase());
+  if (mi === -1) {
+    return undefined;
+  }
+  const parts: TimeParts = {
+    year: Number(year),
+    month: mi + 1,
+    day: Number(day),
+    hour: Number(hour),
+    minute: Number(minute),
+    second: Number(second),
+    nanos: frac === undefined ? 0 : Number((frac + "000000000").slice(0, 9)),
+  };
+  const daysIn = new Date(Date.UTC(parts.year, parts.month, 0)).getUTCDate();
+  if (
+    parts.day < 1 ||
+    parts.day > daysIn ||
+    parts.hour > 23 ||
+    parts.minute > 59 ||
+    parts.second > 59
+  ) {
+    return undefined;
+  }
+  return parts;
+}
+
+// http.ParseTime: the time in Unix nanoseconds, or undefined. The zone of
+// the RFC 850 layout is read as UTC, as time.Parse does for an
+// abbreviation it does not know.
+export function parseTime(text: string): bigint | undefined {
+  for (const layout of timeLayouts) {
+    const m = layout.re.exec(text);
+    if (m === null) {
+      continue;
+    }
+    const p = layout.parts(m);
+    if (p === undefined) {
+      continue;
+    }
+    const d = new Date(0);
+    d.setUTCFullYear(p.year, p.month - 1, p.day);
+    d.setUTCHours(p.hour, p.minute, p.second, 0);
+    return BigInt(d.getTime()) * 1_000_000n + BigInt(p.nanos);
+  }
+  return undefined;
+}
+
+// time.Time.UTC().Format(http.TimeFormat) of a modification time
+function formatHttpTime(modtime: bigint): string {
+  return new Date(Number(unixSeconds(modtime) * 1000n)).toUTCString();
 }
 
 function writeNotModified(w: ResponseWriter): void {
@@ -253,25 +454,36 @@ function writeNotModified(w: ResponseWriter): void {
 // checkPreconditions evaluates request preconditions and reports whether a
 // precondition resulted in sending StatusNotModified or
 // StatusPreconditionFailed, and the Range header to use.
-function checkPreconditions(w: ResponseWriter, r: HttpRequest): [boolean, string] {
+function checkPreconditions(w: ResponseWriter, r: HttpRequest, modtime: bigint): [boolean, string] {
   // This function carefully follows RFC 7232 section 6.
-  // If-Unmodified-Since and If-Modified-Since need a modification time.
-  const ch = checkIfMatch(r);
+  let ch = checkIfMatch(r);
+  if (ch === "none") {
+    ch = checkIfUnmodifiedSince(r, modtime);
+  }
   if (ch === "false") {
     w.writeHeader(412);
     return [true, ""];
   }
-  if (checkIfNoneMatch(r) === "false") {
-    if (r.method === "GET" || r.method === "HEAD") {
-      writeNotModified(w);
+  switch (checkIfNoneMatch(r)) {
+    case "false":
+      if (r.method === "GET" || r.method === "HEAD") {
+        writeNotModified(w);
+        return [true, ""];
+      }
+      w.writeHeader(412);
       return [true, ""];
-    }
-    w.writeHeader(412);
-    return [true, ""];
+    case "none":
+      if (checkIfModifiedSince(r, modtime) === "false") {
+        writeNotModified(w);
+        return [true, ""];
+      }
+      break;
+    case "true":
+      break;
   }
 
   let rangeHeader = r.headers.get("Range") ?? "";
-  if (rangeHeader !== "" && checkIfRange(r) === "false") {
+  if (rangeHeader !== "" && checkIfRange(r, modtime) === "false") {
     rangeHeader = "";
   }
   return [false, rangeHeader];
@@ -291,14 +503,45 @@ function randomBoundary(): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(30))).toString("hex");
 }
 
-// http.ServeContent for an in-memory file.
+// A stored file served by serveContent: a Blob that is streamed to the
+// client, a synchronous range read for the parts of a small
+// multipart/byteranges body, and spool for a larger one.
+export interface ServedFile {
+  blob: Blob;
+  read(start: number, length: number): Uint8Array;
+  // Writes the parts (bytes, or ranges of the file) one after the other
+  // to a temporary file, in bounded pieces, and returns that file's Blob
+  // and a remove function that deletes the file (on Linux the open file
+  // stays readable).
+  spool(parts: (Uint8Array | HttpRange)[]): Promise<{ blob: Blob; remove: () => void }>;
+}
+
+// The largest multipart/byteranges body that is put together in memory.
+// Bun sends a streamed body without its Content-Length, and a Blob built
+// from file Blobs loses their bytes, so a larger body is spooled to a
+// temporary file and sent as that file's Blob, which Bun sends with the
+// Content-Length Go sends.
+export const maxBufferedRangesSize = 16 << 20;
+
+// http.ServeContent. content is the whole file, in memory or a stored file
+// (streamed, never read into memory here, except for a multipart/byteranges
+// body of at most maxBufferedRangesSize; a larger one is spooled to a
+// temporary file, which is removed once the response has opened it);
+// modtime is its modification time in Unix nanoseconds, 0 for none.
 export function serveContent(
   w: ResponseWriter,
   r: HttpRequest,
   name: string,
-  content: Uint8Array,
+  file: Uint8Array | ServedFile,
+  modtime = 0n,
 ): void {
-  const [done, rangeReq] = checkPreconditions(w, r);
+  const content = file instanceof Uint8Array ? file : file.blob;
+  // setLastModified
+  if (!isZeroTime(modtime)) {
+    w.header.set("Last-Modified", formatHttpTime(modtime));
+  }
+
+  const [done, rangeReq] = checkPreconditions(w, r, modtime);
   if (done) {
     return;
   }
@@ -312,11 +555,11 @@ export function serveContent(
     w.header.set("Content-Type", ctype);
   }
 
-  const size = content.length;
+  const size = content instanceof Blob ? content.size : content.length;
 
   // handle Content-Range header.
   let sendSize = size;
-  let sendContent: Uint8Array = content;
+  let sendContent: Uint8Array | Blob | Promise<Blob> = content;
   let ranges: HttpRange[];
   try {
     ranges = parseRange(rangeReq, size);
@@ -355,23 +598,44 @@ export function serveContent(
     // representation's."
     sendSize = first.length;
     code = 206;
-    sendContent = content.subarray(first.start, first.start + first.length);
+    sendContent = content.slice(first.start, first.start + first.length);
     w.header.set("Content-Range", contentRange(first, size));
   } else if (ranges.length > 1) {
     const boundary = randomBoundary();
     const encoder = new TextEncoder();
-    const parts: Uint8Array[] = [];
+    const parts: (Uint8Array | Blob)[] = [];
     ranges.forEach((ra, i) => {
       parts.push(
         encoder.encode(
           `${i === 0 ? "" : "\r\n"}--${boundary}\r\nContent-Range: ${contentRange(ra, size)}\r\nContent-Type: ${ctype}\r\n\r\n`,
         ),
-        content.subarray(ra.start, ra.start + ra.length),
+        content.slice(ra.start, ra.start + ra.length),
       );
     });
     parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
-    sendContent = new Uint8Array(Buffer.concat(parts));
-    sendSize = sendContent.length;
+    sendSize = parts.reduce((n, p) => n + (p instanceof Blob ? p.size : p.length), 0);
+    if (file instanceof Uint8Array) {
+      sendContent = new Uint8Array(Buffer.concat(parts as Uint8Array[]));
+    } else if (sendSize <= maxBufferedRangesSize) {
+      sendContent = new Uint8Array(
+        Buffer.concat(
+          parts.map((p, i) => {
+            if (p instanceof Blob) {
+              const ra = ranges[(i - 1) / 2] as HttpRange;
+              return file.read(ra.start, ra.length);
+            }
+            return p;
+          }),
+        ),
+      );
+    } else if (r.method !== "HEAD") {
+      sendContent = file
+        .spool(parts.map((p, i) => (p instanceof Blob ? (ranges[(i - 1) / 2] as HttpRange) : p)))
+        .then(({ blob, remove }) => {
+          w.afterResponse(remove);
+          return blob;
+        });
+    }
     code = 206;
     w.header.set("Content-Type", `multipart/byteranges; boundary=${boundary}`);
   }
@@ -390,6 +654,10 @@ export function serveContent(
   w.writeHeader(code);
 
   if (r.method !== "HEAD") {
-    w.write(sendContent);
+    if (sendContent instanceof Uint8Array) {
+      w.write(sendContent);
+    } else {
+      w.writeBody(sendContent);
+    }
   }
 }
