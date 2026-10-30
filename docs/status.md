@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M5.1 (realtime) in progress.
+M5.1 (realtime) merged; next: the rest in milestone order (work plan).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.1 | review | [#39](https://github.com/iglo-tech/iglo.base/pull/39) | 2 | [Brief](briefs/M5.1.md); round 1 CHANGES (draft leak through later database state, cascade-delete expand), fixed in `6e0ba91`: broadcasts prepared synchronously right after commit, response follows, as upstream. Sol re-review round 2. OAuth2 redirect helpers wait for M4.5; trusted-proxy IP scenario waits for M5.7 |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.1 | [#39](https://github.com/iglo-tech/iglo.base/pull/39) | 2026-10-30 (`0257a28`) | Two review rounds: Sol APPROVE at `6e0ba91` (fixer: broadcasts prepared synchronously right after commit, response follows; cascade-delete payload built in the transaction). 8 MiB unsent bound listed in 04-api-compatibility.md. Carried: `findOAuth2RedirectClient`/`sendOAuth2Redirect` for M4.5; trusted-proxy IP scenario waits for M5.7; batch broadcasts follow when batch is ported |
 | M5.2 | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 2026-10-30 (`ab9f728`) | Three council rounds (fixer: bounded header read, multi-range Content-Length via a temp file in `.pb_temp_to_delete`, cast.ToInt64 env limits; lead: GIF first frame only, animated WebP fails before the read; round 3 decided by the lead). Carried: 2 rate-limit scenarios pending on M4.8; the thumb-failure log warning waits for M5.5 |
 | M0.7 | [#37](https://github.com/iglo-tech/iglo.base/pull/37) | 2026-10-30 (`8dc7fbc`) | Two review rounds (fixer: imaging's first-APP1 orientation, Go DecodeConfig sizes for the pixel limit). D10: `Bun.Image` decode/encode + ported imaging Linear resize/crop and Go GIF encoder; 16 MP pre-shrink (lead decision, for owner review); JPEG EOI check. Instructions for M5.2 in `docs/perf/M0.7-thumbnails.md` |
 | M4.4 | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 2026-10-29 (`caf7ca7`) | Three council rounds (lead fixed all; round 3 decided by the lead: SMTP error texts, STARTTLS only when offered, mailyak/Go license notices). Includes `mails/`. Carried: the OTP email's `sentTo` update (M4.2); no differential case for implicit TLS (needs a cert both servers trust); DNS/TLS-handshake/timeout error texts differ (listed in 04-api-compatibility.md) |
