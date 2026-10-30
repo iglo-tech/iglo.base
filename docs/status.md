@@ -10,7 +10,7 @@ M5.1 (realtime) merged; M2.6 active, then the rest in milestone order (work plan
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M2.6 | review | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 2 | [brief](briefs/M2.6.md); head `287d0e2`, local checks pass, two 100,000-case seeds clean with the stronger comparison |
+| M2.6 | review | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 3 | [brief](briefs/M2.6.md); head `8b68a80` (lead fixed round 2: page-size filters walk their pages), local checks pass, two 100,000-case seeds clean |
 
 ## Done
 
