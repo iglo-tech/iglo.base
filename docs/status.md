@@ -10,7 +10,7 @@ M3.7 (JavaScript migrations) active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.7 | worker | `task/M3.7-migrations` ([brief](briefs/M3.7.md)) | 0 | |
+| M3.7 | worker (retry) | `task/M3.7-js-migrations` ([brief](briefs/M3.7.md)) | 0 | First worker stalled, see For owner review |
 
 ## Done
 
@@ -81,6 +81,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-30 (lead takeover, M3.7): the M3.7 worker stopped at 20:49 UTC on a permission prompt for its own `rm -rf … pb_migrations/*`, which nobody can answer, with no code written. A new lead took the lock at 21:17 UTC (previous lead's turn finished, 31 minutes after its heartbeat) and started the one retry on `task/M3.7-js-migrations`. `task_cancel` refused the old worker because it belongs to the old lead's thread, so it is still parked on the prompt, using nothing. If that prompt is approved later it resumes: cancel it rather than approving, and do not use its unpushed branch `task/M3.7-migrations` (still at `9caf3f7`, worktree `t3-c505296b`). Its `/tmp/m37` probe directory remains. The worker instructions now forbid `rm` with a glob, variable or substitution.
+- 2026-10-30 (M3.7 brief correction): upstream applies all pending files in one transaction, not one per file (`core/migrations_runner.go` Up, confirmed on the binary); the brief is corrected.
 - 2026-10-30 (M3.7 brief): migration bindings are synchronous, so an `up` returning a promise fails; `$http` is not provided, because migrations run inside a write transaction; bindings stay out of `globalThis`.
 - 2026-10-30 (lead takeover): the M3.6 lead thread stopped at 18:54 UTC on a permission prompt for its own `rm` of a command-substituted path, which nobody could answer, so its completions stayed queued. A new lead took the lock at 20:17 UTC, 83 minutes after the last heartbeat, instead of waiting for the 90-minute limit. The prompt was left unanswered. If it is approved later, the old thread resumes: cancel it rather than approving. Its `/tmp/m36-lead-dir` pointer file remains. Runbook gap: leads must not chain `rm` on a command substitution in the same call as other steps.
 - 2026-10-30 (M3.3 brief): D28: a batch prepares asynchronously, then runs all items synchronously in one write transaction; `batch.timeout` is checked between items, so it fires late (deliberate difference).

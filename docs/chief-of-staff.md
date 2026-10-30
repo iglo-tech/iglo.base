@@ -50,6 +50,7 @@ You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the t
 - Run the acceptance commands and the full local check (`bun run check`, then `bun run test:reference`, never in parallel: the host has limited memory) before you finish, in the foreground. Do not end your turn while a check runs in the background. CI is not used. Do not merge. Do not watch the PR.
 - A fixer fixes each finding's whole class: search for the same mistake on sibling code paths, inputs and fields before pushing, and say in the PR comment what was checked.
 - Before your final reply, delete `dist/` and any temporary data you created in your worktree (the host disk is small; `.upstream` is a shared cache, leave it).
+- Never put `rm` with a glob, a variable or a command substitution in a shell command: it raises a permission prompt nobody can answer, and the run stalls for good. Give each probe a new `mktemp -d` directory; at the end delete it by its literal absolute path, in a call of its own.
 - Match upstream's results, not its implementation (AGENTS.md, D26): port upstream logic where the result depends on it, use Bun and Web APIs where they give the same results for real client requests.
 - Never touch production data, real credentials or anything outside this repository and your worktree.
 - Last line of your reply: PR <full URL>, head <SHA>, local checks <state>.
