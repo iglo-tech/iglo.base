@@ -82,13 +82,21 @@ Decided by agents on 2026-10-28, for owner review (M0.6 spike, [report](../perf/
 - **Decision:** port fexpr, `tools/search` and the record field resolver file by file, aiming for the same SQL text.
 - **Why:** rules are security boundaries. A "cleaner" implementation that differs in an edge case leaks or hides records. Same SQL text makes differences easy to find.
 
-## D10. Thumbnails without native addons
+## D10. Thumbnails without native addons: `Bun.Image` and upstream's geometry
 
-Provisional until the M0 spike.
+Decided by agents on 2026-10-30, for owner review (M0.7 spike, [report](../perf/M0.7-thumbnails.md)).
 
-- **Decision:** a WebAssembly or pure-TypeScript image library, run in a worker.
-- **Why:** native addons (for example `sharp`) complicate `bun build --compile` and cross-platform releases. Thumbnails need decode (JPEG, PNG, GIF, WebP, BMP, TIFF), resize with linear filtering, crop and encode (JPEG, PNG, GIF, BMP, TIFF), nothing more.
-- **Considered:** `sharp` (fast, native), `wasm-vips` (complete, larger), `@jsquash/*` codecs plus a resize routine (small), a built-in Bun image API if the pinned Bun version has one. The spike compares binary size, memory on a 50-megapixel image, speed and output quality.
+- **Decision:**
+  - `Bun.Image` (built into Bun ≥ 1.4: libjpeg-turbo, spng, libwebp, a GIF and BMP decoder) reads the header, decodes and encodes JPEG (quality 95) and PNG. No runtime dependency is added.
+  - The resize and crop are a TypeScript port of disintegration/imaging v1.6.2's `Resize`, `Fit`, `Fill` and `CropAnchor` with the `Linear` filter. GIF output is a port of Go's `gif.Encode` (Plan 9 palette, Floyd–Steinberg, LZW). Their MIT and BSD-3-Clause notices go into `LICENSE`.
+  - Thumbs run in a pool of Bun Workers, bounded as upstream (`PB_THUMBS_MAX_WORKERS`, `PB_THUMBS_MAX_WAIT`, singleflight per thumb path). The `PB_THUMBS_MAX_SOURCE_PIXELS` check runs on the header (`Bun.Image` `maxPixels`). A walk to the JPEG EOI marker makes cut JPEGs fail as Go's decoder does, because libjpeg-turbo only warns about them. On any error the original is served.
+  - Originals over a pixel threshold (proposed 16 MP) are first reduced by `Bun.Image` itself, to at least 4 source pixels per thumb pixel. The port then finishes on the reduced pixels. This bounds the worker's memory.
+- **Why:**
+  - Against upstream's own thumbnails, the dimensions and content types are equal in all 150 cases (15 originals × 10 sizes). PNG, GIF and lossless WebP give identical pixels. JPEG differs by about 1/255 per channel, lossy WebP by 5–8/255, both from the decoders.
+  - It adds 0.02 MiB to the executable. `@jsquash/*` adds 0.9 MiB, fails on CMYK JPEG and differs twice as much. wasm-vips 0.0.19 adds 5 MiB and hangs under Bun 1.4.4. sharp's native addon is not embedded by `bun build --compile`.
+  - With the pre-reduction, a 100x100 thumb of a 50-megapixel JPEG takes 0.24 s and 72 MiB, against upstream's 1.06 s and 238 MiB. A 1200x0 thumb takes 1.2 s and 404 MiB, against 1.05 s and 140 MiB. Without it, the exact path needs about 23 bytes per source pixel (1.1 GiB for 50 MP).
+  - TIFF (no Linux decoder in `Bun.Image`) and BMP/TIFF encoding are not needed: upstream thumbs only `image/png`, `image/jpg`, `image/jpeg`, `image/gif` and `image/webp` originals.
+- **Considered:** `sharp` (fast, native, not embeddable), `wasm-vips` (complete, larger, does not run under Bun 1.4.4), `@jsquash/*` codecs with the same ported resize (works, larger, less exact), `Bun.Image`'s own `linear` resize without the port (fastest, but its fill crop comes after the resize and it differs about 3× more).
 
 ## D11. Upstream's names win over iglo.\* conventions
 
