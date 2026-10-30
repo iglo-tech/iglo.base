@@ -44,7 +44,7 @@ import {
 } from "@/tools/filesystem/file";
 import { goQuote } from "@/fields/field";
 import { checkSource } from "@/files/create-thumb";
-import { readerSource } from "@/files/image-config";
+import { gifFirstFrameLength, readerSource } from "@/files/image-config";
 import type { ThumbSize } from "@/files/imaging";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
@@ -576,16 +576,35 @@ export class System {
     // fetch the original
     const r = this.getReader(originalKey);
     let originalContentType: string;
+    let isGif: boolean;
     try {
       originalContentType = r.contentType;
       // check image dimensions to minimize excessive memory usage (the
-      // header is read in bounded pieces; the whole original is read only
-      // after it passes)
-      checkSource(readerSource(r, r.size), render.maxSourcePixels());
+      // header is read in bounded pieces; the original is read only after
+      // it passes)
+      const src = readerSource(r, r.size);
+      isGif = src.peek(1)[0] === 0x47;
+      checkSource(src, render.maxSourcePixels());
     } finally {
       r.close();
     }
-    const original = await this.#blob(originalKey).bytes();
+    let original: Uint8Array;
+    if (isGif) {
+      // only the first frame is decoded: read up to its end and close the
+      // stream with a trailer, so an animated original is not read whole
+      const g = this.getReader(originalKey);
+      let end: number;
+      try {
+        end = gifFirstFrameLength(readerSource(g, g.size));
+      } finally {
+        g.close();
+      }
+      original = new Uint8Array(end + 1);
+      original.set(await this.#blob(originalKey).slice(0, end).bytes());
+      original[end] = 0x3b;
+    } else {
+      original = await this.#blob(originalKey).bytes();
+    }
 
     const thumb = await render.render(original, originalContentType, {
       width,

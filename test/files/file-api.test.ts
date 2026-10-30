@@ -19,11 +19,13 @@ import {
   rmSync,
   statSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { FileField } from "@/fields/file";
+import { encodeGif } from "@/files/gif-encode";
 
 import { writeLargePng, writeNoise } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -341,4 +343,64 @@ test("Range, conditional requests and download=1", async () => {
     'attachment; filename="300_Jsjq7RdBgA.png"',
   );
   await download.arrayBuffer();
+});
+
+// a valid animated GIF: frames of 512x512 noise, all the same frame
+function writeAnimatedGif(path: string, frames: number): void {
+  const pix = new Uint8Array(512 * 512 * 4);
+  let x = 1;
+  for (let i = 0; i < pix.length; i++) {
+    x = (x * 1103515245 + 12345) >>> 0;
+    pix[i] = i % 4 === 3 ? 255 : x >>> 24;
+  }
+  const one = encodeGif(pix, 512, 512);
+  const fields = one[10] as number;
+  const framesAt = 13 + (fields & 0x80 ? 3 << (1 + (fields & 7)) : 0);
+  const frame = one.subarray(framesAt, one.length - 1);
+  const fd = openSync(path, "w");
+  try {
+    writeSync(fd, one.subarray(0, framesAt));
+    for (let i = 0; i < frames; i++) {
+      writeSync(fd, frame);
+    }
+    writeSync(fd, new Uint8Array([0x3b]));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+test("only the first frame of an animated GIF original is read", async () => {
+  const dataDir = fixtureCopy();
+  prepareDemo1Thumbs(dataDir);
+  const original = join(dataDir, "storage", fileKey);
+  writeAnimatedGif(original, 256);
+  const size = statSync(original).size;
+  expect(size).toBeGreaterThan(45_000_000);
+  const server = await startProcess(dataDir);
+  const target = server.url + "/api/files/" + fileKey + "?thumb=100x100";
+
+  // a first thumb warms the worker up; the measured one is another
+  // uncached thumb of the same original
+  const warm = await fetch(target);
+  expect(warm.status).toBe(200);
+  await warm.arrayBuffer();
+  resetPeak(server.pid);
+  const before = peakRss(server.pid);
+  const res = await fetch(target.replace("100x100", "111x222"));
+  expect(res.status).toBe(200);
+  const body = new Uint8Array(await res.arrayBuffer());
+  // a thumb, not the original
+  expect(body.length).toBeLessThan(size / 10);
+  const growth = peakRss(server.pid) - before;
+  // a thumb itself costs about 20 MB here (the same for a one-frame
+  // original); reading the original whole would add at least its size
+  expect(growth).toBeLessThan(size * 0.75);
+  expect(
+    existsSync(
+      join(
+        dataDir,
+        "storage/wsmn24bux7wo113/al1h9ijdeojtsjy/thumbs_300_Jsjq7RdBgA.png/111x222_300_Jsjq7RdBgA.png",
+      ),
+    ),
+  ).toBe(true);
 });

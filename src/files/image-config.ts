@@ -419,6 +419,45 @@ export function gifFirstFrame(b: Uint8Array): Size {
   }
 }
 
+// The length of a GIF up to the end of its first frame's image data, the
+// part image/gif's Decode reads (it returns after the first frame). The
+// thumb reads only these bytes and ends them with a trailer, so an animated
+// original is not read whole. Blocks are walked by their sub-blocks; a cut
+// or unknown block fails as the decode would.
+export function gifFirstFrameLength(r: ByteSource): number {
+  const t = r.read(13);
+  const fields = t[10] as number;
+  if (fields & 0x80) {
+    r.skip(3 << (1 + (fields & 7)));
+  }
+  const skipSubBlocks = (): void => {
+    for (let n = r.read(1)[0] as number; n !== 0; n = r.read(1)[0] as number) {
+      r.skip(n);
+    }
+  };
+  for (;;) {
+    const c = r.read(1)[0];
+    if (c === 0x21) {
+      r.read(1);
+      skipSubBlocks();
+    } else if (c === 0x2c) {
+      const d = r.read(9);
+      const local = d[8] as number;
+      if (local & 0x80) {
+        r.skip(3 << (1 + (local & 7)));
+      }
+      // the LZW minimum code size, then the image data
+      r.read(1);
+      skipSubBlocks();
+      return r.offset;
+    } else if (c === 0x3b) {
+      throw new Error("gif: missing image data");
+    } else {
+      throw new Error(`gif: unknown block type: 0x${(c as number).toString(16)}`);
+    }
+  }
+}
+
 // x/image/webp decode(r, configOnly=true) (v0.47.0): the RIFF chunks up to
 // the first VP8, VP8L or VP8X chunk, which gives the size
 function webpConfig(r: ByteSource): Size {
