@@ -10,7 +10,7 @@ M5.2 (file serving) in progress.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.2 | worker | `task/M5.2-files` | 0 | [Brief](briefs/M5.2.md); Opus worker (resumed after a rate limit) |
+| M5.2 | review | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 1 | [Brief](briefs/M5.2.md); Sol review round 1 of `b3279f5`. Lead accepted: 2 rate-limit scenarios pending on M4.8, the thumb-failure log warning waits for M5.5, small edits to router/app/test support |
 
 ## Done
 
@@ -62,6 +62,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-29 | Collections API (M2.5) | Form-encoded (urlencoded/multipart) collection create/update ignores `fields` and nested auth options as plain keys; JSON and `@jsonPayload` match upstream |
 | 2026-10-29 | Test harness | The body-limit tests put the host under heavy memory pressure in one `bun run check` (M2.5 review); the reviewer passed with `--smol` |
 | 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
+| 2026-10-30 | Files (M5.2) | Multi-range responses over 16 MiB are streamed without `Content-Length` (Bun drops it); smaller ones match upstream |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
