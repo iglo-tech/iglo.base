@@ -8,12 +8,24 @@
 // compares the same paths with upstream.
 
 import { afterEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  closeSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { FileField } from "@/fields/file";
 
+import { writeLargePng, writeNoise } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { updateCollection } from "@test/scenarios/prepare";
 import { startServer, type RunningServer } from "@test/support/executable";
@@ -39,9 +51,38 @@ function fixtureCopy(): string {
 }
 
 async function start(dataDir: string, env: Record<string, string> = {}): Promise<string> {
+  return (await startProcess(dataDir, env)).url;
+}
+
+async function startProcess(
+  dataDir: string,
+  env: Record<string, string> = {},
+): Promise<RunningServer> {
   const server = await startServer([], dataDir, "127.0.0.1", undefined, env);
   servers.push(server);
-  return server.url;
+  return server;
+}
+
+// the peak resident memory of a process since the last resetPeak, in bytes
+function peakRss(pid: number): number {
+  const m = /^VmHWM:\s+(\d+) kB$/m.exec(readFileSync(`/proc/${pid}/status`, "utf8"));
+  return Number(m?.[1]) * 1024;
+}
+
+function resetPeak(pid: number): void {
+  writeFileSync(`/proc/${pid}/clear_refs`, "5");
+}
+
+// bytes [start, start + length) of a file
+function readRange(path: string, offset: number, length: number): Buffer {
+  const fd = openSync(path, "r");
+  try {
+    const out = Buffer.alloc(length);
+    readSync(fd, out, 0, length, offset);
+    return out;
+  } finally {
+    closeSync(fd);
+  }
 }
 
 const fileKey = "wsmn24bux7wo113/al1h9ijdeojtsjy/300_Jsjq7RdBgA.png";
@@ -153,6 +194,112 @@ test("an original over PB_THUMBS_MAX_SOURCE_PIXELS is served as it is", async ()
   expect(Buffer.from(await res.arrayBuffer())).toEqual(
     readFileSync(join(dataDir, "storage", fileKey)),
   );
+});
+
+// cast.ToInt64 reads Go integer literals with digit separators
+for (const limit of ["1_000", "0x_3e8", "0_1750"]) {
+  test(`PB_THUMBS_MAX_SOURCE_PIXELS=${limit} (1000) serves the original`, async () => {
+    const dataDir = fixtureCopy();
+    prepareDemo1Thumbs(dataDir);
+    const url = await start(dataDir, { PB_THUMBS_MAX_SOURCE_PIXELS: limit });
+
+    // the 320x201 original is over the limit
+    const res = await fetch(url + "/api/files/" + fileKey + "?thumb=111x111");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe('inline; filename="300_Jsjq7RdBgA.png"');
+    expect(Buffer.from(await res.arrayBuffer())).toEqual(
+      readFileSync(join(dataDir, "storage", fileKey)),
+    );
+  });
+}
+
+test("an original over PB_THUMBS_MAX_SOURCE_PIXELS is not read into memory", async () => {
+  const dataDir = fixtureCopy();
+  prepareDemo1Thumbs(dataDir);
+  // a valid 4000x2000 PNG of about 24 MB in place of the original
+  const original = join(dataDir, "storage", fileKey);
+  writeLargePng(original, 4000, 2000, 1);
+  const size = statSync(original).size;
+  expect(size).toBeGreaterThan(24_000_000);
+  const server = await startProcess(dataDir, { PB_THUMBS_MAX_SOURCE_PIXELS: "1000" });
+  const target = server.url + "/api/files/" + fileKey + "?thumb=100x100";
+
+  // a first request warms the server up; the measured one is the same
+  // request for another uncached thumb
+  const warm = await fetch(target, { headers: { Range: "bytes=0-0" } });
+  await warm.arrayBuffer();
+  resetPeak(server.pid);
+  const before = peakRss(server.pid);
+  // the range keeps the served original out of the measurement
+  const res = await fetch(target.replace("100x100", "111x111"), {
+    headers: { Range: "bytes=0-0" },
+  });
+  expect(res.status).toBe(206);
+  expect(res.headers.get("content-range")).toBe(`bytes 0-0/${size}`);
+  expect(new Uint8Array(await res.arrayBuffer())).toEqual(
+    new Uint8Array(readRange(original, 0, 1)),
+  );
+  const growth = peakRss(server.pid) - before;
+  // reading the original whole would add at least its size
+  expect(growth).toBeLessThan(size / 2);
+  expect(
+    existsSync(
+      join(
+        dataDir,
+        "storage/wsmn24bux7wo113/al1h9ijdeojtsjy/thumbs_300_Jsjq7RdBgA.png/111x111_300_Jsjq7RdBgA.png",
+      ),
+    ),
+  ).toBe(false);
+});
+
+test("a multipart/byteranges body over 16 MiB has its Content-Length", async () => {
+  const dataDir = fixtureCopy();
+  prepareDemo1Thumbs(dataDir);
+  const original = join(dataDir, "storage", fileKey);
+  writeNoise(original, 24_000_000, 2);
+  const server = await startProcess(dataDir);
+  const target = server.url + "/api/files/" + fileKey;
+  const headers = { Range: "bytes=0-9437183,10485760-19922943" };
+
+  const head = await fetch(target, { method: "HEAD", headers });
+  expect(head.status).toBe(206);
+  const length = Number(head.headers.get("content-length"));
+  expect(length).toBeGreaterThan(16 << 20);
+
+  resetPeak(server.pid);
+  const before = peakRss(server.pid);
+  const res = await fetch(target, { headers });
+  expect(res.status).toBe(206);
+  expect(res.headers.get("content-length")).toBe(String(length));
+  expect(res.headers.get("transfer-encoding")).toBeNull();
+  const boundary = /^multipart\/byteranges; boundary=([0-9a-f]{60})$/.exec(
+    res.headers.get("content-type") ?? "",
+  )?.[1];
+  expect(boundary).toBeDefined();
+  const body = Buffer.from(await res.arrayBuffer());
+  expect(peakRss(server.pid) - before).toBeLessThan(16 << 20);
+  expect(body.length).toBe(length);
+  const part = (i: number, from: number, to: number): Buffer =>
+    Buffer.concat([
+      Buffer.from(
+        `${i === 0 ? "" : "\r\n"}--${boundary}\r\nContent-Range: bytes ${from}-${to}/24000000\r\nContent-Type: image/png\r\n\r\n`,
+      ),
+      readRange(original, from, to - from + 1),
+    ]);
+  expect(
+    body.equals(
+      Buffer.concat([
+        part(0, 0, 9437183),
+        part(1, 10485760, 19922943),
+        Buffer.from(`\r\n--${boundary}--\r\n`),
+      ]),
+    ),
+  ).toBe(true);
+
+  // the spooled body is removed once the response has it
+  await Bun.sleep(100);
+  const tempDir = join(dataDir, ".pb_temp_to_delete");
+  expect(existsSync(tempDir) ? readdirSync(tempDir) : []).toEqual([]);
 });
 
 test("Range, conditional requests and download=1", async () => {

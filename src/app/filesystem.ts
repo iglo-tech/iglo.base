@@ -20,6 +20,7 @@
 // the files page by page and gives the event loop back between pages.
 
 import type { ErrorLogger } from "@/app/app";
+import { toInt64 } from "@/records/cast";
 import type { Settings } from "@/settings/settings-model";
 import { NewLocal, type System } from "@/tools/filesystem/filesystem";
 
@@ -63,8 +64,13 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
     return NewLocal(config.dataDir + "/" + LocalStorageDirName);
   };
 
-  let maxFilesDeleteWorkers = Number.parseInt(config.getenv("PB_FILES_DELETE_MAX_WORKERS"), 10);
-  if (!Number.isSafeInteger(maxFilesDeleteWorkers) || maxFilesDeleteWorkers <= 0) {
+  // cast.ToInt64 (Go integer literals, 0 when it does not parse); a
+  // count past 2^53 is as unlimited as Go's int64 weight
+  let maxFilesDeleteWorkers = Math.min(
+    Number(toInt64(config.getenv("PB_FILES_DELETE_MAX_WORKERS"))),
+    Number.MAX_SAFE_INTEGER,
+  );
+  if (maxFilesDeleteWorkers <= 0) {
     maxFilesDeleteWorkers = 2000; // the value is arbitrary chosen and may change in the future
   }
   const deleteSem = new Semaphore(maxFilesDeleteWorkers);

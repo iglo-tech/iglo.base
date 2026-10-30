@@ -310,9 +310,7 @@ describe("TestFilesystemCreateThumb", () => {
         const expectErr = expectedMimeType === "";
         let err: unknown;
         try {
-          await fsys.createThumb(file, thumb, size, (input, contentType, thumbSize) =>
-            pool.render(input, contentType, thumbSize),
-          );
+          await fsys.createThumb(file, thumb, size, pool);
         } catch (e) {
           err = e;
         }
@@ -354,9 +352,7 @@ describe("TestFilesystemCreateThumbWithMaxPixelsLimit", () => {
       try {
         let err: unknown;
         try {
-          await fsys.createThumb("image.png", "thumb_WxH", "100x100", (input, ct, size) =>
-            pool.render(input, ct, size),
-          );
+          await fsys.createThumb("image.png", "thumb_WxH", "100x100", pool);
         } catch (e) {
           err = e;
         }

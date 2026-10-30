@@ -85,6 +85,8 @@ export async function freePort(): Promise<number> {
 
 export interface RunningServer {
   url: string;
+  // the server's process id (for memory measurements)
+  pid: number;
   // stops the server with SIGTERM and returns its exit code and output
   stop(): Promise<RunResult>;
   // waits until the standard output so far contains text, and returns it
@@ -151,6 +153,7 @@ export async function startServer(
 
   return {
     url: `http://127.0.0.1:${port}`,
+    pid: proc.pid,
     async stop() {
       proc.kill("SIGTERM");
       await pumped;

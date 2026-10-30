@@ -3,7 +3,7 @@
 // sharp-made files. Every image is computed from coordinates and a seeded
 // PRNG, so a rerun writes the same pixels.
 
-import { writeFileSync } from "node:fs";
+import { closeSync, openSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 
 import { encodeGif } from "@/files/gif-encode";
@@ -513,4 +513,89 @@ function jpegMarker(jpeg: Uint8Array, marker: number): number {
     o += 2 + (((jpeg[o + 2] as number) << 8) | (jpeg[o + 3] as number));
   }
   throw new Error(`no 0x${marker.toString(16)} segment`);
+}
+
+// A large valid PNG (8-bit RGB, seeded noise, one stored deflate block and
+// one IDAT chunk per row), written row by row so that the test process
+// never holds the whole file: about width * height * 3 bytes on disk.
+export function writeLargePng(path: string, width: number, height: number, seed: number): void {
+  const rand = prng(seed);
+  const fd = openSync(path, "w");
+  try {
+    const chunk = (type: string, data: Uint8Array): void => {
+      const out = new Uint8Array(12 + data.length);
+      const view = new DataView(out.buffer);
+      view.setUint32(0, data.length);
+      out.set(new TextEncoder().encode(type), 4);
+      out.set(data, 8);
+      view.setUint32(8 + data.length, Bun.hash.crc32(out.subarray(4, 8 + data.length)) >>> 0);
+      writeSync(fd, out);
+    };
+    writeSync(fd, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const ihdr = new Uint8Array(13);
+    new DataView(ihdr.buffer).setUint32(0, width);
+    new DataView(ihdr.buffer).setUint32(4, height);
+    ihdr.set([8, 2, 0, 0, 0], 8);
+    chunk("IHDR", ihdr);
+    const rowLen = 1 + width * 3; // the filter byte (none) and the pixels
+    if (rowLen > 0xffff) {
+      throw new Error("a row must fit in one stored deflate block");
+    }
+    let a = 1;
+    let b = 0;
+    for (let y = 0; y < height; y++) {
+      const head = y === 0 ? 2 : 0; // the zlib header before the first block
+      const tail = y === height - 1 ? 4 : 0; // the Adler-32 after the last
+      const data = new Uint8Array(head + 5 + rowLen + tail);
+      if (head) {
+        data.set([0x78, 0x01]);
+      }
+      const view = new DataView(data.buffer);
+      data[head] = y === height - 1 ? 1 : 0; // BFINAL, BTYPE stored
+      view.setUint16(head + 1, rowLen, true);
+      view.setUint16(head + 3, ~rowLen & 0xffff, true);
+      const row = data.subarray(head + 5, head + 5 + rowLen);
+      for (let i = 1; i < rowLen; i += 4) {
+        const v = (rand() * 4294967296) >>> 0;
+        row[i] = v;
+        row[i + 1] = v >>> 8;
+        row[i + 2] = v >>> 16;
+        row[i + 3] = v >>> 24;
+      }
+      for (const byte of row) {
+        a = (a + byte) % 65521;
+        b = (b + a) % 65521;
+      }
+      if (tail) {
+        view.setUint32(data.length - 4, ((b << 16) | a) >>> 0);
+      }
+      chunk("IDAT", data);
+    }
+    chunk("IEND", new Uint8Array(0));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+// size bytes of seeded noise, written in pieces
+export function writeNoise(path: string, size: number, seed: number): void {
+  const rand = prng(seed);
+  const fd = openSync(path, "w");
+  try {
+    const piece = new Uint8Array(1 << 20);
+    for (let left = size; left > 0;) {
+      const n = Math.min(left, piece.length);
+      for (let i = 0; i < n; i += 4) {
+        const v = (rand() * 4294967296) >>> 0;
+        piece[i] = v;
+        piece[i + 1] = v >>> 8;
+        piece[i + 2] = v >>> 16;
+        piece[i + 3] = v >>> 24;
+      }
+      writeSync(fd, piece.subarray(0, n));
+      left -= n;
+    }
+  } finally {
+    closeSync(fd);
+  }
 }

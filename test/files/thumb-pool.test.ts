@@ -6,7 +6,7 @@ import { expect, test } from "bun:test";
 import { availableParallelism } from "node:os";
 
 import { encodePng } from "@/files/png-raw";
-import { envInt, ThumbPool } from "@/files/thumb-pool";
+import { ThumbPool } from "@/files/thumb-pool";
 
 const env =
   (values: Record<string, string>) =>
@@ -42,8 +42,8 @@ test("defaults: NumCPU + 2 workers, 60 s wait, 100 << 20 source pixels", () => {
 test("the environment, read as cast.ToInt64", () => {
   const pool = new ThumbPool({
     getenv: env({
-      PB_THUMBS_MAX_WORKERS: "3",
-      PB_THUMBS_MAX_WAIT: "0x2",
+      PB_THUMBS_MAX_WORKERS: "0_3",
+      PB_THUMBS_MAX_WAIT: "0x_2",
       PB_THUMBS_MAX_SOURCE_PIXELS: "1000.0",
     }),
   });
@@ -51,17 +51,29 @@ test("the environment, read as cast.ToInt64", () => {
   expect(pool.maxWaitMs).toBe(2000);
   expect(pool.maxSourcePixels()).toBe(1000);
 
-  expect(envInt("")).toBe(0);
-  expect(envInt("12")).toBe(12);
-  expect(envInt("-5")).toBe(-5);
-  expect(envInt("010")).toBe(8);
-  expect(envInt("08")).toBe(0);
-  expect(envInt("0b11")).toBe(3);
-  expect(envInt("1_000")).toBe(0);
-  expect(envInt("0x_ff")).toBe(0);
-  expect(envInt("1.5")).toBe(0);
-  expect(envInt("abc")).toBe(0);
-  expect(envInt("99999999999999999999")).toBe(0);
+  // spf13/cast v1.10.0: strconv.ParseInt(trimDecimal(s), 0, 0); 0 (the default) when it fails
+  const pixels = (value: string): number =>
+    new ThumbPool({ getenv: env({ PB_THUMBS_MAX_SOURCE_PIXELS: value }) }).maxSourcePixels();
+  const fallback = 100 * 2 ** 20;
+  expect(pixels("")).toBe(fallback);
+  expect(pixels("12")).toBe(12);
+  expect(pixels("-5")).toBe(fallback);
+  expect(pixels("010")).toBe(8);
+  expect(pixels("08")).toBe(fallback);
+  expect(pixels("0b11")).toBe(3);
+  expect(pixels("1_000")).toBe(1000);
+  expect(pixels("0x_3e8")).toBe(1000);
+  expect(pixels("0b_1111101000")).toBe(1000);
+  expect(pixels("0_1750")).toBe(1000);
+  expect(pixels("0o1_750")).toBe(1000);
+  expect(pixels("+1_0")).toBe(10);
+  expect(pixels("1.5")).toBe(1);
+  expect(pixels("1__0")).toBe(fallback);
+  expect(pixels("1_")).toBe(fallback);
+  expect(pixels("_1")).toBe(fallback);
+  expect(pixels("0x")).toBe(fallback);
+  expect(pixels("abc")).toBe(fallback);
+  expect(pixels("99999999999999999999")).toBe(fallback);
 });
 
 test("a thumb path is generated once at a time; waiters share the result", async () => {
@@ -130,6 +142,28 @@ test("a generation that waits longer than PB_THUMBS_MAX_WAIT fails", async () =>
   await first;
   // the slot is free again
   await pool.generate("c", async () => undefined);
+});
+
+test("a PB_THUMBS_MAX_WAIT past setTimeout's range waits", async () => {
+  // 10^7 s: Go waits that long; a timer of 10^10 ms would fire at once
+  const pool = new ThumbPool({
+    getenv: env({ PB_THUMBS_MAX_WORKERS: "1", PB_THUMBS_MAX_WAIT: "10_000_000" }),
+  });
+  expect(pool.maxWaitMs).toBe(10_000_000_000);
+  const gate = deferred();
+  const first = pool.generate("a", () => gate.promise);
+  let settled = false;
+  const second = pool.generate("b", async () => {});
+  second.then(
+    () => (settled = true),
+    () => (settled = true),
+  );
+  await Bun.sleep(20);
+  expect(settled).toBe(false);
+  gate.resolve();
+  await first;
+  await second;
+  expect(settled).toBe(true);
 });
 
 test("render runs in a worker; a closed pool refuses", async () => {

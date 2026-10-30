@@ -51,7 +51,7 @@ export function typeByExtension(name: string): string {
   return extensionTypes.get(ext) ?? extensionTypes.get(ext.toLowerCase()) ?? "";
 }
 
-interface HttpRange {
+export interface HttpRange {
   start: number;
   length: number;
 }
@@ -504,22 +504,30 @@ function randomBoundary(): string {
 }
 
 // A stored file served by serveContent: a Blob that is streamed to the
-// client, and a synchronous range read for the parts of a small
-// multipart/byteranges body.
+// client, a synchronous range read for the parts of a small
+// multipart/byteranges body, and spool for a larger one.
 export interface ServedFile {
   blob: Blob;
   read(start: number, length: number): Uint8Array;
+  // Writes the parts (bytes, or ranges of the file) one after the other
+  // to a temporary file, in bounded pieces, and returns that file's Blob
+  // and a remove function that deletes the file (on Linux the open file
+  // stays readable).
+  spool(parts: (Uint8Array | HttpRange)[]): Promise<{ blob: Blob; remove: () => void }>;
 }
 
 // The largest multipart/byteranges body that is put together in memory.
-// Bun drops the Content-Length of a longer streamed body, so a larger one
-// is streamed part by part and sent chunked (Go sends Content-Length).
+// Bun sends a streamed body without its Content-Length, and a Blob built
+// from file Blobs loses their bytes, so a larger body is spooled to a
+// temporary file and sent as that file's Blob, which Bun sends with the
+// Content-Length Go sends.
 export const maxBufferedRangesSize = 16 << 20;
 
 // http.ServeContent. content is the whole file, in memory or a stored file
 // (streamed, never read into memory here, except for a multipart/byteranges
-// body of at most maxBufferedRangesSize); modtime is its modification time
-// in Unix nanoseconds, 0 for none.
+// body of at most maxBufferedRangesSize; a larger one is spooled to a
+// temporary file, which is removed once the response has opened it);
+// modtime is its modification time in Unix nanoseconds, 0 for none.
 export function serveContent(
   w: ResponseWriter,
   r: HttpRequest,
@@ -551,7 +559,7 @@ export function serveContent(
 
   // handle Content-Range header.
   let sendSize = size;
-  let sendContent: Uint8Array | Blob | ReadableStream<Uint8Array> = content;
+  let sendContent: Uint8Array | Blob | Promise<Blob> = content;
   let ranges: HttpRange[];
   try {
     ranges = parseRange(rangeReq, size);
@@ -620,8 +628,13 @@ export function serveContent(
           }),
         ),
       );
-    } else {
-      sendContent = partsStream(parts);
+    } else if (r.method !== "HEAD") {
+      sendContent = file
+        .spool(parts.map((p, i) => (p instanceof Blob ? (ranges[(i - 1) / 2] as HttpRange) : p)))
+        .then(({ blob, remove }) => {
+          w.afterResponse(remove);
+          return blob;
+        });
     }
     code = 206;
     w.header.set("Content-Type", `multipart/byteranges; boundary=${boundary}`);
@@ -647,43 +660,4 @@ export function serveContent(
       w.writeBody(sendContent);
     }
   }
-}
-
-// The parts of a multipart/byteranges body one after the other, each Blob
-// read as the client takes the data (a Blob built from file-backed Blobs
-// would not stream them).
-function partsStream(parts: (Uint8Array | Blob)[]): ReadableStream<Uint8Array> {
-  let i = 0;
-  let reader: {
-    read(): Promise<{ done: boolean; value?: Uint8Array }>;
-    cancel(): Promise<void>;
-  } | null = null;
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      for (;;) {
-        if (reader !== null) {
-          const { done, value } = await reader.read();
-          if (!done && value !== undefined) {
-            controller.enqueue(value);
-            return;
-          }
-          reader = null;
-        }
-        const part = parts[i++];
-        if (part === undefined) {
-          controller.close();
-          return;
-        }
-        if (part instanceof Blob) {
-          reader = part.stream().getReader();
-        } else {
-          controller.enqueue(part);
-          return;
-        }
-      }
-    },
-    cancel() {
-      void reader?.cancel();
-    },
-  });
 }

@@ -20,22 +20,27 @@
 // Bun.Image's rotate, flip and flop, which give the same pixels.
 
 // image.DecodeConfig: the decoder is chosen by the leading bytes, as
-// image.RegisterFormat's patterns do ("?" matches any byte)
-export function decodeConfig(b: Uint8Array): Size {
+// image.RegisterFormat's patterns do ("?" matches any byte). The source is
+// read in order, as Go's decoders read their io.Reader: the segments and
+// chunks the header walk skips are read in bounded pieces, never held
+// whole, so the check costs little memory however large the file is.
+export function decodeConfig(src: Uint8Array | ByteSource): Size {
+  const r = src instanceof Uint8Array ? bytesSource(src) : src;
+  const head = r.peek(15);
   const match = (pattern: string): boolean =>
-    b.length >= pattern.length &&
-    [...pattern].every((c, i) => c === "?" || b[i] === c.charCodeAt(0));
+    head.length >= pattern.length &&
+    [...pattern].every((c, i) => c === "?" || head[i] === c.charCodeAt(0));
   if (match("\xff\xd8")) {
-    return jpegConfig(b);
+    return jpegConfig(r);
   }
   if (match("\x89PNG\r\n\x1a\n")) {
-    return pngConfig(b);
+    return pngConfig(r);
   }
   if (match("GIF8?a")) {
-    return gifConfig(b);
+    return gifConfig(r);
   }
   if (match("RIFF????WEBPVP8")) {
-    return webpConfig(b);
+    return webpConfig(r);
   }
   // BMP and TIFF are registered too, but the API never thumbs them
   throw new Error("image: unknown format");
@@ -46,29 +51,107 @@ export interface Size {
   height: number;
 }
 
-// a reader over the bytes that fails as Go's io.ReadFull does
-function byteReader(b: Uint8Array, start: number) {
+// The bytes of an image, read in order. read fails as Go's io.ReadFull
+// does; size is the whole image's length.
+export interface ByteSource {
+  readonly size: number;
+  readonly offset: number;
+  // up to n bytes ahead, not consumed
+  peek(n: number): Uint8Array;
+  read(n: number): Uint8Array;
+  skip(n: number): void;
+}
+
+const unexpectedEOF = (): Error => new Error("unexpected EOF");
+
+// a source over bytes in memory
+function bytesSource(b: Uint8Array, start = 0): ByteSource {
   let o = start;
   return {
+    size: b.length,
     get offset(): number {
       return o;
     },
+    peek(n: number): Uint8Array {
+      return b.subarray(o, o + n);
+    },
     read(n: number): Uint8Array {
       if (o + n > b.length) {
-        throw new Error("unexpected EOF");
+        throw unexpectedEOF();
       }
       o += n;
       return b.subarray(o - n, o);
+    },
+    skip(n: number): void {
+      this.read(n);
+    },
+  };
+}
+
+// the most a reader source buffers at once (larger skips are read in
+// pieces of this size; the largest piece the header walk keeps is a JPEG
+// segment, under 64 KiB)
+const readerChunk = 64 * 1024;
+
+// A source over a sequential reader (a stored file's blob.Reader) of size
+// bytes. It holds at most one buffered piece.
+export function readerSource(r: { read(p: Uint8Array): number }, size: number): ByteSource {
+  let buf = new Uint8Array(0);
+  let pos = 0;
+  let o = 0;
+  // buffers at least n bytes ahead, or what is left
+  const fill = (n: number): void => {
+    if (buf.length - pos >= n) {
+      return;
+    }
+    const next = new Uint8Array(Math.max(n, readerChunk));
+    let have = buf.length - pos;
+    next.set(buf.subarray(pos));
+    while (have < n) {
+      const k = r.read(next.subarray(have));
+      if (k === 0) {
+        break;
+      }
+      have += k;
+    }
+    buf = next.subarray(0, have);
+    pos = 0;
+  };
+  return {
+    size,
+    get offset(): number {
+      return o;
+    },
+    peek(n: number): Uint8Array {
+      fill(n);
+      return buf.subarray(pos, pos + n);
+    },
+    read(n: number): Uint8Array {
+      fill(n);
+      if (buf.length - pos < n) {
+        throw unexpectedEOF();
+      }
+      const out = buf.slice(pos, pos + n);
+      pos += n;
+      o += n;
+      return out;
+    },
+    skip(n: number): void {
+      for (let left = n; left > 0;) {
+        const k = Math.min(left, readerChunk);
+        this.read(k);
+        left -= k;
+      }
     },
   };
 }
 
 // image/jpeg decode(r, configOnly=true) and DecodeConfig (Go 1.27.2)
-function jpegConfig(b: Uint8Array): Size {
-  const r = byteReader(b, 2);
+function jpegConfig(r: ByteSource): Size {
+  r.read(2);
   let jfif = false;
   let sof: Size | undefined;
-  const ignore = (n: number): void => void r.read(n);
+  const ignore = (n: number): void => r.skip(n);
   for (;;) {
     const tmp = [...r.read(2)] as [number, number];
     while (tmp[0] !== 0xff) {
@@ -189,19 +272,24 @@ function processSOF(t: Uint8Array): Size {
 
 // image/png DecodeConfig: the IHDR, and for a paletted image the chunks up
 // to tRNS or IDAT, each with its CRC and in the order the decoder accepts
-function pngConfig(b: Uint8Array): Size {
-  const r = byteReader(b, 8);
-  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+function pngConfig(r: ByteSource): Size {
+  r.read(8);
   // stages: 0 start, 1 IHDR, 2 PLTE, 3 tRNS, 4 IDAT
   let stage = 0;
   let paletted = false;
   let depth = 0;
   let size: Size = { width: 0, height: 0 };
   for (;;) {
-    const at = r.offset;
-    r.read(8);
-    const length = v.getUint32(at);
-    const type = String.fromCharCode(...b.subarray(at + 4, at + 8));
+    const head = r.read(8);
+    const length = view(head).getUint32(0);
+    const type = String.fromCharCode(...head.subarray(4, 8));
+    // the CRC of the type and the data
+    let crc = Bun.hash.crc32(head.subarray(4, 8));
+    const data = (n: number): Uint8Array => {
+      const t = r.read(n);
+      crc = Bun.hash.crc32(t, crc);
+      return t;
+    };
     const order = new Error("invalid PNG format: chunk out of order");
     if (type === "IHDR") {
       if (stage !== 0) {
@@ -211,7 +299,7 @@ function pngConfig(b: Uint8Array): Size {
       if (length !== 13) {
         throw new Error("invalid PNG format: bad IHDR length");
       }
-      const t = r.read(13);
+      const t = data(13);
       if (t[10] !== 0) {
         throw new Error("unsupported PNG feature: compression method");
       }
@@ -221,8 +309,8 @@ function pngConfig(b: Uint8Array): Size {
       if (t[12] !== 0 && t[12] !== 1) {
         throw new Error("invalid PNG format: invalid interlace method");
       }
-      const w = v.getInt32(at + 8);
-      const h = v.getInt32(at + 12);
+      const w = view(t).getInt32(0);
+      const h = view(t).getInt32(4);
       if (w <= 0 || h <= 0) {
         throw new Error("invalid PNG format: non-positive dimension");
       }
@@ -250,7 +338,7 @@ function pngConfig(b: Uint8Array): Size {
       if (length % 3 !== 0 || np <= 0 || np > 256 || np > 1 << depth) {
         throw new Error("invalid PNG format: bad PLTE length");
       }
-      r.read(3 * np);
+      data(3 * np);
     } else if (type === "tRNS") {
       if (stage !== 2) {
         throw order;
@@ -259,7 +347,7 @@ function pngConfig(b: Uint8Array): Size {
       if (length > 256) {
         throw new Error("invalid PNG format: bad tRNS length");
       }
-      r.read(length);
+      data(length);
     } else if (type === "IDAT") {
       if (stage < 1 || (stage === 1 && paletted)) {
         throw order;
@@ -271,11 +359,13 @@ function pngConfig(b: Uint8Array): Size {
       if (length > 0x7fffffff) {
         throw new Error(`invalid PNG format: Bad chunk length: ${length}`);
       }
-      r.read(length);
+      for (let left = length; left > 0;) {
+        const k = Math.min(left, readerChunk);
+        data(k);
+        left -= k;
+      }
     }
-    const end = r.offset;
-    r.read(4);
-    if (v.getUint32(end) !== Bun.hash.crc32(b.subarray(at + 4, end)) >>> 0) {
+    if (view(r.read(4)).getUint32(0) !== crc >>> 0) {
       throw new Error("invalid PNG format: invalid checksum");
     }
     if (stage >= (paletted ? 3 : 1)) {
@@ -285,8 +375,8 @@ function pngConfig(b: Uint8Array): Size {
 }
 
 // image/gif DecodeConfig: the logical screen, not the first frame
-function gifConfig(b: Uint8Array): Size {
-  const t = byteReader(b, 0).read(13);
+function gifConfig(r: ByteSource): Size {
+  const t = r.read(13);
   return {
     width: (t[6] as number) | ((t[7] as number) << 8),
     height: (t[8] as number) | ((t[9] as number) << 8),
@@ -298,8 +388,8 @@ function gifConfig(b: Uint8Array): Size {
 // fit in the logical screen (newImageFromDescriptor). Extensions are
 // skipped by their sub-blocks; the frame's pixel data is not checked here.
 export function gifFirstFrame(b: Uint8Array): Size {
-  const screen = gifConfig(b);
-  const r = byteReader(b, 13);
+  const r = bytesSource(b);
+  const screen = gifConfig(r);
   const fields = b[10] as number;
   if (fields & 0x80) {
     r.read(3 << (1 + (fields & 7)));
@@ -331,32 +421,30 @@ export function gifFirstFrame(b: Uint8Array): Size {
 
 // x/image/webp decode(r, configOnly=true) (v0.47.0): the RIFF chunks up to
 // the first VP8, VP8L or VP8X chunk, which gives the size
-function webpConfig(b: Uint8Array): Size {
-  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+function webpConfig(r: ByteSource): Size {
   const invalid = new Error("webp: invalid format");
-  const riffLen = v.getUint32(4, true);
+  const riffLen = view(r.read(12)).getUint32(4, true);
   if (riffLen < 4) {
     throw new Error("riff: short chunk data");
   }
   let total = riffLen - 4;
-  let o = 12;
   let wantAlpha = false;
   for (;;) {
     if (total === 0) {
       throw invalid;
     }
-    if (total < 8 || o + 8 > b.length) {
+    if (total < 8 || r.offset + 8 > r.size) {
       throw new Error("riff: short chunk header");
     }
     total -= 8;
-    const id = String.fromCharCode(...b.subarray(o, o + 4));
-    const len = v.getUint32(o + 4, true);
+    const head = r.read(8);
+    const id = String.fromCharCode(...head.subarray(0, 4));
+    const len = view(head).getUint32(4, true);
     if (len > total) {
       throw new Error("riff: list subchunk too long");
     }
-    const data = o + 8;
-    if (data + len > b.length) {
-      throw new Error("unexpected EOF");
+    if (r.offset + len > r.size) {
+      throw unexpectedEOF();
     }
     if (id === "ALPH") {
       if (!wantAlpha) {
@@ -368,30 +456,32 @@ function webpConfig(b: Uint8Array): Size {
         throw invalid;
       }
       if (len < 3) {
-        throw new Error("unexpected EOF");
+        throw unexpectedEOF();
       }
+      const d = r.read(Math.min(len, 10));
       // a frame that is not a key frame has no size: Go reports 0x0
-      if ((b[data] as number) & 1) {
+      if ((d[0] as number) & 1) {
         return { width: 0, height: 0 };
       }
       if (len < 10) {
-        throw new Error("unexpected EOF");
+        throw unexpectedEOF();
       }
-      if (b[data + 3] !== 0x9d || b[data + 4] !== 0x01 || b[data + 5] !== 0x2a) {
+      if (d[3] !== 0x9d || d[4] !== 0x01 || d[5] !== 0x2a) {
         throw new Error("vp8: invalid format");
       }
       return {
-        width: (((b[data + 7] as number) & 0x3f) << 8) | (b[data + 6] as number),
-        height: (((b[data + 9] as number) & 0x3f) << 8) | (b[data + 8] as number),
+        width: (((d[7] as number) & 0x3f) << 8) | (d[6] as number),
+        height: (((d[9] as number) & 0x3f) << 8) | (d[8] as number),
       };
     } else if (id === "VP8L") {
       if (len < 5) {
-        throw new Error("unexpected EOF");
+        throw unexpectedEOF();
       }
-      if (b[data] !== 0x2f) {
+      const d = r.read(5);
+      if (d[0] !== 0x2f) {
         throw new Error("vp8l: invalid header");
       }
-      const bits = v.getUint32(data + 1, true);
+      const bits = view(d).getUint32(1, true);
       if (bits >>> 29 !== 0) {
         throw new Error("vp8l: invalid version");
       }
@@ -400,33 +490,30 @@ function webpConfig(b: Uint8Array): Size {
       if (len !== 10) {
         throw invalid;
       }
-      wantAlpha = ((b[data] as number) & 0x10) !== 0;
-      const w =
-        ((b[data + 4] as number) |
-          ((b[data + 5] as number) << 8) |
-          ((b[data + 6] as number) << 16)) +
-        1;
-      const h =
-        ((b[data + 7] as number) |
-          ((b[data + 8] as number) << 8) |
-          ((b[data + 9] as number) << 16)) +
-        1;
+      const d = r.read(10);
+      wantAlpha = ((d[0] as number) & 0x10) !== 0;
+      const w = ((d[4] as number) | ((d[5] as number) << 8) | ((d[6] as number) << 16)) + 1;
+      const h = ((d[7] as number) | ((d[8] as number) << 8) | ((d[9] as number) << 16)) + 1;
       if (w * h > 2 ** 31 - 1) {
         throw invalid;
       }
       return { width: w, height: h };
     }
-    // the next chunk, after an odd chunk's padding byte
+    // the next chunk (ALPH or another), after an odd chunk's padding byte
+    r.skip(len);
     total -= len;
-    o = data + len;
     if (len & 1) {
       if (total === 0) {
         throw new Error("riff: list subchunk too long");
       }
       total--;
-      o++;
+      r.skip(1);
     }
   }
+}
+
+function view(b: Uint8Array): DataView {
+  return new DataView(b.buffer, b.byteOffset, b.byteLength);
 }
 
 export function readOrientation(b: Uint8Array): number {

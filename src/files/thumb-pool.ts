@@ -22,6 +22,7 @@ import { availableParallelism } from "node:os";
 
 import type { Thumb } from "@/files/create-thumb";
 import type { ThumbSize } from "@/files/imaging";
+import { toInt64 } from "@/records/cast";
 
 export interface ThumbRequestMessage {
   id: number;
@@ -43,43 +44,15 @@ function workerURL(): string {
   return new URL("thumb-worker.ts", import.meta.url).href;
 }
 
+// the longest delay setTimeout takes
+const maxTimerMs = 2 ** 31 - 1;
+
 // how long an idle worker is kept for the next thumb
 const idleWorkerMs = 30_000;
 
-// cast.ToInt64 of an environment value: strconv.ParseInt(s, 0, 64) after
-// a trailing ".0..." is trimmed; 0 when it does not parse
-export function envInt(value: string): number {
-  let s = value;
-  if (/\.0+$/.test(s)) {
-    s = s.replace(/\.0+$/, "");
-  }
-  const m = /^([+-]?)(0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|0[0-7_]*|[1-9][0-9_]*)$/.exec(s);
-  if (m === null) {
-    return 0;
-  }
-  let digits = m[2] as string;
-  if (digits.includes("_")) {
-    // base prefix 0 allows underscores between digits only
-    if (/^_|_$|__/.test(digits.replace(/^0[xXoObB]?/, "")) || !digits.startsWith("0")) {
-      return 0;
-    }
-    digits = digits.replaceAll("_", "");
-  }
-  let n: bigint;
-  if (/^0[xXoObB]/.test(digits)) {
-    n = BigInt(digits.toLowerCase());
-  } else if (digits.length > 1 && digits.startsWith("0")) {
-    n = BigInt("0o" + digits.slice(1));
-  } else {
-    n = BigInt(digits);
-  }
-  if (m[1] === "-") {
-    n = -n;
-  }
-  if (n > 9223372036854775807n || n < -9223372036854775808n) {
-    return 0;
-  }
-  return Number(n);
+// cast.ToInt64 of an environment value (0 when it does not parse)
+function envInt(value: string): number {
+  return Number(toInt64(value));
 }
 
 export interface ThumbPoolOptions {
@@ -280,13 +253,18 @@ export class ThumbPool {
         clearTimeout(timer);
         resolve();
       };
-      const timer = setTimeout(() => {
-        const i = this.#waiters.indexOf(waiter);
-        if (i !== -1) {
-          this.#waiters.splice(i, 1);
-        }
-        reject(new Error("context deadline exceeded"));
-      }, this.maxWaitMs);
+      // a timer past 2^31-1 ms (24.8 days) would fire at once; such a wait
+      // never ends in practice
+      const timer =
+        this.maxWaitMs <= maxTimerMs
+          ? setTimeout(() => {
+              const i = this.#waiters.indexOf(waiter);
+              if (i !== -1) {
+                this.#waiters.splice(i, 1);
+              }
+              reject(new Error("context deadline exceeded"));
+            }, this.maxWaitMs)
+          : undefined;
       this.#waiters.push(waiter);
     });
   }

@@ -6,7 +6,8 @@
 //
 //  1. The header is read as Go's image.DecodeConfig reads it
 //     (image-config.ts), and its size is checked against
-//     PB_THUMBS_MAX_SOURCE_PIXELS with upstream's error text. A JPEG that
+//     PB_THUMBS_MAX_SOURCE_PIXELS with upstream's error text (checkSource,
+//     which the file storage also runs before it reads the original). A JPEG that
 //     ends before its EOI marker fails, as Go's decoder fails it.
 //  2. The geometry is planned on the size imaging.Decode returns: a GIF's
 //     first frame, a JPEG turned by imaging's EXIF orientation.
@@ -24,11 +25,13 @@
 
 import { encodeGif } from "@/files/gif-encode";
 import {
+  type ByteSource,
   checkJpegComplete,
   decodeConfig,
   gifFirstFrame,
   orientImage,
   readOrientation,
+  type Size,
 } from "@/files/image-config";
 import {
   cropRect,
@@ -60,13 +63,24 @@ interface Header {
   orientation: number;
 }
 
-// upstream's error for an original over PB_THUMBS_MAX_SOURCE_PIXELS
-function checkPixels(width: number, height: number, maxPixels: number): void {
-  if (width * height > maxPixels) {
+// The first step of createThumb: image.DecodeConfig's size checked
+// against PB_THUMBS_MAX_SOURCE_PIXELS, with upstream's errors. The file
+// storage runs it on the stored original through a reader source before it
+// reads the whole file, so an original over the limit is never loaded; the
+// worker runs it again on the bytes it gets.
+export function checkSource(src: Uint8Array | ByteSource, maxPixels: number): Size {
+  let config;
+  try {
+    config = decodeConfig(src);
+  } catch (err) {
+    throw new Error(`image headers decoding failed: ${(err as Error).message}`, { cause: err });
+  }
+  if (config.width * config.height > maxPixels) {
     throw new Error(
-      `the original image is too large (${width}x${height}) and exceeds the total max allowed ${maxPixels} pixels`,
+      `the original image is too large (${config.width}x${config.height}) and exceeds the total max allowed ${maxPixels} pixels`,
     );
   }
+  return config;
 }
 
 // What createThumb reads before the decode, read as Go reads it, not from
@@ -76,13 +90,7 @@ function checkPixels(width: number, height: number, maxPixels: number): void {
 // on what imaging.Decode returns: a GIF's first frame, and a JPEG turned by
 // imaging's readOrientation, which reads only the first APP1 segment.
 function readHeader(input: Uint8Array, maxPixels: number): Header {
-  let config;
-  try {
-    config = decodeConfig(input);
-  } catch (err) {
-    throw new Error(`image headers decoding failed: ${(err as Error).message}`, { cause: err });
-  }
-  checkPixels(config.width, config.height, maxPixels);
+  const config = checkSource(input, maxPixels);
   // libjpeg-turbo decodes a cut JPEG with a warning; Go's decoder fails
   checkJpegComplete(input);
   const size = input[0] === 0x47 ? gifFirstFrame(input) : config;

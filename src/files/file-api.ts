@@ -235,8 +235,6 @@ function createThumb(
   thumbSize: string,
 ): Promise<void> {
   return app.thumbs.generate(thumbPath, () =>
-    fsys.createThumb(originalPath, thumbPath, thumbSize, (input, contentType, size) =>
-      app.thumbs.render(input, contentType, size),
-    ),
+    fsys.createThumb(originalPath, thumbPath, thumbSize, app.thumbs),
   );
 }

@@ -29,12 +29,14 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash, createHmac } from "node:crypto";
 import {
   appendFileSync,
+  copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -48,6 +50,8 @@ import {
   writeBaseSet,
   writeCompatSet,
   writeEdgeSet,
+  writeLargePng,
+  writeNoise,
 } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
@@ -335,6 +339,9 @@ beforeAll(async () => {
     ["data.bin", new Uint8Array([0, 1, 2, 3, 250, 251, 252, 253, 254, 255])],
     ["notes.txt", "plain text notes\n".repeat(20)],
     ["gone.txt", "removed from storage before the servers start"],
+    // replaced by large files in the running pairs' storage (see below)
+    ["large.bin", "placeholder"],
+    ["large.png", photoPng],
   ];
   for (const [name, content] of documents) {
     writeFileSync(join(imagesDir, name), content);
@@ -414,6 +421,23 @@ beforeAll(async () => {
 
   main = await startPair(baseDir);
   limited = await startPair(baseDir, { PB_THUMBS_MAX_SOURCE_PIXELS: "1000000" });
+
+  // large files only where they are used, written in pieces: 24 MB of
+  // noise for multipart ranges over 16 MiB, and a valid 4000x2000 PNG of
+  // about 24 MB over the limited pair's pixel limit
+  const large = (pair: Pair, name: string, write: (path: string) => void): void => {
+    const s = stored.get(name) as Stored;
+    const source = join(newRoot(), name);
+    write(source);
+    for (const dir of [pair.upstreamDir, pair.igloDir]) {
+      const path = join(dir, "storage", collectionId, s.id, s.name);
+      copyFileSync(source, path);
+      utimesSync(path, 1_700_000_000, 1_700_000_000);
+    }
+    rmSync(source);
+  };
+  large(main, "large.bin", (path) => writeNoise(path, 24_000_000, 3));
+  large(limited, "large.png", (path) => writeLargePng(path, 4000, 2000, 4));
 }, 180_000);
 
 afterAll(async () => {
@@ -498,6 +522,16 @@ describe("Range and conditional requests", () => {
     test(name, () => same(main, pathOf(file("notes.txt")), headers));
   }
 
+  test("multiple ranges over 16 MiB: Content-Length, body, and GET as HEAD", async () => {
+    const headers = { Range: "bytes=0-9437183,10485760-19922943" };
+    const up = await same(main, pathOf(file("large.bin")), headers);
+    expect(up.status).toBe(206);
+    expect(Number(up.headers.get("content-length"))).toBeGreaterThan(16 << 20);
+    const [upHead, igHead] = await both(main, pathOf(file("large.bin")), headers, "HEAD");
+    expect(differences(upHead, igHead)).toEqual([]);
+    expect(igHead.headers.get("content-length")).toBe(up.headers.get("content-length"));
+  });
+
   test("If-Modified-Since and If-Range with the Last-Modified time", async () => {
     const up = await send(main.upstream, pathOf(file("photo.jpg")));
     const lastModified = up.headers.get("last-modified") as string;
@@ -509,6 +543,18 @@ describe("Range and conditional requests", () => {
       "If-Range": lastModified,
     });
     expect(ir.status).toBe(206);
+  });
+});
+
+describe("a large original over PB_THUMBS_MAX_SOURCE_PIXELS", () => {
+  test("4000x2000 PNG of 24 MB: the original (first byte)", async () => {
+    const up = await same(limited, `${pathOf(file("large.png"))}?thumb=100x100`, {
+      Range: "bytes=0-0",
+    });
+    expect(up.status).toBe(206);
+    expect(up.headers.get("content-disposition")).toBe(
+      `inline; filename="${file("large.png").name}"`,
+    );
   });
 });
 

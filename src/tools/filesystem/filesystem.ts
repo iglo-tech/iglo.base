@@ -23,7 +23,9 @@
 // filesystem.ErrNotFound is blob.ErrNotFound; callers check it with
 // isNotFound (blob/bucket.ts).
 
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
+import { open } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import {
   Bucket,
@@ -41,6 +43,8 @@ import {
   type ReadCloser,
 } from "@/tools/filesystem/file";
 import { goQuote } from "@/fields/field";
+import { checkSource } from "@/files/create-thumb";
+import { readerSource } from "@/files/image-config";
 import type { ThumbSize } from "@/files/imaging";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
@@ -112,13 +116,20 @@ export interface ThumbImage {
 }
 
 // makes the thumb of an original's bytes and stored content type
-export type ThumbRenderer = (
-  input: Uint8Array,
-  contentType: string,
-  size: ThumbSize,
-) => Promise<ThumbImage>;
+export interface ThumbRenderer {
+  // PB_THUMBS_MAX_SOURCE_PIXELS, checked before the original is read whole
+  maxSourcePixels(): number;
+  render(input: Uint8Array, contentType: string, size: ThumbSize): Promise<ThumbImage>;
+}
 
 export const MetadataOriginalName = "original-filename";
+
+// pb_data's temp directory (core.LocalTempDirName in src/app/bootstrap.ts,
+// which imports this module), beside the storage directory
+const localTempDirName = ".pb_temp_to_delete";
+
+// the pieces a spooled multipart/byteranges body is copied in
+const spoolChunk = 1 << 20;
 
 // the size of the blocks UploadFile copies
 const uploadBufferSize = 1 << 20;
@@ -475,9 +486,57 @@ export class System {
             rr.close();
           }
         },
+        spool: (parts) => this.#spool(fileKey, parts),
       },
       modTime,
     );
+  }
+
+  // Writes the parts of a large multipart/byteranges body (bytes, or
+  // ranges of the stored file) to a file in pb_data's temp directory, which
+  // the app clears at start (core.LocalTempDirName, beside the storage
+  // directory), reading the ranges in pieces of spoolChunk bytes.
+  async #spool(
+    fileKey: string,
+    parts: (Uint8Array | { start: number; length: number })[],
+  ): Promise<{ blob: Blob; remove: () => void }> {
+    const tempDir = join(dirname(this.#localDir), localTempDirName);
+    mkdirSync(tempDir, { recursive: true });
+    const path =
+      tempDir +
+      "/ranges_" +
+      Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString("hex");
+    const remove = (): void => rmSync(path, { force: true });
+    const out = await open(path, "wx", 0o600);
+    try {
+      const src = await open(this.#localDir + "/" + fileKey, "r");
+      try {
+        const buf = new Uint8Array(spoolChunk);
+        for (const part of parts) {
+          if (part instanceof Uint8Array) {
+            await out.write(part);
+            continue;
+          }
+          for (let pos = part.start, left = part.length; left > 0;) {
+            const { bytesRead } = await src.read(buf, 0, Math.min(left, buf.length), pos);
+            if (bytesRead === 0) {
+              throw new Error("unexpected EOF");
+            }
+            await out.write(buf.subarray(0, bytesRead));
+            pos += bytesRead;
+            left -= bytesRead;
+          }
+        }
+      } finally {
+        await src.close();
+      }
+    } catch (err) {
+      await out.close();
+      remove();
+      throw err;
+    }
+    await out.close();
+    return { blob: Bun.file(path), remove };
   }
 
   // CreateThumb creates a new thumb image for the file at originalKey
@@ -491,8 +550,10 @@ export class System {
   // - WxHb (eg. 300x100b) - resize and crop to WxH viewbox (from bottom)
   // - WxHf (eg. 300x100f) - fit inside a WxH viewbox (without cropping)
   //
-  // render makes the thumb from the original's bytes and content type
-  // (src/files/create-thumb.ts in a worker); its errors are CreateThumb's.
+  // render gives PB_THUMBS_MAX_SOURCE_PIXELS, checked on the original's
+  // header before the original is read, and makes the thumb from the
+  // original's bytes and content type (src/files/create-thumb.ts in a
+  // worker); its errors are CreateThumb's.
   async createThumb(
     originalKey: string,
     thumbKey: string,
@@ -517,12 +578,16 @@ export class System {
     let originalContentType: string;
     try {
       originalContentType = r.contentType;
+      // check image dimensions to minimize excessive memory usage (the
+      // header is read in bounded pieces; the whole original is read only
+      // after it passes)
+      checkSource(readerSource(r, r.size), render.maxSourcePixels());
     } finally {
       r.close();
     }
     const original = await this.#blob(originalKey).bytes();
 
-    const thumb = await render(original, originalContentType, {
+    const thumb = await render.render(original, originalContentType, {
       width,
       height,
       mode: resizeType,
