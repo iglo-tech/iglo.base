@@ -39,6 +39,8 @@ const exitCode = await runCli({
   },
   shutdown: shutdown.signal,
   getenv: (name) => process.env[name] ?? "",
+  environ: () => ({ ...process.env }) as Record<string, string>,
+  exit: (code) => process.exit(code),
   ui: readUiPack(await Bun.file(uiPack).bytes()),
   launchURL,
 });

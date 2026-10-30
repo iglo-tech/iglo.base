@@ -65,6 +65,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     store: new Store<string, unknown>(),
     settings: config.settings,
     getenv: config.getenv,
+    automigrateDir: config.automigrateDir,
   });
 
   try {

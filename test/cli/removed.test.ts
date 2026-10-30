@@ -8,7 +8,7 @@ import { run } from "@test/support/executable";
 const scope = "https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md";
 
 function flagMessage(name: string): string {
-  return `flag --${name} is not supported: iglo.base has no JavaScript hooks or user migrations. See ${scope}#removed-the-extension-surface`;
+  return `flag --${name} is not supported: iglo.base has no JavaScript hooks. See ${scope}#removed-the-extension-surface`;
 }
 
 // log.Fatal output: "2006/01/02 15:04:05 <message>"
@@ -29,8 +29,6 @@ const removedFlags = [
   { name: "hooksDir", value: "./pb_hooks" },
   { name: "hooksWatch", value: "false" },
   { name: "hooksPool", value: "10" },
-  { name: "migrationsDir", value: "./pb_migrations" },
-  { name: "automigrate", value: "false" },
 ];
 
 describe("removed flags", () => {
@@ -58,7 +56,6 @@ describe("removed flags", () => {
 
 describe("removed commands", () => {
   const update = `command "update" is not supported: iglo.base does not replace its own executable; deploy a new release instead. See ${scope}#removed-the-update-command`;
-  const migrate = `command "migrate" is not supported: iglo.base has no user migrations; system migrations run automatically at startup. See ${scope}#removed-the-extension-surface`;
 
   for (const args of [
     ["update"],
@@ -68,12 +65,6 @@ describe("removed commands", () => {
   ]) {
     test(args.join(" "), async () => {
       await expectSingleError(args, update);
-    });
-  }
-
-  for (const args of [["migrate"], ["migrate", "up"], ["migrate", "create", "x"]]) {
-    test(args.join(" "), async () => {
-      await expectSingleError(args, migrate);
     });
   }
 });

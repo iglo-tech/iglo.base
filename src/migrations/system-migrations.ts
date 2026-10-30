@@ -81,6 +81,15 @@ export const systemMigrationFiles: readonly string[] = Object.freeze(
   systemMigrations.map((m) => m.file),
 );
 
+// whether upstream's system migration has a Down
+export function systemMigrationHasDown(file: string): boolean {
+  return (
+    file === "1640988000_aux_init.go" ||
+    file === "1640988000_init.go" ||
+    file === "1763020353_update_default_auth_alert_templates.go"
+  );
+}
+
 // the timestamp of the newest system migration (03-data-compatibility.md)
 const baselineTimestamp = 1778828400;
 

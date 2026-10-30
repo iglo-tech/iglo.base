@@ -24,7 +24,7 @@ describe("root command", () => {
     expect(result.stdout).toStartWith("iglo-base CLI\n\nUsage:\n  iglo-base [command]\n");
     expect(result.stdout).toContain("\n  serve       Starts the web server");
     expect(result.stdout).not.toContain("hooks");
-    expect(result.stdout).not.toContain("migrat");
+    expect(result.stdout).toContain("\n  migrate     Executes app DB migration scripts");
     expect(result.stderr).toBe("");
   });
 
@@ -266,7 +266,7 @@ describe("serve command", () => {
   });
 });
 
-describe("pb_hooks and pb_migrations warning", () => {
+describe("pb_hooks warning", () => {
   const cases: [string, string[]][] = [
     ["neither exists", []],
     ["pb_hooks exists", ["pb_hooks"]],
@@ -282,15 +282,14 @@ describe("pb_hooks and pb_migrations warning", () => {
       const server = await startServer([], join(root, "pb_data"));
       const result = await server.stop();
       const warnings = result.stderr.split("\n").filter((line) => line.includes("WARN"));
-      if (dirs.length === 0) {
+      if (!dirs.includes("pb_hooks")) {
         expect(result.stderr).toBe("");
         return;
       }
       expect(warnings).toHaveLength(1);
       expect(result.stderr.trimEnd().split("\n")).toHaveLength(1);
-      for (const dir of dirs) {
-        expect(warnings[0]).toContain(join(root, dir));
-      }
+      expect(warnings[0]).toContain(join(root, "pb_hooks"));
+      expect(warnings[0]).not.toContain("pb_migrations");
       expect(warnings[0]).toContain("docs/design/01-scope.md");
     });
   }
