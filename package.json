@@ -14,7 +14,8 @@
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build",
     "hooks:install": "sh scripts/install-git-hooks.sh",
     "upstream:prepare": "bun scripts/upstream/prepare.ts",
-    "test:reference": "bun run upstream:prepare && bun test --path-ignore-patterns \"\" test/differential"
+    "test:reference": "bun run upstream:prepare && bun test --path-ignore-patterns \"\" test/differential",
+    "fuzz:filters": "bun run upstream:prepare && bun --preload ./test/differential/fuzz/temp-root.ts test/differential/fuzz/main.ts"
   },
   "dependencies": {
     "nodemailer": "10.3.1"
