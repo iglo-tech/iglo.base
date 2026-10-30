@@ -10,7 +10,7 @@ M3.3 (batch) active; the rest follows in milestone order (work plan).
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.3 | review | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 1 | [brief](briefs/M3.3.md) |
+| M3.3 | review | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 2 | [brief](briefs/M3.3.md) |
 
 ## Done
 
