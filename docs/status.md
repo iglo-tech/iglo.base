@@ -10,7 +10,7 @@ M5.2 (file serving) in progress.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.2 | review | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 2 | [Brief](briefs/M5.2.md); round 1 CHANGES (bounded thumb header read, multi-range Content-Length, Go int env parsing), fixed in `985b546` (multi-range > 16 MiB via a temp file in `.pb_temp_to_delete`, lead accepted); Sol re-review round 2. Lead accepted: 2 rate-limit scenarios pending on M4.8, the thumb-failure log warning waits for M5.5, small edits to router/app/test support |
+| M5.2 | review | [#38](https://github.com/iglo-tech/iglo.base/pull/38) | 3 | [Brief](briefs/M5.2.md); round 1 CHANGES (bounded thumb header read, multi-range Content-Length, Go int env parsing), fixed in `985b546` (multi-range > 16 MiB via a temp file in `.pb_temp_to_delete`, lead accepted); round 2 CHANGES (GIF read whole), lead fixed in `d28744d` (first frame only; JPEG/PNG/WebP whole read argued bounded); Sol re-review round 3. Lead accepted: 2 rate-limit scenarios pending on M4.8, the thumb-failure log warning waits for M5.5, small edits to router/app/test support |
 
 ## Done
 
