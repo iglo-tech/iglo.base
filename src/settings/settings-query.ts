@@ -180,8 +180,8 @@ export type SettingsSaveApp = Pick<App, "databases" | "clock" | "encryptionEnv" 
 // synchronously. The settings saved are the app ones, changed in place,
 // so the reload from the stored row would give the same values and is not
 // repeated.
-export function saveSettingsSync(app: SettingsSaveApp, s: Settings): void {
-  const validateErr = s.validate();
+export function saveSettingsSync(app: SettingsSaveApp, s: Settings, withValidations = true): void {
+  const validateErr = withValidations ? s.validate() : null;
   if (validateErr !== null) {
     throw validateErr;
   }

@@ -14,12 +14,19 @@
 //     goja throws a Go error, and comes back as the original error when it
 //     stops a migration (normalizeException).
 //
+//   - a Go value without a JS twin takes the shape goja gives it: a byte
+//     slice is a real array that is known to be bytes (toVm, toHost), a map
+//     with string keys is a plain object, a slice held by a struct is an
+//     array whose reads and writes reach the struct (sliceView).
+//
 // Adapters give single classes the shape goja gives them where the
-// internal class differs (src/migrations/binds*.ts).
+// internal class differs (src/migrations/go-class.ts and binds*.ts).
 
 import vm from "node:vm";
 
 import { driverError } from "@/collections/driver-error";
+import { bytesToText, textToBytes } from "@/tools/types/go-json";
+import { JSONRaw } from "@/tools/types/json-raw";
 
 // returned by an adapter's get for a name it does not handle
 export const pass = Symbol("pass");
@@ -27,13 +34,32 @@ export const pass = Symbol("pass");
 export interface Adapter {
   get?(target: object, key: string, m: Membrane): unknown;
   set?(target: object, key: string, value: unknown, m: Membrane): boolean | typeof pass;
+  // what Object.keys and `in` see, for a struct that is not a JS object
+  keys?(target: object, m: Membrane): readonly string[];
+  // the migration file's object, when it is not a Proxy of the target
+  create?(target: object, m: Membrane): object;
+}
+
+// A slice a struct holds: Array methods and index writes reach the struct.
+export interface SliceSource {
+  read(): readonly unknown[];
+  write(next: unknown[]): void;
+  fromGo?(item: unknown): unknown;
+  toGo?(item: unknown): unknown;
+  // goja refuses an item of another Go type: a sloppy `list[0] = v` is
+  // ignored and a push throws, as for a refused Proxy set
+  accepts?(item: unknown): boolean;
+  // the Go methods of the slice type
+  methods?: { keys: readonly string[]; get(key: string): unknown };
 }
 
 type AnyFunction = (...args: unknown[]) => unknown;
 
 interface VmIntrinsics {
   GoError: new (message: string) => Error & { value: unknown };
+  TypeError: new (message: string) => Error;
   parse(text: string): unknown;
+  objectPrototype: object;
   object(): Record<string, unknown>;
   array(): unknown[];
 }
@@ -46,7 +72,7 @@ const intrinsicsSource = `(function () {
     }
   }
   Object.defineProperty(GoError.prototype, "name", { value: "GoError", configurable: true, writable: true });
-  return { GoError, parse: JSON.parse, object: () => ({}), array: () => [] };
+  return { GoError, TypeError, parse: JSON.parse, objectPrototype: Object.prototype, object: () => ({}), array: () => [] };
 })()`;
 
 export class Membrane {
@@ -54,25 +80,45 @@ export class Membrane {
   readonly #targets = new WeakMap<object, object>();
   readonly #hostFunctions = new WeakMap<object, AnyFunction>();
   readonly #goErrors = new WeakMap<object, Error>();
+  // the VM arrays that stand for a Go []byte or a types.JSONRaw
+  readonly #bytes = new WeakMap<object, "bytes" | "raw">();
+  readonly #slices = new WeakMap<object, SliceSource>();
   // set once, before the first value crosses
   adapterFor: (target: object) => Adapter | undefined = () => undefined;
   readonly #unbox: (target: object) => object;
+  readonly #box: (target: object) => object;
   readonly vm: VmIntrinsics;
 
-  constructor(context: vm.Context, unbox: (target: object) => object) {
+  // box gives the object a Proxy stands on, for a class whose instance a
+  // Go assignment (*v = *record) replaces; unbox is its way back.
+  constructor(
+    context: vm.Context,
+    unbox: (target: object) => object,
+    box: (target: object) => object = (target) => target,
+  ) {
     this.vm = vm.runInContext(intrinsicsSource, context) as VmIntrinsics;
     this.#unbox = unbox;
+    this.#box = box;
   }
 
-  // the object behind a Proxy, if v is one
+  // the internal object behind a Proxy, if v is one
   targetOf(v: unknown): object | undefined {
+    if (typeof v !== "object" || v === null) {
+      return undefined;
+    }
+    const target = this.#targets.get(v);
+    return target === undefined ? undefined : this.#unbox(target);
+  }
+
+  // the object a Proxy stands on (see box)
+  boxOf(v: unknown): object | undefined {
     return typeof v === "object" && v !== null ? this.#targets.get(v) : undefined;
   }
 
   // Marks proxy as the migration file's view of target.
-  register(target: object, proxy: object): object {
+  register(target: object, proxy: object, box: object = target): object {
     this.#proxies.set(target, proxy);
-    this.#targets.set(proxy, target);
+    this.#targets.set(proxy, box);
     return proxy;
   }
 
@@ -84,8 +130,24 @@ export class Membrane {
       case "function":
         return this.#wrapFunction(v as AnyFunction, undefined);
       case "object":
-        if (v === null || this.#targets.has(v)) {
+        if (v === null || this.#targets.has(v) || this.#bytes.has(v) || this.#slices.has(v)) {
           return v;
+        }
+        if (v instanceof Uint8Array && !Buffer.isBuffer(v)) {
+          return this.#newBytes(v, "bytes");
+        }
+        if (v instanceof JSONRaw) {
+          return this.#newRaw(v);
+        }
+        if (Array.isArray(v)) {
+          const copy = this.vm.array();
+          for (const item of v) {
+            copy.push(this.toVm(item));
+          }
+          return copy;
+        }
+        if (v instanceof Map) {
+          return this.#mapObject(v);
         }
         return this.#proxies.get(v) ?? this.#newProxy(v);
       default:
@@ -112,13 +174,24 @@ export class Membrane {
       return this.#unbox(target);
     }
 
+    const bytes = this.#bytes.get(v);
+    if (bytes !== undefined) {
+      const data = bytesOf(v as unknown[]);
+      return bytes === "bytes" ? data : new JSONRaw(bytesToText(data));
+    }
+
+    const slice = this.#slices.get(v);
+    if (slice !== undefined) {
+      return [...slice.read()];
+    }
+
     // what crosses unwrapped: Buffer
     if (v instanceof Uint8Array) {
       return v;
     }
 
     if (Array.isArray(v)) {
-      return v.map((item) => this.toHost(item));
+      return Array.from(v as unknown[], (item) => this.toHost(item));
     }
 
     switch (Object.prototype.toString.call(v)) {
@@ -149,6 +222,22 @@ export class Membrane {
     return copy;
   }
 
+  // Bytes for an argument Go types as []byte: a string, a byte slice or an
+  // array of numbers. Undefined for anything else.
+  toBytes(v: unknown): Uint8Array | undefined {
+    if (typeof v === "string") {
+      return textToBytes(v);
+    }
+    const host = this.toHost(v);
+    if (host instanceof Uint8Array) {
+      return host;
+    }
+    if (host instanceof JSONRaw) {
+      return textToBytes(host.bytes());
+    }
+    return Array.isArray(host) ? bytesOf(host) : undefined;
+  }
+
   // Runs internal code for a migration file: an internal error becomes a
   // GoError. Anything else (an exception of the migration file passing
   // through) is thrown as it is.
@@ -175,6 +264,93 @@ export class Membrane {
     return typeof e === "object" && e !== null ? this.#goErrors.get(e) : undefined;
   }
 
+  // The array a migration file sees for a slice a struct holds. Its target
+  // is a VM array, so it is an array to the file and the Array methods run
+  // on this Proxy, through the traps below; callbacks get the fromGo view.
+  sliceView(source: SliceSource, host?: object): unknown[] {
+    const fromGo = source.fromGo ?? ((item: unknown) => this.toVm(item));
+    const toGo = source.toGo ?? ((item: unknown) => this.toHost(item));
+
+    const proxy = new Proxy(this.vm.array(), {
+      get: (t, key, receiver) => {
+        if (key === "length") {
+          return source.read().length;
+        }
+        if (isIndex(key)) {
+          return fromGo(source.read()[Number(key)]);
+        }
+        if (typeof key === "string" && source.methods?.keys.includes(key) === true) {
+          return source.methods.get(key);
+        }
+        return Reflect.get(t, key, receiver) as unknown;
+      },
+      set: (_t, key, value) =>
+        this.guard(() => {
+          if (isIndex(key) && source.accepts?.(value) === false) {
+            return false;
+          }
+          const next = [...source.read()];
+          if (key === "length") {
+            const length = toInteger(value);
+            for (let i = next.length; i < length; i++) {
+              next.push(null);
+            }
+            next.length = length;
+          } else if (isIndex(key)) {
+            const index = Number(key);
+            for (let i = next.length; i < index; i++) {
+              next.push(null);
+            }
+            next[index] = toGo(value);
+          } else {
+            return false;
+          }
+          source.write(next);
+          return true;
+        }),
+      has: (t, key) =>
+        (isIndex(key) && Number(key) < source.read().length) ||
+        (typeof key === "string" && source.methods?.keys.includes(key) === true) ||
+        key in t,
+      // a Go slice has no holes; the Array methods cut it with `length`
+      deleteProperty: () => true,
+      ownKeys: () => [
+        ...source.read().map((_item, i) => String(i)),
+        ...(source.methods?.keys ?? []),
+        "length",
+      ],
+      getOwnPropertyDescriptor: (t, key) => {
+        if (isIndex(key) && Number(key) < source.read().length) {
+          return {
+            value: fromGo(source.read()[Number(key)]),
+            writable: true,
+            enumerable: true,
+            configurable: true,
+          };
+        }
+        if (key === "length") {
+          return { ...Reflect.getOwnPropertyDescriptor(t, key), value: source.read().length };
+        }
+        if (typeof key === "string" && source.methods?.keys.includes(key) === true) {
+          return {
+            value: source.methods.get(key),
+            writable: false,
+            enumerable: true,
+            configurable: true,
+          };
+        }
+        return undefined;
+      },
+    });
+
+    if (host === undefined) {
+      this.#slices.set(proxy, source);
+    } else {
+      this.register(host, proxy);
+    }
+    return proxy;
+  }
+
   // The named member of an internal object, as a migration file sees it.
   member(target: object, key: string | symbol): unknown {
     const value: unknown = Reflect.get(target, key, target);
@@ -199,33 +375,124 @@ export class Membrane {
     return this.toVm(value);
   }
 
+  #newBytes(data: Uint8Array, kind: "bytes" | "raw"): unknown[] {
+    const array = this.vm.array();
+    for (const byte of data) {
+      array.push(byte);
+    }
+    this.#bytes.set(array, kind);
+    return array;
+  }
+
+  // types.JSONRaw: a byte slice with the Go methods of its type
+  #newRaw(raw: JSONRaw): unknown[] {
+    const array = this.#newBytes(textToBytes(raw.bytes()), "raw");
+    const current = (): JSONRaw => this.toHost(array) as JSONRaw;
+    const replace = (next: JSONRaw): void => {
+      array.length = 0;
+      for (const byte of textToBytes(next.bytes())) {
+        array.push(byte);
+      }
+    };
+    const methods: Record<string, (...args: unknown[]) => unknown> = {
+      string: () => current().string(),
+      toString: () => current().string(),
+      marshalJSON: () => this.toVm(textToBytes(current().marshalJSON())),
+      value: () => this.toVm(current().value()),
+      unmarshalJSON: (b) => {
+        const next = new JSONRaw();
+        next.unmarshalJSON(this.toBytes(b) ?? null);
+        replace(next);
+      },
+      scan: (value) => {
+        const next = new JSONRaw();
+        next.scan(this.toHost(value));
+        replace(next);
+      },
+    };
+    for (const [name, value] of Object.entries(methods)) {
+      Object.defineProperty(array, name, { value, enumerable: false });
+    }
+    return array;
+  }
+
+  // A Go map with string keys is a plain object. goja lists no keys of a
+  // map with pointer keys (FindCollectionReferences).
+  #mapObject(map: ReadonlyMap<unknown, unknown>): object {
+    const object = this.vm.object();
+    for (const [key, value] of map) {
+      if (typeof key === "string") {
+        Object.defineProperty(object, key, {
+          value: this.toVm(value),
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      }
+    }
+    return object;
+  }
+
   #newProxy(target: object): object {
     const adapter = this.adapterFor(target);
 
-    const proxy = new Proxy(target, {
+    if (adapter?.create !== undefined) {
+      return adapter.create(target, this);
+    }
+
+    const box = this.#box(target);
+
+    const proxy = new Proxy(box, {
       get: (t, key) =>
         this.guard(() => {
+          const host = this.#unbox(t);
           if (typeof key === "string" && adapter?.get !== undefined) {
-            const value = adapter.get(t, key, this);
+            const value = adapter.get(host, key, this);
             if (value !== pass) {
               return value;
             }
           }
-          return this.member(t, key);
+          return this.member(host, key);
         }),
       set: (t, key, value) =>
         this.guard(() => {
+          const host = this.#unbox(t);
           if (typeof key === "string" && adapter?.set !== undefined) {
-            const done = adapter.set(t, key, value, this);
+            const done = adapter.set(host, key, value, this);
             if (done !== pass) {
               return done;
             }
           }
-          return Reflect.set(t, key, this.toHost(value), t);
+          return Reflect.set(host, key, this.toHost(value), host);
         }),
+      ...(adapter?.keys === undefined ? {} : this.#keyTraps(adapter)),
     });
 
-    return this.register(target, proxy);
+    if (box !== target) {
+      this.#proxies.set(box, proxy);
+    }
+    return this.register(target, proxy, box);
+  }
+
+  // what a struct's keys look like: goja lists its fields and methods
+  #keyTraps(adapter: Adapter): ProxyHandler<object> {
+    const keys = adapter.keys as NonNullable<Adapter["keys"]>;
+    return {
+      has: (t, key) => typeof key === "string" && keys(this.#unbox(t), this).includes(key),
+      ownKeys: (t) => [...keys(this.#unbox(t), this)],
+      getOwnPropertyDescriptor: (t, key) => {
+        const host = this.#unbox(t);
+        if (typeof key !== "string" || !keys(host, this).includes(key)) {
+          return undefined;
+        }
+        return {
+          value: adapter.get?.(host, key, this),
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        };
+      },
+    };
   }
 
   #wrapFunction(fn: AnyFunction, self: object | undefined): AnyFunction {
@@ -249,4 +516,19 @@ export class Membrane {
     }
     return wrapped;
   }
+}
+
+function isIndex(key: string | symbol): key is string {
+  return typeof key === "string" && /^(0|[1-9][0-9]*)$/.test(key);
+}
+
+// goja's ToInteger
+export function toInteger(v: unknown): number {
+  const n = Math.trunc(Number(v));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// goja converts each element to a Go uint8
+function bytesOf(items: readonly unknown[]): Uint8Array {
+  return Uint8Array.from(items, (item) => toInteger(item) & 0xff);
 }

@@ -78,6 +78,8 @@ As upstream, `$app` is not a global there: a migration uses its `app` argument.
 
 The `app` argument has upstream's names for the app settings and databases (`settings`, `db`, `auxDB`, `dataDir`, ...), `runInTransaction`, `auxRunInTransaction`, `save`, `saveNoValidate`, `delete`, `validate`, the collection and record finders, `importCollections`, the table helpers and `expandRecord`. Another `core.App` method fails with an error that names it.
 
+A migration file reaches an internal class only through its Go signature (`src/migrations/go-class.ts`, from upstream's `types.d.ts`): the class's Go fields and methods and nothing else of the internal object, arguments converted as goja converts them, a missing argument as its Go zero value.
+
 | Missing | Reason |
 |---|---|
 | `$http`, `FormData` | network calls never run inside a write transaction |
@@ -88,6 +90,8 @@ The `app` argument has upstream's names for the app settings and databases (`set
 | `Context`, `Middleware`, `Cookie`, `SubscriptionMessage`, `RequestInfo` | they belong to request handling, which a migration does not have |
 | `Command` | iglo.base has no custom console commands |
 | `Timezone` and `DateTime`'s location argument | time zones are not bound; a stored date is UTC |
+| `field.intercept`, the Go contexts and log hooks of a query (`context`, `withContext`, `fieldMapper`, `tableMapper`, `logFunc`, `perfFunc`, `queryLogFunc`, `execLogFunc`, `lastError`) | they are hook plumbing; a migration has no `Context` to pass and no request to intercept |
+| `time.Time` beyond `unix`, `unixMilli`, `year`, `month`, `day`, `hour`, `minute`, `second` | the rest needs Go's layouts and locations; `DateTime` covers what a migration stores |
 | `$os.exec`, `$os.cmd`, `$os.dirFS`, `$os.openRoot`, `$os.openInRoot`, `$filepath.glob`, `$filepath.match`, `$filepath.walk`, `$filepath.walkDir` | they need Go values (processes, file handles, callbacks) no migration pattern uses |
 
 ## Removed: the `update` command

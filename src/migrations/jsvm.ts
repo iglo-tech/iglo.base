@@ -19,6 +19,7 @@ import vm from "node:vm";
 import type { App } from "@/app/app";
 import { bindAll, type BindConfig } from "@/migrations/binds";
 import { AppBinding, type RunTxFunc } from "@/migrations/binds-app";
+import { throwResult } from "@/migrations/go-class";
 import type { Membrane } from "@/migrations/membrane";
 import { addMigration, type Migration, type MigrationFunc } from "@/migrations/migrations-runner";
 
@@ -150,9 +151,8 @@ function runMigrationFunc(fn: unknown, txApp: App, m: Membrane): void {
       return;
     }
 
-    const hostError = m.targetOf(result) ?? result;
-    if (hostError instanceof Error) {
-      throw hostError;
+    if (result instanceof Error) {
+      throw result;
     }
 
     if (isPromise(result)) {
@@ -163,7 +163,7 @@ function runMigrationFunc(fn: unknown, txApp: App, m: Membrane): void {
       );
     }
 
-    throw new Error(`could not convert ${String(result)} to error`);
+    throwResult(m, result);
   } finally {
     binding.close();
   }

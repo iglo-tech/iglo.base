@@ -46,10 +46,11 @@ import {
   vacuum,
 } from "@/db/table";
 import { auxRunInTransaction } from "@/db/tx";
-import type { Adapter } from "@/migrations/membrane";
+import { goArgs, goMethod, type Method } from "@/migrations/go-class";
+import type { Adapter, Membrane } from "@/migrations/membrane";
 import { pass } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
-import { expandRecordSync } from "@/records/record-query-expand";
+import { expandRecordsSync, type ExpandFetchSyncFunc } from "@/records/record-query-expand";
 import {
   canAccessRecord,
   findFirstRecordByFilter,
@@ -83,14 +84,130 @@ export class AppBinding {
   closed = false;
   readonly methods: Record<string, (...args: never[]) => unknown>;
 
-  constructor(app: App, runTxFunc: RunTxFunc) {
+  constructor(
+    readonly app: App,
+    runTxFunc: RunTxFunc,
+  ) {
     this.methods = newAppMethods(app, runTxFunc);
   }
 
   close(): void {
     this.closed = true;
   }
+
+  // Settings.DBExport(app)
+  exportSettings(settings: Settings): unknown {
+    return settings.dbExportSync(this.app.clock, this.app.getenv(this.app.encryptionEnv));
+  }
 }
+
+// func(txApp core.App) error
+function txFunc(m: Membrane, fn: unknown): unknown {
+  if (typeof fn !== "function") {
+    throw new m.vm.TypeError(
+      `could not convert function call parameter 0: could not convert ${String(fn)} to func(core.App) error`,
+    );
+  }
+  return fn;
+}
+
+// the ExpandFetchFunc of a migration file: a thrown error becomes the
+// failure of its expand path
+function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
+  if (fn === undefined || fn === null) {
+    return null;
+  }
+  if (typeof fn !== "function") {
+    throw new m.vm.TypeError(
+      `could not convert function call parameter 2: could not convert ${String(fn)} to core.ExpandFetchFunc`,
+    );
+  }
+  return (relCollection, relIds) => {
+    const result = (fn as (...args: unknown[]) => unknown)(m.toVm(relCollection), m.toVm(relIds));
+    if (result === undefined || result === null) {
+      return [];
+    }
+    const records = m.toHost(result);
+    if (!Array.isArray(records)) {
+      throw new Error(`could not convert ${String(result)} to []*core.Record`);
+    }
+    return records as RecordModel[];
+  };
+}
+
+// the Go signatures of core.App, with the names of go-class.ts
+const appMethods: Readonly<Record<string, Method>> = {
+  dataDir: "",
+  encryptionEnv: "",
+  isDev: "",
+  settings: "",
+  isTransactional: "",
+  db: "",
+  concurrentDB: "",
+  nonconcurrentDB: "",
+  auxDB: "",
+  auxConcurrentDB: "",
+  auxNonconcurrentDB: "",
+  runInTransaction: (methods: AppMethods, args, m) => {
+    methods.runInTransaction?.(txFunc(m, args[0]) as never);
+  },
+  auxRunInTransaction: (methods: AppMethods, args, m) => {
+    methods.auxRunInTransaction?.(txFunc(m, args[0]) as never);
+  },
+  save: "M",
+  saveNoValidate: "M",
+  delete: "M",
+  validate: "M",
+  collectionQuery: "",
+  findAllCollections: "...s",
+  findCollectionByNameOrId: "s",
+  findCachedCollectionByNameOrId: "s",
+  findCollectionReferences: "a,...s",
+  findCachedCollectionReferences: "a,...s",
+  isCollectionNameUnique: "s,...s",
+  truncateCollection: "a",
+  reloadCachedCollections: "",
+  importCollections: "a,b",
+  importCollectionsByMarshaledJSON: "B,b",
+  hasTable: "s",
+  auxHasTable: "s",
+  tableColumns: "s",
+  tableInfo: "s",
+  tableIndexes: "s",
+  deleteTable: "s",
+  deleteView: "s",
+  vacuum: "",
+  auxVacuum: "",
+  recordQuery: "a",
+  findRecordById: "a,s,...Q",
+  findRecordsByIds: "a,L,...Q",
+  findAllRecords: "a,...E",
+  findFirstRecordByData: "a,s,a",
+  findRecordsByFilter: "a,s,s,i,i,...P",
+  findFirstRecordByFilter: "a,s,...P",
+  countRecords: "a,...E",
+  findAuthRecordByEmail: "a,s",
+  findAuthRecordByToken: "s,...s",
+  canAccessRecord: "a,a,a",
+  expandRecord: (methods: AppMethods, args, m) => {
+    const [record, expands] = goArgs(m, "a,L", args);
+    return m.toVm(
+      methods.expandRecord?.(record as never, expands as never, expandFetch(m, args[2]) as never),
+    );
+  },
+  expandRecords: (methods: AppMethods, args, m) => {
+    const [records, expands] = goArgs(m, "a,L", args);
+    return m.toVm(
+      methods.expandRecords?.(
+        (records ?? []) as never,
+        expands as never,
+        expandFetch(m, args[2]) as never,
+      ),
+    );
+  },
+};
+
+type AppMethods = AppBinding["methods"];
 
 export const appBindingAdapter: Adapter = {
   get(target, key, m) {
@@ -108,7 +225,7 @@ export const appBindingAdapter: Adapter = {
       throw new Error(`app.${key} is not available in iglo.base migrations`);
     }
 
-    return m.member(binding.methods, key);
+    return goMethod(m, binding.methods, key, appMethods[key] as Method);
   },
   set() {
     return pass;
@@ -159,6 +276,9 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       }
     },
     validate: (model: unknown) => {
+      if (model === null) {
+        return;
+      }
       if (model instanceof Collection) {
         const err = validateCollection(app, model);
         if (err !== null) {
@@ -205,7 +325,12 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
     hasTable: (name: string) => hasTable(db, name),
     auxHasTable: (name: string) => auxHasTable(db, name),
     tableColumns: (name: string) => tableColumns(db, name),
-    tableInfo: (name: string) => tableInfo(db, name),
+    // Go's sql.NullString
+    tableInfo: (name: string) =>
+      tableInfo(db, name).map((row) => ({
+        ...row,
+        defaultValue: { string: row.defaultValue ?? "", valid: row.defaultValue !== null },
+      })),
     tableIndexes: (name: string) => tableIndexes(db, name),
     deleteTable: (name: string) => deleteTable(db, name),
     deleteView: (name: string) => deleteView(db, name),
@@ -251,17 +376,16 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       requestInfo: Parameters<typeof canAccessRecord>[2],
       accessRule: string | null,
     ) => canAccessRecord(app, record, requestInfo, accessRule),
-    expandRecord: (record: RecordModel, expands: readonly string[]) =>
-      expandRecordSync(app, record, expands),
-    expandRecords: (records: readonly RecordModel[], expands: readonly string[]) => {
-      for (const record of records) {
-        const failed = expandRecordSync(app, record, expands);
-        if (failed.size > 0) {
-          return failed;
-        }
-      }
-      return new Map<string, Error>();
-    },
+    expandRecords: (
+      records: RecordModel[],
+      expands: readonly string[],
+      fetch: ExpandFetchSyncFunc | null,
+    ) => expandRecordsSync(app, records, expands, fetch),
+    expandRecord: (
+      record: RecordModel,
+      expands: readonly string[],
+      fetch: ExpandFetchSyncFunc | null,
+    ) => expandRecordsSync(app, [record], expands, fetch),
   };
 }
 
@@ -286,11 +410,7 @@ function save(app: App, model: unknown, withValidations: boolean): void {
 }
 
 function saveSettings(app: App, s: Settings, withValidations: boolean): void {
-  if (!withValidations) {
-    throw new Error("app.saveNoValidate of the settings is not available in iglo.base migrations");
-  }
-
-  saveSettingsSync(app, s);
+  saveSettingsSync(app, s, withValidations);
 
   // upstream's save reloads the app settings from the stored row
   if (s !== app.settings) {

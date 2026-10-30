@@ -29,6 +29,7 @@ import {
   type Site,
   writeMigrations,
 } from "@test/differential/migrations/support";
+import { bindingFiles } from "@test/differential/migrations/bindings";
 import { patternFiles } from "@test/differential/migrations/patterns";
 import { diffSnapshots, takeSnapshot } from "@test/differential/roundtrip/snapshot";
 
@@ -164,6 +165,134 @@ describe("patterns", () => {
         await second.stop();
         expect(query(s, "SELECT file, applied FROM _migrations ORDER BY file")).toEqual(applied);
       }
+    },
+    timeout,
+  );
+});
+
+// Go's json errors word the same failure in two ways, at random.
+function bindingOutput(s: Site, result: { exitCode: number; stdout: string; stderr: string }) {
+  const run = normalizedRun(s, result) as { exitCode: number; stdout: string; stderr: string };
+  return {
+    exitCode: run.exitCode,
+    stderr: run.stderr,
+    stdout: run.stdout.split("\n").map((line) => line.replace("json: unable to", "json: cannot")),
+  };
+}
+
+describe("bindings", () => {
+  for (const [name, text] of Object.entries(bindingFiles)) {
+    test(
+      `${name}: same values, errors and data`,
+      async () => {
+        const sites = kinds.map((kind) => site(kind));
+        const outputs = [];
+        for (const s of sites) {
+          writeMigrations(s, { "1000000001_bindings.js": text });
+          outputs.push(bindingOutput(s, await runIn(s, ["migrate", "up"])));
+        }
+        expect(outputs[1]).toEqual(outputs[0]);
+        expect(outputs[0]?.exitCode).toBe(0);
+        expect(tables(sites[1] as Site)).toEqual(tables(sites[0] as Site));
+        expect(collections(sites[1] as Site)).toEqual(collections(sites[0] as Site));
+      },
+      timeout,
+    );
+  }
+
+  test(
+    "array changes reach what a save stores",
+    async () => {
+      const text = `
+migrate((app) => {
+  const c = new Collection({ id: "pbc_saved00000001", name: "saved", type: "base", fields: [
+    { id: "t1", name: "title", type: "text" },
+    { id: "n1", name: "note", type: "text" },
+    { id: "b1", name: "flag", type: "bool" },
+  ] });
+  app.save(c);
+  const found = app.findCollectionByNameOrId("saved");
+  found.fields.splice(2, 1);
+  found.fields.reverse();
+  found.fields.push(new TextField({ id: "x1", name: "extra" }));
+  found.indexes.push("CREATE INDEX idx_saved_extra ON saved (extra)");
+  app.save(found);
+  const settings = app.settings();
+  settings.rateLimits.enabled = true;
+  settings.rateLimits.rules = [
+    { label: "*:auth", duration: 10, maxRequests: 3 },
+    { label: "drop", duration: 10, maxRequests: 3 },
+  ];
+  settings.rateLimits.rules = settings.rateLimits.rules.filter((r) => r.label === "*:auth");
+  settings.rateLimits.rules.forEach((r) => { r.maxRequests = 100; });
+  settings.rateLimits.rules.splice(0, 0, { label: "first", duration: 5, maxRequests: 1 });
+  settings.rateLimits.rules[1] = { label: "second", duration: 6, maxRequests: 2 };
+  settings.trustedProxy.headers.push("X-Real-IP");
+  app.save(settings);
+})`;
+      const sites = kinds.map((kind) => site(kind));
+      const stored = [];
+      for (const s of sites) {
+        writeMigrations(s, { "1000000001_saved.js": text });
+        const result = await runIn(s, ["migrate", "up"]);
+        expect(result.stderr).toBe("");
+        const [row] = query<{ value: Uint8Array }>(
+          s,
+          "SELECT value FROM _params WHERE id = 'settings'",
+        );
+        const settings = JSON.parse(new TextDecoder().decode(row?.value)) as {
+          rateLimits: unknown;
+          trustedProxy: unknown;
+        };
+        stored.push({
+          tables: tables(s),
+          collections: collections(s),
+          fields: query(s, "SELECT fields FROM _collections WHERE name = 'saved'"),
+          rateLimits: settings.rateLimits,
+          trustedProxy: settings.trustedProxy,
+        });
+      }
+      expect(stored[1]).toEqual(stored[0]);
+    },
+    timeout,
+  );
+
+  test(
+    "a static auth token lives as long as the duration says",
+    async () => {
+      const text = `
+migrate((app) => {
+  const users = app.findCollectionByNameOrId("users");
+  const u = new Record(users);
+  u.setEmail("a@example.com");
+  u.setPassword("1234567890");
+  app.save(u);
+  const lifetime = (token) => {
+    const claims = $security.parseUnverifiedJWT(token);
+    return Math.round((claims.exp - Date.now() / 1000) / 10) * 10;
+  };
+  console.log(lifetime(u.newStaticAuthToken(60 * 1e9)), lifetime(u.newStaticAuthToken()), lifetime(u.newStaticAuthToken(0)));
+})`;
+      const outputs = [];
+      for (const kind of kinds) {
+        const s = site(kind);
+        writeMigrations(s, { "1000000001_token.js": text });
+        outputs.push(normalizedRun(s, await runIn(s, ["migrate", "up"])));
+      }
+      expect(outputs[1]).toEqual(outputs[0]);
+      expect(JSON.stringify(outputs[1])).toContain("60 432000 432000");
+    },
+    timeout,
+  );
+
+  test(
+    "a core.App method that is not bound fails with its name",
+    async () => {
+      const s = site("iglo.base");
+      writeMigrations(s, { "1000000001_x.js": "migrate((app) => { app.logQuery() })" });
+      const result = await runIn(s, ["migrate", "up"]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("app.logQuery is not available in iglo.base migrations");
     },
     timeout,
   );

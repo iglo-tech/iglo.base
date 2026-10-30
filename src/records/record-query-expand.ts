@@ -85,8 +85,18 @@ export function expandRecordSync(
   expands: readonly string[],
   optFetchFunc?: ExpandFetchSyncFunc | null,
 ): Map<string, Error> {
+  return expandRecordsSync(app, [record], expands, optFetchFunc);
+}
+
+// ExpandRecords with synchronous reads (see expandRecordSync).
+export function expandRecordsSync(
+  app: RecordsApp,
+  records: Record[],
+  expands: readonly string[],
+  optFetchFunc?: ExpandFetchSyncFunc | null,
+): Map<string, Error> {
   return driveSync(
-    expandRecordsSteps(app, [record], expands, optFetchFunc ?? defaultFetchSyncFunc(app), true),
+    expandRecordsSteps(app, records, expands, optFetchFunc ?? defaultFetchSyncFunc(app), true),
   );
 }
 

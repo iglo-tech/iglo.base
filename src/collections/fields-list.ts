@@ -52,6 +52,16 @@ export class FieldsList implements FieldsListReader {
     return [...this.list];
   }
 
+  // the underlying slice, for a reader that does not change it
+  items(): readonly Field[] {
+    return this.list;
+  }
+
+  // l = fields: a slice assignment, without Add's id and name rules
+  setItems(fields: Field[]): void {
+    this.list = fields;
+  }
+
   // Clone creates a deep clone of the current list.
   clone(): FieldsList {
     const copyRaw = this.marshalJSON();
