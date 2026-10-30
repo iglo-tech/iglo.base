@@ -51,12 +51,10 @@ import { join } from "node:path";
 import { newRouter } from "@/apis/base";
 import { newApp } from "@/app/app";
 import type { Clock } from "@/app/clock";
-import type { RequestEvent } from "@/app/event-request";
 import {
   findCachedCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
-import { requireAuth } from "@/middlewares/require-auth";
 import type { Record } from "@/records/record-model";
 import { findAuthRecordByEmail, findAuthRecordByToken } from "@/records/record-query";
 import {
@@ -293,12 +291,8 @@ function lookup(app: TestCollectionsApp, token: string, ...types: string[]): str
   }
 }
 
-// the loaded record (the test routes' response)
-const authId = (e: RequestEvent) =>
-  e.json(200, { record: { id: e.auth?.id, collectionName: e.auth?.collection().name } });
-
-// iglo.base's default router on an App over app's databases and upstream's
-// guarded endpoints as test routes (same paths and guards)
+// iglo.base's default router on an App over app's databases (upstream's
+// guarded endpoints are its real routes)
 function guardRouter(app: TestCollectionsApp) {
   const router = newRouter(
     newApp({
@@ -312,8 +306,7 @@ function guardRouter(app: TestCollectionsApp) {
       store: app.store,
     }),
   );
-  router.POST("/api/files/token", authId).bind(requireAuth());
-  // GET /api/collections (M2.5) and POST
+  // POST /api/files/token (M5.2), GET /api/collections (M2.5) and POST
   // /api/collections/{collection}/auth-refresh (M4.1) are the real routes
   return router.buildMux();
 }
