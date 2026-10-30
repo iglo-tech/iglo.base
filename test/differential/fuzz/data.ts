@@ -4,6 +4,10 @@
 // values, duplicate-free multi selects with data, a relation target that no
 // longer exists, and a single back-relation (a unique index on the relation)
 // that has data. Created through upstream's API before the servers start.
+//
+// Stored values reach filter literals, so nothing here may depend on when the
+// fixture is prepared: ids are fixed, and fixedAutodates overwrites the only
+// autodate these collections have (they have no `updated`).
 
 export const fuzzTags = {
   name: "fuzz_tags",
@@ -61,6 +65,12 @@ export const tagRecords: string[] = [
     ...(i % 2 === 0 ? { owner: "4q1xlclmfloku33" } : {}),
   }),
 );
+
+// after the fixture's last autodate and far from any run's clock
+export const fixedAutodates: string[] = [
+  `UPDATE fuzz_tags SET created = printf('2025-06-01 10:00:%02d.000Z', CAST(substr(id, -2) AS INTEGER))`,
+  `UPDATE fuzz_items SET created = printf('2025-06-02 10:00:%02d.000Z', CAST(substr(id, -2) AS INTEGER))`,
+];
 
 const texts = [
   "",

@@ -87,7 +87,7 @@ function size(c: FuzzCase): number {
   return (
     (c.filter === null ? 0 : printFilter(c.filter).length) +
     (c.rawSort?.length ?? 0) +
-    (c.sort ?? []).reduce((sum, term) => sum + term.text.length + 1, 0) +
+    (c.sort ?? []).reduce((sum, term) => sum + term.length + 1, 0) +
     Object.keys(c.params).length +
     Object.keys(c.headers).length
   );

@@ -2,15 +2,7 @@
 // concurrency, retries clock-dependent differences once, shrinks the rest and
 // keeps a bounded number of distinct failures.
 
-import {
-  type CaseResult,
-  holdsEveryMatch,
-  type ListBody,
-  orderIsTotal,
-  requestPath,
-  runCase,
-  sortText,
-} from "@test/differential/fuzz/compare";
+import { type CaseResult, requestPath, runCase, sortText } from "@test/differential/fuzz/compare";
 import { printFilter } from "@test/differential/fuzz/filter-ast";
 import { type FuzzCase, generateCase } from "@test/differential/fuzz/generate";
 import type { FuzzServers } from "@test/differential/fuzz/servers";
@@ -63,17 +55,6 @@ function shapeOf(c: FuzzCase): string {
     .replaceAll(/-?\d+(\.\d+)?/g, "N")
     .replaceAll(/\s+/g, " ")
     .slice(0, 200);
-}
-
-function comparedAs(c: FuzzCase, result: CaseResult): string {
-  if (result.up?.status !== 200) {
-    return "error body";
-  }
-  if (orderIsTotal(c)) {
-    return "ids in order";
-  }
-  const list = result.up.body as ListBody;
-  return holdsEveryMatch(list) ? "id set" : "page size";
 }
 
 export function formatFailure(f: Failure): string {
@@ -186,7 +167,7 @@ export async function runFuzz(servers: FuzzServers, options: RunOptions): Promis
       }
       bump(report.statuses, String(result.up?.status ?? "none"));
       bump(report.who, c.who);
-      bump(report.compared, comparedAs(c, result));
+      bump(report.compared, result.comparedAs);
       for (const tag of c.tags) {
         bump(report.tags, tag);
       }

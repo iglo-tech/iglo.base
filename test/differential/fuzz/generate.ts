@@ -12,21 +12,13 @@ import { Rng } from "@test/differential/fuzz/rng";
 export const whoKinds = ["guest", "users", "clients", "nologin", "superuser"] as const;
 export type Who = (typeof whoKinds)[number];
 
-export interface SortTerm {
-  text: string;
-  // a row of the record's join can have several values for this term
-  multiRow: boolean;
-  // id or @rowid: makes the order total
-  unique: boolean;
-}
-
 export interface FuzzCase {
   seed: number;
   n: number;
   collection: string;
   who: Who;
   filter: FilterNode | null;
-  sort: SortTerm[] | null;
+  sort: string[] | null;
   // sort text that is not made of terms (invalid and over-limit forms)
   rawSort: string | null;
   params: { [name: string]: string };
@@ -230,7 +222,6 @@ function quote(r: Rng, text: string): string {
 interface Path {
   text: string;
   leaf: FieldModel | null;
-  multiRow: boolean;
 }
 
 function fieldsOf(ctx: Ctx, c: CollectionModel): FieldModel[] {
@@ -288,14 +279,14 @@ function modifierFor(ctx: Ctx, f: FieldModel): string {
 }
 
 // a field path from collection c
-function genPath(ctx: Ctx, c: CollectionModel, depth: number, multi: boolean): Path {
+function genPath(ctx: Ctx, c: CollectionModel, depth: number): Path {
   const r = ctx.r;
   if (depth > 0 && c.backRelations.length > 0 && r.chance(0.18)) {
     const back = r.pick(c.backRelations);
     const source = ctx.model.collections.get(back.collection) as CollectionModel;
-    const rest = genPath(ctx, source, depth - 1, true);
+    const rest = genPath(ctx, source, depth - 1);
     ctx.tags.add("back-relation");
-    return { ...rest, text: `${back.collection}_via_${back.field}.${rest.text}`, multiRow: true };
+    return { ...rest, text: `${back.collection}_via_${back.field}.${rest.text}` };
   }
   const f = r.pick(fieldsOf(ctx, c));
   if (f.hidden) {
@@ -303,20 +294,16 @@ function genPath(ctx: Ctx, c: CollectionModel, depth: number, multi: boolean): P
   }
   if (f.type === "relation" && f.target !== undefined && depth > 0 && r.chance(0.6)) {
     const target = ctx.model.collections.get(f.target) as CollectionModel;
-    const rest = genPath(ctx, target, depth - 1, multi || f.multiple);
+    const rest = genPath(ctx, target, depth - 1);
     ctx.tags.add(f.multiple ? "relation-multiple" : "relation-single");
-    return { ...rest, text: `${f.name}.${rest.text}`, multiRow: multi || f.multiple };
+    return { ...rest, text: `${f.name}.${rest.text}` };
   }
   if ((f.type === "json" || f.type === "geoPoint") && r.chance(0.7)) {
     ctx.tags.add(f.type === "json" ? "json-path" : "geopoint-path");
-    return { text: `${f.name}.${jsonTail(r, f.name)}`, leaf: null, multiRow: multi };
+    return { text: `${f.name}.${jsonTail(r, f.name)}`, leaf: null };
   }
   const modifier = modifierFor(ctx, f);
-  return {
-    text: f.name + modifier,
-    leaf: modifier === ":length" ? null : f,
-    multiRow: multi || (modifier === ":each" && f.multiple),
-  };
+  return { text: f.name + modifier, leaf: modifier === ":length" ? null : f };
 }
 
 function genCollectionField(ctx: Ctx): Path {
@@ -330,8 +317,8 @@ function genCollectionField(ctx: Ctx): Path {
     ctx.tags.add("collection-alias");
   }
   ctx.tags.add("@collection");
-  const rest = genPath(ctx, c, r.int(3), true);
-  return { ...rest, text: `@collection.${c.name}${alias}.${rest.text}`, multiRow: true };
+  const rest = genPath(ctx, c, r.int(3));
+  return { ...rest, text: `@collection.${c.name}${alias}.${rest.text}` };
 }
 
 function genRequestField(ctx: Ctx): Path {
@@ -346,7 +333,7 @@ function genRequestField(ctx: Ctx): Path {
   ] as const);
   ctx.tags.add(`@request.${kind}`);
   if (kind === "method" || kind === "context") {
-    return { text: `@request.${kind}`, leaf: null, multiRow: false };
+    return { text: `@request.${kind}`, leaf: null };
   }
   if (kind === "auth") {
     const name = r.pick([
@@ -372,12 +359,12 @@ function genRequestField(ctx: Ctx): Path {
       "password",
       "tokenKey",
     ]);
-    return { text: `@request.auth.${name}`, leaf: null, multiRow: name.includes(":") };
+    return { text: `@request.auth.${name}`, leaf: null };
   }
   if (kind === "query") {
     ctx.params.q = r.pick(["test", "1", "", "true", "TeSt", "%", ...words.slice(0, 4)]);
     const name = r.pick(["q", "q", "q:isset", "q:lower", "missing", "missing:isset", "perPage"]);
-    return { text: `@request.query.${name}`, leaf: null, multiRow: false };
+    return { text: `@request.query.${name}`, leaf: null };
   }
   if (kind === "headers") {
     ctx.headers["x-token"] = r.pick(["test", "1", "TeSt", "a b"]);
@@ -390,23 +377,21 @@ function genRequestField(ctx: Ctx): Path {
       "x_missing:isset",
       "accept",
     ]);
-    return { text: `@request.headers.${name}`, leaf: null, multiRow: false };
+    return { text: `@request.headers.${name}`, leaf: null };
   }
   const f = r.pick(ctx.c.fields);
-  const tail = r.weighted<[string, boolean]>(
-    [
-      [f.name, false],
-      ["missing", false],
-      ["missing:isset", false],
-      [`${f.name}:isset`, false],
-      [`${f.name}:changed`, false],
-      [`${f.name}:lower`, false],
-      [`${f.name}:length`, false],
-      [`${f.name}:each`, f.multiple],
-      [`${f.name}.title`, false],
-    ].map((item) => [item as [string, boolean], 1] as const),
-  );
-  return { text: `@request.body.${tail[0]}`, leaf: null, multiRow: tail[1] };
+  const tail = r.pick([
+    f.name,
+    "missing",
+    "missing:isset",
+    `${f.name}:isset`,
+    `${f.name}:changed`,
+    `${f.name}:lower`,
+    `${f.name}:length`,
+    `${f.name}:each`,
+    `${f.name}.title`,
+  ]);
+  return { text: `@request.body.${tail}`, leaf: null };
 }
 
 function genMacro(ctx: Ctx): string {
@@ -577,7 +562,7 @@ function genRight(ctx: Ctx, leaf: FieldModel | null, op: string): string {
   }
   return r.weighted<() => string>([
     [() => genLiteral(ctx), 8],
-    [() => genPath(ctx, ctx.c, r.int(3), false).text, 3],
+    [() => genPath(ctx, ctx.c, r.int(3)).text, 3],
     [() => genOperand(ctx).text, 2],
   ])();
 }
@@ -606,14 +591,13 @@ function genOperand(ctx: Ctx): Path {
             [2, 2],
             [3, 1],
           ] as const),
-          false,
         ),
       86,
     ],
-    [() => ({ text: genFunction(ctx), leaf: null, multiRow: false }), 7],
-    [() => ({ text: genMacro(ctx), leaf: null, multiRow: false }), 2],
-    [() => ({ text: r.pick(partMacrosWithTag(ctx)), leaf: null, multiRow: false }), 1],
-    [() => ({ text: genLiteral(ctx), leaf: null, multiRow: false }), 4],
+    [() => ({ text: genFunction(ctx), leaf: null }), 7],
+    [() => ({ text: genMacro(ctx), leaf: null }), 2],
+    [() => ({ text: r.pick(partMacrosWithTag(ctx)), leaf: null }), 1],
+    [() => ({ text: genLiteral(ctx), leaf: null }), 4],
   ])();
 }
 
@@ -685,15 +669,15 @@ function genFilter(ctx: Ctx): FilterNode {
   return tree;
 }
 
-function genSortTerm(ctx: Ctx): SortTerm {
+function genSortTerm(ctx: Ctx): string {
   const r = ctx.r;
   const prefix = r.pick(["", "", "-", "+"]);
   if (r.chance(0.12)) {
     ctx.tags.add("sort-rowid");
-    return { text: `${prefix}@rowid`, multiRow: false, unique: true };
+    return `${prefix}@rowid`;
   }
   if (r.chance(0.12)) {
-    return { text: `${prefix}id`, multiRow: false, unique: true };
+    return `${prefix}id`;
   }
   const path = genPath(
     ctx,
@@ -703,17 +687,16 @@ function genSortTerm(ctx: Ctx): SortTerm {
       [1, 3],
       [2, 1],
     ] as const),
-    false,
   );
   if (path.text.includes(".")) {
     ctx.tags.add("sort-relation");
   }
-  return { text: `${prefix}${path.text}`, multiRow: path.multiRow, unique: path.text === "id" };
+  return `${prefix}${path.text}`;
 }
 
-function genSort(ctx: Ctx): SortTerm[] {
+function genSort(ctx: Ctx): string[] {
   const r = ctx.r;
-  const terms: SortTerm[] = [];
+  const terms: string[] = [];
   const size =
     1 +
     r.weighted([
@@ -729,8 +712,8 @@ function genSort(ctx: Ctx): SortTerm[] {
     ctx.tags.add("sort-multi");
   }
   // mostly a total order, so that the order of the ids can be compared
-  if (r.chance(0.7) && !terms.some((t) => t.unique)) {
-    terms.push({ text: r.pick(["id", "-id", "@rowid", "-@rowid"]), multiRow: false, unique: true });
+  if (r.chance(0.7) && !terms.some((t) => /^[-+]?(id|@rowid)$/.test(t))) {
+    terms.push(r.pick(["id", "-id", "@rowid", "-@rowid"]));
   }
   return terms;
 }
@@ -919,7 +902,7 @@ function genInvalid(ctx: Ctx, base: FilterNode): { filter: FilterNode | null; so
   const text = printFilter(base);
   switch (kind) {
     case "unknown-field": {
-      const path = genPath(ctx, ctx.c, r.int(3), false).text.replace(/:\w+$/, "");
+      const path = genPath(ctx, ctx.c, r.int(3)).text.replace(/:\w+$/, "");
       const tail = r.pick([
         ".missing",
         "_missing",
@@ -940,7 +923,7 @@ function genInvalid(ctx: Ctx, base: FilterNode): { filter: FilterNode | null; so
     case "wrong-op":
       return { filter: { k: "raw", text: `id ${r.pick(wrongOps)} 1` } };
     case "bad-modifier": {
-      const path = genPath(ctx, ctx.c, r.int(2), false).text.replace(/:\w+$/, "");
+      const path = genPath(ctx, ctx.c, r.int(2)).text.replace(/:\w+$/, "");
       const modifier = r.pick([":unknown", ":", ":lower:lower", ":each:length", ":LENGTH"]);
       return { filter: { k: "raw", text: `${path}${modifier} ${r.pick(signs)} 1` } };
     }
@@ -998,7 +981,7 @@ export function generateCase(model: Model, seed: number, n: number): FuzzCase {
   };
   genParams(ctx);
   let filter: FilterNode | null = r.chance(0.93) ? genFilter(ctx) : null;
-  let sort: SortTerm[] | null = r.chance(0.65) ? genSort(ctx) : null;
+  let sort: string[] | null = r.chance(0.65) ? genSort(ctx) : null;
   let rawSort: string | null = null;
   const invalid = r.chance(0.1);
   if (invalid) {

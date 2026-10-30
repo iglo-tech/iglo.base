@@ -9,7 +9,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { fuzzItems, fuzzTags, itemRecords, tagRecords } from "@test/differential/fuzz/data";
+import {
+  fixedAutodates,
+  fuzzItems,
+  fuzzTags,
+  itemRecords,
+  tagRecords,
+} from "@test/differential/fuzz/data";
 import type { Who } from "@test/differential/fuzz/generate";
 import { type ApiCollection, buildModel, type Model } from "@test/differential/fuzz/model";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -84,13 +90,13 @@ async function prepareSource(dataDir: string): Promise<void> {
     for (const body of itemRecords) {
       await post("/api/collections/fuzz_items/records", body);
     }
-    // a relation whose target is gone: the row keeps the deleted id
-    await post(
-      "/api/sql",
-      JSON.stringify({
-        query: `UPDATE fuzz_items SET tags = '["missingtag00000"]' WHERE id = 'fuzzitem0000020'`,
-      }),
-    );
+    for (const query of [
+      ...fixedAutodates,
+      // a relation whose target is gone: the row keeps the deleted id
+      `UPDATE fuzz_items SET tags = '["missingtag00000"]' WHERE id = 'fuzzitem0000020'`,
+    ]) {
+      await post("/api/sql", JSON.stringify({ query }));
+    }
   } finally {
     await server.stop();
   }

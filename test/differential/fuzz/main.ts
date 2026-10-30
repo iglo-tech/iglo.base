@@ -30,6 +30,7 @@ try {
     console.log(`token ${c.who}\n${requestPath(c)}\n${decodeURIComponent(requestPath(c))}`);
     console.log(`upstream: ${JSON.stringify(result.up)}`);
     console.log(`iglo.base: ${JSON.stringify(result.ig)}`);
+    console.log(`compared as: ${result.comparedAs}`);
     console.log(`difference: ${JSON.stringify(result.difference)}`);
     exitCode = result.difference === null ? 0 : 1;
   } else {
