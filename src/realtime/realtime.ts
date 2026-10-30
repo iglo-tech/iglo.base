@@ -85,6 +85,49 @@ export function bindRealtimeApi(
   sub.POST("", realtimeSetSubscriptions);
 }
 
+// oauth2SubscriptionTopic is the topic of the OAuth2 popup flow
+// (apis/record_auth_with_oauth2_redirect.go).
+export const oauth2SubscriptionTopic = "@oauth2";
+
+// The realtime part of oauth2SubscriptionRedirect, for the
+// /api/oauth2-redirect route (M4.5): the client the OAuth2 state names,
+// when it is still connected, subscribed to "@oauth2" and connected from
+// realIP; undefined otherwise (upstream answers with its failure redirect).
+export function findOAuth2RedirectClient(
+  app: App,
+  state: string,
+  realIP: string,
+): Client | undefined {
+  let client: Client;
+  try {
+    client = app.subscriptionsBroker.clientById(state);
+  } catch {
+    return undefined;
+  }
+  if (client.isDiscarded() || !client.hasSubscription(oauth2SubscriptionTopic)) {
+    return undefined;
+  }
+
+  // the client IP that completed the authentication must be the one that
+  // initialized the OAuth2 realtime connection
+  const clientIP = client.get(RealtimeClientIPKey);
+  if (typeof clientIP === "string" && clientIP !== "" && clientIP !== realIP) {
+    // the subscription is removed in any case (upstream's deferred Unsubscribe)
+    client.unsubscribe(oauth2SubscriptionTopic);
+    return undefined;
+  }
+
+  return client;
+}
+
+// Sends the encoded OAuth2 redirect data (json.Marshal of
+// oauth2RedirectData) to the client found by findOAuth2RedirectClient and
+// removes its "@oauth2" subscription.
+export function sendOAuth2Redirect(client: Client, encodedData: Uint8Array): void {
+  client.send(new Message(oauth2SubscriptionTopic, encodedData));
+  client.unsubscribe(oauth2SubscriptionTopic);
+}
+
 // closeRealtimeConnections ends every realtime stream of the app (graceful
 // shutdown).
 export function closeRealtimeConnections(app: App): void {

@@ -15,9 +15,11 @@ import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { Record } from "@/records/record-model";
 import { saveRecordSync } from "@/records/record-save";
 import {
+  findOAuth2RedirectClient,
   realtimeIdleTimeoutMs,
   realtimeMaxTimeoutMs,
   type RealtimeTimers,
+  sendOAuth2Redirect,
 } from "@/realtime/realtime";
 import { handleRequest } from "@/server/serve";
 import type { Mux } from "@/server/router";
@@ -321,4 +323,35 @@ test("Bun's idle timeout is turned off for the realtime request only", async () 
   } finally {
     await server.stop(true);
   }
+});
+
+test("the OAuth2 redirect reaches the @oauth2 subscriber of the same IP once (for M4.5)", async () => {
+  const mux = newRouter(app).buildMux();
+  const stream = await Stream.open(mux);
+  const other = await Stream.open(mux);
+  expect(await subscribe(mux, stream.clientId, ["@oauth2"])).toBe(204);
+
+  // not subscribed, unknown or from another IP
+  expect(findOAuth2RedirectClient(app, other.clientId, "127.0.0.1")).toBeUndefined();
+  expect(findOAuth2RedirectClient(app, "missing", "127.0.0.1")).toBeUndefined();
+
+  const client = findOAuth2RedirectClient(app, stream.clientId, "127.0.0.1");
+  expect(client).toBeDefined();
+  sendOAuth2Redirect(
+    client as NonNullable<typeof client>,
+    new TextEncoder().encode(`{"state":"${stream.clientId}","code":"abc"}`),
+  );
+  await stream.waitFor(2);
+  expect(stream.events[1]).toEqual({
+    event: "@oauth2",
+    data: `{"state":"${stream.clientId}","code":"abc"}`,
+  });
+
+  // the subscription is used once
+  expect(findOAuth2RedirectClient(app, stream.clientId, "127.0.0.1")).toBeUndefined();
+
+  // another IP fails and removes the subscription too
+  expect(await subscribe(mux, stream.clientId, ["@oauth2"])).toBe(204);
+  expect(findOAuth2RedirectClient(app, stream.clientId, "10.0.0.1")).toBeUndefined();
+  expect(findOAuth2RedirectClient(app, stream.clientId, "127.0.0.1")).toBeUndefined();
 });
