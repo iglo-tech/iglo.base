@@ -54,17 +54,13 @@ export class Membrane {
   readonly #targets = new WeakMap<object, object>();
   readonly #hostFunctions = new WeakMap<object, AnyFunction>();
   readonly #goErrors = new WeakMap<object, Error>();
-  readonly #adapterFor: (target: object) => Adapter | undefined;
+  // set once, before the first value crosses
+  adapterFor: (target: object) => Adapter | undefined = () => undefined;
   readonly #unbox: (target: object) => object;
   readonly vm: VmIntrinsics;
 
-  constructor(
-    context: vm.Context,
-    adapterFor: (target: object) => Adapter | undefined,
-    unbox: (target: object) => object,
-  ) {
+  constructor(context: vm.Context, unbox: (target: object) => object) {
     this.vm = vm.runInContext(intrinsicsSource, context) as VmIntrinsics;
-    this.#adapterFor = adapterFor;
     this.#unbox = unbox;
   }
 
@@ -204,7 +200,7 @@ export class Membrane {
   }
 
   #newProxy(target: object): object {
-    const adapter = this.#adapterFor(target);
+    const adapter = this.adapterFor(target);
 
     const proxy = new Proxy(target, {
       get: (t, key) =>

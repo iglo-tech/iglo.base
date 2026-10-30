@@ -34,7 +34,7 @@ export interface JsvmConfig extends BindConfig {
   migrationsDir: string;
   hooksDir: string;
   environ: Record<string, string>;
-  // the log line of console.log (Go's standard logger)
+  // the line console.log prints (with the time, on standard output)
   log(line: string): void;
 }
 
@@ -91,6 +91,7 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Migrat
   sandbox.process = { env: { ...config.environ } };
   sandbox.Buffer = Buffer;
   sandbox.require = newRequire(config, context, sandbox, m);
+  // oxlint-disable-next-line no-underscore-dangle
   sandbox.__hooks = path.resolve(config.cwd, config.hooksDir);
 
   const filename = path.join(config.cwd, scriptName);
@@ -149,7 +150,7 @@ function runMigrationFunc(fn: unknown, txApp: App, m: Membrane): void {
       return;
     }
 
-    const hostError = m.targetOf(result);
+    const hostError = m.targetOf(result) ?? result;
     if (hostError instanceof Error) {
       throw hostError;
     }
@@ -221,7 +222,7 @@ function firstFrame(stack: string, file: string): string | undefined {
   return undefined;
 }
 
-// console, printed by Go's standard logger (goja_nodejs util.Format)
+// console (goja_nodejs util.Format); every method prints the same way
 function newConsole(config: JsvmConfig): Record<string, unknown> {
   const write = (...args: unknown[]): void => {
     config.log(formatLog(args));

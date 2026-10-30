@@ -26,12 +26,16 @@ import path from "node:path";
 import type { Clock } from "@/app/clock";
 import { Collection } from "@/collections/collection-model";
 import { FieldsList } from "@/collections/fields-list";
+import type { Builder } from "@/db/dbx/builder";
+import type { DB } from "@/db/dbx/db";
 import {
   and,
   between,
   exists,
+  type Expression,
   HashExp,
   inExp,
+  isExpression,
   like,
   newExp,
   not,
@@ -43,7 +47,7 @@ import {
   orLike,
   orNotLike,
 } from "@/db/dbx/expression";
-import { Query } from "@/db/dbx/query";
+import { type Params, Query } from "@/db/dbx/query";
 import { SelectQuery } from "@/db/dbx/select";
 import { fieldFactory } from "@/fields/fields";
 import { AppBinding, appBindingAdapter } from "@/migrations/binds-app";
@@ -116,6 +120,9 @@ function adapters(models: QueryModels, clock: Clock): (target: object) => Adapte
     if (target instanceof JSONRaw) {
       return jsonRawAdapter;
     }
+    if (isExpression(target)) {
+      return expressionAdapter;
+    }
     if (target instanceof ErrorObject) {
       return errorObjectAdapter;
     }
@@ -140,6 +147,22 @@ const fieldsListAdapter: Adapter = {
       return m.member(list.toArray(), key);
     }
     return pass;
+  },
+};
+
+// app.db() is a transaction, whose database the expression quotes with
+const expressionAdapter: Adapter = {
+  get(target, key, m) {
+    if (key !== "build") {
+      return pass;
+    }
+    return (db: unknown, params: unknown) =>
+      m.guard(() =>
+        (target as Expression).build(
+          ((m.toHost(db) as Builder).queryBuilder() as unknown as { db(): DB }).db(),
+          (m.toHost(params) ?? {}) as Params,
+        ),
+      );
   },
 };
 
@@ -587,14 +610,14 @@ function toText(v: unknown): string {
 }
 
 // structConstructorUnmarshal: a value that does not fit is ignored
-function unmarshalIgnoringErrors(data: unknown, unmarshalJSON: (raw: string) => void): void {
+function unmarshalIgnoringErrors(data: unknown, decode: (raw: string) => void): void {
   if (data === undefined || data === null) {
     return;
   }
   try {
     const raw = stringify(data);
     if (raw !== undefined) {
-      unmarshalJSON(raw);
+      decode(raw);
     }
   } catch {
     // ignored, as upstream
@@ -740,11 +763,15 @@ function bindSecurity(scope: Record<string, unknown>, m: Membrane, c: BindConfig
   });
 }
 
+function toBytes(data: string | Uint8Array | number[]): Uint8Array {
+  if (typeof data === "string") {
+    return encoder.encode(data);
+  }
+  return Array.isArray(data) ? Uint8Array.from(data) : data;
+}
+
 // BindOS: the file and environment helpers; the rest fails with its name
 function bindOS(scope: Record<string, unknown>, m: Membrane, c: BindConfig): void {
-  const toBuffer = (data: string | Uint8Array): Uint8Array =>
-    typeof data === "string" ? encoder.encode(data) : data;
-
   const os: Record<string, unknown> = {
     args: [...c.argv],
     exit: (code: number) => c.exit(code ?? 0),
@@ -761,7 +788,7 @@ function bindOS(scope: Record<string, unknown>, m: Membrane, c: BindConfig): voi
     },
     readFile: (name: string) => [...readFileSync(name)],
     writeFile: (name: string, data: string | Uint8Array | number[], perm?: number) => {
-      writeFileSync(name, Array.isArray(data) ? Uint8Array.from(data) : toBuffer(data), {
+      writeFileSync(name, toBytes(data), {
         mode: perm ?? 0o644,
       });
     },
@@ -805,16 +832,17 @@ function bindOS(scope: Record<string, unknown>, m: Membrane, c: BindConfig): voi
   scope.$os = m.toVm(os);
 }
 
+// filepath.Clean
+function clean(p: string): string {
+  if (p === "") {
+    return ".";
+  }
+  const normalized = path.posix.normalize(p);
+  return normalized.length > 1 && normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+}
+
 // BindFilepath: the pure helpers; the rest fails with its name
 function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
-  const clean = (p: string): string => {
-    if (p === "") {
-      return ".";
-    }
-    const normalized = path.posix.normalize(p);
-    return normalized.length > 1 && normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
-  };
-
   const filepath: Record<string, unknown> = {
     base: (p: string) => (p === "" ? "." : path.posix.basename(p) || "/"),
     clean,
@@ -876,14 +904,11 @@ export function bindAll(
   context: import("node:vm").Context,
   c: BindConfig,
 ): Membrane {
-  let adapterFor: (target: object) => Adapter | undefined = () => undefined;
-  const m = new Membrane(
-    context,
-    (target) => adapterFor(target),
-    (target) => (target instanceof RecordSlot ? (target.record ?? target) : target),
+  const m = new Membrane(context, (target) =>
+    target instanceof RecordSlot ? (target.record ?? target) : target,
   );
   const models = new QueryModels(m);
-  adapterFor = adapters(models, c.clock);
+  m.adapterFor = adapters(models, c.clock);
 
   bindCore(sandbox, m, models, c);
   bindDbx(sandbox, m);

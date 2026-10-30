@@ -251,7 +251,7 @@ async function execute(ctx: CliContext): Promise<number> {
       getenv: ctx.getenv ?? (() => ""),
       exit: ctx.exit ?? exitUnset,
       clock: { now: () => ctx.out.now() },
-      log: (line) => ctx.out.stderr(`${logTime(ctx.out.now())} ${line}\n`),
+      log: (line) => ctx.out.stdout(`${logTime(ctx.out.now())} ${line}\n`),
     }),
   );
   const resolve = (values: Map<string, unknown>): AppConfig =>

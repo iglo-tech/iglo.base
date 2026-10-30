@@ -18,6 +18,7 @@ import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { wrapError } from "@/collections/view";
 import { NoRowsError } from "@/db/dbx/rows";
 import { runInTransaction } from "@/db/tx";
+import { ErrNoRows } from "@/server/error";
 import { ErrEmptyTemplate, jsDiffTemplate } from "@/migrations/templates";
 import { DefaultMigrationsTable } from "@/migrations/migrations-runner";
 
@@ -36,7 +37,12 @@ export async function automigrateOnCollectionChange(
   try {
     let old: Collection | null = null;
     if (!collection.isNew()) {
-      old = findCollectionByNameOrId(app, collection.id);
+      try {
+        old = findCollectionByNameOrId(app, collection.id);
+      } catch (findErr) {
+        // the body changed the id: the router answers sql.ErrNoRows with a 404
+        return findErr instanceof NoRowsError ? ErrNoRows : (findErr as Error);
+      }
     }
 
     const err = await next();

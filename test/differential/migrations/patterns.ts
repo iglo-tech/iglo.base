@@ -56,7 +56,7 @@ migrate((app) => {
   app.save(stats);
   console.log(stats.fields.fieldNames().join(","));
 }, (app) => {
-  app.delete(app.findCollectionByNameOrId("stats"));
+  app.delete(app.findCollectionByNameOrId("stats2"));
   app.delete(app.findCollectionByNameOrId("members"));
   app.delete(app.findCollectionByNameOrId("posts"));
 });
@@ -305,5 +305,141 @@ migrate((app) => {
 `,
   "1000000010_nomigrate.js": `
 var unused = 1;
+`,
+  // the migration-relevant cases of upstream's plugins/jsvm/binds_test.go
+  "1000000011_binds.js": String.raw`
+migrate((app) => {
+  const users = app.findCollectionByNameOrId("users");
+
+  // TestBindCoreRecord
+  const r = new Record(users, { email: "test@example.com" });
+  console.log(r.collection().name, r.email(), new Record(users).email() === "");
+
+  // TestBindCoreCollection, FieldsList, Field and the named fields
+  const c = new Collection({ name: "test", listRule: "1=2", fields: [{ name: "a", type: "bool" }] });
+  console.log(c.name, c.listRule, c.fields.length, c.isNew(), JSON.stringify(c.fields[0]));
+  const list = new FieldsList([{ name: "b", type: "text" }, { name: "c", type: "number" }]);
+  console.log(list.length, list.fieldNames().join());
+  for (const data of [
+    { name: "t", type: "text", min: 1, max: 2, pattern: "a", autogeneratePattern: "b", primaryKey: false, hidden: true, help: "h", presentable: true, required: true, system: true, id: "tid" },
+    { name: "n", type: "number", min: 1.5, max: 2.5, onlyInt: false },
+    { name: "b", type: "bool", required: true },
+    { name: "e", type: "email", exceptDomains: ["a.co"], onlyDomains: [] },
+    { name: "u", type: "url", exceptDomains: [], onlyDomains: ["b.co"] },
+    { name: "ed", type: "editor", maxSize: 10, convertURLs: true },
+    { name: "d", type: "date", min: "2024-01-01 00:00:00.000Z", max: "" },
+    { name: "ad", type: "autodate", onCreate: true, onUpdate: false },
+    { name: "s", type: "select", values: ["x"], maxSelect: 2 },
+    { name: "j", type: "json", maxSize: 5 },
+    { name: "f", type: "file", maxSelect: 2, maxSize: 3, mimeTypes: ["a/b"], thumbs: ["1x1"], protected: true },
+    { name: "r", type: "relation", collectionId: "x", cascadeDelete: true, minSelect: 1, maxSelect: 2 },
+    { name: "g", type: "geoPoint" },
+    { name: "p", type: "password", cost: 4, min: 1, max: 2, pattern: "z" },
+  ]) {
+    console.log(JSON.stringify(new Field(data)));
+  }
+  for (const f of [
+    new TextField({ name: "x", max: 3 }),
+    new NumberField({ name: "x", max: 3 }),
+    new BoolField({ name: "x" }),
+    new URLField({ name: "x" }),
+    new EmailField({ name: "x" }),
+    new EditorField({ name: "x" }),
+    new PasswordField({ name: "x" }),
+    new DateField({ name: "x" }),
+    new AutodateField({ name: "x" }),
+    new JSONField({ name: "x" }),
+    new RelationField({ name: "x" }),
+    new SelectField({ name: "x" }),
+    new FileField({ name: "x" }),
+    new GeoPointField({ name: "x" }),
+  ]) {
+    console.log(f.type(), f.getName(), f.name, f.getId() === "", f.getHidden(), f.getSystem(), JSON.stringify(f));
+  }
+
+  // TestBindDbx
+  const db = app.db();
+  for (const e of [
+    $dbx.exp("a = 1"),
+    $dbx.hashExp({ a: 1, b: null, c: [1, 2, 3] }),
+    $dbx.not($dbx.exp("a = 1")),
+    $dbx.and($dbx.exp("a = 1"), $dbx.exp("b = 2")),
+    $dbx.or($dbx.exp("a = 1"), $dbx.exp("b = 2")),
+    $dbx.in("a", 1, 2, 3),
+    $dbx.notIn("a", 1, 2, 3),
+    $dbx.like("a", "test1", "test2").match(true, false),
+    $dbx.orLike("a", "test1", "test2").match(false, true),
+    $dbx.notLike("a", "test1", "test2").match(true, false),
+    $dbx.orNotLike("a", "test1", "test2").match(false, false),
+    $dbx.exists($dbx.exp("a = 1")),
+    $dbx.notExists($dbx.exp("a = 1")),
+    $dbx.between("a", 1, 2),
+    $dbx.notBetween("a", 1, 2),
+  ]) {
+    console.log(e.build(db, {}));
+  }
+
+  // TestLoadingDynamicModel
+  const result = new DynamicModel({
+    string: "",
+    nullString: nullString(),
+    nullStringEmpty: nullString(),
+    bool: false,
+    nullBool: nullBool(),
+    nullBoolEmpty: nullBool(),
+    int: 0,
+    nullInt: nullInt(),
+    nullIntEmpty: nullInt(),
+    float: -0,
+    nullFloat: nullFloat(),
+    nullFloatEmpty: nullFloat(),
+    array: [],
+    nullArray: nullArray(),
+    nullArrayEmpty: nullArray(),
+    object: {},
+    nullObject: nullObject(),
+    nullObjectEmpty: nullObject(),
+  });
+  const expectations = {
+    string: "a", nullString: "b", nullStringEmpty: null,
+    bool: false, nullBool: true, nullBoolEmpty: null,
+    int: 1, nullInt: 2, nullIntEmpty: null,
+    float: 1.1, nullFloat: 1.2, nullFloatEmpty: null,
+    array: [1, 2], nullArray: [3, 4], nullArrayEmpty: null,
+    object: { a: 1 }, nullObject: { a: 2 }, nullObjectEmpty: null,
+  };
+  const selectColumns = [];
+  for (const col in expectations) {
+    const val = expectations[col];
+    if (val === null) {
+      selectColumns.push("null as [[" + col + "]]");
+    } else if (typeof val === "string") {
+      selectColumns.push("'" + val + "' as [[" + col + "]]");
+    } else if (typeof val === "object") {
+      selectColumns.push("'" + JSON.stringify(val) + "' as [[" + col + "]]");
+    } else {
+      selectColumns.push(val + " as [[" + col + "]]");
+    }
+  }
+  app.db().newQuery("SELECT " + selectColumns.join(", ")).one(result);
+  for (const col in expectations) {
+    console.log(col, JSON.stringify(result[col]));
+  }
+
+  // TestLoadingArrayOf
+  const items = arrayOf(new DynamicModel({ id: "", name: "" }));
+  app.db().select("id", "name").from("_collections").where($dbx.exp("name='users' OR name='_mfas'")).limit(2).orderBy("name ASC").all(items);
+  console.log(items.length, items[0].name, items[1].name);
+
+  // what goja gives the rest of a collection and a record
+  console.log(Array.isArray(users.indexes), users.indexes.length, users.indexes.map((v) => typeof v).join());
+  console.log(JSON.stringify(users.fields.map((f) => f.name)), users.fields.filter((f) => f.required).length);
+  for (const f of users.fields) {
+    console.log(f.name);
+  }
+  users.fields.forEach((f, i) => console.log(i, f.type()));
+  console.log(users.created.string().length, users.created.isZero(), typeof users.created.unix());
+  console.log(users.authToken.duration, users.passwordAuth.identityFields.join(), users.oauth2.mappedFields.avatarURL, users.mfa.duration, users.otp.length);
+}, null);
 `,
 };

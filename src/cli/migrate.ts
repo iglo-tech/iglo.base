@@ -42,10 +42,6 @@ const migrateLong = `Supported arguments are:
 - collections   - creates new migration file with snapshot of the local collections configuration
 - history-sync  - ensures that the _migrations history table doesn't have references to deleted migration files`;
 
-function fatal(ctx: CliContext, err: unknown): never {
-  throw new CommandError(err instanceof Error ? err.message : String(err));
-}
-
 // migrateCreateHandler
 function migrateCreate(
   dir: string,
@@ -219,11 +215,7 @@ export async function runMigrateCommand(
         break;
       default:
         // note: system migrations are always applied as part of the bootstrap process
-        try {
-          run(app, list, parsed.args, ctx);
-        } catch (err) {
-          fatal(ctx, err);
-        }
+        run(app, list, parsed.args, ctx);
     }
   } finally {
     await clearBootstrap(app);

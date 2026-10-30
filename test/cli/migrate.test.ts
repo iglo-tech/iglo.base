@@ -8,7 +8,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from "node:path";
 
 import { expectedTemplates } from "@test/migrations/automigrate-templates";
-import { freePort, run, startServer, tempDir, type RunningServer } from "@test/support/executable";
+import {
+  executable,
+  freePort,
+  run,
+  startServer,
+  tempDir,
+  type RunningServer,
+} from "@test/support/executable";
 
 const superuser = { identity: "admin@example.com", password: "1234567890" };
 
@@ -41,6 +48,12 @@ function rows<T>(site: Site, sql: string): T[] {
   } finally {
     db.close();
   }
+}
+
+function yesFile(site: Site): string {
+  const path = join(site.root, "yes.txt");
+  writeFileSync(path, "y\n");
+  return path;
 }
 
 function userMigrations(site: Site): string[] {
@@ -381,6 +394,31 @@ describe("startup", () => {
     expect(userMigrations(site)).toEqual([]);
   });
 
+  test("down keeps a system migration without a down, and refuses one with a down", async () => {
+    const site = newSite();
+    await migrate(site, "up");
+    const count = (): unknown => rows(site, "SELECT count(*) AS n FROM _migrations");
+    const before = count();
+
+    const one =
+      await Bun.$`${await executable()} migrate down 1 --dir ${site.dataDir} < ${yesFile(site)}`
+        .quiet()
+        .nothrow();
+    expect(one.exitCode).toBe(0);
+    expect(one.text()).toContain("Reverted 1778828400_normalize_indexes.go");
+    expect(count()).toEqual(before);
+
+    const two =
+      await Bun.$`${await executable()} migrate down 2 --dir ${site.dataDir} < ${yesFile(site)}`
+        .quiet()
+        .nothrow();
+    expect(two.exitCode).toBe(1);
+    expect(two.stderr.toString()).toContain(
+      "failed to revert migration 1763020353_update_default_auth_alert_templates.go: iglo.base does not revert system migrations",
+    );
+    expect(count()).toEqual(before);
+  });
+
   test("migrate with no pending file changes nothing", async () => {
     const site = newSite();
     const result = await migrate(site, "up");
@@ -409,7 +447,8 @@ migrate((app) => {
     const result = await migrate(site, "up");
 
     expect(result.exitCode).toBe(0);
-    const lines = result.stderr
+    expect(result.stderr).toBe("");
+    const lines = result.stdout
       .trimEnd()
       .split("\n")
       .map((line) => line.replace(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /, ""));
@@ -419,6 +458,8 @@ migrate((app) => {
       "undefined undefined undefined undefined undefined undefined",
       "number 1 true",
       "undefined",
+      "Applied 1_globals.js",
+      "Applied 2_other.js",
     ]);
   });
 
