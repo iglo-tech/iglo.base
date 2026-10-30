@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M3.6 (round-trip suite) active.
+M3.6 merged; next: M3.7 (JavaScript migrations).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.6 | review | [#42](https://github.com/iglo-tech/iglo.base/pull/42) ([brief](briefs/M3.6.md)) | 3 | Rounds 1 and 2: comparator gaps only, lead fixed |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M3.6 | [#42](https://github.com/iglo-tech/iglo.base/pull/42) | 2026-10-30 (`10c5fbe`) | Three review rounds, all on the suite's own comparison (lead fixed): Sol APPROVE at `dce0f00`. Upstream → iglo.base → upstream on the fixture and a fresh install in `test:reference`; generated data in `test:roundtrip:large` |
 | M3.3 | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 2026-10-30 (`166d812`) | Two review rounds: Sol APPROVE at `2dafecd` (lead: the generated Content-Type wins over an item's for rules, rollback tests read through HTTP). D28: handlers share one implementation behind `RecordIO`; `batch.timeout` is checked after each item, and a disconnect is not noticed during a batch (listed in 04-api-compatibility.md). Carried: rate limits (M4.8), S3 (M5.4); the timeout path has no differential case |
 | M2.6 | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 2026-10-30 (`413f9bf`) | Three review rounds, all on the fuzzer's own comparison and replay (fixer, then lead); round 3 repeated after host restarts. Sol APPROVE at `8b68a80`. Seeds 1001 and 2002: 100,000 cases each, 0 differences, no exclusions; no fix needed in `src/`. `bun run fuzz:filters` |
 | M5.1 | [#39](https://github.com/iglo-tech/iglo.base/pull/39) | 2026-10-30 (`0257a28`) | Two review rounds: Sol APPROVE at `6e0ba91` (fixer: broadcasts prepared synchronously right after commit, response follows; cascade-delete payload built in the transaction). 8 MiB unsent bound listed in 04-api-compatibility.md. Carried: `findOAuth2RedirectClient`/`sendOAuth2Redirect` for M4.5; trusted-proxy IP scenario waits for M5.7; batch broadcasts follow when batch is ported |
