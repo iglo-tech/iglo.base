@@ -21,6 +21,9 @@ export const ErrBodyNotAllowed = new Error(
   "http: request method or response status code does not allow body",
 );
 
+// http.ErrNotSupported
+export const ErrNotSupported = new Error("feature not supported");
+
 // ResponseWriter collects a handler's response and tracks its write state.
 //
 // The status line and headers are sent with the first flush, or with the
@@ -40,10 +43,25 @@ export class ResponseWriter {
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
   readonly #onCommit: ((response: Response) => void) | undefined;
+  readonly #disableTimeout: (() => void) | undefined;
 
-  // onCommit receives the streaming response at the first flush
-  constructor(onCommit?: (response: Response) => void) {
+  // onCommit receives the streaming response at the first flush;
+  // disableTimeout turns off the server's idle timeout for this request
+  // (Bun's server.timeout(req, 0))
+  constructor(onCommit?: (response: Response) => void, disableTimeout?: () => void) {
     this.#onCommit = onCommit;
+    this.#disableTimeout = disableTimeout;
+  }
+
+  // http.ResponseController's SetWriteDeadline(time.Time{}): the response
+  // may stay open for as long as the handler needs (a realtime stream).
+  // ErrNotSupported when the writer has no server (in-process tests).
+  disableTimeout(): Error | undefined {
+    if (!this.#disableTimeout) {
+      return ErrNotSupported;
+    }
+    this.#disableTimeout();
+    return undefined;
   }
 
   writeHeader(status: number): void {
@@ -124,7 +142,7 @@ export class ResponseWriter {
   // later writes are streamed.
   flush(): Error | undefined {
     if (!this.#onCommit) {
-      return new Error("feature not supported");
+      return ErrNotSupported;
     }
     if (!this.#written) {
       // the status is sent as 200 but not tracked, as in Go

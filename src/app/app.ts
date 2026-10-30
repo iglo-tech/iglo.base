@@ -16,6 +16,7 @@ import type { Mailer } from "@/mail/mailer";
 import { newMailClient } from "@/mail/mail-client";
 import { newDefaultSettings, type Settings } from "@/settings/settings-model";
 import type { Store } from "@/tools/store/store";
+import { Broker } from "@/tools/subscriptions/broker";
 
 // Reports errors and things that need attention (AGENTS.md: no
 // informational output).
@@ -56,6 +57,9 @@ export interface App {
   // the file API's thumb generation: its limits and its lazily started
   // worker threads (src/files/thumb-pool.ts; ClearBootstrap stops them)
   readonly thumbs: ThumbPool;
+  // SubscriptionsBroker returns the app realtime subscriptions broker
+  // instance (src/realtime; serve closes its clients on shutdown).
+  readonly subscriptionsBroker: Broker;
 }
 
 export interface AppConfig {
@@ -88,5 +92,6 @@ export function newApp(config: AppConfig): App {
     }),
     newMailClient: () => newMailClient(settings, config.clock, getenv),
     thumbs: new ThumbPool({ getenv }),
+    subscriptionsBroker: new Broker(),
   });
 }
