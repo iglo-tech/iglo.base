@@ -274,17 +274,8 @@ describe("a fresh install", () => {
       expect(out).toContain("pb_data: subject only: extra.db");
     });
 
-    test("but not sqlite_stat4", () => {
-      const out = altered((dataDir) => {
-        const db = new Database(join(dataDir, "data.db"));
-        try {
-          expect(db.query("SELECT count(*) AS n FROM sqlite_stat4").get()).not.toEqual({ n: 0 });
-          db.run("DELETE FROM sqlite_stat4");
-        } finally {
-          db.close();
-        }
-      });
-      expect(out).toEqual([]);
+    test("but not a missing sqlite_stat4, the one known difference", () => {
+      expect(altered(sql("DROP TABLE sqlite_stat4"))).toEqual([]);
     });
   });
 });
