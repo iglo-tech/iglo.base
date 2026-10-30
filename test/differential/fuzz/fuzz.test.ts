@@ -141,7 +141,6 @@ describe("short run", () => {
   test(`${shortRunCases} cases`, async () => {
     const report = await runFuzz(servers, { seed: shortRunSeed, cases: shortRunCases });
     expect(report.failures.map(formatFailure)).toEqual([]);
-    expect(report.excluded.size).toBe(0);
     // the run reaches every form of the brief
     for (const tag of [
       "any-of",

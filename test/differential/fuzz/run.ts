@@ -11,7 +11,6 @@ import {
   runCase,
   sortText,
 } from "@test/differential/fuzz/compare";
-import { exclusions } from "@test/differential/fuzz/exclusions";
 import { printFilter } from "@test/differential/fuzz/filter-ast";
 import { type FuzzCase, generateCase } from "@test/differential/fuzz/generate";
 import type { FuzzServers } from "@test/differential/fuzz/servers";
@@ -47,7 +46,6 @@ export interface Report {
   invalid: number;
   clockRetries: number;
   clockFlips: number;
-  excluded: Map<string, number>;
   failures: Failure[];
   // failures past the bound of distinct ones
   unrecorded: number;
@@ -129,7 +127,6 @@ export async function runFuzz(servers: FuzzServers, options: RunOptions): Promis
     invalid: 0,
     clockRetries: 0,
     clockFlips: 0,
-    excluded: new Map(),
     failures: [],
     unrecorded: 0,
   };
@@ -210,11 +207,6 @@ export async function runFuzz(servers: FuzzServers, options: RunOptions): Promis
       if (difference.kind === "transport") {
         transportErrors++;
       }
-      const exclusion = exclusions.find((e) => e.applies(c, difference, result.up, result.ig));
-      if (exclusion !== undefined) {
-        bump(report.excluded, exclusion.name);
-        continue;
-      }
       await recordFailure(c, result);
     }
   };
@@ -249,7 +241,6 @@ export function formatReport(report: Report): string {
     `lists: ${report.nonEmpty} with records, ${report.empty} empty; invalid cases ${report.invalid}`,
     `clock-dependent cases retried: ${report.clockRetries}, cleared by the retry: ${report.clockFlips}`,
     `forms:\n${table(report.tags)}`,
-    `excluded:\n${table(report.excluded) || "  none"}`,
     `distinct failures: ${report.failures.length}${report.unrecorded > 0 ? ` (+${report.unrecorded} past the bound)` : ""}`,
   ].join("\n");
 }

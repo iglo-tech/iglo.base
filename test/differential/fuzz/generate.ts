@@ -189,6 +189,9 @@ const strftimeFormats = [
   "%Y-%m-%d %H:%M:%f",
   "",
 ];
+// for strftime of the current time: a format that shows less than a day can
+// change between the macro's value and the query's run, inside one server
+const strftimeNowFormats = ["%Y-%m-%d", "%Y", "%m", "%d", "%j", "%w", "%%", ""];
 const strftimeModifiers = [
   "start of month",
   "start of year",
@@ -450,7 +453,7 @@ function genFunction(ctx: Ctx): string {
     return `geoDistance(${pointOf("lon")}, ${pointOf("lat")}, ${pointOf("lon")}, ${pointOf("lat")})`;
   }
   ctx.tags.add("strftime");
-  const args: string[] = [quote(r, r.pick(strftimeFormats))];
+  const args: string[] = [];
   const value = r.weighted([
     ["field", 6],
     ["date", 3],
@@ -458,6 +461,9 @@ function genFunction(ctx: Ctx): string {
     ["now", 1],
     ["none", 1],
   ] as const);
+  args.push(
+    quote(r, r.pick(value === "now" || value === "none" ? strftimeNowFormats : strftimeFormats)),
+  );
   if (value === "field") {
     const dateFields = ctx.c.fields.filter((f) => f.type === "date" || f.type === "autodate");
     const relations = ctx.c.fields.filter((f) => f.target !== undefined);
