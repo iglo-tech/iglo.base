@@ -452,7 +452,32 @@ export class System {
     // that are made in the last day while revalidating the res in the background)
     setHeaderIfMissing(res, "Cache-Control", "max-age=2592000, stale-while-revalidate=86400");
 
-    serveContent(res, req, name, this.#blob(fileKey), modTime);
+    serveContent(
+      res,
+      req,
+      name,
+      {
+        blob: this.#blob(fileKey),
+        read: (start, length) => {
+          const rr = this.#bucket.newRangeReader(fileKey, start, length);
+          try {
+            const out = new Uint8Array(length);
+            let n = 0;
+            while (n < length) {
+              const m = rr.read(out.subarray(n));
+              if (m === 0) {
+                break;
+              }
+              n += m;
+            }
+            return out.subarray(0, n);
+          } finally {
+            rr.close();
+          }
+        },
+      },
+      modTime,
+    );
   }
 
   // CreateThumb creates a new thumb image for the file at originalKey

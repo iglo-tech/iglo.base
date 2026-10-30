@@ -503,16 +503,31 @@ function randomBoundary(): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(30))).toString("hex");
 }
 
-// http.ServeContent. content is the whole file, in memory or as a Blob
-// (streamed, never read into memory here); modtime is its modification
-// time in Unix nanoseconds, 0 for none.
+// A stored file served by serveContent: a Blob that is streamed to the
+// client, and a synchronous range read for the parts of a small
+// multipart/byteranges body.
+export interface ServedFile {
+  blob: Blob;
+  read(start: number, length: number): Uint8Array;
+}
+
+// The largest multipart/byteranges body that is put together in memory.
+// Bun drops the Content-Length of a longer streamed body, so a larger one
+// is streamed part by part and sent chunked (Go sends Content-Length).
+export const maxBufferedRangesSize = 16 << 20;
+
+// http.ServeContent. content is the whole file, in memory or a stored file
+// (streamed, never read into memory here, except for a multipart/byteranges
+// body of at most maxBufferedRangesSize); modtime is its modification time
+// in Unix nanoseconds, 0 for none.
 export function serveContent(
   w: ResponseWriter,
   r: HttpRequest,
   name: string,
-  content: Uint8Array | Blob,
+  file: Uint8Array | ServedFile,
   modtime = 0n,
 ): void {
+  const content = file instanceof Uint8Array ? file : file.blob;
   // setLastModified
   if (!isZeroTime(modtime)) {
     w.header.set("Last-Modified", formatHttpTime(modtime));
@@ -591,10 +606,23 @@ export function serveContent(
     });
     parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
     sendSize = parts.reduce((n, p) => n + (p instanceof Blob ? p.size : p.length), 0);
-    sendContent =
-      content instanceof Blob
-        ? partsStream(parts)
-        : new Uint8Array(Buffer.concat(parts as Uint8Array[]));
+    if (file instanceof Uint8Array) {
+      sendContent = new Uint8Array(Buffer.concat(parts as Uint8Array[]));
+    } else if (sendSize <= maxBufferedRangesSize) {
+      sendContent = new Uint8Array(
+        Buffer.concat(
+          parts.map((p, i) => {
+            if (p instanceof Blob) {
+              const ra = ranges[(i - 1) / 2] as HttpRange;
+              return file.read(ra.start, ra.length);
+            }
+            return p;
+          }),
+        ),
+      );
+    } else {
+      sendContent = partsStream(parts);
+    }
     code = 206;
     w.header.set("Content-Type", `multipart/byteranges; boundary=${boundary}`);
   }
