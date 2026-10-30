@@ -237,6 +237,11 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     }
   }
 
+  // a null item: Go's nil pointer panic in the form validation
+  if (requests.length <= maxRequests && requests.includes(null)) {
+    return e.internalServerError("", new Error("batch request item is null"));
+  }
+
   // validate batch request form
   const validationErr = ValidateStruct(
     ValidatedField("requests", requests, Required, Length(0, maxRequests)),
@@ -245,9 +250,9 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     return e.badRequestError("Invalid batch request data.", validationErr);
   }
 
-  const items: (PreparedItem | null)[] = [];
+  const items: PreparedItem[] = [];
   for (const ir of requests) {
-    items.push(ir === null ? null : await prepareItem(e, ir));
+    items.push(await prepareItem(e, ir as InternalRequest));
   }
 
   let results: BatchResults;
@@ -471,7 +476,7 @@ const errBatchTimeout = new Error("batch transaction timeout");
 
 function processBatch(
   e: RequestEvent,
-  items: readonly (PreparedItem | null)[],
+  items: readonly PreparedItem[],
   timeoutSeconds: number,
 ): BatchResults {
   const results: BatchRequestResult[] = [];
@@ -483,14 +488,13 @@ function processBatch(
     for (const [i, item] of items.entries()) {
       let result: BatchRequestResult | Error;
       try {
-        // a null item is Go's nil pointer panic
-        result = item === null ? errBatchTimeout : processInternalRequest(txApp, e, item);
+        result = processInternalRequest(txApp, e, item);
       } catch (err) {
         e.app.logger.error("Batch item failed unexpectedly", err);
         result = errBatchTimeout;
       }
       if (result === errBatchTimeout) {
-        throw errBatchTimeout;
+        throw result;
       }
       if (result instanceof Error) {
         throw failItem(i, result);
