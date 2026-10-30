@@ -62,19 +62,27 @@ const create = (title: string): object => ({
   body: { title },
 });
 
-const titleCount = (title: string): number =>
-  app.databases
-    .db()
-    .newQuery("SELECT count(*) FROM demo2 WHERE title = {:title}")
-    .bind({ title })
-    .row()[0] as number;
+function getRecords(target: string) {
+  return serveTest(newRouter(app).buildMux(), {
+    method: "GET",
+    target,
+    headers: { Authorization: superuserToken },
+  });
+}
+
+async function titleCount(title: string): Promise<number> {
+  const filter = encodeURIComponent(`title = "${title}"`);
+  const res = await getRecords(`/api/collections/demo2/records?filter=${filter}`);
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { totalItems: number }).totalItems;
+}
 
 const timeoutBody = `{"data":{},"message":"Batch transaction failed.","status":400}`;
 
 test("a batch inside its deadline commits", async () => {
   const res = await postBatch(JSON.stringify({ requests: [create("in_time")] }));
   expect(res.status).toBe(200);
-  expect(titleCount("in_time")).toBe(1);
+  expect(await titleCount("in_time")).toBe(1);
 });
 
 test("a batch past its deadline between items rolls back", async () => {
@@ -87,7 +95,7 @@ test("a batch past its deadline between items rolls back", async () => {
   tick = 0;
   expect(res.status).toBe(400);
   expect(await res.text()).toBe(timeoutBody);
-  expect(titleCount("past_deadline0")).toBe(0);
+  expect(await titleCount("past_deadline0")).toBe(0);
 });
 
 test("a batch past its deadline after the last item does not commit", async () => {
@@ -96,7 +104,7 @@ test("a batch past its deadline after the last item does not commit", async () =
   tick = 0;
   expect(res.status).toBe(400);
   expect(await res.text()).toBe(timeoutBody);
-  expect(titleCount("late_commit")).toBe(0);
+  expect(await titleCount("late_commit")).toBe(0);
 });
 
 // a multipart batch with one file of the given size for the first item
@@ -192,7 +200,8 @@ test("a removed file stays until the batch commits", async () => {
   );
   expect(failed.status).toBe(400);
   expect(existsSync(path)).toBe(true);
-  expect(findRecordById(app, collection, record.id).getStringSlice("files")).toContain(name);
+  const stored = await getRecords(`/api/collections/demo3/records/${record.id}`);
+  expect(((await stored.json()) as { files: string[] }).files).toContain(name);
 
   const committed = await postBatch(JSON.stringify({ requests: [removal] }), {
     Authorization: superuserToken,

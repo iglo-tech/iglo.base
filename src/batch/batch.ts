@@ -369,11 +369,13 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
   }
 
   // the base headers, then the item's. Authorization has no effect: the auth
-  // state comes from the base event.
+  // state comes from the base event. Content-Type is the generated one below,
+  // whatever the item sent: rules read it.
   const headers = new Headers(base.request.headers);
-  const itemHeaders = Object.entries(ir.headers).filter(
-    ([k]) => k.toLowerCase() !== "authorization",
-  );
+  const itemHeaders = Object.entries(ir.headers).filter(([k]) => {
+    const key = k.toLowerCase();
+    return key !== "authorization" && snakecase(key) !== "content_type";
+  });
   for (const [k, v] of itemHeaders) {
     try {
       headers.set(k, v);

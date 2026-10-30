@@ -249,6 +249,94 @@ export const batchCases: BatchCase[] = [
     ],
     reads: ["b_auth_only"],
   },
+  // the generated Content-Type is the one rules see, whatever the item sends
+  ...["Content-Type", "content-type", "CONTENT_TYPE"].flatMap((header): BatchCase[] => {
+    const json = { [header]: "application/json" };
+    return [
+      {
+        name: `${header} of an item does not pass a create rule`,
+        items: [{ ...create("b_ctype_json", { title: "t" }), headers: json }],
+        reads: ["b_ctype_json"],
+      },
+      {
+        name: `${header} of an item does not fail a create rule`,
+        items: [
+          {
+            ...create("b_ctype_multipart", { id: id(`ct${header.length}`), title: "t" }),
+            headers: json,
+          },
+        ],
+        reads: ["b_ctype_multipart"],
+      },
+    ];
+  }),
+  {
+    name: "seeded records for the Content-Type rules",
+    token: superuserToken,
+    items: [
+      create("b_ctype_json", { id: id("cj1"), title: "cj1" }),
+      create("b_ctype_multipart", { id: id("cm1"), title: "cm1" }),
+      create("b_ctype_multipart", { id: id("cm2"), title: "cm2" }),
+      create("b_auth_ctype", {
+        id: id("ca1"),
+        email: "ca1@example.com",
+        emailVisibility: false,
+        password: "1234567890",
+        passwordConfirm: "1234567890",
+      }),
+    ],
+    reads: ["b_ctype_json", "b_ctype_multipart"],
+  },
+  ...(
+    [
+      ["update", update("b_ctype_json", id("cj1"), { title: "changed" })],
+      ["delete", remove("b_ctype_json", id("cj1"))],
+      ["upsert as update", upsert("b_ctype_json", { id: id("cj1"), title: "changed" })],
+      ["upsert as create", upsert("b_ctype_json", { id: id("cj2"), title: "created" })],
+    ] as [string, BatchItem][]
+  ).map(([name, item]): BatchCase => ({
+    name: `an item's Content-Type does not pass a rule: ${name}`,
+    items: [{ ...item, headers: { "Content-Type": "application/json" } }],
+    reads: ["b_ctype_json"],
+  })),
+  ...(
+    [
+      ["update", update("b_ctype_multipart", id("cm1"), { title: "changed" })],
+      ["delete", remove("b_ctype_multipart", id("cm2"))],
+      ["upsert as update", upsert("b_ctype_multipart", { id: id("cm1"), title: "upserted" })],
+      ["upsert as create", upsert("b_ctype_multipart", { id: id("cm3"), title: "created" })],
+    ] as [string, BatchItem][]
+  ).map(([name, item]): BatchCase => ({
+    name: `an item's Content-Type does not fail a rule: ${name}`,
+    items: [{ ...item, headers: { "Content-Type": "application/json" } }],
+    reads: ["b_ctype_multipart"],
+  })),
+  ...(
+    [
+      ["verified", { verified: true }],
+      ["email", { email: "ca1new@example.com" }],
+      ["password", { password: "0987654321", passwordConfirm: "0987654321" }],
+    ] as [string, object][]
+  ).map(([name, body]): BatchCase => ({
+    name: `an item's Content-Type does not give manage access: ${name}`,
+    token: usersToken,
+    items: [
+      {
+        ...update("b_auth_ctype", id("ca1"), body, authFields),
+        headers: { "Content-Type": "application/json" },
+      },
+    ],
+  })),
+  {
+    name: "an item's Content-Type does not show a hidden email",
+    token: usersToken,
+    items: [
+      {
+        ...update("b_auth_ctype", id("ca1"), { name: "n" }, authFields),
+        headers: { "Content-Type": "application/json" },
+      },
+    ],
+  },
   {
     name: "context in rules",
     items: [

@@ -17,6 +17,9 @@ const publicRules = {
   deleteRule: "",
 };
 
+const jsonContentType = `@request.headers.content_type = "application/json"`;
+const multipartContentType = `@request.headers.content_type ~ "multipart/form-data"`;
+
 // the parents' id is filled in when its turn comes
 function collections(parentsId: string, parentsListView: string): CollectionData[] {
   const parent = (extra: object): object => ({
@@ -65,6 +68,24 @@ function collections(parentsId: string, parentsListView: string): CollectionData
       fields: [title],
     },
     {
+      name: "b_ctype_json",
+      listRule: "",
+      viewRule: "",
+      createRule: jsonContentType,
+      updateRule: jsonContentType,
+      deleteRule: jsonContentType,
+      fields: [title],
+    },
+    {
+      name: "b_ctype_multipart",
+      listRule: "",
+      viewRule: "",
+      createRule: multipartContentType,
+      updateRule: multipartContentType,
+      deleteRule: multipartContentType,
+      fields: [title],
+    },
+    {
       name: "b_superuser_only",
       listRule: "",
       viewRule: "",
@@ -96,6 +117,14 @@ function collections(parentsId: string, parentsListView: string): CollectionData
         { name: "name", type: "text" },
         { name: "secret", type: "text", hidden: true },
       ],
+      passwordAuth: { enabled: true, identityFields: ["email"] },
+    },
+    {
+      name: "b_auth_ctype",
+      type: "auth",
+      ...publicRules,
+      manageRule: jsonContentType,
+      fields: [{ name: "name", type: "text" }],
       passwordAuth: { enabled: true, identityFields: ["email"] },
     },
     {
