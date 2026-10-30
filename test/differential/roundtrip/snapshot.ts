@@ -3,7 +3,8 @@
 // from a copy, so a read can never change the data under test.
 //
 // A snapshot holds exact text: `quote()` of every cell (with its storage
-// class, the exact digits and the exact bytes), `sqlite_schema` without
+// class and exact digits; a TEXT value `quote()` cannot show, because it has a
+// NUL or invalid UTF-8, also carries its bytes), `sqlite_schema` without
 // `rootpage`, the `storage/` tree with a checksum of every file and the text
 // of every `.attrs`. Only the rules below replace a value, each because a
 // server generates that value at random or from the clock, so two runs of the
@@ -25,7 +26,8 @@
 //                  uploads a file again under its normalized name, so that
 //                  name has two (apis/batch.go), and the first shows in
 //                  `.attrs` as the original name
-//   view field ids `_clone_` + 4 random characters (core/view.go)
+//   view field ids `_clone_` + 4 random characters (core/view.go), unless in
+//                  the starting data
 //   ciphertext     `_params.settings` under --encryptionEnv: a random nonce.
 //                  The value is decrypted with the run's key and the plain
 //                  text compared, so the two storage forms stay apart
@@ -41,7 +43,9 @@
 //                  rows are left out on both sides
 //   new thumbs     a thumbnail iglo.base generated may differ in encoded bytes,
 //                  never in format or size (Data compatibility, Thumbnails).
-//                  Run.igloThumbs names them; every other thumbnail is exact
+//                  Run.igloThumbs names them. Their `.attrs` are exact but for
+//                  `md5`, which must be the checksum of their own bytes; every
+//                  other thumbnail and `.attrs` is exact
 //
 // `_logs` is not compared (M5.5): auxiliary.db must only open, pass its
 // integrity check and keep its schema; run.ts checks that the rows upstream
@@ -81,8 +85,11 @@ interface ThumbEntry {
   format: string;
   // of the file
   sha256: string;
-  // `.attrs` without its md5, which follows the encoded bytes
   attrs: string;
+  // `.attrs` without its md5, which follows the encoded bytes
+  attrsWithoutMd5: string;
+  // whether `.attrs` holds the file's checksum
+  md5Matches: boolean;
   fromIglo: boolean;
 }
 
@@ -102,11 +109,14 @@ const batchFileName = /^(.*_[a-z0-9]{10})_[a-z0-9]{10}((?:\.[^/]*)?)$/;
 // a word that can be a generated id or file name
 const word = /[A-Za-z0-9_.-]+/g;
 const secret = /("secret":")([A-Za-z0-9]{50})(")/g;
-const cloneId = /"id":"_clone_[A-Za-z0-9]{4}"/g;
+const cloneId = /"id":"(_clone_[A-Za-z0-9]{4})"/g;
+const md5Member = /,?"md5":"[^"]*"/;
 
 // the value of a `quote()` text literal, or undefined for any other cell
 function unquote(cell: string): string | undefined {
-  return cell.startsWith("'") ? cell.slice(1, -1).replaceAll("''", "'") : undefined;
+  return cell.startsWith("'") && cell.endsWith("'")
+    ? cell.slice(1, -1).replaceAll("''", "'")
+    : undefined;
 }
 
 function quoted(text: string): string {
@@ -288,8 +298,11 @@ function walk(dir: string): string[] {
   return out.toSorted();
 }
 
+// <collection>/<record>/thumbs_<file>/<size>_<file>; an original's own name can
+// start with thumbs_ too
 export function isThumb(path: string): boolean {
-  return path.split("/").some((segment) => segment.startsWith("thumbs_"));
+  const segments = path.split("/");
+  return segments.length === 4 && (segments[2] as string).startsWith("thumbs_");
 }
 
 // raw paths of the thumbnails in a pb_data directory no server uses
@@ -306,16 +319,39 @@ function schemaLines(db: Database): string[] {
     .map((r) => `${r.type} ${r.name} ${r.tbl_name} ${r.sql}`);
 }
 
-// the rows of a table, each cell as its `quote()` literal
+// a cell's `quote()` literal, with the bytes of a TEXT value it does not show
+function exactCell(cell: string, hex: string | null): string {
+  if (hex === null) {
+    return cell;
+  }
+  const shown = Buffer.from(unquote(cell) ?? "").toString("hex");
+  return shown.toUpperCase() === hex ? cell : `${cell} bytes ${hex}`;
+}
+
+// the rows of a table, each cell as exactCell gives it
 function tableRows(db: Database, table: string): { columns: string[]; rows: string[][] } {
   const columns = (
     db.query(`SELECT name FROM pragma_table_info(${quoted(table)})`).all() as { name: string }[]
   ).map((c) => c.name);
-  const select = ["rowid", ...columns.map(quoteIdent)].map((c) => `quote(${c})`).join(", ");
+  const select = ["quote(rowid)"];
+  for (const column of columns.map(quoteIdent)) {
+    select.push(
+      `quote(${column})`,
+      `CASE typeof(${column}) WHEN 'text' THEN hex(CAST(${column} AS BLOB)) END`,
+    );
+  }
   const rows = db
-    .query(`SELECT ${select} FROM ${quoteIdent(table)} ORDER BY rowid`)
-    .values() as string[][];
-  return { columns, rows };
+    .query(`SELECT ${select.join(", ")} FROM ${quoteIdent(table)} ORDER BY rowid`)
+    .values() as (string | null)[][];
+  return {
+    columns,
+    rows: rows.map((row) => [
+      row[0] as string,
+      ...columns.map((_, i) =>
+        exactCell(row[2 * i + 1] as string, row[2 * i + 2] as string | null),
+      ),
+    ]),
+  };
 }
 
 function readDataDb(path: string, normalizer: Normalizer, options: SnapshotOptions) {
@@ -357,7 +393,9 @@ function readDataDb(path: string, normalizer: Normalizer, options: SnapshotOptio
               out = out.replace(secret, (m, open: string, value: string, close: string) =>
                 options.start.contains(value) ? m : `${open}<secret>${close}`,
               );
-              out = out.replace(cloneId, `"id":"_clone_<random>"`);
+              out = out.replace(cloneId, (m, id: string) =>
+                options.start.contains(id) ? m : `"id":"_clone_<random>"`,
+              );
             }
             return `${column}=${out}`;
           }),
@@ -412,18 +450,21 @@ function readStorage(dataDir: string, normalizer: Normalizer, options: SnapshotO
     if (isThumb(path) && !path.endsWith(".attrs")) {
       const bytes = readFileSync(join(dir, path));
       const attrsPath = join(dir, `${path}.attrs`);
+      const rawAttrs = existsSync(attrsPath) ? readFileSync(attrsPath, "utf8") : "";
+      const attrs = normalizer.replaceNames(rawAttrs);
+      const md5 = createHash("md5").update(bytes).digest("base64");
       thumbs.set(normalized, {
         format: imageFormat(bytes),
         sha256: createHash("sha256").update(bytes).digest("hex"),
-        attrs: existsSync(attrsPath)
-          ? normalizer.replaceNames(readFileSync(attrsPath, "utf8").replace(/,?"md5":"[^"]*"/, ""))
-          : "",
+        attrs,
+        attrsWithoutMd5: attrs.replace(md5Member, ""),
+        md5Matches: rawAttrs.includes(`"md5":"${md5}"`),
         fromIglo: options.igloThumbs?.has(path) ?? false,
       });
       continue;
     }
     if (path.endsWith(".attrs")) {
-      if (isThumb(path)) {
+      if (isThumb(path) && existsSync(join(dir, path.slice(0, -".attrs".length)))) {
         continue; // with its thumbnail
       }
       lines.push(`${normalized} ${normalizer.replaceNames(readFileSync(join(dir, path), "utf8"))}`);
@@ -502,10 +543,19 @@ export function diffSnapshots(control: Snapshot, subject: Snapshot): string[] {
     if (a.format !== b.format) {
       out.push(`thumbs: ${path}: format ${a.format} != ${b.format}`);
     }
+    if (b.fromIglo) {
+      if (a.attrsWithoutMd5 !== b.attrsWithoutMd5) {
+        out.push(`thumbs: ${path}: .attrs ${a.attrsWithoutMd5} != ${b.attrsWithoutMd5}`);
+      }
+      if (!b.md5Matches) {
+        out.push(`thumbs: ${path}: .attrs md5 is not the file's: ${b.attrs}`);
+      }
+      continue;
+    }
     if (a.attrs !== b.attrs) {
       out.push(`thumbs: ${path}: .attrs ${a.attrs} != ${b.attrs}`);
     }
-    if (!b.fromIglo && a.sha256 !== b.sha256) {
+    if (a.sha256 !== b.sha256) {
       out.push(`thumbs: ${path}: bytes differ, and upstream wrote both`);
     }
   }

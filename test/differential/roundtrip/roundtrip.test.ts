@@ -13,7 +13,8 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { appendFileSync, cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -30,7 +31,12 @@ import {
   settingsScenario,
   writeScenario,
 } from "@test/differential/roundtrip/scenario";
-import { diffSnapshots, takeSnapshot, type Snapshot } from "@test/differential/roundtrip/snapshot";
+import {
+  diffSnapshots,
+  takeSnapshot,
+  thumbPaths,
+  type Snapshot,
+} from "@test/differential/roundtrip/snapshot";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
@@ -67,6 +73,8 @@ function alteredDiff(
   control: Outcome["control"],
   start: Outcome["start"],
   change: (dataDir: string) => void,
+  // whether the altered copy's thumbnails count as written by iglo.base
+  igloThumbs = false,
 ): string[] {
   const dataDir = join(tempRoot(), "pb_data");
   cpSync(control.dataDir, dataDir, { recursive: true });
@@ -77,7 +85,10 @@ function alteredDiff(
     generatedIds: control.state.generatedIds,
     ...(control.encryptionKey === undefined ? {} : { encryptionKey: control.encryptionKey }),
   };
-  return diffSnapshots(takeSnapshot(control.dataDir, options), takeSnapshot(dataDir, options));
+  return diffSnapshots(
+    takeSnapshot(control.dataDir, options),
+    takeSnapshot(dataDir, igloThumbs ? { ...options, igloThumbs: thumbPaths(dataDir) } : options),
+  );
 }
 
 function sql(statement: string): (dataDir: string) => void {
@@ -89,6 +100,22 @@ function sql(statement: string): (dataDir: string) => void {
       db.close();
     }
   };
+}
+
+// the `.attrs` of a thumbnail, and its md5 replaced by another value
+function wrongMd5(path: string): void {
+  writeFileSync(
+    path,
+    readFileSync(path, "utf8").replace(/"md5":"[^"]*"/, `"md5":"AAAAAAAAAAAAAAAAAAAAAA=="`),
+  );
+}
+
+// the paths in storage/ that end with the suffix
+function storedPaths(dataDir: string, suffix: string): string[] {
+  const glob = new Bun.Glob(`**/*${suffix}`);
+  return [...glob.scanSync({ cwd: join(dataDir, "storage") })].map((path) =>
+    join(dataDir, "storage", path),
+  );
 }
 
 // one of the stored `.attrs` files, or a stored file
@@ -107,6 +134,9 @@ function storedFile(dataDir: string, suffix: string): string {
 
 describe("upstream's fixture", () => {
   let outcome: Outcome;
+  const altered = (change: (dataDir: string) => void): string[] =>
+    alteredDiff(outcome.control, outcome.start, change);
+
   beforeAll(async () => {
     const dataDir = join(tempRoot(), "pb_data");
     copyDataDir(fixtureDir, dataDir);
@@ -130,15 +160,48 @@ describe("upstream's fixture", () => {
     expect(outcome.subject.igloThumbs.size).toBeGreaterThan(0);
     expect(settingsRow(outcome.subjectSnapshot)).toContain("value=plain ");
   });
+
+  // what only a carried-over fixture holds
+  describe("the comparison catches", () => {
+    test("a changed md5 of a cached thumbnail", () => {
+      const out = altered((dataDir) => {
+        const name = "0x50_300_1SEi6Q6U72.png.attrs";
+        wrongMd5(storedPaths(dataDir, name)[0] as string);
+      });
+      expect(out.some((d) => d.includes(".attrs"))).toBe(true);
+    });
+
+    test("a rewritten view field id", () => {
+      const out = altered((dataDir) => {
+        const db = new Database(join(dataDir, "data.db"));
+        try {
+          const { fields } = db
+            .query("SELECT fields FROM _collections WHERE name = 'view1'")
+            .get() as { fields: string };
+          db.query("UPDATE _collections SET fields = ? WHERE name = 'view1'").run(
+            fields.replace(/_clone_[A-Za-z0-9]{4}/, "_clone_Zz99"),
+          );
+        } finally {
+          db.close();
+        }
+      });
+      expect(out.some((d) => d.startsWith("table _collections"))).toBe(true);
+    });
+  });
 });
+
+// the path of a thumbnail's file
+function thumbFile(path: string): boolean {
+  return /\/thumbs_[^/]*\/[^/]*$/.test(path);
+}
 
 // (b) a fresh install, encrypted, and the self-test on its result
 // -------------------------------------------------------------------
 
 describe("a fresh install", () => {
   let outcome: Outcome;
-  const altered = (change: (dataDir: string) => void): string[] =>
-    alteredDiff(outcome.control, outcome.start, change);
+  const altered = (change: (dataDir: string) => void, igloThumbs = false): string[] =>
+    alteredDiff(outcome.control, outcome.start, change, igloThumbs);
 
   beforeAll(async () => {
     outcome = keep(
@@ -156,6 +219,9 @@ describe("a fresh install", () => {
 
   test("the run covered what it should", () => {
     expect(outcome.subject.igloThumbs.size).toBeGreaterThan(0);
+    expect(outcome.controlSnapshot.sections.get("table rta_all")?.join("\n")).toContain(
+      "70726566697800", // "prefix", NUL
+    );
     expect(settingsRow(outcome.subjectSnapshot)).toContain("value=encrypted ");
   });
 
@@ -272,6 +338,60 @@ describe("a fresh install", () => {
         writeFileSync(join(dataDir, "extra.db"), "x");
       });
       expect(out).toContain("pb_data: subject only: extra.db");
+    });
+
+    test("changed text after a NUL", () => {
+      const out = altered(
+        sql(`UPDATE rta_all SET t = 'prefix' || char(0) || 'two' WHERE instr(t, 'prefix') = 1`),
+      );
+      expect(out.some((d) => d.startsWith("table rta_all: subject only"))).toBe(true);
+    });
+
+    test("changed bytes of an original named like a thumbnail directory", () => {
+      const out = altered((dataDir) => {
+        const path = storedPaths(dataDir, ".png").find((p) => /\/thumbs_original_[^/]*$/.test(p));
+        const bytes = readFileSync(path as string);
+        bytes[bytes.length - 1] = (bytes[bytes.length - 1] as number) ^ 1;
+        writeFileSync(path as string, bytes);
+      }, true);
+      expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);
+    });
+
+    test("a thumbnail's .attrs, when upstream wrote it", () => {
+      const out = altered((dataDir) => {
+        wrongMd5(storedPaths(dataDir, ".png.attrs").find(thumbFile) as string);
+      });
+      expect(out.some((d) => d.includes(".attrs"))).toBe(true);
+    });
+
+    test("an md5 that is not the file's, when iglo.base wrote the thumbnail", () => {
+      const out = altered((dataDir) => {
+        wrongMd5(storedPaths(dataDir, ".png.attrs").find(thumbFile) as string);
+      }, true);
+      expect(out.some((d) => d.includes("md5 is not the file's"))).toBe(true);
+    });
+
+    test("but not an md5 that follows a new thumbnail's bytes", () => {
+      const out = altered((dataDir) => {
+        const attrs = storedPaths(dataDir, ".png.attrs").find(thumbFile) as string;
+        const path = attrs.slice(0, -".attrs".length);
+        const bytes = Buffer.concat([readFileSync(path), Buffer.from("x")]);
+        const md5 = createHash("md5").update(bytes).digest("base64");
+        writeFileSync(path, bytes);
+        writeFileSync(
+          attrs,
+          readFileSync(attrs, "utf8").replace(/"md5":"[^"]*"/, `"md5":"${md5}"`),
+        );
+      }, true);
+      expect(out).toEqual([]);
+    });
+
+    test("a stray .attrs next to a thumbnail", () => {
+      const out = altered((dataDir) => {
+        const attrs = storedPaths(dataDir, ".png.attrs").find(thumbFile) as string;
+        writeFileSync(attrs.replace(/\.attrs$/, ".stray.attrs"), "{}");
+      });
+      expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);
     });
 
     test("but not a missing sqlite_stat4, the one known difference", () => {

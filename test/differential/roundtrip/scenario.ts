@@ -133,6 +133,7 @@ function edgeBodies(tag: string, people: string[]): { id: string; raw: string }[
     raw("e21", `"t":"${"long ".repeat(1000)}","ed":"<div>${"x".repeat(10000)}</div>"`),
     raw("e22", `"t":"line\\nbreak\\ttab","secret":"hidden value","rm":[]`),
     raw("e23", `"j" : { "spaced" : [ 1 , 2 ] ,\n "2":1 , "1":2.0 }`),
+    raw("e24", `"t":"prefix\\u0000one","ed":"<p>a\\u0000b</p>"`),
   ];
 }
 
@@ -315,6 +316,7 @@ async function writeRecords(c: Client, tag: string, ids: LegIds, people: string[
       fm: [
         picture("first.png"),
         picture("second.png"),
+        picture("thumbs_original.png"),
         file("a.b.TAR.GZ", "archive"),
         file("noext", "x"),
       ],
