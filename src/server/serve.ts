@@ -14,6 +14,7 @@ import { isIP } from "node:net";
 import { newRouter } from "@/apis/base";
 import { loadInstaller } from "@/apis/installer";
 import { bindDashboard } from "@/apis/serve-ui";
+import { closeRealtimeConnections } from "@/realtime/realtime";
 import type { StaticFS } from "@/apis/ui-pack";
 import type { App } from "@/app/app";
 import { unescapeBytes } from "@/server/mux";
@@ -207,6 +208,7 @@ export async function handleRequest(
   mux: Mux,
   request: Request,
   client: { address: string; port: number } | null,
+  disableTimeout?: () => void,
 ): Promise<Response> {
   // the origin-form request target; Bun.serve has already resolved "." and
   // ".." segments in it (see the PR notes on path cleaning)
@@ -245,7 +247,7 @@ export async function handleRequest(
   });
 
   return new Promise<Response>((resolve, reject) => {
-    const rw = new ResponseWriter(resolve);
+    const rw = new ResponseWriter(resolve, disableTimeout);
     mux.serveHTTP(rw, req).then(
       () => {
         try {
@@ -310,7 +312,10 @@ export async function serve(
       development: false,
       // no server-wide cap (Bun's default is 128 MiB): the body limit middleware decides
       maxRequestBodySize: Number.MAX_SAFE_INTEGER,
-      fetch: (request, bunServer) => handleRequest(app, mux, request, bunServer.requestIP(request)),
+      fetch: (request, bunServer) =>
+        handleRequest(app, mux, request, bunServer.requestIP(request), () =>
+          bunServer.timeout(request, 0),
+        ),
     });
   } catch (err) {
     if ((err as { code?: string }).code === "EADDRINUSE") {
@@ -342,6 +347,9 @@ export async function serve(
       shutdown.addEventListener("abort", () => resolve(), { once: true }),
     );
   }
+
+  // the realtime streams would keep their requests open
+  closeRealtimeConnections(app);
 
   // graceful shutdown with upstream's 1 second limit
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 1000).unref());

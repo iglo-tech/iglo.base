@@ -91,6 +91,13 @@
 // the record's storage directory is deleted in the background
 // (deleteRecordFiles: upstream's OnModelAfterDeleteSuccess files handler).
 //
+// The realtime handlers (bindRealtimeEvents, src/realtime/realtime-events.ts)
+// run as the action of the after success interceptors, once the outer
+// transaction has committed: the create and update broadcasts (their rule
+// checks read the state the commit left) and the delete broadcast of
+// the messages the delete dry cache prepared right before the row delete
+// (OnModelDelete, after the "delete" interceptors and the superusers check).
+//
 // Not ported: the hook events, tags and the model events around the
 // record events (D5).
 
@@ -146,6 +153,13 @@ import {
   superusersOnUpdateExecute,
 } from "@/records/record-model-superusers";
 import { findRecordById, type RecordsApp } from "@/records/record-query";
+import {
+  realtimeRecordAfterCreate,
+  realtimeRecordAfterDelete,
+  realtimeRecordAfterDeleteError,
+  realtimeRecordAfterUpdate,
+  realtimeRecordDelete,
+} from "@/realtime/realtime-events";
 import { jsonEach } from "@/tools/dbutils/json";
 import { columnify } from "@/tools/inflector/inflector";
 import { DateTime } from "@/tools/types/datetime";
@@ -526,7 +540,12 @@ function* afterSuccess(
 ): Step {
   const txInfo = app.databases.txInfo();
   if (txInfo === null) {
-    yield* callFieldInterceptors(app, record, successAction, noop);
+    yield* callFieldInterceptors(
+      app,
+      record,
+      successAction,
+      realtimeStep(app, record, successAction),
+    );
     if (successAction === InterceptorActionAfterDelete) {
       // a promise while every delete worker is busy
       const waiting = deleteRecordFiles(app, record);
@@ -546,9 +565,19 @@ function* afterSuccess(
       if (errorAction === InterceptorActionAfterCreateError) {
         record.markAsNew(); // reset "new" state
       }
+      if (errorAction === InterceptorActionAfterDeleteError) {
+        realtimeRecordAfterDeleteError(parentApp, record);
+      }
       result = run(callFieldInterceptors(parentApp, record, errorAction, noop));
     } else {
-      result = run(callFieldInterceptors(parentApp, record, successAction, noop));
+      result = run(
+        callFieldInterceptors(
+          parentApp,
+          record,
+          successAction,
+          realtimeStep(parentApp, record, successAction),
+        ),
+      );
       if (successAction === InterceptorActionAfterDelete) {
         // the delete does not wait for a busy worker pool here
         void deleteRecordFiles(parentApp, record);
@@ -562,6 +591,31 @@ function* afterSuccess(
       });
     }
   });
+}
+
+// the realtime handlers as the action of the after success interceptors:
+// upstream's OnModelAfter*Success handlers (-99, bound after the record
+// event proxy) run when the record interceptors call e.Next(). They run
+// synchronously, so the broadcast's checks read the state the write left.
+function realtimeStep(app: RecordsApp, record: Record, successAction: string): () => Step {
+  return () => syncStep(() => realtimeAfterSuccess(app, record, successAction));
+}
+
+// the realtime handlers of a successful save or delete
+// (OnModelAfterCreateSuccess, OnModelAfterUpdateSuccess,
+// OnModelAfterDeleteSuccess); they never fail the save
+function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: string): void {
+  try {
+    if (successAction === InterceptorActionAfterCreate) {
+      realtimeRecordAfterCreate(app, record);
+    } else if (successAction === InterceptorActionAfterUpdate) {
+      realtimeRecordAfterUpdate(app, record);
+    } else if (successAction === InterceptorActionAfterDelete) {
+      realtimeRecordAfterDelete(app, record);
+    }
+  } catch (err) {
+    app.logger.error("Failed to broadcast the record change", err);
+  }
 }
 
 // the storage cleanup after a record delete (registerBaseHooks'
@@ -643,6 +697,9 @@ export function* deleteStep(app: RecordsApp, record: Record): Step {
       }
 
       yield* superusersOnDelete(app, record, function* (deleteApp) {
+        // OnModelDelete: the realtime dry cache
+        realtimeRecordDelete(deleteApp, record);
+
         const pk = record.lastSavedPK();
         if (pk === "") {
           throw new Error(
@@ -659,6 +716,7 @@ export function* deleteStep(app: RecordsApp, record: Record): Step {
       });
     });
   } catch (deleteErr) {
+    realtimeRecordAfterDeleteError(app, record);
     yield* afterError(app, record, InterceptorActionAfterDeleteError, deleteErr);
   }
 

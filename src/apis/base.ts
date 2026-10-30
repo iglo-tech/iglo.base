@@ -18,6 +18,7 @@ import { loadAuthToken } from "@/middlewares/load-auth-token";
 import { panicRecover } from "@/middlewares/panic-recover";
 import { rateLimit } from "@/middlewares/rate-limit";
 import { securityHeaders } from "@/middlewares/security-headers";
+import { bindRealtimeApi, type RealtimeOptions } from "@/realtime/realtime";
 import { superuserIPsWhitelist } from "@/middlewares/superuser-ips-whitelist";
 import { ErrFileNotFound } from "@/server/event";
 import { Router } from "@/server/router";
@@ -27,13 +28,14 @@ export const StaticWildcardParam = "path";
 
 export interface RouterOptions {
   recordCrud?: RecordCrudOptions;
+  realtime?: RealtimeOptions;
 }
 
 // NewRouter returns a new router instance loaded with the default app
 // middlewares and routes.
 //
 // options carries test seams of the bound handlers (the records list
-// throttle's sleep).
+// throttle's sleep, the realtime connection timers).
 export function newRouter(app: App, options: RouterOptions = {}): Router<RequestEvent> {
   const pbRouter = new Router<RequestEvent>((w, r) => [new RequestEvent(app, w, r), undefined]);
 
@@ -48,7 +50,7 @@ export function newRouter(app: App, options: RouterOptions = {}): Router<Request
 
   // API routes
   const apiGroup = pbRouter.group("/api");
-  // logs, backups, crons, batch, realtime and SQL are
+  // logs, backups, crons, batch and SQL are
   // bound by their own tasks, in upstream's order: settings, collections,
   // record crud, record auth, logs, backups, crons, files, batch,
   // realtime, health, SQL
@@ -57,6 +59,7 @@ export function newRouter(app: App, options: RouterOptions = {}): Router<Request
   bindRecordCrudApi(app, apiGroup, options.recordCrud);
   bindRecordAuthApi(app, apiGroup);
   bindFileApi(app, apiGroup);
+  bindRealtimeApi(app, apiGroup, options.realtime);
   bindHealthApi(app, apiGroup);
 
   // the prebuilt binary's static route (examples/base/main.go), bound after
