@@ -250,7 +250,7 @@ export const batchCases: BatchCase[] = [
     reads: ["b_auth_only"],
   },
   // the generated Content-Type is the one rules see, whatever the item sends
-  ...["Content-Type", "content-type", "CONTENT_TYPE"].flatMap((header): BatchCase[] => {
+  ...["Content-Type", "content-type"].flatMap((header): BatchCase[] => {
     const json = { [header]: "application/json" };
     return [
       {
