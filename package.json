@@ -15,6 +15,7 @@
     "hooks:install": "sh scripts/install-git-hooks.sh",
     "upstream:prepare": "bun scripts/upstream/prepare.ts",
     "test:reference": "bun run upstream:prepare && bun test --path-ignore-patterns \"\" test/differential",
+    "test:roundtrip:large": "bun run upstream:prepare && bun --preload ./test/differential/fuzz/temp-root.ts test/differential/roundtrip/large.ts",
     "fuzz:filters": "bun run upstream:prepare && bun --preload ./test/differential/fuzz/temp-root.ts test/differential/fuzz/main.ts"
   },
   "dependencies": {
