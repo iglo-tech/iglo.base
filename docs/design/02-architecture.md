@@ -120,8 +120,7 @@ Small and justified. v1 runtime dependencies:
 |---|---|
 | `nodemailer` | SMTP with STARTTLS, auth methods, MIME and attachments, plus a `sendmail` transport. Same choice as iglo.email |
 | `acme-client` | Let's Encrypt for `serve example.com`. Bun has TLS but no ACME client |
-| image library (chosen in M0) | Thumbnails for JPEG, PNG, GIF and WebP input. Must work inside a compiled executable without native addons, so WebAssembly-based (D10) |
 
-Built-in Bun or Web APIs cover the rest: bcrypt (`Bun.password`, with the ported Go bcrypt in tools/crypto only for stored hashes it cannot verify), HMAC-SHA256 JWTs and AES-GCM (Web Crypto), S3 (`Bun.S3Client`), gzip (`Bun.gzipSync` and streams), zip for backups (in-house, store or deflate via `Bun.deflateSync`, or a small dependency if justified), MIME sniffing (upstream's `gabriel-vasile/mimetype` v1.4.15 is ported whole in tools/mimetype, because a `mimeTypes` list may name any type and the accept or reject result depends on the whole detection tree), cron expressions (ported, about 500 lines upstream).
+Built-in Bun or Web APIs cover the rest: thumbnails (`Bun.Image` for decoding and the JPEG and PNG encoders, with imaging's resize and Go's GIF encoder ported, D10), bcrypt (`Bun.password`, with the ported Go bcrypt in tools/crypto only for stored hashes it cannot verify), HMAC-SHA256 JWTs and AES-GCM (Web Crypto), S3 (`Bun.S3Client`), gzip (`Bun.gzipSync` and streams), zip for backups (in-house, store or deflate via `Bun.deflateSync`, or a small dependency if justified), MIME sniffing (upstream's `gabriel-vasile/mimetype` v1.4.15 is ported whole in tools/mimetype, because a `mimeTypes` list may name any type and the accept or reject result depends on the whole detection tree), cron expressions (ported, about 500 lines upstream).
 
 The admin dashboard has its own build-time dependencies (Vite, Leaflet, TinyMCE, the PocketBase JS SDK), kept in `ui/` as upstream has them.
