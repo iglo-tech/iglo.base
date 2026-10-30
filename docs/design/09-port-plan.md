@@ -70,7 +70,7 @@ The scenario format and the harness are a shared contract ([work plan](12-work-p
 
 ### Data round-trip suite
 
-Upstream → iglo.base → upstream on the same `pb_data`, as described in [Data compatibility](03-data-compatibility.md#verification). Runs on every change to `src/db`, `src/collections`, `src/fields`, `src/records`, `src/files`, `src/settings` and `src/migrations`.
+Upstream → iglo.base → upstream on the same `pb_data`, compared with a control run of upstream alone, as described in [Data compatibility](03-data-compatibility.md#verification). `test/differential/roundtrip/`: the fixture and fresh-install runs are part of `bun run test:reference`, so they run on every change to `src/db`, `src/collections`, `src/fields`, `src/records`, `src/files`, `src/settings` and `src/migrations`; the generated dataset is `bun run test:roundtrip:large`.
 
 ### SDK suites
 

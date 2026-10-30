@@ -135,13 +135,17 @@ Signed tokens survive a switch: a user logged in through PocketBase stays logged
 
 ## Verification
 
-The [port plan](09-port-plan.md#testing-strategy) has a round-trip suite that runs on every change to storage code:
+The [port plan](09-port-plan.md#data-round-trip-suite) has a round-trip suite (`test/differential/roundtrip/`) that runs on every change to storage code. Each run has three legs on one `pb_data`, and a control run does the same legs with upstream alone from a copy of the same start:
 
-1. Start upstream v0.41.0 on a fixture, run a write-heavy scenario, stop.
-2. Start iglo.base on the result, verify the data through the API, run the same scenario, stop.
-3. Start upstream again, verify everything iglo.base wrote, and compare `sqlite_schema`, `PRAGMA integrity_check`, `_params` and `storage/` (including `.attrs`) with what upstream alone would have produced.
+1. Upstream v0.41.0 starts on the fixture, runs a write-heavy scenario through the API and stops.
+2. iglo.base starts on the result, reads everything through the API with responses equal to upstream's last read of the same data, runs the same scenario (under its own names, and changing what leg 1 wrote) and stops.
+3. Upstream starts again, reads back everything iglo.base wrote with equal responses, and runs the scenario once more.
 
-Fixtures: upstream's `tests/data` (MIT), a fresh v0.41.0 install, and a large generated dataset.
+After the servers stop, a copy of each result is read and compared: `PRAGMA integrity_check`, `sqlite_schema` (without `rootpage`) byte for byte, the `quote()` text of every row of every table (`_migrations`, `_collections` and `_params` included), the top-level names in `pb_data`, and `storage/`: names, file bytes, `.attrs`, thumbnails. A token issued on one server must work on every later leg, and `auxiliary.db` must open, pass its integrity check and keep every `_logs` row upstream wrote.
+
+Only values a server generates are normalized, each by a named rule with its exact format, in `test/differential/roundtrip/snapshot.ts`: timestamps from the run itself, `tokenKey`, the salt and hash of a bcrypt value (the `$2a$` and the cost stay), the random part of a stored file name, ids the scenario left to the server, new token secrets and view field ids, and the nonce of encrypted settings (the value is decrypted with the run's key, so plain and encrypted stay apart). A value carried over from the start is never normalized. `sqlite_stat4` is the one known difference, and a thumbnail iglo.base generated may differ in encoded bytes, not in format, size or `.attrs` (but its `md5`). Upstream runs with `--automigrate=false`: its default writes `pb_migrations` files and `_migrations` rows for every collection change, which iglo.base does from M3.7.
+
+Fixtures: upstream's `tests/data` with plain settings, a fresh v0.41.0 install with encrypted settings, and a fresh install where encryption is turned on between the legs (settings only), in `bun run test:reference`; a generated dataset of 20,000 records in each of the first two legs and 2,000 in the last in `bun run test:roundtrip:large`. A self-test alters a copy of a result (an extra index, table, column, trigger or `_params` row, a changed row, `.attrs` or file) and the comparison must fail.
 
 ## Cutover checklist
 
