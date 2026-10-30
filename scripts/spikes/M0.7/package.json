@@ -1,0 +1,13 @@
+{
+  "name": "iglo-base-spike-m0-7",
+  "private": true,
+  "description": "M0.7 thumbnail candidates; installed by run.ts into this directory only while the spike runs",
+  "dependencies": {
+    "@jsquash/jpeg": "1.6.0",
+    "@jsquash/png": "3.1.1",
+    "@jsquash/webp": "1.5.0",
+    "omggif": "1.0.10",
+    "sharp": "0.35.5",
+    "wasm-vips": "0.0.19"
+  }
+}
