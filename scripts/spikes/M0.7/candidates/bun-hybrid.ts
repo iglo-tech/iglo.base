@@ -12,7 +12,7 @@
 // plan computed on the original's size, so the dimensions and the crop are
 // upstream's. Small originals take the exact bun-imaging path.
 
-import { bunEncode, bunHeader } from "@/../scripts/spikes/M0.7/candidates/bun-imaging";
+import { bunEncode, bunHeader, bunImage } from "@/../scripts/spikes/M0.7/candidates/bun-imaging";
 import {
   cropRect,
   parseThumbSize,
@@ -28,8 +28,9 @@ export const createThumbWithMargin =
   (margin: number): CreateThumb =>
   async (input, contentType, size, maxPixels) => {
     const thumbSize = parseThumbSize(size);
-    // metadata() reports the size after the JPEG EXIF orientation
-    const { width, height } = await bunHeader(input, maxPixels);
+    // the size after imaging's EXIF orientation; for a GIF the first frame's
+    const header = bunHeader(input, maxPixels);
+    const { width, height } = header;
     const plan = thumbPlan(width, height, thumbSize);
     const format = thumbFormat(contentType);
     // the whole original's size at the thumb's scale
@@ -45,7 +46,7 @@ export const createThumbWithMargin =
     const factor = Math.min(width / (margin * scaledW), height / (margin * scaledH));
     if (plan.kind === "copy" || plan.kind === "resize-crop" || factor < 1.5) {
       const decoded = decodePng(
-        await new Bun.Image(input, { maxPixels }).png({ compressionLevel: 0 }).bytes(),
+        await bunImage(input, header, maxPixels).png({ compressionLevel: 0 }).bytes(),
       );
       return {
         bytes: await bunEncode(thumbGeometry(decoded, thumbSize), format),
@@ -55,7 +56,9 @@ export const createThumbWithMargin =
     const rw = Math.round(width / factor);
     const rh = Math.round(height / factor);
     const reduced: Raw = decodePng(
-      await new Bun.Image(input, { maxPixels })
+      // Bun.Image turns the image before it resizes, so rw x rh is in the
+      // turned image's orientation, as the plan is
+      await bunImage(input, header, maxPixels)
         .resize(rw, rh, { filter: "box" })
         .png({ compressionLevel: 0 })
         .bytes(),

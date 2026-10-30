@@ -7,18 +7,19 @@
 // size the crop would scale to (imaging crops first). Encoding as in
 // bun-imaging.
 
-import { bunEncode, bunHeader } from "@/../scripts/spikes/M0.7/candidates/bun-imaging";
+import { bunEncode, bunHeader, bunImage } from "@/../scripts/spikes/M0.7/candidates/bun-imaging";
 import { cropRect, parseThumbSize, thumbFormat, thumbPlan } from "@/../scripts/spikes/M0.7/imaging";
 import { decodePng } from "@/../scripts/spikes/M0.7/png";
 import { thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 export const createThumb: CreateThumb = async (input, contentType, size, maxPixels) => {
   const thumbSize = parseThumbSize(size);
-  // metadata() reports the size after the JPEG EXIF orientation
-  const { width, height } = await bunHeader(input, maxPixels);
+  // the size after imaging's EXIF orientation; for a GIF the first frame's
+  const header = bunHeader(input, maxPixels);
+  const { width, height } = header;
   const format = thumbFormat(contentType);
   const plan = thumbPlan(width, height, thumbSize);
-  const pipeline = new Bun.Image(input, { maxPixels });
+  const pipeline = bunImage(input, header, maxPixels);
   if (plan.kind !== "copy") {
     let w = plan.width;
     let h = plan.height;

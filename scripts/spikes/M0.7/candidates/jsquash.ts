@@ -20,15 +20,16 @@ import webpDecWasm from "@jsquash/webp/codec/dec/webp_dec.wasm" with { type: "fi
 import { GifReader } from "omggif";
 
 import { encodeGif } from "@/../scripts/spikes/M0.7/gif";
-import { parseThumbSize, thumbFormat, thumbGeometry } from "@/../scripts/spikes/M0.7/imaging";
+import { bunHeader } from "@/../scripts/spikes/M0.7/candidates/bun-imaging";
 import {
-  checkJpegComplete,
-  fixOrientation,
-  headerSize,
-  readOrientation,
-} from "@/../scripts/spikes/M0.7/orient";
+  cropRect,
+  parseThumbSize,
+  thumbFormat,
+  thumbGeometry,
+} from "@/../scripts/spikes/M0.7/imaging";
+import { fixOrientation, readOrientation } from "@/../scripts/spikes/M0.7/orient";
 import type { Raw } from "@/../scripts/spikes/M0.7/png";
-import { checkPixels, thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 // the emscripten modules build ImageData results; Bun has no ImageData
 class ImageDataShim {
@@ -74,10 +75,16 @@ async function decode(input: Uint8Array): Promise<Raw> {
     return toRaw(await decodePngWasm(ab(input)));
   }
   if (input[0] === 0x47 && input[1] === 0x49) {
+    // omggif draws the frame onto the logical screen; image/gif returns the
+    // frame alone
     const reader = new GifReader(input);
     const pix = new Uint8Array(reader.width * reader.height * 4);
     reader.decodeAndBlitFrameRGBA(0, pix);
-    return { width: reader.width, height: reader.height, pix };
+    const f = reader.frameInfo(0);
+    return cropRect(
+      { width: reader.width, height: reader.height, pix },
+      { x: f.x, y: f.y, width: f.width, height: f.height },
+    );
   }
   if (input[0] === 0x52 && input[1] === 0x49) {
     return toRaw(await decodeWebp(ab(input)));
@@ -108,9 +115,8 @@ async function encode(raw: Raw, format: string): Promise<Uint8Array> {
 export const createThumb: CreateThumb = async (input, contentType, size, maxPixels) => {
   await init();
   const thumbSize = parseThumbSize(size);
-  const header = headerSize(input);
-  checkJpegComplete(input);
-  checkPixels(header.width, header.height, maxPixels);
+  // the header as Go reads it (pure TypeScript, no Bun.Image call)
+  bunHeader(input, maxPixels);
   const thumb = thumbGeometry(await decode(input), thumbSize);
   return {
     bytes: await encode(thumb, thumbFormat(contentType)),

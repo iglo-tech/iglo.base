@@ -51,6 +51,7 @@ declare module "omggif" {
     width: number;
     height: number;
     decodeAndBlitFrameRGBA(frame: number, pixels: Uint8Array): void;
+    frameInfo(frame: number): { x: number; y: number; width: number; height: number };
   }
 }
 

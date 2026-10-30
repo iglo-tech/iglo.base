@@ -1,7 +1,11 @@
 // M0.7 spike: which library makes upstream's thumbnails in iglo.base (D10).
 // Not shipped; needs `bun run upstream:prepare` and the npm registry.
 //
-// Usage: nice -n 10 bun scripts/spikes/M0.7/run.ts [--skip-perf]
+// Usage: nice -n 10 bun scripts/spikes/M0.7/run.ts [--skip-perf] [--skip-quality]
+//          [--only=bun-imaging,bun-hybrid,...] [--concurrency=1,4]
+//
+// --only limits the candidates built, compared and measured (to re-run the
+// ones a change affects); --concurrency limits the speed measurements.
 //
 // 1. Installs the candidate packages (package.json here) into
 //    scripts/spikes/M0.7/node_modules, removed at the end, and compiles bench.ts with each
@@ -12,6 +16,9 @@
 // 3. Makes the same thumbs with each candidate (one worker) and compares
 //    them with upstream's: dimensions, content type, and the mean absolute
 //    error per channel after decoding both with the same decoder.
+//    The compatibility set (writeCompatSet) is compared the same way: EXIF
+//    orientations and GIF logical screens, some at a lower
+//    PB_THUMBS_MAX_SOURCE_PIXELS, with a server started with that limit.
 // 4. Edge cases: corrupt originals and one over PB_THUMBS_MAX_SOURCE_PIXELS,
 //    on upstream and on each candidate.
 // 5. Speed and memory: a 50-megapixel JPEG and a 12-megapixel PNG to 100x100
@@ -47,6 +54,7 @@ import {
 } from "@/../scripts/spikes/M0.8/common";
 import {
   synthetic,
+  writeCompatSet,
   writeEdgeSet,
   writeQualitySet,
   type TestImage,
@@ -56,6 +64,13 @@ import type { Job, JobResult } from "@/../scripts/spikes/M0.7/workers/serve";
 
 const spikeDir = join(repoRoot, "scripts/spikes/M0.7");
 const skipPerf = process.argv.includes("--skip-perf");
+const skipQuality = process.argv.includes("--skip-quality");
+const arg = (name: string): string[] | undefined =>
+  process.argv
+    .find((a) => a.startsWith(`--${name}=`))
+    ?.slice(name.length + 3)
+    .split(",");
+const only = arg("only");
 const candidates = [
   "bun-native",
   "bun-imaging",
@@ -64,7 +79,8 @@ const candidates = [
   "jsquash",
   "vips",
   "sharp",
-] as const;
+].filter((c) => !only || only.includes(c));
+const concurrencies = (arg("concurrency") ?? ["1", "4"]).map(Number);
 const sizes = [
   "100x100",
   "70x50",
@@ -348,6 +364,28 @@ async function thumb(
   };
 }
 
+// runs fn on the same data with PB_THUMBS_MAX_SOURCE_PIXELS set, then
+// restarts u's server without it
+async function withLimit<T>(
+  u: Upstream,
+  limit: number,
+  fn: (limited: Upstream) => Promise<T>,
+): Promise<T> {
+  await u.server.stop();
+  process.env.PB_THUMBS_MAX_SOURCE_PIXELS = String(limit);
+  let limited: Upstream | undefined;
+  try {
+    limited = await startUpstream(u.dataDir);
+    return await fn(limited);
+  } finally {
+    await limited?.server.stop();
+    delete process.env.PB_THUMBS_MAX_SOURCE_PIXELS;
+    const restarted = await startUpstream(u.dataDir);
+    u.server = restarted.server;
+    u.token = restarted.token;
+  }
+}
+
 async function newUpstreamData(dataDir: string): Promise<Upstream> {
   await upsertSuperuser(dataDir, root, "spike@example.com", "spike-password-123");
   const u = await startUpstream(dataDir);
@@ -394,6 +432,7 @@ async function quality(
   u: Upstream,
   qDir: string,
   images: TestImage[],
+  compat: TestImage[],
   edges: TestImage[],
 ): Promise<void> {
   log("upstream thumbs of the image set");
@@ -406,18 +445,47 @@ async function quality(
       refs.push({ image, size, original: same(t.bytes, original), ...t });
     }
   }
+  log("upstream thumbs of the compatibility set");
+  const compatRefs = async (target: Upstream, list: TestImage[]): Promise<void> => {
+    for (const image of list) {
+      const rec = await upload(target, qDir, image.name, image.contentType);
+      const original = readFileSync(join(qDir, image.name));
+      for (const size of image.sizes ?? sizes) {
+        const t = await thumb(target, rec, size);
+        refs.push({ image, size, original: same(t.bytes, original), ...t });
+      }
+    }
+  };
+  await compatRefs(
+    u,
+    compat.filter((i) => !i.limit),
+  );
+  const limited = compat.filter((i) => i.limit);
+  const limit = limited[0]?.limit;
+  if (limit) {
+    if (limited.some((i) => i.limit !== limit)) {
+      throw new Error("one PB_THUMBS_MAX_SOURCE_PIXELS for the compatibility set");
+    }
+    await withLimit(u, limit, (l) => compatRefs(l, limited));
+  }
   const thumbable = images.filter((i) => !["image/bmp", "image/tiff"].includes(i.contentType));
   const rows: (string | number)[][] = [];
   const perImage: (string | number)[][] = [];
   const decodeRows: (string | number)[][] = [];
   const edgeRows: (string | number)[][] = [];
+  const compatRows: (string | number)[][] = [];
+  const compatImageRows: (string | number)[][] = [];
   for (const c of candidates) {
     log(`quality: ${c}`);
     const outDir = join(root, `out-${c}`);
     mkdirSync(outDir);
     const jobs: Job[] = [];
-    const meta: { ref?: Ref; image: TestImage; size: string; kind: "set" | "decode" | "edge" }[] =
-      [];
+    const meta: {
+      ref?: Ref;
+      image: TestImage;
+      size: string;
+      kind: "set" | "compat" | "decode" | "edge";
+    }[] = [];
     for (const image of thumbable) {
       for (const size of sizes) {
         meta.push({
@@ -425,6 +493,16 @@ async function quality(
           image,
           size,
           kind: "set",
+        });
+      }
+    }
+    for (const image of compat) {
+      for (const size of image.sizes ?? sizes) {
+        meta.push({
+          ref: refs.find((r) => r.image === image && r.size === size),
+          image,
+          size,
+          kind: "compat",
         });
       }
     }
@@ -441,7 +519,7 @@ async function quality(
         // BMP and TIFF are never thumbed by the API; the decode test asks for PNG
         contentType: m.kind === "decode" ? "image/png" : m.image.contentType,
         size: m.size,
-        maxPixels,
+        maxPixels: m.image.limit ?? maxPixels,
         out: join(outDir, `${id}`),
       }),
     );
@@ -455,9 +533,58 @@ async function quality(
     let typeOk = 0;
     let total = 0;
     const failures: string[] = [];
+    // per compatibility image: sizes, same outcome, same dimensions and
+    // content type, the largest MAE channel, the first difference
+    const compatByImage = new Map<
+      string,
+      { n: number; outcome: number; dims: number; types: number; worst: number; diff: string }
+    >();
     for (const r of res.results) {
       const m = meta[r.id];
       if (!m) {
+        continue;
+      }
+      if (m.kind === "compat") {
+        const row = compatByImage.get(m.image.name) ?? {
+          n: 0,
+          outcome: 0,
+          dims: 0,
+          types: 0,
+          worst: 0,
+          diff: "",
+        };
+        compatByImage.set(m.image.name, row);
+        row.n++;
+        const upOriginal = m.ref?.original ?? false;
+        const note = (d: string): void => {
+          row.diff ||= `${m.size}: ${d}`;
+        };
+        if (!m.ref) {
+          note("no upstream result");
+        } else if (upOriginal !== Boolean(r.error)) {
+          note(
+            upOriginal ? "made a thumb, upstream served the original" : `error: ${r.error ?? ""}`,
+          );
+        } else if (upOriginal) {
+          row.outcome++;
+          row.dims++;
+          row.types++;
+        } else {
+          row.outcome++;
+          const a = await decode(m.ref.bytes);
+          const b = await decode(readFileSync(join(outDir, `${r.id}`)));
+          if (r.contentType === m.ref.contentType) {
+            row.types++;
+          } else {
+            note(`${r.contentType}, upstream ${m.ref.contentType}`);
+          }
+          if (a.width !== b.width || a.height !== b.height) {
+            note(`${b.width}x${b.height}, upstream ${a.width}x${a.height}`);
+          } else {
+            row.dims++;
+            row.worst = Math.max(row.worst, ...mae(a, b));
+          }
+        }
         continue;
       }
       if (m.kind === "decode") {
@@ -536,6 +663,33 @@ async function quality(
       fmt("blurred"),
       failures.slice(0, 6).join("; "),
     ]);
+    const sum = [...compatByImage.values()].reduce(
+      (t, x) => ({
+        n: t.n + x.n,
+        outcome: t.outcome + x.outcome,
+        dims: t.dims + x.dims,
+        types: t.types + x.types,
+        worst: Math.max(t.worst, x.worst),
+      }),
+      { n: 0, outcome: 0, dims: 0, types: 0, worst: 0 },
+    );
+    compatRows.push([
+      c,
+      `${sum.outcome}/${sum.n}`,
+      `${sum.dims}/${sum.n}`,
+      `${sum.types}/${sum.n}`,
+      sum.worst.toFixed(1),
+    ]);
+    for (const [name, x] of compatByImage) {
+      compatImageRows.push([
+        c,
+        name,
+        `${x.outcome}/${x.n}`,
+        `${x.dims}/${x.n}`,
+        x.worst.toFixed(2),
+        x.diff.slice(0, 100),
+      ]);
+    }
   }
   table(
     [
@@ -553,6 +707,38 @@ async function quality(
     ],
     rows,
   );
+  table(
+    [
+      "candidate",
+      "compatibility set: same outcome (thumb or original)",
+      "same dimensions",
+      "same content type",
+      "largest MAE channel",
+    ],
+    compatRows,
+  );
+  table(
+    [
+      "candidate",
+      "original",
+      "same outcome",
+      "same dimensions",
+      "largest MAE channel",
+      "first difference",
+    ],
+    compatImageRows,
+  );
+  // what upstream did with each compatibility image
+  const upstreamRows: (string | number)[][] = [];
+  for (const image of compat) {
+    const cells: string[] = [];
+    for (const r of refs.filter((x) => x.image === image)) {
+      const d = r.original ? undefined : await decode(r.bytes);
+      cells.push(`${r.size}: ${d ? `${d.width}x${d.height}` : "original"}`);
+    }
+    upstreamRows.push([image.name, image.note, cells.join(", ")]);
+  }
+  table(["original", "note", "upstream, per size"], upstreamRows);
   table(["candidate", "original", "decode as PNG"], decodeRows);
   table(["candidate", "original", "upstream", "candidate", "ms"], edgeRows);
   writeFileSync(join(root, "per-image.json"), JSON.stringify(perImage));
@@ -634,7 +820,7 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
   const upstreamThumbs = new Map<string, Uint8Array>();
   for (const b of bigs) {
     for (const size of ["100x100", "1200x0"]) {
-      for (const conc of [1, 4]) {
+      for (const conc of concurrencies) {
         // drop the thumbs the previous measurement made
         const storage = join(u.dataDir, "storage");
         for (const col of readdirSync(storage)) {
@@ -691,7 +877,7 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
   for (const c of candidates) {
     for (const b of bigs) {
       for (const size of ["100x100", "1200x0"]) {
-        for (const conc of [1, 4]) {
+        for (const conc of concurrencies) {
           const outBase = join(root, `big-${c}-${b.name}-${size}`);
           const jobs: Job[] = Array.from({ length: conc }, (_, id) => ({
             id,
@@ -764,14 +950,17 @@ try {
   const qDir = join(root, "q");
   mkdirSync(qDir);
   const images = await writeQualitySet(qDir, join(spikeDir, "node_modules/sharp"));
-  const edges = writeEdgeSet(
+  const compat = await writeCompatSet(qDir);
+  const edges = await writeEdgeSet(
     qDir,
     readFileSync(join(qDir, "photo.jpg")),
     readFileSync(join(qDir, "photo.png")),
   );
   const u = await newUpstreamData(join(root, "pb_data"));
   try {
-    await quality(bins, u, qDir, images, edges);
+    if (!skipQuality) {
+      await quality(bins, u, qDir, images, compat, edges);
+    }
     if (!skipPerf) {
       await perf(bins, u);
     }
