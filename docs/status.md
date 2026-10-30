@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-29
 
-M4.4 (mail, with `mails/`) merged; M0.7 (thumbnail spike) active.
+M0.7 (thumbnail spike) merged; next: M5.2 (file serving).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M0.7 | review | [#37](https://github.com/iglo-tech/iglo.base/pull/37) | 2 | [brief](briefs/M0.7.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M0.7 | [#37](https://github.com/iglo-tech/iglo.base/pull/37) | 2026-10-30 (`8dc7fbc`) | Two review rounds (fixer: imaging's first-APP1 orientation, Go DecodeConfig sizes for the pixel limit). D10: `Bun.Image` decode/encode + ported imaging Linear resize/crop and Go GIF encoder; 16 MP pre-shrink (lead decision, for owner review); JPEG EOI check. Instructions for M5.2 in `docs/perf/M0.7-thumbnails.md` |
 | M4.4 | [#36](https://github.com/iglo-tech/iglo.base/pull/36) | 2026-10-29 (`caf7ca7`) | Three council rounds (lead fixed all; round 3 decided by the lead: SMTP error texts, STARTTLS only when offered, mailyak/Go license notices). Includes `mails/`. Carried: the OTP email's `sentTo` update (M4.2); no differential case for implicit TLS (needs a cert both servers trust); DNS/TLS-handshake/timeout error texts differ (listed in 04-api-compatibility.md) |
 | M6.1 | [#35](https://github.com/iglo-tech/iglo.base/pull/35) | 2026-10-29 (`6c1462d`) | One review round: Sol APPROVE at `ec90f7e`. Includes M6.2 (installer, all six `superuser` commands incl. `otp`). Carried: `Vary: Origin` with CORS (M5.7); backups, crons, logs and file download screens wait for M5.3, M5.6, M5.5, M5.2; docs links point to the repo docs until M7.2 |
 | M2.5 | [#34](https://github.com/iglo-tech/iglo.base/pull/34) | 2026-10-29 (`d38c4d7`) | One review round: Sol APPROVE at `366eb5b`. Includes M3.4 (collections write, import, truncate, dry run) and the M1.3 rate-limit relabel on rename. Carried: upstream's default `--automigrate` writes `pb_migrations` files on collection API changes (M3.7) |
@@ -60,6 +60,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-29 | Test harness (M3.2) | File-name normalization in `test/differential/files/files.test.ts:99–145` and `harness/compare.ts:207–209` accepts any equal-length lowercase alphanumeric difference; restrict it to the generated 10-character suffix |
 | 2026-10-29 | Collections API (M2.5) | Form-encoded (urlencoded/multipart) collection create/update ignores `fields` and nested auth options as plain keys; JSON and `@jsonPayload` match upstream |
 | 2026-10-29 | Test harness | The body-limit tests put the host under heavy memory pressure in one `bun run check` (M2.5 review); the reviewer passed with `--smol` |
+| 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -141,6 +142,7 @@ Decisions and plan changes made by agents while the owner was away.
 - 2026-10-29 (M4.1 brief): `core/mfa_*` and `checkMFA` moved from M4.2 to M4.1, so MFA-enabled collections are never answered with a token after one factor.
 - 2026-10-29 (M0.8): [D27](design/10-decisions.md) records the spike follow-ups for M3.2, M5.1 and M7.1.
 - 2026-10-29 (plan change, before M2.5): M3.4 (collections write, import, truncate, view dry run) is folded into M2.5; both port `apis/collection.go` and run back to back in the usable-first order.
+- 2026-10-30 (M0.7): D10 decided: thumbnails with Bun's built-in `Bun.Image` plus ported imaging resize/crop; originals over 16 MP are pre-shrunk (lead decision, for owner review).
 - 2026-10-29 (plan change, before M4.4): `mails/` moves from M4.3 to M4.4; the test email form sends all five templates and the login alert needs it. M4.3 keeps the endpoints.
 - 2026-10-29 (plan change, before M6.1): M6.2 (installer and `superuser` commands) is folded into M6.1; a fresh install needs the installer to reach the dashboard.
 
