@@ -348,8 +348,9 @@ function parseItemURL(url: string): { escapedPath: string; rawQuery: string } | 
 interface PreparedItem {
   ir: InternalRequest;
   action: BatchAction | null;
-  // the failure of http.NewRequest
-  urlErr: Error | null;
+  // the failure of building the item's request (http.NewRequest, the
+  // payload's json.Marshal)
+  requestErr: Error | null;
   request: HttpRequest | null;
   requestInfo: RequestInfo | Error;
 }
@@ -359,12 +360,12 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
   const noRequest = new Error("the batch item has no request");
 
   if (action === null) {
-    return { ir, action, urlErr: null, request: null, requestInfo: noRequest };
+    return { ir, action, requestErr: null, request: null, requestInfo: noRequest };
   }
 
   const url = parseItemURL(ir.url);
   if (url instanceof Error) {
-    return { ir, action, urlErr: url, request: null, requestInfo: noRequest };
+    return { ir, action, requestErr: url, request: null, requestInfo: noRequest };
   }
 
   // the base headers, then the item's. Authorization has no effect: the auth
@@ -382,7 +383,13 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
   }
   headers.set("Content-Type", "multipart/form-data; boundary=" + pseudorandomString(60));
 
-  const payload = marshal(ir.body);
+  let payload: string;
+  try {
+    payload = marshal(ir.body);
+  } catch (err) {
+    const requestErr = err instanceof Error ? err : new Error(String(err));
+    return { ir, action, requestErr, request: null, requestInfo: noRequest };
+  }
 
   const request = new HttpRequest({
     method: ir.method.toUpperCase(),
@@ -416,7 +423,7 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
     }
   }
 
-  return { ir, action, urlErr: null, request, requestInfo };
+  return { ir, action, requestErr: null, request, requestInfo };
 }
 
 function appendFormValue(form: Values, key: string, value: string): void {
@@ -530,12 +537,12 @@ function processInternalRequest(
   base: RequestEvent,
   item: PreparedItem,
 ): BatchRequestResult | Error {
-  const { action, ir, request, requestInfo, urlErr } = item;
+  const { action, ir, request, requestInfo, requestErr } = item;
   if (action === null) {
     return new Error("unknown batch request action");
   }
-  if (urlErr !== null || request === null) {
-    return urlErr ?? new Error("the batch item has no request");
+  if (requestErr !== null || request === null) {
+    return requestErr ?? new Error("the batch item has no request");
   }
 
   const handler = resolveHandler(txApp, action, ir, request, requestInfo);

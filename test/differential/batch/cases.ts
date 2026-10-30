@@ -544,6 +544,19 @@ export const batchCases: BatchCase[] = [
     ],
   },
 
+  {
+    name: "auth manage rule: another record's verified and email",
+    token: usersToken,
+    items: [
+      update("b_auth", id("u2"), { verified: true, email: "u2new@example.com" }, authFields),
+      update("b_auth", id("u3"), { secret: "dropped" }, authFields),
+    ],
+  },
+  {
+    name: "auth without manage access: verified refused",
+    items: [update("b_auth", id("u2"), { verified: false }, authFields)],
+  },
+
   // cascade delete
   {
     name: "cascade delete inside a batch",

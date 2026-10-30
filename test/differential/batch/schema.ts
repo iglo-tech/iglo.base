@@ -91,6 +91,7 @@ function collections(parentsId: string, parentsListView: string): CollectionData
       name: "b_auth",
       type: "auth",
       ...publicRules,
+      manageRule: `@request.auth.id != ""`,
       fields: [
         { name: "name", type: "text" },
         { name: "secret", type: "text", hidden: true },

@@ -4,9 +4,10 @@
 //
 // The OnRecordsListRequest, OnRecordViewRequest, OnRecordCreateRequest,
 // OnRecordUpdateRequest and OnRecordDeleteRequest hooks are not ported (no
-// extension surface): their default actions run directly. The records and
-// the rule checks are read through the async resolvers, on the read worker
-// pool; the saves and deletes go through src/records/record-save.ts. Not
+// extension surface): their default actions run directly. On the routes the
+// records and the rule checks are read through the async resolvers, on the
+// read worker pool; the saves and deletes go through
+// src/records/record-save.ts. Not
 // here yet: checkCollectionRateLimit (the settings rate limit rules,
 // M4.8), so the `<collection>:<action>` rules are not applied.
 //
