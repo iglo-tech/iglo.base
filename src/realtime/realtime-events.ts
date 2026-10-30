@@ -31,9 +31,13 @@
 // checks read through the async resolvers (the read worker pool), the
 // chunks run concurrently, and the broadcasts of an app are delivered one
 // after the other, so a client gets a record's messages in the order of
-// its changes. The JSON data of a message is encoded once per broadcast
-// for the subscribers that get the same bytes (no expand, the same
-// superuser and email visibility state and `fields`).
+// its changes. Within one broadcast, subscribers whose rule check reads
+// the same values (rule, query, headers, auth record) share one check, and
+// the JSON data of a message is encoded once for the subscribers that get
+// the same bytes (no expand, the same superuser and email visibility state
+// and `fields`); upstream checks and encodes for each
+// (docs/perf/M5.1-realtime.md). Upstream answers the API request after
+// the rule checks; here the broadcast runs after the response.
 //
 // The delete dry cache runs inside the delete chain, before the row is
 // deleted, so the rules still see the record. Outside a transaction it
@@ -51,15 +55,15 @@ import {
   expandFetch,
   expandQueryParam,
   fieldsQueryParam,
+  newRequestFieldResolver,
 } from "@/apis/record-helpers";
 import type { Collection } from "@/collections/collection-model";
 import type { CollectionsApp } from "@/collections/collection-query";
 import { HashExp } from "@/db/dbx/expression";
+import type { SelectQuery } from "@/db/dbx/select";
 import type { Record } from "@/records/record-model";
-import type { RecordsApp } from "@/records/record-query";
+import { type RecordsApp, recordQuery } from "@/records/record-query";
 import { expandRecord } from "@/records/record-query-expand";
-import { canAccessRecord, canAccessRecordAsync } from "@/records/record-query-filter";
-import { newRecordFieldResolver } from "@/resolver/record-field-resolver";
 import { filterBuildExpr } from "@/search/filter";
 import { FilterQueryParam } from "@/search/provider";
 import { pick } from "@/tools/picker/pick";
@@ -77,8 +81,9 @@ export const RealtimeClientAuthKey = "auth";
 // RealtimeClientIPKey is the name of the realtime client store key that holds the IP of the connected client.
 export const RealtimeClientIPKey = "pbRealtimeClientIP";
 
-// the app store key of the broadcast queue
+// the app store keys of the broadcast queue and the auth record keys
 const broadcastQueueStoreKey = "@realtimeBroadcastQueue";
+const authKeysStoreKey = "@realtimeAuthKeys";
 
 const encoder = new TextEncoder();
 
@@ -379,6 +384,10 @@ class RecordBroadcast {
   readonly #subscriptionRules: [string, string | null][];
   // the encoded data shared by the subscribers that get the same bytes
   readonly #encoded = new Map<string, Uint8Array>();
+  // the access checks made so far, by everything their result depends on
+  readonly #access = new Map<string, boolean>();
+  // the auth records' part of those keys
+  readonly #authKeys: WeakMap<Record, string>;
 
   // app runs the expand; accessCheckApp the rule checks. sync: inside a
   // transaction, nothing may wait (the expand is deferred).
@@ -391,6 +400,7 @@ class RecordBroadcast {
   ) {
     const collection = record.collection();
     this.#collection = collection;
+    this.#authKeys = authKeys(app);
     this.#subscriptionRules = [
       [collection.name + "/" + record.id + "?", collection.viewRule],
       [collection.id + "/" + record.id + "?", collection.viewRule],
@@ -427,113 +437,158 @@ class RecordBroadcast {
           continue;
         }
 
+        const superuser = requestInfo.hasSuperuserAuth();
+        const rawExpand = queryValue(options, expandQueryParam);
+        const rawFields = queryValue(options, fieldsQueryParam);
+
+        // ignore the auth record email visibility checks
+        // for auth owner, superuser or manager
+        // (upstream checks the clean record after its expand: the same
+        // id, collection and database state)
+        let ignoreEmailVisibility = false;
+        if (collection.isAuth()) {
+          ignoreEmailVisibility =
+            isSameAuth(clientAuth, this.record) ||
+            (yield* this.#canAccessRecord(this.record, requestInfo, collection.manageRule));
+        }
+
+        // the same bytes as an earlier subscriber's
+        const sharedKey =
+          rawExpand === ""
+            ? (superuser ? "s" : "-") + (ignoreEmailVisibility ? "e" : "-") + rawFields
+            : "";
+        const shared = sharedKey === "" ? undefined : this.#encoded.get(sharedKey);
+        if (shared !== undefined) {
+          messages.push(new Message(sub, shared));
+          continue;
+        }
+
         // create a clean record copy without expand and unknown fields because we don't know yet
         // which exact fields the client subscription requested or has permissions to access
         const cleanRecord = this.record.fresh();
 
         // enable hidden fields for superuser subscribers
-        if (requestInfo.hasSuperuserAuth()) {
+        if (superuser) {
           cleanRecord.unhide(...collection.fields.fieldNames());
         }
 
-        // apply expand
-        const rawExpand = queryValue(options, expandQueryParam);
-        let deferExpand = false;
-        if (rawExpand !== "") {
-          if (this.sync) {
-            deferExpand = true;
-          } else {
-            try {
-              yield expandRecord(
-                this.app,
-                cleanRecord,
-                rawExpand.split(","),
-                expandFetch(this.app as App, requestInfo),
-              );
-            } catch {
-              // expand errors are only logged upstream
-            }
-          }
+        if (ignoreEmailVisibility) {
+          cleanRecord.ignoreEmailVisibility(true);
         }
 
-        // ignore the auth record email visibility checks
-        // for auth owner, superuser or manager
-        let ignoreEmailVisibility = false;
-        if (collection.isAuth()) {
-          if (
-            isSameAuth(clientAuth, cleanRecord) ||
-            (yield* this.#canAccessRecord(cleanRecord, requestInfo, collection.manageRule))
-          ) {
-            cleanRecord.ignoreEmailVisibility(true);
-            ignoreEmailVisibility = true;
+        // apply expand
+        if (rawExpand !== "") {
+          if (this.sync) {
+            // read once the transaction committed
+            messages.push({
+              sub,
+              record: cleanRecord,
+              requestInfo,
+              rawExpand,
+              rawFields,
+              action: this.action,
+            });
+            continue;
+          }
+          try {
+            yield expandRecord(
+              this.app,
+              cleanRecord,
+              rawExpand.split(","),
+              expandFetch(this.app as App, requestInfo),
+            );
+          } catch {
+            // expand errors are only logged upstream
           }
         }
 
         // check fields
-        const rawFields = queryValue(options, fieldsQueryParam);
-
-        if (deferExpand) {
-          messages.push({
-            sub,
-            record: cleanRecord,
-            requestInfo,
-            rawExpand,
-            rawFields,
-            action: this.action,
-          });
-          continue;
+        const data = encoder.encode(recordData(this.action, cleanRecord, rawFields));
+        if (sharedKey !== "") {
+          this.#encoded.set(sharedKey, data);
         }
-
-        messages.push(
-          new Message(
-            sub,
-            this.#data(cleanRecord, rawExpand, rawFields, requestInfo, ignoreEmailVisibility),
-          ),
-        );
+        messages.push(new Message(sub, data));
       }
     }
 
     return messages;
   }
 
-  // the message data; the same bytes for the subscribers without expand
-  // and with the same visibility and fields
-  #data(
-    cleanRecord: Record,
-    rawExpand: string,
-    rawFields: string,
-    info: RequestInfo,
-    ignoreEmailVisibility: boolean,
-  ): Uint8Array {
-    if (rawExpand !== "") {
-      return encoder.encode(recordData(this.action, cleanRecord, rawFields));
+  // realtimeCanAccessRecord checks if the subscription client has access to the specified record model.
+  //
+  // The result depends only on the record, the rule, the subscription's
+  // query and headers and the client's auth record (what the field
+  // resolver reads of it), so the subscribers with the same of these share
+  // one check per broadcast (upstream checks each).
+  *#canAccessRecord(
+    record: Record,
+    requestInfo: RequestInfo,
+    accessRule: string | null,
+  ): Generator<unknown, boolean, unknown> {
+    let key: string;
+    try {
+      key =
+        record.id +
+        "\0" +
+        (accessRule === null ? "\u0001" : accessRule) +
+        "\0" +
+        (requestInfo.auth === undefined ? "" : this.#authKey(requestInfo.auth)) +
+        "\0" +
+        JSON.stringify(requestInfo.query) +
+        "\0" +
+        JSON.stringify(requestInfo.headers);
+    } catch {
+      // an auth record that cannot be encoded: checked on its own
+      return yield* this.#checkAccess(record, requestInfo, accessRule);
     }
-    const key =
-      (info.hasSuperuserAuth() ? "s" : "-") + (ignoreEmailVisibility ? "e" : "-") + rawFields;
-    let data = this.#encoded.get(key);
-    if (data === undefined) {
-      data = encoder.encode(recordData(this.action, cleanRecord, rawFields));
-      this.#encoded.set(key, data);
+    let ok = this.#access.get(key);
+    if (ok === undefined) {
+      ok = yield* this.#checkAccess(record, requestInfo, accessRule);
+      this.#access.set(key, ok);
     }
-    return data;
+    return ok;
   }
 
-  // realtimeCanAccessRecord checks if the subscription client has access to the specified record model.
-  *#canAccessRecord(
+  // the auth record as the field resolver sees it (@request.auth.*); a
+  // client's auth record is never changed once set (an update sets a copy)
+  #authKey(auth: Record): string {
+    let key = this.#authKeys.get(auth);
+    if (key === undefined) {
+      const clone = auth.clone();
+      key =
+        clone.collection().id +
+        "\0" +
+        marshal(
+          clone
+            .unhide(...clone.collection().fields.fieldNames())
+            .ignoreEmailVisibility(true)
+            .publicExport(),
+        );
+      this.#authKeys.set(auth, key);
+    }
+    return key;
+  }
+
+  *#checkAccess(
     record: Record,
     requestInfo: RequestInfo,
     accessRule: string | null,
   ): Generator<unknown, boolean, unknown> {
     const app = this.accessCheckApp;
 
-    // check the access rule
+    // check the access rule (app.CanAccessRecord; false on error)
     // ---
     try {
-      const ok = yield this.sync
-        ? canAccessRecord(app, record, requestInfo, accessRule)
-        : canAccessRecordAsync(app, record, requestInfo, accessRule);
-      if (ok !== true) {
-        return false;
+      const query = accessQuery(app, record, requestInfo, accessRule);
+      if (typeof query === "boolean") {
+        if (!query) {
+          return false;
+        }
+      } else {
+        const row = (yield this.sync ? query.row() : query.rowAsync()) as unknown[];
+        if (!(Number(row[0]) > 0)) {
+          return false;
+        }
       }
     } catch {
       return false;
@@ -560,7 +615,7 @@ class RecordBroadcast {
         .from(collection.name)
         .andWhere(new HashExp({ [collection.name + ".id"]: record.id }));
 
-      const resolver = newRecordFieldResolver(app, collection, requestInfo, false);
+      const resolver = newRequestFieldResolver(app as App, collection, requestInfo, false);
       const expr = filterBuildExpr(filter, resolver, resolver.filterOptions());
 
       q.andWhere(expr);
@@ -575,6 +630,43 @@ class RecordBroadcast {
       return false;
     }
   }
+}
+
+// CanAccessRecord's query (src/records/record-query-filter.ts), or its
+// result when no query is needed, with the app's parsed filters cache: one
+// broadcast checks the same rule for every subscriber
+function accessQuery(
+  app: RecordsApp,
+  record: Record,
+  requestInfo: RequestInfo,
+  accessRule: string | null,
+): SelectQuery | boolean {
+  // superusers can access everything
+  if (requestInfo.hasSuperuserAuth()) {
+    return true;
+  }
+
+  // only superusers can access this record
+  if (accessRule === null) {
+    return false;
+  }
+
+  // empty public rule, aka. everyone can access
+  if (accessRule === "") {
+    return true;
+  }
+
+  const query = recordQuery(app, record.collection())
+    .select("(1)")
+    .andWhere(new HashExp({ [record.collection().name + ".id"]: record.id }));
+
+  // parse and apply the access rule filter
+  const resolver = newRequestFieldResolver(app as App, record.collection(), requestInfo, true);
+  const expr = filterBuildExpr(accessRule, resolver, resolver.filterOptions());
+
+  resolver.updateQuery(query);
+
+  return query.andWhere(expr).limit(1);
 }
 
 // the RequestInfo a subscription's rules are checked with
@@ -661,6 +753,12 @@ class BroadcastQueue {
       // a failed broadcast is only logged upstream
     });
   }
+}
+
+// the access check keys of the clients' auth records, kept while a client
+// holds the record
+function authKeys(app: CollectionsApp): WeakMap<Record, string> {
+  return app.store.getOrSet(authKeysStoreKey, () => new WeakMap()) as WeakMap<Record, string>;
 }
 
 function broadcastQueue(app: CollectionsApp): BroadcastQueue {

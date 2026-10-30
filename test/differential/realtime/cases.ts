@@ -232,6 +232,33 @@ export const realtimeCases: RealtimeScenario[] = [
   },
   {
     func: "differential",
+    name: "subscribers with the same auth and different query values",
+    run: async (ctx) => {
+      await createPosts(ctx, { listRule: "@request.query.k = 'yes' && @request.auth.id != ''" });
+      const yes1 = await subscribed(
+        ctx,
+        [topic("rt_posts/*", { query: { k: "yes" } })],
+        usersToken,
+      );
+      const no = await subscribed(ctx, [topic("rt_posts/*", { query: { k: "no" } })], usersToken);
+      const yes2 = await subscribed(
+        ctx,
+        [topic("rt_posts/*", { query: { k: "yes" } })],
+        usersToken,
+      );
+      const guest = await subscribed(ctx, [topic("rt_posts/*", { query: { k: "yes" } })]);
+      await post(ctx, "rtsameauth00001");
+      return all({ yes1, no, yes2, guest });
+    },
+    check: (o) => {
+      expect(count(o, "yes1")).toBe(1);
+      expect(count(o, "no")).toBe(0);
+      expect(count(o, "yes2")).toBe(1);
+      expect(count(o, "guest")).toBe(0);
+    },
+  },
+  {
+    func: "differential",
     name: "list rule null: superusers only",
     run: async (ctx) => {
       await createPosts(ctx, { listRule: null, viewRule: null });
