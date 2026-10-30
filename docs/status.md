@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-30
 
-M5.2 (file serving) merged; next: M5.1 (realtime).
+M5.1 (realtime) in progress.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M5.1 | worker | `task/M5.1-realtime` | 0 | [Brief](briefs/M5.1.md); Opus worker |
 
 ## Done
 
