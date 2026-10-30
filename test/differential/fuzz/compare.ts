@@ -15,8 +15,8 @@
 //     sort fetches the full result: the two sets are compared, and each page
 //     must be a subset of its own server's set.
 // A list that already holds every match needs a companion only for its order.
-// Where a companion cannot answer the question the case counts as capped, by
-// name, and keeps the checks that still hold.
+// A filter that reads the page size keeps it: its companions walk the pages.
+// A case no companion can check is a difference of its own kind, never a pass.
 
 import type { FuzzCase, Who } from "@test/differential/fuzz/generate";
 import { printFilter } from "@test/differential/fuzz/filter-ast";
@@ -27,8 +27,10 @@ const requestTimeoutMs = 60_000;
 // upstream's search.MaxPerPage and search.DefaultSortExprLimit
 const maxPerPage = 1000;
 const maxSortKeys = 8;
-// a filter that reads these would mean something else in a companion request
-const pageParamInFilter = /@request\.query\.(page|perPage|skipTotal|sort)\b/;
+// a filter that reads the page size means something else on a full page
+const pageSizeInFilter = /@request\.query\.perPage\b/;
+// a filter that reads these means something else in any companion
+const queryInFilter = /@request\.query\.(page|skipTotal|sort)\b/;
 
 export interface Outcome {
   status: number;
@@ -44,7 +46,15 @@ export interface ListBody {
 }
 
 export interface Difference {
-  kind: "transport" | "status" | "error-body" | "page-fields" | "ids" | "id-set" | "page-size";
+  kind:
+    | "transport"
+    | "status"
+    | "error-body"
+    | "page-fields"
+    | "ids"
+    | "id-set"
+    | "page-size"
+    | "uncompared";
   detail: string;
 }
 
@@ -220,29 +230,66 @@ interface FullLists {
   ig: ListBody;
 }
 
-// the full result of the case's filter and token under `sort`, from both servers
-async function fetchFull(
-  c: FuzzCase,
-  sort: string,
-  send: Send,
-): Promise<FullLists | Difference | { capped: string }> {
-  const [up, ig] = await send(requestPath(withFullPage(c, sort)));
+function filterText(c: FuzzCase): string {
+  return c.filter === null ? "" : printFilter(c.filter);
+}
+
+function uncompared(detail: string): Difference {
+  return { kind: "uncompared", detail };
+}
+
+// one page of a companion from both servers
+async function fetchPage(path: string, send: Send): Promise<FullLists | Difference> {
+  const [up, ig] = await send(path);
   const difference = compareStatus(up, ig);
   if (difference !== null) {
     return difference;
   }
   if (up.status !== 200) {
-    return { capped: `companion refused (${up.status})` };
+    return uncompared(`companion refused (${up.status}): ${path}`);
   }
   const lists = { up: page(up.body), ig: page(ig.body) };
   if (lists.up.totalItems > maxPerPage || lists.ig.totalItems > maxPerPage) {
-    return { capped: `over ${maxPerPage} matches` };
+    return uncompared(`over ${maxPerPage} matches: ${path}`);
   }
   return compareFields(lists.up, lists.ig) ?? lists;
 }
 
-function isFull(full: FullLists | Difference | { capped: string }): full is FullLists {
+function isFull(full: FullLists | Difference): full is FullLists {
   return "up" in full;
+}
+
+// the case's own page size, page by page, as one list
+async function walkPages(c: FuzzCase, sort: string, send: Send): Promise<FullLists | Difference> {
+  const { page: _page, skipTotal: _skipTotal, ...params } = c.params;
+  const up: ListBody["items"] = [];
+  const ig: ListBody["items"] = [];
+  for (let n = 1; ; n++) {
+    const walk = { ...c, sort: null, rawSort: sort, params: { ...params, page: String(n) } };
+    const lists = await fetchPage(requestPath(walk), send);
+    if (!isFull(lists)) {
+      return lists;
+    }
+    up.push(...lists.up.items);
+    ig.push(...lists.ig.items);
+    if (n >= lists.up.totalPages) {
+      const whole = (items: ListBody["items"]): ListBody => ({
+        ...lists.up,
+        page: 1,
+        perPage: maxPerPage,
+        totalPages: 1,
+        items,
+      });
+      return { up: whole(up), ig: whole(ig) };
+    }
+  }
+}
+
+// the full result of the case's filter and token under `sort`, from both servers
+function fetchFull(c: FuzzCase, sort: string, send: Send): Promise<FullLists | Difference> {
+  return pageSizeInFilter.test(filterText(c))
+    ? walkPages(c, sort, send)
+    : fetchPage(requestPath(withFullPage(c, sort)), send);
 }
 
 // a page against the full result of the server that sent it
@@ -331,15 +378,11 @@ async function compareOwnRow(
   const prefix = sort === null || sort === "" ? "" : `${sort},`;
   const asc = await fetchFull(c, `${prefix}id`, send);
   if (!isFull(asc)) {
-    return "capped" in asc
-      ? { comparedAs: `capped: ${asc.capped}`, difference: comparePageSizes(a, b) }
-      : { comparedAs: "set and id order", difference: asc };
+    return { comparedAs: "set and id order", difference: asc };
   }
   const desc = await fetchFull(c, `${prefix}-id`, send);
   if (!isFull(desc)) {
-    return "capped" in desc
-      ? { comparedAs: `capped: ${desc.capped}`, difference: comparePageSizes(a, b) }
-      : { comparedAs: "set and id order", difference: desc };
+    return { comparedAs: "set and id order", difference: desc };
   }
   const [upAsc, igAsc, upDesc, igDesc] = [ids(asc.up), ids(asc.ig), ids(desc.up), ids(desc.ig)];
   const difference = !sameIds(upAsc, igAsc)
@@ -359,23 +402,16 @@ async function compareFullSets(
   send: Send,
   as: string,
 ): Promise<Comparison> {
-  const full = await fetchFull(c, sortText(c) ?? "", send);
+  // pages of an ambiguous sort can overlap, so a walk needs a total one
+  const sort = pageSizeInFilter.test(filterText(c)) ? "id" : (sortText(c) ?? "");
+  const full = await fetchFull(c, sort, send);
   if (!isFull(full)) {
-    return "capped" in full
-      ? { comparedAs: `capped: ${full.capped}`, difference: comparePageSizes(a, b) }
-      : { comparedAs: as, difference: full };
+    return { comparedAs: as, difference: full };
   }
   const difference = sameSet(ids(full.up), ids(full.ig))
     ? checkPages(a, b, full)
     : bothLists("id-set", ids(full.up), ids(full.ig), "full result");
   return { comparedAs: as, difference };
-}
-
-// what is left of a partial page when no companion can answer
-function comparePageSizes(a: ListBody, b: ListBody): Difference | null {
-  return a.items.length === b.items.length
-    ? null
-    : { kind: "page-size", detail: `upstream ${ids(a).join(",")}; iglo.base ${ids(b).join(",")}` };
 }
 
 export async function compareOutcomes(
@@ -411,17 +447,17 @@ export async function compareOutcomes(
   if (everyMatch && (order === "multi-row" || upIds.length < 2)) {
     return { comparedAs: order === "multi-row" ? "set only" : "exact order", difference: null };
   }
-  if (pageParamInFilter.test(c.filter === null ? "" : printFilter(c.filter))) {
+  if (queryInFilter.test(filterText(c))) {
     return {
-      comparedAs: "capped: filter reads the page parameters",
-      difference: comparePageSizes(a, b),
+      comparedAs: "uncompared",
+      difference: uncompared(`the filter reads a parameter companions change: ${requestPath(c)}`),
     };
   }
   if (order === "multi-row") {
     return compareFullSets(c, a, b, send, "set only");
   }
   return sortKeys(sort).length >= maxSortKeys
-    ? compareFullSets(c, a, b, send, "capped: no room for an id sort key")
+    ? compareFullSets(c, a, b, send, "set only: no room for an id sort key")
     : compareOwnRow(c, a, b, send);
 }
 

@@ -277,8 +277,10 @@ describe("comparison", () => {
     });
   });
 
-  describe("capped cases are named", () => {
-    test("a filter that reads the page size", async () => {
+  describe("a filter that reads the page size", () => {
+    const nameIsHidden = `@request.query.perPage = "1" && name != "hidden"`;
+
+    test("a legitimate tie order passes", async () => {
       const c = toCase({
         name: "",
         collection: "fuzz_items",
@@ -289,12 +291,47 @@ describe("comparison", () => {
       const send = sender(servers, c);
       const [up, ig] = await send(requestPath(c));
       const result = await compare(c, up, ig, send);
-      expect(result).toEqual({
-        comparedAs: "capped: filter reads the page parameters",
-        difference: null,
-      });
+      expect(result).toEqual({ comparedAs: "set and id order", difference: null });
     });
 
+    test("a record outside the result is caught", async () => {
+      const fixedCase: FixedCase = {
+        name: "",
+        collection: "fuzz_tags",
+        who: "superuser",
+        sort: "name",
+        filter: nameIsHidden,
+        params: { perPage: "1", skipTotal: "1" },
+      };
+      const c = toCase(fixedCase);
+      const other = toCase({ ...fixedCase, filter: `name = "hidden"` });
+      const send = sender(servers, c);
+      const [up] = await send(requestPath(c));
+      const [wrong] = await send(requestPath(other));
+      const result = await compare(c, up, wrong, send);
+      expect(result.difference?.kind).toBe("id-set");
+    });
+
+    test("a page that holds every match in the wrong order is caught", async () => {
+      const fixedCase: FixedCase = {
+        name: "",
+        collection: "fuzz_tags",
+        who: "superuser",
+        sort: "weight",
+        filter: `@request.query.perPage = "30"`,
+        params: { perPage: "30" },
+      };
+      const c = toCase(fixedCase);
+      const other = toCase({ ...fixedCase, sort: "-weight" });
+      const send = sender(servers, c);
+      const [up] = await send(requestPath(c));
+      const [wrong] = await send(requestPath(other));
+      const result = await compare(c, up, wrong, send);
+      expect(result.difference?.kind).toBe("ids");
+    });
+  });
+
+  describe("a case no companion can check is not a pass", () => {
     test("a result over one page", async () => {
       const c = toCase({
         name: "",
@@ -304,8 +341,8 @@ describe("comparison", () => {
       });
       const items = Array.from({ length: 1000 }, (_, i) => `r${i}`);
       const send: Send = async () => [list(items, 1200), list(items, 1200)];
-      const result = await compare(c, list(["a"], 1200), list(["b"], 1200), send);
-      expect(result).toEqual({ comparedAs: "capped: over 1000 matches", difference: null });
+      const result = await compare(c, list(["a"], 1200), list(["a"], 1200), send);
+      expect(result.difference?.kind).toBe("uncompared");
     });
 
     test("eight sort terms leave no room for an id", async () => {
@@ -315,7 +352,7 @@ describe("comparison", () => {
       const [up, ig] = await send(requestPath(c));
       const result = await compare(c, up, ig, send);
       expect(result).toEqual({
-        comparedAs: "capped: no room for an id sort key",
+        comparedAs: "set only: no room for an id sort key",
         difference: null,
       });
     });
