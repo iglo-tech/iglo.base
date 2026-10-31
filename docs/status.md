@@ -10,7 +10,7 @@ M5.6 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.6 | worker | `task/M5.6-cron` | 0 | [Brief](briefs/M5.6.md). Opus worker |
+| M5.6 | review | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 1 | [Brief](briefs/M5.6.md). Opus worker; `check` and `test:reference` pass at `735b39d` |
 
 ## Done
 
