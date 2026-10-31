@@ -29,7 +29,8 @@ const defaultIdTokenLeewaySeconds = 300;
 
 const encoder = new TextEncoder();
 
-function idTokenLeewaySeconds(): number {
+// idTokenLeeway (oidc.go): the leeway of the id_token's timestamp claims, in seconds
+export function idTokenLeewaySeconds(): number {
   const leeway = process.env["PB_ID_TOKEN_LEEWAY"] ?? "";
   return /^[+-]?[0-9]+$/.test(leeway) ? Number(leeway) : defaultIdTokenLeewaySeconds;
 }

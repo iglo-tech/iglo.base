@@ -12,6 +12,7 @@
 // the same paths.
 
 import { afterAll, afterEach, beforeEach, expect, test } from "bun:test";
+import { generateKeyPairSync, sign } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -29,6 +30,7 @@ import { findAuthRecordByEmail } from "@/records/record-query";
 import { Client } from "@/tools/subscriptions/client";
 
 import { openFixtureApp, type TestApp } from "@test/app/app";
+import { json as jsonResponse, stubFetch } from "@test/support/fetch-stub";
 import { serveTest } from "@test/support/router";
 
 const pngPixel = Buffer.from(
@@ -253,22 +255,14 @@ test("a name from Apple itself leaves the stored one", async () => {
   expect(app.store.has("@redirect_name_test_code")).toBe(true);
 });
 
-test("a provider that is listed but not ported is a clear error before any network call", async () => {
-  useProvider("github");
+// M4.7 providers are configurable but not ported yet
+test("a provider that is not ported yet is a clear error before any network call", async () => {
+  useProvider("microsoft");
 
-  const { status, json } = await signIn({}, { provider: "github" });
-
-  expect(status).toBe(500);
-  expect(json["message"]).toBe("Failed to init provider github.");
-});
-
-test("google is in the auth methods list but cannot sign in yet", async () => {
-  useProvider("google");
-
-  const { status, json } = await signIn({}, { provider: "google" });
+  const { status, json } = await signIn({}, { provider: "microsoft" });
 
   expect(status).toBe(500);
-  expect(json["message"]).toBe("Failed to init provider google.");
+  expect(json["message"]).toBe("Failed to init provider microsoft.");
 });
 
 // the Apple name of (POST) "Apple user's name json" and its nameKey error,
@@ -302,4 +296,83 @@ test("(POST) Apple user's name json", async () => {
 test("(POST) Apple user's name json (nameKey error)", async () => {
   await redirectWithName("a".repeat(986));
   expect(app.store.get("@redirect_name_" + "a".repeat(986))).toBeUndefined();
+});
+
+const b64url = (value: string | Uint8Array): string => Buffer.from(value).toString("base64url");
+
+// Apple's first-login name, end to end with the real Apple provider: the
+// redirect stores it under the code, and the sign-in with that code adds it
+// to the auth response. The token and JWKS endpoints are answered by a
+// test-only fetch (test/support/fetch-stub.ts).
+test("the Apple name from the redirect reaches the auth response", async () => {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const jwk = {
+    ...publicKey.export({ format: "jwk" }),
+    kid: "apple-key",
+    alg: "RS256",
+    use: "sig",
+  };
+  const head = `${b64url(JSON.stringify({ alg: "RS256", kid: "apple-key" }))}.${b64url(
+    JSON.stringify({
+      iss: "https://appleid.apple.com",
+      aud: "123",
+      sub: "apple_user",
+      iat: Math.floor(Date.now() / 1000) - 10,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      email: "apple@example.com",
+      email_verified: "true",
+    }),
+  )}`;
+  const idToken = `${head}.${b64url(sign("sha256", Buffer.from(head), privateKey))}`;
+
+  const stub = stubFetch({
+    "https://appleid.apple.com/auth/token": () =>
+      jsonResponse({ access_token: "abc", token_type: "bearer", id_token: idToken }),
+    "https://appleid.apple.com/auth/keys": () => jsonResponse({ keys: [jwk] }),
+  });
+  try {
+    useProvider("apple");
+
+    const client = new Client();
+    client.subscribe("@oauth2");
+    app.subscriptionsBroker.register(client);
+    const redirect = await serveTest(newRouter(app).buildMux(), {
+      method: "POST",
+      target: "/api/oauth2-redirect",
+      body: new URLSearchParams({
+        code: "apple_code",
+        state: client.id(),
+        user: `{"name":{"firstName":"Ada","lastName":"Lovelace"}}`,
+      }).toString(),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+    expect(redirect.status).toBe(303);
+
+    const res = await serveTest(newRouter(app).buildMux(), {
+      method: "POST",
+      target: "/api/collections/users/auth-with-oauth2",
+      body: JSON.stringify({
+        provider: "apple",
+        code: "apple_code",
+        redirectURL: "https://example.com",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const body = (await res.json()) as { meta: { [key: string]: unknown }; record: unknown };
+
+    expect(res.status).toBe(200);
+    expect(body.meta).toMatchObject({
+      id: "apple_user",
+      name: "Ada Lovelace",
+      email: "apple@example.com",
+      isNew: true,
+    });
+    expect(app.store.has("@redirect_name_apple_code")).toBe(false);
+    expect(stub.calls).toEqual([
+      "https://appleid.apple.com/auth/token",
+      "https://appleid.apple.com/auth/keys",
+    ]);
+  } finally {
+    stub.restore();
+  }
 });

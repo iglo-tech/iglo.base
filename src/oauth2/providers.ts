@@ -1,67 +1,62 @@
 // Upstream: tools/auth/auth.go (NewProviderByName),
 // core/collection_model_auth_options.go (OAuth2ProviderConfig.InitProvider),
 // tools/auth/base_provider.go (BuildAuthURL with golang.org/x/oauth2's
-// Config.AuthCodeURL) and the defaults of tools/auth/gitlab.go and google.go
+// Config.AuthCodeURL) and the constructors of tools/auth/*.go
 //
 // The fixed table of ported providers. A new provider is one file with a
 // class that extends BaseProvider, and one line in portedProviders here; the
-// display name, logo and order come from provider-list.ts. M4.6 and M4.7
-// add the rest. Until then:
-//   - a configured provider that is neither ported nor in listedProviders
-//     fails to initialize, so the auth methods list skips it;
-//   - listedProviders only have what the auth methods list needs; signing
-//     in with them, or with any other unported provider, fails in
-//     initSignInProvider before any network call.
+// display name, logo and order come from provider-list.ts. M4.7 adds the
+// rest. Until then a configured provider that is not ported fails to
+// initialize, so the auth methods list skips it, and signing in with it
+// fails in initSignInProvider before any network call.
 
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
-import { type AuthUser, BaseProvider } from "@/oauth2/base-provider";
+import { Apple } from "@/oauth2/apple";
+import { Bitbucket } from "@/oauth2/bitbucket";
+import { BaseProvider } from "@/oauth2/base-provider";
+import { Box } from "@/oauth2/box";
+import { Discord } from "@/oauth2/discord";
+import { Facebook } from "@/oauth2/facebook";
+import { Gitea } from "@/oauth2/gitea";
+import { Gitee } from "@/oauth2/gitee";
+import { Github } from "@/oauth2/github";
+import { Gitlab } from "@/oauth2/gitlab";
+import { Google } from "@/oauth2/google";
+import { Instagram } from "@/oauth2/instagram";
+import { Kakao } from "@/oauth2/kakao";
+import { Lark } from "@/oauth2/lark";
+import { Linear } from "@/oauth2/linear";
+import { Livechat } from "@/oauth2/livechat";
 import { OIDC } from "@/oauth2/oidc";
 import { providerMetadata } from "@/oauth2/provider-list";
 import { encodeValues } from "@/server/request";
 
 // the constructors of the ported providers, by name (auth.Providers)
 const portedProviders = new Map<string, () => BaseProvider>([
+  ["apple", () => new Apple()], // apple.go
+  ["bitbucket", () => new Bitbucket()], // bitbucket.go
+  ["box", () => new Box()], // box.go
+  ["discord", () => new Discord()], // discord.go
+  ["facebook", () => new Facebook()], // facebook.go
+  ["gitea", () => new Gitea()], // gitea.go
+  ["gitee", () => new Gitee()], // gitee.go
+  ["github", () => new Github()], // github.go
+  ["gitlab", () => new Gitlab()], // gitlab.go
+  ["google", () => new Google()], // google.go
+  ["instagram2", () => new Instagram()], // instagram.go
+  ["kakao", () => new Kakao()], // kakao.go
+  ["lark", () => new Lark()], // lark.go
+  ["linear", () => new Linear()], // linear.go
+  ["livechat", () => new Livechat()], // livechat.go
   ["oidc", () => new OIDC()], // oidc.go
   ["oidc2", () => new OIDC()], // oidc.go
   ["oidc3", () => new OIDC()], // oidc.go
 ]);
 
-// A provider with only the defaults the auth methods list reads.
-class ListedProvider extends BaseProvider {
-  constructor(pkce: boolean, scopes: string[], authURL: string) {
-    super();
-    this.pkce = pkce;
-    this.scopes = scopes;
-    this.authURL = authURL;
-  }
-
-  fetchAuthUser(): Promise<AuthUser> {
-    return Promise.reject(new Error("the provider is not ported yet"));
-  }
-}
-
-const listedProviders = new Map<string, () => BaseProvider>([
-  // gitlab.go NewGitlabProvider
-  ["gitlab", () => new ListedProvider(true, ["read_user"], "https://gitlab.com/oauth/authorize")],
-  // google.go NewGoogleProvider
-  [
-    "google",
-    () =>
-      new ListedProvider(
-        true,
-        [
-          "https://www.googleapis.com/auth/userinfo.profile",
-          "https://www.googleapis.com/auth/userinfo.email",
-        ],
-        "https://accounts.google.com/o/oauth2/v2/auth",
-      ),
-  ],
-]);
-
 // NewProviderByName returns a new preconfigured provider instance by its
 // name identifier.
 function newProviderByName(name: string): BaseProvider {
-  const factory = portedProviders.get(name) ?? listedProviders.get(name);
+  const factory = portedProviders.get(name);
   const metadata = providerMetadata.get(name);
   if (factory === undefined || metadata === undefined) {
     throw new Error("missing provider " + name);

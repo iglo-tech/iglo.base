@@ -1,7 +1,7 @@
 // Upstream: apis/record_auth_methods.go
 //
 // The OAuth2 providers come from src/oauth2/providers.ts, which knows the
-// defaults of the providers ported so far (M4.6 and M4.7 add the rest). A
+// defaults of the providers ported so far (M4.7 adds the rest). A
 // provider that fails to initialize is skipped, as upstream skips it
 // (upstream also writes a debug log line; application code here logs only
 // errors).

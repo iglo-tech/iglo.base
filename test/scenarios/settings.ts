@@ -9,8 +9,7 @@
 // TestMailer of upstream's test app is an in-process SMTP sink here
 // (test/scenarios/settings-prepare.ts), so that upstream meets the
 // scenarios in differential mode. The
-// Apple client secret is signed with an ES256 key generated in the test;
-// the signing is M4.6.
+// Apple client secret is signed with an ES256 key generated in the test.
 
 import { generateKeyPairSync } from "node:crypto";
 
@@ -24,11 +23,6 @@ const validData = `{
 		"s3":{"secret": "new_s3_secret"},
 		"backups":{"s3":{"secret":"new_backups_s3_secret"}}
 	}`;
-
-const pendingApple = {
-  task: "M4.6",
-  reason: "signing the Apple client secret (ES256) comes with the Apple OAuth2 provider",
-};
 
 // a P-256 private key in PKCS #8 PEM (x509.MarshalPKCS8PrivateKey + pem.EncodeToMemory)
 const privatePem = generateKeyPairSync("ec", { namedCurve: "P-256" })
@@ -403,7 +397,6 @@ export const generateAppleClientSecret: Suite = {
 				"duration": 1
 			}`,
       headers: { Authorization: superuserToken },
-      pending: pendingApple,
       expectedStatus: 200,
       expectedContent: [`"secret":"`],
     },
