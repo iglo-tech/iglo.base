@@ -14,7 +14,7 @@ import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { deleteOldLogs } from "@/logs/log-query";
 
 import { openFixtureApp, type TestApp } from "@test/app/app";
-import { expiredRow, liveRow, superuserToken, writeMFAs, writeOTPs } from "@test/scenarios/cron";
+import { liveRow, superuserToken, writeMFAs, writeOTPs } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
