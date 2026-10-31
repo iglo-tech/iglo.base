@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M5.6 active.
+M5.6 merged; no active task.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.6 | review | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 2 | [Brief](briefs/M5.6.md). Opus worker; lead fixed round 1 at `23673b7` |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.6 | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 2026-10-31 (`3fc9c66`) | Two review rounds: Sol APPROVE at `23673b7` with `test:reference` at 0 failures (lead fixed round 1: `?fields=` on the list, log retention on Go's AddDate). Ticker under `serve` only; the four built-in jobs and the limiter job run; `AppLogger` gained `warn`. Carried: `__pbAutoBackup__` must be re-added on each settings reload, as its list position is API output (M5.3); job panic logs stay on stderr when the logger moves (M5.5); the crons screen footer still mentions registering jobs with Go or JavaScript (upstream `ui/` text) |
 | M4.8 | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 2026-10-31 (`3779902`) | Two review rounds: Sol APPROVE at `b344285` with `test:reference` at 0 failures (lead fixed round 1: limiters reset after commit). All M4.8 pending scenarios enabled. The key is the real IP, as upstream. Carried: the cleanup job waits for M5.6 to run it (a minimal `src/tools/cron/cron.ts` registers it), so limiter client maps grow until then; M5.7 must bind CORS ahead of the limiter |
 | M4.7 | [#48](https://github.com/iglo-tech/iglo.base/pull/48) | 2026-10-31 (`0649656`) | One review round: Sol APPROVE at `9a81e34`. Haiku worker. All 32 providers are ported; the "not ported yet" path is gone. Planning Center refuses every user, as upstream does (a differential case pins it). Merged without one all-green `test:reference` at the head: the worker's two failures and Sol's one were all hardening-backlog flakes that passed on rerun |
 | M4.6 | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 2026-10-31 (`afa7752`) | Two review rounds: Sol APPROVE at `f3ce3aa` (lead fixed round 1). Haiku worker. All 15 providers and the Apple client secret. Bun 1.4.4: a failed `crypto.subtle.importKey` (pkcs8, spki) makes the next `Bun.CryptoHasher` throw, so use `node:crypto` to parse untrusted keys. `secret` joined the harness's generated values. Gitee's fixed emails URL and Apple's JWKS are tested in-process only |
@@ -90,6 +90,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | OAuth2 tests (M4.5) | `test/differential/auth/oauth2-flows.test.ts:365`, realtime messages of a new user: `users/* create` and `users/* update` arrive in either order; seen once in M4.8's `test:reference`, 3 of 3 reruns pass |
 | 2026-10-31 | Rate-limit tests (M4.8) | The cleanup tests in `test/apis/rate-limit.test.ts:123–219` read the private limiter store. The job only frees memory, so no response shows it |
 | 2026-10-31 | Collections tests | "dry run reports query errors and timeouts": its 1 ms timeout can expire during fixture cache loading (Sol, M4.8 round 1); passes alone |
+| 2026-10-31 | Cron (M5.6) | The first tick after `start` uses its scheduled time; upstream uses the current time, so a first callback delayed past a minute runs that earlier minute's jobs instead |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -102,6 +103,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M5.6 merge): the run finished its one task, so the lock was released and the next run picks the next task (M5.3 is unblocked; M5.5 is next in milestone order among tasks with merged dependencies). `__pbDBOptimize__` runs on the main-thread connections, so a long-held reader can stall the server for up to the 10-second `busy_timeout`; it runs at midnight or on demand and fails nothing, accepted for the MVP.
 - 2026-10-31 (M5.6 brief): next because it unblocks M5.3 and runs the limiter cleanup. `DeleteOldLogs` comes forward from M5.5, as `__pbLogsCleanup__` is visible in `/api/crons` and must work. Opus worker: jobs delete data and write the databases.
 - 2026-10-31 (M4.8 merge): the run passed its 4-hour limit, so the lock was released and the next run picks the next task (M5.6 unblocks M5.3 and runs the limiter cleanup).
 - 2026-10-31 (M4.8 PR): the brief said the limiter key is the auth id or real IP; upstream v0.41.0 uses the real IP only, and the worker followed upstream. The cleanup job is registered on a minimal `src/tools/cron/cron.ts`, and nothing runs it until M5.6. M5.7 must put CORS ahead of the limiter, or a preflight under a matching rule gets 429 where upstream gets 204.
