@@ -130,6 +130,22 @@ async function resolve(host: string, opts: SafeFileOptions): Promise<string[]> {
   return (await lookup(host, { all: true })).map((a) => a.address);
 }
 
+// the name resolution ends at the download's deadline too: a lookup can't
+// be cancelled, so it is left behind
+async function resolveUntilDeadline(
+  host: string,
+  signal: AbortSignal,
+  opts: SafeFileOptions,
+): Promise<string[]> {
+  signal.throwIfAborted();
+  return Promise.race([
+    resolve(host, opts),
+    new Promise<never>((_, reject) => {
+      signal.addEventListener("abort", () => reject(signal.reason as Error), { once: true });
+    }),
+  ]);
+}
+
 // one request, as the dialer connects: to the first allowed address that
 // accepts the connection
 async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Promise<Response> {
@@ -142,7 +158,7 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
   const isAllowed = opts.isAllowedAddress ?? isAllowedAddress;
 
   let lastErr: unknown = new Error(`no addresses for ${host}`);
-  for (const address of await resolve(host, opts)) {
+  for (const address of await resolveUntilDeadline(host, signal, opts)) {
     if (!isAllowed(address)) {
       lastErr = new Error(`address ${address} is invalid or resolve to disallowed IP`);
       continue;

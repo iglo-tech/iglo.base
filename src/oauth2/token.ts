@@ -15,6 +15,7 @@
 // its text (3600.0) is accepted here and refused by json.Number.Int64.
 
 import type { Clock } from "@/app/clock";
+import { fetchFollowingRedirects } from "@/oauth2/http-client";
 import { parseQuery, encodeValues, queryEscape, type Values } from "@/server/request";
 import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { anyType, mapOf, stringType, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
@@ -194,7 +195,7 @@ function newTokenRequest(c: TokenConfig, v: Values, inParams: boolean): RequestI
 }
 
 async function doTokenRoundTrip(c: TokenConfig, init: RequestInit): Promise<Token> {
-  const res = await fetch(c.tokenURL, { ...init, signal: c.signal ?? null });
+  const res = await fetchFollowingRedirects(c.tokenURL, { ...init, signal: c.signal ?? null });
   const body = await readLimited(res, maxTokenResponseBytes);
 
   const failureStatus = res.status < 200 || res.status > 299;

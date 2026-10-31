@@ -8,6 +8,7 @@
 // fetchAuthUser; providers.ts lists it.
 
 import { type Clock, systemClock } from "@/app/clock";
+import { fetchFollowingRedirects } from "@/oauth2/http-client";
 import { exchangeToken, type Token, type TokenConfig, validToken } from "@/oauth2/token";
 import { DateTime } from "@/tools/types/datetime";
 import { anyType, mapOf, marshal, unmarshal } from "@/tools/types/go-json";
@@ -87,7 +88,7 @@ export abstract class BaseProvider implements TokenConfig {
     const current = await validToken(this, token);
     const headers = new Headers(init.headers);
     headers.set("Authorization", current.type() + " " + current.accessToken);
-    return fetch(url, { ...init, headers, signal: this.signal ?? null });
+    return fetchFollowingRedirects(url, { ...init, headers, signal: this.signal ?? null });
   }
 
   // FetchRawUserInfo requests the OAuth user api response.

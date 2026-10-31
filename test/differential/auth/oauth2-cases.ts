@@ -9,7 +9,11 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
 
-import { OAuth2KnownFields } from "@/collections/collection-model-auth-options";
+import type { Collection } from "@/collections/collection-model";
+import {
+  OAuth2KnownFields,
+  type OAuth2ProviderConfig,
+} from "@/collections/collection-model-auth-options";
 
 import { insertExternalAuth } from "@test/scenarios/record-auth-prepare";
 import {
@@ -153,6 +157,13 @@ function signingKeys() {
     return `${head}.${b64url(sign("sha256", Buffer.from(head), privateKey))}`;
   };
   return { jwks: { keys: [{ ...jwk, kid: "key1", alg: "RS256", use: "sig" }] }, signed };
+}
+
+function withConfig(collection: Collection, change: (config: OAuth2ProviderConfig) => void): void {
+  const config = collection.oauth2.providers?.[0];
+  if (config !== undefined) {
+    change(config);
+  }
 }
 
 export function oauth2Cases(): Scenario[] {
@@ -515,6 +526,71 @@ export function oauth2Cases(): Scenario[] {
       }),
       expectedStatus: 400,
       expectedContent: [`"data":{}`],
+    }),
+
+    // redirects of the provider's endpoints
+    // -----------------------------------------------------------
+    authScenario({
+      name: "a userinfo redirect to another port keeps Authorization",
+      prepare: useProvider(
+        { requireBearer: true, user: { sub: "moved_user" } },
+        (collection, p) => {
+          withConfig(collection, (config) => {
+            config.userInfoURL = p.moved(307, "userinfo");
+          });
+        },
+      ),
+      expectedStatus: 200,
+      expectedContent: newUserContent,
+    }),
+    authScenario({
+      name: "a userinfo redirect to another host drops Authorization",
+      prepare: useProvider(
+        { requireBearer: true, user: { sub: "moved_user" } },
+        (collection, p) => {
+          withConfig(collection, (config) => {
+            config.userInfoURL = p.moved(307, "userinfo", true);
+          });
+        },
+      ),
+      expectedStatus: 400,
+      expectedContent: [`"message":"Failed to fetch OAuth2 user."`],
+    }),
+    authScenario({
+      name: "a 307 token redirect to another port keeps the method, body and Basic credentials",
+      prepare: useProvider(
+        { requireBasicAuth: true, tokenMethod: "POST", user: { sub: "moved_token" } },
+        (collection, p) => {
+          withConfig(collection, (config) => {
+            config.tokenURL = p.moved(307, "token");
+          });
+        },
+      ),
+      expectedStatus: 200,
+      expectedContent: newUserContent,
+    }),
+    authScenario({
+      name: "a 302 token redirect turns the POST into a GET",
+      prepare: useProvider(
+        { requireBasicAuth: true, tokenMethod: "GET", user: { sub: "moved_token" } },
+        (collection, p) => {
+          withConfig(collection, (config) => {
+            config.tokenURL = p.moved(302, "token");
+          });
+        },
+      ),
+      expectedStatus: 200,
+      expectedContent: newUserContent,
+    }),
+    authScenario({
+      name: "a token redirect to another host drops the Basic credentials",
+      prepare: useProvider({ requireBasicAuth: true }, (collection, p) => {
+        withConfig(collection, (config) => {
+          config.tokenURL = p.moved(307, "token", true);
+        });
+      }),
+      expectedStatus: 400,
+      expectedContent: [`"message":"Failed to fetch OAuth2 token."`],
     }),
 
     // the token endpoint

@@ -334,6 +334,43 @@ describe("safeFileFromURL", () => {
     ).rejects.toThrow();
   });
 
+  test("the deadline covers a slow name resolution, and no request starts after it", async () => {
+    let requests = 0;
+    const counting = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: () => {
+        requests++;
+        return new Response("ok");
+      },
+    });
+    const started = performance.now();
+    await expect(
+      safeFileFromURL(`http://slow.test:${counting.port}/a.png`, {
+        ...anyAddress,
+        timeoutMs: 20,
+        lookupAddresses: async () => {
+          await Bun.sleep(150);
+          return ["127.0.0.1"];
+        },
+      }),
+    ).rejects.toThrow();
+    expect(performance.now() - started).toBeLessThan(120);
+    await Bun.sleep(170);
+    expect(requests).toBe(0);
+    await counting.stop(true);
+  });
+
+  test("the deadline covers a name resolution that never ends", async () => {
+    await expect(
+      safeFileFromURL("http://never.test/a.png", {
+        ...anyAddress,
+        timeoutMs: 20,
+        lookupAddresses: () => new Promise<string[]>(() => {}),
+      }),
+    ).rejects.toThrow();
+  });
+
   test("keeps only DefaultMaxBodySize of the body", async () => {
     const file = await safeFileFromURL(`${base}/large`, anyAddress);
     expect(file.size).toBe(DefaultMaxBodySize);

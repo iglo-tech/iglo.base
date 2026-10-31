@@ -17,6 +17,10 @@ export interface MockEndpoints {
   userInfoURL: string;
   jwksURL: string;
   avatarURL: string;
+  // a URL that answers with this redirect status to the provider's endpoint
+  // on the mock's second listener: same host name, another port. With
+  // `otherHost`, on localhost instead of 127.0.0.1.
+  moved(status: number, endpoint: "token" | "userinfo", otherHost?: boolean): string;
 }
 
 export interface MockProviderSpec {
@@ -30,11 +34,17 @@ export interface MockProviderSpec {
   // a token request with a Basic Authorization header gets a 401, so only
   // the credentials in the form body work
   rejectBasicAuth?: boolean;
+  // a token request without a Basic Authorization header gets a 401
+  requireBasicAuth?: boolean;
+  // a token request with another method gets a 405
+  tokenMethod?: string;
   // the answer to a grant_type=refresh_token request
   refreshedToken?: unknown;
   // the userinfo endpoint: a JSON body (or the body's text) and its status
   user?: unknown;
   userStatus?: number;
+  // a userinfo request without an Authorization header gets a 401
+  requireBearer?: boolean;
   // the JWKS endpoint's body
   jwks?: unknown;
 }
@@ -69,6 +79,7 @@ function json(value: unknown, status: number, contentType = "application/json"):
 export class OAuth2Mock {
   readonly #entries = new Map<string, Entry>();
   readonly #server: ReturnType<typeof Bun.serve>;
+  readonly #other: ReturnType<typeof Bun.serve>;
   #next = 0;
 
   constructor() {
@@ -78,6 +89,12 @@ export class OAuth2Mock {
       fetch: (req) => this.#handle(req),
     });
     this.#server.unref();
+    this.#other = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: (req) => this.#handle(req),
+    });
+    this.#other.unref();
   }
 
   get url(): string {
@@ -94,6 +111,8 @@ export class OAuth2Mock {
       userInfoURL: `${base}/userinfo`,
       jwksURL: `${base}/jwks`,
       avatarURL: `${base}/avatar.png`,
+      moved: (status, endpoint, otherHost = false) =>
+        `${base}/moved/${status}/${otherHost ? "localhost" : "127.0.0.1"}/${endpoint}`,
     };
     const requests: MockRequest[] = [];
     this.#entries.set(id, {
@@ -105,7 +124,7 @@ export class OAuth2Mock {
 
   async #handle(req: Request): Promise<Response> {
     const { pathname } = new URL(req.url);
-    const [, id = "", endpoint = ""] = pathname.split("/");
+    const [, id = "", endpoint = "", status = "", host = "", target = ""] = pathname.split("/");
     const entry = this.#entries.get(id);
     if (entry === undefined) {
       return new Response("unknown provider", { status: 404 });
@@ -122,8 +141,22 @@ export class OAuth2Mock {
 
     const { spec } = entry;
     switch (endpoint) {
+      case "moved":
+        return new Response(null, {
+          status: Number(status),
+          headers: { Location: `http://${host}:${this.#other.port}/${id}/${target}` },
+        });
       case "token": {
         const form = new URLSearchParams(body);
+        if (spec.tokenMethod !== undefined && req.method !== spec.tokenMethod) {
+          return json({ error: "invalid_request" }, 405);
+        }
+        if (
+          spec.requireBasicAuth === true &&
+          !req.headers.get("Authorization")?.startsWith("Basic ")
+        ) {
+          return json({ error: "invalid_client" }, 401);
+        }
         if (spec.rejectBasicAuth === true && req.headers.has("Authorization")) {
           return json({ error: "invalid_client" }, 401);
         }
@@ -140,6 +173,9 @@ export class OAuth2Mock {
         );
       }
       case "userinfo":
+        if (spec.requireBearer === true && !req.headers.has("Authorization")) {
+          return json({ error: "invalid_token" }, 401);
+        }
         return json(spec.user ?? { sub: "test_id" }, spec.userStatus ?? 200);
       case "jwks":
         return json(spec.jwks ?? { keys: [] }, 200);
