@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M5.3 active. Paused until 2026-10-31T20:22Z: the Sol reviewer is unavailable (see For owner review).
+M5.3 active. Paused until 2026-10-31T22:20Z: the Sol reviewer is unavailable (see For owner review).
 
 ## Active
 
@@ -106,7 +106,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
-- 2026-10-31 (**Sol unavailable, needs the owner**): since 17:51 UTC every `gpt-6.1-sol` turn on this host fails within seconds with `model_not_found`: "The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account" (all projects; last seen 19:20 UTC). The T3 thread still shows `running` and its parent is never woken, so a `running` reviewer is no proof of work: check `~/.codex/sessions` for `task_complete` errors. Round 2 of #51 never ran, and the one retry failed the same way. The lead took the lock at 19:19 UTC (the old lead's turn had ended) and handled this as a usage limit: paused, repeating each run until Sol answers. Not done: no other model reviews (D25 names Sol), no merge without its verdict, no next task (one task at a time, and its review would stall the same way), no change to the Codex login. The first reviewer thread stays `running`, using nothing.
+- 2026-10-31 (**Sol unavailable, needs the owner**): since 17:51 UTC every `gpt-6.1-sol` turn on this host fails within seconds with `model_not_found`: "The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account" (all projects; last seen 21:19 UTC, in a turn of the iglo.email lead). The T3 thread still shows `running` and its parent is never woken, so a `running` reviewer is no proof of work: check `~/.codex/sessions` for `task_complete` errors. Round 2 of #51 never ran, and the one retry failed the same way. The lead took the lock at 19:19 UTC (the old lead's turn had ended) and handled this as a usage limit: paused, repeating each run until Sol answers. Not done: no other model reviews (D25 names Sol), no merge without its verdict, no next task (one task at a time, and its review would stall the same way), no change to the Codex login. The first reviewer thread stays `running`, using nothing.
 - 2026-10-31 (M5.3, host rule): the worker ran one `find /` across the whole disk looking for Go sources, which `/home/t3-code/AGENTS.md` forbids. It finished without memory or IO trouble and was not repeated.
 - 2026-10-31 (M5.3 PR): the lead sent #51 to review with `check`'s test step at 1 failure: `test/oauth2/safe-file.test.ts`, the name-resolution deadline test, which this branch does not touch and which failed 1 of 3 runs alone. `test:reference` passed with 0 failures; `check` stopped before the build, which passed when run alone.
 - 2026-10-31 (M5.3 pick): first in milestone order with its dependencies merged, and it unblocks M5.4, M5.8, M5.9 and M6.4. Opus worker per the model table. Restart uses `process.execve` (present in Bun 1.4.4); the worker probes it in a compiled executable first. Until M5.4, backups with S3 enabled fail with the existing not-supported error.
