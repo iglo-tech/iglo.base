@@ -286,6 +286,156 @@ migrate((app) => {
   );
 
   test(
+    "Go values bound to SQL are stored as upstream stores them",
+    async () => {
+      const text = `
+migrate((app) => {
+  app.db().newQuery("CREATE TABLE seed (k TEXT, v)").execute();
+  const users = app.findCollectionByNameOrId("users");
+  const c = new Collection({ id: "pbc_stored0000001", name: "stored", type: "base", listRule: "id != ''",
+    indexes: ["CREATE INDEX idx_stored ON stored (config)"], fields: [
+    { id: "j1", name: "config", type: "json" },
+    { id: "s1", name: "tags", type: "select", values: ["a", "b"], maxSelect: 2 },
+    { id: "r1", name: "rels", type: "relation", collectionId: users.id, maxSelect: 5 },
+    { id: "f1", name: "pics", type: "file", maxSelect: 2, maxSize: 100 },
+    { id: "g1", name: "loc", type: "geoPoint" },
+  ] });
+  app.save(c);
+  const r = new Record(c);
+  r.set("config", { a: 1 });
+  r.set("tags", ["a"]);
+  r.set("loc", { lon: 1, lat: 2 });
+  app.save(r);
+  const model = new DynamicModel({ map: { b: 1, a: 2 }, list: [1, "x"], none: nullString() });
+  const values = {
+    date: new DateTime("2024-01-01 00:00:00.000Z"),
+    geo: r.getGeoPoint("loc"),
+    raw: r.get("config"),
+    indexes: c.indexes,
+    fields: c.fields,
+    rule: c.listRule,
+    noRule: c.viewRule,
+    duration: users.authToken.durationTime(),
+    numberMin: new NumberField({ name: "n", min: 5 }).min,
+    select: c.fields.getByName("tags").driverValue(r),
+    relation: c.fields.getByName("rels").driverValue(r),
+    file: c.fields.getByName("pics").driverValue(r),
+    map: model.map,
+    list: model.list,
+    none: model.none,
+    bytes: toBytes("abc"),
+    emptyOptions: new Collection({ name: "x", type: "base" }).rawOptions,
+  };
+  for (const [k, v] of Object.entries(values)) {
+    app.db().newQuery("INSERT INTO seed (k, v) VALUES ({:k}, {:v})").bind({ k: k + ":bind", v }).execute();
+    app.db().insert("seed", { k: k + ":insert", v }).execute();
+    app.db().insert("seed", { k: k + ":update" }).execute();
+    app.db().update("seed", { v }, $dbx.hashExp({ k: k + ":update" })).execute();
+  }
+})`;
+      const stored: { k: string; t: string; v: string }[][] = [];
+      for (const kind of kinds) {
+        const s = site(kind);
+        writeMigrations(s, { "1000000001_seed.js": text });
+        const result = await runIn(s, ["migrate", "up"]);
+        expect(result.stderr).toBe("");
+        stored.push(
+          query<{ k: string; t: string; v: unknown }>(
+            s,
+            "SELECT k, typeof(v) AS t, hex(v) AS v FROM seed ORDER BY k",
+          ).map((row) => ({ ...row, v: String(row.v) })),
+        );
+      }
+      expect(stored[1]).toEqual(stored[0]);
+
+      const stringOf = (k: string): string => {
+        const row = stored[1]?.find((item) => item.k === k);
+        return Buffer.from(row?.v ?? "", "hex").toString();
+      };
+      expect(stringOf("date:bind")).toBe("2024-01-01 00:00:00.000Z");
+      expect(stringOf("select:update")).toBe('["a"]');
+      expect(stringOf("relation:insert")).toBe("[]");
+      expect(stringOf("map:bind")).toBe('{"a":2,"b":1}');
+      expect(stored[1]?.find((item) => item.k === "emptyOptions:bind")?.t).toBe("null");
+    },
+    timeout,
+  );
+
+  test(
+    "a saved settings clone reaches the app settings at the commit",
+    async () => {
+      const text = `
+migrate((app) => {
+  const c = new Collection({ id: "pbc_reads00000001", name: "reads", type: "base", fields: [
+    { id: "t1", name: "title", type: "text" },
+  ] });
+  app.save(c);
+  const store = (title) => {
+    const r = new Record(c);
+    r.set("title", title);
+    app.save(r);
+  };
+  const clone = app.settings().clone();
+  clone.meta.appName = "saved clone";
+  app.save(clone);
+  store(app.settings().meta.appName);
+  const noValidate = app.settings().clone();
+  noValidate.meta.appName = "no validate clone";
+  app.saveNoValidate(noValidate);
+  store(app.settings().meta.appName);
+})`;
+      const seen = [];
+      for (const kind of kinds) {
+        const s = site(kind);
+        writeMigrations(s, { "1000000001_settings.js": text });
+        const server = await serveSite(s);
+        try {
+          const res = await api(server, "GET", "/api/settings");
+          const settings = (await res.json()) as { meta: { appName: string } };
+          seen.push({
+            during: query<{ title: string }>(s, "SELECT title FROM reads ORDER BY rowid"),
+            after: settings.meta.appName,
+          });
+        } finally {
+          await server.stop();
+        }
+      }
+      expect(seen[1]).toEqual(seen[0]);
+      expect(seen[1]?.after).toBe("no validate clone");
+      expect(seen[1]?.during).toEqual([{ title: "Acme" }, { title: "Acme" }]);
+    },
+    timeout,
+  );
+
+  test(
+    "a failed migration leaves the app settings of a saved clone unchanged",
+    async () => {
+      const text = `
+migrate((app) => {
+  const clone = app.settings().clone();
+  clone.meta.appName = "rolled back";
+  app.save(clone);
+  throw new Error("stop");
+})`;
+      const stored = [];
+      for (const kind of kinds) {
+        const s = site(kind);
+        writeMigrations(s, { "1000000001_failed.js": text });
+        const result = await runIn(s, ["migrate", "up"]);
+        expect(result.exitCode).toBe(1);
+        const [row] = query<{ value: Uint8Array }>(
+          s,
+          "SELECT value FROM _params WHERE id = 'settings'",
+        );
+        stored.push(JSON.parse(new TextDecoder().decode(row?.value)).meta.appName as string);
+      }
+      expect(stored[1]).toEqual(stored[0]);
+      expect(stored[1]).toBe("Acme");
+    },
+    timeout,
+  );
+
+  test(
     "a core.App method that is not bound fails with its name",
     async () => {
       const s = site("iglo.base");

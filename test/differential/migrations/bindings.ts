@@ -14,6 +14,14 @@
 //   8. Field.prepareValue: "records-fields", prepare *
 //   9. expansion callbacks: "records-fields", expand cb, expands cb
 //
+// Round 2 findings:
+//   1. Go-valued SQL parameters: "sqlValues"; stored data in js-migrations.test.ts
+//   2. JSON null at destinations: "outputs", unm null, field null, el null
+//   3. new DynamicModel array elements: "outputs", zero *
+//   4. named JSON values: "jsonValues"; "outputs", dv *
+//   6. nullable column(): "outputs", col *
+//   7. a saved settings clone: js-migrations.test.ts
+//
 // The further instances of the same classes are the rest of each file.
 
 const helpers = String.raw`const show=(v)=>{ if(v===undefined) return "undefined"; if(typeof v==="function") return "fn"; if(typeof v==="bigint") return "bigint"; let s; try{s=JSON.stringify(v)}catch(e){s="<nojson "+e.message+">"} return typeof v+":"+Array.isArray(v)+":"+s; };
@@ -644,11 +652,230 @@ migrate((app)=>{
  t("cfg methods",()=>[Object.keys(app.settings().meta),Object.keys(app.settings().batch),Object.keys(app.settings().logs),Object.keys(app.settings().s3),Object.keys(app.settings().backups),Object.keys(app.settings().rateLimits),Object.keys(app.settings().trustedProxy)]);
  t("meta validate",()=>{const m=app.settings().meta; return typeof m.validate});
  t("proxy",()=>{const p=app.settings().trustedProxy;return [p.useLeftmostIP,p.headers,typeof p.markAsLeftmost]});
- t("geo methods",()=>{const g=r.getGeoPoint("loc");return [g.string(),g.asMap(),g.value()]});
+ t("geo methods",()=>{const g=r.getGeoPoint("loc");return [g.string(),g.asMap().lon,g.asMap().lat,g.value()]});
  t("geo set lat",()=>{const g=r.getGeoPoint("loc");g.lat=5;return g.lat});
  t("geo scan",()=>{const g=r.getGeoPoint("loc");g.scan('{"lon":1,"lat":2}');return g});
  t("indexes",()=>{const v=users.indexes;return [typeof v.string,typeof v.value,v instanceof Array]});
  t("jsonarr str",()=>users.indexes.string().length>2);
+});
+`,
+  // named JSON values: construction, unmarshal, hydration, driverValue, rawOptions
+  jsonValues:
+    helpers +
+    String.raw`
+migrate((app)=>{
+ const dm=()=>new DynamicModel({meta:{status:"pending",n:1,nest:{a:1}},tags:["first",2],s:"",n:0});
+ t("dm.meta",()=>dm().meta);
+ t("dm.meta.status",()=>dm().meta.status);
+ t("dm.meta typeof",()=>typeof dm().meta);
+ t("dm.meta keys",()=>Object.keys(dm().meta));
+ t("dm.meta get",()=>dm().meta.get("status"));
+ t("dm.meta get none",()=>dm().meta.get("zz"));
+ t("dm.meta get n",()=>dm().meta.get("n"));
+ t("dm.meta get nest",()=>dm().meta.get("nest"));
+ t("dm.meta get nest.a",()=>dm().meta.get("nest").a);
+ t("dm.meta set",()=>{const d=dm();d.meta.set("x",5);return [d.meta,d.meta.get("x")]});
+ t("dm.meta set prop",()=>{const d=dm();d.meta.y=5;return [d.meta,d.meta.y,d.meta.get("y")]});
+ t("dm.meta string",()=>dm().meta.string());
+ t("dm.meta String()",()=>String(dm().meta));
+ t("dm.meta value",()=>dm().meta.value());
+ t("dm.meta marshalJSON",()=>dm().meta.marshalJSON());
+ t("dm.meta toStr",()=>toString(dm().meta.marshalJSON()));
+ t("dm.meta scan",()=>{const d=dm();d.meta.scan('{"q":1}');return d.meta});
+ t("dm.meta scan empty",()=>{const d=dm();d.meta.scan('');return d.meta});
+ t("dm.meta scan null",()=>{const d=dm();d.meta.scan(null);return d.meta});
+ t("dm.meta scan bytes",()=>{const d=dm();d.meta.scan(toBytes('{"r":2}'));return d.meta});
+ t("dm.meta in",()=>["status" in dm().meta,"get" in dm().meta]);
+ t("dm.meta isArray",()=>Array.isArray(dm().meta));
+ t("dm.meta for",()=>{const o=[];for(const k in dm().meta)o.push(k);return o});
+ t("dm.meta ctor",()=>dm().meta.constructor===Object);
+ t("dm.meta assign obj",()=>{const d=dm();d.meta={z:1};return [d.meta,d.meta.get&&d.meta.get("z"),typeof d.meta.get]});
+ t("dm.meta assign arr",()=>{const d=dm();d.meta=[1];return d.meta});
+ t("dm.meta assign null",()=>{const d=dm();d.meta=null;return [d.meta,typeof d.meta]});
+ t("dm.meta assign str",()=>{const d=dm();d.meta="x";return d.meta});
+ t("dm.meta assign other",()=>{const d=dm();const e=dm();d.meta=e.meta;d.meta.set("k",1);return [d.meta,e.meta]});
+ t("dm.tags",()=>dm().tags);
+ t("dm.tags [0]",()=>dm().tags[0]);
+ t("dm.tags len",()=>dm().tags.length);
+ t("dm.tags isArray",()=>Array.isArray(dm().tags));
+ t("dm.tags typeof",()=>typeof dm().tags);
+ t("dm.tags keys",()=>Object.keys(dm().tags));
+ t("dm.tags string",()=>dm().tags.string());
+ t("dm.tags String()",()=>String(dm().tags));
+ t("dm.tags value",()=>dm().tags.value());
+ t("dm.tags marshal",()=>toString(dm().tags.marshalJSON()));
+ t("dm.tags scan",()=>{const d=dm();d.tags.scan('[9]');return d.tags});
+ t("dm.tags scan empty",()=>{const d=dm();d.tags.scan('');return d.tags});
+ t("dm.tags scan null",()=>{const d=dm();d.tags.scan(null);return d.tags});
+ t("dm.tags push",()=>{const d=dm();d.tags.push("x");return d.tags});
+ t("dm.tags idx",()=>{const d=dm();d.tags[0]="x";return d.tags});
+ t("dm.tags idx far",()=>{const d=dm();d.tags[5]="x";return d.tags});
+ t("dm.tags map",()=>dm().tags.map(x=>x+"!"));
+ t("dm.tags filter string",()=>{const x=dm().tags.filter(x=>x); return [x, typeof x.string]});
+ t("dm.tags spread",()=>[...dm().tags]);
+ t("dm.tags join",()=>dm().tags.join(","));
+ t("dm.tags length set",()=>{const d=dm();d.tags.length=1;return d.tags});
+ t("dm.tags assign",()=>{const d=dm();d.tags=[1];return [d.tags,typeof d.tags.string,d.tags.string&&d.tags.string()]});
+ t("dm.tags assign null",()=>{const d=dm();d.tags=null;return [d.tags,typeof d.tags.string]});
+ t("dm.tags assign str",()=>{const d=dm();d.tags="abc";return d.tags});
+ t("dm.tags assign obj",()=>{const d=dm();d.tags={a:1};return d.tags});
+ t("dm unmarshal",()=>{const d=dm();unmarshal({meta:{a:1},tags:[3]},d);return [d,d.meta.get("a"),d.meta.get("status"),d.tags.string()]});
+ t("dm unmarshal empty",()=>{const d=dm();unmarshal({meta:{},tags:[]},d);return [d,d.meta.get("status")]});
+ t("dm unmarshal null mem",()=>{const d=dm();unmarshal({meta:null,tags:null,s:null},d);return [d,typeof d.meta]});
+ t("nullObject",()=>{const d=new DynamicModel({o:nullObject(),a:nullArray()});return [d,typeof d.o,d.o]});
+ t("nullObject set",()=>{const d=new DynamicModel({o:nullObject()});d.o={a:1};return [d,typeof d.o,d.o.get&&d.o.get("a")]});
+ t("nullObject q",()=>{const d=new DynamicModel({o:nullObject(),a:nullArray()});app.db().newQuery('SELECT \'{"a":1}\' AS o, \'[1]\' AS a').one(d);return [d,typeof d.o,typeof d.o.get,d.o.get&&d.o.get("a"),typeof d.a.string]});
+ t("dm q",()=>{const d=dm();app.db().newQuery('SELECT \'{"a":1}\' AS meta, \'[1]\' AS tags').one(d);return [d,d.meta.get("a"),d.tags.string()]});
+ t("dm q null",()=>{const d=dm();app.db().newQuery('SELECT NULL AS meta, NULL AS tags').one(d);return [d,d.meta.get("a"),d.tags.string()]});
+ t("dm q all",()=>{const d=arrayOf(dm());app.db().newQuery('SELECT \'{"a":1}\' AS meta, \'[1]\' AS tags').all(d);return [d,d[0].meta.get("a"),d[0].tags.string()]});
+ t("arrayOf unm",()=>{const d=arrayOf(dm());unmarshal([{meta:{a:1},tags:[1]}],d);return [d,d[0].meta.get("a"),d[0].tags.string()]});
+ t("arrayOf unm zero",()=>{const d=arrayOf(dm());unmarshal([{}],d);return [d,d[0].meta.get&&d[0].meta.get("a"),d[0].tags.string&&d[0].tags.string()]});
+ t("arrayOf q zero",()=>{const d=arrayOf(dm());app.db().newQuery('SELECT 1 AS other').all(d);return d});
+ t("arrayOf zero 2",()=>{const d=arrayOf(new DynamicModel({a:7,b:"fallback",c:true,d:1.5,e:[1],f:{x:1},g:nullString()}));unmarshal([{a:1}],d);return d});
+ t("copy",()=>{const d=dm();const o={...d};return Object.keys(o)});
+ t("dm keys",()=>Object.keys(dm()));
+ t("dm stringify",()=>JSON.stringify(dm()));
+ t("col.indexes",()=>{const c=new Collection({name:"x",type:"base",indexes:["a"]});return [c.indexes.string(),c.indexes.value(),toString(c.indexes.marshalJSON())]});
+ t("col.indexes scan",()=>{const c=new Collection({name:"x",type:"base",indexes:["a"]});c.indexes.scan('["b","c"]');return [c.indexes]});
+ t("col.indexes scan empty",()=>{const c=new Collection({name:"x",type:"base",indexes:["a"]});c.indexes.scan('');return [c.indexes]});
+ t("col.indexes scan null",()=>{const c=new Collection({name:"x",type:"base",indexes:["a"]});c.indexes.scan(null);return [c.indexes]});
+ t("col.indexes scan bytes",()=>{const c=new Collection({name:"x",type:"base",indexes:["a"]});c.indexes.scan(toBytes('["z"]'));return [c.indexes]});
+ t("col.indexes keys",()=>Object.keys(new Collection({name:"x",type:"base",indexes:["a"]}).indexes));
+ t("col.indexes str",()=>String(new Collection({name:"x",type:"base",indexes:["a"]}).indexes));
+ t("rawOptions",()=>{const c=new Collection({name:"x",type:"base"});const r=c.rawOptions;return [r,typeof r.string,r.length,typeof r.value,typeof r.scan,typeof r.marshalJSON,typeof r.unmarshalJSON]});
+ t("rawOptions str",()=>new Collection({name:"x",type:"base"}).rawOptions.string());
+ t("rawOptions value",()=>new Collection({name:"x",type:"base"}).rawOptions.value());
+ t("rawOptions marshal",()=>new Collection({name:"x",type:"base"}).rawOptions.marshalJSON());
+ t("rawOptions scan",()=>{const r=new Collection({name:"x",type:"base"}).rawOptions;r.scan('{"a":1}');return [r.string(),r]});
+ t("rawOptions auth",()=>{const c=new Collection({name:"x",type:"auth"});return [c.rawOptions.length]});
+ t("rawOptions view",()=>{const c=new Collection({name:"x",type:"view"});return [c.rawOptions.string()]});
+ t("rawOptions view2",()=>{const c=app.findCollectionByNameOrId("users");return c.rawOptions.string().length});
+ t("rawOptions set",()=>{const c=new Collection({name:"x",type:"base"});c.rawOptions=toBytes('{"a":1}');return [c.rawOptions.string?c.rawOptions.string():0, typeof c.rawOptions.string]});
+});
+`,
+  // what each value binds, read back from the table, through every way to bind
+  sqlValues:
+    helpers +
+    String.raw`
+migrate((app)=>{
+ app.db().newQuery("CREATE TABLE seed(k TEXT, v)").execute();
+ const users=app.findCollectionByNameOrId("users");
+ const c=new Collection({name:"things",type:"base",fields:[{name:"config",type:"json"},{name:"tags",type:"select",values:["a","b"],maxSelect:2},{name:"tag1",type:"select",values:["a","b"],maxSelect:1},{name:"rels",type:"relation",collectionId:users.id,maxSelect:5},{name:"rel1",type:"relation",collectionId:users.id,maxSelect:1},{name:"fs",type:"file",maxSelect:3,maxSize:100},{name:"f1",type:"file",maxSelect:1,maxSize:100},{name:"loc",type:"geoPoint"},{name:"pw",type:"password"},{name:"when",type:"date"},{name:"num",type:"number"},{name:"flag",type:"bool"}],indexes:["CREATE INDEX idx_x ON things (config)"],listRule:"id != ''"});
+ app.save(c);
+ const r=new Record(c); r.set("config",{a:1}); r.set("tags",["a"]); r.set("tag1","a"); r.set("num",3); r.set("flag",true); r.set("when","2024-01-01 00:00:00.000Z"); r.set("loc",{lon:1,lat:2}); app.save(r);
+ const r2=new Record(c);
+ const dm=new DynamicModel({m:{a:1},arr:[1,"x"],s:"str",n:5,f:1.5,b:true,ns:nullString(),nf:nullFloat()});
+ const f=(n)=>c.fields.getByName(n);
+ const cases={
+  dt:()=>new DateTime("2024-01-01 00:00:00.000Z"), dtz:()=>r2.getDateTime("when"), getdt:()=>r.getDateTime("when"),
+  dtnow:()=>r.get("when"),
+  geo:()=>r.getGeoPoint("loc"), geoget:()=>r.get("loc"),
+  raw:()=>r.get("config"), rawempty:()=>r2.get("config"), rawopts:()=>c.rawOptions,
+   indexes:()=>c.indexes, fields:()=>c.fields, rule:()=>c.listRule, rulenull:()=>c.viewRule, dur:()=>users.authToken.durationTime(),
+  min:()=>new NumberField({name:"n",min:5}).min,
+  sub:()=>new DateTime("2024-01-01 00:00:01.000Z").sub(new DateTime("2024-01-01 00:00:00.000Z")),
+  dvsel:()=>f("tags").driverValue(r), dvsel0:()=>f("tags").driverValue(r2), dvsel1:()=>f("tag1").driverValue(r), dvrel:()=>f("rels").driverValue(r), dvrel1:()=>f("rel1").driverValue(r), dvf:()=>f("fs").driverValue(r), dvf1:()=>f("f1").driverValue(r),
+  dvpw:()=>f("pw").driverValue(r2),
+  dmm:()=>dm.m, dmarr:()=>dm.arr, dms:()=>dm.s, dmn:()=>dm.n, dmf:()=>dm.f, dmb:()=>dm.b, dmns:()=>dm.ns,
+  str:()=>"text", num:()=>5, flt:()=>1.5, flt2:()=>2.0, t:()=>true, fa:()=>false, nul:()=>null, und:()=>undefined,
+  bytes:()=>toBytes("abc"), buf:()=>toBytes(""), 
+  jsdate:()=>new Date(1704067200000),
+  arr:()=>["a"], obj:()=>({a:1}), rec:()=>r, coll:()=>c, field:()=>f("tags"), stringify:()=>JSON.stringify({a:1}),
+  big:()=>2**53, neg0:()=>-0, nan:()=>NaN, inf:()=>Infinity, 
+  val:()=>r.getDateTime("when").value(), jm:()=>dm.m.value(),
+  filemode:()=>$os.stat(".").mode(), time:()=>new DateTime("2024-01-01 00:00:00.000Z").time(),
+ };
+ const read=(k)=>{const d=new DynamicModel({t:"",v:""});app.db().newQuery("SELECT typeof(v) AS t, COALESCE(CAST(v AS TEXT),'<null>') AS v FROM seed WHERE k={:k}").bind({k}).one(d);return d.t+"|"+d.v.replace(/[a-z0-9]{15}/g,"ID")};
+ for(const [k,fn] of Object.entries(cases)){
+  t("bind "+k,()=>{app.db().newQuery("INSERT INTO seed(k,v) VALUES ({:k},{:v})").bind({k,v:fn()}).execute();return read(k)});
+  const k2=k+"_i"; t("insert "+k,()=>{app.db().insert("seed",{k:k2,v:fn()}).execute();return read(k2)});
+  const k3=k+"_u"; t("update "+k,()=>{app.db().insert("seed",{k:k3}).execute();app.db().update("seed",{v:fn()},$dbx.hashExp({k:k3})).execute();return read(k3)});
+  const k4=k+"_e"; t("exp "+k,()=>{app.db().insert("seed",{k:k4}).execute();app.db().update("seed",{v:$dbx.exp("{:x}",{x:fn()})},$dbx.hashExp({k:k4})).execute();return read(k4)});
+  t("hash "+k,()=>{const n=new DynamicModel({n:0});app.db().select("count(*) as n").from("seed").where($dbx.hashExp({v:fn(),k:k})).one(n);return n.n});
+  t("in "+k,()=>{const n=new DynamicModel({n:0});app.db().select("count(*) as n").from("seed").where($dbx.in("v",fn())).andWhere($dbx.hashExp({k})).one(n);return n.n});
+  t("between "+k,()=>{const n=new DynamicModel({n:0});app.db().select("count(*) as n").from("seed").where($dbx.between("v",fn(),fn())).andWhere($dbx.hashExp({k})).one(n);return n.n});
+  t("data "+k,()=>{const n=app.findFirstRecordByData("things","config",fn());return n.id.length});
+  t("filter "+k,()=>{const n=app.findFirstRecordByFilter("things","config={:x}",{x:fn()});return n.id.length});
+  if(!["rec","coll","field","jsdate","time"].includes(k)) t("params "+k,()=>app.db().newQuery("SELECT 1").bind({v:fn()}).params());
+ }
+});
+`,
+  // JSON null, new slice elements, named values, nullable columns
+  outputs:
+    helpers +
+    String.raw`
+migrate((app)=>{
+ const users=app.findCollectionByNameOrId("users");
+ const c=new Collection({name:"things",type:"base",fields:[{name:"config",type:"json"},{name:"tags",type:"select",values:["a","b"],maxSelect:2},{name:"rels",type:"relation",collectionId:users.id,maxSelect:5},{name:"fs",type:"file",maxSelect:3,maxSize:100},{name:"title",type:"text"}]});
+ app.save(c);
+ const r=new Record(c); r.set("tags",["a"]); app.save(r);
+ const f=(n)=>c.fields.getByName(n);
+ // 2 null
+ const shapes={dm:()=>new DynamicModel({a:7}), coll:()=>new Collection({name:"keep",type:"base"}), list:()=>new FieldsList([{name:"a",type:"text"}]), arrc:()=>arrayOf(new Collection()), arrd:()=>arrayOf(new DynamicModel({a:7})), arrs:()=>arrayOf(""), arrf:()=>arrayOf(new TextField()), nat:()=>[1], obj:()=>({a:1}), set:()=>app.settings().clone(), dt:()=>new DateTime("2024-01-01 00:00:00.000Z"), rec:()=>new Record(c),
+  text:()=>new TextField({name:"t"}),num:()=>new NumberField({name:"t"}),bool:()=>new BoolField({name:"t"}),url:()=>new URLField({name:"t"}),email:()=>new EmailField({name:"t"}),ed:()=>new EditorField({name:"t"}),pw:()=>new PasswordField({name:"t"}),date:()=>new DateField({name:"t"}),ad:()=>new AutodateField({name:"t"}),js:()=>new JSONField({name:"t"}),rel:()=>new RelationField({name:"t"}),sel:()=>new SelectField({name:"t"}),file:()=>new FileField({name:"t"}),geo:()=>new GeoPointField({name:"t"})};
+ const sum=(d)=>{let s=JSON.stringify(d); return s.length>120? s.length: s;};
+ for(const [k,mk] of Object.entries(shapes)){
+  t("unm null "+k,()=>{const d=mk();const b=sum(d);unmarshal(null,d);return [b===sum(d),sum(d)]});
+  t("unm undef "+k,()=>{const d=mk();const b=sum(d);unmarshal(undefined,d);return b===sum(d)});
+  t("field null "+k,()=>{const d=mk();const b=sum(d);r.unmarshalJSONField("config",d);return [b===sum(d),sum(d)]});
+ }
+ t("el null coll",()=>{const d=arrayOf(new Collection());unmarshal([null,{name:"x",type:"base"}],d);return [d.length,d[0],d[1].name]});
+ t("el null txt",()=>{const d=arrayOf(new TextField());unmarshal([null,{name:"x"}],d);return [d.length,d[0],d[1].name]});
+ t("el null dm",()=>{const d=arrayOf(new DynamicModel({a:7}));unmarshal([null,{a:1}],d);return d});
+ t("el null str",()=>{const d=arrayOf("");unmarshal([null,"a"],d);return d});
+ t("el null num",()=>{const d=arrayOf(0);unmarshal([null,1],d);return d});
+ t("el null field-json",()=>{r.set("config",[null,{a:1}]);const d=arrayOf(new DynamicModel({a:7}));r.unmarshalJSONField("config",d);r.set("config",null);return d});
+ t("el null nstr",()=>{const d=arrayOf(nullString());unmarshal([null,"a"],d);return [d,typeof d[1],d[1]=="a",d[1]==="a"]});
+ t("el null nint",()=>{const d=arrayOf(nullInt());unmarshal([null,5],d);return [d,typeof d[1]]});
+ t("member null",()=>{const d=new DynamicModel({s:"x",n:5,b:true,f:1.5});unmarshal({s:null,n:null,b:null,f:null},d);return d});
+ // 3 zero
+ const zshape=()=>new DynamicModel({a:7,b:"fallback",c:true,d:1.5,e:[1],f:{x:1},g:nullString(),h:nullArray(),i:nullObject(),j:new DateTime("2024-01-01 00:00:00.000Z")});
+ t("zero unm",()=>{const d=arrayOf(zshape());unmarshal([{a:1}],d);return [d,d[0].j.isZero&&d[0].j.isZero()]});
+ t("zero q",()=>{const d=arrayOf(zshape());app.db().newQuery("SELECT 1 AS other").all(d);return d});
+ t("zero fld",()=>{r.set("config",[{a:1}]);const d=arrayOf(zshape());r.unmarshalJSONField("config",d);r.set("config",null);return d});
+ t("zero shape unchanged",()=>{const s=zshape();const d=arrayOf(s);unmarshal([{a:1},{a:2}],d);d[0].e.push(1);return [s.a,s.e,s.f,d[1].e,d[1].f]});
+ t("single keeps",()=>{const d=zshape();unmarshal({a:1},d);return d});
+ t("single q keeps",()=>{const d=zshape();app.db().newQuery("SELECT 1 AS a").one(d);return d});
+ // 4 named
+ for(const n of ["tags","rels","fs"]){
+  t("dv keys "+n,()=>Object.keys(f(n).driverValue(r)));
+  t("dv str "+n,()=>f(n).driverValue(r).string());
+  t("dv val "+n,()=>f(n).driverValue(r).value());
+  t("dv marsh "+n,()=>toString(f(n).driverValue(r).marshalJSON()));
+  t("dv String "+n,()=>String(f(n).driverValue(r)));
+  t("dv scan "+n,()=>{const v=f(n).driverValue(r);v.scan('["z"]');return v});
+  t("dv scan bad "+n,()=>{const v=f(n).driverValue(r);try{v.scan('[1]')}catch(e){};return v});
+  t("dv push "+n,()=>{const v=f(n).driverValue(r);v.push(5);return [v,v.string()]});
+ }
+ t("toString dmm",()=>toString(new DynamicModel({m:{b:1,a:2}}).m));
+ t("toString dma",()=>toString(new DynamicModel({m:[1,"x"]}).m));
+ t("toBytes dmm",()=>toString(toBytes(new DynamicModel({m:{b:1,a:2}}).m)));
+ t("toBytes dma",()=>toString(toBytes(new DynamicModel({m:[1,"x"]}).m)));
+ t("toBytes dmn",()=>toBytes(new DynamicModel({m:[1,2]}).m));
+ t("rec set map",()=>{const q=new Record(c);q.set("config",new DynamicModel({m:{b:1,a:2}}).m);app.save(q);return app.findRecordById("things",q.id).get("config").string()});
+ t("rec set arr",()=>{const q=new Record(c);q.set("config",new DynamicModel({m:[1,"x"]}).m);q.set("tags",new DynamicModel({m:["a","b"]}).m);app.save(q);const z=app.findRecordById("things",q.id);return [z.get("config").string(),z.get("tags")]});
+ t("new rec dm",()=>{const d=new DynamicModel({title:"t",config:{a:1},tags:["a"]});const q=new Record(c,d);return q.getString("title")});
+ t("new rec obj",()=>{const d=new DynamicModel({m:{a:1}});const q=new Record(c,{config:d.m});return q.get("config").string()});
+ t("rec dbExport",()=>{const e=r.dbExport(app);return [Object.keys(e).sort(),e.tags,typeof e.tags.string,e.config]});
+ t("insert dbExport",()=>{app.db().newQuery("CREATE TABLE t2(id TEXT,tags TEXT)").execute();const e=r.dbExport(app);app.db().insert("t2",{id:"1",tags:e.tags}).execute();const d=new DynamicModel({tags:""});app.db().newQuery("SELECT tags FROM t2").one(d);return d});
+ t("bind map",()=>{const d=new DynamicModel({m:{v:"x"}});const o=new DynamicModel({v:""});app.db().newQuery("SELECT {:v} AS v").bind(d.m).one(o);return o});
+ t("collection save raw",()=>{const x=new Collection({name:"ro",type:"base"});x.rawOptions=toBytes('{"viewQuery":""}');app.save(x);return app.findCollectionByNameOrId("ro").name});
+ t("get map iter",()=>{const d=new DynamicModel({m:{a:{b:{c:1}},z:[1,{y:2}]}});const v=d.m.get("a");v.b.c=2;return [d.m,d.m.get("z"),typeof d.m.get("z"),Array.isArray(d.m.get("z"))]});
+ t("set obj",()=>{const d=new DynamicModel({m:{}});d.m.set("o",{z:1,a:2});d.m.set("r",[3]);d.m.set("dt",new DateTime("2024-01-01 00:00:00.000Z"));return [d.m,d.m.get("o").z,d.m.get("dt")]});
+ t("arr el obj",()=>{const d=new DynamicModel({m:[{b:1,a:2}]});return [d.m[0].a,d.m.string()]});
+ t("arr set obj",()=>{const d=new DynamicModel({m:[]});d.m.push({b:1});return [d.m,d.m[0].b,d.m.string()]});
+ // 6
+ t("col str",()=>{const d=arrayOf(nullString());app.db().newQuery("SELECT 'hello' AS v UNION ALL SELECT NULL").column(d);return [d,typeof d[0],d[0]=="hello",d[0]==="hello",String(d[0]),d[1]]});
+ t("col int",()=>{const d=arrayOf(nullInt());app.db().newQuery("SELECT 5 AS v UNION ALL SELECT NULL").column(d);return [d,typeof d[0],d[0]+1]});
+ t("col float",()=>{const d=arrayOf(nullFloat());app.db().newQuery("SELECT 1.5 AS v UNION ALL SELECT NULL").column(d);return [d,typeof d[0],d[0]+1]});
+ t("col bool",()=>{const d=arrayOf(nullBool());app.db().newQuery("SELECT 1 AS v UNION ALL SELECT NULL").column(d);return [d,typeof d[0]]});
+ t("col bool f",()=>{const d=arrayOf(nullBool());app.db().newQuery("SELECT 0 AS v").column(d);return [d, d[0]==false]});
+ t("col arr",()=>{const d=arrayOf(nullArray());app.db().newQuery("SELECT '[1]' AS v UNION ALL SELECT NULL").column(d);return [d]});
+ t("col obj",()=>{const d=arrayOf(nullObject());app.db().newQuery('SELECT \'{"a":1}\' AS v UNION ALL SELECT NULL').column(d);return [d,d[0].get("a")]});
+ t("col sel str",()=>{const d=arrayOf(nullString());app.db().select("title").from("things").column(d);return d});
+ t("col str plain",()=>{const d=arrayOf("");app.db().newQuery("SELECT 'a' AS v").column(d);return d});
+ t("col bind back",()=>{const d=arrayOf(nullString());app.db().newQuery("SELECT 'hello' AS v").column(d);const o=new DynamicModel({v:""});app.db().newQuery("SELECT {:v} AS v").bind({v:d[0]}).one(o);return o});
+ t("all nstr",()=>{const d=arrayOf(nullString());app.db().newQuery("SELECT 'x' AS v").all(d);return d});
 });
 `,
   // the Go fields and methods of each class, and no internal member
