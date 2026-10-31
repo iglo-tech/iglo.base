@@ -40,6 +40,8 @@ export interface SafeFileOptions {
   // overrides the name resolution
   lookupAddresses?: (host: string) => Promise<string[]>;
   timeoutMs?: number;
+  // a certificate authority to trust
+  ca?: string;
 }
 
 function parseIPv4(address: string): number[] | null {
@@ -155,8 +157,11 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
       keepalive: false,
       signal,
     };
-    if (url.protocol === "https:" && isIP(host) === 0) {
-      init.tls = { serverName: host };
+    if (url.protocol === "https:") {
+      init.tls = {
+        ...(isIP(host) === 0 ? { serverName: host } : {}),
+        ...(opts.ca === undefined ? {} : { ca: opts.ca }),
+      };
     }
 
     try {

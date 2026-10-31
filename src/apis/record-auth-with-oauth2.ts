@@ -223,7 +223,7 @@ export async function recordAuthWithOAuth2(
     try {
       authRecord = findRecordById(e.app, collection, externalAuthRel.recordRef());
     } catch (err) {
-      return err as Error;
+      return isNoRows(err) ? e.notFoundError("", err) : (err as Error);
     }
   } else if (fallbackAuthRecord !== undefined) {
     // fallback to the logged auth record (if any)

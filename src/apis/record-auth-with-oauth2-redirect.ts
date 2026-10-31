@@ -94,14 +94,12 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
 
   let encodedData: string;
   try {
-    const message: { state: string; code: string; error?: string } = {
-      state: data.State,
-      code: data.Code,
-    };
+    // in the struct's field order (marshal sorts a plain object's members)
+    encodedData = `{"state":${marshal(data.State)},"code":${marshal(data.Code)}`;
     if (data.Error !== "") {
-      message.error = data.Error;
+      encodedData += `,"error":${marshal(data.Error)}`;
     }
-    encodedData = marshal(message);
+    encodedData += "}";
   } catch {
     client.unsubscribe(oauth2SubscriptionTopic);
     return failureRedirect(e);

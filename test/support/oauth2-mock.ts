@@ -27,6 +27,11 @@ export interface MockProviderSpec {
   tokenContentType?: string;
   // when set, a token request with another code_verifier gets a 400
   codeVerifier?: string;
+  // a token request with a Basic Authorization header gets a 401, so only
+  // the credentials in the form body work
+  rejectBasicAuth?: boolean;
+  // the answer to a grant_type=refresh_token request
+  refreshedToken?: unknown;
   // the userinfo endpoint: a JSON body (or the body's text) and its status
   user?: unknown;
   userStatus?: number;
@@ -118,9 +123,15 @@ export class OAuth2Mock {
     const { spec } = entry;
     switch (endpoint) {
       case "token": {
-        const verifier = new URLSearchParams(body).get("code_verifier");
-        if (spec.codeVerifier !== undefined && verifier !== spec.codeVerifier) {
+        const form = new URLSearchParams(body);
+        if (spec.rejectBasicAuth === true && req.headers.has("Authorization")) {
+          return json({ error: "invalid_client" }, 401);
+        }
+        if (spec.codeVerifier !== undefined && form.get("code_verifier") !== spec.codeVerifier) {
           return json({ error: "invalid_grant" }, 400);
+        }
+        if (form.get("grant_type") === "refresh_token") {
+          return json(spec.refreshedToken ?? { error: "invalid_grant" }, 200);
         }
         return json(
           spec.token ?? { access_token: "abc", token_type: "bearer" },
