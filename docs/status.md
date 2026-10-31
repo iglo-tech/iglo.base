@@ -10,7 +10,7 @@ M4.8 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.8 | review | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 1 | [Brief](briefs/M4.8.md). Closes the pending rate-limit scenarios of M2.4, M3.3, M4.2, M4.3, M4.5 and M5.2 |
+| M4.8 | review | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 2 | [Brief](briefs/M4.8.md). Closes the pending rate-limit scenarios of M2.4, M3.3, M4.2, M4.3, M4.5 and M5.2 |
 
 ## Done
 
@@ -86,6 +86,9 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | OAuth2 (M4.6) | GitLab `confirmed_at` of Go's zero time written with a non-UTC offset counts as confirmed; upstream compares the instant. Only a synthetic provider response has it |
 | 2026-10-31 | Apple client secret (M4.6) | Handcrafted P-256 keys with a corrupted embedded public point: upstream signs, iglo.base answers 400. Raw parse errors of malformed keys differ |
 | 2026-10-31 | OAuth2 (M4.7) | VK ids go through `any` first: synthetic fractional, `1e3` or over-int64 ids sign in where upstream answers 400, and ids above 2^53 lose precision. Real VK ids are small integers; VK's email uses `toString` where Go uses `fmt.Sprint` |
+| 2026-10-31 | OAuth2 tests (M4.5) | `test/differential/auth/oauth2-flows.test.ts:365`, realtime messages of a new user: `users/* create` and `users/* update` arrive in either order; seen once in M4.8's `test:reference`, 3 of 3 reruns pass |
+| 2026-10-31 | Rate-limit tests (M4.8) | The cleanup tests in `test/apis/rate-limit.test.ts:123–219` read the private limiter store. The job only frees memory, so no response shows it |
+| 2026-10-31 | Collections tests | "dry run reports query errors and timeouts": its 1 ms timeout can expire during fixture cache loading (Sol, M4.8 round 1); passes alone |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
