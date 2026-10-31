@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.6 active.
+M4.7 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.6 | review | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 2 | [Brief](briefs/M4.6.md). Includes the Apple client secret endpoint carried from M1.3 |
+| M4.7 | worker | `task/M4.7-oauth2-providers-2` | 0 | [Brief](briefs/M4.7.md). Removes the "not ported yet" path |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M4.6 | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 2026-10-31 (`afa7752`) | Two review rounds: Sol APPROVE at `f3ce3aa` (lead fixed round 1). Haiku worker. All 15 providers and the Apple client secret. Bun 1.4.4: a failed `crypto.subtle.importKey` (pkcs8, spki) makes the next `Bun.CryptoHasher` throw, so use `node:crypto` to parse untrusted keys. `secret` joined the harness's generated values. Gitee's fixed emails URL and Apple's JWKS are tested in-process only |
 | M4.5 | [#46](https://github.com/iglo-tech/iglo.base/pull/46) | 2026-10-31 (`29220cf`) | Three review rounds, lead fixed all: Sol APPROVE at `4d5d7fc`. Provider requests follow Go's redirect rules (`src/oauth2/http-client.ts`), http and https only; avatar deadline covers name resolution. Includes OIDC and its two extra slots. Avatar download honouring `HTTP(S)_PROXY` is listed in 04-api-compatibility.md. Carried: 4 rate-limit scenarios pending on M4.8; Apple client secret (M4.6) |
 | M4.3 | [#45](https://github.com/iglo-tech/iglo.base/pull/45) | 2026-10-31 (`35fe38e`) | One review round: Sol APPROVE at `558290d`. Includes the installer-superuser password reset mail guard (`src/mail/mails/record.ts`, outside the brief's modules). Carried: 12 rate-limit scenarios pending on M4.8; the resend limits' two-minute expiry is a real timer and untested |
 | M4.2 | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 2026-10-31 (`d569288`) | Two review rounds: Sol APPROVE at `7d5afbb`. Lead fixed a gap Sol's round 1 approved: the `_superusers` save handler was never ported, so OTP worked without MFA. Includes `record_crud_mfa_test.go`. Carried: 6 rate-limit scenarios pending on M4.8; expired-OTP cleanup (M5.6) |
@@ -82,6 +83,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | Errors (M4.5) | `toApiError` misses the db layer's no-rows error, so a bare no-rows error answers 400 where upstream answers 404; fixed locally in the OAuth2 handler only, other handlers may share it |
 | 2026-10-31 | OAuth2 tests (M4.5) | `test/differential/auth/oauth2-flows.test.ts:255` requires `updated === created` on a new `_externalAuths` row; each field reads the clock on its own, so they can differ by 1 ms (seen once in Sol's round 3 run; check both timestamps without equality) |
 | 2026-10-31 | OAuth2 (M4.6) | GitLab `confirmed_at` of Go's zero time written with a non-UTC offset counts as confirmed; upstream compares the instant. Only a synthetic provider response has it |
+| 2026-10-31 | Apple client secret (M4.6) | Handcrafted P-256 keys with a corrupted embedded public point: upstream signs, iglo.base answers 400. Raw parse errors of malformed keys differ |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -94,6 +96,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M4.7 pick): next in milestone order; its dependency is merged. Haiku worker per the model table, which did M4.6 with one blocker in review.
+- 2026-10-31 (runbook change): `test:reference` takes over 10 minutes, past the Bash foreground limit, so workers run it in the background and wait in the same turn; M4.6's worker ended three turns on it.
 - 2026-10-31 (M4.6 pick): next in milestone order; M4.5, its only dependency, is merged. Haiku worker per the model table.
 - 2026-10-31 (lead takeover, M4.5): at 05:18 UTC the lead thread had no live run (its turn ended 04:29 UTC, a T3 Code restart followed at 05:00), so a new lead took the lock under step 2 and adopted the worker, whose `test:reference` was running. The old lead was not woken when the worker's turn ended at 05:08; if it wakes later, the lock holder decides and it must not start a reviewer. The worker's one failure so far is the `freePort()` race in the hardening backlog.
 - 2026-10-31 (M4.5 merge): the run reached its 4-hour limit, so the lock was released and the next run picks the next task (M4.6 in milestone order).
