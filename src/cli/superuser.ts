@@ -64,7 +64,7 @@ function colored(ctx: CliContext, codes: string, text: string): void {
 }
 
 // color.Green / color.Yellow append a newline to the format
-const green = (ctx: CliContext, text: string): void => colored(ctx, "32", `${text}\n`);
+export const green = (ctx: CliContext, text: string): void => colored(ctx, "32", `${text}\n`);
 const yellow = (ctx: CliContext, text: string): void => colored(ctx, "33", `${text}\n`);
 
 const subcommands: Subcommand[] = [

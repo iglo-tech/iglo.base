@@ -96,6 +96,8 @@ export interface RunningServer {
 // Starts `serve --http <host>:<port>` (a free port unless one is given, by
 // number or service name) with the extra args and waits for the start
 // banner. The returned url always uses 127.0.0.1 and urlPort, if given.
+// --automigrate is off unless args turn it on: a test's collection changes
+// write no pb_migrations next to its pb_data.
 export async function startServer(
   args: string[],
   dataDir: string,
@@ -112,6 +114,7 @@ export async function startServer(
       `${host}:${listenPort?.name ?? port}`,
       "--dir",
       dataDir,
+      "--automigrate=false",
       ...args,
     ],
     {

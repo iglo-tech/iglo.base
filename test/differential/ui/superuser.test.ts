@@ -7,8 +7,8 @@
 //
 // Normalized: the binary name, the log time and the --dir/--publicDir
 // defaults (next to each binary). Marked difference: the help's global
-// flags have no --automigrate, --hooksDir, --hooksPool, --hooksWatch and
-// --migrationsDir (docs/design/01-scope.md, removed flags).
+// flags have no --hooksDir, --hooksPool and --hooksWatch
+// (docs/design/01-scope.md, removed flags).
 
 import { expect, test } from "bun:test";
 import { join } from "node:path";
@@ -53,7 +53,7 @@ const sequence: string[][] = [
   ["ips", "--help"],
 ];
 
-const removedFlagLine = /^ {6}--(automigrate|hooksDir|hooksPool|hooksWatch|migrationsDir) .*\n/gm;
+const removedFlagLine = /^ {6}--(hooksDir|hooksPool|hooksWatch) .*\n/gm;
 
 function normalize(text: string, bin: string): string {
   return text

@@ -5,19 +5,22 @@
 // `serve` and `superuser` (@/cli/superuser) open pb_data with bootstrapApp;
 // upstream also bootstraps for the root command without --help/--version.
 //
-// Also logs the one warning about pb_hooks and pb_migrations directories,
-// which upstream's prebuilt binary would load (examples/base/main.go, jsvm
-// defaults "pb_data/../pb_hooks" and "pb_data/../pb_migrations").
+// Also logs the one warning about a pb_hooks directory, which upstream's
+// prebuilt binary would load (examples/base/main.go, jsvm default
+// "pb_data/../pb_hooks"), and runs the app migrations before the server
+// starts (apis/serve.go Serve).
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import type { FlagSpec, FlagValue } from "@/cli/flags";
-import { ignoredDirsWarning } from "@/cli/removed";
+import { ignoredDirWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
+import { type Migration, up } from "@/migrations/migrations-runner";
 import { logTime, serve } from "@/server/serve";
+import { reloadSettings } from "@/settings/settings-query";
 
 export const serveShort =
   "Starts the web server (default to 127.0.0.1:8090 if no domain is specified)";
@@ -66,6 +69,7 @@ export async function bootstrapApp(app: AppConfig, ctx: CliContext): Promise<App
     // color.HiBlack, as upstream's dev mode prints the statements
     devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
     warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),
+    automigrateDir: app.automigrate ? app.migrationsDir : undefined,
   });
 }
 
@@ -80,6 +84,7 @@ export async function runServeCommand(
   values: Map<string, FlagValue>,
   domains: string[],
   ctx: CliContext,
+  migrations: readonly Migration[],
 ): Promise<void> {
   let httpAddr = (values.get("http") as string | undefined) ?? "";
   let httpsAddr = (values.get("https") as string | undefined) ?? "";
@@ -97,16 +102,18 @@ export async function runServeCommand(
     httpAddr = "127.0.0.1:8090";
   }
 
-  const ignored = ["pb_hooks", "pb_migrations"]
-    .map((name) => join(app.dataDir, "..", name))
-    .filter((dir) => existsSync(dir));
-  if (ignored.length > 0) {
-    ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirsWarning(ignored)}\n`);
+  const hooksDir = join(app.dataDir, "..", "pb_hooks");
+  if (existsSync(hooksDir)) {
+    ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirWarning(hooksDir)}\n`);
   }
 
   const appContext = await bootstrapApp(app, ctx);
 
   try {
+    // ensure that the latest migrations are applied before starting the server
+    up(appContext, migrations);
+    await reloadSettings(appContext);
+
     await serve(
       appContext,
       {

@@ -60,6 +60,9 @@ export interface App {
   // SubscriptionsBroker returns the app realtime subscriptions broker
   // instance (src/realtime; serve closes its clients on shutdown).
   readonly subscriptionsBroker: Broker;
+  // the migrations directory automigrate writes to (--automigrate,
+  // plugins/migratecmd); undefined when it is off
+  readonly automigrateDir?: string;
 }
 
 export interface AppConfig {
@@ -75,6 +78,8 @@ export interface AppConfig {
   settings?: Settings;
   // an empty environment unless set
   getenv?: (name: string) => string;
+  // the migrations directory, when --automigrate is on
+  automigrateDir?: string;
 }
 
 export function newApp(config: AppConfig): App {

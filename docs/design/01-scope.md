@@ -38,7 +38,7 @@ Not removed, because they are product features, not extension mechanisms:
 
 ### Exact CLI messages
 
-Until M3.7 lands, the executable still prints the pre-D23 texts (which also name user migrations), rejects `migrate`, `--migrationsDir` and `--automigrate`, and warns about `pb_migrations`; M3.7 switches them to the texts below. These texts are what the executable prints (on stderr, after upstream's `log.Fatal` timestamp, exit code 1). Each removed flag is rejected in every form (`--flag`, `--flag=value`, `--flag value`), before or after the command, unless it follows `--`:
+These texts are what the executable prints (on stderr, after upstream's `log.Fatal` timestamp, exit code 1). Each removed flag is rejected in every form (`--flag`, `--flag=value`, `--flag value`), before or after the command, unless it follows `--`:
 
 ```text
 flag --<name> is not supported: iglo.base has no JavaScript hooks. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-the-extension-surface
@@ -57,9 +57,42 @@ Decided by the owner on 2026-10-28 ([D23](10-decisions.md#d23-javascript-migrati
 - `pb_migrations/*.js` (or `--migrationsDir`) are applied at startup in file-name order, before `serve` accepts requests, and each applied file is recorded in `_migrations` under its file name, as upstream does;
 - the `migrate` command with `up`, `down [n]`, `create <name>`, `collections` and `history-sync`, with upstream's output;
 - `--automigrate` (on by default in upstream's prebuilt binary): collection changes made in the dashboard or through `/api/collections` write a migration file from upstream's templates;
-- migration files see the globals upstream gives them (`migrate`, `$app` as the migration's `app` argument, `Collection`, `Record`, the field constructors, `$security`, `$dbx`, `unmarshal` and the rest that the JS migration docs and the automigrate templates use). Files run as JavaScript modules on Bun, not in an embedded VM. A global that iglo.base does not provide fails the migration with an error that names it.
+- migration files see the globals upstream gives them (below). Files run on Bun, not in an embedded VM: each file in its own `node:vm` context, so it sees only its bindings and nothing of the process. `up` and `down` are synchronous, inside the synchronous write transaction (D8): one that returns a promise fails the migration. A global that iglo.base does not provide fails the migration with an error that names it.
 
-`pb_hooks` stays removed ([above](#removed-the-extension-surface)).
+`pb_hooks` stays removed ([above](#removed-the-extension-surface)). Upstream's generated `pb_data/types.d.ts` (an editor aid that also documents the hooks API) is not written.
+
+### Globals of a migration file
+
+As upstream, `$app` is not a global there: a migration uses its `app` argument.
+
+| Provided | Notes |
+|---|---|
+| `migrate`, `__hooks` | |
+| `console`, `process` (`env`), `Buffer`, `require` | `require` resolves as upstream: relative to the working directory, then the requiring module; `node_modules`; `console`, `process`, `buffer`, `util` |
+| `Collection`, `Record`, `FieldsList`, `Field`, the 14 named field constructors | |
+| `DynamicModel`, `arrayOf`, `nullString`, `nullFloat`, `nullInt`, `nullBool`, `nullArray`, `nullObject` | |
+| `unmarshal`, `toString`, `toBytes`, `readerToString`, `sleep`, `DateTime`, `ValidationError` | `DateTime` without its location argument |
+| `$dbx`, `$security` | complete |
+| `$os` | `args`, `exit`, `getenv`, `stat`, `readFile`, `writeFile`, `readDir`, `tempDir`, `truncate`, `getwd`, `mkdir`, `mkdirAll`, `rename`, `remove`, `removeAll` |
+| `$filepath` | `base`, `clean`, `dir`, `ext`, `fromSlash`, `toSlash`, `isAbs`, `join`, `rel`, `split`, `splitList` |
+
+The `app` argument has upstream's names for the app settings and databases (`settings`, `db`, `auxDB`, `dataDir`, ...), `runInTransaction`, `auxRunInTransaction`, `save`, `saveNoValidate`, `delete`, `validate`, the collection and record finders, `importCollections`, the table helpers and `expandRecord`. Another `core.App` method fails with an error that names it.
+
+A migration file reaches an internal class only through its Go signature (`src/migrations/go-class.ts`, from upstream's `types.d.ts`): the class's Go fields and methods and nothing else of the internal object, arguments converted as goja converts them, a missing argument as its Go zero value.
+
+| Missing | Reason |
+|---|---|
+| `$http`, `FormData` | network calls never run inside a write transaction |
+| `$mails`, `MailerMessage` | a mail is a network call |
+| `$template` | only hooks render templates |
+| `$filesystem` | file and upload bindings are out of scope for migrations |
+| `AppleClientSecretCreateForm`, `RecordUpsertForm`, `TestEmailSendForm`, `TestS3FilesystemForm` | upstream's internal forms, kept there for old hooks |
+| `Context`, `Middleware`, `Cookie`, `SubscriptionMessage`, `RequestInfo` | they belong to request handling, which a migration does not have |
+| `Command` | iglo.base has no custom console commands |
+| `Timezone` and `DateTime`'s location argument | time zones are not bound; a stored date is UTC |
+| `field.intercept`, the Go contexts and log hooks of a query (`context`, `withContext`, `fieldMapper`, `tableMapper`, `logFunc`, `perfFunc`, `queryLogFunc`, `execLogFunc`, `lastError`) | they are hook plumbing; a migration has no `Context` to pass and no request to intercept |
+| `time.Time` beyond `unix`, `unixMilli`, `year`, `month`, `day`, `hour`, `minute`, `second` | the rest needs Go's layouts and locations; `DateTime` covers what a migration stores |
+| `$os.exec`, `$os.cmd`, `$os.dirFS`, `$os.openRoot`, `$os.openInRoot`, `$filepath.glob`, `$filepath.match`, `$filepath.walk`, `$filepath.walkDir` | they need Go values (processes, file handles, callbacks) no migration pattern uses |
 
 ## Removed: the `update` command
 
@@ -89,7 +122,7 @@ command "update" is not supported: iglo.base does not replace its own executable
 | Jobs | built-in cron jobs (logs cleanup, DB optimize, MFA and OTP cleanup, rate-limiter cleanup, auto backups) and `/api/crons` |
 | Settings | `meta`, `smtp`, `s3`, `backups`, `rateLimits`, `trustedProxy`, `batch`, `logs`, `superuserIPs`; optional encryption with `--encryptionEnv` |
 | HTTP | CORS (`--origins`), gzip, body limits, rate limits, trusted proxy headers, HTTPS with automatic Let's Encrypt certificates (`serve example.com`), `/api/health` |
-| CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback` |
+| CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `migrate up/down/create/collections/history-sync`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback`, `--migrationsDir`, `--automigrate` |
 | Admin dashboard | upstream's `/_/` dashboard, including the installer link for the first superuser ([Admin UI](08-admin-ui.md)) |
 | Platforms | linux-x64 release binary for the MVP; linux-arm64 and darwin-arm64 after 1.0 ([D18](10-decisions.md#d18-release-platforms), [D24](10-decisions.md#d24-mvp-targets-linux-x64-only)) |
 

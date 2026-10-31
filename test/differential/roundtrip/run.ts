@@ -343,13 +343,7 @@ async function startLeg(kind: Kind, dataDir: string, encrypted: boolean): Promis
   const args = encrypted ? ["--encryptionEnv", encryptionEnv] : [];
   const env: Record<string, string> = encrypted ? { [encryptionEnv]: encryptionKey } : {};
   if (kind === "upstream") {
-    // --automigrate writes pb_migrations files and `_migrations` rows on
-    // every collection change, which iglo.base does not do yet (M3.7)
-    const server = await startUpstream({
-      dataDir,
-      args: [...args, "--automigrate=false"],
-      env,
-    });
+    const server = await startUpstream({ dataDir, args, env });
     return { url: server.url, stop: () => server.stop() };
   }
   const server = await startServer(args, dataDir, undefined, undefined, env);

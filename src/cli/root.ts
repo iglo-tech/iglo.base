@@ -3,17 +3,25 @@
 // --indexFallback flags), with cobra's Execute flow (command lookup, help,
 // version, error output via log.Fatal).
 //
-// The serve and superuser commands are in @/cli/serve and @/cli/superuser.
-// Not ported: the bootstrap of the root command itself (it only prints help
-// or the version), and everything plugin related (see @/cli/removed).
+// The serve, superuser and migrate commands are in @/cli/serve,
+// @/cli/superuser and @/cli/migrate. Not ported: the bootstrap of the root
+// command itself (it only prints help or the version), and the hooks and
+// update plugins (see @/cli/removed).
+//
+// main.go registers the jsvm plugin before anything runs, so the migration
+// files load first, whatever the command (registerMigrations).
 
 import { basename, dirname, join } from "node:path";
 
 import { argsMinusFirst, FlagError, parseFlags, stripFlags, type FlagSpec } from "@/cli/flags";
 import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { migrateShort, runMigrateCommand } from "@/cli/migrate";
 import { findRemovedFlag, removedCommandMessage, removedFlagMessage } from "@/cli/removed";
 import { runServeCommand, serveFlags, serveShort, serveUse } from "@/cli/serve";
 import { CommandError, runSuperuserCommand, superuserShort } from "@/cli/superuser";
+import { PanicError, registerMigrations } from "@/migrations/jsvm";
+import { addMigration, type Migration } from "@/migrations/migrations-runner";
+import { systemMigrationFiles, systemMigrationHasDown } from "@/migrations/system-migrations";
 import { logTime, type Output } from "@/server/serve";
 import type { StaticFS } from "@/apis/ui-pack";
 
@@ -37,6 +45,10 @@ export interface CliContext {
   shutdown: AbortSignal;
   // os.Getenv ("" when unset); an empty environment unless set
   getenv?: (name: string) => string;
+  // os.Environ, for a migration file's process.env; empty unless set
+  environ?: () => Record<string, string>;
+  // os.Exit, for a migration file's $os.exit
+  exit?: (code: number) => never;
   // the embedded dashboard build (main.ts); undefined runs without the
   // dashboard, as upstream's no_ui build
   ui?: StaticFS;
@@ -52,6 +64,8 @@ export interface AppConfig {
   queryTimeout: number;
   publicDir: string;
   indexFallback: boolean;
+  migrationsDir: string;
+  automigrate: boolean;
 }
 
 class CliError extends Error {
@@ -64,6 +78,7 @@ class CliError extends Error {
 }
 
 const subcommands = [
+  { name: "migrate", short: migrateShort },
   { name: "serve", short: serveShort },
   { name: "superuser", short: superuserShort },
 ];
@@ -107,6 +122,17 @@ function rootFlags(defaults: AppConfig): FlagSpec[] {
         "fallback the request to index.html on missing static path, e.g. when pretty urls are used with SPA",
       defaultText: "true",
     },
+    {
+      name: "migrationsDir",
+      kind: "string",
+      usage: "the directory with the user defined migrations",
+    },
+    {
+      name: "automigrate",
+      kind: "bool",
+      usage: "enable/disable auto migrations",
+      defaultText: "true",
+    },
   ];
 }
 
@@ -122,6 +148,8 @@ function defaultConfig(ctx: CliContext): AppConfig {
     // examples/base/main.go defaultPublicDir
     publicDir: ctx.isCompiled ? join(ctx.argv0, "../pb_public") : "./pb_public",
     indexFallback: true,
+    migrationsDir: "",
+    automigrate: true,
   };
 }
 
@@ -133,7 +161,44 @@ function resolveConfig(defaults: AppConfig, values: Map<string, unknown>): AppCo
     queryTimeout: (values.get("queryTimeout") as number | undefined) ?? defaults.queryTimeout,
     publicDir: (values.get("publicDir") as string | undefined) ?? defaults.publicDir,
     indexFallback: (values.get("indexFallback") as boolean | undefined) ?? defaults.indexFallback,
+    migrationsDir: (values.get("migrationsDir") as string | undefined) ?? defaults.migrationsDir,
+    automigrate: (values.get("automigrate") as boolean | undefined) ?? defaults.automigrate,
   };
+}
+
+// migratecmd.Register and jsvm.Register: an unset directory is
+// pb_data/../pb_migrations.
+function withMigrationsDir(config: AppConfig): AppConfig {
+  return config.migrationsDir === ""
+    ? { ...config, migrationsDir: join(config.dataDir, "../pb_migrations") }
+    : config;
+}
+
+// the flags of the whole command line, as main.go's eager ParseFlags: what
+// it cannot parse is left to the command
+function eagerConfig(defaults: AppConfig, persistent: FlagSpec[], args: string[]): AppConfig {
+  try {
+    return resolveConfig(defaults, parseFlags(args, persistent, { allowUnknown: true }).values);
+  } catch {
+    return defaults;
+  }
+}
+
+// the system migrations (by name) and the app's, for the runner
+function allMigrations(appMigrations: readonly Migration[]): Migration[] {
+  const list: Migration[] = [];
+  for (const file of systemMigrationFiles) {
+    addMigration(list, {
+      file,
+      up: null,
+      down: null,
+      system: systemMigrationHasDown(file) ? "refuse" : "keep",
+    });
+  }
+  for (const m of appMigrations) {
+    addMigration(list, m);
+  }
+  return list;
 }
 
 // cobra.ld: Levenshtein distance, case-insensitive.
@@ -175,6 +240,23 @@ async function execute(ctx: CliContext): Promise<number> {
     throw new CliError(removedFlagMessage(removedFlag));
   }
 
+  const eager = withMigrationsDir(eagerConfig(defaults, persistent, ctx.args));
+  const migrations = allMigrations(
+    registerMigrations({
+      migrationsDir: eager.migrationsDir,
+      hooksDir: join(eager.dataDir, "../pb_hooks"),
+      cwd: ctx.cwd,
+      argv: [ctx.argv0, ...ctx.args],
+      environ: ctx.environ?.() ?? {},
+      getenv: ctx.getenv ?? (() => ""),
+      exit: ctx.exit ?? exitUnset,
+      clock: { now: () => ctx.out.now() },
+      log: (line) => ctx.out.stdout(`${logTime(ctx.out.now())} ${line}\n`),
+    }),
+  );
+  const resolve = (values: Map<string, unknown>): AppConfig =>
+    withMigrationsDir(resolveConfig(defaults, values));
+
   // cobra Command.Find
   const commandWords = stripFlags(ctx.args, persistent);
   const commandName = commandWords[0];
@@ -213,12 +295,17 @@ async function execute(ctx: CliContext): Promise<number> {
       );
       return 0;
     }
-    await runServeCommand(resolveConfig(defaults, parsed.values), parsed.values, parsed.args, ctx);
+    await runServeCommand(resolve(parsed.values), parsed.values, parsed.args, ctx, migrations);
     return 0;
   }
 
   if (commandName === "superuser") {
-    await runSuperuserCommand((values) => resolveConfig(defaults, values), persistent, ctx, name);
+    await runSuperuserCommand(resolve, persistent, ctx, name);
+    return 0;
+  }
+
+  if (commandName === "migrate") {
+    await runMigrateCommand(resolve, persistent, migrations, eager.migrationsDir, ctx, name);
     return 0;
   }
 
@@ -259,11 +346,19 @@ async function execute(ctx: CliContext): Promise<number> {
   return 0;
 }
 
+function exitUnset(): never {
+  throw new Error("os.Exit is not set");
+}
+
 // Runs the CLI and returns the process exit code.
 export async function runCli(ctx: CliContext): Promise<number> {
   try {
     return await execute(ctx);
   } catch (err) {
+    if (err instanceof PanicError) {
+      ctx.out.stderr(`panic: ${err.message}\n`);
+      return 2;
+    }
     if ((err instanceof CliError || err instanceof CommandError) && err.usage) {
       ctx.out.stderr(`${err.usage}\n`);
     }

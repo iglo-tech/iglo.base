@@ -200,8 +200,8 @@ Decided by the owner on 2026-10-28.
 
 - **Decision:** support upstream's JavaScript migrations: `pb_migrations/*.js` applied at startup and recorded in `_migrations`, the `migrate` command (`up`, `down`, `create`, `collections`, `history-sync`), `--migrationsDir` and `--automigrate`, with the globals upstream gives migration files ([Scope](01-scope.md#kept-javascript-migrations)). `pb_hooks` stays removed (D5).
 - **Why:** the owner asked for it: only `pb_hooks` was meant to go. Existing deployments keep their migration workflow, and the 58 recorded `*.js` migrations in the source data (D15) stay meaningful.
-- **How:** migration files are JavaScript modules run by Bun itself, so no JS VM is embedded. The globals are thin bindings over the internal modules (collections, records, fields, db, security), which stay internal; the bindings are the only surface, and only migration files see them.
-- **Consequence:** a new task (M3.7) ports `plugins/migratecmd` and the migration bindings from `plugins/jsvm`. Until it lands, iglo.base keeps the current behavior (it warns about and ignores `pb_migrations`, and rejects `migrate`, `--migrationsDir` and `--automigrate`).
+- **How:** migration files are run by Bun itself, each in its own `node:vm` context, so no JS VM is embedded. The globals are thin bindings over the internal modules (collections, records, fields, db, security), which stay internal; the bindings are the only surface, and only migration files see them.
+- **Consequence:** task M3.7 ported `plugins/migratecmd` and the migration bindings from `plugins/jsvm`.
 
 ## D24. MVP targets Linux x64 only
 

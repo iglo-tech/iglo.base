@@ -3,8 +3,10 @@
 // The OnCollectionsListRequest, OnCollectionViewRequest,
 // OnCollectionCreateRequest, OnCollectionUpdateRequest and
 // OnCollectionDeleteRequest hooks are not ported (no extension surface):
-// their default actions run directly. The handlers never run in a
-// transaction, so execAfterSuccessTx writes the response at once.
+// their default actions run directly, and create, update and delete call
+// automigrate around theirs (upstream's migratecmd binds it to these
+// hooks). The handlers never run in a transaction, so execAfterSuccessTx
+// writes the response at once.
 //
 // A collection body is bound as upstream binds it: JSON goes through the
 // Collection's own unmarshalJSON (Collection.UnmarshalJSON), as do the
@@ -38,6 +40,7 @@ import { deleteCollection, saveCollection } from "@/collections/collection-save"
 import { dryRunView } from "@/collections/view";
 import { defaultIdAlphabet } from "@/db/db";
 import { marshalStruct } from "@/fields/field";
+import { automigrateOnCollectionChange } from "@/migrations/automigrate";
 import { requireSuperuserAuth } from "@/middlewares/require-auth";
 import { providerMetadata } from "@/oauth2/provider-list";
 import { newProvider } from "@/search/provider";
@@ -226,20 +229,22 @@ async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
     );
   }
 
-  try {
-    saveCollection(e.app, collection);
-  } catch (err) {
-    // validation failure
-    const validationErrors = errorsAs(err, Errors);
-    if (validationErrors) {
-      return e.badRequestError("Failed to create collection.", validationErrors);
+  return automigrateOnCollectionChange(e.app, collection, () => {
+    try {
+      saveCollection(e.app, collection);
+    } catch (err) {
+      // validation failure
+      const validationErrors = errorsAs(err, Errors);
+      if (validationErrors) {
+        return e.badRequestError("Failed to create collection.", validationErrors);
+      }
+
+      // other generic db error
+      return e.badRequestError(`Failed to create collection. Raw error: \n${errorText(err)}`, null);
     }
 
-    // other generic db error
-    return e.badRequestError(`Failed to create collection. Raw error: \n${errorText(err)}`, null);
-  }
-
-  return e.json(200, collection);
+    return e.json(200, collection);
+  });
 }
 
 async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
@@ -258,23 +263,25 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
     );
   }
 
-  try {
-    saveCollection(e.app, collection);
-  } catch (err) {
-    // validation failure
-    const validationErrors = errorsAs(err, Errors);
-    if (validationErrors) {
-      return e.badRequestError("Failed to update collection.", validationErrors);
+  return automigrateOnCollectionChange(e.app, collection, () => {
+    try {
+      saveCollection(e.app, collection);
+    } catch (err) {
+      // validation failure
+      const validationErrors = errorsAs(err, Errors);
+      if (validationErrors) {
+        return e.badRequestError("Failed to update collection.", validationErrors);
+      }
+
+      // other generic db error
+      return e.badRequestError(`Failed to update collection. Raw error: \n${errorText(err)}`, null);
     }
 
-    // other generic db error
-    return e.badRequestError(`Failed to update collection. Raw error: \n${errorText(err)}`, null);
-  }
-
-  return e.json(200, collection);
+    return e.json(200, collection);
+  });
 }
 
-function collectionDelete(e: RequestEvent): HandlerResult {
+function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResult {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
@@ -282,27 +289,29 @@ function collectionDelete(e: RequestEvent): HandlerResult {
     return e.notFoundError("", err);
   }
 
-  try {
-    deleteCollection(e.app, collection);
-  } catch (err) {
-    let msg = "Failed to delete collection";
-
-    // check fo references
-    let refs = new Map<Collection, unknown>();
+  return automigrateOnCollectionChange(e.app, collection, () => {
     try {
-      refs = findCollectionReferences(e.app, collection, collection.id);
-    } catch {
-      // ignored, as upstream
-    }
-    if (refs.size > 0) {
-      const names = [...refs.keys()].map((ref) => ref.name);
-      msg += " probably due to existing reference in " + names.join(", ");
+      deleteCollection(e.app, collection);
+    } catch (err) {
+      let msg = "Failed to delete collection";
+
+      // check fo references
+      let refs = new Map<Collection, unknown>();
+      try {
+        refs = findCollectionReferences(e.app, collection, collection.id);
+      } catch {
+        // ignored, as upstream
+      }
+      if (refs.size > 0) {
+        const names = [...refs.keys()].map((ref) => ref.name);
+        msg += " probably due to existing reference in " + names.join(", ");
+      }
+
+      return e.badRequestError(msg, err);
     }
 
-    return e.badRequestError(msg, err);
-  }
-
-  return e.noContent(204);
+    return e.noContent(204);
+  });
 }
 
 function collectionTruncate(e: RequestEvent): HandlerResult {

@@ -50,7 +50,17 @@ export async function startUpstream(
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
   const child = spawnChild(
-    [binary, "serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, ...(options.args ?? [])],
+    [
+      binary,
+      "serve",
+      "--http",
+      `127.0.0.1:${port}`,
+      "--dir",
+      dataDir,
+      // off unless args turn it on, as test/support/executable.ts
+      "--automigrate=false",
+      ...(options.args ?? []),
+    ],
     {
       cwd: root,
       env: { ...options.env, PATH: `${noBrowserDir}:${process.env.PATH ?? ""}` },

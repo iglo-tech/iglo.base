@@ -79,8 +79,15 @@ function markerModel(): StructModel {
   return { tableName: notScanned, dbColumns: notScanned, dbScan: notScanned };
 }
 
+// Scanning into a record target on a query RecordQuery did not build.
+export class NotRecordQueryError extends Error {
+  constructor() {
+    super("the record target is only for queries built by RecordQuery");
+  }
+}
+
 function notScanned(): never {
-  throw new Error("the record target is only for queries built by RecordQuery");
+  throw new NotRecordQueryError();
 }
 
 // One()'s target for a Record (Go: &core.Record{})
