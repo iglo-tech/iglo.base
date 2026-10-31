@@ -156,7 +156,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M4.4 | Mailer: SMTP and `sendmail` with v0.41.0 behavior, `mails/` (the send functions and layout), test email endpoint | `tools/mailer`, `mails/`, `forms/test_email_send.go` | M0.2, M1.3 | Messages for the same action match upstream's in Mailpit |
 | M4.5 | OAuth2 flow, redirect endpoint, `_externalAuths`, mock provider harness | `apis/record_auth_with_oauth2*.go`, `core/external_auth*`, `tools/auth/auth.go` | M4.1 | OAuth2 and redirect scenarios pass (about 80, including `record_crud_external_auth`) with one mock provider |
 | M4.6 | OAuth2 providers, part 1: Apple, Bitbucket, Box, Discord, Facebook, Gitea, Gitee, GitHub, GitLab, Google, Instagram, Kakao, Lark, Linear, LiveChat | `tools/auth/*.go` | M4.5 | Each provider passes against its mock |
-| M4.7 | OAuth2 providers, part 2: mailcow, Microsoft, monday.com, Notion, OIDC slots 2 and 3 (OIDC itself moved to M4.5 on 2026-10-31), Patreon, Planning Center, Spotify, Strava, Trakt, Twitch, Twitter/X, VK, WakaTime, Yandex | `tools/auth/*.go` | M4.5 | Each provider passes against its mock |
+| M4.7 | OAuth2 providers, part 2: mailcow, Microsoft, monday.com, Notion, Patreon, Planning Center, Spotify, Strava, Trakt, Twitch, Twitter/X, VK, WakaTime, Yandex | `tools/auth/*.go` | M4.5 | Each provider passes against its mock |
 | M4.8 | Rate limiter | `apis/middlewares_rate_limit.go` | M0.3, M1.3 | Rate-limit scenarios in `middlewares_test.go` pass |
 
 ### M5: realtime and operations

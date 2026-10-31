@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.5 active (review round 3).
+M4.5 merged; no active task.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.5 | review | [#46](https://github.com/iglo-tech/iglo.base/pull/46) | 3 | [brief](briefs/M4.5.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M4.5 | [#46](https://github.com/iglo-tech/iglo.base/pull/46) | 2026-10-31 (`29220cf`) | Three review rounds, lead fixed all: Sol APPROVE at `4d5d7fc`. Provider requests follow Go's redirect rules (`src/oauth2/http-client.ts`), http and https only; avatar deadline covers name resolution. Includes OIDC and its two extra slots. Avatar download honouring `HTTP(S)_PROXY` is listed in 04-api-compatibility.md. Carried: 4 rate-limit scenarios pending on M4.8; Apple client secret (M4.6) |
 | M4.3 | [#45](https://github.com/iglo-tech/iglo.base/pull/45) | 2026-10-31 (`35fe38e`) | One review round: Sol APPROVE at `558290d`. Includes the installer-superuser password reset mail guard (`src/mail/mails/record.ts`, outside the brief's modules). Carried: 12 rate-limit scenarios pending on M4.8; the resend limits' two-minute expiry is a real timer and untested |
 | M4.2 | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 2026-10-31 (`d569288`) | Two review rounds: Sol APPROVE at `7d5afbb`. Lead fixed a gap Sol's round 1 approved: the `_superusers` save handler was never ported, so OTP worked without MFA. Includes `record_crud_mfa_test.go`. Carried: 6 rate-limit scenarios pending on M4.8; expired-OTP cleanup (M5.6) |
 | M3.7 | [#43](https://github.com/iglo-tech/iglo.base/pull/43) | 2026-10-31 (`165e1b2`) | Three review rounds, then a lead decision (fixers for rounds 1 and 2, lead fixed two of round 3's four findings at `6d31239`; [reasoning](https://github.com/iglo-tech/iglo.base/pull/43#issuecomment-6537011585)). First worker stalled on a prompt, one retry. `check` and `test:reference` pass at the head; `test:roundtrip:large` last passed at `cc04b8b`. `migrate down` into a system migration is listed in 04-api-compatibility.md |
@@ -79,6 +79,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | Migrations (M3.7) | Specialized `DynamicModel` defaults: a JSONRaw shape, Go pointer defaults, and `time.Time` JSON whole seconds differ from upstream |
 | 2026-10-31 | Files tests (M5.2) | `test/differential/files/serve.test.ts:493`, "HEAD of a thumb": `Last-Modified` differs when the two servers write across a second boundary; seen once in M4.5's `test:reference` |
 | 2026-10-31 | Errors (M4.5) | `toApiError` misses the db layer's no-rows error, so a bare no-rows error answers 400 where upstream answers 404; fixed locally in the OAuth2 handler only, other handlers may share it |
+| 2026-10-31 | OAuth2 tests (M4.5) | `test/differential/auth/oauth2-flows.test.ts:255` requires `updated === created` on a new `_externalAuths` row; each field reads the clock on its own, so they can differ by 1 ms (seen once in Sol's round 3 run; check both timestamps without equality) |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -92,7 +93,9 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 Decisions and plan changes made by agents while the owner was away.
 
 - 2026-10-31 (lead takeover, M4.5): at 05:18 UTC the lead thread had no live run (its turn ended 04:29 UTC, a T3 Code restart followed at 05:00), so a new lead took the lock under step 2 and adopted the worker, whose `test:reference` was running. The old lead was not woken when the worker's turn ended at 05:08; if it wakes later, the lock holder decides and it must not start a reviewer. The worker's one failure so far is the `freePort()` race in the hardening backlog.
-- 2026-10-31 (plan change, M4.5 brief): the OIDC provider moves from M4.7 to M4.5; the differential cases need one real provider whose endpoints both servers can be pointed at.
+- 2026-10-31 (M4.5 merge): the run reached its 4-hour limit, so the lock was released and the next run picks the next task (M4.6 in milestone order).
+- 2026-10-31 (M4.5, round 2): the lead's own round 1 redirect fix let a provider `Location: file:…` make Bun read a local file. Sol found it and it never reached `main`; provider requests now allow http and https only. Provider redirects keep upstream's behavior that the token's `Authorization` goes to every hop, other hosts included (`oauth2.Transport`).
+- 2026-10-31 (plan change, M4.5 brief): the OIDC provider moves from M4.7 to M4.5, and its slots 2 and 3 came with it; the differential cases need one real provider whose endpoints both servers can be pointed at.
 - 2026-10-31 (M4.3 pick): next in milestone order; its dependencies (M4.1, M4.4) are merged.
 - 2026-10-31 (M4.2 pick): the usable-first order is done through M5.1, so the rest follows milestone order; M4.2 is the first task with its dependencies merged.
 - 2026-10-31 (M3.7 merge): after three rounds without agreement the lead merged #43, moving Sol's round 3 findings 3 and 4 to the hardening backlog. Finding 3 is not fully safe under D26 (see its backlog row); accepted for the MVP. The run had reached its 4-hour limit, so the lock was released and the next run picks the next task.
