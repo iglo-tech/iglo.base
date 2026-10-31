@@ -909,6 +909,11 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
     return; // a value, not a pointer
   }
 
+  if (target instanceof GoJSONMap || target instanceof GoJSONArray) {
+    target.scan(raw);
+    return;
+  }
+
   if (target instanceof Settings) {
     unmarshalSettings(raw, target);
     return;

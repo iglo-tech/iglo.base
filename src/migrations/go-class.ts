@@ -38,7 +38,7 @@ import {
 import type { Field } from "@/fields/field";
 import { isExpression } from "@/db/dbx/expression";
 import { BoundValue, Float64 } from "@/db/dbx/query";
-import { GoJSONArray } from "@/migrations/json-values";
+import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { type Adapter, type Membrane, toInteger } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { Settings } from "@/settings/settings-model";
@@ -507,10 +507,22 @@ function sqlParams(
   if (typeof v !== "object" || v === null) {
     return params;
   }
-  const source = (m.targetOf(v) === undefined ? v : m.toHost(v)) as Record<string, unknown>;
+  const target = m.targetOf(v);
+  const source = (target instanceof GoJSONMap ? target.data : (target ?? v)) as Record<
+    string,
+    unknown
+  >;
   for (const key of Object.keys(source)) {
+    const item = source[key];
     Object.defineProperty(params, key, {
-      value: value(source[key]),
+      // a Go map's values are internal ones, and keep their Go types;
+      // params() hands out values that are already bound
+      value:
+        target === undefined
+          ? value(item)
+          : item instanceof BoundValue || item instanceof Float64
+            ? item
+            : value(m.toVm(item)),
       writable: true,
       enumerable: true,
       configurable: true,

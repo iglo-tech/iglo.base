@@ -22,6 +22,10 @@
 //   6. nullable column(): "outputs", col *
 //   7. a saved settings clone: js-migrations.test.ts
 //
+// Round 3 findings:
+//   1. Go-backed parameter maps: "goMaps", dbExport, reuse *, map *
+//   2. named JSON destinations: "goMaps", into *
+//
 // The further instances of the same classes are the rest of each file.
 
 const helpers = String.raw`const show=(v)=>{ if(v===undefined) return "undefined"; if(typeof v==="function") return "fn"; if(typeof v==="bigint") return "bigint"; let s; try{s=JSON.stringify(v)}catch(e){s="<nojson "+e.message+">"} return typeof v+":"+Array.isArray(v)+":"+s; };
@@ -878,6 +882,37 @@ migrate((app)=>{
  t("all nstr",()=>{const d=arrayOf(nullString());app.db().newQuery("SELECT 'x' AS v").all(d);return d});
 });
 `,
+  goMaps:
+    helpers +
+    String.raw`
+migrate((app)=>{
+ const {c,r}=seed(app);
+ const db=app.db();
+ db.newQuery("CREATE TABLE seed (v TEXT)").execute();
+ db.newQuery("CREATE TABLE archive AS SELECT * FROM things WHERE 0").execute();
+ const rows=()=>{const d=arrayOf(new DynamicModel({v:""})); db.newQuery("SELECT coalesce(v,'NULL') AS v FROM seed").all(d); db.newQuery("DELETE FROM seed").execute(); return d.map(x=>x.v)};
+ const stored=(q)=>{q.bind(q.params()).execute(); return rows()};
+ const insert=()=>db.newQuery("INSERT INTO seed(v) VALUES ({:v})");
+ t("dbExport",()=>{db.insert("archive",r.dbExport(app)).execute(); const d=new DynamicModel({title:"",tags:"",config:""}); db.newQuery("SELECT title,tags,config FROM archive").one(d); return d});
+ t("dbExport update",()=>{db.update("archive",r.dbExport(app),$dbx.hashExp({id:r.id})).execute(); return 1});
+ t("reuse date",()=>stored(insert().bind({v:new DateTime("2024-01-01 00:00:00.000Z")})));
+ t("reuse geo",()=>stored(insert().bind({v:r.getGeoPoint("loc")})));
+ t("reuse raw",()=>stored(insert().bind({v:r.get("config")})));
+ t("reuse duration",()=>stored(insert().bind({v:app.findCollectionByNameOrId("users").authToken.durationTime()})));
+ t("reuse number",()=>stored(insert().bind({v:7})));
+ t("reuse text",()=>stored(insert().bind({v:"x"})));
+ t("reuse json",()=>{const d=new DynamicModel({meta:{a:1},tags:["a"]}); return [stored(insert().bind({v:d.meta})),stored(insert().bind({v:d.tags}))]});
+ t("reuse andBind",()=>{const a=insert().bind({v:new DateTime("2024-01-01 00:00:00.000Z")}); const s=db.select("1").andBind(a.params()); return s.build().params().v!==undefined});
+ t("map set",()=>{const d=new DynamicModel({meta:{}}); d.meta.set("v",new DateTime("2024-02-02 00:00:00.000Z")); insert().bind(d.meta).execute(); return rows()});
+ t("map exp",()=>{db.newQuery("INSERT INTO seed(v) VALUES ('2024-01-01 00:00:00.000Z')").execute(); const q=insert().bind({v:new DateTime("2024-01-01 00:00:00.000Z")}); const d=arrayOf(new DynamicModel({v:""})); db.select("v").from("seed").where($dbx.exp("v={:v}",q.params())).all(d); const e=arrayOf(new DynamicModel({v:""})); db.select("v").from("seed").where($dbx.hashExp(q.params())).all(e); db.newQuery("DELETE FROM seed").execute(); return [d.length,e.length]});
+ t("into map",()=>{const d=new DynamicModel({meta:{a:1}}); unmarshal({b:2},d.meta); return [d,d.meta.get("a"),d.meta.get("b")]});
+ t("into array",()=>{const d=new DynamicModel({tags:["a"]}); unmarshal(["b","c"],d.tags); return d});
+ t("into field map",()=>{const d=new DynamicModel({meta:{z:1}}); r.unmarshalJSONField("config",d.meta); return d});
+ t("into field array",()=>{r.set("config",["x","y"]); const d=new DynamicModel({tags:["a"]}); r.unmarshalJSONField("config",d.tags); return d});
+ t("into null",()=>{const d=new DynamicModel({meta:{a:1},tags:["a"]}); unmarshal(null,d.meta); unmarshal(null,d.tags); return d});
+ t("into indexes",()=>{unmarshal(["CREATE INDEX idx_things ON things (title)"],c.indexes); app.save(c); return app.findCollectionByNameOrId("things").indexes});
+ t("into indexes field",()=>{r.set("config",["CREATE INDEX idx_things2 ON things (note)"]); r.unmarshalJSONField("config",c.indexes); app.save(c); return app.findCollectionByNameOrId("things").indexes});
+});`,
   // the Go fields and methods of each class, and no internal member
   surface: String.raw`
 const walk=(label,o,names)=>{for(const n of names){let ty; try{ty=typeof o[n]}catch(e){ty="THROW "+e.message} console.log(label,n,ty)}};
