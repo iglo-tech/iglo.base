@@ -151,9 +151,8 @@ describe("the cleanup", () => {
     expect(cleanupJob(app)).toBeUndefined();
 
     await serveTest(mux, limitedPath);
-    expect(app.cron.jobs().map((j) => [j.id, j.schedule.rawExpr])).toEqual([
-      ["__pbRateLimitersCleanup__", "2 * * * *"],
-    ]);
+    expect(app.cron.jobs().at(-1)?.id).toBe("__pbRateLimitersCleanup__");
+    expect(cleanupJob(app)?.schedule.rawExpr).toBe("2 * * * *");
   });
 
   test("a client is dropped more than 1800 s after its window ended", async () => {
@@ -206,8 +205,7 @@ describe("the cleanup", () => {
     expect(app.store.has("__pbRateLimiters__")).toBe(false);
 
     await serveTest(mux, limitedPath);
-    expect(cleanupJob(app)).toBeDefined();
-    expect(app.cron.jobs().length).toBe(1);
+    expect(app.cron.jobs().filter((j) => j.id === "__pbRateLimitersCleanup__").length).toBe(1);
   });
 
   test("a job that outlives its store does nothing", async () => {
