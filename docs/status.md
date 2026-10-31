@@ -10,7 +10,7 @@ M4.2 in progress.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.2 | review | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 1 | [brief](briefs/M4.2.md) |
+| M4.2 | review | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 2 | [brief](briefs/M4.2.md) |
 
 ## Done
 
@@ -63,12 +63,12 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
-| 2026-10-29 | Test harness | `freePort()` can race when servers start at once ("address already in use"); seen once in M1.3's test:reference |
+| 2026-10-29 | Test harness | `freePort()` (`test/support/executable.ts`) can race when servers start at once ("address already in use"); seen in M1.3's and M4.2's test:reference |
 | 2026-10-29 | Test harness (M3.2) | File-name normalization in `test/differential/files/files.test.ts:99–145` and `harness/compare.ts:207–209` accepts any equal-length lowercase alphanumeric difference; restrict it to the generated 10-character suffix |
 | 2026-10-29 | Collections API (M2.5) | Form-encoded (urlencoded/multipart) collection create/update ignores `fields` and nested auth options as plain keys; JSON and `@jsonPayload` match upstream |
 | 2026-10-29 | Test harness | The body-limit tests put the host under heavy memory pressure in one `bun run check` (M2.5 review); the reviewer passed with `--smol` |
 | 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
-| 2026-10-30 | Realtime tests (M5.1) | `test/differential/realtime/realtime.test.ts:29`, "a user delete updates the records that reference it": cascade update and delete notifications arrive in varying order; failed 2 of 3 isolated reruns and one full `test:reference` run. Check whether a real client can see a different order before calling it flaky |
+| 2026-10-30 | Realtime tests (M5.1) | `test/differential/realtime/realtime.test.ts:29`, "a user delete updates the records that reference it": cascade update and delete notifications arrive in varying order; failed 2 of 3 isolated reruns and one full `test:reference` run. Upstream itself varies the order (M4.2 review: two orders on 20 fresh copies), so the comparison must accept its permitted orders |
 | 2026-10-30 | Batch (M3.3) | Item headers that are not `Content-Type` but normalize to the rule key `content_type` (`CONTENT_TYPE`, `content.type`): upstream accepts or refuses at random (Go map order); iglo.base always uses the generated value |
 | 2026-10-31 | Migrations (M3.7) | `rows().scanStruct()` into `Collection`, `Record` or a field, and `one()`/`all()` into a field constructor, fail with an error; upstream fills them |
 | 2026-10-31 | Migrations (M3.7) | Nullable `DynamicModel` members are primitives; upstream gives pointer wrappers, visible through `typeof` and `===` only |
