@@ -12,13 +12,15 @@
 // here yet: the logger's `_logs` writes (M5) and the multi-instance notify
 // watcher (`.notify`).
 //
-// ClearBootstrap is clearBootstrap: it closes the databases. On a failed
+// ClearBootstrap is clearBootstrap: it stops the cron ticker, gives the jobs
+// still running a moment to finish and closes the databases. On a failed
 // bootstrap the databases are closed before the error is thrown.
 
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { type App, type AppConfig, newApp } from "@/app/app";
+import { registerCrons } from "@/app/crons";
 import { loadCollectionsCache } from "@/collections/collection-save";
 import { reloadSettings } from "@/settings/settings-query";
 import { Databases, defaultReadWorkers } from "@/db/base";
@@ -27,6 +29,10 @@ import { Store } from "@/tools/store/store";
 
 // temp pb_data sub directory that will be deleted on each app.Bootstrap()
 export const LocalTempDirName = ".pb_temp_to_delete";
+
+// how long clearBootstrap waits for running cron jobs; one that takes longer
+// fails on the closed databases, into the log
+const cronShutdownWaitMs = 5000;
 
 export interface BootstrapConfig extends Omit<AppConfig, "databases" | "store"> {
   // the number of read workers (D8); defaultReadWorkers unless set
@@ -68,6 +74,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     automigrateDir: config.automigrateDir,
   });
 
+  registerCrons(app);
+
   try {
     const result = runSystemMigrations(app);
     for (const warning of result.warnings) {
@@ -97,9 +105,12 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 }
 
 // ClearBootstrap releases the initialized core app resources (closing
-// db connections, stopping the thumb workers). Resolves once the read
-// worker threads have exited.
+// db connections, stopping cron ticker, stopping the thumb workers).
+// Resolves once the read worker threads have exited.
 export async function clearBootstrap(app: App): Promise<void> {
+  app.cron.stop();
+  await app.cron.waitForRunning(cronShutdownWaitMs);
+
   app.thumbs.close();
   try {
     app.databases.close();

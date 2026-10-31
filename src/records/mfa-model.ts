@@ -9,8 +9,8 @@
 // registerMFAHooks: the record ref checks, the delete on auth record and
 // collection delete and on password change are in
 // src/records/record-auth-refs.ts and src/collections/collection-save.ts;
-// the hourly `__pbMFACleanup__` cron job (DeleteExpiredMFAs) is bound by
-// the cron scheduler task (M5.6).
+// the hourly `__pbMFACleanup__` cron job (DeleteExpiredMFAs) is in
+// src/app/crons.ts.
 
 import type { Clock } from "@/app/clock";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";

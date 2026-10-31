@@ -29,6 +29,17 @@ Open the printed `/_/#/pbinstall/<token>` link with `agent-browser` (its own ses
 
 ## Runs
 
+### 2026-10-31, M5.6 (branch `task/M5.6-cron`)
+
+Fresh `pb_data`, Chromium through `agent-browser`, against the compiled executable.
+
+| Step | Result |
+|---|---|
+| Settings → Crons | Pass: lists `__pbDBOptimize__`, `__pbMFACleanup__`, `__pbOTPCleanup__`, `__pbLogsCleanup__` with their expressions |
+| Run `__pbOTPCleanup__` | Pass: toast `Successfully triggered "__pbOTPCleanup__".`; an expired `_otps` row written before the click was deleted; no page errors |
+
+The screen's footer still says that jobs can be registered with Go or JavaScript. That is upstream's text in `ui/`; iglo.base has only the built-in jobs.
+
 ### 2026-10-29, M6.1 (branch `task/M6.1-dashboard`)
 
 Fresh `pb_data`, Chromium through `agent-browser`.

@@ -1,8 +1,8 @@
 // Upstream: tools/cron/schedule.go
 //
 // The cron expression parser. The settings validation (backups.cron, M1.3)
-// needs NewSchedule's errors; the scheduler itself (tools/cron/cron.go) is
-// M5.6. Go's map[int]struct{} slots are Sets here.
+// needs NewSchedule's errors, and the scheduler (@/tools/cron/cron) runs the
+// schedules. Go's map[int]struct{} slots are Sets here.
 
 import { goQuote } from "@/fields/field";
 
@@ -15,16 +15,34 @@ export interface Moment {
   dayOfWeek: number;
 }
 
-// NewMoment creates a new Moment from the specified time (in UTC; Go uses
-// the time's own location).
-export function newMoment(t: Date): Moment {
-  return {
-    minute: t.getUTCMinutes(),
-    hour: t.getUTCHours(),
-    day: t.getUTCDate(),
-    month: t.getUTCMonth() + 1,
-    dayOfWeek: t.getUTCDay(),
-  };
+// NewMoment creates a new Moment from the specified time in timezone (an
+// IANA name; Go uses the time's own location).
+export function newMoment(t: Date, timezone = "UTC"): Moment {
+  if (timezone === "UTC") {
+    return {
+      minute: t.getUTCMinutes(),
+      hour: t.getUTCHours(),
+      day: t.getUTCDate(),
+      month: t.getUTCMonth() + 1,
+      dayOfWeek: t.getUTCDay(),
+    };
+  }
+
+  // the wall clock in timezone, read back as if it were UTC
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  }).formatToParts(t);
+  const part = (type: Intl.DateTimeFormatPartTypes): number =>
+    Number(parts.find((p) => p.type === type)?.value);
+  return newMoment(
+    new Date(Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"))),
+  );
 }
 
 // Schedule stores parsed information for each time component when a cron job should run.

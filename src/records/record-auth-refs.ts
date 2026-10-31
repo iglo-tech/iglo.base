@@ -21,8 +21,8 @@
 // otp-model.ts and auth-origin-model.ts); the queries here return Records. Their
 // OnCollectionDeleteExecute handlers are refsOnCollectionDeleteExecute,
 // which src/collections/collection-save.ts calls. Not here: the expired
-// MFA/OTP cron jobs (M5.6) and the models' PreValidate checks (in the
-// proxies).
+// MFA/OTP cron jobs (src/app/crons.ts) and the models' PreValidate checks
+// (in the proxies).
 
 import { CollectionTypeAuth, Collection } from "@/collections/collection-model";
 import {

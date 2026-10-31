@@ -7,10 +7,10 @@
 // time.Now(). JS runs a request's check without interleaving, so the limiters
 // have no locks.
 //
-// The hourly cleanup is registered on the app's cron as upstream's is; M5.6
-// starts the scheduler that runs it. The settings reload does not need a
-// hook: settingsReloaded (src/settings/settings-query.ts) calls
-// destroyRateLimitersStore, which does nothing before the first limiter.
+// The hourly cleanup is registered on the app's cron as upstream's is. The
+// settings reload does not need a hook: settingsReloaded
+// (src/settings/settings-query.ts) calls destroyRateLimitersStore, which does
+// nothing before the first limiter.
 
 import type { App } from "@/app/app";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";

@@ -51,12 +51,14 @@ export const serveFlags: FlagSpec[] = [
 // The app bootstrap that pocketbase.go's Execute runs before a command
 // (serve, superuser).
 export async function bootstrapApp(app: AppConfig, ctx: CliContext): Promise<App> {
-  const logError = (message: string, cause?: unknown): void => {
-    const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
-    ctx.out.stderr(
-      `${logTime(ctx.out.now())} ERROR ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
-    );
-  };
+  const log =
+    (level: string) =>
+    (message: string, cause?: unknown): void => {
+      const detail = cause instanceof Error ? (cause.stack ?? cause.message) : cause;
+      ctx.out.stderr(
+        `${logTime(ctx.out.now())} ${level} ${message}${detail === undefined ? "" : `: ${String(detail)}`}\n`,
+      );
+    };
 
   return bootstrap({
     dataDir: app.dataDir,
@@ -64,7 +66,7 @@ export async function bootstrapApp(app: AppConfig, ctx: CliContext): Promise<App
     encryptionEnv: app.encryptionEnv,
     queryTimeout: app.queryTimeout,
     clock: { now: () => ctx.out.now() },
-    logger: { error: logError },
+    logger: { error: log("ERROR"), warn: log("WARN") },
     getenv: ctx.getenv,
     // color.HiBlack, as upstream's dev mode prints the statements
     devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
@@ -113,6 +115,9 @@ export async function runServeCommand(
     // ensure that the latest migrations are applied before starting the server
     up(appContext, migrations);
     await reloadSettings(appContext);
+
+    // the jobs tick only under serve (OnServe's __pbCronStart__)
+    appContext.cron.start();
 
     await serve(
       appContext,

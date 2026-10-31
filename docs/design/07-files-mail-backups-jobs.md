@@ -77,7 +77,7 @@ Built-in jobs only, with upstream IDs and schedules, because `/api/crons` expose
 | `__pbRateLimitersCleanup__` | `2 * * * *` | prune in-memory rate-limit buckets |
 | `__pbAutoBackup__` | `backups.cron` | scheduled backup named `@auto_pb_backup_…`, keeping `cronMaxKeep` auto backups |
 
-The cron expression parser and scheduler are ported from upstream `tools/cron` (about 500 lines), with an injected clock.
+The cron expression parser and scheduler are ported from upstream `tools/cron` (about 500 lines), with an injected clock. Only `serve` starts the ticker. On shutdown it stops before the databases close, and running jobs get 5 seconds to finish; a job that takes longer fails on the closed databases, into the log.
 
 ## Logs
 
