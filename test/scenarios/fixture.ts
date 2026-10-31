@@ -20,6 +20,8 @@ const vendoredOnly = new Set(["README.md"]);
 export function copyDataDir(srcDir: string, destDir: string): void {
   cpSync(srcDir, destDir, {
     recursive: true,
+    // both servers of a differential run see the same mod times
+    preserveTimestamps: true,
     filter: (src) => !(srcDir === fixtureDir && vendoredOnly.has(src.slice(srcDir.length + 1))),
   });
 }

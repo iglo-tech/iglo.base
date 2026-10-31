@@ -3,6 +3,14 @@
 // read this list, so a suite added here runs in both modes.
 
 import {
+  backupUpload,
+  backupsCreate,
+  backupsDelete,
+  backupsDownload,
+  backupsList,
+  backupsRestore,
+} from "@test/scenarios/backup";
+import {
   collectionCreate,
   collectionDelete,
   collectionOAuth2Providers,
@@ -91,6 +99,12 @@ import {
 } from "@test/scenarios/settings";
 
 export const suites: Suite[] = [
+  backupsList,
+  backupsCreate,
+  backupUpload,
+  backupsDownload,
+  backupsDelete,
+  backupsRestore,
   batchRequest,
   collectionsList,
   collectionView,

@@ -9,6 +9,12 @@
 // prebuilt binary would load (examples/base/main.go, jsvm default
 // "pb_data/../pb_hooks"), and runs the app migrations before the server
 // starts (apis/serve.go Serve).
+//
+// app.restart (core/base.go Restart) stops the server and the app, as
+// OnTerminate's pbGracefulShutdown and ClearBootstrap do, and calls execve
+// (ctx.restart). If execve fails, the failed restore reverts pb_data and
+// this loop bootstraps and serves again; upstream bootstraps and reverts
+// but its server stays down, and the process exits after 3 seconds.
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -48,9 +54,15 @@ export const serveFlags: FlagSpec[] = [
   },
 ];
 
+type AppContextRestart = App["restart"];
+
 // The app bootstrap that pocketbase.go's Execute runs before a command
 // (serve, superuser).
-export async function bootstrapApp(app: AppConfig, ctx: CliContext): Promise<App> {
+export async function bootstrapApp(
+  app: AppConfig,
+  ctx: CliContext,
+  restart?: AppContextRestart,
+): Promise<App> {
   const log =
     (level: string) =>
     (message: string, cause?: unknown): void => {
@@ -72,6 +84,7 @@ export async function bootstrapApp(app: AppConfig, ctx: CliContext): Promise<App
     devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
     warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),
     automigrateDir: app.automigrate ? app.migrationsDir : undefined,
+    restart,
   });
 }
 
@@ -109,32 +122,61 @@ export async function runServeCommand(
     ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirWarning(hooksDir)}\n`);
   }
 
-  const appContext = await bootstrapApp(app, ctx);
+  for (;;) {
+    const stop = new AbortController();
+    let restart: { revert: () => void; failed: (err: unknown) => void } | undefined;
 
-  try {
-    // ensure that the latest migrations are applied before starting the server
-    up(appContext, migrations);
-    await reloadSettings(appContext);
-
-    // the jobs tick only under serve (OnServe's __pbCronStart__)
-    appContext.cron.start();
-
-    await serve(
-      appContext,
-      {
-        httpAddr,
-        httpsAddr,
-        certificateDomains: domains,
-        allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ["*"],
-        showStartBanner: true,
-        ui: ctx.ui,
-        executablePath: executablePath(ctx),
-        launchURL: ctx.launchURL ?? (() => {}),
-      },
-      ctx.out,
-      ctx.shutdown,
+    const appContext = await bootstrapApp(
+      app,
+      ctx,
+      (revert) =>
+        new Promise<void>((_resolve, reject) => {
+          restart = { revert, failed: reject };
+          stop.abort();
+        }),
     );
-  } finally {
-    await clearBootstrap(appContext);
+
+    try {
+      // ensure that the latest migrations are applied before starting the server
+      up(appContext, migrations);
+      await reloadSettings(appContext);
+
+      // the jobs tick only under serve (OnServe's __pbCronStart__)
+      appContext.cron.start();
+
+      await serve(
+        appContext,
+        {
+          httpAddr,
+          httpsAddr,
+          certificateDomains: domains,
+          allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ["*"],
+          showStartBanner: true,
+          ui: ctx.ui,
+          executablePath: executablePath(ctx),
+          launchURL: ctx.launchURL ?? (() => {}),
+        },
+        ctx.out,
+        AbortSignal.any([ctx.shutdown, stop.signal]),
+      );
+    } finally {
+      await clearBootstrap(appContext);
+    }
+
+    // a process that is shutting down starts on the new pb_data next time
+    const requested = restart as typeof restart | undefined;
+    if (requested === undefined || ctx.shutdown.aborted) {
+      return;
+    }
+
+    try {
+      if (ctx.restart === undefined) {
+        throw new Error("restart is not supported here");
+      }
+      ctx.restart();
+    } catch (err) {
+      requested.revert();
+      requested.failed(err);
+    }
   }
 }
