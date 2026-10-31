@@ -8,7 +8,7 @@
 // type and claims; token-flows.test.ts runs the same paths with tokens
 // read from the Mailpit messages.
 
-import { Database } from "bun:sqlite";
+import { constants, Database } from "bun:sqlite";
 import { join } from "node:path";
 
 import { systemClock } from "@/app/clock";
@@ -48,6 +48,15 @@ const email = "test@example.com";
 const password = "1234567890";
 const newPassword = "1234567!";
 
+// the vendored fixture, read only and immutable: a plain open of a WAL
+// database leaves -shm and -wal files next to it
+function fixtureDB(): Database {
+  return new Database(
+    `file:${join(fixtureDir, "data.db")}?immutable=1`,
+    constants.SQLITE_OPEN_READONLY | constants.SQLITE_OPEN_URI,
+  );
+}
+
 type TokenType = "auth" | "verification" | "passwordReset" | "emailChange";
 
 const secretNames: { [type in TokenType]: string } = {
@@ -73,7 +82,7 @@ export function mint(
   recordId: string,
   options: MintOptions = {},
 ): string {
-  const db = new Database(join(fixtureDir, "data.db"), { readonly: true });
+  const db = fixtureDB();
   try {
     const { id: collectionId, options: json } = db
       .query("SELECT id, options FROM _collections WHERE name = ?")
@@ -158,7 +167,7 @@ function rowsCount(table: string, recordId: string, n: number) {
 
 // the columns of a row, as the fixture has them
 function fixtureColumn(table: string, id: string, column: string): unknown {
-  const db = new Database(join(fixtureDir, "data.db"), { readonly: true });
+  const db = fixtureDB();
   try {
     return (db.query(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as { [k: string]: unknown })[
       column
