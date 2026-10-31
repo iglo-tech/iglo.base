@@ -47,6 +47,10 @@ export interface MockProviderSpec {
   // the userinfo endpoint: a JSON body (or the body's text) and its status
   user?: unknown;
   userStatus?: number;
+  // the userinfo endpoint's `/emails` lookup (GitHub, Gitea and Bitbucket
+  // derive it from their userInfoURL): a JSON body and its status
+  emails?: unknown;
+  emailsStatus?: number;
   // a userinfo request without an Authorization header gets a 401
   requireBearer?: boolean;
   // a userinfo request gets a 302 to this Location
@@ -140,8 +144,9 @@ export class OAuth2Mock {
     }
 
     const body = await req.text();
+    const subpath = pathname.split("/")[3] ?? "";
     entry.requests.push({
-      path: `/${endpoint}`,
+      path: `/${endpoint}${endpoint === "userinfo" && subpath !== "" ? `/${subpath}` : ""}`,
       method: req.method,
       authorization: req.headers.get("Authorization") ?? "",
       contentType: req.headers.get("Content-Type") ?? "",
@@ -190,6 +195,9 @@ export class OAuth2Mock {
       case "userinfo":
         if (spec.requireBearer === true && !req.headers.has("Authorization")) {
           return json({ error: "invalid_token" }, 401);
+        }
+        if (subpath === "emails") {
+          return json(spec.emails ?? [], spec.emailsStatus ?? 200);
         }
         if (spec.userLocation !== undefined) {
           return found(spec.userLocation);

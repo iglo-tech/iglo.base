@@ -13,9 +13,10 @@
 //     its avatar is on the public internet; both servers refuse the mock on
 //     loopback. test/apis/record-auth-with-oauth2.test.ts covers the path
 //     in-process, with the address check replaced.
-//   - "store name with Apple provider": needs a provider named apple, which
-//     only a Go-injected provider reaches until M4.6. In-process in
-//     test/apis/record-auth-with-oauth2.test.ts.
+//   - "store name with Apple provider": needs a provider named apple with a
+//     Go-injected user. In-process in test/apis/record-auth-with-oauth2.test.ts,
+//     with the real Apple provider too (its JWKS is fixed, so a test-only fetch
+//     answers it).
 //   - "store name with non-Apple provider": its store key is set from Go.
 //     test/differential/auth/oauth2-flows.test.ts sets it through the redirect
 //     endpoint.

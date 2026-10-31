@@ -238,9 +238,8 @@ describe("TestNewProviderByName", () => {
     });
   }
 
-  // google and github are listed for the auth methods, but have no
-  // implementation yet, so they cannot sign in
-  for (const name of ["google", "github"]) {
+  // M4.7's providers are not ported yet, so they cannot sign in
+  for (const name of ["microsoft", "yandex"]) {
     test(`${name} sign-in is not ported yet`, () => {
       expect(() => initSignInProvider(new OAuth2ProviderConfig({ name }))).toThrow();
     });

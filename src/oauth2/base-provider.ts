@@ -13,6 +13,12 @@ import { exchangeToken, type Token, type TokenConfig, validToken } from "@/oauth
 import { DateTime } from "@/tools/types/datetime";
 import { anyType, mapOf, marshal, unmarshal } from "@/tools/types/go-json";
 
+// AuthUser.Expiry: types.ParseDateTime(token.Expiry), the zero DateTime
+// without an expiry (a token with no expiry time)
+export function expiryOf(token: Token): DateTime {
+  return token.expiry === null ? new DateTime() : DateTime.fromDate(token.expiry);
+}
+
 // AuthUser defines a standardized OAuth2 user data structure.
 export class AuthUser {
   // the zero types.DateTime

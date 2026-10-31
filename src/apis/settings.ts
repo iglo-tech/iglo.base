@@ -7,14 +7,12 @@
 // handlers never run in a transaction, so execAfterSuccessTx writes the
 // response at once.
 //
-// Not here yet, each failing after upstream's validation with a "Raw
-// error" that names the task:
-//   - the S3 connection test of an enabled S3 config (TestS3Filesystem.Submit
-//     past the "not enabled" check): M5.4, S3 storage;
-//   - signing the Apple client secret (AppleClientSecretCreate.Submit past
-//     the validation): M4.6, the OAuth2 providers.
+// Not here yet, failing after upstream's validation with a "Raw error" that
+// names the task: the S3 connection test of an enabled S3 config
+// (TestS3Filesystem.Submit past the "not enabled" check), M5.4, S3 storage.
 
 import type { App } from "@/app/app";
+import type { Clock } from "@/app/clock";
 import type { RequestEvent } from "@/app/event-request";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import {
@@ -25,6 +23,7 @@ import {
   sendRecordVerification,
 } from "@/mail/mails/record";
 import { requireSuperuserAuth } from "@/middlewares/require-auth";
+import { signAppleClientSecret } from "@/oauth2/apple-client-secret";
 import { newRecord } from "@/records/record-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { RouterGroup } from "@/server/group";
@@ -362,15 +361,30 @@ function validateAppleClientSecretCreate(form: AppleClientSecretCreate): Error |
 }
 
 // Submit validates the form and returns a new Apple Client Secret JWT.
-function submitAppleClientSecretCreate(form: AppleClientSecretCreate): [string, Error | null] {
+function submitAppleClientSecretCreate(
+  form: AppleClientSecretCreate,
+  clock: Clock,
+): [string, Error | null] {
   const err = validateAppleClientSecretCreate(form);
   if (err !== null) {
     return ["", err];
   }
 
-  // the ES256 signing of the client secret comes with the Apple OAuth2
-  // provider (M4.6)
-  return ["", new Error("the Apple client secret generation is not available yet (M4.6)")];
+  try {
+    const secret = signAppleClientSecret(
+      {
+        clientId: form.ClientId,
+        teamId: form.TeamId,
+        keyId: form.KeyId,
+        privateKey: form.PrivateKey,
+        duration: form.Duration,
+      },
+      clock,
+    );
+    return [secret, null];
+  } catch (signErr) {
+    return ["", signErr as Error];
+  }
 }
 
 async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error | undefined> {
@@ -392,7 +406,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
   }
 
   // generate
-  const [secret, err] = submitAppleClientSecretCreate(form);
+  const [secret, err] = submitAppleClientSecretCreate(form, e.app.clock);
   if (err !== null) {
     // form error
     if (err instanceof Errors) {
