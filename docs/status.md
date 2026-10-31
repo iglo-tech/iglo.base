@@ -10,7 +10,7 @@ M4.6 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.6 | worker | `task/M4.6-oauth2-providers-1` | 0 | [Brief](briefs/M4.6.md). Includes the Apple client secret endpoint carried from M1.3 |
+| M4.6 | review | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 1 | [Brief](briefs/M4.6.md). Includes the Apple client secret endpoint carried from M1.3 |
 
 ## Done
 
