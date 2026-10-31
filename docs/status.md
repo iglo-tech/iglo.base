@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.2 in progress.
+M4.2 merged; no active task.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.2 | review | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 2 | [brief](briefs/M4.2.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M4.2 | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 2026-10-31 (`d569288`) | Two review rounds: Sol APPROVE at `7d5afbb`. Lead fixed a gap Sol's round 1 approved: the `_superusers` save handler was never ported, so OTP worked without MFA. Includes `record_crud_mfa_test.go`. Carried: 6 rate-limit scenarios pending on M4.8; expired-OTP cleanup (M5.6) |
 | M3.7 | [#43](https://github.com/iglo-tech/iglo.base/pull/43) | 2026-10-31 (`165e1b2`) | Three review rounds, then a lead decision (fixers for rounds 1 and 2, lead fixed two of round 3's four findings at `6d31239`; [reasoning](https://github.com/iglo-tech/iglo.base/pull/43#issuecomment-6537011585)). First worker stalled on a prompt, one retry. `check` and `test:reference` pass at the head; `test:roundtrip:large` last passed at `cc04b8b`. `migrate down` into a system migration is listed in 04-api-compatibility.md |
 | M3.6 | [#42](https://github.com/iglo-tech/iglo.base/pull/42) | 2026-10-30 (`10c5fbe`) | Three review rounds, all on the suite's own comparison (lead fixed): Sol APPROVE at `dce0f00`. Upstream → iglo.base → upstream on the fixture and a fresh install in `test:reference`; generated data in `test:roundtrip:large` |
 | M3.3 | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 2026-10-30 (`166d812`) | Two review rounds: Sol APPROVE at `2dafecd` (lead: the generated Content-Type wins over an item's for rules, rollback tests read through HTTP). D28: handlers share one implementation behind `RecordIO`; `batch.timeout` is checked after each item, and a disconnect is not noticed during a batch (listed in 04-api-compatibility.md). Carried: rate limits (M4.8), S3 (M5.4); the timeout path has no differential case |
