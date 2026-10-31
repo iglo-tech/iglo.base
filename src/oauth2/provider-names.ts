@@ -2,10 +2,10 @@
 // registers in auth.Providers from its init function) and
 // tools/auth/auth.go (NewProviderByName)
 //
-// All the names upstream registers, also those of the providers that are
-// not ported yet (src/oauth2/providers.ts), so that collection validation
-// (checkProviderName) and the `_externalAuths` provider check accept and
-// reject the same names as upstream.
+// All the names upstream registers, which are the keys of the provider table
+// (src/oauth2/providers.ts). They are listed here so that collection
+// validation (checkProviderName) and the `_externalAuths` provider check need
+// no provider class, and accept and reject the same names as upstream.
 
 // the keys of auth.Providers, in the order of upstream's tools/auth/*.go
 // files

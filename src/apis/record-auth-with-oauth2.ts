@@ -39,7 +39,7 @@ import { FieldNameEmail } from "@/fields/field";
 import { FieldTypeFile } from "@/fields/file";
 import { TextField } from "@/fields/text";
 import type { AuthUser, BaseProvider } from "@/oauth2/base-provider";
-import { initSignInProvider } from "@/oauth2/providers";
+import { initProvider } from "@/oauth2/providers";
 import { safeFileFromURL, type SafeFileOptions } from "@/oauth2/safe-file";
 import type { Token } from "@/oauth2/token";
 import { ExternalAuth, newExternalAuth, saveExternalAuthSync } from "@/records/external-auth-model";
@@ -155,7 +155,7 @@ export async function recordAuthWithOAuth2(
 
   let provider: BaseProvider;
   try {
-    provider = (options.initProvider ?? initSignInProvider)(providerConfig);
+    provider = (options.initProvider ?? initProvider)(providerConfig);
   } catch (err) {
     return firstApiError(
       err,

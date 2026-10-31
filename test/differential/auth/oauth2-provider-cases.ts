@@ -1,4 +1,4 @@
-// The sign-in cases of the M4.6 providers (src/oauth2/*.ts, one file per
+// The sign-in cases of the OAuth2 providers (src/oauth2/*.ts, one file per
 // provider), each run through /auth-with-oauth2 on upstream PocketBase v0.41.0
 // and on iglo.base against the local mock (test/support/oauth2-mock.ts). The
 // users are realistic provider responses, and each case reaches one branch
@@ -26,6 +26,8 @@ export interface ProviderCase {
   // the `/emails` lookup, where the provider has one
   emails?: unknown;
   emailsStatus?: number;
+  // the extra config options of the provider (Microsoft's idTokenEmailClaim)
+  extra?: { [key: string]: unknown };
   // the status of upstream's answer, which the case must reach
   status: number;
   // the email of the record upstream answers with, when the case reaches one
@@ -55,6 +57,14 @@ const appleClaims = (overrides: { [key: string]: unknown } = {}): { [key: string
   exp: now() + 3600,
   email: "apple@example.com",
   ...verifiedEmail,
+  ...overrides,
+});
+
+// the claims of a Microsoft id_token: its signature is not checked, only
+// its times and the email claims
+const msClaims = (overrides: { [key: string]: unknown } = {}): { [key: string]: unknown } => ({
+  iat: now() - 10,
+  exp: now() + 3600,
   ...overrides,
 });
 
@@ -588,6 +598,451 @@ export const providerCases: ProviderCase[] = [
     status: 200,
     email: "",
   },
+
+  // mailcow
+  {
+    name: "mailcow: an active user, whose username is an email address",
+    provider: "mailcow",
+    user: {
+      id: "7",
+      username: "jane@example.org",
+      email: "jane@example.org",
+      full_name: "Jane Doe",
+      active: 1,
+    },
+    status: 200,
+    email: "jane@example.org",
+  },
+  {
+    name: "mailcow: an inactive user",
+    provider: "mailcow",
+    user: { id: "8", username: "bob", email: "bob@example.org", full_name: "Bob", active: 0 },
+    status: 400,
+  },
+
+  // microsoft
+  {
+    name: "microsoft: the mail of the Graph user",
+    provider: "microsoft",
+    user: { id: "e1f2a3", displayName: "Jane Doe", mail: "jane@example.com" },
+    status: 200,
+    email: "jane@example.com",
+  },
+  {
+    name: "microsoft: no mail",
+    provider: "microsoft",
+    user: { id: "e1f2a4", displayName: "Jane Doe", mail: null },
+    status: 200,
+    email: "",
+  },
+  {
+    name: "microsoft: the verified primary email of the id_token",
+    provider: "microsoft",
+    extra: { idTokenEmailClaim: "verified_primary_email" },
+    token: {
+      access_token: "abc",
+      token_type: "bearer",
+      id_token: idToken(
+        msClaims({ verified_primary_email: "jane@example.com", email: "other@example.com" }),
+      ),
+    },
+    user: { id: "e1f2a5", displayName: "Jane Doe", mail: "jane@example.com" },
+    status: 200,
+    email: "jane@example.com",
+  },
+  {
+    name: "microsoft: any_verified falls back to the xms_edov email",
+    provider: "microsoft",
+    extra: { idTokenEmailClaim: "any_verified" },
+    token: {
+      access_token: "abc",
+      token_type: "bearer",
+      id_token: idToken(msClaims({ xms_edov: true, email: "edov@example.com" })),
+    },
+    user: { id: "e1f2a6", displayName: "Jane Doe", mail: "" },
+    status: 200,
+    email: "edov@example.com",
+  },
+  {
+    name: "microsoft: email_and_xms_edov without xms_edov is no email",
+    provider: "microsoft",
+    extra: { idTokenEmailClaim: "email_and_xms_edov" },
+    token: {
+      access_token: "abc",
+      token_type: "bearer",
+      id_token: idToken(msClaims({ xms_edov: false, email: "edov@example.com" })),
+    },
+    user: { id: "e1f2a7", displayName: "Jane Doe", mail: "jane@example.com" },
+    status: 200,
+    email: "",
+  },
+  {
+    name: "microsoft: an expired id_token gives no email, not an error",
+    provider: "microsoft",
+    extra: { idTokenEmailClaim: "email" },
+    token: {
+      access_token: "abc",
+      token_type: "bearer",
+      id_token: idToken(msClaims({ email: "jane@example.com", exp: now() - 3600 })),
+    },
+    user: { id: "e1f2a8", displayName: "Jane Doe", mail: "jane@example.com" },
+    status: 200,
+    email: "",
+  },
+  {
+    name: "microsoft: an email claim selected with no id_token",
+    provider: "microsoft",
+    extra: { idTokenEmailClaim: "email" },
+    user: { id: "e1f2a9", displayName: "Jane Doe", mail: "jane@example.com" },
+    status: 200,
+    email: "",
+  },
+
+  // monday
+  {
+    name: "monday: a verified email of an enabled user",
+    provider: "monday",
+    user: {
+      data: {
+        me: {
+          id: "10000001",
+          enabled: true,
+          name: "Monday User",
+          email: "monday@example.com",
+          is_verified: true,
+          photo_small: "",
+        },
+      },
+    },
+    status: 200,
+    email: "monday@example.com",
+  },
+  {
+    name: "monday: an unverified email",
+    provider: "monday",
+    user: {
+      data: {
+        me: {
+          id: "10000002",
+          enabled: true,
+          name: "Monday User",
+          email: "monday@example.com",
+          is_verified: false,
+          photo_small: "",
+        },
+      },
+    },
+    status: 200,
+    email: "",
+  },
+  {
+    name: "monday: a disabled user",
+    provider: "monday",
+    user: {
+      data: { me: { id: "10000003", enabled: false, name: "Monday", is_verified: true } },
+    },
+    status: 400,
+  },
+
+  // notion
+  {
+    name: "notion: the owner of the bot, with its person email",
+    provider: "notion",
+    user: {
+      avatar_url: "",
+      bot: {
+        owner: {
+          type: "user",
+          user: {
+            avatar_url: "",
+            id: "notion-user-1",
+            name: "Notion User",
+            person: { email: "notion@example.com" },
+          },
+        },
+        workspace_name: "Workspace",
+      },
+      id: "bot-1",
+      name: "Integration",
+      object: "user",
+      request_id: "req-1",
+      type: "bot",
+    },
+    status: 200,
+    email: "notion@example.com",
+  },
+  {
+    name: "notion: an owner without a person",
+    provider: "notion",
+    user: {
+      bot: {
+        owner: { type: "user", user: { id: "notion-user-2", name: "Notion User" } },
+      },
+      id: "bot-2",
+      object: "user",
+      type: "bot",
+    },
+    status: 200,
+    email: "",
+  },
+
+  // patreon
+  {
+    name: "patreon: a verified email",
+    provider: "patreon",
+    user: {
+      data: {
+        id: "9876",
+        type: "user",
+        attributes: {
+          email: "patreon@example.com",
+          full_name: "Patreon User",
+          vanity: "patreon_vanity",
+          image_url: "",
+          is_email_verified: true,
+        },
+      },
+    },
+    status: 200,
+    email: "patreon@example.com",
+  },
+  {
+    name: "patreon: an unverified email",
+    provider: "patreon",
+    user: {
+      data: {
+        id: "9877",
+        type: "user",
+        attributes: {
+          email: "patreon@example.com",
+          full_name: "Patreon User",
+          vanity: "patreon_vanity2",
+          image_url: "",
+          is_email_verified: false,
+        },
+      },
+    },
+    status: 200,
+    email: "",
+  },
+
+  // planningcenter
+  {
+    // upstream's untagged Attributes field never matches "attributes" (json
+    // v2 matches names case-sensitively), so even an active person is refused
+    name: "planningcenter: an active person is refused, as its attributes never match",
+    provider: "planningcenter",
+    user: {
+      data: {
+        id: "42",
+        type: "Person",
+        attributes: { name: "Planning Person", status: "active", avatar: "" },
+      },
+    },
+    status: 400,
+  },
+  {
+    name: "planningcenter: an inactive person",
+    provider: "planningcenter",
+    user: {
+      data: { id: "43", type: "Person", attributes: { name: "Inactive", status: "inactive" } },
+    },
+    status: 400,
+  },
+
+  // spotify
+  {
+    name: "spotify: a user without images, whose email is not mapped",
+    provider: "spotify",
+    user: {
+      id: "spotify-1",
+      display_name: "Spotify User",
+      email: "spotify@example.com",
+      images: [],
+    },
+    status: 200,
+    email: "",
+  },
+
+  // strava
+  {
+    name: "strava: an athlete",
+    provider: "strava",
+    user: {
+      id: 123456,
+      firstname: "Strava",
+      lastname: "Athlete",
+      username: "strava_athlete",
+      profile: "",
+    },
+    status: 200,
+    email: "",
+  },
+
+  // trakt
+  {
+    name: "trakt: the user settings with the Trakt headers",
+    provider: "trakt",
+    user: {
+      user: {
+        username: "trakt_user",
+        name: "Trakt User",
+        ids: { slug: "trakt-user", uuid: "trakt-uuid-1" },
+        images: { avatar: { full: "" } },
+      },
+    },
+    status: 200,
+    email: "",
+  },
+
+  // twitch
+  {
+    name: "twitch: the user with an email and the Client-Id header",
+    provider: "twitch",
+    user: {
+      data: [
+        {
+          id: "141981764",
+          login: "twitchuser",
+          display_name: "TwitchUser",
+          email: "twitch@example.com",
+          profile_image_url: "",
+        },
+      ],
+    },
+    status: 200,
+    email: "twitch@example.com",
+  },
+  {
+    name: "twitch: no user in the data",
+    provider: "twitch",
+    user: { data: [] },
+    status: 400,
+  },
+
+  // twitter
+  {
+    name: "twitter: a confirmed email",
+    provider: "twitter",
+    user: {
+      data: {
+        id: "2244994945",
+        name: "X User",
+        username: "xuser",
+        confirmed_email: "x@example.com",
+        profile_image_url: "",
+      },
+    },
+    status: 200,
+    email: "x@example.com",
+  },
+  {
+    name: "twitter: no confirmed email",
+    provider: "twitter",
+    user: { data: { id: "2244994946", name: "X User", username: "xuser2" } },
+    status: 200,
+    email: "",
+  },
+
+  // vk
+  {
+    name: "vk: the email of the token response",
+    provider: "vk",
+    token: { access_token: "abc", token_type: "bearer", email: "vk@example.com" },
+    user: {
+      response: [
+        {
+          id: 210700286,
+          first_name: "Pavel",
+          last_name: "Durov",
+          screen_name: "durov",
+          photo_max: "",
+        },
+      ],
+    },
+    status: 200,
+    email: "vk@example.com",
+  },
+  {
+    name: "vk: no email in the token response",
+    provider: "vk",
+    user: {
+      response: [{ id: 210700287, first_name: "Vk", last_name: "User", screen_name: "vk_user" }],
+    },
+    status: 200,
+    email: "",
+  },
+  {
+    name: "vk: an empty response",
+    provider: "vk",
+    user: { response: [] },
+    status: 400,
+  },
+
+  // wakatime
+  {
+    name: "wakatime: a confirmed email",
+    provider: "wakatime",
+    user: {
+      data: {
+        id: "w-1",
+        display_name: "Waka User",
+        username: "waka_user",
+        email: "waka@example.com",
+        photo: "",
+        photo_public: false,
+        is_email_confirmed: true,
+      },
+    },
+    status: 200,
+    email: "waka@example.com",
+  },
+  {
+    name: "wakatime: an unconfirmed email",
+    provider: "wakatime",
+    user: {
+      data: {
+        id: "w-2",
+        display_name: "Waka User",
+        username: "waka_user2",
+        email: "waka@example.com",
+        photo: "",
+        photo_public: false,
+        is_email_confirmed: false,
+      },
+    },
+    status: 200,
+    email: "",
+  },
+
+  // yandex: the avatar is not in these cases (the avatar host is fixed)
+  {
+    name: "yandex: the default email, with no avatar",
+    provider: "yandex",
+    user: {
+      id: "1000000001",
+      real_name: "Yandex User",
+      login: "yandex_user",
+      default_email: "yandex@example.com",
+      is_avatar_empty: true,
+      default_avatar_id: "0/0-0",
+    },
+    status: 200,
+    email: "yandex@example.com",
+  },
+  {
+    name: "yandex: no default email",
+    provider: "yandex",
+    user: {
+      id: "1000000002",
+      real_name: "Yandex User",
+      login: "yandex_user2",
+      default_email: "",
+      is_avatar_empty: true,
+    },
+    status: 200,
+    email: "",
+  },
 ];
 
 // the provider names of the collection configs of the auth methods cases
@@ -607,4 +1062,21 @@ export const authMethodsProviders = [
   "lark",
   "linear",
   "livechat",
+  "mailcow",
+  "microsoft",
+  "monday",
+  "notion",
+  "oidc",
+  "oidc2",
+  "oidc3",
+  "patreon",
+  "planningcenter",
+  "spotify",
+  "strava",
+  "trakt",
+  "twitch",
+  "twitter",
+  "vk",
+  "wakatime",
+  "yandex",
 ];

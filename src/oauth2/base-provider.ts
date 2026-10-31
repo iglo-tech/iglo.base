@@ -78,6 +78,12 @@ export abstract class BaseProvider implements TokenConfig {
   order = 0;
   pkce = false;
 
+  // SetExtra stores the Extra config options. A provider overrides it to
+  // react to an option (Microsoft's idTokenEmailClaim adds the openid scope).
+  setExtra(data: { [key: string]: unknown }): void {
+    this.extra = data;
+  }
+
   // FetchAuthUser is similar to FetchRawUserInfo, but normalizes and
   // marshalizes the user api response into a standardized AuthUser.
   abstract fetchAuthUser(token: Token): Promise<AuthUser>;
