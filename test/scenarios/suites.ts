@@ -23,6 +23,7 @@ import {
   recordAuthRefresh,
   recordAuthWithPassword,
 } from "@test/scenarios/record-auth";
+import { recordAuthWithOTP, recordRequestOTP } from "@test/scenarios/record-auth-otp";
 import { recordCrudList, recordCrudView } from "@test/scenarios/record-crud";
 import {
   recordCrudAuthOriginCreate,
@@ -88,6 +89,8 @@ export const suites: Suite[] = [
   recordAuthMethodsList,
   recordAuthRefresh,
   recordAuthWithPassword,
+  recordRequestOTP,
+  recordAuthWithOTP,
   recordCrudList,
   recordCrudView,
   recordCrudDelete,

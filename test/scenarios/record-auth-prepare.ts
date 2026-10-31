@@ -193,7 +193,7 @@ export interface OTPRow {
   updated: string;
 }
 
-function stubDates(ms: number): DateTime {
+function stubDate(ms: number): DateTime {
   return DateTime.fromDate(new Date(Date.now() + ms));
 }
 
@@ -223,7 +223,7 @@ export function stubOTPRecords({ dataDir }: PrepareContext): void {
         otp.setRecordRef(record.id);
         otp.setCollectionRef(record.collection().id);
         otp.setPassword("test123");
-        otp.record?.setRaw("created", stubDates(ms));
+        otp.record?.setRaw("created", stubDate(ms));
         saveRecordNoValidateSync(app, otp.record as NonNullable<typeof otp.record>);
       });
     }
@@ -255,7 +255,7 @@ export function stubMFARecords({ dataDir }: PrepareContext): void {
         mfa.setRecordRef(record.id);
         mfa.setCollectionRef(record.collection().id);
         mfa.setMethod(method);
-        mfa.record?.setRaw("created", stubDates(ms));
+        mfa.record?.setRaw("created", stubDate(ms));
         saveRecordNoValidateSync(app, mfa.record as NonNullable<typeof mfa.record>);
       });
     }
