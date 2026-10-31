@@ -10,7 +10,7 @@ M5.6 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.6 | review | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 1 | [Brief](briefs/M5.6.md). Opus worker; `check` and `test:reference` pass at `735b39d` |
+| M5.6 | review | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 2 | [Brief](briefs/M5.6.md). Opus worker; lead fixed round 1 at `23673b7` |
 
 ## Done
 
