@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.8 merged; no active task.
+M5.6 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M5.6 | worker | `task/M5.6-cron` | 0 | [Brief](briefs/M5.6.md). Opus worker |
 
 ## Done
 
@@ -101,6 +102,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M5.6 brief): next because it unblocks M5.3 and runs the limiter cleanup. `DeleteOldLogs` comes forward from M5.5, as `__pbLogsCleanup__` is visible in `/api/crons` and must work. Opus worker: jobs delete data and write the databases.
 - 2026-10-31 (M4.8 merge): the run passed its 4-hour limit, so the lock was released and the next run picks the next task (M5.6 unblocks M5.3 and runs the limiter cleanup).
 - 2026-10-31 (M4.8 PR): the brief said the limiter key is the auth id or real IP; upstream v0.41.0 uses the real IP only, and the worker followed upstream. The cleanup job is registered on a minimal `src/tools/cron/cron.ts`, and nothing runs it until M5.6. M5.7 must put CORS ahead of the limiter, or a preflight under a matching rule gets 429 where upstream gets 204.
 - 2026-10-31 (M4.8 pick): next in milestone order. Opus worker: rate limits sit on the auth and request path, so it is not a mechanical task.
