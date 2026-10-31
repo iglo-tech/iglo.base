@@ -479,4 +479,35 @@ export const sessions: Session[] = [
       get("demo1 is unchanged", "/api/collections/demo1/records?sort=id"),
     ],
   },
+  {
+    name: "forced _superusers options",
+    roundTrip: true,
+    cases: [
+      su("OTP turns MFA on", "PATCH", "/api/collections/_superusers", {
+        otp: { enabled: true },
+        mfa: { enabled: false },
+      }),
+      su("MFA stays on while OTP is on", "PATCH", "/api/collections/_superusers", {
+        mfa: { enabled: false },
+      }),
+      su("MFA can go with OTP", "PATCH", "/api/collections/_superusers", {
+        otp: { enabled: false },
+        mfa: { enabled: false },
+      }),
+      su("password auth stays on", "PATCH", "/api/collections/_superusers", {
+        passwordAuth: { enabled: false },
+      }),
+      su("OAuth2 stays off", "PATCH", "/api/collections/_superusers", {
+        oauth2: {
+          enabled: true,
+          providers: [{ name: "google", clientId: "test", clientSecret: "test" }],
+        },
+      }),
+      su("the same through import", "PUT", "/api/collections/import", {
+        collections: [{ name: "_superusers", type: "auth", otp: { enabled: true } }],
+        deleteMissing: false,
+      }),
+      get("what was stored", "/api/collections/_superusers"),
+    ],
+  },
 ];

@@ -9,6 +9,7 @@
 //	saveCollection (app.Save) / saveCollectionNoValidate (app.SaveNoValidate)
 //	  onCollectionSave             normalization (OnCollectionCreate/Update, -99)
 //	  validateCollection           only saveCollection (OnCollectionValidate)
+//	  normalizeSuperusersCollection  the forced _superusers options (Execute, 99)
 //	  onCollectionSaveExecute      the transaction (OnCollectionCreateExecute/UpdateExecute, 99)
 //	    view (re)creation, the `_collections` row write (the model's db
 //	    write), SyncRecordTableSchema; then the dependent views and the
@@ -59,6 +60,7 @@ import { newFieldsList } from "@/collections/fields-list";
 import { createViewFields, saveView, wrapError } from "@/collections/view";
 import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
 import { refsOnCollectionDeleteExecute } from "@/records/record-auth-refs";
+import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import {
   realtimeCollectionAfterDelete,
   realtimeCollectionUpdate,
@@ -302,6 +304,28 @@ export function onCollectionSave(app: CollectionsApp, collection: Collection): v
   }
 }
 
+// registerSuperuserHooks' pbSuperusersCollectionSaveExec
+// (core/record_model_superusers.go), after validation, so a request
+// that sets these still succeeds with the forced values
+function normalizeSuperusersCollection(collection: Collection): void {
+  if (collection.name !== CollectionNameSuperusers) {
+    return;
+  }
+
+  // for now don't allow superusers OAuth2 since we don't want
+  // to accidentally create a new superuser by just OAuth2 signin
+  collection.oauth2.enabled = false;
+  collection.oauth2.providers = null;
+
+  // force password auth
+  collection.passwordAuth.enabled = true;
+
+  // for superusers we don't allow for now standalone OTP auth and always require to be combined with MFA
+  if (collection.otp.enabled) {
+    collection.mfa.enabled = true;
+  }
+}
+
 // onCollectionSaveExecute; next is the model's db write
 function onCollectionSaveExecute(
   app: CollectionsApp,
@@ -309,6 +333,8 @@ function onCollectionSaveExecute(
   next: (txApp: CollectionsApp) => void,
 ): void {
   try {
+    normalizeSuperusersCollection(collection);
+
     let oldCollection: Collection | null = null;
     if (!collection.isNew()) {
       oldCollection = findCachedCollectionByNameOrId(app, collection.id);

@@ -573,20 +573,10 @@ export function otpCases(): Scenario[] {
       expectedContent: [`"data":{}`],
     },
     {
-      name: "superusers: OTP without MFA signs in",
+      // enabling OTP on the collection also enables MFA
+      name: "superusers: OTP always asks for the second factor",
       ...auth("_superusers", validBody),
       prepare: all(setOTP("_superusers", true), insertOTPs("_superusers", email, { id: otpId })),
-      expectedStatus: 200,
-      expectedContent: [`"token":"`, `"email":"test@example.com"`],
-    },
-    {
-      name: "superusers: OTP with MFA asks for the second factor",
-      ...auth("_superusers", validBody),
-      prepare: all(
-        setOTP("_superusers", true),
-        setMFA("_superusers", true, ""),
-        insertOTPs("_superusers", email, { id: otpId }),
-      ),
       expectedStatus: 401,
       expectedContent: [`"mfaId":"`],
     },

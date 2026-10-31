@@ -705,7 +705,7 @@ describe("rows across servers", () => {
     );
 
     test(
-      `\`superuser otp\` of ${from} signs in on ${to}`,
+      `\`superuser otp\` of ${from} is a first factor on ${to}`,
       async () => {
         const dataDir = fixtureCopy();
         setOTP("_superusers", true)({ dataDir });
@@ -727,7 +727,9 @@ describe("rows across servers", () => {
 
         const reader = await start(to, dataDir);
         const res = await authWithOTP(reader, id, pass, {}, "_superusers");
-        expect(res.status).toBe(200);
+        // enabling OTP on the collection also enables MFA
+        expect(res.status).toBe(401);
+        expect(res.json["mfaId"]).toBeString();
         await stop(reader);
       },
       timeout,
