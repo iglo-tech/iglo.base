@@ -9,7 +9,9 @@ import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
 import { recordAuthImpersonate } from "@/apis/record-auth-impersonate";
 import { recordAuthMethods } from "@/apis/record-auth-methods";
+import { recordRequestOTP } from "@/apis/record-auth-otp-request";
 import { recordAuthRefresh } from "@/apis/record-auth-refresh";
+import { recordAuthWithOTP } from "@/apis/record-auth-with-otp";
 import { recordAuthWithPassword } from "@/apis/record-auth-with-password";
 import type { Collection } from "@/collections/collection-model";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
@@ -37,8 +39,11 @@ export function bindRecordAuthApi(_app: App, rg: RouterGroup<RequestEvent>): voi
 
   // POST /auth-with-oauth2 (recordAuthWithOAuth2): M4.5
 
-  // POST /request-otp (recordRequestOTP) and /auth-with-otp
-  // (recordAuthWithOTP): M4.2
+  sub.POST("/request-otp", recordRequestOTP).bind(collectionPathRateLimit("", "requestOTP"));
+
+  sub
+    .POST("/auth-with-otp", recordAuthWithOTP)
+    .bind(collectionPathRateLimit("", "authWithOTP", "auth"));
 
   // POST /request-password-reset, /confirm-password-reset,
   // /request-verification, /confirm-verification, /request-email-change

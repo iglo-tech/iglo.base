@@ -2,9 +2,7 @@
 //
 // The OnMailerRecord*Send hooks are not ported (D5): each function sends
 // its message directly. The mail client is the app's (app.newMailClient,
-// a new client from the current settings). SendRecordOTP's update of the
-// OTP's sentTo field after the send belongs to the OTP storage (M4.2),
-// which adds it here.
+// a new client from the current settings).
 
 import type { App } from "@/app/app";
 import {
@@ -22,6 +20,8 @@ import { FieldTypeDate } from "@/fields/date";
 import { FieldTypeNumber } from "@/fields/number";
 import { resolveLayout } from "@/mail/mails/templates";
 import type { Message } from "@/mail/mailer";
+import { type OTP, saveOTP } from "@/records/otp-model";
+import { findOTPById } from "@/records/otp-query";
 import type { Record } from "@/records/record-model";
 import {
   newEmailChangeToken,
@@ -69,7 +69,36 @@ export async function sendRecordOTP(
     ]),
   );
 
-  await mailClient.send(newMessage(app, authRecord.email(), subject, body));
+  const message = newMessage(app, authRecord.email(), subject, body);
+
+  await mailClient.send(message);
+
+  const toAddress = message.to[0]?.address ?? "";
+  if (toAddress === "") {
+    return;
+  }
+
+  let otp: OTP;
+  try {
+    otp = findOTPById(app, otpId);
+  } catch (err) {
+    app.logger.error(
+      `Unable to find OTP to update its sentTo field (either it was already deleted or the id is nonexisting) (otpId ${otpId})`,
+      err,
+    );
+    return;
+  }
+
+  if (otp.sentTo() !== "") {
+    return; // was already sent to another target
+  }
+
+  otp.setSentTo(toAddress);
+  try {
+    await saveOTP(app, otp);
+  } catch (err) {
+    app.logger.error(`Failed to update OTP sentTo field (otpId ${otpId}, to ${toAddress})`, err);
+  }
 }
 
 // SendRecordPasswordReset sends a password reset request email to the

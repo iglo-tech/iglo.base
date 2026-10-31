@@ -7,6 +7,7 @@ import { join } from "node:path";
 
 import { run, startServer, tempDir } from "@test/support/executable";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import { queryRows } from "@test/scenarios/record-checks";
 
 const logLine = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /;
 
@@ -314,16 +315,23 @@ describe("superuser otp", () => {
       );
     expect(match).not.toBeNull();
 
+    expect(
+      queryRows(
+        dataDir,
+        "SELECT collectionRef, recordRef FROM _otps WHERE id = ?",
+        match?.[1] ?? "",
+      ),
+    ).toEqual([{ collectionRef: "pbc_3142635823", recordRef: "sywbhecnh46rhm0" }]);
+
+    // enabling OTP on the collection also enables MFA, so it is a first factor
     await withServer(dataDir, async (url) => {
-      const token = (await login(url, "test@example.com", "1234567890")) ?? "";
-      const res = await fetch(`${url}/api/collections/_otps/records/${match?.[1]}`, {
-        headers: { Authorization: token },
+      const res = await fetch(`${url}/api/collections/_superusers/auth-with-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otpId: match?.[1], password: match?.[2] }),
       });
-      expect(res.status).toBe(200);
-      const otp = (await res.json()) as Record<string, unknown>;
-      expect(otp.collectionRef).toBe("pbc_3142635823");
-      expect(otp.recordRef).toBe("sywbhecnh46rhm0");
-      expect(otp.password).toBe("");
+      expect(res.status).toBe(401);
+      expect(((await res.json()) as { mfaId: unknown }).mfaId).toBeString();
     });
   });
 });

@@ -49,18 +49,20 @@ const rateLimitPending = {
   reason: "collectionPathRateLimit and the settings rate limit rules are not ported yet",
 };
 
-function rateLimitScenario(
+export function rateLimitScenario(
   name: string,
   method: string,
   url: string,
   rules: RateLimitRuleData[],
   headers?: Record<string, string>,
+  body?: string,
 ): Scenario {
   return {
     name,
     method,
     url,
     ...(headers ? { headers } : {}),
+    ...(body === undefined ? {} : { body }),
     prepare: ({ dataDir }) => setRateLimits(dataDir, rules),
     pending: rateLimitPending,
     expectedStatus: 429,
