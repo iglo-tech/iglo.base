@@ -10,7 +10,7 @@ M4.8 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.8 | worker | `task/M4.8-rate-limiter` | 0 | [Brief](briefs/M4.8.md). Closes the pending rate-limit scenarios of M2.4, M3.3, M4.2, M4.3, M4.5 and M5.2 |
+| M4.8 | review | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 1 | [Brief](briefs/M4.8.md). Closes the pending rate-limit scenarios of M2.4, M3.3, M4.2, M4.3, M4.5 and M5.2 |
 
 ## Done
 
@@ -98,6 +98,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M4.8 PR): the brief said the limiter key is the auth id or real IP; upstream v0.41.0 uses the real IP only, and the worker followed upstream. The cleanup job is registered on a minimal `src/tools/cron/cron.ts`, and nothing runs it until M5.6. M5.7 must put CORS ahead of the limiter, or a preflight under a matching rule gets 429 where upstream gets 204.
 - 2026-10-31 (M4.8 pick): next in milestone order. Opus worker: rate limits sit on the auth and request path, so it is not a mechanical task.
 - 2026-10-31 (M4.7 PR): the lead sent #48 to review with `test:reference` at 2 failures, both flakes already in the hardening backlog (realtime cascade order since M5.1, thumb `Last-Modified`); both pass on rerun, and neither touches OAuth2 code. The worker called the realtime one new; it is the backlog row.
 - 2026-10-31 (M4.7 pick): next in milestone order; its dependency is merged. Haiku worker per the model table, which did M4.6 with one blocker in review.
