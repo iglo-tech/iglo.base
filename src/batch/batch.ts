@@ -64,10 +64,12 @@ import { bytesReader, RereadableReadCloser } from "@/server/rereadable-read-clos
 import { ResponseWriter } from "@/server/router";
 import {
   JSONPayloadKey,
+  type MapRef,
   pointerTo,
   sliceOf,
   structOf,
   type StructField,
+  unmarshalRequestData,
 } from "@/server/unmarshal-request-data";
 import { type File, NewFileFromMultipart } from "@/tools/filesystem/file";
 import { pseudorandomString } from "@/tools/security/random";
@@ -107,12 +109,12 @@ const batchRequestsFormType = structOf([
 ]);
 
 // core.InternalRequest
-class InternalRequest {
+export class InternalRequest {
   // the files uploaded for this item, by their key
   readonly files = new Map<string, File[]>();
 
   constructor(
-    readonly body: Record<string, unknown>,
+    public body: Record<string, unknown>,
     readonly headers: Record<string, string>,
     readonly method: string,
     readonly url: string,
@@ -345,9 +347,11 @@ function parseItemURL(url: string): { escapedPath: string; rawQuery: string } | 
   return { escapedPath, rawQuery: q < 0 ? "" : rest.slice(q + 1) };
 }
 
-interface PreparedItem {
+export interface PreparedItem {
   ir: InternalRequest;
   action: BatchAction | null;
+  // the RequestInfo context of the item's event
+  infoContext: string;
   // the failure of building the item's request (http.NewRequest, the
   // payload's json.Marshal)
   requestErr: Error | null;
@@ -355,17 +359,21 @@ interface PreparedItem {
   requestInfo: RequestInfo | Error;
 }
 
-async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<PreparedItem> {
+export async function prepareItem(
+  base: RequestEvent,
+  ir: InternalRequest,
+  infoContext: string = RequestInfoContextBatch,
+): Promise<PreparedItem> {
   const action = findBatchAction(ir);
   const noRequest = new Error("the batch item has no request");
 
   if (action === null) {
-    return { ir, action, requestErr: null, request: null, requestInfo: noRequest };
+    return { ir, action, infoContext, requestErr: null, request: null, requestInfo: noRequest };
   }
 
   const url = parseItemURL(ir.url);
   if (url instanceof Error) {
-    return { ir, action, requestErr: url, request: null, requestInfo: noRequest };
+    return { ir, action, infoContext, requestErr: url, request: null, requestInfo: noRequest };
   }
 
   // the base headers, then the item's. Authorization has no effect: the auth
@@ -390,7 +398,7 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
     payload = marshal(ir.body);
   } catch (err) {
     const requestErr = err instanceof Error ? err : new Error(String(err));
-    return { ir, action, requestErr, request: null, requestInfo: noRequest };
+    return { ir, action, infoContext, requestErr, request: null, requestInfo: noRequest };
   }
 
   const request = new HttpRequest({
@@ -417,7 +425,7 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
 
   // the event of this phase only reads the request; the item runs on one
   // with the transaction's app
-  const event = newItemEvent(base.app, base, request);
+  const event = newItemEvent(base.app, base, request, infoContext);
   const requestInfo = parseErr ?? (await event.requestInfo());
   if (!(requestInfo instanceof Error)) {
     for (const [k, v] of itemHeaders) {
@@ -425,7 +433,27 @@ async function prepareItem(base: RequestEvent, ir: InternalRequest): Promise<Pre
     }
   }
 
-  return { ir, action, requestErr: null, request, requestInfo };
+  return { ir, action, infoContext, requestErr: null, request, requestInfo };
+}
+
+// Replaces the regular fields of a prepared item, for a body that is known
+// only inside the transaction (sendOAuth2RecordCreateRequest): the same
+// result as preparing the item with this body, without an await.
+export function setItemBody(item: PreparedItem, body: Record<string, unknown>): void {
+  const { ir, request, requestInfo } = item;
+  if (request === null || requestInfo instanceof Error) {
+    return;
+  }
+
+  ir.body = body;
+  try {
+    (request.form as Values).set(JSONPayloadKey, [marshal(body)]);
+    const data: MapRef = { map: {} };
+    unmarshalRequestData(request.form as Values, data);
+    requestInfo.body = data.map;
+  } catch (err) {
+    item.requestErr = err instanceof Error ? err : new Error(String(err));
+  }
 }
 
 function appendFormValue(form: Values, key: string, value: string): void {
@@ -437,11 +465,16 @@ function appendFormValue(form: Values, key: string, value: string): void {
   }
 }
 
-function newItemEvent(app: App, base: RequestEvent, request: HttpRequest): RequestEvent {
+function newItemEvent(
+  app: App,
+  base: RequestEvent,
+  request: HttpRequest,
+  infoContext: string,
+): RequestEvent {
   const event = new RequestEvent(app, new ItemResponseWriter(), request);
   event.auth = base.auth;
   event.setAll(base.getAll());
-  event.set(RequestEventKeyInfoContext, RequestInfoContextBatch);
+  event.set(RequestEventKeyInfoContext, infoContext);
   return event;
 }
 
@@ -534,12 +567,14 @@ function failItem(index: number, err: Error): Errors {
   });
 }
 
-function processInternalRequest(
+// wrapIO takes the place of upstream's optFinalizer: it sees the handler's reads and writes
+export function processInternalRequest(
   txApp: App,
   base: RequestEvent,
   item: PreparedItem,
+  wrapIO: (io: RecordIO) => RecordIO = (io) => io,
 ): BatchRequestResult | Error {
-  const { action, ir, request, requestInfo, requestErr } = item;
+  const { action, infoContext, ir, request, requestInfo, requestErr } = item;
   if (action === null) {
     return new Error("unknown batch request action");
   }
@@ -549,10 +584,10 @@ function processInternalRequest(
 
   const handler = resolveHandler(txApp, action, ir, request, requestInfo);
 
-  const event = newItemEvent(txApp, base, request);
+  const event = newItemEvent(txApp, base, request, infoContext);
 
   const out: { value?: HandlerResult } = {};
-  runSync(collectResult(handler(event, txRecordIO(requestInfo, ir.files)), out));
+  runSync(collectResult(handler(event, wrapIO(txRecordIO(requestInfo, ir.files))), out));
   if (out.value instanceof Error) {
     return out.value;
   }
