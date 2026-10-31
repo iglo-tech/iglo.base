@@ -11,6 +11,7 @@ import { bindCollectionApi } from "@/apis/collection";
 import { bindFileApi } from "@/files/file-api";
 import { bindHealthApi } from "@/apis/health";
 import { bindRecordAuthApi } from "@/apis/record-auth";
+import type { RecordAuthOptions } from "@/apis/record-auth-with-oauth2";
 import { bindRecordCrudApi, type RecordCrudOptions } from "@/apis/record-crud";
 import { bindSettingsApi } from "@/apis/settings";
 import { activityLogger } from "@/middlewares/activity-logger";
@@ -28,6 +29,7 @@ import { Router } from "@/server/router";
 export const StaticWildcardParam = "path";
 
 export interface RouterOptions {
+  recordAuth?: RecordAuthOptions;
   recordCrud?: RecordCrudOptions;
   realtime?: RealtimeOptions;
 }
@@ -36,7 +38,8 @@ export interface RouterOptions {
 // middlewares and routes.
 //
 // options carries test seams of the bound handlers (the records list
-// throttle's sleep, the realtime connection timers).
+// throttle's sleep, the realtime connection timers, the OAuth2 provider and
+// avatar download). The executable sets none of them.
 export function newRouter(app: App, options: RouterOptions = {}): Router<RequestEvent> {
   const pbRouter = new Router<RequestEvent>((w, r) => [new RequestEvent(app, w, r), undefined]);
 
@@ -58,7 +61,7 @@ export function newRouter(app: App, options: RouterOptions = {}): Router<Request
   bindSettingsApi(app, apiGroup);
   bindCollectionApi(app, apiGroup);
   bindRecordCrudApi(app, apiGroup, options.recordCrud);
-  bindRecordAuthApi(app, apiGroup);
+  bindRecordAuthApi(app, apiGroup, options.recordAuth);
   bindFileApi(app, apiGroup);
   bindBatchApi(app, apiGroup);
   bindRealtimeApi(app, apiGroup, options.realtime);

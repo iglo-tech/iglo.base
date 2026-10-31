@@ -1,7 +1,6 @@
 // Upstream: apis/record_auth.go (bindRecordAuthApi, findAuthCollection)
 //
-// The routes are bound in upstream's order; the OAuth2 ones keep
-// a named slot. collectionPathRateLimit resolves the path collection
+// The routes are bound in upstream's order. collectionPathRateLimit resolves the path collection
 // (a missing one is a 404 before any other middleware); its settings rate
 // limit rules are M4.8.
 
@@ -17,6 +16,8 @@ import { recordRequestPasswordReset } from "@/apis/record-auth-password-reset-re
 import { recordAuthRefresh } from "@/apis/record-auth-refresh";
 import { recordConfirmVerification } from "@/apis/record-auth-verification-confirm";
 import { recordRequestVerification } from "@/apis/record-auth-verification-request";
+import { recordAuthWithOAuth2, type RecordAuthOptions } from "@/apis/record-auth-with-oauth2";
+import { oauth2SubscriptionRedirect } from "@/apis/record-auth-with-oauth2-redirect";
 import { recordAuthWithOTP } from "@/apis/record-auth-with-otp";
 import { recordAuthWithPassword } from "@/apis/record-auth-with-password";
 import type { Collection } from "@/collections/collection-model";
@@ -28,8 +29,17 @@ import type { RouterGroup } from "@/server/group";
 
 // bindRecordAuthApi registers the auth record api endpoints and
 // the corresponding handlers.
-export function bindRecordAuthApi(_app: App, rg: RouterGroup<RequestEvent>): void {
-  // GET and POST /oauth2-redirect (oauth2SubscriptionRedirect): M4.5
+//
+// options carries the test seams of the OAuth2 flow.
+export function bindRecordAuthApi(
+  _app: App,
+  rg: RouterGroup<RequestEvent>,
+  options: RecordAuthOptions = {},
+): void {
+  // global oauth2 subscription redirect handler
+  rg.GET("/oauth2-redirect", oauth2SubscriptionRedirect);
+  // add again as POST in case of response_mode=form_post
+  rg.POST("/oauth2-redirect", oauth2SubscriptionRedirect);
 
   const sub = rg.group("/collections/{collection}");
 
@@ -43,7 +53,9 @@ export function bindRecordAuthApi(_app: App, rg: RouterGroup<RequestEvent>): voi
     .POST("/auth-with-password", recordAuthWithPassword)
     .bind(collectionPathRateLimit("", "authWithPassword", "auth"));
 
-  // POST /auth-with-oauth2 (recordAuthWithOAuth2): M4.5
+  sub
+    .POST("/auth-with-oauth2", (e) => recordAuthWithOAuth2(e, options))
+    .bind(collectionPathRateLimit("", "authWithOAuth2", "auth"));
 
   sub.POST("/request-otp", recordRequestOTP).bind(collectionPathRateLimit("", "requestOTP"));
 
