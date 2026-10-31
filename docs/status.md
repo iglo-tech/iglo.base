@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.3 merged; no active task.
+M4.5 active (worker).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M4.5 | worker | `task/M4.5-oauth2` | 0 | [brief](briefs/M4.5.md) |
 
 ## Done
 
@@ -88,6 +89,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (plan change, M4.5 brief): the OIDC provider moves from M4.7 to M4.5; the differential cases need one real provider whose endpoints both servers can be pointed at.
 - 2026-10-31 (M4.3 pick): next in milestone order; its dependencies (M4.1, M4.4) are merged.
 - 2026-10-31 (M4.2 pick): the usable-first order is done through M5.1, so the rest follows milestone order; M4.2 is the first task with its dependencies merged.
 - 2026-10-31 (M3.7 merge): after three rounds without agreement the lead merged #43, moving Sol's round 3 findings 3 and 4 to the hardening backlog. Finding 3 is not fully safe under D26 (see its backlog row); accepted for the MVP. The run had reached its 4-hour limit, so the lock was released and the next run picks the next task.
