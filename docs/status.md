@@ -89,6 +89,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (lead takeover, M4.5): at 05:18 UTC the lead thread had no live run (its turn ended 04:29 UTC, a T3 Code restart followed at 05:00), so a new lead took the lock under step 2 and adopted the worker, whose `test:reference` was running. The old lead was not woken when the worker's turn ended at 05:08; if it wakes later, the lock holder decides and it must not start a reviewer. The worker's one failure so far is the `freePort()` race in the hardening backlog.
 - 2026-10-31 (plan change, M4.5 brief): the OIDC provider moves from M4.7 to M4.5; the differential cases need one real provider whose endpoints both servers can be pointed at.
 - 2026-10-31 (M4.3 pick): next in milestone order; its dependencies (M4.1, M4.4) are merged.
 - 2026-10-31 (M4.2 pick): the usable-first order is done through M5.1, so the rest follows milestone order; M4.2 is the first task with its dependencies merged.
