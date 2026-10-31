@@ -10,7 +10,7 @@ M3.7 (JavaScript migrations) active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.7 | fix | [#43](https://github.com/iglo-tech/iglo.base/pull/43) ([brief](briefs/M3.7.md)) | 2 | First worker stalled, see For owner review. Round 1: nine binding findings, fixed. Round 2: Sol CHANGES at `ab57877`, seven findings; lead agrees with five and a half, two parts to backlog ([comment](https://github.com/iglo-tech/iglo.base/pull/43)); fixer started |
+| M3.7 | fix | [#43](https://github.com/iglo-tech/iglo.base/pull/43) ([brief](briefs/M3.7.md)) | 3 | First worker stalled, see For owner review. Rounds 1 and 2: nine and seven binding findings, fixed or moved to backlog. Round 3 (last) at `cc04b8b`: `check`, `test:reference` and `test:roundtrip:large` pass |
 
 ## Done
 
