@@ -32,6 +32,20 @@ import {
   recordCrudAuthOriginView,
 } from "@test/scenarios/record-crud-auth-origin";
 import {
+  recordCrudMFACreate,
+  recordCrudMFADelete,
+  recordCrudMFAList,
+  recordCrudMFAUpdate,
+  recordCrudMFAView,
+} from "@test/scenarios/record-crud-mfa";
+import {
+  recordCrudOTPCreate,
+  recordCrudOTPDelete,
+  recordCrudOTPList,
+  recordCrudOTPUpdate,
+  recordCrudOTPView,
+} from "@test/scenarios/record-crud-otp";
+import {
   recordCrudSuperuserCreate,
   recordCrudSuperuserDelete,
   recordCrudSuperuserList,
@@ -89,6 +103,16 @@ export const suites: Suite[] = [
   recordCrudAuthOriginDelete,
   recordCrudAuthOriginCreate,
   recordCrudAuthOriginUpdate,
+  recordCrudOTPList,
+  recordCrudOTPView,
+  recordCrudOTPDelete,
+  recordCrudOTPCreate,
+  recordCrudOTPUpdate,
+  recordCrudMFAList,
+  recordCrudMFAView,
+  recordCrudMFADelete,
+  recordCrudMFACreate,
+  recordCrudMFAUpdate,
   settingsList,
   settingsSet,
   settingsTestS3,

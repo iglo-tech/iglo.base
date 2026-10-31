@@ -2,10 +2,6 @@
 // delete, otp, ips), with cobra's subcommand lookup and help, and the
 // bootstrap pocketbase.go's Execute runs before it (skipped for -h,
 // --help, -v and --version).
-//
-// The otp subcommand creates the `_otps` record directly, as core.NewOTP
-// does (a record of the system collection with collectionRef, recordRef
-// and password); the OTP model and the OTP auth endpoints are M4.2.
 
 import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
@@ -21,7 +17,7 @@ import {
 import { helpText, usageText, type CommandHelp } from "@/cli/help";
 import type { AppConfig, CliContext } from "@/cli/root";
 import { bootstrapApp } from "@/cli/serve";
-import { CollectionNameOTPs } from "@/records/record-auth-refs";
+import { newOTP, saveOTP } from "@/records/otp-model";
 import { newRecord } from "@/records/record-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import { findAuthRecordByEmail } from "@/records/record-query";
@@ -233,14 +229,13 @@ const subcommands: Subcommand[] = [
 
       const pass = randomStringWithAlphabet(Number(otpConfig.length), "1234567890");
 
-      // core.NewOTP
-      const otp = newRecord(findCachedCollectionByNameOrId(app, CollectionNameOTPs));
-      otp.set("collectionRef", superuser.collection().id);
-      otp.set("recordRef", superuser.id);
+      const otp = newOTP(app);
+      otp.setCollectionRef(superuser.collection().id);
+      otp.setRecordRef(superuser.id);
       otp.setPassword(pass);
 
       try {
-        await saveRecord(app, otp);
+        await saveOTP(app, otp);
       } catch (err) {
         throw new CommandError(`failed to create OTP: ${errorMessage(err)}`);
       }

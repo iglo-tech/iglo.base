@@ -17,7 +17,7 @@
 //
 // The ExternalAuth, MFA, OTP and AuthOrigin models (record proxies with
 // their own accessors) and the auth flows that create those records come
-// with the auth tasks (M4.x: src/records/mfa-model.ts and
+// with the auth tasks (M4.x: src/records/mfa-model.ts, otp-model.ts and
 // auth-origin-model.ts so far); the queries here return Records. Their
 // OnCollectionDeleteExecute handlers are refsOnCollectionDeleteExecute,
 // which src/collections/collection-save.ts calls. Not here: the expired
