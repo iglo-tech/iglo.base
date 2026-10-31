@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M3.7 merged; no active task.
+M4.2 in progress.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M4.2 | worker | `task/M4.2-otp` | 0 | [brief](briefs/M4.2.md) |
 
 ## Done
 
@@ -86,6 +87,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M4.2 pick): the usable-first order is done through M5.1, so the rest follows milestone order; M4.2 is the first task with its dependencies merged.
 - 2026-10-31 (M3.7 merge): after three rounds without agreement the lead merged #43, moving Sol's round 3 findings 3 and 4 to the hardening backlog. Finding 3 is not fully safe under D26 (see its backlog row); accepted for the MVP. The run had reached its 4-hour limit, so the lock was released and the next run picks the next task.
 - 2026-10-30 (lead takeover, M3.7): the M3.7 worker stopped at 20:49 UTC on a permission prompt for its own `rm -rf … pb_migrations/*`, which nobody can answer, with no code written. A new lead took the lock at 21:17 UTC (previous lead's turn finished, 31 minutes after its heartbeat) and started the one retry on `task/M3.7-js-migrations`. `task_cancel` refused the old worker because it belongs to the old lead's thread, so it is still parked on the prompt, using nothing. If that prompt is approved later it resumes: cancel it rather than approving, and do not use its unpushed branch `task/M3.7-migrations` (still at `9caf3f7`, worktree `t3-c505296b`). Its `/tmp/m37` probe directory remains. The worker instructions now forbid `rm` with a glob, variable or substitution.
 - 2026-10-30 (M3.7 PR): the lead sent #43 to review with `test:reference` exiting 1, because its one failure at the head is the realtime cascade-order case in the hardening backlog since M5.1, outside M3.7's code. The runbook asks for a passing run, so this is a deliberate exception; the case still needs the real-client order check noted in the backlog.
