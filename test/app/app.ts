@@ -17,6 +17,8 @@ import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 export interface TestApp extends App {
   // what the app logged
   readonly logged: { message: string; cause: unknown }[];
+  // what the app logged at the Warn level
+  readonly warned: { message: string; cause: unknown }[];
   // the warnings of the bootstrap
   readonly warnings: string[];
   cleanup(): Promise<void>;
@@ -45,6 +47,7 @@ export async function openFixtureApp(options: TestAppOptions = {}): Promise<Test
   }
 
   const logged: { message: string; cause: unknown }[] = [];
+  const warned: { message: string; cause: unknown }[] = [];
   const warnings: string[] = [];
   const app = await bootstrap({
     dataDir,
@@ -53,7 +56,10 @@ export async function openFixtureApp(options: TestAppOptions = {}): Promise<Test
     getenv: options.getenv,
     queryTimeout: 30,
     clock: options.clock ?? systemClock,
-    logger: { error: (message, cause) => logged.push({ message, cause }) },
+    logger: {
+      error: (message, cause) => logged.push({ message, cause }),
+      warn: (message, cause) => warned.push({ message, cause }),
+    },
     readWorkers: options.readWorkers ?? 0,
     warn: (message) => warnings.push(message),
   });
@@ -61,6 +67,7 @@ export async function openFixtureApp(options: TestAppOptions = {}): Promise<Test
   return {
     ...app,
     logged,
+    warned,
     warnings,
     async cleanup() {
       await clearBootstrap(app);

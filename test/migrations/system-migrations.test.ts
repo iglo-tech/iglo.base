@@ -55,7 +55,7 @@ async function openError(dataDir: string): Promise<unknown> {
       encryptionEnv: "",
       queryTimeout: 30,
       clock,
-      logger: { error: () => {} },
+      logger: { error: () => {}, warn: () => {} },
       readWorkers: 0,
     });
   } catch (err) {

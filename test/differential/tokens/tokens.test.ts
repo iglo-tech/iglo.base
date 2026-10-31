@@ -301,7 +301,7 @@ function guardRouter(app: TestCollectionsApp) {
       encryptionEnv: "",
       queryTimeout: 30,
       clock,
-      logger: app.logger,
+      logger: { error: app.logger.error, warn: () => {} },
       databases: app.databases,
       store: app.store,
     }),

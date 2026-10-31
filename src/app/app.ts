@@ -25,6 +25,11 @@ export interface ErrorLogger {
   error(message: string, cause?: unknown): void;
 }
 
+// The app's logger: upstream's Warn level too.
+export interface AppLogger extends ErrorLogger {
+  warn(message: string, cause?: unknown): void;
+}
+
 export interface App {
   // DataDir returns the app data directory path (pb_data).
   readonly dataDir: string;
@@ -35,7 +40,7 @@ export interface App {
   // the default SELECT query timeout in seconds (--queryTimeout)
   readonly queryTimeout: number;
   readonly clock: Clock;
-  readonly logger: ErrorLogger;
+  readonly logger: AppLogger;
   // DB, ConcurrentDB, AuxDB, ... of the opened pb_data (ClearBootstrap
   // closes them)
   readonly databases: Databases;
@@ -61,7 +66,8 @@ export interface App {
   // SubscriptionsBroker returns the app realtime subscriptions broker
   // instance (src/realtime; serve closes its clients on shutdown).
   readonly subscriptionsBroker: Broker;
-  // Cron returns the app cron instance (the jobs M5.6 will run).
+  // Cron returns the app cron instance (its built-in jobs are in
+  // src/app/crons.ts; only serve starts it, ClearBootstrap stops it).
   readonly cron: Cron;
   // the migrations directory automigrate writes to (--automigrate,
   // plugins/migratecmd); undefined when it is off
@@ -74,7 +80,7 @@ export interface AppConfig {
   encryptionEnv: string;
   queryTimeout: number;
   clock: Clock;
-  logger: ErrorLogger;
+  logger: AppLogger;
   databases: Databases;
   store: Store<string, unknown>;
   // the default settings (newDefaultSettings) unless set
@@ -101,6 +107,9 @@ export function newApp(config: AppConfig): App {
     newMailClient: () => newMailClient(settings, config.clock, getenv),
     thumbs: new ThumbPool({ getenv }),
     subscriptionsBroker: new Broker(),
-    cron: new Cron(),
+    cron: new Cron({
+      clock: config.clock,
+      logPanic: (cause) => config.logger.error("[FireAndForget] RECOVERED FROM PANIC", cause),
+    }),
   });
 }
