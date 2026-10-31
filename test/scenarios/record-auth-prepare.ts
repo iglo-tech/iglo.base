@@ -6,6 +6,7 @@
 
 import { reloadCachedCollections } from "@/collections/collection-query";
 import { newAuthOrigin } from "@/records/auth-origin-model";
+import { newExternalAuth, saveExternalAuthSync } from "@/records/external-auth-model";
 import { MFAMethodOAuth2, MFAMethodOTP, MFAMethodPassword, newMFA } from "@/records/mfa-model";
 import { newOTP } from "@/records/otp-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
@@ -82,6 +83,25 @@ export function updateKeepingTokenKey(
       saveRecordSync(app, record);
       record.setTokenKey(oldTokenKey);
       saveRecordSync(app, record);
+    });
+}
+
+// a linked provider of the auth record (core.NewExternalAuth + app.Save)
+export function insertExternalAuth(
+  collection: string,
+  email: string,
+  provider: string,
+  providerId: string,
+): (ctx: PrepareContext) => void {
+  return ({ dataDir }) =>
+    withApp(dataDir, (app) => {
+      const user = findAuthRecordByEmail(app, collection, email);
+      const ea = newExternalAuth(app);
+      ea.setCollectionRef(user.collection().id);
+      ea.setRecordRef(user.id);
+      ea.setProvider(provider);
+      ea.setProviderId(providerId);
+      saveExternalAuthSync(app, ea);
     });
 }
 

@@ -1,89 +1,103 @@
-// Upstream: tools/auth/base_provider.go (the provider defaults the auth
-// methods list reads, BuildAuthURL with golang.org/x/oauth2's
-// Config.AuthCodeURL), tools/auth/auth.go (NewProviderByName),
-// core/collection_model_auth_options.go (OAuth2ProviderConfig.InitProvider)
-// and the defaults of tools/auth/gitlab.go and google.go
+// Upstream: tools/auth/auth.go (NewProviderByName),
+// core/collection_model_auth_options.go (OAuth2ProviderConfig.InitProvider),
+// tools/auth/base_provider.go (BuildAuthURL with golang.org/x/oauth2's
+// Config.AuthCodeURL) and the defaults of tools/auth/gitlab.go and google.go
 //
-// Only what GET /api/collections/{collection}/auth-methods needs: a
-// provider's display name, logo, PKCE flag and authorization URL. The
-// provider implementations (token exchange, user info) and the defaults of
-// the other providers come with the OAuth2 tasks (M4.5–M4.7); until then a
-// configured provider without defaults here fails to initialize and is
-// skipped, as upstream skips a provider it cannot set up.
+// The fixed table of ported providers. A new provider is one file with a
+// class that extends BaseProvider, and one line in portedProviders here; the
+// display name, logo and order come from provider-list.ts. M4.6 and M4.7
+// add the rest. Until then:
+//   - a configured provider that is neither ported nor in listedProviders
+//     fails to initialize, so the auth methods list skips it;
+//   - listedProviders only have what the auth methods list needs; signing
+//     in with them, or with any other unported provider, fails in
+//     initSignInProvider before any network call.
 
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
+import { type AuthUser, BaseProvider } from "@/oauth2/base-provider";
+import { OIDC } from "@/oauth2/oidc";
 import { providerMetadata } from "@/oauth2/provider-list";
 import { encodeValues } from "@/server/request";
 
-// the display name and logo come from provider-list.ts
-interface ProviderDefaults {
-  pkce: boolean;
-  scopes: string[];
-  authURL: string;
+// the constructors of the ported providers, by name (auth.Providers)
+const portedProviders = new Map<string, () => BaseProvider>([
+  ["oidc", () => new OIDC()], // oidc.go
+  ["oidc2", () => new OIDC()], // oidc.go
+  ["oidc3", () => new OIDC()], // oidc.go
+]);
+
+// A provider with only the defaults the auth methods list reads.
+class ListedProvider extends BaseProvider {
+  constructor(pkce: boolean, scopes: string[], authURL: string) {
+    super();
+    this.pkce = pkce;
+    this.scopes = scopes;
+    this.authURL = authURL;
+  }
+
+  fetchAuthUser(): Promise<AuthUser> {
+    return Promise.reject(new Error("the provider is not ported yet"));
+  }
 }
 
-// the BaseProvider fields of each provider's constructor, by name
-const providerDefaults = new Map<string, ProviderDefaults>([
+const listedProviders = new Map<string, () => BaseProvider>([
   // gitlab.go NewGitlabProvider
-  [
-    "gitlab",
-    {
-      pkce: true,
-      scopes: ["read_user"],
-      authURL: "https://gitlab.com/oauth/authorize",
-    },
-  ],
+  ["gitlab", () => new ListedProvider(true, ["read_user"], "https://gitlab.com/oauth/authorize")],
   // google.go NewGoogleProvider
   [
     "google",
-    {
-      pkce: true,
-      scopes: [
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/userinfo.email",
-      ],
-      authURL: "https://accounts.google.com/o/oauth2/v2/auth",
-    },
+    () =>
+      new ListedProvider(
+        true,
+        [
+          "https://www.googleapis.com/auth/userinfo.profile",
+          "https://www.googleapis.com/auth/userinfo.email",
+        ],
+        "https://accounts.google.com/o/oauth2/v2/auth",
+      ),
   ],
 ]);
 
-// The provider settings the auth methods list reads.
-export interface Provider {
-  displayName: string;
-  logo: string;
-  pkce: boolean;
-  clientId: string;
-  redirectURL: string;
-  scopes: string[];
-  authURL: string;
+// NewProviderByName returns a new preconfigured provider instance by its
+// name identifier.
+function newProviderByName(name: string): BaseProvider {
+  const factory = portedProviders.get(name) ?? listedProviders.get(name);
+  const metadata = providerMetadata.get(name);
+  if (factory === undefined || metadata === undefined) {
+    throw new Error("missing provider " + name);
+  }
+
+  const provider = factory();
+  provider.displayName = metadata.displayName;
+  provider.logo = metadata.logo;
+  provider.order = metadata.order;
+  return provider;
 }
 
 // InitProvider returns a new auth.Provider instance loaded with the
 // current OAuth2Config options. Throws "missing provider <name>" for a
 // provider without defaults here.
-export function initProvider(config: OAuth2ProviderConfig): Provider {
-  const defaults = providerDefaults.get(config.name);
-  const metadata = providerMetadata.get(config.name);
-  if (defaults === undefined || metadata === undefined) {
-    throw new Error("missing provider " + config.name);
-  }
-
-  const provider: Provider = {
-    displayName: metadata.displayName,
-    logo: metadata.logo,
-    pkce: defaults.pkce,
-    clientId: "",
-    redirectURL: "",
-    scopes: defaults.scopes,
-    authURL: defaults.authURL,
-  };
+export function initProvider(config: OAuth2ProviderConfig): BaseProvider {
+  const provider = newProviderByName(config.name);
 
   if (config.clientId !== "") {
     provider.clientId = config.clientId;
   }
 
+  if (config.clientSecret !== "") {
+    provider.clientSecret = config.clientSecret;
+  }
+
   if (config.authURL !== "") {
     provider.authURL = config.authURL;
+  }
+
+  if (config.userInfoURL !== "") {
+    provider.userInfoURL = config.userInfoURL;
+  }
+
+  if (config.tokenURL !== "") {
+    provider.tokenURL = config.tokenURL;
   }
 
   if (config.displayName !== "") {
@@ -94,14 +108,27 @@ export function initProvider(config: OAuth2ProviderConfig): Provider {
     provider.pkce = config.pkce;
   }
 
+  if (config.extra !== null) {
+    provider.extra = config.extra;
+  }
+
   return provider;
+}
+
+// initProvider for the sign-in, which needs a provider's implementation:
+// throws for a provider that is not ported yet (upstream knows all of them).
+export function initSignInProvider(config: OAuth2ProviderConfig): BaseProvider {
+  if (!portedProviders.has(config.name)) {
+    throw new Error(`the OAuth2 provider ${config.name} is not ported yet`);
+  }
+  return initProvider(config);
 }
 
 // BuildAuthURL returns a URL to the provider's consent page that asks for
 // permissions for the required scopes explicitly (oauth2.Config's
 // AuthCodeURL; opts are its SetAuthURLParam options, in order).
 export function buildAuthURL(
-  p: Provider,
+  p: BaseProvider,
   state: string,
   ...opts: [key: string, value: string][]
 ): string {

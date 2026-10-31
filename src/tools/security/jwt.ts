@@ -1,5 +1,5 @@
-// Upstream: tools/security/jwt.go, with the behavior it inherits from
-// github.com/golang-jwt/jwt/v5 v5.3.1: parser.go (Parser.ParseUnverified,
+// Upstream: tools/security/jwt.go, and the parts of
+// github.com/golang-jwt/jwt/v5 v5.3.1 it and tools/auth use: parser.go (Parser.ParseUnverified,
 // ParseWithClaims, splitToken, DecodeSegment with RawURLEncoding),
 // validator.go (Validator.Validate with no leeway), map_claims.go
 // (parseNumericDate), types.go (newNumericDateFromSeconds with
@@ -62,8 +62,10 @@ function hmacSHA256(text: string, key: string): Uint8Array {
   return h.digest();
 }
 
-interface Unverified {
+export interface Unverified {
   header: Record<string, unknown> | undefined;
+  // the header's alg (Token.Method.Alg())
+  alg: string;
   claims: MapClaims;
   parts: [string, string, string];
   signature: Uint8Array;
@@ -71,7 +73,7 @@ interface Unverified {
 
 // Parser.ParseUnverified with MapClaims and the default parser options
 // (RawURLEncoding segments, no json.Number)
-function parseUnverified(token: string, claims: MapClaims): Unverified {
+export function parseUnverifiedToken(token: string, claims: MapClaims): Unverified {
   const parts = token.split(".");
   if (parts.length !== 3) {
     throw new JWTError("token is malformed: token contains an invalid number of segments");
@@ -125,7 +127,7 @@ function parseUnverified(token: string, claims: MapClaims): Unverified {
   } catch {
     throw new JWTError("token is malformed: could not base64 decode signature", claims);
   }
-  return { header, claims, parts: [h, c, s], signature };
+  return { header, alg, claims, parts: [h, c, s], signature };
 }
 
 // Unix seconds as Go's internal time seconds (since year 1), wrapped to
@@ -166,9 +168,49 @@ function parseNumericDate(claims: MapClaims, key: string): bigint | undefined {
   return internalSeconds(numericDateSeconds(v));
 }
 
-// Validator.Validate without leeway: exp must be after now, nbf (and iat
-// when verifyIat) not after now. Every check runs and the errors are joined.
-function validate(claims: MapClaims, clock: Clock, verifyIat: boolean): void {
+export interface ValidateOptions {
+  verifyIat: boolean; // jwt.WithIssuedAt()
+  leewaySeconds?: number; // jwt.WithLeeway
+  audience?: string; // jwt.WithAudience, one expected value
+}
+
+// MapClaims.parseClaimsString: a string or a list of them; any other type
+// is no value at all
+function parseClaimStrings(claims: MapClaims, key: string): string[] {
+  const v = Object.hasOwn(claims, key) ? claims[key] : undefined;
+  if (typeof v === "string") {
+    return [v];
+  }
+  if (!Array.isArray(v)) {
+    return [];
+  }
+  return v.map((item: unknown) => {
+    if (typeof item !== "string") {
+      throw new JWTError(`token has invalid claims: ${key} is invalid`);
+    }
+    return item;
+  });
+}
+
+// Validator.verifyAudience with one expected value, which makes aud required
+function verifyAudience(claims: MapClaims, expected: string): string | undefined {
+  let aud: string[];
+  try {
+    aud = parseClaimStrings(claims, "aud");
+  } catch (err) {
+    return (err as Error).message;
+  }
+  if (aud.length === 0 || (aud.length === 1 && aud[0] === "")) {
+    return "token is missing required claim: aud claim is required";
+  }
+  return aud.includes(expected) ? undefined : "token has invalid audience";
+}
+
+// Validator.Validate: exp must be after now, nbf (and iat with verifyIat)
+// not after now, each within the leeway. Every check runs and the errors
+// are joined.
+export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOptions): void {
+  const leeway = BigInt(opts.leewaySeconds ?? 0);
   const ms = clock.now().getTime();
   const now = internalSeconds(BigInt(Math.floor(ms / 1000)));
   const errors: string[] = [];
@@ -186,10 +228,20 @@ function validate(claims: MapClaims, clock: Clock, verifyIat: boolean): void {
       errors.push(message);
     }
   };
-  check("exp", (exp) => now < exp, "token has invalid claims: token is expired");
-  check("nbf", (nbf) => !(now < nbf), "token has invalid claims: token is not valid yet");
-  if (verifyIat) {
-    check("iat", (iat) => !(now < iat), "token has invalid claims: token used before issued");
+  check("exp", (exp) => now < exp + leeway, "token has invalid claims: token is expired");
+  check("nbf", (nbf) => !(now < nbf - leeway), "token has invalid claims: token is not valid yet");
+  if (opts.verifyIat) {
+    check(
+      "iat",
+      (iat) => !(now < iat - leeway),
+      "token has invalid claims: token used before issued",
+    );
+  }
+  if (opts.audience !== undefined) {
+    const audienceErr = verifyAudience(claims, opts.audience);
+    if (audienceErr !== undefined) {
+      errors.push(audienceErr);
+    }
   }
   if (errors.length > 0) {
     throw new JWTError(errors.join("\n"), claims);
@@ -201,8 +253,8 @@ function validate(claims: MapClaims, clock: Clock, verifyIat: boolean): void {
 // failure the JWTError carries the claims parsed so far.
 export function parseUnverifiedJWT(token: string, clock: Clock): MapClaims {
   const claims: MapClaims = {};
-  parseUnverified(token, claims);
-  validate(claims, clock, true);
+  parseUnverifiedToken(token, claims);
+  validateClaims(claims, clock, { verifyIat: true });
   return claims;
 }
 
@@ -211,7 +263,7 @@ export function parseUnverifiedJWT(token: string, clock: Clock): MapClaims {
 // WithIssuedAt).
 export function parseJWT(token: string, verificationKey: string, clock: Clock): MapClaims {
   const claims: MapClaims = {};
-  const u = parseUnverified(token, claims);
+  const u = parseUnverifiedToken(token, claims);
   if (u.header?.["alg"] !== "HS256") {
     throw new JWTError(
       `token signature is invalid: signing method ${String(u.header?.["alg"])} is invalid`,
@@ -221,7 +273,7 @@ export function parseJWT(token: string, verificationKey: string, clock: Clock): 
   if (!constantTimeCompare(u.signature, expected)) {
     throw new JWTError("token signature is invalid: signature is invalid");
   }
-  validate(claims, clock, false);
+  validateClaims(claims, clock, { verifyIat: false });
   return claims;
 }
 

@@ -23,6 +23,7 @@ import {
   recordAuthRefresh,
   recordAuthWithPassword,
 } from "@test/scenarios/record-auth";
+import { recordAuthWithOAuth2 } from "@test/scenarios/record-auth-oauth2";
 import { recordAuthWithOTP, recordRequestOTP } from "@test/scenarios/record-auth-otp";
 import {
   recordConfirmEmailChange,
@@ -58,6 +59,13 @@ import {
   recordCrudOTPUpdate,
   recordCrudOTPView,
 } from "@test/scenarios/record-crud-otp";
+import {
+  recordCrudExternalAuthCreate,
+  recordCrudExternalAuthDelete,
+  recordCrudExternalAuthList,
+  recordCrudExternalAuthUpdate,
+  recordCrudExternalAuthView,
+} from "@test/scenarios/record-crud-external-auth";
 import {
   recordCrudSuperuserCreate,
   recordCrudSuperuserDelete,
@@ -102,6 +110,7 @@ export const suites: Suite[] = [
   recordAuthRefresh,
   recordAuthWithPassword,
   recordRequestOTP,
+  recordAuthWithOAuth2,
   recordAuthWithOTP,
   recordRequestVerification,
   recordConfirmVerification,
@@ -129,6 +138,11 @@ export const suites: Suite[] = [
   recordCrudOTPDelete,
   recordCrudOTPCreate,
   recordCrudOTPUpdate,
+  recordCrudExternalAuthList,
+  recordCrudExternalAuthView,
+  recordCrudExternalAuthDelete,
+  recordCrudExternalAuthCreate,
+  recordCrudExternalAuthUpdate,
   recordCrudMFAList,
   recordCrudMFAView,
   recordCrudMFADelete,

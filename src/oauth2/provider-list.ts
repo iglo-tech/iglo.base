@@ -4,7 +4,7 @@
 //
 // What GET /api/collections/meta/oauth2-providers lists, and the display
 // defaults initProvider (providers.ts) starts from. Generated from the
-// upstream sources; the provider implementations are M4.5–M4.7.
+// upstream sources; the provider implementations are src/oauth2/providers.ts's table.
 
 export interface ProviderMetadata {
   // BaseProvider.order: the sorting order of the provider list

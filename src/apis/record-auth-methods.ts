@@ -1,14 +1,15 @@
 // Upstream: apis/record_auth_methods.go
 //
 // The OAuth2 providers come from src/oauth2/providers.ts, which knows the
-// defaults of the providers ported so far (M4.5–M4.7 add the rest). A
+// defaults of the providers ported so far (M4.6 and M4.7 add the rest). A
 // provider that fails to initialize is skipped, as upstream skips it
 // (upstream also writes a debug log line; application code here logs only
 // errors).
 
 import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
-import { buildAuthURL, initProvider, type Provider } from "@/oauth2/providers";
+import type { BaseProvider } from "@/oauth2/base-provider";
+import { buildAuthURL, initProvider } from "@/oauth2/providers";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
 import { s256Challenge } from "@/tools/security/crypto";
@@ -99,7 +100,7 @@ export function recordAuthMethods(e: RequestEvent): HandlerResult {
   result.oauth2.enabled = true;
 
   for (const config of collection.oauth2.providers ?? []) {
-    let provider: Provider;
+    let provider: BaseProvider;
     try {
       provider = initProvider(config);
     } catch {

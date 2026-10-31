@@ -26,8 +26,8 @@
 // src/tools/types/go-json.ts.
 //
 // The constructors are async (Go returns an error where they throw). Not
-// ported: NewFileFromURL, which downloads the file (M4.5, for OAuth2
-// avatars), and openFuncAsReader (GetReuploadableFile, filesystem.ts, uses
+// ported: NewFileFromURL, which downloads the file and has no caller (OAuth2
+// avatars use src/oauth2/safe-file.ts), and openFuncAsReader (GetReuploadableFile, filesystem.ts, uses
 // a PathReader of the stored file).
 
 import { closeSync, openSync, readSync } from "node:fs";

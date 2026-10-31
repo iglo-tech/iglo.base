@@ -2,10 +2,10 @@
 // registers in auth.Providers from its init function) and
 // tools/auth/auth.go (NewProviderByName)
 //
-// The OAuth2 providers are ported by M4.5. Until then this fixed list of
-// the names upstream registers stands in for the registry, so that
-// collection validation (checkProviderName) accepts and rejects the same
-// provider names. M4.5 replaces it with the registry.
+// All the names upstream registers, also those of the providers that are
+// not ported yet (src/oauth2/providers.ts), so that collection validation
+// (checkProviderName) and the `_externalAuths` provider check accept and
+// reject the same names as upstream.
 
 // the keys of auth.Providers, in the order of upstream's tools/auth/*.go
 // files
