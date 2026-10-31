@@ -40,6 +40,9 @@ const msdosReadOnly = 0x01;
 // flate.BestSpeed
 const deflateLevel = 1;
 const blockSize = 1 << 20;
+// how much of a block shows whether it compresses at the fastest level
+const sampleSize = 1 << 16;
+const incompressibleRatio = 0.9;
 const outBufferSize = 1 << 20;
 
 // the last, empty Deflate block
@@ -116,6 +119,7 @@ function msDosTime(t: Date): { date: number; time: number } {
 
 export class ZipWriter {
   readonly #fd: number;
+  readonly #block = new Uint8Array(blockSize);
   readonly #out = new Uint8Array(outBufferSize);
   #outLen = 0;
   #offset = 0;
@@ -195,19 +199,15 @@ export class ZipWriter {
         .put(extra).bytes,
     );
 
-    const block = new Uint8Array(blockSize);
     for (;;) {
-      const n = readSync(fd, block, 0, blockSize, null);
+      const n = readSync(fd, this.#block, 0, blockSize, null);
       if (n === 0) {
         break;
       }
-      const chunk = block.subarray(0, n);
+      const chunk = this.#block.subarray(0, n);
       entry.crc32 = Bun.hash.crc32(chunk, entry.crc32);
       entry.uncompressedSize += n;
-      const compressed = deflateRawSync(chunk, {
-        level: deflateLevel,
-        finishFlush: constants.Z_SYNC_FLUSH,
-      });
+      const compressed = compressBlock(chunk);
       entry.compressedSize += compressed.length;
       this.#write(compressed);
     }
@@ -360,6 +360,25 @@ export class ZipWriter {
       off += writeSync(this.#fd, p, off, p.length - off);
     }
   }
+}
+
+// A block as Deflate, not final, ending on a byte boundary. zlib's fastest
+// level uses fixed codes and finds nothing in base64 or random bytes; for
+// those, Huffman codes alone are as fast and gain what there is to gain.
+function compressBlock(block: Uint8Array): Uint8Array {
+  const finishFlush = constants.Z_SYNC_FLUSH;
+  const sample = block.subarray(0, sampleSize);
+  const compressed = deflateRawSync(sample, { level: deflateLevel, finishFlush });
+  if (compressed.length > sample.length * incompressibleRatio) {
+    return deflateRawSync(block, {
+      level: deflateLevel,
+      strategy: constants.Z_HUFFMAN_ONLY,
+      finishFlush,
+    });
+  }
+  return block.length === sample.length
+    ? compressed
+    : deflateRawSync(block, { level: deflateLevel, finishFlush });
 }
 
 // FileHeader.isZip64

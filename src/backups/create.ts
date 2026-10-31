@@ -18,7 +18,7 @@
 // The OnBackupCreate hook is not ported (D5). A local backup with S3 enabled
 // fails before anything is written (newBackupsFilesystem, until M5.4).
 
-import { lstatSync, copyFileSync, linkSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, linkSync, lstatSync, mkdirSync, rmSync } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -59,8 +59,7 @@ export function generateBackupName(app: App, prefix: string): string {
   return `${prefix}${appName}_${time}.zip`;
 }
 
-// a sync-safe comparison of two walk positions: by path segment, as the
-// walk goes
+// the order of two walk positions: by path segment, as the walk goes
 function comparePaths(a: string[], b: string[]): number {
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n; i++) {
@@ -244,7 +243,7 @@ export async function createBackup(app: App, name = ""): Promise<void> {
           await new Promise<void>((resolve) => setImmediate(resolve));
         }
       } finally {
-        rmSync(tempZipPath, { force: true });
+        await rm(tempZipPath, { force: true });
       }
     } finally {
       fsys.close();
@@ -289,7 +288,7 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
         });
         await worker.call({ op: "zipAdd", localPath: tempDBPath, zipPath: filename });
       } finally {
-        rmSync(tempDBPath, { force: true });
+        await rm(tempDBPath, { force: true });
       }
 
       tracker.exclude(filename);
