@@ -60,6 +60,13 @@ import {
   recordCrudOTPView,
 } from "@test/scenarios/record-crud-otp";
 import {
+  recordCrudExternalAuthCreate,
+  recordCrudExternalAuthDelete,
+  recordCrudExternalAuthList,
+  recordCrudExternalAuthUpdate,
+  recordCrudExternalAuthView,
+} from "@test/scenarios/record-crud-external-auth";
+import {
   recordCrudSuperuserCreate,
   recordCrudSuperuserDelete,
   recordCrudSuperuserList,
@@ -131,6 +138,11 @@ export const suites: Suite[] = [
   recordCrudOTPDelete,
   recordCrudOTPCreate,
   recordCrudOTPUpdate,
+  recordCrudExternalAuthList,
+  recordCrudExternalAuthView,
+  recordCrudExternalAuthDelete,
+  recordCrudExternalAuthCreate,
+  recordCrudExternalAuthUpdate,
   recordCrudMFAList,
   recordCrudMFAView,
   recordCrudMFADelete,
