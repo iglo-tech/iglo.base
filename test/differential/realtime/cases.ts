@@ -5,10 +5,9 @@
 // have a random key order). Records get fixed ids so both servers' messages
 // match; client ids and timestamps are normalized.
 //
-// Not covered here, with the reason: the password reset and verification
-// confirm flows (not ported yet, M4.x; they save records through the same
-// record save path covered below), batch (out of scope), the OAuth2
-// redirect subscriber (M4.5).
+// Not covered here, with the reason: the password reset, verification and
+// email change confirms (test/differential/auth/token-realtime.test.ts),
+// batch (out of scope), the OAuth2 redirect subscriber (M4.5).
 
 import { expect } from "bun:test";
 

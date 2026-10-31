@@ -25,7 +25,7 @@ See [Data compatibility](03-data-compatibility.md#tokens) for the format. Rules 
 | OTP | `request-otp` creates an `_otps` row (hashed password) and emails it; always returns an `otpId`, even for unknown emails, to avoid enumeration; `auth-with-otp` verifies and deletes it; marks email verified when sent to the record's email |
 | MFA | when `mfa.enabled` and the `mfa.rule` matches, the first factor returns 401 with `mfaId`; the second, different method passes `mfaId` and completes; `_mfas` rows expire after `mfa.duration` |
 | OAuth2 | code exchange with PKCE, user info mapping (`mappedFields`), `_externalAuths` linking, new record creation (with `createData`), avatar download into the mapped file field, `meta` in the response with upstream's keys (`id`, `name`, `username`, `email`, `avatarURL`, `accessToken`, `refreshToken`, `expiry`, `isNew`, `rawUser`) |
-| Verification, password reset, email change | request endpoints always return 204 (no enumeration) and rate-limited resends as upstream; confirm endpoints validate the token type and claims |
+| Verification, password reset, email change | the verification and password reset requests always return 204 (no enumeration) and limit resends for two minutes, in memory, as upstream; the email change request needs the record's auth token and answers with the send's result; confirm endpoints validate the token type and claims |
 | Impersonate | superusers only, `duration` in the body, non-refreshable token |
 | Auth alerts | on a login from a new device fingerprint, an `_authOrigins` row is stored and the alert email is sent if `authAlert.enabled` |
 
