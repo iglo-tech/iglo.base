@@ -10,7 +10,7 @@ M4.2 in progress.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.2 | worker | `task/M4.2-otp` | 0 | [brief](briefs/M4.2.md) |
+| M4.2 | review | [#44](https://github.com/iglo-tech/iglo.base/pull/44) | 1 | [brief](briefs/M4.2.md) |
 
 ## Done
 
