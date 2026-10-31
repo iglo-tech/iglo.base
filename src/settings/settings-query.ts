@@ -103,7 +103,7 @@ export async function reloadSettings(app: App): Promise<void> {
 
 // The internal consumers of a settings reload (upstream's OnSettingsReload
 // handlers). The rate limiters reset here; saveSettingsSync, which saves
-// without a reload, resets them too. The others are called from here by the
+// without a reload, resets them after its commit. The others are called from here by the
 // tasks that add them:
 //   - M4.4: reset the mailer client (NewMailClient reads the SMTP config);
 //   - M5.3: reschedule the backups cron (backups.cron, cronMaxKeep);
@@ -195,8 +195,18 @@ export function saveSettingsSync(app: SettingsSaveApp, s: Settings, withValidati
 
   s.postScan();
 
-  // what the skipped reload's settingsReloaded does for the rate limiters
-  destroyRateLimitersStore(app);
+  // what the skipped reload's settingsReloaded does for the rate limiters,
+  // which upstream's after-success callback runs once the save has committed
+  const tx = app.databases.txInfo();
+  if (tx === null) {
+    destroyRateLimitersStore(app);
+  } else {
+    tx.onComplete((txErr) => {
+      if (txErr === null) {
+        destroyRateLimitersStore(app);
+      }
+    });
+  }
 }
 
 // The collection update part of registerSettingsHooks

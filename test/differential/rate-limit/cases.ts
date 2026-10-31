@@ -131,6 +131,24 @@ const saveSettings = (body: unknown, status = 200): Step => ({
 const demo2List = "/api/collections/demo2/records";
 const userFile = "/api/files/_pb_users_auth_/4q1xlclmfloku33/300_1SEi6Q6U72.png";
 
+// renames demo2, so its rule is relabeled and saved, then fails validation
+const failedRenameImport: Step = {
+  method: "PUT",
+  url: "/api/collections/import",
+  headers: superuser,
+  body: {
+    collections: [{ id: "sz5l5z67tg7gku0", name: "demo2_renamed", listRule: "title =" }],
+    deleteMissing: false,
+  },
+  status: 400,
+};
+
+const otpCapped: Step = {
+  ...otpAuth,
+  status: 429,
+  message: "Too many attempts, please try again later with a new OTP.",
+};
+
 export const cases: Case[] = [
   // TestDefaultRateLimitMiddleware
   {
@@ -815,5 +833,24 @@ export const cases: Case[] = [
       },
       get(demo2List, 429),
     ],
+  },
+  {
+    name: "a failed import that renames a collection keeps the windows",
+    rules: [rule("/api/collections/view2/records", 1), rule("demo2:list", 1)],
+    steps: [
+      get("/api/collections/view2/records", 200),
+      get("/api/collections/view2/records", 429),
+      failedRenameImport,
+      get("/api/collections/view2/records", 429),
+    ],
+  },
+  {
+    name: "a failed import that renames a collection keeps the built-in OTP limiter",
+    rules: [rule("demo2:list", 1)],
+    prepare: (ctx) => {
+      setMFA("users", false, "")(ctx);
+      insertOTPs("users", "test@example.com", { id: "a".repeat(15) })(ctx);
+    },
+    steps: [...times(5, otpAuth), otpCapped, failedRenameImport, otpCapped],
   },
 ];
