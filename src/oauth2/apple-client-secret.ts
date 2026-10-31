@@ -4,7 +4,14 @@
 // The client secret is an ES256 JWT (golang-jwt v5's SigningMethodES256): the
 // header has alg, kid and typ, and the claims are jwt.RegisteredClaims, in
 // the struct's order. The signature is raw r||s (RFC 7518 section 3.4), not
-// DER. The private key is PKCS #8 PEM, the form of Apple's key files.
+// DER. The private key is PEM, as jwt.ParseECPrivateKeyFromPEM reads it: SEC1
+// first, then PKCS #8, the form of Apple's key files.
+//
+// node:crypto, not crypto.subtle: on Bun 1.4.4 a failed subtle.importKey leaves
+// a BoringSSL error queued, and the next Bun.CryptoHasher throws it, which
+// fails the token check of an unrelated request.
+
+import { type KeyObject, createPrivateKey, createSign } from "node:crypto";
 
 import type { Clock } from "@/app/clock";
 import { StdEncoding, RawURLEncoding } from "@/tools/security/base64";
@@ -41,19 +48,30 @@ function pemDER(text: string): Uint8Array<ArrayBuffer> {
   return StdEncoding.decodeString(lines.slice(start).join("").replace(/\s+/g, ""));
 }
 
+// jwt.ParseECPrivateKeyFromPEM, and SigningMethodES256's curve check
+function parseES256Key(pem: string): KeyObject {
+  const der = Buffer.from(pemDER(pem));
+
+  let key: KeyObject;
+  try {
+    key = createPrivateKey({ key: der, format: "der", type: "sec1" });
+  } catch {
+    key = createPrivateKey({ key: der, format: "der", type: "pkcs8" });
+  }
+
+  if (key.asymmetricKeyType !== "ec") {
+    throw new Error("key is not a valid ECDSA private key");
+  }
+  if (key.asymmetricKeyDetails?.namedCurve !== "prime256v1") {
+    throw new Error("key is invalid");
+  }
+  return key;
+}
+
 // Submit: a new client secret signed with the form's private key, valid for
 // duration seconds from the clock's time.
-export async function signAppleClientSecret(
-  opts: AppleClientSecretOptions,
-  clock: Clock,
-): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pemDER(opts.privateKey.trim()),
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
+export function signAppleClientSecret(opts: AppleClientSecretOptions, clock: Clock): string {
+  const key = parseES256Key(opts.privateKey.trim());
 
   // jwt.NumericDate: whole seconds
   const iat = Math.floor(clock.now().getTime() / 1000);
@@ -69,11 +87,9 @@ export async function signAppleClientSecret(
     `"aud":[${marshal(audience, { legacy: true })}],"exp":${exp},"iat":${iat}}`;
 
   const signingInput = `${RawURLEncoding.encodeToString(encoder.encode(header))}.${RawURLEncoding.encodeToString(encoder.encode(claims))}`;
-  const signature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    encoder.encode(signingInput),
-  );
+  const signature = createSign("sha256")
+    .update(signingInput)
+    .sign({ key, dsaEncoding: "ieee-p1363" });
 
-  return `${signingInput}.${RawURLEncoding.encodeToString(new Uint8Array(signature))}`;
+  return `${signingInput}.${RawURLEncoding.encodeToString(signature)}`;
 }

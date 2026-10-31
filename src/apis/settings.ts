@@ -361,17 +361,17 @@ function validateAppleClientSecretCreate(form: AppleClientSecretCreate): Error |
 }
 
 // Submit validates the form and returns a new Apple Client Secret JWT.
-async function submitAppleClientSecretCreate(
+function submitAppleClientSecretCreate(
   form: AppleClientSecretCreate,
   clock: Clock,
-): Promise<[string, Error | null]> {
+): [string, Error | null] {
   const err = validateAppleClientSecretCreate(form);
   if (err !== null) {
     return ["", err];
   }
 
   try {
-    const secret = await signAppleClientSecret(
+    const secret = signAppleClientSecret(
       {
         clientId: form.ClientId,
         teamId: form.TeamId,
@@ -406,7 +406,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
   }
 
   // generate
-  const [secret, err] = await submitAppleClientSecretCreate(form, e.app.clock);
+  const [secret, err] = submitAppleClientSecretCreate(form, e.app.clock);
   if (err !== null) {
     // form error
     if (err instanceof Errors) {
