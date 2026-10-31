@@ -7,9 +7,8 @@
 // extension surface): their default actions run directly. On the routes the
 // records and the rule checks are read through the async resolvers, on the
 // read worker pool; the saves and deletes go through
-// src/records/record-save.ts. Not
-// here yet: checkCollectionRateLimit (the settings rate limit rules,
-// M4.8), so the `<collection>:<action>` rules are not applied.
+// src/records/record-save.ts. The rate limiter is "inlined" because the crud
+// actions are also used in the batch APIs.
 //
 // The create, update and delete handlers are one implementation for the
 // routes and the batch API (D28): each is a step (src/records/record-save.ts)
@@ -37,7 +36,8 @@ import { FieldTypeFile } from "@/fields/file";
 import { PasswordFieldValue } from "@/fields/password";
 import { dynamicCollectionBodyLimit } from "@/middlewares/body-limit";
 import { DefaultRateLimitMiddlewareId } from "@/middlewares/middlewares";
-import { checkRateLimit, type RateLimitRule } from "@/middlewares/rate-limit";
+import { checkCollectionRateLimit, checkRateLimit } from "@/middlewares/rate-limit";
+import type { RateLimitRule } from "@/settings/settings-model";
 import { type DataMap, newRecord, type Record } from "@/records/record-model";
 import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
 import { expandRecordSync } from "@/records/record-query-expand";
@@ -192,7 +192,10 @@ async function recordsList(
     return e.notFoundError("Missing collection context.", err);
   }
 
-  // checkCollectionRateLimit(e, collection, "list") lands with M4.8
+  const rateLimitErr = checkCollectionRateLimit(e, collection, "list");
+  if (rateLimitErr !== undefined) {
+    return rateLimitErr;
+  }
 
   const requestInfo = await e.requestInfo();
   if (requestInfo instanceof Error) {
@@ -286,10 +289,10 @@ async function recordsList(
 }
 
 const listTimingRateLimitRule: RateLimitRule = {
-  label: "",
-  audience: "",
-  maxRequests: 3,
-  duration: 3,
+  Label: "",
+  Audience: "",
+  MaxRequests: 3,
+  Duration: 3,
 };
 
 // randomizedThrottle sleeps a random [0, softMax) number of milliseconds
@@ -313,7 +316,10 @@ async function recordView(e: RequestEvent): Promise<HandlerResult> {
     return e.notFoundError("Missing collection context.", err);
   }
 
-  // checkCollectionRateLimit(e, collection, "view") lands with M4.8
+  const rateLimitErr = checkCollectionRateLimit(e, collection, "view");
+  if (rateLimitErr !== undefined) {
+    return rateLimitErr;
+  }
 
   const recordId = e.request.pathValue("id");
   if (recordId === "") {
@@ -383,7 +389,10 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
     return e.badRequestError("Unsupported collection type.", null);
   }
 
-  // checkCollectionRateLimit(e, collection, "create") lands with M4.8
+  const rateLimitErr = checkCollectionRateLimit(e, collection, "create");
+  if (rateLimitErr !== undefined) {
+    return rateLimitErr;
+  }
 
   const requestInfo = (yield io.requestInfo(e)) as RequestInfo | Error;
   if (requestInfo instanceof Error) {
@@ -586,7 +595,10 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
     return e.badRequestError("Unsupported collection type.", null);
   }
 
-  // checkCollectionRateLimit(e, collection, "update") lands with M4.8
+  const rateLimitErr = checkCollectionRateLimit(e, collection, "update");
+  if (rateLimitErr !== undefined) {
+    return rateLimitErr;
+  }
 
   const recordId = e.request.pathValue("id");
   if (recordId === "") {
@@ -694,7 +706,10 @@ export function* recordDelete(e: RequestEvent, io: RecordIO): HandlerStep {
     return e.badRequestError("Unsupported collection type.", null);
   }
 
-  // checkCollectionRateLimit(e, collection, "delete") lands with M4.8
+  const rateLimitErr = checkCollectionRateLimit(e, collection, "delete");
+  if (rateLimitErr !== undefined) {
+    return rateLimitErr;
+  }
 
   const recordId = e.request.pathValue("id");
   if (recordId === "") {

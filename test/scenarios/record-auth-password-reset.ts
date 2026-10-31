@@ -14,8 +14,6 @@
 //   sequence is covered by the differential auth flows.
 // - "OnRecordRequestPasswordResetRequest tx body write check"
 // - "OnRecordConfirmPasswordResetRequest tx body write check"
-//
-// The rate limit rules are M4.8.
 
 import { updateKeepingTokenKey } from "@test/scenarios/record-auth-prepare";
 import { rateLimitScenario } from "@test/scenarios/record-auth";

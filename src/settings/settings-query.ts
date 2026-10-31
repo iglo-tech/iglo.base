@@ -13,6 +13,7 @@ import { isNoRowsError } from "@/db/dbx/rows";
 import { saveNoValidate } from "@/db/db";
 import { BaseModel, type Model } from "@/db/model";
 import { goQuote } from "@/fields/field";
+import { destroyRateLimitersStore, type RateLimitersApp } from "@/middlewares/rate-limit";
 import { decodeUTF8Bytes } from "@/server/json-decode";
 import {
   paramsKeySettings,
@@ -101,15 +102,16 @@ export async function reloadSettings(app: App): Promise<void> {
 }
 
 // The internal consumers of a settings reload (upstream's OnSettingsReload
-// handlers). None exist yet besides the reloaded app settings themselves;
-// they are called from here by the tasks that add them:
+// handlers). The rate limiters reset here; saveSettingsSync, which saves
+// without a reload, resets them after its commit. The others are called from here by the
+// tasks that add them:
 //   - M4.4: reset the mailer client (NewMailClient reads the SMTP config);
-//   - M4.8: reset the rate limiters (rateLimits rules; also after
-//     relabelRateLimitRules, which saves without a reload);
 //   - M5.3: reschedule the backups cron (backups.cron, cronMaxKeep);
 //   - M5.5: apply the logs settings (minLevel, maxDays, logIP, logAuthId);
 //   - M5.7: the trusted proxy settings (read per request, nothing to reset).
-function settingsReloaded(_app: App): void {}
+function settingsReloaded(app: App): void {
+  destroyRateLimitersStore(app);
+}
 
 // loadParam loads the settings from the stored param into the app ones.
 //
@@ -172,7 +174,8 @@ export async function saveSettings(app: App, s: Settings): Promise<void> {
 }
 
 // The app members the synchronous settings save reads.
-export type SettingsSaveApp = Pick<App, "databases" | "clock" | "encryptionEnv" | "getenv">;
+export type SettingsSaveApp = Pick<App, "databases" | "clock" | "encryptionEnv" | "getenv"> &
+  RateLimitersApp;
 
 // app.Save(settings) from a synchronous save path that may run in a
 // transaction (the rate limit rule relabel of a collection rename): the
@@ -191,6 +194,19 @@ export function saveSettingsSync(app: SettingsSaveApp, s: Settings, withValidati
   saveNoValidate(app.databases, new SettingsExportModel(s, data));
 
   s.postScan();
+
+  // what the skipped reload's settingsReloaded does for the rate limiters,
+  // which upstream's after-success callback runs once the save has committed
+  const tx = app.databases.txInfo();
+  if (tx === null) {
+    destroyRateLimitersStore(app);
+  } else {
+    tx.onComplete((txErr) => {
+      if (txErr === null) {
+        destroyRateLimitersStore(app);
+      }
+    });
+  }
 }
 
 // The collection update part of registerSettingsHooks

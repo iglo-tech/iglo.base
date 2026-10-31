@@ -14,8 +14,6 @@
 //   sequence is covered by the differential auth flows.
 // - "OnRecordRequestVerificationRequest tx body write check"
 // - "OnRecordConfirmVerificationRequest tx body write check"
-//
-// The rate limit rules are M4.8.
 
 import { updateCollection } from "@test/scenarios/prepare";
 import { queryRows, checks, externalAuthsCount, rowHas } from "@test/scenarios/record-checks";

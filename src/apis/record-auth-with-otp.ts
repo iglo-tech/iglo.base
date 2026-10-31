@@ -87,10 +87,10 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
 
   // since otps are usually simple digit numbers, enforce an extra rate limit rule as basic enumeration protection
   const rateLimitErr = checkRateLimit(e, "@pb_otp_" + record.id, {
-    label: "",
-    audience: "",
-    duration: 180,
-    maxRequests: 5,
+    Label: "",
+    Audience: "",
+    Duration: 180,
+    MaxRequests: 5,
   });
   if (rateLimitErr) {
     return e.tooManyRequestsError(

@@ -12,7 +12,7 @@
 // (disabled MFA)" (test/differential/auth/otp-cases.ts checks the context
 // through an auth rule). TestRecordAuthWithOTPManualRateLimiterCheck is
 // a sequence of requests to one server: test/apis/record-auth-otp.test.ts and
-// test/differential/auth/otp-flows.test.ts. The rate limit rules are M4.8.
+// test/differential/auth/otp-flows.test.ts.
 
 import { rateLimitScenario } from "@test/scenarios/record-auth";
 import {

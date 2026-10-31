@@ -299,10 +299,6 @@ export const fileDownload: Suite = {
           { maxRequests: 100, label: "*:file" },
           { maxRequests: 0, label: "users:file" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -315,10 +311,6 @@ export const fileDownload: Suite = {
           { maxRequests: 100, label: "abc" },
           { maxRequests: 0, label: "*:file" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },

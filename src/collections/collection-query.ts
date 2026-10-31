@@ -46,6 +46,7 @@ import { RelationField } from "@/fields/relation";
 import type { Record } from "@/records/record-model";
 import { recordQuery, recordsTarget } from "@/records/record-query";
 import { deleteTruncatedRecords } from "@/records/record-save";
+import type { Cron } from "@/tools/cron/cron";
 import { existInSlice, nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
 import type { Store } from "@/tools/store/store";
 import type { Broker } from "@/tools/subscriptions/broker";
@@ -73,6 +74,8 @@ export interface CollectionsApp {
   readonly settings?: Settings;
   readonly encryptionEnv?: string;
   getenv?(name: string): string;
+  // Cron, for the rate limiters' reset after that relabel
+  readonly cron?: Cron;
   // the realtime clients the record and collection changes are broadcast
   // to (src/realtime); absent where a pb_data is opened without a server
   // (test tools)

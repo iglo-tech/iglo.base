@@ -1,6 +1,6 @@
 // Upstream: apis/middlewares.go (superuserIPsWhitelist) and
 // apis/middlewares_rate_limit.go (isIPInList, also used by the rate
-// limiter's excluded IPs, M4.8)
+// limiter's excluded IPs)
 //
 // The superuser IP check of the other upstream callers (recordAuthResponse
 // in apis/record_helpers.go, M4; the protected file token in apis/file.go,

@@ -1,8 +1,8 @@
 // Upstream: apis/record_auth.go (bindRecordAuthApi, findAuthCollection)
 //
 // The routes are bound in upstream's order. collectionPathRateLimit resolves the path collection
-// (a missing one is a 404 before any other middleware); its settings rate
-// limit rules are M4.8.
+// (a missing one is a 404 before any other middleware) and checks the
+// settings rate limit rules.
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
