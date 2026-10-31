@@ -59,6 +59,33 @@ function ids(app: TestApp, table: string): string[] {
   return app.databases.db().newQuery(`SELECT id FROM ${table} ORDER BY id`).column<string>();
 }
 
+function withTestJob(app: TestApp): { calls: () => number } {
+  let calls = 0;
+  app.cron.add("test", "* * * * *", () => {
+    calls++;
+  });
+  return { calls: () => calls };
+}
+
+const walSize = (app: TestApp, file: string): number =>
+  statSync(join(app.dataDir, `${file}-wal`)).size;
+
+function writeSomething(app: TestApp): void {
+  const id = crypto.randomUUID();
+  app.databases.auxNonconcurrentDB().newQuery(`INSERT INTO _logs (id) VALUES ('${id}')`).execute();
+  app.databases
+    .nonconcurrentDB()
+    .newQuery(`INSERT INTO _params (id, value) VALUES ('${id}', '{}')`)
+    .execute();
+}
+
+async function openOwn(): Promise<{ app: TestApp; dataDir: string }> {
+  const dataDir = join(tempDir(), "pb_data");
+  copyDataDir(fixtureDir, dataDir);
+  const app = await openFixtureApp({ dataDir });
+  return { app, dataDir };
+}
+
 describe("TestCronsList", () => {
   test("authorized as superuser (empty list)", async () => {
     const app = await open();
@@ -95,14 +122,6 @@ describe("TestCronsList", () => {
 });
 
 describe("TestCronsRun", () => {
-  function withTestJob(app: TestApp): { calls: () => number } {
-    let calls = 0;
-    app.cron.add("test", "* * * * *", () => {
-      calls++;
-    });
-    return { calls: () => calls };
-  }
-
   test("unauthorized", async () => {
     const app = await open();
     const job = withTestJob(app);
@@ -146,10 +165,7 @@ describe("TestCronsRun", () => {
   test("the POST answers without waiting, and the job may overlap itself", async () => {
     const app = await open();
     let started = 0;
-    let release = (): void => {};
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const { promise: released, resolve: release } = Promise.withResolvers<void>();
     app.cron.add("slow", "* * * * *", async () => {
       started++;
       await released;
@@ -266,21 +282,6 @@ describe("the cleanup jobs", () => {
 });
 
 describe("__pbDBOptimize__", () => {
-  const walSize = (app: TestApp, file: string): number =>
-    statSync(join(app.dataDir, `${file}-wal`)).size;
-
-  function writeSomething(app: TestApp): void {
-    const id = crypto.randomUUID();
-    app.databases
-      .auxNonconcurrentDB()
-      .newQuery(`INSERT INTO _logs (id) VALUES ('${id}')`)
-      .execute();
-    app.databases
-      .nonconcurrentDB()
-      .newQuery(`INSERT INTO _params (id, value) VALUES ('${id}', '{}')`)
-      .execute();
-  }
-
   test("truncates both WAL files", async () => {
     const app = await open();
     writeSomething(app);
@@ -363,13 +364,6 @@ describe("__pbDBOptimize__", () => {
 });
 
 describe("the shutdown", () => {
-  async function openOwn(): Promise<{ app: TestApp; dataDir: string }> {
-    const dataDir = join(tempDir(), "pb_data");
-    copyDataDir(fixtureDir, dataDir);
-    const app = await openFixtureApp({ dataDir });
-    return { app, dataDir };
-  }
-
   test("clearBootstrap stops the ticker", async () => {
     const { app, dataDir } = await openOwn();
     app.cron.start();

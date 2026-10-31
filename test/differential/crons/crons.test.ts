@@ -132,6 +132,27 @@ function runJob(server: Server, id: string): Promise<Response> {
   });
 }
 
+function writeLogs(server: Server, rows: Record<string, Date>): void {
+  const db = new Database(join(server.dataDir, "auxiliary.db"));
+  db.run("PRAGMA busy_timeout(10000)");
+  for (const [id, created] of Object.entries(rows)) {
+    db.query("INSERT INTO _logs (id, created) VALUES (?, ?)").run(
+      id,
+      created.toISOString().replace("T", " "),
+    );
+  }
+  db.close();
+}
+
+function logIds(server: Server, ids: string[]): string[] {
+  const db = new Database(join(server.dataDir, "auxiliary.db"), { readonly: true });
+  const rows = db
+    .query(`SELECT id FROM _logs WHERE id IN (${ids.map(() => "?").join()}) ORDER BY id`)
+    .all(...ids) as { id: string }[];
+  db.close();
+  return rows.map((r) => r.id);
+}
+
 const builtIns = ["__pbDBOptimize__", "__pbMFACleanup__", "__pbOTPCleanup__", "__pbLogsCleanup__"];
 
 describe("GET /api/crons", () => {
@@ -180,27 +201,6 @@ describe("GET /api/crons", () => {
 
 describe("POST /api/crons/{id}", () => {
   const dayMs = 86_400_000;
-
-  function writeLogs(server: Server, rows: Record<string, Date>): void {
-    const db = new Database(join(server.dataDir, "auxiliary.db"));
-    db.run("PRAGMA busy_timeout(10000)");
-    for (const [id, created] of Object.entries(rows)) {
-      db.query("INSERT INTO _logs (id, created) VALUES (?, ?)").run(
-        id,
-        created.toISOString().replace("T", " "),
-      );
-    }
-    db.close();
-  }
-
-  function logIds(server: Server, ids: string[]): string[] {
-    const db = new Database(join(server.dataDir, "auxiliary.db"), { readonly: true });
-    const rows = db
-      .query(`SELECT id FROM _logs WHERE id IN (${ids.map(() => "?").join()}) ORDER BY id`)
-      .all(...ids) as { id: string }[];
-    db.close();
-    return rows.map((r) => r.id);
-  }
 
   test(
     "__pbLogsCleanup__ deletes the logs past logs.maxDays, and every log with 0",

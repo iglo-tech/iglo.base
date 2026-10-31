@@ -35,7 +35,9 @@ function fakeTime(start: string): {
     advance(ms) {
       const end = now + ms;
       for (;;) {
-        const due = [...timers].filter(([, t]) => t.at <= end).sort((a, b) => a[1].at - b[1].at);
+        const due = [...timers]
+          .filter(([, t]) => t.at <= end)
+          .toSorted((a, b) => a[1].at - b[1].at);
         if (due.length === 0) {
           break;
         }
@@ -48,6 +50,15 @@ function fakeTime(start: string): {
     },
     pending: () => timers.size,
   };
+}
+
+function counting(time: ReturnType<typeof fakeTime>): { c: Cron; calls: () => number } {
+  const c = new Cron(time.config);
+  let calls = 0;
+  c.add("test", "* * * * *", () => {
+    calls++;
+  });
+  return { c, calls: () => calls };
 }
 
 test("the defaults: no jobs, not started, ticks in UTC", async () => {
@@ -189,15 +200,6 @@ test("a job's JSON is its id and expression", () => {
 });
 
 describe("the ticker", () => {
-  function counting(time: ReturnType<typeof fakeTime>): { c: Cron; calls: () => number } {
-    const c = new Cron(time.config);
-    let calls = 0;
-    c.add("test", "* * * * *", () => {
-      calls++;
-    });
-    return { c, calls: () => calls };
-  }
-
   test("start and stop, as TestCronStartStop", async () => {
     const time = fakeTime("2000-01-01T00:00:00Z");
     const c = new Cron({ ...time.config });
@@ -414,10 +416,7 @@ describe("the ticker", () => {
     const time = fakeTime("2030-01-01T00:00:00Z");
     const c = new Cron(time.config);
     let started = 0;
-    let release = (): void => {};
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const { promise: released, resolve: release } = Promise.withResolvers<void>();
     c.add("slow", "* * * * *", async () => {
       started++;
       await released;
@@ -444,10 +443,7 @@ describe("waitForRunning", () => {
   test("waits for a running job", async () => {
     const c = new Cron();
     let finished = false;
-    let release = (): void => {};
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const { promise: released, resolve: release } = Promise.withResolvers<void>();
     c.add("slow", "* * * * *", async () => {
       await released;
       finished = true;
