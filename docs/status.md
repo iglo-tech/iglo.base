@@ -10,7 +10,7 @@ M4.7 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.7 | worker | `task/M4.7-oauth2-providers-2` | 0 | [Brief](briefs/M4.7.md). Removes the "not ported yet" path |
+| M4.7 | review | [#48](https://github.com/iglo-tech/iglo.base/pull/48) | 1 | [Brief](briefs/M4.7.md). Removes the "not ported yet" path |
 
 ## Done
 
@@ -96,6 +96,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M4.7 PR): the lead sent #48 to review with `test:reference` at 2 failures, both flakes already in the hardening backlog (realtime cascade order since M5.1, thumb `Last-Modified`); both pass on rerun, and neither touches OAuth2 code. The worker called the realtime one new; it is the backlog row.
 - 2026-10-31 (M4.7 pick): next in milestone order; its dependency is merged. Haiku worker per the model table, which did M4.6 with one blocker in review.
 - 2026-10-31 (runbook change): `test:reference` takes over 10 minutes, past the Bash foreground limit, so workers run it in the background and wait in the same turn; M4.6's worker ended three turns on it.
 - 2026-10-31 (M4.6 pick): next in milestone order; M4.5, its only dependency, is merged. Haiku worker per the model table.
