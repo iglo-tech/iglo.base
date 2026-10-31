@@ -40,7 +40,10 @@ function cronsList(e: RequestEvent): HandlerResult {
 
   sortJobs(jobs);
 
-  return e.json(200, jobs);
+  return e.json(
+    200,
+    jobs.map((j) => j.toJSON()),
+  );
 }
 
 function cronRun(e: RequestEvent): HandlerResult {

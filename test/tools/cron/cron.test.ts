@@ -359,6 +359,41 @@ describe("the ticker", () => {
     c.stop();
   });
 
+  test("a late tick runs the jobs of its own time, and drops the ticks it missed", async () => {
+    const time = fakeTime("2030-01-01T00:58:30Z");
+    let timers = 0;
+    const c = new Cron({
+      ...time.config,
+      // the second tick, for 01:00, fires at 01:01:10
+      timers: {
+        ...time.config.timers,
+        setTimeout: (fn, ms) =>
+          time.config.timers.setTimeout(fn, ++timers === 2 ? ms + 70_000 : ms),
+      },
+    });
+    let hourly = 0;
+    let everyMinute = 0;
+    c.add("hourly", "0 * * * *", () => {
+      hourly++;
+    });
+    c.add("minute", "* * * * *", () => {
+      everyMinute++;
+    });
+
+    c.start();
+    for (const [ms, expectedHourly, expectedMinute] of [
+      [30_000, 0, 1], // 00:59:00
+      [129_999, 0, 1],
+      [1, 1, 2], // 01:01:10, for 01:00
+      [50_000, 1, 3], // 01:02:00: 01:01 is dropped
+    ] as const) {
+      time.advance(ms);
+      await c.waitForRunning(0);
+      expect([hourly, everyMinute]).toEqual([expectedHourly, expectedMinute]);
+    }
+    c.stop();
+  });
+
   test("a tick that fires early still belongs to the boundary it was set for", async () => {
     const time = fakeTime("2030-01-01T09:59:30Z");
     const c = new Cron({

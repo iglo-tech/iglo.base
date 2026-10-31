@@ -99,8 +99,11 @@ async function withServers(
   }
 }
 
-async function list(server: Server): Promise<{ status: number; type: string; bytes: string }> {
-  const res = await fetch(`${server.url}/api/crons`, {
+async function list(
+  server: Server,
+  query = "",
+): Promise<{ status: number; type: string; bytes: string }> {
+  const res = await fetch(`${server.url}/api/crons${query}`, {
     headers: { Authorization: server.token },
   });
   return {
@@ -111,7 +114,7 @@ async function list(server: Server): Promise<{ status: number; type: string; byt
 }
 
 async function expectSameList(servers: [Server, Server], ids: string[]): Promise<void> {
-  const [upstream, igloBase] = await Promise.all(servers.map(list));
+  const [upstream, igloBase] = await Promise.all(servers.map((s) => list(s)));
   expect(igloBase).toEqual(upstream!);
   const jobs = JSON.parse(upstream!.bytes) as { id: string }[];
   expect(jobs.map((j) => j.id)).toEqual(ids);
@@ -165,6 +168,27 @@ describe("GET /api/crons", () => {
   test(
     "the fixture",
     () => withServers({ fresh: false }, (servers) => expectSameList(servers, builtIns)),
+    timeout,
+  );
+
+  test(
+    "field selection",
+    () =>
+      withServers({ fresh: false }, async (servers) => {
+        for (const query of [
+          "?fields=id",
+          "?fields=expression",
+          "?fields=*",
+          "?fields=id,missing",
+        ]) {
+          const [upstream, igloBase] = await Promise.all(servers.map((s) => list(s, query)));
+          expect(upstream!.status).toBe(200);
+          expect(igloBase!.status).toBe(200);
+          expect(igloBase!.type).toBe(upstream!.type);
+          // upstream writes a projection as a Go map, in random member order
+          expect(JSON.parse(igloBase!.bytes)).toEqual(JSON.parse(upstream!.bytes));
+        }
+      }),
     timeout,
   );
 

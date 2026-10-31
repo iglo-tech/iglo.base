@@ -5,9 +5,8 @@
 // repeative tasks/jobs.
 //
 // The ticker re-arms one timer on the app clock instead of Go's time.Ticker:
-// JS intervals drift, and a tick that slips past a minute skips that minute's
-// jobs. As Go's, it keeps to whole intervals from the first tick and drops
-// the ticks it missed. A job is a function that may return a promise.
+// JS intervals drift. As Go's, it keeps to whole intervals from the first
+// tick, runs a late tick for its own time and drops the ticks it missed. A job is a function that may return a promise.
 // fireAndForget keeps the running jobs so that clearBootstrap can wait for
 // them before the databases close (upstream's process just exits); the
 // locks have no counterpart, JS runs each of these calls to its end.
@@ -187,15 +186,14 @@ export class Cron {
   }
 
   #tick(scheduled: number): void {
-    // a timer can fire just before its time on the wall clock; the tick
-    // still belongs to the time it was set for
+    // a timer fires early or late on the wall clock; the tick still belongs
+    // to the time it was set for, as a queued time.Ticker tick does
     const now = this.#clock.now().getTime();
-    const t = Math.max(now, scheduled);
-    const next = this.#nextTick(t);
+    const next = this.#nextTick(Math.max(now, scheduled));
 
     this.#tickTimer = this.#timers.setTimeout(() => this.#tick(next), next - now);
 
-    this.runDue(new Date(t));
+    this.runDue(new Date(scheduled));
   }
 
   // runDue runs all registered jobs that are scheduled for the provided time.

@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { newRouter } from "@/apis/base";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { deleteOldLogs } from "@/logs/log-query";
+import { parseDateTime } from "@/tools/types/datetime";
 
 import { openFixtureApp, type TestApp } from "@test/app/app";
 import { liveRow, superuserToken, writeMFAs, writeOTPs } from "@test/scenarios/cron";
@@ -255,10 +256,10 @@ describe("the cleanup jobs", () => {
       "INSERT INTO _logs (id, created) VALUES ('a', '2030-01-01 00:00:00.123Z')",
     ).execute();
 
-    deleteOldLogs(app, new Date("2030-01-01T00:00:00.122Z"));
+    deleteOldLogs(app, parseDateTime("2030-01-01 00:00:00.122Z"));
     expect(db.newQuery("SELECT count(*) FROM _logs WHERE id = 'a'").column<number>()).toEqual([1]);
 
-    deleteOldLogs(app, new Date("2030-01-01T00:00:00.123Z"));
+    deleteOldLogs(app, parseDateTime("2030-01-01 00:00:00.123Z"));
     expect(db.newQuery("SELECT count(*) FROM _logs WHERE id = 'a'").column<number>()).toEqual([0]);
   });
 

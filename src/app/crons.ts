@@ -12,6 +12,7 @@ import { driverError } from "@/collections/driver-error";
 import { deleteOldLogs } from "@/logs/log-query";
 import { deleteExpiredMFAs } from "@/records/mfa-query";
 import { deleteExpiredOTPs } from "@/records/otp-query";
+import { DateTime } from "@/tools/types/datetime";
 
 export function registerCrons(app: App): void {
   app.cron.add("__pbDBOptimize__", "0 0 * * *", () => {
@@ -62,12 +63,11 @@ export function registerCrons(app: App): void {
 
   // cleanup old logs
   app.cron.add("__pbLogsCleanup__", "0 */6 * * *", () => {
-    // AddDate: calendar days in the local timezone, as setDate
-    const createdBefore = new Date(app.clock.now());
-    createdBefore.setDate(createdBefore.getDate() - Number(app.settings.Logs.MaxDays));
-
     try {
-      deleteOldLogs(app, createdBefore);
+      deleteOldLogs(
+        app,
+        DateTime.fromDate(app.clock.now()).addDate(0, 0, -Number(app.settings.Logs.MaxDays)),
+      );
     } catch (err) {
       app.logger.warn("Failed to delete old logs", err);
     }
