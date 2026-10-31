@@ -255,11 +255,18 @@ test("a name from Apple itself leaves the stored one", async () => {
   expect(app.store.has("@redirect_name_test_code")).toBe(true);
 });
 
-// M4.7 providers are configurable but not ported yet
-test("a provider that is not ported yet is a clear error before any network call", async () => {
+// a provider whose init fails (a test seam stands in for one) is a clear error before any network call
+test("a provider that fails to init is a clear error before any network call", async () => {
   useProvider("microsoft");
 
-  const { status, json } = await signIn({}, { provider: "microsoft" });
+  const { status, json } = await signIn(
+    {
+      initProvider: () => {
+        throw new Error("missing provider microsoft");
+      },
+    },
+    { provider: "microsoft" },
+  );
 
   expect(status).toBe(500);
   expect(json["message"]).toBe("Failed to init provider microsoft.");

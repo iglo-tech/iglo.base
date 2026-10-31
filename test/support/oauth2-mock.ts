@@ -59,11 +59,16 @@ export interface MockProviderSpec {
   jwks?: unknown;
 }
 
+// the request headers the providers set themselves (Client-Id, Notion-Version,
+// the Trakt headers), recorded in lower case when a request sends them
+const recordedHeaders = ["client-id", "notion-version", "trakt-api-key", "trakt-api-version"];
+
 export interface MockRequest {
   path: string;
   method: string;
   authorization: string;
   contentType: string;
+  headers: { [name: string]: string };
   body: string;
 }
 
@@ -150,6 +155,11 @@ export class OAuth2Mock {
       method: req.method,
       authorization: req.headers.get("Authorization") ?? "",
       contentType: req.headers.get("Content-Type") ?? "",
+      headers: Object.fromEntries(
+        recordedHeaders
+          .filter((name) => req.headers.has(name))
+          .map((name) => [name, req.headers.get(name) ?? ""]),
+      ),
       body,
     });
 

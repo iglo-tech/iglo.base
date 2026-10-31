@@ -3,12 +3,12 @@
 // tools/auth/base_provider.go (BuildAuthURL with golang.org/x/oauth2's
 // Config.AuthCodeURL) and the constructors of tools/auth/*.go
 //
-// The fixed table of ported providers. A new provider is one file with a
-// class that extends BaseProvider, and one line in portedProviders here; the
-// display name, logo and order come from provider-list.ts. M4.7 adds the
-// rest. Until then a configured provider that is not ported fails to
+// The fixed table of the providers upstream registers (auth.Providers). A
+// provider is one file with a class that extends BaseProvider, and one line
+// in portedProviders here; the display name, logo and order come from
+// provider-list.ts. A configured name that is not in the table fails to
 // initialize, so the auth methods list skips it, and signing in with it
-// fails in initSignInProvider before any network call.
+// fails before any network call, as upstream's NewProviderByName does.
 
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 import { Apple } from "@/oauth2/apple";
@@ -27,8 +27,22 @@ import { Kakao } from "@/oauth2/kakao";
 import { Lark } from "@/oauth2/lark";
 import { Linear } from "@/oauth2/linear";
 import { Livechat } from "@/oauth2/livechat";
+import { Mailcow } from "@/oauth2/mailcow";
+import { Microsoft } from "@/oauth2/microsoft";
+import { Monday } from "@/oauth2/monday";
+import { Notion } from "@/oauth2/notion";
 import { OIDC } from "@/oauth2/oidc";
+import { Patreon } from "@/oauth2/patreon";
+import { Planningcenter } from "@/oauth2/planningcenter";
 import { providerMetadata } from "@/oauth2/provider-list";
+import { Spotify } from "@/oauth2/spotify";
+import { Strava } from "@/oauth2/strava";
+import { Trakt } from "@/oauth2/trakt";
+import { Twitch } from "@/oauth2/twitch";
+import { Twitter } from "@/oauth2/twitter";
+import { VK } from "@/oauth2/vk";
+import { Wakatime } from "@/oauth2/wakatime";
+import { Yandex } from "@/oauth2/yandex";
 import { encodeValues } from "@/server/request";
 
 // the constructors of the ported providers, by name (auth.Providers)
@@ -48,9 +62,23 @@ const portedProviders = new Map<string, () => BaseProvider>([
   ["lark", () => new Lark()], // lark.go
   ["linear", () => new Linear()], // linear.go
   ["livechat", () => new Livechat()], // livechat.go
+  ["mailcow", () => new Mailcow()], // mailcow.go
+  ["microsoft", () => new Microsoft()], // microsoft.go
+  ["monday", () => new Monday()], // monday.go
+  ["notion", () => new Notion()], // notion.go
   ["oidc", () => new OIDC()], // oidc.go
   ["oidc2", () => new OIDC()], // oidc.go
   ["oidc3", () => new OIDC()], // oidc.go
+  ["patreon", () => new Patreon()], // patreon.go
+  ["planningcenter", () => new Planningcenter()], // planningcenter.go
+  ["spotify", () => new Spotify()], // spotify.go
+  ["strava", () => new Strava()], // strava.go
+  ["trakt", () => new Trakt()], // trakt.go
+  ["twitch", () => new Twitch()], // twitch.go
+  ["twitter", () => new Twitter()], // twitter.go
+  ["vk", () => new VK()], // vk.go
+  ["wakatime", () => new Wakatime()], // wakatime.go
+  ["yandex", () => new Yandex()], // yandex.go
 ]);
 
 // NewProviderByName returns a new preconfigured provider instance by its
@@ -71,7 +99,7 @@ function newProviderByName(name: string): BaseProvider {
 
 // InitProvider returns a new auth.Provider instance loaded with the
 // current OAuth2Config options. Throws "missing provider <name>" for a
-// provider without defaults here.
+// name upstream does not register.
 export function initProvider(config: OAuth2ProviderConfig): BaseProvider {
   const provider = newProviderByName(config.name);
 
@@ -104,19 +132,10 @@ export function initProvider(config: OAuth2ProviderConfig): BaseProvider {
   }
 
   if (config.extra !== null) {
-    provider.extra = config.extra;
+    provider.setExtra(config.extra);
   }
 
   return provider;
-}
-
-// initProvider for the sign-in, which needs a provider's implementation:
-// throws for a provider that is not ported yet (upstream knows all of them).
-export function initSignInProvider(config: OAuth2ProviderConfig): BaseProvider {
-  if (!portedProviders.has(config.name)) {
-    throw new Error(`the OAuth2 provider ${config.name} is not ported yet`);
-  }
-  return initProvider(config);
 }
 
 // BuildAuthURL returns a URL to the provider's consent page that asks for

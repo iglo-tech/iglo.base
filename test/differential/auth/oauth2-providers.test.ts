@@ -88,6 +88,7 @@ const seen = (requests: MockRequest[]) =>
     path: r.path,
     authorization: r.authorization,
     contentType: r.contentType,
+    headers: r.headers,
     body: r.body,
   }));
 
@@ -143,6 +144,7 @@ async function signIn(kind: Kind, c: ProviderCase): Promise<Transcript> {
         authURL: mock.authURL,
         tokenURL: mock.tokenURL,
         userInfoURL: mock.userInfoURL,
+        extra: c.extra ?? null,
       }),
     ];
   });

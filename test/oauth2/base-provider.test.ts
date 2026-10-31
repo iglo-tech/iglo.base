@@ -1,8 +1,7 @@
 // Upstream: tools/auth/base_provider_test.go, tools/auth/auth_test.go
 //
 // The Go getters and setters are the public fields of BaseProvider, so each
-// accessor test is a field round trip. The Go provider factories that are not
-// ported yet are left out (see the notes in src/oauth2/providers.ts).
+// accessor test is a field round trip.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
@@ -10,7 +9,7 @@ import { OAuth2ProviderConfig } from "@/collections/collection-model-auth-option
 import { type AuthUser, BaseProvider } from "@/oauth2/base-provider";
 import { OIDC } from "@/oauth2/oidc";
 import { isProviderName } from "@/oauth2/provider-names";
-import { buildAuthURL, initProvider, initSignInProvider } from "@/oauth2/providers";
+import { buildAuthURL, initProvider } from "@/oauth2/providers";
 import { Token } from "@/oauth2/token";
 
 // BaseProvider is abstract: a provider with no user info endpoint
@@ -238,10 +237,9 @@ describe("TestNewProviderByName", () => {
     });
   }
 
-  // M4.7's providers are not ported yet, so they cannot sign in
   for (const name of ["microsoft", "yandex"]) {
-    test(`${name} sign-in is not ported yet`, () => {
-      expect(() => initSignInProvider(new OAuth2ProviderConfig({ name }))).toThrow();
+    test(`${name} is a configured provider`, () => {
+      expect(() => initProvider(new OAuth2ProviderConfig({ name }))).not.toThrow();
     });
   }
 });
