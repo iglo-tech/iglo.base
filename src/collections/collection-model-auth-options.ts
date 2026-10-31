@@ -16,9 +16,9 @@
 // is validateAuthOptions; it reads the collection validator's rule checks
 // through AuthOptionsValidator (collection-validate.ts implements it).
 // checkProviderName checks the name against upstream's registered provider
-// names (src/oauth2/provider-names.ts) until M4.5 ports the providers.
+// names (src/oauth2/provider-names.ts).
 //
-// Not here: OAuth2ProviderConfig.InitProvider (M4, with the providers).
+// Not here: OAuth2ProviderConfig.InitProvider (src/oauth2/providers.ts).
 
 import type { Field } from "@/fields/field";
 import { FieldNameEmail, marshalStruct } from "@/fields/field";
@@ -1125,7 +1125,7 @@ function checkProviderName(value: unknown): ValidationError | null {
     return null; // nothing to check
   }
 
-  // auth.NewProviderByName(name) (src/oauth2/provider-names.ts until M4.5)
+  // auth.NewProviderByName(name) (src/oauth2/provider-names.ts)
   if (!isProviderName(name)) {
     return NewError(
       "validation_missing_provider",

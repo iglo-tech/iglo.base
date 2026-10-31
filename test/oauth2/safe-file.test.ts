@@ -346,6 +346,8 @@ describe("safeFileFromURL", () => {
   });
 });
 
+const lookupAddresses = (): Promise<string[]> => Promise.resolve(["127.0.0.1"]);
+
 describe("safeFileFromURL over TLS", () => {
   const tlsServer = Bun.serve({
     hostname: "127.0.0.1",
@@ -355,8 +357,6 @@ describe("safeFileFromURL over TLS", () => {
   });
 
   afterAll(() => tlsServer.stop(true));
-
-  const lookupAddresses = (): Promise<string[]> => Promise.resolve(["127.0.0.1"]);
 
   test("verifies the certificate against the name, not the address", async () => {
     const file = await safeFileFromURL(`https://public.test:${tlsServer.port}/avatar.png`, {

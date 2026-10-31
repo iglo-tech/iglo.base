@@ -90,7 +90,7 @@ export function bindRealtimeApi(
 export const oauth2SubscriptionTopic = "@oauth2";
 
 // The realtime part of oauth2SubscriptionRedirect, for the
-// /api/oauth2-redirect route (M4.5): the client the OAuth2 state names,
+// /api/oauth2-redirect route: the client the OAuth2 state names,
 // when it is still connected, subscribed to "@oauth2" and connected from
 // realIP; undefined otherwise (upstream answers with its failure redirect).
 export function findOAuth2RedirectClient(

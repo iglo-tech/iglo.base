@@ -875,6 +875,37 @@ export function oauth2Cases(): Scenario[] {
       expectedContent: [`"message":"Failed to fetch OAuth2 user."`],
     }),
 
+    // the auth methods of the ported provider
+    // -----------------------------------------------------------
+    {
+      name: "auth methods with the oidc provider",
+      method: "GET",
+      url: "/api/collections/users/auth-methods",
+      prepare: useProvider({}, (collection, p) => {
+        const config = collection.oauth2.providers?.[0];
+        if (config !== undefined) {
+          config.authURL = p.authURL;
+          config.displayName = "My OIDC";
+        }
+      }),
+      expectedStatus: 200,
+      expectedContent: [`"name":"oidc"`, `"displayName":"My OIDC"`, `"codeChallengeMethod":"S256"`],
+    },
+    {
+      name: "auth methods with PKCE turned off",
+      method: "GET",
+      url: "/api/collections/users/auth-methods",
+      prepare: useProvider({}, (collection, p) => {
+        const config = collection.oauth2.providers?.[0];
+        if (config !== undefined) {
+          config.authURL = p.authURL;
+          config.pkce = false;
+        }
+      }),
+      expectedStatus: 200,
+      expectedContent: [`"name":"oidc"`, `"codeVerifier":""`],
+    },
+
     // the request
     // -----------------------------------------------------------
     {
