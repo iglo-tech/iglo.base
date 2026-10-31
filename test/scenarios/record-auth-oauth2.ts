@@ -24,7 +24,6 @@
 //   - the OnRecordAuthRequest request context check of "existing linked
 //     OAuth2 (unverified user)": a hook; test/differential/auth/oauth2-cases.ts
 //     checks the context through an auth rule.
-// The rate limit scenarios are pending on M4.8.
 
 import type { Collection } from "@/collections/collection-model";
 import {
@@ -165,10 +164,8 @@ const createData = {
   rel: "0yxhwia2amd8gec",
 };
 
-const rateLimits = (name: string, rules: { maxRequests: number; label: string }[]): Scenario => ({
-  ...rateLimitScenario(name, "POST", authURL, rules),
-  pending: { task: "M4.8", reason: "the settings rate limit rules" },
-});
+const rateLimits = (name: string, rules: { maxRequests: number; label: string }[]): Scenario =>
+  rateLimitScenario(name, "POST", authURL, rules);
 
 export const recordAuthWithOAuth2: Suite = {
   file: "apis/record_auth_with_oauth2_test.go",

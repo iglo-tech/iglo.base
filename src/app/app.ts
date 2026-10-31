@@ -15,6 +15,7 @@ import type { Databases } from "@/db/base";
 import type { Mailer } from "@/mail/mailer";
 import { newMailClient } from "@/mail/mail-client";
 import { newDefaultSettings, type Settings } from "@/settings/settings-model";
+import { Cron } from "@/tools/cron/cron";
 import type { Store } from "@/tools/store/store";
 import { Broker } from "@/tools/subscriptions/broker";
 
@@ -60,6 +61,8 @@ export interface App {
   // SubscriptionsBroker returns the app realtime subscriptions broker
   // instance (src/realtime; serve closes its clients on shutdown).
   readonly subscriptionsBroker: Broker;
+  // Cron returns the app cron instance (the jobs M5.6 will run).
+  readonly cron: Cron;
   // the migrations directory automigrate writes to (--automigrate,
   // plugins/migratecmd); undefined when it is off
   readonly automigrateDir?: string;
@@ -98,5 +101,6 @@ export function newApp(config: AppConfig): App {
     newMailClient: () => newMailClient(settings, config.clock, getenv),
     thumbs: new ThumbPool({ getenv }),
     subscriptionsBroker: new Broker(),
+    cron: new Cron(),
   });
 }

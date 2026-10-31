@@ -10,7 +10,7 @@
 // scenarios (they only test an upstream hook) and the hook-only
 // BeforeTestFunc of "valid identity field (email) and valid password"
 // (it asserts the request info context through OnRecordAuthRequest).
-// The rate limit rules are M4.8. The auth alert emails upstream's test
+// The auth alert emails upstream's test
 // mailer receives (OnMailerRecordAuthAlertSend) are not checked here: the
 // fixture has SMTP disabled and no sendmail, so both servers log the failed
 // send, and the responses do not depend on it. test/differential/mail/
@@ -44,11 +44,6 @@ const clientsUnverifiedToken =
 const clientsVerifiedToken =
   "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0";
 
-const rateLimitPending = {
-  task: "M4.8",
-  reason: "collectionPathRateLimit and the settings rate limit rules are not ported yet",
-};
-
 export function rateLimitScenario(
   name: string,
   method: string,
@@ -64,7 +59,6 @@ export function rateLimitScenario(
     ...(headers ? { headers } : {}),
     ...(body === undefined ? {} : { body }),
     prepare: ({ dataDir }) => setRateLimits(dataDir, rules),
-    pending: rateLimitPending,
     expectedStatus: 429,
     expectedContent: [`"data":{}`],
   };

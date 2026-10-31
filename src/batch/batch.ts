@@ -8,8 +8,9 @@
 // (src/apis/record-crud.ts) with txRecordIO.
 //
 // The OnBatchRequest hook is not ported (no extension surface): its default
-// action runs directly. The rate limit rules (`<collection>:<action>`, M4.8)
-// are the record handlers' named comments.
+// action runs directly. The rate limit rules (`<collection>:<action>`) are
+// checked by the record handlers; an item's request has no mux pattern, so
+// its limiters are not the routes'.
 //
 // Upstream runs the items recursively (each in the previous one's
 // optFinalizer) and in a goroutine that the timeout abandons. Here they run

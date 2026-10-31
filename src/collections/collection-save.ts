@@ -198,6 +198,8 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
           clock: app.clock,
           encryptionEnv: app.encryptionEnv ?? "",
           getenv: (name) => app.getenv?.(name) ?? "",
+          store: app.store,
+          ...(app.cron === undefined ? {} : { cron: app.cron }),
         },
         app.settings,
         oldName,

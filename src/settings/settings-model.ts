@@ -415,7 +415,8 @@ function marshalS3(c: S3Config): string {
   );
 }
 
-function marshalRateLimitRule(r: RateLimitRule): string {
+// RateLimitRule.String: a string representation of the rule.
+export function marshalRateLimitRule(r: RateLimitRule): string {
   return (
     `{"label":${str(r.Label)},"audience":${str(r.Audience)},` +
     `"duration":${int(r.Duration)},"maxRequests":${int(r.MaxRequests)}}`

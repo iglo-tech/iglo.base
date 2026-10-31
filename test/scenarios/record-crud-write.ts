@@ -7,8 +7,7 @@
 // the stored state every write scenario leaves are `after` checks through
 // the records API and the pb_data files (test/scenarios/record-checks.ts).
 // The three "OnRecord{Delete,Create,Update}Request tx body write check"
-// scenarios only test an upstream hook and are not ported. The rate limit
-// rules are M4.8.
+// scenarios only test an upstream hook and are not ported.
 
 import { multipart } from "@test/scenarios/multipart";
 import {
@@ -192,10 +191,6 @@ export const recordCrudDelete: Suite = {
           { maxRequests: 100, label: "*:delete" },
           { maxRequests: 0, label: "demo5:delete" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules are not ported yet",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -208,10 +203,6 @@ export const recordCrudDelete: Suite = {
           { maxRequests: 100, label: "abc" },
           { maxRequests: 0, label: "*:delete" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules are not ported yet",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -707,10 +698,6 @@ export const recordCrudCreate: Suite = {
           { maxRequests: 100, label: "*:create" },
           { maxRequests: 0, label: "demo2:create" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules are not ported yet",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -724,10 +711,6 @@ export const recordCrudCreate: Suite = {
           { maxRequests: 100, label: "abc" },
           { maxRequests: 0, label: "*:create" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules are not ported yet",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -1282,10 +1265,6 @@ export const recordCrudUpdate: Suite = {
           { maxRequests: 100, label: "*:update" },
           { maxRequests: 0, label: "demo2:update" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules are not ported yet",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -1299,10 +1278,6 @@ export const recordCrudUpdate: Suite = {
           { maxRequests: 100, label: "abc" },
           { maxRequests: 0, label: "*:update" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules are not ported yet",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },

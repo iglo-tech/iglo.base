@@ -520,10 +520,6 @@ export const recordCrudList: Suite = {
           { maxRequests: 100, label: "*:list" },
           { maxRequests: 0, label: "view2:list" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -536,10 +532,6 @@ export const recordCrudList: Suite = {
           { maxRequests: 100, label: "abc" },
           { maxRequests: 0, label: "*:list" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -747,10 +739,6 @@ export const recordCrudView: Suite = {
           { maxRequests: 100, label: "*:view" },
           { maxRequests: 0, label: "numeric_id_view:view" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },
@@ -763,10 +751,6 @@ export const recordCrudView: Suite = {
           { maxRequests: 100, label: "abc" },
           { maxRequests: 0, label: "*:view" },
         ]),
-      pending: {
-        task: "M4.8",
-        reason: "checkCollectionRateLimit and the settings rate limit rules",
-      },
       expectedStatus: 429,
       expectedContent: [`"data":{}`],
     },

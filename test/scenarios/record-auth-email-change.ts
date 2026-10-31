@@ -9,8 +9,6 @@
 // Not ported, because they only test upstream hooks:
 // - "OnRecordRequestEmailChangeRequest tx body write check"
 // - "OnRecordConfirmEmailChangeRequest tx body write check"
-//
-// The rate limit rules are M4.8.
 
 import { rateLimitScenario } from "@test/scenarios/record-auth";
 import { checks, externalAuthsCount, rowHas } from "@test/scenarios/record-checks";
