@@ -10,7 +10,7 @@ M4.6 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.6 | review | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 1 | [Brief](briefs/M4.6.md). Includes the Apple client secret endpoint carried from M1.3 |
+| M4.6 | review | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 2 | [Brief](briefs/M4.6.md). Includes the Apple client secret endpoint carried from M1.3 |
 
 ## Done
 
@@ -81,6 +81,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | Files tests (M5.2) | `test/differential/files/serve.test.ts:493`, "HEAD of a thumb": `Last-Modified` differs when the two servers write across a second boundary; seen once in M4.5's `test:reference` |
 | 2026-10-31 | Errors (M4.5) | `toApiError` misses the db layer's no-rows error, so a bare no-rows error answers 400 where upstream answers 404; fixed locally in the OAuth2 handler only, other handlers may share it |
 | 2026-10-31 | OAuth2 tests (M4.5) | `test/differential/auth/oauth2-flows.test.ts:255` requires `updated === created` on a new `_externalAuths` row; each field reads the clock on its own, so they can differ by 1 ms (seen once in Sol's round 3 run; check both timestamps without equality) |
+| 2026-10-31 | OAuth2 (M4.6) | GitLab `confirmed_at` of Go's zero time written with a non-UTC offset counts as confirmed; upstream compares the instant. Only a synthetic provider response has it |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
