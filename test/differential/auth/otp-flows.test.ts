@@ -100,20 +100,24 @@ async function stop(server: Server): Promise<void> {
   await server.stop();
 }
 
-async function post(
-  server: Server,
-  path: string,
-  body: unknown,
-  headers: Record<string, string> = {},
-  method = "POST",
-): Promise<Reply> {
+async function post(server: Server, path: string, body: unknown): Promise<Reply> {
   const res = await fetch(server.url + path, {
-    method,
-    headers: { "Content-Type": "application/json", ...headers },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const text = await res.text();
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
+}
+
+// updates the fixture user as a superuser
+async function updateUser(server: Server, body: unknown): Promise<Reply> {
+  const res = await fetch(`${server.url}/api/collections/users/records/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: superuserToken },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, json: (await res.json()) as Reply["json"] };
 }
 
 const requestOTP = (server: Server, collection = "users", to = email): Promise<Reply> =>
@@ -421,13 +425,10 @@ describe("invalidation", () => {
         const [raw = ""] = await rawMessages(mail, 1);
 
         step(
-          await post(
-            server,
-            `/api/collections/users/records/${userId}`,
-            { password: "new-password-1", passwordConfirm: "new-password-1" },
-            { Authorization: superuserToken },
-            "PATCH",
-          ),
+          await updateUser(server, {
+            password: "new-password-1",
+            passwordConfirm: "new-password-1",
+          }),
         );
 
         expect(otpRows(server.dataDir, userId).length).toBe(0);
@@ -444,15 +445,7 @@ describe("invalidation", () => {
         const { json } = step(await requestOTP(server));
         const [raw = ""] = await rawMessages(mail, 1);
 
-        step(
-          await post(
-            server,
-            `/api/collections/users/records/${userId}`,
-            { tokenKey: "t".repeat(50) },
-            { Authorization: superuserToken },
-            "PATCH",
-          ),
-        );
+        step(await updateUser(server, { tokenKey: "t".repeat(50) }));
 
         expect(otpRows(server.dataDir, userId).length).toBe(0);
         step(await authWithOTP(server, json["otpId"], mailedPassword(raw)));
@@ -468,13 +461,7 @@ describe("invalidation", () => {
         const { json } = step(await requestOTP(server));
         const [raw = ""] = await rawMessages(mail, 1);
 
-        const update = await post(
-          server,
-          `/api/collections/users/records/${userId}`,
-          { name: "changed" },
-          { Authorization: superuserToken },
-          "PATCH",
-        );
+        const update = await updateUser(server, { name: "changed" });
         expect(update.status).toBe(200);
 
         step(await authWithOTP(server, json["otpId"], mailedPassword(raw)));
