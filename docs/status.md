@@ -10,7 +10,7 @@ M3.7 (JavaScript migrations) active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.7 | fix | [#43](https://github.com/iglo-tech/iglo.base/pull/43) ([brief](briefs/M3.7.md)) | 2 | First worker stalled, see For owner review. Round 1: Sol CHANGES at `4b279c0`, nine binding findings, all fixed by the fixer. Round 2 at `ab57877`: `check` and `test:roundtrip:large` pass; `test:reference` clean on the third run (one failure each before: the backlog realtime case, the other unnamed) |
+| M3.7 | fix | [#43](https://github.com/iglo-tech/iglo.base/pull/43) ([brief](briefs/M3.7.md)) | 2 | First worker stalled, see For owner review. Round 1: nine binding findings, fixed. Round 2: Sol CHANGES at `ab57877`, seven findings; lead agrees with five and a half, two parts to backlog ([comment](https://github.com/iglo-tech/iglo.base/pull/43)); fixer started |
 
 ## Done
 
@@ -69,7 +69,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
 | 2026-10-30 | Realtime tests (M5.1) | `test/differential/realtime/realtime.test.ts:29`, "a user delete updates the records that reference it": cascade update and delete notifications arrive in varying order; failed 2 of 3 isolated reruns and one full `test:reference` run. Check whether a real client can see a different order before calling it flaky |
 | 2026-10-30 | Batch (M3.3) | Item headers that are not `Content-Type` but normalize to the rule key `content_type` (`CONTENT_TYPE`, `content.type`): upstream accepts or refuses at random (Go map order); iglo.base always uses the generated value |
-| 2026-10-31 | Migrations (M3.7) | Saving a `clone()` of the settings in a migration updates `app.settings()` at once; upstream waits for the commit. The stored row is the same |
+| 2026-10-31 | Migrations (M3.7) | `rows().scanStruct()` into `Collection`, `Record` or a field, and `one()`/`all()` into a field constructor, fail with an error; upstream fills them |
+| 2026-10-31 | Migrations (M3.7) | Nullable `DynamicModel` members are primitives; upstream gives pointer wrappers, visible through `typeof` and `===` only |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
