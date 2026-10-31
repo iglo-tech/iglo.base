@@ -73,6 +73,10 @@ async function handle(req: BackupRequest): Promise<boolean | undefined> {
       openZip().close();
       zipper = null;
       return undefined;
+    case "zipAbort":
+      zipper?.abort();
+      zipper = null;
+      return undefined;
     case "extract":
       await extract(req.src, req.dest);
       return undefined;

@@ -34,6 +34,11 @@ export const LocalNotifyDirName = ".notify";
 export const LocalTempDirName = ".pb_temp_to_delete";
 export const lostFoundDirName = "lost+found";
 
+// newBackupsFilesystem's error with backups.s3 enabled, until M5.4
+export const ErrBackupsS3NotSupported = new Error(
+  "the S3 backups storage is not supported yet (M5.4)",
+);
+
 // the field types of a deleted model's collection (supportFiles)
 export interface FilesModel {
   // BaseFilesPath returns the storage dir path used by the model.
@@ -84,7 +89,7 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
 
   const newBackupsFilesystem = (): System => {
     if (config.settings().Backups.S3.Enabled) {
-      throw new Error("the S3 backups storage is not supported yet (M5.4)");
+      throw ErrBackupsS3NotSupported;
     }
     // fallback to local filesystem
     return NewLocal(config.dataDir + "/" + LocalBackupsDirName);

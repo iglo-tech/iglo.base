@@ -5,6 +5,7 @@
 // off the request, as upstream's routine.FireAndForget.
 
 import { backupCreate } from "@/apis/backup-create";
+import { loadFailure } from "@/apis/backup-load";
 import { backupUpload } from "@/apis/backup-upload";
 import { StoreKeyActiveBackup } from "@/apis/health";
 import type { App } from "@/app/app";
@@ -45,7 +46,7 @@ function backupsList(e: RequestEvent): HandlerResult {
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
   } catch (err) {
-    return e.badRequestError("Failed to load backups filesystem.", err);
+    return e.badRequestError(loadFailure(err), err);
   }
 
   try {
@@ -94,7 +95,7 @@ function backupDownload(e: RequestEvent): HandlerResult {
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
   } catch (err) {
-    return e.internalServerError("Failed to load backups filesystem.", err);
+    return e.internalServerError(loadFailure(err), err);
   }
 
   try {
@@ -122,7 +123,7 @@ function backupDelete(e: RequestEvent): HandlerResult {
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
   } catch (err) {
-    return e.internalServerError("Failed to load backups filesystem.", err);
+    return e.internalServerError(loadFailure(err), err);
   }
 
   try {
@@ -161,7 +162,7 @@ function backupRestore(e: RequestEvent): HandlerResult {
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
   } catch (err) {
-    return e.internalServerError("Failed to load backups filesystem.", err);
+    return e.internalServerError(loadFailure(err), err);
   }
 
   try {

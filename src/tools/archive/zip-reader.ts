@@ -450,7 +450,10 @@ export class ZipReader {
     });
 
     try {
-      for (let left = length, pos = offset; left > 0 && sinkErr === undefined;) {
+      for (let left = length, pos = offset; left > 0;) {
+        if (sinkErr !== undefined) {
+          break;
+        }
         const chunk = new Uint8Array(Math.min(left, readChunk));
         const n = this.#readAt(chunk, pos);
         if (n !== chunk.length) {

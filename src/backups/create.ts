@@ -324,6 +324,10 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
     }
 
     await worker.call({ op: "zipClose" });
+  } catch (err) {
+    // the worker's file handle outlives the worker
+    await worker.call({ op: "zipAbort" }).catch(() => {});
+    throw err;
   } finally {
     app.filesystem.watch(null);
     worker.close();

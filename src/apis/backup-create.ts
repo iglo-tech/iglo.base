@@ -3,6 +3,7 @@
 import { StoreKeyActiveBackup } from "@/apis/health";
 import { firstApiError } from "@/apis/record-helpers";
 import type { RequestEvent } from "@/app/event-request";
+import { ErrBackupsS3NotSupported } from "@/app/filesystem";
 import { createBackup } from "@/backups/create";
 import { structOf } from "@/server/unmarshal-request-data";
 import { mustCompile } from "@/tools/regexp/regexp";
@@ -54,7 +55,12 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
   try {
     await createBackup(e.app, form.Name);
   } catch (err) {
-    return e.badRequestError("Failed to create backup.", err);
+    return e.badRequestError(
+      err === ErrBackupsS3NotSupported
+        ? `Failed to create backup. Raw error: \n${ErrBackupsS3NotSupported.message}`
+        : "Failed to create backup.",
+      err,
+    );
   }
 
   // we don't retrieve the generated backup file because it may not be
@@ -86,7 +92,8 @@ function checkUniqueName(e: RequestEvent, value: unknown): Error | null {
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
   } catch (err) {
-    return err as Error;
+    // createBackup reports the S3 error (until M5.4)
+    return err === ErrBackupsS3NotSupported ? null : (err as Error);
   }
 
   try {

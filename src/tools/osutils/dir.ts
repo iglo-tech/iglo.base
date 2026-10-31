@@ -60,11 +60,8 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: string
     try {
       renameSync(oldPath, newPath);
     } catch (err) {
-      const errs = tryRollback();
-      if (errs.length > 0) {
-        throw new AggregateError([...errs, err], [...errs, err].map(String).join("\n"));
-      }
-      throw err;
+      const errs = [...tryRollback(), err];
+      throw errs.length > 1 ? new AggregateError(errs, errs.map(String).join("\n")) : err;
     }
 
     moved.set(oldPath, newPath);

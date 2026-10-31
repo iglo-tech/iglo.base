@@ -80,8 +80,6 @@ async function until(check: () => boolean): Promise<void> {
   }
 }
 
-const storageKey = "9n89pl5vkct6330/la4y2w4o98acwuj/300_uh2gpr1ghu5w.txt";
-
 function addStorageFile(app: TestApp, key: string, content: Uint8Array | string): void {
   const fs = app.filesystem.newFilesystem();
   fs.upload(typeof content === "string" ? new TextEncoder().encode(content) : content, key);
@@ -294,12 +292,12 @@ describe("concurrency semantics", () => {
     const app = await open();
     growDatabases(app);
 
-    let done = false;
+    const state = { done: false };
     const backup = createBackup(app, "a.zip").finally(() => {
-      done = true;
+      state.done = true;
     });
     let i = 0;
-    while (!done) {
+    while (!state.done) {
       addStorageFile(app, `col/rec/w${i}.txt`, "x");
       app.databases
         .nonconcurrentDB()
@@ -475,18 +473,17 @@ describe("apis/backup_test.go scenarios with a preset active backup", () => {
   }
 });
 
-describe("backups.s3 enabled", () => {
-  async function s3App(): Promise<TestApp> {
-    const app = await open();
-    await createBackup(app, "local.zip");
-    app.settings.Backups.S3.Enabled = true;
-    return app;
-  }
+async function s3App(): Promise<TestApp> {
+  const app = await open();
+  await createBackup(app, "local.zip");
+  app.settings.Backups.S3.Enabled = true;
+  return app;
+}
 
+describe("backups.s3 enabled", () => {
   test("every endpoint fails and nothing is written", async () => {
     const app = await s3App();
     const before = readdirSync(backupsDir(app)).toSorted();
-    const token = "?token=x";
 
     const expected: [string, string, string | undefined, number][] = [
       ["GET", "/api/backups", undefined, 400],
@@ -499,8 +496,13 @@ describe("backups.s3 enabled", () => {
     for (const [method, url, body, status] of expected) {
       const res = await send(app, method, url, body);
       expect([method, url, res.status]).toEqual([method, url, status]);
+      expect(await res.text()).toContain("not supported yet (M5.4)");
     }
-    expect((await send(app, "GET", `/api/backups/local.zip${token}`)).status).toBe(403);
+    const res = await send(app, "POST", "/api/files/token");
+    const { token } = (await res.json()) as { token: string };
+    const download = await send(app, "GET", `/api/backups/local.zip?token=${token}`);
+    expect(download.status).toBe(500);
+    expect(await download.text()).toContain("not supported yet (M5.4)");
 
     expect(readdirSync(backupsDir(app)).toSorted()).toEqual(before);
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
@@ -526,7 +528,9 @@ describe("backups.s3 enabled", () => {
     await runJob(app);
 
     expect(app.logged.map((l) => l.message).join()).toContain("Failed to create backup");
-    expect(String((app.logged[0]?.cause as Error).message)).toContain("not supported yet (M5.4)");
+    expect(String((app.logged[0]?.cause as Error | undefined)?.message)).toContain(
+      "not supported yet (M5.4)",
+    );
     expect(sink.messages.length).toBeGreaterThan(sent);
     expect(readdirSync(backupsDir(app)).filter((f) => f.startsWith("@auto"))).toEqual([]);
   });

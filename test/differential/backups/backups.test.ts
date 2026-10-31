@@ -23,7 +23,7 @@ import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
-import { centralEntries } from "@test/tools/archive/central-directory";
+import { centralEntries, type CentralEntry } from "@test/tools/archive/central-directory";
 
 const timeout = 60_000;
 
@@ -149,7 +149,7 @@ function snapshot(dataDir: string): {
 } {
   return {
     data: tableRows(join(dataDir, "data.db")),
-    logs: tableRows(join(dataDir, "auxiliary.db"))._logs ?? [],
+    logs: tableRows(join(dataDir, "auxiliary.db"))["_logs"] ?? [],
     storage: fileHashes(join(dataDir, "storage")),
   };
 }
@@ -184,6 +184,10 @@ async function restoreAndWait(server: Server, name: string): Promise<void> {
   expect(restarted).toBe(true);
 }
 
+function logged(logs: unknown[]): unknown[] {
+  return logs.filter((l) => (l as { id: string }).id === "backuplog000000");
+}
+
 describe("a zip restored by the other server", () => {
   for (const [from, to] of [
     ["iglo", "upstream"],
@@ -212,8 +216,8 @@ describe("a zip restored by the other server", () => {
 
           // the local backups dir survives
           const list = await fetch(`${target.url}/api/backups`, { headers: asSuperuser });
-          const keys = ((await list.json()) as { key: string }[]).map((b) => b.key);
-          expect(keys).toEqual(["cross.zip"]);
+          const listed = ((await list.json()) as { key: string }[]).map((b) => b.key);
+          expect(listed).toEqual(["cross.zip"]);
 
           const settings = await fetch(`${target.url}/api/settings`, { headers: asSuperuser });
           expect(settings.status).toBe(200);
@@ -224,8 +228,6 @@ describe("a zip restored by the other server", () => {
         const actual = snapshot(targetDir);
         expect(actual.data).toEqual(expected.data);
         expect(actual.storage).toEqual(expected.storage);
-        const logged = (logs: unknown[]): unknown[] =>
-          logs.filter((l) => (l as { id: string }).id === "backuplog000000");
         expect(logged(actual.logs)).toEqual(logged(expected.logs));
         expect(logged(actual.logs)).toHaveLength(1);
         expect(readFileSync(join(targetDir, "notes.txt"), "utf8")).toBe("kept");
@@ -239,6 +241,17 @@ describe("a zip restored by the other server", () => {
     );
   }
 });
+
+// what the two servers must agree on
+function comparable(zip: Uint8Array): CentralEntry[] {
+  return centralEntries(zip)
+    .map((e) => ({
+      ...e,
+      // the databases are new copies
+      modTime: /^(data|auxiliary)\.db$/.test(e.name) ? 0 : e.modTime,
+    }))
+    .toSorted((a, b) => (a.name < b.name ? -1 : 1));
+}
 
 describe("what a zip has", () => {
   test(
@@ -262,23 +275,9 @@ describe("what a zip has", () => {
           download(iglo, "a.zip"),
         ]);
 
-        const entries = (zip: Uint8Array): unknown[] =>
-          centralEntries(zip)
-            .map((e) => ({
-              name: e.name,
-              method: e.method,
-              flags: e.flags,
-              mode: e.mode,
-              // the databases are new copies
-              modTime: /^(data|auxiliary)\.db$/.test(e.name) ? 0 : e.modTime,
-            }))
-            .toSorted((a, b) => (a.name < b.name ? -1 : 1));
-
         // upstream's prebuilt binary writes types.d.ts into pb_data at start
-        const upEntries = entries(upZip).filter(
-          (e) => (e as { name: string }).name !== "types.d.ts",
-        );
-        expect(entries(igZip)).toEqual(upEntries);
+        const upEntries = comparable(upZip).filter((e) => e.name !== "types.d.ts");
+        expect(comparable(igZip)).toEqual(upEntries);
         const names = centralEntries(igZip).map((e) => e.name);
         expect(names).toContain("data.db");
         expect(names).toContain("auxiliary.db");
@@ -297,6 +296,79 @@ describe("what a zip has", () => {
   );
 });
 
+async function keys(server: Server): Promise<string[]> {
+  const res = await fetch(`${server.url}/api/backups`, { headers: asSuperuser });
+  return ((await res.json()) as { key: string }[]).map((b) => b.key);
+}
+
+async function runJob(server: Server): Promise<void> {
+  const before = await keys(server);
+  const res = await fetch(`${server.url}/api/crons/__pbAutoBackup__`, {
+    method: "POST",
+    headers: asSuperuser,
+  });
+  expect(res.status).toBe(204);
+  expect(await eventually(async () => (await keys(server)).join() !== before.join())).toBe(true);
+}
+
+async function crons(server: Server): Promise<string> {
+  return (await fetch(`${server.url}/api/crons`, { headers: asSuperuser })).text();
+}
+
+async function setCron(server: Server, cron: string): Promise<void> {
+  const res = await fetch(`${server.url}/api/settings`, {
+    method: "PATCH",
+    headers: { ...asSuperuser, "Content-Type": "application/json" },
+    body: JSON.stringify({ backups: { cron, cronMaxKeep: 3 } }),
+  });
+  expect(`${res.status} ${await res.text()}`).toStartWith("200");
+}
+
+describe("the __pbAutoBackup__ job", () => {
+  test(
+    "the same name, and cronMaxKeep prunes",
+    async () => {
+      const servers = await Promise.all([
+        start("upstream", fixtureCopy()),
+        start("iglo", fixtureCopy()),
+      ]);
+
+      try {
+        const results = await Promise.all(
+          servers.map(async (server) => {
+            const res = await fetch(`${server.url}/api/settings`, {
+              method: "PATCH",
+              headers: { ...asSuperuser, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                meta: { appName: "My Test-App ż" },
+                backups: { cron: "0 3 * * *", cronMaxKeep: 1 },
+              }),
+            });
+            expect(res.status).toBe(200);
+
+            await runJob(server);
+            const first = await keys(server);
+            await Bun.sleep(1100); // the name has seconds
+            await runJob(server);
+            await eventually(async () => (await keys(server)).length === 1);
+            return { first, second: await keys(server) };
+          }),
+        );
+
+        for (const { first, second } of results) {
+          expect(first).toHaveLength(1);
+          expect(first[0]).toMatch(/^@auto_pb_backup_my_test_app_\d{14}\.zip$/);
+          expect(second).toHaveLength(1);
+          expect(second[0]).not.toBe(first[0]);
+        }
+      } finally {
+        await Promise.all(servers.map((s) => s.stop()));
+      }
+    },
+    timeout,
+  );
+});
+
 describe("GET /api/crons with __pbAutoBackup__", () => {
   test(
     "the same list after setting, changing and clearing backups.cron",
@@ -305,16 +377,6 @@ describe("GET /api/crons with __pbAutoBackup__", () => {
         start("upstream", fixtureCopy()),
         start("iglo", fixtureCopy()),
       ]);
-      const crons = async (server: Server): Promise<string> =>
-        (await fetch(`${server.url}/api/crons`, { headers: asSuperuser })).text();
-      const setCron = async (server: Server, cron: string): Promise<void> => {
-        const res = await fetch(`${server.url}/api/settings`, {
-          method: "PATCH",
-          headers: { ...asSuperuser, "Content-Type": "application/json" },
-          body: JSON.stringify({ backups: { cron, cronMaxKeep: 3 } }),
-        });
-        expect(`${res.status} ${await res.text()}`).toStartWith("200");
-      };
 
       try {
         for (const cron of ["0 3 * * *", "*/5 * * * *", ""]) {

@@ -97,7 +97,8 @@ const uploadBoundary = "iglo-backup-upload-boundary";
 const uploadContentType = `multipart/form-data; boundary=${uploadBoundary}`;
 
 // an empty zip: the end-of-central-directory record only
-const emptyZip = new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array<number>(18).fill(0)]);
+const emptyZip = new Uint8Array(22);
+emptyZip.set([0x50, 0x4b, 0x05, 0x06]);
 
 function multipartUpload(): Uint8Array {
   const encoder = new TextEncoder();

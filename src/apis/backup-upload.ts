@@ -3,8 +3,10 @@
 // The file parts come through the multipart spill (D27), and the file is
 // written in blocks with the event loop given back between them.
 
+import { loadFailure } from "@/apis/backup-load";
 import { firstApiError } from "@/apis/record-helpers";
 import type { RequestEvent } from "@/app/event-request";
+import { ErrBackupsS3NotSupported } from "@/app/filesystem";
 import type { File } from "@/tools/filesystem/file";
 import type { System } from "@/tools/filesystem/filesystem";
 import { NewError } from "@/validation/error";
@@ -14,8 +16,15 @@ import { By } from "@/validation/validation";
 import { UploadedFileMimeType } from "@/validators/file";
 
 export async function backupUpload(e: RequestEvent): Promise<Error | undefined> {
-  // a failure here is upstream's returned plain error
-  const fsys = e.app.filesystem.newBackupsFilesystem();
+  let fsys: System;
+  try {
+    fsys = e.app.filesystem.newBackupsFilesystem();
+  } catch (err) {
+    if (err === ErrBackupsS3NotSupported) {
+      return e.internalServerError(loadFailure(err), err);
+    }
+    return err as Error;
+  }
 
   try {
     let file: File | null = null;

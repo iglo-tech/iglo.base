@@ -70,9 +70,9 @@ interface Latency {
 // their latency
 function sampleLatency(url: string): { stop: () => Promise<Latency> } {
   const times: number[] = [];
-  let running = true;
+  const state = { running: true };
   const loop = (async () => {
-    while (running) {
+    while (state.running) {
       const start = performance.now();
       await fetch(`${url}/api/collections/demo1/records?perPage=1`, {
         headers: asSuperuser,
@@ -83,7 +83,7 @@ function sampleLatency(url: string): { stop: () => Promise<Latency> } {
   })();
   return {
     stop: async () => {
-      running = false;
+      state.running = false;
       await loop;
       const sorted = times.toSorted((a, b) => a - b);
       return {
