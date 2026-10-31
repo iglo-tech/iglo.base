@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.5 active (review round 1).
+M4.5 active (review round 2).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.5 | review | [#46](https://github.com/iglo-tech/iglo.base/pull/46) | 1 | [brief](briefs/M4.5.md) |
+| M4.5 | review | [#46](https://github.com/iglo-tech/iglo.base/pull/46) | 2 | [brief](briefs/M4.5.md) |
 
 ## Done
 
@@ -77,6 +77,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | Migrations (M3.7) | `DynamicModel` shapes with Go values (DateTime, GeoPoint, duration, Date): query hydration throws, `unmarshal` gives plain values, new rows get null instead of a Go zero value, a Date shape is lost. Not fully safe: saving such a null can store different data. Needs a Go-typed shape, which no upstream pattern in the brief uses |
 | 2026-10-31 | Migrations (M3.7) | A `time.Time` SQL parameter keeps milliseconds only; upstream keeps nanoseconds |
 | 2026-10-31 | Migrations (M3.7) | Specialized `DynamicModel` defaults: a JSONRaw shape, Go pointer defaults, and `time.Time` JSON whole seconds differ from upstream |
+| 2026-10-31 | Files tests (M5.2) | `test/differential/files/serve.test.ts:493`, "HEAD of a thumb": `Last-Modified` differs when the two servers write across a second boundary; seen once in M4.5's `test:reference` |
+| 2026-10-31 | Errors (M4.5) | `toApiError` misses the db layer's no-rows error, so a bare no-rows error answers 400 where upstream answers 404; fixed locally in the OAuth2 handler only, other handlers may share it |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
