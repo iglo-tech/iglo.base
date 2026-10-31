@@ -7,6 +7,8 @@
 
 import { generateKeyPairSync, sign } from "node:crypto";
 import { Database } from "bun:sqlite";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Collection } from "@/collections/collection-model";
@@ -157,6 +159,17 @@ function signingKeys() {
     return `${head}.${b64url(sign("sha256", Buffer.from(head), privateKey))}`;
   };
   return { jwks: { keys: [{ ...jwk, kid: "key1", alg: "RS256", use: "sig" }] }, signed };
+}
+
+// a file: URL of a local JSON document that would sign in if it were read
+let localJsonURL: string | undefined;
+function localJson(): string {
+  if (localJsonURL === undefined) {
+    const path = join(mkdtempSync(join(tmpdir(), "iglo-base-oauth2-file-")), "secret.json");
+    writeFileSync(path, JSON.stringify({ sub: "from_file", access_token: "from_file" }));
+    localJsonURL = `file://${path}`;
+  }
+  return localJsonURL;
 }
 
 function withConfig(collection: Collection, change: (config: OAuth2ProviderConfig) => void): void {
@@ -581,6 +594,27 @@ export function oauth2Cases(): Scenario[] {
       ),
       expectedStatus: 200,
       expectedContent: newUserContent,
+    }),
+    authScenario({
+      name: "a userinfo redirect to a file is refused",
+      prepare: useProvider({ userLocation: localJson() }),
+      expectedStatus: 400,
+      expectedContent: [`"message":"Failed to fetch OAuth2 user."`],
+    }),
+    authScenario({
+      name: "a token redirect to a file is refused",
+      prepare: useProvider({ tokenLocation: localJson() }),
+      expectedStatus: 400,
+      expectedContent: [`"message":"Failed to fetch OAuth2 token."`],
+    }),
+    authScenario({
+      name: "a token refresh redirect to a file is refused",
+      prepare: useProvider({
+        token: { access_token: "old", refresh_token: "ref", expires_in: 5 },
+        refreshLocation: localJson(),
+      }),
+      expectedStatus: 400,
+      expectedContent: [`"message":"Failed to fetch OAuth2 user."`],
     }),
     authScenario({
       name: "a token redirect to another host drops the Basic credentials",

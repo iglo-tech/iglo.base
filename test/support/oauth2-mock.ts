@@ -38,6 +38,10 @@ export interface MockProviderSpec {
   requireBasicAuth?: boolean;
   // a token request with another method gets a 405
   tokenMethod?: string;
+  // a code exchange gets a 302 to this Location
+  tokenLocation?: string;
+  // a grant_type=refresh_token request gets a 302 to this Location
+  refreshLocation?: string;
   // the answer to a grant_type=refresh_token request
   refreshedToken?: unknown;
   // the userinfo endpoint: a JSON body (or the body's text) and its status
@@ -45,6 +49,8 @@ export interface MockProviderSpec {
   userStatus?: number;
   // a userinfo request without an Authorization header gets a 401
   requireBearer?: boolean;
+  // a userinfo request gets a 302 to this Location
+  userLocation?: string;
   // the JWKS endpoint's body
   jwks?: unknown;
 }
@@ -70,6 +76,9 @@ const pngPixel = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
   "base64",
 );
+
+const found = (location: string): Response =>
+  new Response(null, { status: 302, headers: { Location: location } });
 
 function json(value: unknown, status: number, contentType = "application/json"): Response {
   const body = typeof value === "string" ? value : JSON.stringify(value);
@@ -164,7 +173,13 @@ export class OAuth2Mock {
           return json({ error: "invalid_grant" }, 400);
         }
         if (form.get("grant_type") === "refresh_token") {
+          if (spec.refreshLocation !== undefined) {
+            return found(spec.refreshLocation);
+          }
           return json(spec.refreshedToken ?? { error: "invalid_grant" }, 200);
+        }
+        if (spec.tokenLocation !== undefined) {
+          return found(spec.tokenLocation);
         }
         return json(
           spec.token ?? { access_token: "abc", token_type: "bearer" },
@@ -175,6 +190,9 @@ export class OAuth2Mock {
       case "userinfo":
         if (spec.requireBearer === true && !req.headers.has("Authorization")) {
           return json({ error: "invalid_token" }, 401);
+        }
+        if (spec.userLocation !== undefined) {
+          return found(spec.userLocation);
         }
         return json(spec.user ?? { sub: "test_id" }, spec.userStatus ?? 200);
       case "jwks":

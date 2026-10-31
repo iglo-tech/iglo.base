@@ -15,6 +15,7 @@ import {
 
 import type { Clock } from "@/app/clock";
 import { goQuote } from "@/fields/field";
+import { fetchFollowingRedirects } from "@/oauth2/http-client";
 import { RawURLEncoding } from "@/tools/security/base64";
 import {
   JWTError,
@@ -111,7 +112,7 @@ export async function fetchJWK(
   jwksURL: string,
   kid: string,
 ): Promise<JWK> {
-  const res = await fetch(jwksURL, { signal: signal ?? null });
+  const res = await fetchFollowingRedirects(jwksURL, { signal: signal ?? null });
   const rawBody = new Uint8Array(await res.arrayBuffer());
 
   // fetch doesn't treat non 2xx responses as error

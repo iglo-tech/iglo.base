@@ -37,6 +37,9 @@ const server = Bun.serve({
         headers: { Location: searchParams.get("to") ?? "" },
       });
     }
+    if (pathname === "/content-type") {
+      return new Response(req.headers.get("Content-Type") ?? "none");
+    }
     return new Response("end");
   },
 });
@@ -49,6 +52,8 @@ afterAll(() => {
 
 const via = (status: number, to: string): string =>
   `${local}/redirect?status=${status}&to=${encodeURIComponent(to)}`;
+
+const file = `file://${import.meta.path}`;
 
 const auth = { headers: { Authorization: "Bearer abc" } };
 
@@ -93,18 +98,48 @@ describe("fetchFollowingRedirects", () => {
     expect(seen.map((s) => s.authorization)).toEqual(["Bearer abc", "Bearer abc"]);
   });
 
+  test("a POST turned into a GET loses its Content-Type", async () => {
+    const res = await fetchFollowingRedirects(via(302, `${local}/content-type`), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "a=1",
+    });
+    expect(await res.text()).toBe("none");
+  });
+
+  test("a 307 keeps the Content-Type", async () => {
+    const res = await fetchFollowingRedirects(via(307, `${local}/content-type`), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "a=1",
+    });
+    expect(await res.text()).toBe("application/x-www-form-urlencoded");
+  });
+
+  test("refuses a file URL", async () => {
+    await expect(fetchFollowingRedirects(file)).rejects.toThrow("unsupported protocol scheme");
+  });
+
+  test("refuses a redirect to a file URL or another scheme", async () => {
+    for (const to of [file, "data:application/json,{}", "ftp://127.0.0.1/a"]) {
+      await expect(fetchFollowingRedirects(via(302, to))).rejects.toThrow(
+        "unsupported protocol scheme",
+      );
+    }
+  });
+
   test("a 3xx without a Location is the response", async () => {
     const res = await fetchFollowingRedirects(via(302, ""));
     expect(res.status).toBe(302);
   });
 
-  test("follows 10 redirects", async () => {
-    const res = await fetchFollowingRedirects(`${local}/hops/10`);
+  test("follows 9 redirects: 10 requests", async () => {
+    const res = await fetchFollowingRedirects(`${local}/hops/9`);
     expect(await res.text()).toBe("end");
   });
 
-  test("stops at the 11th redirect", async () => {
-    await expect(fetchFollowingRedirects(`${local}/hops/11`)).rejects.toThrow(
+  test("stops at the 10th redirect", async () => {
+    await expect(fetchFollowingRedirects(`${local}/hops/10`)).rejects.toThrow(
       "stopped after 10 redirects",
     );
   });

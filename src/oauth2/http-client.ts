@@ -8,8 +8,12 @@
 // `tokenAuthorization` is oauth2.Transport's header: the transport sets it on
 // every request of a chain, redirects to other hosts included, and is what
 // upstream's userinfo requests go through.
+//
+// Only http and https go out: Go has no other transport, and Bun's fetch would
+// read a `file:` URL, which a provider could name in a Location header.
 
-const maxRedirects = 10;
+// Go's defaultCheckRedirect: 10 requests in total
+const maxRequests = 10;
 
 const sensitiveHeaders = ["Authorization", "Www-Authenticate", "Cookie", "Cookie2"];
 
@@ -36,7 +40,11 @@ export async function fetchFollowingRedirects(
   let body = init.body ?? null;
   let stripped = false;
 
-  for (let redirects = 0; ; redirects++) {
+  for (let requests = 1; ; requests++) {
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error(`unsupported protocol scheme ${url.protocol}`);
+    }
+
     if (tokenAuthorization !== undefined) {
       headers.set("Authorization", tokenAuthorization);
     }
@@ -50,14 +58,15 @@ export async function fetchFollowingRedirects(
 
     await res.body?.cancel();
 
-    if (redirects >= maxRedirects) {
-      throw new Error(`stopped after ${maxRedirects} redirects`);
+    if (requests >= maxRequests) {
+      throw new Error(`stopped after ${maxRequests} redirects`);
     }
 
     url = new URL(location, url);
 
     if (res.status < 307) {
       body = null;
+      headers.delete("Content-Type");
       if (method !== "HEAD") {
         method = "GET";
       }
