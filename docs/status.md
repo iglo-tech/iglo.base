@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.8 active.
+M4.8 merged; no active task.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M4.8 | review | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 2 | [Brief](briefs/M4.8.md). Closes the pending rate-limit scenarios of M2.4, M3.3, M4.2, M4.3, M4.5 and M5.2 |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M4.8 | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 2026-10-31 (`3779902`) | Two review rounds: Sol APPROVE at `b344285` with `test:reference` at 0 failures (lead fixed round 1: limiters reset after commit). All M4.8 pending scenarios enabled. The key is the real IP, as upstream. Carried: the cleanup job waits for M5.6 to run it (a minimal `src/tools/cron/cron.ts` registers it), so limiter client maps grow until then; M5.7 must bind CORS ahead of the limiter |
 | M4.7 | [#48](https://github.com/iglo-tech/iglo.base/pull/48) | 2026-10-31 (`0649656`) | One review round: Sol APPROVE at `9a81e34`. Haiku worker. All 32 providers are ported; the "not ported yet" path is gone. Planning Center refuses every user, as upstream does (a differential case pins it). Merged without one all-green `test:reference` at the head: the worker's two failures and Sol's one were all hardening-backlog flakes that passed on rerun |
 | M4.6 | [#47](https://github.com/iglo-tech/iglo.base/pull/47) | 2026-10-31 (`afa7752`) | Two review rounds: Sol APPROVE at `f3ce3aa` (lead fixed round 1). Haiku worker. All 15 providers and the Apple client secret. Bun 1.4.4: a failed `crypto.subtle.importKey` (pkcs8, spki) makes the next `Bun.CryptoHasher` throw, so use `node:crypto` to parse untrusted keys. `secret` joined the harness's generated values. Gitee's fixed emails URL and Apple's JWKS are tested in-process only |
 | M4.5 | [#46](https://github.com/iglo-tech/iglo.base/pull/46) | 2026-10-31 (`29220cf`) | Three review rounds, lead fixed all: Sol APPROVE at `4d5d7fc`. Provider requests follow Go's redirect rules (`src/oauth2/http-client.ts`), http and https only; avatar deadline covers name resolution. Includes OIDC and its two extra slots. Avatar download honouring `HTTP(S)_PROXY` is listed in 04-api-compatibility.md. Carried: 4 rate-limit scenarios pending on M4.8; Apple client secret (M4.6) |
@@ -101,6 +101,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M4.8 merge): the run passed its 4-hour limit, so the lock was released and the next run picks the next task (M5.6 unblocks M5.3 and runs the limiter cleanup).
 - 2026-10-31 (M4.8 PR): the brief said the limiter key is the auth id or real IP; upstream v0.41.0 uses the real IP only, and the worker followed upstream. The cleanup job is registered on a minimal `src/tools/cron/cron.ts`, and nothing runs it until M5.6. M5.7 must put CORS ahead of the limiter, or a preflight under a matching rule gets 429 where upstream gets 204.
 - 2026-10-31 (M4.8 pick): next in milestone order. Opus worker: rate limits sit on the auth and request path, so it is not a mechanical task.
 - 2026-10-31 (M4.7 PR): the lead sent #48 to review with `test:reference` at 2 failures, both flakes already in the hardening backlog (realtime cascade order since M5.1, thumb `Last-Modified`); both pass on rerun, and neither touches OAuth2 code. The worker called the realtime one new; it is the backlog row.
