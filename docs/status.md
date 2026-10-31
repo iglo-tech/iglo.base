@@ -10,7 +10,7 @@ M5.3 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 1 | [Brief](briefs/M5.3.md) |
+| M5.3 | fix | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 1 | [Brief](briefs/M5.3.md) |
 
 ## Done
 
@@ -92,6 +92,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | Rate-limit tests (M4.8) | The cleanup tests in `test/apis/rate-limit.test.ts:123–219` read the private limiter store. The job only frees memory, so no response shows it |
 | 2026-10-31 | Collections tests | "dry run reports query errors and timeouts": its 1 ms timeout can expire during fixture cache loading (Sol, M4.8 round 1); passes alone |
 | 2026-10-31 | Cron (M5.6) | The first tick after `start` uses its scheduled time; upstream uses the current time, so a first callback delayed past a minute runs that earlier minute's jobs instead |
+| 2026-10-31 | Backups (M5.3) | ZIP data-descriptor CRCs are not verified: a backup with only that CRC flipped restores here, while upstream refuses it with `zip: checksum error`. Payload and central-directory CRCs are unchanged, so only a hand-edited zip has it |
+| 2026-10-31 | OAuth2 tests (M4.5) | `test/oauth2/safe-file.test.ts`, "the deadline covers a slow name resolution": failed one full `check` and 1 of 3 runs alone on the M5.3 branch, which does not touch OAuth2; passed in Sol's run |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
