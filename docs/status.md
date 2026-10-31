@@ -10,7 +10,7 @@ M5.3 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.3 | worker | `task/M5.3-backups` | 0 | [Brief](briefs/M5.3.md) |
+| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 1 | [Brief](briefs/M5.3.md) |
 
 ## Done
 
@@ -104,6 +104,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M5.3, host rule): the worker ran one `find /` across the whole disk looking for Go sources, which `/home/t3-code/AGENTS.md` forbids. It finished without memory or IO trouble and was not repeated.
+- 2026-10-31 (M5.3 PR): the lead sent #51 to review with `check`'s test step at 1 failure: `test/oauth2/safe-file.test.ts`, the name-resolution deadline test, which this branch does not touch and which failed 1 of 3 runs alone. `test:reference` passed with 0 failures; `check` stopped before the build, which passed when run alone.
 - 2026-10-31 (M5.3 pick): first in milestone order with its dependencies merged, and it unblocks M5.4, M5.8, M5.9 and M6.4. Opus worker per the model table. Restart uses `process.execve` (present in Bun 1.4.4); the worker probes it in a compiled executable first. Until M5.4, backups with S3 enabled fail with the existing not-supported error.
 - 2026-10-31 (M5.6 merge): the run finished its one task, so the lock was released and the next run picks the next task (M5.3 is unblocked; M5.5 is next in milestone order among tasks with merged dependencies). `__pbDBOptimize__` runs on the main-thread connections, so a long-held reader can stall the server for up to the 10-second `busy_timeout`; it runs at midnight or on demand and fails nothing, accepted for the MVP.
 - 2026-10-31 (M5.6 brief): next because it unblocks M5.3 and runs the limiter cleanup. `DeleteOldLogs` comes forward from M5.5, as `__pbLogsCleanup__` is visible in `/api/crons` and must work. Opus worker: jobs delete data and write the databases.
