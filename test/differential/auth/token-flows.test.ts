@@ -586,28 +586,28 @@ describe("the two minute resend limits", () => {
   );
 });
 
-describe("a failed send", () => {
-  // moves SMTP to a port nobody listens on, or back to Mailpit
-  async function brokenSmtp(server: Server, port: number): Promise<Reply> {
-    return request(
-      server,
-      "PATCH",
-      "/api/settings",
-      { smtp: { enabled: true, host: "127.0.0.1", port, tls: false } },
-      superuserToken,
-    );
-  }
+// moves SMTP to a port nobody listens on, or back to Mailpit
+async function smtpOnPort(server: Server, port: number): Promise<Reply> {
+  return request(
+    server,
+    "PATCH",
+    "/api/settings",
+    { smtp: { enabled: true, host: "127.0.0.1", port, tls: false } },
+    superuserToken,
+  );
+}
 
+describe("a failed send", () => {
   test(
     "verification: 204, and the limit is set anyway",
     async () => {
       const closed = await freePort();
       await bothFlows(withAuthRows, async ({ server, mail, step, note }) => {
-        step(await brokenSmtp(server, closed));
+        step(await smtpOnPort(server, closed));
         step(await requestVerification(server));
         note(await settledCount(mail, verificationLink));
 
-        expect((await brokenSmtp(server, mail.smtpPort)).status).toBe(200);
+        expect((await smtpOnPort(server, mail.smtpPort)).status).toBe(200);
         step(await requestVerification(server));
         note(await settledCount(mail, verificationLink));
       });
@@ -620,11 +620,11 @@ describe("a failed send", () => {
     async () => {
       const closed = await freePort();
       await bothFlows(withAuthRows, async ({ server, mail, step, note }) => {
-        step(await brokenSmtp(server, closed));
+        step(await smtpOnPort(server, closed));
         step(await requestReset(server));
         note(await settledCount(mail, resetLink));
 
-        expect((await brokenSmtp(server, mail.smtpPort)).status).toBe(200);
+        expect((await smtpOnPort(server, mail.smtpPort)).status).toBe(200);
         step(await requestReset(server));
         note(await settledCount(mail, resetLink));
       });
@@ -637,7 +637,7 @@ describe("a failed send", () => {
     async () => {
       const closed = await freePort();
       await bothFlows(withAuthRows, async ({ server, step }) => {
-        step(await brokenSmtp(server, closed));
+        step(await smtpOnPort(server, closed));
         step(await requestChange(server));
       });
     },
