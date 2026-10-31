@@ -182,7 +182,7 @@ const appMethods: Readonly<Record<string, Method>> = {
   findRecordById: "a,s,...Q",
   findRecordsByIds: "a,L,...Q",
   findAllRecords: "a,...E",
-  findFirstRecordByData: "a,s,a",
+  findFirstRecordByData: "a,s,H",
   findRecordsByFilter: "a,s,s,i,i,...P",
   findFirstRecordByFilter: "a,s,...P",
   countRecords: "a,...E",
@@ -409,13 +409,27 @@ function save(app: App, model: unknown, withValidations: boolean): void {
   }
 }
 
+// Upstream's settings hook reloads the app settings from the stored row
+// after the outermost transaction commits, so a migration reads the old
+// values of a saved clone until then, and a rolled back save changes nothing.
 function saveSettings(app: App, s: Settings, withValidations: boolean): void {
   saveSettingsSync(app, s, withValidations);
 
-  // upstream's save reloads the app settings from the stored row
-  if (s !== app.settings) {
-    app.settings.merge(s);
+  const stored = s.clone();
+  const reload = (): void => {
+    app.settings.merge(stored);
+  };
+
+  const txInfo = app.databases.txInfo();
+  if (txInfo === null) {
+    reload();
+    return;
   }
+  txInfo.onComplete((txErr) => {
+    if (txErr === null || txErr === undefined) {
+      reload();
+    }
+  });
 }
 
 function unsupportedModel(model: unknown): Error {

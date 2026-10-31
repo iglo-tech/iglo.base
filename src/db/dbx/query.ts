@@ -85,6 +85,21 @@ export class Float64 {
   constructor(readonly value: number) {}
 }
 
+// BoundValue is a param value of a Go type: database/sql binds what it makes
+// of the value (a driver.Valuer's Value, a pointer's target) and fails on a
+// type it cannot bind when the query runs, not when it is built. `sql` gets
+// the 1-based position of the argument, for that error. Not in dbx.
+export class BoundValue {
+  constructor(
+    readonly go: unknown,
+    readonly sql: (position: number) => SQLQueryBindings,
+  ) {}
+
+  toString(): string {
+    return String(this.go);
+  }
+}
+
 // a result row keyed by column name, as bun:sqlite returns it
 export type Row = Record<string, unknown>;
 
@@ -717,6 +732,8 @@ export function replacePlaceholders(placeholders: string[], params: Params): SQL
     const value = params[name];
     if (value instanceof Float64) {
       result.push(value.value);
+    } else if (value instanceof BoundValue) {
+      result.push(value.sql(result.length + 1));
     } else {
       result.push(value === undefined ? null : (value as SQLQueryBindings));
     }

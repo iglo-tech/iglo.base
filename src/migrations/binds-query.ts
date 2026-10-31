@@ -12,14 +12,15 @@ import { Collection } from "@/collections/collection-model";
 import { HashExp } from "@/db/dbx/expression";
 import type { Query, Row } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
-import type { CustomMethod } from "@/migrations/go-class";
+import { type CustomMethod, GoPointer, toSql } from "@/migrations/go-class";
+import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
 import { type Membrane, toInteger } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { NotRecordQueryError, recordsTarget, recordTarget } from "@/records/record-query";
 import { goQuote } from "@/fields/field";
-import { anyType, bytesToText } from "@/tools/types/go-json";
-import { scanJSONArray } from "@/tools/types/json-array";
+import { DateTime } from "@/tools/types/datetime";
+import { bytesToText } from "@/tools/types/go-json";
 import { scanJSONMap } from "@/tools/types/json-map";
 
 // What a migration file's Record stands on. Go's One assigns over the given
@@ -31,17 +32,23 @@ export class RecordSlot {
 
 // nullString() and the others: a nullable DynamicModel shape value
 export class NullShape {
-  constructor(readonly kind: ShapeKind) {}
+  constructor(readonly kind: Exclude<ShapeKind, "go">) {}
 }
 
-type ShapeKind = "string" | "int" | "float" | "bool" | "array" | "object";
+// "go": a Go value of the shape (a DateTime), which keeps its own type
+type ShapeKind = "string" | "int" | "float" | "bool" | "array" | "object" | "go";
 
 interface ShapeField {
   kind: ShapeKind;
   nullable: boolean;
   // the name on the model: the mapped name of Go's exported field
   name: string;
+  // the zero value of a "go" field
+  zero?: () => unknown;
 }
+
+// what a set of a DynamicModel field ignores
+const ignored = Symbol("ignored");
 
 type DynamicModel = Record<string, unknown>;
 
@@ -147,8 +154,17 @@ export class QueryModels {
         model[name] = null;
         continue;
       }
-      fields.set(key, { kind: kindOf(value), nullable: false, name });
-      model[name] = value;
+      if (target !== undefined && !Array.isArray(value) && !(target instanceof GoJSONMap)) {
+        const zero = target instanceof DateTime ? () => this.m.toVm(new DateTime()) : undefined;
+        fields.set(key, { kind: "go", nullable: false, name, ...(zero ? { zero } : {}) });
+        model[name] = value;
+        continue;
+      }
+      const field: ShapeField = { kind: kindOf(value), nullable: false, name };
+      fields.set(key, field);
+      // upstream takes a map or a slice of the shape through its JSON
+      const json = field.kind === "array" || field.kind === "object";
+      model[name] = assignShape(this.m, json ? this.m.toVmJSON(value) : value, field);
     }
 
     return this.#seal(model, fields);
@@ -162,7 +178,11 @@ export class QueryModels {
         if (field === undefined) {
           return false;
         }
-        t[key as string] = assignShape(value, field);
+        const next = assignShape(this.m, value, field);
+        if (next === ignored) {
+          return false;
+        }
+        t[key as string] = next;
         return true;
       },
     });
@@ -185,7 +205,8 @@ export class QueryModels {
     for (const [column, field] of shape) {
       if (Object.hasOwn(decoded, column)) {
         const value = (decoded as Record<string, unknown>)[column];
-        (dst as DynamicModel)[field.name] = jsonShape(value, field, `${path}/${column}`);
+        const model = dst as DynamicModel;
+        model[field.name] = jsonShape(this.m, value, field, `${path}/${column}`, model[field.name]);
       }
     }
   }
@@ -197,15 +218,19 @@ export class QueryModels {
       throw new Error(`json: cannot unmarshal JSON ${jsonKindOf(decoded)} into Go slice`);
     }
     const model = this.modelOf(dst);
+    const scalar = this.#scalarField(model);
     const items = decoded.map((item: unknown, i) => {
-      if (typeof model !== "object" || model === null) {
-        const field = { kind: kindOf(model), nullable: false, name: "" };
-        return jsonShape(item, field, `/${i}`);
+      if (scalar !== undefined) {
+        return pointerTo(this.m, jsonShape(this.m, item, scalar, `/${i}`, undefined), scalar);
+      }
+      // the element of a slice of pointers
+      if (item === null) {
+        return null;
       }
       if (this.isDynamicModel(model)) {
-        const copy = this.#copyModel(model);
-        this.unmarshalModel(copy, item, `/${i}`);
-        return copy;
+        const element = this.#newElement(model as object);
+        this.unmarshalModel(element, item, `/${i}`);
+        return element;
       }
       return newItem(encodeGoJSON(item));
     });
@@ -304,13 +329,13 @@ export class QueryModels {
   #model(q: SelectQuery, pk: unknown, dst: unknown): void {
     const target = this.m.targetOf(dst);
     if (target instanceof Collection) {
-      q.model(this.m.toHost(pk), target);
+      q.model(toSql(this.m, pk), target);
       return;
     }
     if (target instanceof RecordModel && q.info().from.length === 0) {
       q.from(target.tableName());
     }
-    q.andWhere(new HashExp({ id: this.m.toHost(pk) }));
+    q.andWhere(new HashExp({ id: toSql(this.m, pk) }));
     this.#one(q, dst);
   }
 
@@ -330,7 +355,7 @@ export class QueryModels {
       items = q.all<Collection>(() => new Collection()).map((c) => this.m.toVm(c));
     } else if (this.isDynamicModel(model)) {
       items = q.all<Row>().map((row) => {
-        const item = this.#copyModel(model as object);
+        const item = this.#newElement(model as object);
         this.#fill(item, row);
         return item;
       });
@@ -348,20 +373,38 @@ export class QueryModels {
 
     const array = dst as unknown[];
     const model = this.modelOf(dst);
-    const field = { kind: kindOf(model), nullable: false, name: "" };
-    const items = q.column<unknown>().map((v) => scanValue(v, field, "", 0, this.m));
+    const field = this.#scalarField(model) ?? { kind: kindOf(model), nullable: false, name: "" };
+    const items = q
+      .column<unknown>()
+      .map((v) => pointerTo(this.m, scanValue(v, field, "", 0, this.m, undefined), field));
 
     replaceItems(array, items);
+  }
+
+  // the field of an arrayOf() of a primitive or of a nullable shape value
+  #scalarField(model: unknown): ShapeField | undefined {
+    const target = this.m.targetOf(model);
+    if (target instanceof NullShape) {
+      return { kind: target.kind, nullable: true, name: "" };
+    }
+    return typeof model !== "object" || model === null
+      ? { kind: kindOf(model), nullable: false, name: "" }
+      : undefined;
   }
 
   #shapeOf(model: unknown): Map<string, ShapeField> | undefined {
     return typeof model === "object" && model !== null ? this.#shapes.get(model) : undefined;
   }
 
-  #copyModel(model: object): DynamicModel {
-    const copy = this.m.vm.object();
-    Object.assign(copy, model);
-    return this.#seal(copy, this.#shapeOf(model) as Map<string, ShapeField>);
+  // A slice's new element: the Go zero value of the model's type, not a
+  // copy of the shape's values.
+  #newElement(model: object): DynamicModel {
+    const fields = this.#shapeOf(model) as Map<string, ShapeField>;
+    const element = this.m.vm.object();
+    for (const field of fields.values()) {
+      element[field.name] = zeroOf(this.m, field);
+    }
+    return this.#seal(element, fields);
   }
 
   // scans a row into a model, by the model's shape
@@ -374,7 +417,8 @@ export class QueryModels {
     for (const [i, [column, value]] of Object.entries(row).entries()) {
       const field = shape.get(column);
       if (field !== undefined) {
-        (dst as DynamicModel)[field.name] = scanValue(value, field, column, i, this.m);
+        const model = dst as DynamicModel;
+        model[field.name] = scanValue(value, field, column, i, this.m, model[field.name]);
       }
     }
   }
@@ -387,10 +431,11 @@ function replaceItems(array: unknown[], items: readonly unknown[]): void {
   }
 }
 
-// goja's assignment to a struct field of a DynamicModel
-function assignShape(value: unknown, field: ShapeField): unknown {
+// goja's assignment to a struct field of a DynamicModel. A value goja cannot
+// export to a JSONMap or a JSONArray leaves the field as it is.
+function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
   if (value === null || value === undefined) {
-    return field.nullable ? null : zeroOfKind(field.kind);
+    return field.nullable ? null : zeroOf(m, field);
   }
   switch (field.kind) {
     case "string":
@@ -401,13 +446,33 @@ function assignShape(value: unknown, field: ShapeField): unknown {
       return Number(value);
     case "bool":
       return Boolean(value);
+    case "array": {
+      if (m.targetOf(value) instanceof GoJSONArray) {
+        return value;
+      }
+      const host = m.toHost(value);
+      return Array.isArray(host) ? m.toVm(GoJSONArray.of(host)) : ignored;
+    }
+    case "object": {
+      if (m.targetOf(value) instanceof GoJSONMap) {
+        return value;
+      }
+      if (typeof value !== "object" || m.targetOf(value) !== undefined) {
+        return ignored;
+      }
+      const host = m.toHost(value) as Record<string, unknown>;
+      return m.toVm(new GoJSONMap(Array.isArray(host) ? { ...host } : host));
+    }
     default:
       return value;
   }
 }
 
-function zeroOfKind(kind: ShapeKind): unknown {
-  switch (kind) {
+function zeroOf(m: Membrane, field: ShapeField): unknown {
+  if (field.nullable) {
+    return null;
+  }
+  switch (field.kind) {
     case "string":
       return "";
     case "bool":
@@ -415,9 +480,20 @@ function zeroOfKind(kind: ShapeKind): unknown {
     case "int":
     case "float":
       return 0;
-    default:
-      return null;
+    case "array":
+      return m.toVm(GoJSONArray.of([]));
+    case "object":
+      return m.toVm(new GoJSONMap());
+    case "go":
+      return field.zero?.() ?? null;
   }
+}
+
+// an element of a slice of pointers: goja wraps the pointer (GoPointer)
+function pointerTo(m: Membrane, value: unknown, field: ShapeField): unknown {
+  const scalar =
+    typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+  return field.nullable && scalar ? m.toVm(new GoPointer(value, field.kind === "float")) : value;
 }
 
 const goTypeOfKind: Readonly<Record<ShapeKind, string>> = {
@@ -427,6 +503,7 @@ const goTypeOfKind: Readonly<Record<ShapeKind, string>> = {
   bool: "bool",
   array: "types.JSONArray[interface {}]",
   object: "types.JSONMap[interface {}]",
+  go: "struct",
 };
 
 const jsonKindOf = (v: unknown): string => {
@@ -437,9 +514,15 @@ const jsonKindOf = (v: unknown): string => {
 };
 
 // json.Unmarshal of a value into a field of a DynamicModel
-function jsonShape(value: unknown, field: ShapeField, path: string): unknown {
+function jsonShape(
+  m: Membrane,
+  value: unknown,
+  field: ShapeField,
+  path: string,
+  current: unknown,
+): unknown {
   if (value === null) {
-    return field.nullable ? null : zeroOfKind(field.kind);
+    return zeroOf(m, field);
   }
   const fits = {
     string: typeof value === "string",
@@ -448,13 +531,33 @@ function jsonShape(value: unknown, field: ShapeField, path: string): unknown {
     bool: typeof value === "boolean",
     array: Array.isArray(value),
     object: jsonKindOf(value) === "object",
+    go: true,
   }[field.kind];
   if (!fits) {
     throw new Error(
       `json: cannot unmarshal JSON ${jsonKindOf(value)} into Go ${goTypeOfKind[field.kind]} within "${path}"`,
     );
   }
-  return value;
+  switch (field.kind) {
+    case "array": {
+      const array = GoJSONArray.of([]);
+      array.scan(JSON.stringify(value));
+      return m.toVm(array);
+    }
+    case "object": {
+      const map = goMapOf(m, current);
+      map.scan(JSON.stringify(value));
+      return m.toVm(map);
+    }
+    default:
+      return value;
+  }
+}
+
+// the map of a model's field: json.Unmarshal and Scan keep its members
+function goMapOf(m: Membrane, current: unknown): GoJSONMap {
+  const target = m.targetOf(current);
+  return target instanceof GoJSONMap ? target : new GoJSONMap();
 }
 
 function kindOf(value: unknown): ShapeKind {
@@ -477,6 +580,7 @@ function scanValue(
   column: string,
   index: number,
   m: Membrane,
+  current: unknown,
 ): unknown {
   const scanError = (reason: string): Error =>
     new Error(`sql: Scan error on column index ${index}, name ${goQuote(column)}: ${reason}`);
@@ -490,8 +594,10 @@ function scanValue(
     }
     switch (field.kind) {
       case "array":
-        return m.vm.array();
+        return m.toVm(GoJSONArray.of([]));
       case "object":
+        return m.toVm(goMapOf(m, current));
+      case "go":
         return m.vm.object();
       default:
         throw fail("NULL", field.kind);
@@ -519,11 +625,22 @@ function scanValue(
     }
     case "array":
       try {
-        return m.toVmJSON(scanJSONArray(value, anyType));
+        const array = GoJSONArray.of([]);
+        array.scan(value);
+        return m.toVm(array);
       } catch (err) {
         throw scanError((err as Error).message);
       }
     case "object":
+      try {
+        // a nullable field gets a new map, as Scan allocates the pointer
+        const map = field.nullable ? new GoJSONMap() : goMapOf(m, current);
+        map.scan(value);
+        return m.toVm(map);
+      } catch (err) {
+        throw scanError((err as Error).message);
+      }
+    case "go":
       try {
         return m.toVmJSON(scanJSONMap(value));
       } catch (err) {

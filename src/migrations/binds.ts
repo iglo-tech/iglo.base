@@ -89,6 +89,8 @@ import {
   goMethod,
   GoPointer,
   isField,
+  jsonArrayMethods,
+  jsonMapClass,
   type Method,
   mfaConfig,
   oauth2Config,
@@ -102,9 +104,11 @@ import {
   selectQueryMethods,
   settingsMethods,
   timeAdapter,
+  toGo,
   tokenConfig,
   txMethods,
 } from "@/migrations/go-class";
+import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
 import { type Adapter, Membrane, pass, toInteger } from "@/migrations/membrane";
 import { newRecord, Record as RecordModel } from "@/records/record-model";
@@ -149,7 +153,7 @@ import { randomStringByRegex } from "@/tools/security/random-by-regex";
 import { toStringE } from "@/tools/types/cast";
 import { DateTime, nowDateTime, parseDateTime } from "@/tools/types/datetime";
 import { GeoPoint } from "@/tools/types/geo-point";
-import { textToBytes } from "@/tools/types/go-json";
+import { bytesToText, stringType, textToBytes } from "@/tools/types/go-json";
 import { decodeValue } from "@/server/json-decode";
 import { type FieldType, structOf, unmarshalJSON } from "@/server/unmarshal-request-data";
 import { JSONRaw } from "@/tools/types/json-raw";
@@ -174,6 +178,16 @@ function recordClass(clock: Clock, blank: WeakSet<object>, models: QueryModels):
     fields: { id: "string" },
     methods: {
       ...recordMethods,
+      // a multiple value is a types.JSONArray[string]
+      dbExport: (record: RecordModel, _args, m) => {
+        const data = record.dbExport();
+        for (const [key, value] of Object.entries(data)) {
+          if (Array.isArray(value)) {
+            data[key] = GoJSONArray.of(value, stringType);
+          }
+        }
+        return m.toVm(data);
+      },
       // Go's zero Record has no collection
       collection: (record: RecordModel, _args, m) =>
         blank.has(record) ? null : m.toVm(record.collection()),
@@ -203,17 +217,18 @@ function isFieldsListValue(v: unknown): v is FieldsList | unknown[] {
   return v instanceof FieldsList || Array.isArray(v);
 }
 
-// `collection.fields = ...` gets a list or an array of fields; the empty
-// rawOptions of a collection that holds none reads as an empty byte slice
+// `collection.fields = ...` gets a list or an array of fields; rawOptions
+// is a types.JSONRaw, also when a migration assigns its bytes
 const collectionAdapter = classAdapter(collectionClass, {
-  get(target, key, m) {
-    const raw = (target as Collection).rawOptions as JSONRaw | undefined;
-    if (key === "rawOptions" && raw?.marshalJSON() === "null") {
-      return m.toVm(new Uint8Array());
-    }
-    return undefined;
-  },
   set(target, key, value, m) {
+    if (key === "rawOptions") {
+      const raw = m.toHost(value);
+      (target as Collection).rawOptions =
+        raw instanceof JSONRaw
+          ? raw
+          : new JSONRaw(bytesToText(m.toBytes(value) ?? new Uint8Array()));
+      return true;
+    }
     if (key !== "fields") {
       return pass;
     }
@@ -249,6 +264,28 @@ const fieldsListAdapter: Adapter = {
         },
       },
       list,
+    );
+  },
+};
+
+// a types.JSONArray: goja gives its elements and the methods of its type
+const jsonArrayAdapter: Adapter = {
+  create(target, m) {
+    const array = target as GoJSONArray;
+    return m.sliceView(
+      {
+        read: () => array.items,
+        write: (next) => {
+          array.items = next;
+        },
+        toGo: (item) =>
+          array.elem === stringType ? toGo(m, item, "string", null) : m.toHost(item),
+        methods: {
+          keys: Object.keys(jsonArrayMethods).toSorted(),
+          get: (key) => goMethod(m, array, key, jsonArrayMethods[key] as Method),
+        },
+      },
+      array,
     );
   },
 };
@@ -379,6 +416,8 @@ function adapters(
     [Query, queryAdapter],
     [AppBinding, appBindingAdapter],
     [FieldsList, fieldsListAdapter],
+    [GoJSONArray, jsonArrayAdapter],
+    [GoJSONMap, classAdapter(jsonMapClass)],
     [Settings, settingsAdapter],
     [Collection, collectionAdapter],
     [RecordModel, recordAdapter],
@@ -755,7 +794,9 @@ function bindCore(
       return m.toVm(record);
     }
     const record = newRecord(target);
-    if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+    // goja exports only a plain object as a map
+    const isMap = !Array.isArray(data) && !models.isDynamicModel(data);
+    if (typeof data === "object" && data !== null && isMap && m.targetOf(data) === undefined) {
       record.load(m.toHost(data) as Record<string, unknown>);
     }
     return m.toVm(record);
@@ -857,6 +898,11 @@ function unmarshalIgnoringErrors(data: unknown, decode: (raw: string) => void): 
 // over as a copy, so the file's own values never change: only a Go value
 // behind the binding (a model, or what arrayOf made) takes the data.
 function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unknown): void {
+  // JSON null leaves a destination as it is, whatever its type
+  if (raw.trim() === "null") {
+    return;
+  }
+
   const target = m.targetOf(dst);
 
   if (target instanceof DateTime) {
@@ -980,8 +1026,7 @@ function bindDbx(scope: Record<string, unknown>, m: Membrane): void {
     m,
     {
       exp: newExp,
-      hashExp: (data: Record<string, unknown> | null | undefined) =>
-        data === null || data === undefined ? null : new HashExp(data),
+      hashExp: (data: Record<string, unknown> | null) => (data === null ? null : new HashExp(data)),
       not,
       and,
       or,
@@ -997,21 +1042,21 @@ function bindDbx(scope: Record<string, unknown>, m: Membrane): void {
       notBetween,
     },
     {
-      exp: "s,...P",
-      hashExp: "a",
+      exp: "s,...D",
+      hashExp: "X",
       not: "E",
       and: "...E",
       or: "...E",
-      in: "s,...a",
-      notIn: "s,...a",
+      in: "s,...S",
+      notIn: "s,...S",
       like: "s,...s",
       orLike: "s,...s",
       notLike: "s,...s",
       orNotLike: "s,...s",
       exists: "E",
       notExists: "E",
-      between: "s,a,a",
-      notBetween: "s,a,a",
+      between: "s,S,S",
+      notBetween: "s,S,S",
     },
   );
 }

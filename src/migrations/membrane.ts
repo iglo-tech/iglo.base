@@ -25,6 +25,8 @@
 import vm from "node:vm";
 
 import { driverError } from "@/collections/driver-error";
+import { BoundValue, Float64 } from "@/db/dbx/query";
+import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
@@ -133,6 +135,12 @@ export class Membrane {
         if (v === null || this.#targets.has(v) || this.#bytes.has(v) || this.#slices.has(v)) {
           return v;
         }
+        if (v instanceof BoundValue) {
+          return this.toVm(v.go);
+        }
+        if (v instanceof Float64) {
+          return v.value;
+        }
         if (v instanceof Uint8Array && !Buffer.isBuffer(v)) {
           return this.#newBytes(v, "bytes");
         }
@@ -171,7 +179,11 @@ export class Membrane {
 
     const target = this.#targets.get(v);
     if (target !== undefined) {
-      return this.#unbox(target);
+      const host = this.#unbox(target);
+      if (host instanceof GoJSONArray) {
+        return [...host.items];
+      }
+      return host instanceof GoJSONMap ? host.data : host;
     }
 
     const bytes = this.#bytes.get(v);
@@ -281,6 +293,10 @@ export class Membrane {
         }
         if (typeof key === "string" && source.methods?.keys.includes(key) === true) {
           return source.methods.get(key);
+        }
+        // a Stringer prints with its String method
+        if ((key as unknown) === "toString" && source.methods?.keys.includes("string") === true) {
+          return source.methods.get("string");
         }
         return Reflect.get(t, key, receiver) as unknown;
       },

@@ -17,6 +17,8 @@
 //   E dbx.Expression    M core.Model    G core.Field
 //   P a map (nil is empty)    L []string    Q a filter, func(q) error
 //   a any
+//   S a value bound to SQL    D dbx.Params
+//   H a dbx.HashExp value     X a dbx.HashExp (nil stays nil)
 //
 // A missing argument is its Go zero value. A result ":J" is the []byte of a
 // marshalJSON, which the internal classes return as text.
@@ -35,10 +37,15 @@ import {
 } from "@/collections/collection-model-auth-options";
 import type { Field } from "@/fields/field";
 import { isExpression } from "@/db/dbx/expression";
+import { BoundValue, Float64 } from "@/db/dbx/query";
+import { GoJSONArray } from "@/migrations/json-values";
 import { type Adapter, type Membrane, toInteger } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { Settings } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
+import type { GoType as JSONElemType } from "@/tools/types/go-json";
+import { stringType } from "@/tools/types/go-json";
+import { localLocation, lookup, type Location, UTC } from "@/tools/types/go-zoneinfo";
 
 export type GoType =
   | "string"
@@ -48,7 +55,8 @@ export type GoType =
   | "any"
   | "datetime"
   | { ptr: GoType }
-  | { slice: GoType; methods?: Readonly<Record<string, Method>> }
+  // json: the slice is a types.JSONArray of that element
+  | { slice: GoType; json?: JSONElemType }
   | { struct: GoClass; make(): object };
 
 export type CustomMethod = (target: never, args: unknown[], m: Membrane) => unknown;
@@ -159,6 +167,14 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
     }
     case "P":
       return (v === undefined || v === null ? {} : m.toHost(v)) as object;
+    case "S":
+      return toSql(m, v);
+    case "H":
+      return hashValue(m, v);
+    case "D":
+      return sqlParams(m, v, (item) => toSql(m, item));
+    case "X":
+      return v === undefined || v === null ? null : sqlParams(m, v, (item) => hashValue(m, item));
     case "L": {
       const items = m.toHost(v);
       return Array.isArray(items) ? items.map((item) => convertArg(m, "s", item, i, false)) : [];
@@ -236,7 +252,10 @@ export function goMethod(
 // *string and *float64 fields: goja wraps the pointer, so a value is an
 // object that compares and prints as the value (`==`, never `===`).
 export class GoPointer {
-  constructor(readonly value: string | number | boolean) {}
+  constructor(
+    readonly value: string | number | boolean,
+    readonly float = false,
+  ) {}
 }
 
 export const pointerAdapter: Adapter = {
@@ -390,8 +409,118 @@ export const timeAdapter: Adapter = {
   keys: () => [],
 };
 
+// time.Time.String, which the SQLite driver stores
+function timeText(date: Date, location: Location): string {
+  const { name, offset } = lookup(location, Math.floor(date.getTime() / 1000));
+  const shifted = new Date(date.getTime() + offset * 1000).toISOString();
+  const [day = "", time = ""] = shifted.replace("Z", "").split("T");
+  const minutes = Math.abs(offset) / 60;
+  const zone = `${String(Math.trunc(minutes / 60)).padStart(2, "0")}${String(minutes % 60).padStart(2, "0")}`;
+  return `${day} ${time.replace(/\.?0+$/, "")} ${offset < 0 ? "-" : "+"}${zone} ${name}`;
+}
+
+function unsupportedType(go: unknown): string {
+  if (Array.isArray(go)) {
+    return "[]interface {}, a slice of interface";
+  }
+  if (typeof go === "function") {
+    return "func(goja.FunctionCall) goja.Value, a func";
+  }
+  if (go instanceof RecordModel) {
+    return "core.Record, a struct";
+  }
+  if (go instanceof Collection) {
+    return "core.Collection, a struct";
+  }
+  if (go instanceof Settings) {
+    return "core.Settings, a struct";
+  }
+  const name = (go as object).constructor.name;
+  return name === "Object" ? "map[string]interface {}, a map" : `core.${name}, a struct`;
+}
+
+function unsupported(go: unknown): BoundValue {
+  return new BoundValue(go, (position) => {
+    throw new Error(
+      `sql: converting argument $${position} type: unsupported type ${unsupportedType(go)}`,
+    );
+  });
+}
+
+// What goja exports and database/sql binds for a value of a migration file.
+// The value stays a param of its Go type, so params() still gives it.
+export function toSql(m: Membrane, v: unknown): unknown {
+  if (typeof v === "function") {
+    return unsupported(v);
+  }
+  // goja holds an integral number as an int64
+  if (typeof v === "number" && Number.isInteger(v) && !Number.isSafeInteger(v)) {
+    return Math.abs(v) < 2 ** 63 ? BigInt(v) : v;
+  }
+  if (typeof v !== "object" || v === null) {
+    return v ?? null;
+  }
+
+  const target = m.targetOf(v);
+  const go = target ?? m.toHost(v);
+
+  if (go instanceof Uint8Array || isExpression(go)) {
+    return go;
+  }
+  if (go instanceof GoPointer) {
+    return go.float ? new Float64(go.value as number) : new BoundValue(go, () => go.value);
+  }
+  if (go instanceof GoDuration) {
+    return new BoundValue(go, () => go.ns);
+  }
+  if (go instanceof GoFileMode) {
+    return new BoundValue(go, () => go.mode);
+  }
+  if (go instanceof Date) {
+    // goja exports a JS Date in the local zone
+    return new BoundValue(go, () => timeText(go, target === undefined ? localLocation() : UTC));
+  }
+  if (typeof (go as { value?: unknown }).value === "function") {
+    const valuer = go as { value(): string | Uint8Array | null };
+    return new BoundValue(go, () => valuer.value());
+  }
+  return unsupported(go);
+}
+
+// a value of a dbx.HashExp: a plain slice is an IN list, any other value a
+// single parameter (a JSONArray has a driver value, so it is one)
+function hashValue(m: Membrane, v: unknown): unknown {
+  const sql = toSql(m, v);
+  if (sql instanceof BoundValue && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
+    return Array.from(v as unknown[], (item) => toSql(m, item));
+  }
+  return sql;
+}
+
+// a map of values for SQL; a map goja holds as a Go value reads as its data
+function sqlParams(
+  m: Membrane,
+  v: unknown,
+  value: (item: unknown) => unknown,
+): Record<string, unknown> {
+  const params: Record<string, unknown> = {};
+  if (typeof v !== "object" || v === null) {
+    return params;
+  }
+  const source = (m.targetOf(v) === undefined ? v : m.toHost(v)) as Record<string, unknown>;
+  for (const key of Object.keys(source)) {
+    Object.defineProperty(params, key, {
+      value: value(source[key]),
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return params;
+}
+
 // Go's assignment to a struct field, as goja converts the value.
-function toGo(m: Membrane, value: unknown, type: GoType, current: unknown): unknown {
+export function toGo(m: Membrane, value: unknown, type: GoType, current: unknown): unknown {
   if (typeof type === "object") {
     if ("ptr" in type) {
       return value === undefined || value === null ? null : toGo(m, value, type.ptr, null);
@@ -452,21 +581,19 @@ function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknow
     if ("ptr" in type) {
       return value === null || value === undefined
         ? null
-        : m.toVm(new GoPointer(value as string | number | boolean));
+        : m.toVm(new GoPointer(value as string | number | boolean, type.ptr === "float"));
     }
     if ("slice" in type) {
+      if (type.json !== undefined) {
+        return m.toVm(new GoJSONArray(fields, name, type.json));
+      }
       const elem = type.slice;
-      const methods = type.methods ?? {};
       return m.sliceView({
         read: () => (fields[name] ?? []) as unknown[],
         write: (next) => {
           fields[name] = next;
         },
         toGo: (item) => toGo(m, item, elem, null),
-        methods: {
-          keys: Object.keys(methods),
-          get: (key) => goMethod(m, holder, key, methods[key] as Method),
-        },
       });
     }
   }
@@ -664,15 +791,8 @@ export const oauth2Config: GoClass = {
 
 const rule: GoType = { ptr: "string" };
 
-const indexes: GoType = {
-  slice: "string",
-  methods: {
-    marshalJSON: (target: Collection, _args, m) =>
-      m.toVm(new TextEncoder().encode(JSON.stringify(target.indexes))),
-    string: (target: Collection) => JSON.stringify(target.indexes),
-    value: (target: Collection) => JSON.stringify(target.indexes),
-  },
-};
+// types.JSONArray[string]
+const indexes: GoType = { slice: "string", json: stringType };
 
 // plain fields of core.Collection; `fields` is its FieldsList
 export const collectionClass: GoClass = {
@@ -778,7 +898,8 @@ function tuple(key: "prepareValue" | "driverValue", params: number): CustomMetho
     if (err !== null) {
       throw err;
     }
-    return m.toVm(value);
+    // a multiple value is a types.JSONArray[string]
+    return m.toVm(Array.isArray(value) ? GoJSONArray.of(value, stringType) : value);
   };
 }
 
@@ -892,6 +1013,20 @@ export const fieldClasses: Readonly<Record<string, GoClass>> = {
   geoPoint: fieldClass(required),
 };
 
+// types.JSONMap and types.JSONArray
+export const jsonMapClass: GoClass = {
+  json: true,
+  stringer: true,
+  methods: { get: "s", marshalJSON: ":J", scan: "a", set: "s,a", string: "", value: "" },
+};
+
+export const jsonArrayMethods: Readonly<Record<string, Method>> = {
+  marshalJSON: ":J",
+  scan: "a",
+  string: "",
+  value: "",
+};
+
 export const fieldsListMethods: Readonly<Record<string, Method>> = {
   add: "...G",
   addAt: "i,...G",
@@ -913,7 +1048,7 @@ export const fieldsListMethods: Readonly<Record<string, Method>> = {
 
 // the Query and SelectQuery executors are in binds-query.ts
 export const queryMethods: Readonly<Record<string, Method>> = {
-  bind: "P",
+  bind: "D",
   close: "",
   params: "",
   prepare: "",
@@ -924,13 +1059,13 @@ export const queryMethods: Readonly<Record<string, Method>> = {
 };
 
 export const selectQueryMethods: Readonly<Record<string, Method>> = {
-  andBind: "P",
+  andBind: "D",
   andGroupBy: "...s",
   andHaving: "E",
   andOrderBy: "...s",
   andSelect: "...s",
   andWhere: "E",
-  bind: "P",
+  bind: "D",
   build: "",
   distinct: "b",
   from: "...s",
@@ -976,7 +1111,7 @@ export const builderMethods: Readonly<Record<string, Method>> = {
   dropPrimaryKey: "s,s",
   dropTable: "s",
   generatePlaceholder: "i",
-  insert: "s,P",
+  insert: "s,D",
   model: "a",
   newQuery: "s",
   queryBuilder: "",
@@ -987,8 +1122,8 @@ export const builderMethods: Readonly<Record<string, Method>> = {
   renameTable: "s,s",
   select: "...s",
   truncateTable: "s",
-  update: "s,P,E",
-  upsert: "s,P,...s",
+  update: "s,D,E",
+  upsert: "s,D,...s",
 };
 
 export const dbMethods: Readonly<Record<string, Method>> = {
