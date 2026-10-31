@@ -2,20 +2,20 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-10-30
+Updated: 2026-10-31
 
-M3.7 (JavaScript migrations) active.
+M3.7 merged; no active task.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M3.7 | fix | [#43](https://github.com/iglo-tech/iglo.base/pull/43) ([brief](briefs/M3.7.md)) | 3 | First worker stalled, see For owner review. Rounds 1 and 2: nine and seven binding findings, fixed or moved to backlog. Round 3 (last) at `cc04b8b`: `check`, `test:reference` and `test:roundtrip:large` pass |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M3.7 | [#43](https://github.com/iglo-tech/iglo.base/pull/43) | 2026-10-31 (`165e1b2`) | Three review rounds, then a lead decision (fixers for rounds 1 and 2, lead fixed two of round 3's four findings at `6d31239`; [reasoning](https://github.com/iglo-tech/iglo.base/pull/43#issuecomment-6537011585)). First worker stalled on a prompt, one retry. `check` and `test:reference` pass at the head; `test:roundtrip:large` last passed at `cc04b8b`. `migrate down` into a system migration is listed in 04-api-compatibility.md |
 | M3.6 | [#42](https://github.com/iglo-tech/iglo.base/pull/42) | 2026-10-30 (`10c5fbe`) | Three review rounds, all on the suite's own comparison (lead fixed): Sol APPROVE at `dce0f00`. Upstream → iglo.base → upstream on the fixture and a fresh install in `test:reference`; generated data in `test:roundtrip:large` |
 | M3.3 | [#41](https://github.com/iglo-tech/iglo.base/pull/41) | 2026-10-30 (`166d812`) | Two review rounds: Sol APPROVE at `2dafecd` (lead: the generated Content-Type wins over an item's for rules, rollback tests read through HTTP). D28: handlers share one implementation behind `RecordIO`; `batch.timeout` is checked after each item, and a disconnect is not noticed during a batch (listed in 04-api-compatibility.md). Carried: rate limits (M4.8), S3 (M5.4); the timeout path has no differential case |
 | M2.6 | [#40](https://github.com/iglo-tech/iglo.base/pull/40) | 2026-10-30 (`413f9bf`) | Three review rounds, all on the fuzzer's own comparison and replay (fixer, then lead); round 3 repeated after host restarts. Sol APPROVE at `8b68a80`. Seeds 1001 and 2002: 100,000 cases each, 0 differences, no exclusions; no fix needed in `src/`. `bun run fuzz:filters` |
@@ -71,6 +71,9 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-30 | Batch (M3.3) | Item headers that are not `Content-Type` but normalize to the rule key `content_type` (`CONTENT_TYPE`, `content.type`): upstream accepts or refuses at random (Go map order); iglo.base always uses the generated value |
 | 2026-10-31 | Migrations (M3.7) | `rows().scanStruct()` into `Collection`, `Record` or a field, and `one()`/`all()` into a field constructor, fail with an error; upstream fills them |
 | 2026-10-31 | Migrations (M3.7) | Nullable `DynamicModel` members are primitives; upstream gives pointer wrappers, visible through `typeof` and `===` only |
+| 2026-10-31 | Migrations (M3.7) | `DynamicModel` shapes with Go values (DateTime, GeoPoint, duration, Date): query hydration throws, `unmarshal` gives plain values, new rows get null instead of a Go zero value, a Date shape is lost. Not fully safe: saving such a null can store different data. Needs a Go-typed shape, which no upstream pattern in the brief uses |
+| 2026-10-31 | Migrations (M3.7) | A `time.Time` SQL parameter keeps milliseconds only; upstream keeps nanoseconds |
+| 2026-10-31 | Migrations (M3.7) | Specialized `DynamicModel` defaults: a JSONRaw shape, Go pointer defaults, and `time.Time` JSON whole seconds differ from upstream |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -83,6 +86,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M3.7 merge): after three rounds without agreement the lead merged #43, moving Sol's round 3 findings 3 and 4 to the hardening backlog. Finding 3 is not fully safe under D26 (see its backlog row); accepted for the MVP. The run had reached its 4-hour limit, so the lock was released and the next run picks the next task.
 - 2026-10-30 (lead takeover, M3.7): the M3.7 worker stopped at 20:49 UTC on a permission prompt for its own `rm -rf … pb_migrations/*`, which nobody can answer, with no code written. A new lead took the lock at 21:17 UTC (previous lead's turn finished, 31 minutes after its heartbeat) and started the one retry on `task/M3.7-js-migrations`. `task_cancel` refused the old worker because it belongs to the old lead's thread, so it is still parked on the prompt, using nothing. If that prompt is approved later it resumes: cancel it rather than approving, and do not use its unpushed branch `task/M3.7-migrations` (still at `9caf3f7`, worktree `t3-c505296b`). Its `/tmp/m37` probe directory remains. The worker instructions now forbid `rm` with a glob, variable or substitution.
 - 2026-10-30 (M3.7 PR): the lead sent #43 to review with `test:reference` exiting 1, because its one failure at the head is the realtime cascade-order case in the hardening backlog since M5.1, outside M3.7's code. The runbook asks for a passing run, so this is a deliberate exception; the case still needs the real-client order check noted in the backlog.
 - 2026-10-30 (M3.7 brief correction): upstream applies all pending files in one transaction, not one per file (`core/migrations_runner.go` Up, confirmed on the binary); the brief is corrected.
