@@ -2,7 +2,9 @@
 //
 // The OnMailerRecord*Send hooks are not ported (D5): each function sends
 // its message directly. The mail client is the app's (app.newMailClient,
-// a new client from the current settings).
+// a new client from the current settings). The one system handler of those
+// hooks, registerSuperuserHooks' installer check, is in
+// sendRecordPasswordReset.
 
 import type { App } from "@/app/app";
 import {
@@ -23,6 +25,7 @@ import type { Message } from "@/mail/mailer";
 import { type OTP, saveOTP } from "@/records/otp-model";
 import { findOTPById } from "@/records/otp-query";
 import type { Record } from "@/records/record-model";
+import { CollectionNameSuperusers, DefaultInstallerEmail } from "@/records/record-model-superusers";
 import {
   newEmailChangeToken,
   newPasswordResetToken,
@@ -114,6 +117,14 @@ export async function sendRecordPasswordReset(app: App, authRecord: Record): Pro
     authRecord.collection().resetPasswordTemplate,
     new Map([[EmailPlaceholderToken, token]]),
   );
+
+  // prevent sending password reset emails to the installer address
+  if (
+    authRecord.collection().name === CollectionNameSuperusers &&
+    authRecord.email() === DefaultInstallerEmail
+  ) {
+    throw new Error("cannot reset the password for the installer superuser");
+  }
 
   await mailClient.send(newMessage(app, authRecord.email(), subject, body));
 }

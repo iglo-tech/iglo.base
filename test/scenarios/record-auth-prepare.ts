@@ -5,6 +5,7 @@
 // back the `_mfas` rows a scenario leaves.
 
 import { reloadCachedCollections } from "@/collections/collection-query";
+import { newAuthOrigin } from "@/records/auth-origin-model";
 import { MFAMethodOAuth2, MFAMethodOTP, MFAMethodPassword, newMFA } from "@/records/mfa-model";
 import { newOTP } from "@/records/otp-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
@@ -65,6 +66,25 @@ export function setAuthRecordField(
     });
 }
 
+// a record change saved twice, the second time with the old token key: the
+// change alone would refresh the key and invalidate the fixture's tokens
+// (record.SetTokenKey(oldTokenKey) + app.Save in upstream's tests)
+export function updateKeepingTokenKey(
+  collection: string,
+  email: string,
+  change: (record: ReturnType<typeof findAuthRecordByEmail>) => void,
+): (ctx: PrepareContext) => void {
+  return ({ dataDir }) =>
+    withApp(dataDir, (app) => {
+      const record = findAuthRecordByEmail(app, collection, email);
+      const oldTokenKey = record.tokenKey();
+      change(record);
+      saveRecordSync(app, record);
+      record.setTokenKey(oldTokenKey);
+      saveRecordSync(app, record);
+    });
+}
+
 // a dummy MFA of the auth record (core.NewMFA + app.Save)
 export function insertMFA(
   collection: string,
@@ -85,6 +105,23 @@ export function insertMFA(
         throw err;
       }
       saveRecordSync(app, mfa.record as NonNullable<typeof mfa.record>);
+    });
+}
+
+// an auth origin of the auth record (core.NewAuthOrigin + app.Save)
+export function insertAuthOrigin(
+  collection: string,
+  email: string,
+  fingerprint: string,
+): (ctx: PrepareContext) => void {
+  return ({ dataDir }) =>
+    withApp(dataDir, (app) => {
+      const user = findAuthRecordByEmail(app, collection, email);
+      const origin = newAuthOrigin(app);
+      origin.setCollectionRef(user.collection().id);
+      origin.setRecordRef(user.id);
+      origin.setFingerprint(fingerprint);
+      saveRecordSync(app, origin.record as NonNullable<typeof origin.record>);
     });
 }
 

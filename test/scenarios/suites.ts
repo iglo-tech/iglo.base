@@ -24,6 +24,18 @@ import {
   recordAuthWithPassword,
 } from "@test/scenarios/record-auth";
 import { recordAuthWithOTP, recordRequestOTP } from "@test/scenarios/record-auth-otp";
+import {
+  recordConfirmEmailChange,
+  recordRequestEmailChange,
+} from "@test/scenarios/record-auth-email-change";
+import {
+  recordConfirmPasswordReset,
+  recordRequestPasswordReset,
+} from "@test/scenarios/record-auth-password-reset";
+import {
+  recordConfirmVerification,
+  recordRequestVerification,
+} from "@test/scenarios/record-auth-verification";
 import { recordCrudList, recordCrudView } from "@test/scenarios/record-crud";
 import {
   recordCrudAuthOriginCreate,
@@ -91,6 +103,12 @@ export const suites: Suite[] = [
   recordAuthWithPassword,
   recordRequestOTP,
   recordAuthWithOTP,
+  recordRequestVerification,
+  recordConfirmVerification,
+  recordRequestPasswordReset,
+  recordConfirmPasswordReset,
+  recordRequestEmailChange,
+  recordConfirmEmailChange,
   recordCrudList,
   recordCrudView,
   recordCrudDelete,
