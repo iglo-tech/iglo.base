@@ -74,6 +74,26 @@ export function smtpToSink(): (ctx: PrepareContext) => void {
   };
 }
 
+// when a scenario's sink last got ready
+let sinkPreparedAt = 0;
+
+// smtpToSink for a scenario that checks with noMailSent
+export function smtpToEmptySink(): (ctx: PrepareContext) => void {
+  const toSink = smtpToSink();
+  return (ctx) => {
+    toSink(ctx);
+    sinkPreparedAt = Date.now();
+  };
+}
+
+// app.TestMailer.TotalSend() == 0, for the messages since smtpToEmptySink ran
+export function noMailSent(): void {
+  const total = sharedSmtpSink().messages.filter((m) => m.received >= sinkPreparedAt).length;
+  if (total !== 0) {
+    throw new Error(`expected zero emails, got ${total}`);
+  }
+}
+
 // AfterTestFunc of the test email scenarios: the sink received a message
 // for the address, recently, whose HTML has the template's text. Both
 // servers of a differential run share the sink, so this cannot tell their
