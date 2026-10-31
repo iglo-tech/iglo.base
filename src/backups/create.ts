@@ -8,7 +8,11 @@
 //
 // A file that is deleted during a backup is kept with a hard link in the
 // temp directory, so the delete takes no longer than a stat and a link; the
-// link is zipped at the end. Upstream copies the file into the zip before
+// link is zipped at the end. With pb_data/storage on a mount of its own no
+// link can be made, so an open descriptor keeps the file instead. Only past
+// maxHeldDescriptors of those is a file copied, on the main thread as the
+// delete is synchronous; that takes a mass delete in the middle of a backup,
+// and upstream's delete waits for the zip too. Upstream copies the file into the zip before
 // the delete goes on and stops listening once data.db is copied (step 3), so
 // a delete during step 6 fails its backup. Here the listening goes on until
 // the walk ends, and a file the walk has passed is left alone. Its
@@ -18,7 +22,7 @@
 // The OnBackupCreate hook is not ported (D5). A local backup with S3 enabled
 // fails before anything is written (newBackupsFilesystem, until M5.4).
 
-import { copyFileSync, linkSync, lstatSync, mkdirSync, rmSync } from "node:fs";
+import { closeSync, copyFileSync, linkSync, lstatSync, mkdirSync, openSync } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -59,6 +63,10 @@ export function generateBackupName(app: App, prefix: string): string {
   return `${prefix}${appName}_${time}.zip`;
 }
 
+// how many deleted files a backup keeps open; the rest of the process's
+// descriptors stay free for requests
+const maxHeldDescriptors = 256;
+
 // the order of two walk positions: by path segment, as the walk goes
 function comparePaths(a: string[], b: string[]): number {
   const n = Math.min(a.length, b.length);
@@ -80,8 +88,9 @@ class BackupTracker implements FilesystemWatcher {
   readonly #heldDir: string;
   // normalizePathExclude'd entries; a path is excluded with all below it
   readonly #excluded = new Set<string>();
-  // zip path -> its hard link in heldDir
-  readonly held = new Map<string, string>();
+  // zip path -> its hard link or copy in heldDir, or a descriptor open on it
+  readonly held = new Map<string, string | number>();
+  #heldDescriptors = 0;
   #position: string[] = [];
   #nextHeld = 0;
   #trackNewFiles = false;
@@ -153,12 +162,7 @@ class BackupTracker implements FilesystemWatcher {
       if (!lstatSync(localPath).isFile()) {
         return;
       }
-      try {
-        linkSync(localPath, heldPath);
-      } catch {
-        // pb_data/storage on a mount of its own
-        copyFileSync(localPath, heldPath);
-      }
+      this.held.set(zipPath, this.#keep(localPath, heldPath));
     } catch (err) {
       if ((err as { code?: string }).code !== "ENOENT") {
         this.#app.logger.warn(
@@ -171,7 +175,46 @@ class BackupTracker implements FilesystemWatcher {
 
     // mark that it was already taken care of
     this.exclude(zipPath);
-    this.held.set(zipPath, heldPath);
+  }
+
+  #keep(localPath: string, heldPath: string): string | number {
+    try {
+      linkSync(localPath, heldPath);
+      return heldPath;
+    } catch {
+      // pb_data/storage on a mount of its own
+    }
+    if (this.#heldDescriptors < maxHeldDescriptors) {
+      const fd = openSync(localPath, "r");
+      this.#heldDescriptors++;
+      return fd;
+    }
+    copyFileSync(localPath, heldPath);
+    return heldPath;
+  }
+
+  // The file is in the zip. Freeing a large deleted file takes a while, so
+  // a descriptor is handed back to close in the worker, and a link or copy
+  // stays until the held directory is removed, off this thread.
+  take(zipPath: string): number | undefined {
+    const held = this.held.get(zipPath);
+    this.held.delete(zipPath);
+    if (typeof held === "number") {
+      this.#heldDescriptors--;
+      return held;
+    }
+    return undefined;
+  }
+
+  // the backup failed
+  closeAll(): void {
+    for (const held of this.held.values()) {
+      if (typeof held === "number") {
+        closeSync(held);
+      }
+    }
+    this.held.clear();
+    this.#heldDescriptors = 0;
   }
 }
 
@@ -319,8 +362,13 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
     await copyDirToZip(app, worker, tracker, "");
 
     // the files deleted along the way
-    for (const [zipPath, heldPath] of tracker.held) {
-      await worker.call({ op: "zipAdd", localPath: heldPath, zipPath });
+    for (const [zipPath, held] of tracker.held) {
+      if (typeof held === "number") {
+        await worker.call({ op: "zipAddOpen", fd: held, zipPath });
+      } else {
+        await worker.call({ op: "zipAdd", localPath: held, zipPath });
+      }
+      await releaseHeld(worker, tracker, zipPath);
     }
 
     await worker.call({ op: "zipClose" });
@@ -331,7 +379,19 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
   } finally {
     app.filesystem.watch(null);
     worker.close();
+    tracker.closeAll();
     await rm(heldDir, { recursive: true, force: true });
+  }
+}
+
+async function releaseHeld(
+  worker: BackupWorker,
+  tracker: BackupTracker,
+  zipPath: string,
+): Promise<void> {
+  const fd = tracker.take(zipPath);
+  if (fd !== undefined) {
+    await worker.call({ op: "closeFd", fd });
   }
 }
 
@@ -377,16 +437,12 @@ async function copyDirToZip(
       await worker.call({ op: "zipAdd", localPath: join(app.dataDir, name), zipPath: name });
     } catch (err) {
       if (isNotExist(err)) {
-        continue; // the held link has it, if it was a tracked delete
+        continue; // it is held, if it was a tracked delete
       }
       throw err;
     }
 
     // deleted while the worker read it: the zip has it already
-    const heldPath = tracker.held.get(name);
-    if (heldPath !== undefined) {
-      tracker.held.delete(name);
-      rmSync(heldPath, { force: true });
-    }
+    await releaseHeld(worker, tracker, name);
   }
 }

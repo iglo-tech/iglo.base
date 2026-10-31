@@ -6,7 +6,7 @@
 // (package.json "build").
 
 import { Database } from "bun:sqlite";
-import { rmSync } from "node:fs";
+import { closeSync, rmSync } from "node:fs";
 
 import type { BackupRequest, BackupResponse } from "@/backups/worker-client";
 import { extract } from "@/tools/archive/extract";
@@ -69,6 +69,12 @@ async function handle(req: BackupRequest): Promise<boolean | undefined> {
       return undefined;
     case "zipAdd":
       return openZip().addFile(req.localPath, req.zipPath);
+    case "zipAddOpen":
+      openZip().addOpenFile(req.fd, req.zipPath);
+      return undefined;
+    case "closeFd":
+      closeSync(req.fd);
+      return undefined;
     case "zipClose":
       openZip().close();
       zipper = null;

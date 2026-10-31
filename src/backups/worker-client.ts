@@ -8,6 +8,8 @@ export type BackupRequest = { id: number } & (
   | { op: "checkpoint"; path: string }
   | { op: "zipOpen"; path: string }
   | { op: "zipAdd"; localPath: string; zipPath: string }
+  | { op: "zipAddOpen"; fd: number; zipPath: string }
+  | { op: "closeFd"; fd: number }
   | { op: "zipClose" }
   | { op: "zipAbort" }
   | { op: "extract"; src: string; dest: string }

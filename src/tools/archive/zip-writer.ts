@@ -156,6 +156,14 @@ export class ZipWriter {
     return true;
   }
 
+  // Adds the regular file open at fd, read from the start, as zipPath, with
+  // the mode and mod time of its fstat. It may have been deleted by now. The
+  // fd stays open.
+  addOpenFile(fd: number, zipPath: string): void {
+    const info = fstatSync(fd);
+    this.#addEntry(fd, zipPath, info.mode, info.mtime);
+  }
+
   #addEntry(fd: number, zipPath: string, mode: number, modified: Date): void {
     const name = encoder.encode(zipPath);
     const { date, time } = msDosTime(modified);

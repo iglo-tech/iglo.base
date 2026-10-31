@@ -9,9 +9,11 @@ import { Database } from "bun:sqlite";
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -236,6 +238,48 @@ describe("concurrency semantics", () => {
     await extract(join(backupsDir(app), "a.zip"), dir);
     expect(readFileSync(join(dir, "storage/col/rec/deleted.txt"), "utf8")).toBe("deleted");
   });
+
+  // /dev/shm and the test temp dir are separate mounts, so no hard link works
+  test.skipIf(!existsSync("/dev/shm"))(
+    "deleted files on another filesystem than the temp dir stay in the zip",
+    async () => {
+      const app = await open();
+      growDatabases(app);
+
+      const shm = mkdtempSync("/dev/shm/iglo-base-test-");
+      dirs.push(shm);
+      const temp = join(app.dataDir, ".pb_temp_to_delete");
+      rmSync(temp, { recursive: true, force: true });
+      symlinkSync(shm, temp);
+
+      // file and sidecar each: past the descriptors, so some are copies
+      const total = 200;
+      for (let i = 0; i < total; i++) {
+        addStorageFile(app, `col/rec/f${i}.txt`, `content ${i}`);
+      }
+      const openBefore = readdirSync("/proc/self/fd").length;
+
+      const backup = createBackup(app, "a.zip");
+      await until(() => existsSync(tempFile(app, "data.db")));
+      for (let i = 0; i < total; i++) {
+        deleteStorageFile(app, `col/rec/f${i}.txt`);
+      }
+      await backup;
+
+      expect(readdirSync("/proc/self/fd").length).toBeLessThanOrEqual(openBefore);
+      expect(readdirSync(shm)).toEqual([]);
+
+      const dir = tempDir();
+      dirs.push(dir);
+      await extract(join(backupsDir(app), "a.zip"), dir);
+      for (let i = 0; i < total; i++) {
+        expect(readFileSync(join(dir, `storage/col/rec/f${i}.txt`), "utf8")).toBe(`content ${i}`);
+      }
+      const names = zipNames(app, "a.zip");
+      expect(names.filter((n) => n.startsWith("storage/col/rec/")).length).toBe(total * 2);
+      expect(new Set(names).size).toBe(names.length);
+    },
+  );
 
   test("a file created from step 4 on is not in the zip, one created before is", async () => {
     const app = await open();
