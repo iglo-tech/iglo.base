@@ -7,7 +7,7 @@
 
 import type { Clock } from "@/app/clock";
 import type { Record } from "@/records/record-model";
-import { type MapClaims, newJWT } from "@/tools/security/jwt";
+import { JWTError, type MapClaims, newJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
 
 // Supported record token types
 export const TokenTypeAuth = "auth";
@@ -27,6 +27,20 @@ export const TokenClaimRefreshable = "refreshable";
 // Common token related errors
 export const ErrNotAuthRecord = new Error("not an auth collection record");
 export const ErrMissingSigningKey = new Error("missing or invalid signing key");
+
+// `claims, _ := security.ParseUnverifiedJWT(token)`: the claims parsed before
+// any failure (an expired token still gives all of them, a malformed one
+// none), for the callers that ignore the error.
+export function parseUnverifiedClaims(token: string, clock: Clock): MapClaims {
+  try {
+    return parseUnverifiedJWT(token, clock);
+  } catch (err) {
+    if (err instanceof JWTError) {
+      return err.claims;
+    }
+    throw err;
+  }
+}
 
 // NewStaticAuthToken generates and returns a new static record authentication token.
 //

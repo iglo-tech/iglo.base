@@ -1,16 +1,22 @@
 // Upstream: apis/record_auth.go (bindRecordAuthApi, findAuthCollection)
 //
-// The routes of this task are bound in upstream's order; the others keep
+// The routes are bound in upstream's order; the OAuth2 ones keep
 // a named slot. collectionPathRateLimit resolves the path collection
 // (a missing one is a 404 before any other middleware); its settings rate
 // limit rules are M4.8.
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
+import { recordConfirmEmailChange } from "@/apis/record-auth-email-change-confirm";
+import { recordRequestEmailChange } from "@/apis/record-auth-email-change-request";
 import { recordAuthImpersonate } from "@/apis/record-auth-impersonate";
 import { recordAuthMethods } from "@/apis/record-auth-methods";
 import { recordRequestOTP } from "@/apis/record-auth-otp-request";
+import { recordConfirmPasswordReset } from "@/apis/record-auth-password-reset-confirm";
+import { recordRequestPasswordReset } from "@/apis/record-auth-password-reset-request";
 import { recordAuthRefresh } from "@/apis/record-auth-refresh";
+import { recordConfirmVerification } from "@/apis/record-auth-verification-confirm";
+import { recordRequestVerification } from "@/apis/record-auth-verification-request";
 import { recordAuthWithOTP } from "@/apis/record-auth-with-otp";
 import { recordAuthWithPassword } from "@/apis/record-auth-with-password";
 import type { Collection } from "@/collections/collection-model";
@@ -45,9 +51,26 @@ export function bindRecordAuthApi(_app: App, rg: RouterGroup<RequestEvent>): voi
     .POST("/auth-with-otp", recordAuthWithOTP)
     .bind(collectionPathRateLimit("", "authWithOTP", "auth"));
 
-  // POST /request-password-reset, /confirm-password-reset,
-  // /request-verification, /confirm-verification, /request-email-change
-  // and /confirm-email-change: M4.3
+  sub
+    .POST("/request-password-reset", recordRequestPasswordReset)
+    .bind(collectionPathRateLimit("", "requestPasswordReset"));
+  sub
+    .POST("/confirm-password-reset", recordConfirmPasswordReset)
+    .bind(collectionPathRateLimit("", "confirmPasswordReset"));
+
+  sub
+    .POST("/request-verification", recordRequestVerification)
+    .bind(collectionPathRateLimit("", "requestVerification"));
+  sub
+    .POST("/confirm-verification", recordConfirmVerification)
+    .bind(collectionPathRateLimit("", "confirmVerification"));
+
+  sub
+    .POST("/request-email-change", recordRequestEmailChange)
+    .bind(collectionPathRateLimit("", "requestEmailChange"), requireSameCollectionContextAuth(""));
+  sub
+    .POST("/confirm-email-change", recordConfirmEmailChange)
+    .bind(collectionPathRateLimit("", "confirmEmailChange"));
 
   sub.POST("/impersonate/{id}", recordAuthImpersonate).bind(requireSuperuserAuth());
 }
