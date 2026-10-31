@@ -86,9 +86,11 @@ export abstract class BaseProvider implements TokenConfig {
   // Authorization header, after refreshing an expired token.
   async fetchWithToken(token: Token, url: string, init: RequestInit = {}): Promise<Response> {
     const current = await validToken(this, token);
-    const headers = new Headers(init.headers);
-    headers.set("Authorization", current.type() + " " + current.accessToken);
-    return fetchFollowingRedirects(url, { ...init, headers, signal: this.signal ?? null });
+    return fetchFollowingRedirects(
+      url,
+      { ...init, signal: this.signal ?? null },
+      current.type() + " " + current.accessToken,
+    );
   }
 
   // FetchRawUserInfo requests the OAuth user api response.

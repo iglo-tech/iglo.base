@@ -544,7 +544,7 @@ export function oauth2Cases(): Scenario[] {
       expectedContent: newUserContent,
     }),
     authScenario({
-      name: "a userinfo redirect to another host drops Authorization",
+      name: "a userinfo redirect to another host keeps Authorization (oauth2.Transport)",
       prepare: useProvider(
         { requireBearer: true, user: { sub: "moved_user" } },
         (collection, p) => {
@@ -553,8 +553,8 @@ export function oauth2Cases(): Scenario[] {
           });
         },
       ),
-      expectedStatus: 400,
-      expectedContent: [`"message":"Failed to fetch OAuth2 user."`],
+      expectedStatus: 200,
+      expectedContent: newUserContent,
     }),
     authScenario({
       name: "a 307 token redirect to another port keeps the method, body and Basic credentials",

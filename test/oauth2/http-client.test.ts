@@ -87,6 +87,12 @@ describe("fetchFollowingRedirects", () => {
     expect(seen.map((s) => s.authorization)).toEqual(["Bearer abc", null, null]);
   });
 
+  test("a transport Authorization goes to every host of the chain", async () => {
+    seen.length = 0;
+    await fetchFollowingRedirects(via(302, `${named}/end`), {}, "Bearer abc");
+    expect(seen.map((s) => s.authorization)).toEqual(["Bearer abc", "Bearer abc"]);
+  });
+
   test("a 3xx without a Location is the response", async () => {
     const res = await fetchFollowingRedirects(via(302, ""));
     expect(res.status).toBe(302);

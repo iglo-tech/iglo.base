@@ -5,6 +5,9 @@
 // fetch's own rules differ: fetch drops Authorization on any change of
 // origin, Go keeps it for the same host name on another port or scheme and
 // for its subdomains. Once dropped, it stays dropped for the rest of the chain.
+// `tokenAuthorization` is oauth2.Transport's header: the transport sets it on
+// every request of a chain, redirects to other hosts included, and is what
+// upstream's userinfo requests go through.
 
 const maxRedirects = 10;
 
@@ -24,6 +27,7 @@ function isDomainOrSubdomain(sub: string, parent: string): boolean {
 export async function fetchFollowingRedirects(
   rawURL: string,
   init: RequestInit = {},
+  tokenAuthorization?: string,
 ): Promise<Response> {
   const initial = new URL(rawURL);
   const headers = new Headers(init.headers);
@@ -33,6 +37,10 @@ export async function fetchFollowingRedirects(
   let stripped = false;
 
   for (let redirects = 0; ; redirects++) {
+    if (tokenAuthorization !== undefined) {
+      headers.set("Authorization", tokenAuthorization);
+    }
+
     const res = await fetch(url, { ...init, method, headers, body, redirect: "manual" });
 
     const location = res.headers.get("Location") ?? "";
