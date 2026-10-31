@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-10-31
 
-M4.5 merged; no active task.
+M4.6 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M4.6 | worker | `task/M4.6-oauth2-providers-1` | 0 | [Brief](briefs/M4.6.md). Includes the Apple client secret endpoint carried from M1.3 |
 
 ## Done
 
@@ -92,6 +93,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-10-31 (M4.6 pick): next in milestone order; M4.5, its only dependency, is merged. Haiku worker per the model table.
 - 2026-10-31 (lead takeover, M4.5): at 05:18 UTC the lead thread had no live run (its turn ended 04:29 UTC, a T3 Code restart followed at 05:00), so a new lead took the lock under step 2 and adopted the worker, whose `test:reference` was running. The old lead was not woken when the worker's turn ended at 05:08; if it wakes later, the lock holder decides and it must not start a reviewer. The worker's one failure so far is the `freePort()` race in the hardening backlog.
 - 2026-10-31 (M4.5 merge): the run reached its 4-hour limit, so the lock was released and the next run picks the next task (M4.6 in milestone order).
 - 2026-10-31 (M4.5, round 2): the lead's own round 1 redirect fix let a provider `Location: file:…` make Bun read a local file. Sol found it and it never reached `main`; provider requests now allow http and https only. Provider redirects keep upstream's behavior that the token's `Authorization` goes to every hop, other hosts included (`oauth2.Transport`).
