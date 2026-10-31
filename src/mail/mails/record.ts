@@ -221,7 +221,7 @@ function resolveEmailTemplate(
 }
 
 // html.EscapeString (Go's standard library): escapes only <, >, &, ' and "
-function escapeString(s: string): string {
+export function escapeString(s: string): string {
   return s.replace(/[<>&'"]/g, (c) => htmlEscapes[c] as string);
 }
 

@@ -57,7 +57,9 @@ Behavior copied from upstream's `CreateThumb`:
 ## Backups
 
 - `POST /api/backups` creates `<name>.zip` (default name generated from the `pb_backup_` prefix as upstream) with upstream's procedure: copy `data.db` and `auxiliary.db` with `VACUUM INTO`, then the rest of `pb_data`, excluding `backups/`, `.pb_temp_to_delete/` and files created after the backup started.
-- One backup or restore at a time, as upstream (409-style error otherwise).
+- One backup or restore at a time, as upstream (400 with upstream's "Try again later" error otherwise).
+- The VACUUM INTO copies, the compression and the zip reads and writes run in a worker of their own (`src/backups/backup-worker.ts`), started for each backup or restore. The walk over `pb_data` and the excluded list stay on the main thread, where file deletes and creates are synchronous, so what goes in the zip has no race between threads. A file deleted during a backup is kept with a hard link in the temp directory, or an open descriptor when `pb_data/storage` is on a mount of its own (a copy past 256 of them), and zipped at the end. This goes on until the walk ends, where upstream stops at step 3 and a delete during step 6 fails the backup. Measurements: `docs/perf/M5.3-backups.md`.
+- Restore extracts in the worker, refuses a zip whose `data.db` or `auxiliary.db` the app could not open before anything moves (upstream restarts on it and does not come back), moves the directories and restarts with `process.execve` (`app.restart`, `src/cli/serve.ts`: server stopped, `clearBootstrap`, execve). If execve fails, `pb_data` is reverted on closed databases and the same process bootstraps and serves again; upstream's server stays down and the process exits.
 - Storage: `pb_data/backups` or S3 (`backups.s3`).
 - Scheduled backups: `backups.cron` and `backups.cronMaxKeep`, as a built-in job.
 - Restore: download or open the zip, extract into a temp directory, check it contains `data.db`, swap it with `pb_data` (keeping the old one until the restart succeeds, as upstream), then re-execute the process.

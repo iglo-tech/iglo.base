@@ -103,7 +103,8 @@ export function New(dir: string, opts: Options = {}): Driver {
 
 // os.IsNotExist
 export function isNotExist(err: unknown): boolean {
-  return err === errNotExist || (err as { code?: string } | null)?.code === "ENOENT";
+  const e = err as { code?: string; cause?: { code?: string } } | null;
+  return err === errNotExist || e?.code === "ENOENT" || e?.cause?.code === "ENOENT";
 }
 
 function errorMessage(err: unknown): string {
@@ -499,7 +500,9 @@ export function goRemove(path: string): void {
       e = err;
     }
   }
-  throw e;
+  // the text of Go's *PathError
+  const description = /^[A-Z0-9]+: (.*?), \w+ '/.exec((e as Error).message)?.[1];
+  throw description === undefined ? e : new Error(`remove ${path}: ${description}`, { cause: e });
 }
 
 // the temporary file of a blob being written

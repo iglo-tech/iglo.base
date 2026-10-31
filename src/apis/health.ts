@@ -9,7 +9,7 @@ import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 
 // core.StoreKeyActiveBackup (core/backup.go): set while a backup is
-// created or restored (M5.3)
+// created or restored (src/backups)
 export const StoreKeyActiveBackup = "@activeBackup";
 
 // bindHealthApi registers the health api endpoint.
