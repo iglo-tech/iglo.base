@@ -10,7 +10,7 @@ M5.4a active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4a | review | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 1 | [Brief](briefs/M5.4a.md) |
+| M5.4a | fix | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 1 | [Brief](briefs/M5.4a.md) |
 
 ## Done
 
@@ -100,6 +100,10 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-01 | Backups (M5.3) | Separate storage mount: small copies add up between delete yields, 188–255 ms stalls for 5,000 × 60 KiB. A small copy also loses its mod time in the zip listing; upstream's extract does not restore mod times |
 | 2026-11-01 | Backups (M5.3) | Stalls during a backup still reach 25–281 ms in Opus's eight runs (one 1.2 s stall did not recur), above the perf doc's 24–35 ms; upstream 17–37 ms. Host was shared, cause not proven. M7.1 should recheck |
 | 2026-11-01 | Backups tests (M5.3) | `test/differential/backups/backups.test.ts:301`: `keys()` assumes a list, but upstream answered `GET /api/backups` 400 once in 37,693 requests while pruning raced it. Passed 6 of 6 reruns; retry on a non-200 |
+| 2026-11-01 | S3 (M5.4a) | `Content-Type` missing on a HEAD gives a malformed `, application/octet-stream` where upstream sniffs; a list entry with no `<LastModified>` answers 400 where upstream answers 200; an unquoted root attribute gets another XML error text. S3 itself always sends these |
+| 2026-11-01 | S3 (M5.4a) | A client that leaves during a download: the spool keeps reading S3 to the end, then its file is removed. Upstream stops at the failed write |
+| 2026-11-01 | Uploads (M5.4a) | `POST /api/backups/upload` stalls the server (p99 78 ms, max 438 ms; upstream 18 and 73), with local storage too, so probably multipart intake (M3.2). M7.1 should look |
+| 2026-11-01 | Dashboard (M5.4a) | The vendored backups form cannot save with `cronMaxKeep` 0, as the browser blocks it on a hidden field; a fresh install has 3 |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
