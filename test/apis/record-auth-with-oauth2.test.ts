@@ -229,26 +229,26 @@ test("the record create and the link are all or nothing, with the avatar too", a
   }
 });
 
-describe("with S3 file storage", () => {
-  const recorderBody = new Response(null, { status: 200, headers: { ETag: '"0"' } });
+function useS3(respond: (req: RecordedRequest) => Response): S3Recorder {
+  const s3 = startS3Recorder(respond);
+  Object.assign(app.settings.S3, {
+    Enabled: true,
+    Bucket: "avatars",
+    Region: "us-east-1",
+    Endpoint: s3.endpoint,
+    AccessKey: "key",
+    Secret: "secret",
+    ForcePathStyle: true,
+  });
+  return s3;
+}
 
-  function useS3(respond: (req: RecordedRequest) => Response): S3Recorder {
-    const s3 = startS3Recorder(respond);
-    Object.assign(app.settings.S3, {
-      Enabled: true,
-      Bucket: "avatars",
-      Region: "us-east-1",
-      Endpoint: s3.endpoint,
-      AccessKey: "key",
-      Secret: "secret",
-      ForcePathStyle: true,
-    });
-    return s3;
-  }
+describe("with S3 file storage", () => {
+  const stored = (): Response => new Response(null, { headers: { ETag: '"0"' } });
 
   test("the avatar is stored before the transaction, under the new record's id", async () => {
     useProvider("oidc", mappedAvatar);
-    const s3 = useS3(() => recorderBody.clone());
+    const s3 = useS3(stored);
 
     const { status, json } = await signIn(options(oauth2User()), { provider: "oidc" });
     s3.stop();
@@ -264,7 +264,7 @@ describe("with S3 file storage", () => {
 
   test("a create that fails deletes the stored avatar", async () => {
     useProvider("oidc", mappedAvatar);
-    const s3 = useS3(() => recorderBody.clone());
+    const s3 = useS3(stored);
     const user = oauth2User();
     user.id = ""; // the link's providerId is required
 

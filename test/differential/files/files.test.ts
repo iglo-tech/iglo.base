@@ -111,6 +111,10 @@ function compareStorage(
 
 // -------------------------------------------------------------------
 
+function items(r: Res): Record<string, unknown>[] {
+  return (JSON.parse(r.text) as { items: Record<string, unknown>[] }).items;
+}
+
 function byId(x: Record<string, unknown>, y: Record<string, unknown>): number {
   return String(x.id).localeCompare(String(y.id));
 }
@@ -249,8 +253,6 @@ describe("record files", () => {
         if (a.status !== 200) {
           diffs.push(`${name}: list ${a.status}`);
         }
-        const items = (r: Res): Record<string, unknown>[] =>
-          (JSON.parse(r.text) as { items: Record<string, unknown>[] }).items;
         const key = (x: Record<string, unknown>): string =>
           pairing.backward.get(String(x.id)) ?? String(x.id);
         compareJSON(

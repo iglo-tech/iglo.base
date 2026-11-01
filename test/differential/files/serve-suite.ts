@@ -124,6 +124,137 @@ interface Stored {
   sizes?: string[];
 }
 
+async function send(
+  base: string,
+  path: string,
+  headers: Record<string, string> = {},
+  method = "GET",
+): Promise<Res> {
+  const res = await fetch(base + path, { method, headers });
+  return {
+    status: res.status,
+    headers: res.headers,
+    body: new Uint8Array(await res.arrayBuffer()),
+  };
+}
+
+async function both(
+  pair: Pair,
+  path: string,
+  headers: Record<string, string> = {},
+  method = "GET",
+): Promise<[Res, Res]> {
+  return Promise.all([
+    send(pair.upstream, path, headers, method),
+    send(pair.iglo, path, headers, method),
+  ]);
+}
+
+function boundaryOf(res: Res): string | undefined {
+  return /^multipart\/byteranges; boundary=(.+)$/.exec(res.headers.get("content-type") ?? "")?.[1];
+}
+
+function normalized(res: Res): { headers: Map<string, string | null>; body: Buffer } {
+  const boundary = boundaryOf(res);
+  const headers = new Map<string, string | null>();
+  for (const name of comparedHeaders) {
+    let value = res.headers.get(name);
+    if (boundary !== undefined && value !== null) {
+      value = value.replaceAll(boundary, "BOUNDARY");
+    }
+    headers.set(name, value);
+  }
+  let body = Buffer.from(res.body);
+  if (boundary !== undefined) {
+    body = Buffer.from(body.toString("latin1").replaceAll(boundary, "BOUNDARY"), "latin1");
+  }
+  return { headers, body };
+}
+
+// the differences between the responses (originals and errors)
+function differences(up: Res, ig: Res): string[] {
+  const out: string[] = [];
+  if (up.status !== ig.status) {
+    out.push(`status: upstream ${up.status}, iglo.base ${ig.status}`);
+  }
+  const u = normalized(up);
+  const i = normalized(ig);
+  for (const name of comparedHeaders) {
+    if (u.headers.get(name) !== i.headers.get(name)) {
+      out.push(`${name}: upstream ${u.headers.get(name)}, iglo.base ${i.headers.get(name)}`);
+    }
+  }
+  if (!u.body.equals(i.body)) {
+    out.push(
+      `body: upstream ${u.body.length} bytes ${JSON.stringify(u.body.subarray(0, 80).toString())}, iglo.base ${i.body.length} bytes ${JSON.stringify(i.body.subarray(0, 80).toString())}`,
+    );
+  }
+  return out;
+}
+
+async function same(
+  pair: Pair,
+  path: string,
+  headers: Record<string, string> = {},
+  method = "GET",
+) {
+  const [up, ig] = await both(pair, path, headers, method);
+  expect(differences(up, ig)).toEqual([]);
+  return up;
+}
+
+async function pixels(bytes: Uint8Array): Promise<Raw> {
+  return decodePng(await new Bun.Image(bytes).png({ compressionLevel: 0 }).bytes());
+}
+
+function mae(a: Raw, b: Raw): number[] {
+  const sums = [0, 0, 0, 0];
+  for (let i = 0; i < a.pix.length; i++) {
+    sums[i % 4] = (sums[i % 4] as number) + Math.abs((a.pix[i] as number) - (b.pix[i] as number));
+  }
+  const n = a.width * a.height;
+  return sums.map((s) => s / n);
+}
+
+function servedName(res: Res): string {
+  return /filename="([^"]*)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "";
+}
+
+const enc = (v: unknown): string => Buffer.from(JSON.stringify(v)).toString("base64url");
+
+// a file token signed as upstream signs them (HS256), with any claims
+function signToken(claims: Record<string, unknown>, key: string): string {
+  const unsigned = `${enc({ alg: "HS256", typ: "JWT" })}.${enc(claims)}`;
+  return `${unsigned}.${createHmac("sha256", key).update(unsigned).digest("base64url")}`;
+}
+
+// users/4q1xlclmfloku33's file token key: the record's tokenKey and the
+// collection's fileToken secret
+function usersFileKey(dataDir: string): string {
+  const db = new Database(join(dataDir, "data.db"), { readonly: true });
+  try {
+    const row = db.query("SELECT options FROM _collections WHERE id = '_pb_users_auth_'").get() as {
+      options: string | Uint8Array;
+    };
+    const options = JSON.parse(
+      typeof row.options === "string" ? row.options : new TextDecoder().decode(row.options),
+    ) as { fileToken: { secret: string } };
+    const user = db.query("SELECT tokenKey FROM users WHERE id = '4q1xlclmfloku33'").get() as {
+      tokenKey: string;
+    };
+    return user.tokenKey + options.fileToken.secret;
+  } finally {
+    db.close();
+  }
+}
+
+// a copy of a directory with its modification times and extended attributes
+function copyPreserving(source: string, target: string): void {
+  mkdirSync(dirname(target), { recursive: true });
+  const copy = Bun.spawnSync(["cp", "-a", source, target]);
+  expect(`${copy.exitCode} ${copy.stderr.toString()}`).toBe("0 ");
+}
+
 export function serveSuite(storage: "local" | "s3"): void {
   const roots: string[] = [];
   const running: { stop(): Promise<unknown> }[] = [];
@@ -146,104 +277,6 @@ export function serveSuite(storage: "local" | "s3"): void {
     const root = mkdtempSync(join(tmpdir(), "iglo-base-m52-"));
     roots.push(root);
     return root;
-  }
-
-  async function send(
-    base: string,
-    path: string,
-    headers: Record<string, string> = {},
-    method = "GET",
-  ): Promise<Res> {
-    const res = await fetch(base + path, { method, headers });
-    return {
-      status: res.status,
-      headers: res.headers,
-      body: new Uint8Array(await res.arrayBuffer()),
-    };
-  }
-
-  async function both(
-    pair: Pair,
-    path: string,
-    headers: Record<string, string> = {},
-    method = "GET",
-  ): Promise<[Res, Res]> {
-    return Promise.all([
-      send(pair.upstream, path, headers, method),
-      send(pair.iglo, path, headers, method),
-    ]);
-  }
-
-  function boundaryOf(res: Res): string | undefined {
-    return /^multipart\/byteranges; boundary=(.+)$/.exec(
-      res.headers.get("content-type") ?? "",
-    )?.[1];
-  }
-
-  function normalized(res: Res): { headers: Map<string, string | null>; body: Buffer } {
-    const boundary = boundaryOf(res);
-    const headers = new Map<string, string | null>();
-    for (const name of comparedHeaders) {
-      let value = res.headers.get(name);
-      if (boundary !== undefined && value !== null) {
-        value = value.replaceAll(boundary, "BOUNDARY");
-      }
-      headers.set(name, value);
-    }
-    let body = Buffer.from(res.body);
-    if (boundary !== undefined) {
-      body = Buffer.from(body.toString("latin1").replaceAll(boundary, "BOUNDARY"), "latin1");
-    }
-    return { headers, body };
-  }
-
-  // the differences between the responses (originals and errors)
-  function differences(up: Res, ig: Res): string[] {
-    const out: string[] = [];
-    if (up.status !== ig.status) {
-      out.push(`status: upstream ${up.status}, iglo.base ${ig.status}`);
-    }
-    const u = normalized(up);
-    const i = normalized(ig);
-    for (const name of comparedHeaders) {
-      if (u.headers.get(name) !== i.headers.get(name)) {
-        out.push(`${name}: upstream ${u.headers.get(name)}, iglo.base ${i.headers.get(name)}`);
-      }
-    }
-    if (!u.body.equals(i.body)) {
-      out.push(
-        `body: upstream ${u.body.length} bytes ${JSON.stringify(u.body.subarray(0, 80).toString())}, iglo.base ${i.body.length} bytes ${JSON.stringify(i.body.subarray(0, 80).toString())}`,
-      );
-    }
-    return out;
-  }
-
-  async function same(
-    pair: Pair,
-    path: string,
-    headers: Record<string, string> = {},
-    method = "GET",
-  ) {
-    const [up, ig] = await both(pair, path, headers, method);
-    expect(differences(up, ig)).toEqual([]);
-    return up;
-  }
-
-  async function pixels(bytes: Uint8Array): Promise<Raw> {
-    return decodePng(await new Bun.Image(bytes).png({ compressionLevel: 0 }).bytes());
-  }
-
-  function mae(a: Raw, b: Raw): number[] {
-    const sums = [0, 0, 0, 0];
-    for (let i = 0; i < a.pix.length; i++) {
-      sums[i % 4] = (sums[i % 4] as number) + Math.abs((a.pix[i] as number) - (b.pix[i] as number));
-    }
-    const n = a.width * a.height;
-    return sums.map((s) => s / n);
-  }
-
-  function servedName(res: Res): string {
-    return /filename="([^"]*)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "";
   }
 
   function thumbFile(store: string, recordId: string, name: string, size: string): string {
@@ -323,36 +356,6 @@ export function serveSuite(storage: "local" | "s3"): void {
     return "thumb";
   }
 
-  const enc = (v: unknown): string => Buffer.from(JSON.stringify(v)).toString("base64url");
-
-  // a file token signed as upstream signs them (HS256), with any claims
-  function signToken(claims: Record<string, unknown>, key: string): string {
-    const unsigned = `${enc({ alg: "HS256", typ: "JWT" })}.${enc(claims)}`;
-    return `${unsigned}.${createHmac("sha256", key).update(unsigned).digest("base64url")}`;
-  }
-
-  // users/4q1xlclmfloku33's file token key: the record's tokenKey and the
-  // collection's fileToken secret
-  function usersFileKey(dataDir: string): string {
-    const db = new Database(join(dataDir, "data.db"), { readonly: true });
-    try {
-      const row = db
-        .query("SELECT options FROM _collections WHERE id = '_pb_users_auth_'")
-        .get() as {
-        options: string | Uint8Array;
-      };
-      const options = JSON.parse(
-        typeof row.options === "string" ? row.options : new TextDecoder().decode(row.options),
-      ) as { fileToken: { secret: string } };
-      const user = db.query("SELECT tokenKey FROM users WHERE id = '4q1xlclmfloku33'").get() as {
-        tokenKey: string;
-      };
-      return user.tokenKey + options.fileToken.secret;
-    } finally {
-      db.close();
-    }
-  }
-
   // sets the bucket a server stores its files in
   async function useBucket(url: string, bucket: string): Promise<void> {
     const res = await fetch(url + "/api/settings", {
@@ -371,13 +374,6 @@ export function serveSuite(storage: "local" | "s3"): void {
       }),
     });
     expect(`${res.status} ${await res.text()}`).toStartWith("200");
-  }
-
-  // a copy of a directory with its modification times and extended attributes
-  function copyPreserving(source: string, target: string): void {
-    mkdirSync(dirname(target), { recursive: true });
-    const copy = Bun.spawnSync(["cp", "-a", source, target]);
-    expect(`${copy.exitCode} ${copy.stderr.toString()}`).toBe("0 ");
   }
 
   async function startPair(baseDir: string, env: Record<string, string> = {}): Promise<Pair> {

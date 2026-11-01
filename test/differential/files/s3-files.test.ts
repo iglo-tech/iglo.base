@@ -218,22 +218,6 @@ const textFile = (
   content: new TextEncoder().encode(content),
 });
 
-// creates a record on both servers under ref
-async function create(
-  collection: string,
-  ref: string,
-  parts: BodyPart[],
-): Promise<Record<string, unknown>> {
-  const [upRes] = await same(
-    "POST",
-    () => `/api/collections/${collection}/records`,
-    (side) => formBody(parts, side),
-  );
-  expect(`${upRes.status} ${upRes.text}`).toStartWith("200");
-  await sideRecord(ref, upRes, up);
-  return JSON.parse(upRes.text) as Record<string, unknown>;
-}
-
 async function sideRecord(ref: string, res: Res, target: Target): Promise<void> {
   target.side.records.set(ref, JSON.parse(res.text) as Record<string, unknown>);
 }
@@ -286,6 +270,47 @@ function withRefused<T>(rule: (key: string, method: string) => boolean, fn: () =
     up.proxy.refuse = null;
     ig.proxy.refuse = null;
   });
+}
+
+// the data and bucket of one server, served by the other kind
+async function otherServer(from: Target, kind: "upstream" | "iglo"): Promise<Server> {
+  const root = newRoot();
+  const dataDir = join(root, "pb_data");
+  copyDataDir(from.dataDir, dataDir);
+  return track(
+    kind === "upstream" ? await startUpstream({ dataDir }) : await startServer([], dataDir),
+  );
+}
+
+function zipEntries(zip: string): string[] {
+  const list = Bun.spawnSync(["unzip", "-Z1", zip]);
+  return list.stdout
+    .toString()
+    .split("\n")
+    .filter((n) => n !== "")
+    .toSorted();
+}
+
+const batch = (
+  requests: unknown[],
+  files: (side: Side) => BodyPart[],
+): ((side: Side) => { body: Uint8Array; contentType: string }) => {
+  return (side) =>
+    formBody([{ name: "@jsonPayload", value: JSON.stringify({ requests }) }, ...files(side)], side);
+};
+const post = (collection: string, body: unknown = {}): unknown => ({
+  method: "POST",
+  url: `/api/collections/${collection}/records`,
+  body,
+});
+
+const thumbPuts = (t: Target, name: string): number =>
+  t.proxy.requests.filter(
+    (r) => r.method === "PUT" && r.path.includes(`/thumbs_${name}/`) && r.query === "",
+  ).length;
+
+function methods(requests: { method: string }[]): string[] {
+  return requests.map((r) => r.method);
 }
 
 beforeAll(async () => {
@@ -369,22 +394,6 @@ describe("record files on S3", () => {
 });
 
 describe("batch", () => {
-  const batch = (
-    requests: unknown[],
-    files: (side: Side) => BodyPart[],
-  ): ((side: Side) => { body: Uint8Array; contentType: string }) => {
-    return (side) =>
-      formBody(
-        [{ name: "@jsonPayload", value: JSON.stringify({ requests }) }, ...files(side)],
-        side,
-      );
-  };
-  const post = (collection: string, body: unknown = {}): unknown => ({
-    method: "POST",
-    url: `/api/collections/${collection}/records`,
-    body,
-  });
-
   test("create, update with modifiers, replace and delete", async () => {
     await createBoth("fmulti", "b1", [
       textFile("docs", "first.txt"),
@@ -664,7 +673,6 @@ describe("failures around a save", () => {
       (side) => formBody([textFile("doc", "big.txt", "x".repeat(2000))], side),
     );
     expect(res.status).toBe(400);
-    const methods = (requests: { method: string }[]): string[] => requests.map((r) => r.method);
     expect(methods(ig.proxy.requests.slice(seen))).toEqual(
       methods(up.proxy.requests.slice(seenUp)),
     );
@@ -754,11 +762,6 @@ describe("failures around a save", () => {
 });
 
 describe("thumbs", () => {
-  const thumbPuts = (t: Target, name: string): number =>
-    t.proxy.requests.filter(
-      (r) => r.method === "PUT" && r.path.includes(`/thumbs_${name}/`) && r.query === "",
-    ).length;
-
   test("concurrent requests generate one thumb", async () => {
     await createBoth("fmulti", "th1", [{ name: "img", filename: "c.png", content: png }]);
     const results: Record<string, number> = {};
@@ -803,16 +806,6 @@ describe("thumbs", () => {
 });
 
 describe("the other server reads the objects", () => {
-  // the data and bucket of one server, served by the other kind
-  async function otherServer(from: Target, kind: "upstream" | "iglo"): Promise<Server> {
-    const root = newRoot();
-    const dataDir = join(root, "pb_data");
-    copyDataDir(from.dataDir, dataDir);
-    return track(
-      kind === "upstream" ? await startUpstream({ dataDir }) : await startServer([], dataDir),
-    );
-  }
-
   for (const [kind, name] of [
     ["upstream", "iglo.base's objects served by upstream"],
     ["iglo", "upstream's objects served by iglo.base"],
@@ -919,8 +912,11 @@ describe("the other server reads the objects", () => {
 
 describe("settings", () => {
   test("the storage test keeps working", async () => {
-    const body = (): { body: string; contentType: string } => jsonBody({ filesystem: "storage" });
-    const [res] = await same("POST", () => "/api/settings/test/s3", body);
+    const [res] = await same(
+      "POST",
+      () => "/api/settings/test/s3",
+      () => jsonBody({ filesystem: "storage" }),
+    );
     expect(res.status).toBe(204);
   });
 
@@ -958,15 +954,6 @@ describe("settings", () => {
 });
 
 describe("backups", () => {
-  function zipEntries(zip: string): string[] {
-    const list = Bun.spawnSync(["unzip", "-Z1", zip]);
-    return list.stdout
-      .toString()
-      .split("\n")
-      .filter((n) => n !== "")
-      .toSorted();
-  }
-
   test(
     "a backup leaves S3 objects out, and a restore keeps serving them",
     async () => {
