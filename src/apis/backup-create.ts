@@ -3,7 +3,6 @@
 import { StoreKeyActiveBackup } from "@/apis/health";
 import { firstApiError } from "@/apis/record-helpers";
 import type { RequestEvent } from "@/app/event-request";
-import { ErrBackupsS3NotSupported } from "@/app/filesystem";
 import { createBackup } from "@/backups/create";
 import { structOf } from "@/server/unmarshal-request-data";
 import { mustCompile } from "@/tools/regexp/regexp";
@@ -31,6 +30,9 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
     );
   }
 
+  // a backup, and S3 after it, take longer than the server's idle timeout
+  e.response.disableTimeout();
+
   const form: BackupCreateForm = { Name: "" };
 
   const bindErr = await e.bindBody(
@@ -44,7 +46,7 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
     );
   }
 
-  const validateErr = validateBackupCreateForm(e, form);
+  const validateErr = await validateBackupCreateForm(e, form);
   if (validateErr !== null) {
     return firstApiError(
       validateErr,
@@ -55,12 +57,7 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
   try {
     await createBackup(e.app, form.Name);
   } catch (err) {
-    return e.badRequestError(
-      err === ErrBackupsS3NotSupported
-        ? `Failed to create backup. Raw error: \n${ErrBackupsS3NotSupported.message}`
-        : "Failed to create backup.",
-      err,
-    );
+    return e.badRequestError("Failed to create backup.", err);
   }
 
   // we don't retrieve the generated backup file because it may not be
@@ -70,36 +67,39 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
 
 // -------------------------------------------------------------------
 
-function validateBackupCreateForm(e: RequestEvent, form: BackupCreateForm): Error | null {
+// The name check is the field's last rule; it runs apart as it may go over
+// the network.
+async function validateBackupCreateForm(
+  e: RequestEvent,
+  form: BackupCreateForm,
+): Promise<Error | null> {
+  const err = ValidateStruct(Field("name", form.Name, Length(1, 150), Match(backupNameRegex)));
+  if (err !== null || form.Name === "") {
+    return err;
+  }
+
+  const nameErr = await checkUniqueName(e, form.Name);
   return ValidateStruct(
     Field(
       "name",
       form.Name,
-      Length(1, 150),
-      Match(backupNameRegex),
-      By((value) => checkUniqueName(e, value)),
+      By(() => nameErr),
     ),
   );
 }
 
-function checkUniqueName(e: RequestEvent, value: unknown): Error | null {
-  const v = typeof value === "string" ? value : "";
-  if (v === "") {
-    return null; // nothing to check
-  }
-
+async function checkUniqueName(e: RequestEvent, v: string): Promise<Error | null> {
   let fsys;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
   } catch (err) {
-    // createBackup reports the S3 error (until M5.4)
-    return err === ErrBackupsS3NotSupported ? null : (err as Error);
+    return err as Error;
   }
 
   try {
     let exists: boolean;
     try {
-      exists = fsys.exists(v);
+      exists = await fsys.exists(v);
     } catch {
       exists = true;
     }

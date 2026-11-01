@@ -6,14 +6,13 @@
 // ported (no extension surface): their default actions run directly. The
 // handlers never run in a transaction, so execAfterSuccessTx writes the
 // response at once.
-//
-// Not here yet, failing after upstream's validation with a "Raw error" that
-// names the task: the S3 connection test of an enabled S3 config
-// (TestS3Filesystem.Submit past the "not enabled" check), M5.4, S3 storage.
+
+import { join } from "node:path";
 
 import type { App } from "@/app/app";
 import type { Clock } from "@/app/clock";
 import type { RequestEvent } from "@/app/event-request";
+import { LocalTempDirName } from "@/app/filesystem";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import {
   sendRecordAuthAlert,
@@ -31,7 +30,10 @@ import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
 import { type S3Config, Settings, settingsType } from "@/settings/settings-model";
 import { saveSettings } from "@/settings/settings-query";
+import { wrapf } from "@/tools/filesystem/blob/bucket";
+import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
 import { mustCompile } from "@/tools/regexp/regexp";
+import { pseudorandomString } from "@/tools/security/random";
 import { nowDateTime } from "@/tools/types/datetime";
 import { Errors, NewError } from "@/validation/error";
 import { In } from "@/validation/in";
@@ -125,7 +127,7 @@ function validateTestS3Filesystem(form: TestS3Filesystem): Error | null {
 }
 
 // Submit validates and performs a S3 filesystem connection test.
-function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Error | null {
+async function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Promise<Error | null> {
   const err = validateTestS3Filesystem(form);
   if (err !== null) {
     return err;
@@ -142,11 +144,48 @@ function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Error | null 
     return new Error("S3 storage filesystem is not enabled");
   }
 
-  // the upload and prefix delete test needs the S3 filesystem (M5.4)
-  return new Error("the S3 filesystem test is not available yet (M5.4)");
+  let fsys: S3System;
+  try {
+    fsys = NewS3(
+      s3Config.Bucket,
+      s3Config.Region,
+      s3Config.Endpoint,
+      s3Config.AccessKey,
+      s3Config.Secret,
+      s3Config.ForcePathStyle,
+      join(app.dataDir, LocalTempDirName),
+    );
+  } catch (initErr) {
+    return wrapf("failed to initialize the S3 filesystem: ", initErr);
+  }
+
+  try {
+    const testPrefix = "pb_settings_test_" + pseudorandomString(5);
+    const testFileKey = testPrefix + "/test.txt";
+
+    // try to upload a test file
+    try {
+      await fsys.upload(new TextEncoder().encode("test"), testFileKey);
+    } catch (uploadErr) {
+      return wrapf("failed to upload a test file: ", uploadErr);
+    }
+
+    // test prefix deletion (ensures that both bucket list and delete works)
+    const errs = await fsys.deletePrefix(testPrefix);
+    if (errs.length > 0) {
+      return wrapf("failed to delete a test file: ", errs[0]);
+    }
+
+    return null;
+  } finally {
+    fsys.close();
+  }
 }
 
 async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
+  // S3 may take longer than the server's idle timeout to answer
+  e.response.disableTimeout();
+
   const form: TestS3Filesystem = { Filesystem: "" };
 
   // load request
@@ -159,7 +198,7 @@ async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
   }
 
   // send
-  const err = submitTestS3Filesystem(e.app, form);
+  const err = await submitTestS3Filesystem(e.app, form);
   if (err !== null) {
     // form error
     if (err instanceof Errors) {

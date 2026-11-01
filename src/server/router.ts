@@ -115,6 +115,10 @@ export class ResponseWriter {
     if (this.#committed || this.#chunks.length > 0 || this.#body !== null) {
       return new Error("writeBody after other body writes");
     }
+    if (body instanceof Promise) {
+      // its failure reaches the server through finish()
+      body.catch(() => {});
+    }
     if (!(body instanceof Blob) || body.size > 0) {
       this.#body = body;
     }

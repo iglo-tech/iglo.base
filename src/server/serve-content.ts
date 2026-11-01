@@ -11,6 +11,10 @@
 // streamed to the client (a stored file, with its modification time). No
 // ETag is set by either caller, so the ETag preconditions only match "*".
 //
+// A remote stored file (RemoteFile) has no Blob: Bun sends a stream without
+// its Content-Length, so the bytes the response needs are spooled to a
+// temporary file first, in bounded pieces, and sent as that file's Blob.
+//
 // Content-Type, when the caller did not set it, comes from the file name's
 // extension: Go's built-in table, plus font/woff2, which upstream's binary
 // gets from the system mime.types file. Go sniffs the content of other
@@ -516,6 +520,15 @@ export interface ServedFile {
   spool(parts: (Uint8Array | HttpRange)[]): Promise<{ blob: Blob; remove: () => void }>;
 }
 
+// A stored file served from elsewhere (S3): only its size is known here, and
+// the parts of the response body are spooled whatever their size, before
+// the headers go out: serveContent's promise rejects when the spool fails,
+// with nothing sent, and its caller answers with an error.
+export interface RemoteFile {
+  size: number;
+  spool: ServedFile["spool"];
+}
+
 // The largest multipart/byteranges body that is put together in memory.
 // Bun sends a streamed body without its Content-Length, and a Blob built
 // from file Blobs loses their bytes, so a larger body is spooled to a
@@ -532,10 +545,10 @@ export function serveContent(
   w: ResponseWriter,
   r: HttpRequest,
   name: string,
-  file: Uint8Array | ServedFile,
+  file: Uint8Array | ServedFile | RemoteFile,
   modtime = 0n,
-): void {
-  const content = file instanceof Uint8Array ? file : file.blob;
+): void | Promise<void> {
+  const content = file instanceof Uint8Array ? file : "blob" in file ? file.blob : null;
   // setLastModified
   if (!isZeroTime(modtime)) {
     w.header.set("Last-Modified", formatHttpTime(modtime));
@@ -555,11 +568,19 @@ export function serveContent(
     w.header.set("Content-Type", ctype);
   }
 
-  const size = content instanceof Blob ? content.size : content.length;
+  let size: number;
+  if (content === null) {
+    size = (file as RemoteFile).size;
+  } else {
+    size = content instanceof Blob ? content.size : content.length;
+  }
 
   // handle Content-Range header.
   let sendSize = size;
-  let sendContent: Uint8Array | Blob | Promise<Blob> = content;
+  // the parts of the body to spool, when it is spooled
+  let spoolParts: (Uint8Array | HttpRange)[] | null =
+    content === null && size > 0 ? [{ start: 0, length: size }] : null;
+  let sendContent: Uint8Array | Blob | Promise<Blob> = content ?? new Blob();
   let ranges: HttpRange[];
   try {
     ranges = parseRange(rangeReq, size);
@@ -598,43 +619,42 @@ export function serveContent(
     // representation's."
     sendSize = first.length;
     code = 206;
-    sendContent = content.slice(first.start, first.start + first.length);
+    if (content === null) {
+      spoolParts = [first];
+    } else {
+      sendContent = content.slice(first.start, first.start + first.length);
+    }
     w.header.set("Content-Range", contentRange(first, size));
   } else if (ranges.length > 1) {
     const boundary = randomBoundary();
     const encoder = new TextEncoder();
-    const parts: (Uint8Array | Blob)[] = [];
+    const parts: (Uint8Array | HttpRange)[] = [];
     ranges.forEach((ra, i) => {
       parts.push(
         encoder.encode(
           `${i === 0 ? "" : "\r\n"}--${boundary}\r\nContent-Range: ${contentRange(ra, size)}\r\nContent-Type: ${ctype}\r\n\r\n`,
         ),
-        content.slice(ra.start, ra.start + ra.length),
+        ra,
       );
     });
     parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
-    sendSize = parts.reduce((n, p) => n + (p instanceof Blob ? p.size : p.length), 0);
+    sendSize = parts.reduce((n, p) => n + p.length, 0);
     if (file instanceof Uint8Array) {
-      sendContent = new Uint8Array(Buffer.concat(parts as Uint8Array[]));
-    } else if (sendSize <= maxBufferedRangesSize) {
       sendContent = new Uint8Array(
         Buffer.concat(
-          parts.map((p, i) => {
-            if (p instanceof Blob) {
-              const ra = ranges[(i - 1) / 2] as HttpRange;
-              return file.read(ra.start, ra.length);
-            }
-            return p;
-          }),
+          parts.map((p) =>
+            p instanceof Uint8Array ? p : file.subarray(p.start, p.start + p.length),
+          ),
         ),
       );
-    } else if (r.method !== "HEAD") {
-      sendContent = file
-        .spool(parts.map((p, i) => (p instanceof Blob ? (ranges[(i - 1) / 2] as HttpRange) : p)))
-        .then(({ blob, remove }) => {
-          w.afterResponse(remove);
-          return blob;
-        });
+    } else if (!("blob" in file) || sendSize > maxBufferedRangesSize) {
+      spoolParts = parts;
+    } else {
+      sendContent = new Uint8Array(
+        Buffer.concat(
+          parts.map((p) => (p instanceof Uint8Array ? p : file.read(p.start, p.length))),
+        ),
+      );
     }
     code = 206;
     w.header.set("Content-Type", `multipart/byteranges; boundary=${boundary}`);
@@ -651,9 +671,23 @@ export function serveContent(
     w.header.set("Content-Length", String(sendSize));
   }
 
+  if (r.method !== "HEAD" && spoolParts !== null && content === null) {
+    return (file as RemoteFile).spool(spoolParts).then(({ blob, remove }) => {
+      w.afterResponse(remove);
+      w.writeHeader(code);
+      w.writeBody(blob);
+    });
+  }
+
   w.writeHeader(code);
 
   if (r.method !== "HEAD") {
+    if (spoolParts !== null) {
+      sendContent = (file as ServedFile).spool(spoolParts).then(({ blob, remove }) => {
+        w.afterResponse(remove);
+        return blob;
+      });
+    }
     if (sendContent instanceof Uint8Array) {
       w.write(sendContent);
     } else {

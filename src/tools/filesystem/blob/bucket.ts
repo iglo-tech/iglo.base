@@ -33,6 +33,12 @@ export const ErrNotFound = new Error("resource not found");
 // ErrClosed: bucket or blob is closed
 export const ErrClosed = new Error("bucket or blob is closed");
 
+// io.EOF. wrapError leaves it as it is, and a list that fails with it ends
+// as a list does: upstream's S3 client gets it from the XML decoder on an
+// empty body, or on an error body with no XML in it, joined to the response
+// error.
+export const errEOF = new Error("EOF");
+
 // os.ErrNotExist
 export const errNotExist = new Error("file does not exist");
 
@@ -40,6 +46,43 @@ export const errNotExist = new Error("file does not exist");
 export function joinNotFound(err: unknown): Error {
   const e = err instanceof Error ? err : new Error(String(err));
   return new AggregateError([e, ErrNotFound], `${e.message}\n${ErrNotFound.message}`);
+}
+
+// errors.Join of the non-null errors, in that order
+export function joinErrors(...errs: unknown[]): Error {
+  const list = errs
+    .filter((e) => e !== null)
+    .map((e) => (e instanceof Error ? e : new Error(String(e))));
+  return new AggregateError(list, list.map((e) => e.message).join("\n"));
+}
+
+// fmt.Errorf(prefix + "%w", err)
+export function wrapf(prefix: string, err: unknown): Error {
+  const e = err instanceof Error ? err : new Error(String(err));
+  return new Error(prefix + e.message, { cause: e });
+}
+
+// errors.As(err, &target): err, its causes and joined errors
+export function errorsAs<T extends Error>(
+  err: unknown,
+  type: abstract new (...args: never[]) => T,
+): T | null {
+  if (err instanceof type) {
+    return err;
+  }
+  if (err instanceof AggregateError) {
+    for (const e of err.errors) {
+      const found = errorsAs(e, type);
+      if (found !== null) {
+        return found;
+      }
+    }
+    return null;
+  }
+  if (err instanceof Error && err.cause !== undefined) {
+    return errorsAs(err.cause, type);
+  }
+  return null;
 }
 
 // errors.Is(err, target): err, its causes and joined errors
@@ -73,7 +116,11 @@ function q(s: string): string {
 
 // wrapError wraps err; a not found error is joined with ErrNotFound by
 // the driver.
-function wrapError(b: Driver, err: unknown, key: string): unknown {
+export function wrapError(b: Pick<Driver, "normalizeError">, err: unknown, key: string): unknown {
+  // don't wrap or normalize EOF errors
+  if (errorsIs(err, errEOF)) {
+    return err;
+  }
   err = b.normalizeError(err);
   if (key !== "") {
     const e = err instanceof Error ? err : new Error(String(err));
@@ -279,43 +326,7 @@ export class Bucket {
   // NewWriter returns a Writer that writes to the blob stored at key. A
   // blob stored at key will be replaced after the Writer is closed.
   newWriter(key: string, opts: WriterOptions): Writer {
-    if (!validUTF8(key)) {
-      throw new Error(`NewWriter key must be a valid UTF-8 string: ${q(key)}`);
-    }
-
-    let md: Map<string, string> | null = null;
-    if (opts.metadata !== undefined && opts.metadata !== null && opts.metadata.size > 0) {
-      md = new Map();
-      for (const [k, v] of opts.metadata) {
-        if (k === "") {
-          throw new Error("WriterOptions.Metadata keys may not be empty strings");
-        }
-        if (!validUTF8(k)) {
-          throw new Error(`WriterOptions.Metadata keys must be valid UTF-8 strings: ${q(k)}`);
-        }
-        if (!validUTF8(v)) {
-          throw new Error(`WriterOptions.Metadata values must be valid UTF-8 strings: ${q(v)}`);
-        }
-        const lowerK = k.toLowerCase();
-        if (md.has(lowerK)) {
-          throw new Error(
-            `WriterOptions.Metadata has a duplicate case-insensitive metadata key: ${q(lowerK)}`,
-          );
-        }
-        md.set(lowerK, v);
-      }
-    }
-
-    this.checkOpen();
-
-    if (opts.contentType === "") {
-      throw new Error("blob: a content type is required (content type sniffing is not ported)");
-    }
-    const parsed = parseMediaType(opts.contentType);
-    if ("err" in parsed) {
-      throw parsed.err;
-    }
-    const ct = formatMediaType(parsed.mediaType, parsed.params);
+    const { contentType: ct, metadata: md } = checkWriterOptions(key, opts, () => this.checkOpen());
 
     let dw: DriverWriter;
     try {
@@ -397,6 +408,57 @@ export class Bucket {
     }
     this.drv.close();
   }
+}
+
+// the key check of a bucket call
+export function checkKey(call: string, key: string): void {
+  if (!validUTF8(key)) {
+    throw new Error(`${call} key must be a valid UTF-8 string: ${q(key)}`);
+  }
+}
+
+// NewWriter's checks of the key, metadata and content type; checkOpen runs
+// between them, as upstream's order has it
+export function checkWriterOptions(
+  key: string,
+  opts: WriterOptions,
+  checkOpen: () => void,
+): { contentType: string; metadata: Map<string, string> | null } {
+  checkKey("NewWriter", key);
+
+  let md: Map<string, string> | null = null;
+  if (opts.metadata !== undefined && opts.metadata !== null && opts.metadata.size > 0) {
+    md = new Map();
+    for (const [k, v] of opts.metadata) {
+      if (k === "") {
+        throw new Error("WriterOptions.Metadata keys may not be empty strings");
+      }
+      if (!validUTF8(k)) {
+        throw new Error(`WriterOptions.Metadata keys must be valid UTF-8 strings: ${q(k)}`);
+      }
+      if (!validUTF8(v)) {
+        throw new Error(`WriterOptions.Metadata values must be valid UTF-8 strings: ${q(v)}`);
+      }
+      const lowerK = k.toLowerCase();
+      if (md.has(lowerK)) {
+        throw new Error(
+          `WriterOptions.Metadata has a duplicate case-insensitive metadata key: ${q(lowerK)}`,
+        );
+      }
+      md.set(lowerK, v);
+    }
+  }
+
+  checkOpen();
+
+  if (opts.contentType === "") {
+    throw new Error("blob: a content type is required (content type sniffing is not ported)");
+  }
+  const parsed = parseMediaType(opts.contentType);
+  if ("err" in parsed) {
+    throw parsed.err;
+  }
+  return { contentType: formatMediaType(parsed.mediaType, parsed.params), metadata: md };
 }
 
 // -------------------------------------------------------------------

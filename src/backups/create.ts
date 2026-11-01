@@ -18,8 +18,7 @@
 // `.attrs` sidecar is kept with it, and a new file's sidecar is excluded with
 // it. Blob temporary files are never zipped.
 //
-// The OnBackupCreate hook is not ported (D5). A local backup with S3 enabled
-// fails before anything is written (newBackupsFilesystem, until M5.4).
+// The OnBackupCreate hook is not ported (D5).
 
 import {
   closeSync,
@@ -44,8 +43,9 @@ import {
 } from "@/app/filesystem";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
-import { NewFileFromPath } from "@/tools/filesystem/file";
-import type { FilesystemWatcher } from "@/tools/filesystem/filesystem";
+import { type File, NewFileFromPath } from "@/tools/filesystem/file";
+import type { FilesystemWatcher, System } from "@/tools/filesystem/filesystem";
+import { S3System } from "@/tools/filesystem/s3-system";
 import { snakecase } from "@/tools/inflector/inflector";
 import { pseudorandomString } from "@/tools/security/random";
 
@@ -305,10 +305,7 @@ export async function createBackup(app: App, name = ""): Promise<void> {
         file.originalName = backupName;
         file.name = backupName;
 
-        for (const _ of fsys.uploadFileSteps(file, file.name)) {
-          // give the event loop back between blocks
-          await new Promise<void>((resolve) => setImmediate(resolve));
-        }
+        await uploadBackupFile(fsys, file, file.name);
       } finally {
         await rm(tempZipPath, { force: true });
       }
@@ -317,6 +314,22 @@ export async function createBackup(app: App, name = ""): Promise<void> {
     }
   } finally {
     app.store.remove(StoreKeyActiveBackup);
+  }
+}
+
+// UploadFile on the backups filesystem; a local file is written in blocks with
+// the event loop given back between them.
+export async function uploadBackupFile(
+  fsys: System | S3System,
+  file: File,
+  fileKey: string,
+): Promise<void> {
+  if (fsys instanceof S3System) {
+    await fsys.uploadFile(file, fileKey);
+    return;
+  }
+  for (const _ of fsys.uploadFileSteps(file, fileKey)) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
   }
 }
 

@@ -22,6 +22,8 @@ export const testS3Credentials = {
 export interface Versitygw {
   endpoint: string;
   bucket: string;
+  // the directory of the posix backend, with one directory per bucket
+  posixRoot: string;
   // a Bun.S3Client for the test bucket
   client: S3Client;
   stop(): Promise<void>;
@@ -30,6 +32,8 @@ export interface Versitygw {
 export async function startVersitygw(
   bucket = "iglo-test",
   layout: Layout = defaultLayout,
+  // serves buckets as <bucket>.<virtualDomain> as well
+  virtualDomain?: string,
 ): Promise<Versitygw> {
   const binary = requireTool("versitygw", layout);
   const root = mkdtempSync(join(tmpdir(), "iglo-base-s3-"));
@@ -49,6 +53,7 @@ export async function startVersitygw(
       testS3Credentials.region,
       "--port",
       `127.0.0.1:${port}`,
+      ...(virtualDomain === undefined ? [] : ["--virtual-domain", virtualDomain]),
       "posix",
       posixRoot,
     ],
@@ -71,6 +76,7 @@ export async function startVersitygw(
   return {
     endpoint,
     bucket,
+    posixRoot,
     client,
     async stop() {
       try {

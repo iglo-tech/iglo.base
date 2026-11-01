@@ -28,7 +28,7 @@ Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM,
 - Bun ≥ 1.4, TypeScript, native ESM. Bun is the package manager (`bun.lock`).
 - `Bun.serve` for HTTP. No Express or other framework.
 - `bun:sqlite` as the only database. No other database, Redis or external queue.
-- `Bun.S3Client` for S3 storage and backups, `Bun.password` for bcrypt, Web Crypto for JWT and AES-GCM.
+- Upstream's S3 client ported on `fetch` for S3 storage and backups (`Bun.S3Client` cannot return the raw error bodies the API shows), `Bun.password` for bcrypt, Web Crypto for JWT and AES-GCM.
 - The admin dashboard is upstream's `ui/` (vanilla JS, Shablon, Vite), vendored with a small patch set (`docs/design/08-admin-ui.md`).
 - One compiled executable is the only release artifact until 1.0. Do not add Docker, compose, or parallel distribution paths. An official Docker image that wraps the same executable is planned after the MVP (D3).
 
