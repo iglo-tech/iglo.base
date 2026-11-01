@@ -166,7 +166,9 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M5.1 | Realtime: SSE broker, subscriptions, permission-aware broadcast after commit | `apis/realtime.go`, `tools/subscriptions` | M3.1, M0.8 | 19 realtime scenarios pass; 1,000 connections measured |
 | M5.2 | Files endpoint, file tokens, protected files, thumbnails | `apis/file.go`, thumbs in `tools/filesystem` | M3.2, M0.7 | 28 file scenarios pass |
 | M5.3 | Backups: create, list, download, delete, restore, upload, scheduled, local storage | `apis/backup*.go`, `core/backup*.go` | M3.2, M5.6 | 39 backup scenarios pass; backups restore across both servers |
-| M5.4 | S3 with `Bun.S3Client`: backups first (D15), then file storage; S3 test endpoint | `tools/filesystem/internal/s3blob`, `forms/test_s3_filesystem.go` | M5.3 | Backups and files in the S3 test server are read back by upstream |
+| M5.4 | Split on 2026-11-01 into M5.4a and M5.4b (backups first, D15; file storage needs its own transaction design) | — | — | M5.4b's acceptance |
+| M5.4a | S3 layer, S3 backups, S3 test endpoint | `tools/filesystem/internal/s3blob`, the S3 branches of `core/backup*.go`, `forms/test_s3_filesystem.go` | M5.3 | Backups in the S3 test server are read back and restored by upstream, and the reverse |
+| M5.4b | S3 file storage: uploads, deletes, serving and thumbs with `s3.enabled`. Files upload before the write transaction opens, as network calls never run inside one; a failed commit deletes them | `tools/filesystem` (S3), `core/field_file.go`, `apis/file.go` | M5.4a | Files in the S3 test server are read back by upstream, and the reverse |
 | M5.5 | Logs: buffered writer, API, stats, retention | `core/log*.go`, `tools/logger`, `apis/logs.go` | M0.4, M2.1 | 15 log scenarios pass |
 | M5.6 | Cron scheduler, built-in jobs, `/api/crons` | `tools/cron`, `apis/cron.go` | M0.3 | 8 cron scenarios pass, with an injected clock |
 | M5.7 | SQL console, `pb_public` static files, trusted proxy, gzip, CORS, body limits | `apis/sql.go`, `apis/serve.go` static, middlewares | M0.3, M2.3 | 11 SQL scenarios and the rest of `middlewares_test.go` pass |

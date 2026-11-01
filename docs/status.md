@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-01
 
-M5.3 merged; no active task.
+M5.4a active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M5.4a | worker | `task/M5.4a-s3-backups` | 0 | [Brief](briefs/M5.4a.md) |
 
 ## Done
 
@@ -111,6 +112,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-11-01 (plan change, M5.4 brief): M5.4 splits into M5.4a (S3 layer, backups, test endpoint; production uses this, D15) and M5.4b (file storage). Local file storage writes synchronously inside the write transaction, and network calls may not run there, so M5.4b uploads before the transaction opens and deletes the uploads if the commit fails. Opus worker per the model table.
+- 2026-11-01 (owner direction): **leads keep working until nothing can move without the owner.** The run limit in the runbook is gone, and the scheduled task says so. The M5.3 merge note's M5.5 was wrong: M5.4 is next in milestone order, and D15 says production backups go to S3.
 - 2026-11-01 (M5.3 merge): the run finished its one task, so the lock was released and the next run picks the next task (M5.5 is next in milestone order among tasks with merged dependencies; M5.4 and M5.8 are also unblocked). Round 3 was reviewed by Opus, which wrote nothing on this task; the approval lists its probes. One reviewer used `rm -f` with a variable inside its own temp directory, against its brief; nothing outside was touched. `.upstream` cache intact.
 - 2026-11-01 (owner direction): **Opus replaces Fable as reviewer**, to save credits. D29, work plan, runbook and scheduled task updated. High effort is the lead's choice: above the workers' medium, below xhigh. The Fable round 2 was cancelled before its verdict, so round 2 restarts at the same head.
 - 2026-11-01 (owner direction): **Anthropic models only**, which ends the Sol pause below. D29: the reviewer is Claude Fable 5.1 at xhigh (the model is the lead's choice, as it differs from the workers), and the reviewer instructions now require probes, because D25 found Claude reviewers too lenient. Work plan, runbook and scheduled task updated.

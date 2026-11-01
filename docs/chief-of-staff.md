@@ -1,6 +1,6 @@
 # Chief of staff runbook
 
-The lead role from the [work plan](design/12-work-plan.md), run by a scheduled agent every 45 minutes. Each run starts with no memory: this file, the work plan and [`status.md`](status.md) are the whole state. The owner is away and is never asked anything; decide, log, continue.
+The lead role from the [work plan](design/12-work-plan.md), run by a scheduled agent every hour. Each run starts with no memory: this file, the work plan and [`status.md`](status.md) are the whole state. The owner is away and is never asked anything; decide, log, continue.
 
 ## Each run
 
@@ -13,7 +13,7 @@ The lead role from the [work plan](design/12-work-plan.md), run by a scheduled a
 3. **Pause.** If `status.md` says "Paused until" a time in the future, release the lock and end the run.
 4. **Continue or start.** If `status.md` has an active task, continue it at its stage (the PR and its comments show where it is). Otherwise pick the next task from the work plan whose dependencies are all merged, following the critical path first. Start only one task at a time.
 5. **Drive the task** through the stages below in this run. After starting an agent, end your turn: its completion wakes this run. Never wait with `sleep`, loops, watchers or polling.
-6. **Finish.** When the task merges, update `status.md`, commit it to `main` (`status: <id> merged`) and push. Start the next task in the same run, unless more than about four hours have passed since this run started; then release the lock and end, and the next run continues.
+6. **Finish.** When the task merges, update `status.md`, commit it to `main` (`status: <id> merged`) and push. Start the next task in the same run. There is no limit on a run's length or on its number of tasks (owner direction, 2026-11-01): keep going until no task can move without the owner, then release the lock, say what is left and why in `status.md`, and end. Stopping is right only for a usage or rate limit (Rules → Pace) or when every remaining task is merged, blocked or waiting for the owner. A blocked task is no reason to stop while another task can run.
 
 ## Stages
 
