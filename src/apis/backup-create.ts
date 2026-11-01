@@ -30,6 +30,9 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
     );
   }
 
+  // a backup, and S3 after it, take longer than the server's idle timeout
+  e.response.disableTimeout();
+
   const form: BackupCreateForm = { Name: "" };
 
   const bindErr = await e.bindBody(

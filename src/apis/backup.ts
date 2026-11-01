@@ -46,6 +46,9 @@ function errorText(err: unknown): string {
 }
 
 async function backupsList(e: RequestEvent): Promise<Error | undefined> {
+  // S3 may take longer than the server's idle timeout to answer
+  e.response.disableTimeout();
+
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
@@ -124,6 +127,8 @@ async function backupDownload(e: RequestEvent): Promise<Error | undefined> {
 }
 
 async function backupDelete(e: RequestEvent): Promise<Error | undefined> {
+  e.response.disableTimeout();
+
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
@@ -154,6 +159,8 @@ async function backupDelete(e: RequestEvent): Promise<Error | undefined> {
 }
 
 async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
+  e.response.disableTimeout();
+
   if (e.app.store.has(StoreKeyActiveBackup)) {
     return e.badRequestError(
       "Try again later - another backup/restore process has already been started.",

@@ -58,7 +58,9 @@ function localName(name: string): string {
 }
 
 // The first root element of the document; throws errEOF when it has none.
-export function parseXml(raw: Uint8Array | string): XmlElement {
+// With expected, a root of another name fails as soon as its start tag is
+// read, as Unmarshal does, so what follows it may be anything (an HTML page).
+export function parseXml(raw: Uint8Array | string, expected?: string): XmlElement {
   const s = bytesToText(raw);
   const stack: (XmlElement & { rawName: string })[] = [];
   let pos = 0;
@@ -136,6 +138,9 @@ export function parseXml(raw: Uint8Array | string): XmlElement {
       pos += tag[0].length;
       const rawName = tag[1] as string;
       const element = { name: localName(rawName), rawName, text: "", children: [] };
+      if (stack.length === 0 && expected !== undefined && element.name !== expected) {
+        throw new Error(`expected element type <${expected}> but have <${element.name}>`);
+      }
       if (tag[2] === "/") {
         const parent = stack.at(-1);
         if (parent === undefined) {
@@ -151,11 +156,7 @@ export function parseXml(raw: Uint8Array | string): XmlElement {
 
 // xml.Unmarshal's check of a struct's XMLName
 export function parseRoot(raw: Uint8Array | string, expected: string): XmlElement {
-  const root = parseXml(raw);
-  if (root.name !== expected) {
-    throw new Error(`expected element type <${expected}> but have <${root.name}>`);
-  }
-  return root;
+  return parseXml(raw, expected);
 }
 
 // the text of the last child with the name ("" when there is none)

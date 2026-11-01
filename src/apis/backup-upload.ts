@@ -16,6 +16,9 @@ import { By } from "@/validation/validation";
 import { UploadedFileMimeType } from "@/validators/file";
 
 export async function backupUpload(e: RequestEvent): Promise<Error | undefined> {
+  // S3 may take longer than the server's idle timeout to answer
+  e.response.disableTimeout();
+
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();

@@ -18,7 +18,7 @@ What gets ported, by upstream path (non-test Go lines):
 |---|---|---|
 | `core` | about 22,400 | `src/collections`, `src/fields`, `src/records`, `src/resolver`, `src/auth`, `src/settings`, `src/backups`, `src/logs`, `src/db` |
 | `apis` | about 8,700 | `src/apis`, `src/middlewares`, `src/realtime`, `src/batch`, `src/server` |
-| `tools/filesystem` | about 5,100 | `src/files` (much smaller with `Bun.S3Client`) |
+| `tools/filesystem` | about 5,100 | `src/files`, `src/tools/filesystem` |
 | `tools/auth` | about 3,700 | `src/oauth2` |
 | `tools/router`, `tools/search`, `tools/cron`, `tools/subscriptions`, `tools/mailer`, `tools/security`, `tools/types`, others | about 7,000 | matching modules |
 | `migrations` | about 1,700 | `src/migrations`: the end-state schema plus `_migrations` rows; historical upgrade logic is not ported |

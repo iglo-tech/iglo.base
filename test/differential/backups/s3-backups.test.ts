@@ -448,7 +448,7 @@ interface Seen {
   body: string;
 }
 
-type Script = (req: Request, url: URL) => Response | null;
+type Script = (req: Request, url: URL) => Response | null | Promise<Response | null>;
 
 class ScriptedS3 {
   readonly seen: Seen[] = [];
@@ -493,7 +493,7 @@ class ScriptedS3 {
         : new TextDecoder().decode(bytes).replace(/&#34;[0-9a-f]+&#34;/g, "ETAG"),
     });
 
-    const scripted = this.script(req, url);
+    const scripted = await this.script(req, url);
     if (scripted !== null) {
       return scripted;
     }
@@ -639,6 +639,16 @@ function denyDownload(req: Request, url: URL): Response | null {
   return url.searchParams.has("list-type") ? null : new Response(xmlDenied, { status: 403 });
 }
 
+// nginx's stock page has an unclosed <hr>, a website's has unclosed <meta>
+const nginx502 =
+  "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n";
+const websitePage = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n</head>\n</html>\n';
+
+async function slowDenial(): Promise<Response> {
+  await Bun.sleep(13_000);
+  return new Response(xmlDenied, { status: 403 });
+}
+
 describe("a refusing S3", () => {
   const cases: [string, Script][] = [
     ["403 with an XML error", () => new Response(xmlDenied, { status: 403 })],
@@ -653,6 +663,8 @@ describe("a refusing S3", () => {
       () => new Response("<Error><Code>x</Error>", { status: 500 }),
     ],
     ["502 with another root", () => new Response("<html></html>", { status: 502 })],
+    ["502 from nginx in front of S3", () => new Response(nginx502, { status: 502 })],
+    ["200 with a website's page", () => new Response(websitePage)],
     [
       "200 with an empty list body",
       (req, url) =>
@@ -686,6 +698,34 @@ describe("a refusing S3", () => {
         await useBackupsS3(server, null);
       }
       expect(results[1]).toEqual(results[0]);
+    },
+    timeout,
+  );
+
+  test(
+    "a download refused after its HEAD passed",
+    async () => {
+      await bothAgainst(denyDownload, async (server) => {
+        const res = await download(server, "x.zip");
+        return { res: plain(res), temp: tempFiles(server) };
+      });
+    },
+    timeout,
+  );
+
+  test(
+    "an S3 slower than the server's idle timeout",
+    async () => {
+      await bothAgainst(slowDenial, async (server) => [
+        ...(await Promise.all([
+          call(server, "GET", "/api/backups").then(plain),
+          call(server, "DELETE", "/api/backups/a.zip").then(plain),
+          download(server, "a.zip").then(plain),
+          call(server, "POST", "/api/backups/a.zip/restore").then(plain),
+        ])),
+        await eventually(() => canBackup(server)),
+        plain(await call(server, "POST", "/api/backups")),
+      ]);
     },
     timeout,
   );

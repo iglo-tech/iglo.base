@@ -183,6 +183,9 @@ async function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Promise
 }
 
 async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
+  // S3 may take longer than the server's idle timeout to answer
+  e.response.disableTimeout();
+
   const form: TestS3Filesystem = { Filesystem: "" };
 
   // load request

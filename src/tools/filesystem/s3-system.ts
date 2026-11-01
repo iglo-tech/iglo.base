@@ -205,32 +205,34 @@ export class S3System {
   // If the file doesn't exist it throws an error for which isNotFound is
   // true.
   async serve(res: ResponseWriter, req: HttpRequest, fileKey: string, name: string): Promise<void> {
-    const attrs = await this.attributes(fileKey);
-
-    setServeHeaders(res, req, fileKey, name, attrs.contentType);
-
-    // the first byte waits for the spool
+    // S3 may take longer than the server's idle timeout to answer, and the
+    // first byte waits for the spool
     res.disableTimeout();
 
-    let spooled: Promise<unknown> = Promise.resolve();
-    serveContent(
-      res,
-      req,
-      name,
-      {
-        size: attrs.size,
-        spool: (parts) => {
-          const spool = this.#spool(fileKey, parts);
-          spooled = spool;
-          return spool;
-        },
-      },
-      attrs.modTime,
-    );
+    const attrs = await this.attributes(fileKey);
 
-    // the caller closes the filesystem once this returns; a failure ends the
-    // response (serveContent)
-    await spooled.catch(() => {});
+    const headers = new Headers(res.header);
+    setServeHeaders(res, req, fileKey, name, attrs.contentType);
+
+    try {
+      await serveContent(
+        res,
+        req,
+        name,
+        { size: attrs.size, spool: (parts) => this.#spool(fileKey, parts) },
+        attrs.modTime,
+      );
+    } catch (err) {
+      // nothing is sent yet: the caller answers with an API error, as for a
+      // refused GET upstream
+      for (const key of Array.from(res.header.keys())) {
+        res.header.delete(key);
+      }
+      for (const [key, value] of headers) {
+        res.header.append(key, value);
+      }
+      throw err;
+    }
   }
 
   // Writes the parts of a response body (bytes, or ranges of the stored

@@ -521,9 +521,9 @@ export interface ServedFile {
 }
 
 // A stored file served from elsewhere (S3): only its size is known here, and
-// the parts of the response body are spooled whatever their size. A spool
-// that fails fails the response before any byte is sent; upstream's stream
-// breaks off after the headers.
+// the parts of the response body are spooled whatever their size, before
+// the headers go out: serveContent's promise rejects when the spool fails,
+// with nothing sent, and its caller answers with an error.
 export interface RemoteFile {
   size: number;
   spool: ServedFile["spool"];
@@ -547,7 +547,7 @@ export function serveContent(
   name: string,
   file: Uint8Array | ServedFile | RemoteFile,
   modtime = 0n,
-): void {
+): void | Promise<void> {
   const content = file instanceof Uint8Array ? file : "blob" in file ? file.blob : null;
   // setLastModified
   if (!isZeroTime(modtime)) {
@@ -671,11 +671,19 @@ export function serveContent(
     w.header.set("Content-Length", String(sendSize));
   }
 
+  if (r.method !== "HEAD" && spoolParts !== null && content === null) {
+    return (file as RemoteFile).spool(spoolParts).then(({ blob, remove }) => {
+      w.afterResponse(remove);
+      w.writeHeader(code);
+      w.writeBody(blob);
+    });
+  }
+
   w.writeHeader(code);
 
   if (r.method !== "HEAD") {
     if (spoolParts !== null) {
-      sendContent = (file as ServedFile | RemoteFile).spool(spoolParts).then(({ blob, remove }) => {
+      sendContent = (file as ServedFile).spool(spoolParts).then(({ blob, remove }) => {
         w.afterResponse(remove);
         return blob;
       });
