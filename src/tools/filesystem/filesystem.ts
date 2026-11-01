@@ -617,15 +617,15 @@ export function parseThumbSize(thumbSize: string): ThumbSize {
   return { width, height, mode: (sizeParts[3] ?? "") as ThumbSize["mode"] };
 }
 
-// The bytes a thumb is made from, and the original's content type. open gives
+// The bytes a thumb is made from, and the original's content type. openReader gives
 // a new reader of the original and blob its content. The image's size is
 // checked on its header, read in bounded pieces, before the original is read.
 export async function readThumbOriginal(
-  open: () => ReadCloser & { readonly contentType: string; readonly size: number },
+  openReader: () => ReadCloser & { readonly contentType: string; readonly size: number },
   blob: Blob,
   maxPixels: number,
 ): Promise<{ original: Uint8Array; contentType: string }> {
-  const r = open();
+  const r = openReader();
   let contentType: string;
   let isGif: boolean;
   let isWebp: boolean;
@@ -644,7 +644,7 @@ export async function readThumbOriginal(
   if (isGif) {
     // only the first frame is decoded: read up to its end and close the
     // stream with a trailer, so an animated original is not read whole
-    const g = open();
+    const g = openReader();
     let end: number;
     try {
       end = gifFirstFrameLength(readerSource(g, g.size));
@@ -660,7 +660,7 @@ export async function readThumbOriginal(
   if (isWebp) {
     // an original without a VP8 or VP8L chunk (an animated WebP) fails as
     // upstream's decode does, before it is read whole
-    const w = open();
+    const w = openReader();
     try {
       webpCheckImageChunk(readerSource(w, w.size));
     } finally {

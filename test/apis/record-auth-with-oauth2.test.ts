@@ -243,9 +243,11 @@ function useS3(respond: (req: RecordedRequest) => Response): S3Recorder {
   return s3;
 }
 
-describe("with S3 file storage", () => {
-  const stored = (): Response => new Response(null, { headers: { ETag: '"0"' } });
+function stored(): Response {
+  return new Response(null, { headers: { ETag: '"0"' } });
+}
 
+describe("with S3 file storage", () => {
   test("the avatar is stored before the transaction, under the new record's id", async () => {
     useProvider("oidc", mappedAvatar);
     const s3 = useS3(stored);
