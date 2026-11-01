@@ -552,7 +552,7 @@ describe("batch", () => {
     await withRefused(
       (_key, method) => method === "DELETE",
       async () => {
-        await same(
+        const [res] = await same(
           "POST",
           () => "/api/batch",
           (side) =>
@@ -567,6 +567,7 @@ describe("batch", () => {
               () => [],
             )(side),
         );
+        expect(res.status).toBe(400);
       },
     );
     await settledBuckets();
@@ -718,11 +719,13 @@ describe("failures around a save", () => {
     await withRefused(
       (_key, method) => method === "DELETE",
       async () => {
-        await same(
+        // upstream reports the delete, though the update is committed
+        const [res] = await same(
           "PATCH",
           (side) => `/api/collections/fmulti/records/${recordId(side, "f3")}`,
           () => jsonBody({ docs: [] }),
         );
+        expect(res.status).toBe(400);
       },
     );
     await settledBuckets();
