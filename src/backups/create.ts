@@ -9,11 +9,10 @@
 // A file that is deleted during a backup is kept with a hard link in the
 // temp directory, so the delete takes no longer than a stat and a link; the
 // link is zipped at the end. With pb_data/storage on a mount of its own no
-// link can be made, so an open descriptor keeps the file instead. Only past
-// maxHeldDescriptors of those is a file copied, on the main thread as the
-// delete is synchronous; that takes a mass delete in the middle of a backup,
-// and upstream's delete waits for the zip too. Upstream copies the file into the zip before
-// the delete goes on and stops listening once data.db is copied (step 3), so
+// link can be made: a small file (sidecars, thumbs) is copied, which is as
+// short as the delete, and an open descriptor keeps a larger one, as the delete
+// is synchronous and must not read a whole file. Upstream copies the file
+// into the zip before the delete goes on and stops listening once data.db is copied (step 3), so
 // a delete during step 6 fails its backup. Here the listening goes on until
 // the walk ends, and a file the walk has passed is left alone. Its
 // `.attrs` sidecar is kept with it, and a new file's sidecar is excluded with
@@ -22,7 +21,15 @@
 // The OnBackupCreate hook is not ported (D5). A local backup with S3 enabled
 // fails before anything is written (newBackupsFilesystem, until M5.4).
 
-import { closeSync, copyFileSync, linkSync, lstatSync, mkdirSync, openSync } from "node:fs";
+import {
+  closeSync,
+  copyFileSync,
+  linkSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+} from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -63,9 +70,19 @@ export function generateBackupName(app: App, prefix: string): string {
   return `${prefix}${appName}_${time}.zip`;
 }
 
-// how many deleted files a backup keeps open; the rest of the process's
-// descriptors stay free for requests
-const maxHeldDescriptors = 256;
+// up to this size a deleted file is copied, where no hard link can be made
+const maxHeldCopySize = 64 * 1024;
+
+// How many deleted files a backup keeps open: half of the soft limit on open
+// files, so that the rest stay free for requests.
+function maxHeldDescriptors(): number {
+  try {
+    const limit = /^Max open files\s+(\d+)/m.exec(readFileSync("/proc/self/limits", "utf8"));
+    return Math.floor(Number(limit?.[1] ?? 512) / 2);
+  } catch {
+    return 256;
+  }
+}
 
 // the order of two walk positions: by path segment, as the walk goes
 function comparePaths(a: string[], b: string[]): number {
@@ -91,6 +108,7 @@ class BackupTracker implements FilesystemWatcher {
   // zip path -> its hard link or copy in heldDir, or a descriptor open on it
   readonly held = new Map<string, string | number>();
   #heldDescriptors = 0;
+  readonly #maxDescriptors = maxHeldDescriptors();
   #position: string[] = [];
   #nextHeld = 0;
   #trackNewFiles = false;
@@ -159,10 +177,11 @@ class BackupTracker implements FilesystemWatcher {
     const heldPath = join(this.#heldDir, String(this.#nextHeld++));
     try {
       // it is ok to ignore directories
-      if (!lstatSync(localPath).isFile()) {
+      const info = lstatSync(localPath);
+      if (!info.isFile()) {
         return;
       }
-      this.held.set(zipPath, this.#keep(localPath, heldPath));
+      this.held.set(zipPath, this.#keep(localPath, heldPath, info.size));
     } catch (err) {
       if ((err as { code?: string }).code !== "ENOENT") {
         this.#app.logger.warn(
@@ -177,20 +196,25 @@ class BackupTracker implements FilesystemWatcher {
     this.exclude(zipPath);
   }
 
-  #keep(localPath: string, heldPath: string): string | number {
+  #keep(localPath: string, heldPath: string, size: number): string | number {
     try {
       linkSync(localPath, heldPath);
       return heldPath;
     } catch {
       // pb_data/storage on a mount of its own
     }
-    if (this.#heldDescriptors < maxHeldDescriptors) {
-      const fd = openSync(localPath, "r");
-      this.#heldDescriptors++;
-      return fd;
+    if (size <= maxHeldCopySize) {
+      copyFileSync(localPath, heldPath);
+      return heldPath;
     }
-    copyFileSync(localPath, heldPath);
-    return heldPath;
+    // past the limit the file is left out with a warning; upstream's backup
+    // fails when a file goes away in the walk
+    if (this.#heldDescriptors >= this.#maxDescriptors) {
+      throw new Error("too many deleted files are held open");
+    }
+    const fd = openSync(localPath, "r");
+    this.#heldDescriptors++;
+    return fd;
   }
 
   // The file is in the zip. Freeing a large deleted file takes a while, so

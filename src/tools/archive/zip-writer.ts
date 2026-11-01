@@ -12,7 +12,15 @@
 //
 // Synchronous: it runs in the backup worker (src/backups/backup-worker.ts).
 
-import { closeSync, fstatSync, lstatSync, openSync, readSync, writeSync } from "node:fs";
+import {
+  closeSync,
+  fdatasyncSync,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readSync,
+  writeSync,
+} from "node:fs";
 import { constants, deflateRawSync } from "node:zlib";
 
 const fileHeaderSignature = 0x04034b50;
@@ -26,6 +34,10 @@ const zipVersion20 = 20;
 const zipVersion45 = 45;
 const creatorUnix = 3;
 const methodDeflate = 8;
+// A large zip left to the kernel's writeback stalls whatever commits to the
+// same filesystem, the database's write on the main thread included, so it
+// is synced as it goes. Measured in docs/perf/M5.3-backups.md.
+const syncEvery = 32 * 1024 * 1024;
 const flagDataDescriptor = 0x8;
 const flagUTF8 = 0x800;
 
@@ -125,6 +137,7 @@ export class ZipWriter {
   #offset = 0;
   readonly #dir: DirEntry[] = [];
   #closed = false;
+  #dirty = 0;
 
   // os.Create
   constructor(path: string) {
@@ -366,6 +379,11 @@ export class ZipWriter {
   #writeAll(p: Uint8Array): void {
     for (let off = 0; off < p.length;) {
       off += writeSync(this.#fd, p, off, p.length - off);
+    }
+    this.#dirty += p.length;
+    if (this.#dirty >= syncEvery) {
+      fdatasyncSync(this.#fd);
+      this.#dirty = 0;
     }
   }
 }

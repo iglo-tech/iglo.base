@@ -252,7 +252,9 @@ describe("concurrency semantics", () => {
       rmSync(temp, { recursive: true, force: true });
       symlinkSync(shm, temp);
 
-      // file and sidecar each: past the descriptors, so some are copies
+      // small files are copied, a larger one is held by a descriptor
+      const large = crypto.getRandomValues(new Uint8Array(100 * 1024));
+      addStorageFile(app, "col/rec/large.bin", large);
       const total = 200;
       for (let i = 0; i < total; i++) {
         addStorageFile(app, `col/rec/f${i}.txt`, `content ${i}`);
@@ -261,6 +263,7 @@ describe("concurrency semantics", () => {
 
       const backup = createBackup(app, "a.zip");
       await until(() => existsSync(tempFile(app, "data.db")));
+      deleteStorageFile(app, "col/rec/large.bin");
       for (let i = 0; i < total; i++) {
         deleteStorageFile(app, `col/rec/f${i}.txt`);
       }
@@ -275,8 +278,9 @@ describe("concurrency semantics", () => {
       for (let i = 0; i < total; i++) {
         expect(readFileSync(join(dir, `storage/col/rec/f${i}.txt`), "utf8")).toBe(`content ${i}`);
       }
+      expect(new Uint8Array(readFileSync(join(dir, "storage/col/rec/large.bin")))).toEqual(large);
       const names = zipNames(app, "a.zip");
-      expect(names.filter((n) => n.startsWith("storage/col/rec/")).length).toBe(total * 2);
+      expect(names.filter((n) => n.startsWith("storage/col/rec/")).length).toBe((total + 1) * 2);
       expect(new Set(names).size).toBe(names.length);
     },
   );
