@@ -4,12 +4,11 @@
 // supportFiles)
 //
 // The app's file storage: newFilesystem() opens pb_data/storage
-// (filesystem.NewLocal). With S3 enabled in the settings it throws until
-// M5.4b brings the S3 file storage; every caller fails then as upstream's do
-// when its S3 storage cannot be reached (an upload fails the save with a
-// 400, a delete leaves the files and logs the error).
+// (filesystem.NewLocal), or S3System with s3 enabled in the current settings,
+// so a change of the settings takes effect on the next call.
 // newBackupsFilesystem() opens pb_data/backups, or S3System with backups.s3
-// enabled; callers await the calls both have. Its signal is Go's SetContext.
+// enabled. Callers await the calls both have, and code that must stay
+// synchronous checks `remote`. The signal is Go's SetContext.
 //
 // deleteModelFiles is the storage cleanup after a record or collection is
 // deleted (upstream's OnModelAfterDeleteSuccess handler, called directly by
@@ -51,7 +50,7 @@ export interface AppFilesystem {
   //
   // NB! Make sure to call close() on the returned result after you are
   // done working with it.
-  newFilesystem(): System;
+  newFilesystem(): System | S3System;
   // NewBackupsFilesystem creates a new local or S3 filesystem instance for
   // managing app backups based on the current app settings.
   //
@@ -76,9 +75,18 @@ export interface AppFilesystemConfig {
 export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
   let watcher: FilesystemWatcher | null = null;
 
-  const newFilesystem = (): System => {
-    if (config.settings().S3.Enabled) {
-      throw new Error("the S3 file storage is not supported yet (M5.4)");
+  const newFilesystem = (): System | S3System => {
+    const s3 = config.settings().S3;
+    if (s3.Enabled) {
+      return NewS3(
+        s3.Bucket,
+        s3.Region,
+        s3.Endpoint,
+        s3.AccessKey,
+        s3.Secret,
+        s3.ForcePathStyle,
+        config.dataDir + "/" + LocalTempDirName,
+      );
     }
     // local filesystem
     return NewLocal(config.dataDir + "/" + LocalStorageDirName, () => watcher);
@@ -116,19 +124,25 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
   const deletePrefix = async (prefix: string): Promise<void> => {
     const fs = newFilesystem();
     try {
-      const steps = fs.deletePrefixSteps(prefix);
-      for (;;) {
-        const r = steps.next();
-        if (r.done === true) {
-          if (r.value.length > 0) {
-            throw new Error("failed to delete the files at " + prefix, {
-              cause: new AggregateError(r.value),
-            });
+      let failures: unknown[];
+      if (fs.remote) {
+        failures = await fs.deletePrefix(prefix);
+      } else {
+        const steps = fs.deletePrefixSteps(prefix);
+        for (;;) {
+          const r = steps.next();
+          if (r.done === true) {
+            failures = r.value;
+            break;
           }
-          return;
+          // give the event loop back between pages
+          await new Promise<void>((resolve) => setImmediate(resolve));
         }
-        // give the event loop back between pages
-        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+      if (failures.length > 0) {
+        throw new Error("failed to delete the files at " + prefix, {
+          cause: new AggregateError(failures),
+        });
       }
     } finally {
       fs.close();

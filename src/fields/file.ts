@@ -5,10 +5,20 @@
 // (afterRecordExecuteFailure, or deleteNewlyUploadedFiles when a commit
 // outside a transaction fails); after a successful save it deletes the
 // files the save removed from the value (rememberFilesToDelete,
-// processFilesToDelete), with their thumbs. The storage
-// (src/tools/filesystem) is synchronous, so Intercept stays synchronous
-// inside a write transaction (D8, M1.8c). Errors upstream only logs go to
+// processFilesToDelete), with their thumbs. Errors upstream only logs go to
 // the app logger.
+//
+// The storage work is written as generators that yield each storage call's
+// result. On the local storage (src/tools/filesystem/filesystem.ts) the calls
+// are synchronous, so Intercept stays synchronous inside a write transaction
+// (D8, M1.8c). On S3 they return promises, and Intercept returns one: a route
+// reaches the Execute actions outside of any transaction, as the transactions
+// of a save open inside them. Network calls never run inside a transaction,
+// so a caller that saves files in one uploads them first
+// (src/files/pre-upload.ts): processFilesToUpload then only reports what that
+// upload left on the File, at the point where upstream's upload would fail,
+// and anything left behind is deleted by that caller once the transaction
+// ended. A save that reaches S3 uploads any other way (a migration) fails.
 //
 // Values: a record value is a file name (string), a File
 // (src/tools/filesystem/file.ts, a new upload) or an array of both. A JS
@@ -52,6 +62,7 @@ import { joinErrors, wrapError } from "@/collections/view";
 import { isNotFound } from "@/tools/filesystem/blob/bucket";
 import { File } from "@/tools/filesystem/file";
 import { type System, ThumbSizeRegex } from "@/tools/filesystem/filesystem";
+import type { S3System } from "@/tools/filesystem/s3-system";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { mustCompile } from "@/tools/regexp/regexp";
 import {
@@ -395,8 +406,8 @@ export class FileField
 
   // Intercept implements the [RecordInterceptor] interface.
   //
-  // The uploads and deletes are synchronous (src/tools/filesystem), so
-  // Intercept stays synchronous unless actionFunc is async.
+  // It stays synchronous unless a storage call or actionFunc is async (see
+  // the top of the file).
   intercept(
     app: InterceptorApp,
     record: InterceptorRecord,
@@ -405,79 +416,104 @@ export class FileField
   ): void | Promise<void> {
     switch (actionName) {
       case InterceptorActionCreateExecute:
-      case InterceptorActionUpdateExecute: {
-        const oldValue = this.getLatestOldValue(app, record);
-
-        this.processFilesToUpload(app, record);
-
-        const onSuccess = (): void => {
-          this.rememberFilesToDelete(record, oldValue);
-
-          this.afterRecordExecuteSuccess(record);
-        };
-        const onFailure = (err: unknown): never => {
-          let cleanupErr: unknown = null;
-          try {
-            this.afterRecordExecuteFailure(app, record);
-          } catch (e) {
-            cleanupErr = e;
-          }
-          throw cleanupErr === null ? err : joinErrors([err, cleanupErr]);
-        };
-
-        let result: void | Promise<void>;
-        try {
-          result = actionFunc();
-        } catch (err) {
-          return onFailure(err);
-        }
-        if (result instanceof Promise) {
-          return result.then(onSuccess, onFailure);
-        }
-        onSuccess();
-        return;
-      }
+      case InterceptorActionUpdateExecute:
+        return drive(this.onExecute(app, record, actionFunc));
       case InterceptorActionAfterCreateError:
-      case InterceptorActionAfterUpdateError: {
+      case InterceptorActionAfterUpdateError:
         // when in transaction we assume that the error was handled by afterRecordExecuteFailure
         if (app.isTransactional()) {
           return actionFunc();
         }
-
-        try {
-          this.deleteNewlyUploadedFiles(app, record);
-        } catch (err) {
-          app.logger.error("Failed to cleanup all new files after record commit failure", err);
-        }
-
-        record.setRaw(deletedFilesPrefix + this.name, null);
-
-        if (record.isNew()) {
-          // try to delete the record directory if there are no other files
-          //
-          // note: executed only on create failure to avoid accidentally
-          // deleting a concurrently updating directory due to the
-          // eventual consistent nature of some storage providers
-          try {
-            this.deleteEmptyRecordDir(app, record);
-          } catch (err) {
-            app.logger.error("Failed to delete empty dir after new record commit failure", err);
-          }
-        }
-
-        return actionFunc();
-      }
+        return drive(this.onAfterError(app, record, actionFunc));
       case InterceptorActionAfterCreate:
-      case InterceptorActionAfterUpdate: {
+      case InterceptorActionAfterUpdate:
         record.setRaw(uploadedFilesPrefix + this.name, null);
-
-        this.processFilesToDelete(app, record);
-
-        return actionFunc();
-      }
+        return drive(this.onAfterSuccess(app, record, actionFunc));
       default:
         return actionFunc();
     }
+  }
+
+  private *onExecute(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+    actionFunc: () => void | Promise<void>,
+  ): StorageSteps<void> {
+    const oldValue = this.getLatestOldValue(app, record);
+
+    yield* this.processFilesToUpload(app, record);
+
+    try {
+      yield actionFunc();
+    } catch (err) {
+      let cleanupErr: unknown = null;
+      try {
+        yield* this.afterRecordExecuteFailure(app, record);
+      } catch (e) {
+        cleanupErr = e;
+      }
+      throw cleanupErr === null ? err : joinErrors([err, cleanupErr]);
+    }
+
+    this.rememberFilesToDelete(record, oldValue);
+
+    this.afterRecordExecuteSuccess(record);
+  }
+
+  private *onAfterError(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+    actionFunc: () => void | Promise<void>,
+  ): StorageSteps<void> {
+    try {
+      yield* this.deleteNewlyUploadedFiles(app, record);
+    } catch (err) {
+      app.logger.error("Failed to cleanup all new files after record commit failure", err);
+    }
+
+    record.setRaw(deletedFilesPrefix + this.name, null);
+
+    if (record.isNew()) {
+      // try to delete the record directory if there are no other files
+      //
+      // note: executed only on create failure to avoid accidentally
+      // deleting a concurrently updating directory due to the
+      // eventual consistent nature of some storage providers
+      try {
+        yield* this.deleteEmptyRecordDir(app, record);
+      } catch (err) {
+        app.logger.error("Failed to delete empty dir after new record commit failure", err);
+      }
+    }
+
+    yield actionFunc();
+  }
+
+  private *onAfterSuccess(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+    actionFunc: () => void | Promise<void>,
+  ): StorageSteps<void> {
+    yield* this.processFilesToDelete(app, record);
+
+    yield actionFunc();
+  }
+
+  // the id the record's files were stored under before its transaction
+  // opened ("" when they were not), which a new record takes
+  preUploadedId(record: InterceptorRecord): string {
+    for (const upload of this.extractUploadableFiles(this.toSliceValue(record.getRaw(this.name)))) {
+      if (upload.preUpload !== null) {
+        return upload.preUpload.recordId;
+      }
+    }
+
+    return "";
+  }
+
+  // whether the field accepts a file of this size
+  allowsSize(size: number): boolean {
+    return size <= this.getMaxSize();
   }
 
   // CalculateMaxBodySize implements the [MaxBodySizeCalculator] interface.
@@ -511,6 +547,9 @@ export class FileField
     const newValue = this.toSliceValue(record.getRaw(this.name));
     for (const [i, v] of newValue.entries()) {
       if (v instanceof File) {
+        if (v.preUpload !== null) {
+          v.preUpload.saved = true;
+        }
         uploaded.push(v);
         newValue[i] = v.name;
       }
@@ -521,13 +560,16 @@ export class FileField
   }
 
   // Throws the delete error.
-  private afterRecordExecuteFailure(app: InterceptorApp, record: InterceptorRecord): void {
+  private *afterRecordExecuteFailure(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+  ): StorageSteps<void> {
     const uploaded = this.extractUploadableFiles(this.toSliceValue(record.getRaw(this.name)));
 
     const toDelete = uploaded.map((file) => file.name);
 
     // delete previously uploaded files
-    const [failedToDelete, deleteErr] = this.deleteFilesByNamesList(
+    const [failedToDelete, deleteErr] = yield* this.deleteFilesByNamesList(
       app,
       record,
       toUniqueStringSlice(toDelete),
@@ -546,17 +588,20 @@ export class FileField
   }
 
   // Throws the filesystem or delete error.
-  private deleteEmptyRecordDir(app: InterceptorApp, record: InterceptorRecord): void {
+  private *deleteEmptyRecordDir(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+  ): StorageSteps<void> {
     const fsys = app.newFilesystem();
     try {
       const dir = record.baseFilesPath();
 
-      if (!fsys.isEmptyDir(dir)) {
+      if (!((yield fsys.isEmptyDir(dir)) as boolean)) {
         return; // no-op
       }
 
       try {
-        fsys.delete(dir);
+        yield fsys.delete(dir);
       } catch (err) {
         if (!isNotFound(err)) {
           throw err;
@@ -568,7 +613,10 @@ export class FileField
   }
 
   // Throws the delete error.
-  private processFilesToDelete(app: InterceptorApp, record: InterceptorRecord): void {
+  private *processFilesToDelete(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+  ): StorageSteps<void> {
     const markedForDelete = stringsOf(record.getRaw(deletedFilesPrefix + this.name));
     if (markedForDelete.length === 0) {
       return;
@@ -580,7 +628,7 @@ export class FileField
 
     const toDelete = diff.map((del) => this.getFileName(del));
 
-    const [failedToDelete, err] = this.deleteFilesByNamesList(
+    const [failedToDelete, err] = yield* this.deleteFilesByNamesList(
       app,
       record,
       toUniqueStringSlice(toDelete),
@@ -611,7 +659,10 @@ export class FileField
   }
 
   // Throws the upload error (after removing the files it uploaded).
-  private processFilesToUpload(app: InterceptorApp, record: InterceptorRecord): void {
+  private *processFilesToUpload(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+  ): StorageSteps<void> {
     const uploads = this.extractUploadableFiles(this.toSliceValue(record.getRaw(this.name)));
     if (uploads.length === 0) {
       return;
@@ -628,7 +679,11 @@ export class FileField
       for (const upload of uploads) {
         const path = record.baseFilesPath() + "/" + upload.name;
         try {
-          fsys.uploadFile(upload, path);
+          if (upload.preUpload !== null || (fsys.remote && app.isTransactional())) {
+            checkPreUpload(upload, path);
+          } else {
+            yield fsys.uploadFile(upload, path);
+          }
           succeeded.push(upload.name);
         } catch (err) {
           failed.push(wrapError(JSON.stringify(upload.name), err));
@@ -641,7 +696,7 @@ export class FileField
 
     if (failed.length > 0) {
       // cleanup - try to delete the successfully uploaded files (if any)
-      const [, cleanupErr] = this.deleteFilesByNamesList(app, record, succeeded);
+      const [, cleanupErr] = yield* this.deleteFilesByNamesList(app, record, succeeded);
       if (cleanupErr !== null) {
         failed.push(cleanupErr);
       }
@@ -651,7 +706,10 @@ export class FileField
   }
 
   // Throws the delete error.
-  private deleteNewlyUploadedFiles(app: InterceptorApp, record: InterceptorRecord): void {
+  private *deleteNewlyUploadedFiles(
+    app: InterceptorApp,
+    record: InterceptorRecord,
+  ): StorageSteps<void> {
     const uploaded = filesOf(record.getRaw(uploadedFilesPrefix + this.name));
     if (uploaded.length === 0) {
       return;
@@ -659,7 +717,16 @@ export class FileField
 
     const names = uploaded.map((file) => file.name);
 
-    const [failed, err] = this.deleteFilesByNamesList(app, record, toUniqueStringSlice(names));
+    // deleted here, not by the caller that uploaded them
+    for (const file of uploaded) {
+      file.preUpload = null;
+    }
+
+    const [failed, err] = yield* this.deleteFilesByNamesList(
+      app,
+      record,
+      toUniqueStringSlice(names),
+    );
     if (err !== null) {
       throw wrapError(`failed to delete ${failed.join(", ")}`, err);
     }
@@ -669,11 +736,11 @@ export class FileField
 
   // deleteFilesByNamesList deletes a list of record files by their names.
   // Returns the failed/remaining files and the error.
-  private deleteFilesByNamesList(
+  private *deleteFilesByNamesList(
     app: InterceptorApp,
     record: InterceptorRecord,
     filenames: string[],
-  ): [string[], Error | null] {
+  ): StorageSteps<[string[], Error | null]> {
     if (filenames.length === 0) {
       return [[], null]; // nothing to delete
     }
@@ -682,11 +749,18 @@ export class FileField
       return [filenames, new Error("the record doesn't have an id")];
     }
 
-    let fsys: System;
+    let fsys: System | S3System;
     try {
       fsys = app.newFilesystem();
     } catch (err) {
       return [filenames, toError(err)];
+    }
+
+    if (fsys.remote && app.isTransactional()) {
+      // no network calls in a transaction: these files were stored before
+      // it opened, and whoever stored them deletes them once it ended
+      fsys.close();
+      return [[], null];
     }
 
     filenames = [...filenames];
@@ -703,7 +777,7 @@ export class FileField
 
         let deleteErr: unknown = null;
         try {
-          fsys.delete(path);
+          yield fsys.delete(path);
         } catch (err) {
           deleteErr = err;
         }
@@ -715,7 +789,9 @@ export class FileField
           filenames.splice(i, 1);
 
           // try to delete the related file thumbs (if any)
-          const thumbsErr = fsys.deletePrefix(record.baseFilesPath() + "/thumbs_" + filename + "/");
+          const thumbsErr = (yield fsys.deletePrefix(
+            record.baseFilesPath() + "/thumbs_" + filename + "/",
+          )) as unknown[];
           if (thumbsErr.length > 0) {
             app.logger.error("Failed to delete file thumbs", joinErrors(thumbsErr));
           }
@@ -973,6 +1049,59 @@ export type FileFieldSettings = Pick<
   | "protected"
   | "required"
 >;
+
+// The storage work of the field: yields each storage call's result, a value on
+// the local storage and a promise on S3, and gets it back resolved.
+type StorageSteps<T> = Generator<unknown, T, unknown>;
+
+// drive runs steps synchronously until one yields a promise, and
+// asynchronously from there.
+function drive<T>(steps: StorageSteps<T>): T | Promise<T> {
+  let r = steps.next();
+  while (r.done !== true) {
+    if (r.value instanceof Promise) {
+      return driveAsync(steps, r.value);
+    }
+    r = steps.next(r.value);
+  }
+  return r.value;
+}
+
+async function driveAsync<T>(steps: StorageSteps<T>, pending: Promise<unknown>): Promise<T> {
+  for (;;) {
+    let input: unknown;
+    let failed = false;
+    try {
+      input = await pending;
+    } catch (err) {
+      input = err;
+      failed = true;
+    }
+
+    let r = failed ? steps.throw(input) : steps.next(input);
+    while (r.done !== true && !(r.value instanceof Promise)) {
+      r = steps.next(r.value);
+    }
+    if (r.done === true) {
+      return r.value;
+    }
+    pending = r.value as Promise<unknown>;
+  }
+}
+
+// A file on S3 in a transaction: throws the failure of its upload before the
+// transaction, or an error when it was not uploaded for this key.
+function checkPreUpload(file: File, key: string): void {
+  const preUpload = file.preUpload;
+  if (preUpload === null || preUpload.key !== key) {
+    throw new Error(
+      "S3 file storage cannot store a file inside a transaction: network calls never run in one",
+    );
+  }
+  if (preUpload.error !== null) {
+    throw preUpload.error;
+  }
+}
 
 // the files of a record value ([]*filesystem.File type assertion)
 function filesOf(raw: unknown): File[] {

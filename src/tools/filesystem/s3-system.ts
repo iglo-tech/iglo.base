@@ -11,11 +11,16 @@
 // sends a stream without its Content-Length, so the requested bytes reach a
 // temporary file first and are sent from there, once the whole range is in.
 //
-// M5.4b adds what file storage needs here (GetReuploadableFile, CreateThumb,
-// IsEmptyDir, the copy of a stored file). Not ported: the deprecated
-// GetFile, UploadMultipart (see filesystem.ts) and the hooks (D5).
+// CreateThumb spools the original to a temporary file too, and reads it there
+// as the local storage reads a stored file, so the checks on its header run
+// on the same bytes.
+//
+// Not ported: GetReuploadableFile (no caller; a File's content is read
+// synchronously, which an object is not), the deprecated GetFile,
+// UploadMultipart (see filesystem.ts) and the hooks (D5). A backup does not
+// watch this storage, as upstream's backup ignores S3 writes and deletes.
 
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, statSync } from "node:fs";
 import { open } from "node:fs/promises";
 
 import type { FileHandle } from "node:fs/promises";
@@ -23,8 +28,14 @@ import type { FileHandle } from "node:fs/promises";
 import { type AsyncReader, AsyncBucket } from "@/tools/filesystem/blob/async-bucket";
 import type { WriterOptions } from "@/tools/filesystem/blob/bucket";
 import type { Attributes, ListObject } from "@/tools/filesystem/blob/driver";
-import type { File } from "@/tools/filesystem/file";
-import { setServeHeaders, uploadFileOptions } from "@/tools/filesystem/filesystem";
+import { type File, PathReader } from "@/tools/filesystem/file";
+import {
+  parseThumbSize,
+  readThumbOriginal,
+  setServeHeaders,
+  type ThumbRenderer,
+  uploadFileOptions,
+} from "@/tools/filesystem/filesystem";
 import { New as newS3blob } from "@/tools/filesystem/internal/s3blob/s3blob";
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 import type { HttpRequest } from "@/server/request";
@@ -33,6 +44,9 @@ import { type HttpRange, serveContent } from "@/server/serve-content";
 import { detect } from "@/tools/mimetype/mimetype";
 
 export class S3System {
+  // calls go over the network, so they never run in a transaction
+  readonly remote = true;
+
   readonly #bucket: AsyncBucket;
   // pb_data's temp directory, for what is spooled to disk
   readonly #tempDir: string;
@@ -99,6 +113,16 @@ export class S3System {
 
   #upload(payload: Blob, fileKey: string, opts: WriterOptions): Promise<void> {
     return this.#bucket.upload(fileKey, payload, opts);
+  }
+
+  // Copy copies the file stored at srcKey to dstKey.
+  //
+  // If srcKey file doesn't exist, it throws an error for which isNotFound
+  // is true.
+  //
+  // If dstKey file already exists, it is overwritten.
+  copy(srcKey: string, dstKey: string): Promise<void> {
+    return this.#bucket.copy(dstKey, srcKey);
   }
 
   // Delete deletes stored file at fileKey location.
@@ -182,6 +206,24 @@ export class S3System {
     return failed;
   }
 
+  // Checks if the provided dir prefix doesn't have any files.
+  //
+  // A trailing slash will be appended to a non-empty dir string argument to
+  // ensure that the checked prefix is a "directory".
+  //
+  // Returns "false" in case it has at least one file, otherwise - "true".
+  async isEmptyDir(dir: string): Promise<boolean> {
+    if (dir !== "" && !dir.endsWith("/")) {
+      dir += "/";
+    }
+
+    try {
+      return (await this.#bucket.list({ prefix: dir }).next()) === null;
+    } catch {
+      return false;
+    }
+  }
+
   // Writes the file at fileKey to a new file at path, in the pieces it
   // arrives in, and deletes it again if that fails.
   async download(fileKey: string, path: string): Promise<void> {
@@ -235,6 +277,44 @@ export class S3System {
     }
   }
 
+  // CreateThumb creates a new thumb image for the file at originalKey
+  // location. The new thumb file is stored at thumbKey location. See
+  // System.createThumb for thumbSize and render.
+  async createThumb(
+    originalKey: string,
+    thumbKey: string,
+    thumbSize: string,
+    render: ThumbRenderer,
+  ): Promise<void> {
+    const size = parseThumbSize(thumbSize);
+
+    // fetch the original
+    const attrs = await this.attributes(originalKey);
+    const path = this.#tempPath("thumb_");
+    let original: Uint8Array;
+    try {
+      await this.download(originalKey, path);
+      const local = new PathReader(path);
+      const opened = {
+        contentType: attrs.contentType,
+        size: statSync(path).size,
+      };
+      ({ original } = await readThumbOriginal(
+        () => Object.assign(local.open(), opened),
+        local.blob(),
+        render.maxSourcePixels(),
+      ));
+    } finally {
+      rmSync(path, { force: true });
+    }
+
+    const thumb = await render.render(original, attrs.contentType, size);
+
+    await this.#upload(new Blob([thumb.bytes as Uint8Array<ArrayBuffer>]), thumbKey, {
+      contentType: thumb.contentType,
+    });
+  }
+
   // Writes the parts of a response body (bytes, or ranges of the stored
   // file) to a file in pb_data's temp directory, which the app clears at
   // start.
@@ -242,11 +322,7 @@ export class S3System {
     fileKey: string,
     parts: (Uint8Array | HttpRange)[],
   ): Promise<{ blob: Blob; remove: () => void }> {
-    mkdirSync(this.#tempDir, { recursive: true });
-    const path =
-      this.#tempDir +
-      "/ranges_" +
-      Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString("hex");
+    const path = this.#tempPath("ranges_");
     const remove = (): void => rmSync(path, { force: true });
     const out = await open(path, "wx", 0o600);
     try {
@@ -264,6 +340,17 @@ export class S3System {
     }
     await out.close();
     return { blob: Bun.file(path), remove };
+  }
+
+  // a new path in pb_data's temp directory
+  #tempPath(prefix: string): string {
+    mkdirSync(this.#tempDir, { recursive: true });
+    return (
+      this.#tempDir +
+      "/" +
+      prefix +
+      Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString("hex")
+    );
   }
 
   async #copyRange(fileKey: string, start: number, length: number, out: FileHandle): Promise<void> {

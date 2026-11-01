@@ -58,6 +58,9 @@ async function errorOfAsync(p: Promise<void>): Promise<Error | null> {
 // the record's stored files (without thumbs) are exactly expectedKeys
 function checkRecordFiles(app: RecordsApp, record: Record, expectedKeys: string[]): void {
   const fsys = app.filesystem.newFilesystem();
+  if (fsys.remote) {
+    throw new Error("the test runs on the local storage");
+  }
   try {
     const objects = fsys.list(record.baseFilesPath() + "/");
     const objectKeys = objects.map((o) => o.key).filter((k) => !k.includes("/thumbs_"));

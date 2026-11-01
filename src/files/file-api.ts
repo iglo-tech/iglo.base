@@ -7,7 +7,8 @@
 // thumb generation limits (singleflight, semaphore, PB_THUMBS_MAX_WORKERS,
 // PB_THUMBS_MAX_WAIT) are the app's thumb pool (src/files/thumb-pool.ts,
 // App.thumbs), whose Bun Workers decode, resize and encode off the main
-// thread. Nothing here runs inside a database transaction.
+// thread. Nothing here runs inside a database transaction, so the storage
+// calls are awaited for S3 and the local storage alike.
 //
 // A failed thumb falls back to the original, as upstream. Upstream logs
 // the failure as a warning in the app logs (`_logs`); the logs writer is
@@ -34,6 +35,7 @@ import { newFileToken, TokenTypeFile } from "@/records/record-tokens";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import type { System } from "@/tools/filesystem/filesystem";
+import type { S3System } from "@/tools/filesystem/s3-system";
 
 const imageContentTypes = ["image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp"];
 const defaultThumbSizes = ["100x100"];
@@ -153,11 +155,16 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     baseFilesPath = fileRecord.baseFilesPath();
   }
 
-  let fsys: System;
+  let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newFilesystem();
   } catch (err) {
     return e.internalServerError("Filesystem initialization failure.", err);
+  }
+
+  // S3 may take longer than the server's idle timeout to answer
+  if (fsys.remote) {
+    e.response.disableTimeout();
   }
 
   try {
@@ -175,7 +182,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
       // extract the original file meta attributes and check it existence
       let originalContentType: string;
       try {
-        originalContentType = fsys.attributes(originalPath).contentType;
+        originalContentType = (await fsys.attributes(originalPath)).contentType;
       } catch {
         // upstream passes the (nil) error of NewFilesystem
         return e.notFoundError("", null);
@@ -190,7 +197,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
         // create a new thumb if it doesn't exist
         let exists = false;
         try {
-          exists = fsys.exists(servedPath);
+          exists = await fsys.exists(servedPath);
         } catch {
           exists = false;
         }
@@ -214,7 +221,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
 
     // execAfterSuccessTx: the handler never runs in a transaction here
     try {
-      fsys.serve(e.response, e.request, servedPath, servedName);
+      await fsys.serve(e.response, e.request, servedPath, servedName);
     } catch (err) {
       return e.notFoundError("", err);
     }
@@ -229,7 +236,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
 // by the app's thumb pool
 function createThumb(
   app: App,
-  fsys: System,
+  fsys: System | S3System,
   originalPath: string,
   thumbPath: string,
   thumbSize: string,

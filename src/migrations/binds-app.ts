@@ -221,6 +221,12 @@ export const appBindingAdapter: Adapter = {
       throw new Error(`app.${key} was called after its migration ended`);
     }
 
+    if (key === "newFilesystem" && binding.app.settings.S3.Enabled) {
+      throw new Error(
+        "app.newFilesystem is not available with S3 file storage: a migration runs synchronously in a transaction and cannot make network calls",
+      );
+    }
+
     if (!Object.hasOwn(binding.methods, key)) {
       throw new Error(`app.${key} is not available in iglo.base migrations`);
     }

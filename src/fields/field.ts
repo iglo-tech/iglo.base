@@ -35,6 +35,7 @@ import type { ErrorLogger } from "@/app/app";
 import type { Clock } from "@/app/clock";
 import type { Builder } from "@/db/dbx/builder";
 import type { System } from "@/tools/filesystem/filesystem";
+import type { S3System } from "@/tools/filesystem/s3-system";
 import { mustCompile } from "@/tools/regexp/regexp";
 import type { DateTime } from "@/tools/types/datetime";
 import { marshal, quote, type GoInt } from "@/tools/types/go-json";
@@ -278,7 +279,7 @@ export interface MultiValuer {
 export interface InterceptorApp extends FieldApp {
   // NewFilesystem creates a new filesystem instance for the record files
   // (src/app/filesystem.ts). Throws when it cannot be created.
-  newFilesystem(): System;
+  newFilesystem(): System | S3System;
   // FindRecordById finds the record of collection by its id. Throws when
   // it is not found.
   findRecordById(collection: FieldCollection, recordId: string): FieldRecord;

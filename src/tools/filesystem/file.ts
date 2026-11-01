@@ -198,6 +198,18 @@ class blobReader implements FileReader {
   }
 }
 
+// A file stored before the transaction of its save opened (src/files/pre-upload.ts).
+export interface PreUpload {
+  // the id of the record the file is stored for
+  recordId: string;
+  // the file's storage key
+  key: string;
+  // the upload's failure, which the save reports where it would upload
+  error: unknown;
+  // whether a save wrote the file's name to its record
+  saved: boolean;
+}
+
 // File defines a single file resource.
 //
 // The file could be from a local path, multipart/form-data header, etc.
@@ -208,6 +220,7 @@ class blobReader implements FileReader {
 export class File {
   readonly #reader: FileReader;
   readonly #head: Uint8Array | Error;
+  #preUpload: PreUpload | null = null;
 
   name: string;
   originalName: string;
@@ -225,6 +238,15 @@ export class File {
     this.name = name;
     this.originalName = originalName;
     this.size = size;
+  }
+
+  // PreUpload: set when the file is already stored
+  get preUpload(): PreUpload | null {
+    return this.#preUpload;
+  }
+
+  set preUpload(value: PreUpload | null) {
+    this.#preUpload = value;
   }
 
   // Reader: the content as a Blob.

@@ -18,7 +18,8 @@
 // runs off the main thread.
 //
 // The S3 storage is S3System (s3-system.ts): its calls are asynchronous, so
-// it stands beside this class. Not ported: the deprecated GetFile, UploadMultipart (a multipart part is a File here and
+// it stands beside this class; `remote` tells them apart where a caller
+// cannot make network calls. Not ported: the deprecated GetFile, UploadMultipart (a multipart part is a File here and
 // goes through UploadFile, with the same result), SetContext (no
 // contexts), and the OnNewWriter and OnDelete hooks (D5): a running backup
 // gets those two calls through a FilesystemWatcher instead. Go's
@@ -148,6 +149,9 @@ const uploadBufferSize = 1 << 20;
 const deletePageSize = 1000;
 
 export class System {
+  // a local storage: its calls are synchronous and may run in a transaction
+  readonly remote = false;
+
   readonly #bucket: Bucket;
   // the directory of a local storage, for Blob views of its files
   readonly #localDir: string;
@@ -544,70 +548,16 @@ export class System {
     thumbSize: string,
     render: ThumbRenderer,
   ): Promise<void> {
-    const sizeParts = ThumbSizeRegex.findStringSubmatch(thumbSize);
-    if (sizeParts === null || sizeParts.length !== 4) {
-      throw new Error("thumb size must be in WxH, WxHt, WxHb or WxHf format");
-    }
-
-    const width = goAtoi(sizeParts[1] as string);
-    const height = goAtoi(sizeParts[2] as string);
-    const resizeType = (sizeParts[3] ?? "") as ThumbSize["mode"];
-
-    if (width === 0 && height === 0) {
-      throw new Error("thumb width and height cannot be zero at the same time");
-    }
+    const size = parseThumbSize(thumbSize);
 
     // fetch the original
-    const r = this.getReader(originalKey);
-    let originalContentType: string;
-    let isGif: boolean;
-    let isWebp: boolean;
-    try {
-      originalContentType = r.contentType;
-      // check image dimensions to minimize excessive memory usage (the
-      // header is read in bounded pieces; the original is read only after
-      // it passes)
-      const src = readerSource(r, r.size);
-      const magic = src.peek(12);
-      isGif = magic[0] === 0x47;
-      isWebp = String.fromCharCode(...magic.subarray(8, 12)) === "WEBP";
-      checkSource(src, render.maxSourcePixels());
-    } finally {
-      r.close();
-    }
-    let original: Uint8Array;
-    if (isGif) {
-      // only the first frame is decoded: read up to its end and close the
-      // stream with a trailer, so an animated original is not read whole
-      const g = this.getReader(originalKey);
-      let end: number;
-      try {
-        end = gifFirstFrameLength(readerSource(g, g.size));
-      } finally {
-        g.close();
-      }
-      original = new Uint8Array(end + 1);
-      original.set(await this.#blob(originalKey).slice(0, end).bytes());
-      original[end] = 0x3b;
-    } else {
-      if (isWebp) {
-        // an original without a VP8 or VP8L chunk (an animated WebP) fails
-        // as upstream's decode does, before it is read whole
-        const w = this.getReader(originalKey);
-        try {
-          webpCheckImageChunk(readerSource(w, w.size));
-        } finally {
-          w.close();
-        }
-      }
-      original = await this.#blob(originalKey).bytes();
-    }
+    const { original, contentType } = await readThumbOriginal(
+      () => this.getReader(originalKey),
+      this.#blob(originalKey),
+      render.maxSourcePixels(),
+    );
 
-    const thumb = await render.render(original, originalContentType, {
-      width,
-      height,
-      mode: resizeType,
-    });
+    const thumb = await render.render(original, contentType, size);
 
     // open a thumb storage writer (aka. prepare for upload)
     const w = this.newWriter(thumbKey, { contentType: thumb.contentType });
@@ -648,6 +598,77 @@ export class System {
       return false;
     }
   }
+}
+
+// the width, height and mode of a CreateThumb thumbSize
+export function parseThumbSize(thumbSize: string): ThumbSize {
+  const sizeParts = ThumbSizeRegex.findStringSubmatch(thumbSize);
+  if (sizeParts === null || sizeParts.length !== 4) {
+    throw new Error("thumb size must be in WxH, WxHt, WxHb or WxHf format");
+  }
+
+  const width = goAtoi(sizeParts[1] as string);
+  const height = goAtoi(sizeParts[2] as string);
+
+  if (width === 0 && height === 0) {
+    throw new Error("thumb width and height cannot be zero at the same time");
+  }
+
+  return { width, height, mode: (sizeParts[3] ?? "") as ThumbSize["mode"] };
+}
+
+// The bytes a thumb is made from, and the original's content type. open gives
+// a new reader of the original and blob its content. The image's size is
+// checked on its header, read in bounded pieces, before the original is read.
+export async function readThumbOriginal(
+  open: () => ReadCloser & { readonly contentType: string; readonly size: number },
+  blob: Blob,
+  maxPixels: number,
+): Promise<{ original: Uint8Array; contentType: string }> {
+  const r = open();
+  let contentType: string;
+  let isGif: boolean;
+  let isWebp: boolean;
+  try {
+    contentType = r.contentType;
+    // check image dimensions to minimize excessive memory usage
+    const src = readerSource(r, r.size);
+    const magic = src.peek(12);
+    isGif = magic[0] === 0x47;
+    isWebp = String.fromCharCode(...magic.subarray(8, 12)) === "WEBP";
+    checkSource(src, maxPixels);
+  } finally {
+    r.close();
+  }
+
+  if (isGif) {
+    // only the first frame is decoded: read up to its end and close the
+    // stream with a trailer, so an animated original is not read whole
+    const g = open();
+    let end: number;
+    try {
+      end = gifFirstFrameLength(readerSource(g, g.size));
+    } finally {
+      g.close();
+    }
+    const original = new Uint8Array(end + 1);
+    original.set(await blob.slice(0, end).bytes());
+    original[end] = 0x3b;
+    return { original, contentType };
+  }
+
+  if (isWebp) {
+    // an original without a VP8 or VP8L chunk (an animated WebP) fails as
+    // upstream's decode does, before it is read whole
+    const w = open();
+    try {
+      webpCheckImageChunk(readerSource(w, w.size));
+    } finally {
+      w.close();
+    }
+  }
+
+  return { original: await blob.bytes(), contentType };
 }
 
 // the writer options of UploadFile: the content type of the content's first

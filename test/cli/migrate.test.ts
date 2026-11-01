@@ -481,6 +481,34 @@ migrate((app) => {
     });
   }
 
+  test("app.newFilesystem is not available on the local storage", async () => {
+    const site = newSite();
+    writeMigrations(site, { "1_x.js": `migrate((app) => { app.newFilesystem() })` });
+    const result = await migrate(site, "up");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("app.newFilesystem is not available in iglo.base migrations");
+  });
+
+  test("app.newFilesystem with S3 file storage says why it fails", async () => {
+    const site = newSite();
+    writeMigrations(site, {
+      "1_s3.js": `migrate((app) => {
+        const settings = app.settings();
+        settings.s3.enabled = true;
+        settings.s3.bucket = "b";
+        settings.s3.region = "r";
+        settings.s3.endpoint = "http://127.0.0.1:1";
+        settings.s3.accessKey = "k";
+        settings.s3.secret = "s";
+        app.save(settings);
+      })`,
+      "2_x.js": `migrate((app) => { app.newFilesystem() })`,
+    });
+    const result = await migrate(site, "up");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("app.newFilesystem is not available with S3 file storage");
+  });
+
   test("$http says why it is left out", async () => {
     const site = newSite();
     writeMigrations(site, { "1_x.js": `migrate((app) => { $http.send({}) })` });

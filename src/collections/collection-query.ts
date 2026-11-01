@@ -80,6 +80,11 @@ export interface CollectionsApp {
   // to (src/realtime); absent where a pb_data is opened without a server
   // (test tools)
   readonly subscriptionsBroker?: Broker;
+  // collects the after success and error interceptors that outlive their
+  // transaction, for a caller that must wait for them (Go's runAfterFuncs
+  // ends before RunInTransaction returns); without it their failures are
+  // logged
+  readonly afterTransaction?: Promise<void>[];
 }
 
 // RunInTransaction wraps fn into a transaction for the regular app
