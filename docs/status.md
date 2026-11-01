@@ -10,7 +10,7 @@ M5.4b active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4b | worker | `task/M5.4b-s3-files` | 0 | [Brief](briefs/M5.4b.md) |
+| M5.4b | review | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 1 | [Brief](briefs/M5.4b.md) |
 
 ## Done
 
@@ -118,6 +118,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-11-01 (M5.4b PR): the brief said a failed S3 delete after a commit fails nothing; upstream's binary answers 400 on `PATCH` and batch while the change stays committed. The lead accepted the worker's match of upstream, as the API contract overrides a brief; a failed delete after a record or collection delete still fails nothing. The lead sent #53 to review with `test:reference` at 2 failures, both harness flakes: a port collision (`freePort()` row; the file passed 606 of 606 on rerun) and the realtime order row.
 - 2026-11-01 (M5.4b brief): with S3 enabled, a record's files upload before the write transaction opens and are deleted if it fails, as network calls never run inside one and the write path is synchronous. Migration bindings cannot reach S3 file storage for the same reason. Opus worker per the model table. M5.4b ships although production's files are local (D15), as the API contract covers `s3.enabled`.
 - 2026-11-01 (M5.4a PR): `Bun.S3Client` cannot return the raw error body the API shows, so the worker ported upstream's S3 client on `fetch`, as the brief allowed. Two new deliberate differences are listed in `04-api-compatibility.md`: S3 downloads spool to a temp file (Bun drops `Content-Length` on a stream), and some network error texts differ from Go's. All work paused 14:13–16:10 UTC on the 5-hour usage limit and resumed by itself; two scheduled lead runs resumed with it and were told to stop.
 - 2026-11-01 (plan change, M5.4 brief): M5.4 splits into M5.4a (S3 layer, backups, test endpoint; production uses this, D15) and M5.4b (file storage). Local file storage writes synchronously inside the write transaction, and network calls may not run there, so M5.4b uploads before the transaction opens and deletes the uploads if the commit fails. Opus worker per the model table.
