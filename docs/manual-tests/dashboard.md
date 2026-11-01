@@ -71,3 +71,15 @@ Run on a fixture copy (`test/fixtures/pocketbase`, `test@example.com` / `1234567
 | "Download" | Pass: `POST /api/files/token` 200; the same token request and `GET /api/backups/ui-test.zip?token=…` from the page answer 200, `attachment; filename="ui-test.zip"`, `application/zip`, 72,456 bytes |
 | "Restore", type the name, "Restore backup" | Pass: the server restarted (the serve banner printed again), the page came back on the same screen, the backup still listed, `pb_data/.pb_temp_to_delete` gone |
 | "Delete", "Yes" | Pass: "Successfully deleted ui-test.zip.", "No backups found.", `pb_data/backups` has no files |
+
+## 2026-11-01, `task/M5.4a-s3-backups`, M5.4a backups screen with S3
+
+Run on a fixture copy (`test/fixtures/pocketbase`, `test@example.com` / `1234567890`), executable from this branch, against versitygw from `test/support/versitygw.ts` (bucket `dash`, test credentials). The fixture stores `backups.cronMaxKeep` 0, and the screen's hidden input has a minimum of 1, so the browser blocks "Save changes" with no request sent, with any server; it was set to 3, a fresh install's value, through the API first.
+
+| Step | Result |
+|---|---|
+| "Backup options", "Store backups in S3 storage", endpoint, bucket, region, keys, force path-style, "Save changes" | Pass: "Successfully saved backups settings." and "S3 connected successfully" (`POST /api/settings/test/s3`) |
+| "Initialize new backup", name `ui-s3-test.zip`, "Start backup" | Pass: "Successfully generated new backup."; listed with 72,552 bytes; `pb_data/backups` stays empty |
+| "Download" | Pass: `POST /api/files/token` 200; the same `GET /api/backups/ui-s3-test.zip?token=…` answers 200, `attachment; filename="ui-s3-test.zip"`, `application/zip`, `Content-Length: 72552` |
+| "Restore", type the name, "Restore backup" | Pass: the server restarted (the serve banner printed again), the page came back, the backup still listed, no `pb_data/.pb_temp_to_delete` left |
+| "Delete", "Yes" | Pass: "Successfully deleted ui-s3-test.zip.", "No backups found.", `GET /api/backups` answers `[]` |
