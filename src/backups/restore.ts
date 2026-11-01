@@ -11,8 +11,11 @@
 // failure, on closed databases; the app re-bootstraps afterwards on the
 // reverted data, where upstream bootstraps first (app.restart, src/cli/serve.ts).
 //
-// The OnBackupRestore hook is not ported (D5). The S3 branch comes with M5.4;
-// with S3 enabled newBackupsFilesystem throws.
+// With backups in S3 the zip is downloaded to a temp file in pb_data first,
+// and upstream's 10 minute limit covers that read. The moves below touch no
+// network.
+//
+// The OnBackupRestore hook is not ported (D5).
 
 import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, statSync } from "node:fs";
@@ -33,8 +36,13 @@ import { auxDBFilename, dataDBFilename } from "@/db/base";
 import { goQuote } from "@/fields/field";
 import { checkExistingDataDir } from "@/migrations/system-migrations";
 import { goBase } from "@/tools/filesystem/file";
+import type { System } from "@/tools/filesystem/filesystem";
 import { moveDirContent } from "@/tools/osutils/dir";
+import { S3System } from "@/tools/filesystem/s3-system";
 import { pseudorandomString } from "@/tools/security/random";
+
+// wait max 10 minutes to fetch the backup
+const fetchBackupTimeoutMs = 10 * 60 * 1000;
 
 // default root dir entries to exclude from the backup restore
 const restoreExclude = [
@@ -104,94 +112,133 @@ export async function restoreBackup(app: App, name: string): Promise<void> {
     // make sure that the special temp directory exists
     // note: it needs to be inside the current pb_data to avoid "cross-device link" errors
     const localTempDir = join(app.dataDir, LocalTempDirName);
-    const fsys = app.filesystem.newBackupsFilesystem();
+    const fsys = app.filesystem.newBackupsFilesystem(AbortSignal.timeout(fetchBackupTimeoutMs));
 
-    let exists: boolean;
     try {
-      exists = fsys.exists(name);
-    } catch {
-      exists = false;
+      let exists: boolean;
+      try {
+        exists = await fsys.exists(name);
+      } catch {
+        exists = false;
+      }
+      if (!exists) {
+        throw new Error(`missing or invalid backup file ${goQuote(name)} to restore`);
+      }
+
+      mkdirSync(localTempDir, { recursive: true, mode: 0o777 });
+
+      await extractAndReplace(app, fsys, name, localTempDir);
     } finally {
       fsys.close();
     }
-    if (!exists) {
-      throw new Error(`missing or invalid backup file ${goQuote(name)} to restore`);
-    }
-
-    mkdirSync(localTempDir, { recursive: true, mode: 0o777 });
-
-    const extractedDataDir = join(localTempDir, `pb_restore_${pseudorandomString(8)}`);
-    const oldTempDataDir = join(localTempDir, `old_pb_data_${pseudorandomString(8)}`);
-
-    try {
-      // extract the zip
-      const worker = new BackupWorker();
-      try {
-        await worker.call({
-          op: "extract",
-          src: join(app.dataDir, LocalBackupsDirName, goBase(name)),
-          dest: extractedDataDir,
-        });
-      } finally {
-        worker.close();
-      }
-
-      checkExtractedData(extractedDataDir);
-
-      // move the current pb_data content to a special temp location
-      // that will hold the old data between dirs replace
-      // (the temp dir will be automatically removed on the next app start)
-      try {
-        moveDirContent(app.dataDir, oldTempDataDir, ...restoreExclude);
-      } catch (err) {
-        throw new Error(
-          `failed to move the current pb_data content to a temp location: ${errorText(err)}`,
-          { cause: err },
-        );
-      }
-
-      // move the extracted archive content to the app's pb_data
-      try {
-        moveDirContent(extractedDataDir, app.dataDir, ...restoreExclude);
-      } catch (err) {
-        // upstream's transaction fails here and the first move stays; a
-        // restore that fails must leave pb_data as it was
-        moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
-        throw new Error(
-          `failed to move the extracted archive content to pb_data: ${errorText(err)}`,
-          { cause: err },
-        );
-      }
-
-      const revertDataDirChanges = (): void => {
-        try {
-          moveDirContent(app.dataDir, extractedDataDir, ...restoreExclude);
-        } catch (err) {
-          throw new Error(`failed to revert the extracted dir change: ${errorText(err)}`, {
-            cause: err,
-          });
-        }
-
-        try {
-          moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
-        } catch (err) {
-          throw new Error(`failed to revert old pb_data dir change: ${errorText(err)}`, {
-            cause: err,
-          });
-        }
-      };
-
-      // restart the app
-      try {
-        await app.restart(revertDataDirChanges);
-      } catch (err) {
-        throw new Error(`failed to restart the app process: ${errorText(err)}`, { cause: err });
-      }
-    } finally {
-      await rm(extractedDataDir, { recursive: true, force: true });
-      await rm(oldTempDataDir, { recursive: true, force: true });
-    }
   } finally {
     app.store.remove(StoreKeyActiveBackup);
+  }
+}
+
+// a temp file for the zip of a backup stored in S3
+function tempZipPath(localTempDir: string): string {
+  return join(localTempDir, `pb_restore_zip${pseudorandomString(10)}`);
+}
+
+async function extractBackup(
+  fsys: System | S3System,
+  localZip: string,
+  name: string,
+  dest: string,
+  tempZip: string,
+): Promise<void> {
+  let src = localZip;
+  if (fsys instanceof S3System) {
+    await fsys.download(name, tempZip);
+    src = tempZip;
+  }
+
+  const worker = new BackupWorker();
+  try {
+    await worker.call({ op: "extract", src, dest });
+  } finally {
+    worker.close();
+  }
+}
+
+async function extractAndReplace(
+  app: App,
+  fsys: System | S3System,
+  name: string,
+  localTempDir: string,
+): Promise<void> {
+  const extractedDataDir = join(localTempDir, `pb_restore_${pseudorandomString(8)}`);
+  const oldTempDataDir = join(localTempDir, `old_pb_data_${pseudorandomString(8)}`);
+  const tempZip = tempZipPath(localTempDir);
+
+  try {
+    // extract the zip
+    await extractBackup(
+      fsys,
+      join(app.dataDir, LocalBackupsDirName, goBase(name)),
+      name,
+      extractedDataDir,
+      tempZip,
+    );
+
+    // the zip is no longer needed (the app may restart below)
+    await rm(tempZip, { force: true });
+
+    checkExtractedData(extractedDataDir);
+
+    // move the current pb_data content to a special temp location
+    // that will hold the old data between dirs replace
+    // (the temp dir will be automatically removed on the next app start)
+    try {
+      moveDirContent(app.dataDir, oldTempDataDir, ...restoreExclude);
+    } catch (err) {
+      throw new Error(
+        `failed to move the current pb_data content to a temp location: ${errorText(err)}`,
+        { cause: err },
+      );
+    }
+
+    // move the extracted archive content to the app's pb_data
+    try {
+      moveDirContent(extractedDataDir, app.dataDir, ...restoreExclude);
+    } catch (err) {
+      // upstream's transaction fails here and the first move stays; a
+      // restore that fails must leave pb_data as it was
+      moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
+      throw new Error(
+        `failed to move the extracted archive content to pb_data: ${errorText(err)}`,
+        { cause: err },
+      );
+    }
+
+    const revertDataDirChanges = (): void => {
+      try {
+        moveDirContent(app.dataDir, extractedDataDir, ...restoreExclude);
+      } catch (err) {
+        throw new Error(`failed to revert the extracted dir change: ${errorText(err)}`, {
+          cause: err,
+        });
+      }
+
+      try {
+        moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
+      } catch (err) {
+        throw new Error(`failed to revert old pb_data dir change: ${errorText(err)}`, {
+          cause: err,
+        });
+      }
+    };
+
+    // restart the app
+    try {
+      await app.restart(revertDataDirChanges);
+    } catch (err) {
+      throw new Error(`failed to restart the app process: ${errorText(err)}`, { cause: err });
+    }
+  } finally {
+    await rm(tempZip, { force: true });
+    await rm(extractedDataDir, { recursive: true, force: true });
+    await rm(oldTempDataDir, { recursive: true, force: true });
   }
 }

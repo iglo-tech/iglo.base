@@ -1,11 +1,11 @@
 // Upstream: apis/backup.go
 //
 // The handlers call the backups filesystem directly: it has no contexts
-// (D5, src/tools/filesystem/filesystem.ts). backupRestore starts the restore
+// (D5, src/tools/filesystem/filesystem.ts); S3 takes the timeouts upstream
+// sets as a signal. backupRestore starts the restore
 // off the request, as upstream's routine.FireAndForget.
 
 import { backupCreate } from "@/apis/backup-create";
-import { loadFailure } from "@/apis/backup-load";
 import { backupUpload } from "@/apis/backup-upload";
 import { StoreKeyActiveBackup } from "@/apis/health";
 import type { App } from "@/app/app";
@@ -18,13 +18,17 @@ import { findAuthRecordByToken } from "@/records/record-query";
 import { TokenTypeFile } from "@/records/record-tokens";
 import type { Record } from "@/records/record-model";
 import type { RouterGroup } from "@/server/group";
-import type { HandlerResult } from "@/server/handler";
 import { goBase } from "@/tools/filesystem/file";
 import type { System } from "@/tools/filesystem/filesystem";
+import { S3System } from "@/tools/filesystem/s3-system";
 import { DateTime } from "@/tools/types/datetime";
 
 // give some optimistic time to write the response before restarting the app
 const restoreDelayMs = 1000;
+
+// the limits upstream sets on the S3 calls of a request
+const listTimeoutMs = 30 * 1000;
+const downloadTimeoutMs = 10 * 60 * 1000;
 
 // bindBackupApi registers the file api endpoints and the corresponding handlers.
 export function bindBackupApi(_app: App, rg: RouterGroup<RequestEvent>): void {
@@ -41,18 +45,18 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-function backupsList(e: RequestEvent): HandlerResult {
-  let fsys: System;
+async function backupsList(e: RequestEvent): Promise<Error | undefined> {
+  let fsys: System | S3System;
   try {
-    fsys = e.app.filesystem.newBackupsFilesystem();
+    fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
   } catch (err) {
-    return e.badRequestError(loadFailure(err), err);
+    return e.badRequestError("Failed to load backups filesystem.", err);
   }
 
   try {
     let backups;
     try {
-      backups = fsys.list("");
+      backups = await fsys.list("");
     } catch (err) {
       return e.badRequestError(
         "Failed to retrieve backup items. Raw error: \n" + errorText(err),
@@ -73,7 +77,7 @@ function backupsList(e: RequestEvent): HandlerResult {
   }
 }
 
-function backupDownload(e: RequestEvent): HandlerResult {
+async function backupDownload(e: RequestEvent): Promise<Error | undefined> {
   const fileToken = e.request.query().get("token")?.[0] ?? "";
 
   let authRecord: Record;
@@ -91,25 +95,26 @@ function backupDownload(e: RequestEvent): HandlerResult {
     return e.forbiddenError("Insufficient permissions to access the resource.", null);
   }
 
-  let fsys: System;
+  let fsys: System | S3System;
   try {
-    fsys = e.app.filesystem.newBackupsFilesystem();
+    fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(downloadTimeoutMs));
   } catch (err) {
-    return e.internalServerError(loadFailure(err), err);
+    return e.internalServerError("Failed to load backups filesystem.", err);
   }
 
   try {
     const key = e.request.pathValue("key");
 
     try {
-      fsys.serve(
+      await fsys.serve(
         e.response,
         e.request,
         key,
         goBase(key), // without the path prefix (if any)
       );
     } catch (err) {
-      return e.notFoundError("", err);
+      // the router's ToApiError: only a local missing file is fs.ErrNotExist
+      return fsys instanceof S3System ? e.badRequestError("", err) : e.notFoundError("", err);
     }
 
     return undefined;
@@ -118,12 +123,12 @@ function backupDownload(e: RequestEvent): HandlerResult {
   }
 }
 
-function backupDelete(e: RequestEvent): HandlerResult {
-  let fsys: System;
+async function backupDelete(e: RequestEvent): Promise<Error | undefined> {
+  let fsys: System | S3System;
   try {
-    fsys = e.app.filesystem.newBackupsFilesystem();
+    fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
   } catch (err) {
-    return e.internalServerError(loadFailure(err), err);
+    return e.internalServerError("Failed to load backups filesystem.", err);
   }
 
   try {
@@ -134,7 +139,7 @@ function backupDelete(e: RequestEvent): HandlerResult {
     }
 
     try {
-      fsys.delete(key);
+      await fsys.delete(key);
     } catch (err) {
       return e.badRequestError(
         "Invalid or already deleted backup file. Raw error: \n" + errorText(err),
@@ -148,7 +153,7 @@ function backupDelete(e: RequestEvent): HandlerResult {
   }
 }
 
-function backupRestore(e: RequestEvent): HandlerResult {
+async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
   if (e.app.store.has(StoreKeyActiveBackup)) {
     return e.badRequestError(
       "Try again later - another backup/restore process has already been started.",
@@ -158,18 +163,18 @@ function backupRestore(e: RequestEvent): HandlerResult {
 
   const key = e.request.pathValue("key");
 
-  let fsys: System;
+  let fsys: System | S3System;
   try {
-    fsys = e.app.filesystem.newBackupsFilesystem();
+    fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
   } catch (err) {
-    return e.internalServerError(loadFailure(err), err);
+    return e.internalServerError("Failed to load backups filesystem.", err);
   }
 
   try {
     let exists = false;
     let existsErr: unknown = null;
     try {
-      exists = fsys.exists(key);
+      exists = await fsys.exists(key);
     } catch (err) {
       existsErr = err;
     }

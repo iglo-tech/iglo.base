@@ -17,7 +17,8 @@
 // passed in (the file API's worker pool, src/files/thumb-pool.ts), as it
 // runs off the main thread.
 //
-// Not ported: NewS3 (M5.4), the deprecated GetFile, UploadMultipart (a multipart part is a File here and
+// The S3 storage is S3System (s3-system.ts): its calls are asynchronous, so
+// it stands beside this class. Not ported: the deprecated GetFile, UploadMultipart (a multipart part is a File here and
 // goes through UploadFile, with the same result), SetContext (no
 // contexts), and the OnNewWriter and OnDelete hooks (D5): a running backup
 // gets those two calls through a FilesystemWatcher instead. Go's
@@ -282,26 +283,11 @@ export class System {
   // UploadFile as a generator: it yields after each block, so a large file
   // can give the event loop back between blocks.
   *uploadFileSteps(file: File, fileKey: string): Generator<void, void, void> {
-    // mimetype.DetectReader of the content's first bytes
-    const [mt, detectErr] = file.detect();
-    if (detectErr !== null) {
-      throw detectErr;
-    }
-
-    let originalName = file.originalName;
-    const originalBytes = textToBytes(originalName);
-    if (originalBytes.length > 255) {
-      // keep only the first 255 chars as a very rudimentary measure to
-      // prevent the metadata to grow too big in size
-      originalName = bytesToText(originalBytes.subarray(0, 255));
-    }
+    const opts = uploadFileOptions(file);
 
     const f = file.open();
     try {
-      const w = this.newWriter(fileKey, {
-        contentType: mt.string(),
-        metadata: new Map([[MetadataOriginalName, originalName]]),
-      });
+      const w = this.newWriter(fileKey, opts);
 
       try {
         const buf = new Uint8Array(Math.min(uploadBufferSize, Math.max(file.size, 1)));
@@ -459,37 +445,7 @@ export class System {
       br.close();
     }
 
-    let forceAttachment = false;
-    const raw = req.query().get(forceAttachmentParam)?.[0] ?? "";
-    if (raw !== "") {
-      forceAttachment = parseBool(raw);
-    }
-
-    let disposition = "attachment";
-    if (!forceAttachment && inlineServeContentTypes.includes(realContentType)) {
-      disposition = "inline";
-    }
-
-    // make an exception for specific content types and force a custom
-    // content type to send in the response so that it can be loaded properly
-    let extContentType = realContentType;
-    const ct = manualExtensionContentTypes.get(filepathExt(fileKey));
-    if (ct !== undefined) {
-      extContentType = ct;
-    }
-
-    setHeaderIfMissing(res, "Content-Disposition", disposition + "; filename=" + goQuote(name));
-    setHeaderIfMissing(res, "Content-Type", extContentType);
-    setHeaderIfMissing(
-      res,
-      "Content-Security-Policy",
-      "default-src 'none'; media-src 'self'; style-src 'unsafe-inline'; sandbox",
-    );
-
-    // set a default cache-control header
-    // (valid for 30 days but the cache is allowed to reuse the file for any requests
-    // that are made in the last day while revalidating the res in the background)
-    setHeaderIfMissing(res, "Cache-Control", "max-age=2592000, stale-while-revalidate=86400");
+    setServeHeaders(res, req, fileKey, name, realContentType);
 
     serveContent(
       res,
@@ -692,6 +648,69 @@ export class System {
       return false;
     }
   }
+}
+
+// the writer options of UploadFile: the content type of the content's first
+// bytes (mimetype.DetectReader) and the original name
+export function uploadFileOptions(file: File): WriterOptions {
+  const [mt, detectErr] = file.detect();
+  if (detectErr !== null) {
+    throw detectErr;
+  }
+
+  let originalName = file.originalName;
+  const originalBytes = textToBytes(originalName);
+  if (originalBytes.length > 255) {
+    // keep only the first 255 chars as a very rudimentary measure to
+    // prevent the metadata to grow too big in size
+    originalName = bytesToText(originalBytes.subarray(0, 255));
+  }
+
+  return {
+    contentType: mt.string(),
+    metadata: new Map([[MetadataOriginalName, originalName]]),
+  };
+}
+
+// the headers Serve sets before http.ServeContent
+export function setServeHeaders(
+  res: ResponseWriter,
+  req: HttpRequest,
+  fileKey: string,
+  name: string,
+  realContentType: string,
+): void {
+  let forceAttachment = false;
+  const raw = req.query().get(forceAttachmentParam)?.[0] ?? "";
+  if (raw !== "") {
+    forceAttachment = parseBool(raw);
+  }
+
+  let disposition = "attachment";
+  if (!forceAttachment && inlineServeContentTypes.includes(realContentType)) {
+    disposition = "inline";
+  }
+
+  // make an exception for specific content types and force a custom
+  // content type to send in the response so that it can be loaded properly
+  let extContentType = realContentType;
+  const ct = manualExtensionContentTypes.get(filepathExt(fileKey));
+  if (ct !== undefined) {
+    extContentType = ct;
+  }
+
+  setHeaderIfMissing(res, "Content-Disposition", disposition + "; filename=" + goQuote(name));
+  setHeaderIfMissing(res, "Content-Type", extContentType);
+  setHeaderIfMissing(
+    res,
+    "Content-Security-Policy",
+    "default-src 'none'; media-src 'self'; style-src 'unsafe-inline'; sandbox",
+  );
+
+  // set a default cache-control header
+  // (valid for 30 days but the cache is allowed to reuse the file for any requests
+  // that are made in the last day while revalidating the res in the background)
+  setHeaderIfMissing(res, "Cache-Control", "max-age=2592000, stale-while-revalidate=86400");
 }
 
 // NewLocal initializes a new local filesystem instance.

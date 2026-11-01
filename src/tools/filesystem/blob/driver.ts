@@ -108,3 +108,33 @@ export interface Driver {
   delete(key: string): void;
   close(): void;
 }
+
+// the reader of an AsyncDriver: the body as a stream (null when empty)
+export interface AsyncDriverReader {
+  body: ReadableStream<Uint8Array> | null;
+  attributes(): ReaderAttributes;
+}
+
+// A driver whose calls go over the network (the S3 driver). The signal is
+// Go's context. upload replaces newTypedWriter: it takes the whole payload.
+export interface AsyncDriver {
+  normalizeError(err: unknown): unknown;
+  listPaged(opts: ListOptions, signal?: AbortSignal): Promise<ListPage>;
+  attributes(key: string, signal?: AbortSignal): Promise<Attributes>;
+  newRangeReader(
+    key: string,
+    offset: number,
+    length: number,
+    signal?: AbortSignal,
+  ): Promise<AsyncDriverReader>;
+  upload(
+    key: string,
+    contentType: string,
+    payload: Blob,
+    opts: WriterOptions,
+    signal?: AbortSignal,
+  ): Promise<void>;
+  copy(dstKey: string, srcKey: string, signal?: AbortSignal): Promise<void>;
+  delete(key: string, signal?: AbortSignal): Promise<void>;
+  close(): void;
+}
