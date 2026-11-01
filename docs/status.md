@@ -4,18 +4,18 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-01
 
-M5.3 active.
+M5.3 merged; no active task.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 3 | [Brief](briefs/M5.3.md). Head `555a9a1`; lead fixed round 2, round 3 running |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.3 | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2026-11-01 (`8cd279a`) | Three review rounds: Sol round 1, then Opus (D29, lead fixed both): Opus APPROVE at `555a9a1`. `test:reference` at that head had one backlog flake in the lead's run (realtime order) and one new one in the reviewer's (autobackup list). `process.execve` restarts the compiled server; zips restore across both servers, Zip64 checked by hand. Zip synced every 32 MiB in the worker, as its writeback stalled main-thread commits. Backup about 2× upstream's time on incompressible data. With S3 enabled, backup endpoints fail with the not-supported error until M5.4 |
 | M5.6 | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 2026-10-31 (`3fc9c66`) | Two review rounds: Sol APPROVE at `23673b7` with `test:reference` at 0 failures (lead fixed round 1: `?fields=` on the list, log retention on Go's AddDate). Ticker under `serve` only; the four built-in jobs and the limiter job run; `AppLogger` gained `warn`. Carried: `__pbAutoBackup__` must be re-added on each settings reload, as its list position is API output (M5.3); job panic logs stay on stderr when the logger moves (M5.5); the crons screen footer still mentions registering jobs with Go or JavaScript (upstream `ui/` text) |
 | M4.8 | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 2026-10-31 (`3779902`) | Two review rounds: Sol APPROVE at `b344285` with `test:reference` at 0 failures (lead fixed round 1: limiters reset after commit). All M4.8 pending scenarios enabled. The key is the real IP, as upstream. Carried: the cleanup job waits for M5.6 to run it (a minimal `src/tools/cron/cron.ts` registers it), so limiter client maps grow until then; M5.7 must bind CORS ahead of the limiter |
 | M4.7 | [#48](https://github.com/iglo-tech/iglo.base/pull/48) | 2026-10-31 (`0649656`) | One review round: Sol APPROVE at `9a81e34`. Haiku worker. All 32 providers are ported; the "not ported yet" path is gone. Planning Center refuses every user, as upstream does (a differential case pins it). Merged without one all-green `test:reference` at the head: the worker's two failures and Sol's one were all hardening-backlog flakes that passed on rerun |
@@ -95,6 +95,10 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-31 | Backups (M5.3) | ZIP data-descriptor CRCs are not verified: a backup with only that CRC flipped restores here, while upstream refuses it with `zip: checksum error`. Payload and central-directory CRCs are unchanged, so only a hand-edited zip has it |
 | 2026-10-31 | OAuth2 tests (M4.5) | `test/oauth2/safe-file.test.ts`, "the deadline covers a slow name resolution": failed one full `check` and 1 of 3 runs alone on the M5.3 branch, which does not touch OAuth2; passed in Sol's run |
 | 2026-11-01 | Backups (M5.3) | A failed backup closes its held descriptors on the main thread, which frees the files: about 49 ms for 512 MiB. Failure path only |
+| 2026-11-01 | Backups (M5.3) | Past half the open-file limit, a deleted file over 64 KiB is left out of a 204 backup with only a warning, where upstream answers 400. Takes 512 such deletes under `LimitNOFILE=1024`, on a separate storage mount; failing the backup would match upstream |
+| 2026-11-01 | Backups (M5.3) | Separate storage mount: small copies add up between delete yields, 188–255 ms stalls for 5,000 × 60 KiB. A small copy also loses its mod time in the zip listing; upstream's extract does not restore mod times |
+| 2026-11-01 | Backups (M5.3) | Stalls during a backup still reach 25–281 ms in Opus's eight runs (one 1.2 s stall did not recur), above the perf doc's 24–35 ms; upstream 17–37 ms. Host was shared, cause not proven. M7.1 should recheck |
+| 2026-11-01 | Backups tests (M5.3) | `test/differential/backups/backups.test.ts:301`: `keys()` assumes a list, but upstream answered `GET /api/backups` 400 once in 37,693 requests while pruning raced it. Passed 6 of 6 reruns; retry on a non-200 |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -107,6 +111,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-11-01 (M5.3 merge): the run finished its one task, so the lock was released and the next run picks the next task (M5.5 is next in milestone order among tasks with merged dependencies; M5.4 and M5.8 are also unblocked). Round 3 was reviewed by Opus, which wrote nothing on this task; the approval lists its probes. One reviewer used `rm -f` with a variable inside its own temp directory, against its brief; nothing outside was touched. `.upstream` cache intact.
 - 2026-11-01 (owner direction): **Opus replaces Fable as reviewer**, to save credits. D29, work plan, runbook and scheduled task updated. High effort is the lead's choice: above the workers' medium, below xhigh. The Fable round 2 was cancelled before its verdict, so round 2 restarts at the same head.
 - 2026-11-01 (owner direction): **Anthropic models only**, which ends the Sol pause below. D29: the reviewer is Claude Fable 5.1 at xhigh (the model is the lead's choice, as it differs from the workers), and the reviewer instructions now require probes, because D25 found Claude reviewers too lenient. Work plan, runbook and scheduled task updated.
 - 2026-10-31 (**Sol unavailable, needs the owner**): since 17:51 UTC every `gpt-6.1-sol` turn on this host fails within seconds with `model_not_found`: "The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account" (all projects; last seen 2026-11-01 10:19 UTC, in another project's turn; the Codex model catalog here, last refreshed 11:19 UTC, no longer lists it, only `gpt-6-luna` and `gpt-5.6-luna`, and neither is approved as a reviewer). The T3 thread still shows `running` and its parent is never woken, so a `running` reviewer is no proof of work: check `~/.codex/sessions` for `task_complete` errors. Round 2 of #51 never ran, and the one retry failed the same way. The lead took the lock at 19:19 UTC (the old lead's turn had ended) and handled this as a usage limit: paused, repeating each run until Sol answers. Not done: no other model reviews (D25 names Sol), no merge without its verdict, no next task (one task at a time, and its review would stall the same way), no change to the Codex login. The first reviewer thread stays `running`, using nothing.
