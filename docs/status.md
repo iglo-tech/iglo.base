@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-01
 
-M5.4a active.
+M5.4b active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4a | review | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 2 | [Brief](briefs/M5.4a.md) |
+| M5.4b | worker | `task/M5.4b-s3-files` | 0 | [Brief](briefs/M5.4b.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.4a | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 2026-11-01 (`73443c3`) | Two review rounds (Opus, lead fixed round 1): Opus APPROVE at `9e9ed96`, its `test:reference` at 0 failures. Upstream's S3 client ported on `fetch`, as `Bun.S3Client` cannot return raw error bodies; AGENTS.md updated. Downloads spool first (listed in 04-api-compatibility.md): 1 GiB 5.0 s vs upstream 1.5 s; create 18.3 s vs 5.1 s. M5.4b: `copy-object.ts` must accept any root |
 | M5.3 | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2026-11-01 (`8cd279a`) | Three review rounds: Sol round 1, then Opus (D29, lead fixed both): Opus APPROVE at `555a9a1`. `test:reference` at that head had one backlog flake in the lead's run (realtime order) and one new one in the reviewer's (autobackup list). `process.execve` restarts the compiled server; zips restore across both servers, Zip64 checked by hand. Zip synced every 32 MiB in the worker, as its writeback stalled main-thread commits. Backup about 2× upstream's time on incompressible data. With S3 enabled, backup endpoints fail with the not-supported error until M5.4 |
 | M5.6 | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 2026-10-31 (`3fc9c66`) | Two review rounds: Sol APPROVE at `23673b7` with `test:reference` at 0 failures (lead fixed round 1: `?fields=` on the list, log retention on Go's AddDate). Ticker under `serve` only; the four built-in jobs and the limiter job run; `AppLogger` gained `warn`. Carried: `__pbAutoBackup__` must be re-added on each settings reload, as its list position is API output (M5.3); job panic logs stay on stderr when the logger moves (M5.5); the crons screen footer still mentions registering jobs with Go or JavaScript (upstream `ui/` text) |
 | M4.8 | [#49](https://github.com/iglo-tech/iglo.base/pull/49) | 2026-10-31 (`3779902`) | Two review rounds: Sol APPROVE at `b344285` with `test:reference` at 0 failures (lead fixed round 1: limiters reset after commit). All M4.8 pending scenarios enabled. The key is the real IP, as upstream. Carried: the cleanup job waits for M5.6 to run it (a minimal `src/tools/cron/cron.ts` registers it), so limiter client maps grow until then; M5.7 must bind CORS ahead of the limiter |
@@ -104,6 +105,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-01 | S3 (M5.4a) | A client that leaves during a download: the spool keeps reading S3 to the end, then its file is removed. Upstream stops at the failed write |
 | 2026-11-01 | Uploads (M5.4a) | `POST /api/backups/upload` stalls the server (p99 78 ms, max 438 ms; upstream 18 and 73), with local storage too, so probably multipart intake (M3.2). M7.1 should look |
 | 2026-11-01 | Dashboard (M5.4a) | The vendored backups form cannot save with `cronMaxKeep` 0, as the browser blocks it on a hidden field; a fresh install has 3 |
+| 2026-11-01 | S3 (M5.4a) | Plain text with a bare `&` in place of S3 XML: `GET /api/backups` answers `200 []` where upstream answers 400. HEAD passes, GET refused and no body needed (`HEAD`, 304, 416): answered from the HEAD where upstream answers 400 |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
@@ -116,6 +118,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-11-01 (M5.4b brief): with S3 enabled, a record's files upload before the write transaction opens and are deleted if it fails, as network calls never run inside one and the write path is synchronous. Migration bindings cannot reach S3 file storage for the same reason. Opus worker per the model table. M5.4b ships although production's files are local (D15), as the API contract covers `s3.enabled`.
 - 2026-11-01 (M5.4a PR): `Bun.S3Client` cannot return the raw error body the API shows, so the worker ported upstream's S3 client on `fetch`, as the brief allowed. Two new deliberate differences are listed in `04-api-compatibility.md`: S3 downloads spool to a temp file (Bun drops `Content-Length` on a stream), and some network error texts differ from Go's. All work paused 14:13–16:10 UTC on the 5-hour usage limit and resumed by itself; two scheduled lead runs resumed with it and were told to stop.
 - 2026-11-01 (plan change, M5.4 brief): M5.4 splits into M5.4a (S3 layer, backups, test endpoint; production uses this, D15) and M5.4b (file storage). Local file storage writes synchronously inside the write transaction, and network calls may not run there, so M5.4b uploads before the transaction opens and deletes the uploads if the commit fails. Opus worker per the model table.
 - 2026-11-01 (owner direction): **leads keep working until nothing can move without the owner.** The run limit in the runbook is gone, and the scheduled task says so. The M5.3 merge note's M5.5 was wrong: M5.4 is next in milestone order, and D15 says production backups go to S3.
