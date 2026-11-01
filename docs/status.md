@@ -10,7 +10,7 @@ M5.3 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2 | [Brief](briefs/M5.3.md). Head `36555bd`; round 2 restarts with the Opus reviewer (D29) |
+| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2 | [Brief](briefs/M5.3.md). Head `36555bd`; round 2 running with the Opus reviewer (D29) |
 
 ## Done
 
