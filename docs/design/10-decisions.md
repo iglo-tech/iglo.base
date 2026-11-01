@@ -248,8 +248,8 @@ Decided by agents on 2026-10-30, for owner review (M3.3 brief).
 
 ## D29. Anthropic models only
 
-Direction from the owner on 2026-11-01; the reviewer choice was decided by agents on 2026-11-01, for owner review.
+Direction from the owner on 2026-11-01, including the reviewer model; its effort was decided by agents on 2026-11-01, for owner review.
 
-- **Decision:** every agent on this project runs on an Anthropic model. The reviewer is Claude Fable 5.1 at xhigh effort, a different model from the Opus and Haiku workers. The council and its merge rule stay as in D25.
+- **Decision:** every agent on this project runs on an Anthropic model. The reviewer is Claude Opus 5.5 at high effort, always a fresh agent that did not work on the task. Fable 5.1 was the first choice for a few minutes; the owner replaced it because its credits are limited. The council and its merge rule stay as in D25.
 - **Why:** `gpt-6.1-sol` stopped working on this host on 2026-10-31 (`model_not_found`) and M5.3's review stalled on it. D25 recorded that Claude reviewers approved almost every head, so the reviewer instructions now require findings backed by probes, and an approval must say what was probed.
 - **Consequence:** replaces the reviewer part of D25 in the [work plan](12-work-plan.md) and the [runbook](../chief-of-staff.md). Sol's earlier reviews stand.

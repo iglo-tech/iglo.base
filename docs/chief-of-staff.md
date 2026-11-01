@@ -33,9 +33,9 @@ Anthropic models only (D29). Call `orchestrator_capabilities` once per run befor
 
 | Agent | `target` |
 |---|---|
-| Opus worker or fixer (never a reviewer) | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "medium" } }` |
+| Opus worker or fixer | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "medium" } }` |
 | Haiku worker or helper | `{ "providerInstanceId": "claudeAgent", "model": "claude-haiku-5-5", "options": { "effort": "medium" } }` |
-| Fable reviewer | `{ "providerInstanceId": "claudeAgent", "model": "claude-fable-5-1", "options": { "effort": "xhigh" } }` |
+| Opus reviewer (a fresh agent, never the task's worker or fixer) | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "high" } }` |
 
 ### Worker instructions
 

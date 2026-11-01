@@ -10,7 +10,7 @@ M5.3 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2 | [Brief](briefs/M5.3.md). Head `36555bd`; round 2 running with the Fable reviewer (D29) |
+| M5.3 | review | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2 | [Brief](briefs/M5.3.md). Head `36555bd`; round 2 restarts with the Opus reviewer (D29) |
 
 ## Done
 
@@ -106,6 +106,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-11-01 (owner direction): **Opus replaces Fable as reviewer**, to save credits. D29, work plan, runbook and scheduled task updated. High effort is the lead's choice: above the workers' medium, below xhigh. The Fable round 2 was cancelled before its verdict, so round 2 restarts at the same head.
 - 2026-11-01 (owner direction): **Anthropic models only**, which ends the Sol pause below. D29: the reviewer is Claude Fable 5.1 at xhigh (the model is the lead's choice, as it differs from the workers), and the reviewer instructions now require probes, because D25 found Claude reviewers too lenient. Work plan, runbook and scheduled task updated.
 - 2026-10-31 (**Sol unavailable, needs the owner**): since 17:51 UTC every `gpt-6.1-sol` turn on this host fails within seconds with `model_not_found`: "The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account" (all projects; last seen 2026-11-01 10:19 UTC, in another project's turn; the Codex model catalog here, last refreshed 11:19 UTC, no longer lists it, only `gpt-6-luna` and `gpt-5.6-luna`, and neither is approved as a reviewer). The T3 thread still shows `running` and its parent is never woken, so a `running` reviewer is no proof of work: check `~/.codex/sessions` for `task_complete` errors. Round 2 of #51 never ran, and the one retry failed the same way. The lead took the lock at 19:19 UTC (the old lead's turn had ended) and handled this as a usage limit: paused, repeating each run until Sol answers. Not done: no other model reviews (D25 names Sol), no merge without its verdict, no next task (one task at a time, and its review would stall the same way), no change to the Codex login. The first reviewer thread stays `running`, using nothing.
 - 2026-10-31 (M5.3, host rule): the worker ran one `find /` across the whole disk looking for Go sources, which `/home/t3-code/AGENTS.md` forbids. It finished without memory or IO trouble and was not repeated.
