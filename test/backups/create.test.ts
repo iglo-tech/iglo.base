@@ -524,11 +524,20 @@ describe("apis/backup_test.go scenarios with a preset active backup", () => {
 async function s3App(): Promise<TestApp> {
   const app = await open();
   await createBackup(app, "local.zip");
-  app.settings.Backups.S3.Enabled = true;
+  // nothing listens on port 1
+  Object.assign(app.settings.Backups.S3, {
+    Enabled: true,
+    Bucket: "b",
+    Region: "r",
+    Endpoint: "http://127.0.0.1:1",
+    AccessKey: "a",
+    Secret: "s",
+    ForcePathStyle: true,
+  });
   return app;
 }
 
-describe("backups.s3 enabled", () => {
+describe("backups.s3 enabled, S3 out of reach", () => {
   test("every endpoint fails and nothing is written", async () => {
     const app = await s3App();
     const before = readdirSync(backupsDir(app)).toSorted();
@@ -537,32 +546,32 @@ describe("backups.s3 enabled", () => {
       ["GET", "/api/backups", undefined, 400],
       ["POST", "/api/backups", "{}", 400],
       ["POST", "/api/backups", `{"name":"new.zip"}`, 400],
-      ["POST", "/api/backups/upload", undefined, 500],
-      ["DELETE", "/api/backups/local.zip", undefined, 500],
-      ["POST", "/api/backups/local.zip/restore", undefined, 500],
+      ["POST", "/api/backups/upload", undefined, 400],
+      ["DELETE", "/api/backups/local.zip", undefined, 400],
+      ["POST", "/api/backups/local.zip/restore", undefined, 400],
     ];
     for (const [method, url, body, status] of expected) {
       const res = await send(app, method, url, body);
       expect([method, url, res.status]).toEqual([method, url, status]);
-      expect(await res.text()).toContain("not supported yet (M5.4)");
     }
     const res = await send(app, "POST", "/api/files/token");
     const { token } = (await res.json()) as { token: string };
     const download = await send(app, "GET", `/api/backups/local.zip?token=${token}`);
-    expect(download.status).toBe(500);
-    expect(await download.text()).toContain("not supported yet (M5.4)");
+    expect(download.status).toBe(400);
 
     expect(readdirSync(backupsDir(app)).toSorted()).toEqual(before);
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
   });
 
-  test("createBackup and restoreBackup give the clear error", async () => {
+  test("createBackup and restoreBackup give the error and leave nothing", async () => {
     const app = await s3App();
-    const message = "the S3 backups storage is not supported yet (M5.4)";
-    await expect(createBackup(app, "new.zip")).rejects.toThrow(message);
-    await expect(restoreBackup(app, "local.zip")).rejects.toThrow(message);
+    await expect(createBackup(app, "new.zip")).rejects.toThrow("connection refused");
+    await expect(restoreBackup(app, "local.zip")).rejects.toThrow(
+      `missing or invalid backup file "local.zip" to restore`,
+    );
     expect(existsSync(join(backupsDir(app), "new.zip"))).toBe(false);
     expect(readdirSync(join(app.dataDir, ".pb_temp_to_delete"))).toEqual([]);
+    expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
   });
 
   test("the job logs and alerts, and writes no local backup", async () => {
@@ -577,10 +586,23 @@ describe("backups.s3 enabled", () => {
 
     expect(app.logged.map((l) => l.message).join()).toContain("Failed to create backup");
     expect(String((app.logged[0]?.cause as Error | undefined)?.message)).toContain(
-      "not supported yet (M5.4)",
+      "connection refused",
     );
     expect(sink.messages.length).toBeGreaterThan(sent);
     expect(readdirSync(backupsDir(app)).filter((f) => f.startsWith("@auto"))).toEqual([]);
+  });
+
+  test("settings without a bucket fail as upstream's NewS3 does", async () => {
+    const app = await s3App();
+    app.settings.Backups.S3.Bucket = "";
+    const list = await send(app, "GET", "/api/backups");
+    expect(await list.json()).toEqual({
+      data: {},
+      message: "Failed to load backups filesystem.",
+      status: 400,
+    });
+    const del = await send(app, "DELETE", "/api/backups/local.zip");
+    expect(del.status).toBe(500);
   });
 });
 

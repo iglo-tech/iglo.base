@@ -60,7 +60,7 @@ describe("NewFilesystem", () => {
     expect(existsSync(join(dataDir, "storage", "c", "r", "f.txt.attrs"))).toBe(true);
   });
 
-  test("S3 enabled fails until M5.4", () => {
+  test("S3 enabled fails until M5.4b", () => {
     const settings = newDefaultSettings();
     settings.S3.Enabled = true;
     const appFs = newAppFilesystem({
