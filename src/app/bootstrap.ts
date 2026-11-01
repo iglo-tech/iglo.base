@@ -1,5 +1,4 @@
-// Upstream: core/base.go (Bootstrap, ClearBootstrap, initDataDB, initAuxDB,
-// LocalTempDirName)
+// Upstream: core/base.go (Bootstrap, ClearBootstrap, initDataDB, initAuxDB)
 //
 // Bootstrap opens pb_data: it creates the data directory, opens data.db and
 // auxiliary.db (with the read worker pool, D8), runs the system migrations
@@ -21,14 +20,13 @@ import { join } from "node:path";
 
 import { type App, type AppConfig, newApp } from "@/app/app";
 import { registerCrons } from "@/app/crons";
+import { LocalTempDirName } from "@/app/filesystem";
+import { loadAutobackupJob } from "@/backups/autobackup";
 import { loadCollectionsCache } from "@/collections/collection-save";
 import { reloadSettings } from "@/settings/settings-query";
 import { Databases, defaultReadWorkers } from "@/db/base";
 import { checkExistingDataDir, runSystemMigrations } from "@/migrations/system-migrations";
 import { Store } from "@/tools/store/store";
-
-// temp pb_data sub directory that will be deleted on each app.Bootstrap()
-export const LocalTempDirName = ".pb_temp_to_delete";
 
 // how long clearBootstrap waits for running cron jobs; one that takes longer
 // fails on the closed databases, into the log
@@ -72,6 +70,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     settings: config.settings,
     getenv: config.getenv,
     automigrateDir: config.automigrateDir,
+    restart: config.restart,
   });
 
   registerCrons(app);
@@ -85,6 +84,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     loadCollectionsCache(app);
 
     await reloadSettings(app);
+
+    loadAutobackupJob(app);
   } catch (err) {
     try {
       databases.close();

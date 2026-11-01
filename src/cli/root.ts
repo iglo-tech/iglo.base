@@ -54,6 +54,9 @@ export interface CliContext {
   ui?: StaticFS;
   // osutils.LaunchURL: opens a url in a browser when possible
   launchURL?: (url: string) => void;
+  // execve of this process (main.ts): returns only by throwing its error;
+  // unset: the app cannot restart
+  restart?: () => void;
 }
 
 // The persistent flags shared by every command.

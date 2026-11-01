@@ -4,7 +4,7 @@
 //
 // The superuser IP check of the other upstream callers (recordAuthResponse
 // in apis/record_helpers.go, M4; the protected file token in apis/file.go,
-// M5.2; apis/backup.go, M5.3) comes with those handlers; they call
+// M5.2; apis/backup.go) comes with those handlers; they call
 // isIPInList with the same settings.
 //
 // net/netip comparisons need the address bytes, which the validation's

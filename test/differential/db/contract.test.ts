@@ -23,7 +23,8 @@ import {
 
 const recordId = "iglobasedemo201";
 const logId = "iglobaselog0001";
-const now = "2026-10-27 12:00:00.000Z";
+// recent: the log must stay within upstream's retention
+const now = new Date().toISOString().replace("T", " ");
 
 interface Snapshot {
   files: string[];

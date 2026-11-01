@@ -1,8 +1,8 @@
 // Upstream: core/app.go (the App interface; only the parts that exist so far)
 //
 // The app context passed to every module instead of process-global state.
-// It carries only what exists now; later tasks add their fields
-// (backups M5.x) in their own change. The databases,
+// It carries only what exists now; later tasks add their fields in their
+// own change. The databases,
 // the runtime store (with the collections cache) and the clock make it a
 // CollectionsApp (src/collections/collection-query.ts), so the collection
 // and record functions take the app itself. bootstrap() (bootstrap.ts)
@@ -72,6 +72,11 @@ export interface App {
   // the migrations directory automigrate writes to (--automigrate,
   // plugins/migratecmd); undefined when it is off
   readonly automigrateDir?: string;
+  // Restart restarts (aka. replaces) the current running application
+  // process (src/cli/serve.ts): it stops the server and the app, then
+  // execve. It returns only if that fails: revert has then run, on closed
+  // databases, and the promise rejects while `serve` re-bootstraps.
+  restart(revert: () => void): Promise<void>;
 }
 
 export interface AppConfig {
@@ -89,6 +94,13 @@ export interface AppConfig {
   getenv?: (name: string) => string;
   // the migrations directory, when --automigrate is on
   automigrateDir?: string;
+  // Restart; outside `serve` it fails
+  restart?: App["restart"];
+}
+
+async function notServing(revert: () => void): Promise<void> {
+  revert();
+  throw new Error("the app can restart only under serve");
 }
 
 export function newApp(config: AppConfig): App {
@@ -98,6 +110,7 @@ export function newApp(config: AppConfig): App {
     ...config,
     settings,
     getenv,
+    restart: config.restart ?? notServing,
     filesystem: newAppFilesystem({
       dataDir: config.dataDir,
       settings: () => settings,

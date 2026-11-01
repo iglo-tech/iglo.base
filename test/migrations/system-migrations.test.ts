@@ -15,7 +15,8 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { bootstrap, clearBootstrap, LocalTempDirName } from "@/app/bootstrap";
+import { bootstrap, clearBootstrap } from "@/app/bootstrap";
+import { LocalTempDirName } from "@/app/filesystem";
 import type { Clock } from "@/app/clock";
 import {
   olderDataMessage,

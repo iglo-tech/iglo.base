@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { compareResponses, readStartingData } from "@test/differential/harness/compare";
 import { igloBaseExpectations } from "@test/scenarios/expectations";
 import { copyDataDir, preparedFixture } from "@test/scenarios/fixture";
+import type { ScenarioResponse } from "@test/scenarios/request";
 import { checkResponse, send } from "@test/scenarios/runner";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
@@ -29,6 +30,15 @@ export interface DifferentialResult {
   // iglo.base against its expectations, then every difference from
   // upstream's response (not compared for a deliberate difference)
   igloBaseFailures: string[];
+}
+
+// A raw error text may name a file in the server's own pb_data directory.
+function hideDataDir(res: ScenarioResponse, dataDir: string): ScenarioResponse {
+  const body = Buffer.from(res.body);
+  if (!body.includes(dataDir)) {
+    return res;
+  }
+  return { ...res, body: Buffer.from(body.toString().replaceAll(dataDir, "<pb_data>")) };
 }
 
 export async function runDifferential(scenario: Scenario): Promise<DifferentialResult> {
@@ -73,9 +83,10 @@ export async function runDifferential(scenario: Scenario): Promise<DifferentialR
       ]);
       if (!scenario.difference && !("error" in upRes) && !("error" in igRes)) {
         igloBaseFailures.push(
-          ...compareResponses(upRes, igRes, { start, request: scenario }).map(
-            (d) => `differs from upstream: ${d}`,
-          ),
+          ...compareResponses(hideDataDir(upRes, upstreamDir), hideDataDir(igRes, igloBaseDir), {
+            start,
+            request: scenario,
+          }).map((d) => `differs from upstream: ${d}`),
         );
       }
       return { upstreamFailures, igloBaseFailures };

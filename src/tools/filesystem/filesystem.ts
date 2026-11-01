@@ -19,7 +19,8 @@
 //
 // Not ported: NewS3 (M5.4), the deprecated GetFile, UploadMultipart (a multipart part is a File here and
 // goes through UploadFile, with the same result), SetContext (no
-// contexts), and the OnNewWriter and OnDelete hooks (D5). Go's
+// contexts), and the OnNewWriter and OnDelete hooks (D5): a running backup
+// gets those two calls through a FilesystemWatcher instead. Go's
 // filesystem.ErrNotFound is blob.ErrNotFound; callers check it with
 // isNotFound (blob/bucket.ts).
 
@@ -124,7 +125,14 @@ export interface ThumbRenderer {
 
 export const MetadataOriginalName = "original-filename";
 
-// pb_data's temp directory (core.LocalTempDirName in src/app/bootstrap.ts,
+// what a running backup needs to know of a storage (src/backups/create.ts),
+// told synchronously before the blob is touched
+export interface FilesystemWatcher {
+  onNewWriter(fileKey: string): void;
+  onDelete(fileKey: string): void;
+}
+
+// pb_data's temp directory (core.LocalTempDirName in src/app/filesystem.ts,
 // which imports this module), beside the storage directory
 const localTempDirName = ".pb_temp_to_delete";
 
@@ -142,10 +150,17 @@ export class System {
   readonly #bucket: Bucket;
   // the directory of a local storage, for Blob views of its files
   readonly #localDir: string;
+  // the current watcher, if any
+  readonly #watcher: () => FilesystemWatcher | null;
 
-  constructor(bucket: Bucket, localDir: string) {
+  constructor(
+    bucket: Bucket,
+    localDir: string,
+    watcher: () => FilesystemWatcher | null = () => null,
+  ) {
     this.#bucket = bucket;
     this.#localDir = localDir;
+    this.#watcher = watcher;
   }
 
   // Close releases any resources used for the related filesystem.
@@ -220,6 +235,7 @@ export class System {
   //
   // If dstKey file already exists, it is overwritten.
   copy(srcKey: string, dstKey: string): void {
+    this.#watcher()?.onNewWriter(dstKey);
     this.#bucket.copy(dstKey, srcKey);
   }
 
@@ -257,6 +273,15 @@ export class System {
 
   // UploadFile uploads the provided File to the fileKey location.
   uploadFile(file: File, fileKey: string): void {
+    const steps = this.uploadFileSteps(file, fileKey);
+    while (steps.next().done !== true) {
+      // to the end
+    }
+  }
+
+  // UploadFile as a generator: it yields after each block, so a large file
+  // can give the event loop back between blocks.
+  *uploadFileSteps(file: File, fileKey: string): Generator<void, void, void> {
     // mimetype.DetectReader of the content's first bytes
     const [mt, detectErr] = file.detect();
     if (detectErr !== null) {
@@ -286,6 +311,7 @@ export class System {
             break;
           }
           w.write(buf.subarray(0, n));
+          yield;
         }
       } catch (err) {
         w.cancel();
@@ -307,6 +333,7 @@ export class System {
   // NB! Make sure to call close() (or cancel()) on the resulting writer
   // after you are done working with it.
   newWriter(fileKey: string, opts: WriterOptions): Writer {
+    this.#watcher()?.onNewWriter(fileKey);
     return this.#bucket.newWriter(fileKey, opts);
   }
 
@@ -315,6 +342,7 @@ export class System {
   // If the file doesn't exist it throws an error for which isNotFound is
   // true.
   delete(fileKey: string): void {
+    this.#watcher()?.onDelete(fileKey);
     this.#bucket.delete(fileKey);
   }
 
@@ -669,13 +697,13 @@ export class System {
 // NewLocal initializes a new local filesystem instance.
 //
 // NB! Make sure to call close() after you are done working with it.
-export function NewLocal(dirPath: string): System {
+export function NewLocal(dirPath: string, watcher?: () => FilesystemWatcher | null): System {
   // makes sure that the directory exist
   mkdirSync(dirPath, { recursive: true, mode: 0o777 });
 
   const drv = newFileblob(dirPath, { noTempDir: true });
 
-  return new System(new Bucket(drv), dirPath);
+  return new System(new Bucket(drv), dirPath, watcher);
 }
 
 // path.Base

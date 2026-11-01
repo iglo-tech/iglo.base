@@ -8,6 +8,7 @@
 // (D5): settingsReloaded is the plain internal call site of its consumers.
 
 import type { App } from "@/app/app";
+import { loadAutobackupJob } from "@/backups/autobackup";
 import type { Row } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { saveNoValidate } from "@/db/db";
@@ -103,14 +104,16 @@ export async function reloadSettings(app: App): Promise<void> {
 
 // The internal consumers of a settings reload (upstream's OnSettingsReload
 // handlers). The rate limiters reset here; saveSettingsSync, which saves
-// without a reload, resets them after its commit. The others are called from here by the
-// tasks that add them:
+// without a reload, resets them after its commit. The autobackup job is
+// added again here (a save from a JS migration reaches it at serve's reload
+// after the migrations). The others are called from here by the tasks that
+// add them:
 //   - M4.4: reset the mailer client (NewMailClient reads the SMTP config);
-//   - M5.3: reschedule the backups cron (backups.cron, cronMaxKeep);
 //   - M5.5: apply the logs settings (minLevel, maxDays, logIP, logAuthId);
 //   - M5.7: the trusted proxy settings (read per request, nothing to reset).
 function settingsReloaded(app: App): void {
   destroyRateLimitersStore(app);
+  loadAutobackupJob(app);
 }
 
 // loadParam loads the settings from the stored param into the app ones.

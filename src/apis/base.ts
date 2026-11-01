@@ -6,6 +6,7 @@
 
 import type { App } from "@/app/app";
 import { RequestEvent } from "@/app/event-request";
+import { bindBackupApi } from "@/apis/backup";
 import { bindBatchApi } from "@/batch/batch";
 import { bindCollectionApi } from "@/apis/collection";
 import { bindCronApi } from "@/apis/cron";
@@ -55,14 +56,15 @@ export function newRouter(app: App, options: RouterOptions = {}): Router<Request
 
   // API routes
   const apiGroup = pbRouter.group("/api");
-  // logs, backups and SQL are
-  // bound by their own tasks, in upstream's order: settings, collections,
+  // logs and SQL are bound by their own tasks, in upstream's order:
+  // settings, collections,
   // record crud, record auth, logs, backups, crons, files, batch,
   // realtime, health, SQL
   bindSettingsApi(app, apiGroup);
   bindCollectionApi(app, apiGroup);
   bindRecordCrudApi(app, apiGroup, options.recordCrud);
   bindRecordAuthApi(app, apiGroup, options.recordAuth);
+  bindBackupApi(app, apiGroup);
   bindCronApi(app, apiGroup);
   bindFileApi(app, apiGroup);
   bindBatchApi(app, apiGroup);

@@ -3,7 +3,8 @@
 //
 // Registered once per app, in upstream's order: GET /api/crons lists the jobs
 // in registration order. `__pbRateLimitersCleanup__` is added by the first
-// limiter (src/middlewares/rate-limit.ts) and `__pbAutoBackup__` by M5.3.
+// limiter (src/middlewares/rate-limit.ts) and `__pbAutoBackup__` by
+// loadAutobackupJob (src/backups/autobackup.ts).
 // Only `serve` starts the ticker; the app's other commands register the jobs
 // and never run them.
 

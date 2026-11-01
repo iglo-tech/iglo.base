@@ -26,11 +26,13 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => shutdown.abort());
 }
 
+const isCompiled = Bun.main.startsWith("/$bunfs/") || /^[A-Z]:\\~BUN\\/.test(Bun.main);
+
 const exitCode = await runCli({
   args: process.argv.slice(2),
   argv0: process.argv0,
   cwd: process.cwd(),
-  isCompiled: Bun.main.startsWith("/$bunfs/") || /^[A-Z]:\\~BUN\\/.test(Bun.main),
+  isCompiled,
   out: {
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),
@@ -43,6 +45,14 @@ const exitCode = await runCli({
   exit: (code) => process.exit(code),
   ui: readUiPack(await Bun.file(uiPack).bytes()),
   launchURL,
+  // os.Executable, os.Args and os.Environ; process.argv[1] is the bundled
+  // entry point in a compiled executable, which argv0 stands for
+  restart: () =>
+    process.execve!(
+      process.execPath,
+      isCompiled ? [process.argv0, ...process.argv.slice(2)] : process.argv,
+      process.env,
+    ),
 });
 
 process.exit(exitCode);

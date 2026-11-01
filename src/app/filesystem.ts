@@ -1,4 +1,5 @@
-// Upstream: core/base.go (NewFilesystem, LocalStorageDirName, the
+// Upstream: core/base.go (NewFilesystem, NewBackupsFilesystem, the Local*
+// directory names, the
 // "__pbFilesManagerDelete__" handler of registerBaseHooks and
 // supportFiles)
 //
@@ -7,6 +8,7 @@
 // M5.4 brings the S3 storage; every caller fails then as upstream's do
 // when its S3 storage cannot be reached (an upload fails the save with a
 // 400, a delete leaves the files and logs the error).
+// newBackupsFilesystem() is the same for pb_data/backups and backups.s3.
 //
 // deleteModelFiles is the storage cleanup after a record or collection is
 // deleted (upstream's OnModelAfterDeleteSuccess handler, called directly by
@@ -22,9 +24,20 @@
 import type { ErrorLogger } from "@/app/app";
 import { toInt64 } from "@/records/cast";
 import type { Settings } from "@/settings/settings-model";
-import { NewLocal, type System } from "@/tools/filesystem/filesystem";
+import { type FilesystemWatcher, NewLocal, type System } from "@/tools/filesystem/filesystem";
 
 export const LocalStorageDirName = "storage";
+export const LocalBackupsDirName = "backups";
+export const LocalAutocertCacheDirName = ".autocert_cache";
+export const LocalNotifyDirName = ".notify";
+// temp pb_data sub directory that will be deleted on each app.Bootstrap()
+export const LocalTempDirName = ".pb_temp_to_delete";
+export const lostFoundDirName = "lost+found";
+
+// newBackupsFilesystem's error with backups.s3 enabled, until M5.4
+export const ErrBackupsS3NotSupported = new Error(
+  "the S3 backups storage is not supported yet (M5.4)",
+);
 
 // the field types of a deleted model's collection (supportFiles)
 export interface FilesModel {
@@ -42,6 +55,14 @@ export interface AppFilesystem {
   // NB! Make sure to call close() on the returned result after you are
   // done working with it.
   newFilesystem(): System;
+  // NewBackupsFilesystem creates a new local or S3 filesystem instance for
+  // managing app backups based on the current app settings.
+  //
+  // NB! Make sure to call close() on the returned result after you are
+  // done working with it.
+  newBackupsFilesystem(): System;
+  // sets (null: clears) the watcher of the app's file storage
+  watch(watcher: FilesystemWatcher | null): void;
   // deletes the storage files of a deleted record or collection in the
   // background (see the top of the file)
   deleteModelFiles(model: FilesModel): void | Promise<void>;
@@ -50,18 +71,28 @@ export interface AppFilesystem {
 export interface AppFilesystemConfig {
   dataDir: string;
   // the current settings (S3)
-  settings: () => Pick<Settings, "S3">;
+  settings: () => Pick<Settings, "S3" | "Backups">;
   getenv: (name: string) => string;
   logger: ErrorLogger;
 }
 
 export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
+  let watcher: FilesystemWatcher | null = null;
+
   const newFilesystem = (): System => {
     if (config.settings().S3.Enabled) {
       throw new Error("the S3 file storage is not supported yet (M5.4)");
     }
     // local filesystem
-    return NewLocal(config.dataDir + "/" + LocalStorageDirName);
+    return NewLocal(config.dataDir + "/" + LocalStorageDirName, () => watcher);
+  };
+
+  const newBackupsFilesystem = (): System => {
+    if (config.settings().Backups.S3.Enabled) {
+      throw ErrBackupsS3NotSupported;
+    }
+    // fallback to local filesystem
+    return NewLocal(config.dataDir + "/" + LocalBackupsDirName);
   };
 
   // cast.ToInt64 (Go integer literals, 0 when it does not parse); a
@@ -114,6 +145,10 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
 
   return {
     newFilesystem,
+    newBackupsFilesystem,
+    watch(newWatcher: FilesystemWatcher | null): void {
+      watcher = newWatcher;
+    },
     deleteModelFiles(model: FilesModel): void | Promise<void> {
       const base = model.baseFilesPath();
       if (base === "" || !supportFiles(model)) {

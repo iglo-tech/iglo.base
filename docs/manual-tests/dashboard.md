@@ -21,7 +21,7 @@ Open the printed `/_/#/pbinstall/<token>` link with `agent-browser` (its own ses
 | Collections | List, open `users`, create a base collection with text, number, bool, file, json and date fields; rules; indexes; view collections | M2.5 |
 | Records | Create a record with a file, edit it, filters, relations, file download and thumbnails | M3.1; files M5.2 |
 | Auth options | Auth collection options, OAuth2 provider setup | M2.5; providers M4.5–M4.7 |
-| Settings | Application (save the name), mail (test email), files storage (S3 test), backups, rate limits, trusted proxy, export and import collections | M1.3; mail M4.4, S3 M5.4, backups M5.3 |
+| Settings | Application (save the name), mail (test email), files storage (S3 test), backups (create, list, download, restore, delete), rate limits, trusted proxy, export and import collections | M1.3; mail M4.4, S3 M5.4, backups M5.3 |
 | Logs | Logs list and chart, log settings | M5.5 |
 | Crons | Crons list and run | M5.6 |
 | SQL console | Run a query | its task |
@@ -53,9 +53,21 @@ Fresh `pb_data`, Chromium through `agent-browser`.
 | Records: open the record, change the title, "Save changes" | Pass: the list shows the new title |
 | Settings → Application: change the application name, save | Pass: "Successfully saved application settings.", the page title shows the new name |
 | Settings → Mail, Files storage, Export collections, Import collections, Auth providers, Tokens | Pass: open without errors |
-| Settings → Backups | Expected gap: `GET /api/backups` 404 (M5.3) |
+| Settings → Backups | Expected gap: `GET /api/backups` 404 (M5.3; see the M5.3 run below) |
 | Settings → Crons | Expected gap: `GET /api/crons` 404 (M5.6) |
 | Logs | Expected gap: `GET /api/logs` and `/api/logs/stats` 404 (M5.5) |
 | File download | Expected gap: `GET /api/files/...` 404 (M5.2) |
 
 All dashboard assets (`/_/`, scripts, styles, fonts, images, libraries) loaded with 200; the only failing requests were the expected gaps above. The automated parts of this flow are in `test/ui/` (serving, installer) and `test/differential/ui/` (against upstream's binary).
+
+## 2026-10-31, `task/M5.3-backups`, M5.3 backups screen
+
+Run on a fixture copy (`test/fixtures/pocketbase`, `test@example.com` / `1234567890`), executable from this branch.
+
+| Step | Result |
+|---|---|
+| Settings → Backups: open | Pass: empty list, "Upload backup", "Initialize new backup" and "Backup options" |
+| "Initialize new backup", name `ui-test.zip`, "Start backup" | Pass: `ui-test.zip (70.76 KB)` listed; the button shows "Backup/restore operation is in process" until the next `/api/health`, then goes back |
+| "Download" | Pass: `POST /api/files/token` 200; the same token request and `GET /api/backups/ui-test.zip?token=…` from the page answer 200, `attachment; filename="ui-test.zip"`, `application/zip`, 72,456 bytes |
+| "Restore", type the name, "Restore backup" | Pass: the server restarted (the serve banner printed again), the page came back on the same screen, the backup still listed, `pb_data/.pb_temp_to_delete` gone |
+| "Delete", "Yes" | Pass: "Successfully deleted ui-test.zip.", "No backups found.", `pb_data/backups` has no files |
