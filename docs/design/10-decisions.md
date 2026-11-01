@@ -214,7 +214,7 @@ Decided by the owner on 2026-10-28.
 
 ## D25. One cross-lab reviewer, local verification only
 
-Decided by the owner on 2026-10-29.
+Decided by the owner on 2026-10-29. The reviewer model and the ban on Claude reviews are replaced by D29; local verification stands.
 
 - **Decision:** each PR is reviewed by one reviewer from another lab than the lead: GPT-6.1 Sol at xhigh reasoning. The council is the lead and that reviewer: a PR merges when both agree, that is, the reviewer approves the head, or the lead and the reviewer agree that every remaining finding is out of scope (logged in the hardening backlog in `docs/status.md`). No Claude agent reviews Claude work. Verification is local: the worker, fixer and reviewer run `bun run check` and `bun run test:reference` on this host. CI is not a merge gate and runs only on demand (`workflow_dispatch`).
 - **Why:** the Claude reviewer approved almost every head (about 38 approvals and 13 change requests over PRs #1–#28) while Sol raised most findings, so a second Claude review mostly re-checked Claude's own work. CI repeated the local runs on the same single environment and only added waiting.
@@ -245,3 +245,11 @@ Decided by agents on 2026-10-30, for owner review (M3.3 brief).
 - **Decision:** `POST /api/batch` has two phases. Before the transaction, everything asynchronous runs: reading and binding the body, reading uploaded files (first bytes, spill per D27), building each item's request and request info. Then one `runInTransaction` runs all items synchronously on `txApp`, where reads already stay on the transaction's connection (D8). The record create, update and delete handlers keep one implementation of their rule and save steps, with the reads behind a small seam: the read pool on the routes, the transaction's builders in a batch. The lead does not prescribe the seam's form, but rule logic is never copied into a second path.
 - **Why:** D8 keeps transactions synchronous on the single write connection. An `await` inside an open transaction would let other requests' writes join it, and queueing every write behind an async gate would change every write path. A batch's items must see each other's uncommitted writes, so they cannot read through the pool.
 - **Costs:** the event loop is blocked while a batch runs, bounded by `batch.maxRequests` and the items' work, and upstream's `batch.timeout` cannot interrupt a running item. The deadline is checked between items and before commit: past it the batch rolls back with upstream's error, but late. This goes into the deliberate differences.
+
+## D29. Anthropic models only
+
+Direction from the owner on 2026-11-01; the reviewer choice was decided by agents on 2026-11-01, for owner review.
+
+- **Decision:** every agent on this project runs on an Anthropic model. The reviewer is Claude Fable 5.1 at xhigh effort, a different model from the Opus and Haiku workers. The council and its merge rule stay as in D25.
+- **Why:** `gpt-6.1-sol` stopped working on this host on 2026-10-31 (`model_not_found`) and M5.3's review stalled on it. D25 recorded that Claude reviewers approved almost every head, so the reviewer instructions now require findings backed by probes, and an approval must say what was probed.
+- **Consequence:** replaces the reviewer part of D25 in the [work plan](12-work-plan.md) and the [runbook](../chief-of-staff.md). Sol's earlier reviews stand.

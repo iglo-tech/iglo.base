@@ -1,6 +1,6 @@
 # Work plan
 
-How the [port plan](09-port-plan.md) is split into tasks that agents do one at a time, and how each task is briefed, reviewed by the council (the lead and one cross-lab reviewer) and merged without the owner.
+How the [port plan](09-port-plan.md) is split into tasks that agents do one at a time, and how each task is briefed, reviewed by the council (the lead and one reviewer) and merged without the owner.
 
 ## How work is handled
 
@@ -11,7 +11,7 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 | Owner | the project owner | Sets direction. Is not asked for approvals: agents merge and decide on their own, and log decisions for later review. Takes part only in M7.4 (production data) |
 | Lead (chief of staff) | a scheduled agent run, every 45 minutes ([runbook](../chief-of-staff.md)) | Keeps this plan and [`docs/status.md`](../status.md) current, writes task briefs, starts workers and the council, merges, decides design questions |
 | Worker | one agent per task | Does one task in its own branch and worktree, opens one PR |
-| Council | the lead and one fresh reviewer from another lab: GPT-6.1 Sol (xhigh reasoning), never the worker (D25) | The reviewer reviews each finished PR deeply against upstream's source and these docs. A PR merges only when both approve the same commit |
+| Council | the lead and one fresh reviewer: Claude Fable 5.1 (xhigh effort), never the worker (D25, D29) | The reviewer reviews each finished PR deeply against upstream's source and these docs. A PR merges only when both approve the same commit |
 
 ### Models
 
@@ -20,7 +20,7 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 | Lead | Claude Opus 5.5 |
 | Workers on core, security- or format-critical code (data layer, filters, resolver, tokens, auth flows, realtime, files, backups) | Claude Opus 5.5, medium effort |
 | Workers on mechanical tasks (M0.2, M4.6, M4.7, M5.8, M7.2) and any bulk work inside other tasks (converting upstream table tests to scenario data, reading large files, summarizing logs and CI output) | Claude Haiku 5.5 |
-| Reviewer | GPT-6.1 Sol at xhigh reasoning (no Claude reviewer, D25) |
+| Reviewer | Claude Fable 5.1 at xhigh effort (D29) |
 
 ### One task
 
@@ -67,7 +67,7 @@ These are created in M0 and change only through a small task of their own, becau
 ### Review and merge
 
 1. The worker finishes when its PR is open and its acceptance check and the full local check (`bun run check`, `bun run test:reference`) pass on this host. CI is not a gate (D25).
-2. **Review:** one reviewer from another lab (GPT-6.1 Sol, D25) reviews the PR deeply: the diff next to the upstream files it ports, these docs and `AGENTS.md`, behavior against upstream, no hook remnants or extension surface, tests through public boundaries only, the task's scope. It posts one PR comment with a verdict, `APPROVE` or `CHANGES`, for the exact head commit. A blocking finding names the realistic client and request behind it; malformed or exotic input that is handled safely is a backlog item, not a blocker (D26).
+2. **Review:** one reviewer (Claude Fable 5.1, D29) reviews the PR deeply: the diff next to the upstream files it ports, these docs and `AGENTS.md`, behavior against upstream, no hook remnants or extension surface, tests through public boundaries only, the task's scope. It posts one PR comment with a verdict, `APPROVE` or `CHANGES`, for the exact head commit. A blocking finding names the realistic client and request behind it; malformed or exotic input that is handled safely is a backlog item, not a blocker (D26).
 3. **Council:** the lead and the reviewer must agree. The lead reads every finding: it fixes or delegates the ones it agrees with, and answers the ones it disagrees with in the PR, with upstream's behavior as the reference. Later rounds verify the fixes and the code they touch, not the whole PR again.
 4. **Deadlock:** after three rounds without agreement, the lead decides. Upstream's binary (the scenarios and the differential suite) is the tiebreaker, D26 decides what counts as a blocker, and the reasoning goes in the PR.
 5. The lead squash-merges, deletes the branch and updates `docs/status.md`. `main` stays green locally.

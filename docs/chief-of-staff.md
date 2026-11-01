@@ -29,13 +29,13 @@ After three council rounds without agreement, decide yourself: upstream's behavi
 
 ## Agents
 
-Call `orchestrator_capabilities` once per run before the first `delegate_task`.
+Anthropic models only (D29). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
 
 | Agent | `target` |
 |---|---|
 | Opus worker or fixer (never a reviewer) | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "medium" } }` |
 | Haiku worker or helper | `{ "providerInstanceId": "claudeAgent", "model": "claude-haiku-5-5", "options": { "effort": "medium" } }` |
-| Sol reviewer | `{ "providerInstanceId": "codex", "model": "gpt-6.1-sol", "options": { "reasoningEffort": "xhigh" } }` |
+| Fable reviewer | `{ "providerInstanceId": "claudeAgent", "model": "claude-fable-5-1", "options": { "effort": "xhigh" } }` |
 
 ### Worker instructions
 
@@ -64,6 +64,7 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md (brief:
 - Check out the PR head in your worktree (gh pr checkout <number>, or a detached checkout of the head). Read AGENTS.md, docs/design/12-work-plan.md (the task row and the worker rules), D25 and D26 in docs/design/10-decisions.md and the design docs the change touches.
 - Round 1: review deeply. Compare the change with the upstream PocketBase v0.41.0 files it ports, in .upstream/pocketbase (after `bun run upstream:prepare`) or /home/t3-code/upstream/pocketbase (same pinned commit), and probe both servers. Later rounds: verify that each earlier finding is fixed and review the code the fixes touch; do not re-review the whole PR.
 - Run `bun run check` and then `bun run test:reference` locally (one after the other; the host has limited memory; never write into tracked fixtures). CI is not used. Before your final reply, delete `dist/` and any temporary data you created.
+- Your job is to find defects, not to confirm the work. Do not take the PR's claims or the tests' passing as proof; probe the behavior yourself. An APPROVE lists what you probed.
 - Check: results match upstream for the requests real clients send, the data contract, rules and auth, scope respected, no extension surface or hook remnants, tests through public boundaries only, design docs match the code.
 - When you find a defect, look for its whole class (the same mistake on sibling code paths, inputs and fields) and report every instance in this round, so fixes do not trickle in over several rounds.
 - A blocking finding names the file and line, the realistic client and request, and the concrete failure. Malformed or hand-crafted input that is handled safely (no crash, no partial data, no rule bypass, bounded memory) but answered differently from upstream is not blocking (D26): list it under "Backlog". No optional style changes.
