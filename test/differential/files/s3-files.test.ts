@@ -27,8 +27,10 @@ import {
   sendCase,
   type Side,
 } from "@test/differential/files/record-requests";
+import { ScenarioContext } from "@test/realtime/scenario";
 import { eventually } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
 import { type S3Proxy, startS3Proxy } from "@test/support/s3-proxy";
 import { startUpstream } from "@test/support/upstream";
@@ -465,6 +467,89 @@ describe("batch", () => {
     );
     expect(res.status).toBe(200);
     await settledBuckets();
+  });
+
+  test("an existing record's id is not held to the current id rules", async () => {
+    const id = "legacyrecord001";
+    await same(
+      "POST",
+      () => "/api/collections",
+      () =>
+        jsonBody({
+          name: "flegacy",
+          type: "base",
+          fields: [{ name: "doc", type: "file", maxSelect: 1, maxSize: 1 << 20 }],
+        }),
+    );
+    await same(
+      "POST",
+      () => "/api/collections/flegacy/records",
+      () => jsonBody({ id }),
+    );
+
+    const [collection] = await same("GET", () => "/api/collections/flegacy");
+    const { fields } = JSON.parse(Buffer.from(collection.body).toString()) as {
+      fields: { name: string }[];
+    };
+    await same(
+      "PATCH",
+      () => "/api/collections/flegacy",
+      () =>
+        jsonBody({
+          fields: fields.map((f) => (f.name === "id" ? { ...f, pattern: "^[0-9]+$" } : f)),
+        }),
+    );
+
+    const url = `/api/collections/flegacy/records/${id}`;
+    for (const [method, itemUrl] of [
+      ["PATCH", url],
+      ["PUT", "/api/collections/flegacy/records"],
+    ] as const) {
+      const [res] = await same(
+        "POST",
+        () => "/api/batch",
+        batch([{ method, url: itemUrl, body: { id } }], () => [
+          textFile("requests.0.doc", `${method}.txt`),
+        ]),
+      );
+      expect(res.status).toBe(200);
+    }
+    await settledBuckets();
+  });
+
+  test("a save that deletes a file broadcasts in item order", async () => {
+    const ctx = new ScenarioContext(ig.side.url);
+    try {
+      await createBoth("fsingle", "order", [textFile("doc", "order.txt")]);
+      const id = recordId(ig.side, "order");
+      const stream = await ctx.open();
+      await ctx.subscribe(stream.clientId, ["fsingle/*"], superuserToken);
+
+      const url = `/api/collections/fsingle/records/${id}`;
+      const res = await req(
+        ig.side.url,
+        "POST",
+        "/api/batch",
+        JSON.stringify({
+          requests: [
+            { method: "PATCH", url, body: { doc: null, title: "first" } },
+            { method: "PATCH", url, body: { title: "second" } },
+          ],
+        }),
+        "application/json",
+      );
+      expect(res.status).toBe(200);
+
+      const titles = (await stream.settle()).flatMap((event) =>
+        event.event === "fsingle/*"
+          ? [(JSON.parse(event.data) as { record: { title: string } }).record.title]
+          : [],
+      );
+      expect(titles).toEqual(["first", "second"]);
+    } finally {
+      ctx.close();
+    }
+    await same("DELETE", (side) => `/api/collections/fsingle/records/${recordId(side, "order")}`);
   });
 
   test("a replaced file of a single field and a file for no field store nothing", async () => {

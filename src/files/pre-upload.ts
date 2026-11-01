@@ -26,6 +26,7 @@ import type { App } from "@/app/app";
 import type { Collection } from "@/collections/collection-model";
 import { FieldNameId } from "@/fields/field";
 import { TextField } from "@/fields/text";
+import { findRecordById } from "@/records/record-query";
 import type { File } from "@/tools/filesystem/file";
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
 
@@ -89,8 +90,9 @@ export class PreUploads {
 }
 
 // the id a target's files are stored under, or null when the save cannot get
-// to its upload with it
-function targetRecordId(target: UploadTarget): string | null {
+// to its upload with it. The id field checks only a new record's id: an
+// existing one may come from an import (core/field_text.go).
+function targetRecordId(app: App, target: UploadTarget): string | null {
   const field = target.collection.fields.getByName(FieldNameId);
   if (!(field instanceof TextField)) {
     return null;
@@ -104,7 +106,16 @@ function targetRecordId(target: UploadTarget): string | null {
     id = randomStringByRegex(field.autogeneratePattern);
   }
 
-  return field.validatePlainValue(id) === null ? id : null;
+  return field.validatePlainValue(id) === null || recordExists(app, target, id) ? id : null;
+}
+
+function recordExists(app: App, target: UploadTarget, id: string): boolean {
+  try {
+    findRecordById(app, target.collection, id);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Stores the targets' files, before the transaction that saves them opens. A
@@ -128,7 +139,7 @@ export async function preUploadFiles(
 
   try {
     for (const target of targets) {
-      const recordId = targetRecordId(target);
+      const recordId = targetRecordId(app, target);
       if (recordId === null) {
         continue;
       }

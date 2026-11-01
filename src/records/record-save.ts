@@ -577,9 +577,35 @@ function* afterSuccess(
     return;
   }
 
+  const { parent } = txInfo;
+
   // execute later after the transaction has completed
   txInfo.onComplete((txErr) => {
-    const parentApp: RecordsApp = { ...app, databases: txInfo.parent };
+    // upstream's runAfterFuncs calls these one after the other: an async one
+    // of an earlier item holds back the broadcasts of the later items
+    const previous = app.afterTransaction?.at(-1);
+    if (app.afterTransaction !== undefined && previous !== undefined) {
+      const next = (): void | Promise<void> => afterTransaction(txErr);
+      app.afterTransaction.push(previous.then(next, next));
+      return;
+    }
+
+    const result = afterTransaction(txErr);
+
+    // an async interceptor ends after the transaction call returned
+    if (result instanceof Promise) {
+      if (app.afterTransaction !== undefined) {
+        app.afterTransaction.push(result);
+        return;
+      }
+      result.catch((err: unknown) => {
+        app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
+      });
+    }
+  });
+
+  function afterTransaction(txErr: unknown): void | Promise<void> {
+    const parentApp: RecordsApp = { ...app, databases: parent };
 
     let result: void | Promise<void>;
     if (txErr !== null) {
@@ -605,17 +631,8 @@ function* afterSuccess(
       }
     }
 
-    // an async interceptor ends after the transaction call returned
-    if (result instanceof Promise) {
-      if (app.afterTransaction !== undefined) {
-        app.afterTransaction.push(result);
-        return;
-      }
-      result.catch((err: unknown) => {
-        app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
-      });
-    }
-  });
+    return result;
+  }
 }
 
 // the realtime handlers as the action of the after success interceptors:
