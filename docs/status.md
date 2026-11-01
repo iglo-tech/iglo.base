@@ -10,7 +10,7 @@ M5.4a active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4a | fix | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 1 | [Brief](briefs/M5.4a.md) |
+| M5.4a | review | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 2 | [Brief](briefs/M5.4a.md) |
 
 ## Done
 
