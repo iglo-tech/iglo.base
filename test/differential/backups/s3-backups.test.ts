@@ -366,6 +366,10 @@ describe("the backup endpoints with backups.s3 enabled", () => {
   );
 });
 
+function kept(logs: unknown[]): unknown[] {
+  return logs.filter((l) => (l as { id: string }).id === "backuplog000000");
+}
+
 describe("a backup restored by the other server, through S3", () => {
   for (const [from, to] of [
     ["iglo", "upstream"],
@@ -421,8 +425,6 @@ describe("a backup restored by the other server, through S3", () => {
           const actual = snapshot(target.dataDir);
           expect(actual.data).toEqual(expected.data);
           expect(actual.storage).toEqual(expected.storage);
-          const kept = (logs: unknown[]): unknown[] =>
-            logs.filter((l) => (l as { id: string }).id === "backuplog000000");
           expect(kept(actual.logs)).toEqual(kept(expected.logs));
           expect(kept(actual.logs)).toHaveLength(1);
           expect(readFileSync(join(target.dataDir, "notes.txt"), "utf8")).toBe("kept");
@@ -535,15 +537,15 @@ class ScriptedS3 {
       });
     }
     const range = /bytes=(\d+)-(\d*)/.exec(req.headers.get("Range") ?? "");
-    const start = Number(range?.[1] ?? 0);
+    const first = Number(range?.[1] ?? 0);
     const end = range?.[2] ? Number(range[2]) + 1 : object.body.length;
-    return new Response(req.method === "HEAD" ? null : object.body.slice(start, end), {
+    return new Response(req.method === "HEAD" ? null : object.body.slice(first, end), {
       status: range ? 206 : 200,
       headers: {
         "Content-Type": object.headers.get("Content-Type") ?? "",
-        "Content-Length": String(end - start),
+        "Content-Length": String(end - first),
         "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
-        ...(range ? { "Content-Range": `bytes ${start}-${end - 1}/${object.body.length}` } : {}),
+        ...(range ? { "Content-Range": `bytes ${first}-${end - 1}/${object.body.length}` } : {}),
       },
     });
   }
@@ -625,6 +627,18 @@ describe("what reaches S3", () => {
   );
 });
 
+function failAt(match: (url: URL, req: Request) => boolean): Script {
+  return (req, url) => (match(url, req) ? new Response(xmlDenied, { status: 403 }) : null);
+}
+
+// the object is there, and reading it is refused
+function denyDownload(req: Request, url: URL): Response | null {
+  if (req.method === "HEAD") {
+    return new Response(null, { headers: { "Content-Length": "22" } });
+  }
+  return url.searchParams.has("list-type") ? null : new Response(xmlDenied, { status: 403 });
+}
+
 describe("a refusing S3", () => {
   const cases: [string, Script][] = [
     ["403 with an XML error", () => new Response(xmlDenied, { status: 403 })],
@@ -679,11 +693,6 @@ describe("a refusing S3", () => {
   test(
     "a multipart upload that fails on a part or at the end is aborted",
     async () => {
-      const failAt =
-        (match: (url: URL, req: Request) => boolean): Script =>
-        (req, url) =>
-          match(url, req) ? new Response(xmlDenied, { status: 403 }) : null;
-
       for (const script of [
         failAt((url) => url.searchParams.get("partNumber") === "2"),
         failAt((url, req) => req.method === "POST" && url.searchParams.has("uploadId")),
@@ -706,13 +715,7 @@ describe("a refusing S3", () => {
   test(
     "a restore whose download fails changes nothing",
     async () => {
-      const script: Script = (req, url) =>
-        req.method === "HEAD"
-          ? new Response(null, { headers: { "Content-Length": "22" } })
-          : url.searchParams.has("list-type")
-            ? null
-            : new Response(xmlDenied, { status: 403 });
-      await bothAgainst(script, async (server) => {
+      await bothAgainst(denyDownload, async (server) => {
         const res = await call(server, "POST", "/api/backups/x.zip/restore");
         await Bun.sleep(1500);
         const ready = await eventually(() => canBackup(server));
@@ -723,10 +726,11 @@ describe("a refusing S3", () => {
   );
 });
 
-describe("POST /api/settings/test/s3", () => {
-  const testS3 = (server: Server, filesystem: unknown): Promise<Answer> =>
-    call(server, "POST", "/api/settings/test/s3", { json: { filesystem } }).then(plain);
+function testS3(server: Server, filesystem: unknown): Promise<Answer> {
+  return call(server, "POST", "/api/settings/test/s3", { json: { filesystem } }).then(plain);
+}
 
+describe("POST /api/settings/test/s3", () => {
   test(
     "not enabled, an unknown filesystem, success and bad credentials on both filesystems",
     async () => {
