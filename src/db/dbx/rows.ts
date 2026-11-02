@@ -261,6 +261,26 @@ export class Rows implements Iterable<unknown[]> {
     return rows;
   }
 
+  // the values of every row, in column order. A pool worker sends these with
+  // the column names once, which costs the main thread less than a cloned
+  // object per row (rowsFromValues rebuilds the objects).
+  allValues(): unknown[][] {
+    if (this.fresh()) {
+      try {
+        const rows = this.guard(() => this.reader!.values(...this.args) as unknown[][]);
+        if (!this.exact) {
+          for (const values of rows) {
+            narrowValues(values);
+          }
+        }
+        return rows;
+      } finally {
+        this.close();
+      }
+    }
+    return [...this];
+  }
+
   // the first column of every row
   column(): unknown[] {
     const result: unknown[] = [];
@@ -360,6 +380,29 @@ export class Rows implements Iterable<unknown[]> {
     }
     return row;
   }
+}
+
+// The row objects of allValues(): as toRow builds them, for a repeated column
+// name the last column wins and "__proto__" is an ordinary key.
+export function rowsFromValues(names: string[], rows: unknown[][]): Row[] {
+  const out: Row[] = new Array<Row>(rows.length);
+  const plain = !names.includes("__proto__");
+  const n = names.length;
+  for (let r = 0; r < rows.length; r++) {
+    const values = rows[r]!;
+    const row: Row = {};
+    if (plain) {
+      for (let i = 0; i < n; i++) {
+        row[names[i]!] = values[i];
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        setOwn(row, names[i]!, values[i]);
+      }
+    }
+    out[r] = row;
+  }
+  return out;
 }
 
 // the statement as "SELECT * FROM (...)" with distinct column names, or

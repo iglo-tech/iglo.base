@@ -12,7 +12,12 @@ import type { Database } from "bun:sqlite";
 import { openReadOnly } from "@/db/connect";
 import { queryStatements, splitStatements } from "@/db/dbx/driver";
 import { readRows } from "@/db/dbx/rows";
-import type { ReadRequestMessage, ReadResponseMessage, SerializedError } from "@/db/read-pool";
+import type {
+  ReadRequestMessage,
+  ReadResponseMessage,
+  RowTable,
+  SerializedError,
+} from "@/db/read-pool";
 
 declare const self: Worker;
 
@@ -45,12 +50,18 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage>) => {
   let res: ReadResponseMessage;
   try {
     const c = conn(req.path);
-    const value = readRows(
-      queryStatements(c, splitStatements(req.sql), req.args, null, false).withExactIntegers(
-        req.exactIntegers,
-      ),
-      req.mode,
-    );
+    const rows = queryStatements(
+      c,
+      splitStatements(req.sql),
+      req.args,
+      null,
+      false,
+    ).withExactIntegers(req.exactIntegers);
+    // the column names once and an array per row (rowsFromValues on the other side)
+    const value =
+      req.mode === "all"
+        ? ({ names: rows.columns(), rows: rows.allValues() } satisfies RowTable)
+        : readRows(rows, req.mode);
     res = { id: req.id, ok: true, value };
   } catch (err) {
     res = { id: req.id, ok: false, error: serializeError(err) };
