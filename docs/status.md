@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-02
 
-M5.7 active.
+M5.8 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.7 | re-review 2 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 2 | [Brief](briefs/M5.7.md). Round 1 Opus CHANGES (console reads on the write connection); lead fixed at `a93eb4b`, `6c8a610` (check and test:reference green) |
+| M5.8 | worker | — | 0 | [Brief](briefs/M5.8.md). Sonnet 5.5 worker |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.7 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 2026-11-02 (`4beacc6`) | Two review rounds (Opus, lead fixed round 1): Opus APPROVE at `6c8a610`; lead's `check` and `test:reference` at 0 failures there. Console reads run on a connection of their own per request (a `BEGIN` or pragma never reaches the write connection). Backlog: `--dev` does not log console reads; 03-data-compatibility.md says the console "rejects" defensive-mode statements (Bun's SQLite ignores them; results match) |
 | M5.5 | [#54](https://github.com/iglo-tech/iglo.base/pull/54) | 2026-11-02 (`1f81138`) | Three review rounds (Opus, lead fixed rounds 1 and 2): Opus APPROVE at `7a7952e`; `check` 0 failures, `test:reference` one backlog-row flake (OTP). `errorsAs` now walks joined errors as Go's `errors.As`; JWT Validator texts match golang-jwt's. Writes run on the main thread: a `/api/health` burst reaches 7–9.5k req/s vs upstream 13k (M7.1). Job panics stay on stderr, as upstream |
 | M5.4b | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 2026-11-02 (`0457f9b`) | Three review rounds (Opus, lead fixed rounds 1 and 2): Opus APPROVE at `c19b206`. `check` and `test:reference` at 0 failures at `e1b7111`, the last code change; round 3 was one test only. Files upload before the write transaction; a failed delete after a save answers 400 as upstream. File downloads spool first. Listed in 04-api-compatibility.md. Multipart intake stalls the event loop (backlog, M7.1) |
 | M5.4a | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 2026-11-01 (`73443c3`) | Two review rounds (Opus, lead fixed round 1): Opus APPROVE at `9e9ed96`, its `test:reference` at 0 failures. Upstream's S3 client ported on `fetch`, as `Bun.S3Client` cannot return raw error bodies; AGENTS.md updated. Downloads spool first (listed in 04-api-compatibility.md): 1 GiB 5.0 s vs upstream 1.5 s; create 18.3 s vs 5.1 s. M5.4b: `copy-object.ts` must accept any root |
