@@ -42,7 +42,14 @@ import { type DataMap, newRecord, type Record } from "@/records/record-model";
 import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
 import { joinErrors, wrapError } from "@/collections/view";
 import { expandRecordSync } from "@/records/record-query-expand";
-import { deleteRecord, deleteRecordSync, driverValue, run, type Step } from "@/records/record-save";
+import {
+  deleteRecord,
+  deleteRecordSync,
+  driverValue,
+  run,
+  settlePasswordHashes,
+  type Step,
+} from "@/records/record-save";
 import { RecordUpsert } from "@/records/record-upsert";
 import {
   autoResolveRecordsFlagsSync,
@@ -457,6 +464,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
 
   // check the request and record data against the create and manage rules
   if (!hasSuperuserAuth && collection.createRule !== null) {
+    yield* settlePasswordHashes(e.app, record);
     const dummyRecord = record.clone();
 
     const dummyRandomPart = "__pb_create__" + pseudorandomString(6);

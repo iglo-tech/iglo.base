@@ -94,6 +94,27 @@ export const ErrPasswordTooLong = new Error("bcrypt: password length exceeds 72 
 // longer than 72 bytes, which is the longest password bcrypt will operate
 // on. Throws the error.
 export function generateFromPassword(password: Uint8Array, cost: number | bigint): string {
+  const c = checkGenerate(password, cost);
+  const hash = Bun.password.hashSync(bunPassword(password), { algorithm: "bcrypt", cost: c });
+
+  // Bun writes "$2b$"; the computation is the same, Go writes "$2a$"
+  return "$2a$" + hash.slice("$2b$".length);
+}
+
+// generateFromPasswordAsync is GenerateFromPassword on Bun's thread pool,
+// so the event loop keeps serving while the hash is computed. The result
+// and the errors are the same as the synchronous form.
+export async function generateFromPasswordAsync(
+  password: Uint8Array,
+  cost: number | bigint,
+): Promise<string> {
+  const c = checkGenerate(password, cost);
+  const hash = await Bun.password.hash(bunPassword(password), { algorithm: "bcrypt", cost: c });
+  return "$2a$" + hash.slice("$2b$".length);
+}
+
+// the argument checks of GenerateFromPassword; returns the cost to use
+export function checkGenerate(password: Uint8Array, cost: number | bigint): number {
   if (password.length > maxKeySize) {
     throw ErrPasswordTooLong;
   }
@@ -101,14 +122,7 @@ export function generateFromPassword(password: Uint8Array, cost: number | bigint
     cost = DefaultCost;
   }
   checkCost(cost);
-
-  const hash = Bun.password.hashSync(bunPassword(password), {
-    algorithm: "bcrypt",
-    cost: Number(cost),
-  });
-
-  // Bun writes "$2b$"; the computation is the same, Go writes "$2a$"
-  return "$2a$" + hash.slice("$2b$".length);
+  return Number(cost);
 }
 
 // CompareHashAndPassword compares a bcrypt hashed password with its
@@ -118,11 +132,54 @@ export function compareHashAndPassword(
   hashedPassword: Uint8Array,
   password: Uint8Array,
 ): Error | null {
+  const prep = prepareCompare(hashedPassword, password);
+  if (!("canonical" in prep)) {
+    return prep.result;
+  }
+
+  let ok = false;
+  try {
+    ok = Bun.password.verifySync(bunPassword(password), prep.canonical, "bcrypt");
+  } catch {
+    // not the hash of the password
+  }
+
+  return ok ? null : ErrMismatchedHashAndPassword;
+}
+
+// compareHashAndPasswordAsync is CompareHashAndPassword with the bcrypt
+// computation on Bun's thread pool. The result is the same. The rare hash
+// with a non-canonical salt is still computed on the calling thread.
+export async function compareHashAndPasswordAsync(
+  hashedPassword: Uint8Array,
+  password: Uint8Array,
+): Promise<Error | null> {
+  const prep = prepareCompare(hashedPassword, password);
+  if (!("canonical" in prep)) {
+    return prep.result;
+  }
+
+  let ok = false;
+  try {
+    ok = await Bun.password.verify(bunPassword(password), prep.canonical, "bcrypt");
+  } catch {
+    // not the hash of the password
+  }
+
+  return ok ? null : ErrMismatchedHashAndPassword;
+}
+
+// the parsing and checks of CompareHashAndPassword: either the final
+// result, or the canonical "$2b$" hash for Bun.password to verify
+function prepareCompare(
+  hashedPassword: Uint8Array,
+  password: Uint8Array,
+): { result: Error | null } | { canonical: string } {
   let p: Hashed;
   try {
     p = newFromHash(hashedPassword);
   } catch (err) {
-    return err as Error;
+    return { result: err as Error };
   }
 
   // a salt with bytes outside the alphabet ('\r', '\n' or invalid data):
@@ -133,14 +190,14 @@ export function compareHashAndPassword(
     try {
       otherHash = bcrypt(password, p.cost, p.salt);
     } catch (err) {
-      return err as Error;
+      return { result: err as Error };
     }
 
     const otherP: Hashed = { ...p, hash: otherHash };
     if (constantTimeCompare(hashBytes(p), hashBytes(otherP))) {
-      return null;
+      return { result: null };
     }
-    return ErrMismatchedHashAndPassword;
+    return { result: ErrMismatchedHashAndPassword };
   }
 
   // Go compares the whole hashes, which differ only in the encoded hash:
@@ -148,18 +205,10 @@ export function compareHashAndPassword(
   // cut or zero padded to 31 bytes.
   const stored = p.hash.subarray(0, encodedHashSize);
   if (stored.length < encodedHashSize || canonicalBase64(stored) !== bytesToText(stored)) {
-    return ErrMismatchedHashAndPassword;
+    return { result: ErrMismatchedHashAndPassword };
   }
 
-  const canonical = `$2b$${String(p.cost).padStart(2, "0")}$${salt}${bytesToText(stored)}`;
-  let ok = false;
-  try {
-    ok = Bun.password.verifySync(bunPassword(password), canonical, "bcrypt");
-  } catch {
-    // not the hash of the password
-  }
-
-  return ok ? null : ErrMismatchedHashAndPassword;
+  return { canonical: `$2b$${String(p.cost).padStart(2, "0")}$${salt}${bytesToText(stored)}` };
 }
 
 // Cost returns the hashing cost used to create the given hashed password.

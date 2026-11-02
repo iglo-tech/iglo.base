@@ -101,6 +101,7 @@
 // Not ported: the hook events, tags and the model events around the
 // record events (D5).
 
+import { PasswordFieldValue } from "@/fields/password";
 import {
   fieldApp,
   findAllCollections,
@@ -312,22 +313,55 @@ export async function deleteRecord(app: RecordsApp, record: Record): Promise<voi
 
 // validateRecord inside a transaction
 export function validateRecordSync(app: RecordsApp, record: Record): void {
+  settleHashesSync(record);
   runSync(validateStep(app, record));
 }
 
 // saveRecord inside a transaction
 export function saveRecordSync(app: RecordsApp, record: Record): void {
+  settleHashesSync(record);
   runSync(saveStep(app, record, true));
 }
 
 // saveRecordNoValidate inside a transaction
 export function saveRecordNoValidateSync(app: RecordsApp, record: Record): void {
+  settleHashesSync(record);
   runSync(saveStep(app, record, false));
 }
 
 // deleteRecord inside a transaction
 export function deleteRecordSync(app: RecordsApp, record: Record): void {
   runSync(deleteStep(app, record));
+}
+
+// A password set on a record is hashed on Bun's thread pool and the first
+// interceptor waits for it. A save inside a transaction cannot wait, so the
+// hash still pending is computed on the calling thread (the batch and the
+// migration files are such callers; D28).
+function settleHashesSync(record: Record): void {
+  for (const field of record.collection().fields) {
+    const raw = field.type() === "password" ? record.getRaw(field.getName()) : undefined;
+    if (raw instanceof PasswordFieldValue && raw.hashPending()) {
+      void raw.hash;
+    }
+  }
+}
+
+// settlePasswordHashes waits for the hashes of the passwords set on the
+// record (outside of a transaction), so that a later read of the hash does
+// not compute it on the event loop. Inside a transaction the hashes are
+// computed at once.
+export function* settlePasswordHashes(app: RecordsApp, record: Record): Step {
+  if (app.databases.nonconcurrentDB() instanceof Tx) {
+    settleHashesSync(record);
+    return;
+  }
+  for (const field of record.collection().fields) {
+    const raw = field.type() === "password" ? record.getRaw(field.getName()) : undefined;
+    if (raw instanceof PasswordFieldValue && raw.hashPending()) {
+      yield raw.hashSettled();
+    }
+  }
 }
 
 // -------------------------------------------------------------------

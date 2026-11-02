@@ -99,7 +99,7 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
     );
   }
 
-  if (!otp.validatePassword(form.Password)) {
+  if (!(await otp.validatePasswordAsync(form.Password))) {
     return e.badRequestError("Invalid or expired OTP", new Error("incorrect password"));
   }
   // ---

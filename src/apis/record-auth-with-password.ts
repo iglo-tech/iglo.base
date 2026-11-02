@@ -115,10 +115,10 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
 
   // the OnRecordAuthWithPasswordRequest default action
   const record = foundRecord as Record | undefined;
-  if (record === undefined || !record.validatePassword(form.Password)) {
+  if (record === undefined || !(await record.validatePasswordAsync(form.Password))) {
     // dummy password check to minimize enumeration side-channel attacks
     if (record === undefined) {
-      dummyPasswordCheck(e.app, collection);
+      await dummyPasswordCheck(e.app, collection);
     }
 
     return e.badRequestError("Failed to authenticate.", new Error("invalid login credentials"));
@@ -161,7 +161,7 @@ function validateAuthWithPasswordForm(
 
 // dummy password check to minimize side-channel attacks
 // (performed with the collection configured field cost)
-function dummyPasswordCheck(app: RecordsApp, collection: Collection): void {
+async function dummyPasswordCheck(app: RecordsApp, collection: Collection): Promise<void> {
   let record: Record;
 
   // find any random existing record
@@ -172,7 +172,7 @@ function dummyPasswordCheck(app: RecordsApp, collection: Collection): void {
   }
 
   // the value and result doesn't matter, we just need a constant-time check
-  record.validatePassword("");
+  await record.validatePasswordAsync("");
 }
 
 function findRecordByIdentityField(
