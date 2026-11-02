@@ -22,7 +22,7 @@ import { type App, type AppConfig, type AppLogger, newApp } from "@/app/app";
 import { registerCrons } from "@/app/crons";
 import { LocalTempDirName } from "@/app/filesystem";
 import { loadAutobackupJob } from "@/backups/autobackup";
-import { recoverInterruptedRestore } from "@/backups/restore-phase";
+import { recoverInterruptedRestore, removeRestoreTemp } from "@/backups/restore-phase";
 import { loadCollectionsCache } from "@/collections/collection-save";
 import { Logger, type LogTickerFunc } from "@/logs/logger";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -54,15 +54,16 @@ export interface BootstrapConfig extends Omit<AppConfig, "databases" | "store" |
 // Bootstrap initializes the application
 // (aka. create data dir, open db connections, load settings, etc.).
 export async function bootstrap(config: BootstrapConfig): Promise<App> {
+  // a restore that was killed halfway leaves pb_data part old, part new: put
+  // the old content back before anything looks at pb_data
+  recoverInterruptedRestore(config.dataDir);
+
   // refuse older data before anything in pb_data is created or changed
   // (03-data-compatibility.md: the refusal writes nothing)
   checkExistingDataDir(config.dataDir);
 
   // ensure that data dir exist
   mkdirSync(config.dataDir, { recursive: true });
-
-  // a restore that was killed halfway leaves pb_data part old, part new
-  recoverInterruptedRestore(config.dataDir);
 
   const databases = Databases.open({
     dataDir: config.dataDir,
@@ -127,7 +128,11 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 
   // try to cleanup the pb_data temp directory (if any)
   try {
-    rmSync(join(config.dataDir, LocalTempDirName), { recursive: true, force: true });
+    const tempDir = join(config.dataDir, LocalTempDirName);
+    // the old data of a restore goes only when it is no longer the only copy
+    if (removeRestoreTemp(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   } catch {
     // ignored, as upstream does
   }

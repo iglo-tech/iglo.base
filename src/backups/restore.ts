@@ -26,7 +26,13 @@ import { StoreKeyActiveBackup } from "@/apis/health";
 import type { App } from "@/app/app";
 import { LocalBackupsDirName, LocalTempDirName } from "@/app/filesystem";
 import { ErrBackupActive } from "@/backups/create";
-import { restoreExclude, restorePhaseFile, writeRestorePhase } from "@/backups/restore-phase";
+import {
+  removeRestoreTemp,
+  restoreExclude,
+  rollbackRestore,
+  setRestorePhase,
+  startRestorePhase,
+} from "@/backups/restore-phase";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
 import { goQuote } from "@/fields/field";
@@ -161,6 +167,8 @@ async function extractAndReplace(
   const extractedDataDir = join(localTempDir, `pb_restore_${suffix}`);
   const oldTempDataDir = join(localTempDir, `old_pb_data_${suffix}`);
   const tempZip = tempZipPath(localTempDir);
+  // pb_data may be neither the old nor the restored content (a step is open)
+  let unsafe = false;
 
   try {
     // extract the zip
@@ -184,55 +192,64 @@ async function extractAndReplace(
 
     checkExtractedData(extractedDataDir);
 
+    // From here pb_data may not hold the old content until a step ends it.
+    // Nothing below removes the old dir while unsafe: it may be the only copy.
+    startRestorePhase(localTempDir);
+    unsafe = true;
+
     // move the current pb_data content to a special temp location
     // that will hold the old data between dirs replace
     // (the temp dir will be automatically removed on the next app start)
-    writeRestorePhase(localTempDir, "moving-old");
     try {
-      moveDirContent(app.dataDir, oldTempDataDir, ...restoreExclude);
-    } catch (err) {
-      throw new Error(
-        `failed to move the current pb_data content to a temp location: ${errorText(err)}`,
-        { cause: err },
-      );
-    }
+      try {
+        moveDirContent(app.dataDir, oldTempDataDir, ...restoreExclude);
+      } catch (err) {
+        throw new Error(
+          `failed to move the current pb_data content to a temp location: ${errorText(err)}`,
+          { cause: err },
+        );
+      }
+      setRestorePhase(localTempDir, app.dataDir, "moving-old", "moving-new");
 
-    // move the extracted archive content to the app's pb_data
-    writeRestorePhase(localTempDir, "moving-new");
-    try {
-      moveDirContent(extractedDataDir, app.dataDir, ...restoreExclude);
+      // move the extracted archive content to the app's pb_data
+      try {
+        moveDirContent(extractedDataDir, app.dataDir, ...restoreExclude);
+      } catch (err) {
+        throw new Error(
+          `failed to move the extracted archive content to pb_data: ${errorText(err)}`,
+          { cause: err },
+        );
+      }
+      setRestorePhase(localTempDir, app.dataDir, "moving-new", "swapped");
     } catch (err) {
-      // upstream's transaction fails here and the first move stays; a
-      // restore that fails must leave pb_data as it was
-      writeRestorePhase(localTempDir, "moving-old");
-      moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
-      throw new Error(
-        `failed to move the extracted archive content to pb_data: ${errorText(err)}`,
-        { cause: err },
-      );
+      // upstream's transaction fails here and the first move stays; a restore
+      // that fails (a failed move or a failed record) must leave pb_data as it was
+      try {
+        rollbackRestore(app.dataDir, localTempDir);
+        unsafe = false;
+      } catch (rollbackErr) {
+        throw new Error(
+          `${errorText(err)}; and failed to put the old data back (it is in ${oldTempDataDir}): ` +
+            errorText(rollbackErr),
+          { cause: rollbackErr },
+        );
+      }
+      throw err;
     }
-
-    writeRestorePhase(localTempDir, "swapped");
+    unsafe = false;
 
     const revertDataDirChanges = (): void => {
       // a kill in the middle of the revert is rolled back at the next start
-      writeRestorePhase(localTempDir, "moving-new");
+      unsafe = true;
       try {
-        moveDirContent(app.dataDir, extractedDataDir, ...restoreExclude);
+        setRestorePhase(localTempDir, app.dataDir, "swapped", "moving-new");
+        rollbackRestore(app.dataDir, localTempDir);
       } catch (err) {
-        throw new Error(`failed to revert the extracted dir change: ${errorText(err)}`, {
+        throw new Error(`failed to revert the data dir changes: ${errorText(err)}`, {
           cause: err,
         });
       }
-
-      writeRestorePhase(localTempDir, "moving-old");
-      try {
-        moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
-      } catch (err) {
-        throw new Error(`failed to revert old pb_data dir change: ${errorText(err)}`, {
-          cause: err,
-        });
-      }
+      unsafe = false;
     };
 
     // restart the app
@@ -243,9 +260,11 @@ async function extractAndReplace(
     }
   } finally {
     await rm(tempZip, { force: true });
-    await rm(extractedDataDir, { recursive: true, force: true });
-    await rm(oldTempDataDir, { recursive: true, force: true });
-    // the restore is over, done or reverted
-    await rm(join(localTempDir, restorePhaseFile), { force: true });
+    if (!unsafe) {
+      // the restore is over, done or reverted: the old dir is no longer the
+      // only copy and goes with the record, which goes last
+      await rm(extractedDataDir, { recursive: true, force: true });
+      removeRestoreTemp(localTempDir);
+    }
   }
 }

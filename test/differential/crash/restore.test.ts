@@ -48,7 +48,11 @@ let backupName = "restore_base.zip";
 const marker = "after-backup";
 
 type Storage = "local" | "s3";
-type Point = "extracting" | "downloaded" | "swapping" | "swapped";
+// What the poll observed before the kill. The kill follows a few milliseconds
+// after, so "moves-begun" and "moves-done" may land later in the moves than
+// their names: the directory a kill leaves is then read back, whatever it is
+// (the exact between-the-renames states are the crafted ones below).
+type Point = "extracting" | "downloaded" | "moves-begun" | "moves-done";
 
 // a server with a backup, then a record the backup does not have
 async function withBackup(kind: Kind, storage: Storage) {
@@ -84,18 +88,24 @@ async function crashedRestore(kind: Kind, storage: Storage, point: Point): Promi
         return entries.some((p) => /^pb_restore_\w+\/./.test(p));
       case "downloaded":
         return entries.some((p) => /^pb_restore_zip\w+$/.test(p));
-      case "swapping":
+      case "moves-begun":
         return entries.some((p) => /^old_pb_data_\w+$/.test(p));
-      case "swapped":
+      case "moves-done":
         return (
           entries.some((p) => /^old_pb_data_\w+\/data\.db$/.test(p)) &&
           !entries.some((p) => /^pb_restore_\w+\/data\.db$/.test(p))
         );
     }
   };
-  // a very fast restore may pass the point before a poll sees it: the state
-  // is then checked as any other
-  await waitFor("the restore step", () => seen(), 20_000).catch(() => undefined);
+  // a point that is not observed fails the test: a kill that lands elsewhere
+  // than the name claims must not pass as this point
+  try {
+    await waitFor(`the restore point ${point}`, () => seen(), 20_000);
+  } catch (err) {
+    await server.kill();
+    await request;
+    throw err;
+  }
   await server.kill();
   await request;
   return dataDir;
@@ -112,11 +122,11 @@ function dataState(outcome: Outcome): "old" | "restored" {
 
 const states: Array<[Storage, Point]> = [
   ["local", "extracting"],
-  ["local", "swapping"],
-  ["local", "swapped"],
+  ["local", "moves-begun"],
+  ["local", "moves-done"],
   ["s3", "downloaded"],
-  ["s3", "swapping"],
-  ["s3", "swapped"],
+  ["s3", "moves-begun"],
+  ["s3", "moves-done"],
 ];
 
 describe("crash: restore", () => {
@@ -125,18 +135,17 @@ describe("crash: restore", () => {
       `a kill at ${point} (${storage}) leaves the old or the restored data`,
       async () => {
         const dataDir = await crashedRestore("iglo", storage, point);
-        const outcome = await verifyAfterKill(dataDir, { skipFixtureFiles: false });
+        // iglo.base starts first and repairs a half-moved pb_data; upstream
+        // then opens what iglo.base left
+        const outcome = await verifyAfterKill(dataDir, {
+          skipFixtureFiles: false,
+          recoverFirst: true,
+        });
         const state = dataState(outcome);
         // an interrupted restore is not finished by the next start
         expect(["old", "restored"]).toContain(state);
-
-        const refDir = await crashedRestore("upstream", storage, point);
-        const ref = await verifyAfterKill(refDir);
-        const refState = dataState(ref);
-        console.warn(
-          `restore killed at ${point} (${storage}): iglo ${state}, upstream ${refState}`,
-        );
-        // the temp directory is cleared at the start by both
+        console.warn(`restore killed at ${point} (${storage}): iglo ${state}`);
+        // the temp directory is cleared at the start
         expect(outcome.leftovers.filter((p) => p.startsWith(".pb_temp_to_delete"))).toEqual([]);
       },
       timeout,
@@ -146,8 +155,8 @@ describe("crash: restore", () => {
 
 // The directories a kill between two renames of the restore leaves, built from
 // the data and its backup: n of the old entries moved aside, then m of the
-// extracted entries moved in. `restore_phase` in the temp directory is the
-// record the restore keeps of its step (docs/design/07-files-mail-backups-jobs.md):
+// extracted entries moved in. the `restore_phase.<step>` marker in the temp
+// directory is the record the restore keeps of its step (docs/design/07-files-mail-backups-jobs.md):
 // before the first move "moving-old", before the second "moving-new" and
 // after it "swapped".
 const rootExclude = new Set(["backups", ".pb_temp_to_delete", ".autocert_cache", "lost+found"]);
@@ -155,7 +164,7 @@ const rootExclude = new Set(["backups", ".pb_temp_to_delete", ".autocert_cache",
 async function craftedState(
   moveOld: number | "all",
   moveNew: number | "all",
-  phase: "moving-old" | "moving-new" | "swapped",
+  phase: "moving-old" | "moving-new" | "swapped" | "reverted",
 ): Promise<string> {
   const { server, dataDir } = await withBackup("iglo", "local");
   const zip = join(dataDir, "backups", backupName);
@@ -167,7 +176,7 @@ async function craftedState(
   mkdirSync(extracted, { recursive: true });
   const unzip = Bun.spawnSync(["unzip", "-q", zip, "-d", extracted]);
   expect(unzip.exitCode).toBe(0);
-  writeFileSync(join(temp, "restore_phase"), phase);
+  writeFileSync(join(temp, `restore_phase.${phase}`), "");
 
   const oldDir = join(temp, "old_pb_data_crafted1");
   mkdirSync(oldDir);
@@ -200,13 +209,15 @@ async function readState(kind: Kind, dataDir: string): Promise<string> {
 
 describe("crash: restore directory states", () => {
   const stages: Array<
-    [string, number | "all", number | "all", "moving-old" | "moving-new" | "swapped"]
+    [string, number | "all", number | "all", "moving-old" | "moving-new" | "swapped" | "reverted"]
   > = [
     ["old content partly moved aside", 1, 0, "moving-old"],
     ["old content moved aside, nothing moved in yet", "all", 0, "moving-new"],
     ["extracted content partly moved in", "all", 1, "moving-new"],
     ["extracted content moved in, step not yet recorded", "all", "all", "moving-new"],
     ["extracted content moved in, restart pending", "all", "all", "swapped"],
+    ["old content all aside, step already recorded as moving-old", "all", 0, "moving-old"],
+    ["a roll back done, its start failed before the temp dir was cleared", 0, 0, "reverted"],
   ];
   for (const [label, moveOld, moveNew, phase] of stages) {
     test(
@@ -237,4 +248,20 @@ describe("crash: restore directory states", () => {
       timeout,
     );
   }
+});
+
+describe("crash: restore record that cannot be read", () => {
+  test(
+    "old data aside and a garbage record: the start is refused and nothing moves",
+    async () => {
+      const dataDir = await craftedState("all", 1, "moving-new");
+      const temp = join(dataDir, ".pb_temp_to_delete");
+      rmSync(join(temp, "restore_phase.moving-new"));
+      writeFileSync(join(temp, "restore_phase"), "");
+      const before = walk(dataDir);
+      await expect(launch("iglo", dataDir)).rejects.toThrow();
+      expect(walk(dataDir)).toEqual(before);
+    },
+    timeout,
+  );
 });

@@ -288,6 +288,11 @@ export interface VerifyOptions {
   skipFixtureFiles?: boolean;
   // more reads on each running server; the two answers must be equal
   inspect?: (target: Target) => Promise<unknown>;
+  // The kill may have left a directory only iglo.base's start repairs (a
+  // restore killed between its two moves; upstream has no recovery): iglo.base
+  // starts first and upstream reads the directory iglo.base left. The bar is
+  // that what iglo.base leaves is what upstream opens to the same data.
+  recoverFirst?: boolean;
 }
 
 export async function verifyAfterKill(
@@ -295,9 +300,14 @@ export async function verifyAfterKill(
   options: VerifyOptions = {},
 ): Promise<Outcome> {
   const skipFixtureFiles = options.skipFixtureFiles ?? false;
-  checkDatabases(dataDir);
+  const recoverFirst = options.recoverFirst ?? false;
+  if (!recoverFirst) {
+    checkDatabases(dataDir);
+  }
   const copy = join(tempDir(), "pb_data");
-  cpSync(dataDir, copy, { recursive: true });
+  if (!recoverFirst) {
+    cpSync(dataDir, copy, { recursive: true });
+  }
 
   const iglo = await launch("iglo", dataDir);
   let igloRecords: Record_[];
@@ -309,6 +319,10 @@ export async function verifyAfterKill(
     files = await checkFiles(iglo, igloRecords, skipFixtureFiles);
   } finally {
     await iglo.stop();
+  }
+  if (recoverFirst) {
+    checkDatabases(dataDir);
+    cpSync(dataDir, copy, { recursive: true });
   }
 
   const upstream = await launch("upstream", copy);
