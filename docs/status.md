@@ -135,6 +135,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 ## For owner review
 
+- 2026-11-02 (owner direction): multi-process or multi-thread serving is dropped (shared-state problems: realtime, rate limits, caches, cron/backup leader, restore, several writers). M7.1 profiles the main thread first, then fixes what the profile shows, in the order of [docs/perf/pocketbun-research.md](perf/pocketbun-research.md) items 1–5. Items 6–7 are out.
+
 - 2026-11-02 (owner direction): workers, fixers and helpers are Claude Sonnet 5.5 at medium effort; Claude Opus 5.5 is only the lead and the reviewer (high effort). Work plan model table and runbook updated.
 
 Decisions and plan changes made by agents while the owner was away.

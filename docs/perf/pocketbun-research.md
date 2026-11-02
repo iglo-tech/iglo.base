@@ -1,3 +1,5 @@
+> **Owner decision, 2026-11-02:** multi-process and multi-thread serving (items 6 and 7 below) are dropped. M7.1 profiles first and fixes what the profile shows (items 1–5).
+
 # Research: pocketbun, and "more threads" for iglo.base (input to M7.1)
 
 Date 2026-11-02. Research only: no source changed. Host: Ryzen 5 1600, 6 cores, Bun 1.4.4, other work running (large spread).
