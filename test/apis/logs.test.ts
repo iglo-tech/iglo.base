@@ -45,7 +45,7 @@ interface Harness {
 }
 
 async function open(options: TestAppOptions = {}): Promise<Harness> {
-  let fire = (): void => {};
+  let fire: (() => void) | undefined;
   let resets = 0;
   const app = await openFixtureApp({
     ownLogger: true,
@@ -61,7 +61,7 @@ async function open(options: TestAppOptions = {}): Promise<Harness> {
 
   return {
     app,
-    tick: () => fire(),
+    tick: () => fire?.(),
     resets: () => resets,
     send: (method, target, headers = {}) => serveTest(mux, { method, target, headers }),
     rows: () => {
@@ -342,14 +342,11 @@ describe("--dev", () => {
   });
 });
 
-describe("the printer", () => {
-  const log = (level: number, data: LogAttrs): Parameters<typeof formatLog>[0] => ({
-    time: new Date(),
-    level,
-    message: "POST /api/x",
-    data,
-  });
+function log(level: number, data: LogAttrs): Parameters<typeof formatLog>[0] {
+  return { time: new Date(), level, message: "POST /api/x", data };
+}
 
+describe("the printer", () => {
   test("request logs print their error and details", () => {
     const data = { type: "request", error: "Failed.", details: { name: "must be valid", a: 1 } };
     expect(formatLog(log(8, data), false)).toBe(
