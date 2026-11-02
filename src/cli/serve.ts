@@ -144,6 +144,8 @@ export async function runServeCommand(
           httpsAddr,
           certificateDomains: domains,
           allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ["*"],
+          publicDir: app.publicDir,
+          indexFallback: app.indexFallback,
           showStartBanner: true,
           ui: ctx.ui,
           executablePath: executablePath(ctx),

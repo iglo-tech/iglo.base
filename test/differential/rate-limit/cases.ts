@@ -15,9 +15,9 @@
 //
 // Durations are an hour unless a case is about windows, so that only the
 // `timed` cases depend on the wall clock. No rule reaches `/api/health`: the
-// harness polls it until a server is ready. An OPTIONS request is not here:
-// upstream's CORS middleware answers a preflight before the limiter, and
-// CORS is M5.7.
+// harness polls it until a server is ready. Upstream's CORS middleware
+// (apis/serve.go, M5.7) runs before the limiter: an OPTIONS request is
+// answered 204 and never counted.
 
 import { insertOTPs, setMFA } from "@test/scenarios/record-auth-prepare";
 import { clientsToken, superuserToken, usersToken } from "@test/scenarios/record-crud";
@@ -852,5 +852,37 @@ export const cases: Case[] = [
       insertOTPs("users", "test@example.com", { id: "a".repeat(15) })(ctx);
     },
     steps: [...times(5, otpAuth), otpCapped, failedRenameImport, otpCapped],
+  },
+  {
+    name: "CORS answers OPTIONS requests before the limiter counts them",
+    rules: [rule("/api/collections/demo2/records", 1), rule("/rate/", 1)],
+    steps: [
+      ...times(3, {
+        method: "OPTIONS",
+        url: "/api/collections/demo2/records",
+        headers: {
+          Origin: "http://example.com",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "authorization,content-type",
+        },
+        status: 204,
+      }),
+      // without an Origin, and from a not allowed one: 204 as well
+      { method: "OPTIONS", url: "/api/collections/demo2/records", status: 204 },
+      { method: "OPTIONS", url: "/rate/x", headers: { Origin: "http://example.com" }, status: 204 },
+      { method: "OPTIONS", url: "/rate/x", status: 204 },
+      // a simple request is counted
+      get("/api/collections/demo2/records", 200, { Origin: "http://example.com" }),
+      get("/api/collections/demo2/records", 429, { Origin: "http://example.com" }),
+      get("/rate/x", 404),
+      get("/rate/x", 429),
+      // a preflight still answers once the window is full
+      {
+        method: "OPTIONS",
+        url: "/api/collections/demo2/records",
+        headers: { Origin: "http://example.com", "Access-Control-Request-Method": "GET" },
+        status: 204,
+      },
+    ],
   },
 ];

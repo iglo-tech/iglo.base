@@ -8,8 +8,6 @@
 //   - the dashboard build differs (the ui/PATCHES.md patch set): index.html,
 //     the hashed bundle names and the images are compared by headers only;
 //     the vendored libraries and fonts are the same files and compared whole;
-//   - "Vary: Origin" comes from upstream's CORS middleware, not ported yet
-//     (M5.7), and is removed from upstream's Vary;
 //   - gzip bodies are compared decompressed, multipart boundaries replaced.
 // Marked differences (docs/design/04-api-compatibility.md): with extensions
 // registered, upstream's /_/extensions.js and /_/extensions/{name}/* serve
@@ -74,10 +72,11 @@ async function send(base: string, req: Request): Promise<unknown> {
   const headers: Record<string, string | null> = Object.fromEntries(
     comparedHeaders.map((h) => [h, res.headers.get(h)]),
   );
+  // Go writes one Vary line per value; Bun.serve and fetch join them
   headers.vary = (res.headers.get("vary") ?? "")
     .split(",")
     .map((v) => v.trim())
-    .filter((v) => v !== "" && v !== "Origin")
+    .filter((v) => v !== "")
     .join(", ");
   if (res.headers.get("content-encoding") === "gzip" && bytes.length > 0) {
     bytes = new Uint8Array(gunzipSync(bytes));

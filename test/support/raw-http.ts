@@ -17,7 +17,13 @@ export function rawRequest(
   headers: Record<string, string> = {},
 ): Promise<RawResponse> {
   const { hostname, port } = new URL(baseUrl);
-  const lines = [`${method} ${target} HTTP/1.1`, `Host: ${hostname}:${port}`, "Connection: close"];
+  // a Host in headers replaces the server's address
+  const hasHost = Object.keys(headers).some((k) => k.toLowerCase() === "host");
+  const lines = [`${method} ${target} HTTP/1.1`];
+  if (!hasHost) {
+    lines.push(`Host: ${hostname}:${port}`);
+  }
+  lines.push("Connection: close");
   for (const [k, v] of Object.entries(headers)) {
     lines.push(`${k}: ${v}`);
   }
