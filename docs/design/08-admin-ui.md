@@ -46,7 +46,7 @@ On `serve`, if `_superusers` has no superuser other than upstream's installer pl
 - `X-Frame-Options` and `Cross-Origin-Opener-Policy` as upstream.
 - `/_/{path...}` is upstream's `Static(ui, false)`: directory and `index.html` redirects, 404 JSON for missing files (no index fallback), ranges and preconditions of `http.ServeContent`. The root `/_/` has no `Cache-Control`; every other path, the 404s included, has it outside `--dev`.
 - `/_/extensions.js` is an empty `text/javascript` response with the same headers; `/_/extensions/{name}/...` is the dashboard's 404.
-- `test/ui/` checks these through the executable and `test/differential/ui/` against upstream's binary. `Vary: Origin` (CORS) comes with M5.7.
+- `test/ui/` checks these through the executable and `test/differential/ui/` against upstream's binary, `Vary: Origin` (CORS, M5.7) included.
 
 ## Verification
 

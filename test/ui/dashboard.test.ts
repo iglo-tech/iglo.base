@@ -65,7 +65,7 @@ describe("index", () => {
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(res.headers.get("content-security-policy")).toBe(csp);
     expect(res.headers.get("cache-control")).toBeNull();
-    expect(res.headers.get("vary")).toBe("Accept-Encoding");
+    expect(res.headers.get("vary")).toBe("Origin, Accept-Encoding");
     expect(res.headers.get("accept-ranges")).toBe("bytes");
     expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
     expect(res.headers.get("cross-origin-opener-policy")).toBe("same-origin");
@@ -235,7 +235,7 @@ describe("redirects and missing files", () => {
       expect(res.headers.get("content-type")).toBe("application/json");
       expect(res.headers.get("content-encoding")).toBeNull();
       expect(res.headers.get("cache-control")).toBe(cacheControl);
-      expect(res.headers.get("vary")).toBe("Accept-Encoding");
+      expect(res.headers.get("vary")).toBe("Origin, Accept-Encoding");
       expect(JSON.parse(text(res.body))).toEqual({
         data: {},
         message: "File not found.",

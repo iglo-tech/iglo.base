@@ -2,7 +2,8 @@
 // and reset of apis/middlewares_rate_limit.go
 //
 // The cases of test/differential/rate-limit/cases.ts against iglo.base alone,
-// in-process, with waits on an injected clock; `bun run test:reference` runs
+// in-process on the router `serve` serves (with CORS before the limiter),
+// with waits on an injected clock; `bun run test:reference` runs
 // them against upstream too. The rest cannot run there: other client IPs, and
 // the cleanup job, which only frees memory: no response shows it, so its
 // tests read the limiters in the app store.
@@ -11,7 +12,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { newRouter } from "@/apis/base";
+import { newServeRouter } from "@/server/serve";
 import { saveSettings } from "@/settings/settings-query";
 
 import { openFixtureApp, type TestApp } from "@test/app/app";
@@ -42,7 +43,7 @@ afterEach(async () => {
 
 async function openCase(c: Case): Promise<{
   app: TestApp;
-  mux: ReturnType<ReturnType<typeof newRouter>["buildMux"]>;
+  mux: ReturnType<ReturnType<typeof newServeRouter>["buildMux"]>;
   clock: ReturnType<typeof startClock>;
 }> {
   const root = tempDir();
@@ -52,7 +53,17 @@ async function openCase(c: Case): Promise<{
   const clock = startClock(start);
   const app = await openFixtureApp({ clock, dataDir });
   opened.push({ app, root });
-  return { app, mux: newRouter(app).buildMux(), clock };
+  const router = newServeRouter(app, {
+    httpAddr: "127.0.0.1:8090",
+    httpsAddr: "",
+    certificateDomains: [],
+    allowedOrigins: ["*"],
+    // no public files
+    publicDir: join(root, "pb_public"),
+    indexFallback: true,
+    ui: undefined,
+  });
+  return { app, mux: router.buildMux(), clock };
 }
 
 function requestOf(step: Step): {

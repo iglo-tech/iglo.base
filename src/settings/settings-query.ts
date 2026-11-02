@@ -109,8 +109,8 @@ export async function reloadSettings(app: App): Promise<void> {
 // added again here (a save from a JS migration reaches it at serve's reload
 // after the migrations), and the logger takes the logs settings. The others
 // are called from here by the tasks that add them:
-//   - M4.4: reset the mailer client (NewMailClient reads the SMTP config);
-//   - M5.7: the trusted proxy settings (read per request, nothing to reset).
+//   - M4.4: reset the mailer client (NewMailClient reads the SMTP config).
+// The trusted proxy settings are read per request (RealIP): nothing to reset.
 function settingsReloaded(app: App): void {
   destroyRateLimitersStore(app);
   loadAutobackupJob(app);

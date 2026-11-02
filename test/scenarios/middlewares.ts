@@ -8,10 +8,13 @@
 // body stands for "test123". setupWhitelist stores the settings in the
 // fixture copy, as upstream's app.Save(app.Settings()) does.
 //
-// The x-test-ip header is the configured trusted proxy header. iglo.base
-// reads trusted proxy headers in M5.7; until then its RealIP is the remote
-// address, which is 127.0.0.1 for these requests as well, so the
-// scenarios check the whitelist either way.
+// The x-test-ip header is the configured trusted proxy header, so RealIP
+// is the header's IP (127.0.0.1, also the remote address of these
+// requests).
+//
+// TestPanicRecover is not ported: its routes, which panic, are custom
+// routes (no extension surface). test/apis/base.test.ts checks the
+// panicRecover middleware on an internal test route.
 
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import type { Suite } from "@test/scenarios/scenario";

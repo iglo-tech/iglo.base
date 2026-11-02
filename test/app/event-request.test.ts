@@ -1,7 +1,10 @@
 // Upstream: core/event_request_test.go
 //
-// Settings do not exist yet: the trusted proxy scenarios of
-// TestEventRequestRealIP move to M5.7 (settings.TrustedProxy).
+// TestEventRequestRealIP sends each header as two lines; Bun.serve hands
+// the handler the lines joined with ", " (D22), so the requests here carry
+// the joined values. The rightmost IP is upstream's either way; with
+// useLeftmostIP the joined value's leftmost IP is the first line's, where
+// upstream reads the last line's (the D22 consequence for RealIP).
 
 import { afterAll, describe, expect, test } from "bun:test";
 
@@ -340,4 +343,124 @@ describe("RequestInfo body and query edge cases", () => {
     expect(info.query["__proto__"]).toBe("test");
     expect(info.query["constructor"]).toBe("x");
   });
+});
+
+describe("TestEventRequestRealIP", () => {
+  // the two header lines of upstream's test, joined as Bun.serve joins them
+  const headers = {
+    "CF-Connecting-IP": "1.2.3.4, 1.1.1.1",
+    "Fly-Client-IP": "1.2.3.4, 1.1.1.2",
+    "X-Real-IP": "1.2.3.4, 1.1.1.3,1.1.1.4",
+    "X-Forwarded-For": "1.2.3.4, invalid,1.1.1.5,1.1.1.6,invalid",
+  };
+
+  const scenarios: {
+    name: string;
+    headers: { [name: string]: string };
+    trustedHeaders: string[] | null;
+    useLeftmostIP: boolean;
+    expected: string;
+  }[] = [
+    {
+      name: "no trusted headers",
+      headers,
+      trustedHeaders: null,
+      useLeftmostIP: false,
+      expected: "127.0.0.1",
+    },
+    {
+      name: "non-matching trusted header",
+      headers,
+      trustedHeaders: ["header1", "header2"],
+      useLeftmostIP: false,
+      expected: "127.0.0.1",
+    },
+    {
+      name: "trusted X-Real-IP (rightmost)",
+      headers,
+      trustedHeaders: ["header1", "x-real-ip", "x-forwarded-for"],
+      useLeftmostIP: false,
+      expected: "1.1.1.4",
+    },
+    {
+      // upstream: 1.1.1.3, the leftmost of the last line
+      name: "trusted X-Real-IP (leftmost)",
+      headers,
+      trustedHeaders: ["header1", "x-real-ip", "x-forwarded-for"],
+      useLeftmostIP: true,
+      expected: "1.2.3.4",
+    },
+    {
+      name: "trusted X-Forwarded-For (rightmost)",
+      headers,
+      trustedHeaders: ["header1", "x-forwarded-for"],
+      useLeftmostIP: false,
+      expected: "1.1.1.6",
+    },
+    {
+      // upstream: 1.1.1.5, the leftmost of the last line
+      name: "trusted X-Forwarded-For (leftmost)",
+      headers,
+      trustedHeaders: ["header1", "x-forwarded-for"],
+      useLeftmostIP: true,
+      expected: "1.2.3.4",
+    },
+    {
+      name: "a single line: trusted X-Real-IP (leftmost)",
+      headers: { "X-Real-IP": "1.1.1.3,1.1.1.4" },
+      trustedHeaders: ["x-real-ip"],
+      useLeftmostIP: true,
+      expected: "1.1.1.3",
+    },
+    {
+      name: "a single line: trusted X-Forwarded-For (leftmost)",
+      headers: { "X-Forwarded-For": "invalid,1.1.1.5,1.1.1.6,invalid" },
+      trustedHeaders: ["x-forwarded-for"],
+      useLeftmostIP: true,
+      expected: "1.1.1.5",
+    },
+    {
+      name: "IPv6 addresses are expanded, zones kept",
+      headers: { "X-Real-IP": " 2001:db8::1 ", "X-Forwarded-For": "fe80::1%eth0" },
+      trustedHeaders: ["x-real-ip"],
+      useLeftmostIP: false,
+      expected: "2001:0db8:0000:0000:0000:0000:0000:0001",
+    },
+    {
+      name: "a zone is kept",
+      headers: { "X-Forwarded-For": "fe80::1%eth0" },
+      trustedHeaders: ["x-forwarded-for"],
+      useLeftmostIP: false,
+      expected: "fe80:0000:0000:0000:0000:0000:0000:0001%eth0",
+    },
+    {
+      name: "no valid IP: the next header, then the remote address",
+      headers: { "X-Real-IP": "nope, 01.2.3.4", "X-Forwarded-For": "1.2.3.4.5" },
+      trustedHeaders: ["x-real-ip", "x-forwarded-for"],
+      useLeftmostIP: false,
+      expected: "127.0.0.1",
+    },
+    {
+      name: "an invalid header name is never found",
+      headers: { "Fly-Client-IP": "9.9.9.9" },
+      trustedHeaders: ["bad header", "fly-client-ip"],
+      useLeftmostIP: false,
+      expected: "9.9.9.9",
+    },
+  ];
+
+  for (const s of scenarios) {
+    test(s.name, () => {
+      const trustedProxy = app.settings.TrustedProxy;
+      const saved = { ...trustedProxy };
+      trustedProxy.Headers = s.trustedHeaders;
+      trustedProxy.UseLeftmostIP = s.useLeftmostIP;
+      try {
+        const event = newEvent({ target: "/", headers: s.headers, remoteAddr: "127.0.0.1:80" });
+        expect(event.realIP()).toBe(s.expected);
+      } finally {
+        Object.assign(trustedProxy, saved);
+      }
+    });
+  }
 });

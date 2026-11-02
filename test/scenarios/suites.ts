@@ -27,6 +27,7 @@ import { fileDownload, fileToken } from "@test/scenarios/file";
 import { healthAPI } from "@test/scenarios/health";
 import { logView, logsList, logsStats, logsTruncate } from "@test/scenarios/logs";
 import { superuserIPsWhitelist } from "@test/scenarios/middlewares";
+import { sqlRun } from "@test/scenarios/sql";
 import {
   recordAuthImpersonate,
   recordAuthMethodsList,
@@ -176,4 +177,5 @@ export const suites: Suite[] = [
   settingsTestEmail,
   testEmailSendValidateAndSubmit,
   generateAppleClientSecret,
+  sqlRun,
 ];

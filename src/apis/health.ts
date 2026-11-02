@@ -1,7 +1,7 @@
 // Upstream: apis/health.go
 //
-// realIP is RemoteIP until the trusted proxy settings are applied to it
-// (M5.7, src/app/event-request.ts).
+// realIP reads the trusted proxy headers of the settings
+// (src/app/event-request.ts).
 
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";

@@ -1,26 +1,30 @@
-// Upstream: apis/serve.go (the start banner, the dashboard routes, the
-// installer start and the http/https listener address handling).
+// Upstream: apis/serve.go (the start banner, the CORS middleware, the
+// dashboard routes, the www redirects, the installer start and the
+// http/https listener address handling).
 //
-// Builds the router (@/apis/base) for the app, adds the dashboard routes
-// when the dashboard is embedded (@/apis/serve-ui) and serves it with
-// Bun.serve. The app is bootstrapped before (src/app/bootstrap.ts, called by
-// src/cli/serve.ts). Not ported yet: CORS and trusted proxies (M5.7),
-// automatic HTTPS (M6.3).
+// Builds the router (@/apis/base, with the --publicDir static route) for
+// the app, binds CORS, adds the dashboard routes when the dashboard is
+// embedded (@/apis/serve-ui) and the www->non-www redirect, and serves it
+// with Bun.serve. The app is bootstrapped before (src/app/bootstrap.ts,
+// called by src/cli/serve.ts). Not ported yet: automatic HTTPS (M6.3).
 
 import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 
-import { newRouter } from "@/apis/base";
+import { newRouter, type RouterOptions } from "@/apis/base";
 import { loadInstaller } from "@/apis/installer";
 import { bindDashboard } from "@/apis/serve-ui";
 import { closeRealtimeConnections } from "@/realtime/realtime";
+import { cors, DefaultCORSConfig } from "@/middlewares/cors";
+import { wwwRedirect } from "@/middlewares/www-redirect";
 import type { StaticFS } from "@/apis/ui-pack";
 import type { App } from "@/app/app";
+import type { RequestEvent } from "@/app/event-request";
 import { unescapeBytes } from "@/server/mux";
 import { HttpRequest } from "@/server/request";
 import { RereadableReadCloser, streamReader } from "@/server/rereadable-read-closer";
-import { ResponseWriter, type Mux } from "@/server/router";
+import { ResponseWriter, type Mux, type Router } from "@/server/router";
 
 export interface Output {
   stdout(text: string): void;
@@ -37,8 +41,12 @@ export interface ServeConfig {
   httpsAddr: string;
   // domains for the TLS certificate
   certificateDomains: string[];
-  // CORS allowed origins
+  // AllowedOrigins is an optional list of CORS origins (default to "*").
   allowedOrigins: string[];
+  // the directory to serve static files from (--publicDir) and whether a
+  // missing static path falls back to its index.html (--indexFallback)
+  publicDir: string;
+  indexFallback: boolean;
   showStartBanner: boolean;
   // the embedded dashboard build; undefined in a build without it (upstream's
   // no_ui tag)
@@ -173,6 +181,19 @@ function parseListenAddr(addr: string): { hostname: string; port: number } {
   return { hostname: host === "" || host === "0.0.0.0" ? "::" : host, port: portNumber };
 }
 
+// net.SplitHostPort's host ("" on error)
+function splitHost(addr: string): string {
+  if (addr.startsWith("[")) {
+    const end = addr.indexOf("]");
+    return end !== -1 && addr[end + 1] === ":" ? addr.slice(1, end) : "";
+  }
+  const colon = addr.lastIndexOf(":");
+  if (colon === -1 || addr.slice(0, colon).includes(":")) {
+    return "";
+  }
+  return addr.slice(0, colon);
+}
+
 // serverAddrToHost loosely converts the server address into a host to print.
 function serverAddrToHost(addr: string): string {
   if (addr === "" || addr.endsWith(":http") || addr.endsWith(":https")) {
@@ -281,6 +302,69 @@ function startBanner(out: Output, baseURL: string, hasDashboard: boolean): void 
   out.stdout(`> REST API:  ${cyan(`${baseURL}/api/`)}\n`);
 }
 
+// The router `serve` serves: NewRouter with the --publicDir static route,
+// then CORS, the dashboard routes and the www->non-www redirect(s) for the
+// listener's host or the certificate domains. logLine writes a line on
+// stderr (log.Println).
+export function newServeRouter(
+  app: App,
+  config: Pick<
+    ServeConfig,
+    | "httpAddr"
+    | "httpsAddr"
+    | "certificateDomains"
+    | "allowedOrigins"
+    | "publicDir"
+    | "indexFallback"
+    | "ui"
+  >,
+  logLine: (line: string) => void = () => {},
+  options: RouterOptions = {},
+): Router<RequestEvent> {
+  const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : ["*"];
+
+  const router = newRouter(app, {
+    ...options,
+    publicDir: { dir: config.publicDir, indexFallback: config.indexFallback },
+  });
+
+  router.bind(
+    cors({ AllowOrigins: allowedOrigins, AllowMethods: DefaultCORSConfig.AllowMethods }, logLine),
+  );
+
+  if (config.ui) {
+    bindDashboard(router, config.ui);
+  }
+
+  // extract the host names for the certificate host policy
+  const mainAddr = config.httpsAddr !== "" ? config.httpsAddr : config.httpAddr;
+  const hostNames = [...config.certificateDomains];
+  if (hostNames.length === 0) {
+    hostNames.push(splitHost(mainAddr));
+  }
+  const wwwRedirects: string[] = [];
+  // the hosts given, not the www hosts added below
+  const givenHosts = hostNames.slice();
+  for (const host of givenHosts) {
+    if (host.startsWith("www.")) {
+      continue; // explicitly set www host
+    }
+
+    const wwwHost = "www." + host;
+    if (!hostNames.includes(wwwHost)) {
+      hostNames.push(wwwHost);
+      wwwRedirects.push(wwwHost);
+    }
+  }
+
+  // implicit www->non-www redirect(s)
+  if (wwwRedirects.length > 0) {
+    router.bind(wwwRedirect(wwwRedirects));
+  }
+
+  return router;
+}
+
 // Starts the web server and resolves after it stops once shutdown is aborted.
 export async function serve(
   app: App,
@@ -294,10 +378,9 @@ export async function serve(
     );
   }
 
-  const router = newRouter(app);
-  if (config.ui) {
-    bindDashboard(router, config.ui);
-  }
+  const router = newServeRouter(app, config, (line) =>
+    out.stderr(`${logTime(out.now())} ${line}\n`),
+  );
   const mux = router.buildMux();
 
   const mainAddr = config.httpAddr;

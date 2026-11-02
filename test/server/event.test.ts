@@ -5,7 +5,7 @@
 //     TestEventStatus: Go interface wrapping with no TypeScript equivalent;
 //   - the "fields" picker parts of TestEventJSON, TestEventJSONPickError and
 //     TestEventJSONIgnoredError: tools/picker, M2.4;
-//   - TestEventFileFS: static files, M5.7;
+//   - TestEventFileFS: test/apis/static.test.ts, with Static (M5.7);
 //   - TestEventXML and TestEventSetCookie: no upstream endpoint uses them.
 
 import { describe, expect, test } from "bun:test";
