@@ -12,9 +12,9 @@
 //   - "the subscriptions were replaced": a record change on the old topic
 //     no longer reaches the client;
 //   - a client's IP set through a trusted proxy header (x-test-ip) becomes
-//     the connection's source address (127.0.0.2): iglo.base reads the
-//     trusted proxy settings in M5.7, and both servers see the socket
-//     address.
+//     the connection's source address (127.0.0.2), which both servers see
+//     without settings (the trusted proxy path is
+//     test/differential/serve/trusted-proxy.test.ts).
 //
 // Dropped, with the reason:
 //

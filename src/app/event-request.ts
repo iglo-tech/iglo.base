@@ -1,17 +1,17 @@
 // Upstream: core/event_request.go
 //
 // RequestEvent is the app's router handler event. The auth record is set by
-// the loadAuthToken middleware (src/middlewares/load-auth-token.ts). Trusted
-// proxy headers for RealIP land in M5.7 (settings); until then RealIP is
-// RemoteIP.
+// the loadAuthToken middleware (src/middlewares/load-auth-token.ts). RealIP
+// reads the trusted proxy headers of the app's current settings.
 
 import type { App } from "@/app/app";
 import type { Record } from "@/records/record-model";
-import { Event } from "@/server/event";
+import { Event, expandIP } from "@/server/event";
 import { setOwn } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
 import type { MapRef } from "@/server/unmarshal-request-data";
+import { ParseAddr } from "@/validation/is/go-netip";
 
 // Common request store keys used by the middlewares and api handlers.
 export const RequestEventKeyInfoContext = "infoContext";
@@ -70,9 +70,49 @@ export class RequestEvent extends Event {
     this.app = app;
   }
 
-  // RealIP returns the "real" IP address from the configured trusted proxy
-  // headers. Until settings exist (M5.7: trusted proxy) it is RemoteIP.
+  // RealIP returns the "real" IP address from the configured trusted proxy headers.
+  //
+  // If Settings.TrustedProxy is not configured or the found IP is empty,
+  // it fallbacks to e.RemoteIP().
+  //
+  // NB!
+  // Be careful when used in a security critical context as it relies on
+  // the trusted proxy to be properly configured and your app to be accessible only through it.
+  // If you are not sure, use e.RemoteIP().
+  //
+  // Bun.serve joins repeated header lines with ", " (D22), so the "last
+  // header value" upstream reads is the joined value: the rightmost IP is
+  // the same as upstream's (unless the last line is empty), and with
+  // UseLeftmostIP the leftmost IP of the first line is used, where upstream
+  // uses the leftmost of the last line.
   realIP(): string {
+    const settings = this.app.settings;
+
+    for (const h of settings.TrustedProxy.Headers ?? []) {
+      const ipsList = headerValue(this.request.headers, h);
+      if (ipsList === "") {
+        continue;
+      }
+
+      const ips = ipsList.split(",");
+
+      if (settings.TrustedProxy.UseLeftmostIP) {
+        for (const ip of ips) {
+          const parsed = parseAddrExpanded(ip);
+          if (parsed !== undefined) {
+            return parsed;
+          }
+        }
+      } else {
+        for (let i = ips.length - 1; i >= 0; i--) {
+          const parsed = parseAddrExpanded(ips[i] as string);
+          if (parsed !== undefined) {
+            return parsed;
+          }
+        }
+      }
+    }
+
     return this.remoteIP();
   }
 
@@ -144,6 +184,28 @@ export class RequestEvent extends Event {
 
     return undefined;
   }
+}
+
+// Header.Values(h)'s last value: "" when there is none, and for a name that
+// is not a valid header name (which Go never finds and Headers.get rejects)
+function headerValue(headers: Headers, name: string): string {
+  try {
+    return headers.get(name) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+// netip.ParseAddr(strings.TrimSpace(ip)).StringExpanded(), or undefined
+// when it is not an IP address
+function parseAddrExpanded(ip: string): string | undefined {
+  const trimmed = ip.replace(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
+  try {
+    ParseAddr(trimmed);
+  } catch {
+    return undefined;
+  }
+  return expandIP(trimmed);
 }
 
 // inflector.Snakecase removes all non word characters and converts any

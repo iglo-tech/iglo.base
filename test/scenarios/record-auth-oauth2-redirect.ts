@@ -7,8 +7,8 @@
 //   - "the @oauth2 subscription was removed": a second redirect for the same
 //     client fails;
 //   - "client with different IP": the redirect comes from the connection's
-//     source address 127.0.0.2 instead of a trusted proxy header
-//     (iglo.base reads the trusted proxy settings in M5.7);
+//     source address 127.0.0.2 instead of a trusted proxy header (the
+//     trusted proxy path is test/differential/serve/trusted-proxy.test.ts);
 //   - "discarded client with @oauth2 subscription": the stream was closed.
 //
 // The Apple name in the store is checked in-process

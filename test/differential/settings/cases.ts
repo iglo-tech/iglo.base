@@ -4,8 +4,8 @@
 // them, as a dashboard session would.
 //
 // Trusted proxy headers are sent only with values that are not IP
-// addresses: RealIP reads the configured headers in M5.7, until then it
-// is the remote address, which upstream also falls back to for these.
+// addresses, so RealIP falls back to the remote address on both servers
+// (test/differential/serve/trusted-proxy.test.ts covers the headers).
 
 export type Identity = "guest" | "users" | "superuser";
 
