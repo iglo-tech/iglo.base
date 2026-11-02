@@ -106,6 +106,10 @@ export class OTP {
     return this.#rec().validatePassword(password);
   }
 
+  validatePasswordAsync(password: string): Promise<boolean> {
+    return this.#rec().validatePasswordAsync(password);
+  }
+
   // Created returns the "created" record field value.
   created(): DateTime {
     return this.#rec().getDateTime("created");

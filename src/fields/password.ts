@@ -26,6 +26,9 @@ import {
   MinCost,
   compareHashAndPassword,
   generateFromPassword,
+  generateFromPasswordAsync,
+  compareHashAndPasswordAsync,
+  checkGenerate,
 } from "@/tools/crypto/bcrypt";
 import { matchString } from "@/tools/regexp/regexp";
 import { toString as castToString } from "@/tools/types/cast";
@@ -283,6 +286,13 @@ export class PasswordField
     actionName: string,
     actionFunc: () => void | Promise<void>,
   ): void | Promise<void> {
+    // the hash of a password set on the record is computed on Bun's thread
+    // pool; the first action waits for it, outside of any transaction
+    const pv = this.getPasswordValue(record);
+    if (pv.hashPending()) {
+      return pv.hashSettled().then(() => this.intercept(_app, record, actionName, actionFunc));
+    }
+
     switch (actionName) {
       case InterceptorActionAfterCreate:
       case InterceptorActionAfterUpdate: {
@@ -329,7 +339,10 @@ export class PasswordField
       }
 
       try {
-        fv.hash = generateFromPassword(textToBytes(fv.plain), cost);
+        // the argument errors are known at once, the hash comes later
+        const bytes = textToBytes(fv.plain);
+        const c = checkGenerate(bytes, cost);
+        fv.startHash(bytes, c, generateFromPasswordAsync(bytes, c));
       } catch (err) {
         fv.lastError = err as Error;
       }
@@ -409,11 +422,69 @@ export type PasswordFieldSettings = Pick<
 
 export class PasswordFieldValue {
   lastError: Error | null = null;
-  hash = "";
   plain = "";
+  #hash = "";
+  #pending: Promise<void> | null = null;
+  #pendingPlain: Uint8Array = new Uint8Array();
+  #pendingCost = 0;
 
   constructor(init: Partial<Pick<PasswordFieldValue, "lastError" | "hash" | "plain">> = {}) {
     Object.assign(this, init);
+  }
+
+  // hash is the stored bcrypt hash. While the hash of a newly set password
+  // is still being computed, reading it computes the hash on the calling
+  // thread instead (a path that did not wait for hashSettled; the save and
+  // validation paths do).
+  get hash(): string {
+    if (this.#pending !== null) {
+      this.#finishSync();
+    }
+    return this.#hash;
+  }
+
+  set hash(v: string) {
+    this.#pending = null;
+    this.#hash = v;
+  }
+
+  // startHash tracks the computation of the hash of plain at the cost.
+  startHash(plain: Uint8Array, cost: number, hashing: Promise<string>): void {
+    this.#pendingPlain = plain;
+    this.#pendingCost = cost;
+    const pending = hashing.then(
+      (h) => {
+        if (this.#pending === pending) {
+          this.#hash = h;
+          this.#pending = null;
+        }
+      },
+      (err) => {
+        if (this.#pending === pending) {
+          this.lastError = err as Error;
+          this.#pending = null;
+        }
+      },
+    );
+    this.#pending = pending;
+  }
+
+  hashPending(): boolean {
+    return this.#pending !== null;
+  }
+
+  hashSettled(): Promise<void> {
+    return this.#pending ?? Promise.resolve();
+  }
+
+  #finishSync(): void {
+    // the thread pool result is dropped: this.#pending is gone
+    this.#pending = null;
+    try {
+      this.#hash = generateFromPassword(this.#pendingPlain, this.#pendingCost);
+    } catch (err) {
+      this.lastError = err as Error;
+    }
   }
 
   validate(pass: string): boolean {
@@ -422,6 +493,18 @@ export class PasswordFieldValue {
     }
 
     const err = compareHashAndPassword(textToBytes(this.hash), textToBytes(pass));
+
+    return err === null;
+  }
+
+  // validateAsync is validate with the bcrypt computation on Bun's thread pool.
+  async validateAsync(pass: string): Promise<boolean> {
+    await this.hashSettled();
+    if (this.hash === "" || this.lastError !== null) {
+      return false;
+    }
+
+    const err = await compareHashAndPasswordAsync(textToBytes(this.hash), textToBytes(pass));
 
     return err === null;
   }

@@ -12,6 +12,7 @@
 import { FieldNameExpand, FieldNamePassword } from "@/fields/field";
 import { PasswordFieldValue } from "@/fields/password";
 import type { DataMap, Record } from "@/records/record-model";
+import { recordValidatePasswordAsync } from "@/records/record-model-auth";
 import type { RecordsApp } from "@/records/record-query";
 import { saveRecord, saveRecordSync } from "@/records/record-save";
 import { toString } from "@/tools/types/cast";
@@ -37,6 +38,8 @@ export class RecordUpsert {
   #password = "";
   #passwordConfirm = "";
   #oldPassword = "";
+  // the old password check computed off the event loop by submit() (D27)
+  #oldPasswordValid: { password: string; valid: boolean } | undefined;
 
   // NewRecordUpsert creates a new [RecordUpsert] form from the provided app and record
   // (for create you could pass a new empty record - newRecord(collection)).
@@ -201,7 +204,11 @@ export class RecordUpsert {
       return ErrUnsupportedValueType;
     }
 
-    if (!this.#record.original().validatePassword(value)) {
+    const valid =
+      this.#oldPasswordValid?.password === value
+        ? this.#oldPasswordValid.valid
+        : this.#record.original().validatePassword(value);
+    if (!valid) {
       return NewError("validation_invalid_old_password", "Missing or invalid old password.");
     }
 
@@ -210,6 +217,21 @@ export class RecordUpsert {
 
   // Submit validates the form specific validations and attempts to save the form record.
   async submit(): Promise<void> {
+    // bcrypt off the event loop (D27): the check runs in the same rule and
+    // order below, with its result computed here first
+    if (
+      !this.#disablePasswordValidations &&
+      !this.#record.isNew() &&
+      !this.hasManageAccess() &&
+      (this.#password !== "" || this.#passwordConfirm !== "") &&
+      this.#oldPassword !== ""
+    ) {
+      this.#oldPasswordValid = {
+        password: this.#oldPassword,
+        valid: await recordValidatePasswordAsync(this.#record.original(), this.#oldPassword),
+      };
+    }
+
     const err = this.validateFormFields();
     if (err !== null) {
       throw err;

@@ -23,6 +23,7 @@ import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
 import { type Error as ValidationError, NewError } from "@/validation/error";
 import { Length } from "@/validation/length";
+import { recordValidatePasswordAsync } from "@/records/record-model-auth";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
@@ -48,7 +49,18 @@ export async function recordConfirmEmailChange(e: RequestEvent): Promise<Handler
       e.badRequestError("An error occurred while loading the submitted data.", bindErr),
     );
   }
-  const validateErr = validateEmailChangeConfirmForm(form, e.app, collection);
+  // bcrypt off the event loop (D27): the password rule below runs in the
+  // same order, with this result computed first
+  let passwordValid: boolean | undefined;
+  const pw = form.Password;
+  if (typeof pw === "string" && pw !== "" && [...pw].length <= 100) {
+    const pre = parseToken(form, e.app, collection);
+    if (!("err" in pre)) {
+      passwordValid = await recordValidatePasswordAsync(pre.authRecord, pw);
+    }
+  }
+
+  const validateErr = validateEmailChangeConfirmForm(form, e.app, collection, passwordValid);
   if (validateErr) {
     return firstApiError(
       validateErr,
@@ -91,6 +103,7 @@ function validateEmailChangeConfirmForm(
   form: EmailChangeConfirmForm,
   app: App,
   collection: Collection,
+  passwordValid?: boolean,
 ): Error | null {
   return ValidateStruct(
     Field(
@@ -114,7 +127,7 @@ function validateEmailChangeConfirmForm(
         }
 
         const parsed = parseToken(form, app, collection);
-        if ("err" in parsed || !parsed.authRecord.validatePassword(v)) {
+        if ("err" in parsed || !(passwordValid ?? parsed.authRecord.validatePassword(v))) {
           return NewError(
             "validation_invalid_password",
             "Missing or invalid auth record password.",

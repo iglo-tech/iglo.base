@@ -101,3 +101,14 @@ export function recordValidatePassword(m: Record, password: string): boolean {
 
   return pv.validate(password);
 }
+
+// ValidatePasswordAsync is ValidatePassword with the bcrypt computation on
+// Bun's thread pool, for the handlers that can wait.
+export async function recordValidatePasswordAsync(m: Record, password: string): Promise<boolean> {
+  const pv = m.getRaw(FieldNamePassword);
+  if (!(pv instanceof PasswordFieldValue)) {
+    return false;
+  }
+
+  return pv.validateAsync(password);
+}

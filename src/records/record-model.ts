@@ -59,6 +59,7 @@ import {
   recordSetVerified,
   recordTokenKey,
   recordValidatePassword,
+  recordValidatePasswordAsync,
   recordVerified,
 } from "@/records/record-model-auth";
 import { recordIsSuperuser } from "@/records/record-model-superusers";
@@ -976,6 +977,12 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // Returns false if the password is incorrect.
   validatePassword(password: string): boolean {
     return recordValidatePassword(this, password);
+  }
+
+  // ValidatePasswordAsync is ValidatePassword with the bcrypt computation
+  // off the event loop (Bun's thread pool).
+  validatePasswordAsync(password: string): Promise<boolean> {
+    return recordValidatePasswordAsync(this, password);
   }
 
   // -------------------------------------------------------------------
