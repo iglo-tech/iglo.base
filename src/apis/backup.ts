@@ -196,7 +196,7 @@ async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
 
   setTimeout(() => {
     restoreBackup(app, key).catch((err: unknown) => {
-      app.logger.error(`Failed to restore backup: ${key}`, err);
+      app.logger.error("Failed to restore backup", { key, error: err });
     });
   }, restoreDelayMs);
 

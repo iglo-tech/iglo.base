@@ -82,10 +82,10 @@ export class PreUploads {
   }
 
   #logFailure(files: File[], err: unknown): void {
-    this.#app.logger.error(
-      `Failed to cleanup the new uploaded file after record db write failure: ${files.map((f) => f.name).join(", ")}`,
-      err,
-    );
+    this.#app.logger.warn("Failed to cleanup the new uploaded file after record db write failure", {
+      error: err,
+      failedToDelete: files.map((f) => f.name),
+    });
   }
 }
 

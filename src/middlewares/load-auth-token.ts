@@ -1,7 +1,6 @@
 // Upstream: apis/middlewares.go (loadAuthToken, getAuthTokenFromRequest)
 //
-// The records are looked up in e.app. Upstream's debug log of a failed
-// lookup is left out (application code logs only errors).
+// The records are looked up in e.app.
 
 import type { RequestEvent } from "@/app/event-request";
 import { equalFold } from "@/collections/go-strings";
@@ -40,8 +39,9 @@ export function loadAuthToken(): Handler<RequestEvent> {
 
       try {
         e.auth = findAuthRecordByToken(e.app, token, TokenTypeAuth);
-      } catch {
+      } catch (err) {
         // a missing, invalid or expired token leaves the request a guest
+        e.app.logger.debug("loadAuthToken failure", { error: err });
       }
 
       return e.next();

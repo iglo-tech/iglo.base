@@ -7,16 +7,16 @@
 // The OnRecordEnrich and OnRecordAuthRequest hook chains
 // (triggerRecordEnrichHooks) are not ported (no extension surface): their
 // default actions run directly, in upstream's order. The record reads are
-// async and go through the read worker pool. Upstream logs a failed
-// default enrich or expand as a warning in its `_logs` (M5); here those
-// failures are dropped, as upstream drops them from the response. A
-// failed auth alert is reported to the app's error logger.
+// async and go through the read worker pool. A failed default enrich or
+// expand is logged as a warning, as upstream does, and does not fail the
+// response. A failed auth alert is logged as an error.
 //
 // The auth alert email is mails.SendRecordAuthAlert (src/mail/mails).
 
 import type { App } from "@/app/app";
 import { type RequestEvent, RequestInfo, RequestInfoContextExpand } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
+import { joinErrors, wrapError } from "@/collections/view";
 import { HashExp, inExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import { sendRecordAuthAlert } from "@/mail/mails/record";
@@ -182,15 +182,24 @@ export async function recordAuthResponse(
   // expand record relations
   const expands = (e.request.query().get(expandQueryParam)?.[0] ?? "").split(",");
   if (expands.length > 0) {
-    // failures are only logged upstream ("Failed to expand relations")
-    await expandRecords(e.app, [authRecord], expands, expandFetch(e.app, requestInfo));
+    const failed = await expandRecords(
+      e.app,
+      [authRecord],
+      expands,
+      expandFetch(e.app, requestInfo),
+    );
+    if (failed.size > 0) {
+      e.app.logger.warn("[recordAuthResponse] Failed to expand relations", {
+        error: joinErrors([...failed].map(([key, err]) => wrapError(key, err))),
+      });
+    }
   }
 
   if (authMethod !== "" && authRecord.collection().authAlert.enabled) {
     try {
       await authAlert(e, authRecord);
     } catch (err) {
-      e.app.logger.error("[recordAuthResponse] Failed to send login alert", err);
+      e.app.logger.warn("[recordAuthResponse] Failed to send login alert", { error: err });
     }
   }
 
@@ -328,7 +337,7 @@ async function checkMFA(
       try {
         await deleteMFA(e.app, mfa);
       } catch (err) {
-        e.app.logger.error(`Failed to delete expired MFA record (mfaId ${mfa.id})`, err);
+        e.app.logger.warn("Failed to delete expired MFA record", { error: err, mfaId: mfa.id });
       }
     }
   };
@@ -393,8 +402,9 @@ export async function enrichRecords(
 
   try {
     await defaultEnrichRecords(e.app, info, records, ...expands);
-  } catch {
-    // only logged upstream because it is not critical
+  } catch (err) {
+    // not critical
+    e.app.logger.warn("failed to apply default enriching", { error: err });
   }
 
   return undefined;
@@ -437,8 +447,11 @@ export function expandFetch(app: App, originalRequestInfo: RequestInfo): ExpandF
 
     try {
       await autoResolveRecordsFlags(app, records, requestInfoPtr);
-    } catch {
-      // non-critical error (logged upstream)
+    } catch (err) {
+      // non-critical error
+      app.logger.warn("Failed to apply autoResolveRecordsFlags for the expanded records", {
+        error: err,
+      });
     }
 
     return records;
@@ -456,8 +469,11 @@ export function expandFetchSync(app: App, originalRequestInfo: RequestInfo): Exp
 
     try {
       autoResolveRecordsFlagsSync(app, records, requestInfoPtr);
-    } catch {
-      // non-critical error (logged upstream)
+    } catch (err) {
+      // non-critical error
+      app.logger.warn("Failed to apply autoResolveRecordsFlags for the expanded records", {
+        error: err,
+      });
     }
 
     return records;
@@ -738,10 +754,10 @@ async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
         await deleteAuthOrigin(e.app, origin);
       } catch (err) {
         // treat as non-critical error, just log for now
-        e.app.logger.error(
-          `Failed to delete old AuthOrigin record (authOriginId ${origin.id})`,
-          err,
-        );
+        e.app.logger.warn("Failed to delete old AuthOrigin record", {
+          error: err,
+          authOriginId: origin.id,
+        });
       }
     }
   }

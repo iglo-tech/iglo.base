@@ -156,8 +156,8 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
       deletePrefix(prefix)
         .catch((err: unknown) => {
           config.logger.error(
-            `Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits): ${prefix}`,
-            err,
+            "Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits)",
+            { prefix, error: err },
           );
         })
         .finally(() => deleteSem.release());

@@ -183,7 +183,14 @@ async function extractAndReplace(
     );
 
     // the zip is no longer needed (the app may restart below)
-    await rm(tempZip, { force: true });
+    try {
+      await rm(tempZip, { force: true });
+    } catch (err) {
+      app.logger.warn("[RestoreBackup] Failed to remove the temp zip backup file", {
+        file: tempZip,
+        error: err,
+      });
+    }
 
     checkExtractedData(extractedDataDir);
 

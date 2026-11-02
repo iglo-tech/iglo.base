@@ -10,6 +10,7 @@
 // equals upstream's byte for byte is checked against the upstream binary
 // in test/differential/migrations/.
 
+import { testLogger } from "@test/support/logger";
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -56,7 +57,7 @@ async function openError(dataDir: string): Promise<unknown> {
       encryptionEnv: "",
       queryTimeout: 30,
       clock,
-      logger: { error: () => {}, warn: () => {} },
+      logger: testLogger(),
       readWorkers: 0,
     });
   } catch (err) {

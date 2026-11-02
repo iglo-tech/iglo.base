@@ -465,10 +465,12 @@ export class FileField
     record: InterceptorRecord,
     actionFunc: () => void | Promise<void>,
   ): StorageSteps<void> {
-    try {
-      yield* this.deleteNewlyUploadedFiles(app, record);
-    } catch (err) {
-      app.logger.error("Failed to cleanup all new files after record commit failure", err);
+    const [failedToDelete, deleteErr] = yield* this.deleteNewlyUploadedFiles(app, record);
+    if (deleteErr !== null) {
+      app.logger.warn("Failed to cleanup all new files after record commit failure", {
+        error: deleteErr,
+        failedToDelete,
+      });
     }
 
     record.setRaw(deletedFilesPrefix + this.name, null);
@@ -482,7 +484,9 @@ export class FileField
       try {
         yield* this.deleteEmptyRecordDir(app, record);
       } catch (err) {
-        app.logger.error("Failed to delete empty dir after new record commit failure", err);
+        app.logger.warn("Failed to delete empty dir after new record commit failure", {
+          error: err,
+        });
       }
     }
 
@@ -576,10 +580,10 @@ export class FileField
     );
 
     if (failedToDelete.length > 0) {
-      app.logger.error(
-        `Failed to cleanup the new uploaded file after record db write failure: ${failedToDelete.join(", ")}`,
-        deleteErr,
-      );
+      app.logger.warn("Failed to cleanup the new uploaded file after record db write failure", {
+        error: deleteErr,
+        failedToDelete,
+      });
     }
 
     if (deleteErr !== null) {
@@ -705,14 +709,14 @@ export class FileField
     }
   }
 
-  // Throws the delete error.
+  // Returns the files that failed to delete and the error, if any.
   private *deleteNewlyUploadedFiles(
     app: InterceptorApp,
     record: InterceptorRecord,
-  ): StorageSteps<void> {
+  ): StorageSteps<[string[], unknown]> {
     const uploaded = filesOf(record.getRaw(uploadedFilesPrefix + this.name));
     if (uploaded.length === 0) {
-      return;
+      return [[], null];
     }
 
     const names = uploaded.map((file) => file.name);
@@ -728,10 +732,11 @@ export class FileField
       toUniqueStringSlice(names),
     );
     if (err !== null) {
-      throw wrapError(`failed to delete ${failed.join(", ")}`, err);
+      return [failed, err];
     }
 
     record.setRaw(uploadedFilesPrefix + this.name, null);
+    return [[], null];
   }
 
   // deleteFilesByNamesList deletes a list of record files by their names.
@@ -793,7 +798,7 @@ export class FileField
             record.baseFilesPath() + "/thumbs_" + filename + "/",
           )) as unknown[];
           if (thumbsErr.length > 0) {
-            app.logger.error("Failed to delete file thumbs", joinErrors(thumbsErr));
+            app.logger.warn("Failed to delete file thumbs", { error: joinErrors(thumbsErr) });
           }
         }
       }

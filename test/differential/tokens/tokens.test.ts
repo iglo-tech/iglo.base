@@ -43,6 +43,7 @@
 //       FindAuthRecordByToken returns; an unchanged user's token stays
 //       valid on both.
 
+import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -301,7 +302,7 @@ function guardRouter(app: TestCollectionsApp) {
       encryptionEnv: "",
       queryTimeout: 30,
       clock,
-      logger: { error: app.logger.error, warn: () => {} },
+      logger: testLogger(),
       databases: app.databases,
       store: app.store,
     }),

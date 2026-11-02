@@ -87,5 +87,7 @@ test("superuser and migrate never run the jobs", async () => {
   ).toBe(0);
   expect(await runCli(context(["migrate", "up", "--dir", dataDir], 1, never))).toBe(0);
 
-  expect(expiredRows(dataDir)).toBe(3);
+  // the OTP and MFA rows; the old log goes with the settings reload of any
+  // bootstrap, as upstream's
+  expect(expiredRows(dataDir)).toBe(2);
 });

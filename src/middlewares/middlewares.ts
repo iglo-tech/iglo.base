@@ -9,6 +9,7 @@ export const DefaultRateLimitMiddlewarePriority = -1000;
 
 export const DefaultActivityLoggerMiddlewareId = "pbActivityLogger";
 export const DefaultActivityLoggerMiddlewarePriority = DefaultRateLimitMiddlewarePriority - 40;
+export const DefaultSkipSuccessActivityLogMiddlewareId = "pbSkipSuccessActivityLog";
 
 export const DefaultPanicRecoverMiddlewareId = "pbPanicRecover";
 export const DefaultPanicRecoverMiddlewarePriority = DefaultRateLimitMiddlewarePriority - 30;

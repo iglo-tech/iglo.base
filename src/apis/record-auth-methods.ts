@@ -2,9 +2,8 @@
 //
 // The OAuth2 providers come from src/oauth2/providers.ts, which knows the
 // defaults of every provider upstream registers. A
-// provider that fails to initialize is skipped, as upstream skips it
-// (upstream also writes a debug log line; application code here logs only
-// errors).
+// provider that fails to initialize is logged at debug level and skipped,
+// as upstream does.
 
 import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
@@ -103,7 +102,8 @@ export function recordAuthMethods(e: RequestEvent): HandlerResult {
     let provider: BaseProvider;
     try {
       provider = initProvider(config);
-    } catch {
+    } catch (err) {
+      e.app.logger.debug("Failed to setup OAuth2 provider", { name: config.name, error: err });
       continue; // skip provider
     }
 

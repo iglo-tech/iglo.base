@@ -40,6 +40,7 @@ import { checkCollectionRateLimit, checkRateLimit } from "@/middlewares/rate-lim
 import type { RateLimitRule } from "@/settings/settings-model";
 import { type DataMap, newRecord, type Record } from "@/records/record-model";
 import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
+import { joinErrors, wrapError } from "@/collections/view";
 import { expandRecordSync } from "@/records/record-query-expand";
 import { deleteRecord, deleteRecordSync, driverValue, run, type Step } from "@/records/record-save";
 import { RecordUpsert } from "@/records/record-upsert";
@@ -130,10 +131,14 @@ function enrichRecordSync(e: RequestEvent, info: RequestInfo, record: Record): u
   try {
     autoResolveRecordsFlagsSync(e.app, [record], info);
     if (expands.length > 0) {
-      expandRecordSync(e.app, record, expands, expandFetchSync(e.app, info));
+      const failed = expandRecordSync(e.app, record, expands, expandFetchSync(e.app, info));
+      if (failed.size > 0) {
+        throw joinErrors([...failed].map(([key, err]) => wrapError(key, err)));
+      }
     }
-  } catch {
-    // only logged upstream because it is not critical
+  } catch (err) {
+    // not critical
+    e.app.logger.warn("failed to apply default enriching", { error: err });
   }
 
   return undefined;
@@ -286,6 +291,9 @@ async function recordsList(
     checkRateLimit(e, "@pb_list_timing_check_" + collection.id, listTimingRateLimitRule) !==
       undefined
   ) {
+    e.app.logger.debug("Randomized throttle because of too many failed searches", {
+      collectionId: collection.id,
+    });
     await randomizedThrottle(500, sleep);
   }
 
@@ -931,7 +939,10 @@ function* hasAuthManageAccess(
     const expr = filterBuildExpr(manageRule, resolver, resolver.filterOptions());
     query.andWhere(expr);
   } catch (err) {
-    app.logger.error(`Manage rule build expression error (collectionId ${collection.id})`, err);
+    app.logger.error("Manage rule build expression error", {
+      error: err,
+      collectionId: collection.id,
+    });
     return false;
   }
 

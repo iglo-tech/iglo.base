@@ -7,6 +7,7 @@
 // /_/extensions.js is always an empty script, kept for cached old builds,
 // and /_/extensions/{name}/... is not a route, so it is the dashboard's 404.
 
+import { requestEventKeySkipSuccessActivityLog } from "@/middlewares/activity-logger";
 import { safeRedirectPath, StaticWildcardParam } from "@/apis/base";
 import type { StaticFS } from "@/apis/ui-pack";
 import type { RequestEvent } from "@/app/event-request";
@@ -21,10 +22,6 @@ export const defaultCSP =
   "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://127.0.0.1:* https://tile.openstreetmap.org data: blob:; connect-src 'self' http://127.0.0.1:* https://nominatim.openstreetmap.org; script-src 'self' http://127.0.0.1:*; frame-ancestors 'none'";
 
 const cacheControl = "max-age=1209600, stale-while-revalidate=86400";
-
-// requestEventKeySkipSuccessActivityLog (apis/middlewares.go), read by the
-// activity logger (M5.5)
-const requestEventKeySkipSuccessActivityLog = "__skipSuccessActivityLogger";
 
 // fs.ValidPath: a slash-separated path without empty, "." or ".." elements
 // (except "." itself), no leading or trailing slash.

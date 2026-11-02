@@ -147,8 +147,6 @@ export function checkCollectionRateLimit(
 
 // checkRateLimit consumes one request of the rtId limiter for the client's
 // real IP and returns a 429 error once the rule's allowance is exhausted.
-//
-// The empty key is one of upstream's Warn logs, which M5.5's logger takes.
 export function checkRateLimit(
   e: RequestEvent,
   rtId: string,
@@ -181,6 +179,7 @@ export function checkRateLimit(
 
   const key = e.realIP();
   if (key === "") {
+    e.app.logger.warn("Empty rate limit client key");
     return undefined;
   }
 

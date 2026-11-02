@@ -599,7 +599,9 @@ function* afterSuccess(
         return;
       }
       result.catch((err: unknown) => {
-        app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
+        app.logger.error(`Record ${successAction} interceptors failed after the transaction`, {
+          error: err,
+        });
       });
     }
   });
@@ -656,7 +658,17 @@ function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: st
       realtimeRecordAfterDelete(app, record);
     }
   } catch (err) {
-    app.logger.error("Failed to broadcast the record change", err);
+    const action =
+      successAction === InterceptorActionAfterCreate
+        ? "create"
+        : successAction === InterceptorActionAfterUpdate
+          ? "update"
+          : "delete";
+    app.logger.debug(`Failed to broadcast record ${action}`, {
+      id: record.id,
+      collectionName: record.collection().name,
+      error: err,
+    });
   }
 }
 

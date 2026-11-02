@@ -184,10 +184,10 @@ class BackupTracker implements FilesystemWatcher {
       this.held.set(zipPath, this.#keep(localPath, heldPath, info.size));
     } catch (err) {
       if ((err as { code?: string }).code !== "ENOENT") {
-        this.#app.logger.warn(
-          `${this.#logPrefix}failed to keep file for the backup zip before delete: ${zipPath}`,
-          err,
-        );
+        this.#app.logger.warn(`${this.#logPrefix}failed to copy file in backup zip before delete`, {
+          error: err,
+          file: zipPath,
+        });
       }
       return;
     }
@@ -290,6 +290,8 @@ export async function createBackup(app: App, name = ""): Promise<void> {
     const fsys = app.filesystem.newBackupsFilesystem();
     try {
       const backupName = name === "" ? generateBackupName(app, "pb_backup_") : name;
+      const startTime = Bun.nanoseconds();
+      app.logger.debug(`[${backupName}] zip archive started`);
 
       // create backup zip
       // (it needs to be inside the current pb_data to avoid "cross-device link" errors)
@@ -306,6 +308,10 @@ export async function createBackup(app: App, name = ""): Promise<void> {
         file.name = backupName;
 
         await uploadBackupFile(fsys, file, file.name);
+
+        app.logger.debug(`[${backupName}] zip archive completed`, {
+          execTime: (Bun.nanoseconds() - startTime) / 1e6,
+        });
       } finally {
         await rm(tempZipPath, { force: true });
       }
@@ -361,10 +367,14 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
     const copyDB = async (filename: string): Promise<void> => {
       const tempDBPath = join(localTempDir, filename);
       try {
+        const dbStartTime = Bun.nanoseconds();
         await worker.call({
           op: "vacuum",
           src: join(app.dataDir, filename),
           dest: tempDBPath,
+        });
+        app.logger.debug(`${logPrefix}${filename} copy completed`, {
+          execTime: (Bun.nanoseconds() - dbStartTime) / 1e6,
         });
         await worker.call({ op: "zipAdd", localPath: tempDBPath, zipPath: filename });
       } finally {

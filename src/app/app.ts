@@ -12,23 +12,30 @@ import type { Clock } from "@/app/clock";
 import { ThumbPool } from "@/files/thumb-pool";
 import { type AppFilesystem, newAppFilesystem } from "@/app/filesystem";
 import type { Databases } from "@/db/base";
+import type { LogAttrs } from "@/logs/batch-handler";
 import type { Mailer } from "@/mail/mailer";
 import { newMailClient } from "@/mail/mail-client";
-import { newDefaultSettings, type Settings } from "@/settings/settings-model";
+import { type LogsConfig, newDefaultSettings, type Settings } from "@/settings/settings-model";
 import { Cron } from "@/tools/cron/cron";
 import type { Store } from "@/tools/store/store";
 import { Broker } from "@/tools/subscriptions/broker";
 
-// Reports errors and things that need attention (AGENTS.md: no
-// informational output).
-export interface ErrorLogger {
-  error(message: string, cause?: unknown): void;
+// The app's logger (src/logs/logger.ts): slog.Logger's calls, with the
+// attributes as an object. Its logs are stored in `_logs`, and printed only
+// with --dev. A log has no effect on the caller.
+export interface AppLogger {
+  debug(message: string, attrs?: LogAttrs): void;
+  info(message: string, attrs?: LogAttrs): void;
+  warn(message: string, attrs?: LogAttrs): void;
+  error(message: string, attrs?: LogAttrs): void;
+  // the logs settings changed
+  setLevel(logs: LogsConfig): void;
+  // writes the queued logs; called before the databases close
+  close(): void;
 }
 
-// The app's logger: upstream's Warn level too.
-export interface AppLogger extends ErrorLogger {
-  warn(message: string, cause?: unknown): void;
-}
+// The part of the logger that the narrow app contexts use.
+export type ErrorLogger = Pick<AppLogger, "debug" | "warn" | "error">;
 
 export interface App {
   // DataDir returns the app data directory path (pb_data).
@@ -92,6 +99,9 @@ export interface AppConfig {
   store: Store<string, unknown>;
   // the default settings (newDefaultSettings) unless set
   settings?: Settings;
+  // log.Println: a line on stderr, where upstream writes one (a recovered
+  // job panic, a failed `_logs` write); nowhere unless set
+  stderrLog?: (line: string) => void;
   // an empty environment unless set
   getenv?: (name: string) => string;
   // the migrations directory, when --automigrate is on
@@ -124,7 +134,14 @@ export function newApp(config: AppConfig): App {
     subscriptionsBroker: new Broker(),
     cron: new Cron({
       clock: config.clock,
-      logPanic: (cause) => config.logger.error("[FireAndForget] RECOVERED FROM PANIC", cause),
+      // routine.FireAndForget
+      logPanic: (cause) => {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        config.stderrLog?.(`[FireAndForget] RECOVERED FROM PANIC: ${message}`);
+        if (cause instanceof Error && cause.stack !== undefined) {
+          config.stderrLog?.(cause.stack);
+        }
+      },
     }),
   });
 }

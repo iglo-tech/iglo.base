@@ -210,7 +210,7 @@ test("the production address check still refuses the avatar through the handler"
 
   expect(status).toBe(200);
   expect((json["record"] as { [key: string]: unknown })["avatar"]).toBe("");
-  expect(app.logged.map((l) => l.message)).toContain("Failed to retrieve OAuth2 avatar");
+  expect(app.warned.map((l) => l.message)).toContain("Failed to retrieve OAuth2 avatar");
 });
 
 test("the record create and the link are all or nothing, with the avatar too", async () => {

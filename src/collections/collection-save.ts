@@ -246,10 +246,9 @@ function onErrorReloadCachedCollections(app: CollectionsApp): void {
   try {
     reloadCachedCollections(app);
   } catch (err) {
-    app.logger.error(
-      "Failed to reload collections cache after collection change error",
-      driverError(err),
-    );
+    app.logger.warn("Failed to reload collections cache after collection change error", {
+      error: driverError(err),
+    });
   }
 }
 
@@ -257,7 +256,7 @@ function reloadCachedCollectionsOrWarn(app: CollectionsApp): void {
   try {
     reloadCachedCollections(app);
   } catch (err) {
-    app.logger.error("Failed to reload collections cache", driverError(err));
+    app.logger.warn("Failed to reload collections cache", { error: driverError(err) });
   }
 }
 
@@ -395,11 +394,11 @@ function onCollectionSaveExecute(
     try {
       resaveViewsWithChangedFields(app, collection.id);
     } catch (depViewsErr) {
-      app.logger.error(
+      app.logger.warn(
         "Dependent view collection(s) may need to be updated after " +
           collection.name +
           " collection change",
-        depViewsErr,
+        { error: depViewsErr },
       );
     }
   } finally {

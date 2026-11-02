@@ -2,6 +2,7 @@
 // after a record or collection delete), checked through src/app/filesystem.ts
 // and the collection delete path on copies of the vendored fixture.
 
+import { testLogger } from "@test/support/logger";
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -49,7 +50,7 @@ describe("NewFilesystem", () => {
       dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     }).newFilesystem();
     try {
       fs.upload(new TextEncoder().encode("hi"), "c/r/f.txt");
@@ -67,7 +68,7 @@ describe("NewFilesystem", () => {
       dataDir: newDataDir(),
       settings: () => settings,
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     });
     expect(() => appFs.newFilesystem()).toThrow("s3blob.New: missing bucket name");
   });
@@ -81,7 +82,7 @@ describe("deleteModelFiles", () => {
       dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     });
 
     const result = appFs.deleteModelFiles(fileModel("c1/r1"));
@@ -101,7 +102,7 @@ describe("deleteModelFiles", () => {
       dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     });
 
     appFs.deleteModelFiles({ baseFilesPath: () => "c1/r1", fieldTypes: () => ["text"] });
@@ -117,7 +118,7 @@ describe("deleteModelFiles", () => {
       dataDir,
       settings: () => newDefaultSettings(),
       getenv: (name) => (name === "PB_FILES_DELETE_MAX_WORKERS" ? "1" : ""),
-      logger: { error: () => {} },
+      logger: testLogger(),
     });
 
     expect(appFs.deleteModelFiles(fileModel("c1/r1"))).toBeUndefined();
@@ -144,13 +145,13 @@ describe("deleteModelFiles", () => {
       dataDir,
       settings: () => settings,
       getenv: () => "",
-      logger: { error: (message) => logged.push(message) },
+      logger: testLogger((message) => logged.push(message)),
     });
     settings.S3.Enabled = true; // NewFilesystem fails
     appFs.deleteModelFiles(fileModel("c1/r1"));
     await Bun.sleep(50);
     expect(logged).toEqual([
-      "Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits): c1/r1/",
+      "Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits)",
     ]);
   });
 });
