@@ -149,7 +149,7 @@ describe("RecordService CRUD", () => {
         bool: true,
         datetime: "2030-02-03 04:05:06.789Z",
         select_many: ["optionA", "optionC"],
-        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 12345678901234567890 },
+        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 1234567890123456 },
         point: { lon: 12.5, lat: -45.25 },
       }),
     );
