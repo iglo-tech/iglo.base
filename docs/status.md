@@ -10,7 +10,7 @@ M5.7 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.7 | re-review 1 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 1 | [Brief](briefs/M5.7.md). Round 1 Opus CHANGES (console reads on the write connection); lead fixed at `a93eb4b` |
+| M5.7 | re-review 2 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 2 | [Brief](briefs/M5.7.md). Round 1 Opus CHANGES (console reads on the write connection); lead fixed at `a93eb4b`, `6c8a610` (check and test:reference green) |
 
 ## Done
 
