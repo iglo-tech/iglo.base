@@ -10,9 +10,8 @@
 // FindUploadedFiles returns the parts as filesystem.File values (M3.1),
 // read from memory or from the request's multipart temporary file.
 //
-// Not ported yet:
-//   - FileFS (static files, M5.7);
-//   - XML responses and SetCookie: no upstream endpoint uses them.
+// FileFS is in @/apis/base, next to Static, its only caller. Not ported:
+// XML responses and SetCookie: no upstream endpoint uses them.
 
 import { Resolver } from "@/server/handler";
 import {

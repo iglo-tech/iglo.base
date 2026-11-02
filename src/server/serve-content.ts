@@ -16,35 +16,212 @@
 // temporary file first, in bounded pieces, and sent as that file's Blob.
 //
 // Content-Type, when the caller did not set it, comes from the file name's
-// extension: Go's built-in table, plus font/woff2, which upstream's binary
-// gets from the system mime.types file. Go sniffs the content of other
-// files (http.DetectContentType); here they are application/octet-stream.
-// Every file the dashboard build has is in the table (test/ui checks it).
+// extension, as Go 1.27's mime.TypeByExtension finds it: its built-in
+// table, then the system's MIME database (so font/woff2 comes from there,
+// as for upstream's binary on the same host). Without one, the first
+// 512 bytes are sniffed (http.DetectContentType, @/server/sniff); a remote
+// file is application/octet-stream instead, as its bytes are not read
+// before the headers.
+
+import { readFileSync } from "node:fs";
 
 import type { HttpRequest } from "@/server/request";
+import { detectContentType } from "@/server/sniff";
 import { httpError, type ResponseWriter } from "@/server/router";
 
-const extensionTypes = new Map<string, string>([
+// mime's builtinTypesLower (Go 1.27.2 mime/type.go)
+const builtinTypes: readonly [string, string][] = [
+  [".ai", "application/postscript"],
+  [".apk", "application/vnd.android.package-archive"],
+  [".apng", "image/apng"],
   [".avif", "image/avif"],
+  [".bin", "application/octet-stream"],
+  [".bmp", "image/bmp"],
+  [".com", "application/octet-stream"],
   [".css", "text/css; charset=utf-8"],
+  [".csv", "text/csv; charset=utf-8"],
+  [".doc", "application/msword"],
+  [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  [".ehtml", "text/html; charset=utf-8"],
+  [".eml", "message/rfc822"],
+  [".eps", "application/postscript"],
+  [".exe", "application/octet-stream"],
+  [".flac", "audio/flac"],
   [".gif", "image/gif"],
+  [".gz", "application/gzip"],
   [".htm", "text/html; charset=utf-8"],
   [".html", "text/html; charset=utf-8"],
+  [".ico", "image/vnd.microsoft.icon"],
+  [".ics", "text/calendar; charset=utf-8"],
+  [".jfif", "image/jpeg"],
   [".jpeg", "image/jpeg"],
   [".jpg", "image/jpeg"],
   [".js", "text/javascript; charset=utf-8"],
   [".json", "application/json"],
+  [".m4a", "audio/mp4"],
   [".mjs", "text/javascript; charset=utf-8"],
+  [".mp3", "audio/mpeg"],
+  [".mp4", "video/mp4"],
+  [".oga", "audio/ogg"],
+  [".ogg", "audio/ogg"],
+  [".ogv", "video/ogg"],
+  [".opus", "audio/ogg"],
   [".pdf", "application/pdf"],
+  [".pjp", "image/jpeg"],
+  [".pjpeg", "image/jpeg"],
   [".png", "image/png"],
+  [".ppt", "application/vnd.ms-powerpoint"],
+  [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  [".ps", "application/postscript"],
+  [".rdf", "application/rdf+xml"],
+  [".rtf", "application/rtf"],
+  [".shtml", "text/html; charset=utf-8"],
   [".svg", "image/svg+xml"],
+  [".text", "text/plain; charset=utf-8"],
+  [".tif", "image/tiff"],
+  [".tiff", "image/tiff"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".vtt", "text/vtt; charset=utf-8"],
   [".wasm", "application/wasm"],
+  [".wav", "audio/wav"],
+  [".weba", "audio/webm"],
+  [".webm", "video/webm"],
   [".webp", "image/webp"],
+  [".xbl", "text/xml; charset=utf-8"],
+  [".xbm", "image/x-xbitmap"],
+  [".xht", "application/xhtml+xml"],
+  [".xhtml", "application/xhtml+xml"],
+  [".xls", "application/vnd.ms-excel"],
+  [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
   [".xml", "text/xml; charset=utf-8"],
-  [".woff2", "font/woff2"],
-]);
+  [".xsl", "text/xml; charset=utf-8"],
+  [".zip", "application/zip"],
+];
 
-// mime.TypeByExtension for the table above ("" when unknown).
+interface MimeTables {
+  exact: Map<string, string>;
+  lower: Map<string, string>;
+}
+
+// mime.TypeByExtension's tables: the built-in types, then the system's
+// MIME-info database (globs2: an extension already known keeps its type)
+// or, without one, the mime.types files (which override), as Go's
+// initMimeUnix loads them, once per process.
+let mimeTables: MimeTables | undefined;
+
+const mimeGlobs = ["/usr/local/share/mime/globs2", "/usr/share/mime/globs2"];
+const typeFiles = [
+  "/etc/mime.types",
+  "/etc/apache2/mime.types",
+  "/etc/apache/mime.types",
+  "/etc/httpd/conf/mime.types",
+];
+
+function readLines(path: string): string[] | undefined {
+  try {
+    return readFileSync(path, "utf8").split("\n");
+  } catch {
+    return undefined;
+  }
+}
+
+function loadMimeTables(): MimeTables {
+  const exact = new Map<string, string>();
+  const lower = new Map<string, string>();
+  for (const [ext, type] of builtinTypes) {
+    exact.set(ext, type);
+    lower.set(ext, type);
+  }
+
+  // setExtensionType: a text/ type without a charset gets charset=utf-8
+  const setExtensionType = (extension: string, mimeType: string): void => {
+    const parsed = parseSimpleMediaType(mimeType);
+    if (parsed === undefined) {
+      return;
+    }
+    const type = mimeType.startsWith("text/") && !parsed.hasCharset ? parsed.withCharset : mimeType;
+    exact.set(extension, type);
+    lower.set(goToLower(extension), type);
+  };
+
+  for (const path of mimeGlobs) {
+    const lines = readLines(path);
+    if (lines === undefined) {
+      continue;
+    }
+    for (const line of lines) {
+      // weight:mimetype:glob[:morefields...] (bufio.Scanner drops a "\r")
+      const fields = line.replace(/\r$/, "").split(":");
+      const weight = fields[0] ?? "";
+      const glob = fields[2] ?? "";
+      if (fields.length < 3 || weight.length < 1 || glob.length < 3) {
+        continue;
+      }
+      if (weight[0] === "#" || glob[0] !== "*" || glob[1] !== ".") {
+        continue;
+      }
+      const extension = glob.slice(1);
+      // a glob, not a bare extension; or an extension seen before
+      if (/[?*[]/.test(extension) || exact.has(extension)) {
+        continue;
+      }
+      setExtensionType(extension, fields[1] ?? "");
+    }
+    // stop checking more files once a mimetype database is found
+    return { exact, lower };
+  }
+
+  // fallback if no system-generated mimetype database exists
+  for (const path of typeFiles) {
+    for (const line of readLines(path) ?? []) {
+      const fields = line.split(/[\t\n\v\f\r ]+/).filter((f) => f !== "");
+      const mimeType = fields[0] ?? "";
+      if (fields.length <= 1 || mimeType[0] === "#") {
+        continue;
+      }
+      for (const ext of fields.slice(1)) {
+        if (ext[0] === "#") {
+          break;
+        }
+        setExtensionType("." + ext, mimeType);
+      }
+    }
+  }
+  return { exact, lower };
+}
+
+// mime.ParseMediaType, enough for the system files' types: a
+// type/subtype of tokens and whether a charset parameter is set; undefined
+// when it does not parse or has other parameters (FormatMediaType would
+// rewrite those; the system files have none).
+function parseSimpleMediaType(v: string): { hasCharset: boolean; withCharset: string } | undefined {
+  const [base = "", ...params] = v.split(";");
+  const mediaType = base.trim().toLowerCase();
+  if (!/^[!#$%&'*+\-.^_`|~0-9a-z]+\/[!#$%&'*+\-.^_`|~0-9a-z]+$/.test(mediaType)) {
+    return undefined;
+  }
+  const hasCharset = params.length === 1 && /^\s*charset\s*=\s*\S/i.test(params[0] ?? "");
+  if (params.length > 0 && !hasCharset) {
+    return undefined;
+  }
+  return { hasCharset, withCharset: `${mediaType}; charset=utf-8` };
+}
+
+// strings.ToLower (each rune's simple lower case mapping)
+function goToLower(s: string): string {
+  if (/^\p{ASCII}*$/u.test(s)) {
+    return s.toLowerCase();
+  }
+  let out = "";
+  for (const c of s) {
+    const l = c.toLowerCase();
+    out += [...l].length === 1 ? l : c;
+  }
+  return out;
+}
+
+// mime.TypeByExtension(filepath.Ext(name)) ("" when unknown): a
+// case-sensitive lookup, then a case-insensitive one.
 export function typeByExtension(name: string): string {
   const slash = name.lastIndexOf("/");
   const dot = name.lastIndexOf(".");
@@ -52,7 +229,8 @@ export function typeByExtension(name: string): string {
     return "";
   }
   const ext = name.slice(dot);
-  return extensionTypes.get(ext) ?? extensionTypes.get(ext.toLowerCase()) ?? "";
+  mimeTables ??= loadMimeTables();
+  return mimeTables.exact.get(ext) ?? mimeTables.lower.get(goToLower(ext)) ?? "";
 }
 
 export interface HttpRange {
@@ -564,7 +742,18 @@ export function serveContent(
   // If Content-Type isn't set, use the file's extension to find it.
   let ctype = w.header.get("Content-Type");
   if (ctype === null) {
-    ctype = typeByExtension(name) || "application/octet-stream";
+    ctype = typeByExtension(name);
+    if (ctype === "") {
+      // read a chunk to decide between utf-8 text and binary
+      if (content instanceof Uint8Array) {
+        ctype = detectContentType(content.subarray(0, 512));
+      } else if (content !== null) {
+        const f = file as ServedFile;
+        ctype = detectContentType(f.read(0, Math.min(512, f.blob.size)));
+      } else {
+        ctype = "application/octet-stream";
+      }
+    }
     w.header.set("Content-Type", ctype);
   }
 
