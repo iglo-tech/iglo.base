@@ -5,6 +5,8 @@ export interface Child {
   // stdout and stderr so far
   output(): string;
   hasExited(): boolean;
+  // SIGKILL; resolves once the process is gone
+  kill(): Promise<void>;
   // SIGTERM, then SIGKILL after 5 seconds; resolves once the process is gone
   stop(): Promise<void>;
 }
@@ -37,6 +39,13 @@ export function spawnChild(
   return {
     output: () => output,
     hasExited: () => exited,
+    async kill() {
+      if (!exited) {
+        proc.kill("SIGKILL");
+      }
+      await proc.exited;
+      await readers;
+    },
     async stop() {
       if (!exited) {
         proc.kill("SIGTERM");
