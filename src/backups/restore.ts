@@ -24,13 +24,9 @@ import { join } from "node:path";
 
 import { StoreKeyActiveBackup } from "@/apis/health";
 import type { App } from "@/app/app";
-import {
-  LocalAutocertCacheDirName,
-  LocalBackupsDirName,
-  LocalTempDirName,
-  lostFoundDirName,
-} from "@/app/filesystem";
+import { LocalBackupsDirName, LocalTempDirName } from "@/app/filesystem";
 import { ErrBackupActive } from "@/backups/create";
+import { restoreExclude, writeRestorePhase } from "@/backups/restore-phase";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
 import { goQuote } from "@/fields/field";
@@ -43,14 +39,6 @@ import { pseudorandomString } from "@/tools/security/random";
 
 // wait max 10 minutes to fetch the backup
 const fetchBackupTimeoutMs = 10 * 60 * 1000;
-
-// default root dir entries to exclude from the backup restore
-const restoreExclude = [
-  LocalBackupsDirName,
-  LocalTempDirName,
-  LocalAutocertCacheDirName,
-  lostFoundDirName,
-];
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -168,8 +156,10 @@ async function extractAndReplace(
   name: string,
   localTempDir: string,
 ): Promise<void> {
-  const extractedDataDir = join(localTempDir, `pb_restore_${pseudorandomString(8)}`);
-  const oldTempDataDir = join(localTempDir, `old_pb_data_${pseudorandomString(8)}`);
+  // the two share their suffix, for the roll back of an interrupted restore
+  const suffix = pseudorandomString(8);
+  const extractedDataDir = join(localTempDir, `pb_restore_${suffix}`);
+  const oldTempDataDir = join(localTempDir, `old_pb_data_${suffix}`);
   const tempZip = tempZipPath(localTempDir);
 
   try {
@@ -197,6 +187,7 @@ async function extractAndReplace(
     // move the current pb_data content to a special temp location
     // that will hold the old data between dirs replace
     // (the temp dir will be automatically removed on the next app start)
+    writeRestorePhase(localTempDir, "moving-old");
     try {
       moveDirContent(app.dataDir, oldTempDataDir, ...restoreExclude);
     } catch (err) {
@@ -207,11 +198,13 @@ async function extractAndReplace(
     }
 
     // move the extracted archive content to the app's pb_data
+    writeRestorePhase(localTempDir, "moving-new");
     try {
       moveDirContent(extractedDataDir, app.dataDir, ...restoreExclude);
     } catch (err) {
       // upstream's transaction fails here and the first move stays; a
       // restore that fails must leave pb_data as it was
+      writeRestorePhase(localTempDir, "moving-old");
       moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
       throw new Error(
         `failed to move the extracted archive content to pb_data: ${errorText(err)}`,
@@ -219,7 +212,11 @@ async function extractAndReplace(
       );
     }
 
+    writeRestorePhase(localTempDir, "swapped");
+
     const revertDataDirChanges = (): void => {
+      // a kill in the middle of the revert is rolled back at the next start
+      writeRestorePhase(localTempDir, "moving-new");
       try {
         moveDirContent(app.dataDir, extractedDataDir, ...restoreExclude);
       } catch (err) {
@@ -228,6 +225,7 @@ async function extractAndReplace(
         });
       }
 
+      writeRestorePhase(localTempDir, "moving-old");
       try {
         moveDirContent(oldTempDataDir, app.dataDir, ...restoreExclude);
       } catch (err) {

@@ -22,6 +22,7 @@ import { type App, type AppConfig, type AppLogger, newApp } from "@/app/app";
 import { registerCrons } from "@/app/crons";
 import { LocalTempDirName } from "@/app/filesystem";
 import { loadAutobackupJob } from "@/backups/autobackup";
+import { recoverInterruptedRestore } from "@/backups/restore-phase";
 import { loadCollectionsCache } from "@/collections/collection-save";
 import { Logger, type LogTickerFunc } from "@/logs/logger";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -59,6 +60,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 
   // ensure that data dir exist
   mkdirSync(config.dataDir, { recursive: true });
+
+  // a restore that was killed halfway leaves pb_data part old, part new
+  recoverInterruptedRestore(config.dataDir);
 
   const databases = Databases.open({
     dataDir: config.dataDir,
