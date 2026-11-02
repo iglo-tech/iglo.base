@@ -139,28 +139,38 @@ function pseudoResponse(text: string): ScenarioResponse {
   };
 }
 
-// a mail as comparable data: subject, from and the text with links' tokens
+// a mail as comparable data: the headers that carry no random part and the
+// text part, tokens and one-time passwords replaced
 function describeMail(m: SinkMessage): unknown {
+  const decoded = decodeMessage(m);
   const header = (name: string): string =>
-    new RegExp(`^${name}: (.*)$`, "im").exec(m.data)?.[1]?.trim() ?? "";
+    new RegExp(`^${name}: (.*)$`, "im").exec(decoded)?.[1]?.trim() ?? "";
+  const plain = /Content-Type: text\/plain[^\n]*\n\n([\s\S]*?)\n--/.exec(decoded)?.[1] ?? "";
   return {
     to: m.to,
     from: header("From"),
     subject: header("Subject"),
-    body: m.data.slice(m.data.search(/\r\n\r\n/)),
+    text: plain
+      .replaceAll(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, "<token>")
+      .replaceAll(/\b\d{8}\b/g, "<otp>"),
   };
 }
 
-export async function messageBody(m: SinkMessage): Promise<string> {
+function decodeMessage(m: SinkMessage): string {
   // quoted-printable decoded text of the whole message
   return m.data
-    .replaceAll(/=\r?\n/g, "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll(/=\n/g, "")
     .replaceAll(/=([0-9A-F]{2})/g, (_s, hex: string) => String.fromCharCode(parseInt(hex, 16)));
 }
 
+export function messageBody(m: SinkMessage): string {
+  return decodeMessage(m);
+}
+
 // the first match of a pattern in the decoded message, or fails
-export async function mailMatch(m: SinkMessage, pattern: RegExp): Promise<string> {
-  const text = await messageBody(m);
+export function mailMatch(m: SinkMessage, pattern: RegExp): string {
+  const text = messageBody(m);
   const found = pattern.exec(text);
   if (found?.[1] === undefined) {
     throw new Error(`no ${pattern} in the mail:\n${text}`);
@@ -242,7 +252,7 @@ class Recording implements SdkEnv {
       exchanges: this.#current.splice(before),
     });
     if (error !== undefined) {
-      throw error;
+      throw new Error(`step "${label}" failed: ${toText(error, this)}`);
     }
     return value as T;
   }
