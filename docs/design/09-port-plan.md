@@ -74,7 +74,7 @@ Upstream → iglo.base → upstream on the same `pb_data`, compared with a contr
 
 ### SDK suites
 
-A scenario suite written with the official JavaScript SDK calls every SDK service method (records, auth flows, realtime, files, batch, collections, settings, logs, backups, crons) against both servers. The SDK version is pinned to the one upstream's dashboard uses (`pocketbase` 0.28.x).
+A differential suite written with the official JavaScript SDK (`pocketbase` 0.28.1, an exact devDependency used by tests only) lives in `test/differential/sdk/`. Each test is one async function that drives the SDK against a server; it runs on upstream v0.41.0 and on iglo.base, each on its own copy of the fixture. Every step records the value the SDK method returned (or the `ClientResponseError` it threw), every HTTP exchange the call made, and the mail, realtime events and files it produced. The two recordings are compared step by step with the differential harness's normalization. Tokens in mail come from each server's own SMTP sink, S3 methods run on one S3 test server per side, and realtime uses a test-only `EventSource` on `fetch` (`test/support/event-source.ts`; Bun has none). The suite covers every public method of every SDK service; the table of methods and tests is in the pull request of task M5.8.
 
 ### Other
 
