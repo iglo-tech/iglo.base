@@ -10,7 +10,7 @@ M5.9 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.9 | worker | — | 0 | [Brief](briefs/M5.9.md). Sonnet 5.5 worker |
+| M5.9 | review 1 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 1 | [Brief](briefs/M5.9.md). Sonnet 5.5 worker; lead's `check` 0 failures and `test:reference` two backlog flakes (pass on rerun) at `1389517` |
 
 ## Done
 
@@ -82,6 +82,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-02 | SQL console (M5.7) | Errors from the transaction wrapper itself (`…; commit; …`) are not wrapped by `driverError` (`SQL logic error: … (1)` missing); status and data match |
 | 2026-11-02 | RealIP (M5.7) | Repeated proxy-header lines whose last line has no valid IP: upstream falls back, iglo.base uses the earlier line (D22 names only the empty-line case) |
 | 2026-11-02 | CORS (M5.7) | Bun merges the three preflight `Vary` lines into one (RFC 9110 list header, equivalent) |
+| 2026-11-02 | SQL scenarios (M5.7) | `apis/sql_test.go TestSQLRun` compares `execTime` exactly; a write that takes 1 ms on one server fails it (seen once in M5.9's `test:reference`, 3 of 3 reruns pass) |
+| 2026-11-02 | SDK suite (M5.8) | `test/differential/sdk/batch.test.ts` "files in a batch, rules and auth": a create and update of the same record in one batch can share or split a millisecond `updated` differently on the two servers ("timestamps not paired consistently"); failed 1 of 4 runs |
 | 2026-10-29 | Test harness | The body-limit tests put the host under heavy memory pressure in one `bun run check` (M2.5 review); the reviewer passed with `--smol` |
 | 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
 | 2026-10-30 | Realtime tests (M5.1) | `test/differential/realtime/realtime.test.ts:29`, "a user delete updates the records that reference it": cascade update and delete notifications arrive in varying order; failed 2 of 3 isolated reruns and one full `test:reference` run. Upstream itself varies the order (M4.2 review: two orders on 20 fresh copies), so the comparison must accept its permitted orders |
