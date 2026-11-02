@@ -45,6 +45,10 @@ interface Request {
 
 const json = { "content-type": "application/json" };
 
+// an expired password reset token of upstream's fixture
+const expiredToken =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.5Tm6_6amQqOlX3urAnXlEdmxwG5qQJfiTg6U0hHR1hk";
+
 const requests: Request[] = [
   // successes
   { path: "/api/health?a=1" },
@@ -102,6 +106,20 @@ const requests: Request[] = [
     body: JSON.stringify({ identity: "test@example.com", password: "1234567890" }),
   },
   { method: "DELETE", path: "/api/collections/demo1/records/nope", token: superuserToken },
+  // users has a file field: a taken email fails its save through the file
+  // interceptor, which joins the error
+  {
+    method: "POST",
+    path: "/api/collections/users/records",
+    headers: json,
+    body: JSON.stringify({
+      email: "test@example.com",
+      password: "1234567890",
+      passwordConfirm: "1234567890",
+    }),
+  },
+  // an expired token: loadAuthToken's debug row
+  { path: "/api/collections/demo1/records?perPage=1", token: expiredToken },
   { method: "POST", path: "/api/batch", token: superuserToken, headers: json, body: "{}" },
   // writes, files, batch items and the dashboard
   {
@@ -168,8 +186,13 @@ function normalized(rows: Row[]): string[] {
     .filter((row) => row.message !== "GET /api/health") // the harness's ready checks
     .map((row) => {
       expect(row.created).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-      expect(row.data).toMatch(/"execTime":\d+(\.\d+)?(e-?\d+)?,/);
-      const raw = row.data.replace(/"execTime":[^,]+,/, '"execTime":0,');
+      // a request row has its time; a debug row (realtime) has none
+      if (row.data.includes('"type":"request"')) {
+        expect(row.data).toMatch(/"execTime":\d+(\.\d+)?(e-?\d+)?,/);
+      }
+      const raw = row.data
+        .replace(/"execTime":[^,]+,/, '"execTime":0,')
+        .replace(/"clientId":"[^"]*"/, '"clientId":""');
       // a batch failure's details are a Go map marshaled without an order
       const data = row.message === "POST /api/batch" ? sortedKeys(raw) : raw;
       return `${row.level} ${row.message} ${data}`;
@@ -223,6 +246,7 @@ async function logsBody(url: string): Promise<string> {
 const settings = [
   { name: "logIP and logAuthId", logs: { maxDays: 7, logIP: true, logAuthId: true, minLevel: 0 } },
   { name: "neither", logs: { maxDays: 7, logIP: false, logAuthId: false, minLevel: 0 } },
+  { name: "debug and up", logs: { maxDays: 7, logIP: true, logAuthId: true, minLevel: -4 } },
   { name: "warnings and up", logs: { maxDays: 7, logIP: true, logAuthId: false, minLevel: 4 } },
 ];
 

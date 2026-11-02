@@ -452,7 +452,11 @@ export class FileField
       } catch (e) {
         cleanupErr = e;
       }
-      throw cleanupErr === null ? err : joinErrors([err, cleanupErr]);
+      // errors.Join(err, cleanupErr): a joined error even when the cleanup
+      // succeeded, which the request log's details show
+      throw cleanupErr === null
+        ? new AggregateError([err], (err as Error).message)
+        : joinErrors([err, cleanupErr]);
     }
 
     this.rememberFilesToDelete(record, oldValue);

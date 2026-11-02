@@ -608,7 +608,7 @@ test("(a) upstream tokens expire at their exp second on the iglo.base clock", ()
       fixedMs = exp * 1000;
       expect({ name: tc.name, got: lookup(app, token) }).toEqual({
         name: tc.name,
-        got: "error: token has invalid claims: token is expired",
+        got: "error: token is expired",
       });
       fixedMs = undefined;
     }
@@ -763,9 +763,7 @@ beforeAll(async () => {
       "alice:expired",
       atSecond(past, () => igloSign(app, "alice:auth")),
     );
-    expect(lookup(app, igloTokens.get("alice:expired") as string)).toBe(
-      "error: token has invalid claims: token is expired",
-    );
+    expect(lookup(app, igloTokens.get("alice:expired") as string)).toBe("error: token is expired");
   } finally {
     app.cleanup();
   }

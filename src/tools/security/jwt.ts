@@ -172,6 +172,10 @@ export interface ValidateOptions {
   verifyIat: boolean; // jwt.WithIssuedAt()
   leewaySeconds?: number; // jwt.WithLeeway
   audience?: string; // jwt.WithAudience, one expected value
+  // the parser's "token has invalid claims: " before the time checks'
+  // errors; false for Validator.Validate called on its own, as
+  // ParseUnverifiedJWT does
+  parserPrefix?: boolean;
 }
 
 // MapClaims.parseClaimsString: a string or a list of them; any other type
@@ -228,14 +232,11 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
       errors.push(message);
     }
   };
-  check("exp", (exp) => now < exp + leeway, "token has invalid claims: token is expired");
-  check("nbf", (nbf) => !(now < nbf - leeway), "token has invalid claims: token is not valid yet");
+  const prefix = opts.parserPrefix === false ? "" : "token has invalid claims: ";
+  check("exp", (exp) => now < exp + leeway, prefix + "token is expired");
+  check("nbf", (nbf) => !(now < nbf - leeway), prefix + "token is not valid yet");
   if (opts.verifyIat) {
-    check(
-      "iat",
-      (iat) => !(now < iat - leeway),
-      "token has invalid claims: token used before issued",
-    );
+    check("iat", (iat) => !(now < iat - leeway), prefix + "token used before issued");
   }
   if (opts.audience !== undefined) {
     const audienceErr = verifyAudience(claims, opts.audience);
@@ -254,7 +255,7 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
 export function parseUnverifiedJWT(token: string, clock: Clock): MapClaims {
   const claims: MapClaims = {};
   parseUnverifiedToken(token, claims);
-  validateClaims(claims, clock, { verifyIat: true });
+  validateClaims(claims, clock, { verifyIat: true, parserPrefix: false });
   return claims;
 }
 

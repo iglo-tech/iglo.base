@@ -918,7 +918,7 @@ describe("TestFindAuthRecordByToken", () => {
         "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoxNjQwOTkxNjYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.2D3tmqPn3vc5LoqqCz8V-iCDVXo9soYiH0d32G7FQT4",
       types: [],
       expectedId: "",
-      expectErrorText: "token has invalid claims: token is expired",
+      expectErrorText: "token is expired",
     },
     {
       name: "valid auth token",
@@ -959,7 +959,7 @@ describe("TestFindAuthRecordByToken", () => {
       token: validAuthToken,
       types: [],
       expectedId: "",
-      expectErrorText: "token has invalid claims: token is expired",
+      expectErrorText: "token is expired",
       clock: lateClock,
     },
     {
