@@ -203,9 +203,12 @@ export function checkDatabases(dataDir: string): void {
   expect(keys(join(probe, "data.db"))).toEqual(keys(join(fixture, "data.db")));
 }
 
+// read from a copy: opening the vendored fixture would leave -shm and -wal files in it
 const fixtureIds = new Set<string>(
   (() => {
-    const db = new Database(join(fixtureDir, "data.db"), { readonly: true, safeIntegers: false });
+    const copy = join(tempDir(), "pb_data");
+    copyDataDir(fixtureDir, copy);
+    const db = new Database(join(copy, "data.db"), { readonly: true });
     try {
       return (db.query("SELECT id FROM demo1").all() as Array<{ id: string }>).map((r) => r.id);
     } finally {
