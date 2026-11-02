@@ -2,7 +2,7 @@
 // lookup, help, version and flag errors.
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { freePort, run, startServer, tempDir } from "@test/support/executable";
@@ -173,17 +173,19 @@ describe("serve command", () => {
   });
 
   const https =
-    "HTTPS is not implemented yet: --https and domain arguments are not supported in this build";
+    "--https and domain arguments are not supported: iglo.base serves plain HTTP; terminate TLS in a reverse proxy in front of it. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-automatic-https";
 
-  test("--https is parsed but not served yet", async () => {
+  test("--https is refused (D30)", async () => {
     await expectError(
       ["serve", "--https", "127.0.0.1:0", "--dir", join(tempDir(), "pb_data")],
       https,
     );
   });
 
-  test("domain arguments default to HTTPS", async () => {
-    await expectError(["serve", "example.com", "--dir", join(tempDir(), "pb_data")], https);
+  test("domain arguments are refused (D30), before pb_data is created", async () => {
+    const dataDir = join(tempDir(), "pb_data");
+    await expectError(["serve", "example.com", "--dir", dataDir], https);
+    expect(existsSync(dataDir)).toBe(false);
   });
 
   test("persistent flags before the command, value forms, string slices", async () => {

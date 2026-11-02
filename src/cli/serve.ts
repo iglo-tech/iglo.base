@@ -20,7 +20,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import type { FlagSpec, FlagValue } from "@/cli/flags";
-import { ignoredDirWarning } from "@/cli/removed";
+import { httpsNotSupportedMessage, ignoredDirWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
@@ -95,18 +95,15 @@ export async function runServeCommand(
   migrations: readonly Migration[],
 ): Promise<void> {
   let httpAddr = (values.get("http") as string | undefined) ?? "";
-  let httpsAddr = (values.get("https") as string | undefined) ?? "";
+  const httpsAddr = (values.get("https") as string | undefined) ?? "";
   const allowedOrigins = (values.get("origins") as string[] | undefined) ?? ["*"];
 
-  // set default listener addresses if at least one domain is specified
-  if (domains.length > 0) {
-    if (httpAddr === "") {
-      httpAddr = "0.0.0.0:80";
-    }
-    if (httpsAddr === "") {
-      httpsAddr = "0.0.0.0:443";
-    }
-  } else if (httpAddr === "") {
+  // no TLS in the app (D30): refuse before pb_data is opened or created
+  if (domains.length > 0 || httpsAddr !== "") {
+    throw new Error(httpsNotSupportedMessage);
+  }
+
+  if (httpAddr === "") {
     httpAddr = "127.0.0.1:8090";
   }
 

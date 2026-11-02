@@ -2,7 +2,7 @@
 
 ## Goals
 
-1. **Drop-in replacement for PocketBase v0.41.0.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19) and environment, so apps and SDKs do not change.
+1. **Drop-in replacement for PocketBase v0.41.0.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19, and automatic HTTPS, D30) and environment, so apps and SDKs do not change.
 2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.41.0, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
 3. **No extension surface, except migrations.** No Go framework mode, JavaScript hooks or dashboard extensions. JavaScript migrations in `pb_migrations` are supported, as upstream runs them ([D23](10-decisions.md#d23-javascript-migrations-are-supported)). Behavior is fixed and fully covered by tests.
 4. **One stack:** Bun, TypeScript, SQLite, one executable, shared conventions with other iglo.\* projects.
@@ -17,7 +17,7 @@
 
 ## Removed: the extension surface
 
-Everything described under [Extending PocketBase](https://pocketbase.io/docs/use-as-framework/) is removed, except JavaScript migrations, which are kept ([D23](10-decisions.md#d23-javascript-migrations-are-supported)). The only other removal is the `update` command ([below](#removed-the-update-command)).
+Everything described under [Extending PocketBase](https://pocketbase.io/docs/use-as-framework/) is removed, except JavaScript migrations, which are kept ([D23](10-decisions.md#d23-javascript-migrations-are-supported)). The only other removals are the `update` command ([below](#removed-the-update-command)) and automatic HTTPS ([below](#removed-automatic-https)).
 
 | Upstream mechanism | Where it lives upstream | In iglo.base |
 |---|---|---|
@@ -102,9 +102,19 @@ Upstream's `update` command (`plugins/ghupdate`) replaces the executable with a 
 command "update" is not supported: iglo.base does not replace its own executable; deploy a new release instead. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-the-update-command
 ```
 
+## Removed: automatic HTTPS
+
+Upstream's `serve example.com` and `--https` obtain Let's Encrypt certificates (`golang.org/x/crypto/acme/autocert`) and serve TLS. iglo.base serves plain HTTP only; TLS is terminated by the reverse proxy in front of it, which also sets the trusted proxy headers ([D30](10-decisions.md#d30-no-tls-in-the-app)). `serve` with `--https` or domain arguments fails before `pb_data` is opened:
+
+```text
+--https and domain arguments are not supported: iglo.base serves plain HTTP; terminate TLS in a reverse proxy in front of it. See https://github.com/iglo-tech/iglo.base/blob/main/docs/design/01-scope.md#removed-automatic-https
+```
+
+A `.autocert_cache` directory written by upstream is left untouched and stays excluded from backups, as upstream excludes it.
+
 ## Kept: everything else
 
-**v1** ships in the first usable release (1.0). Nothing is dropped beyond the extension surface and the `update` command.
+**v1** ships in the first usable release (1.0). Nothing is dropped beyond the extension surface, the `update` command and automatic HTTPS.
 
 | Area | v1 |
 |---|---|
@@ -121,8 +131,8 @@ command "update" is not supported: iglo.base does not replace its own executable
 | Logs | request and app logs in `auxiliary.db`, list, stats, retention settings |
 | Jobs | built-in cron jobs (logs cleanup, DB optimize, MFA and OTP cleanup, rate-limiter cleanup, auto backups) and `/api/crons` |
 | Settings | `meta`, `smtp`, `s3`, `backups`, `rateLimits`, `trustedProxy`, `batch`, `logs`, `superuserIPs`; optional encryption with `--encryptionEnv` |
-| HTTP | CORS (`--origins`), gzip, body limits, rate limits, trusted proxy headers, HTTPS with automatic Let's Encrypt certificates (`serve example.com`), `/api/health` |
-| CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `migrate up/down/create/collections/history-sync`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--https`, `--origins`, `--publicDir`, `--indexFallback`, `--migrationsDir`, `--automigrate` |
+| HTTP | CORS (`--origins`), gzip, body limits, rate limits, trusted proxy headers, `/api/health` (TLS is the reverse proxy's, D30) |
+| CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `migrate up/down/create/collections/history-sync`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--origins`, `--publicDir`, `--indexFallback`, `--migrationsDir`, `--automigrate` |
 | Admin dashboard | upstream's `/_/` dashboard, including the installer link for the first superuser ([Admin UI](08-admin-ui.md)) |
 | Platforms | linux-x64 release binary for the MVP; linux-arm64 and darwin-arm64 after 1.0 ([D18](10-decisions.md#d18-release-platforms), [D24](10-decisions.md#d24-mvp-targets-linux-x64-only)) |
 
@@ -132,4 +142,4 @@ For 1.x:
 
 - a `pb_data` directory written by PocketBase v0.41.0 opens in iglo.base, and one written by iglo.base opens in PocketBase v0.41.0;
 - a client written against PocketBase v0.41.0 (official JS and Dart SDKs, community SDKs, raw HTTP) works against iglo.base without changes;
-- the only API differences are the ones listed in [API compatibility](04-api-compatibility.md#deliberate-differences), all of which follow from removing extensions and the `update` command.
+- the only API differences are the ones listed in [API compatibility](04-api-compatibility.md#deliberate-differences), all of which follow from removing extensions, the `update` command and automatic HTTPS.

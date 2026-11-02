@@ -76,11 +76,12 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 ## Deliberate differences
 
-These are the only intended differences. Each one follows from removing extensions or the `update` command (D19), or from not porting the system migrations (D15), except the two request normalization rows, which follow from the HTTP runtime (D22), the batch row, which follows from D28, the malformed-input row, which follows from D26, the mail error row, which follows from the SMTP client (`nodemailer`, [Architecture](02-architecture.md)) and D26, the query timeout row, which follows from `bun:sqlite` (D8), and the realtime unsent-queue row, which follows from D27 (bounded memory, D26). Each is marked in the differential test suite; the repeated-header row's case is in `test/differential/records-read/` (M2.4). The query timeout row is about timing, not response content: `test/db/read-pool.test.ts` checks it.
+These are the only intended differences. Each one follows from removing extensions, the `update` command (D19) or automatic HTTPS (D30), or from not porting the system migrations (D15), except the two request normalization rows, which follow from the HTTP runtime (D22), the batch row, which follows from D28, the malformed-input row, which follows from D26, the mail error row, which follows from the SMTP client (`nodemailer`, [Architecture](02-architecture.md)) and D26, the query timeout row, which follows from `bun:sqlite` (D8), and the realtime unsent-queue row, which follows from D27 (bounded memory, D26). Each is marked in the differential test suite; the repeated-header row's case is in `test/differential/records-read/` (M2.4). The query timeout row is about timing, not response content: `test/db/read-pool.test.ts` checks it.
 
 | Area | PocketBase v0.41.0 | iglo.base |
 |---|---|---|
 | Custom routes from hooks or Go | whatever the app registered | 404, like any unknown route |
+| `serve example.com`, `--https` | Let's Encrypt certificates and HTTPS, HTTP redirected to HTTPS | refused at start (D30); TLS belongs to the reverse proxy |
 | Hook side effects | hook-modified requests, responses and records | none |
 | `GET /_/extensions.js` | concatenated `main.js` of registered UI extensions | empty `text/javascript` body |
 | `GET /_/extensions/{name}/*` | extension static files | 404 |

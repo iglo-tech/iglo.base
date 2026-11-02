@@ -1,5 +1,6 @@
-// Upstream: examples/base/main.go (the prebuilt binary's hooks flags) and
-// plugins/ghupdate (the update command). Neither is ported; they are
+// Upstream: examples/base/main.go (the prebuilt binary's hooks flags),
+// plugins/ghupdate (the update command) and apis/serve.go's autocert (D30).
+// None is ported; they are
 // rejected with a message that points to docs/design/01-scope.md. The exact
 // texts are recorded there too.
 
@@ -21,6 +22,9 @@ export function removedCommandMessage(name: string): string | undefined {
       return undefined;
   }
 }
+
+// D30: TLS is the reverse proxy's job; upstream's autocert is not ported.
+export const httpsNotSupportedMessage = `--https and domain arguments are not supported: iglo.base serves plain HTTP; terminate TLS in a reverse proxy in front of it. See ${scopeDoc}#removed-automatic-https`;
 
 export function ignoredDirWarning(dir: string): string {
   return `${dir} is ignored: iglo.base does not run JavaScript hooks. See ${extensionSection}`;
