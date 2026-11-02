@@ -2,10 +2,14 @@
 //
 // A batch has two phases (D28). Everything asynchronous runs first: reading
 // and binding the body, the uploaded files' first bytes (the form spills to
-// temporary files, D27, removed by the router when the request ends) and each
-// item's request and RequestInfo. Then one transaction runs the items
+// temporary files, D27, removed by the router when the request ends), each
+// item's request and RequestInfo, and with S3 enabled the upload of the files
+// (src/files/pre-upload.ts). Then one transaction runs the items
 // synchronously on its app, through the record handlers' single implementation
-// (src/apis/record-crud.ts) with txRecordIO.
+// (src/apis/record-crud.ts) with txRecordIO. Once it ended the files no record
+// refers to are deleted, and the file steps that follow the commit are waited
+// for, as upstream's runAfterFuncs run before the response. A failure of those
+// steps fails the request, as it does upstream; the commit stands.
 //
 // The OnBatchRequest hook is not ported (no extension surface): its default
 // action runs directly. The rate limit rules (`<collection>:<action>`) are
@@ -33,6 +37,7 @@
 // replaces the same key in the regular fields.
 
 import type { App } from "@/app/app";
+import type { Collection } from "@/collections/collection-model";
 import {
   RequestEvent,
   RequestEventKeyInfoContext,
@@ -50,7 +55,11 @@ import {
   txRecordIO,
 } from "@/apis/record-crud";
 import { firstApiError } from "@/apis/record-helpers";
+import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
+import { joinErrors } from "@/collections/view";
 import { runInTransaction } from "@/db/tx";
+import { FileField, FieldTypeFile } from "@/fields/file";
+import { preUploadFiles, type UploadTarget } from "@/files/pre-upload";
 import { applyBodyLimit } from "@/middlewares/body-limit";
 import { DefaultBodyLimitMiddlewareId } from "@/middlewares/middlewares";
 import { findRecordById } from "@/records/record-query";
@@ -258,14 +267,95 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     items.push(await prepareItem(e, ir as InternalRequest));
   }
 
+  // S3 may take longer than the server's idle timeout to answer
+  if (e.app.settings.S3.Enabled) {
+    e.response.disableTimeout();
+  }
+
+  const uploads = await preUploadFiles(e.app, uploadTargets(e, items));
+  const afterTransaction: Promise<void>[] = [];
+
   let results: BatchResults;
   try {
-    results = processBatch(e, items, txTimeoutSeconds);
+    results = processBatch({ ...e.app, afterTransaction }, e, items, txTimeoutSeconds);
   } catch (err) {
+    await Promise.allSettled(afterTransaction);
+    await uploads.finish(false);
+    return firstApiError(err, e.badRequestError("Batch transaction failed.", err));
+  }
+
+  await uploads.finish(true);
+
+  const failures = (await Promise.allSettled(afterTransaction)).flatMap((r) =>
+    r.status === "rejected" ? [r.reason as unknown] : [],
+  );
+  if (failures.length > 0) {
+    const err = joinErrors(failures);
     return firstApiError(err, e.badRequestError("Batch transaction failed.", err));
   }
 
   return e.json(200, results);
+}
+
+// the files a batch stores before its transaction opens
+function uploadTargets(e: RequestEvent, items: readonly PreparedItem[]): UploadTarget[] {
+  const targets: UploadTarget[] = [];
+
+  for (const item of items) {
+    const { action, ir, request, requestInfo } = item;
+    if (
+      action === null ||
+      action.handler === recordDelete ||
+      ir.files.size === 0 ||
+      request === null ||
+      requestInfo instanceof Error
+    ) {
+      continue;
+    }
+
+    let collection: Collection;
+    try {
+      collection = findCachedCollectionByNameOrId(e.app, action.collection);
+    } catch {
+      continue; // the item fails
+    }
+    if (collection.isView()) {
+      continue; // the item fails
+    }
+
+    // an item only superusers may run
+    const rules = action.upsert
+      ? [collection.createRule, collection.updateRule]
+      : action.handler === recordUpdate
+        ? [collection.updateRule]
+        : [collection.createRule];
+    if (!requestInfo.hasSuperuserAuth() && rules.every((rule) => rule === null)) {
+      continue;
+    }
+
+    const files: File[] = [];
+    for (const field of collection.fields) {
+      if (field.type() !== FieldTypeFile) {
+        continue;
+      }
+      const name = field.getName();
+      for (const key of [name, "+" + name, name + "+"]) {
+        for (const file of ir.files.get(key) ?? []) {
+          if ((field as FileField).allowsSize(file.size)) {
+            files.push(file);
+          }
+        }
+      }
+    }
+
+    const recordId =
+      action.handler === recordUpdate
+        ? action.id
+        : toString(Object.hasOwn(ir.body, "id") ? ir.body["id"] : "");
+    targets.push({ collection, recordId, files });
+  }
+
+  return targets;
 }
 
 // -------------------------------------------------------------------
@@ -518,14 +608,15 @@ class BatchResults implements JSONMarshaler {
 const errBatchTimeout = new Error("batch transaction timeout");
 
 function processBatch(
+  app: App,
   e: RequestEvent,
   items: readonly PreparedItem[],
   timeoutSeconds: number,
 ): BatchResults {
   const results: BatchRequestResult[] = [];
 
-  runInTransaction(e.app.databases, (txDatabases) => {
-    const txApp: App = { ...e.app, databases: txDatabases };
+  runInTransaction(app.databases, (txDatabases) => {
+    const txApp: App = { ...app, databases: txDatabases };
     const deadline = e.app.clock.now().getTime() + timeoutSeconds * 1000;
 
     for (const [i, item] of items.entries()) {

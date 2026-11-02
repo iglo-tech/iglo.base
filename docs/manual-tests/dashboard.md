@@ -83,3 +83,14 @@ Run on a fixture copy (`test/fixtures/pocketbase`, `test@example.com` / `1234567
 | "Download" | Pass: `POST /api/files/token` 200; the same `GET /api/backups/ui-s3-test.zip?token=…` answers 200, `attachment; filename="ui-s3-test.zip"`, `application/zip`, `Content-Length: 72552` |
 | "Restore", type the name, "Restore backup" | Pass: the server restarted (the serve banner printed again), the page came back, the backup still listed, no `pb_data/.pb_temp_to_delete` left |
 | "Delete", "Yes" | Pass: "Successfully deleted ui-s3-test.zip.", "No backups found.", `GET /api/backups` answers `[]` |
+
+## 2026-11-01, `task/M5.4b-s3-files`, M5.4b record files on S3
+
+Fresh `pb_data`, executable from this branch, against versitygw (posix backend, bucket `dash`, dummy credentials), `s3` settings saved through the API, base collection `photos` with a `file` field and the `100x100` thumb.
+
+| Step | Result |
+|---|---|
+| "New record", title, attach a PNG, "Create" | Pass: the record is listed; `<collectionId>/<recordId>/picture_6ll969o43x.png` is in the bucket, nothing in `pb_data/storage` |
+| The list's thumbnail | Pass: the `?thumb=100x100` image loads at width 100, and `thumbs_picture_…/100x100_picture_…` is in the bucket |
+| Click the thumbnail (preview) | Pass: the original loads at width 300 |
+| Open the record, "Remove file", "Save changes" | Pass: "Successfully updated photos"; the `image` value is empty and the bucket holds no object, the thumb included |

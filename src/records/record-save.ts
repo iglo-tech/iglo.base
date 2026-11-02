@@ -51,8 +51,8 @@
 //	          then cascadeRecordDelete
 //	  then interceptors "afterDeleteError" / "afterDelete", as for saves
 //
-// Interceptors: a field's Intercept may be async (none is now: the file
-// field's storage calls are synchronous), so the chain is written as generators that yield what may be a promise.
+// Interceptors: a field's Intercept may be async (the file field's is on S3
+// outside of a transaction), so the chain is written as generators that yield what may be a promise.
 // run() drives a chain synchronously until something actually returns a
 // promise and goes on asynchronously from there; runSync() is for the
 // parts inside a write transaction, which must stay synchronous (D8): it
@@ -136,6 +136,7 @@ import {
   isMultiValuer,
   isRecordInterceptor,
 } from "@/fields/field";
+import { FileField } from "@/fields/file";
 import { RelationField } from "@/fields/relation";
 import { Tx } from "@/db/dbx/tx";
 import {
@@ -459,6 +460,8 @@ export function* saveStep(app: RecordsApp, record: Record, withValidations: bool
 }
 
 function* createStep(app: RecordsApp, record: Record, withValidations: boolean): Step {
+  reservePreUploadedId(record);
+
   try {
     // OnRecordCreate
     yield* callFieldInterceptors(app, record, InterceptorActionCreate, function* () {
@@ -514,6 +517,24 @@ function* updateStep(app: RecordsApp, record: Record, withValidations: boolean):
   yield* afterSuccess(app, record, InterceptorActionAfterUpdate, InterceptorActionAfterUpdateError);
 }
 
+// A new record takes the id its files were stored under before the transaction
+// opened (src/files/pre-upload.ts), in place of a generated one.
+function reservePreUploadedId(record: Record): void {
+  if (record.id !== "") {
+    return;
+  }
+
+  for (const field of record.collection().fields) {
+    if (field instanceof FileField) {
+      const id = field.preUploadedId(record);
+      if (id !== "") {
+        record.id = id;
+        return;
+      }
+    }
+  }
+}
+
 // the after error interceptors, then the save or delete error (joined with
 // the interceptors' error, if any)
 function* afterError(
@@ -556,9 +577,35 @@ function* afterSuccess(
     return;
   }
 
+  const { parent } = txInfo;
+
   // execute later after the transaction has completed
   txInfo.onComplete((txErr) => {
-    const parentApp: RecordsApp = { ...app, databases: txInfo.parent };
+    // upstream's runAfterFuncs calls these one after the other: an async one
+    // of an earlier item holds back the broadcasts of the later items
+    const previous = app.afterTransaction?.at(-1);
+    if (app.afterTransaction !== undefined && previous !== undefined) {
+      const next = (): void | Promise<void> => afterTransaction(txErr);
+      app.afterTransaction.push(previous.then(next, next));
+      return;
+    }
+
+    const result = afterTransaction(txErr);
+
+    // an async interceptor ends after the transaction call returned
+    if (result instanceof Promise) {
+      if (app.afterTransaction !== undefined) {
+        app.afterTransaction.push(result);
+        return;
+      }
+      result.catch((err: unknown) => {
+        app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
+      });
+    }
+  });
+
+  function afterTransaction(txErr: unknown): void | Promise<void> {
+    const parentApp: RecordsApp = { ...app, databases: parent };
 
     let result: void | Promise<void>;
     if (txErr !== null) {
@@ -584,13 +631,8 @@ function* afterSuccess(
       }
     }
 
-    // an async interceptor ends after the transaction call returned
-    if (result instanceof Promise) {
-      result.catch((err: unknown) => {
-        app.logger.error(`Record ${successAction} interceptors failed after the transaction`, err);
-      });
-    }
-  });
+    return result;
+  }
 }
 
 // the realtime handlers as the action of the after success interceptors:

@@ -41,6 +41,8 @@ export interface App {
   readonly queryTimeout: number;
   readonly clock: Clock;
   readonly logger: AppLogger;
+  // see CollectionsApp.afterTransaction
+  readonly afterTransaction?: Promise<void>[];
   // DB, ConcurrentDB, AuxDB, ... of the opened pb_data (ClearBootstrap
   // closes them)
   readonly databases: Databases;

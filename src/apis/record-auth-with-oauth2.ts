@@ -35,7 +35,8 @@ import type { Collection } from "@/collections/collection-model";
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { runInTransaction } from "@/db/tx";
-import { FieldNameEmail } from "@/fields/field";
+import { FieldNameEmail, FieldNameId } from "@/fields/field";
+import { preUploadFiles, type UploadTarget } from "@/files/pre-upload";
 import { FieldTypeFile } from "@/fields/file";
 import { TextField } from "@/fields/text";
 import type { AuthUser, BaseProvider } from "@/oauth2/base-provider";
@@ -60,6 +61,7 @@ import { isNoRows, saveRecordSync } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
 import { setOwn } from "@/server/json-decode";
+import { toString } from "@/tools/types/cast";
 import { structOf } from "@/server/unmarshal-request-data";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { type File, NewFileFromBytes } from "@/tools/filesystem/file";
@@ -264,11 +266,21 @@ export async function recordAuthWithOAuth2(
     );
   }
 
+  // S3 may take longer than the server's idle timeout to answer
+  if (e.app.settings.S3.Enabled) {
+    e.response.disableTimeout();
+  }
+
+  const uploads = await preUploadFiles(e.app, avatarUploadTargets(e.app, submit));
+
   try {
     oauth2Submit(e, submit, externalAuthRel);
   } catch (err) {
+    await uploads.finish(false);
     return firstApiError(err, e.badRequestError("Failed to authenticate.", err));
   }
+
+  await uploads.finish(true);
 
   // @todo revert back to struct after removing the custom auth.AuthUser marshalization
   let meta: { [key: string]: unknown };
@@ -454,6 +466,16 @@ function oauth2CreatePayload(
   }
 
   return { payload, avatarField };
+}
+
+// the avatar stored before the transaction of the record's create opens
+function avatarUploadTargets(app: RecordsApp, s: OAuth2Submit): UploadTarget[] {
+  if (s.avatar === undefined) {
+    return [];
+  }
+
+  const id = oauth2CreatePayload(app, s).payload[FieldNameId];
+  return [{ collection: s.collection, recordId: toString(id ?? ""), files: [s.avatar] }];
 }
 
 // the extra checks of the download are not required because the OAuth2 APIs are trusted vendor

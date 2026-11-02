@@ -144,6 +144,11 @@ function routeHandler(
   step: (e: RequestEvent, io: RecordIO) => HandlerStep,
 ): (e: RequestEvent) => Promise<HandlerResult> {
   return async (e) => {
+    // S3 may take longer than the server's idle timeout to answer
+    if (e.app.settings.S3.Enabled) {
+      e.response.disableTimeout();
+    }
+
     const result: { value?: HandlerResult } = {};
     await run(collectResult(step(e, routeIO), result));
     return result.value;

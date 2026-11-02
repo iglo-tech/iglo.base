@@ -11,7 +11,7 @@
 // "store name with Apple provider" are ported here; the rest are extra checks of
 // the same paths.
 
-import { afterAll, afterEach, beforeEach, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -32,6 +32,7 @@ import { Client } from "@/tools/subscriptions/client";
 import { openFixtureApp, type TestApp } from "@test/app/app";
 import { json as jsonResponse, stubFetch } from "@test/support/fetch-stub";
 import { serveTest } from "@test/support/router";
+import { type RecordedRequest, type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
 
 const pngPixel = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
@@ -226,6 +227,72 @@ test("the record create and the link are all or nothing, with the avatar too", a
   for (const id of dirs) {
     expect(storedFiles(id).some((f) => f.startsWith("logo_"))).toBe(false);
   }
+});
+
+function useS3(respond: (req: RecordedRequest) => Response): S3Recorder {
+  const s3 = startS3Recorder(respond);
+  Object.assign(app.settings.S3, {
+    Enabled: true,
+    Bucket: "avatars",
+    Region: "us-east-1",
+    Endpoint: s3.endpoint,
+    AccessKey: "key",
+    Secret: "secret",
+    ForcePathStyle: true,
+  });
+  return s3;
+}
+
+function stored(): Response {
+  return new Response(null, { headers: { ETag: '"0"' } });
+}
+
+describe("with S3 file storage", () => {
+  test("the avatar is stored before the transaction, under the new record's id", async () => {
+    useProvider("oidc", mappedAvatar);
+    const s3 = useS3(stored);
+
+    const { status, json } = await signIn(options(oauth2User()), { provider: "oidc" });
+    s3.stop();
+
+    expect(status).toBe(200);
+    const record = json["record"] as { [key: string]: string };
+    expect(s3.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      `PUT /avatars/_pb_users_auth_/${record["id"]}/${record["avatar"]}`,
+    ]);
+    expect(s3.requests[0]?.headers.get("content-type")).toBe("image/png");
+    expect(storedFiles(record["id"] as string)).toEqual([]);
+  });
+
+  test("a create that fails deletes the stored avatar", async () => {
+    useProvider("oidc", mappedAvatar);
+    const s3 = useS3(stored);
+    const user = oauth2User();
+    user.id = ""; // the link's providerId is required
+
+    const { status } = await signIn(options(user), { provider: "oidc" });
+    s3.stop();
+
+    expect(status).toBe(400);
+    expect(() => findAuthRecordByEmail(app, "users", "oauth2@example.com")).toThrow();
+    const put = s3.requests.find((r) => r.method === "PUT");
+    expect(put).toBeDefined();
+    expect(s3.requests.map((r) => `${r.method} ${r.path}`)).toContain(`DELETE ${put?.path}`);
+  });
+
+  test("an avatar that cannot be stored fails the sign-up", async () => {
+    useProvider("oidc", mappedAvatar);
+    const s3 = useS3(
+      () => new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 }),
+    );
+
+    const { status, json } = await signIn(options(oauth2User()), { provider: "oidc" });
+    s3.stop();
+
+    expect(status).toBe(400);
+    expect(json["message"]).toBe("Failed to create record.");
+    expect(() => findAuthRecordByEmail(app, "users", "oauth2@example.com")).toThrow();
+  });
 });
 
 test("store name with Apple provider", async () => {

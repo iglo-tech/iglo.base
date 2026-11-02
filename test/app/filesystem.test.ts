@@ -60,7 +60,7 @@ describe("NewFilesystem", () => {
     expect(existsSync(join(dataDir, "storage", "c", "r", "f.txt.attrs"))).toBe(true);
   });
 
-  test("S3 enabled fails until M5.4b", () => {
+  test("S3 enabled without a bucket fails", () => {
     const settings = newDefaultSettings();
     settings.S3.Enabled = true;
     const appFs = newAppFilesystem({
@@ -69,7 +69,7 @@ describe("NewFilesystem", () => {
       getenv: () => "",
       logger: { error: () => {} },
     });
-    expect(() => appFs.newFilesystem()).toThrow("S3");
+    expect(() => appFs.newFilesystem()).toThrow("s3blob.New: missing bucket name");
   });
 });
 
