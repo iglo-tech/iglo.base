@@ -10,7 +10,7 @@ M5.4b active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4b | review | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 2 | [Brief](briefs/M5.4b.md) |
+| M5.4b | review | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 3 | [Brief](briefs/M5.4b.md) |
 
 ## Done
 
@@ -111,6 +111,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-02 | S3 tests (M5.4b) | Upstream served a 7 MiB object as 200 with 0 bytes through `test/support/s3-proxy.ts`, every byte directly; cause unknown. One lead run of `s3-files.test.ts` had 4 failures, not captured; 4 reruns and the full suite passed |
 | 2026-11-02 | CORS | `Vary: Origin` is missing on file responses; M5.7 owns it |
 | 2026-11-02 | Test harness | `agent-browser close` without a session name can close the host's shared default session; agents use a named session |
+| 2026-11-02 | Mimetype tests | `TestMaxRecursion` (MIME JSON parser) failed once with a stack overflow in a full `check`; 5 of 5 alone and in the full rerun |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
