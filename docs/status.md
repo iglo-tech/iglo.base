@@ -2,7 +2,7 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-01
+Updated: 2026-11-02
 
 M5.7 active.
 
@@ -10,7 +10,7 @@ M5.7 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.7 | review 1 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 0 | [Brief](briefs/M5.7.md) |
+| M5.7 | re-review 1 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 1 | [Brief](briefs/M5.7.md). Round 1 Opus CHANGES (console reads on the write connection); lead fixed at `a93eb4b` |
 
 ## Done
 
@@ -77,6 +77,9 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-10-29 | Test harness | `freePort()` (`test/support/executable.ts`) can race when servers start at once ("address already in use"); seen in M1.3's and M4.2's test:reference |
 | 2026-10-29 | Test harness (M3.2) | File-name normalization in `test/differential/files/files.test.ts:99–145` and `harness/compare.ts:207–209` accepts any equal-length lowercase alphanumeric difference; restrict it to the generated 10-character suffix |
 | 2026-10-29 | Collections API (M2.5) | Form-encoded (urlencoded/multipart) collection create/update ignores `fields` and nested auth options as plain keys; JSON and `@jsonPayload` match upstream |
+| 2026-11-02 | SQL console (M5.7) | Errors from the transaction wrapper itself (`…; commit; …`) are not wrapped by `driverError` (`SQL logic error: … (1)` missing); status and data match |
+| 2026-11-02 | RealIP (M5.7) | Repeated proxy-header lines whose last line has no valid IP: upstream falls back, iglo.base uses the earlier line (D22 names only the empty-line case) |
+| 2026-11-02 | CORS (M5.7) | Bun merges the three preflight `Vary` lines into one (RFC 9110 list header, equivalent) |
 | 2026-10-29 | Test harness | The body-limit tests put the host under heavy memory pressure in one `bun run check` (M2.5 review); the reviewer passed with `--smol` |
 | 2026-10-30 | Thumbnails (M0.7, M5.2) | A JPEG cut inside its scan and followed by EOI, and a PNG without IEND, get a thumbnail where upstream serves the original |
 | 2026-10-30 | Realtime tests (M5.1) | `test/differential/realtime/realtime.test.ts:29`, "a user delete updates the records that reference it": cascade update and delete notifications arrive in varying order; failed 2 of 3 isolated reruns and one full `test:reference` run. Upstream itself varies the order (M4.2 review: two orders on 20 fresh copies), so the comparison must accept its permitted orders |
