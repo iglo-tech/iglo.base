@@ -48,6 +48,8 @@ export interface App {
   readonly queryTimeout: number;
   readonly clock: Clock;
   readonly logger: AppLogger;
+  // log.Println: a line on stderr, where upstream writes one
+  readonly stderrLog?: (line: string) => void;
   // see CollectionsApp.afterTransaction
   readonly afterTransaction?: Promise<void>[];
   // DB, ConcurrentDB, AuxDB, ... of the opened pb_data (ClearBootstrap

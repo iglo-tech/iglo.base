@@ -740,4 +740,9 @@ export class BatchResponseError extends Error {
     errData["response"] = this.err;
     return errData;
   }
+
+  // upstream's map has no fixed order; this is its sorted one
+  marshalJSON(): string {
+    return `{"code":${JSON.stringify(this.code())},"message":${JSON.stringify(this.message)},"response":${JSON.stringify(this.err)}}`;
+  }
 }

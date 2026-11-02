@@ -103,6 +103,41 @@ const requests: Request[] = [
   },
   { method: "DELETE", path: "/api/collections/demo1/records/nope", token: superuserToken },
   { method: "POST", path: "/api/batch", token: superuserToken, headers: json, body: "{}" },
+  // writes, files, batch items and the dashboard
+  {
+    method: "POST",
+    path: "/api/collections/demo2/records",
+    token: superuserToken,
+    headers: json,
+    body: JSON.stringify({ title: "from the logs test" }),
+  },
+  {
+    method: "POST",
+    path: "/api/batch",
+    token: superuserToken,
+    headers: json,
+    body: JSON.stringify({
+      requests: [
+        { method: "POST", url: "/api/collections/demo2/records", body: { title: "batched" } },
+        { method: "POST", url: "/api/collections/demo2/records", body: { title: "" } },
+      ],
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/batch",
+    token: superuserToken,
+    headers: json,
+    body: JSON.stringify({
+      requests: [
+        { method: "POST", url: "/api/collections/demo2/records", body: { title: "batched" } },
+      ],
+    }),
+  },
+  { path: "/_/" },
+  { path: "/_/images/nope.png" },
+  { path: "/api/collections/demo1/auth-methods" },
+  { method: "PUT", path: "/api/health" },
   { path: `/api/health?long=${"x".repeat(4000)}`, headers: { Referer: "r".repeat(3000) } },
 ];
 
@@ -134,7 +169,9 @@ function normalized(rows: Row[]): string[] {
     .map((row) => {
       expect(row.created).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);
       expect(row.data).toMatch(/"execTime":\d+(\.\d+)?(e-?\d+)?,/);
-      const data = row.data.replace(/"execTime":[^,]+,/, '"execTime":0,');
+      const raw = row.data.replace(/"execTime":[^,]+,/, '"execTime":0,');
+      // a batch failure's details are a Go map marshaled without an order
+      const data = row.message === "POST /api/batch" ? sortedKeys(raw) : raw;
       return `${row.level} ${row.message} ${data}`;
     })
     .toSorted();
@@ -153,12 +190,34 @@ function fixtureCopy(logs: Record<string, unknown>): string {
   return dataDir;
 }
 
+function sortedKeys(text: string): string {
+  return JSON.stringify(JSON.parse(text), (_key, value: unknown) =>
+    typeof value === "object" && value !== null && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).toSorted(([a], [b]) => a.localeCompare(b)))
+      : value,
+  );
+}
+
 async function logsBody(url: string): Promise<string> {
-  const res = await fetch(`${url}/api/logs?perPage=500&sort=created,message`, {
+  let body = "";
+  for (const query of [
+    "perPage=500&sort=created,message",
+    "perPage=500&sort=created,message&fields=created,level,data.status,message:excerpt(5)",
+    "perPage=2&page=2&sort=-created,message&filter=data.status>=400 %26%26 message~'api'",
+    "skipTotal=1&sort=level,message&filter=data.auth=''",
+  ]) {
+    const res = await fetch(`${url}/api/logs?${query}`, {
+      headers: { Authorization: superuserToken },
+    });
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    // upstream's `fields` output has no fixed key order
+    body += query.includes("fields=") ? sortedKeys(text) : text;
+  }
+  const stats = await fetch(`${url}/api/logs/stats?filter=data.status>=400`, {
     headers: { Authorization: superuserToken },
   });
-  expect(res.status).toBe(200);
-  return res.text();
+  return body + (await stats.text());
 }
 
 const settings = [
@@ -238,7 +297,7 @@ describe("request logs", () => {
       for (const dataDir of [upstreamDir, igloBaseDir]) {
         const [byUpstream, byIgloBase] = await swapped(dataDir);
         expect(byIgloBase).toBe(byUpstream);
-        expect((JSON.parse(byUpstream) as { totalItems: number }).totalItems).toBeGreaterThan(0);
+        expect(byUpstream).toContain(`"totalItems"`);
       }
     },
     timeout,
@@ -266,7 +325,7 @@ describe("request logs", () => {
         const res = await fetch(`${server.url}/api/logs/stats?filter=data.status>=400`, {
           headers: { Authorization: superuserToken },
         });
-        stats.push(((await res.json()) as { total: number }[]).map((s) => s.total).join());
+        stats.push((await res.text()).replace(/"date":"[^"]+"/g, '"date":""'));
         await server.stop();
       }
       expect(stats[1]).toBe(stats[0]!);

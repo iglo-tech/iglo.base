@@ -22,7 +22,7 @@ Open the printed `/_/#/pbinstall/<token>` link with `agent-browser` (its own ses
 | Records | Create a record with a file, edit it, filters, relations, file download and thumbnails | M3.1; files M5.2 |
 | Auth options | Auth collection options, OAuth2 provider setup | M2.5; providers M4.5–M4.7 |
 | Settings | Application (save the name), mail (test email), files storage (S3 test), backups (create, list, download, restore, delete), rate limits, trusted proxy, export and import collections | M1.3; mail M4.4, S3 M5.4, backups M5.3 |
-| Logs | Logs list and chart, log settings | M5.5 |
+| Logs | Logs list, chart, entry, filter, log settings | M5.5 |
 | Crons | Crons list and run | M5.6 |
 | SQL console | Run a query | its task |
 | Realtime | Records list live updates | M5.1 |
@@ -55,7 +55,7 @@ Fresh `pb_data`, Chromium through `agent-browser`.
 | Settings → Mail, Files storage, Export collections, Import collections, Auth providers, Tokens | Pass: open without errors |
 | Settings → Backups | Expected gap: `GET /api/backups` 404 (M5.3; see the M5.3 run below) |
 | Settings → Crons | Expected gap: `GET /api/crons` 404 (M5.6) |
-| Logs | Expected gap: `GET /api/logs` and `/api/logs/stats` 404 (M5.5) |
+| Logs | Expected gap at this run: `GET /api/logs` and `/api/logs/stats` 404 (see the M5.5 run below) |
 | File download | Expected gap: `GET /api/files/...` 404 (M5.2) |
 
 All dashboard assets (`/_/`, scripts, styles, fonts, images, libraries) loaded with 200; the only failing requests were the expected gaps above. The automated parts of this flow are in `test/ui/` (serving, installer) and `test/differential/ui/` (against upstream's binary).
@@ -94,3 +94,15 @@ Fresh `pb_data`, executable from this branch, against versitygw (posix backend, 
 | The list's thumbnail | Pass: the `?thumb=100x100` image loads at width 100, and `thumbs_picture_…/100x100_picture_…` is in the bucket |
 | Click the thumbnail (preview) | Pass: the original loads at width 300 |
 | Open the record, "Remove file", "Save changes" | Pass: "Successfully updated photos"; the `image` value is empty and the bucket holds no object, the thumb included |
+
+## 2026-11-02, `task/M5.5-logs`, M5.5 logs screen
+
+Fresh `pb_data`, executable from this branch, `agent-browser` in named sessions of this task, a few requests sent with `curl` (three successes, a 404, a failed login).
+
+| Step | Result |
+|---|---|
+| Logs: the list | Pass: rows with level, message, `status`, `execTime`, `auth`, `userIP`, and `error` and `details` on the failures; the `[recordAuthResponse] Failed to send login alert` warning shows with its `error` |
+| Logs: the chart | Pass: hourly bars with the time axis, "Total: 10" in the footer. The first try found a bug (the stats `date` was not a string, so the chart failed), fixed here and covered by the logs scenarios |
+| Logs: open an entry | Pass: "Log details" lists `id`, `level`, `created` and the `data.*` rows, with "Download JSON"; the URL gets `logId` |
+| Logs: the filter `data.status=404` from the URL | Pass: one row, "Total: 1". Typing in the search box was not confirmed: the tool's keystrokes did not land in the editor. The same request goes through `GET /api/logs` and `/api/logs/stats`, which the differential suite covers with filters |
+

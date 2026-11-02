@@ -33,6 +33,8 @@ import { DateTime } from "@/tools/types/datetime";
 
 const batchSize = 200;
 
+const insertLogSQL = `INSERT INTO {{${LogsTableName}}} ([[id]], [[created]], [[level]], [[message]], [[data]]) VALUES ({:id}, {:created}, {:level}, {:message}, {:data})`;
+
 // how long the queue may wait after the last log
 const tickDuration = 3000;
 
@@ -189,15 +191,16 @@ export class Logger implements AppLogger {
     // upstream ignores its error, and nothing here goes back to the logger
     try {
       auxRunInTransaction(databases, (txDatabases) => {
-        const db = txDatabases.auxNonconcurrentDB();
+        const insert = txDatabases.auxNonconcurrentDB().newQuery(insertLogSQL).prepare();
         for (const log of logs) {
           try {
             const row = logDBExport(generateDefaultRandomId(), log, Number(settings.MaxDataSize));
-            db.insert(LogsTableName, row).execute();
+            insert.bind(row).execute();
           } catch (err) {
             stderrLog(`Failed to write log ${log.message} ${String(err)}`);
           }
         }
+        insert.close();
       });
     } catch {
       // see above

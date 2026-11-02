@@ -86,6 +86,8 @@ The cron expression parser and scheduler are ported from upstream `tools/cron` (
 
 - Request and app logs are rows in `auxiliary.db` `_logs`, with upstream's `level`, `message` and `data` shapes (`type`, `url`, `method`, `status`, `execTime`, `remoteIP`, `userIP`, `referer`, `userAgent`, `auth`, `error`, `details`).
 - Settings: `logs.maxDays`, `minLevel`, `logIP`, `logAuthId`, `maxDataSize`.
-- Writes are buffered and flushed in batches, as upstream's batch handler, and on shutdown.
+- Writes are buffered as upstream's batch handler does: at 200 queued logs, 3 seconds after the last log, and when the app stops or restarts (`clearBootstrap`). A write is its own transaction on the auxiliary connection. It runs from the event loop unless the app is stopping, so it never joins a request's transaction, and a rolled back request still logs. A failed write goes to stderr with `log.Println`, as upstream's, and never back to the logger.
+- `data` is stored as upstream's json/v2 writes it: sorted keys, its number format, and the `__pb_truncated__` form past `logs.maxDataSize`, with what its stream decoder keeps at the cut.
+- A settings reload applies `logs.minLevel` and clears logs past `maxDays` or below `minLevel`, as upstream's does; with `maxDays` 0 it also runs `VACUUM`. Every bootstrap reloads the settings, so `superuser` and `migrate` clear old logs too.
 - `GET /api/logs`, `/api/logs/stats` (hourly buckets) and `/api/logs/{id}` use the same filter language as records, over the log fields.
-- `--dev` prints logs and SQL statements to the console, as upstream. Otherwise the console only shows errors and the `serve` banner.
+- `--dev` prints logs and SQL statements to the console, as upstream. Otherwise the app logs reach only `_logs`; the console shows the `serve` banner, command output and what upstream writes to stderr (a recovered job panic, a failed `_logs` write).

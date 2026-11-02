@@ -20,7 +20,7 @@ export async function findLogById(app: Pick<App, "databases">, id: string): Prom
 
 // LogsStatsItem defines the total number of logs for a specific time period.
 export interface LogsStatsItem {
-  date: DateTime;
+  date: string;
   total: number;
 }
 
@@ -39,7 +39,10 @@ export async function logsStats(
 
   const rows = await query.allAsync();
 
-  return rows.map((row) => ({ date: parseDateTime(row.date), total: Number(row.total) }));
+  return rows.map((row) => ({
+    date: parseDateTime(row.date).toString(),
+    total: Number(row.total),
+  }));
 }
 
 // DeleteOldLogs delete all logs that are created before createdBefore.
