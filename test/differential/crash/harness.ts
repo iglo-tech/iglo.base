@@ -140,7 +140,7 @@ export function walk(dir: string): string[] {
     }
   };
   visit(dir);
-  return out.sort();
+  return out.toSorted();
 }
 
 // the first path below dir whose relative name matches

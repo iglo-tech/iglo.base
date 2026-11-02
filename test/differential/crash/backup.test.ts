@@ -116,7 +116,7 @@ function normalized(paths: string[]): string[] {
   return paths
     .filter((p) => p !== "bulk.bin")
     .map((p) => p.replace(/[0-9a-f]{16}\.tmp/g, "X.tmp").replace(/pb_backup_\w{6}/g, "pb_backup_X"))
-    .sort();
+    .toSorted();
 }
 
 for (const storage of ["local", "s3"] as const) {

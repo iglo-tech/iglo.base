@@ -173,14 +173,14 @@ async function craftedState(
   mkdirSync(oldDir);
   const oldNames = readdirSync(dataDir)
     .filter((n) => !rootExclude.has(n))
-    .sort();
+    .toSorted();
   const take = moveOld === "all" ? oldNames.length : moveOld;
   for (const n of oldNames.slice(0, take)) {
     renameSync(join(dataDir, n), join(oldDir, n));
   }
   const newNames = readdirSync(extracted)
     .filter((n) => !rootExclude.has(n))
-    .sort();
+    .toSorted();
   const takeNew = moveNew === "all" ? newNames.length : moveNew;
   for (const n of newNames.slice(0, takeNew)) {
     renameSync(join(extracted, n), join(dataDir, n));
