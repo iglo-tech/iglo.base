@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-01
 
-M5.5 active.
+M5.7 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.5 | review | [#54](https://github.com/iglo-tech/iglo.base/pull/54) | 3 | [Brief](briefs/M5.5.md) |
+| M5.7 | worker | `task/M5.7-serve` | 0 | [Brief](briefs/M5.7.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.5 | [#54](https://github.com/iglo-tech/iglo.base/pull/54) | 2026-11-02 (`1f81138`) | Three review rounds (Opus, lead fixed rounds 1 and 2): Opus APPROVE at `7a7952e`; `check` 0 failures, `test:reference` one backlog-row flake (OTP). `errorsAs` now walks joined errors as Go's `errors.As`; JWT Validator texts match golang-jwt's. Writes run on the main thread: a `/api/health` burst reaches 7–9.5k req/s vs upstream 13k (M7.1). Job panics stay on stderr, as upstream |
 | M5.4b | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 2026-11-02 (`0457f9b`) | Three review rounds (Opus, lead fixed rounds 1 and 2): Opus APPROVE at `c19b206`. `check` and `test:reference` at 0 failures at `e1b7111`, the last code change; round 3 was one test only. Files upload before the write transaction; a failed delete after a save answers 400 as upstream. File downloads spool first. Listed in 04-api-compatibility.md. Multipart intake stalls the event loop (backlog, M7.1) |
 | M5.4a | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 2026-11-01 (`73443c3`) | Two review rounds (Opus, lead fixed round 1): Opus APPROVE at `9e9ed96`, its `test:reference` at 0 failures. Upstream's S3 client ported on `fetch`, as `Bun.S3Client` cannot return raw error bodies; AGENTS.md updated. Downloads spool first (listed in 04-api-compatibility.md): 1 GiB 5.0 s vs upstream 1.5 s; create 18.3 s vs 5.1 s. M5.4b: `copy-object.ts` must accept any root |
 | M5.3 | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2026-11-01 (`8cd279a`) | Three review rounds: Sol round 1, then Opus (D29, lead fixed both): Opus APPROVE at `555a9a1`. `test:reference` at that head had one backlog flake in the lead's run (realtime order) and one new one in the reviewer's (autobackup list). `process.execve` restarts the compiled server; zips restore across both servers, Zip64 checked by hand. Zip synced every 32 MiB in the worker, as its writeback stalled main-thread commits. Backup about 2× upstream's time on incompressible data. With S3 enabled, backup endpoints fail with the not-supported error until M5.4 |
@@ -116,6 +117,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-02 | Logs (M5.5) | Request rows of hand-crafted URLs and bodies: unencoded non-ASCII in the query is logged percent-encoded, a raw `\|` in the path is escaped differently, `/x?` loses its `?`; an unknown field type and malformed JSON log other `details` texts. Failed restarts lose `Failed to restore backup`; `app.logger()` is missing in JS migrations |
 | 2026-11-02 | OTP tests (M4.2) | `test/differential/auth/otp-flows.test.ts`, "the message of each server is the same": iglo.base's user came back `verified` true, upstream's false, once in a full `test:reference`; 3 of 3 reruns passed |
 | 2026-11-02 | JWT (M5.5) | A non-numeric `exp` (hand-made token) reports `exp is invalid` where golang-jwt says `invalid type for claim: exp is invalid` |
+| 2026-11-02 | OAuth2 (M5.5) | Hand-made id_tokens: a non-string `aud` reports another text with the parser prefix; Apple without `iss` reports `token has invalid issuer` where upstream says the claim is required; Apple `exp: 0` reaches the signature check where upstream refuses it as missing (Apple never issues it) |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
