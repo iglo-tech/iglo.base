@@ -10,7 +10,7 @@ M5.5 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.5 | review | [#54](https://github.com/iglo-tech/iglo.base/pull/54) | 2 | [Brief](briefs/M5.5.md) |
+| M5.5 | review | [#54](https://github.com/iglo-tech/iglo.base/pull/54) | 3 | [Brief](briefs/M5.5.md) |
 
 ## Done
 
@@ -114,6 +114,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-02 | Test harness | `agent-browser close` without a session name can close the host's shared default session; agents use a named session |
 | 2026-11-02 | Mimetype tests | `TestMaxRecursion` (MIME JSON parser) failed once with a stack overflow in a full `check`; 5 of 5 alone and in the full rerun |
 | 2026-11-02 | Logs (M5.5) | Request rows of hand-crafted URLs and bodies: unencoded non-ASCII in the query is logged percent-encoded, a raw `\|` in the path is escaped differently, `/x?` loses its `?`; an unknown field type and malformed JSON log other `details` texts. Failed restarts lose `Failed to restore backup`; `app.logger()` is missing in JS migrations |
+| 2026-11-02 | OTP tests (M4.2) | `test/differential/auth/otp-flows.test.ts`, "the message of each server is the same": iglo.base's user came back `verified` true, upstream's false, once in a full `test:reference`; 3 of 3 reruns passed |
+| 2026-11-02 | JWT (M5.5) | A non-numeric `exp` (hand-made token) reports `exp is invalid` where golang-jwt says `invalid type for claim: exp is invalid` |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
