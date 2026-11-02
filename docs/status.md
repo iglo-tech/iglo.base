@@ -10,7 +10,7 @@ M5.8 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.8 | worker | — | 0 | [Brief](briefs/M5.8.md). Sonnet 5.5 worker |
+| M5.8 | review 1 | [#56](https://github.com/iglo-tech/iglo.base/pull/56) | 1 | [Brief](briefs/M5.8.md). Sonnet 5.5 worker; no src changes, check and test:reference green at `c2f7086` |
 
 ## Done
 
