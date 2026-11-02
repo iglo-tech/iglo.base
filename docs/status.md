@@ -10,7 +10,7 @@ M5.4b active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4b | review | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 1 | [Brief](briefs/M5.4b.md) |
+| M5.4b | review | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 2 | [Brief](briefs/M5.4b.md) |
 
 ## Done
 
@@ -106,6 +106,11 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-01 | Uploads (M5.4a) | `POST /api/backups/upload` stalls the server (p99 78 ms, max 438 ms; upstream 18 and 73), with local storage too, so probably multipart intake (M3.2). M7.1 should look |
 | 2026-11-01 | Dashboard (M5.4a) | The vendored backups form cannot save with `cronMaxKeep` 0, as the browser blocks it on a hidden field; a fresh install has 3 |
 | 2026-11-01 | S3 (M5.4a) | Plain text with a bare `&` in place of S3 XML: `GET /api/backups` answers `200 []` where upstream answers 400. HEAD passes, GET refused and no body needed (`HEAD`, 304, 416): answered from the HEAD where upstream answers 400 |
+| 2026-11-02 | Migrations (M5.4b) | A JS migration that clears a file with `app.save`, under `migrate up` on S3, leaves the object in the bucket: the delete is not awaited before the CLI exits. The record is correct |
+| 2026-11-02 | Perf (M5.4b) | `docs/perf/M5.4b-s3-files.md` compares S3 with upstream only; the local file path's rewrite has no before/after numbers. M7.1 covers it |
+| 2026-11-02 | S3 tests (M5.4b) | Upstream served a 7 MiB object as 200 with 0 bytes through `test/support/s3-proxy.ts`, every byte directly; cause unknown. One lead run of `s3-files.test.ts` had 4 failures, not captured; 4 reruns and the full suite passed |
+| 2026-11-02 | CORS | `Vary: Origin` is missing on file responses; M5.7 owns it |
+| 2026-11-02 | Test harness | `agent-browser close` without a session name can close the host's shared default session; agents use a named session |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
