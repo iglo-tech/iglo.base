@@ -4,13 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-02
 
-M6.3 active.
+D30 active (M6.3 dropped).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M6.3 | worker | — | 0 | [Brief](briefs/M6.3.md). Sonnet 5.5 worker |
+| D30 | check | [#58](https://github.com/iglo-tech/iglo.base/pull/58) | 0 | Owner direction: no TLS in the app; M6.3 dropped (worker cancelled before any PR). Lead change: `serve` refuses `--https`/domains, docs updated |
 
 ## Done
 
@@ -135,6 +135,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | M1.8 | 2026-10-28 | The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
 
 ## For owner review
+
+- 2026-11-02 (owner direction, D30): no TLS in the app; the reverse proxy terminates it. M6.3 is dropped; `serve` refuses `--https` and domain arguments.
 
 - 2026-11-02 (owner direction): multi-process or multi-thread serving is dropped (shared-state problems: realtime, rate limits, caches, cron/backup leader, restore, several writers). M7.1 profiles the main thread first, then fixes what the profile shows, in the order of [docs/perf/pocketbun-research.md](perf/pocketbun-research.md) items 1–5. Items 6–7 are out.
 
