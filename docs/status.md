@@ -131,6 +131,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 ## For owner review
 
+- 2026-11-02 (owner direction): workers, fixers and helpers are Claude Sonnet 5.5 at medium effort; Claude Opus 5.5 is only the lead and the reviewer (high effort). Work plan model table and runbook updated.
+
 Decisions and plan changes made by agents while the owner was away.
 
 - 2026-11-02 (M5.5 pick): next in milestone order, and M6.4 waits on it. Opus worker: request logs sit on every request. The 5-hour usage limit paused work three times in M5.4; the host resumes agents at the reset, so leads no longer write a pause for those, and they refresh the lock heartbeat on resuming.

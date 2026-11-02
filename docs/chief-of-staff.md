@@ -33,8 +33,7 @@ Anthropic models only (D29). Call `orchestrator_capabilities` once per run befor
 
 | Agent | `target` |
 |---|---|
-| Opus worker or fixer | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "medium" } }` |
-| Haiku worker or helper | `{ "providerInstanceId": "claudeAgent", "model": "claude-haiku-5-5", "options": { "effort": "medium" } }` |
+| Worker, fixer or helper (the default for every agent except the reviewer; owner direction, 2026-11-02) | `{ "providerInstanceId": "claudeAgent", "model": "claude-sonnet-5-5", "options": { "effort": "medium" } }` |
 | Opus reviewer (a fresh agent, never the task's worker or fixer) | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "high" } }` |
 
 ### Worker instructions
@@ -45,7 +44,7 @@ Append to every worker and fixer brief:
 You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the task yourself.
 - Read AGENTS.md and the docs named in the brief first. Follow the "Rules for workers" in docs/design/12-work-plan.md.
 - Upstream PocketBase v0.41.0 source: .upstream/pocketbase after `bun run upstream:prepare` (the same pinned commit is at /home/t3-code/upstream/pocketbase on this host; read only). Read it; never port from memory.
-- Use Claude Haiku 5.5 subagents for bulk mechanical work (for example converting upstream table tests to scenario data); keep the judgment calls yourself.
+- Use Claude Sonnet 5.5 subagents at medium effort for bulk mechanical work (for example converting upstream table tests to scenario data); keep the judgment calls yourself.
 - Work on branch task/<id>-<slug> from origin/main. Commit with short messages. Push and open one PR titled "<id>: <title>" against main. The PR body maps each upstream file to its iglo.base file and lists anything left out, with a reason.
 - Run the acceptance commands and the full local check (`bun run check`, then `bun run test:reference`, never in parallel: the host has limited memory) before you finish. `test:reference` takes over 10 minutes, past the Bash foreground limit, so give the long run to the Bash tool's background mode and wait for it with the Monitor tool in the same turn. Do not end your turn while a check runs: each ended turn wakes the lead for nothing. CI is not used. Do not merge. Do not watch the PR.
 - A fixer fixes each finding's whole class: search for the same mistake on sibling code paths, inputs and fields before pushing, and say in the PR comment what was checked.
