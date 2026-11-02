@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-02
 
-M5.9 active.
+M6.3 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.9 | review 3 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 3 | [Brief](briefs/M5.9.md). Sonnet 5.5 worker; lead's `check` 0 failures and `test:reference` two backlog flakes (pass on rerun) at `1389517`. Round 1 Opus CHANGES: restore recovery not idempotent or atomic (data loss on a second start), revert skipped on a failed phase write, swap-window test passes only when the kill misses; Sonnet fixer pushed `8e32196` (check green, test:reference one backlog flake). Round 2 Opus CHANGES (refused upstream's own finished restore); lead fixed at `ab966a4` (check and test:reference: one backlog flake each, pass on rerun); round 3 Opus re-review |
+| M6.3 | worker | — | 0 | [Brief](briefs/M6.3.md). Sonnet 5.5 worker |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.9 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 2026-11-02 (`aa29b16`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `ab966a4`. SIGKILL suite for writes, batches, uploads, backups and restore (local and S3). Restore records its step by renaming a marker in `.pb_temp_to_delete` and rolls back an interrupted restore at start; no marker is upstream's own restore and starts as upstream. Backlog: a new restore after a failed rollback can drop the first one's marker; iglo.base leaves `-wal`/`-shm` after a normal stop where upstream leaves none |
 | M5.8 | [#56](https://github.com/iglo-tech/iglo.base/pull/56) | 2026-11-02 (`98c371a`) | One review round: Opus APPROVE at `c2f7086` (Sonnet worker), `check` and `test:reference` at 0 failures. Every SDK 0.28.1 server method on both servers; no API difference found. Fetch-based EventSource shim for Bun. Backlog: 8 test-coverage gaps listed in the review comment (MFA `mfaId` as query option, batch upsert-update path, unrecorded OAuth2 redirect, and others) |
 | M5.7 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 2026-11-02 (`4beacc6`) | Two review rounds (Opus, lead fixed round 1): Opus APPROVE at `6c8a610`; lead's `check` and `test:reference` at 0 failures there. Console reads run on a connection of their own per request (a `BEGIN` or pragma never reaches the write connection). Backlog: `--dev` does not log console reads; 03-data-compatibility.md says the console "rejects" defensive-mode statements (Bun's SQLite ignores them; results match) |
 | M5.5 | [#54](https://github.com/iglo-tech/iglo.base/pull/54) | 2026-11-02 (`1f81138`) | Three review rounds (Opus, lead fixed rounds 1 and 2): Opus APPROVE at `7a7952e`; `check` 0 failures, `test:reference` one backlog-row flake (OTP). `errorsAs` now walks joined errors as Go's `errors.As`; JWT Validator texts match golang-jwt's. Writes run on the main thread: a `/api/health` burst reaches 7–9.5k req/s vs upstream 13k (M7.1). Job panics stay on stderr, as upstream |
