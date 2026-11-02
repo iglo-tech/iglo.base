@@ -97,12 +97,10 @@ describe("FileService", () => {
       pb.collection("demo3").update(created.id, { files: [] }),
     );
     await env.fails("create (too large)", () =>
-      pb
-        .collection("demo3")
-        .create({
-          title: "big",
-          files: [new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.bin")],
-        }),
+      pb.collection("demo3").create({
+        title: "big",
+        files: [new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.bin")],
+      }),
     );
   });
 });

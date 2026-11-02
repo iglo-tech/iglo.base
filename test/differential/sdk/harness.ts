@@ -117,32 +117,33 @@ export interface SdkEnv {
 
 const sdkUserAgent = "iglo-base-sdk-suite";
 
+function replacer(_key: string, v: unknown): unknown {
+  if (v instanceof ClientResponseError) {
+    return {
+      clientResponseError: true,
+      status: v.status,
+      response: v.response,
+      isAbort: v.isAbort,
+    };
+  }
+  if (v instanceof Blob) {
+    return { blob: true, size: v.size, type: v.type };
+  }
+  if (v instanceof PocketBase) {
+    return {
+      client: true,
+      baseURL: v.baseURL,
+      token: v.authStore.token,
+      record: v.authStore.record,
+    };
+  }
+  if (v === undefined) {
+    return { undefined: true };
+  }
+  return v;
+}
+
 function toText(value: unknown, env: { url: string; dataDir: string; s3: SdkEnv["s3"] }): string {
-  const replacer = (_key: string, v: unknown): unknown => {
-    if (v instanceof ClientResponseError) {
-      return {
-        clientResponseError: true,
-        status: v.status,
-        response: v.response,
-        isAbort: v.isAbort,
-      };
-    }
-    if (v instanceof Blob) {
-      return { blob: true, size: v.size, type: v.type };
-    }
-    if (v instanceof PocketBase) {
-      return {
-        client: true,
-        baseURL: v.baseURL,
-        token: v.authStore.token,
-        record: v.authStore.record,
-      };
-    }
-    if (v === undefined) {
-      return { undefined: true };
-    }
-    return v;
-  };
   return (JSON.stringify(value, replacer) ?? "null")
     .replaceAll(env.url, "<base>")
     .replaceAll(env.s3.endpoint, "<s3>")
@@ -558,4 +559,20 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
     },
     options.timeout ?? 60_000,
   );
+}
+
+// The value with its object members sorted by name: upstream writes the
+// members of a `fields`-picked message in random order.
+export function sortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortedKeys);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([k, v]) => [k, sortedKeys(v)]),
+    );
+  }
+  return value;
 }

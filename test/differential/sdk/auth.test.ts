@@ -91,6 +91,94 @@ describe("password auth", () => {
   });
 });
 
+describe("auth records and stores", () => {
+  sdkTest("sign up, update with oldPassword, delete", { prepare: noMFA }, async (env) => {
+    const pb = env.client();
+    const users = pb.collection("users");
+    await env.fails("create (invalid)", () =>
+      users.create({ email: "x", password: "short", passwordConfirm: "other" }),
+    );
+    const created = await env.step("create", () =>
+      users.create({
+        id: "sdksignup000001",
+        email: "signup@example.com",
+        password: "signuppass1",
+        passwordConfirm: "signuppass1",
+        name: "Sign Up",
+      }),
+    );
+    await env.fails("create (duplicate email)", () =>
+      users.create({
+        email: "signup@example.com",
+        password: "signuppass1",
+        passwordConfirm: "signuppass1",
+      }),
+    );
+    await env.step("authWithPassword", () =>
+      users.authWithPassword("signup@example.com", "signuppass1"),
+    );
+    await env.step("update (own name)", () => users.update(created.id, { name: "Renamed" }));
+    await env.fails("update (password without oldPassword)", () =>
+      users.update(created.id, { password: "changedpass1", passwordConfirm: "changedpass1" }),
+    );
+    await env.step("update (password)", () =>
+      users.update(created.id, {
+        oldPassword: "signuppass1",
+        password: "changedpass1",
+        passwordConfirm: "changedpass1",
+      }),
+    );
+    await env.fails("authRefresh (old token)", () => users.authRefresh());
+    await env.step("authWithPassword (changed)", () =>
+      users.authWithPassword("signup@example.com", "changedpass1"),
+    );
+    await env.fails("getOne (another user)", () => users.getOne("oap640cot4yru2s"));
+    await env.step("delete", () => users.delete(created.id));
+    await env.fails("authWithPassword (deleted)", () =>
+      users.authWithPassword("signup@example.com", "changedpass1"),
+    );
+  });
+
+  sdkTest(
+    "auth store cookie, deprecated authWithOAuth2 form, request cancelling",
+    { prepare: noMFA },
+    async (env) => {
+      const pb = env.client();
+      await env.step("authWithPassword", () =>
+        pb.collection("users").authWithPassword("test2@example.com", password),
+      );
+      const cookie = pb.authStore.exportToCookie({
+        secure: false,
+        httpOnly: false,
+        expires: new Date("2030-01-01T00:00:00Z"),
+      });
+      const other = env.client();
+      other.authStore.loadFromCookie(cookie);
+      env.record("loaded from cookie", store(other));
+      await env.step("authRefresh (from cookie)", () => other.collection("users").authRefresh());
+      await env.step("authStore.clear and isValid", async () => {
+        other.authStore.clear();
+        return other.authStore.isValid;
+      });
+      // a cancelled request: the SDK aborts it before the answer is read
+      const slow = pb
+        .collection("demo2")
+        .getList(1, 1, { requestKey: "k" })
+        .catch((e: unknown) => e);
+      pb.cancelRequest("k");
+      env.record("cancelRequest", await slow);
+      const many = [1, 2, 3].map((n) =>
+        pb
+          .collection("demo2")
+          .getList(n, 1, { requestKey: `k${n}` })
+          .catch((e: unknown) => e),
+      );
+      pb.cancelAllRequests();
+      env.record("cancelAllRequests", await Promise.all(many));
+    },
+  );
+});
+
 describe("mail flows", () => {
   sdkTest("verification", { smtp: true, prepare: noMFA }, async (env) => {
     const pb = env.client();
@@ -216,65 +304,71 @@ describe("mail flows", () => {
   );
 });
 
-describe("OAuth2", () => {
-  const prepare = (user: object) => (env: { dataDir: string }) =>
-    all(
-      noMFA,
-      useProvider({ user }, (collection, provider) => {
-        const first = collection.oauth2.providers?.[0];
-        if (first !== undefined) {
-          // one name for both servers' mock providers
-          first.authURL = "https://oauth.example/auth?client_id=123";
-        }
-        void provider;
+const prepare = (user: object) => (env: { dataDir: string }) =>
+  all(
+    noMFA,
+    useProvider({ user }, (collection, provider) => {
+      const first = collection.oauth2.providers?.[0];
+      if (first !== undefined) {
+        // one name for both servers' mock providers
+        first.authURL = "https://oauth.example/auth?client_id=123";
+      }
+      void provider;
+    }),
+  )({ dataDir: env.dataDir });
+
+async function authWithCode(env: SdkEnv): Promise<void> {
+  const pb = env.client();
+  await env.step("listAuthMethods", () =>
+    pb.collection("users").listAuthMethods({ fields: "oauth2" }),
+  );
+  await env.step("authWithOAuth2Code (sign up)", () =>
+    pb
+      .collection("users")
+      .authWithOAuth2Code("oidc", "code", "verifier", "https://example.com/redirect", {
+        name: "SDK User",
       }),
-    )({ dataDir: env.dataDir });
+  );
+  env.record("authStore (oauth2)", store(pb));
+  await env.step("listExternalAuths", () =>
+    env
+      .superuser()
+      .collection("users")
+      .listExternalAuths(pb.authStore.record?.id as string),
+  );
+  await env.step("authWithOAuth2Code (sign in again)", () =>
+    env
+      .client()
+      .collection("users")
+      .authWithOAuth2Code("oidc", "code", "verifier", "https://example.com/redirect"),
+  );
+  await env.step("authWithOAuth2 (deprecated code form)", () =>
+    env
+      .client()
+      .collection("users")
+      .authWithOAuth2("oidc", "code", "verifier", "https://example.com/redirect"),
+  );
+  await env.fails("authWithOAuth2Code (unknown provider)", () =>
+    env
+      .client()
+      .collection("users")
+      .authWithOAuth2Code("nope", "code", "verifier", "https://example.com/redirect"),
+  );
+  await env.step("unlinkExternalAuth", () =>
+    env
+      .superuser()
+      .collection("users")
+      .unlinkExternalAuth(pb.authStore.record?.id as string, "oidc"),
+  );
+  await env.fails("unlinkExternalAuth (again)", () =>
+    env
+      .superuser()
+      .collection("users")
+      .unlinkExternalAuth(pb.authStore.record?.id as string, "oidc"),
+  );
+}
 
-  async function authWithCode(env: SdkEnv): Promise<void> {
-    const pb = env.client();
-    await env.step("listAuthMethods", () =>
-      pb.collection("users").listAuthMethods({ fields: "oauth2" }),
-    );
-    await env.step("authWithOAuth2Code (sign up)", () =>
-      pb
-        .collection("users")
-        .authWithOAuth2Code("oidc", "code", "verifier", "https://example.com/redirect", {
-          name: "SDK User",
-        }),
-    );
-    env.record("authStore (oauth2)", store(pb));
-    await env.step("listExternalAuths", () =>
-      env
-        .superuser()
-        .collection("users")
-        .listExternalAuths(pb.authStore.record?.id as string),
-    );
-    await env.step("authWithOAuth2Code (sign in again)", () =>
-      env
-        .client()
-        .collection("users")
-        .authWithOAuth2Code("oidc", "code", "verifier", "https://example.com/redirect"),
-    );
-    await env.fails("authWithOAuth2Code (unknown provider)", () =>
-      env
-        .client()
-        .collection("users")
-        .authWithOAuth2Code("nope", "code", "verifier", "https://example.com/redirect"),
-    );
-    await env.step("unlinkExternalAuth", () =>
-      env
-        .superuser()
-        .collection("users")
-        .unlinkExternalAuth(pb.authStore.record?.id as string, "oidc"),
-    );
-    await env.fails("unlinkExternalAuth (again)", () =>
-      env
-        .superuser()
-        .collection("users")
-        .unlinkExternalAuth(pb.authStore.record?.id as string, "oidc"),
-    );
-  }
-
+describe("OAuth2", () => {
   sdkTest(
     "authWithOAuth2Code, listExternalAuths, unlinkExternalAuth",
     {

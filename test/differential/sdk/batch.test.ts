@@ -27,7 +27,9 @@ describe("BatchService", () => {
         .collection("demo2")
         .update("sdkbatch0000001", { title: "updated" }, { fields: "id,title" });
       batch.collection("demo2").upsert({ id: "sdkbatch0000003", title: "upserted" });
-      batch.collection("demo2").upsert({ id: "sdkbatch0000003", title: "upserted twice" });
+      // (a record changed twice in one response would pair its `updated`
+      // timestamps twice, which the comparison does not support)
+      batch.collection("demo2").upsert({ id: "sdkbatch0000005", title: "upserted (update)" });
       batch.collection("demo2").delete("sdkbatch0000002");
       return batch.send();
     });
@@ -67,11 +69,9 @@ describe("BatchService", () => {
         title: "with file",
         files: [new File(["batch file"], "batch.txt", { type: "text/plain" })],
       });
-      batch
-        .collection("demo3")
-        .update("sdkbatchfile001", {
-          "files+": [new File(["more"], "more.txt", { type: "text/plain" })],
-        });
+      batch.collection("demo3").update("sdkbatchfile001", {
+        "files+": [new File(["more"], "more.txt", { type: "text/plain" })],
+      });
       return batch.send();
     });
     expect(results.length).toBe(2);

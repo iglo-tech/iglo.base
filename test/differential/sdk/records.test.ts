@@ -39,6 +39,55 @@ describe("RecordService CRUD", () => {
     await env.step("getList (view)", () => pb.collection("view2").getList(1, 5, { sort: "id" }));
   });
 
+  sdkTest("query options: expand, fields, sort, filter", {}, async (env) => {
+    const pb = env.superuser();
+    const demo1 = pb.collection("demo1");
+    await env.step("expand (nested)", () =>
+      demo1.getFullList({ sort: "id", expand: "rel_one,rel_many.rel_one" }),
+    );
+    await env.step("expand (back-relation)", () =>
+      pb.collection("demo4").getList(1, 5, { sort: "id", expand: "rel_one_cascade,self_rel_many" }),
+    );
+    await env.step("fields modifiers", () =>
+      demo1.getList(1, 3, {
+        sort: "id",
+        fields: "id,text:excerpt(5,true),expand.rel_one.id",
+        expand: "rel_one",
+      }),
+    );
+    await env.step("sort (multiple, random)", () =>
+      demo1.getList(1, 10, { sort: "-bool,text,@random", fields: "id" }).then((r) => r.totalItems),
+    );
+    await env.step("sort (@rowid)", () => demo1.getFullList({ sort: "-@rowid", fields: "id" }));
+    await env.step("filter (macros, ?=)", () =>
+      demo1.getFullList({
+        sort: "id",
+        fields: "id",
+        filter: "created > @yesterday && select_many ?= 'optionB' || @request.auth.id != ''",
+      }),
+    );
+    await env.step("filter (bound params)", () =>
+      demo1.getFullList({
+        sort: "id",
+        fields: "id",
+        filter: pb.filter("number > {:n} && datetime < {:d} && id != {:id}", {
+          n: -1,
+          d: new Date("2100-01-01T00:00:00Z"),
+          id: "x'y",
+        }),
+      }),
+    );
+    await env.step("auth collection list (superuser)", () =>
+      pb.collection("users").getList(1, 5, { sort: "id" }),
+    );
+    await env.step("auth collection list (guest, skipTotal)", () =>
+      env.client().collection("nologin").getList(1, 5, { sort: "id", skipTotal: true }),
+    );
+    await env.fails("filter (invalid field)", () => demo1.getList(1, 1, { filter: "nope > 1" }));
+    await env.fails("sort (invalid field)", () => demo1.getList(1, 1, { sort: "nope" }));
+    await env.step("page (zero)", () => demo1.getList(0, 0, { fields: "page,perPage,totalItems" }));
+  });
+
   sdkTest("create, update, delete, upsert-free flows", {}, async (env) => {
     const pb = env.superuser();
     const demo = pb.collection("demo2");
@@ -84,6 +133,42 @@ describe("RecordService CRUD", () => {
     );
     await env.step("update (remove file)", () =>
       su.collection("demo3").update(rec.id, { "files-": [(rec["files"] as string[])[0]] }),
+    );
+  });
+
+  sdkTest("values: unicode, json, geoPoint, dates, URL-encoded ids", {}, async (env) => {
+    const pb = env.superuser();
+    const demo = pb.collection("demo1");
+    const created = await env.step("create", () =>
+      demo.create({
+        id: "sdkvalues000001",
+        text: 'zażółć gęślą jaźń 🚀 \u0000-free "quotes" <tag> &amp;',
+        url: "https://example.com/a?b=c&d=é",
+        email: "values@example.com",
+        number: 12345.678,
+        bool: true,
+        datetime: "2030-02-03 04:05:06.789Z",
+        select_many: ["optionA", "optionC"],
+        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 12345678901234567890 },
+        point: { lon: 12.5, lat: -45.25 },
+      }),
+    );
+    expect(created.id).toBe("sdkvalues000001");
+    await env.step("getOne", () => demo.getOne("sdkvalues000001"));
+    await env.step("filter (unicode, escaped quote)", () =>
+      demo.getFullList({ filter: pb.filter("text ~ {:t}", { t: "gęślą" }), fields: "id" }),
+    );
+    await env.step("update (modifiers)", () =>
+      demo.update("sdkvalues000001", {
+        "number+": 1,
+        "select_many+": "optionB",
+        "select_many-": "optionA",
+      }),
+    );
+    await env.fails("getOne (special characters in the id)", () => demo.getOne("a/b?c=d#e f"));
+    await env.fails("getOne (encoded slash)", () => demo.getOne("..%2f.."));
+    await env.fails("create (wrong types)", () =>
+      demo.create({ number: "abc", bool: "maybe", email: "x", datetime: "nope" }),
     );
   });
 

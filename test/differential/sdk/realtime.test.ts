@@ -6,7 +6,7 @@
 
 import { describe, expect } from "bun:test";
 
-import { sdkTest, type SdkEnv } from "@test/differential/sdk/harness";
+import { sdkTest, sortedKeys, type SdkEnv } from "@test/differential/sdk/harness";
 
 // waits until the list has n entries
 async function waitFor(env: SdkEnv, list: unknown[], n: number): Promise<void> {
@@ -62,7 +62,7 @@ describe("realtime", () => {
 
     env.record("events (*)", all);
     env.record("events (id)", one);
-    env.record("events (fields)", picked);
+    env.record("events (fields)", sortedKeys(picked));
 
     // unsubscribing one topic leaves the others
     await env.step("unsubscribe (id)", () =>
