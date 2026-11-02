@@ -127,6 +127,7 @@ export class OIDC extends BaseProvider {
       verifyIat: true,
       leewaySeconds: idTokenLeewaySeconds(),
       audience: this.clientId,
+      parserPrefix: false,
     });
 
     // validate iss (if "issuers" extra config is set)

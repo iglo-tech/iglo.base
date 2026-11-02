@@ -2,7 +2,6 @@
 // zone once per process. Prints the ids __pbLogsCleanup__ leaves in _logs.
 // argv: now (ISO), maxDays, then the rows as id=created.
 
-import { Database } from "bun:sqlite";
 import { join } from "node:path";
 
 import { openFixtureApp } from "@test/app/app";
@@ -14,15 +13,18 @@ const [now, maxDays, ...rows] = process.argv.slice(2);
 const dataDir = join(tempDir(), "pb_data");
 copyDataDir(fixtureDir, dataDir);
 
-const db = new Database(join(dataDir, "auxiliary.db"));
-for (const row of rows) {
-  const [id, created] = row.split("=");
-  db.query("INSERT INTO _logs (id, created) VALUES (?, ?)").run(id!, created!);
-}
-db.close();
-
 const app = await openFixtureApp({ dataDir, clock: { now: () => new Date(now!) } });
 app.settings.Logs.MaxDays = Number(maxDays);
+
+// after the bootstrap, whose settings reload clears old logs too
+for (const row of rows) {
+  const [id, created] = row.split("=");
+  app.databases
+    .auxNonconcurrentDB()
+    .newQuery("INSERT INTO _logs (id, created) VALUES ({:id}, {:created})")
+    .bind({ id: id!, created: created! })
+    .execute();
+}
 
 const job = app.cron.jobs().find((j) => j.id === "__pbLogsCleanup__")!;
 app.cron.fireAndForget(job);

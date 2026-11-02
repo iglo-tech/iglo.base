@@ -89,7 +89,7 @@ async function sendPasswordResetInBackground(
   try {
     await sendRecordPasswordReset(app, record);
   } catch (err) {
-    app.logger.error("Failed to send password reset email", err);
+    app.logger.error("Failed to send password reset email", { error: err });
     return;
   }
 

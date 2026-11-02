@@ -4,6 +4,7 @@
 //
 // In-process, on the app clock: a job's end is awaited, never slept for.
 
+import { testLogger } from "@test/support/logger";
 import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, test } from "bun:test";
 import { rmSync, statSync } from "node:fs";
@@ -21,6 +22,7 @@ import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
 
 let opened: TestApp[] = [];
+const stderrLines: string[] = [];
 
 afterEach(async () => {
   for (const app of opened) {
@@ -35,6 +37,7 @@ async function open(prepare?: (dataDir: string) => void, now?: Date): Promise<Te
   prepare?.(dataDir);
   const app = await openFixtureApp({
     dataDir,
+    stderrLog: (line) => stderrLines.push(line),
     ...(now === undefined ? {} : { clock: { now: () => now } }),
   });
   opened.push(app);
@@ -192,9 +195,9 @@ describe("TestCronsRun", () => {
     await runJob(app, "sync");
     await runJob(app, "async");
 
-    expect(app.logged.map((l) => [l.message, (l.cause as Error).message])).toEqual([
-      ["[FireAndForget] RECOVERED FROM PANIC", "sync failure"],
-      ["[FireAndForget] RECOVERED FROM PANIC", "async failure"],
+    expect(stderrLines.filter((line) => line.startsWith("[FireAndForget]"))).toEqual([
+      "[FireAndForget] RECOVERED FROM PANIC: sync failure",
+      "[FireAndForget] RECOVERED FROM PANIC: async failure",
     ]);
     expect((await send(app, "GET", "/api/crons")).status).toBe(200);
   });
@@ -228,17 +231,19 @@ describe("the cleanup jobs", () => {
 
   test("__pbLogsCleanup__ deletes the logs past maxDays", async () => {
     const now = new Date("2030-03-15T12:00:00Z");
-    const app = await open((dataDir) => {
-      const db = new Database(join(dataDir, "auxiliary.db"));
-      for (const [id, created] of [
-        ["old", "2030-03-08 11:59:59.999Z"],
-        ["boundary", "2030-03-08 12:00:00.000Z"],
-        ["kept", "2030-03-08 12:00:00.001Z"],
-      ]) {
-        db.query("INSERT INTO _logs (id, created) VALUES (?, ?)").run(id!, created!);
-      }
-      db.close();
-    }, now);
+    const app = await open(undefined, now);
+    // after the bootstrap, whose settings reload clears old logs too
+    for (const [id, created] of [
+      ["old", "2030-03-08 11:59:59.999Z"],
+      ["boundary", "2030-03-08 12:00:00.000Z"],
+      ["kept", "2030-03-08 12:00:00.001Z"],
+    ]) {
+      app.databases
+        .auxNonconcurrentDB()
+        .newQuery("INSERT INTO _logs (id, created) VALUES ({:id}, {:created})")
+        .bind({ id: id!, created: created! })
+        .execute();
+    }
     app.settings.Logs.MaxDays = 7;
 
     await runJob(app, "__pbLogsCleanup__");
@@ -307,7 +312,7 @@ describe("__pbDBOptimize__", () => {
       encryptionEnv: "",
       queryTimeout: 30,
       clock: { now: () => new Date() },
-      logger: { error: () => {}, warn: () => {} },
+      logger: testLogger(),
       readWorkers: 0,
       devSQLLog: (line) => lines.push(line),
     });

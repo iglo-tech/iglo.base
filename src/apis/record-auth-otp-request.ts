@@ -97,9 +97,11 @@ export async function recordRequestOTP(e: RequestEvent): Promise<HandlerResult> 
       // use the last issued one
       if (totalRecent > 9) {
         otp = otps[0]; // otps are DESC sorted
-        e.app.logger.error(
-          `Too many OTP requests - reusing the last issued (email ${form.Email}, recordId ${record.id}, otpId ${existingOTP.id})`,
-        );
+        e.app.logger.warn("Too many OTP requests - reusing the last issued", {
+          email: form.Email,
+          recordId: record.id,
+          otpId: existingOTP.id,
+        });
         break;
       }
     }
@@ -143,7 +145,7 @@ async function sendOTPInBackground(
     } catch (deleteErr) {
       errs.push(deleteErr);
     }
-    app.logger.error("Failed to send OTP email", joinErrors(errs));
+    app.logger.error("Failed to send OTP email", { error: joinErrors(errs) });
   }
 }
 

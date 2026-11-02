@@ -10,10 +10,8 @@
 // thread. Nothing here runs inside a database transaction, so the storage
 // calls are awaited for S3 and the local storage alike.
 //
-// A failed thumb falls back to the original, as upstream. Upstream logs
-// the failure as a warning in the app logs (`_logs`); the logs writer is
-// M5.5, and until then the warning is not printed (no informational
-// console output).
+// A failed thumb falls back to the original, as upstream, and the failure
+// goes to the app logs as a warning.
 
 import type { App } from "@/app/app";
 import {
@@ -204,9 +202,14 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
         if (!exists) {
           try {
             await createThumb(e.app, fsys, originalPath, servedPath, thumbSize);
-          } catch {
-            // fallback to the original (upstream logs a warning, see the
-            // top of the file)
+          } catch (err) {
+            e.app.logger.warn(`Fallback to original - failed to create thumb ${servedName}`, {
+              error: err,
+              original: originalPath,
+              thumb: servedPath,
+            });
+
+            // fallback to the original
             servedName = filename;
             servedPath = originalPath;
           }

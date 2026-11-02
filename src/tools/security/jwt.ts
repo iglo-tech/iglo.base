@@ -172,6 +172,10 @@ export interface ValidateOptions {
   verifyIat: boolean; // jwt.WithIssuedAt()
   leewaySeconds?: number; // jwt.WithLeeway
   audience?: string; // jwt.WithAudience, one expected value
+  // the parser's "token has invalid claims: " before the joined errors;
+  // false for Validator.Validate called on its own, as ParseUnverifiedJWT
+  // and the OAuth2 id_token checks do
+  parserPrefix?: boolean;
 }
 
 // MapClaims.parseClaimsString: a string or a list of them; any other type
@@ -219,7 +223,8 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
     try {
       t = parseNumericDate(claims, key);
     } catch (err) {
-      errors.push((err as Error).message);
+      // the prefix is added once, around the joined errors
+      errors.push((err as Error).message.replace(/^token has invalid claims: /, ""));
       return;
     }
     // a time with whole seconds compared with now (which may have a
@@ -228,14 +233,10 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
       errors.push(message);
     }
   };
-  check("exp", (exp) => now < exp + leeway, "token has invalid claims: token is expired");
-  check("nbf", (nbf) => !(now < nbf - leeway), "token has invalid claims: token is not valid yet");
+  check("exp", (exp) => now < exp + leeway, "token is expired");
+  check("nbf", (nbf) => !(now < nbf - leeway), "token is not valid yet");
   if (opts.verifyIat) {
-    check(
-      "iat",
-      (iat) => !(now < iat - leeway),
-      "token has invalid claims: token used before issued",
-    );
+    check("iat", (iat) => !(now < iat - leeway), "token used before issued");
   }
   if (opts.audience !== undefined) {
     const audienceErr = verifyAudience(claims, opts.audience);
@@ -244,7 +245,10 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
     }
   }
   if (errors.length > 0) {
-    throw new JWTError(errors.join("\n"), claims);
+    // Validator.Validate's joinedError (", "), behind the parser's
+    // ErrTokenInvalidClaims when the parser called it
+    const prefix = opts.parserPrefix === false ? "" : "token has invalid claims: ";
+    throw new JWTError(prefix + errors.join(", "), claims);
   }
 }
 
@@ -254,7 +258,7 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
 export function parseUnverifiedJWT(token: string, clock: Clock): MapClaims {
   const claims: MapClaims = {};
   parseUnverifiedToken(token, claims);
-  validateClaims(claims, clock, { verifyIat: true });
+  validateClaims(claims, clock, { verifyIat: true, parserPrefix: false });
   return claims;
 }
 

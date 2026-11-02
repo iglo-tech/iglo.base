@@ -90,7 +90,7 @@ async function sendVerificationInBackground(
   try {
     await sendRecordVerification(app, record);
   } catch (err) {
-    app.logger.error("Failed to send verification email", err);
+    app.logger.error("Failed to send verification email", { error: err });
   }
 
   app.store.set(resendKey, {});

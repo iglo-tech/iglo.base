@@ -1,10 +1,11 @@
 // Upstream: apis/record_auth_with_oauth2_redirect.go
 //
 // The realtime part is findOAuth2RedirectClient and sendOAuth2Redirect in
-// src/realtime/realtime.ts. The fallback pages for a build without the
-// bundled UI are not ported: the executable always has the UI. The debug
-// logs are not written (application code logs errors only).
+// src/realtime/realtime.ts, which also logs the client lookup's failures.
+// The fallback pages for a build without the bundled UI are not ported: the
+// executable always has the UI.
 
+import { requestEventKeySkipSuccessActivityLog } from "@/middlewares/activity-logger";
 import type { RequestEvent } from "@/app/event-request";
 import { findOAuth2RedirectClient, sendOAuth2Redirect } from "@/realtime/realtime";
 import { oauth2SubscriptionTopic } from "@/realtime/realtime";
@@ -25,11 +26,6 @@ export const oauth2RedirectAppleNameStoreKeyPrefix = "@redirect_name_";
 
 // how long the Apple user's name stays in the app store
 const appleNameLifetimeMs = 60_000;
-
-// requestEventKeySkipSuccessActivityLog (apis/middlewares.go): read by the
-// activity logger (M5.5). A success log could contain sensitive information
-// in the url.
-const requestEventKeySkipSuccessActivityLog = "__skipSuccessActivityLogger";
 
 const encoder = new TextEncoder();
 
@@ -60,6 +56,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
       oauth2RedirectDataType,
     );
     if (bindErr) {
+      e.app.logger.debug("Failed to read OAuth2 redirect data", { error: bindErr });
       return failureRedirect(e);
     }
   } else {
@@ -70,6 +67,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
   }
 
   if (data.State === "") {
+    e.app.logger.debug("Missing OAuth2 state parameter");
     return failureRedirect(e);
   }
 
@@ -87,8 +85,9 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
         oauth2RedirectAppleNameStoreKeyPrefix + data.Code,
         data.AppleUser,
       );
-    } catch {
+    } catch (err) {
       // non-critical error
+      e.app.logger.debug("Failed to parse and load Apple Redirect name data", { error: err });
     }
   }
 
@@ -100,7 +99,8 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
       encodedData += `,"error":${marshal(data.Error)}`;
     }
     encodedData += "}";
-  } catch {
+  } catch (err) {
+    e.app.logger.debug("Failed to marshalize OAuth2 redirect data", { error: err });
     client.unsubscribe(oauth2SubscriptionTopic);
     return failureRedirect(e);
   }
@@ -108,6 +108,10 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
   sendOAuth2Redirect(client, encoder.encode(encodedData));
 
   if (data.Error !== "" || data.Code === "") {
+    e.app.logger.debug("Failed OAuth2 redirect due to an error or missing code parameter", {
+      error: data.Error,
+      clientId: data.State,
+    });
     return failureRedirect(e);
   }
 

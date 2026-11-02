@@ -110,6 +110,7 @@ export class Microsoft extends BaseProvider {
     validateClaims(claims, this.clock, {
       verifyIat: true,
       leewaySeconds: idTokenLeewaySeconds(),
+      parserPrefix: false,
     });
 
     return claims;

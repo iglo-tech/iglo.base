@@ -161,7 +161,9 @@ export function syncRecordTableSchema(
   try {
     app.databases.nonconcurrentDB().newQuery("PRAGMA optimize").execute();
   } catch (err) {
-    app.logger.error("Failed to run PRAGMA optimize after record table sync", driverError(err));
+    app.logger.warn("Failed to run PRAGMA optimize after record table sync", {
+      error: driverError(err),
+    });
   }
 }
 

@@ -13,9 +13,7 @@
 // int64; the :each data is bound as a []byte (a BLOB).
 //
 // Not ported: preferGroupBy and the commented-out GROUP BY branch of
-// updateQueryWithDeduplicateConstraint (unused upstream), and the debug
-// log of resolveStaticRequestField's graceful fallback (application code
-// logs only errors).
+// updateQueryWithDeduplicateConstraint (unused upstream).
 
 import type { RequestInfo } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
@@ -275,8 +273,8 @@ export class RecordFieldResolver implements FieldResolver {
     try {
       resultVal = extractNestedVal(this.staticRequestInfo, ...path);
     } catch (err) {
-      // (upstream logs it at the debug level)
       extractErr = err;
+      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error: err });
       resultVal = null;
     }
 

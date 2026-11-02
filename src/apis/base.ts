@@ -12,6 +12,7 @@ import { bindCollectionApi } from "@/apis/collection";
 import { bindCronApi } from "@/apis/cron";
 import { bindFileApi } from "@/files/file-api";
 import { bindHealthApi } from "@/apis/health";
+import { bindLogsApi } from "@/apis/logs";
 import { bindRecordAuthApi } from "@/apis/record-auth";
 import type { RecordAuthOptions } from "@/apis/record-auth-with-oauth2";
 import { bindRecordCrudApi, type RecordCrudOptions } from "@/apis/record-crud";
@@ -56,14 +57,14 @@ export function newRouter(app: App, options: RouterOptions = {}): Router<Request
 
   // API routes
   const apiGroup = pbRouter.group("/api");
-  // logs and SQL are bound by their own tasks, in upstream's order:
-  // settings, collections,
-  // record crud, record auth, logs, backups, crons, files, batch,
-  // realtime, health, SQL
+  // SQL is bound by its own task, in upstream's order: settings,
+  // collections, record crud, record auth, logs, backups, crons, files,
+  // batch, realtime, health, SQL
   bindSettingsApi(app, apiGroup);
   bindCollectionApi(app, apiGroup);
   bindRecordCrudApi(app, apiGroup, options.recordCrud);
   bindRecordAuthApi(app, apiGroup, options.recordAuth);
+  bindLogsApi(app, apiGroup);
   bindBackupApi(app, apiGroup);
   bindCronApi(app, apiGroup);
   bindFileApi(app, apiGroup);

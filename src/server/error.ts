@@ -127,6 +127,16 @@ export function errorsAs<E extends Error>(
     if (current instanceof type) {
       return current;
     }
+    // errors.Join: the first joined error that has one
+    if (current instanceof AggregateError) {
+      for (const joined of current.errors) {
+        const found = errorsAs(joined, type);
+        if (found !== undefined) {
+          return found;
+        }
+      }
+      return undefined;
+    }
     current = current instanceof Error ? current.cause : undefined;
   }
   return undefined;

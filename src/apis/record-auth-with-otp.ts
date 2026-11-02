@@ -113,7 +113,7 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
   try {
     await deleteOTP(e.app, otp);
   } catch (err) {
-    e.app.logger.error(`Failed to delete used OTP (otpId ${otpId})`, err);
+    e.app.logger.error("Failed to delete used OTP", { error: err, otpId });
   }
 
   // update the user email verified state in case the OTP originate from an email address matching the current record one
@@ -132,10 +132,11 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
     try {
       await saveRecord(e.app, record);
     } catch (err) {
-      e.app.logger.error(
-        `Failed to update record verified state after successful OTP validation (otpId ${otpId}, recordId ${record.id})`,
-        err,
-      );
+      e.app.logger.error("Failed to update record verified state after successful OTP validation", {
+        error: err,
+        otpId,
+        recordId: record.id,
+      });
     }
   }
 

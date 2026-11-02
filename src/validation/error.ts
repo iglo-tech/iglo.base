@@ -20,7 +20,7 @@
 
 import { ValidationErrors } from "@/server/error";
 import { DateTime } from "@/tools/types/datetime";
-import { compareUTF8, marshal } from "@/tools/types/go-json";
+import { compareUTF8, isJSONMarshaler, marshal } from "@/tools/types/go-json";
 
 // Error interface represents a validation error (Go's validation.Error).
 export interface Error extends globalThis.Error {
@@ -188,7 +188,7 @@ export class Errors extends ValidationErrors {
     // a null-prototype object, so that a "__proto__" key stays a member
     const errs: Record<string, unknown> = Object.create(null);
     for (const [key, err] of Object.entries(this.errors)) {
-      if (err instanceof Errors) {
+      if (isJSONMarshaler(err)) {
         errs[key] = err;
       } else {
         errs[key] = err === null || err === undefined ? null : err.message;

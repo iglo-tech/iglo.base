@@ -21,10 +21,12 @@
 // 8 MiB unsent is closed. Upstream holds an unbounded amount for it.
 //
 // Not ported: the OnRealtimeConnectRequest, OnRealtimeMessageSend and
-// OnRealtimeSubscribeRequest hooks (D5) and the debug logs.
+// OnRealtimeSubscribeRequest hooks (D5).
 
+import { requestEventKeySkipSuccessActivityLog } from "@/middlewares/activity-logger";
 import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
+import type { LogAttrs } from "@/logs/batch-handler";
 import {
   clientAuthRecord,
   isSameAuth,
@@ -45,15 +47,13 @@ import { Field, ValidateStruct } from "@/validation/struct";
 export const realtimeIdleTimeoutMs = 5 * 60 * 1000;
 export const realtimeMaxTimeoutMs = 30 * 60 * 1000;
 
+const cancelledRequestMessage = "Realtime connection closed (cancelled request)";
+
 // the unsent bytes after which a client is closed (D27)
 export const realtimeMaxQueuedBytes = 8 * 1024 * 1024;
 
 // the stream's high water mark: what Bun may hold before the queue counts
 const streamHighWaterMark = 64 * 1024;
-
-// requestEventKeySkipSuccessActivityLog (apis/middlewares.go): read by the
-// activity logger (M5.5)
-const requestEventKeySkipSuccessActivityLog = "__skipSuccessActivityLogger";
 
 const encoder = new TextEncoder();
 
@@ -101,10 +101,18 @@ export function findOAuth2RedirectClient(
   let client: Client;
   try {
     client = app.subscriptionsBroker.clientById(state);
-  } catch {
+  } catch (err) {
+    app.logger.debug("Missing or invalid OAuth2 subscription client", {
+      error: err,
+      clientId: state,
+    });
     return undefined;
   }
   if (client.isDiscarded() || !client.hasSubscription(oauth2SubscriptionTopic)) {
+    app.logger.debug("Missing or invalid OAuth2 subscription client", {
+      error: null,
+      clientId: state,
+    });
     return undefined;
   }
 
@@ -114,6 +122,9 @@ export function findOAuth2RedirectClient(
   if (typeof clientIP === "string" && clientIP !== "" && clientIP !== realIP) {
     // the subscription is removed in any case (upstream's deferred Unsubscribe)
     client.unsubscribe(oauth2SubscriptionTopic);
+    app.logger.debug(
+      "The client IP that completed the authentication is different from the one that initialized the OAuth2 realtime connection",
+    );
     return undefined;
   }
 
@@ -184,6 +195,15 @@ function realtimeConnect(e: RequestEvent, timers: RealtimeTimers): HandlerResult
     }
   };
 
+  // logs why the connection closed, then ends it
+  const closed = (message: string, attrs: LogAttrs = {}): void => {
+    if (ended) {
+      return;
+    }
+    e.app.logger.debug(message, { clientId: client.id(), ...attrs });
+    end();
+  };
+
   // writes a message; false when the connection ended
   const write = (m: Message): boolean => {
     if (ended) {
@@ -191,9 +211,14 @@ function realtimeConnect(e: RequestEvent, timers: RealtimeTimers): HandlerResult
     }
     try {
       m.writeSSE((chunk) => controller.enqueue(chunk), client.id());
-    } catch {
+    } catch (err) {
       // the client went away
-      end();
+      closed(
+        m === connectMessage
+          ? "Realtime connection closed (failed to deliver PB_CONNECT)"
+          : "Realtime connection closed (failed to deliver message)",
+        { error: err },
+      );
       return false;
     }
     const queued = streamHighWaterMark - (controller.desiredSize ?? 0);
@@ -211,7 +236,7 @@ function realtimeConnect(e: RequestEvent, timers: RealtimeTimers): HandlerResult
       },
       cancel: () => {
         // connection is closed
-        end();
+        closed(cancelledRequestMessage);
       },
     },
     new ByteLengthQueuingStrategy({ highWaterMark: streamHighWaterMark }),
@@ -220,27 +245,30 @@ function realtimeConnect(e: RequestEvent, timers: RealtimeTimers): HandlerResult
   // register new subscription client
   broker.register(client);
 
+  e.app.logger.debug("Realtime connection established", { clientId: client.id() });
+
   // signalize established connection (aka. fire "connect" message)
-  write(new Message("PB_CONNECT", encoder.encode(`{"clientId":"${client.id()}"}`)));
+  const connectMessage = new Message("PB_CONNECT", encoder.encode(`{"clientId":"${client.id()}"}`));
+  write(connectMessage);
 
   if (!ended) {
     // start a max lifetime timer to prevent accumulating too much
     // connection resources and to allow the GC to run more regularly
-    maxTimer = timers.setTimeout(() => end(), realtimeMaxTimeoutMs);
+    maxTimer = timers.setTimeout(() => closed(cancelledRequestMessage), realtimeMaxTimeoutMs);
 
     // start an idle timer to keep track of inactive/forgotten connections
-    idleTimer = timers.setTimeout(() => end(), realtimeIdleTimeoutMs);
+    idleTimer = timers.setTimeout(() => closed(cancelledRequestMessage), realtimeIdleTimeoutMs);
   }
 
   client.listen({
     message: (m) => {
       if (write(m)) {
         timers.clearTimeout(idleTimer);
-        idleTimer = timers.setTimeout(() => end(), realtimeIdleTimeoutMs);
+        idleTimer = timers.setTimeout(() => closed(cancelledRequestMessage), realtimeIdleTimeoutMs);
       }
     },
     // channel is closed
-    discarded: () => end(),
+    discarded: () => closed("Realtime connection closed (closed channel)"),
   });
 
   return e.response.writeBody(stream);
@@ -324,6 +352,11 @@ async function realtimeSetSubscriptions(e: RequestEvent): Promise<HandlerResult>
 
   // subscribe to the new subscriptions
   client.subscribe(...(form.Subscriptions ?? []));
+
+  e.app.logger.debug("Realtime subscriptions updated", {
+    clientId: client.id(),
+    subscriptions: form.Subscriptions ?? [],
+  });
 
   // execAfterSuccessTx: the handler never runs in a transaction here
   return e.noContent(204);

@@ -85,9 +85,9 @@ export async function sendRecordOTP(
   try {
     otp = findOTPById(app, otpId);
   } catch (err) {
-    app.logger.error(
-      `Unable to find OTP to update its sentTo field (either it was already deleted or the id is nonexisting) (otpId ${otpId})`,
-      err,
+    app.logger.warn(
+      "Unable to find OTP to update its sentTo field (either it was already deleted or the id is nonexisting)",
+      { error: err, otpId },
     );
     return;
   }
@@ -100,7 +100,7 @@ export async function sendRecordOTP(
   try {
     await saveOTP(app, otp);
   } catch (err) {
-    app.logger.error(`Failed to update OTP sentTo field (otpId ${otpId}, to ${toAddress})`, err);
+    app.logger.error("Failed to update OTP sentTo field", { error: err, otpId, to: toAddress });
   }
 }
 

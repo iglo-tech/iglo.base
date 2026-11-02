@@ -262,7 +262,8 @@ export async function handleRequest(
       },
       (err: unknown) => {
         // a panic that no middleware recovered
-        app.logger.error(`http: panic serving ${req.remoteAddr}`, err);
+        const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        app.logger.debug(`http: panic serving ${req.remoteAddr}: ${message}`);
         rw.finish();
         reject(err);
       },
@@ -339,7 +340,7 @@ export async function serve(
       color: out.color,
     });
   } catch (err) {
-    app.logger.error("Failed to initialize installer", err);
+    app.logger.warn("Failed to initialize installer", { error: err });
   }
 
   if (!shutdown.aborted) {

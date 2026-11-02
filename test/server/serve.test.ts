@@ -57,7 +57,7 @@ test("a panic inside a handler returns upstream's 500 body", async () => {
     message: "Something went wrong while processing your request.",
     status: 500,
   });
-  expect(app.logged.map((entry) => entry.message)).toEqual([]);
+  expect(app.logged.map((entry) => entry.message)).toEqual(["GET /test-panic"]);
 });
 
 test("a flushed response is streamed", async () => {

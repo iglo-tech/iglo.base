@@ -11,8 +11,10 @@ import { join } from "node:path";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import type { Clock } from "@/app/clock";
+import type { LogTickerFunc } from "@/logs/logger";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import { testLogger } from "@test/support/logger";
 
 export interface TestApp extends App {
   // what the app logged
@@ -35,6 +37,12 @@ export interface TestAppOptions {
   // the process environment (os.Getenv); empty unless set
   getenv?: (name: string) => string;
   encryptionEnv?: string;
+  // run with the app's own logger (`_logs`), not the recording one
+  ownLogger?: boolean;
+  logTicker?: LogTickerFunc;
+  isDev?: boolean;
+  logPrint?: (text: string) => void;
+  stderrLog?: (line: string) => void;
 }
 
 export async function openFixtureApp(options: TestAppOptions = {}): Promise<TestApp> {
@@ -51,15 +59,21 @@ export async function openFixtureApp(options: TestAppOptions = {}): Promise<Test
   const warnings: string[] = [];
   const app = await bootstrap({
     dataDir,
-    isDev: false,
+    isDev: options.isDev ?? false,
     encryptionEnv: options.encryptionEnv ?? "",
     getenv: options.getenv,
     queryTimeout: 30,
     clock: options.clock ?? systemClock,
-    logger: {
-      error: (message, cause) => logged.push({ message, cause }),
-      warn: (message, cause) => warned.push({ message, cause }),
-    },
+    logger: options.ownLogger
+      ? undefined
+      : {
+          ...testLogger(),
+          error: (message, attrs) => logged.push({ message, cause: attrs?.error }),
+          warn: (message, attrs) => warned.push({ message, cause: attrs?.error }),
+        },
+    logTicker: options.logTicker,
+    logPrint: options.logPrint,
+    stderrLog: options.stderrLog,
     readWorkers: options.readWorkers ?? 0,
     warn: (message) => warnings.push(message),
   });

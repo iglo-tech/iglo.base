@@ -4,6 +4,7 @@
 // pb_data directory. Upstream's test app loads the collections cache on
 // bootstrap; open() does the same (reloadCachedCollections).
 
+import { testLogger } from "@test/support/logger";
 import { mkdtempSync, rmSync } from "node:fs";
 import { newAppFilesystem } from "@/app/filesystem";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -63,12 +64,12 @@ export function openDataDir(
     databases,
     store: new Store<string, unknown>(),
     clock,
-    logger: { error: (message, cause) => logged.push({ message, cause }) },
+    logger: testLogger((message, cause) => logged.push({ message, cause })),
     filesystem: newAppFilesystem({
       dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: (message, cause) => logged.push({ message, cause }) },
+      logger: testLogger((message, cause) => logged.push({ message, cause })),
     }),
     logged,
     dataDir,

@@ -9,23 +9,23 @@
 
 import { expect, test } from "bun:test";
 
+import { errorsAs } from "@/server/error";
 import { Errors } from "@/validation/error";
 
 export function expectValidationErrors(
   result: Error | null,
   expectedErrors: readonly string[],
 ): void {
-  if (result !== null && !(result instanceof Errors)) {
+  // errors.As: a joined or wrapped validation.Errors counts
+  const errs = result === null ? null : (errorsAs(result, Errors) ?? null);
+  if (result !== null && errs === null) {
     throw new Error(
       `Failed to parse errors, expected to find validation.Errors, got ${result.name}\n${result.message}`,
     );
   }
 
-  const keys = result === null ? [] : Object.keys(result.errors);
-  expect({ keys: keys.toSorted(), errors: result?.message ?? "" }).toEqual({
-    keys: [...expectedErrors].toSorted(),
-    errors: result?.message ?? "",
-  });
+  const keys = errs === null ? [] : Object.keys(errs.errors);
+  expect(keys.toSorted()).toEqual([...expectedErrors].toSorted());
 }
 
 export interface Pending {

@@ -11,6 +11,7 @@
 //    Provider with the resolver, page 1 of 30 with the count) and
 //    CanAccessRecord, on the main thread and through the read pool.
 
+import { testLogger } from "@test/support/logger";
 import { mkdtempSync, rmSync } from "node:fs";
 import { newAppFilesystem } from "@/app/filesystem";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -68,12 +69,12 @@ function openApp(
     databases,
     store: new Store<string, unknown>(),
     clock: { now: () => new Date() },
-    logger: { error: () => {} },
+    logger: testLogger(),
     filesystem: newAppFilesystem({
       dataDir: dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     }),
     async close() {
       databases.close();

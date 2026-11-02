@@ -8,21 +8,23 @@
 // the pb_data temp directory. An existing data.db is checked without
 // writing to pb_data first, so older data is refused before any file is
 // created. Async because the settings may be encrypted (Web Crypto). Not
-// here yet: the logger's `_logs` writes (M5) and the multi-instance notify
-// watcher (`.notify`).
+// here yet: the multi-instance notify watcher (`.notify`).
 //
 // ClearBootstrap is clearBootstrap: it stops the cron ticker, gives the jobs
-// still running a moment to finish and closes the databases. On a failed
-// bootstrap the databases are closed before the error is thrown.
+// still running a moment to finish, writes the queued logs and closes the
+// databases. On a failed bootstrap the databases are closed before the error
+// is thrown.
 
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { type App, type AppConfig, newApp } from "@/app/app";
+import { type App, type AppConfig, type AppLogger, newApp } from "@/app/app";
 import { registerCrons } from "@/app/crons";
 import { LocalTempDirName } from "@/app/filesystem";
 import { loadAutobackupJob } from "@/backups/autobackup";
 import { loadCollectionsCache } from "@/collections/collection-save";
+import { Logger, type LogTickerFunc } from "@/logs/logger";
+import { newDefaultSettings } from "@/settings/settings-model";
 import { reloadSettings } from "@/settings/settings-query";
 import { Databases, defaultReadWorkers } from "@/db/base";
 import { checkExistingDataDir, runSystemMigrations } from "@/migrations/system-migrations";
@@ -32,7 +34,14 @@ import { Store } from "@/tools/store/store";
 // fails on the closed databases, into the log
 const cronShutdownWaitMs = 5000;
 
-export interface BootstrapConfig extends Omit<AppConfig, "databases" | "store"> {
+export interface BootstrapConfig extends Omit<AppConfig, "databases" | "store" | "logger"> {
+  // replaces the app's own logger (a test seam)
+  logger?: AppLogger;
+  // --dev: receives the printed logs, with ANSI colors when logColor is set
+  logPrint?: (text: string) => void;
+  logColor?: boolean;
+  // the logs queue timer; a real timer unless set (a test seam)
+  logTicker?: LogTickerFunc;
   // the number of read workers (D8); defaultReadWorkers unless set
   readWorkers?: number;
   // --dev: receives every data.db statement
@@ -58,16 +67,32 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     devSQLLog: config.isDev ? config.devSQLLog : undefined,
   });
 
+  const settings = config.settings ?? newDefaultSettings();
+
+  const logger =
+    config.logger ??
+    new Logger({
+      databases,
+      settings: () => settings.Logs,
+      clock: config.clock,
+      isDev: config.isDev,
+      print: config.logPrint ?? (() => {}),
+      color: config.logColor === true,
+      stderrLog: config.stderrLog ?? (() => {}),
+      ticker: config.logTicker,
+    });
+
   const app = newApp({
     dataDir: config.dataDir,
     isDev: config.isDev,
     encryptionEnv: config.encryptionEnv,
     queryTimeout: config.queryTimeout,
     clock: config.clock,
-    logger: config.logger,
+    logger,
     databases,
     store: new Store<string, unknown>(),
-    settings: config.settings,
+    settings,
+    stderrLog: config.stderrLog,
     getenv: config.getenv,
     automigrateDir: config.automigrateDir,
     restart: config.restart,
@@ -88,6 +113,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     loadAutobackupJob(app);
   } catch (err) {
     try {
+      logger.close();
       databases.close();
     } catch {
       // the bootstrap error is the one reported
@@ -111,6 +137,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 export async function clearBootstrap(app: App): Promise<void> {
   app.cron.stop();
   await app.cron.waitForRunning(cronShutdownWaitMs);
+
+  app.logger.close();
 
   app.thumbs.close();
   try {

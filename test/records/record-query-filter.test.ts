@@ -7,6 +7,7 @@
 // must be busy with the read while it runs), and must give the same
 // result.
 
+import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { newAppFilesystem } from "@/app/filesystem";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -44,12 +45,12 @@ function openPooledApp(): RecordsApp & { cleanup(): Promise<void> } {
     databases,
     store: new Store<string, unknown>(),
     clock: { now: () => new Date() },
-    logger: { error: () => {} },
+    logger: testLogger(),
     filesystem: newAppFilesystem({
       dataDir: dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     }),
     async cleanup() {
       databases.close();

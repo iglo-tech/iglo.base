@@ -103,6 +103,19 @@ async function restored(url: string, name: string): Promise<boolean> {
   });
 }
 
+// the restore failures in `_logs`, after the server stopped
+function restoreFailures(dataDir: string): { key: string; error: string }[] {
+  const db = new Database(join(dataDir, "auxiliary.db"), { readonly: true });
+  try {
+    const rows = db
+      .query("SELECT data FROM _logs WHERE level = 8 AND message = 'Failed to restore backup'")
+      .all() as { data: string }[];
+    return rows.map((row) => JSON.parse(row.data) as { key: string; error: string });
+  } finally {
+    db.close();
+  }
+}
+
 describe("restore", () => {
   test("replaces the process: same pid, arguments, environment and port", async () => {
     const dataDir = fixtureCopy();
@@ -175,8 +188,8 @@ describe("restore", () => {
       expect(readdirSync(dataDir).toSorted()).toEqual(entries.toSorted());
       expect(readdirSync(join(dataDir, ".pb_temp_to_delete"))).toEqual([]);
 
-      const { stderr } = await server.stop();
-      expect(stderr).toContain("Failed to restore backup: bad.zip");
+      await server.stop();
+      expect(restoreFailures(dataDir).map((l) => l.key)).toEqual(["bad.zip"]);
     }, 30_000);
   }
 
@@ -190,7 +203,8 @@ describe("restore", () => {
     await Bun.sleep(restoreDelayMs);
 
     expect(await eventually(() => canBackup(server.url))).toBe(true);
-    expect((await server.stop()).stderr).toContain("zip: not a valid zip file");
+    await server.stop();
+    expect(restoreFailures(dataDir)[0]?.error).toContain("zip: not a valid zip file");
   }, 30_000);
 
   test("a failed execve reverts pb_data and the app bootstraps again", async () => {

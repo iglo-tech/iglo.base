@@ -22,25 +22,23 @@ export function registerCrons(app: App): void {
     try {
       app.databases.nonconcurrentDB().newQuery("PRAGMA wal_checkpoint(TRUNCATE)").execute();
     } catch (err) {
-      app.logger.warn(
-        "Failed to run periodic PRAGMA wal_checkpoint for the main DB",
-        driverError(err),
-      );
+      app.logger.warn("Failed to run periodic PRAGMA wal_checkpoint for the main DB", {
+        error: driverError(err),
+      });
     }
 
     try {
       app.databases.auxNonconcurrentDB().newQuery("PRAGMA wal_checkpoint(TRUNCATE)").execute();
     } catch (err) {
-      app.logger.warn(
-        "Failed to run periodic PRAGMA wal_checkpoint for the auxiliary DB",
-        driverError(err),
-      );
+      app.logger.warn("Failed to run periodic PRAGMA wal_checkpoint for the auxiliary DB", {
+        error: driverError(err),
+      });
     }
 
     try {
       app.databases.nonconcurrentDB().newQuery("PRAGMA optimize").execute();
     } catch (err) {
-      app.logger.warn("Failed to run periodic PRAGMA optimize", driverError(err));
+      app.logger.warn("Failed to run periodic PRAGMA optimize", { error: driverError(err) });
     }
   });
 
@@ -49,7 +47,7 @@ export function registerCrons(app: App): void {
     try {
       await deleteExpiredMFAs(app);
     } catch (err) {
-      app.logger.warn("Failed to delete expired MFA sessions", err);
+      app.logger.warn("Failed to delete expired MFA sessions", { error: err });
     }
   });
 
@@ -58,7 +56,7 @@ export function registerCrons(app: App): void {
     try {
       await deleteExpiredOTPs(app);
     } catch (err) {
-      app.logger.warn("Failed to delete expired OTP sessions", err);
+      app.logger.warn("Failed to delete expired OTP sessions", { error: err });
     }
   });
 
@@ -70,7 +68,7 @@ export function registerCrons(app: App): void {
         DateTime.fromDate(app.clock.now()).addDate(0, 0, -Number(app.settings.Logs.MaxDays)),
       );
     } catch (err) {
-      app.logger.warn("Failed to delete old logs", err);
+      app.logger.warn("Failed to delete old logs", { error: err });
     }
   });
 }

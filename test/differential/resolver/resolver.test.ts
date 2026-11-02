@@ -31,6 +31,7 @@
 // CanAccessRecord (sync and async). The stored rules of the copy follow
 // upstream's for each case.
 
+import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { newAppFilesystem } from "@/app/filesystem";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -390,12 +391,12 @@ function openCopy(name: string): TestApp {
     databases,
     store: new Store<string, unknown>(),
     clock,
-    logger: { error: () => {} },
+    logger: testLogger(),
     filesystem: newAppFilesystem({
       dataDir: copyDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
-      logger: { error: () => {} },
+      logger: testLogger(),
     }),
     async cleanup() {
       databases.close();

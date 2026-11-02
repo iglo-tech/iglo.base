@@ -6,6 +6,7 @@
 // (core/record_model.go); upstream's tests.NewTestApp is a copy of the
 // vendored fixture opened with src/db.
 
+import { testLogger } from "@test/support/logger";
 import { expect } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -432,7 +433,7 @@ export function interceptorArgs(
       throw new Error("no records in this test");
     },
     isTransactional: () => false,
-    logger: { error: () => {} },
+    logger: testLogger(),
   };
   // the record itself, with collection() and baseFilesPath(): every other
   // read and write goes to it

@@ -23,8 +23,8 @@
 //
 // "After success" means after the outer transaction commits; the record
 // chain calls them from its txInfo.OnComplete, never inside a transaction.
-// A failure here never fails the save (upstream only logs it at debug
-// level, which iglo.base does not print).
+// A failure here never fails the save: it is logged at debug level, as
+// upstream does.
 //
 // Upstream checks the rules of one broadcast in goroutines, a chunk of 150
 // clients each, in the after success path of the request that wrote the
@@ -63,6 +63,7 @@ import {
 } from "@/apis/record-helpers";
 import type { Collection } from "@/collections/collection-model";
 import type { CollectionsApp } from "@/collections/collection-query";
+import { joinErrors } from "@/collections/view";
 import { HashExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { Record } from "@/records/record-model";
@@ -115,7 +116,11 @@ export function realtimeRecordDelete(app: RecordsApp, record: Record): void {
     dryCacheRecordDelete(app, record);
   } catch (err) {
     // the delete goes on (upstream only logs the error)
-    app.logger.error("Failed to dry cache the realtime record delete", err);
+    app.logger.debug("Failed to dry cache record delete", {
+      id: record.id,
+      collectionName: record.collection().name,
+      error: err,
+    });
   }
 }
 
@@ -435,17 +440,35 @@ class RecordBroadcast {
 
         // apply expand
         if (rawExpand !== "") {
-          // expand errors are only logged upstream
-          expandRecordSync(
+          const expandErrs = expandRecordSync(
             this.app,
             cleanRecord,
             rawExpand.split(","),
             expandFetchSync(this.app as App, requestInfo),
           );
+          if (expandErrs.size > 0) {
+            this.app.logger.debug("[broadcastRecord] expand errors", {
+              id: cleanRecord.id,
+              collectionName: collection.name,
+              sub,
+              expand: rawExpand,
+              errors: joinErrors([...expandErrs.values()]),
+            });
+          }
         }
 
         // check fields
-        const data = encoder.encode(recordData(this.action, cleanRecord, rawFields));
+        const data = encoder.encode(
+          recordData(this.action, cleanRecord, rawFields, (err) => {
+            this.app.logger.debug("[broadcastRecord] pick fields error", {
+              id: cleanRecord.id,
+              collectionName: collection.name,
+              sub,
+              fields: rawFields,
+              error: err,
+            });
+          }),
+        );
         if (sharedKey !== "") {
           this.#encoded.set(sharedKey, data);
         }
@@ -624,14 +647,19 @@ function queryValue(options: SubscriptionOptions, key: string): string {
 
 // recordData: the broadcasted record subscription message data,
 // {"record":…,"action":…} (Go's struct field order)
-function recordData(action: string, record: Record, rawFields: string): string {
+function recordData(
+  action: string,
+  record: Record,
+  rawFields: string,
+  onPickError: (err: unknown) => void,
+): string {
   let encodedRecord: string | undefined;
 
   if (rawFields !== "") {
     try {
       encodedRecord = marshal(pick(record, rawFields));
-    } catch {
-      // pick fields errors are only logged upstream
+    } catch (err) {
+      onPickError(err);
     }
   }
 

@@ -25,6 +25,7 @@ import { collectionsImport } from "@test/scenarios/collection-import";
 import { cronsList, cronsRun } from "@test/scenarios/cron";
 import { fileDownload, fileToken } from "@test/scenarios/file";
 import { healthAPI } from "@test/scenarios/health";
+import { logView, logsList, logsStats, logsTruncate } from "@test/scenarios/logs";
 import { superuserIPsWhitelist } from "@test/scenarios/middlewares";
 import {
   recordAuthImpersonate,
@@ -118,6 +119,10 @@ export const suites: Suite[] = [
   collectionsImport,
   cronsList,
   cronsRun,
+  logsList,
+  logView,
+  logsStats,
+  logsTruncate,
   fileToken,
   fileDownload,
   healthAPI,

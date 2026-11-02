@@ -624,7 +624,7 @@ function processBatch(
       try {
         result = processInternalRequest(txApp, e, item);
       } catch (err) {
-        e.app.logger.error("Batch item failed unexpectedly", err);
+        e.app.logger.error("Batch item failed unexpectedly", { error: err });
         result = errBatchTimeout;
       }
       if (result === errBatchTimeout) {
@@ -739,5 +739,10 @@ export class BatchResponseError extends Error {
   resolve(errData: Record<string, unknown>): unknown {
     errData["response"] = this.err;
     return errData;
+  }
+
+  // upstream's map has no fixed order; this is its sorted one
+  marshalJSON(): string {
+    return `{"code":${JSON.stringify(this.code())},"message":${JSON.stringify(this.message)},"response":${JSON.stringify(this.err)}}`;
   }
 }

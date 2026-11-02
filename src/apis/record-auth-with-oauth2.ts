@@ -11,9 +11,8 @@
 // prepared before the transaction too (it has awaits), with its body set
 // inside. safeHTTPClient and safeFileFromURL are in src/oauth2/safe-file.ts.
 //
-// Logs: the redirectUrl deprecation warning and the debug line of Apple's
-// missing name are not written (application code logs errors only); a
-// failed avatar download is.
+// Logs: the redirectUrl deprecation warning, the debug line of Apple's
+// missing name and a failed avatar download, as upstream.
 
 import type { App } from "@/app/app";
 import {
@@ -135,6 +134,9 @@ export async function recordAuthWithOAuth2(
   }
 
   if (form.RedirectUrl !== "" && form.RedirectURL === "") {
+    e.app.logger.warn(
+      "[recordAuthWithOAuth2] redirectUrl body param is deprecated and will be removed in the future. Please replace it with redirectURL.",
+    );
     form.RedirectURL = form.RedirectUrl;
   }
 
@@ -199,6 +201,8 @@ export async function recordAuthWithOAuth2(
     if (typeof name === "string") {
       e.app.store.remove(nameKey);
       authUser.name = name;
+    } else {
+      e.app.logger.debug("Missing or already removed Apple user's name");
     }
   }
 
@@ -490,7 +494,7 @@ async function downloadAvatar(
     // the internal request's multipart part, named after the file's normalized name
     return await NewFileFromBytes(await file.reader.bytes(), file.name);
   } catch (err) {
-    e.app.logger.error("Failed to retrieve OAuth2 avatar", err);
+    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error: err });
     return undefined;
   }
 }
