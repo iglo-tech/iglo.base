@@ -10,7 +10,7 @@ M7.1a active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.1a | review 1 | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 1 | [Brief](briefs/M7.1a.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite. Worker: `check` green, `test:reference` 3 backlog flakes. Logs batch write ~40% of main thread on health |
+| M7.1a | review 2 | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 2 | [Brief](briefs/M7.1a.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite. Round 1 (Opus CHANGES: two bcrypt checks on the event loop, list conclusion) fixed by the lead at `3de51da`: `check` 0 failures, `test:reference` 2 backlog flakes (realtime order, auth 5 s timeout) that pass on rerun |
 
 ## Done
 
