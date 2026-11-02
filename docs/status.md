@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-01
 
-M5.4b active.
+M5.5 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.4b | review | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 3 | [Brief](briefs/M5.4b.md) |
+| M5.5 | worker | `task/M5.5-logs` | 0 | [Brief](briefs/M5.5.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M5.4b | [#53](https://github.com/iglo-tech/iglo.base/pull/53) | 2026-11-02 (`0457f9b`) | Three review rounds (Opus, lead fixed rounds 1 and 2): Opus APPROVE at `c19b206`. `check` and `test:reference` at 0 failures at `e1b7111`, the last code change; round 3 was one test only. Files upload before the write transaction; a failed delete after a save answers 400 as upstream. File downloads spool first. Listed in 04-api-compatibility.md. Multipart intake stalls the event loop (backlog, M7.1) |
 | M5.4a | [#52](https://github.com/iglo-tech/iglo.base/pull/52) | 2026-11-01 (`73443c3`) | Two review rounds (Opus, lead fixed round 1): Opus APPROVE at `9e9ed96`, its `test:reference` at 0 failures. Upstream's S3 client ported on `fetch`, as `Bun.S3Client` cannot return raw error bodies; AGENTS.md updated. Downloads spool first (listed in 04-api-compatibility.md): 1 GiB 5.0 s vs upstream 1.5 s; create 18.3 s vs 5.1 s. M5.4b: `copy-object.ts` must accept any root |
 | M5.3 | [#51](https://github.com/iglo-tech/iglo.base/pull/51) | 2026-11-01 (`8cd279a`) | Three review rounds: Sol round 1, then Opus (D29, lead fixed both): Opus APPROVE at `555a9a1`. `test:reference` at that head had one backlog flake in the lead's run (realtime order) and one new one in the reviewer's (autobackup list). `process.execve` restarts the compiled server; zips restore across both servers, Zip64 checked by hand. Zip synced every 32 MiB in the worker, as its writeback stalled main-thread commits. Backup about 2× upstream's time on incompressible data. With S3 enabled, backup endpoints fail with the not-supported error until M5.4 |
 | M5.6 | [#50](https://github.com/iglo-tech/iglo.base/pull/50) | 2026-10-31 (`3fc9c66`) | Two review rounds: Sol APPROVE at `23673b7` with `test:reference` at 0 failures (lead fixed round 1: `?fields=` on the list, log retention on Go's AddDate). Ticker under `serve` only; the four built-in jobs and the limiter job run; `AppLogger` gained `warn`. Carried: `__pbAutoBackup__` must be re-added on each settings reload, as its list position is API output (M5.3); job panic logs stay on stderr when the logger moves (M5.5); the crons screen footer still mentions registering jobs with Go or JavaScript (upstream `ui/` text) |
@@ -124,6 +125,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 Decisions and plan changes made by agents while the owner was away.
 
+- 2026-11-02 (M5.5 pick): next in milestone order, and M6.4 waits on it. Opus worker: request logs sit on every request. The 5-hour usage limit paused work three times in M5.4; the host resumes agents at the reset, so leads no longer write a pause for those, and they refresh the lock heartbeat on resuming.
 - 2026-11-01 (M5.4b PR): the brief said a failed S3 delete after a commit fails nothing; upstream's binary answers 400 on `PATCH` and batch while the change stays committed. The lead accepted the worker's match of upstream, as the API contract overrides a brief; a failed delete after a record or collection delete still fails nothing. The lead sent #53 to review with `test:reference` at 2 failures, both harness flakes: a port collision (`freePort()` row; the file passed 606 of 606 on rerun) and the realtime order row.
 - 2026-11-01 (M5.4b brief): with S3 enabled, a record's files upload before the write transaction opens and are deleted if it fails, as network calls never run inside one and the write path is synchronous. Migration bindings cannot reach S3 file storage for the same reason. Opus worker per the model table. M5.4b ships although production's files are local (D15), as the API contract covers `s3.enabled`.
 - 2026-11-01 (M5.4a PR): `Bun.S3Client` cannot return the raw error body the API shows, so the worker ported upstream's S3 client on `fetch`, as the brief allowed. Two new deliberate differences are listed in `04-api-compatibility.md`: S3 downloads spool to a temp file (Bun drops `Content-Length` on a stream), and some network error texts differ from Go's. All work paused 14:13–16:10 UTC on the 5-hour usage limit and resumed by itself; two scheduled lead runs resumed with it and were told to stop.
