@@ -299,7 +299,13 @@ export async function createBackup(app: App, name = ""): Promise<void> {
       const tempZipPath = join(app.dataDir, LocalTempDirName, `pb_backup_${pseudorandomString(6)}`);
 
       try {
-        await createZip(app, backupName, tempZipPath);
+        // the log writer holds no batch and no connection while the files are copied (D31)
+        await app.logger.suspend();
+        try {
+          await createZip(app, backupName, tempZipPath);
+        } finally {
+          app.logger.resume();
+        }
 
         // persist the backup in the backups filesystem
         // -----------------------------------------------------------

@@ -27,7 +27,7 @@ import { loadCollectionsCache } from "@/collections/collection-save";
 import { Logger, type LogTickerFunc } from "@/logs/logger";
 import { newDefaultSettings } from "@/settings/settings-model";
 import { reloadSettings } from "@/settings/settings-query";
-import { Databases, defaultReadWorkers } from "@/db/base";
+import { auxDBFilename, Databases, defaultReadWorkers } from "@/db/base";
 import { checkExistingDataDir, runSystemMigrations } from "@/migrations/system-migrations";
 import { Store } from "@/tools/store/store";
 
@@ -78,6 +78,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     config.logger ??
     new Logger({
       databases,
+      auxPath: join(config.dataDir, auxDBFilename),
       settings: () => settings.Logs,
       clock: config.clock,
       isDev: config.isDev,

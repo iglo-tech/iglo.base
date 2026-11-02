@@ -45,6 +45,12 @@ export function openReadOnly(dbPath: string): Database {
   return openWithPragmas(new Database(dbPath, { readonly: true }));
 }
 
+// the read-write connection of the log writer thread (src/logs/log-worker.ts):
+// upstream's pragmas on a connection of its own to auxiliary.db
+export function openReadWrite(dbPath: string): Database {
+  return openWithPragmas(new Database(dbPath, { create: true, readwrite: true }));
+}
+
 function openWithPragmas(conn: Database): Database {
   try {
     for (const pragma of connectPragmas) {

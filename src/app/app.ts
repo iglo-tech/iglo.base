@@ -32,6 +32,10 @@ export interface AppLogger {
   setLevel(logs: LogsConfig): void;
   // writes the queued logs; called before the databases close
   close(): void;
+  // writes the queued logs and stops the log writer thread; later logs wait
+  // for resume (a backup or restore runs, D31)
+  suspend(): Promise<void>;
+  resume(): void;
 }
 
 // The part of the logger that the narrow app contexts use.

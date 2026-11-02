@@ -15,5 +15,7 @@ export function testLogger(onLog?: (message: string, cause: unknown) => void): A
     error: log,
     setLevel: () => {},
     close: () => {},
+    suspend: () => Promise.resolve(),
+    resume: () => {},
   };
 }

@@ -103,30 +103,42 @@ export async function restoreBackup(app: App, name: string): Promise<void> {
   app.store.set(StoreKeyActiveBackup, name);
 
   try {
-    // make sure that the special temp directory exists
-    // note: it needs to be inside the current pb_data to avoid "cross-device link" errors
-    const localTempDir = join(app.dataDir, LocalTempDirName);
-    const fsys = app.filesystem.newBackupsFilesystem(AbortSignal.timeout(fetchBackupTimeoutMs));
-
+    // the log writer holds no batch and no connection to files that are
+    // replaced (D31); after a restart it belongs to the closed app and
+    // resume does nothing
+    await app.logger.suspend();
     try {
-      let exists: boolean;
-      try {
-        exists = await fsys.exists(name);
-      } catch {
-        exists = false;
-      }
-      if (!exists) {
-        throw new Error(`missing or invalid backup file ${goQuote(name)} to restore`);
-      }
-
-      mkdirSync(localTempDir, { recursive: true, mode: 0o777 });
-
-      await extractAndReplace(app, fsys, name, localTempDir);
+      await restoreLocked(app, name);
     } finally {
-      fsys.close();
+      app.logger.resume();
     }
   } finally {
     app.store.remove(StoreKeyActiveBackup);
+  }
+}
+
+async function restoreLocked(app: App, name: string): Promise<void> {
+  // make sure that the special temp directory exists
+  // note: it needs to be inside the current pb_data to avoid "cross-device link" errors
+  const localTempDir = join(app.dataDir, LocalTempDirName);
+  const fsys = app.filesystem.newBackupsFilesystem(AbortSignal.timeout(fetchBackupTimeoutMs));
+
+  try {
+    let exists: boolean;
+    try {
+      exists = await fsys.exists(name);
+    } catch {
+      exists = false;
+    }
+    if (!exists) {
+      throw new Error(`missing or invalid backup file ${goQuote(name)} to restore`);
+    }
+
+    mkdirSync(localTempDir, { recursive: true, mode: 0o777 });
+
+    await extractAndReplace(app, fsys, name, localTempDir);
+  } finally {
+    fsys.close();
   }
 }
 
