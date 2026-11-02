@@ -374,7 +374,7 @@ export async function serve(
 ): Promise<void> {
   if (config.httpsAddr !== "") {
     throw new Error(
-      "HTTPS is not implemented yet: --https and domain arguments are not supported in this build",
+      "HTTPS is not supported (D30): the serve command refuses --https and domain arguments",
     );
   }
 

@@ -254,3 +254,11 @@ Direction from the owner on 2026-11-01, including the reviewer model; its effort
 - **Decision:** every agent on this project runs on an Anthropic model. The reviewer is Claude Opus 5.5 at high effort, always a fresh agent that did not work on the task. Fable 5.1 was the first choice for a few minutes; the owner replaced it because its credits are limited. The council and its merge rule stay as in D25.
 - **Why:** `gpt-6.1-sol` stopped working on this host on 2026-10-31 (`model_not_found`) and M5.3's review stalled on it. D25 recorded that Claude reviewers approved almost every head, so the reviewer instructions now require findings backed by probes, and an approval must say what was probed.
 - **Consequence:** replaces the reviewer part of D25 in the [work plan](12-work-plan.md) and the [runbook](../chief-of-staff.md). Sol's earlier reviews stand.
+
+## D30. No TLS in the app
+
+Direction from the owner on 2026-11-02.
+
+- **Decision:** iglo.base serves plain HTTP only. Upstream's automatic HTTPS (`serve example.com`, `--https`, autocert with Let's Encrypt) is not ported; TLS is terminated by the reverse proxy in front of iglo.base. `serve` with `--https` or domain arguments fails before `pb_data` is opened, with a message that names [01-scope.md](01-scope.md#removed-automatic-https). Task M6.3 is dropped, and the `acme-client` dependency is removed from the design.
+- **Why:** certificate handling is the reverse proxy's role in the deployments iglo.base targets; it keeps an ACME client, a certificate cache and a second listener out of the app.
+- **Consequence:** listed in [01-scope.md](01-scope.md#removed-automatic-https) and the deliberate differences of [04-api-compatibility.md](04-api-compatibility.md). The `--https` flag stays parsed, so its use gets this error instead of "unknown flag". Upstream's `.autocert_cache` is left alone and stays excluded from backups.

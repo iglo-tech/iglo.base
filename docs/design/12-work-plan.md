@@ -180,7 +180,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 |---|---|---|---|---|
 | M6.1 | Vendor `ui/` at v0.41.0 with the patch set, embed it, serve `/_/` with upstream's headers | `ui/`, `apis/serve.go` | M0.1 | Dashboard loads against iglo.base; `ui/PATCHES.md` lists every change; the 10 `extensions_test.go` scenarios pass with the marked differences |
 | M6.2 | Installer and `superuser` commands (folded into M6.1 on 2026-10-29) | `apis/installer.go`, `cmd/superuser.go` | M4.1, M6.1 | Install flow works; `superuser` command tests pass |
-| M6.3 | Automatic HTTPS (`serve example.com`) | `apis/serve.go` autocert | M0.1 | Certificates from a local ACME test server |
+| M6.3 | Dropped on 2026-11-02 (D30): no TLS in the app, the reverse proxy terminates it | — | — | — |
 | M6.4 | Dashboard checklist and browser tests | none | M6.1, M6.2, M5.3, M5.5 | The `agent-browser` checklist passes; automated install, collection-and-record and logs tests pass |
 
 ### M7: 1.0 (MVP)
