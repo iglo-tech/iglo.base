@@ -94,9 +94,17 @@ export interface SdkEnv {
   step<T>(label: string, fn: () => Promise<T>): Promise<T>;
   // like step, for a call that must fail: returns the ClientResponseError
   fails(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError>;
+  // runs fn without recording its requests, and records the value it
+  // returns: for calls whose responses differ in ways the suite cannot
+  // normalize (a backup's size and modification time)
+  derived<T>(label: string, fn: () => Promise<T>, value: (result: T) => unknown): Promise<T>;
   // like fails, for an error whose text carries run-specific data (an S3
   // gateway's signature error): records the status and `data` only
-  failsStatus(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError>;
+  failsStatus(
+    label: string,
+    fn: () => Promise<unknown>,
+    pick?: (error: ClientResponseError) => unknown,
+  ): Promise<ClientResponseError>;
   // records a value that is not an SDK call's result
   record(label: string, value: unknown): void;
   // raw requests recorded as an exchange (a file download, a mock call)
@@ -297,7 +305,19 @@ class Recording implements SdkEnv {
     return error;
   }
 
-  async failsStatus(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError> {
+  async derived<T>(label: string, fn: () => Promise<T>, value: (result: T) => unknown): Promise<T> {
+    const before = this.#current.length;
+    const result = await fn();
+    this.#current.splice(before);
+    this.record(label, value(result));
+    return result;
+  }
+
+  async failsStatus(
+    label: string,
+    fn: () => Promise<unknown>,
+    pick?: (error: ClientResponseError) => unknown,
+  ): Promise<ClientResponseError> {
     const before = this.#current.length;
     let error: unknown;
     try {
@@ -309,7 +329,7 @@ class Recording implements SdkEnv {
     if (!(error instanceof ClientResponseError)) {
       throw new Error(`${label}: expected a ClientResponseError, got ${String(error)}`);
     }
-    this.record(label, { status: error.status, data: error.response["data"] });
+    this.record(label, pick?.(error) ?? { status: error.status, data: error.response["data"] });
     return error;
   }
 
