@@ -25,6 +25,8 @@ export interface UpstreamServer {
   // the combined standard output and error so far
   output(): string;
   stop(): Promise<void>;
+  // SIGKILL, for crash tests; the data directory is left as it is
+  kill(): Promise<void>;
 }
 
 export async function startUpstream(
@@ -88,6 +90,7 @@ export async function startUpstream(
     url,
     dataDir,
     output: () => child.output(),
+    kill: () => child.kill(),
     async stop() {
       try {
         await child.stop();
