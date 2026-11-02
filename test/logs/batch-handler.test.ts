@@ -20,6 +20,10 @@ function record(message: string, level = LevelInfo, attrs?: LogRecord["attrs"]):
   return { time: new Date(), level, message, attrs };
 }
 
+function validationError(): Error {
+  return NewError("validation_code", "validation_message");
+}
+
 function messages(logs: Log[]): string[] {
   return logs.map((l) => l.message);
 }
@@ -156,7 +160,6 @@ describe("BatchHandler", () => {
     h2.handle(named);
 
     // errors serialization checks
-    const validationError = (): Error => NewError("validation_code", "validation_message");
     const validationErrors = (): Errors =>
       new Errors({ a: validationError(), b: new Error("plain") });
     h0.handle(
