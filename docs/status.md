@@ -10,7 +10,7 @@ M5.7 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.7 | worker | `task/M5.7-serve` | 0 | [Brief](briefs/M5.7.md) |
+| M5.7 | review 1 | [#55](https://github.com/iglo-tech/iglo.base/pull/55) | 0 | [Brief](briefs/M5.7.md) |
 
 ## Done
 
