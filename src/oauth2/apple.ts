@@ -121,6 +121,7 @@ function validateAppleClaims(claims: MapClaims, clock: Clock, audience: string):
       verifyIat: true,
       leewaySeconds: idTokenLeewaySeconds(),
       audience,
+      parserPrefix: false,
     });
   } catch (err) {
     errors.push((err as Error).message);
@@ -131,6 +132,7 @@ function validateAppleClaims(claims: MapClaims, clock: Clock, audience: string):
   }
 
   if (errors.length > 0) {
-    throw new Error(errors.join("\n"));
+    // one Validator: its joinedError
+    throw new Error(errors.join(", "));
   }
 }
