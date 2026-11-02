@@ -10,7 +10,7 @@ M5.9 active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M5.9 | review 1 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 1 | [Brief](briefs/M5.9.md). Sonnet 5.5 worker; lead's `check` 0 failures and `test:reference` two backlog flakes (pass on rerun) at `1389517` |
+| M5.9 | fix 1 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 1 | [Brief](briefs/M5.9.md). Sonnet 5.5 worker; lead's `check` 0 failures and `test:reference` two backlog flakes (pass on rerun) at `1389517`. Round 1 Opus CHANGES: restore recovery not idempotent or atomic (data loss on a second start), revert skipped on a failed phase write, swap-window test passes only when the kill misses; Sonnet fixer |
 
 ## Done
 
