@@ -4,12 +4,13 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-02
 
-No task active; M6.4 next.
+M7.1a active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M7.1a | worker | — | 0 | [Brief](briefs/M7.1a.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite |
 
 ## Done
 

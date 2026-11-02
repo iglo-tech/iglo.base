@@ -187,7 +187,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 
 | ID | Task | Upstream | Depends on | Acceptance |
 |---|---|---|---|---|
-| M7.1 | Performance comparison against upstream | none | M5.8 | Numbers in `docs/perf/` meet the [performance bar](02-architecture.md#performance-bar) |
+| M7.1 | Performance, profile first (owner direction 2026-11-02): profile the main thread against upstream, then fix what the profile shows. Split into M7.1a (profile, bcrypt off the event loop) and M7.1b (fixes the profile justifies) | none | M5.8 | M7.1a: profiles and numbers in `docs/perf/`, bcrypt off the loop; M7.1b: numbers re-measured against the [performance bar](02-architecture.md#performance-bar) |
 | M7.2 | User documentation linked from the dashboard, operations guide | none | M6.4 | Every dashboard documentation link resolves |
 | M7.3 | Release workflow: the linux-x64 binary on `v*` tags (D24) | none | M0.8 | A test tag produces a working linux-x64 binary |
 | M7.4 | Cutover rehearsal on the staging copy, with the owner (D20) | none | M7.3 | Move and rollback done once; outbound settings disabled before the first start |
