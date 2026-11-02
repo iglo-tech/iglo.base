@@ -74,6 +74,14 @@ const queries: (string | Record<string, unknown>)[] = [
   "select 1 union select 2",
   "select cast(1 as real)",
   "select 2.5e-5, 123456.789, 0.1+0.2",
+  // last, as upstream keeps such state on a pooled read connection (a
+  // "begin" leaves later reads on a stale snapshot): the state a query
+  // leaves must not reach the writes
+  "begin",
+  "savepoint s",
+  "pragma query_only=1",
+  "attach ':memory:' as m",
+  "insert into x values(9)",
 ];
 
 async function run(base: string, q: string | Record<string, unknown>): Promise<string> {

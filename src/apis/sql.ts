@@ -4,10 +4,12 @@
 // and database/sql's convertAssign into *string, which runSQL scans into.
 //
 // The statements run as upstream's: a possible write query in a write
-// transaction on the write connection, anything else on the concurrent
-// builder, which here (D8) is the main-thread connection (not the read-only
-// read pool), as upstream's concurrent connections may write too
-// ("select 1; vacuum"). The multi-statement handling is the driver's
+// transaction on the write connection, anything else on a connection of
+// its own, opened for the request with upstream's pragmas and closed after
+// it: upstream's concurrent connections may write too ("select 1; vacuum"),
+// so the read-only read pool cannot run them, and a `BEGIN`, `PRAGMA` or
+// `ATTACH` must not reach the app's write connection, as upstream's never
+// reach its nonconcurrent pool. The multi-statement handling is the driver's
 // (src/db/dbx/driver.ts). The 3-minute deadline is checked as the rows are
 // read; a single statement is not interrupted (the --queryTimeout row of
 // docs/design/04-api-compatibility.md).
@@ -17,6 +19,8 @@ import type { RequestEvent } from "@/app/event-request";
 import { firstApiError } from "@/apis/record-helpers";
 import { driverError } from "@/collections/driver-error";
 import { Deadline } from "@/db/dbx/query";
+import { dataDBFilename } from "@/db/base";
+import { defaultDBConnect } from "@/db/connect";
 import { runInTransaction } from "@/db/tx";
 import { requireSuperuserAuth } from "@/middlewares/require-auth";
 import type { RouterGroup } from "@/server/group";
@@ -27,6 +31,7 @@ import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { formatFloatV } from "@/validation/error";
+import { join } from "node:path";
 
 const runSQLMaxRows = 1000;
 const runSQLMaxTimeout = 3 * 60 * 1000;
@@ -148,36 +153,37 @@ function executeQuery(app: App, rawQuery: string, maxRows: number): RunSQLResult
     }
 
     // assume query returning rows
-    withDriverError(() => {
-      const rows = databases
-        .concurrentDB()
-        .newQuery(query)
-        .withDeadline(deadline)
-        .withExactIntegers()
-        .rows();
-      try {
-        // populate columns info
-        const names = rows.columns();
-        const types = rows.declaredTypes();
-        for (let i = 0; i < names.length; i++) {
-          result.columns.push({
-            name: names[i] as string,
-            type: goToUpper(types[i] ?? ""),
-            nullable: true,
-          });
-        }
-
-        // populate rows
-        for (const values of rows) {
-          if (result.rows.length >= maxRows) {
-            break;
+    const conn = defaultDBConnect(join(app.dataDir, dataDBFilename));
+    try {
+      withDriverError(() => {
+        const rows = conn.newQuery(query).withDeadline(deadline).withExactIntegers().rows();
+        try {
+          // populate columns info
+          const names = rows.columns();
+          const types = rows.declaredTypes();
+          for (let i = 0; i < names.length; i++) {
+            result.columns.push({
+              name: names[i] as string,
+              type: goToUpper(types[i] ?? ""),
+              nullable: true,
+            });
           }
-          result.rows.push(values.map((v, i) => scanString(v, result.columns[i]?.type ?? "")));
+
+          // populate rows
+          for (const values of rows) {
+            if (result.rows.length >= maxRows) {
+              break;
+            }
+            result.rows.push(values.map((v, i) => scanString(v, result.columns[i]?.type ?? "")));
+          }
+        } finally {
+          rows.close();
         }
-      } finally {
-        rows.close();
-      }
-    });
+      });
+    } finally {
+      // rolls back a transaction the query left open
+      conn.close();
+    }
     return result;
   } finally {
     result.execTime = Math.trunc(performance.now() - start);
