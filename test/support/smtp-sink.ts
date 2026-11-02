@@ -35,7 +35,8 @@ interface Session {
   data: string;
 }
 
-function startSmtpSink(): SmtpSink {
+// A new sink, for a test that must tell servers' mail apart.
+export function startSmtpSink(): SmtpSink {
   const messages: SinkMessage[] = [];
   const decoder = new TextDecoder();
 
