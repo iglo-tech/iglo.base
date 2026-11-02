@@ -491,14 +491,17 @@ describe("batch", () => {
     const { fields } = JSON.parse(Buffer.from(collection.body).toString()) as {
       fields: { name: string }[];
     };
-    await same(
+    const [tightened] = await same(
       "PATCH",
       () => "/api/collections/flegacy",
       () =>
         jsonBody({
-          fields: fields.map((f) => (f.name === "id" ? { ...f, pattern: "^[0-9]+$" } : f)),
+          fields: fields.map((f) =>
+            f.name === "id" ? { ...f, pattern: "^[0-9]+$", autogeneratePattern: "[0-9]{15}" } : f,
+          ),
         }),
     );
+    expect(tightened.status).toBe(200);
 
     const url = `/api/collections/flegacy/records/${id}`;
     for (const [method, itemUrl] of [
