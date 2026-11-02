@@ -171,6 +171,19 @@ function schemaNames(path: string): string[] {
   }
 }
 
+// the `_params` ids and `_migrations` files of a data.db
+const keys = (path: string): unknown => {
+  const db = new Database(path, { readonly: true });
+  try {
+    return [
+      db.query("SELECT id FROM _params ORDER BY 1").all(),
+      db.query("SELECT file FROM _migrations ORDER BY 1").all(),
+    ];
+  } finally {
+    db.close();
+  }
+};
+
 // the integrity check and the schema (no table, index or trigger of its own),
 // `_params` keys and `_migrations` files, on a copy of the killed data
 export function checkDatabases(dataDir: string): void {
@@ -187,17 +200,6 @@ export function checkDatabases(dataDir: string): void {
     }
     expect(schemaNames(join(probe, name))).toEqual(schemaNames(join(fixture, name)));
   }
-  const keys = (path: string): unknown => {
-    const db = new Database(path, { readonly: true });
-    try {
-      return [
-        db.query("SELECT id FROM _params ORDER BY 1").all(),
-        db.query("SELECT file FROM _migrations ORDER BY 1").all(),
-      ];
-    } finally {
-      db.close();
-    }
-  };
   expect(keys(join(probe, "data.db"))).toEqual(keys(join(fixture, "data.db")));
 }
 
