@@ -26,7 +26,7 @@ import { StoreKeyActiveBackup } from "@/apis/health";
 import type { App } from "@/app/app";
 import { LocalBackupsDirName, LocalTempDirName } from "@/app/filesystem";
 import { ErrBackupActive } from "@/backups/create";
-import { restoreExclude, writeRestorePhase } from "@/backups/restore-phase";
+import { restoreExclude, restorePhaseFile, writeRestorePhase } from "@/backups/restore-phase";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
 import { goQuote } from "@/fields/field";
@@ -245,5 +245,7 @@ async function extractAndReplace(
     await rm(tempZip, { force: true });
     await rm(extractedDataDir, { recursive: true, force: true });
     await rm(oldTempDataDir, { recursive: true, force: true });
+    // the restore is over, done or reverted
+    await rm(join(localTempDir, restorePhaseFile), { force: true });
   }
 }

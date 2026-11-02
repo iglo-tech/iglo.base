@@ -34,12 +34,12 @@ export const restoreExclude = [
   lostFoundDirName,
 ];
 
-const phaseFile = "restore_phase";
+export const restorePhaseFile = "restore_phase";
 const oldDirPrefix = "old_pb_data_";
 const extractedDirPrefix = "pb_restore_";
 
 export function writeRestorePhase(tempDir: string, phase: RestorePhase): void {
-  writeFileSync(join(tempDir, phaseFile), phase);
+  writeFileSync(join(tempDir, restorePhaseFile), phase);
 }
 
 // Runs on the closed data dir, before the databases open: puts the old
@@ -48,7 +48,7 @@ export function recoverInterruptedRestore(dataDir: string): void {
   const tempDir = join(dataDir, LocalTempDirName);
   let phase: string;
   try {
-    phase = readFileSync(join(tempDir, phaseFile), "utf8");
+    phase = readFileSync(join(tempDir, restorePhaseFile), "utf8");
   } catch {
     return;
   }
