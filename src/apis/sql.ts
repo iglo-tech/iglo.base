@@ -138,10 +138,31 @@ function executeQuery(app: App, rawQuery: string, maxRows: number): RunSQLResult
     rows: [],
   };
 
+  // opened (and closed) outside the timed part, as upstream's pooled
+  // connection is already open when it starts timing
+  const conn = isPossibleWriteQuery
+    ? undefined
+    : defaultDBConnect(join(app.dataDir, dataDBFilename));
+  try {
+    return timedQuery(databases, conn, query, deadline, maxRows, result);
+  } finally {
+    // rolls back a transaction the query left open
+    conn?.close();
+  }
+}
+
+function timedQuery(
+  databases: App["databases"],
+  conn: ReturnType<typeof defaultDBConnect> | undefined,
+  query: string,
+  deadline: Deadline,
+  maxRows: number,
+  result: RunSQLResult,
+): RunSQLResult {
   const start = performance.now();
   try {
     // assume write/mutation query
-    if (isPossibleWriteQuery) {
+    if (conn === undefined) {
       // auto wrap in transaction in case there are multiple inline queries
       runInTransaction(databases, (txApp) => {
         const execResult = withDriverError(() =>
@@ -153,37 +174,31 @@ function executeQuery(app: App, rawQuery: string, maxRows: number): RunSQLResult
     }
 
     // assume query returning rows
-    const conn = defaultDBConnect(join(app.dataDir, dataDBFilename));
-    try {
-      withDriverError(() => {
-        const rows = conn.newQuery(query).withDeadline(deadline).withExactIntegers().rows();
-        try {
-          // populate columns info
-          const names = rows.columns();
-          const types = rows.declaredTypes();
-          for (let i = 0; i < names.length; i++) {
-            result.columns.push({
-              name: names[i] as string,
-              type: goToUpper(types[i] ?? ""),
-              nullable: true,
-            });
-          }
-
-          // populate rows
-          for (const values of rows) {
-            if (result.rows.length >= maxRows) {
-              break;
-            }
-            result.rows.push(values.map((v, i) => scanString(v, result.columns[i]?.type ?? "")));
-          }
-        } finally {
-          rows.close();
+    withDriverError(() => {
+      const rows = conn.newQuery(query).withDeadline(deadline).withExactIntegers().rows();
+      try {
+        // populate columns info
+        const names = rows.columns();
+        const types = rows.declaredTypes();
+        for (let i = 0; i < names.length; i++) {
+          result.columns.push({
+            name: names[i] as string,
+            type: goToUpper(types[i] ?? ""),
+            nullable: true,
+          });
         }
-      });
-    } finally {
-      // rolls back a transaction the query left open
-      conn.close();
-    }
+
+        // populate rows
+        for (const values of rows) {
+          if (result.rows.length >= maxRows) {
+            break;
+          }
+          result.rows.push(values.map((v, i) => scanString(v, result.columns[i]?.type ?? "")));
+        }
+      } finally {
+        rows.close();
+      }
+    });
     return result;
   } finally {
     result.execTime = Math.trunc(performance.now() - start);
