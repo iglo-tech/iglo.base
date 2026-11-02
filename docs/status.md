@@ -2,20 +2,21 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-02
+Updated: 2026-11-03
 
-M7.1a active.
+M7.1b active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.1a | review 2 | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 2 | [Brief](briefs/M7.1a.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite. Round 1 (Opus CHANGES: two bcrypt checks on the event loop, list conclusion) fixed by the lead at `3de51da`: `check` 0 failures, `test:reference` 2 backlog flakes (realtime order, auth 5 s timeout) that pass on rerun |
+| M7.1b | worker | — | 0 | [Brief](briefs/M7.1b.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M7.1a | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 2026-11-03 (`b442184`) | Two review rounds (Opus, lead fixed both): round 2 left one report sentence, rewritten at `9c4c6f8` (docs only), which the reviewer said clears it. Lead `check` 0 failures at `3de51da`. bcrypt runs on Bun's thread pool on every request path; only batch compares on the calling thread. Profile: the log write is 39% of `/api/health`; list stays about 1.8× of upstream at 50 clients. Backlog: JSON parser stack-depth test can overflow in a full `check` run; `test:reference` port collisions on a shared host |
 | D30 | [#58](https://github.com/iglo-tech/iglo.base/pull/58) | 2026-11-02 (`3b89d47`) | Owner direction: no TLS in the app, M6.3 dropped. Lead change merged without a council round (CLI refusal only, no API path); `check` 0 failures. Scope review sent to the owner (M7.2 docs, M6.4 browser suite, M7.1 bar as gate, M7.3) |
 | M5.9 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 2026-11-02 (`aa29b16`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `ab966a4`. SIGKILL suite for writes, batches, uploads, backups and restore (local and S3). Restore records its step by renaming a marker in `.pb_temp_to_delete` and rolls back an interrupted restore at start; no marker is upstream's own restore and starts as upstream. Backlog: a new restore after a failed rollback can drop the first one's marker; iglo.base leaves `-wal`/`-shm` after a normal stop where upstream leaves none |
 | M5.8 | [#56](https://github.com/iglo-tech/iglo.base/pull/56) | 2026-11-02 (`98c371a`) | One review round: Opus APPROVE at `c2f7086` (Sonnet worker), `check` and `test:reference` at 0 failures. Every SDK 0.28.1 server method on both servers; no API difference found. Fetch-based EventSource shim for Bun. Backlog: 8 test-coverage gaps listed in the review comment (MFA `mfaId` as query option, batch upsert-update path, unrecorded OAuth2 redirect, and others) |
@@ -136,6 +137,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | M1.8 | 2026-10-28 | The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
 
 ## For owner review
+
+- 2026-11-03 (D31): request log batches are written by a dedicated worker with its own `auxiliary.db` connection (amends D8). M7.1 split into M7.1a/b/c; M7.1b takes the profile's low-risk fixes #1, #3, #4, #5.
 
 - 2026-11-02 (owner direction, D30): no TLS in the app; the reverse proxy terminates it. M6.3 is dropped; `serve` refuses `--https` and domain arguments.
 
