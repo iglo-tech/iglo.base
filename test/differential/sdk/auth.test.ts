@@ -221,7 +221,7 @@ describe("OAuth2", () => {
     all(
       noMFA,
       useProvider({ user }, (collection, provider) => {
-        const first = collection.oauth2.providers[0];
+        const first = collection.oauth2.providers?.[0];
         if (first !== undefined) {
           // one name for both servers' mock providers
           first.authURL = "https://oauth.example/auth?client_id=123";

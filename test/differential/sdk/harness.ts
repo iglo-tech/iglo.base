@@ -28,6 +28,7 @@ import { changeSettings } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
 import { startSmtpSink, type SinkMessage, type SmtpSink } from "@test/support/smtp-sink";
 import { startUpstream } from "@test/support/upstream";
+import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
 
 installEventSource();
 
@@ -67,6 +68,8 @@ export interface SdkOptions {
   prepare?: (env: PrepareEnv) => void | Promise<void>;
   // SMTP enabled and pointed at the server's sink
   smtp?: boolean;
+  // each server gets its own S3 test server (env.s3)
+  s3?: boolean;
   // `serve` arguments of both servers
   args?: string[];
   timeout?: number;
@@ -77,6 +80,9 @@ export interface SdkEnv {
   url: string;
   dataDir: string;
   sink: SmtpSink;
+  // the S3 test server's settings (with the `s3` option); the gateway's
+  // address is masked in recordings
+  s3: { endpoint: string; bucket: string; region: string; accessKey: string; secret: string };
   // a new SDK client whose requests are recorded
   client(): PocketBase;
   // a new client authenticated with a fixed fixture token (no request)
@@ -88,6 +94,9 @@ export interface SdkEnv {
   step<T>(label: string, fn: () => Promise<T>): Promise<T>;
   // like step, for a call that must fail: returns the ClientResponseError
   fails(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError>;
+  // like fails, for an error whose text carries run-specific data (an S3
+  // gateway's signature error): records the status and `data` only
+  failsStatus(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError>;
   // records a value that is not an SDK call's result
   record(label: string, value: unknown): void;
   // raw requests recorded as an exchange (a file download, a mock call)
@@ -100,7 +109,7 @@ export interface SdkEnv {
 
 const sdkUserAgent = "iglo-base-sdk-suite";
 
-function toText(value: unknown, env: { url: string; dataDir: string }): string {
+function toText(value: unknown, env: { url: string; dataDir: string; s3: SdkEnv["s3"] }): string {
   const replacer = (_key: string, v: unknown): unknown => {
     if (v instanceof ClientResponseError) {
       return {
@@ -128,6 +137,7 @@ function toText(value: unknown, env: { url: string; dataDir: string }): string {
   };
   return (JSON.stringify(value, replacer) ?? "null")
     .replaceAll(env.url, "<base>")
+    .replaceAll(env.s3.endpoint, "<s3>")
     .replaceAll(env.dataDir, "<pb_data>");
 }
 
@@ -189,6 +199,7 @@ class Recording implements SdkEnv {
     readonly url: string,
     readonly dataDir: string,
     readonly sink: SmtpSink,
+    readonly s3: SdkEnv["s3"],
   ) {}
 
   #recordingFetch = async (
@@ -202,12 +213,22 @@ class Recording implements SdkEnv {
     const res = await fetch(input, init);
     // the body is read here; the SDK gets an equal copy
     const bytes = new Uint8Array(await res.arrayBuffer());
+    const type = res.headers.get("content-type") ?? "";
+    const masked = /json|text/.test(type)
+      ? new TextEncoder().encode(
+          new TextDecoder()
+            .decode(bytes)
+            .replaceAll(this.s3.endpoint, "<s3>")
+            .replaceAll(this.url, "<base>")
+            .replaceAll(this.dataDir, "<pb_data>"),
+        )
+      : bytes;
     const exchange: Exchange = {
       method,
       url: url.replace(this.url, ""),
       requestBody: bodyText(init?.body),
       requestHeaders: headersOf(init?.headers),
-      response: { status: res.status, headers: res.headers, body: bytes },
+      response: { status: res.status, headers: res.headers, body: masked },
     };
     this.#current.push(exchange);
     return new Response(bytes, {
@@ -276,6 +297,22 @@ class Recording implements SdkEnv {
     return error;
   }
 
+  async failsStatus(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError> {
+    const before = this.#current.length;
+    let error: unknown;
+    try {
+      await fn();
+    } catch (e) {
+      error = e;
+    }
+    this.#current.splice(before);
+    if (!(error instanceof ClientResponseError)) {
+      throw new Error(`${label}: expected a ClientResponseError, got ${String(error)}`);
+    }
+    this.record(label, { status: error.status, data: error.response["data"] });
+    return error;
+  }
+
   record(label: string, value: unknown): void {
     this.steps.push({ label, value: toText(value, this), exchanges: [] });
   }
@@ -321,13 +358,15 @@ function bodyText(body: unknown): string {
   }
   if (body instanceof FormData) {
     return [...body.entries()]
-      .map(([k, v]) => `${k}=${typeof v === "string" ? v : `<file ${v.name}>`}`)
+      .map(([k, v]) => `${k}=${typeof v === "string" ? v : `<file ${(v as File).name}>`}`)
       .join("&");
   }
   return "";
 }
 
-function headersOf(headers: HeadersInit | undefined): Record<string, string> {
+function headersOf(
+  headers: ConstructorParameters<typeof Headers>[0] | undefined,
+): Record<string, string> {
   return Object.fromEntries(new Headers(headers).entries());
 }
 
@@ -419,6 +458,29 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
         await options.prepare?.({ dataDir: dirs[kind], sink: sinks[kind] });
       }
       const start = readStartingData(dirs.upstream);
+      const gateways: Versitygw[] = [];
+      const noS3 = {
+        endpoint: "http://s3.invalid",
+        bucket: "",
+        region: "",
+        accessKey: "",
+        secret: "",
+      };
+      const s3Of = async (): Promise<SdkEnv["s3"]> => {
+        if (!options.s3) {
+          return noS3;
+        }
+        const gw = await startVersitygw();
+        gateways.push(gw);
+        return {
+          endpoint: gw.endpoint,
+          bucket: gw.bucket,
+          region: testS3Credentials.region,
+          accessKey: testS3Credentials.accessKeyId,
+          secret: testS3Credentials.secretAccessKey,
+        };
+      };
+      const s3s = { upstream: await s3Of(), iglo: await s3Of() };
       const started = await Promise.allSettled([
         startUpstream({ dataDir: dirs.upstream, args: options.args ?? [] }),
         startServer(options.args ?? [], dirs.iglo),
@@ -435,12 +497,14 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
           (up as { url: string }).url,
           dirs.upstream,
           sinks.upstream,
+          s3s.upstream,
         );
         const igloBase = new Recording(
           "iglo.base",
           (ig as { url: string }).url,
           dirs.iglo,
           sinks.iglo,
+          s3s.iglo,
         );
         const results = await Promise.allSettled([fn(upstream), fn(igloBase)]);
         for (const rec of [upstream, igloBase]) {
@@ -462,6 +526,7 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
         await Promise.allSettled(
           started.map((s) => (s.status === "fulfilled" ? s.value.stop() : undefined)),
         );
+        await Promise.allSettled(gateways.map((g) => g.stop()));
         rmSync(root, { recursive: true, force: true });
       }
     },
