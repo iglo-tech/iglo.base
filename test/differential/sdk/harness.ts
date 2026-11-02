@@ -377,6 +377,12 @@ function bodyText(body: unknown): string {
     return body;
   }
   if (body instanceof FormData) {
+    // the SDK's JSON part (a batch's requests, the non-file values): the
+    // comparison reads it as the request body
+    const json = body.get("@jsonPayload");
+    if (typeof json === "string") {
+      return json;
+    }
     return [...body.entries()]
       .map(([k, v]) => `${k}=${typeof v === "string" ? v : `<file ${(v as File).name}>`}`)
       .join("&");
