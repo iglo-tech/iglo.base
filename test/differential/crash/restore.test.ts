@@ -6,7 +6,15 @@
 // servers. Not part of `bun test`: run `bun run test:reference`.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -248,6 +256,33 @@ describe("crash: restore directory states", () => {
       timeout,
     );
   }
+});
+
+function oldDirsLeft(dataDir: string): string[] {
+  const temp = join(dataDir, ".pb_temp_to_delete");
+  return existsSync(temp) ? readdirSync(temp).filter((n) => n.startsWith("old_pb_data_")) : [];
+}
+
+describe("crash: upstream's own restore", () => {
+  test(
+    "upstream's moves done, no record (upstream writes none): both start on the restored data and clear the temp dir",
+    async () => {
+      const dataDir = await craftedState("all", "all", "swapped");
+      const temp = join(dataDir, ".pb_temp_to_delete");
+      rmSync(join(temp, "restore_phase.swapped"));
+      const copyRoot = tempDir();
+      roots.push(copyRoot);
+      const copy = join(copyRoot, "pb_data");
+      cpSync(dataDir, copy, { recursive: true });
+
+      // the restored data: the backup, without the marker record
+      expect(await readState("iglo", dataDir)).toBe("3:false");
+      expect(oldDirsLeft(dataDir)).toEqual([]);
+      expect(await readState("upstream", copy)).toBe("3:false");
+      expect(oldDirsLeft(copy)).toEqual([]);
+    },
+    timeout,
+  );
 });
 
 describe("crash: restore record that cannot be read", () => {

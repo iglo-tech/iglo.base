@@ -200,12 +200,15 @@ export function recoverInterruptedRestore(dataDir: string): void {
   const holding = oldDirs(tempDir).filter(nonEmpty);
 
   if (phase === undefined) {
-    if (holding.length > 0) {
-      // the old data may be the only copy: neither open the pb_data that is
-      // there nor delete this
+    // no record at all: not a restore of ours (each writes its record before
+    // the first move) but upstream's, which writes none and is done once its
+    // moves are; start as upstream does, on the restored data. A record that
+    // exists but cannot be read is ours: the old data may be the only copy,
+    // so neither open the pb_data that is there nor delete this
+    if (holding.length > 0 && unknown.length > 0) {
       throw new Error(
         `a restore left the old data in ${holding.join(", ")} but its step record ` +
-          (unknown.length > 0 ? `(${unknown.join(", ")}) is not readable` : "is missing") +
+          `(${unknown.join(", ")}) is not readable` +
           `; not starting. Move its content back to ${dataDir} (or delete ` +
           `${tempDir} if ${dataDir} is the data to keep) and start again`,
       );
@@ -234,9 +237,11 @@ export function removeRestoreTemp(tempDir: string): boolean {
   if (!existsSync(tempDir)) {
     return true;
   }
-  const { phase } = readPhase(tempDir);
+  const { phase, unknown } = readPhase(tempDir);
   const dirs = oldDirs(tempDir);
-  if (!isFinal(phase) && dirs.some(nonEmpty)) {
+  // no record at all is upstream's finished restore, whose temp dir it clears
+  const upstreams = phase === undefined && unknown.length === 0;
+  if (!isFinal(phase) && !upstreams && dirs.some(nonEmpty)) {
     return false;
   }
   for (const dir of dirs) {

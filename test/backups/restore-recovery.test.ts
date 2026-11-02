@@ -218,7 +218,6 @@ describe("recover an interrupted restore", () => {
           writeFileSync(join(t, "restore_phase.moving-new"), "");
         },
       ],
-      ["a missing record", () => undefined],
     ];
     for (const [label, make] of records) {
       test(`${label} with the old data aside: refuses to start and keeps everything`, () => {
@@ -244,6 +243,15 @@ describe("recover an interrupted restore", () => {
     }
   });
 
+  test("no record with the old data aside (upstream's finished restore): starts on pb_data and clears the temp dir, as upstream", () => {
+    const { dataDir, temp } = build({ aside: names, moved: 1, phase: null });
+    const before = read(dataDir);
+    recoverInterruptedRestore(dataDir);
+    expect(read(dataDir)).toEqual(before);
+    expect(removeRestoreTemp(temp)).toBe(true);
+    expect(existsSync(join(temp, "old_pb_data_s1"))).toBe(false);
+  });
+
   test("moving-new without the old dir refuses to start", () => {
     const { dataDir, temp, oldDir } = build({ aside: names, moved: 1, phase: "moving-new" });
     const moved = join(temp, "moved_away");
@@ -262,11 +270,17 @@ describe("clear the restore temp dir", () => {
       expect(readdirSync(temp).filter((n) => n.startsWith("restore_phase"))).toEqual([]);
     });
   }
-  for (const phase of ["moving-old", "moving-new", null]) {
-    test(`${String(phase)}: an old dir with content is kept`, () => {
+  for (const phase of ["moving-old", "moving-new"]) {
+    test(`${phase}: an old dir with content is kept`, () => {
       const { temp, oldDir } = build({ aside: names, moved: 0, phase });
       expect(removeRestoreTemp(temp)).toBe(false);
       expect(read(oldDir)).toEqual(oldFiles);
     });
   }
+  test("an unreadable record: an old dir with content is kept", () => {
+    const { temp, oldDir } = build({ aside: names, moved: 0, phase: null });
+    writeFileSync(join(temp, "restore_phase.wat"), "");
+    expect(removeRestoreTemp(temp)).toBe(false);
+    expect(read(oldDir)).toEqual(oldFiles);
+  });
 });
