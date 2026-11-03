@@ -137,14 +137,31 @@ export function nullStringText(v: unknown): string | null {
 //
 // Note that this method is intended to load and Scan data from a database row result.
 export function newRecordFromNullStringMap(collection: Collection, data: NullStringMap): Record {
-  const record = newRecord(collection);
+  return hydrateRecord(collection, (name) =>
+    Object.hasOwn(data, name) ? (data[name] ?? null) : null,
+  );
+}
+
+// newRecordFromNullStringMap for a row as the driver reads it: each
+// collection column is converted as NullStringMap would hold it (nullStringText),
+// without building the map of every column first.
+export function newRecordFromRow(collection: Collection, row: Row): Record {
+  return hydrateRecord(collection, (name) =>
+    Object.hasOwn(row, name) ? nullStringText(row[name]) : null,
+  );
+}
+
+// Every collection field is set below, so the record is created without the
+// defaults of NewRecord (they would be replaced, each field prepared twice).
+function hydrateRecord(collection: Collection, text: (name: string) => string | null): Record {
+  const record = new Record(collection, false);
 
   for (const field of collection.fields) {
     const fieldName = field.getName();
 
-    const nullString = Object.hasOwn(data, fieldName) ? data[fieldName] : null;
+    const nullString = text(fieldName);
 
-    const [value, err] = field.prepareValue(record, nullString ?? null);
+    const [value, err] = field.prepareValue(record, nullString);
 
     if (err !== null) {
       throw err;
@@ -175,6 +192,15 @@ export function newRecordsFromNullStringMaps(
   return rows.map((row) => newRecordFromNullStringMap(collection, row));
 }
 
+// newRecordsFromNullStringMaps for rows as the driver reads them
+export function newRecordsFromRows(collection: Collection, rows: readonly Row[]): Record[] {
+  const records: Record[] = Array.from({ length: rows.length });
+  for (let i = 0; i < rows.length; i++) {
+    records[i] = newRecordFromRow(collection, rows[i]!);
+  }
+  return records;
+}
+
 // -------------------------------------------------------------------
 
 // NewRecord initializes a new empty Record model.
@@ -186,19 +212,25 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   readonly #collection: Collection;
   // the last saved (or loaded) field values; package-visible in Go
   originalData: Map<string, unknown>;
-  #customVisibility = new Store<string, boolean>();
-  #data = new Store<string, unknown>();
+  // created on first write: most records are only read
+  #customVisibility: Store<string, boolean> | null = null;
+  #data: Store<string, unknown> | null = null;
   #expand: Store<string, unknown> | null = null;
 
   #exportCustomData = false;
   #ignoreEmailVisibility = false;
   #ignoreUnchangedFields = false;
 
-  // NewRecord: every field except "id" starts with its PrepareValue(nil)
-  constructor(collection: Collection) {
+  // NewRecord: every field except "id" starts with its PrepareValue(nil).
+  // `defaults` false leaves the fields unset, for a caller that sets them all.
+  constructor(collection: Collection, defaults = true) {
     super();
     this.#collection = collection;
     this.originalData = new Map();
+
+    if (!defaults) {
+      return;
+    }
 
     // initialize default field values
     for (const field of collection.fields) {
@@ -300,10 +332,14 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
     copy.#exportCustomData = this.#exportCustomData;
     copy.#ignoreEmailVisibility = this.#ignoreEmailVisibility;
     copy.#ignoreUnchangedFields = this.#ignoreUnchangedFields;
-    copy.#customVisibility.reset(this.#customVisibility.getAll());
+    if (this.#customVisibility !== null) {
+      copy.#customVisibility = new Store<string, boolean>(this.#customVisibility.getAll());
+    }
 
-    for (const [k, v] of this.#data.getAll()) {
-      copy.setRaw(k, v);
+    if (this.#data !== null) {
+      for (const [k, v] of this.#data.getAll()) {
+        copy.setRaw(k, v);
+      }
     }
 
     if (this.#expand !== null) {
@@ -438,7 +474,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
     const result: DataMap = {};
 
-    for (const [k, v] of this.#data.getAll()) {
+    for (const [k, v] of this.#data?.getAll() ?? []) {
       if (!knownFields.has(k)) {
         // skip internal custom fields
         if (k.startsWith(internalCustomFieldKeyPrefix)) {
@@ -488,7 +524,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       this.id = castToString(value);
     }
 
-    this.#data.set(key, value);
+    (this.#data ??= new Store<string, unknown>()).set(key, value);
   }
 
   // SetIfFieldExists sets the provided key-value data pair into the current Record model
@@ -544,9 +580,11 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       return this.id;
     }
 
-    const [v, ok] = this.#data.getOk(key);
-    if (ok) {
-      return v;
+    if (this.#data !== null) {
+      const [v, ok] = this.#data.getOk(key);
+      if (ok) {
+        return v;
+      }
     }
 
     return this.originalData.get(key);
@@ -769,7 +807,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // Hide hides the specified fields from the public safe serialization of the record.
   hide(...fieldNames: string[]): this {
     for (const name of fieldNames) {
-      this.#customVisibility.set(name, false);
+      (this.#customVisibility ??= new Store<string, boolean>()).set(name, false);
     }
 
     return this;
@@ -779,7 +817,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // of the record (even when the collection field itself is marked as hidden).
   unhide(...fieldNames: string[]): this {
     for (const name of fieldNames) {
-      this.#customVisibility.set(name, true);
+      (this.#customVisibility ??= new Store<string, boolean>()).set(name, true);
     }
 
     return this;
@@ -794,7 +832,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   publicExport(): DataMap {
     const exportData = new Map<string, unknown>();
 
-    const customVisibility = this.#customVisibility.getAll();
+    const customVisibility = this.#customVisibility?.getAll() ?? new Map<string, boolean>();
 
     // export schema fields
     for (const f of this.#collection.fields) {

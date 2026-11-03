@@ -485,3 +485,38 @@ test("a cancelled query's async resolvers fail before reading on the pool", asyn
 
   expect((await db.select("*").from("demo").allAsync()).length).toBe(2);
 });
+
+test("all rows read on the pool equal the rows read on the main thread", async () => {
+  const app = open({ readWorkers: 2 });
+  const queries = [
+    "SELECT 1 AS a, 9007199254740993 AS big, 2.5 AS r, 'x' AS t, NULL AS n, x'00ff10' AS b, -0.0 AS z",
+    "SELECT 1 AS a, 2 AS a, 3 AS b",
+    "SELECT 1 AS id, 'x' AS \"__proto__\"",
+    'SELECT 7 AS "2", 5 AS "1", \'k\' AS name',
+    "SELECT id FROM demo WHERE 0",
+    "SELECT 1e999 AS inf, -1e999 AS ninf",
+    "PRAGMA table_info(demo)",
+  ];
+  for (const sql of queries) {
+    for (const exact of [false, true]) {
+      const q = () => {
+        const query = app.concurrentDB().newQuery(sql);
+        return exact ? query.withExactIntegers() : query;
+      };
+      const onPool = await q().allAsync();
+      const local = q().all();
+      expect(onPool, sql).toEqual(local);
+      expect(Object.keys(onPool[0] ?? {}), sql).toEqual(Object.keys(local[0] ?? {}));
+    }
+  }
+});
+
+test("a cached statement sees a column added after its first use", async () => {
+  const app = open({ readWorkers: 1 });
+  const q = () => app.concurrentDB().newQuery("SELECT * FROM demo");
+  app.db().insert("demo", { id: "a", title: "x" }).execute();
+  expect(Object.keys((await q().allAsync())[0]!)).toEqual(["id", "title", "n"]);
+  app.nonconcurrentDB().newQuery("ALTER TABLE demo ADD COLUMN extra TEXT DEFAULT 'e'").execute();
+  expect(await q().allAsync()).toEqual(q().all());
+  expect(Object.keys((await q().allAsync())[0]!)).toEqual(["id", "title", "n", "extra"]);
+});

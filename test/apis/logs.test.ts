@@ -11,6 +11,7 @@ import { newRouter } from "@/apis/base";
 import { clearBootstrap } from "@/app/bootstrap";
 import { runInTransaction } from "@/db/tx";
 import type { LogAttrs } from "@/logs/batch-handler";
+import type { Logger } from "@/logs/logger";
 import { formatLog } from "@/logs/log-printer";
 import { reloadSettings } from "@/settings/settings-query";
 
@@ -72,7 +73,10 @@ async function open(options: TestAppOptions = {}): Promise<Harness> {
         db.close();
       }
     },
-    settle: () => new Promise((resolve) => setImmediate(resolve)),
+    settle: async () => {
+      await new Promise((resolve) => setImmediate(resolve));
+      await (app.logger as Logger).flush();
+    },
   };
 }
 

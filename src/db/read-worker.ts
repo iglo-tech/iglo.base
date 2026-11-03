@@ -11,10 +11,21 @@ import type { Database } from "bun:sqlite";
 
 import { openReadOnly } from "@/db/connect";
 import { queryStatements, splitStatements } from "@/db/dbx/driver";
-import { readRows } from "@/db/dbx/rows";
-import type { ReadRequestMessage, ReadResponseMessage, SerializedError } from "@/db/read-pool";
+import { readRows, type Rows } from "@/db/dbx/rows";
+import type {
+  ReadRequestMessage,
+  ReadResponseMessage,
+  RowTable,
+  SerializedError,
+} from "@/db/read-pool";
 
 declare const self: Worker;
+
+// the rows first: the column names are current only once the statement ran
+function allTable(rows: Rows): RowTable {
+  const values = rows.allValues();
+  return { names: rows.columns(), rows: values };
+}
 
 const conns = new Map<string, Database>();
 
@@ -45,12 +56,15 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage>) => {
   let res: ReadResponseMessage;
   try {
     const c = conn(req.path);
-    const value = readRows(
-      queryStatements(c, splitStatements(req.sql), req.args, null, false).withExactIntegers(
-        req.exactIntegers,
-      ),
-      req.mode,
-    );
+    const rows = queryStatements(
+      c,
+      splitStatements(req.sql),
+      req.args,
+      null,
+      false,
+    ).withExactIntegers(req.exactIntegers);
+    // the column names once and an array per row (rowsFromValues on the other side)
+    const value = req.mode === "all" ? allTable(rows) : readRows(rows, req.mode);
     res = { id: req.id, ok: true, value };
   } catch (err) {
     res = { id: req.id, ok: false, error: serializeError(err) };

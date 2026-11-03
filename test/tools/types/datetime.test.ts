@@ -14,7 +14,10 @@ import {
   Minute,
   nowDateTime,
   parseDateTime,
+  parseDefaultLayoutFast,
 } from "@/tools/types/datetime";
+import { parse } from "@/tools/types/go-time";
+import { parsedTime } from "@/tools/types/go-zoneinfo";
 
 const fixedClock = (iso: string): Clock => ({ now: () => new Date(iso) });
 
@@ -454,5 +457,87 @@ describe("DateTime precision", () => {
 
   test("DefaultDateLayout", () => {
     expect(DefaultDateLayout).toBe("2006-01-02 15:04:05.000Z");
+  });
+});
+
+// every string must give what the Go layout parser gives (the slow path),
+// and null exactly where that parser fails
+const slow = (v: string): { sec: number; nsec: number } | null => {
+  try {
+    const [t] = parsedTime(parse(DefaultDateLayout, v));
+    return t;
+  } catch {
+    return null;
+  }
+};
+
+const pad = (n: number, w: number): string => String(n).padStart(w, "0");
+
+describe("the fast path of the stored layout", () => {
+  const corpus = [
+    "2022-01-01 00:00:00.000Z",
+    "2024-02-29 23:59:59.999Z",
+    "2023-02-29 00:00:00.000Z",
+    "1900-02-29 00:00:00.000Z",
+    "2000-02-29 12:00:00.123Z",
+    "0000-01-01 00:00:00.000Z",
+    "0001-01-01 00:00:00.000Z",
+    "9999-12-31 23:59:59.999Z",
+    "1969-12-31 23:59:59.999Z",
+    "1970-01-01 00:00:00.000Z",
+    "2022-13-01 00:00:00.000Z",
+    "2022-00-01 00:00:00.000Z",
+    "2022-01-00 00:00:00.000Z",
+    "2022-04-31 00:00:00.000Z",
+    "2022-01-01 24:00:00.000Z",
+    "2022-01-01 00:60:00.000Z",
+    "2022-01-01 00:00:60.000Z",
+    "2022-01-01 00:00:00.00Z",
+    "2022-01-01 00:00:00.0000Z",
+    "2022-01-01 00:00:00Z",
+    "2022-01-01T00:00:00.000Z",
+    "2022-01-01 00:00:00.000z",
+    "2022-01-01 00:00:00.000+",
+    "2022-01-01 00:00:00.000 ",
+    " 2022-01-01 00:00:00.000Z",
+    "2022-1-01 00:00:00.000Z",
+    "2022-01-01 0a:00:00.000Z",
+    "+022-01-01 00:00:00.000Z",
+    "2022-01-01 00:00:00.00aZ",
+    "abcd-ef-gh ij:kl:mn.opqZ",
+    "",
+    "2022-01-01",
+  ];
+
+  test("matches the Go layout parser on a corpus", () => {
+    for (const v of corpus) {
+      expect(parseDefaultLayoutFast(v), v).toEqual(slow(v));
+    }
+  });
+
+  test("matches it on every day of every year in a range and on random times", () => {
+    for (
+      let ms = Date.UTC(1999, 0, 1);
+      ms < Date.UTC(2005, 0, 1);
+      ms += 86_400_000 * 7 + 3_723_456
+    ) {
+      const t = new Date(ms).toISOString();
+      const v = `${t.slice(0, 10)} ${t.slice(11, 23)}Z`;
+      expect(parseDefaultLayoutFast(v), v).toEqual(slow(v));
+    }
+    let seed = 12345;
+    const next = (n: number): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed % n;
+    };
+    for (let i = 0; i < 20000; i++) {
+      const v = `${pad(next(10000), 4)}-${pad(next(14), 2)}-${pad(next(33), 2)} ${pad(next(26), 2)}:${pad(next(62), 2)}:${pad(next(62), 2)}.${pad(next(1000), 3)}Z`;
+      expect(parseDefaultLayoutFast(v), v).toEqual(slow(v));
+    }
+  });
+
+  test("a valid stored date is accepted by the fast path", () => {
+    expect(parseDefaultLayoutFast("2024-02-29 23:59:59.999Z")).not.toBeNull();
+    expect(parseDefaultLayoutFast("2023-02-29 00:00:00.000Z")).toBeNull();
   });
 });

@@ -53,7 +53,7 @@ Decided 2026-10-27.
 
 ## D8. SQLite access: main-thread connection, read worker pool for timed reads
 
-Decided by agents on 2026-10-28, for owner review (M0.6 spike, [report](../perf/M0.6-read-path.md)).
+Decided by agents on 2026-10-28, for owner review (M0.6 spike, [report](../perf/M0.6-read-path.md)). Amended by [D31](#d31-the-request-log-batches-are-written-off-the-main-thread): the `_logs` batch inserts have their own writer connection on a worker.
 
 - **Decision:**
   - One connection per database file on the main thread runs every write, every transaction and every synchronous read, as upstream's nonconcurrent DB does. The db API stays synchronous.

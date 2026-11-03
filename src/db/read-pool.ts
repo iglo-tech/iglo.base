@@ -25,7 +25,7 @@
 import type { SQLQueryBindings } from "bun:sqlite";
 
 import { DeadlineExceededError, type AsyncReader, type Deadline } from "@/db/dbx/query";
-import { NoRowsError, type ReadMode } from "@/db/dbx/rows";
+import { NoRowsError, rowsFromValues, type ReadMode } from "@/db/dbx/rows";
 
 export interface ReadRequestMessage {
   id: number;
@@ -35,6 +35,12 @@ export interface ReadRequestMessage {
   mode: ReadMode;
   // Query.withExactIntegers
   exactIntegers: boolean;
+}
+
+// the result of an "all" read as the worker sends it
+export interface RowTable {
+  names: string[];
+  rows: unknown[][];
 }
 
 export interface SerializedError {
@@ -239,7 +245,11 @@ export class ReadPool {
         // thread): the query still fails, as its context expired
         request.reject(new DeadlineExceededError());
       } else if (res.ok) {
-        request.resolve(res.value);
+        request.resolve(
+          request.message.mode === "all"
+            ? rowsFromValues((res.value as RowTable).names, (res.value as RowTable).rows)
+            : res.value,
+        );
       } else {
         request.reject(deserializeError(res.error));
       }

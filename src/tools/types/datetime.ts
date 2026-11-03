@@ -244,8 +244,74 @@ export class DateTime {
   }
 }
 
+// digit at i, or -1
+function digitAt(v: string, i: number): number {
+  const c = v.charCodeAt(i) - 48;
+  return c >= 0 && c <= 9 ? c : -1;
+}
+
+const daysBeforeMonth = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+
+// The layout of what the app stores, "YYYY-MM-DD HH:MM:SS.mmmZ", read by
+// position. Returns null for anything else, and for a field out of range, so
+// that the Go layout parser decides (and reports) those. The result is what
+// parse(DefaultDateLayout, v) gives: UTC.
+export function parseDefaultLayoutFast(v: string): Instant | null {
+  if (
+    v.length !== 24 ||
+    v.charCodeAt(4) !== 45 || // -
+    v.charCodeAt(7) !== 45 ||
+    v.charCodeAt(10) !== 32 || // space
+    v.charCodeAt(13) !== 58 || // :
+    v.charCodeAt(16) !== 58 ||
+    v.charCodeAt(19) !== 46 || // .
+    v.charCodeAt(23) !== 90 // Z
+  ) {
+    return null;
+  }
+  const d = (i: number): number => digitAt(v, i);
+  const year = d(0) * 1000 + d(1) * 100 + d(2) * 10 + d(3);
+  const month = d(5) * 10 + d(6);
+  const day = d(8) * 10 + d(9);
+  const hour = d(11) * 10 + d(12);
+  const min = d(14) * 10 + d(15);
+  const sec = d(17) * 10 + d(18);
+  const ms = d(20) * 100 + d(21) * 10 + d(22);
+  // d() is -1 for a non-digit: look for one before the ranges are checked
+  for (const i of [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21, 22]) {
+    if (digitAt(v, i) < 0) {
+      return null;
+    }
+  }
+  if (month < 1 || month > 12 || hour > 23 || min > 59 || sec > 59 || day < 1) {
+    return null;
+  }
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays =
+    month === 2
+      ? leap
+        ? 29
+        : 28
+      : month === 4 || month === 6 || month === 9 || month === 11
+        ? 30
+        : 31;
+  if (day > monthDays) {
+    return null;
+  }
+  // days since 1970-01-01 (proleptic Gregorian, any year >= 0)
+  const y = year - 1;
+  const daysToYear =
+    y * 365 + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 719162;
+  const yday = (daysBeforeMonth[month - 1] as number) + (leap && month > 2 ? 1 : 0) + day - 1;
+  return { sec: (daysToYear + yday) * 86400 + hour * 3600 + min * 60 + sec, nsec: ms * 1e6 };
+}
+
 // DefaultDateLayout ends in a literal "Z", so it parses in UTC
 function parseDefaultOrCast(v: string): [Instant, Location] {
+  const fast = parseDefaultLayoutFast(v);
+  if (fast !== null) {
+    return [fast, UTC];
+  }
   try {
     return parsedTime(parse(DefaultDateLayout, v));
   } catch {

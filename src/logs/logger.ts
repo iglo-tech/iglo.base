@@ -3,10 +3,13 @@
 //
 // The app's logger. Logs wait in the BatchHandler's queue and reach `_logs`
 // from a timer, at the batch size or when the app stops. A write is its own
-// transaction on the auxiliary database, and a write that does not have to
-// block runs from the event loop, so it is never inside a request's
-// transaction (which is synchronous on the main thread, D8) and a rollback of
-// one keeps its logs. It never touches data.db.
+// transaction on the auxiliary database. The rows are built on the event
+// loop, never inside a request's transaction (which is synchronous on the
+// main thread, D8), and the insert runs on the log writer thread (D31,
+// log-writer.ts) with a connection of its own, so a rollback of a request
+// keeps its logs and the main thread never waits for the commit. Without an
+// `auxPath` (no file to open) the insert runs on the main thread's
+// connection. It never touches data.db.
 //
 // There is one logger per bootstrapped app.
 
@@ -27,6 +30,7 @@ import {
   type LogAttrs,
 } from "@/logs/batch-handler";
 import { logDBExport, LogsTableName } from "@/logs/log-model";
+import { LogWriter, type LogRow } from "@/logs/log-writer";
 import { formatLog } from "@/logs/log-printer";
 import type { LogsConfig } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
@@ -57,6 +61,8 @@ function defaultTicker(tick: () => void, ms: number): LogTicker {
 
 export interface LoggerConfig {
   databases: Databases;
+  // auxiliary.db: the log writer thread writes to it (D31)
+  auxPath?: string;
   // the app's logs settings, read at each use
   settings: () => LogsConfig;
   clock: Clock;
@@ -89,10 +95,18 @@ export class Logger implements AppLogger {
   readonly #ticker: LogTicker;
   // batches waiting for their turn on the event loop
   readonly #pending = new Set<Log[]>();
+  readonly #writer: LogWriter | null;
+  // rows taken while the writer is suspended (a backup or restore runs)
+  #held: LogRow[][] = [];
+  #suspended = false;
   #stopped = false;
 
   constructor(config: LoggerConfig) {
     this.#config = config;
+    this.#writer =
+      config.auxPath === undefined
+        ? null
+        : new LogWriter(config.auxPath, (text) => config.stderrLog(text));
     this.#ticker = (config.ticker ?? defaultTicker)(() => this.#handler.writeAll(), tickDuration);
     this.#handler = new BatchHandler({
       level: getLoggerMinLevel(config.isDev, config.settings()),
@@ -147,6 +161,38 @@ export class Logger implements AppLogger {
     this.#handler.writeAll(true);
     this.#stopped = true;
     this.#ticker.stop();
+    // a restore moved the files: what was held belongs to the old ones
+    this.#held = [];
+    this.#writer?.stopSync();
+  }
+
+  // Writes everything posted so far and ends the writer thread, so that a
+  // backup or a restore sees no half-written batch and no open connection to
+  // a file it replaces (D31). Logs taken meanwhile wait in memory for resume.
+  async suspend(): Promise<void> {
+    if (this.#stopped || this.#suspended) {
+      return;
+    }
+    this.#suspended = true;
+    await this.#writer?.stop();
+  }
+
+  // starts the writer again and writes what was held
+  resume(): void {
+    if (!this.#suspended) {
+      return;
+    }
+    this.#suspended = false;
+    const held = this.#held;
+    this.#held = [];
+    for (const rows of held) {
+      this.#post(rows);
+    }
+  }
+
+  // resolves once the batches posted so far are in `_logs`
+  async flush(): Promise<void> {
+    await this.#writer?.flush();
   }
 
   #beforeAdd(log: Log): boolean {
@@ -187,6 +233,30 @@ export class Logger implements AppLogger {
       return;
     }
 
+    if (this.#writer !== null) {
+      const rows: LogRow[] = [];
+      for (const log of logs) {
+        try {
+          const row = logDBExport(generateDefaultRandomId(), log, Number(settings.MaxDataSize));
+          rows.push([
+            String(row.id),
+            String(row.created),
+            Number(row.level),
+            String(row.message),
+            String(row.data),
+          ]);
+        } catch (err) {
+          stderrLog(`Failed to write log ${log.message} ${String(err)}`);
+        }
+      }
+      if (this.#suspended) {
+        this.#held.push(rows);
+      } else {
+        this.#post(rows);
+      }
+      return;
+    }
+
     // write the accumulated logs; a transaction that fails loses them, as
     // upstream ignores its error, and nothing here goes back to the logger
     try {
@@ -204,6 +274,12 @@ export class Logger implements AppLogger {
       });
     } catch {
       // see above
+    }
+  }
+
+  #post(rows: LogRow[]): void {
+    if (rows.length > 0) {
+      this.#writer?.write(rows);
     }
   }
 }
