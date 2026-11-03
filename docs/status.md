@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-03
 
-M7.1b active.
+M7.1c active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.1b | review 2 | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 2 | [Brief](briefs/M7.1b.md). Sonnet 5.5 worker: `check` 0 failures, `test:reference` 2 flakes (SQL execTime, realtime order) pass on rerun. 50 clients: list, filter, view within the bar; expand and create p50 1.6–1.8×. M6.4 waits for the owner's answer on its browser suite |
+| M7.1c | worker | — | 0 | [Brief](briefs/M7.1c.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M7.1b | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 2026-11-03 (`adde040`) | Two review rounds (Opus; lead fixed round 1, three design docs): Opus APPROVE at `cd2e7c7`. `check` 0 failures; `test:reference` only backlog flakes (SQL execTime, realtime order). D31 log writer thread; date fast path, read-pool rows as arrays, lighter hydration. 50 clients: list, filter+sort, view within the bar; expand 1.57–1.80× and create 1.80× p50 (noisy shared host) |
 | M7.1a | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 2026-11-03 (`b442184`) | Two review rounds (Opus, lead fixed both): round 2 left one report sentence, rewritten at `9c4c6f8` (docs only), which the reviewer said clears it. Lead `check` 0 failures at `3de51da`. bcrypt runs on Bun's thread pool on every request path; only batch compares on the calling thread. Profile: the log write is 39% of `/api/health`; list stays about 1.8× of upstream at 50 clients. Backlog: JSON parser stack-depth test can overflow in a full `check` run; `test:reference` port collisions on a shared host |
 | D30 | [#58](https://github.com/iglo-tech/iglo.base/pull/58) | 2026-11-02 (`3b89d47`) | Owner direction: no TLS in the app, M6.3 dropped. Lead change merged without a council round (CLI refusal only, no API path); `check` 0 failures. Scope review sent to the owner (M7.2 docs, M6.4 browser suite, M7.1 bar as gate, M7.3) |
 | M5.9 | [#57](https://github.com/iglo-tech/iglo.base/pull/57) | 2026-11-02 (`aa29b16`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `ab966a4`. SIGKILL suite for writes, batches, uploads, backups and restore (local and S3). Restore records its step by renaming a marker in `.pb_temp_to_delete` and rolls back an interrupted restore at start; no marker is upstream's own restore and starts as upstream. Backlog: a new restore after a failed rollback can drop the first one's marker; iglo.base leaves `-wal`/`-shm` after a normal stop where upstream leaves none |
@@ -79,6 +80,11 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-11-03 (M7.1b) | Logs | A restore suspends the log writer for the whole (S3) download; logs taken meanwhile are held in memory and lost when the restore succeeds |
+| 2026-11-03 (M7.1b) | Logs | SIGTERM while a backup zips loses the logs held during the zip |
+| 2026-11-03 (M7.1b) | Logs | The log writer gives up a batch after 12 retries (~2 min of a held auxiliary lock); docs say "never dropped" |
+| 2026-11-03 (M7.1b) | db | `row()`/`rowAsync()` on `SELECT *` keep stale column names after a column is added (pre-existing; no request path today) |
+| 2026-11-03 (M7.1a) | Tests | JSON parser stack-depth test can overflow in a full `check` run (passes alone); `test:reference` port collisions on a shared host |
 | 2026-10-29 | Test harness | `freePort()` (`test/support/executable.ts`) can race when servers start at once ("address already in use"); seen in M1.3's and M4.2's test:reference |
 | 2026-10-29 | Test harness (M3.2) | File-name normalization in `test/differential/files/files.test.ts:99–145` and `harness/compare.ts:207–209` accepts any equal-length lowercase alphanumeric difference; restrict it to the generated 10-character suffix |
 | 2026-10-29 | Collections API (M2.5) | Form-encoded (urlencoded/multipart) collection create/update ignores `fields` and nested auth options as plain keys; JSON and `@jsonPayload` match upstream |
