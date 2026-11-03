@@ -10,7 +10,7 @@ M7.1b active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.1b | review 1 | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 1 | [Brief](briefs/M7.1b.md). Sonnet 5.5 worker: `check` 0 failures, `test:reference` 2 flakes (SQL execTime, realtime order) pass on rerun. 50 clients: list, filter, view within the bar; expand and create p50 1.6–1.8×. M6.4 waits for the owner's answer on its browser suite |
+| M7.1b | review 2 | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 2 | [Brief](briefs/M7.1b.md). Sonnet 5.5 worker: `check` 0 failures, `test:reference` 2 flakes (SQL execTime, realtime order) pass on rerun. 50 clients: list, filter, view within the bar; expand and create p50 1.6–1.8×. M6.4 waits for the owner's answer on its browser suite |
 
 ## Done
 
