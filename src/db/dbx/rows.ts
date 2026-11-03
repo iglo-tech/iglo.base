@@ -127,7 +127,7 @@ export function readRows(rows: Rows, mode: ReadMode): unknown {
 }
 
 export class Rows implements Iterable<unknown[]> {
-  private readonly names: string[];
+  private names: string[];
   // the statement rows are stepped on: stmt, or stmt wrapped in a subquery
   // when column names repeat
   private reader: Statement | null;
@@ -216,6 +216,7 @@ export class Rows implements Iterable<unknown[]> {
     if (this.fresh()) {
       try {
         const row = this.guard(() => this.reader!.get(...this.args) as Row | null);
+        this.names = this.reader!.columnNames;
         if (row === null) {
           throw new NoRowsError();
         }
@@ -244,6 +245,7 @@ export class Rows implements Iterable<unknown[]> {
     if (this.fresh()) {
       try {
         const rows = this.guard(() => this.reader!.all(...this.args) as Row[]);
+        this.names = this.reader!.columnNames;
         if (!this.exact) {
           for (const row of rows) {
             narrowRow(row, this.names);
@@ -268,6 +270,9 @@ export class Rows implements Iterable<unknown[]> {
     if (this.fresh()) {
       try {
         const rows = this.guard(() => this.reader!.values(...this.args) as unknown[][]);
+        // a cached statement re-prepares after a schema change (an added
+        // column): its names are current only once it has run
+        this.names = this.reader!.columnNames;
         if (!this.exact) {
           for (const values of rows) {
             narrowValues(values);

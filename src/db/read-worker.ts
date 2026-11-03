@@ -11,7 +11,7 @@ import type { Database } from "bun:sqlite";
 
 import { openReadOnly } from "@/db/connect";
 import { queryStatements, splitStatements } from "@/db/dbx/driver";
-import { readRows } from "@/db/dbx/rows";
+import { readRows, type Rows } from "@/db/dbx/rows";
 import type {
   ReadRequestMessage,
   ReadResponseMessage,
@@ -20,6 +20,12 @@ import type {
 } from "@/db/read-pool";
 
 declare const self: Worker;
+
+// the rows first: the column names are current only once the statement ran
+function allTable(rows: Rows): RowTable {
+  const values = rows.allValues();
+  return { names: rows.columns(), rows: values };
+}
 
 const conns = new Map<string, Database>();
 
@@ -58,10 +64,7 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage>) => {
       false,
     ).withExactIntegers(req.exactIntegers);
     // the column names once and an array per row (rowsFromValues on the other side)
-    const value =
-      req.mode === "all"
-        ? ({ names: rows.columns(), rows: rows.allValues() } satisfies RowTable)
-        : readRows(rows, req.mode);
+    const value = req.mode === "all" ? allTable(rows) : readRows(rows, req.mode);
     res = { id: req.id, ok: true, value };
   } catch (err) {
     res = { id: req.id, ok: false, error: serializeError(err) };

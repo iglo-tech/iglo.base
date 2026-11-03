@@ -510,3 +510,13 @@ test("all rows read on the pool equal the rows read on the main thread", async (
     }
   }
 });
+
+test("a cached statement sees a column added after its first use", async () => {
+  const app = open({ readWorkers: 1 });
+  const q = () => app.concurrentDB().newQuery("SELECT * FROM demo");
+  app.db().insert("demo", { id: "a", title: "x" }).execute();
+  expect(Object.keys((await q().allAsync())[0]!)).toEqual(["id", "title", "n"]);
+  app.nonconcurrentDB().newQuery("ALTER TABLE demo ADD COLUMN extra TEXT DEFAULT 'e'").execute();
+  expect(await q().allAsync()).toEqual(q().all());
+  expect(Object.keys((await q().allAsync())[0]!)).toEqual(["id", "title", "n", "extra"]);
+});
