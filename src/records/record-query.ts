@@ -43,12 +43,7 @@ import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { defaultMaxLockRetries, execLockRetry, execLockRetryAsync } from "@/db/retry";
 import { FieldNameEmail, goQuote } from "@/fields/field";
-import {
-  type Record,
-  newRecordFromNullStringMap,
-  newRecordsFromNullStringMaps,
-  nullStringMapFromRow,
-} from "@/records/record-model";
+import { type Record, newRecordFromRow, newRecordsFromRows } from "@/records/record-model";
 import {
   TokenClaimCollectionId,
   TokenClaimId,
@@ -170,12 +165,12 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
 
 function resolveRecordOneHook(collection: Collection, op: (dst: unknown) => unknown): Record {
   const data = op(undefined) as Row;
-  return newRecordFromNullStringMap(collection, nullStringMapFromRow(data));
+  return newRecordFromRow(collection, data);
 }
 
 function resolveRecordAllHook(collection: Collection, op: (dst: unknown) => unknown[]): Record[] {
   const data = op(undefined) as Row[];
-  return newRecordsFromNullStringMaps(collection, data.map(nullStringMapFromRow));
+  return newRecordsFromRows(collection, data);
 }
 
 export function getCollectionByModelOrIdentifier(
