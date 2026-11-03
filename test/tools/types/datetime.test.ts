@@ -460,18 +460,20 @@ describe("DateTime precision", () => {
   });
 });
 
-describe("the fast path of the stored layout", () => {
-  // every string must give what the Go layout parser gives (the slow path),
-  // and null exactly where that parser fails
-  const slow = (v: string): { sec: number; nsec: number } | null => {
-    try {
-      const [t] = parsedTime(parse(DefaultDateLayout, v));
-      return t;
-    } catch {
-      return null;
-    }
-  };
+// every string must give what the Go layout parser gives (the slow path),
+// and null exactly where that parser fails
+const slow = (v: string): { sec: number; nsec: number } | null => {
+  try {
+    const [t] = parsedTime(parse(DefaultDateLayout, v));
+    return t;
+  } catch {
+    return null;
+  }
+};
 
+const pad = (n: number, w: number): string => String(n).padStart(w, "0");
+
+describe("the fast path of the stored layout", () => {
   const corpus = [
     "2022-01-01 00:00:00.000Z",
     "2024-02-29 23:59:59.999Z",
@@ -514,7 +516,6 @@ describe("the fast path of the stored layout", () => {
   });
 
   test("matches it on every day of every year in a range and on random times", () => {
-    const pad = (n: number, w: number): string => String(n).padStart(w, "0");
     for (
       let ms = Date.UTC(1999, 0, 1);
       ms < Date.UTC(2005, 0, 1);

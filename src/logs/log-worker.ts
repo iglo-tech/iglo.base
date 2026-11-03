@@ -62,6 +62,7 @@ function writeBatch(conn: Database, rows: LogWorkerRequest & { type: "write" }):
               if (isLockError(err)) {
                 throw err;
               }
+              // oxlint-disable-next-line unicorn/require-post-message-target-origin
               errors?.postMessage({ text: `Failed to write log ${row[3]} ${String(err)}` });
             }
           }

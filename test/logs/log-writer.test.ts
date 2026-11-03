@@ -105,16 +105,16 @@ describe("the log writer thread", () => {
     const logger = app.logger as Logger;
     app.databases.auxNonconcurrentDB().newQuery("DELETE FROM _logs").execute();
 
-    let stop = false;
+    const state = { stop: false };
     let count = 0;
     const logging = (async () => {
-      while (!stop) {
+      while (!state.stop) {
         logger.info(`during backup ${count++}`);
         await Bun.sleep(1);
       }
     })();
     await createBackup(app, "during.zip");
-    stop = true;
+    state.stop = true;
     await logging;
     await logger.suspend();
     logger.resume();

@@ -194,7 +194,7 @@ export function newRecordsFromNullStringMaps(
 
 // newRecordsFromNullStringMaps for rows as the driver reads them
 export function newRecordsFromRows(collection: Collection, rows: readonly Row[]): Record[] {
-  const records: Record[] = new Array<Record>(rows.length);
+  const records: Record[] = Array.from({ length: rows.length });
   for (let i = 0; i < rows.length; i++) {
     records[i] = newRecordFromRow(collection, rows[i]!);
   }

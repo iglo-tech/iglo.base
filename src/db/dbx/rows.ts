@@ -385,7 +385,7 @@ export class Rows implements Iterable<unknown[]> {
 // The row objects of allValues(): as toRow builds them, for a repeated column
 // name the last column wins and "__proto__" is an ordinary key.
 export function rowsFromValues(names: string[], rows: unknown[][]): Row[] {
-  const out: Row[] = new Array<Row>(rows.length);
+  const out: Row[] = Array.from({ length: rows.length });
   const plain = !names.includes("__proto__");
   const n = names.length;
   for (let r = 0; r < rows.length; r++) {
