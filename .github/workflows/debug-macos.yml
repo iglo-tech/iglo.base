@@ -17,6 +17,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - name: timings
+        if: false
         run: |
           set -x
           time dist/iglo-base --version
@@ -28,6 +29,6 @@ jobs:
           done
           time dist/iglo-base superuser upsert a@b.cc 1234567890 --dir $(mktemp -d)/pb_data
       - name: tests of the first failing files
-        run: bun test test/ui/installer.test.ts test/cli/cli.test.ts 2>&1 | tail -40
+        run: bun test test/cli/cli.test.ts 2>&1 | head -60
         env:
           IGLO_SQLITE_LIB: ${{ github.workspace }}/dist/libsqlite3.dylib

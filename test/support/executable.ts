@@ -47,7 +47,9 @@ export function executable(): Promise<string> {
       { cwd: repoRoot, stdout: "pipe", stderr: "pipe" },
     );
     if ((await proc.exited) !== 0) {
-      throw new Error(`build failed:\n${await new Response(proc.stderr).text()}`);
+      throw new Error(
+        `build failed:\n${await new Response(proc.stderr).text()}${await new Response(proc.stdout).text()}`,
+      );
     }
     return outfile;
   })();
