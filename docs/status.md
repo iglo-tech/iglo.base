@@ -4,16 +4,17 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-No task active: every MVP task is merged. The post-MVP tasks (P.1–P.5) wait for the owner's go.
+Active: release v1.0.0 (lead) and P.5, the dashboard tests. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.5, P.1, P.3, P.2; P.4 needs the answer below.
 
 ## Needs you
 
-1. **When you want: the first release and the real switch.** Push a `v*` tag to get the binary ([releasing](releasing.md)); then switch production with [cutover.md](cutover.md). First check that production runs PocketBase v0.41.0 (`pocketbase --version` or the image tag), copy `pb_migrations` next to `pb_data`, and remove `--hooksDir` from the command line if it is there.
+1. **P.4, docs on iglo.tech: where does the site live?** The plan puts the user docs at `https://iglo.tech/iglo.base/docs`. I need the site's repository (or "make it a folder in this repository, published by you"). Until then P.4 waits; the other post-MVP tasks go first.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| P.5 | worker | task/P.5-dashboard-tests | 0 | [brief](briefs/P.5.md) |
 
 ## Done
 
