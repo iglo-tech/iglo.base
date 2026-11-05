@@ -14,7 +14,7 @@ Nothing right now.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.4 | review | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 1 | [brief](briefs/M7.4.md); rehearsal passed, no defect; runbook docs/cutover.md |
+| M7.4 | review | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2 | Round 1 CHANGES (runbook: version check, retry from step 1, hooks flags), lead fixed in e7a33a5; [brief](briefs/M7.4.md); rehearsal passed, no defect; runbook docs/cutover.md |
 
 ## Done
 
