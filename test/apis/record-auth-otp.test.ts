@@ -5,7 +5,7 @@
 // test/differential/auth/otp-flows.test.ts runs these against upstream too.
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -13,6 +13,7 @@ import { insertOTPs, otpRows, setMFA } from "@test/scenarios/record-auth-prepare
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
+import { hostHasSendmail } from "@test/support/sendmail";
 
 const email = "test@example.com";
 const userId = "4q1xlclmfloku33";
@@ -113,17 +114,14 @@ describe("the OTP email", () => {
   });
 
   // the fixture has SMTP off and the host must have no sendmail (macOS has one)
-  test.skipIf(existsSync("/usr/sbin/sendmail"))(
-    "a failed send keeps the 200 and removes the OTP",
-    async () => {
-      const dataDir = usersWithoutMFA();
+  test.skipIf(hostHasSendmail)("a failed send keeps the 200 and removes the OTP", async () => {
+    const dataDir = usersWithoutMFA();
 
-      await withServer(dataDir, async (url) => {
-        const res = await post(url, "request-otp", { email });
-        expect(res.status).toBe(200);
+    await withServer(dataDir, async (url) => {
+      const res = await post(url, "request-otp", { email });
+      expect(res.status).toBe(200);
 
-        await waitFor(() => otpRows(dataDir, userId).length === 0);
-      });
-    },
-  );
+      await waitFor(() => otpRows(dataDir, userId).length === 0);
+    });
+  });
 });

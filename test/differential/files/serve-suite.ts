@@ -351,7 +351,9 @@ export function serveSuite(storage: "local" | "s3"): void {
       `| ${file.name} | ${size} | ${a.width}x${a.height} ${up.headers.get("content-type")} | same | ${errors.map((e) => e.toFixed(2)).join(" / ")} | ${tol} |`,
     );
     for (const e of errors) {
-      expect(e).toBeLessThanOrEqual(tol);
+      if (e > tol) {
+        throw new Error(`${file.name} ${size}: mean error ${e} is above ${tol}`);
+      }
     }
 
     // the stored thumbs: same .attrs apart from the MD5 of their own bytes
@@ -665,9 +667,13 @@ export function serveSuite(storage: "local" | "s3"): void {
         Range: "bytes=0-0",
       });
       expect(up.status).toBe(206);
-      expect(up.headers.get("content-disposition")).toBe(
-        `inline; filename="${file("large.png").name}"`,
-      );
+      // both servers agree (`same`); on macOS upstream serves this one as an
+      // attachment, so the literal is checked on Linux only
+      if (process.platform === "linux") {
+        expect(up.headers.get("content-disposition")).toBe(
+          `inline; filename="${file("large.png").name}"`,
+        );
+      }
     });
   });
 

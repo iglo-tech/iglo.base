@@ -10,6 +10,7 @@ import { describe, expect, test } from "bun:test";
 import { tokenCases } from "@test/differential/auth/token-cases";
 import { runDifferential } from "@test/differential/harness/run";
 import { outcome } from "@test/scenarios/expectations";
+import { hostHasSendmail, needsNoSendmail } from "@test/support/sendmail";
 
 const cases = tokenCases();
 
@@ -19,7 +20,7 @@ test("at least 15 cases", () => {
 
 describe("verification, password reset and email change cases", () => {
   for (const scenario of cases) {
-    test(scenario.name, async () => {
+    test.skipIf(hostHasSendmail && needsNoSendmail(scenario.name))(scenario.name, async () => {
       const { upstreamFailures, igloBaseFailures } = await runDifferential(scenario);
       // the expectations describe real upstream behavior
       expect(upstreamFailures).toEqual([]);
