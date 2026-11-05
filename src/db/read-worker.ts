@@ -51,7 +51,8 @@ function serializeError(err: unknown): SerializedError {
   return { name: "Error", message: String(err), code: null, errno: null };
 }
 
-function run(req: ReadRequestMessage): void {
+self.addEventListener("message", (event: MessageEvent<ReadRequestMessage>) => {
+  const req = event.data;
   let res: ReadResponseMessage;
   try {
     const c = conn(req.path);
@@ -69,20 +70,4 @@ function run(req: ReadRequestMessage): void {
     res = { id: req.id, ok: false, error: serializeError(err) };
   }
   postMessage(res);
-}
-
-// one request, or the requests the pool posted together (in order; each is
-// answered when it is done)
-self.addEventListener(
-  "message",
-  (event: MessageEvent<ReadRequestMessage | ReadRequestMessage[]>) => {
-    const data = event.data;
-    if (Array.isArray(data)) {
-      for (const req of data) {
-        run(req);
-      }
-    } else {
-      run(data);
-    }
-  },
-);
+});

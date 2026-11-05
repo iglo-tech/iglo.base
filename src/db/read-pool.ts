@@ -67,23 +67,10 @@ interface Request {
 
 interface Slot {
   readonly worker: Worker;
-  // the requests posted to the worker and not answered yet, in the order it
-  // runs them; the first one is running (a timed-out one, expired, until its
-  // statement returns, when the worker could not be abandoned). A request
-  // that failed at its deadline while it waited, or that another worker took
-  // over (steal), stays here with its slot cleared until the worker's answer
-  // for it is skipped.
-  posted: Request[];
-  // when the first posted request started running (performance.now())
-  startedAt: number;
+  // the running request; a timed-out one (expired) until its statement
+  // returns, when the worker could not be abandoned
+  request: Request | null;
 }
-
-// the most requests posted to a worker in one message (see pump)
-export const maxBatch = 4;
-
-// an idle worker takes over the requests that wait behind a request which
-// has been running this long (ms) on another worker (see steal)
-export const stealAfterMs = 10;
 
 // a SQLite error from a worker: bun:sqlite's SQLiteError cannot be
 // constructed outside it, so this one carries the same name, message,
@@ -134,7 +121,6 @@ export class ReadPool {
   private readonly queue: Request[] = [];
   private readonly abandoned = new Set<Worker>();
   private readonly exited: Promise<void>[] = [];
-  private stealTimer: ReturnType<typeof setTimeout> | null = null;
   private nextId = 1;
   private closed = false;
 
@@ -168,7 +154,7 @@ export class ReadPool {
   stats(): ReadPoolStats {
     return {
       workers: this.slots.length,
-      busy: this.slots.filter((slot) => slot.posted.length > 0).length,
+      busy: this.slots.filter((slot) => slot.request !== null).length,
       queued: this.queue.length,
       abandoned: this.abandoned.size,
     };
@@ -180,24 +166,17 @@ export class ReadPool {
   close(): Promise<void> {
     if (!this.closed) {
       this.closed = true;
-      if (this.stealTimer !== null) {
-        clearTimeout(this.stealTimer);
-        this.stealTimer = null;
-      }
       const err = new Error("sql: database is closed");
       for (const request of this.queue.splice(0)) {
         this.settle(request);
         request.reject(err);
       }
       for (const slot of this.slots.splice(0)) {
-        const posted = slot.posted;
-        slot.posted = [];
+        const request = slot.request;
         slot.worker.terminate();
-        for (const request of posted) {
-          if (request.slot === slot) {
-            this.settle(request);
-            request.reject(err);
-          }
+        if (request !== null) {
+          this.settle(request);
+          request.reject(err);
         }
       }
     }
@@ -240,7 +219,7 @@ export class ReadPool {
 
   private spawn(): void {
     const worker = new Worker(workerURL());
-    const slot: Slot = { worker, posted: [], startedAt: 0 };
+    const slot: Slot = { worker, request: null };
     this.exited.push(
       new Promise((resolve) => {
         worker.addEventListener("close", () => {
@@ -253,28 +232,15 @@ export class ReadPool {
       }),
     );
     worker.addEventListener("message", (event: MessageEvent<ReadResponseMessage>) => {
-      const request = slot.posted[0];
-      if (request === undefined || request.id !== event.data.id) {
+      const request = slot.request;
+      if (request === null || request.id !== event.data.id) {
         return;
       }
-      // the worker answers its posted requests in order; the next one runs
-      slot.posted.shift();
-      slot.startedAt = performance.now();
-      if (slot.posted.length === 0) {
-        worker.unref();
-      }
-      if (request.slot !== slot) {
-        // it failed at its deadline while it waited, or another worker took
-        // it over: this answer is not used
-        this.pump();
-        this.steal(slot);
-        return;
-      }
+      slot.request = null;
       this.settle(request);
+      worker.unref();
       const res = event.data;
-      if (request.expired) {
-        // rejected at its deadline already
-      } else if (request.deadline?.expired() === true) {
+      if (request.deadline?.expired() === true) {
         // the result came in before the overdue timer ran (a busy main
         // thread): the query still fails, as its context expired
         request.reject(new DeadlineExceededError());
@@ -288,21 +254,17 @@ export class ReadPool {
         request.reject(deserializeError(res.error));
       }
       this.pump();
-      this.steal(slot);
     });
     worker.addEventListener("error", (event: ErrorEvent) => {
       // the worker's thread failed outside a query and exits; replace it
-      const posted = slot.posted;
+      const request = slot.request;
       this.removeSlot(slot);
-      slot.posted = [];
+      slot.request = null;
       worker.terminate();
       worker.unref();
-      // the running request fails; the ones behind it did not run
-      const running = posted[0];
-      this.requeue(posted.slice(1), slot);
-      if (running !== undefined && running.slot === slot) {
-        this.settle(running);
-        running.reject(new Error(`read worker failed: ${event.message}`));
+      if (request !== null) {
+        this.settle(request);
+        request.reject(new Error(`read worker failed: ${event.message}`));
       }
       this.refill();
     });
@@ -310,83 +272,19 @@ export class ReadPool {
     this.slots.push(slot);
   }
 
-  // Posts queued requests to idle workers. While every queued request can
-  // have an idle worker to itself, each is posted alone, as it is posted
-  // as soon as it comes. When more requests wait than workers are idle,
-  // each idle worker takes several in one message (at most maxBatch): a
-  // message costs the event loop about as much for one request as for
-  // several, and it is the event loop that the requests are waiting for.
-  // The worker runs them in order and answers each when it is done.
   private pump(): void {
     while (this.queue.length > 0) {
-      let idle = 0;
-      let slot: Slot | undefined;
-      for (const s of this.slots) {
-        if (s.posted.length === 0) {
-          idle++;
-          slot ??= s;
-        }
-      }
+      const slot = this.slots.find((s) => s.request === null);
       if (slot === undefined) {
         return;
       }
-      const take = Math.min(maxBatch, Math.ceil(this.queue.length / idle));
-      const batch = this.queue.splice(0, take);
-      slot.posted = batch;
-      slot.startedAt = performance.now();
-      for (const request of batch) {
-        request.slot = slot;
-      }
+      const request = this.queue.shift()!;
+      slot.request = request;
+      request.slot = slot;
       slot.worker.ref();
       // a Worker's postMessage has no target origin (that is window.postMessage)
       // oxlint-disable-next-line unicorn/require-post-message-target-origin
-      slot.worker.postMessage(batch.length === 1 ? batch[0]!.message : batch.map((r) => r.message));
-    }
-  }
-
-  // An idle worker takes over a request that waits behind one which has been
-  // running for stealAfterMs on another worker, so a slow query does not
-  // hold up the requests posted with it. The first worker still runs the
-  // request and its answer is dropped (reads can be repeated).
-  private steal(slot: Slot): void {
-    if (this.closed || this.queue.length > 0 || slot.posted.length > 0) {
-      return;
-    }
-    if (!this.slots.includes(slot)) {
-      return;
-    }
-    const now = performance.now();
-    let wait = Infinity;
-    for (const victim of this.slots) {
-      if (victim === slot || victim.posted.length < 2) {
-        continue;
-      }
-      if (now - victim.startedAt < stealAfterMs) {
-        // not long enough yet: look again when it is
-        wait = Math.min(wait, stealAfterMs - (now - victim.startedAt));
-        continue;
-      }
-      for (let i = victim.posted.length - 1; i >= 1; i--) {
-        const request = victim.posted[i] as Request;
-        if (request.slot === victim && !request.expired) {
-          request.slot = slot;
-          slot.posted = [request];
-          slot.startedAt = now;
-          slot.worker.ref();
-          // oxlint-disable-next-line unicorn/require-post-message-target-origin
-          slot.worker.postMessage(request.message);
-          return;
-        }
-      }
-    }
-    if (wait !== Infinity && this.stealTimer === null) {
-      this.stealTimer = setTimeout(() => {
-        this.stealTimer = null;
-        for (const idle of this.slots.slice()) {
-          this.steal(idle);
-        }
-      }, wait + 1);
-      this.stealTimer.unref();
+      slot.worker.postMessage(request.message);
     }
   }
 
@@ -400,10 +298,6 @@ export class ReadPool {
       if (i !== -1) {
         this.queue.splice(i, 1);
       }
-    } else if (slot.posted[0] !== request) {
-      // posted behind the running request: it fails now and its answer is
-      // skipped when it comes
-      request.slot = null;
     } else if (this.abandoned.size < this.maxAbandoned) {
       this.retire(slot);
       this.refill();
@@ -413,28 +307,14 @@ export class ReadPool {
 
   // terminates a worker; its thread exits once its statement returns
   private retire(slot: Slot): void {
-    const posted = slot.posted;
-    slot.posted = [];
-    if (posted[0] !== undefined && posted[0].slot === slot) {
-      posted[0].slot = null;
+    if (slot.request !== null) {
+      slot.request.slot = null;
     }
     this.removeSlot(slot);
-    // the requests that did not run go to another worker (reads can be
-    // repeated); refill() posts them
-    this.requeue(posted.slice(1), slot);
+    slot.request = null;
     slot.worker.terminate();
     slot.worker.unref();
     this.abandoned.add(slot.worker);
-  }
-
-  // puts requests that did not run back at the front of the queue; the ones
-  // that failed at their deadline while they waited are dropped
-  private requeue(requests: Request[], from: Slot): void {
-    const live = requests.filter((r) => !r.expired && r.slot === from);
-    for (const request of live) {
-      request.slot = null;
-    }
-    this.queue.unshift(...live);
   }
 
   // keeps `size` live workers, and replaces workers still running a
@@ -447,8 +327,7 @@ export class ReadPool {
       if (this.abandoned.size >= this.maxAbandoned) {
         break;
       }
-      const first = slot.posted[0];
-      if (first?.expired === true && first.slot === slot) {
+      if (slot.request?.expired === true) {
         this.retire(slot);
       }
     }

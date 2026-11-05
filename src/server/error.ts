@@ -33,14 +33,16 @@ export class ValidationErrors extends Error {
     // validation run (most runs end without an error). No stack is
     // captured: capturing one dominates the cost of the object and nothing
     // reads it.
-    const limit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
-    super(
+    // (the message is built first: errorText may throw, and the limit must
+    // not stay 0 then)
+    const message =
       Object.keys(errors)
         .toSorted()
         .map((key) => `${key}: ${errorText(errors[key])}`)
-        .join("; ") + (Object.keys(errors).length > 0 ? "." : ""),
-    );
+        .join("; ") + (Object.keys(errors).length > 0 ? "." : "");
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
+    super(message);
     Error.stackTraceLimit = limit;
     this.name = "ValidationErrors";
   }

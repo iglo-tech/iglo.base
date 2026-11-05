@@ -176,7 +176,7 @@ export class ResponseWriter {
     return this.#status === 0 ? 200 : this.#status;
   }
 
-  #response(body: ReadableStream<Uint8Array> | Blob | Uint8Array | null): Response {
+  #response(body: ReadableStream<Uint8Array> | Blob | null): Response {
     return new Response(body, {
       status: this.#sentStatus(),
       headers: this.#sentHeader ?? this.header,
@@ -209,14 +209,7 @@ export class ResponseWriter {
       this.writeHeader(200);
     }
     const allowed = bodyAllowedForStatus(this.#sentStatus());
-    // a single chunk is the body as it is (no Blob around it)
-    const body =
-      this.#body ??
-      (this.#chunks.length === 0
-        ? null
-        : this.#chunks.length === 1
-          ? (this.#chunks[0] as Uint8Array)
-          : new Blob(this.#chunks));
+    const body = this.#body ?? (this.#chunks.length === 0 ? null : new Blob(this.#chunks));
     if (body instanceof Promise) {
       return body.then((blob) => this.#response(allowed ? blob : null));
     }

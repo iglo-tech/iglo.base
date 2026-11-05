@@ -728,16 +728,6 @@ export function cleanSlashPath(p: string): string {
   if (p === "") {
     return ".";
   }
-  // a rooted path without empty or dot segments and a trailing slash is
-  // clean already (the common case)
-  if (
-    p.charCodeAt(0) === 0x2f &&
-    !p.includes("//") &&
-    !p.includes("/.") &&
-    (p.length === 1 || p.charCodeAt(p.length - 1) !== 0x2f)
-  ) {
-    return p;
-  }
   const rooted = p.startsWith("/");
   const out: string[] = [];
   for (const part of p.split("/")) {
