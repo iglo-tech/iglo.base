@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.3, performance second pass. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.3, then P.2; P.4 needs the answer below.
+Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.2, macOS and linux-arm64 builds. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.2 is the last one agents can do; P.4 needs the answer below.
 
 ## Needs you
 
@@ -15,12 +15,12 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.3 | review | [#66](https://github.com/iglo-tech/iglo.base/pull/66) | 1 | [brief](briefs/P.3.md); startup 267–356 → 117–153 ms (bytecode build, lazy regexps and imports); request path unchanged within noise |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.3 | [#66](https://github.com/iglo-tech/iglo.base/pull/66) | 2026-11-05 (`01aa2f7`) | One review round: Opus APPROVE at `e1691e1`, `check` and `test:reference` 0 failures. Startup 238–356 → 102–153 ms on 20 collections / 10.5k records (upstream 29–38 ms): bytecode build (+7 MB), lazy regexps, lazy nodemailer/zlib; idle RSS 84 → 77 MiB. Request path: no removable cost above 7% of the profile; 50-client p50 unchanged within host noise (list, view within 1.5×; expand about 1.6×, create 1.1–1.9×). The rest is structural (one JS thread). Backlog: `startup-db.ts` leaves `no-browser/` in the repo root; startup changes not measured one by one; two misplaced comments (`datetime.ts`, `png-raw.ts`) |
 | P.1 | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 2026-11-05 (`9a20749`) | Two review rounds (Opus; Sonnet fixer round 1, lead fixed round 2, docs only): round-2 blocker fixed as the reviewer prescribed, merged without round 3. Distroless image wrapping the release executable (D33), `/iglo-base` in `/`, volumes `/pb_data`, `/pb_migrations`, `/pb_public`; uid 65532. Published `ghcr.io/iglo-tech/iglo.base:1.0.0` and `:latest` (run 42088769396). Backlog: `docker/login-action` version, no `--rm` on the smoke container |
 | P.5 | [#64](https://github.com/iglo-tech/iglo.base/pull/64) | 2026-11-05 (`ae75e85`) | One review round: Opus APPROVE at `6384ed6`. Full dashboard checklist on the release build, every row passes, no defect; `bun run test:browser` (agent-browser, outside `check`): install, collection and record round trip, logs page. Backlog: stale comment in test/browser/support.ts; agent-browser leaves session files in `$XDG_RUNTIME_DIR`; no retry on element lookup; Crons page text still says jobs are registered with Go or JS (candidate dashboard patch) |
 | M7.4 | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2026-11-05 (`dfab407`) | Two review rounds (Opus, lead fixed both, docs only): Opus APPROVE at `e7a33a5`. Rehearsal on the staging copy (D32), no network: 506 request pairs compared, no defect; PocketBase v0.41.0 reopened the copy, schema and system rows equal. Runbook `docs/cutover.md`. Report in `~/iglo.base-staging/rehearsal-1/` |
