@@ -3,7 +3,7 @@
 Questions that change scope or order and need the owner. Everything else is decided in [Decisions](10-decisions.md). Each one has a default, so work is not blocked.
 
 1. **Where does iglo.base's user documentation live?**
-   - **Default:** Markdown in this repository under `docs/` (for example `docs/api/`, `docs/rules.md`), linked from the dashboard at their GitHub URLs. Written in M7 with the operations guide.
+   - **Answer (owner, 2026-11-05):** on the iglo.tech domain, for example `https://iglo.tech/iglo.base/docs`, written after the MVP (P.4). Until then the dashboard links point at the repository docs.
    - **Why it matters:** the dashboard's documentation links point to iglo.base docs (D17), so the pages they link to must exist by 1.0. A separate docs site adds hosting and a build step.
 
 ## Resolved

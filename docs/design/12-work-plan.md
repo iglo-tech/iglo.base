@@ -181,14 +181,14 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M6.1 | Vendor `ui/` at v0.41.0 with the patch set, embed it, serve `/_/` with upstream's headers | `ui/`, `apis/serve.go` | M0.1 | Dashboard loads against iglo.base; `ui/PATCHES.md` lists every change; the 10 `extensions_test.go` scenarios pass with the marked differences |
 | M6.2 | Installer and `superuser` commands (folded into M6.1 on 2026-10-29) | `apis/installer.go`, `cmd/superuser.go` | M4.1, M6.1 | Install flow works; `superuser` command tests pass |
 | M6.3 | Dropped on 2026-11-02 (D30): no TLS in the app, the reverse proxy terminates it | — | — | — |
-| M6.4 | Dashboard checklist and browser tests | none | M6.1, M6.2, M5.3, M5.5 | The `agent-browser` checklist passes; automated install, collection-and-record and logs tests pass |
+| M6.4 | Moved after the MVP (owner direction 2026-11-05): see P.5 | — | — | — |
 
 ### M7: 1.0 (MVP)
 
 | ID | Task | Upstream | Depends on | Acceptance |
 |---|---|---|---|---|
 | M7.1 | Performance, profile first (owner direction 2026-11-02): profile the main thread against upstream, then fix what the profile shows. Split into M7.1a (profile, bcrypt off the event loop), M7.1b (the profile's low-risk fixes #1, #3, #4, #5: log writer off the main thread (D31), date fast path, read-pool rows, hydration; then re-profile) and M7.1c (the JSON writer #2 and what the re-profile ranks next; final numbers against the bar) | none | M5.8 | M7.1a: profiles and numbers in `docs/perf/`, bcrypt off the loop; M7.1b: before/after numbers and a new profile; M7.1c: numbers re-measured against the [performance bar](02-architecture.md#performance-bar) |
-| M7.2 | User documentation linked from the dashboard, operations guide | none | M6.4 | Every dashboard documentation link resolves |
+| M7.2 | Moved after the MVP (owner direction 2026-11-05: the owner is the only user for now): see P.4 | — | — | — |
 | M7.3 | Release workflow: the linux-x64 binary on `v*` tags (D24) | none | M0.8 | A test tag produces a working linux-x64 binary |
 | M7.4 | Cutover rehearsal on the staging copy, with the owner (D20) | none | M7.3 | Move and rollback done once; outbound settings disabled before the first start |
 
@@ -201,6 +201,8 @@ M7.4 is the only task that touches production data. It is run with the owner, ne
 | P.1 | Official Docker image that wraps the release executable (D3) | M7.3 |
 | P.2 | macOS (darwin-arm64) and linux-arm64 builds: release binaries, bundled SQLite on macOS through `Database.setCustomSQLite`, macOS CI job for `test:reference` (D24) | M7.3 |
 | P.3 | Performance, second pass (owner direction 2026-11-05): revisit the 1.5× bar misses M7.1c left at p50 with 50 clients (list, expand, view, create); start with a fresh profile on a quiet host, then the remaining main-thread costs (read-pool hop, hydration, expand `publicExport`) and whether threads or processes are worth their shared-state cost after all | M7.1c |
+| P.4 | User documentation on the iglo.tech site (owner direction 2026-11-05), for example `https://iglo.tech/iglo.base/docs`: install and operations guide, the list of differences from PocketBase, links to PocketBase's docs for the API; the dashboard's documentation links (`PB_DOCS_URL`, D17) point there | M7.3 |
+| P.5 | Dashboard tests (owner direction 2026-11-05): run the written `agent-browser` checklist in `docs/manual-tests/dashboard.md` in full, and add automated browser tests for install, a collection-and-record round trip and the logs page | M7.3 |
 
 ## Order
 

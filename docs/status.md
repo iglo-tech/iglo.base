@@ -10,15 +10,13 @@ M7.3 active.
 
 Only what the owner must decide. Everything else below is the lead's log.
 
-1. **M7.2, user documentation.** Recommended: the dashboard's doc links open short iglo.base pages (install and operations guide, list of differences from PocketBase), and those pages link to PocketBase's documentation for the API itself. Alternatives: dashboard links go straight to PocketBase's docs (changes D17), or iglo.base writes its own full copy of the docs.
-2. **M6.4, dashboard tests.** Recommended: keep the written `agent-browser` checklist (already run screen by screen in earlier tasks) and drop the new automated browser tests. Alternative: also add the automated tests (install, collection and record, logs) with a browser test runner.
-3. **M7.4, cutover rehearsal.** Not a decision: it runs with the owner, once M7.3 is merged. Say when.
+1. **M7.4, trial move of your real data (the "cutover rehearsal").** Before production switches from PocketBase to iglo.base, the move is practised once on a copy of a production backup on this machine: start iglo.base on the copy, check it, then open the same copy with PocketBase v0.41.0 again to prove the way back works. Email, S3 uploads and scheduled backups in the copy are switched off first, so nothing leaves the machine (D20). Recommended: an agent does it on the staging copy and reports to you; this needs your OK, as agents may not touch production data now. Alternatives: you do it yourself from a step-by-step guide, or skip the trial and switch production directly with a backup to roll back to.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.3 | worker | — | 0 | [Brief](briefs/M7.3.md). Sonnet 5.5 worker. M6.4 (and M7.2 after it) waits for the owner's answer on its browser suite |
+| M7.3 | worker | — | 0 | [Brief](briefs/M7.3.md). Sonnet 5.5 worker. Disk cleanup agent running beside it (owner direction 2026-11-05) |
 
 ## Done
 
@@ -152,6 +150,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | M1.8 | 2026-10-28 | The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
 
 ## For owner review
+
+- 2026-11-05 (owner direction): M7.2 user docs and M6.4 dashboard tests move after the MVP (P.4: docs on iglo.tech, e.g. iglo.tech/iglo.base/docs; P.5: checklist and automated browser tests). The 09-port-plan.md outdated lines are the lead's to fix.
 
 - 2026-11-05 (owner direction): the M7.1c performance results are accepted for 1.0 (p50 misses of the 1.5× bar at 50 clients are milliseconds; p95 within the bar). Performance comes back after the MVP as task P.3 in the work plan.
 
