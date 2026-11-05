@@ -2,7 +2,7 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-03
+Updated: 2026-11-05
 
 M7.1c active.
 
@@ -10,7 +10,7 @@ M7.1c active.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.1c | worker | — | 0 | [Brief](briefs/M7.1c.md). Sonnet 5.5 worker. M6.4 waits for the owner's answer on its browser suite |
+| M7.1c | review 1 | [#61](https://github.com/iglo-tech/iglo.base/pull/61) | 1 | [Brief](briefs/M7.1c.md). Sonnet 5.5 worker (rate-limited 2026-11-03, resumed by the host 2026-11-05): `check` 0 failures, `test:reference` 2 flakes pass on rerun. 50 clients: every bar row passes except create p50 1.92× (single-thread insert/commit). M6.4 waits for the owner's answer on its browser suite |
 
 ## Done
 
