@@ -14,7 +14,7 @@ These conventions are the same as [iglo.monitor](https://github.com/iglo-tech/ig
 
 - Bun as runtime and package manager (`bun.lock`), with no npm or Node fallback paths. (The vendored dashboard keeps its own Vite build, run with Bun.)
 - SQLite as the only database.
-- One compiled executable as the only release artifact. Releases are built on `v*` tags.
+- One compiled executable as the only release artifact. Releases are built on `v*` tags ([Releasing](../releasing.md)).
 - `oxlint` and `oxfmt`, plus a pre-commit format hook.
 - Renovate for dependency updates.
 - `@/` path aliases and no relative imports. Import from the module that owns a symbol, with no barrel files.

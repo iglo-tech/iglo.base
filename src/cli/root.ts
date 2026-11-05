@@ -25,8 +25,11 @@ import { systemMigrationFiles, systemMigrationHasDown } from "@/migrations/syste
 import { logTime, type Output } from "@/server/serve";
 import type { StaticFS } from "@/apis/ui-pack";
 
-// Version of iglo.base, set by the release build (M7.3).
-export const version = "(untracked)";
+// Version of iglo.base. The release build (scripts/build.ts, M7.3) replaces
+// IGLO_VERSION with the tag's version through `bun build --define`; any other
+// build is "(untracked)", as in upstream's local builds.
+declare const IGLO_VERSION: string | undefined;
+export const version: string = typeof IGLO_VERSION === "string" ? IGLO_VERSION : "(untracked)";
 
 // core.DefaultQueryTimeout, in seconds.
 const defaultQueryTimeout = 30;

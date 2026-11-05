@@ -12,7 +12,10 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join, relative, resolve } from "node:path";
 
 import { uiPackSource, writeUiPack } from "@/apis/ui-pack";
-import { version } from "@/cli/root";
+import { version as untrackedVersion } from "@/cli/root";
+
+// the release build passes the tag's version (scripts/build.ts)
+const version = process.env.IGLO_VERSION || untrackedVersion;
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const uiDir = join(repoRoot, "ui");
