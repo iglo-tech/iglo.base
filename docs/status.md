@@ -14,12 +14,12 @@ No task active: every MVP task is merged. The post-MVP tasks (P.1–P.5) wait fo
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.4 | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2026-11-05 (`dfab407`) | Two review rounds (Opus, lead fixed both, docs only): Opus APPROVE at `e7a33a5`. Rehearsal on the staging copy (D32), no network: 506 request pairs compared, no defect; PocketBase v0.41.0 reopened the copy, schema and system rows equal. Runbook `docs/cutover.md`. Report in `~/iglo.base-staging/rehearsal-1/` |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M7.4 | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2026-11-05 (`dfab407`) | Two review rounds (Opus, lead fixed both, docs only): Opus APPROVE at `e7a33a5`. Rehearsal on the staging copy (D32), no network: 506 request pairs compared, no defect; PocketBase v0.41.0 reopened the copy, schema and system rows equal. Runbook `docs/cutover.md`. Report in `~/iglo.base-staging/rehearsal-1/` |
 | M7.3 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 2026-11-05 | Two review rounds (Opus; lead fixed round 1): Opus APPROVE at `511fdbd`. `v*` tag → check, build with the tag's version, smoke test, zip + SHA256SUMS on a draft release; manual runs are dry runs. Test tag run green, binary verified, tag and draft deleted. `test:reference` stays a manual pre-tag step (docs/releasing.md). Backlog: version regex accepts `+build` and leading zeros; footer can follow a stray `IGLO_VERSION`; entry-point list in two files |
 | M7.1c | [#61](https://github.com/iglo-tech/iglo.base/pull/61) | 2026-11-05 (`50fa770`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `66f9d14`. JSON writer, log row export, stack-less validation errors; read-pool batching removed (broke D8 deadlines). Same session vs main: list 1.2–1.5×, expand 1.3–1.7×, view unchanged. Bar at 50 clients (loaded host): p95 holds everywhere, p50 fails for list 1.83×, expand 1.74–2.04×, view 2.08×, create 1.92× (single thread vs upstream's cores). Whether the bar gates 1.0 is the owner's open question. Backlog: no profile retaken after batching removal |
 | M7.1b | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 2026-11-03 (`adde040`) | Two review rounds (Opus; lead fixed round 1, three design docs): Opus APPROVE at `cd2e7c7`. `check` 0 failures; `test:reference` only backlog flakes (SQL execTime, realtime order). D31 log writer thread; date fast path, read-pool rows as arrays, lighter hydration. 50 clients: list, filter+sort, view within the bar; expand 1.57–1.80× and create 1.80× p50 (noisy shared host) |
