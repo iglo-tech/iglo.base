@@ -6,6 +6,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { prepareEmbeddedSQLite } from "@scripts/sqlite-embed";
+
 const repoRoot = resolve(import.meta.dir, "../..");
 
 let built: Promise<string> | undefined;
@@ -23,6 +25,8 @@ export function executable(): Promise<string> {
     if ((await ui.exited) !== 0) {
       throw new Error(`dashboard build failed:\n${await new Response(ui.stderr).text()}`);
     }
+    // the SQLite library src/main.ts embeds (D34): the real one on macOS
+    await prepareEmbeddedSQLite("");
     const outfile = join(mkdtempSync(join(tmpdir(), "iglo-base-build-")), "iglo-base");
     const proc = Bun.spawn(
       [
@@ -37,10 +41,6 @@ export function executable(): Promise<string> {
         "src/files/thumb-worker.ts",
         "src/backups/backup-worker.ts",
         "src/logs/log-worker.ts",
-        // macOS: the SQLite library the executable embeds (D34)
-        ...(process.platform === "darwin" && process.env.IGLO_SQLITE_LIB
-          ? [process.env.IGLO_SQLITE_LIB]
-          : []),
         "--outfile",
         outfile,
       ],

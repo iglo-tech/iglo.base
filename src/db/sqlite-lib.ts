@@ -31,11 +31,13 @@ let loaded = false;
 // `Database.setCustomSQLite` loads the library; a later call in a worker
 // may fail or be refused. Every call therefore ends with a check that the
 // SQLite in use is the bundled version, and that check decides.
-export function loadSQLite(platform: string = process.platform): void {
-  if (loaded || platform !== "darwin") {
+// `embeddedPath` is the embedded library's path when the caller knows it
+// (src/main.ts imports it); threads that cannot import it look it up.
+export function loadSQLite(embeddedPath?: string): void {
+  if (loaded || process.platform !== "darwin") {
     return;
   }
-  const path = resolveLibrary();
+  const path = resolveLibrary(embeddedPath);
   let problem = "Bun did not accept it";
   try {
     if (Database.setCustomSQLite(path)) {
@@ -67,7 +69,7 @@ function failure(reason: string, cause?: unknown): Error {
   );
 }
 
-function resolveLibrary(): string {
+function resolveLibrary(embeddedPath: string | undefined): string {
   // the executable never reads the variable: it uses what it carries
   const compiled = Bun.main.startsWith("/$bunfs/");
   const fromEnv = compiled ? undefined : process.env[sqliteLibraryEnv];
@@ -76,6 +78,9 @@ function resolveLibrary(): string {
       throw failure(`${sqliteLibraryEnv}=${fromEnv} does not exist`);
     }
     return fromEnv;
+  }
+  if (embeddedPath !== undefined) {
+    return extractLibrary(embeddedPath);
   }
   const embedded = (Bun.embeddedFiles as readonly { name?: string }[]).find((f) =>
     /^libsqlite3.*\.dylib$/.test(f.name ?? ""),

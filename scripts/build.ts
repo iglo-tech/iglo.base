@@ -7,8 +7,9 @@
 // A darwin executable embeds the SQLite library dist/libsqlite3.dylib (D34),
 // which scripts/build-sqlite.ts builds on macOS, so only macOS builds it.
 
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
+
+import { prepareEmbeddedSQLite } from "@scripts/sqlite-embed";
 
 const repoRoot = resolve(import.meta.dir, "..");
 const version = process.env.IGLO_VERSION ?? "";
@@ -22,8 +23,6 @@ if (target !== "" && !["bun-linux-x64", "bun-linux-arm64", "bun-darwin-arm64"].i
   console.error(`unsupported IGLO_TARGET ${JSON.stringify(target)}`);
   process.exit(1);
 }
-const targetsDarwin =
-  target === "" ? process.platform === "darwin" : target.startsWith("bun-darwin");
 
 async function run(cmd: string[]): Promise<void> {
   const proc = Bun.spawn(cmd, { cwd: repoRoot, stdout: "inherit", stderr: "inherit" });
@@ -33,11 +32,7 @@ async function run(cmd: string[]): Promise<void> {
   }
 }
 
-const sqliteLibrary = join(repoRoot, "dist", "libsqlite3.dylib");
-if (targetsDarwin && !existsSync(sqliteLibrary)) {
-  await run([process.execPath, "scripts/build-sqlite.ts", sqliteLibrary]);
-}
-
+await prepareEmbeddedSQLite(target);
 await run([process.execPath, "scripts/ui/build.ts"]);
 await run([
   process.execPath,
@@ -54,7 +49,6 @@ await run([
   "src/files/thumb-worker.ts",
   "src/backups/backup-worker.ts",
   "src/logs/log-worker.ts",
-  ...(targetsDarwin ? [sqliteLibrary] : []),
   "--outfile",
   "dist/iglo-base",
 ]);
