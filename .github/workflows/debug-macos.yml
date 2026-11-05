@@ -17,18 +17,17 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - name: timings
-        if: false
         run: |
           set -x
           time dist/iglo-base --version
           time dist/iglo-base --version
-          for i in 1 2 3; do
+          for i in 1; do
             d=$(mktemp -d)
             ( time (dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:1809$i > $d/log 2>&1 & p=$!; for _ in $(seq 1 200); do c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1809$i/api/health || true); [ "$c" = 200 ] && break; sleep 0.1; done; kill $p; wait $p || true) ) 2>&1
             head -20 $d/log
           done
           time dist/iglo-base superuser upsert a@b.cc 1234567890 --dir $(mktemp -d)/pb_data
       - name: tests of the first failing files
-        run: bun test test/cli/cli.test.ts 2>&1 | head -60
+        run: bun test test/logs/log-writer.test.ts test/db/sqlite-lib.test.ts test/cli/serve-bootstrap.test.ts 2>&1 | grep -v '^(pass)' | head -60
         env:
           IGLO_SQLITE_LIB: ${{ github.workspace }}/dist/libsqlite3.dylib

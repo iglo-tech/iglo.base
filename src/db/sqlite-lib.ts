@@ -22,6 +22,14 @@ import { dirname, join } from "node:path";
 // (tests, development), where nothing is embedded; ignored by the executable
 export const sqliteLibraryEnv = "IGLO_SQLITE_LIB";
 
+// Bun keeps one SQLite per process, and a second `setCustomSQLite` call in a
+// worker may fail or be refused. The thread that loaded the library leaves
+// this variable (process id and path); a worker copies the environment when it
+// starts and then has nothing left to load. The process id keeps a child
+// process, which inherits the variable but not the loaded library, from
+// trusting it.
+const loadedEnv = "IGLO_SQLITE_LOADED";
+
 let loaded = false;
 
 // `first` is true for the main thread's call at start-up: Bun keeps one
@@ -30,6 +38,10 @@ let loaded = false;
 // get true.
 export function loadSQLite(first = false, platform: string = process.platform): void {
   if (loaded || platform !== "darwin") {
+    return;
+  }
+  if (process.env[loadedEnv]?.startsWith(`${process.pid}:`)) {
+    loaded = true;
     return;
   }
   const path = resolveLibrary();
@@ -46,6 +58,7 @@ export function loadSQLite(first = false, platform: string = process.platform): 
   if (!result && first) {
     throw failure(`${path}: Bun did not accept it`);
   }
+  process.env[loadedEnv] = `${process.pid}:${path}`;
   loaded = true;
 }
 
