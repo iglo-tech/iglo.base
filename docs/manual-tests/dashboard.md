@@ -4,8 +4,10 @@ The manual `agent-browser` checklist for the vendored dashboard (`docs/design/08
 
 ## Setup
 
+Automated: `bun run test:browser` covers install, a collection-and-record round trip and the logs page (`test/browser/`, needs `agent-browser`). The rest is this checklist, run by hand before a release.
+
 ```sh
-bun run build
+IGLO_VERSION=0.0.0-test bun run build
 mkdir /tmp/dashboard-smoke && cp dist/iglo-base /tmp/dashboard-smoke/
 cd /tmp/dashboard-smoke && ./iglo-base serve --http 127.0.0.1:18095
 ```
@@ -25,9 +27,33 @@ Open the printed `/_/#/pbinstall/<token>` link with `agent-browser` (its own ses
 | Logs | Logs list, chart, entry, filter, log settings | M5.5 |
 | Crons | Crons list and run | M5.6 |
 | SQL console | Run a query | its task |
-| Realtime | Records list live updates | M5.1 |
+| Realtime | The dashboard has no live records list (v0.41.0's `ui/` never subscribes); check the API preview's Realtime panel and an `EventSource` from the page: `PB_CONNECT`, `POST /api/realtime`, then `create` and `delete` events | M5.1 |
 
 ## Runs
+
+### 2026-11-05, P.5 (commit `5bddb5a`, branch `task/P.5-dashboard-tests`), full checklist
+
+Release build (`IGLO_VERSION=0.0.0-p5 bun run build`), fresh `pb_data`, Chromium through `agent-browser`. Mail went to the Mailpit and S3 to the versitygw of `test/support/` (never a real server); `admin@example.com` / `1234567890`. Screens were also compared with the same dashboard on `.upstream/bin/pocketbase` (fresh data, same superuser): the page text of Collections, Logs, and the Settings pages Application, Mail, Files storage, Backups, Crons, Export, Import and SQL console differs only in the listed D17 patches (product name, footer version, "Go or JS migrations" hint). `GET /api/collections` of the two fresh instances is identical apart from ids and timestamps.
+
+| Row | Result |
+|---|---|
+| Install | Pass: the link opens "Setup your iglo.base instance"; superuser created, redirected to `#/collections?collection=users` |
+| Branding | Pass: favicon `/_/images/favicon.png`, header and login logos, footer "Docs" and "iglo.base 0.0.0-p5", no "PocketBase" in the page text |
+| Collections | Pass: `posts` with text, editor, number, bool, email, url, date, autodate, file, select (red, green), json, geoPoint and a relation to `users`; list rule `@request.auth.id != ""`; unique index on `text`; view collection `posts_view` (`select id, text, number from posts`). The API returns all of it |
+| Records | Pass: a record with every field and an uploaded file; edit saved; filters `number>40` (1 row), `number<40` (0), `author.name="User One"` (1) from the URL; the relation shows the user's name; file served with `attachment` on download; on `photos` (`100x100` thumb) the list thumbnail loads at width 100 and the preview at 200; delete removes the row |
+| Auth options | Pass: `users` Options tab; OAuth2 enabled, GitHub added with a test client id and secret, saved (no login); the API shows the provider |
+| Settings → Application | Pass: name saved, page title changes |
+| Settings → Rate limits, trusted proxy | Pass: rate limiting enabled with `*:auth` at 100, `X-Forwarded-For` trusted; the page shows "Resolved user IP: 127.0.0.1"; both read back through `GET /api/settings` |
+| Settings → Mail | Pass: SMTP to the Mailpit; "Send test email" (Verification): "Successfully sent test email." and Mailpit holds it |
+| Settings → Files storage | Pass: S3 settings saved, "S3 connected successfully" |
+| Settings → Backups | Pass: create `chk.zip`, list, download (200, `application/zip`), restore (server restarted, page came back, data intact), delete; then S3 backups: "S3 connected successfully", create `s3chk.zip` (object in the bucket) and delete |
+| Settings → Export, Import collections | Pass: export lists all collections; a JSON file with an added collection loaded, reviewed (side-by-side diff) and imported: "Successfully imported collections configuration." |
+| Logs | Pass: list, chart, entry ("Log details", `logId` in the URL), filter `data.status=401` (1 row), logs settings saved (max days 7) |
+| Crons | Pass: four built-in jobs listed; "Run" on `__pbOTPCleanup__`: "Successfully triggered" |
+| SQL console | Pass: `select id, text, number from posts` shows the row, "Rows: 1" |
+| Realtime | Pass: no live list in the dashboard (as upstream); from the page an `EventSource` got `PB_CONNECT`, `POST /api/realtime` answered 204 and `imported/*` delivered `create` and `delete` |
+
+No defects found. Notes on the dashboard itself, the same as upstream: the import page needs an `id` on every collection; a JSON that leaves out system collections lists them as deleted; an unchanged export shows collections with `oauth2.providers: []` as "Changed" (the page strips providers of the current collections only); the editor and tag inputs need single key presses (`fill` does not reach them).
 
 ### 2026-10-31, M5.6 (branch `task/M5.6-cron`)
 
