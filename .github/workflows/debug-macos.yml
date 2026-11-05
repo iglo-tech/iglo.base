@@ -1,4 +1,4 @@
-name: Debug macOS 6
+name: Debug macOS 7
 on:
   push:
     branches: [task/P.2-platforms]
@@ -15,8 +15,18 @@ jobs:
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      - run: bun scripts/build-sqlite.ts dist/libsqlite3.dylib
-      - name: one scenario
-        env:
-          IGLO_SQLITE_LIB: ${{ github.workspace }}/dist/libsqlite3.dylib
-        run: bun test test/scenarios/scenarios.test.ts -t "TestCollectionsList authorized as superuser" 2>&1 | head -80
+      - run: bun run build
+      - name: list collections
+        run: |
+          d=$(mktemp -d)
+          dist/iglo-base superuser upsert a@b.cc 1234567890 --dir $d/pb_data
+          dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:18095 > $d/log 2>&1 &
+          p=$!
+          for _ in $(seq 1 100); do c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18095/api/health || true); [ "$c" = 200 ] && break; sleep 0.1; done
+          tok=$(curl -s -X POST -H 'content-type: application/json' -d '{"identity":"a@b.cc","password":"1234567890"}' http://127.0.0.1:18095/api/collections/_superusers/auth-with-password | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+          echo "token ${#tok}"
+          curl -s -H "Authorization: $tok" http://127.0.0.1:18095/api/collections?perPage=2 | head -c 600; echo
+          sleep 2
+          curl -s -H "Authorization: $tok" 'http://127.0.0.1:18095/api/logs?perPage=10&sort=-created' | head -c 3000; echo
+          kill $p; wait $p || true
+          cat $d/log
