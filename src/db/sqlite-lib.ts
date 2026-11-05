@@ -16,7 +16,7 @@ import { Database } from "bun:sqlite";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 // a library built by scripts/build-sqlite.ts, for running from source
 // (tests, development), where nothing is embedded; ignored by the executable
@@ -90,7 +90,9 @@ function resolveLibrary(embeddedPath: string | undefined): string {
       `this build has none embedded; build one with scripts/build-sqlite.ts and set ${sqliteLibraryEnv}`,
     );
   }
-  return extractLibrary(join(dirname(Bun.main), embedded.name));
+  // embedded files sit in the root of the executable's virtual file system,
+  // whichever module (a worker is nested) asks
+  return extractLibrary(join("/$bunfs/root", embedded.name));
 }
 
 // Writes the embedded library (a file in the executable's virtual file system)

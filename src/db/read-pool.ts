@@ -251,13 +251,11 @@ export class ReadPool {
             : res.value,
         );
       } else {
-        console.error("READDBG query error", JSON.stringify(res.error));
         request.reject(deserializeError(res.error));
       }
       this.pump();
     });
     worker.addEventListener("error", (event: ErrorEvent) => {
-      console.error("READDBG worker error", event.message);
       // the worker's thread failed outside a query and exits; replace it
       const request = slot.request;
       this.removeSlot(slot);
