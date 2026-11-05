@@ -14,7 +14,7 @@ Active: release v1.0.0 (lead) and P.5, the dashboard tests. Post-MVP tasks run o
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.5 | worker | task/P.5-dashboard-tests | 0 | [brief](briefs/P.5.md) |
+| P.5 | worker | task/P.5-dashboard-tests | 0 | [brief](briefs/P.5.md); worker hit the rate limit: Paused until 2026-11-05T18:27:29Z |
 
 ## Done
 
