@@ -16,7 +16,7 @@ Only what the owner must decide. Everything else below is the lead's log.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.3 | review 1 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 1 | [Brief](briefs/M7.3.md). Sonnet 5.5 worker: test tag run green and the downloaded binary verified; tag and draft deleted. `check` 0 failures, `test:reference` 3 flakes pass on rerun |
+| M7.3 | review 2 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 2 | [Brief](briefs/M7.3.md). Sonnet 5.5 worker: test tag run green and the downloaded binary verified; tag and draft deleted. `check` 0 failures, `test:reference` 3 flakes pass on rerun. Round 1 (Opus CHANGES): a manual run on a tag released; 04 row 90 out of date. Lead fixed at `511fdbd` |
 
 ## Done
 
