@@ -20,11 +20,17 @@ COPY --chown=65532:65532 pb_data /pb_data
 # --migrationsDir defaults to <dir>/../pb_migrations: collection changes made in
 # the dashboard write auto-generated migration files there.
 COPY --chown=65532:65532 pb_migrations /pb_migrations
-COPY --chmod=0755 iglo-base /usr/local/bin/iglo-base
+# The executable sits in / and the working directory is /: the defaults for
+# --dir, --publicDir, --migrationsDir and the hooks warning are "next to the
+# executable" (src/cli/root.ts), so they resolve to /pb_data, /pb_public,
+# /pb_migrations and /pb_hooks for serve and for every other command
+# (`docker exec <c> /iglo-base superuser upsert ...`), without flags.
+COPY --chmod=0755 iglo-base /iglo-base
+WORKDIR /
 
 VOLUME /pb_data
 VOLUME /pb_migrations
 EXPOSE 8090
 # PID 1 is the executable, so SIGTERM from `docker stop` reaches it.
-ENTRYPOINT ["/usr/local/bin/iglo-base"]
-CMD ["serve", "--http", "0.0.0.0:8090", "--dir", "/pb_data"]
+ENTRYPOINT ["/iglo-base"]
+CMD ["serve", "--http", "0.0.0.0:8090"]
