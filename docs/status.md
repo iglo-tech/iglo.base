@@ -6,6 +6,14 @@ Updated: 2026-11-05
 
 M7.3 active.
 
+## Needs you
+
+Only what the owner must decide. Everything else below is the lead's log.
+
+1. **M7.2, user documentation.** Recommended: the dashboard's doc links open short iglo.base pages (install and operations guide, list of differences from PocketBase), and those pages link to PocketBase's documentation for the API itself. Alternatives: dashboard links go straight to PocketBase's docs (changes D17), or iglo.base writes its own full copy of the docs.
+2. **M6.4, dashboard tests.** Recommended: keep the written `agent-browser` checklist (already run screen by screen in earlier tasks) and drop the new automated browser tests. Alternative: also add the automated tests (install, collection and record, logs) with a browser test runner.
+3. **M7.4, cutover rehearsal.** Not a decision: it runs with the owner, once M7.3 is merged. Say when.
+
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
