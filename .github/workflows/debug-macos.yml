@@ -1,4 +1,4 @@
-name: Debug macOS 2
+name: Debug macOS 3
 on:
   push:
     branches: [task/P.2-platforms]
@@ -18,16 +18,18 @@ jobs:
       - run: bun run build
       - name: timings
         run: |
-          set -x
-          time dist/iglo-base --version
-          time dist/iglo-base --version
-          for i in 1; do
+          run() { # $1 = label, $2 = whether to request health first
             d=$(mktemp -d)
-            ( time (dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:1809$i > $d/log 2>&1 & p=$!; for _ in $(seq 1 200); do c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1809$i/api/health || true); [ "$c" = 200 ] && break; sleep 0.1; done; kill $p; wait $p || true) ) 2>&1
-            head -20 $d/log
-          done
-          time dist/iglo-base superuser upsert a@b.cc 1234567890 --dir $(mktemp -d)/pb_data
-      - name: tests of the first failing files
-        run: bun test test/logs/log-writer.test.ts test/db/sqlite-lib.test.ts test/cli/serve-bootstrap.test.ts 2>&1 | grep -v '^(pass)' | head -60
-        env:
-          IGLO_SQLITE_LIB: ${{ github.workspace }}/dist/libsqlite3.dylib
+            dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:18095 > $d/log 2>&1 &
+            p=$!
+            for _ in $(seq 1 100); do c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18095/api/health || true); [ "$c" = 200 ] && break; sleep 0.1; done
+            if [ "$2" = no ]; then :; fi
+            sleep 1
+            s=$(date +%s)
+            kill -TERM $p
+            for _ in $(seq 1 15); do kill -0 $p 2>/dev/null || break; sleep 1; done
+            if kill -0 $p 2>/dev/null; then echo "$1: still running after 15 s"; sample $p 2 -file $d/sample.txt >/dev/null 2>&1 || true; head -80 $d/sample.txt 2>/dev/null; kill -9 $p; else echo "$1: stopped after $(( $(date +%s) - s )) s"; fi
+            wait $p 2>/dev/null || true
+            tail -5 $d/log
+          }
+          run "health then TERM"
