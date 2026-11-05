@@ -200,6 +200,7 @@ M7.4 is the only task that touches production data. It is run with the owner, ne
 |---|---|---|
 | P.1 | Official Docker image that wraps the release executable (D3) | M7.3 |
 | P.2 | macOS (darwin-arm64) and linux-arm64 builds: release binaries, bundled SQLite on macOS through `Database.setCustomSQLite`, macOS CI job for `test:reference` (D24) | M7.3 |
+| P.3 | Performance, second pass (owner direction 2026-11-05): revisit the 1.5× bar misses M7.1c left at p50 with 50 clients (list, expand, view, create); start with a fresh profile on a quiet host, then the remaining main-thread costs (read-pool hop, hydration, expand `publicExport`) and whether threads or processes are worth their shared-state cost after all | M7.1c |
 
 ## Order
 

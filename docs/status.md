@@ -145,7 +145,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 ## For owner review
 
-- 2026-11-05 (M7.1c): M7.1 is closed with the bar not met at p50 (50 clients): list 1.83×, expand up to 2.04×, view 2.08×, create 1.92×; p95 within the bar everywhere. The remaining gap is one thread against upstream's cores; multi-process serving was ruled out. Read-pool batching was tried and removed (it broke D8 deadlines). Owner question: accept for 1.0, or reopen threads/processes.
+- 2026-11-05 (owner direction): the M7.1c performance results are accepted for 1.0 (p50 misses of the 1.5× bar at 50 clients are milliseconds; p95 within the bar). Performance comes back after the MVP as task P.3 in the work plan.
 
 - 2026-11-03 (D31): request log batches are written by a dedicated worker with its own `auxiliary.db` connection (amends D8). M7.1 split into M7.1a/b/c; M7.1b takes the profile's low-risk fixes #1, #3, #4, #5.
 
