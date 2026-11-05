@@ -26,3 +26,7 @@ sha256sum -c SHA256SUMS      # in the directory with both files
 unzip iglo-base_0.1.0_linux_amd64.zip
 ./iglo-base --version
 ```
+
+## Switching a deployment
+
+[cutover.md](cutover.md) is the runbook for moving a PocketBase v0.41.0 deployment to a released executable and back.
