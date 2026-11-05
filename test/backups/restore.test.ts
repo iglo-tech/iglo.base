@@ -116,6 +116,20 @@ function restoreFailures(dataDir: string): { key: string; error: string }[] {
   }
 }
 
+// The command line and, on Linux, the environment of a running process: the
+// restore replaces the process image and keeps both (macOS has no /proc, so
+// there `ps` gives the command line only).
+function processImage(pid: number): string {
+  if (process.platform === "linux") {
+    return (
+      readFileSync(`/proc/${pid}/cmdline`, "utf8") +
+      "\0\0" +
+      readFileSync(`/proc/${pid}/environ`, "utf8")
+    );
+  }
+  return Bun.spawnSync(["ps", "-p", String(pid), "-o", "command="]).stdout.toString();
+}
+
 describe("restore", () => {
   test("replaces the process: same pid, arguments, environment and port", async () => {
     const dataDir = fixtureCopy();
@@ -126,14 +140,12 @@ describe("restore", () => {
       await fetch(`${server.url}/api/backups`, { headers: asSuperuser })
     ).json()) as [{ key: string }];
     await setUserName(server.url, "changed after the backup");
-    const cmdline = readFileSync(`/proc/${server.pid}/cmdline`, "utf8");
-    const environ = readFileSync(`/proc/${server.pid}/environ`, "utf8");
+    const imageBefore = processImage(server.pid);
 
     expect(await post(`${server.url}/api/backups/${key}/restore`)).toBe(204);
     expect(await restored(server.url, before)).toBe(true);
 
-    expect(readFileSync(`/proc/${server.pid}/cmdline`, "utf8")).toBe(cmdline);
-    expect(readFileSync(`/proc/${server.pid}/environ`, "utf8")).toBe(environ);
+    expect(processImage(server.pid)).toBe(imageBefore);
     // the bootstrap of the new image
     expect(existsSync(join(dataDir, ".pb_temp_to_delete"))).toBe(false);
     expect(existsSync(join(dataDir, "backups", key))).toBe(true);

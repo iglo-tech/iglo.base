@@ -72,6 +72,10 @@ function peakRss(pid: number): number {
   return Number(m?.[1]) * 1024;
 }
 
+// The peak resident set size is read from /proc (VmHWM, reset through
+// clear_refs); macOS has no counterpart, so these tests run on Linux only.
+const peakTest = test.skipIf(process.platform !== "linux");
+
 function resetPeak(pid: number): void {
   writeFileSync(`/proc/${pid}/clear_refs`, "5");
 }
@@ -216,7 +220,7 @@ for (const limit of ["1_000", "0x_3e8", "0_1750"]) {
   });
 }
 
-test("an original over PB_THUMBS_MAX_SOURCE_PIXELS is not read into memory", async () => {
+peakTest("an original over PB_THUMBS_MAX_SOURCE_PIXELS is not read into memory", async () => {
   const dataDir = fixtureCopy();
   prepareDemo1Thumbs(dataDir);
   // a valid 4000x2000 PNG of about 24 MB in place of the original
@@ -255,7 +259,7 @@ test("an original over PB_THUMBS_MAX_SOURCE_PIXELS is not read into memory", asy
   ).toBe(false);
 });
 
-test("a multipart/byteranges body over 16 MiB has its Content-Length", async () => {
+peakTest("a multipart/byteranges body over 16 MiB has its Content-Length", async () => {
   const dataDir = fixtureCopy();
   prepareDemo1Thumbs(dataDir);
   const original = join(dataDir, "storage", fileKey);
@@ -370,7 +374,7 @@ function writeAnimatedGif(path: string, frames: number): void {
   }
 }
 
-test("only the first frame of an animated GIF original is read", async () => {
+peakTest("only the first frame of an animated GIF original is read", async () => {
   const dataDir = fixtureCopy();
   prepareDemo1Thumbs(dataDir);
   const original = join(dataDir, "storage", fileKey);
@@ -456,7 +460,7 @@ async function writeAnimatedWebp(path: string, frames: number): Promise<number> 
   return 8 + riffLen;
 }
 
-test("an animated WebP original serves the original without being read whole", async () => {
+peakTest("an animated WebP original serves the original without being read whole", async () => {
   const dataDir = fixtureCopy();
   prepareDemo1Thumbs(dataDir);
   const original = join(dataDir, "storage", fileKey);

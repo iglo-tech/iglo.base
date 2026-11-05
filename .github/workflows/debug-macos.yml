@@ -1,0 +1,31 @@
+name: Debug macOS 9
+on:
+  push:
+    branches: [task/P.2-platforms]
+    paths: [.github/workflows/debug-macos.yml]
+permissions:
+  contents: read
+jobs:
+  d:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: stop without requests
+        run: |
+          for round in 1 2; do
+            d=$(mktemp -d)
+            dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:18095 > $d/log 2>&1 &
+            p=$!
+            until grep -q "EMAIL PASS" $d/log; do sleep 0.1; done
+            s=$(date +%s)
+            kill -TERM $p
+            for _ in $(seq 1 12); do kill -0 $p 2>/dev/null || break; sleep 1; done
+            if kill -0 $p 2>/dev/null; then echo "round $round: still running after 12 s"; sample $p 2 -file $d/sample.txt >/dev/null 2>&1; grep -E "Thread_|com.apple|psynch|ulock|kevent" $d/sample.txt | head -40; kill -9 $p; else echo "round $round: stopped after $(( $(date +%s) - s )) s"; fi
+            wait $p 2>/dev/null || true
+          done

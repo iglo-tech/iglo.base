@@ -65,6 +65,10 @@ jobs:
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
+      # tests use 127.0.0.2 as a second client address; Linux answers on all
+      # of 127.0.0.0/8, macOS only on the aliases it has
+      - name: Loopback alias 127.0.0.2
+        run: sudo ifconfig lo0 alias 127.0.0.2 up
       # also fails when the library's version or compile options differ from
       # Bun's SQLite on Linux
       - name: Build the bundled SQLite
