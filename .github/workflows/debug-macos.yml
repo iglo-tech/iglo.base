@@ -1,4 +1,4 @@
-name: Debug macOS 3
+name: Debug macOS 4
 on:
   push:
     branches: [task/P.2-platforms]
@@ -16,20 +16,7 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - name: timings
+      - name: worker probe
         run: |
-          run() { # $1 = label, $2 = whether to request health first
-            d=$(mktemp -d)
-            dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:18095 > $d/log 2>&1 &
-            p=$!
-            for _ in $(seq 1 100); do c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18095/api/health || true); [ "$c" = 200 ] && break; sleep 0.1; done
-            if [ "$2" = no ]; then :; fi
-            sleep 1
-            s=$(date +%s)
-            kill -TERM $p
-            for _ in $(seq 1 15); do kill -0 $p 2>/dev/null || break; sleep 1; done
-            if kill -0 $p 2>/dev/null; then echo "$1: still running after 15 s"; sample $p 2 -file $d/sample.txt >/dev/null 2>&1 || true; head -80 $d/sample.txt 2>/dev/null; kill -9 $p; else echo "$1: stopped after $(( $(date +%s) - s )) s"; fi
-            wait $p 2>/dev/null || true
-            tail -5 $d/log
-          }
-          run "health then TERM"
+          bun build --compile --bytecode --format=esm scripts/dbg/m.ts scripts/dbg/w.ts dist/libsqlite3.dylib --outfile dist/dbg
+          dist/dbg
