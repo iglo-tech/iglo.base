@@ -72,6 +72,7 @@ bun run test                    # bun test; builds the executable and tests it
 bun run build                   # scripts/build.ts: dashboard pack, then bun build --compile of src/main.ts and the workers into dist/iglo-base (IGLO_VERSION sets the version)
 bun run upstream:prepare        # pinned reference tools into .upstream/ (network; verified by SHA-256)
 bun run test:reference          # upstream:prepare, then the smoke tests in test/differential/
+bun run test:browser            # dashboard browser tests in test/browser/ (needs agent-browser; not part of check)
 ```
 
 `bun run check` runs lint, format:check, typecheck, test and build after install; `bun test` skips `test/differential/` (see `bunfig.toml`). `bun run test:reference` needs `git`, `unzip` and `tar`; Windows is out of scope (D18). `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
