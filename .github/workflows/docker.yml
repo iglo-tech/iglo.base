@@ -1,9 +1,11 @@
 name: Docker
 
-# Wraps a published release's executable in an image (D33) and pushes it to
+# Wraps a published release's executables in one multi-arch image
+# (linux/amd64 and linux/arm64, D33, D34) and pushes it to
 # ghcr.io/iglo-tech/iglo.base. It never builds iglo.base: it downloads the
-# release archive and SHA256SUMS, verifies the checksum, and the Dockerfile
-# copies the executable in. `workflow_dispatch` with a tag builds an existing
+# release archives and SHA256SUMS, verifies the checksums, and the Dockerfile
+# copies the executable of each architecture in. Each image is smoke-tested
+# on a runner of its own architecture before anything is pushed. `workflow_dispatch` with a tag builds an existing
 # release. See docs/releasing.md#image.
 on:
   release:
@@ -26,16 +28,15 @@ env:
   IMAGE: ghcr.io/iglo-tech/iglo.base
 
 jobs:
-  image:
+  release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     permissions:
       contents: read
-      packages: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
       - name: Release and version
         id: release
         env:
@@ -55,29 +56,39 @@ jobs:
           fi
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    needs: release
+    name: smoke (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Download and verify the release executable
         env:
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
-          VERSION: ${{ steps.release.outputs.version }}
+          VERSION: ${{ needs.release.outputs.version }}
+          ARCHES: ${{ matrix.arch }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: |
-          set -eu
-          name="iglo-base_${VERSION}_linux_amd64.zip"
-          mkdir -p ctx/dl ctx/pb_data ctx/pb_migrations
-          gh release download "$TAG" --dir ctx/dl --pattern "$name" --pattern SHA256SUMS
-          (cd ctx/dl && sha256sum -c SHA256SUMS)
-          unzip -q -j ctx/dl/"$name" iglo-base -d ctx
-          chmod 0755 ctx/iglo-base
-          rm -r ctx/dl
-          cp .dockerignore ctx/.dockerignore
+        run: sh scripts/docker-context.sh
       - name: Build
         env:
-          VERSION: ${{ steps.release.outputs.version }}
+          VERSION: ${{ needs.release.outputs.version }}
         run: docker build --build-arg "VERSION=$VERSION" -f Dockerfile -t "iglo-base:smoke" ctx
       - name: Smoke test
         env:
-          VERSION: ${{ steps.release.outputs.version }}
+          VERSION: ${{ needs.release.outputs.version }}
         run: |
           set -eu
           test "$(docker run --rm iglo-base:smoke --version)" = "iglo-base version $VERSION"
@@ -100,6 +111,29 @@ jobs:
             echo "docker stop: exit status $status" >&2
             exit 1
           fi
+
+  push:
+    needs: [release, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download and verify the release executables
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          VERSION: ${{ needs.release.outputs.version }}
+          ARCHES: amd64 arm64
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: sh scripts/docker-context.sh
+      # The Dockerfile only copies files, so building the arm64 image needs
+      # no emulation.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
@@ -107,19 +141,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push
         env:
-          VERSION: ${{ steps.release.outputs.version }}
-          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          VERSION: ${{ needs.release.outputs.version }}
+          PRERELEASE: ${{ needs.release.outputs.prerelease }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -eu
-          docker tag iglo-base:smoke "$IMAGE:$VERSION"
-          docker push "$IMAGE:$VERSION"
+          tags="-t $IMAGE:$VERSION"
           # :latest only for the repository's latest published release, so
           # rebuilding an older release never moves it backwards.
           latest="$(gh release view --json tagName --jq .tagName)"
           if [ "$PRERELEASE" = false ] && [ "$latest" = "$TAG" ]; then
-            docker tag iglo-base:smoke "$IMAGE:latest"
-            docker push "$IMAGE:latest"
+            tags="$tags -t $IMAGE:latest"
           fi
+          # shellcheck disable=SC2086
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --build-arg "VERSION=$VERSION" -f Dockerfile $tags --push ctx
+          docker buildx imagetools inspect "$IMAGE:$VERSION"

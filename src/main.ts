@@ -5,6 +5,7 @@
 
 import { readUiPack } from "@/apis/ui-pack";
 import { runCli } from "@/cli/root";
+import { loadSQLite } from "@/db/sqlite-lib";
 // the dashboard build, packed by scripts/ui/build.ts (bun run build)
 import uiPack from "@dist/ui.pack" with { type: "file" };
 
@@ -20,6 +21,9 @@ function launchURL(url: string): void {
   }
   Bun.spawn(["xdg-open", url], { stdio: ["ignore", "ignore", "ignore"] }).unref();
 }
+
+// before the first database connection of any thread (D34)
+loadSQLite(true);
 
 const shutdown = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

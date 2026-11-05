@@ -1,9 +1,10 @@
 name: Release
 
-# Pushing a v* tag builds the linux-x64 executable (D24) and attaches it with
-# its SHA-256 checksum to a DRAFT release; a human publishes it. A manual run
-# is a dry run: it uploads the archive as a workflow artifact and creates no
-# release. See docs/releasing.md.
+# Pushing a v* tag builds the linux-x64, linux-arm64 and darwin-arm64
+# executables, each on a runner of its own platform (D24, D34), and attaches
+# the three archives with one SHA256SUMS to a DRAFT release; a human publishes
+# it. A manual run is a dry run: it uploads the archives as a workflow
+# artifact and creates no release. See docs/releasing.md.
 on:
   push:
     tags:
@@ -18,17 +19,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  version:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          # the "packageManager" field pins the Bun version
-          bun-version-file: package.json
       - name: Version from the tag
         id: version
         env:
@@ -46,18 +42,43 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    name: build (${{ matrix.os }}_${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-latest, check: true }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, check: false }
+          - { os: darwin, arch: arm64, runner: macos-15, check: false }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          # the "packageManager" field pins the Bun version
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
       # The same gate as ci.yml minus test:reference (more than 10 minutes;
       # run it locally or via the CI workflow before tagging). `check` ends
-      # with an untagged build, which the next step replaces.
-      - run: bun run check
+      # with an untagged build, which the next step replaces. Only linux-x64
+      # runs it here (D25); the other platforms run it in ci.yml, on demand.
+      - name: Check
+        if: matrix.check
+        run: bun run check
+      # On macOS this first builds the SQLite library the executable embeds
+      # (scripts/build-sqlite.ts, D34) and fails if it differs from Bun's on Linux.
       - name: Build
         env:
-          IGLO_VERSION: ${{ steps.version.outputs.version }}
+          IGLO_VERSION: ${{ needs.version.outputs.version }}
         run: bun run build
       - name: Smoke test
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
+          OS: ${{ matrix.os }}
         run: |
           set -eu
           test "$(dist/iglo-base --version)" = "iglo-base version $VERSION"
@@ -77,20 +98,53 @@ jobs:
             echo "/api/health answered $code" >&2
             exit 1
           fi
-      - name: Archive and checksum
+          if [ "$OS" = darwin ]; then
+            # the embedded SQLite was written to the cache and loaded (the
+            # start fails otherwise, with no fallback to the system SQLite)
+            ls "$HOME"/Library/Caches/iglo-base/sqlite/libsqlite3-*.dylib
+          fi
+      - name: Archive
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
+          NAME: iglo-base_${{ needs.version.outputs.version }}_${{ matrix.os }}_${{ matrix.arch }}.zip
         run: |
           set -eu
-          name="iglo-base_${VERSION}_linux_amd64.zip"
           mkdir -p release/stage
           cp dist/iglo-base LICENSE release/stage/
           cat > release/stage/README.txt <<EOF
           iglo-base ${VERSION}: a Bun and TypeScript port of PocketBase v0.41.0.
           Run ./iglo-base serve. Documentation: https://github.com/iglo-tech/iglo.base
           EOF
-          (cd release/stage && zip -q -X "../$name" iglo-base LICENSE README.txt)
-          (cd release && sha256sum "$name" > SHA256SUMS && cat SHA256SUMS)
+          (cd release/stage && zip -q -X "../$NAME" iglo-base LICENSE README.txt)
+          ls -l release
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: archive-${{ matrix.os }}_${{ matrix.arch }}
+          path: release/*.zip
+          if-no-files-found: error
+
+  checksums:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: archive-*
+          merge-multiple: true
+          path: release
+      - name: One SHA256SUMS for all archives
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -eu
+          cd release
+          for platform in linux_amd64 linux_arm64 darwin_arm64; do
+            test -f "iglo-base_${VERSION}_${platform}.zip"
+          done
+          test "$(ls *.zip | wc -l)" = 3
+          sha256sum *.zip > SHA256SUMS
+          cat SHA256SUMS
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release
@@ -100,9 +154,9 @@ jobs:
           if-no-files-found: error
 
   release:
-    # pushed tags only: a manual run (even on a tag) stops after the build job
+    # pushed tags only: a manual run (even on a tag) stops after the build jobs
     if: github.event_name == 'push'
-    needs: build
+    needs: [version, checksums]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -116,12 +170,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
-          VERSION: ${{ needs.build.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           set -eu
           flags=""
           case "$VERSION" in *-*) flags="--prerelease" ;; esac
           gh release create "$TAG" --draft --verify-tag $flags \
             --title "$TAG" \
-            --notes "linux-x64 executable. Verify with: sha256sum -c SHA256SUMS" \
-            "iglo-base_${VERSION}_linux_amd64.zip" SHA256SUMS
+            --notes "linux-x64, linux-arm64 and darwin-arm64 executables. Verify with: sha256sum -c SHA256SUMS (shasum -a 256 -c SHA256SUMS on macOS)." \
+            "iglo-base_${VERSION}_linux_amd64.zip" \
+            "iglo-base_${VERSION}_linux_arm64.zip" \
+            "iglo-base_${VERSION}_darwin_arm64.zip" \
+            SHA256SUMS
