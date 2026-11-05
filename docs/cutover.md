@@ -32,12 +32,12 @@ The `--dir` default is `pb_data` next to the executable, as in PocketBase. Pass 
 1. Download the release archive (see [releasing.md](releasing.md)) and check it: `sha256sum -c SHA256SUMS`, `unzip` the archive, then `./iglo-base --version`.
 2. Note how PocketBase is started today: the full command line, the environment, the service manager unit and the reverse proxy configuration. The new unit differs in the binary path and the name, and drops the hooks flags listed above.
 3. Look at the settings in the PocketBase dashboard: trusted proxy headers, rate limits, SMTP, S3, scheduled backups. They carry over unchanged. Check that the reverse proxy sends the headers `trustedProxy.headers` names, because iglo.base resolves the client IP from them in the same way.
-4. Note the PocketBase version that runs today, from the binary (`./pocketbase --version`) or the image tag; `_migrations` cannot tell it, as several releases share the same newest system migration. If it is older than v0.41.0, first upgrade PocketBase to v0.41.0 and run it for a while: the rollback below starts PocketBase v0.41.0, and iglo.base ports v0.41.0's system migrations.
+4. Note the PocketBase version that runs today, from the binary (`./pocketbase --version`) or the image tag; `_migrations` cannot tell it, as several releases share the same newest system migration. If it is not v0.41.0, first move PocketBase to v0.41.0 and run it for a while: the rollback below starts PocketBase v0.41.0, and iglo.base ports v0.41.0's system migrations.
 
 ## The switch
 
 1. **Stop PocketBase** with SIGTERM (`systemctl stop`, `docker stop`). Wait until the process has exited: a clean exit closes both SQLite databases and checkpoints their write-ahead logs. Do not copy `pb_data` while PocketBase runs.
-2. **Take a backup of the stopped directories**: `cp -a pb_data pb_data.before-iglo` and `cp -a pb_migrations pb_migrations.before-iglo` on the same volume, or any other copy you can restore from. This copy is the last-resort way back; keep it until the cutover is accepted.
+2. **Take a backup of the stopped directories**: `cp -a pb_data pb_data.before-iglo` and, if the deployment has a migrations directory, `cp -a pb_migrations pb_migrations.before-iglo` (the directory `--migrationsDir` names, if set) on the same volume, or any other copy you can restore from. This copy is the last-resort way back; keep it until the cutover is accepted.
 3. **Place the binary.** Put `iglo-base` where the service can run it, next to the old binary, and keep the old binary and its unit file unchanged.
 4. **Start iglo.base on the same directory** with the same flags, for example:
    ```sh
