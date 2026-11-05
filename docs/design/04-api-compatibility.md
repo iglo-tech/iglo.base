@@ -87,7 +87,7 @@ These are the only intended differences. Each one follows from removing extensio
 | `GET /_/extensions/{name}/*` | extension static files | 404 |
 | `GET /api/crons` | built-in and user jobs | built-in jobs only |
 | Logs `data` | may include hook-written entries | iglo.base entries only, with upstream's shapes |
-| `Server`-identifying output (`serve` banner, `--version`) | PocketBase | iglo.base, with the PocketBase compatibility version (`compatible with PocketBase v0.41.0`) |
+| `Server`-identifying output (`--version`) | `pocketbase version 0.41.0` | `iglo-base version <version>` (`(untracked)` for local builds; set by the release build, [releasing](../releasing.md)). The `serve` banner prints no version, as upstream's |
 | `migrate down` reaching a system migration | removes its row and runs its down, if any; the next start applies it again | a system migration without a down keeps its row, with the same output: the next start would leave the data as it is. One with a down (`1640988000_init.go`, `1640988000_aux_init.go`, `1763020353_update_default_auth_alert_templates.go`) fails the command before anything changes, because iglo.base has no port of those schema migrations |
 | `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
 | Request paths with `.` or `..` segments (also `%2e%2e`) or `\` | `307` redirect to the cleaned path; `%2e%2e` and `\` are not resolved | answered as the normalized path, without a redirect ([D22](10-decisions.md#d22-requests-are-normalized-by-bunserve)) |

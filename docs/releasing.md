@@ -10,7 +10,7 @@ iglo.base ships one artifact, the compiled linux-x64 executable (D24, D3).
 3. The workflow runs `bun run check`, builds with the version from the tag, smoke-tests the executable (`--version` prints the tag's version, `serve` on a temporary directory answers `/api/health` with 200), archives it and creates a **draft** GitHub release. Tags with a `-` suffix are marked as pre-releases. `test:reference` is not part of the workflow (it takes over 10 minutes); it is the manual step 1.
 4. Review the draft and publish it by hand. Nothing is public until then.
 
-`workflow_dispatch` is a dry run: it builds and uploads the archive as a workflow artifact (version `0.0.0-dryrun.<run number>`) and creates no release.
+`workflow_dispatch` is a dry run, also when it is started on a tag: it builds and uploads the archive as a workflow artifact (version `0.0.0-dryrun.<run number>`) and creates no release.
 
 ## What it produces
 
