@@ -16,8 +16,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-import SMTPConnection from "nodemailer/lib/smtp-connection";
-
 import type { Clock } from "@/app/clock";
 import { quote } from "@/mail/go-mime";
 import { addressesToStrings, detectReaderMimeType, type Mailer, type Message } from "@/mail/mailer";
@@ -133,6 +131,9 @@ export class SMTPClient implements Mailer {
     const c = this.config;
     const hasAuth = c.username !== "" || c.password !== "";
 
+    // loaded on the first send: nodemailer pulls in http, tls and crypto, which
+    // was a large part of the start-up time (P.3)
+    const { default: SMTPConnection } = await import("nodemailer/lib/smtp-connection");
     const conn = new SMTPConnection({
       host: c.host,
       port: c.port,

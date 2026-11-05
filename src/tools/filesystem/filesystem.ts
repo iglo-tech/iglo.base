@@ -53,10 +53,10 @@ import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
 import { serveContent } from "@/server/serve-content";
 import { detect } from "@/tools/mimetype/mimetype";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 
-export const ThumbSizeRegex = mustCompile(String.raw`^(\d+)x(\d+)(t|b|f)?$`);
+export const ThumbSizeRegex = lazyMustCompile(String.raw`^(\d+)x(\d+)(t|b|f)?$`);
 
 const inlineServeContentTypes = [
   // image

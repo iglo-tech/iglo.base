@@ -37,7 +37,7 @@ import type { MIME } from "@/tools/mimetype/mime";
 import { defaultLimit, detect } from "@/tools/mimetype/mimetype";
 import { errMIME } from "@/tools/mimetype/tree";
 import { snakecase } from "@/tools/inflector/inflector";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { randomStringWithAlphabet } from "@/tools/security/random";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 
@@ -396,7 +396,7 @@ export function goBase(path: string): string {
 
 // -------------------------------------------------------------------
 
-const extInvalidCharsRegex = mustCompile(String.raw`[^\w\.\*\-\+\=\#]+`);
+const extInvalidCharsRegex = lazyMustCompile(String.raw`[^\w\.\*\-\+\=\#]+`);
 
 const randomAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
 

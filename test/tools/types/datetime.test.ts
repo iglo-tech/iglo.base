@@ -541,3 +541,30 @@ describe("the fast path of the stored layout", () => {
     expect(parseDefaultLayoutFast("2023-02-29 00:00:00.000Z")).toBeNull();
   });
 });
+
+const p = (n: number, w: number): string => String(n).padStart(w, "0");
+
+describe("string", () => {
+  // the formatting of every year: the digits of the Date's own fields
+  test("formats generated times as DefaultDateLayout", () => {
+    let seed = 12345;
+    const rand = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    const edges = [
+      -30610224000000, -30610224000001, -30610223999999, 253402300799999, 253402300800000,
+      253402300799000, 0, -1, 1,
+    ];
+    for (let i = 0; i < 20000; i++) {
+      // years 1 to 9999, edges around 1000 and 9999 included
+      const ms = i < edges.length ? edges[i]! : Math.floor(rand() * 2.5e14 - 6.2e13);
+      const d = new Date(ms);
+      const want =
+        `${p(d.getUTCFullYear(), 4)}-${p(d.getUTCMonth() + 1, 2)}-${p(d.getUTCDate(), 2)} ` +
+        `${p(d.getUTCHours(), 2)}:${p(d.getUTCMinutes(), 2)}:${p(d.getUTCSeconds(), 2)}.` +
+        `${p(d.getUTCMilliseconds(), 3)}Z`;
+      expect(DateTime.fromDate(d).string()).toBe(want);
+    }
+  });
+});

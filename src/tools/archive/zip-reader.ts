@@ -10,7 +10,12 @@
 
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { once } from "node:events";
-import { createInflateRaw } from "node:zlib";
+
+// node:zlib is loaded on first use: it was about 10 ms of the start-up (P.3)
+let zlibModule: typeof import("node:zlib") | undefined;
+function zlib(): typeof import("node:zlib") {
+  return (zlibModule ??= process.getBuiltinModule("node:zlib"));
+}
 
 // ErrFormat is returned when zip encounters an invalid zip file.
 export const ErrFormat = new Error("zip: not a valid zip file");
@@ -430,7 +435,7 @@ export class ZipReader {
   }
 
   async #inflate(offset: number, length: number, sink: (c: Uint8Array) => void): Promise<void> {
-    const inflate = createInflateRaw();
+    const inflate = zlib().createInflateRaw();
     let sinkErr: unknown;
     inflate.on("data", (chunk: Uint8Array) => {
       if (sinkErr !== undefined) {

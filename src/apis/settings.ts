@@ -32,7 +32,7 @@ import { type S3Config, Settings, settingsType } from "@/settings/settings-model
 import { saveSettings } from "@/settings/settings-query";
 import { wrapf } from "@/tools/filesystem/blob/bucket";
 import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { pseudorandomString } from "@/tools/security/random";
 import { nowDateTime } from "@/tools/types/datetime";
 import { Errors, NewError } from "@/validation/error";
@@ -360,7 +360,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
 // -------------------------------------------------------------------
 // forms.AppleClientSecretCreate
 
-const privateKeyRegex = mustCompile(
+const privateKeyRegex = lazyMustCompile(
   String.raw`(?m)-----BEGIN PRIVATE KEY----[\s\S]+-----END PRIVATE KEY-----`,
 );
 

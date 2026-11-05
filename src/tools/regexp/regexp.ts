@@ -69,26 +69,86 @@ class text {
   }
 }
 
+interface Compiled {
+  numSubexp: number;
+  subexpNames: string[];
+  prefixComplete: boolean; // prefix is the entire regexp
+  p: program;
+}
+
+// the body of compile of regexp.go, on an expression in the Go string form
+function compileParts(expr: string, mode: Flags, longest: boolean): Compiled {
+  let re = Parse(expr, mode);
+  const maxCap = re.maxCap();
+  const capNames = re.capNames();
+
+  re = Simplify(re) as syntaxRegexp;
+  const prog = Compile(re);
+  const p: program = {
+    prog,
+    onepass: compileOnePass(prog),
+    prefix: "",
+    prefixBytes: new Uint8Array(0),
+    prefixRune: 0,
+    prefixEnd: 0,
+    cond: prog.startCond(),
+    minInputLen: minInputLen(re),
+    longest,
+    machines: [],
+  };
+  let prefixComplete: boolean;
+  if (p.onepass === null) {
+    [p.prefix, prefixComplete] = prog.prefix();
+  } else {
+    [p.prefix, prefixComplete, p.prefixEnd] = onePassPrefix(prog);
+  }
+  if (p.prefix !== "") {
+    p.prefixBytes = encoder.encode(p.prefix);
+    p.prefixRune = DecodeRuneInString(p.prefix)[0];
+  }
+  return { numSubexp: maxCap, subexpNames: capNames, prefixComplete, p };
+}
+
 // Regexp is the representation of a compiled regular expression.
 export class Regexp {
   readonly #expr: string; // as passed to Compile
-  readonly #numSubexp: number;
-  readonly #subexpNames: string[];
-  readonly #prefixComplete: boolean; // prefix is the entire regexp
-  readonly #p: program;
+  #c: Compiled | null;
+  // set while the expression is not compiled yet (lazyMustCompile)
+  #pending: { mode: Flags; longest: boolean } | null;
 
   private constructor(
     expr: string,
-    numSubexp: number,
-    subexpNames: string[],
-    prefixComplete: boolean,
-    p: program,
+    c: Compiled | null,
+    pending: { mode: Flags; longest: boolean } | null,
   ) {
     this.#expr = expr;
-    this.#numSubexp = numSubexp;
-    this.#subexpNames = subexpNames;
-    this.#prefixComplete = prefixComplete;
-    this.#p = p;
+    this.#c = c;
+    this.#pending = pending;
+  }
+
+  #compiled(): Compiled {
+    if (this.#c === null) {
+      const { mode, longest } = this.#pending!;
+      this.#c = compileParts(this.#expr, mode, longest);
+      this.#pending = null;
+    }
+    return this.#c;
+  }
+
+  get #numSubexp(): number {
+    return (this.#c ?? this.#compiled()).numSubexp;
+  }
+
+  get #subexpNames(): string[] {
+    return (this.#c ?? this.#compiled()).subexpNames;
+  }
+
+  get #prefixComplete(): boolean {
+    return (this.#c ?? this.#compiled()).prefixComplete;
+  }
+
+  get #p(): program {
+    return (this.#c ?? this.#compiled()).p;
   }
 
   // compile of regexp.go: Compile is compile(expr, Perl, false) and
@@ -96,35 +156,15 @@ export class Regexp {
   // string form (a lone surrogate other than an invalid byte is U+FFFD).
   static compile(expr: string, mode: Flags, longest: boolean): Regexp {
     expr = goString(expr);
-    let re = Parse(expr, mode);
-    const maxCap = re.maxCap();
-    const capNames = re.capNames();
+    return new Regexp(expr, compileParts(expr, mode, longest), null);
+  }
 
-    re = Simplify(re) as syntaxRegexp;
-    const prog = Compile(re);
-    const p: program = {
-      prog,
-      onepass: compileOnePass(prog),
-      prefix: "",
-      prefixBytes: new Uint8Array(0),
-      prefixRune: 0,
-      prefixEnd: 0,
-      cond: prog.startCond(),
-      minInputLen: minInputLen(re),
-      longest,
-      machines: [],
-    };
-    let prefixComplete: boolean;
-    if (p.onepass === null) {
-      [p.prefix, prefixComplete] = prog.prefix();
-    } else {
-      [p.prefix, prefixComplete, p.prefixEnd] = onePassPrefix(prog);
-    }
-    if (p.prefix !== "") {
-      p.prefixBytes = encoder.encode(p.prefix);
-      p.prefixRune = DecodeRuneInString(p.prefix)[0];
-    }
-    return new Regexp(expr, maxCap, capNames, prefixComplete, p);
+  // An expression that is compiled on first use. Parsing and compiling the
+  // module-level constants of about 25 modules was about 50 ms of the start-up
+  // (P.3), most of them never used by a given run. The expression must be a
+  // constant that is known to compile: a syntax error surfaces on first use.
+  static lazy(expr: string, mode: Flags, longest: boolean): Regexp {
+    return new Regexp(goString(expr), null, { mode, longest });
   }
 
   // String returns the source text used to compile the regular expression.
@@ -681,6 +721,12 @@ function isDigit(r: number): boolean {
 // For POSIX leftmost-longest matching, see CompilePOSIX.
 export function compile(expr: string): Regexp {
   return Regexp.compile(expr, Perl, false);
+}
+
+// lazyMustCompile is MustCompile for a constant expression at module level: it
+// compiles on first use (Regexp.lazy).
+export function lazyMustCompile(str: string): Regexp {
+  return Regexp.lazy(str, Perl, false);
 }
 
 // CompilePOSIX is like Compile but restricts the regular expression

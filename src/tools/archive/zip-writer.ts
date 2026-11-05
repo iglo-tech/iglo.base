@@ -21,7 +21,12 @@ import {
   readSync,
   writeSync,
 } from "node:fs";
-import { constants, deflateRawSync } from "node:zlib";
+
+// node:zlib is loaded on first use: it was about 10 ms of the start-up (P.3)
+let zlibModule: typeof import("node:zlib") | undefined;
+function zlib(): typeof import("node:zlib") {
+  return (zlibModule ??= process.getBuiltinModule("node:zlib"));
+}
 
 const fileHeaderSignature = 0x04034b50;
 const directoryHeaderSignature = 0x02014b50;
@@ -392,19 +397,19 @@ export class ZipWriter {
 // level uses fixed codes and finds nothing in base64 or random bytes; for
 // those, Huffman codes alone are as fast and gain what there is to gain.
 function compressBlock(block: Uint8Array): Uint8Array {
-  const finishFlush = constants.Z_SYNC_FLUSH;
+  const finishFlush = zlib().constants.Z_SYNC_FLUSH;
   const sample = block.subarray(0, sampleSize);
-  const compressed = deflateRawSync(sample, { level: deflateLevel, finishFlush });
+  const compressed = zlib().deflateRawSync(sample, { level: deflateLevel, finishFlush });
   if (compressed.length > sample.length * incompressibleRatio) {
-    return deflateRawSync(block, {
+    return zlib().deflateRawSync(block, {
       level: deflateLevel,
-      strategy: constants.Z_HUFFMAN_ONLY,
+      strategy: zlib().constants.Z_HUFFMAN_ONLY,
       finishFlush,
     });
   }
   return block.length === sample.length
     ? compressed
-    : deflateRawSync(block, { level: deflateLevel, finishFlush });
+    : zlib().deflateRawSync(block, { level: deflateLevel, finishFlush });
 }
 
 // FileHeader.isZip64

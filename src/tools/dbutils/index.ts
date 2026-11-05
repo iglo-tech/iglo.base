@@ -6,14 +6,14 @@
 // uppercase mapping.
 
 import { toUpperRune } from "@/tools/inflector/inflector";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import { SimpleFold } from "@/tools/unicode/letter";
 
-const indexRegex = mustCompile(
+const indexRegex = lazyMustCompile(
   String.raw`(?i)\s*create\s+(unique\s+)?\s*index\s*(if\s+not\s+exists\s+)?(\S*)\s+on\s+(\S*)\s*\(([\s\S]*?)\)(?:\s+where\s+([\s\S]*?))?\s*$`,
 );
-const indexColumnRegex = mustCompile(
+const indexColumnRegex = lazyMustCompile(
   String.raw`(?i)^([\s\S]+?)(?:\s+collate\s+([\w]+))?(?:\s+(asc|desc))?\s*$`,
 );
 

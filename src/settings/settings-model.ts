@@ -49,7 +49,7 @@ import { When } from "@/validation/when";
 import { IPOrSubnet } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";
 import { maxSafeJSONInt } from "@/fields/field";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 
 export const paramsTable = "_params";
 
@@ -914,7 +914,7 @@ function checkUniqueRuleLabel(value: unknown): Error | null {
   return null;
 }
 
-const rateLimitRuleLabelRegex = mustCompile(
+const rateLimitRuleLabelRegex = lazyMustCompile(
   String.raw`^(\w+\ \/[\w\/-]*|\/[\w\/-]*|^\w+\:\w+|\*\:\w+|\w+)$`,
 );
 
