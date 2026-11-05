@@ -30,7 +30,7 @@ Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM,
 - `bun:sqlite` as the only database. No other database, Redis or external queue.
 - Upstream's S3 client ported on `fetch` for S3 storage and backups (`Bun.S3Client` cannot return the raw error bodies the API shows), `Bun.password` for bcrypt, Web Crypto for JWT and AES-GCM.
 - The admin dashboard is upstream's `ui/` (vanilla JS, Shablon, Vite), vendored with a small patch set (`docs/design/08-admin-ui.md`).
-- One compiled executable is the only release artifact until 1.0. Do not add Docker, compose, or parallel distribution paths. An official Docker image that wraps the same executable is planned after the MVP (D3).
+- One compiled executable is the release artifact. The official Docker image (`Dockerfile`, `.github/workflows/docker.yml`, D33) only wraps that executable; it never builds from source. Do not add compose files, other registries or other distribution paths.
 
 ## Rules
 

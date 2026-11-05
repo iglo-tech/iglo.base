@@ -1,0 +1,125 @@
+name: Docker
+
+# Wraps a published release's executable in an image (D33) and pushes it to
+# ghcr.io/iglo-tech/iglo.base. It never builds iglo.base: it downloads the
+# release archive and SHA256SUMS, verifies the checksum, and the Dockerfile
+# copies the executable in. `workflow_dispatch` with a tag builds an existing
+# release. See docs/releasing.md#image.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag, e.g. v1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/iglo-tech/iglo.base
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Release and version
+        id: release
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "tag $TAG is not vMAJOR.MINOR.PATCH[-prerelease]" >&2
+            exit 1
+          fi
+          prerelease="$(gh release view "$TAG" --json isPrerelease,isDraft --jq 'if .isDraft then "draft" else (.isPrerelease | tostring) end')"
+          if [ "$prerelease" = draft ]; then
+            echo "release $TAG is still a draft" >&2
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+      - name: Download and verify the release executable
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          name="iglo-base_${VERSION}_linux_amd64.zip"
+          mkdir -p ctx/dl ctx/pb_data ctx/pb_migrations
+          gh release download "$TAG" --dir ctx/dl --pattern "$name" --pattern SHA256SUMS
+          (cd ctx/dl && sha256sum -c SHA256SUMS)
+          unzip -q -j ctx/dl/"$name" iglo-base -d ctx
+          chmod 0755 ctx/iglo-base
+          rm -r ctx/dl
+          cp .dockerignore ctx/.dockerignore
+      - name: Build
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: docker build --build-arg "VERSION=$VERSION" -f Dockerfile -t "iglo-base:smoke" ctx
+      - name: Smoke test
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -eu
+          test "$(docker run --rm iglo-base:smoke --version)" = "iglo-base version $VERSION"
+          docker run -d --name smoke -p 127.0.0.1:18090:8090 iglo-base:smoke
+          code=000
+          for _ in $(seq 1 60); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18090/api/health || true)"
+            [ "$code" = 200 ] && break
+            sleep 1
+          done
+          if [ "$code" != 200 ]; then
+            docker logs smoke
+            echo "/api/health answered $code" >&2
+            exit 1
+          fi
+          docker stop smoke
+          status="$(docker inspect smoke --format '{{.State.ExitCode}}')"
+          if [ "$status" != 0 ]; then
+            docker logs smoke
+            echo "docker stop: exit status $status" >&2
+            exit 1
+          fi
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          docker tag iglo-base:smoke "$IMAGE:$VERSION"
+          docker push "$IMAGE:$VERSION"
+          # :latest only for the repository's latest published release, so
+          # rebuilding an older release never moves it backwards.
+          latest="$(gh release view --json tagName --jq .tagName)"
+          if [ "$PRERELEASE" = false ] && [ "$latest" = "$TAG" ]; then
+            docker tag iglo-base:smoke "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi

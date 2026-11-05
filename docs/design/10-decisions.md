@@ -20,7 +20,7 @@ Decided 2026-10-27.
 ## D3. Bun, TypeScript, one executable
 
 - **Decision:** Bun ≥ 1.4 and TypeScript, shipped as one compiled executable with the dashboard embedded. The MVP ships only that executable.
-- **Post-MVP:** an official Docker image that wraps the same executable. Not before the executable works and 1.0 ships.
+- **Post-MVP:** an official Docker image that wraps the same executable. Not before the executable works and 1.0 ships. Decided in [D33](#d33-the-docker-image-wraps-the-release-executable).
 - **Why:** the same stack and release model as iglo.monitor and iglo.email. Bun's server, SQLite, S3 client, password hashing and bundler cover most of what upstream needs third-party Go modules for. PocketBase is also one executable, so the deployment model does not change.
 
 ## D4. PocketBase's data format, unchanged and two-way
@@ -279,3 +279,11 @@ Direction from the owner on 2026-11-05.
 - **Handling:** the worker works on copies under `~/iglo.base-staging/` and never changes the original zip. Before either server starts, the copy's settings are changed in the database so nothing leaves the machine (SMTP off, scheduled backups off, backup S3 off, file-storage S3 off), and both servers and every probe run inside a network namespace with no network (`unshare -rn`, loopback only). Nothing from the copy (names, ids, emails, values, schema) goes into the repository, a PR, a commit or a thread reply; the detailed report stays in `~/iglo.base-staging/`, and the repository gets only the generic runbook and counts.
 - **Why:** the owner prefers not to spend time on it; the network namespace makes a missed setting harmless.
 
+
+## D33. The Docker image wraps the release executable
+
+Task P.1, after v1.0.0 shipped.
+
+- **Decision:** `ghcr.io/iglo-tech/iglo.base:<version>` (and `:latest` only when the tag is the repository's latest published release) is a linux/amd64 image built by `.github/workflows/docker.yml` when a release is published, or by hand for an existing tag. The workflow downloads the release's `iglo-base_<version>_linux_amd64.zip` and `SHA256SUMS`, verifies the checksum and the `Dockerfile` copies the executable in; nothing is built from source. The base is `gcr.io/distroless/base-debian13:nonroot`, pinned by digest: the executable links only libc, libm, libdl and libpthread, and that image adds CA certificates and tzdata (SMTP, S3 and OAuth2 over TLS) with no shell or package manager. It runs as uid/gid 65532, with `/pb_data` and `/pb_migrations` as volumes, the executable at `/iglo-base` with working directory `/` (so the "next to the executable" defaults are `/pb_data`, `/pb_public`, `/pb_migrations` for serve and every CLI command), as PID 1 (SIGTERM reaches it), and `serve --http 0.0.0.0:8090` as the default command.
+- **Why:** the release stays the single source of truth, so the image holds the bytes that were reviewed and checksummed. Distroless base is the smallest glibc image with certificates; a debian slim image adds a shell and package tooling that nothing needs. ghcr.io needs no secrets beyond `GITHUB_TOKEN`.
+- **Consequence:** the digest is bumped by hand (Renovate may take it over later). Docker Hub, arm64 and macOS images are out of scope (P.2). Amends D3's "post-MVP" note; D24 still limits targets to linux-x64.
