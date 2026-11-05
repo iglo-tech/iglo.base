@@ -15,7 +15,7 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.3 | worker | task/P.3-perf | 0 | [brief](briefs/P.3.md) |
+| P.3 | review | [#66](https://github.com/iglo-tech/iglo.base/pull/66) | 1 | [brief](briefs/P.3.md); startup 267–356 → 117–153 ms (bytecode build, lazy regexps and imports); request path unchanged within noise |
 
 ## Done
 
