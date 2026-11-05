@@ -4,18 +4,19 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-M7.1c active.
+M7.3 active.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.1c | review 3 | [#61](https://github.com/iglo-tech/iglo.base/pull/61) | 3 | [Brief](briefs/M7.1c.md). Round 1 (Opus CHANGES): read-pool batching breaks D8 deadlines and head-of-line order; lead decision: removed (Sonnet fixer, `6a866e7`); rerun on a loaded host: p50 at 50 clients 1.7–2.1× on list, expand, view (p95 within the bar). Round 2 (Opus): code correct; report text fixed by the lead at `66f9d14`; same-session gain vs main: list 1.2–1.5×, expand 1.3–1.7×, view none. Sonnet 5.5 worker (rate-limited 2026-11-03, resumed by the host 2026-11-05): `check` 0 failures, `test:reference` 2 flakes pass on rerun. 50 clients: every bar row passes except create p50 1.92× (single-thread insert/commit). M6.4 waits for the owner's answer on its browser suite |
+| M7.3 | worker | — | 0 | [Brief](briefs/M7.3.md). Sonnet 5.5 worker. M6.4 (and M7.2 after it) waits for the owner's answer on its browser suite |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M7.1c | [#61](https://github.com/iglo-tech/iglo.base/pull/61) | 2026-11-05 (`50fa770`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `66f9d14`. JSON writer, log row export, stack-less validation errors; read-pool batching removed (broke D8 deadlines). Same session vs main: list 1.2–1.5×, expand 1.3–1.7×, view unchanged. Bar at 50 clients (loaded host): p95 holds everywhere, p50 fails for list 1.83×, expand 1.74–2.04×, view 2.08×, create 1.92× (single thread vs upstream's cores). Whether the bar gates 1.0 is the owner's open question. Backlog: no profile retaken after batching removal |
 | M7.1b | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 2026-11-03 (`adde040`) | Two review rounds (Opus; lead fixed round 1, three design docs): Opus APPROVE at `cd2e7c7`. `check` 0 failures; `test:reference` only backlog flakes (SQL execTime, realtime order). D31 log writer thread; date fast path, read-pool rows as arrays, lighter hydration. 50 clients: list, filter+sort, view within the bar; expand 1.57–1.80× and create 1.80× p50 (noisy shared host) |
 | M7.1a | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 2026-11-03 (`b442184`) | Two review rounds (Opus, lead fixed both): round 2 left one report sentence, rewritten at `9c4c6f8` (docs only), which the reviewer said clears it. Lead `check` 0 failures at `3de51da`. bcrypt runs on Bun's thread pool on every request path; only batch compares on the calling thread. Profile: the log write is 39% of `/api/health`; list stays about 1.8× of upstream at 50 clients. Backlog: JSON parser stack-depth test can overflow in a full `check` run; `test:reference` port collisions on a shared host |
 | D30 | [#58](https://github.com/iglo-tech/iglo.base/pull/58) | 2026-11-02 (`3b89d47`) | Owner direction: no TLS in the app, M6.3 dropped. Lead change merged without a council round (CLI refusal only, no API path); `check` 0 failures. Scope review sent to the owner (M7.2 docs, M6.4 browser suite, M7.1 bar as gate, M7.3) |
@@ -143,6 +144,8 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | M1.8 | 2026-10-28 | The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
 
 ## For owner review
+
+- 2026-11-05 (M7.1c): M7.1 is closed with the bar not met at p50 (50 clients): list 1.83×, expand up to 2.04×, view 2.08×, create 1.92×; p95 within the bar everywhere. The remaining gap is one thread against upstream's cores; multi-process serving was ruled out. Read-pool batching was tried and removed (it broke D8 deadlines). Owner question: accept for 1.0, or reopen threads/processes.
 
 - 2026-11-03 (D31): request log batches are written by a dedicated worker with its own `auxiliary.db` connection (amends D8). M7.1 split into M7.1a/b/c; M7.1b takes the profile's low-risk fixes #1, #3, #4, #5.
 
