@@ -29,12 +29,21 @@ export interface SafeErrorResolver {
 // error map that is itself an error.
 export class ValidationErrors extends Error {
   constructor(readonly errors: Record<string, unknown>) {
-    super(
+    // Go's validation.Errors is a plain map, created at no cost for every
+    // validation run (most runs end without an error). No stack is
+    // captured: capturing one dominates the cost of the object and nothing
+    // reads it.
+    // (the message is built first: errorText may throw, and the limit must
+    // not stay 0 then)
+    const message =
       Object.keys(errors)
         .toSorted()
         .map((key) => `${key}: ${errorText(errors[key])}`)
-        .join("; ") + (Object.keys(errors).length > 0 ? "." : ""),
-    );
+        .join("; ") + (Object.keys(errors).length > 0 ? "." : "");
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
+    super(message);
+    Error.stackTraceLimit = limit;
     this.name = "ValidationErrors";
   }
 }

@@ -260,7 +260,18 @@ async function startIglo(
     : [values.exe!];
   const t0 = performance.now();
   const proc = Bun.spawn(
-    [...cmd, "serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, "--automigrate=false"],
+    [
+      ...cmd,
+      "serve",
+      "--http",
+      `127.0.0.1:${port}`,
+      "--dir",
+      dataDir,
+      "--automigrate=false",
+      // a run from source is a dev run (logs and SQL printed); the compiled
+      // executable is not, so profile it the same way
+      ...(profDir ? ["--dev=false"] : []),
+    ],
     {
       cwd: root,
       stdout: "ignore",

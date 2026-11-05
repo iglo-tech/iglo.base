@@ -30,7 +30,13 @@ export class JsonSyntaxError extends Error {
 // io.EOF / io.ErrUnexpectedEOF for an input without a complete value
 export class JsonEOFError extends Error {
   constructor(unexpected: boolean) {
+    // an incomplete prefix of a request body is parsed to find syntax
+    // errors in it while the body is read (readFirstJSONText), and ends in
+    // this error each time: no stack is captured, nothing reads it
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
     super(unexpected ? "unexpected EOF" : "EOF");
+    Error.stackTraceLimit = limit;
     this.name = "JsonEOFError";
   }
 }

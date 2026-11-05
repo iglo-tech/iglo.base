@@ -56,7 +56,8 @@ export function activityLogger(): Handler<RequestEvent> {
 }
 
 function cutStr(str: string, max: number): string {
-  if (Buffer.byteLength(str) > max) {
+  // (a UTF-16 unit is at most 3 bytes, so a short text needs no byte count)
+  if (str.length * 3 > max && Buffer.byteLength(str) > max) {
     return cutBytes(str, max) + "...";
   }
   return str;
