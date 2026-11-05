@@ -9,7 +9,7 @@
 // only checks the syntax: go-json.ts's decoder with v1 options, where only
 // a syntax error makes the text invalid JSON.
 
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { JSONSyntaxError, anyType, unmarshal } from "@/tools/types/go-json";
 import { byteLength, runeCount } from "@/validation/util";
 import { Parse } from "@/validation/is/go-url";
@@ -45,10 +45,10 @@ const URL =
   URLPath +
   String.raw`?$`;
 
-const rxEmail = mustCompile(Email);
-const rxHexcolor = mustCompile(Hexcolor);
-const rxDNSName = mustCompile(DNSName);
-const rxURL = mustCompile(URL);
+const rxEmail = lazyMustCompile(Email);
+const rxHexcolor = lazyMustCompile(Hexcolor);
+const rxDNSName = lazyMustCompile(DNSName);
+const rxURL = lazyMustCompile(URL);
 
 const maxURLRuneCount = 2083;
 const minURLRuneCount = 3;

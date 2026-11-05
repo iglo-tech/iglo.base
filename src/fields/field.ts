@@ -36,7 +36,7 @@ import type { Clock } from "@/app/clock";
 import type { Builder } from "@/db/dbx/builder";
 import type { System } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import type { DateTime } from "@/tools/types/datetime";
 import { marshal, quote, type GoInt } from "@/tools/types/go-json";
 import { IsPrint } from "@/tools/unicode/letter";
@@ -48,7 +48,7 @@ import { Required } from "@/validation/required";
 import { By, type Rule } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
 
-export const fieldNameRegex = mustCompile(String.raw`^\w+$`);
+export const fieldNameRegex = lazyMustCompile(String.raw`^\w+$`);
 
 export const maxSafeJSONInt = 2 ** 53 - 1;
 

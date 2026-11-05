@@ -25,6 +25,10 @@ await run([
   process.execPath,
   "build",
   "--compile",
+  // bytecode of the bundle is stored in the executable, so the start does not
+  // parse about 400 modules (P.3: start-up 290 to 137 ms); it needs ESM output
+  "--bytecode",
+  "--format=esm",
   ...(version === "" ? [] : ["--define", `IGLO_VERSION=${JSON.stringify(version)}`]),
   "src/main.ts",
   "src/db/read-worker.ts",

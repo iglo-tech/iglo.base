@@ -5,14 +5,14 @@ import { firstApiError } from "@/apis/record-helpers";
 import type { RequestEvent } from "@/app/event-request";
 import { createBackup } from "@/backups/create";
 import { structOf } from "@/server/unmarshal-request-data";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { NewError } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { Match } from "@/validation/match";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 
-const backupNameRegex = mustCompile(String.raw`^[a-z0-9_-]+\.zip$`);
+const backupNameRegex = lazyMustCompile(String.raw`^[a-z0-9_-]+\.zip$`);
 
 const backupCreateFormType = structOf([
   { name: "Name", type: "string", tags: { form: "name", json: "name" } },

@@ -29,6 +29,9 @@ export function executable(): Promise<string> {
         process.execPath,
         "build",
         "--compile",
+        // the same flags as scripts/build.ts
+        "--bytecode",
+        "--format=esm",
         "src/main.ts",
         "src/db/read-worker.ts",
         "src/files/thumb-worker.ts",

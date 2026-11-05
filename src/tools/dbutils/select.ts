@@ -1,9 +1,9 @@
 // Upstream: tools/dbutils/select.go
 
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 
 // Regexp for columns and tables (the same as the one in dbx).
-const selectRegex = mustCompile(String.raw`(?i:\s+as\s+|\s+)([\w\-_\.]+)$`);
+const selectRegex = lazyMustCompile(String.raw`(?i:\s+as\s+|\s+)([\w\-_\.]+)$`);
 
 // AliasOrIdentifier returns the alias from a column or table identifier.
 // Returns the identifier unmodified if no alias was found.

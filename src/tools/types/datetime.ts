@@ -68,6 +68,10 @@ export function parseDateTime(value: unknown): DateTime {
 
 // DateTime represents an instant in UTC that is serialized using the app
 // default date layout.
+// 1000-01-01T00:00:00Z and 9999-12-31T23:59:59Z as Unix seconds
+const minISOSec = -30610224000;
+const maxISOSec = 253402300799;
+
 export class DateTime {
   // Unix seconds and nanoseconds in [0, 1e9); Go's zero time by default
   private sec = zeroInstant.sec;
@@ -180,6 +184,11 @@ export class DateTime {
   string(): string {
     if (this.isZero()) {
       return "";
+    }
+    // years 1000 to 9999: toISOString has the same digits (P.3)
+    if (this.sec >= minISOSec && this.sec <= maxISOSec) {
+      const iso = new Date(this.sec * 1000 + Math.floor(this.nsec / 1e6)).toISOString();
+      return iso.slice(0, 10) + " " + iso.slice(11);
     }
     const f = fieldsOf(this.instant());
     return (

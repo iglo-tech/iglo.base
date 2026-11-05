@@ -33,7 +33,7 @@ import { JSONField } from "@/fields/json";
 import { NumberField } from "@/fields/number";
 import { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { pseudorandomString, randomString } from "@/tools/security/random";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import type { Record } from "@/records/record-model";
@@ -339,7 +339,7 @@ export function defaultViewIdField(): Field {
   });
 }
 
-const castRegex = mustCompile(String.raw`(?is)^cast\s*\(.*\s+as\s+(\w+)\s*\)$`);
+const castRegex = lazyMustCompile(String.raw`(?is)^cast\s*\(.*\s+as\s+(\w+)\s*\)$`);
 
 export function parseQueryToFields(
   app: CollectionsApp,
@@ -551,13 +551,13 @@ export function getQueryTableInfo(app: CollectionsApp, selectQuery: string): Tab
 // Raw query identifiers parser
 // -------------------------------------------------------------------
 
-const joinReplaceRegex = mustCompile(
+const joinReplaceRegex = lazyMustCompile(
   String.raw`(?im)\s+(full\s+outer\s+join|left\s+outer\s+join|right\s+outer\s+join|full\s+join|cross\s+join|inner\s+join|outer\s+join|left\s+join|right\s+join|join)\s+?`,
 );
-const discardReplaceRegex = mustCompile(
+const discardReplaceRegex = lazyMustCompile(
   String.raw`(?im)\s+(where|group\s+by|having|order|limit|with)\s+?`,
 );
-const commentsReplaceRegex = mustCompile(String.raw`(?m)(\/\*[\s\S]*?\*\/)|(--.+$)`);
+const commentsReplaceRegex = lazyMustCompile(String.raw`(?m)(\/\*[\s\S]*?\*\/)|(--.+$)`);
 
 export interface Identifier {
   original: string;

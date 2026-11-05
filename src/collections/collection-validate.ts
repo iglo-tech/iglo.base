@@ -57,7 +57,7 @@ import { newRecordFieldResolver } from "@/resolver/record-field-resolver";
 import { filterBuildExpr } from "@/search/filter";
 import { findSingleColumnUniqueIndex, parseIndex } from "@/tools/dbutils/index";
 import { existInSlice } from "@/tools/list/list";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { Errors, NewError, type Error as ValidationError } from "@/validation/error";
 import { In } from "@/validation/in";
@@ -73,9 +73,9 @@ import { UniqueId } from "@/validators/db";
 import { ErrUnsupportedValueType, JoinValidationErrors } from "@/validators/validators";
 
 // core/db.go DefaultIdRegex
-const defaultIdRegex = mustCompile(String.raw`^\w+$`);
+const defaultIdRegex = lazyMustCompile(String.raw`^\w+$`);
 
-const collectionNameRegex = mustCompile(String.raw`^\w+$`);
+const collectionNameRegex = lazyMustCompile(String.raw`^\w+$`);
 
 const reservedAuthKeys = ["passwordConfirm", "oldPassword"];
 

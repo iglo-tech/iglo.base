@@ -64,7 +64,7 @@ import { File } from "@/tools/filesystem/file";
 import { type System, ThumbSizeRegex } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
 import { toUniqueStringSlice } from "@/tools/list/list";
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import {
   boolType,
   bytesToText,
@@ -94,7 +94,7 @@ export const FieldTypeFile = "file";
 // DefaultFileFieldMaxSize: 5 MiB
 export const DefaultFileFieldMaxSize = 5 * 2 ** 20;
 
-const looseFilenameRegex = mustCompile(String.raw`^[^\./\\][^/\\]+$`);
+const looseFilenameRegex = lazyMustCompile(String.raw`^[^\./\\][^/\\]+$`);
 
 // the record keys of the files to delete after a save and of the files
 // uploaded by it (used by Intercept)

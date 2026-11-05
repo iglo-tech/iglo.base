@@ -2,7 +2,7 @@
 // HexColor, Host, JSON and URL, with their errors. The other rules are not
 // used by upstream and are not ported.
 
-import { mustCompile } from "@/tools/regexp/regexp";
+import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { NewError } from "@/validation/error";
 import { IsEmail, IsHexcolor, IsHost, IsJSON, IsURL } from "@/validation/is/govalidator";
 import { NewStringRuleWithError } from "@/validation/string";
@@ -41,7 +41,7 @@ export const Host = NewStringRuleWithError(IsHost, ErrHost);
 // Domain regex source: https://stackoverflow.com/a/7933253
 // Slightly modified: Removed 255 max length validation since Go regex does not
 // support lookarounds. More info: https://stackoverflow.com/a/38935027
-const reDomain = mustCompile(
+const reDomain = lazyMustCompile(
   String.raw`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-zA-Z]{1,63}| xn--[a-z0-9]{1,59})$`,
 );
 

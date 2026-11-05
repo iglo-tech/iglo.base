@@ -1,4 +1,10 @@
 // Upstream: none (moves pixels in and out of Bun.Image, D10)
+
+// node:zlib is loaded on first use: it was about 10 ms of the start-up (P.3)
+let zlibModule: typeof import("node:zlib") | undefined;
+function zlib(): typeof import("node:zlib") {
+  return (zlibModule ??= process.getBuiltinModule("node:zlib"));
+}
 //
 // A minimal PNG writer and reader for raw RGBA pixels. Bun.Image has no
 // raw pixel input or output, so the thumbnail code moves pixels in and out
@@ -6,8 +12,6 @@
 // copy. The writer wraps 8-bit RGBA rows (filter 0) in a zlib stream. The
 // reader handles non-interlaced 8- and 16-bit PNGs of every color type,
 // which covers Bun.Image's output.
-
-import { deflateSync, inflateSync } from "node:zlib";
 
 export interface Raw {
   width: number;
@@ -43,7 +47,7 @@ export function encodePng(raw: Raw, level = 0): Uint8Array {
   view.setUint32(4, height);
   header[8] = 8;
   header[9] = 6;
-  const idat = deflateSync(rows, { level });
+  const idat = zlib().deflateSync(rows, { level });
   const parts = [
     signature,
     chunk("IHDR", header),
@@ -118,7 +122,7 @@ export function decodePng(bytes: Uint8Array): Raw {
     joined.set(d, j);
     j += d.length;
   }
-  const data = inflateSync(joined);
+  const data = zlib().inflateSync(joined);
   // 8-bit RGBA rows are the output already: unfilter straight into it
   const direct = colorType === 6 && depth === 8;
   const pix = new Uint8Array(width * height * 4);
