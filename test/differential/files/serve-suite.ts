@@ -95,6 +95,14 @@ function tolerance(contentType: string, note: string): number {
   if (contentType === "image/webp" && !note.includes("lossless")) {
     return 9;
   }
+  // On arm64 the Go compiler most likely fuses multiplications and additions (FMA), so
+  // upstream's resampling differs in the last bits from x64, and the GIF
+  // encoder's error-diffusion dithering turns that into whole pixels of
+  // another palette color (measured on a GitHub arm64 runner: 14.6 and 15.6,
+  // against exact on x64). Other formats still match closely (P.2, D34).
+  if (contentType === "image/gif" && process.arch === "arm64") {
+    return 25;
+  }
   return 0.5;
 }
 
