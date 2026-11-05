@@ -14,7 +14,7 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.1 | review | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 1 | [brief](briefs/P.1.md); distroless image, 139 MB, ghcr.io workflow |
+| P.1 | fix | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 1 | [brief](briefs/P.1.md); distroless image, 139 MB, ghcr.io workflow |; round 1 CHANGES (paths in the image, `:latest` on rebuilds), Sonnet fixer |
 
 ## Done
 
