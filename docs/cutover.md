@@ -11,7 +11,7 @@ The procedure was rehearsed once on a copy of a real production backup (task M7.
 | `pb_data` directory (`data.db`, `auxiliary.db`, `storage/`, `backups/`) | the same directory, untouched format |
 | settings in `_params` (SMTP, S3, backups, rate limits, trusted proxy, logs) | the same, read from the same rows |
 | `serve --http host:port` | `serve --http host:port` |
-| `--dir`, `--publicDir`, `--migrationsDir`, `--automigrate`, `--queryTimeout`, `--origins`, `--indexFallback`, `--dev` | the same flags with the same defaults |
+| `--dir`, `--publicDir`, `--migrationsDir`, `--automigrate`, `--queryTimeout`, `--origins`, `--indexFallback`, `--dev` | the same flags with the same defaults (other flags: see below) |
 | `--encryptionEnv NAME` and the variable it names | the same; the settings stay encrypted with the same key |
 | `pb_public/` static files | served the same way |
 | `pb_migrations/` auto-generated files | the same JavaScript migration files run under Bun ([D23](design/10-decisions.md)). Copy the directory next to `pb_data` (or pass `--migrationsDir`) |
@@ -20,6 +20,8 @@ The procedure was rehearsed once on a copy of a real production backup (task M7.
 What does not carry over:
 
 - `pb_hooks` and JavaScript plugins: iglo.base has no extension surface ([D5](design/10-decisions.md)). If the deployment uses them, do not switch.
+- `--hooksDir`, `--hooksWatch` and `--hooksPool`: iglo.base refuses them and exits with status 1. Remove them from the command line (PocketBase Docker images often pass `--hooksDir` even when no hooks are used).
+- A `pb_hooks/` directory next to `pb_data`, even an empty one, makes iglo.base print a warning on stderr at start. Move it away if it holds no hooks.
 - `--https` and `serve example.com`: iglo.base serves plain HTTP only ([D30](design/10-decisions.md#d30-no-tls-in-the-app)). TLS ends at the reverse proxy.
 - Anything else listed under deliberate differences in [04-api-compatibility.md](design/04-api-compatibility.md): read it once before the switch.
 
@@ -27,23 +29,23 @@ The `--dir` default is `pb_data` next to the executable, as in PocketBase. Pass 
 
 ## Before the day
 
-1. Download the release archive (see [releasing.md](releasing.md)) and check it: `sha256sum -c SHA256SUMS`, then `./iglo-base --version`.
-2. Note how PocketBase is started today: the full command line, the environment, the service manager unit and the reverse proxy configuration. The new unit differs only in the binary path and the name.
+1. Download the release archive (see [releasing.md](releasing.md)) and check it: `sha256sum -c SHA256SUMS`, `unzip` the archive, then `./iglo-base --version`.
+2. Note how PocketBase is started today: the full command line, the environment, the service manager unit and the reverse proxy configuration. The new unit differs in the binary path and the name, and drops the hooks flags listed above.
 3. Look at the settings in the PocketBase dashboard: trusted proxy headers, rate limits, SMTP, S3, scheduled backups. They carry over unchanged. Check that the reverse proxy sends the headers `trustedProxy.headers` names, because iglo.base resolves the client IP from them in the same way.
-4. Read `_migrations`: the highest-numbered migration shows which PocketBase version last migrated the data. iglo.base ports v0.41.0's system migrations, so data migrated by v0.40.x or v0.41.0 opens as is.
+4. Note the PocketBase version that runs today, from the binary (`./pocketbase --version`) or the image tag; `_migrations` cannot tell it, as several releases share the same newest system migration. If it is older than v0.41.0, first upgrade PocketBase to v0.41.0 and run it for a while: the rollback below starts PocketBase v0.41.0, and iglo.base ports v0.41.0's system migrations.
 
 ## The switch
 
 1. **Stop PocketBase** with SIGTERM (`systemctl stop`, `docker stop`). Wait until the process has exited: a clean exit closes both SQLite databases and checkpoints their write-ahead logs. Do not copy `pb_data` while PocketBase runs.
-2. **Take a backup of the stopped directory**: `cp -a pb_data pb_data.before-iglo` on the same volume, or any other copy you can restore from. This copy is the last-resort way back; keep it until the cutover is accepted.
+2. **Take a backup of the stopped directories**: `cp -a pb_data pb_data.before-iglo` and `cp -a pb_migrations pb_migrations.before-iglo` on the same volume, or any other copy you can restore from. This copy is the last-resort way back; keep it until the cutover is accepted.
 3. **Place the binary.** Put `iglo-base` where the service can run it, next to the old binary, and keep the old binary and its unit file unchanged.
 4. **Start iglo.base on the same directory** with the same flags, for example:
    ```sh
    ./iglo-base serve --http 127.0.0.1:8090 --dir /path/to/pb_data
    ```
-   Add `--encryptionEnv NAME` and the variable if the settings are encrypted. Run it under the service manager that ran PocketBase.
-5. **Check the start.** The banner prints the listen address and nothing else; the process prints no error output. `curl -i http://127.0.0.1:8090/api/health` answers 200 with `{"message":"API is healthy.","code":200,"data":{}}`.
-6. **Point the reverse proxy** at it. If the address and port are unchanged, nothing changes. TLS, HTTP/2 and WebSocket/SSE pass-through (the realtime endpoint needs unbuffered responses and a long read timeout) stay with the proxy.
+   Add `--encryptionEnv NAME` and the variable if the settings are encrypted. Run it under the service manager that ran PocketBase. Start takes about 0.3–0.5 s, against about 0.05 s for PocketBase; give the proxy's or service manager's health check that much time.
+5. **Check the start.** The banner prints three lines (the server URL, the dashboard URL and the REST API URL); the process prints no error output. `curl -i http://127.0.0.1:8090/api/health` answers 200 with `{"message":"API is healthy.","code":200,"data":{}}`.
+6. **Point the reverse proxy** at it. If the address and port are unchanged, nothing changes. TLS, HTTP/2 and SSE pass-through (realtime is Server-Sent Events: the endpoint needs unbuffered responses and a long read timeout) stay with the proxy.
 
 ## Checks after the start
 
@@ -66,10 +68,10 @@ Use it whenever a check fails or the clients misbehave, at any time. Writes made
 2. **Start PocketBase v0.41.0** with its old command line and unit on the same `pb_data`. It starts with no error output and shows every collection and record, including those written while iglo.base ran.
 3. Point the reverse proxy back if you changed it.
 
-If PocketBase does not open the directory (this was never observed in the rehearsal), stop it, restore `pb_data.before-iglo` from the switch step 2 and start PocketBase on it. Writes since the switch are then lost.
+If PocketBase does not open the directory (this was never observed in the rehearsal), stop it, restore `pb_data.before-iglo` and `pb_migrations.before-iglo` from the switch step 2 (together: migration files written by `--automigrate` while iglo.base ran would otherwise run again on PocketBase's next start) and start PocketBase on it. Writes since the switch are then lost.
 
-To try iglo.base again later, repeat the switch from step 4.
+To try iglo.base again later, repeat the switch from step 1: stop PocketBase and take a new backup first. Never run both servers on the same `pb_data` at once.
 
 ## After acceptance
 
-Keep `pb_data.before-iglo` until you are sure, then delete it. Keep the PocketBase binary and unit file as long as the rollback should stay possible. Scheduled backups continue as configured in the settings; restore tests of a backup made by iglo.base are covered by the same API as PocketBase's.
+Keep `pb_data.before-iglo` and `pb_migrations.before-iglo` until you are sure, then delete them. Keep the PocketBase binary and unit file as long as the rollback should stay possible. Scheduled backups continue as configured in the settings; restore tests of a backup made by iglo.base are covered by the same API as PocketBase's.
