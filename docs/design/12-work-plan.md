@@ -77,7 +77,7 @@ Correct first time over fast. One task at a time, end to end; the next one start
 
 ### Hard limits
 
-- No agent reads, copies or uses production data. M7.4 waits for the owner.
+- No agent reads, copies or uses production data, except the M7.4 worker on the staging copy under D32.
 - No real credentials and no external services except GitHub and the upstream forge.
 - Nothing destructive outside the repository. The host rules in `/home/t3-code/AGENTS.md` apply (no Docker disk accounting, no broad disk scans, low-priority bounded diagnostics).
 
@@ -190,9 +190,9 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M7.1 | Performance, profile first (owner direction 2026-11-02): profile the main thread against upstream, then fix what the profile shows. Split into M7.1a (profile, bcrypt off the event loop), M7.1b (the profile's low-risk fixes #1, #3, #4, #5: log writer off the main thread (D31), date fast path, read-pool rows, hydration; then re-profile) and M7.1c (the JSON writer #2 and what the re-profile ranks next; final numbers against the bar) | none | M5.8 | M7.1a: profiles and numbers in `docs/perf/`, bcrypt off the loop; M7.1b: before/after numbers and a new profile; M7.1c: numbers re-measured against the [performance bar](02-architecture.md#performance-bar) |
 | M7.2 | Moved after the MVP (owner direction 2026-11-05: the owner is the only user for now): see P.4 | — | — | — |
 | M7.3 | Release workflow: the linux-x64 binary on `v*` tags (D24) | none | M0.8 | A test tag produces a working linux-x64 binary |
-| M7.4 | Cutover rehearsal on the staging copy, with the owner (D20) | none | M7.3 | Move and rollback done once; outbound settings disabled before the first start |
+| M7.4 | Cutover rehearsal on the staging copy, run by an agent (D20, D32) | none | M7.3 | Move and rollback done once; outbound settings disabled before the first start |
 
-M7.4 is the only task that touches production data. It is run with the owner, never by an unattended worker.
+M7.4 is the only task that touches production data. The owner approved an agent running it on the staging copy under D32's handling (2026-11-05).
 
 ### After 1.0
 

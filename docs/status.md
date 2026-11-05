@@ -4,18 +4,17 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-No task active: every remaining MVP task waits for the owner (M7.4).
+Active: M7.4, the cutover rehearsal, run by an agent on the staging copy (owner chose option A, D32).
 
 ## Needs you
 
-Only what the owner must decide. Everything else below is the lead's log.
-
-1. **M7.4, trial move of your real data (the "cutover rehearsal").** Before production switches from PocketBase to iglo.base, the move is practised once on a copy of a production backup on this machine: start iglo.base on the copy, check it, then open the same copy with PocketBase v0.41.0 again to prove the way back works. Email, S3 uploads and scheduled backups in the copy are switched off first, so nothing leaves the machine (D20). Recommended: an agent does it on the staging copy and reports to you; this needs your OK, as agents may not touch production data now. Alternatives: you do it yourself from a step-by-step guide, or skip the trial and switch production directly with a backup to roll back to.
+Nothing right now.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| M7.4 | worker | task/M7.4-cutover | 0 | [brief](briefs/M7.4.md); staging copy, no network (D32) |
 
 ## Done
 
