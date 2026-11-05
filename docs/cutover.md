@@ -27,6 +27,15 @@ What does not carry over:
 
 The `--dir` default is `pb_data` next to the executable, as in PocketBase. Pass `--dir` explicitly and keep the same value in both binaries.
 
+## From the PocketBase Docker image
+
+The iglo.base image (`ghcr.io/iglo-tech/iglo.base`, see [releasing.md](releasing.md#image)) keeps the data in `/pb_data`, the path most PocketBase images use; check your own mount, as some use `/pb/pb_data` or another path. Keep the same volume and point the new container at it:
+
+- Mount the existing directory on `/pb_data` (or pass another path with `--dir`). The process runs as uid/gid 65532, not root: `chown -R 65532:65532` the directory (and the migrations directory) while the old container is stopped, or the database opens read-only and the server fails. Changing the owner does not alter the data; `chown` back before starting PocketBase again.
+- Mount the old `pb_migrations` on `/pb_migrations`.
+- Drop `--hooksDir`, `--hooksWatch` and `--hooksPool` from the command: iglo.base exits with status 1 on them. The default command is `serve --http 0.0.0.0:8090 --dir /pb_data`; if you override it, keep `serve`.
+- The port inside the container is 8090, as in PocketBase images. Expect `docker stop` to finish well within the default 10 s.
+
 ## Before the day
 
 1. Download the release archive (see [releasing.md](releasing.md)) and check it: `sha256sum -c SHA256SUMS`, `unzip` the archive, then `./iglo-base --version`.

@@ -19,6 +19,21 @@ iglo.base ships one artifact, the compiled linux-x64 executable (D24, D3).
 
 `iglo-base --version` prints `iglo-base version <version>`; a build outside the release (plain `bun run build`) prints `iglo-base version (untracked)`. The version is set at build time: `IGLO_VERSION=0.1.0 bun run build` (`scripts/build.ts` passes it to `bun build --define` and to the dashboard footer).
 
+## Image
+
+`.github/workflows/docker.yml` wraps a published release in a linux/amd64 image (D33). It runs when a release is published, and by hand with `workflow_dispatch` and a `tag` input (for example `v1.0.0`) for a release that already exists. It does not build iglo.base: it downloads `iglo-base_<version>_linux_amd64.zip` and `SHA256SUMS` with `gh release download`, checks the checksum, and the `Dockerfile` copies the executable into `gcr.io/distroless/base-debian13:nonroot` (pinned by digest). Before pushing it smoke-tests the image: `--version` prints the version, `serve` answers `/api/health` with 200 and `docker stop` exits 0.
+
+It pushes `ghcr.io/iglo-tech/iglo.base:<version>` and, for a release that is not a pre-release, `:latest`. Only this job has `packages: write`; there are no other secrets. A draft release is refused.
+
+```sh
+docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.0.0
+```
+
+- `/pb_data` is the data volume (`--dir /pb_data`); `/pb_migrations` holds the auto-generated migration files that dashboard changes write (`--migrationsDir` defaults to `<dir>/../pb_migrations`). Mount both to keep them.
+- The process runs as uid/gid 65532 and is PID 1. A new named volume takes that ownership from the image. A directory taken over from PocketBase (usually root-owned) must be handed over first: `chown -R 65532:65532 <dir>`.
+- The default command is `serve --http 0.0.0.0:8090 --dir /pb_data`; arguments after the image name replace it, so repeat `serve` and the flags you need.
+- The image is not an official PocketBase image. Update the digest in the `Dockerfile` by hand when the base needs a refresh.
+
 ## Verifying a download
 
 ```sh
