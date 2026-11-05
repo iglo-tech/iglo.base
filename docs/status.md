@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-Active: release v1.0.0 (lead) and P.5, the dashboard tests. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.5, P.1, P.3, P.2; P.4 needs the answer below.
+Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.5, the dashboard tests. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.5, P.1, P.3, P.2; P.4 needs the answer below.
 
 ## Needs you
 
