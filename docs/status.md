@@ -14,7 +14,7 @@ Nothing right now.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.4 | worker | task/M7.4-cutover | 0 | [brief](briefs/M7.4.md); staging copy, no network (D32) |
+| M7.4 | review | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 1 | [brief](briefs/M7.4.md); rehearsal passed, no defect; runbook docs/cutover.md |
 
 ## Done
 
