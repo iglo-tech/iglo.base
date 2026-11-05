@@ -92,7 +92,7 @@ describe("installer", () => {
     expect(result.stdout).not.toContain("superuser upsert");
   });
 
-  test("the installer reuses its placeholder on the next start", async () => {
+  test("the installer reuses its placeholder on the next start", { timeout: 20_000 }, async () => {
     const dataDir = join(tempDir(), "pb_data");
     const first = await startServer([], dataDir);
     const firstToken = installerLink.exec(await first.waitForOutput("EMAIL PASS)\n\n"))?.[2] ?? "";

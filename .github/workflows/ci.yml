@@ -46,11 +46,14 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run check
+      # the reference run goes on when `check` failed, so one run reports both
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ !cancelled() }}
         with:
           path: .upstream
           key: upstream-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('test/differential/upstream.lock') }}
       - run: bun run test:reference
+        if: ${{ !cancelled() }}
 
   check-macos:
     runs-on: macos-15
@@ -76,8 +79,11 @@ jobs:
       - name: The bundled SQLite is the one in use
         run: bun test test/db/sqlite-lib.test.ts
       - run: bun run check
+      # the reference run goes on when `check` failed, so one run reports both
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ !cancelled() }}
         with:
           path: .upstream
           key: upstream-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('test/differential/upstream.lock') }}
       - run: bun run test:reference
+        if: ${{ !cancelled() }}
