@@ -2,5 +2,5 @@
 # skips it. `bun run test:reference` runs it after `bun run upstream:prepare`.
 [test]
 # one temporary root per run, deleted on exit (test/support/temp-root.ts)
-preload = ["./test/support/temp-root.ts"]
+preload = ["./test/support/temp-root.ts", "./test/support/sqlite.ts"]
 pathIgnorePatterns = ["test/differential/**", "test/browser/**", ".upstream/**"]
