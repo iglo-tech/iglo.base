@@ -14,7 +14,7 @@ Active: release v1.0.0 (lead) and P.5, the dashboard tests. Post-MVP tasks run o
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.5 | worker | task/P.5-dashboard-tests | 0 | [brief](briefs/P.5.md); worker hit the rate limit: Paused until 2026-11-05T18:27:29Z |
+| P.5 | review | [#64](https://github.com/iglo-tech/iglo.base/pull/64) | 1 | [brief](briefs/P.5.md); checklist all rows pass, 3 browser tests |
 
 ## Done
 
