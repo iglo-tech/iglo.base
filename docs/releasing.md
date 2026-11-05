@@ -23,7 +23,7 @@ iglo.base ships one artifact, the compiled linux-x64 executable (D24, D3).
 
 `.github/workflows/docker.yml` wraps a published release in a linux/amd64 image (D33). It runs when a release is published, and by hand with `workflow_dispatch` and a `tag` input (for example `v1.0.0`) for a release that already exists. It does not build iglo.base: it downloads `iglo-base_<version>_linux_amd64.zip` and `SHA256SUMS` with `gh release download`, checks the checksum, and the `Dockerfile` copies the executable into `gcr.io/distroless/base-debian13:nonroot` (pinned by digest). Before pushing it smoke-tests the image: `--version` prints the version, `serve` answers `/api/health` with 200 and `docker stop` exits 0. The checkout does not keep the job token.
 
-It pushes `ghcr.io/iglo-tech/iglo.base:<version>` and, `:latest` only when the tag is the repository's latest published release (`gh release view` without a tag, never a pre-release), so rebuilding an older release or a patch on an older line does not move it. Only this job has `packages: write`; there are no other secrets. A draft release is refused.
+It pushes `ghcr.io/iglo-tech/iglo.base:<version>` and `:latest` only when the tag is the repository's latest published release (`gh release view` without a tag, never a pre-release), so rebuilding an older release or a patch on an older line does not move it. Only this job has `packages: write`; there are no other secrets. A draft release is refused.
 
 ```sh
 docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.0.0
@@ -35,11 +35,11 @@ docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/i
   ```sh
   docker exec iglo /iglo-base superuser upsert admin@example.com 'a long password'
   docker run --rm -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.0.0 superuser upsert admin@example.com 'a long password'
-  docker run --rm -v iglo-data:/pb_data -v iglo-migrations:/pb_migrations ghcr.io/iglo-tech/iglo.base:1.0.0 migrate collections
+  docker run --rm -it -v iglo-data:/pb_data -v iglo-migrations:/pb_migrations ghcr.io/iglo-tech/iglo.base:1.0.0 migrate collections
   ```
 
   There is no shell in the image, so use the full path `/iglo-base` with `docker exec`.
-- The process runs as uid/gid 65532 and is PID 1. A new named volume takes that ownership from the image. A directory taken over from PocketBase (usually root-owned) must be handed over first: `chown -R 65532:65532 <dir>` with rootful Docker. With rootless Docker or Podman, uid 65532 maps to a host subuid, so `chown` as the host user does not help; instead run the container as the directory's owner with `--user <uid>:<gid>` (the image works under any uid), or use `podman unshare chown -R 65532:65532 <dir>`. `--user` also avoids changing ownership back for a rollback.
+- The process runs as uid/gid 65532 and is PID 1. A new named volume takes that ownership from the image. A directory taken over from PocketBase (usually root-owned) must be handed over first: `chown -R 65532:65532 <dir>` with rootful Docker. With rootless Docker or Podman, uid 65532 maps to a host subuid, so `chown` as the host user does not help; instead run the container with `--user 0:0`: under rootless Docker the host user who owns the directory is uid 0 inside the container, so this is that user, not host root, and the files stay owned by them. Rootless Podman maps the same way: `--user 0:0` or `--userns=keep-id`. This also leaves nothing to change back for a rollback.
 - Back up or copy the whole data directory, never only `data.db`: `-wal` and `-shm` files may remain after a stop.
 - No shell, `wget` or `curl` exists in the image, so compose or Kubernetes health checks that exec into the container cannot work. Check `/api/health` from the host or the reverse proxy instead.
 - The image is not an official PocketBase image. Update the digest in the `Dockerfile` by hand when the base needs a refresh.
