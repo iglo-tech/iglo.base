@@ -211,13 +211,18 @@ function badRequest(): Response {
   });
 }
 
+// "::ffff:1.2.3.4" is "1.2.3.4"
+function unmapIPv4(ip: string): string {
+  return ip.startsWith("::") ? ip.replace(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i, "$1") : ip;
+}
+
 // net.Conn.RemoteAddr().String() for the client: IPv4 clients of a
 // dual-stack listener are reported as IPv4, as Go does.
 function remoteAddr(address: { address: string; port: number } | null): string {
   if (!address) {
     return "";
   }
-  const ip = address.address.replace(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i, "$1");
+  const ip = unmapIPv4(address.address);
   return ip.includes(":") ? `[${ip}]:${address.port}` : `${ip}:${address.port}`;
 }
 

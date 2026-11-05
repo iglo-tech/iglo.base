@@ -59,25 +59,39 @@ export function cutBytes(str: string, max: number): string {
 export function logDBExport(id: string, log: BatchLog, maxDataSize: number): Params {
   // truncate the raw message bytes
   // (this is expected to be very rare so it is ok even if multi-byte chars)
+  // (a UTF-16 unit is at most 3 bytes, so a short text needs no byte count)
   const message =
+    log.message.length * 3 > defaultMaxLogMessageSize &&
     Buffer.byteLength(log.message) > defaultMaxLogMessageSize
       ? cutBytes(log.message, defaultMaxLogMessageSize)
       : log.message;
 
   return {
     id,
-    created: DateTime.fromDate(log.time).toString(),
+    created: formatLogTime(log.time),
     level: log.level,
     message,
     data: exportData(log.data, maxDataSize),
   };
 }
 
+// DateTime.fromDate(t).toString() (UTC, millisecond precision) from the ISO
+// text where that has the same four-digit year
+function formatLogTime(t: Date): string {
+  const ms = t.getTime();
+  if (ms >= -30610224000000 && ms < 253402300800000) {
+    // years 1000 to 9999
+    const iso = t.toISOString();
+    return iso.slice(0, 10) + " " + iso.slice(11);
+  }
+  return DateTime.fromDate(t).toString();
+}
+
 function exportData(data: JSONMap<unknown>, maxDataSize: number): string {
   let rawData = jsonMapMarshalJSON(data);
 
   const limit = maxDataSize === 0 ? defaultMaxLogDataSize : maxDataSize;
-  if (Buffer.byteLength(rawData) > limit) {
+  if (rawData.length * 3 > limit && Buffer.byteLength(rawData) > limit) {
     // the "valid" attrs read up to the invalid part are kept, as
     // jsonv2's stream decoding leaves them
     const truncatedData = decodeTruncated(cutBytes(rawData, limit));

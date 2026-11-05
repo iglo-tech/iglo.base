@@ -520,3 +520,108 @@ test("a cached statement sees a column added after its first use", async () => {
   expect(await q().allAsync()).toEqual(q().all());
   expect(Object.keys((await q().allAsync())[0]!)).toEqual(["id", "title", "n", "extra"]);
 });
+
+// M7.1c: queued reads are posted to an idle worker together (fewer messages)
+
+test("many queued reads, with failures among them, are each answered with their own result", async () => {
+  const app = open({ readWorkers: 2 });
+  fill(app, 50);
+  const results = await Promise.all(
+    Array.from({ length: 120 }, (_, i) => {
+      const id = `id${i % 60}`;
+      return i % 7 === 3
+        ? app
+            .concurrentDB()
+            .newQuery("SELECT nope FROM demo")
+            .rowAsync()
+            .catch((e: Error) => "error: " + e.message)
+        : modelQuery(app, new Demo())
+            .where(new HashExp({ id }))
+            .oneAsync<{ title: string }>()
+            .then((d) => d.title)
+            .catch((e: Error) => (e instanceof NoRowsError ? "no rows" : "other: " + e.message));
+    }),
+  );
+  results.forEach((r, i) => {
+    if (i % 7 === 3) {
+      expect(r).toContain("error: no such column: nope");
+    } else {
+      expect(r).toBe(i % 60 < 50 ? `t${i % 60}` : "no rows");
+    }
+  });
+  expect(app.readPool()!.stats()).toEqual({ workers: 2, busy: 0, queued: 0, abandoned: 0 });
+});
+
+test("a slow read does not hold up the reads posted behind it", async () => {
+  const app = open({ readWorkers: 2 });
+  fill(app, 1500);
+  const slowQuery = () =>
+    app
+      .concurrentDB()
+      .select("count(*)")
+      .from("demo")
+      .where(slowWhere)
+      .rowAsync()
+      .then((r) => [r[0], performance.now()] as const);
+  const cheap = (id: string) =>
+    app
+      .concurrentDB()
+      .select("title")
+      .from("demo")
+      .where(new HashExp({ id }))
+      .rowAsync()
+      .then((r) => [r[0], performance.now()] as const);
+
+  // two slow reads take both workers; the reads queued behind them are posted
+  // together when a worker is free: the slow one first, three cheap ones
+  // behind it, and one cheap one for the other worker
+  const blockers = [slowQuery(), slowQuery()];
+  await Bun.sleep(20);
+  const slow = slowQuery();
+  const rest = await Promise.all(["id1", "id2", "id3", "id4"].map(cheap));
+  const doneAt = performance.now();
+  expect(rest.map((r) => r[0])).toEqual(["t1", "t2", "t3", "t4"]);
+  const slowResult = await slow;
+  expect(slowResult[0]).toBe(0);
+  await Promise.all(blockers);
+  // the cheap reads were answered while the slow one ran
+  for (const [, at] of rest) {
+    expect(slowResult[1] - at).toBeGreaterThan(30);
+  }
+  expect(doneAt).toBeLessThan(slowResult[1]);
+  // the first worker still runs the reads another one took over, then goes idle
+  for (let i = 0; i < 100 && app.readPool()!.stats().busy > 0; i++) {
+    await Bun.sleep(10);
+  }
+  expect(app.readPool()!.stats()).toEqual({ workers: 2, busy: 0, queued: 0, abandoned: 0 });
+});
+
+test("a read posted behind a slow one fails at its deadline, and the pool goes on", async () => {
+  const app = open({ readWorkers: 1, queryTimeout: 250 });
+  fill(app, 3000);
+  const slow = app.concurrentDB().select("count(*)").from("demo").where(slowWhere).rowAsync();
+  const start = performance.now();
+  const timed = (id: string) =>
+    modelQuery(app, new Demo())
+      .where(new HashExp({ id }))
+      .oneAsync()
+      .then(
+        () => ["resolved", 0] as const,
+        (e: Error) => [e.message, performance.now() - start] as const,
+      );
+  const errs = await Promise.all([timed("id1"), timed("id2"), timed("id3")]);
+  for (const [message, at] of errs) {
+    expect(message).toStartWith("context deadline exceeded; failed query: SELECT");
+    expect(at).toBeLessThan(250 + 250);
+  }
+  expect(await slow).toEqual([0]);
+  // the answers for the failed reads were skipped; the worker serves the next one
+  expect(
+    (
+      (await modelQuery(app, new Demo())
+        .where(new HashExp({ id: "id4" }))
+        .oneAsync()) as unknown as { title: string }
+    ).title,
+  ).toBe("t4");
+  expect(app.readPool()!.stats()).toEqual({ workers: 1, busy: 0, queued: 0, abandoned: 0 });
+});

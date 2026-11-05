@@ -65,6 +65,7 @@ import {
 import { recordIsSuperuser } from "@/records/record-model-superusers";
 import { File } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
+import { recordJSONLayout, type RecordJSONLayout } from "@/records/record-json";
 import { Store } from "@/tools/store/store";
 import { toBool, toFloat64, toString as castToString } from "@/tools/types/cast";
 import { type DateTime, parseDateTime } from "@/tools/types/datetime";
@@ -75,13 +76,19 @@ import {
   type JSONMarshaler,
   anyType,
   bytesToText,
+  encodeFlags,
+  encodeValue,
   mapOf,
   marshal,
   setOwn,
   unmarshal,
+  withPartial,
 } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { formatFloatV } from "@/validation/error";
+
+// the options of marshalJSON (see there)
+const recordFlags = encodeFlags({ allowDuplicateNames: true, allowInvalidUTF8: true });
 
 // A Go map[string]any: a plain object with own properties.
 export type DataMap = { [key: string]: unknown };
@@ -830,9 +837,25 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // For auth records, to force the export of the email field you need to set
   // record.IgnoreEmailVisibility(true).
   publicExport(): DataMap {
+    return toDataMap(this.#publicExportMap(false));
+  }
+
+  // publicExport's members as a Map. With `expandAsMap` the expand member is
+  // a Map too (the JSON writer reads it without an object round trip).
+  #publicExportMap(expandAsMap: boolean): Map<string, unknown> {
     const exportData = new Map<string, unknown>();
 
     const customVisibility = this.#customVisibility?.getAll() ?? new Map<string, boolean>();
+
+    // get() looks through all fields for a custom getter of each key; most
+    // collections have none, and then the value is read directly
+    let hasGetters = false;
+    for (const f of this.#collection.fields) {
+      if (isGetterFinder(f)) {
+        hasGetters = true;
+        break;
+      }
+    }
 
     // export schema fields
     for (const f of this.#collection.fields) {
@@ -847,7 +870,14 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
         continue;
       }
 
-      exportData.set(fieldName, this.get(fieldName));
+      exportData.set(
+        fieldName,
+        hasGetters
+          ? this.get(fieldName)
+          : fieldName === FieldNameExpand
+            ? this.expand()
+            : this.getRaw(fieldName),
+      );
     }
 
     // export custom fields
@@ -883,23 +913,102 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
     // add expand (if non-nil)
     isVisible = customVisibility.get(FieldNameExpand);
     if ((isVisible === undefined || isVisible) && this.#expand !== null) {
-      exportData.set(FieldNameExpand, toDataMap(this.#expand.getAll()));
+      exportData.set(
+        FieldNameExpand,
+        expandAsMap ? this.#expand.getAll() : toDataMap(this.#expand.getAll()),
+      );
     }
 
-    return toDataMap(exportData);
+    return exportData;
   }
 
   // MarshalJSON implements the [json.Marshaler] interface.
   //
   // Only the data exported by `PublicExport()` will be serialized.
   marshalJSON(): string {
-    return marshal(this.publicExport(), {
+    if (!this.#exportCustomData) {
+      const fields = this.#collection.fields;
+      const layout = recordJSONLayout(fields, fields);
+      if (layout !== null) {
+        return this.#writeJSON(layout);
+      }
+    }
+
+    return marshal(this.#publicExportMap(true), {
       // for compliance with old data (and slightly better performance)
       allowDuplicateNames: true,
       // preserve the old jsonv1 behavior in case of invalid data
       allowInvalidUTF8: true,
     });
   }
+
+  // marshalJSON for a collection with a layout and no custom data: the
+  // members of publicExport() written in their sorted order, without the
+  // map and the object they would be copied into. Same members, same
+  // order, same values and errors as marshal(publicExport()).
+  #writeJSON(layout: RecordJSONLayout): string {
+    const collection = this.#collection;
+    const fields = collection.fields.items();
+    const visibility = this.#customVisibility?.getAll() ?? null;
+    const isAuth = collection.isAuth();
+    const hideEmail =
+      isAuth && !this.#ignoreEmailVisibility && !this.getBool(FieldNameEmailVisibility);
+    let hasGetters = false;
+    for (const f of fields) {
+      if (isGetterFinder(f)) {
+        hasGetters = true;
+        break;
+      }
+    }
+
+    let out = "{";
+    let sep = "";
+    for (const m of layout.members) {
+      const custom = visibility === null ? undefined : visibility.get(m.name);
+      let value: unknown;
+      if (m.fieldIndex >= 0) {
+        const f = fields[m.fieldIndex] as Field;
+        if (custom === undefined ? f.getHidden() : !custom) {
+          continue;
+        }
+        if (isAuth) {
+          const name = m.name;
+          if (
+            name === FieldNamePassword ||
+            name === FieldNameTokenKey ||
+            (hideEmail && name === FieldNameEmail)
+          ) {
+            continue;
+          }
+        }
+        value = hasGetters ? this.get(m.name) : this.getRaw(m.name);
+      } else if (custom === false) {
+        continue;
+      } else if (m.name === FieldNameCollectionId) {
+        value = collection.id;
+      } else if (m.name === FieldNameCollectionName) {
+        value = collection.name;
+      } else if (this.#expand === null) {
+        continue;
+      } else {
+        value = this.#expand.getAll();
+      }
+
+      out += sep + m.quoted;
+      sep = ",";
+      try {
+        out += ":" + encodeValue(value, recordFlags, 1);
+      } catch (err) {
+        throw withPartial(err, out, ":");
+      }
+    }
+
+    return out + "}";
+  }
+
+  // the output is compact and canonical (the writer's own), so a larger
+  // value that holds a record does not reformat it
+  readonly canonicalJSON = true;
 
   // UnmarshalJSON implements the [json.Unmarshaler] interface.
   unmarshalJSON(data: string | Uint8Array): void {

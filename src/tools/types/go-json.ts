@@ -36,6 +36,9 @@ import { decodeUTF8Bytes } from "@/server/json-decode";
 // part of a larger value, as Go's jsontext.Encoder.WriteValue does.
 export interface JSONMarshaler {
   marshalJSON(): string;
+  // true when marshalJSON() always returns compact canonical text (what
+  // the reformatting would write); it is then not checked again
+  readonly canonicalJSON?: boolean;
 }
 
 export function isJSONMarshaler(value: unknown): value is JSONMarshaler {
@@ -82,7 +85,7 @@ export function marshalPartial(err: unknown): string {
   return err instanceof Error ? ((err as { partial?: string }).partial ?? "") : "";
 }
 
-function withPartial(err: unknown, prefix: string, delim: string): unknown {
+export function withPartial(err: unknown, prefix: string, delim: string): unknown {
   if (err instanceof Error) {
     const child = (err as { partial?: string }).partial ?? "";
     (err as { partial?: string }).partial = child === "" ? prefix : prefix + delim + child;
@@ -105,15 +108,18 @@ export interface MarshalOptions {
   allowDuplicateNames?: boolean;
 }
 
-interface EncodeFlags {
+export interface EncodeFlags {
   escapeForHTML: boolean;
   escapeForJS: boolean;
   allowInvalidUTF8: boolean;
   allowDuplicateNames: boolean;
   preserveRawStrings: boolean;
+  // a marshaler's output that is canonical and compact is written as it is
+  // (set when the reformatting could not change it)
+  trustCanonical: boolean;
 }
 
-function encodeFlags(opts: MarshalOptions): EncodeFlags {
+export function encodeFlags(opts: MarshalOptions): EncodeFlags {
   const legacy = opts.legacy === true;
   return {
     escapeForHTML: legacy,
@@ -121,6 +127,7 @@ function encodeFlags(opts: MarshalOptions): EncodeFlags {
     allowInvalidUTF8: legacy || opts.allowInvalidUTF8 === true,
     allowDuplicateNames: legacy || opts.allowDuplicateNames === true,
     preserveRawStrings: legacy,
+    trustCanonical: !legacy && opts.allowDuplicateNames === true,
   };
 }
 
@@ -131,7 +138,7 @@ export function marshal(value: unknown, opts: MarshalOptions = {}): string {
   return encodeValue(value, encodeFlags(opts), 0);
 }
 
-function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string {
+export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string {
   if (depth > maxNestingDepth) {
     throw new JSONSyntaxError("exceeded max depth");
   }
@@ -154,7 +161,13 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
     return "null";
   }
   if (isJSONMarshaler(value)) {
-    return reformatValue(value.marshalJSON(), flags, depth);
+    const raw = value.marshalJSON();
+    // text that is already what the reformatting would write is used as it
+    // is (it is checked in one pass, without building a copy)
+    if (flags.trustCanonical && (value.canonicalJSON === true || isCanonicalCompactJSON(raw))) {
+      return raw;
+    }
+    return reformatValue(raw, flags, depth);
   }
   if (Array.isArray(value)) {
     let out = "[";
@@ -176,39 +189,72 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
     // time.Time is RFC 3339 with nanoseconds, trailing zeros trimmed
     return quote(formatRFC3339Nano(value), flags);
   }
-  const entries =
-    value instanceof Map
-      ? [...(value as Map<unknown, unknown>).entries()].map(([k, v]): [string, unknown] => [
-          String(k),
-          v,
-        ])
-      : Object.entries(value as object);
-  return encodeObject(entries, flags, depth);
+  if (value instanceof Map) {
+    const names: string[] = [];
+    const values: unknown[] = [];
+    for (const [k, v] of value as Map<unknown, unknown>) {
+      names.push(typeof k === "string" ? k : String(k));
+      values.push(v);
+    }
+    return encodeObject(names, values, flags, depth);
+  }
+  const obj = value as { [key: string]: unknown };
+  const names = Object.keys(obj);
+  const values: unknown[] = Array.from({ length: names.length });
+  for (let i = 0; i < names.length; i++) {
+    values[i] = obj[names[i] as string];
+  }
+  return encodeObject(names, values, flags, depth);
 }
 
-function encodeObject(entries: [string, unknown][], flags: EncodeFlags, depth: number): string {
+function encodeObject(
+  entries: string[],
+  values: unknown[],
+  flags: EncodeFlags,
+  depth: number,
+): string {
   // names are compared as Go strings (UTF-8 bytes); invalid UTF-8 is
   // replaced first, which may make two names equal
-  const members = entries.map(([name, value]): [string, string, unknown] => [
-    quote(name, flags),
-    name.toWellFormed(),
-    value,
-  ]);
-  members.sort((a, b) => compareUTF8(a[1], b[1]));
+  const n = entries.length;
+  if (n === 0) {
+    return "{}";
+  }
+  const quoted: string[] = Array.from({ length: n });
+  const names: string[] = Array.from({ length: n });
+  // without surrogates UTF-16 order is the UTF-8 (code point) order
+  let plain = true;
+  for (let i = 0; i < n; i++) {
+    const name = entries[i] as string;
+    if (isPlainString(name) && !flags.escapeForHTML && !flags.escapeForJS) {
+      quoted[i] = '"' + name + '"';
+      names[i] = name;
+    } else {
+      quoted[i] = quote(name, flags);
+      names[i] = name.toWellFormed();
+      plain = false;
+    }
+  }
+  const order: number[] = Array.from({ length: n }, (_, i) => i);
+  for (let i = 0; i < n; i++) {
+    order[i] = i;
+  }
+  if (n > 1) {
+    order.sort(
+      plain
+        ? (a, b) => (names[a]! < names[b]! ? -1 : names[a]! > names[b]! ? 1 : a - b)
+        : (a, b) => compareUTF8(names[a]!, names[b]!) || a - b,
+    );
+  }
   let out = "{";
-  for (let i = 0; i < members.length; i++) {
-    const [quoted, name, value] = members[i] as [string, string, unknown];
-    if (
-      !flags.allowDuplicateNames &&
-      i > 0 &&
-      (members[i - 1] as [string, string, unknown])[1] === name
-    ) {
-      throw withPartial(new JSONSyntaxError(`duplicate object member name ${quoted}`), out, "");
+  for (let k = 0; k < n; k++) {
+    const i = order[k] as number;
+    if (!flags.allowDuplicateNames && k > 0 && names[order[k - 1] as number] === names[i]) {
+      throw withPartial(new JSONSyntaxError(`duplicate object member name ${quoted[i]}`), out, "");
     }
     // the name is written before its value is encoded
-    out += (i > 0 ? "," : "") + quoted;
+    out += (k > 0 ? "," : "") + quoted[i];
     try {
-      out += ":" + encodeValue(value, flags, depth + 1);
+      out += ":" + encodeValue(values[i], flags, depth + 1);
     } catch (err) {
       throw withPartial(err, out, ":");
     }
@@ -251,6 +297,9 @@ export function quote(
   s: string,
   flags: Pick<EncodeFlags, "escapeForHTML" | "escapeForJS" | "allowInvalidUTF8">,
 ): string {
+  if (!flags.escapeForHTML && !flags.escapeForJS && isPlainString(s)) {
+    return '"' + s + '"';
+  }
   if (!s.isWellFormed()) {
     if (!flags.allowInvalidUTF8) {
       throw new JSONSyntaxError("invalid UTF-8");
@@ -275,6 +324,15 @@ export function quote(
     }
   }
   return out + s.slice(last) + '"';
+}
+
+// no character that needs an escape in the default form (control
+// characters, quote, backslash) and no surrogate (a lone one is invalid)
+// oxlint-disable-next-line no-control-regex
+const needsEscape = /[\u0000-\u001f"\\\ud800-\udfff]/;
+
+function isPlainString(s: string): boolean {
+  return !needsEscape.test(s);
 }
 
 function escapeASCII(c: number): string {
@@ -330,6 +388,185 @@ function reformatValue(raw: string, flags: EncodeFlags, depth: number): string {
     );
   }
   return out;
+}
+
+// True when `s` is one JSON value with no whitespace whose strings are
+// canonical (RFC 8785 escapes, no lone surrogates) and whose numbers are
+// valid: the text the Reformatter writes for it when duplicate names are
+// allowed and nothing is escaped for HTML or JS. One pass, no allocation;
+// any doubt (nesting deeper than 64, an unusual escape) answers false and
+// leaves the decision to the Reformatter.
+export function isCanonicalCompactJSON(s: string): boolean {
+  return s.length > 0 && scanCanonical(s, 0, 0) === s.length;
+}
+
+function scanCanonical(s: string, i: number, depth: number): number {
+  const c = s.charCodeAt(i);
+  switch (c) {
+    case 0x22: // "
+      return scanCanonicalString(s, i);
+    case 0x7b: {
+      // {
+      if (depth >= 64) {
+        return -1;
+      }
+      i++;
+      if (s.charCodeAt(i) === 0x7d) {
+        return i + 1;
+      }
+      for (;;) {
+        if (s.charCodeAt(i) !== 0x22) {
+          return -1;
+        }
+        i = scanCanonicalString(s, i);
+        if (i < 0 || s.charCodeAt(i) !== 0x3a) {
+          return -1;
+        }
+        i = scanCanonical(s, i + 1, depth + 1);
+        if (i < 0) {
+          return -1;
+        }
+        const d = s.charCodeAt(i++);
+        if (d === 0x7d) {
+          return i;
+        }
+        if (d !== 0x2c) {
+          return -1;
+        }
+      }
+    }
+    case 0x5b: {
+      // [
+      if (depth >= 64) {
+        return -1;
+      }
+      i++;
+      if (s.charCodeAt(i) === 0x5d) {
+        return i + 1;
+      }
+      for (;;) {
+        i = scanCanonical(s, i, depth + 1);
+        if (i < 0) {
+          return -1;
+        }
+        const d = s.charCodeAt(i++);
+        if (d === 0x5d) {
+          return i;
+        }
+        if (d !== 0x2c) {
+          return -1;
+        }
+      }
+    }
+    case 0x6e: // n
+      return s.startsWith("null", i) ? i + 4 : -1;
+    case 0x74: // t
+      return s.startsWith("true", i) ? i + 4 : -1;
+    case 0x66: // f
+      return s.startsWith("false", i) ? i + 5 : -1;
+  }
+  // number: -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?
+  let j = i;
+  let d = s.charCodeAt(j);
+  if (d === 0x2d) {
+    d = s.charCodeAt(++j);
+  }
+  if (d === 0x30) {
+    j++;
+  } else if (d >= 0x31 && d <= 0x39) {
+    do {
+      d = s.charCodeAt(++j);
+    } while (d >= 0x30 && d <= 0x39);
+  } else {
+    return -1;
+  }
+  d = s.charCodeAt(j);
+  if (d === 0x2e) {
+    const start = ++j;
+    while ((d = s.charCodeAt(j)) >= 0x30 && d <= 0x39) {
+      j++;
+    }
+    if (j === start) {
+      return -1;
+    }
+    d = s.charCodeAt(j);
+  }
+  if (d === 0x65 || d === 0x45) {
+    d = s.charCodeAt(++j);
+    if (d === 0x2b || d === 0x2d) {
+      j++;
+    }
+    const start = j;
+    while ((d = s.charCodeAt(j)) >= 0x30 && d <= 0x39) {
+      j++;
+    }
+    if (j === start) {
+      return -1;
+    }
+  }
+  // the number must end at a delimiter (or the end): "01" and "1.5." are
+  // errors the Reformatter reports
+  d = s.charCodeAt(j);
+  return Number.isNaN(d) || d === 0x2c || d === 0x5d || d === 0x7d ? j : -1;
+}
+
+// the end offset of the canonical string at s[i] (a quote), or -1
+function scanCanonicalString(s: string, i: number): number {
+  const n = s.length;
+  i++;
+  for (; i < n; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 0x22) {
+      return i + 1;
+    }
+    if (c < 0x20) {
+      return -1;
+    }
+    if (c === 0x5c) {
+      const e = s.charCodeAt(i + 1);
+      // \" \\ \b \f \n \r \t
+      if (
+        e === 0x22 ||
+        e === 0x5c ||
+        e === 0x62 ||
+        e === 0x66 ||
+        e === 0x6e ||
+        e === 0x72 ||
+        e === 0x74
+      ) {
+        i++;
+        continue;
+      }
+      // \u00xx for a control character without a short form, lowercase hex
+      if (
+        e === 0x75 &&
+        s.charCodeAt(i + 2) === 0x30 &&
+        s.charCodeAt(i + 3) === 0x30 &&
+        isLowerHexOrDigit(s.charCodeAt(i + 4)) &&
+        isLowerHexOrDigit(s.charCodeAt(i + 5))
+      ) {
+        const v = Number.parseInt(s.slice(i + 4, i + 6), 16);
+        if (v < 0x20 && v !== 0x08 && v !== 0x09 && v !== 0x0a && v !== 0x0c && v !== 0x0d) {
+          i += 5;
+          continue;
+        }
+      }
+      return -1;
+    }
+    if (c >= 0xd800 && c <= 0xdfff) {
+      const next = s.charCodeAt(i + 1);
+      if (c <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+        i++;
+        continue;
+      }
+      return -1;
+    }
+  }
+  return -1;
+}
+
+function isLowerHexOrDigit(c: number): boolean {
+  return (c >= 0x30 && c <= 0x39) || (c >= 0x61 && c <= 0x66);
 }
 
 class Reformatter {
