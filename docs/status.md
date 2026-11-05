@@ -4,22 +4,24 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.1, the Docker image. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.1, P.3, P.2; P.4 needs the answer below.
+Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.3, performance second pass. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.3, then P.2; P.4 needs the answer below.
 
 ## Needs you
 
-1. **P.4, docs on iglo.tech: where does the site live?** The plan puts the user docs at `https://iglo.tech/iglo.base/docs`. I need the site's repository (or "make it a folder in this repository, published by you"). Until then P.4 waits; the other post-MVP tasks go first.
+1. **Make the Docker image public.** It is published as `ghcr.io/iglo-tech/iglo.base:1.0.0`, but GitHub made the package private, and only an org admin can change that: github.com/orgs/iglo-tech/packages/container/iglo.base/settings → Change visibility → Public. Skip it if you want the image private.
+2. **P.4, docs on iglo.tech: where does the site live?** The plan puts the user docs at `https://iglo.tech/iglo.base/docs`. I need the site's repository (or "make it a folder in this repository, published by you"). Until then P.4 waits; the other post-MVP tasks go first.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.1 | review | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 2 | [brief](briefs/P.1.md); distroless image, 139 MB, ghcr.io workflow; round 1 CHANGES (paths in the image, `:latest` on rebuilds), Sonnet fixer fixed at `917fa5d` |
+| P.3 | worker | task/P.3-perf | 0 | [brief](briefs/P.3.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.1 | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 2026-11-05 (`9a20749`) | Two review rounds (Opus; Sonnet fixer round 1, lead fixed round 2, docs only): round-2 blocker fixed as the reviewer prescribed, merged without round 3. Distroless image wrapping the release executable (D33), `/iglo-base` in `/`, volumes `/pb_data`, `/pb_migrations`, `/pb_public`; uid 65532. Published `ghcr.io/iglo-tech/iglo.base:1.0.0` and `:latest` (run 42088769396). Backlog: `docker/login-action` version, no `--rm` on the smoke container |
 | P.5 | [#64](https://github.com/iglo-tech/iglo.base/pull/64) | 2026-11-05 (`ae75e85`) | One review round: Opus APPROVE at `6384ed6`. Full dashboard checklist on the release build, every row passes, no defect; `bun run test:browser` (agent-browser, outside `check`): install, collection and record round trip, logs page. Backlog: stale comment in test/browser/support.ts; agent-browser leaves session files in `$XDG_RUNTIME_DIR`; no retry on element lookup; Crons page text still says jobs are registered with Go or JS (candidate dashboard patch) |
 | M7.4 | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2026-11-05 (`dfab407`) | Two review rounds (Opus, lead fixed both, docs only): Opus APPROVE at `e7a33a5`. Rehearsal on the staging copy (D32), no network: 506 request pairs compared, no defect; PocketBase v0.41.0 reopened the copy, schema and system rows equal. Runbook `docs/cutover.md`. Report in `~/iglo.base-staging/rehearsal-1/` |
 | M7.3 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 2026-11-05 | Two review rounds (Opus; lead fixed round 1): Opus APPROVE at `511fdbd`. `v*` tag → check, build with the tag's version, smoke test, zip + SHA256SUMS on a draft release; manual runs are dry runs. Test tag run green, binary verified, tag and draft deleted. `test:reference` stays a manual pre-tag step (docs/releasing.md). Backlog: version regex accepts `+build` and leading zeros; footer can follow a stray `IGLO_VERSION`; entry-point list in two files |
