@@ -4,17 +4,17 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-Active: M7.4, the cutover rehearsal, run by an agent on the staging copy (owner chose option A, D32).
+No task active: every MVP task is merged. The post-MVP tasks (P.1–P.5) wait for the owner's go.
 
 ## Needs you
 
-Nothing right now.
+1. **When you want: the first release and the real switch.** Push a `v*` tag to get the binary ([releasing](releasing.md)); then switch production with [cutover.md](cutover.md). First check that production runs PocketBase v0.41.0 (`pocketbase --version` or the image tag), copy `pb_migrations` next to `pb_data`, and remove `--hooksDir` from the command line if it is there.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.4 | review | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2 | Round 1 CHANGES (runbook: version check, retry from step 1, hooks flags), lead fixed in e7a33a5; [brief](briefs/M7.4.md); rehearsal passed, no defect; runbook docs/cutover.md |
+| M7.4 | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2026-11-05 (`dfab407`) | Two review rounds (Opus, lead fixed both, docs only): Opus APPROVE at `e7a33a5`. Rehearsal on the staging copy (D32), no network: 506 request pairs compared, no defect; PocketBase v0.41.0 reopened the copy, schema and system rows equal. Runbook `docs/cutover.md`. Report in `~/iglo.base-staging/rehearsal-1/` |
 
 ## Done
 
