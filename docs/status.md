@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-M7.3 active.
+No task active: every remaining MVP task waits for the owner (M7.4).
 
 ## Needs you
 
@@ -16,12 +16,12 @@ Only what the owner must decide. Everything else below is the lead's log.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| M7.3 | review 2 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 2 | [Brief](briefs/M7.3.md). Sonnet 5.5 worker: test tag run green and the downloaded binary verified; tag and draft deleted. `check` 0 failures, `test:reference` 3 flakes pass on rerun. Round 1 (Opus CHANGES): a manual run on a tag released; 04 row 90 out of date. Lead fixed at `511fdbd` |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| M7.3 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 2026-11-05 | Two review rounds (Opus; lead fixed round 1): Opus APPROVE at `511fdbd`. `v*` tag → check, build with the tag's version, smoke test, zip + SHA256SUMS on a draft release; manual runs are dry runs. Test tag run green, binary verified, tag and draft deleted. `test:reference` stays a manual pre-tag step (docs/releasing.md). Backlog: version regex accepts `+build` and leading zeros; footer can follow a stray `IGLO_VERSION`; entry-point list in two files |
 | M7.1c | [#61](https://github.com/iglo-tech/iglo.base/pull/61) | 2026-11-05 (`50fa770`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `66f9d14`. JSON writer, log row export, stack-less validation errors; read-pool batching removed (broke D8 deadlines). Same session vs main: list 1.2–1.5×, expand 1.3–1.7×, view unchanged. Bar at 50 clients (loaded host): p95 holds everywhere, p50 fails for list 1.83×, expand 1.74–2.04×, view 2.08×, create 1.92× (single thread vs upstream's cores). Whether the bar gates 1.0 is the owner's open question. Backlog: no profile retaken after batching removal |
 | M7.1b | [#60](https://github.com/iglo-tech/iglo.base/pull/60) | 2026-11-03 (`adde040`) | Two review rounds (Opus; lead fixed round 1, three design docs): Opus APPROVE at `cd2e7c7`. `check` 0 failures; `test:reference` only backlog flakes (SQL execTime, realtime order). D31 log writer thread; date fast path, read-pool rows as arrays, lighter hydration. 50 clients: list, filter+sort, view within the bar; expand 1.57–1.80× and create 1.80× p50 (noisy shared host) |
 | M7.1a | [#59](https://github.com/iglo-tech/iglo.base/pull/59) | 2026-11-03 (`b442184`) | Two review rounds (Opus, lead fixed both): round 2 left one report sentence, rewritten at `9c4c6f8` (docs only), which the reviewer said clears it. Lead `check` 0 failures at `3de51da`. bcrypt runs on Bun's thread pool on every request path; only batch compares on the calling thread. Profile: the log write is 39% of `/api/health`; list stays about 1.8× of upstream at 50 clients. Backlog: JSON parser stack-depth test can overflow in a full `check` run; `test:reference` port collisions on a shared host |
