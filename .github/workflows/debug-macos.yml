@@ -1,4 +1,4 @@
-name: Debug macOS 9
+name: Debug macOS 10
 on:
   push:
     branches: [task/P.2-platforms]
@@ -18,14 +18,14 @@ jobs:
       - run: bun run build
       - name: stop without requests
         run: |
+          d=$(mktemp -d)
           for round in 1 2; do
-            d=$(mktemp -d)
             dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:18095 > $d/log 2>&1 &
             p=$!
-            until grep -q "EMAIL PASS" $d/log; do sleep 0.1; done
+            for _ in $(seq 1 100); do grep -q "EMAIL PASS" $d/log && break; sleep 0.1; done; cat $d/log
             s=$(date +%s)
             kill -TERM $p
             for _ in $(seq 1 12); do kill -0 $p 2>/dev/null || break; sleep 1; done
-            if kill -0 $p 2>/dev/null; then echo "round $round: still running after 12 s"; sample $p 2 -file $d/sample.txt >/dev/null 2>&1; grep -E "Thread_|com.apple|psynch|ulock|kevent" $d/sample.txt | head -40; kill -9 $p; else echo "round $round: stopped after $(( $(date +%s) - s )) s"; fi
+            if kill -0 $p 2>/dev/null; then echo "round $round: still running after 12 s"; sample $p 2 -file $d/sample.txt >/dev/null 2>&1; grep -E "Thread_|com.apple|psynch|ulock|kevent" $d/sample.txt | head -40; kill -9 $p; else cat $d/log; echo "round $round: stopped after $(( $(date +%s) - s )) s"; fi
             wait $p 2>/dev/null || true
           done
