@@ -1,0 +1,33 @@
+name: Debug macOS
+on:
+  push:
+    branches: [task/P.2-platforms]
+    paths: [.github/workflows/debug-macos.yml]
+permissions:
+  contents: read
+jobs:
+  d:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: timings
+        run: |
+          set -x
+          time dist/iglo-base --version
+          time dist/iglo-base --version
+          for i in 1 2 3; do
+            d=$(mktemp -d)
+            ( time (dist/iglo-base serve --dir $d/pb_data --http 127.0.0.1:1809$i > $d/log 2>&1 & p=$!; for _ in $(seq 1 200); do c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1809$i/api/health || true); [ "$c" = 200 ] && break; sleep 0.1; done; kill $p; wait $p || true) ) 2>&1
+            head -20 $d/log
+          done
+          time dist/iglo-base superuser upsert a@b.cc 1234567890 --dir $(mktemp -d)/pb_data
+      - name: tests of the first failing files
+        run: bun test test/ui/installer.test.ts test/cli/cli.test.ts 2>&1 | tail -40
+        env:
+          IGLO_SQLITE_LIB: ${{ github.workspace }}/dist/libsqlite3.dylib
