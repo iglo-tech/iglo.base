@@ -1,0 +1,127 @@
+name: Release
+
+# Pushing a v* tag builds the linux-x64 executable (D24) and attaches it with
+# its SHA-256 checksum to a DRAFT release; a human publishes it. A manual run
+# is a dry run: it uploads the archive as a workflow artifact and creates no
+# release. See docs/releasing.md.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          # the "packageManager" field pins the Bun version
+          bun-version-file: package.json
+      - name: Version from the tag
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = tag ]; then
+            version="${REF_NAME#v}"
+          else
+            # dry run from a branch
+            version="0.0.0-dryrun.${GITHUB_RUN_NUMBER}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$'; then
+            echo "tag $REF_NAME is not vMAJOR.MINOR.PATCH[-prerelease]" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: bun install --frozen-lockfile
+      # The same gate as ci.yml minus test:reference (more than 10 minutes;
+      # run it locally or via the CI workflow before tagging). `check` ends
+      # with an untagged build, which the next step replaces.
+      - run: bun run check
+      - name: Build
+        env:
+          IGLO_VERSION: ${{ steps.version.outputs.version }}
+        run: bun run build
+      - name: Smoke test
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eu
+          test "$(dist/iglo-base --version)" = "iglo-base version $VERSION"
+          dir="$(mktemp -d)"
+          dist/iglo-base serve --dir "$dir/pb_data" --http 127.0.0.1:18090 > "$dir/serve.log" 2>&1 &
+          pid=$!
+          code=000
+          for _ in $(seq 1 60); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18090/api/health || true)"
+            [ "$code" = 200 ] && break
+            sleep 1
+          done
+          kill "$pid" || true
+          wait "$pid" || true
+          if [ "$code" != 200 ]; then
+            cat "$dir/serve.log"
+            echo "/api/health answered $code" >&2
+            exit 1
+          fi
+      - name: Archive and checksum
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eu
+          name="iglo-base_${VERSION}_linux_amd64.zip"
+          mkdir -p release/stage
+          cp dist/iglo-base LICENSE release/stage/
+          cat > release/stage/README.txt <<EOF
+          iglo-base ${VERSION}: a Bun and TypeScript port of PocketBase v0.41.0.
+          Run ./iglo-base serve. Documentation: https://github.com/iglo-tech/iglo.base
+          EOF
+          (cd release/stage && zip -q -X "../$name" iglo-base LICENSE README.txt)
+          (cd release && sha256sum "$name" > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release
+          path: |
+            release/*.zip
+            release/SHA256SUMS
+          if-no-files-found: error
+
+  release:
+    # tags only: a manual run stops after the build job
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -eu
+          flags=""
+          case "$VERSION" in *-*) flags="--prerelease" ;; esac
+          gh release create "$TAG" --draft --verify-tag $flags \
+            --title "$TAG" \
+            --notes "linux-x64 executable. Verify with: sha256sum -c SHA256SUMS" \
+            "iglo-base_${VERSION}_linux_amd64.zip" SHA256SUMS
