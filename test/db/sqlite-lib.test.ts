@@ -5,13 +5,19 @@
 
 import { expect, test } from "bun:test";
 
+import { bundledSQLiteVersion } from "@/db/sqlite-lib";
+
 import { sqliteInfo, type SqliteInfo } from "@test/db/support/sqlite-probe";
 import fixture from "@test/fixtures/sqlite-linux.json";
 
 const want: SqliteInfo = { version: fixture.version, options: fixture.compileOptions };
 
+test("the version scripts/build-sqlite.ts builds is the one of Linux", () => {
+  expect(bundledSQLiteVersion).toBe(fixture.version);
+});
+
 test("the main thread uses the SQLite version and options of Linux", () => {
-  expect(sqliteInfo(true)).toEqual(want);
+  expect(sqliteInfo()).toEqual(want);
 });
 
 test("a worker thread uses the same SQLite", async () => {

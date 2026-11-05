@@ -1,4 +1,4 @@
-name: Debug macOS
+name: Debug macOS 2
 on:
   push:
     branches: [task/P.2-platforms]

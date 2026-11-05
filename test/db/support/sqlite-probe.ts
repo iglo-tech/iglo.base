@@ -10,8 +10,8 @@ export interface SqliteInfo {
   options: string[];
 }
 
-export function sqliteInfo(first: boolean): SqliteInfo {
-  loadSQLite(first);
+export function sqliteInfo(): SqliteInfo {
+  loadSQLite();
   const db = new Database(":memory:");
   try {
     const version = (db.query("select sqlite_version() as v").get() as { v: string }).v;
@@ -27,5 +27,5 @@ export function sqliteInfo(first: boolean): SqliteInfo {
 
 // run as a script: print the info as JSON (or fail the way the process would)
 if (import.meta.main) {
-  console.log(JSON.stringify(sqliteInfo(true)));
+  console.log(JSON.stringify(sqliteInfo()));
 }

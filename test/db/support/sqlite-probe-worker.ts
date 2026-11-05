@@ -2,4 +2,4 @@
 
 import { sqliteInfo } from "@test/db/support/sqlite-probe";
 
-postMessage(sqliteInfo(false));
+postMessage(sqliteInfo());

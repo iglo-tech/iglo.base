@@ -23,7 +23,7 @@ function launchURL(url: string): void {
 }
 
 // before the first database connection of any thread (D34)
-loadSQLite(true);
+loadSQLite();
 
 const shutdown = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

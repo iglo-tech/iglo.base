@@ -22,44 +22,42 @@ import { dirname, join } from "node:path";
 // (tests, development), where nothing is embedded; ignored by the executable
 export const sqliteLibraryEnv = "IGLO_SQLITE_LIB";
 
-// Bun keeps one SQLite per process, and a second `setCustomSQLite` call in a
-// worker may fail or be refused. The thread that loaded the library leaves
-// this variable (process id and path); a worker copies the environment when it
-// starts and then has nothing left to load. The process id keeps a child
-// process, which inherits the variable but not the loaded library, from
-// trusting it.
-const loadedEnv = "IGLO_SQLITE_LOADED";
+// the SQLite release scripts/build-sqlite.ts builds (test/fixtures/sqlite-linux.json)
+export const bundledSQLiteVersion = "3.53.4";
 
 let loaded = false;
 
-// `first` is true for the main thread's call at start-up: Bun keeps one
-// SQLite per process, so a worker's call may be answered with false because
-// the main thread loaded the library already; only the first call must
-// get true.
-export function loadSQLite(first = false, platform: string = process.platform): void {
+// Bun keeps one SQLite per process, so only the first thread to call
+// `Database.setCustomSQLite` loads the library; a later call in a worker
+// may fail or be refused. Every call therefore ends with a check that the
+// SQLite in use is the bundled version, and that check decides.
+export function loadSQLite(platform: string = process.platform): void {
   if (loaded || platform !== "darwin") {
     return;
   }
-  if (process.env[loadedEnv]?.startsWith(`${process.pid}:`)) {
-    loaded = true;
-    return;
-  }
   const path = resolveLibrary();
-  let result: boolean;
+  let problem = "Bun did not accept it";
   try {
-    result = Database.setCustomSQLite(path);
-  } catch (err) {
-    if (!first && err instanceof Error && /already|twice/i.test(err.message)) {
-      loaded = true;
-      return;
+    if (Database.setCustomSQLite(path)) {
+      problem = "";
     }
-    throw failure(`${path}: ${err instanceof Error ? err.message : String(err)}`, err);
+  } catch (err) {
+    problem = err instanceof Error ? err.message : String(err);
   }
-  if (!result && first) {
-    throw failure(`${path}: Bun did not accept it`);
+  const version = activeVersion();
+  if (version !== bundledSQLiteVersion) {
+    throw failure(`${path}: ${problem || "loaded"}, but SQLite ${version} is in use`);
   }
-  process.env[loadedEnv] = `${process.pid}:${path}`;
   loaded = true;
+}
+
+function activeVersion(): string {
+  const db = new Database(":memory:");
+  try {
+    return (db.query("select sqlite_version() as v").get() as { v: string }).v;
+  } finally {
+    db.close();
+  }
 }
 
 function failure(reason: string, cause?: unknown): Error {
