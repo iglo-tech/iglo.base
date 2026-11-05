@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.5, the dashboard tests. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.5, P.1, P.3, P.2; P.4 needs the answer below.
+Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.1, the Docker image. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.1, P.3, P.2; P.4 needs the answer below.
 
 ## Needs you
 
@@ -14,12 +14,13 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.5 | review | [#64](https://github.com/iglo-tech/iglo.base/pull/64) | 1 | [brief](briefs/P.5.md); checklist all rows pass, 3 browser tests |
+| P.1 | worker | task/P.1-docker | 0 | [brief](briefs/P.1.md) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.5 | [#64](https://github.com/iglo-tech/iglo.base/pull/64) | 2026-11-05 (`ae75e85`) | One review round: Opus APPROVE at `6384ed6`. Full dashboard checklist on the release build, every row passes, no defect; `bun run test:browser` (agent-browser, outside `check`): install, collection and record round trip, logs page. Backlog: stale comment in test/browser/support.ts; agent-browser leaves session files in `$XDG_RUNTIME_DIR`; no retry on element lookup; Crons page text still says jobs are registered with Go or JS (candidate dashboard patch) |
 | M7.4 | [#63](https://github.com/iglo-tech/iglo.base/pull/63) | 2026-11-05 (`dfab407`) | Two review rounds (Opus, lead fixed both, docs only): Opus APPROVE at `e7a33a5`. Rehearsal on the staging copy (D32), no network: 506 request pairs compared, no defect; PocketBase v0.41.0 reopened the copy, schema and system rows equal. Runbook `docs/cutover.md`. Report in `~/iglo.base-staging/rehearsal-1/` |
 | M7.3 | [#62](https://github.com/iglo-tech/iglo.base/pull/62) | 2026-11-05 | Two review rounds (Opus; lead fixed round 1): Opus APPROVE at `511fdbd`. `v*` tag → check, build with the tag's version, smoke test, zip + SHA256SUMS on a draft release; manual runs are dry runs. Test tag run green, binary verified, tag and draft deleted. `test:reference` stays a manual pre-tag step (docs/releasing.md). Backlog: version regex accepts `+build` and leading zeros; footer can follow a stray `IGLO_VERSION`; entry-point list in two files |
 | M7.1c | [#61](https://github.com/iglo-tech/iglo.base/pull/61) | 2026-11-05 (`50fa770`) | Three review rounds (Opus; Sonnet fixer round 1, lead fixed round 2): Opus APPROVE at `66f9d14`. JSON writer, log row export, stack-less validation errors; read-pool batching removed (broke D8 deadlines). Same session vs main: list 1.2–1.5×, expand 1.3–1.7×, view unchanged. Bar at 50 clients (loaded host): p95 holds everywhere, p50 fails for list 1.83×, expand 1.74–2.04×, view 2.08×, create 1.92× (single thread vs upstream's cores). Whether the bar gates 1.0 is the owner's open question. Backlog: no profile retaken after batching removal |
