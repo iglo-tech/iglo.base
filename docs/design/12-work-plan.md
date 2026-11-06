@@ -206,6 +206,7 @@ M7.4 is the only task that touches production data. The owner approved an agent 
 | P.6 | Test reliability (lead, 2026-11-06): the timing and port flakes of the hardening backlog's test rows (realtime and OAuth2 event order, millisecond timestamps, `execTime`, thumb `Last-Modified`, `freePort()` races, stack-depth tests, the S3-files temp-file copy, OTP `verified`), fixed in the harness or tests, never by loosening a comparison beyond what upstream itself varies | P.2 |
 | P.7 | Backlog sweep (lead, 2026-11-06): the small items in `status.md` Done rows and the hardening backlog that a real client can hit or that are cleanups (`-wal`/`-shm` left after a stop, restore marker, `toApiError` no-rows, Crons page text, CI and comment cleanups, the listed test-coverage gaps) | P.6 |
 | P.8 | Multi-instance notify watcher (found in P.4 review, 2026-11-06): upstream's `core/notify_watcher.go` makes a running server reload settings and collections 50 ms after another process (a CLI command such as `superuser ips` or `migrate up`) writes a marker into `pb_data/.notify`; iglo.base has no watcher (`src/app/bootstrap.ts`), so those changes need a restart. Port it with tests through the CLI and the API, or record it as a deliberate difference in 04 | P.4 |
+| P.9 | Linux only (owner direction, 2026-11-06): releases ship linux-x64 and linux-arm64 only; drop the darwin build, the bundled macOS SQLite (D34) and the `check-macos` CI job; other systems run from source | P.2 |
 
 ## Order
 
