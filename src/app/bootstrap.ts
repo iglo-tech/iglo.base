@@ -180,6 +180,10 @@ export async function clearBootstrap(app: App): Promise<void> {
     throw errs[0];
   }
   if (errs.length > 1) {
-    throw new AggregateError(errs, "failed to clear the bootstrap");
+    // like errors.Join: each message on its own line
+    throw new AggregateError(
+      errs,
+      errs.map((e) => (e instanceof Error ? e.message : String(e))).join("\n"),
+    );
   }
 }

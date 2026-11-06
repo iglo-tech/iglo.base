@@ -96,3 +96,22 @@ test("a second multipart parse keeps the first error", async () => {
   const second = await req.parseMultipartForm(1 << 20);
   expect(second).toBe(first);
 });
+
+test("a successful multipart parse returns no error on a second call", async () => {
+  const body = '--xyz\r\nContent-Disposition: form-data; name="a"\r\n\r\nvalue\r\n--xyz--\r\n';
+  const req = new HttpRequest({
+    method: "POST",
+    host: "example.com",
+    escapedPath: "/",
+    // a bad query: the first call reports the parseForm error
+    rawQuery: "a=1;b=2",
+    headers: new Headers({ "Content-Type": "multipart/form-data; boundary=xyz" }),
+    body: new RereadableReadCloser(bytesReader(body)),
+    contentLength: -1,
+    remoteAddr: "127.0.0.1:12345",
+    tls: false,
+  });
+  expect(await req.parseMultipartForm(1 << 20)).toBeInstanceOf(Error);
+  expect(req.multipartForm?.value.get("a")).toEqual(["value"]);
+  expect(await req.parseMultipartForm(1 << 20)).toBeUndefined();
+});

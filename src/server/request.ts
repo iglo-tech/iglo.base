@@ -147,7 +147,10 @@ export class HttpRequest {
       parseFormErr = await this.parseForm();
     }
     // the body is spent after a parse: later calls keep its first error
-    if (this.multipartForm !== undefined || this.#multipartErr !== undefined) {
+    if (this.multipartForm !== undefined) {
+      return undefined;
+    }
+    if (this.#multipartErr !== undefined) {
       return this.#multipartErr;
     }
 
@@ -177,7 +180,6 @@ export class HttpRequest {
       }
     }
     this.multipartForm = form as Form;
-    this.#multipartErr = parseFormErr;
 
     return parseFormErr;
   }

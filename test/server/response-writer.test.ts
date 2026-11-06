@@ -82,3 +82,47 @@ test("gzip compresses a writeBody body and runs the cleanups after the response"
   expect(cleaned).toBe(1);
   await app.cleanup();
 });
+
+test("a write after a flushed writeBody is refused, not lost", () => {
+  const sent: Response[] = [];
+  const rw = new ResponseWriter((res) => sent.push(res));
+  expect(rw.writeBody(new Blob(["whole"]))).toBeUndefined();
+  expect(rw.flush()).toBeUndefined();
+  expect(rw.write("more")).toBeInstanceOf(Error);
+  expect(rw.writeBody(new Blob(["again"]))).toBeInstanceOf(Error);
+  expect(rw.finish()).toBeUndefined();
+  expect(sent).toHaveLength(1);
+});
+
+test("a write after a plain flush is streamed", async () => {
+  const sent: Response[] = [];
+  const rw = new ResponseWriter((res) => sent.push(res));
+  rw.write("one ");
+  rw.flush();
+  expect(rw.write("two")).toBeUndefined();
+  rw.finish();
+  expect(await sent[0]?.text()).toBe("one two");
+});
+
+test("gzip does not encode an empty writeBody body", async () => {
+  const app = await openFixtureApp();
+  const r = newAppRouter(app);
+  r.GET("/blob", (e) => {
+    e.response.header.set("Content-Type", "text/plain");
+    e.response.writeBody(new Blob([]));
+    return undefined;
+  }).bind(gzip());
+  r.GET("/stream", (e) => {
+    e.response.header.set("Content-Type", "text/plain");
+    e.response.writeBody(new Blob([]).stream());
+    return undefined;
+  }).bind(gzip());
+  const mux = r.buildMux();
+  for (const target of ["/blob", "/stream"]) {
+    const res = await serveTest(mux, { target, headers: { "Accept-Encoding": "gzip" } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-encoding")).toBeNull();
+    expect((await res.arrayBuffer()).byteLength).toBe(0);
+  }
+  await app.cleanup();
+});

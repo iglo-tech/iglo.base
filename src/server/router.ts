@@ -45,6 +45,7 @@ export class ResponseWriter {
   #afterResponse: (() => void)[] = [];
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
+  #bodyFlushed = false;
   // finish() ran: later writes would never be sent
   #finished = false;
   readonly #onCommit: ((response: Response) => void) | undefined;
@@ -88,7 +89,7 @@ export class ResponseWriter {
     if (!bodyAllowedForStatus(this.#sentStatus())) {
       return ErrBodyNotAllowed;
     }
-    if (this.#body !== null) {
+    if (this.#body !== null || this.#bodyFlushed) {
       return new Error("write after writeBody");
     }
     const bytes = typeof data === "string" ? encoder.encode(data) : data.slice();
@@ -170,6 +171,8 @@ export class ResponseWriter {
       this.#chunks = [];
       const whole = this.#body;
       this.#body = null;
+      // the flushed response carries the whole body: later writes have no stream
+      this.#bodyFlushed = whole !== null;
       let body: ReadableStream<Uint8Array> | Blob | null = null;
       if (!bodyAllowedForStatus(this.#sentStatus())) {
         body = null;

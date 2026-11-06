@@ -166,7 +166,13 @@ export async function runServeCommand(
     // back, newest change first, and settle every pending call
     let failure: unknown = new Error("restart is not supported here");
     if (ctx.shutdown.aborted) {
-      failure = new Error("the app is shutting down");
+      // a process that is shutting down starts on the new data next time
+      // (upstream does not revert on a signal): reject the calls only
+      const err = new Error("the app is shutting down");
+      for (const pending of restarts) {
+        pending.failed(err);
+      }
+      return;
     } else if (ctx.restart !== undefined) {
       try {
         ctx.restart();

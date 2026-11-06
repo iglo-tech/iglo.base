@@ -53,3 +53,20 @@ test("a failed bootstrap leaves no open database", async () => {
   await expect(bootstrap(config(dataDir))).rejects.toThrow();
   expect(walFiles(dataDir)).toEqual([]);
 });
+
+test("clearBootstrap names every failing step in its error message", async () => {
+  const dataDir = join(tempDir(), "pb_data");
+  copyDataDir(fixtureDir, dataDir);
+  const app = await bootstrap(config(dataDir));
+  const cron = app.cron as unknown as { waitForRunning: () => Promise<void> };
+  cron.waitForRunning = () => Promise.reject(new Error("cron did not stop"));
+  const thumbs = app.thumbs as unknown as { close: () => Promise<void> };
+  thumbs.close = () => Promise.reject(new Error("thumbs did not close"));
+
+  const err = await clearBootstrap(app).then(
+    () => undefined,
+    (e: Error) => e,
+  );
+  expect(err?.message).toBe("cron did not stop\nthumbs did not close");
+  expect(walFiles(dataDir)).toEqual([]);
+});

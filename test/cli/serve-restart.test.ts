@@ -4,6 +4,8 @@
 // the reverted data.
 
 import { expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 import { type CliContext, runCli } from "@/cli/root";
 
@@ -75,5 +77,93 @@ test("a failed restart after a restore reverts the data and serves again", async
   } finally {
     shutdown.abort();
     expect(await finished).toBe(0);
+  }
+});
+
+test("a shutdown during the restart window does not undo the restore", async () => {
+  const dataDir = fixtureCopy();
+  const port = await freePort();
+  const url = `http://127.0.0.1:${port}`;
+  const args = ["serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, "--automigrate=false"];
+  const context = (shutdown: AbortSignal, restart?: () => void): CliContext => ({
+    args,
+    argv0: "iglo-base",
+    cwd: tempDir(),
+    isCompiled: true,
+    out: { stdout: () => {}, stderr: () => {}, now: () => new Date(), color: false },
+    shutdown,
+    restart,
+  });
+
+  const shutdown = new AbortController();
+  const finished = runCli(
+    context(shutdown.signal, () => {
+      throw new Error("execve failed");
+    }),
+  );
+  const held = new AbortController();
+  let original: string;
+  try {
+    const token = await waitFor("the server", async () => {
+      try {
+        return await login(url);
+      } catch {
+        return undefined;
+      }
+    });
+    original = await appName(url, token);
+    const created = await fetch(`${url}/api/backups`, {
+      method: "POST",
+      headers: { Authorization: token, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "shutdown.zip" }),
+    });
+    expect(created.status).toBe(204);
+    await patchSettings(url, token, { meta: { appName: "changed by the test" } });
+
+    // a request that never ends keeps the server busy, so the graceful stop
+    // after the restore takes its full wait: that is the restart window
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("{"));
+      },
+    });
+    fetch(`${url}/api/collections/_superusers/auth-with-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      signal: held.signal,
+    }).catch(() => {});
+
+    const restored = await fetch(`${url}/api/backups/shutdown.zip/restore`, {
+      method: "POST",
+      headers: { Authorization: token },
+    });
+    expect(restored.status).toBe(204);
+    const marker = join(dataDir, ".pb_temp_to_delete", "restore_phase.swapped");
+    await waitFor("the swapped marker", async () => existsSync(marker));
+    // the signal arrives in the restart window
+    shutdown.abort();
+  } finally {
+    shutdown.abort();
+    held.abort();
+  }
+  expect(await finished).toBe(0);
+
+  // the next start runs on the restored data
+  const second = new AbortController();
+  const again = runCli(context(second.signal));
+  try {
+    const token = await waitFor("the server after the restart", async () => {
+      try {
+        return await login(url);
+      } catch {
+        return undefined;
+      }
+    });
+    expect(await appName(url, token)).toBe(original);
+    expect(existsSync(join(dataDir, ".pb_temp_to_delete", "restore_phase.swapped"))).toBe(false);
+  } finally {
+    second.abort();
+    expect(await again).toBe(0);
   }
 });
