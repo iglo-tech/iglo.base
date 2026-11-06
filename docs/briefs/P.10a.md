@@ -1,0 +1,25 @@
+# P.10a State fixes: auth and jobs
+
+Written by the lead on 2026-11-06 (owner request) from a read-only audit of implicit state machines. Each item names where the state lives, the reported defect and the intended fix. The audit read the code but did not run it: **confirm each item on main first**, and compare with upstream v0.41.0. If an item does not reproduce, or the fix would change what upstream answers to a real client's request, leave it and say why in the PR (D26). Every fix gets a test through a public boundary; race tests hold a promise open (an injected or gated step), never sleep or loop.
+
+Owns: `src/apis/`, `src/backups/`, `src/logs/`, `src/mail/` and their tests.
+
+## Items
+
+1. **OTP used twice** (`src/apis/record-auth-with-otp.ts:102→114`). `validatePasswordAsync` is awaited before `deleteOTP`, so two concurrent requests with the right code both get a token. A failed delete is only logged (`:115-117`), so the OTP stays usable. Fix: consume the OTP atomically after the password check: a synchronous delete of that row that must affect exactly one row; if it no longer exists (or the delete fails), answer exactly like an invalid OTP (`400 "Invalid or expired OTP"`). A single request's answer stays identical to upstream. Test: two concurrent auth-with-otp requests with one valid code, exactly one 200.
+2. **MFA session reused** (`src/apis/record-helpers.ts:330-360`). Same pattern: lookup, then an awaited delete whose failure is only logged. Apply the same atomic consume to the `_mfas` row when the second factor completes. Test: two concurrent second-factor requests with one `mfaId`, one succeeds.
+3. **Backup worker has no dead state** (`src/backups/worker-client.ts`). After a worker `error` event, `#failAll` rejects in-flight calls, but later `call()`s still `postMessage` to the dead worker and never settle. `create.ts` (catch path around `:430`) awaits `zipAbort`, so its `finally` never clears `StoreKeyActiveBackup` and every later backup and restore is refused. Fix: a dead/closed state in the client; `call()` on a dead or closed client rejects at once. Also `backup-worker.ts:67-68`: `zipOpen` replaces `zipper` without closing a previous one; close (abort) the old writer first. Test: make the worker die mid-backup (a test-only fault in the worker input is fine only if reachable without production hooks; otherwise kill the worker through the existing test seam), then a new backup is accepted.
+4. **Restore lock taken after the 204** (`src/apis/backup.ts:164→197`). The lock is checked, then taken inside a `setTimeout` after the response. In that window a `DELETE` of the same key, or a new backup, passes the check. Fix: take `StoreKeyActiveBackup` synchronously before answering 204, and have `restoreBackup` accept that reservation (release it on every exit path, including when the delayed start fails). Response for a single request unchanged. Test: restore then immediately delete the same key, or create a backup: 400 "another backup/restore process".
+5. **Resend throttles** (`record-auth-password-reset-request.ts:70→96-99`, `record-auth-verification-request.ts:67→96-98`). Check and set are separated by the SMTP await, so concurrent requests each send an email; the `setTimeout` that clears the key is never cancelled, so after a confirm clears the key and a new send sets it, the old timer removes the new key early. Fix: set the key before sending (clear it if the send fails), and store the expiry with the key (or keep the timer handle with it) so a stale timer cannot clear a newer entry. Use the injected clock if the store supports TTLs. Test with Mailpit: two concurrent requests, one email.
+6. **Log writer `stop()` without a deadline** (`src/logs/log-writer.ts:92`). `stop()` waits for the worker's close acknowledgement with no timeout (unlike `#waitSync`'s 60 s), so a hung log worker stalls `suspend()` and with it backup and restore. Fix: the same bounded wait, then terminate the worker and report the error.
+7. **Installer superuser left behind** (`src/records/record-model-superusers.ts:108`, read-only for you: report only). If deleting `__pbinstaller@example.com` fails it is only logged. Check what upstream does; if it matches, leave it and note it in the PR.
+
+## Out of scope (recorded as upstream behavior, not to change here)
+
+OAuth2 link flow acting on a record read before awaits, last-writer-wins settings PATCH, OTP `sentTo` written after SMTP, autobackup overlap alert.
+
+## Verification
+
+Targeted `bun test <files>` while working. The full `bun run check` and then `bun run test:reference` run once at the end, each wrapped in the host's heavy-check lock (three P.10 workers share the host): `flock /home/t3-code/.local/state/iglo-base-cos/heavy-check.lock bun run check`, and the same for `test:reference` (background Bash plus Monitor; it takes over 10 minutes).
+
+Worker rules from `docs/design/12-work-plan.md` and the worker instructions in `docs/chief-of-staff.md` apply. Branch `task/P.10a-auth-jobs-state`, one PR titled "P.10a: State fixes: auth and jobs" against `main`; do not merge.
