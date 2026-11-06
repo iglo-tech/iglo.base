@@ -21,3 +21,7 @@ This directory is upstream PocketBase v0.41.0's `ui/` (commit `f6baa0c43f379de21
 9. **Footer:** `src/store.js` labels the version link `iglo.base <version>`.
 10. **Documentation links (`.env`):** `PB_DOCS_URL` and the `PB_*_DOCS` links point at iglo.base's documentation in this repository (`https://github.com/iglo-tech/iglo.base/tree/main/docs`, [open question 1](../docs/design/11-open-questions.md); the pages are written in M7.2). The SDK links stay.
 11. **Version (`.env`):** `PB_RELEASES` points at iglo.base's releases and `PB_VERSION` defaults to `(untracked)`. `scripts/ui/build.ts` sets `PB_VERSION` to the executable's version (`src/cli/root.ts`) at build time.
+
+## Text
+
+12. **`src/settings/crons/pageCronsSettings.js`: the hint under the jobs list.** "App cron jobs can be registered only programmatically with Go or JavaScript" becomes "iglo.base has no app cron jobs of its own; only the built-in system jobs above run." Nothing registers jobs (D5).

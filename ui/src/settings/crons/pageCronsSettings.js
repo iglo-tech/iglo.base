@@ -40,21 +40,7 @@ export function pageCronsSettings(route) {
                 }),
                 t.div(
                     { className: "txt-sm txt-hint m-t-sm" },
-                    "App cron jobs can be registered only programmatically with ",
-                    t.a({
-                        href: `${import.meta.env.PB_DOCS_URL}/go-jobs-scheduling/`,
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        textContent: "Go",
-                    }),
-                    " or ",
-                    t.a({
-                        href: `${import.meta.env.PB_DOCS_URL}/js-jobs-scheduling/`,
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        textContent: "JavaScript",
-                    }),
-                    ".",
+                    "iglo.base has no app cron jobs of its own; only the built-in system jobs above run.",
                 ),
             ),
             t.footer({ className: "page-footer" }, app.components.credits()),
