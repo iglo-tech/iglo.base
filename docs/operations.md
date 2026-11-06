@@ -41,10 +41,10 @@ iglo.base is one executable. It serves the API, the admin dashboard (`/_/`) and 
 
 ```sh
 docker run -d --name iglo --restart unless-stopped -p 8090:8090 \
-  -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.1.0
+  -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.2.0
 ```
 
-The image holds only the release executable. It is multi-arch (linux/amd64 and linux/arm64) from 1.1.0; 1.0.0 has no arm64 variant. Use a version tag (`:1.1.0`) in production instead of `:latest`, so a restart never changes the version. See [Docker container](#docker-container) below for volumes and permissions.
+The image holds only the release executable. It is multi-arch (linux/amd64 and linux/arm64) from 1.1.0; 1.0.0 has no arm64 variant. Use a version tag (`:1.2.0`) in production instead of `:latest`, so a restart never changes the version. See [Docker container](#docker-container) below for volumes and permissions.
 
 ### Create the first superuser
 
@@ -213,10 +213,10 @@ docker run -d --name iglo --restart unless-stopped \
   -v iglo-data:/pb_data \
   -v iglo-migrations:/pb_migrations \
   -v /srv/site:/pb_public:ro \
-  ghcr.io/iglo-tech/iglo.base:1.1.0
+  ghcr.io/iglo-tech/iglo.base:1.2.0
 ```
 
-- The executable is `/iglo-base` and the working directory is `/`, so the defaults are the mounts above: `/pb_data`, `/pb_migrations` (declared as volumes) and `/pb_public` (mount it if you serve static files). The default command is `serve --http 0.0.0.0:8090`. If you pass your own command, keep `serve` and add the flags after the image name: `... ghcr.io/iglo-tech/iglo.base:1.1.0 serve --http 0.0.0.0:8090 --origins https://app.example.com`.
+- The executable is `/iglo-base` and the working directory is `/`, so the defaults are the mounts above: `/pb_data`, `/pb_migrations` (declared as volumes) and `/pb_public` (mount it if you serve static files). The default command is `serve --http 0.0.0.0:8090`. If you pass your own command, keep `serve` and add the flags after the image name: `... ghcr.io/iglo-tech/iglo.base:1.2.0 serve --http 0.0.0.0:8090 --origins https://app.example.com`.
 - `-p 127.0.0.1:8090:8090` keeps the port off the public network when a reverse proxy runs on the same host. Without the `127.0.0.1:` prefix Docker publishes the port on all interfaces.
 - `--restart unless-stopped` starts the container after a crash or a reboot.
 - The process runs as uid and gid 65532. A new named volume gets that owner. For a bind mount, hand the directory over first: `sudo chown -R 65532:65532 /srv/iglo/pb_data`. With rootless Docker or Podman, see the [image notes](releasing.md#image).
@@ -225,7 +225,7 @@ docker run -d --name iglo --restart unless-stopped \
 
   ```sh
   docker exec iglo /iglo-base superuser upsert admin@example.com 'a long password'
-  docker run --rm -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.1.0 superuser upsert admin@example.com 'a long password'
+  docker run --rm -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.2.0 superuser upsert admin@example.com 'a long password'
   ```
 
 ## Reverse proxy with TLS

@@ -14,13 +14,13 @@ Nothing.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.7 | review | [#85](https://github.com/iglo-tech/iglo.base/pull/85) | 2 | Backlog sweep ([brief](briefs/P.7.md)) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
 <<<<<<< HEAD
+| P.7 | [#85](https://github.com/iglo-tech/iglo.base/pull/85) | 2026-11-06 (`e503cbc`) | Two review rounds (Opus; Sonnet fixer round 1): Opus APPROVE at `4f7db9b` (check 18,311/0, test:reference 4,421/0). Clean stop leaves no `-wal`/`-shm` (read workers close first); a restore refuses while an earlier restore is unresolved; `toApiError` no-rows answers 404; migration file clears on S3 delete the object; log-writer docs say a batch drops after 12 retries; Crons page patch 12; auth tokens compared by decoded claims (`exp` within 3 s, round-trip suite offsets its measured gap); file-name pairing only for upstream's 10-character suffix; 8 SDK coverage cases. Backlog: token bytes with fixture ids and equal `exp` not compared; restore-test file-name rule can still treat a 10–12-character base name as random |
 | P.9 | [#84](https://github.com/iglo-tech/iglo.base/pull/84) | 2026-11-06 (`3a668d9`) | One review round: Opus APPROVE at `8514b34` (check 18,309/0, test:reference 4,410/0 on the rebased head; actionlint clean). Linux only (owner direction, D35): darwin release job, `check-macos`, the bundled macOS SQLite and its tests removed; darwin targets refused by the build. Release executable probed on upstream data (auth, lists, thumbs, logs, backup, restore, migrate). Backlog nits fixed by the lead on main (unused `@scripts/*` alias, D24 pointer, D35 Considered, releasing.md comma) |
 | P.6 | [#75](https://github.com/iglo-tech/iglo.base/pull/75) | 2026-11-06 (`59fcd4d`) | Two review rounds (Opus; Sonnet fixer round 1): Opus APPROVE at `eb3489c`. Every flake of the brief fixed at its cause: realtime and OAuth2 event order compared as sets (upstream sends each from its own goroutine), `updated` re-paired only for a second write of one record in one response (within 100 ms, never backwards), `execTime` as non-negative integers, OTP waits for `sentTo`, ports released on stop (peak 2,849 markers to 26), data-dir copy skips `.pb_temp_to_delete`, backups list waits for in-flight writes. New `updated-advances` differential test. Backlog: 4 rows (SDK token second, port takeover, global timeout, body-limit stall) |
 =======
