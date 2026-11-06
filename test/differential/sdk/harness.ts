@@ -404,7 +404,7 @@ export function compareRecordings(
   start: ReturnType<typeof readStartingData>,
 ): string[] {
   const out: string[] = [];
-  const pairing = new Pairing();
+  const pairing = new Pairing({ history: true });
   const count = Math.max(upstream.steps.length, igloBase.steps.length);
   for (let i = 0; i < count; i++) {
     const up = upstream.steps[i];

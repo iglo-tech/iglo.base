@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { S3Client } from "bun";
 
 import { spawnChild, waitUntilReady } from "@test/support/child";
-import { freePort } from "@test/support/executable";
+import { freePort, releasePort } from "@test/support/executable";
 import { defaultLayout, requireTool, type Layout } from "@test/support/reference-tools";
 
 export const testS3Credentials = {
@@ -68,6 +68,7 @@ export async function startVersitygw(
     });
   } catch (error) {
     await child.stop();
+    releasePort(port);
     rmSync(root, { recursive: true, force: true });
     throw error;
   }
@@ -82,6 +83,7 @@ export async function startVersitygw(
       try {
         await child.stop();
       } finally {
+        releasePort(port);
         rmSync(root, { recursive: true, force: true });
       }
     },

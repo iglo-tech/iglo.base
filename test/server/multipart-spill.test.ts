@@ -27,7 +27,7 @@ beforeAll(async () => {
   mkdirSync(tmp);
   copyDataDir(fixtureDir, dataDir);
   server = await startServer([], dataDir, "127.0.0.1", undefined, { TMPDIR: tmp });
-});
+}, 120_000); // may compile the executable first (see test/apis/health.test.ts)
 
 afterAll(async () => {
   await server.stop();

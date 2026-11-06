@@ -25,6 +25,21 @@ function diff(
   });
 }
 
+const writeContext = (url = "/api/batch"): Context => ({
+  start: { contains: () => false },
+  request: { url },
+});
+const updatedBody = (updated: string) => res(`{"id":"sdkbatchfile001","updated":"${updated}"}`);
+// a batch response with the create and the update of one record
+const batchBody = (...updated: string[]) =>
+  res(
+    JSON.stringify(
+      updated.map((value) => ({ status: 200, body: { id: "sdkbatchfile001", updated: value } })),
+    ),
+  );
+const sqlBody = (execTime: string) =>
+  res(`{"execTime":${execTime},"affectedRows":0,"columns":[],"rows":[]}`);
+
 describe("status and headers", () => {
   test("equal responses have no differences", () => {
     expect(diff(res('{"a":1}'), res('{"a":1}'))).toEqual([]);
@@ -187,6 +202,125 @@ describe("generated values", () => {
         res('{"id":"aaaaaaaaaaaaaaa","created":"2026-10-29 10:00:00.123Z"}'),
         res('{"id":"bbbbbbbbbbbbbbb","created":"2026-10-29 10:00:01.456Z"}'),
         context,
+        pairing,
+      ),
+    ).toEqual([]);
+  });
+
+  // P.6: two writes of one record within a millisecond share an `updated`
+  // on one server and not on the other (batch create + update)
+  test("a batch's create and update of one record may share a millisecond on one side", () => {
+    const pairing = new Pairing();
+    const context = writeContext();
+    // upstream: one millisecond for both; iglo.base: the next one
+    expect(
+      compareResponses(
+        batchBody("2026-11-06 10:00:00.123Z", "2026-11-06 10:00:00.123Z"),
+        batchBody("2026-11-06 10:00:05.100Z", "2026-11-06 10:00:05.101Z"),
+        context,
+        pairing,
+      ),
+    ).toEqual([]);
+    // the read-back shows the last draw on both
+    expect(
+      compareResponses(
+        updatedBody("2026-11-06 10:00:00.123Z"),
+        updatedBody("2026-11-06 10:00:05.101Z"),
+        writeContext("/api/collections/x/records/y"),
+        pairing,
+      ),
+    ).toEqual([]);
+    expect(
+      compareResponses(
+        updatedBody("2026-11-06 10:00:00.123Z"),
+        updatedBody("2026-11-06 10:00:05.100Z"),
+        writeContext("/api/collections/x/records/y"),
+        pairing,
+      ),
+    ).toContain(
+      'body updated: timestamps not paired consistently: upstream "2026-11-06 10:00:00.123Z", iglo.base "2026-11-06 10:00:05.100Z"',
+    );
+    // the other way around
+    expect(
+      compareResponses(
+        batchBody("2026-11-06 11:00:00.100Z", "2026-11-06 11:00:00.101Z"),
+        batchBody("2026-11-06 11:00:05.123Z", "2026-11-06 11:00:05.123Z"),
+        context,
+        new Pairing(),
+      ),
+    ).toEqual([]);
+    // a gap of more than a few milliseconds is a difference
+    expect(
+      compareResponses(
+        batchBody("2026-11-06 10:00:00.123Z", "2026-11-06 10:00:00.123Z"),
+        batchBody("2026-11-06 10:00:05.100Z", "2026-11-06 10:00:05.300Z"),
+        context,
+        new Pairing(),
+      ),
+    ).not.toEqual([]);
+  });
+
+  test("with history a step shows an earlier pair again, other callers do not", () => {
+    const up = batchBody("2026-11-06 10:00:00.123Z", "2026-11-06 10:00:00.123Z");
+    const ig = batchBody("2026-11-06 10:00:05.100Z", "2026-11-06 10:00:05.101Z");
+    for (const step of [true, false]) {
+      const pairing = new Pairing({ history: step });
+      expect(compareResponses(up, ig, writeContext(), pairing)).toEqual([]);
+      const again = compareResponses(up, ig, writeContext(), pairing);
+      expect(again.length === 0).toBe(step);
+    }
+  });
+
+  test("a plain update must advance updated as upstream's does", () => {
+    const create = (pairing: Pairing) =>
+      compareResponses(
+        updatedBody("2026-11-06 10:00:00.100Z"),
+        updatedBody("2026-11-06 10:00:00.200Z"),
+        writeContext("/api/collections/x/records"),
+        pairing,
+      );
+    const patch = writeContext("/api/collections/x/records/y");
+    // no advance on iglo.base one minute later
+    let pairing = new Pairing();
+    expect(create(pairing)).toEqual([]);
+    expect(
+      compareResponses(
+        updatedBody("2026-11-06 10:01:00.100Z"),
+        updatedBody("2026-11-06 10:00:00.200Z"),
+        patch,
+        pairing,
+      ),
+    ).not.toEqual([]);
+    // an extra bump by iglo.base (auth-refresh of a user the scenario made)
+    pairing = new Pairing();
+    expect(create(pairing)).toEqual([]);
+    expect(
+      compareResponses(
+        updatedBody("2026-11-06 10:00:00.100Z"),
+        updatedBody("2026-11-06 10:00:09.200Z"),
+        writeContext("/api/collections/users/auth-refresh"),
+        pairing,
+      ),
+    ).not.toEqual([]);
+    // updated going backwards
+    pairing = new Pairing();
+    expect(create(pairing)).toEqual([]);
+    expect(
+      compareResponses(
+        updatedBody("2026-11-06 10:01:00.100Z"),
+        updatedBody("2026-11-05 10:00:00.200Z"),
+        patch,
+        pairing,
+      ),
+    ).not.toEqual([]);
+    // an update that advances on both sides pairs its new values
+    pairing = new Pairing();
+    expect(create(pairing)).toEqual([]);
+    expect(
+      compareResponses(
+        updatedBody("2026-11-06 10:01:00.100Z"),
+        updatedBody("2026-11-06 10:01:00.200Z"),
+        patch,
         pairing,
       ),
     ).toEqual([]);
@@ -447,5 +581,31 @@ describe("generated file names", () => {
         url: "/api/collections/demo2/records/x?f=x_abcdefghij.txt",
       }),
     ).not.toEqual([]);
+  });
+});
+
+describe("execTime of the SQL console", () => {
+  const sql: Context = {
+    start: { contains: () => false },
+    request: { url: "/api/sql" },
+  };
+  test("compares as a non-negative integer only", () => {
+    expect(compareResponses(sqlBody("0"), sqlBody("17"), sql)).toEqual([]);
+    expect(compareResponses(sqlBody("0"), sqlBody("0.31"), sql)).not.toEqual([]);
+    expect(compareResponses(sqlBody("0.31"), sqlBody("1.7"), sql)).not.toEqual([]);
+    expect(compareResponses(sqlBody("1"), sqlBody("-1"), sql)).not.toEqual([]);
+    expect(compareResponses(sqlBody("1"), sqlBody('"x"'), sql)).not.toEqual([]);
+    expect(
+      compareResponses(
+        sqlBody("1"),
+        res('{"execTime":1,"affectedRows":1,"columns":[],"rows":[]}'),
+        sql,
+      ),
+    ).not.toEqual([]);
+  });
+
+  test("other endpoints compare it exactly", () => {
+    const other: Context = { ...sql, request: { url: "/api/x" } };
+    expect(compareResponses(sqlBody("1"), sqlBody("2"), other)).not.toEqual([]);
   });
 });

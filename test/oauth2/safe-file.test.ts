@@ -344,19 +344,30 @@ describe("safeFileFromURL", () => {
         return new Response("ok");
       },
     });
-    const started = performance.now();
-    await expect(
-      safeFileFromURL(`http://slow.test:${counting.port}/a.png`, {
-        ...anyAddress,
-        timeoutMs: 20,
-        lookupAddresses: async () => {
-          await Bun.sleep(150);
-          return ["127.0.0.1"];
-        },
-      }),
-    ).rejects.toThrow();
-    expect(performance.now() - started).toBeLessThan(120);
-    await Bun.sleep(170);
+    // the lookup ends only when the test lets it, so the timing of the host
+    // cannot decide the outcome: the call must reject while the lookup is
+    // still pending, and nothing may be requested once it ends
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let lookupEnded = false;
+    const call = safeFileFromURL(`http://slow.test:${counting.port}/a.png`, {
+      ...anyAddress,
+      timeoutMs: 20,
+      lookupAddresses: async () => {
+        await gate;
+        lookupEnded = true;
+        return ["127.0.0.1"];
+      },
+    }).then(
+      () => "resolved",
+      () => "rejected",
+    );
+    const outcome = await Promise.race([call, Bun.sleep(5000).then(() => "still waiting")]);
+    expect(outcome).toBe("rejected");
+    expect(lookupEnded).toBe(false);
+    release();
+    await Bun.sleep(200);
+    expect(lookupEnded).toBe(true);
     expect(requests).toBe(0);
     await counting.stop(true);
   });

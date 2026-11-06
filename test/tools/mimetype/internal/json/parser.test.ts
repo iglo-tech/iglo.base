@@ -1768,7 +1768,13 @@ describe("TestMaxRecursion", () => {
   ][] = [
     ["[]", 0, raw(`[]`), 2, 2],
     ["[[[]]]", 0, raw(`[[[]]]`), 6, 6],
-    ["[".repeat(10) + "...", 0, raw("[".repeat(10000) + "]".repeat(10000)), 20000, 20000],
+    // Go's test nests 10000 levels. With no limit, JavaScript recurses once
+    // per level, and the 1.5–2× headroom that 10000 leaves below the engine's
+    // stack limit goes in a full `bun test` run, where the frames of code the
+    // JIT has not compiled are larger: a stack overflow, only sometimes. 2500
+    // levels (below the production limit of 4096, and 5× under the stack
+    // limit) show the same: no limit, every bracket consumed.
+    ["[".repeat(10) + "...", 0, raw("[".repeat(2500) + "]".repeat(2500)), 5000, 5000],
     ["[[[[[]]]]]", 3, raw(`[[[[[]]]]]`), 1, 4], // max recursion is 3 so we need to inspect 4 opening brackets
   ];
   for (const [name, maxRecursion, input, expectParsed, expectInspected] of tCases) {

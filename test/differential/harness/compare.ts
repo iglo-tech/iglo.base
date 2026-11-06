@@ -35,7 +35,13 @@
 //   id) instead: upstream reads the clock once per autodate field, so a
 //   new record's created and updated may be equal on one side and not on
 //   the other, but each of them keeps its pairing across the responses
-//   compared with the same Pairing (a write and its read-back).
+//   compared with the same Pairing (a write and its read-back), and an
+//   `updated` must advance exactly where upstream's does (never move back). In the SDK suite (`new Pairing({ history: true })`) a step's value may also show an `updated` pair seen together before, as a realtime event or a batch's first item shows its record at an earlier moment. The one exception:
+//   a record's `updated` that appears a second time in one response (a
+//   batch's create and update of it) may pair again when the two writes
+//   landed in the same millisecond on one server only, that is one side
+//   repeats its previous value and the other side's is the same or a later
+//   millisecond, at most 100 ms after its previous (one server saving a file between the two writes takes tens of ms) (`sameMillisecond`).
 // - or it equals, as a whole JSON string, a value paired that way anywhere
 //   in the scenario's responses (a relation to a new record's id).
 //
@@ -367,12 +373,74 @@ export class Pairing {
   readonly upstream = new Map<string, string>();
   readonly igloBase = new Map<string, string>();
 
+  // slots seen in the response being compared, and for each slot the
+  // latest pair, to tell a record written twice in one response
+  private readonly seen = new Set<string>();
+  private readonly last = new Map<string, { up: string; ig: string }>();
+
+  // every `updated` pair seen so far, by slot, if the Pairing keeps them
+  private readonly history: Map<string, { up: string; ig: string }[]> | undefined;
+
+  // history: for the SDK suite, whose step values show records as they were
+  // at an earlier moment (a realtime event, a batch's first item) after
+  // later writes were paired. Such a value is accepted when exactly that
+  // pair of `updated` values was seen together before; a new pair is checked
+  // as any other. Everyone else keeps the strict rule.
+  constructor(options: { history?: boolean } = {}) {
+    this.history = options.history === true ? new Map() : undefined;
+  }
+
+  // called before the values of a new response are paired
+  beginResponse(): void {
+    this.seen.clear();
+  }
+
   // false if either value is already paired with another one; slot is
   // where the value is, for a perSlot format
-  pair(format: Format, upstream: string, igloBase: string, slot = ""): boolean {
+  // draws: the value is a record's `updated`, which a second write of the
+  // record in the same response may draw again (see `sameMillisecond`)
+  pair(format: Format, upstream: string, igloBase: string, slot = "", draws = false): boolean {
     const scope = format.perSlot === true ? `${format.name}:${slot}` : format.name;
     const up = `${scope}:${upstream}`;
     const ig = `${scope}:${igloBase}`;
+    const previous = this.last.get(scope);
+    if (
+      draws &&
+      this.history?.get(scope)?.some((p) => p.up === upstream && p.ig === igloBase) === true
+    ) {
+      return true;
+    }
+    const again = this.seen.has(scope);
+    this.seen.add(scope);
+    if (draws && again && previous && sameMillisecond(previous, upstream, igloBase)) {
+      const oldIg = this.forward.get(up);
+      if (oldIg !== undefined) this.backward.delete(oldIg);
+      const oldUp = this.backward.get(ig);
+      if (oldUp !== undefined) this.forward.delete(oldUp);
+      this.forward.delete(up);
+      this.backward.delete(ig);
+    }
+    // an `updated` never moves back on either side
+    if (
+      draws &&
+      previous &&
+      (movesBack(previous.up, upstream) || movesBack(previous.ig, igloBase))
+    ) {
+      return false;
+    }
+    const ok = this.pairNew(format, upstream, igloBase, up, ig);
+    if (ok) {
+      if (draws && this.history) {
+        const list = this.history.get(scope) ?? [];
+        list.push({ up: upstream, ig: igloBase });
+        this.history.set(scope, list);
+      }
+      this.last.set(scope, { up: upstream, ig: igloBase });
+    }
+    return ok;
+  }
+
+  private pairNew(format: Format, upstream: string, igloBase: string, up: string, ig: string) {
     const known = this.forward.get(up);
     if (known !== undefined || this.backward.has(ig)) {
       return known === ig;
@@ -402,6 +470,7 @@ export function compareResponses(
   pairing = new Pairing(),
 ): string[] {
   const differences: string[] = [];
+  pairing.beginResponse();
   if (upstream.status !== igloBase.status) {
     differences.push(`status: upstream ${upstream.status}, iglo.base ${igloBase.status}`);
   }
@@ -473,7 +542,15 @@ function pairGenerated(
       differ(`not both ${format.name}s`);
     } else if (!isGenerated(format, ig.value, at.context)) {
       differ(`generated ${format.name} expected, iglo.base's is in the starting data or request`);
-    } else if (!pairing.pair(format, up.value, ig.value, slotOf(at))) {
+    } else if (
+      !pairing.pair(
+        format,
+        up.value,
+        ig.value,
+        slotOf(at),
+        format === timestamp && at.path.at(-1) === "updated",
+      )
+    ) {
       differ(`${format.name}s not paired consistently`);
     }
   } else if (up.kind === "array" && ig.kind === "array") {
@@ -493,6 +570,36 @@ function pairGenerated(
   }
 }
 
+// Two writes of one record (a batch's create and update of it) can land in
+// the same millisecond. Then upstream's two `updated` values are equal and
+// iglo.base's differ, or the other way around, as upstream itself varies
+// between runs. A record's `updated` that appears a second time in one
+// response is paired again only then: one side repeats its previous value
+// and the other side's value is the same millisecond or at most
+// `sameMillisecondSlack` later. A value that is earlier, further apart or
+// differs on both sides stays bound to its earlier pairing.
+const sameMillisecondSlack = 100;
+
+function ms(value: string): number {
+  return Date.parse(value.replace(" ", "T"));
+}
+
+function movesBack(before: string, after: string): boolean {
+  return ms(after) < ms(before);
+}
+
+function later(before: string, after: string): boolean {
+  const gap = ms(after) - ms(before);
+  return gap >= 0 && gap <= sameMillisecondSlack;
+}
+
+function sameMillisecond(previous: { up: string; ig: string }, up: string, ig: string): boolean {
+  return (
+    (up === previous.up && ig !== previous.ig && later(previous.ig, ig)) ||
+    (ig === previous.ig && up !== previous.up && later(previous.up, up))
+  );
+}
+
 // the key of a value and the id of the upstream object holding it (the
 // record it belongs to), if it has one
 function slotOf(at: Location): string {
@@ -503,6 +610,18 @@ function slotOf(at: Location): string {
 
 function isGenerated(format: Format, value: string, context: Context): boolean {
   return format.pattern.test(value) && !context.start.contains(value) && !sent(value, context);
+}
+
+// POST /api/sql: its `execTime` is how long the query took in milliseconds,
+// an int64 (apis/sql.go: time.Since(now).Milliseconds()) that differs between
+// two runs of one server too, so a non-negative integer compares as any other
+// one; a fraction, a negative number or a string stays a difference
+function isMillisecondCount(value: JsonNode): boolean {
+  return value.kind === "number" && /^\d+$/.test(value.raw);
+}
+
+function isSqlRun(context: Context): boolean {
+  return requestUrl(context)?.pathname === "/api/sql";
 }
 
 // whether upstream's response is API JSON that may carry generated values
@@ -651,7 +770,10 @@ function normalize(
       separators.push(json.slice(pos, next));
       pos = next;
     }
-    const inner = normalize(value, json, member(at, node, name), replace);
+    const inner =
+      name === "execTime" && isMillisecondCount(value) && isSqlRun(at.context)
+        ? "0"
+        : normalize(value, json, member(at, node, name), replace);
     members.push({ name, text: json.slice(pos, value.start) + inner });
     pos = end(value);
   }

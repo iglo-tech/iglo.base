@@ -34,6 +34,9 @@ export function openTestApp(
   clock: Clock = systemClock,
   queryLog?: (line: string) => void,
   queryTimeout?: number,
+  // false: leave the collections cache empty. A tiny queryTimeout can expire
+  // in the fixture's collection load and fail the open itself.
+  reload = true,
 ): TestCollectionsApp {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-collections-"));
   const dataDir = join(root, "pb_data");
@@ -45,7 +48,9 @@ export function openTestApp(
     queryLog,
     queryTimeout,
   );
-  reloadCachedCollections(app);
+  if (reload) {
+    reloadCachedCollections(app);
+  }
   return app;
 }
 

@@ -969,7 +969,9 @@ describe("TestDryRunView", () => {
 });
 
 test("dry run reports query errors and timeouts", () => {
-  const app = openTestApp(undefined, undefined, 1);
+  // two apps: the 1 ms query timeout of the second one could expire in a
+  // statement of the first test, and in the fixture's collection load
+  const app = openTestApp();
   try {
     const malformed = errorOf(() =>
       dryRunView(app, "select 'a' as id, json('invalid') as value", 10),
@@ -977,15 +979,20 @@ test("dry run reports query errors and timeouts", () => {
     expect(malformed?.message).toMatch(
       /SQL logic error: malformed JSON \(1\); failed query: SELECT/,
     );
+  } finally {
+    app.cleanup();
+  }
+  const slow = openTestApp(undefined, undefined, 1, false);
+  try {
     const timeout = errorOf(() =>
       dryRunView(
-        app,
+        slow,
         "SELECT 'a' as id, (WITH RECURSIVE t(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM t WHERE n<1000000) SELECT sum(n) FROM t) as total",
         10,
       ),
     );
     expect(timeout?.message).toContain("context deadline exceeded; failed query: SELECT");
   } finally {
-    app.cleanup();
+    slow.cleanup();
   }
 });
