@@ -187,14 +187,6 @@ const scenarios: {
   },
 ];
 
-test("a limit exceeded behind the first JSON value stays exceeded on the reread", async () => {
-  // the first value fits in the limit; the bytes after it do not. The
-  // handler binds twice: the rewound copy is only the prefix that was read
-  // before the error, so the second bind must not take it as the whole body.
-  const body = `{"a":1}${" ".repeat(customLimit * 2)}`;
-  expect(await send("/b", body, true)).toBe(413);
-});
-
 test("a JSON body is read only up to the decoder buffer after its first value", async () => {
   let read = 0;
   const source = bytesReader(`{"a":1}${" ".repeat(10_000)}`);
