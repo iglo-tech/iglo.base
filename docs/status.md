@@ -14,7 +14,7 @@ Nothing.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.7 | review | [#85](https://github.com/iglo-tech/iglo.base/pull/85) | 1 | Backlog sweep ([brief](briefs/P.7.md)) |
+| P.7 | fix | [#85](https://github.com/iglo-tech/iglo.base/pull/85) | 1 | Backlog sweep ([brief](briefs/P.7.md)) |
 
 ## Done
 
@@ -140,6 +140,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | 2026-11-06 (P.6) | Test harness | Two processes taking over the same expired port marker at once (atomic rename narrows it); a reused PID can hold a marker until it expires (60 s) |
 | 2026-11-06 (P.6) | Test harness | `--timeout 120000` on the test scripts raises every test's timeout, not only the server hooks' |
 | 2026-11-06 (P.6) | Test harness | The body-limit case that stalled once is mitigated (180 s, `Bun.gc(true)` after each case), cause not found |
+| 2026-11-06 (P.7) | Shutdown | SIGTERM during a long read waits for the statement to return (29.6 s for a ~30 s read; upstream exits after its 1 s grace), so `docker stop`'s 10 s default ends in SIGKILL. Data stays safe (WAL), but `-wal`/`-shm` remain |
 | 2026-10-29 | HTTP (M3.1) | `Connection: close` with unread body bytes: Bun closes the socket right after the response; Go lingers |
 
 ## Blocked
