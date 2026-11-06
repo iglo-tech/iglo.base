@@ -25,7 +25,7 @@ afterAll(() => {
 function databaseFiles(dataDir: string): string[] {
   return readdirSync(dataDir)
     .filter((name) => /\.db($|-)/.test(name))
-    .sort();
+    .toSorted();
 }
 
 test("a clean stop leaves no -wal or -shm file", async () => {

@@ -44,7 +44,7 @@ docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/i
 
   There is no shell in the image, so use the full path `/iglo-base` with `docker exec`.
 - The process runs as uid/gid 65532 and is PID 1. A new named volume takes that ownership from the image. A directory taken over from PocketBase (usually root-owned) must be handed over first: `chown -R 65532:65532 <dir>` with rootful Docker. With rootless Docker or Podman, uid 65532 maps to a host subuid, so `chown` as the host user does not help; instead run the container with `--user 0:0`: under rootless Docker the host user who owns the directory is uid 0 inside the container, so this is that user, not host root, and the files stay owned by them. Rootless Podman maps the same way: `--user 0:0` or `--userns=keep-id`. This also leaves nothing to change back for a rollback.
-- Back up or copy the whole data directory, never only `data.db`: `-wal` and `-shm` files may remain after a stop.
+- Back up or copy the whole data directory, never only `data.db`: `-wal` and `-shm` files remain after a crash or a kill (a clean stop removes them).
 - No shell, `wget` or `curl` exists in the image, so compose or Kubernetes health checks that exec into the container cannot work. Check `/api/health` from the host or the reverse proxy instead.
 - The image is not an official PocketBase image. Update the digest in the `Dockerfile` by hand when the base needs a refresh.
 
