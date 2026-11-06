@@ -29,9 +29,12 @@ import {
 } from "@/records/auth-origin-model";
 import { findAllAuthOriginsByRecord } from "@/records/auth-origin-query";
 import { deleteMFA, type MFA, newMFA, saveMFA } from "@/records/mfa-model";
+import type { OTP } from "@/records/otp-model";
+import { findOTPById } from "@/records/otp-query";
+import { deleteRecordSync } from "@/records/record-save";
 import { findMFAById } from "@/records/mfa-query";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget } from "@/records/record-query";
+import { recordQuery, recordsTarget, type RecordsApp } from "@/records/record-query";
 import { canAccessRecordAsync } from "@/records/record-query-filter";
 import {
   type ExpandFetchFunc,
@@ -357,7 +360,12 @@ async function checkMFA(
     return ["", e.badRequestError("A different authentication method is required.", null)];
   }
 
-  await deleteFoundMFA();
+  // consume the session without yielding: it can complete a second factor only once
+  try {
+    consumeMFASync(e.app, mfa);
+  } catch (err) {
+    return ["", e.badRequestError("Invalid or expired MFA session.", err)];
+  }
 
   return ["", undefined];
 }
@@ -775,4 +783,19 @@ function md5Bytes(text: string): string {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+// consumeOTPSync deletes the OTP row without yielding to the event loop and
+// throws when the row no longer exists. A one-time secret passes through it
+// once: of several concurrent requests only the first gets past it. Upstream
+// has no await between its lookup and delete, so it needs no such guard.
+export function consumeOTPSync(app: RecordsApp, m: OTP): void {
+  findOTPById(app, m.id);
+  deleteRecordSync(app, m.proxyRecord() as Record);
+}
+
+// consumeMFASync is consumeOTPSync for the _mfas row of a completed second factor.
+export function consumeMFASync(app: RecordsApp, m: MFA): void {
+  findMFAById(app, m.id);
+  deleteRecordSync(app, m.proxyRecord() as Record);
 }

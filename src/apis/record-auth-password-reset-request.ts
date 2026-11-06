@@ -75,7 +75,12 @@ export async function recordRequestPasswordReset(e: RequestEvent): Promise<Handl
 
   // the OnRecordRequestPasswordResetRequest default action:
   // run in background because we don't need to show the result to the client
-  void sendPasswordResetInBackground(e, record, resendKey);
+  //
+  // the resend key is taken before the send (upstream sets it after, with no
+  // check in between), so that concurrent requests send a single email
+  const token = {};
+  e.app.store.set(resendKey, token);
+  void sendPasswordResetInBackground(e, record, resendKey, token);
 
   return e.noContent(204);
 }
@@ -84,18 +89,26 @@ async function sendPasswordResetInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
+  token: object,
 ): Promise<void> {
   const app = e.app;
   try {
     await sendRecordPasswordReset(app, record);
   } catch (err) {
     app.logger.error("Failed to send password reset email", { error: err });
+    // a failed send keeps no throttle (as upstream, which sets the key after the send)
+    if (app.store.get(resendKey) === token) {
+      app.store.remove(resendKey);
+    }
     return;
   }
 
-  app.store.set(resendKey, {});
+  // the timer removes only its own entry: a confirm may have cleared the key
+  // and a newer request set it again
   setTimeout(() => {
-    app.store.remove(resendKey);
+    if (app.store.get(resendKey) === token) {
+      app.store.remove(resendKey);
+    }
   }, resendLimitMs).unref();
 }
 

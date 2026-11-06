@@ -9,7 +9,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import { insertOTPs, otpRows, setMFA } from "@test/scenarios/record-auth-prepare";
+import { insertMFA, insertOTPs, otpRows, setMFA } from "@test/scenarios/record-auth-prepare";
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
@@ -122,6 +122,48 @@ describe("the OTP email", () => {
       expect(res.status).toBe(200);
 
       await waitFor(() => otpRows(dataDir, userId).length === 0);
+    });
+  });
+});
+
+describe("one-time secrets are consumed once", () => {
+  test("two concurrent auth-with-otp requests with one valid code: one token", async () => {
+    const dataDir = usersWithoutMFA();
+    insertOTPs("users", email, { id: otpAId })({ dataDir });
+
+    await withServer(dataDir, async (url) => {
+      const responses = await Promise.all([
+        post(url, "auth-with-otp", { otpId: otpAId, password: "123456" }),
+        post(url, "auth-with-otp", { otpId: otpAId, password: "123456" }),
+      ]);
+      const statuses = responses.map((r) => r.status).toSorted();
+      expect(statuses).toEqual([200, 400]);
+
+      const refused = responses.find((r) => r.status === 400);
+      expect(await refused?.json()).toMatchObject({ message: "Invalid or expired OTP." });
+      expect(otpRows(dataDir, userId)).toEqual([]);
+    });
+  });
+
+  test("two concurrent second factors with one mfaId: one token", async () => {
+    const dataDir = usersWithoutMFA();
+    setMFA("users", true, "")({ dataDir });
+    insertMFA("users", email, otpAId, "otp")({ dataDir });
+
+    await withServer(dataDir, async (url) => {
+      const body = { identity: email, password: "1234567890", mfaId: otpAId };
+      const responses = await Promise.all([
+        post(url, "auth-with-password", body),
+        post(url, "auth-with-password", body),
+      ]);
+      expect(responses.map((r) => r.status).toSorted()).toEqual([200, 400]);
+
+      const refused = responses.find((r) => r.status === 400);
+      expect(await refused?.json()).toMatchObject({ message: "Invalid or expired MFA session." });
+
+      // and the session is gone
+      const again = await post(url, "auth-with-password", body);
+      expect(again.status).toBe(400);
     });
   });
 });
