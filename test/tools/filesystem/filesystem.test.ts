@@ -14,7 +14,7 @@
 // that Close succeeds.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -332,6 +332,26 @@ test("TestFilesystemUploadFile", async () => {
 
     const attrs = fsys.attributes(fileKey);
     expect(attrs.metadata?.get("original-filename")).toBe(file.originalName);
+  } finally {
+    fsys.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a stopped uploadFileSteps generator leaves no temp file or blob behind", async () => {
+  const dir = createTestDir();
+  const fsys = NewLocal(dir);
+
+  try {
+    writeFileSync(join(dir, "payload.txt"), "some content");
+    const file = await NewFileFromPath(join(dir, "payload.txt"));
+
+    const steps = fsys.uploadFileSteps(file, "stopped/key.txt");
+    expect(steps.next().done).toBe(false); // written once, not yet closed
+    steps.return();
+
+    expect(fsys.exists("stopped/key.txt")).toBe(false);
+    expect(readdirSync(join(dir, "stopped"))).toEqual([]);
   } finally {
     fsys.close();
     rmSync(dir, { recursive: true, force: true });
