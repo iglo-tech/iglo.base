@@ -9,6 +9,7 @@
 
 import { logsSettingsReloaded } from "@/logs/logger";
 import type { App } from "@/app/app";
+import { type Notifier, notifyAfterSave } from "@/app/notify-watcher";
 import { loadAutobackupJob } from "@/backups/autobackup";
 import type { Row } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
@@ -171,6 +172,9 @@ export async function saveSettings(app: App, s: Settings): Promise<void> {
 
   saveNoValidate(app.databases, new SettingsExportModel(s, data));
 
+  // OnModelAfterCreateSuccess/UpdateSuccess' notify (priority 999)
+  notifyAfterSave(app.databases, app.notify, "settings");
+
   // auto reload the app settings because we don't know whether
   // the Settings model is the app one or a different one
   app.settings.postScan();
@@ -179,7 +183,7 @@ export async function saveSettings(app: App, s: Settings): Promise<void> {
 
 // The app members the synchronous settings save reads.
 export type SettingsSaveApp = Pick<App, "databases" | "clock" | "encryptionEnv" | "getenv"> &
-  RateLimitersApp;
+  RateLimitersApp & { readonly notify?: Notifier };
 
 // app.Save(settings) from a synchronous save path that may run in a
 // transaction (the rate limit rule relabel of a collection rename): the
@@ -196,6 +200,8 @@ export function saveSettingsSync(app: SettingsSaveApp, s: Settings, withValidati
   const data = s.dbExportSync(app.clock, app.getenv(app.encryptionEnv));
 
   saveNoValidate(app.databases, new SettingsExportModel(s, data));
+
+  notifyAfterSave(app.databases, app.notify, "settings");
 
   s.postScan();
 

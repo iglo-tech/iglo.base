@@ -4,23 +4,25 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-06
 
-Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). P.4: the docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
+Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64; image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
 
 ## Needs you
 
-Nothing. v1.1.0 is being released (owner, 2026-11-06).
+Nothing.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.4 | worker | task/P.4-user-docs | 0 | Operations guide and differences page ([brief](briefs/P.4.md)) |
-| P.6 | worker | task/P.6-test-reliability | 0 | Test flakes ([brief](briefs/P.6.md)) |
+| P.6 | fix | [#75](https://github.com/iglo-tech/iglo.base/pull/75) | 1 | Test flakes ([brief](briefs/P.6.md)) |
+| P.9 | worker | task/P.9-linux-only | 0 | Linux only: drop the macOS build ([brief](briefs/P.9.md)) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.8 | [#74](https://github.com/iglo-tech/iglo.base/pull/74) | 2026-11-06 (`2fb1ce6`) | One review round (Opus approve). Running servers reload settings and collections about 50 ms after another process (CLI, second iglo.base, PocketBase) writes a `pb_data/.notify` marker; probed both directions against upstream, CLI against each other's server, rolled-back saves, deleted or unwatchable `.notify`, a 90-save storm. Deviations: a window reloads every kind named in it (upstream only the last). Restart notes removed from the docs. Backlog: autobackup `cronMaxKeep prunes` reads the list while a backup is written (sent to P.6 fixer); macOS row in differences.md goes with P.9 |
+| P.4 | [#72](https://github.com/iglo-tech/iglo.base/pull/72) | 2026-11-06 (`0e23cac`) | Two review rounds (Opus; Sonnet fixer round 1, lead fixed round 2 as prescribed, docs only). `docs/operations.md` (install, flags and env vars, systemd, Docker, Caddy and nginx, backups, upgrades, CLI) and `docs/differences.md` (user-facing 04 plus a known gap). Found: CLI changes to settings and collections need a restart (P.8). Caddy and nginx configs checked by reading only (not installed). The dashboard's docs links (PB_DOCS_URL) wait for the site's hosting |
 | P.2 | [#67](https://github.com/iglo-tech/iglo.base/pull/67) | 2026-11-06 (`89ddb92`) | Two review rounds (Opus; Sonnet fixer round 1): Opus APPROVE at `58c47c9`, `check` 0 failures; `test:reference` only the S3-files flake (row 140; cause found: pb_data copied while a `ranges_*` temp file is deleted). darwin-arm64 and linux-arm64 release builds, native CI jobs, multi-arch Docker; macOS loads a bundled SQLite 3.53.4 built from GitHub's mirror, checked by version and source id (D34). macOS GIF thumbs were cut from the whole canvas: fixed by a crop (Linux thumbs byte-identical). arm64 GIF thumbs differ slightly from upstream (04 row). Backlog: 04 row wording; crop skipped over 16 MP (macOS); main-thread fallback check touches system SQLite before the error; round-1 items (`large.png` on macOS, unwritable cache test, Docker push rebuilds instead of pushing the tested image) |
 | P.3 | [#66](https://github.com/iglo-tech/iglo.base/pull/66) | 2026-11-05 (`01aa2f7`) | One review round: Opus APPROVE at `e1691e1`, `check` and `test:reference` 0 failures. Startup 238–356 → 102–153 ms on 20 collections / 10.5k records (upstream 29–38 ms): bytecode build (+7 MB), lazy regexps, lazy nodemailer/zlib; idle RSS 84 → 77 MiB. Request path: no removable cost above 7% of the profile; 50-client p50 unchanged within host noise (list, view within 1.5×; expand about 1.6×, create 1.1–1.9×). The rest is structural (one JS thread). Backlog: `startup-db.ts` leaves `no-browser/` in the repo root; startup changes not measured one by one; two misplaced comments (`datetime.ts`, `png-raw.ts`) |
 | P.1 | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 2026-11-05 (`9a20749`) | Two review rounds (Opus; Sonnet fixer round 1, lead fixed round 2, docs only): round-2 blocker fixed as the reviewer prescribed, merged without round 3. Distroless image wrapping the release executable (D33), `/iglo-base` in `/`, volumes `/pb_data`, `/pb_migrations`, `/pb_public`; uid 65532. Published `ghcr.io/iglo-tech/iglo.base:1.0.0` and `:latest` (run 42088769396). Backlog: `docker/login-action` version, no `--rm` on the smoke container |

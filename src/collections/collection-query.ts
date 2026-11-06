@@ -23,6 +23,7 @@
 
 import type { AppFilesystem } from "@/app/filesystem";
 import type { ErrorLogger } from "@/app/app";
+import type { Notifier } from "@/app/notify-watcher";
 import type { Clock } from "@/app/clock";
 import { Collection, CollectionTypeView } from "@/collections/collection-model";
 import { saveCollection } from "@/collections/collection-save";
@@ -85,6 +86,9 @@ export interface CollectionsApp {
   // ends before RunInTransaction returns); without it their failures are
   // logged
   readonly afterTransaction?: Promise<void>[];
+  // tells the other instances on this pb_data that the collections changed
+  // (src/app/notify-watcher.ts); absent where nothing watches
+  readonly notify?: Notifier;
 }
 
 // RunInTransaction wraps fn into a transaction for the regular app
