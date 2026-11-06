@@ -14,17 +14,14 @@ iglo.base is one executable. It serves the API, the admin dashboard (`/_/`) and 
    |---|---|
    | Linux x64 | `iglo-base_<version>_linux_amd64.zip` |
    | Linux arm64 | `iglo-base_<version>_linux_arm64.zip` |
-   | macOS on Apple silicon | `iglo-base_<version>_darwin_arm64.zip` |
 
-   Windows and Intel Macs are not supported. The linux/arm64 and macOS archives exist from release 1.1.0; 1.0.0 has only the Linux x64 archive.
+   Only Linux is supported; on other systems, run from source with Bun. The linux/arm64 archive exists from release 1.1.0; 1.0.0 has only the Linux x64 archive. (Releases 1.0.0 and 1.1.0 also keep a macOS archive; later releases have none.)
 
 2. Check the checksum. On Linux, with both files in one directory:
 
    ```sh
    sha256sum -c SHA256SUMS --ignore-missing
    ```
-
-   macOS has no `sha256sum`: compare the output of `shasum -a 256 <archive>` with the archive's line in `SHA256SUMS`.
 
 3. Unpack it:
 
@@ -34,19 +31,11 @@ iglo.base is one executable. It serves the API, the admin dashboard (`/_/`) and 
 
    The archive holds `iglo-base` (the executable), `LICENSE` and `README.txt`.
 
-4. macOS only: the executable is not signed or notarized, and Gatekeeper blocks it until you clear the quarantine attribute. Do this once, before the first run:
-
-   ```sh
-   xattr -d com.apple.quarantine iglo-base
-   ```
-
-5. Check the version:
+4. Check the version:
 
    ```sh
    ./iglo-base --version
    ```
-
-   On macOS, the first start writes its SQLite library to `~/Library/Caches/iglo-base/sqlite/` (`$XDG_CACHE_HOME/iglo-base/sqlite/` if `XDG_CACHE_HOME` is set). For a service user whose home is not writable, set `XDG_CACHE_HOME` to a writable directory.
 
 ### With Docker
 
@@ -139,7 +128,6 @@ None is needed. The server reads these:
 | `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` | none | Used for the server's outgoing HTTP requests that go through `fetch`, such as the OAuth2 avatar download. `NO_PROXY` lists the hosts that bypass the proxy. |
 | `NO_COLOR`, `TERM=dumb` | | Either one turns off colors in the console output. |
 | `TZ` | system time zone | Go's local time zone, used where PocketBase uses it: some conversions of date values that carry no zone, and time values in JavaScript migrations. Stored timestamps are always UTC, and cron expressions, including the backup schedule, always run in UTC. |
-| `XDG_CACHE_HOME` | | macOS only: parent of the SQLite library cache. |
 
 A value that is not a number falls back to the default. For the counts (`PB_THUMBS_*`, `PB_FILES_DELETE_MAX_WORKERS`), 0 and negative values fall back too; `PB_ID_TOKEN_LEEWAY` takes any integer.
 

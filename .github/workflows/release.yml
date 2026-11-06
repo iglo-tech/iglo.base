@@ -1,8 +1,8 @@
 name: Release
 
-# Pushing a v* tag builds the linux-x64, linux-arm64 and darwin-arm64
-# executables, each on a runner of its own platform (D24, D34), and attaches
-# the three archives with one SHA256SUMS to a DRAFT release; a human publishes
+# Pushing a v* tag builds the linux-x64 and linux-arm64 executables, each on
+# a runner of its own platform (D24, D35), and attaches the two archives with
+# one SHA256SUMS to a DRAFT release; a human publishes
 # it. A manual run is a dry run: it uploads the archives as a workflow
 # artifact and creates no release. See docs/releasing.md.
 on:
@@ -54,7 +54,6 @@ jobs:
         include:
           - { os: linux, arch: amd64, runner: ubuntu-latest, check: true }
           - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, check: false }
-          - { os: darwin, arch: arm64, runner: macos-15, check: false }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -65,12 +64,10 @@ jobs:
       # The same gate as ci.yml minus test:reference (more than 10 minutes;
       # run it locally or via the CI workflow before tagging). `check` ends
       # with an untagged build, which the next step replaces. Only linux-x64
-      # runs it here (D25); the other platforms run it in ci.yml, on demand.
+      # runs it here (D25); linux-arm64 runs it in ci.yml, on demand.
       - name: Check
         if: matrix.check
         run: bun run check
-      # On macOS this first builds the SQLite library the executable embeds
-      # (scripts/build-sqlite.ts, D34) and fails if it differs from Bun's on Linux.
       - name: Build
         env:
           IGLO_VERSION: ${{ needs.version.outputs.version }}
@@ -78,7 +75,6 @@ jobs:
       - name: Smoke test
         env:
           VERSION: ${{ needs.version.outputs.version }}
-          OS: ${{ matrix.os }}
         run: |
           set -eu
           test "$(dist/iglo-base --version)" = "iglo-base version $VERSION"
@@ -97,11 +93,6 @@ jobs:
             cat "$dir/serve.log"
             echo "/api/health answered $code" >&2
             exit 1
-          fi
-          if [ "$OS" = darwin ]; then
-            # the embedded SQLite was written to the cache and loaded (the
-            # start fails otherwise, with no fallback to the system SQLite)
-            ls "$HOME"/Library/Caches/iglo-base/sqlite/libsqlite3-*.dylib
           fi
       - name: Archive
         env:
@@ -139,10 +130,10 @@ jobs:
         run: |
           set -eu
           cd release
-          for platform in linux_amd64 linux_arm64 darwin_arm64; do
+          for platform in linux_amd64 linux_arm64; do
             test -f "iglo-base_${VERSION}_${platform}.zip"
           done
-          test "$(ls *.zip | wc -l)" = 3
+          test "$(ls *.zip | wc -l)" = 2
           sha256sum *.zip > SHA256SUMS
           cat SHA256SUMS
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -177,8 +168,7 @@ jobs:
           case "$VERSION" in *-*) flags="--prerelease" ;; esac
           gh release create "$TAG" --draft --verify-tag $flags \
             --title "$TAG" \
-            --notes "linux-x64, linux-arm64 and darwin-arm64 executables. Verify with: sha256sum -c SHA256SUMS (shasum -a 256 -c SHA256SUMS on macOS)." \
+            --notes "linux-x64 and linux-arm64 executables. Verify with: sha256sum -c SHA256SUMS." \
             "iglo-base_${VERSION}_linux_amd64.zip" \
             "iglo-base_${VERSION}_linux_arm64.zip" \
-            "iglo-base_${VERSION}_darwin_arm64.zip" \
             SHA256SUMS

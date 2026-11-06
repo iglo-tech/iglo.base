@@ -149,7 +149,7 @@ Decided 2026-10-27.
 
 Decided 2026-10-27.
 
-- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only. Amended by [D24](#d24-mvp-targets-linux-x64-only): the MVP shipped linux-x64 only; linux-arm64 and darwin-arm64 followed in P.2 ([D34](#d34-macos-sqlite-built-embedded-and-loaded)).
+- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only. Amended by [D24](#d24-mvp-targets-linux-x64-only): the MVP shipped linux-x64 only; linux-arm64 and darwin-arm64 followed in P.2 ([D34](#d34-macos-sqlite-built-embedded-and-loaded)); amended again by [D35](#d35-linux-only): Linux only, darwin-arm64 dropped.
 - **Why:** these are the platforms iglo.\* projects ship and deployments use. Windows needs extra work (no `sendmail`, restart by re-exec, file locking during restore) for no current user. Upstream's other targets (Windows, FreeBSD, 32-bit ARM and others) are dropped.
 
 ## D19. Drop the `update` command
@@ -290,6 +290,8 @@ Task P.1, after v1.0.0 shipped.
 
 ## D34. macOS SQLite: built, embedded and loaded; arm64 and darwin releases
 
+> History. The macOS parts (the darwin release, the bundled SQLite, `check-macos`) were removed by [D35](#d35-linux-only); the linux-arm64 release and the multi-arch image stay.
+
 Task P.2, after v1.0.0 shipped. Completes D24's post-1.0 part and amends [D33](#d33-the-docker-image-wraps-the-release-executable)'s "linux/amd64".
 
 - **Decision:** every release also ships `iglo-base_<version>_linux_arm64.zip` and `iglo-base_<version>_darwin_arm64.zip`, next to the linux_amd64 one, with one `SHA256SUMS` for all three. Each is built (`bun build --compile`, same entry points and flags; `IGLO_TARGET` can cross-target) and smoke-tested by `release.yml` on a runner of its own platform (`ubuntu-latest`, `ubuntu-24.04-arm`, `macos-15`); only linux-x64 runs `bun run check` there. The on-demand `ci.yml` has a job per extra platform (`check-linux-arm64`, `check-macos`) running `bun run check` and `bun run test:reference` natively. The Docker image is one linux/amd64 + linux/arm64 manifest; `docker.yml` smoke-tests each image on a runner of its architecture before pushing, and the `Dockerfile` copies `${TARGETARCH}/iglo-base`. Windows, darwin-x64, signing and notarization stay out ([D18](#d18-release-platforms)).
@@ -300,3 +302,13 @@ Task P.2, after v1.0.0 shipped. Completes D24's post-1.0 part and amends [D33](#
 - **Why:** a library next to the executable would break the one-file release and be lost when only the executable is copied; embedding keeps it for about 1.5 MB and one file write per version. A content-addressed cache path needs no cleanup and survives upgrades. The same SQLite version and options as Linux keep one behavior for filters (math, JSON, `->>`), `legacy_alter_table` and error messages on all platforms. Building from the GitHub mirror at a verified commit uses no other host. The dylib cannot be cross-compiled from Linux, hence the macOS runner. The extra platforms exist only as GitHub runners, which is why their tests are on-demand jobs; D25 (local verification) still holds for linux-x64.
 - **Known differences on the new platforms** (found by the native test runs): on arm64 the GIF thumbs of `photo.gif` and the GIFs with a 600x400 first frame differ from upstream's, listed in [04-api-compatibility.md](04-api-compatibility.md#deliberate-differences) with the measurement; the differential suite allows 25 for those files on arm64 (Linux and macOS) only. `Bun.Image` on macOS decodes with the system's image library and returns the whole logical screen for a GIF whose first frame is smaller than it (the thumb was 50x38 against upstream's 50x33); `createThumb` crops the decode to the first frame, so the thumb is the same on every OS (the macOS run then showed only the arm64 difference above). A few tests read `/proc` or assume no sendmail and run on Linux only or are skipped where the host has a sendmail.
 - **Consequence:** a Bun upgrade that changes SQLite on Linux fails `test/db/sqlite-lib.test.ts` until the fixture, the tag and commit and the defines in `scripts/build-sqlite.ts` follow. macOS users must clear the quarantine attribute ([releasing.md](../releasing.md)); the executable is not signed or notarized. The distroless base digest must list linux/arm64 (the arm64 smoke job fails before any push otherwise).
+
+## D35. Linux only
+
+Task P.9, owner direction 2026-11-06: "we should drop macOS and Windows build, just Linux x86 and arm. If someone wants to run this elsewhere, can use the source code." Amends [D18](#d18-release-platforms), [D24](#d24-mvp-targets-linux-x64-only) and [D34](#d34-macos-sqlite-built-embedded-and-loaded).
+
+- **Decision:** releases ship `iglo-base_<version>_linux_amd64.zip`, `iglo-base_<version>_linux_arm64.zip` and one `SHA256SUMS`, plus the linux/amd64 + linux/arm64 Docker image. There is no darwin or Windows build. Other systems run from source with Bun; that is not tested or supported. The 1.0.0 and 1.1.0 releases keep their archives, darwin included.
+- **Removed:** the darwin release job, `check-macos` in `ci.yml`, the bundled macOS SQLite (`scripts/build-sqlite.ts`, `scripts/sqlite-embed.ts`, `src/db/sqlite-lib.ts` and its calls, `IGLO_SQLITE_LIB`, the `dist/libsqlite3.dylib` import, the test preload, `test/db/sqlite-lib.test.ts` and its fixture). `scripts/build.ts` accepts `bun-linux-x64` and `bun-linux-arm64` only; any other `IGLO_TARGET` is refused.
+- **Kept:** code that is harmless and portable stays (`legacy_alter_table=OFF`, which matches upstream; `open` or `xdg-open` for `--open`; darwin-arm64 in `test/differential/upstream.lock` so the reference suite still runs from source on a Mac).
+- **Why:** nobody uses the macOS build, and it cost a SQLite build, a runner and a platform-specific test matrix. Running from source on macOS uses Bun's own SQLite.
+- **Consequence:** the Bun-SQLite check against Linux (D34) is gone, so a Bun upgrade that changes SQLite is no longer caught by a fixture; the Linux test suite covers the behavior.
