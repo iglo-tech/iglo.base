@@ -138,7 +138,7 @@ None is needed. The server reads these:
 | `PB_ID_TOKEN_LEEWAY` | `300` | Seconds of clock difference accepted when checking an OpenID Connect ID token from an OAuth2 provider. Any integer, 0 and negative values included. |
 | `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` | none | Used for the server's outgoing HTTP requests that go through `fetch`, such as the OAuth2 avatar download. `NO_PROXY` lists the hosts that bypass the proxy. |
 | `NO_COLOR`, `TERM=dumb` | | Either one turns off colors in the console output. |
-| `TZ` | system time zone | The time zone for local time in console output and logs, as in Go. Stored timestamps and cron expressions are not affected: cron expressions, including the backup schedule, always run in UTC. |
+| `TZ` | system time zone | Go's local time zone, used where PocketBase uses it: some conversions of date values that carry no zone, and time values in JavaScript migrations. Stored timestamps are always UTC, and cron expressions, including the backup schedule, always run in UTC. |
 | `XDG_CACHE_HOME` | | macOS only: parent of the SQLite library cache. |
 
 A value that is not a number falls back to the default.
