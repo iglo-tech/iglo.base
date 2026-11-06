@@ -14,7 +14,7 @@ Nothing.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.6 | worker | task/P.6-test-reliability | 0 | Test flakes ([brief](briefs/P.6.md)) |
+| P.6 | review | [#75](https://github.com/iglo-tech/iglo.base/pull/75) | 1 | Test flakes ([brief](briefs/P.6.md)) |
 | P.8 | worker | task/P.8-notify-watcher | 0 | CLI changes reach a running server ([brief](briefs/P.8.md)) |
 | P.9 | queued | | | Linux only: drop the macOS build ([brief](briefs/P.9.md)); starts when a slot frees |
 
