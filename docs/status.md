@@ -15,7 +15,7 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.2 | fix | [#67](https://github.com/iglo-tech/iglo.base/pull/67) | 1 | [brief](briefs/P.2.md); test tag green on all three platforms; bundled SQLite 3.53.4 on macOS (D34); native CI ends with flakes; round 1 CHANGES (macOS GIF thumb difference hidden by the test, tolerance too wide), Sonnet fixer |
+| P.2 | review | [#67](https://github.com/iglo-tech/iglo.base/pull/67) | 2 | [brief](briefs/P.2.md); test tag green on all three platforms; bundled SQLite 3.53.4 on macOS (D34); native CI ends with flakes; round 1 CHANGES (macOS GIF thumb difference hidden by the test, tolerance too wide), Sonnet fixer fixed at `58c47c9` (macOS GIF thumbs were a real bug, now cropped to the first frame) |
 
 ## Done
 
