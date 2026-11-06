@@ -162,10 +162,33 @@ describe("realtime", () => {
     );
     await Bun.sleep(300);
     env.record("events after unsubscribe", topic.length);
-    // signing in re-sends the subscriptions with the new auth
+    // The SDK does not re-send subscriptions on sign-in; the server binds
+    // the auth of a client to its last subscription request. A guest
+    // subscribes to a rule-protected collection (no events), signs in, and
+    // subscribes again: that request carries the new auth, and the events of
+    // both topics arrive.
+    const guarded: unknown[] = [];
+    const byId: unknown[] = [];
+    await env.step("subscribe demo3 (guest)", () =>
+      pb.collection("demo3").subscribe("*", (e) => guarded.push(e)),
+    );
+    await env.step("create demo3 (guest sees nothing)", () =>
+      admin.collection("demo3").create({ id: "sdkrealtime0031", title: "before sign-in" }),
+    );
+    await Bun.sleep(300);
+    env.record("guest events", guarded.length);
     await env.step("authWithPassword", () =>
       pb.collection("_superusers").authWithPassword("test@example.com", "1234567890"),
     );
+    await env.step("subscribe demo3 (signed in)", () =>
+      pb.collection("demo3").subscribe("sdkrealtime0031", (e) => byId.push(e)),
+    );
+    await env.step("update demo3", () =>
+      admin.collection("demo3").update("sdkrealtime0031", { title: "after sign-in" }),
+    );
+    await waitFor(env, guarded, 1);
+    await waitFor(env, byId, 1);
+    env.record("events after sign-in", { all: guarded, byId });
     await env.step("unsubscribe", () => pb.realtime.unsubscribe());
     env.record("isConnected after", pb.realtime.isConnected);
   });

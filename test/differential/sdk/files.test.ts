@@ -5,6 +5,7 @@
 
 import { describe, expect } from "bun:test";
 
+import { fixtureDir } from "@test/scenarios/fixture";
 import { sdkTest } from "@test/differential/sdk/harness";
 
 const pngFile = "300_1SEi6Q6U72.png"; // users 4q1xlclmfloku33's avatar
@@ -85,6 +86,25 @@ describe("FileService", () => {
         {
           headers: { Authorization: pb.authStore.token },
         },
+      );
+      await res.arrayBuffer();
+    }
+    // a thumb of an image uploaded here is generated on first request; the
+    // bytes of a resized image are not compared, status and type are
+    const png = await Bun.file(
+      `${fixtureDir}/storage/_pb_users_auth_/4q1xlclmfloku33/${pngFile}`,
+    ).arrayBuffer();
+    const withImage = await env.step("create (image)", () =>
+      pb.collection("demo3").create({
+        title: "image",
+        files: [new File([png], "pic.png", { type: "image/png" })],
+      }),
+    );
+    for (const thumb of ["70x50", "0x50"]) {
+      const res = await env.fetch(
+        `generated thumb ${thumb}`,
+        `/api/files/demo3/${withImage.id}/${(withImage["files"] as string[])[0]}?thumb=${thumb}`,
+        { headers: { Authorization: pb.authStore.token } },
       );
       await res.arrayBuffer();
     }

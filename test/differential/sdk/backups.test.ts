@@ -36,12 +36,13 @@ describe("BackupService", () => {
         .replace(env.url, "<base>"),
     });
     await download(env, "download", url);
-    await download(env, "download (missing)", pb.backups.getDownloadURL(token, "missing.zip"));
-    await download(
-      env,
-      "download (invalid token)",
-      pb.backups.getDownloadURL("invalid", "sdk.zip"),
-    );
+    // error bodies are JSON: recorded as exchanges and compared in full
+    const failed = async (label: string, target: string) => {
+      const res = await env.fetch(label, target.replace(env.url, ""));
+      await res.arrayBuffer();
+    };
+    await failed("download (missing)", pb.backups.getDownloadURL(token, "missing.zip"));
+    await failed("download (invalid token)", pb.backups.getDownloadURL("invalid", "sdk.zip"));
 
     const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
     await env.step("upload", () =>

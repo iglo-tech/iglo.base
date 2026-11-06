@@ -100,7 +100,9 @@ describe("CollectionService", () => {
     await env.fails("dryRunViewQuery (invalid)", () =>
       pb.collections.dryRunViewQuery("select nope from demo1"),
     );
-    const current = await pb.collections.getFullList({ sort: "name" });
+    const current = await env.step("getFullList", () =>
+      pb.collections.getFullList({ sort: "name" }),
+    );
     const keep = current.filter((c) => !c.system);
     await env.step("import (same)", () => pb.collections.import(keep, false));
     await env.step("import (add)", () =>
