@@ -395,7 +395,7 @@ There is no `update` command. A version number is not a promise of a release sch
 
 ## Other commands
 
-The commands use the same global flags. Run them with the same `--dir` as the server; they can run while the server is up. A running server keeps settings and collections in memory, so a change a command makes to them takes effect only after a restart: `superuser ips` (see below), and `migrate up`, `migrate down` or `migrate collections` when a migration changes collections or settings. PocketBase picks such changes up while it runs.
+The commands use the same global flags. Run them with the same `--dir` as the server; they can run while the server is up. A running server picks up the settings and collections changes a command makes (`superuser ips`, and `migrate up`, `migrate down` or `migrate collections` when a migration changes them) within about 50 ms, as PocketBase does. The commands and servers on one data directory tell each other through the `.notify` directory inside it: it is created by PocketBase too, empty marker files appear in it for an instant after each save, and it must stay on the same local volume as `data.db`. If the directory cannot be watched, the server logs a warning at start and such changes need a restart.
 
 ### `superuser`
 
@@ -409,9 +409,9 @@ The commands use the same global flags. Run them with the same `--dir` as the se
 ./iglo-base superuser ips                                          # no arguments: remove the restriction
 ```
 
-`superuser ips` writes the setting to the database, but a running iglo.base server keeps its settings in memory and does not read the change. The list takes effect when the server restarts (`sudo systemctl restart iglo-base`, `docker restart iglo`). This also holds for clearing the list. PocketBase v0.41.0 applies the change to a running server; iglo.base does not.
+`superuser ips` writes the setting to the database, and a running server applies it within about 50 ms, also when the list is cleared.
 
-Mind the IP list: a request that is signed in as a superuser from any other address is refused with 403, so a wrong list locks you out of the dashboard. Behind a proxy it checks the client IP, so set the trusted proxy header first (see above). If you are locked out, stop the server, run `./iglo-base superuser ips --dir <dir>` with no arguments, and start the server again. Clearing it while the server runs is not enough: restart it. The other `superuser` commands change records and act at once.
+Mind the IP list: a request that is signed in as a superuser from any other address is refused with 403, so a wrong list locks you out of the dashboard. Behind a proxy it checks the client IP, so set the trusted proxy header first (see above). If you are locked out, run `./iglo-base superuser ips --dir <dir>` with no arguments; it clears the list and the running server applies that at once. The other `superuser` commands change records and act at once.
 
 ### `migrate`
 
@@ -427,7 +427,7 @@ Applies and manages the JavaScript files in `pb_migrations`:
 
 The three commands that ask read the answer from standard input; without a terminal the answer is no and the command is cancelled, so in a script pipe it in (`echo y | ./iglo-base migrate create add_posts`).
 
-`serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. If you run it against a running server, restart the server afterwards: until then it serves the collections it loaded at start. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
+`serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. A running server picks up the collections and settings changes of `migrate up`, `migrate down` and `migrate collections` within about 50 ms, without a restart. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
 
 ### `update`
 

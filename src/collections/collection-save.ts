@@ -42,6 +42,7 @@
 // driver binds for them (their driver Value: the JSON and date texts), so
 // they are converted before src/db binds them (collectionRow).
 
+import { notifyAfterSave } from "@/app/notify-watcher";
 import { unsetMissingOAuth2MappedFields } from "@/collections/collection-model-auth-options";
 import { type Collection, CollectionTypeBase } from "@/collections/collection-model";
 import {
@@ -113,6 +114,9 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
   }
 
   afterTransactionError(app, () => {});
+
+  // OnCollectionAfterDeleteSuccess' notify (priority 999)
+  notifyAfterSave(app.databases, app.notify, "collections");
 
   // the storage cleanup after the delete (registerBaseHooks'
   // "__pbFilesManagerDelete__"; after the outer transaction, if any),
@@ -199,6 +203,7 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
           encryptionEnv: app.encryptionEnv ?? "",
           getenv: (name) => app.getenv?.(name) ?? "",
           store: app.store,
+          ...(app.notify === undefined ? {} : { notify: app.notify }),
           ...(app.cron === undefined ? {} : { cron: app.cron }),
         },
         app.settings,
@@ -215,6 +220,9 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
     onErrorReloadCachedCollections(app);
     throw err;
   }
+
+  // OnCollectionAfterCreateSuccess/UpdateSuccess' notify (priority 999)
+  notifyAfterSave(app.databases, app.notify, "collections");
 
   afterTransactionError(app, () => {
     if (isNew) {
