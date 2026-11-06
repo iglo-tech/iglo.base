@@ -5,9 +5,9 @@
 // goroutine too.
 //
 // A batch is one transaction. A lock held by the main thread (log cleanup,
-// VACUUM, backup) is waited for and the batch tried again, so none is dropped
-// because of it. Anything else that fails loses the batch, as upstream
-// ignores the error of its write.
+// VACUUM, backup) is waited for and the batch tried again, up to 12 times
+// (about two minutes); after that the batch is dropped. Anything else that
+// fails loses the batch, as upstream ignores the error of its write.
 //
 // `bun build --compile` needs this file as an entry point of its own
 // (package.json "build").

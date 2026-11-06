@@ -51,8 +51,21 @@ function serializeError(err: unknown): SerializedError {
   return { name: "Error", message: String(err), code: null, errno: null };
 }
 
-self.addEventListener("message", (event: MessageEvent<ReadRequestMessage>) => {
+self.addEventListener("message", (event: MessageEvent<ReadRequestMessage | "close">) => {
   const req = event.data;
+  if (req === "close") {
+    for (const c of conns.values()) {
+      try {
+        c.close();
+      } catch {
+        // the thread ends either way
+      }
+    }
+    conns.clear();
+    // WorkerGlobalScope.close(), ending this thread
+    (self as unknown as { close(): void }).close();
+    return;
+  }
   let res: ReadResponseMessage;
   try {
     const c = conn(req.path);

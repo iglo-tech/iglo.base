@@ -103,8 +103,8 @@ export interface Fixture {
   stop(): Promise<void>;
 }
 
-// A server on a fresh data directory and a free port, with a superuser
-// created through the installer's own API when install is false.
+// A server on a fresh data directory and a free port. It has no superuser
+// yet: installAndLogin creates the first one.
 export async function startFixture(): Promise<Fixture> {
   const root = tempDir();
   const dataDir = join(root, "pb_data");

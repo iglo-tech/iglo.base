@@ -300,3 +300,40 @@ describe("crash: restore record that cannot be read", () => {
     timeout,
   );
 });
+
+describe("restore after a rollback that failed", () => {
+  test(
+    "an open record of an earlier restore is kept and no new restore starts",
+    async () => {
+      // iglo.base only: upstream writes no record. The server is running, as
+      // after a rollback that failed in the same process.
+      const { server, dataDir } = await withBackup("iglo", "local");
+      try {
+        const temp = join(dataDir, ".pb_temp_to_delete");
+        mkdirSync(join(temp, "old_pb_data_planted"), { recursive: true });
+        writeFileSync(join(temp, "old_pb_data_planted", "only-copy.txt"), "x");
+        writeFileSync(join(temp, "restore_phase.moving-new"), "");
+
+        const res = await api(server, "POST", `/api/backups/${backupName}/restore`);
+        expect(res.status).toBe(204);
+        // the restore runs off the request, about a second later; its refusal
+        // is logged (level 8), which shows the attempt has finished
+        const filter = encodeURIComponent('level=8 && message="Failed to restore backup"');
+        const failure = await waitFor("the logged restore failure", async () => {
+          const logs = await api(server, "GET", `/api/logs?filter=${filter}`);
+          const { items } = (await logs.json()) as { items?: { data: { error?: string } }[] };
+          return items?.[0];
+        });
+        expect(failure.data.error).toContain("earlier restore did not finish");
+        expect(existsSync(join(temp, "restore_phase.moving-new"))).toBe(true);
+        expect(existsSync(join(temp, "old_pb_data_planted", "only-copy.txt"))).toBe(true);
+        // the data is untouched
+        const texts = (await listRecords(server)).map((r) => r["text"]);
+        expect(texts).toContain(marker);
+      } finally {
+        await server.stop();
+      }
+    },
+    timeout,
+  );
+});

@@ -19,6 +19,10 @@ describe("BatchService", () => {
     await env.step("seed", () =>
       pb.collection("demo2").create({ id: "sdkbatch0000001", title: "seed" }),
     );
+    await env.step("seed (for upserts)", async () => {
+      await pb.collection("demo2").create({ id: "sdkbatch0000006", title: "seed 6" });
+      return pb.collection("demo2").create({ id: "sdkbatch0000007", title: "seed 7" });
+    });
 
     const results = await env.step("send", async () => {
       const batch = pb.createBatch();
@@ -29,11 +33,15 @@ describe("BatchService", () => {
       batch.collection("demo2").upsert({ id: "sdkbatch0000003", title: "upserted" });
       // (a record changed twice in one response would pair its `updated`
       // timestamps twice, which the comparison does not support)
-      batch.collection("demo2").upsert({ id: "sdkbatch0000005", title: "upserted (update)" });
+      // upserts of records that exist: a seeded one, then one with `fields`
+      batch.collection("demo2").upsert({ id: "sdkbatch0000006", title: "upserted (update)" });
+      batch
+        .collection("demo2")
+        .upsert({ id: "sdkbatch0000007", title: "upserted (fields)" }, { fields: "id,title" });
       batch.collection("demo2").delete("sdkbatch0000002");
       return batch.send();
     });
-    expect(results.length).toBe(5);
+    expect(results.length).toBe(6);
     await env.step("after", () =>
       pb.collection("demo2").getFullList({ filter: "id ~ 'sdkbatch'", sort: "id" }),
     );

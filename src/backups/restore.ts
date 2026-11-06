@@ -27,6 +27,7 @@ import type { App } from "@/app/app";
 import { LocalBackupsDirName, LocalTempDirName } from "@/app/filesystem";
 import { ErrBackupActive } from "@/backups/create";
 import {
+  assertNoOpenRestore,
   removeRestoreTemp,
   restoreExclude,
   rollbackRestore,
@@ -135,6 +136,7 @@ async function restoreLocked(app: App, name: string): Promise<void> {
     }
 
     mkdirSync(localTempDir, { recursive: true, mode: 0o777 });
+    assertNoOpenRestore(localTempDir);
 
     await extractAndReplace(app, fsys, name, localTempDir);
   } finally {

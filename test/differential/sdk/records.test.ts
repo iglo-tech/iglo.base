@@ -221,20 +221,24 @@ describe("Client", () => {
     });
 
     // auto-cancellation: the first of two identical concurrent requests aborts
-    const first = pb
-      .collection("demo2")
-      .getList(1, 1)
-      .catch((e: unknown) => e);
-    const second = pb
-      .collection("demo2")
-      .getList(1, 1)
-      .catch((e: unknown) => e);
-    env.record("autocancel", { first: await first, second: Object.keys((await second) as object) });
+    await env.step("autocancel", async () => {
+      const first = pb
+        .collection("demo2")
+        .getList(1, 1)
+        .catch((e: unknown) => e);
+      const second = pb
+        .collection("demo2")
+        .getList(1, 1)
+        .catch((e: unknown) => e);
+      return { first: await first, second: Object.keys((await second) as object) };
+    });
     pb.autoCancellation(false);
-    const [a, b] = await Promise.all([
-      pb.collection("demo2").getList(1, 1),
-      pb.collection("demo2").getList(1, 1),
-    ]);
-    env.record("no autocancel", [a.totalItems, b.totalItems]);
+    await env.step("no autocancel", async () => {
+      const [a, b] = await Promise.all([
+        pb.collection("demo2").getList(1, 1),
+        pb.collection("demo2").getList(1, 1),
+      ]);
+      return [a.totalItems, b.totalItems];
+    });
   });
 });

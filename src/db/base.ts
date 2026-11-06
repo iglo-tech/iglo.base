@@ -323,6 +323,18 @@ export class Databases {
     }
   }
 
+  // Shutdown closes the read pool, waits for its threads to exit and only
+  // then closes the main-thread connections. SQLite checkpoints and removes
+  // the -wal and -shm files when the last connection closes, and a read-only
+  // connection cannot do that, so the read-write ones must close last.
+  async shutdown(): Promise<void> {
+    if (this.shared.pool !== null && !this.shared.closed) {
+      this.shared.poolClosed = this.shared.pool.close();
+      await this.shared.poolClosed;
+    }
+    this.close();
+  }
+
   // resolves once close() was called and every read worker thread has
   // exited (a thread running a timed-out statement exits when it returns)
   closed(): Promise<void> {

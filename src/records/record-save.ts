@@ -111,6 +111,7 @@ import {
 import { type Collection, CollectionTypeAuth } from "@/collections/collection-model";
 import { withDriverErrors } from "@/collections/driver-error";
 import { joinErrors, wrapError } from "@/collections/view";
+import type { Databases } from "@/db/base";
 import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
 import { Errors as JoinedErrors } from "@/db/dbx/db";
 import { exists, HashExp, newExp, not } from "@/db/dbx/expression";
@@ -615,16 +616,30 @@ function* afterSuccess(
 
   // execute later after the transaction has completed
   txInfo.onComplete((txErr) => {
+    // A committed data transaction inside another one (a migration run holds
+    // the auxiliary one open) leaves its interceptors, whose S3 calls must not
+    // run inside a write transaction, to the end of the outer one.
+    const outer = parent.txInfo();
+    if (txErr === null && outer !== null) {
+      outer.onComplete(() => {
+        fire(null, outermost(parent));
+      });
+      return;
+    }
+    fire(txErr, parent);
+  });
+
+  function fire(txErr: unknown, base: Databases): void {
     // upstream's runAfterFuncs calls these one after the other: an async one
     // of an earlier item holds back the broadcasts of the later items
     const previous = app.afterTransaction?.at(-1);
     if (app.afterTransaction !== undefined && previous !== undefined) {
-      const next = (): void | Promise<void> => afterTransaction(txErr);
+      const next = (): void | Promise<void> => afterTransaction(txErr, base);
       app.afterTransaction.push(previous.then(next, next));
       return;
     }
 
-    const result = afterTransaction(txErr);
+    const result = afterTransaction(txErr, base);
 
     // an async interceptor ends after the transaction call returned
     if (result instanceof Promise) {
@@ -638,10 +653,10 @@ function* afterSuccess(
         });
       });
     }
-  });
+  }
 
-  function afterTransaction(txErr: unknown): void | Promise<void> {
-    const parentApp: RecordsApp = { ...app, databases: parent };
+  function afterTransaction(txErr: unknown, base: Databases): void | Promise<void> {
+    const parentApp: RecordsApp = { ...app, databases: base };
 
     let result: void | Promise<void>;
     if (txErr !== null) {
@@ -669,6 +684,15 @@ function* afterSuccess(
 
     return result;
   }
+}
+
+// the databases outside every transaction they are part of
+function outermost(databases: Databases): Databases {
+  let current = databases;
+  for (let info = current.txInfo(); info !== null; info = current.txInfo()) {
+    current = info.parent;
+  }
+  return current;
 }
 
 // the realtime handlers as the action of the after success interceptors:

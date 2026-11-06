@@ -161,20 +161,24 @@ describe("auth records and stores", () => {
         return other.authStore.isValid;
       });
       // a cancelled request: the SDK aborts it before the answer is read
-      const slow = pb
-        .collection("demo2")
-        .getList(1, 1, { requestKey: "k" })
-        .catch((e: unknown) => e);
-      pb.cancelRequest("k");
-      env.record("cancelRequest", await slow);
-      const many = [1, 2, 3].map((n) =>
-        pb
+      await env.step("cancelRequest", async () => {
+        const slow = pb
           .collection("demo2")
-          .getList(n, 1, { requestKey: `k${n}` })
-          .catch((e: unknown) => e),
-      );
-      pb.cancelAllRequests();
-      env.record("cancelAllRequests", await Promise.all(many));
+          .getList(1, 1, { requestKey: "k" })
+          .catch((e: unknown) => e);
+        pb.cancelRequest("k");
+        return slow;
+      });
+      await env.step("cancelAllRequests", async () => {
+        const many = [1, 2, 3].map((n) =>
+          pb
+            .collection("demo2")
+            .getList(n, 1, { requestKey: `k${n}` })
+            .catch((e: unknown) => e),
+        );
+        pb.cancelAllRequests();
+        return Promise.all(many);
+      });
     },
   );
 });
@@ -300,6 +304,21 @@ describe("mail flows", () => {
       await env.step("authWithOTP (mfa)", () =>
         pb.collection("users").authWithOTP(otpId, code, { body: { otpId, password: code, mfaId } }),
       );
+      // the form real clients use (dashboard ui/src/auth/pageSuperuserLogin.js):
+      // mfaId as an option, which the SDK sends in the query
+      const second = await env.fails("authWithPassword (mfa required, again)", () =>
+        pb.collection("users").authWithPassword("test2@example.com", password),
+      );
+      const mfaId2 = (second.response as { mfaId: string }).mfaId;
+      const since = Date.now();
+      const otp2 = await env.step("requestOTP (again)", () =>
+        pb.collection("users").requestOTP("test2@example.com"),
+      );
+      const m2 = await env.mail("otp mail (again)", "test2@example.com", since);
+      const code2 = /\b(\d{8})\b/.exec(messageBody(m2))?.[1] ?? "";
+      await env.step("authWithOTP (mfaId option)", () =>
+        pb.collection("users").authWithOTP(otp2.otpId, code2, { mfaId: mfaId2 } as never),
+      );
     },
   );
 });
@@ -399,8 +418,13 @@ describe("OAuth2", () => {
                 `?client_id=${u.searchParams.get("client_id")}&redirect_uri=${u.searchParams.get("redirect_uri")?.replace(env.url, "<base>")}&scope=${u.searchParams.get("scope")}`,
             );
             const state = u.searchParams.get("state") ?? "";
-            // the page it answers with is the dashboard (iglo.base patches its title)
-            await fetch(`${env.url}/api/oauth2-redirect?state=${state}&code=from_provider`);
+            // the 307 and its Location are compared; the page it redirects to
+            // is the dashboard HTML, which differs (iglo.base patches its title)
+            await env.fetch(
+              "oauth2-redirect",
+              `/api/oauth2-redirect?state=${state}&code=from_provider`,
+              { redirect: "manual" },
+            );
           },
         }),
       );

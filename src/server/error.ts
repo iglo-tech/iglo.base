@@ -7,6 +7,8 @@
 // is the field → error map. The field validators that create them land with
 // their owning tasks (M1.x).
 
+import { NoRowsError } from "@/db/dbx/rows";
+
 // SafeErrorItem defines a common error interface for a printable public safe error.
 export interface SafeErrorItem {
   // Code represents a fixed unique identifier of the error (usually used as translation key).
@@ -55,8 +57,9 @@ function errorText(err: unknown): string {
   return String(err);
 }
 
-// sql.ErrNoRows: the database layer (M0.4) returns this sentinel when a
-// query has no rows; ToApiError turns it into a 404.
+// sql.ErrNoRows: ToApiError turns it into a 404, as it does the database
+// layer's NoRowsError (src/db/dbx/rows.ts), which is what a query with no rows
+// throws.
 export const ErrNoRows = new Error("sql: no rows in result set");
 
 // ApiError defines the struct for a basic api error response.
@@ -317,7 +320,7 @@ export function toApiError(err: Error): ApiError {
     return apiErr;
   }
   // no ApiError found -> assign a generic one
-  if (errorsIs(err, ErrNoRows) || isNotExist(err)) {
+  if (errorsIs(err, ErrNoRows) || errorsAs(err, NoRowsError) || isNotExist(err)) {
     return newNotFoundError("", err);
   }
   return newBadRequestError("", err);

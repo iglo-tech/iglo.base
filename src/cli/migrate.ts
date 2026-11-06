@@ -12,7 +12,7 @@ import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
 import { Collection } from "@/collections/collection-model";
 import { collectionQuery } from "@/collections/collection-query";
-import { wrapError } from "@/collections/view";
+import { joinErrors, wrapError } from "@/collections/view";
 import { argsMinusFirst, FlagError, parseFlags, type FlagSpec, type FlagValue } from "@/cli/flags";
 import { helpText } from "@/cli/help";
 import { yesNoPrompt } from "@/cli/prompt";
@@ -158,6 +158,35 @@ function run(app: App, list: readonly Migration[], args: string[], ctx: CliConte
   }
 }
 
+// Upstream's transaction runs its afterFuncs before RunInTransaction returns,
+// so the S3 delete of a file that a migration's save cleared has ended before
+// the command exits. Here they outlive the synchronous run: wait for them
+// before the app is closed. A failure fails the command, as upstream's
+// "transaction afterFunc errors" does.
+async function runAndWaitForFileDeletes(
+  app: App,
+  list: readonly Migration[],
+  args: string[],
+  ctx: CliContext,
+): Promise<void> {
+  const afterTransaction: Promise<void>[] = [];
+  let runErr: unknown = null;
+  try {
+    run({ ...app, afterTransaction }, list, args, ctx);
+  } catch (err) {
+    runErr = err;
+  }
+  const failures = (await Promise.allSettled(afterTransaction)).flatMap((r) =>
+    r.status === "rejected" ? [r.reason as unknown] : [],
+  );
+  if (runErr !== null) {
+    throw runErr;
+  }
+  if (failures.length > 0) {
+    throw wrapError("transaction afterFunc errors", joinErrors(failures));
+  }
+}
+
 export async function runMigrateCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
   persistent: FlagSpec[],
@@ -215,7 +244,7 @@ export async function runMigrateCommand(
         break;
       default:
         // note: system migrations are always applied as part of the bootstrap process
-        run(app, list, parsed.args, ctx);
+        await runAndWaitForFileDeletes(app, list, parsed.args, ctx);
     }
   } finally {
     await clearBootstrap(app);

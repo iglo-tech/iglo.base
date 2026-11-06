@@ -89,8 +89,7 @@ export interface SdkEnv {
   as(token: string, record?: { id: string; collectionName: string }): PocketBase;
   superuser(): PocketBase;
   // runs fn, records its value (or the thrown error) and the exchanges it
-  // made, and returns the value; an error is recorded and rethrown unless
-  // `rejects` is true, then returned
+  // made, and returns the value; an error is recorded, then the step throws
   step<T>(label: string, fn: () => Promise<T>): Promise<T>;
   // like step, for a call that must fail: returns the ClientResponseError
   fails(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError>;
@@ -201,6 +200,11 @@ class Recording implements SdkEnv {
   readonly steps: Step[] = [];
   #current: Exchange[] = [];
   readonly clients: PocketBase[] = [];
+  // requests made outside any step, `fails`, `derived` or `fetch`: never
+  // compared, so the test must not leave any
+  leftover(): string[] {
+    return this.#current.map((e) => `${e.method} ${e.url}`);
+  }
   readonly cleanup: (() => Promise<unknown>)[] = [];
 
   constructor(
@@ -534,6 +538,9 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
           s3s.iglo,
         );
         const results = await Promise.allSettled([fn(upstream), fn(igloBase)]);
+        const unrecorded = [upstream, igloBase].flatMap((rec) =>
+          rec.leftover().map((r) => `${rec.name}: request outside a step: ${r}`),
+        );
         for (const rec of [upstream, igloBase]) {
           for (const pb of rec.clients) {
             pb.cancelAllRequests();
@@ -548,7 +555,7 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
               ]
             : [],
         );
-        expect([...differences, ...failures]).toEqual([]);
+        expect([...differences, ...failures, ...unrecorded]).toEqual([]);
       } finally {
         await Promise.allSettled(
           started.map((s) => (s.status === "fulfilled" ? s.value.stop() : undefined)),

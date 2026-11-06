@@ -160,7 +160,8 @@ export class ReadPool {
     };
   }
 
-  // Close stops the workers and fails the queued and running queries. The
+  // Close stops the workers (idle ones close their connections first) and
+  // fails the queued and running queries. The
   // promise resolves once every worker thread, abandoned ones included, has
   // exited.
   close(): Promise<void> {
@@ -173,8 +174,15 @@ export class ReadPool {
       }
       for (const slot of this.slots.splice(0)) {
         const request = slot.request;
-        slot.worker.terminate();
-        if (request !== null) {
+        if (request === null) {
+          // an idle worker closes its connections and ends its thread, so
+          // that SQLite checkpoints and removes the -wal and -shm files
+          // once the last connection of a database is gone
+          slot.worker.ref();
+          // oxlint-disable-next-line unicorn/require-post-message-target-origin
+          slot.worker.postMessage("close");
+        } else {
+          slot.worker.terminate();
           this.settle(request);
           request.reject(err);
         }
