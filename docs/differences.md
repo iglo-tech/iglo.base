@@ -42,6 +42,8 @@ Each row says what a client could see. "No client sends this" means only a hand-
 | Paths with `.` or `..` segments | `307` redirect to the cleaned path. | Answered as the cleaned path, without the redirect. No client sends this. `%2e%2e` and `\` are not resolved in either. |
 | Repeated request header lines | `@request.headers.*` sees the first line. A trusted proxy header is read from its last line. | The lines are joined with `, `. With **Use leftmost IP** on, the leftmost IP of the first line is used. Only matters when a client or proxy sends the same header twice. |
 | A realtime client that stops reading | The server keeps every unsent message and delivers all of them if the client reads again. | The server closes the stream once more than 8 MiB are unsent. SDKs reconnect and subscribe again. |
+| The same OTP or MFA session sent twice at once (a double submit) | Both requests log in. | One logs in; the other gets `400 Invalid or expired OTP.`, as for a used code. |
+| Several password-reset or verification requests for one email at once | Each sends an email. | One email; the two-minute resend limit starts when the request arrives. |
 
 ### Timing
 
