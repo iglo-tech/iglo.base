@@ -9,10 +9,14 @@ import {
   RequestInfoContextOTP,
 } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
-import { firstApiError, recordAuthResponseWithNewToken } from "@/apis/record-helpers";
+import {
+  consumeOTPSync,
+  firstApiError,
+  recordAuthResponseWithNewToken,
+} from "@/apis/record-helpers";
 import { checkRateLimit } from "@/middlewares/rate-limit";
 import { MFAMethodOTP } from "@/records/mfa-model";
-import { deleteOTP, type OTP } from "@/records/otp-model";
+import type { OTP } from "@/records/otp-model";
 import { findOTPById } from "@/records/otp-query";
 import type { Record } from "@/records/record-model";
 import { findRecordById } from "@/records/record-query";
@@ -110,10 +114,19 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
 
   // eagerly delete the OTP to avoid unnecessary double delete model hook calls
   // triggered by the password change below
+  //
+  // the delete is synchronous and must find the row: of several concurrent
+  // requests with the same valid code only the first one passes (the password
+  // check above is awaited), the others answer like for an invalid OTP
   try {
-    await deleteOTP(e.app, otp);
+    consumeOTPSync(e.app, otp);
   } catch (err) {
-    e.app.logger.error("Failed to delete used OTP", { error: err, otpId });
+    return e.badRequestError(
+      "Invalid or expired OTP",
+      new Error(`failed to consume the OTP: ${err instanceof Error ? err.message : String(err)}`, {
+        cause: err,
+      }),
+    );
   }
 
   // update the user email verified state in case the OTP originate from an email address matching the current record one
