@@ -2,7 +2,15 @@
 // process. Tests talk to it only through argv, exit codes, the standard
 // streams and HTTP.
 
-import { mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -86,9 +94,14 @@ export async function run(args: string[], options: { cwd?: string } = {}): Promi
 // Ports are taken below the OS's ephemeral range (Linux 32768+, macOS 49152+),
 // so outgoing connections never hold one, and each is claimed with an
 // exclusive marker file in the temp dir so that parallel test processes and
-// agents on a shared host cannot hand out the same port. A marker whose
-// process is gone is reused.
+// agents on a shared host cannot hand out the same port. A marker only has to
+// cover the gap between choosing a port and the server binding it (a bound
+// port fails the bind check of everyone else), so it is released when the
+// server or listener that used the port stops (`releasePort`), when the
+// process exits, and, as a backstop for a caller that never releases, it
+// expires after `claimLease`. A marker whose process is gone is reused too.
 const portRange = { from: 20_000, to: 32_000 };
+const claimLease = 60_000;
 // (not under tmpdir(): test/support/temp-root.ts points TMPDIR at a directory
 // of its own run, and the claims must be seen by every run on the host)
 const claimDir = join("/tmp", `iglo-base-ports-${userInfo().uid}`);
@@ -103,30 +116,70 @@ function pidAlive(pid: number): boolean {
   }
 }
 
-function claim(port: number): boolean {
-  if (claimedHere.has(port)) return false;
-  mkdirSync(claimDir, { recursive: true });
-  const marker = join(claimDir, String(port));
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      writeFileSync(marker, String(process.pid), { flag: "wx" });
-      claimedHere.add(port);
-      return true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      let owner = 0;
-      try {
-        owner = Number(readFileSync(marker, "utf8"));
-      } catch {
-        continue;
-      }
-      if (owner === process.pid || pidAlive(owner)) return false;
-      try {
-        unlinkSync(marker);
-      } catch {}
-    }
+function markerPath(port: number): string {
+  return join(claimDir, String(port));
+}
+
+function markerOwner(port: number): number {
+  try {
+    return Number(readFileSync(markerPath(port), "utf8"));
+  } catch {
+    return 0;
   }
-  return false;
+}
+
+// Gives the port back: the next freePort() may hand it out again. Safe to
+// call for a port that was never claimed here, or twice.
+export function releasePort(port: number): void {
+  claimedHere.delete(port);
+  if (markerOwner(port) !== process.pid) return;
+  try {
+    unlinkSync(markerPath(port));
+  } catch {}
+}
+
+process.on("exit", () => {
+  for (const port of claimedHere) releasePort(port);
+});
+
+// Replaces the marker of a dead or expired claim with ours. rename is atomic,
+// so of several takers the last one wins, and reading the marker back tells
+// each whether it was us.
+function takeOver(port: number): boolean {
+  const own = join(claimDir, `${port}.${process.pid}.${Math.random().toString(36).slice(2)}`);
+  try {
+    writeFileSync(own, String(process.pid));
+    renameSync(own, markerPath(port));
+  } catch {
+    try {
+      unlinkSync(own);
+    } catch {}
+    return false;
+  }
+  return markerOwner(port) === process.pid;
+}
+
+function claim(port: number): boolean {
+  mkdirSync(claimDir, { recursive: true });
+  const marker = markerPath(port);
+  try {
+    writeFileSync(marker, String(process.pid), { flag: "wx" });
+    claimedHere.add(port);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  const owner = markerOwner(port);
+  let expired = false;
+  try {
+    expired = Date.now() - statSync(marker).mtimeMs > claimLease;
+  } catch {
+    return false;
+  }
+  if (owner !== 0 && pidAlive(owner) && !expired) return false;
+  if (!takeOver(port)) return false;
+  claimedHere.add(port);
+  return true;
 }
 
 export async function freePort(): Promise<number> {
@@ -138,7 +191,8 @@ export async function freePort(): Promise<number> {
       listener.stop(true);
       return port;
     } catch {
-      // in use by an unrelated process: the marker stays so it is not retried
+      // in use by an unrelated process or a live server of a lapsed claim:
+      // the marker stays (renewed) so it is not retried at once
     }
   }
   throw new Error("no free port in the test range");
@@ -199,6 +253,7 @@ export async function startServer(
     ]);
     if (!chunk || chunk.done) {
       proc.kill();
+      releasePort(port);
       throw new Error(`server did not start:\n${stdout}\n${await stderrText}`);
     }
     stdout += decoder.decode(chunk.value, { stream: true });
@@ -221,7 +276,9 @@ export async function startServer(
     async stop() {
       proc.kill("SIGTERM");
       await pumped;
-      return { exitCode: await proc.exited, stdout, stderr: await stderrText };
+      const exitCode = await proc.exited;
+      releasePort(port);
+      return { exitCode, stdout, stderr: await stderrText };
     },
     async waitForOutput(text, timeoutMs = 10_000) {
       const until = Date.now() + timeoutMs;

@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { spawnChild, waitUntilReady } from "@test/support/child";
-import { freePort } from "@test/support/executable";
+import { freePort, releasePort } from "@test/support/executable";
 import { defaultLayout, requireTool, type Layout } from "@test/support/reference-tools";
 
 export interface UpstreamServer {
@@ -82,6 +82,7 @@ export async function startUpstream(
     }
   } catch (error) {
     await child.stop();
+    releasePort(port);
     rmSync(root, { recursive: true, force: true });
     throw error;
   }
@@ -95,6 +96,7 @@ export async function startUpstream(
       try {
         await child.stop();
       } finally {
+        releasePort(port);
         rmSync(root, { recursive: true, force: true });
       }
     },

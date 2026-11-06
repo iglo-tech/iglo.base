@@ -254,8 +254,8 @@ describe("what a zip has", () => {
 // The list while the auto-backup job prunes: upstream's List walks the
 // directory and answers 400 ("Failed to retrieve backup items") when a file
 // vanishes between the walk and its stat (apis/backup.go backupsList; once in
-// 37,693 requests). A request that raced a prune is repeated; a 400 that
-// stays is an error.
+// 37,693 requests). A request that raced a prune is repeated; any other
+// answer, or the same 400 that stays, is an error.
 async function keys(server: Server): Promise<string[]> {
   let last = "";
   for (let attempt = 0; attempt < 20; attempt++) {
@@ -268,6 +268,16 @@ async function keys(server: Server): Promise<string[]> {
         .filter((key) => !key.endsWith(".tmp"));
     }
     last = `${res.status} ${await res.text()}`;
+    // only that race is repeated: apis/backup.go answers 400 "Failed to
+    // retrieve backup items. Raw error: ..." with the stat error of the
+    // vanished file; any other status or message fails at once
+    if (
+      res.status !== 400 ||
+      !last.includes("Failed to retrieve backup items") ||
+      !last.includes("no such file or directory")
+    ) {
+      break;
+    }
     await Bun.sleep(50);
   }
   throw new Error(`GET /api/backups: ${last}`);

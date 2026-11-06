@@ -413,6 +413,7 @@ export function compareRecordings(
       out.push(`step ${i + 1}: only ${up ? "upstream" : "iglo.base"} has "${(up ?? ig)?.label}"`);
       continue;
     }
+    pairing.beginStep();
     const where = `step ${i + 1} "${up.label}"`;
     if (up.label !== ig.label) {
       out.push(`${where}: iglo.base's step is "${ig.label}"`);
@@ -424,12 +425,7 @@ export function compareRecordings(
     }
     const context = (e: Exchange) => ({
       start,
-      request: {
-        method: e.method,
-        url: e.url,
-        body: e.requestBody,
-        headers: e.requestHeaders,
-      },
+      request: { url: e.url, body: e.requestBody, headers: e.requestHeaders },
     });
     for (let j = 0; j < exchanges; j++) {
       const a = up.exchanges[j] as Exchange;
@@ -445,8 +441,6 @@ export function compareRecordings(
     const sent = {
       start,
       request: {
-        // a step that wrote (a batch's results) shows values its writes drew
-        method: up.exchanges.find((e) => !["GET", "HEAD"].includes(e.method.toUpperCase()))?.method,
         url: up.exchanges.map((e) => e.url).join("\n"),
         body: up.exchanges.map((e) => e.requestBody).join("\n"),
         headers: {},
