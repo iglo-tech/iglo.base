@@ -252,7 +252,13 @@ describe("_externalAuths across the servers", () => {
         });
         expect(row?.["id"]).toMatch(/^[a-z0-9]{15}$/);
         expect(row?.["created"]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-        expect(row?.["updated"]).toBe(row?.["created"]);
+        // each autodate field reads the clock on its own, so the two can
+        // differ by a millisecond (upstream's AutodateField does too)
+        const gap =
+          Date.parse(String(row?.["updated"]).replace(" ", "T")) -
+          Date.parse(String(row?.["created"]).replace(" ", "T"));
+        expect(gap).toBeGreaterThanOrEqual(0);
+        expect(gap).toBeLessThan(1000);
 
         // the reader finds the record through the link, and unlinks it
         const second = await start(reader, dataDir);
@@ -373,7 +379,12 @@ describe("what a sign-in triggers", () => {
             const created = await signIn(server);
             await stream.waitFor((e) => e.length > 2);
 
-            const list = actions(await settled(stream)).map((a) => a.replace(/ [a-z0-9]{15}$/, ""));
+            // upstream sends every message from its own goroutine
+            // (apis/realtime.go: routine.FireAndForget around client.Send),
+            // so the order of the create and the update is not defined
+            const list = actions(await settled(stream))
+              .map((a) => a.replace(/ [a-z0-9]{15}$/, ""))
+              .toSorted();
             return { refused, created, list };
           } finally {
             ctx.close();

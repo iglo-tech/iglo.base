@@ -424,7 +424,12 @@ export function compareRecordings(
     }
     const context = (e: Exchange) => ({
       start,
-      request: { url: e.url, body: e.requestBody, headers: e.requestHeaders },
+      request: {
+        method: e.method,
+        url: e.url,
+        body: e.requestBody,
+        headers: e.requestHeaders,
+      },
     });
     for (let j = 0; j < exchanges; j++) {
       const a = up.exchanges[j] as Exchange;

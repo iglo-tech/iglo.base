@@ -2,7 +2,7 @@
 // process. Tests talk to it only through argv, exit codes, the standard
 // streams and HTTP.
 
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -83,15 +83,63 @@ export async function run(args: string[], options: { cwd?: string } = {}): Promi
   return { exitCode, stdout, stderr };
 }
 
+// Ports are taken below the OS's ephemeral range (Linux 32768+, macOS 49152+),
+// so outgoing connections never hold one, and each is claimed with an
+// exclusive marker file in the temp dir so that parallel test processes and
+// agents on a shared host cannot hand out the same port. A marker whose
+// process is gone is reused.
+const portRange = { from: 20_000, to: 32_000 };
+const claimDir = join(tmpdir(), "iglo-base-ports");
+const claimedHere = new Set<number>();
+
+function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+function claim(port: number): boolean {
+  if (claimedHere.has(port)) return false;
+  mkdirSync(claimDir, { recursive: true });
+  const marker = join(claimDir, String(port));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      writeFileSync(marker, String(process.pid), { flag: "wx" });
+      claimedHere.add(port);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      let owner = 0;
+      try {
+        owner = Number(readFileSync(marker, "utf8"));
+      } catch {
+        continue;
+      }
+      if (owner === process.pid || pidAlive(owner)) return false;
+      try {
+        unlinkSync(marker);
+      } catch {}
+    }
+  }
+  return false;
+}
+
 export async function freePort(): Promise<number> {
-  const listener = Bun.listen({
-    hostname: "127.0.0.1",
-    port: 0,
-    socket: { data() {} },
-  });
-  const { port } = listener;
-  listener.stop(true);
-  return port;
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const port = portRange.from + Math.floor(Math.random() * (portRange.to - portRange.from));
+    if (!claim(port)) continue;
+    try {
+      const listener = Bun.listen({ hostname: "127.0.0.1", port, socket: { data() {} } });
+      listener.stop(true);
+      return port;
+    } catch {
+      // in use by an unrelated process: the marker stays so it is not retried
+    }
+  }
+  throw new Error("no free port in the test range");
 }
 
 export interface RunningServer {

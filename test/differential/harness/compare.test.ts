@@ -192,6 +192,73 @@ describe("generated values", () => {
     ).toEqual([]);
   });
 
+  // P.6: two writes of one record within a millisecond share an `updated`
+  // on one server and not on the other (batch create + update)
+  test("a write draws a record's updated again, a read must show the last draw", () => {
+    const pairing = new Pairing();
+    const context = (method: string): Context => ({
+      start: { contains: () => false },
+      request: { method, url: "/api/batch" },
+    });
+    const body = (updated: string) => res(`{"id":"sdkbatchfile001","updated":"${updated}"}`);
+    // create and update: the same millisecond upstream, two on iglo.base
+    expect(
+      compareResponses(
+        body("2026-11-06 10:00:00.123Z"),
+        body("2026-11-06 10:00:05.100Z"),
+        context("POST"),
+        pairing,
+      ),
+    ).toEqual([]);
+    expect(
+      compareResponses(
+        body("2026-11-06 10:00:00.123Z"),
+        body("2026-11-06 10:00:05.101Z"),
+        context("POST"),
+        pairing,
+      ),
+    ).toEqual([]);
+    // the read-back shows the last draw on both
+    expect(
+      compareResponses(
+        body("2026-11-06 10:00:00.123Z"),
+        body("2026-11-06 10:00:05.101Z"),
+        context("GET"),
+        pairing,
+      ),
+    ).toEqual([]);
+    // iglo.base reading the first draw back is a difference
+    expect(
+      compareResponses(
+        body("2026-11-06 10:00:00.123Z"),
+        body("2026-11-06 10:00:05.100Z"),
+        context("GET"),
+        pairing,
+      ),
+    ).toContain(
+      'body updated: timestamps not paired consistently: upstream "2026-11-06 10:00:00.123Z", iglo.base "2026-11-06 10:00:05.100Z"',
+    );
+    // `created` is never drawn again
+    expect(
+      compareResponses(
+        res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:00.123Z"}'),
+        res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:05.100Z"}'),
+        context("POST"),
+        pairing,
+      ),
+    ).toEqual([]);
+    expect(
+      compareResponses(
+        res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:00.123Z"}'),
+        res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:05.101Z"}'),
+        context("POST"),
+        pairing,
+      ),
+    ).toContain(
+      'body created: timestamps not paired consistently: upstream "2026-11-06 10:00:00.123Z", iglo.base "2026-11-06 10:00:05.101Z"',
+    );
+  });
+
   test("a record's updated pairs on its own, the other way around too", () => {
     const pairing = new Pairing();
     const context: Context = {

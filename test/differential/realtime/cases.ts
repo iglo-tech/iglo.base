@@ -784,7 +784,16 @@ export const realtimeCases: RealtimeScenario[] = [
       // delete transaction)
       const demo1 = await subscribed(ctx, ["demo1/*"], superuserToken);
       const del = response(await ctx.api("DELETE", `/api/collections/users/records/${user2Id}`));
-      return { del, demo1: events(await demo1.settle()) };
+      // upstream sends every message from its own goroutine
+      // (apis/realtime.go realtimeBroadcastRecord: routine.FireAndForget
+      // around client.Send), so the order of the several updates one
+      // transaction makes is not defined, between two upstream runs too: the
+      // events are compared as a set
+      const observed = events(await demo1.settle());
+      // (sorted by the data without its timestamps, which differ per server)
+      const key = (e: Observation) =>
+        (e.data as string).replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
+      return { del, demo1: observed.toSorted((a, b) => (key(a) < key(b) ? -1 : 1)) };
     },
   },
   {
