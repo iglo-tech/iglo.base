@@ -2,15 +2,13 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-05
+Updated: 2026-11-06
 
-Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). No task active: every post-MVP task agents can do is merged (P.1, P.2, P.3, P.5). P.4 waits for the answer below.
+Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). P.4: the docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), which an agent is building now (owner, 2026-11-06); it pulls the docs from this repository at build time.
 
 ## Needs you
 
-1. **Release v1.1.0?** `main` now has the faster start (P.3) and the macOS and linux-arm64 builds (P.2), which v1.0.0 lacks. Recommended: yes, so the Docker image also gets its arm64 variant (a v1.0.0 rebuild cannot, as that release has only the linux-x64 archive). Say "release 1.1.0" and I do it as for v1.0.0.
-2. **Make the Docker image public.** It is published as `ghcr.io/iglo-tech/iglo.base:1.0.0`, but GitHub made the package private, and only an org admin can change that: github.com/orgs/iglo-tech/packages/container/iglo.base/settings → Change visibility → Public. Skip it if you want the image private.
-3. **P.4, docs on iglo.tech: where does the site live?** The plan puts the user docs at `https://iglo.tech/iglo.base/docs`. I need the site's repository (or "make it a folder in this repository, published by you"). Until then P.4 waits; the other post-MVP tasks go first.
+1. **Release v1.1.0?** `main` now has the faster start (P.3) and the macOS and linux-arm64 builds (P.2), which v1.0.0 lacks. Recommended: yes, so the Docker image also gets its arm64 variant. Say "release 1.1.0".
 
 ## Active
 
