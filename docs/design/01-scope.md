@@ -134,7 +134,7 @@ A `.autocert_cache` directory written by upstream is left untouched and stays ex
 | HTTP | CORS (`--origins`), gzip, body limits, rate limits, trusted proxy headers, `/api/health` (TLS is the reverse proxy's, D30) |
 | CLI | `serve`, `superuser upsert/create/update/delete/otp/ips`, `migrate up/down/create/collections/history-sync`, `--dir`, `--dev`, `--encryptionEnv`, `--queryTimeout`, `--http`, `--origins`, `--publicDir`, `--indexFallback`, `--migrationsDir`, `--automigrate` |
 | Admin dashboard | upstream's `/_/` dashboard, including the installer link for the first superuser ([Admin UI](08-admin-ui.md)) |
-| Platforms | linux-x64 (MVP), linux-arm64 and darwin-arm64 (P.2) release binaries ([D18](10-decisions.md#d18-release-platforms), [D24](10-decisions.md#d24-mvp-targets-linux-x64-only), [D34](10-decisions.md#d34-macos-sqlite-built-embedded-and-loaded)) |
+| Platforms | linux-x64 and linux-arm64 release binaries; Linux only ([D18](10-decisions.md#d18-release-platforms), [D24](10-decisions.md#d24-mvp-targets-linux-x64-only), [D35](10-decisions.md#d35-linux-only)) |
 
 ## Compatibility promise
 

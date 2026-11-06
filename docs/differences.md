@@ -21,7 +21,7 @@ Still there: JavaScript migrations in `pb_migrations`, the `migrate` and `superu
 
 ## Platforms
 
-Release executables exist for Linux x64, Linux arm64 and macOS on Apple silicon, and the Docker image is built for linux/amd64 and linux/arm64. The arm64 and macOS executables and the arm64 image start with release 1.1.0; 1.0.0 has only Linux x64. Windows, FreeBSD, 32-bit ARM and Intel Macs are not supported.
+Release executables exist for Linux x64 and Linux arm64, and the Docker image is built for linux/amd64 and linux/arm64. The arm64 executable and image start with release 1.1.0; 1.0.0 has only Linux x64. Only Linux is supported: macOS, Windows, FreeBSD and 32-bit ARM have no build (on other systems, run from source with Bun, untested). Releases 1.0.0 and 1.1.0 keep the macOS archive they were published with.
 
 ## Version output
 
@@ -60,7 +60,7 @@ In most cases iglo.base is faster than PocketBase; the cases where PocketBase le
 | Batch requests and OAuth2 sign-ups with files, with S3 | The file is uploaded inside the database transaction. | The upload happens before the transaction opens, and files no committed record refers to are deleted afterwards. The responses and the stored objects are the same, but a request that is then refused can leave its files in the bucket for a moment, and the upload does not count against `batch.timeout`. |
 | `$app.newFilesystem()` in a migration | Returns a filesystem for the configured storage. | With S3 enabled it fails with an error that says why: a migration runs inside a transaction and cannot make network calls. On local storage it is not bound either (`app.newFilesystem is not available in iglo.base migrations`), so a migration that uses it works on PocketBase and fails here. |
 | `pb_public` files over 16 MiB, and multi-range responses over 16 MiB (zip, pdf and similar types) | No `Content-Disposition` header. | `Content-Disposition: filename="<name>"`. Browsers show or download these files as before. |
-| GIF thumbnails (`?thumb=`) on arm64 | Exact pixels. | On linux/arm64 and macOS the pixels of some GIF thumbnails differ from PocketBase's (the average error is about 15 on a 0–255 scale per channel). The cause is most likely different floating-point code in PocketBase's Go build on arm64. On x64 they are the same. |
+| GIF thumbnails (`?thumb=`) on arm64 | Exact pixels. | On linux/arm64 the pixels of some GIF thumbnails differ from PocketBase's (the average error is about 15 on a 0–255 scale per channel). The cause is most likely different floating-point code in PocketBase's Go build on arm64. On x64 they are the same. |
 
 ### Errors
 
@@ -80,7 +80,6 @@ In most cases iglo.base is faster than PocketBase; the cases where PocketBase le
 
 | Area | PocketBase | iglo.base |
 |---|---|---|
-| Settings and collections notify between a running iglo.base and a running PocketBase on macOS | PocketBase's file watcher (kqueue on macOS) often misses markers that are created and removed at once, even its own. | The same markers are written. The iglo.base to PocketBase direction is not verified on macOS; it is tested on Linux. Between iglo.base instances and the CLI the notify works on macOS. |
 
 ## Where the list comes from
 

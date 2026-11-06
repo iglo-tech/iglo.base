@@ -35,7 +35,6 @@ import {
 } from "@/backups/restore-phase";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
-import { loadSQLite } from "@/db/sqlite-lib";
 import { goQuote } from "@/fields/field";
 import { checkExistingDataDir } from "@/migrations/system-migrations";
 import { goBase } from "@/tools/filesystem/file";
@@ -60,7 +59,6 @@ function checkExtractedData(dir: string): void {
 
     const auxPath = join(dir, auxDBFilename);
     if (existsSync(auxPath)) {
-      loadSQLite();
       const conn = new Database(auxPath, { readonly: true });
       try {
         conn.query("SELECT count(*) FROM sqlite_schema").get();

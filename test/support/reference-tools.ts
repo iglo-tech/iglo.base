@@ -65,7 +65,8 @@ export function readLock(path = defaultLockPath): Lock {
   return JSON.parse(readFileSync(path, "utf8")) as Lock;
 }
 
-// "linux-x64", "linux-arm64" or "darwin-arm64" for this host (D18); other
+// "linux-x64" or "linux-arm64" for this host (D35); darwin-arm64 stays in the
+// lock so the suite still runs from source on a Mac (not supported); other
 // hosts are not in the lock and are rejected by the prepare command.
 export function hostPlatform(): string {
   return `${process.platform}-${process.arch}`;

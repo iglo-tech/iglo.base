@@ -8,14 +8,11 @@
 import { Database } from "bun:sqlite";
 import { closeSync, rmSync } from "node:fs";
 
-import { loadSQLite } from "@/db/sqlite-lib";
 import type { BackupRequest, BackupResponse } from "@/backups/worker-client";
 import { extract } from "@/tools/archive/extract";
 import { ZipWriter } from "@/tools/archive/zip-writer";
 
 declare const self: Worker;
-
-loadSQLite();
 
 // the checkpoint waits this long for readers: a write on the main thread
 // waits behind it

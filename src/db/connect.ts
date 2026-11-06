@@ -11,7 +11,6 @@
 import { Database } from "bun:sqlite";
 
 import { newFromDB, type DB } from "@/db/dbx/db";
-import { loadSQLite } from "@/db/sqlite-lib";
 
 // Note: the busy_timeout pragma must be first because
 // the connection needs to be set to block on busy before WAL mode
@@ -32,7 +31,6 @@ export const connectPragmas: readonly string[] = Object.freeze([
 export type DBConnectFunc = (dbPath: string) => DB;
 
 export function defaultDBConnect(dbPath: string): DB {
-  loadSQLite();
   return newFromDB(
     openWithPragmas(new Database(dbPath, { create: true, readwrite: true })),
     "sqlite",
@@ -44,14 +42,12 @@ export function defaultDBConnect(dbPath: string): DB {
 // same DSN. The file must exist and be in WAL mode already (the write
 // connection opens first), so journal_mode(WAL) changes nothing.
 export function openReadOnly(dbPath: string): Database {
-  loadSQLite();
   return openWithPragmas(new Database(dbPath, { readonly: true }));
 }
 
 // the read-write connection of the log writer thread (src/logs/log-worker.ts):
 // upstream's pragmas on a connection of its own to auxiliary.db
 export function openReadWrite(dbPath: string): Database {
-  loadSQLite();
   return openWithPragmas(new Database(dbPath, { create: true, readwrite: true }));
 }
 
