@@ -8,7 +8,7 @@
 // objects of the same sizes. The per-collection limit of the record routes is covered by
 // the records write scenarios (body > / <= collection BodyLimit).
 
-import { afterAll, beforeAll, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 
 import { newRouter } from "@/apis/base";
 import type { RequestEvent } from "@/app/event-request";
@@ -221,7 +221,14 @@ test("a JSON body is read only up to the decoder buffer after its first value", 
 // the 32 MiB bodies of the default limit cases take about 5 s, the default
 // test timeout; a timed-out case would keep running next to the following
 // ones and multiply the memory they use
-const caseTimeout = 60_000;
+// (a full `bun test` run holds a large heap and shares the host, and a
+// 32 MiB case then ran past 60 s once: the timeout leaves room for that, and
+// every case frees its body before the next one starts)
+const caseTimeout = 180_000;
+
+afterEach(() => {
+  Bun.gc(true);
+});
 
 for (const s of scenarios) {
   test(
