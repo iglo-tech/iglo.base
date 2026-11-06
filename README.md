@@ -4,7 +4,7 @@
 
 Your existing PocketBase apps, SDKs and `pb_data` work unchanged. If you change your mind, PocketBase opens the same data again.
 
-[Download](https://github.com/iglo-tech/iglo.base/releases/latest) · [Docker image](#docker) · [Move from PocketBase](docs/cutover.md) · [Why iglo.base?](docs/why-iglo-base.md)
+[Download](https://github.com/iglo-tech/iglo.base/releases/latest) · [Docker image](#docker) · [Operations guide](docs/operations.md) · [Move from PocketBase](docs/cutover.md) · [Differences](docs/differences.md) · [Why iglo.base?](docs/why-iglo-base.md)
 
 ## Quick start
 
@@ -16,6 +16,8 @@ Your existing PocketBase apps, SDKs and `pb_data` work unchanged. If you change 
    ```
 
 3. Open the installer link the server prints, create your first superuser, and you land in the dashboard at http://127.0.0.1:8090/_/.
+
+For a service, a reverse proxy with TLS, backups and upgrades, see the [operations guide](docs/operations.md).
 
 Your API is at http://127.0.0.1:8090/api/. All data goes into `pb_data/` next to the executable.
 
@@ -119,7 +121,7 @@ iglo.base runs the same product with no extension surface. It does not have:
 - The `update` command. Download a new release, or pull a new image.
 - Built-in HTTPS (`--https`, `serve example.com`). Put a reverse proxy such as Caddy or nginx in front for TLS.
 
-A few edge cases behave slightly differently, such as error texts for malformed requests and the timing of query timeouts. Each one is listed in [API compatibility](docs/design/04-api-compatibility.md#deliberate-differences). Every other API response is checked against PocketBase v0.41.0 by a differential test suite.
+A few edge cases behave slightly differently, such as error texts for malformed requests and the timing of query timeouts. Each one is listed in [Differences from PocketBase](docs/differences.md). Every other API response is checked against PocketBase v0.41.0 by a differential test suite.
 
 ## Status
 
