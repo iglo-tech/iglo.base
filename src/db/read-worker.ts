@@ -62,7 +62,8 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage | "clos
       }
     }
     conns.clear();
-    self.close();
+    // WorkerGlobalScope.close(), ending this thread
+    (self as unknown as { close(): void }).close();
     return;
   }
   let res: ReadResponseMessage;

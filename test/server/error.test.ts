@@ -7,6 +7,8 @@
 
 import { describe, expect, test } from "bun:test";
 
+import { NoRowsError } from "@/db/dbx/rows";
+
 import {
   ErrNoRows,
   errorsIs,
@@ -242,6 +244,8 @@ describe("ToApiError", () => {
       notFound,
     ],
     ["sql.ErrNoRows", ErrNoRows, notFound],
+    ["the db layer's no-rows error", new NoRowsError(), notFound],
+    ["wrapped no-rows error", new Error("wrapped", { cause: new NoRowsError() }), notFound],
     ["ApiError", newForbiddenError("test", null), `{"data":{},"message":"Test.","status":403}`],
     [
       "wrapped ApiError",
