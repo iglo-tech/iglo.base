@@ -445,6 +445,8 @@ export function compareRecordings(
     const sent = {
       start,
       request: {
+        // a step that wrote (a batch's results) shows values its writes drew
+        method: up.exchanges.find((e) => !["GET", "HEAD"].includes(e.method.toUpperCase()))?.method,
         url: up.exchanges.map((e) => e.url).join("\n"),
         body: up.exchanges.map((e) => e.requestBody).join("\n"),
         headers: {},

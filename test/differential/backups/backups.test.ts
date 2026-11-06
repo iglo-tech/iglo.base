@@ -261,7 +261,11 @@ async function keys(server: Server): Promise<string[]> {
   for (let attempt = 0; attempt < 20; attempt++) {
     const res = await fetch(`${server.url}/api/backups`, { headers: asSuperuser });
     if (res.status === 200) {
-      return ((await res.json()) as { key: string }[]).map((b) => b.key);
+      // a backup still being written is listed under its temp name
+      // (fileblob's `<key>.<hex>.tmp`, in both servers) until it is renamed
+      return ((await res.json()) as { key: string }[])
+        .map((b) => b.key)
+        .filter((key) => !key.endsWith(".tmp"));
     }
     last = `${res.status} ${await res.text()}`;
     await Bun.sleep(50);

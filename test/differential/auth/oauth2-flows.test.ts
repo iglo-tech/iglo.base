@@ -253,12 +253,11 @@ describe("_externalAuths across the servers", () => {
         expect(row?.["id"]).toMatch(/^[a-z0-9]{15}$/);
         expect(row?.["created"]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);
         // each autodate field reads the clock on its own, so the two can
-        // differ by a millisecond (upstream's AutodateField does too)
+        // differ by a millisecond either way (upstream's AutodateField does too)
         const gap =
           Date.parse(String(row?.["updated"]).replace(" ", "T")) -
           Date.parse(String(row?.["created"]).replace(" ", "T"));
-        expect(gap).toBeGreaterThanOrEqual(0);
-        expect(gap).toBeLessThan(1000);
+        expect(Math.abs(gap)).toBeLessThan(1000);
 
         // the reader finds the record through the link, and unlinks it
         const second = await start(reader, dataDir);
