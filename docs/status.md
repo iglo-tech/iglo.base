@@ -14,7 +14,7 @@ Nothing.
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.7 | worker | task/P.7-backlog-sweep | 0 | Backlog sweep ([brief](briefs/P.7.md)) |
+| P.7 | review | [#85](https://github.com/iglo-tech/iglo.base/pull/85) | 1 | Backlog sweep ([brief](briefs/P.7.md)) |
 
 ## Done
 
