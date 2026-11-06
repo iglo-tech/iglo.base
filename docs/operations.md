@@ -141,7 +141,7 @@ None is needed. The server reads these:
 | `TZ` | system time zone | Go's local time zone, used where PocketBase uses it: some conversions of date values that carry no zone, and time values in JavaScript migrations. Stored timestamps are always UTC, and cron expressions, including the backup schedule, always run in UTC. |
 | `XDG_CACHE_HOME` | | macOS only: parent of the SQLite library cache. |
 
-A value that is not a number falls back to the default.
+A value that is not a number falls back to the default. For the counts (`PB_THUMBS_*`, `PB_FILES_DELETE_MAX_WORKERS`), 0 and negative values fall back too; `PB_ID_TOKEN_LEEWAY` takes any integer.
 
 ### Directories
 
@@ -247,7 +247,7 @@ iglo.base serves plain HTTP. Let a reverse proxy end TLS. Keep iglo.base on `127
 Two things matter for the proxy:
 
 - **Realtime uses server-sent events (SSE).** `GET /api/realtime` is a response that stays open and sends events whenever they happen. The proxy must not buffer it and must not close it for being idle. The server sends `X-Accel-Buffering: no`, and closes a connection after 5 minutes without a message and after 30 minutes in all; the client SDKs then reconnect. Set the read timeout of the proxy above 5 minutes.
-- **The client IP.** Behind a proxy every request comes from the proxy's address. Rate limits, logs and the superuser IP allow-list use the client IP, so tell iglo.base which header carries it: dashboard **Settings → Application → IP proxy headers**, or `trustedProxy.headers` in the settings API. Use a header that only your proxy sets, such as `X-Forwarded-For`. Leave **Use leftmost IP** off for the configs below: nginx appends the real client address to the right of any value the client sent, Caddy replaces an untrusted incoming value with the client address, and iglo.base takes the rightmost address, which is the proxy's own in both cases. If a client could send the header itself and your proxy passes it on unchanged, the client IP can be faked. The dashboard shows "Detected proxy header" when a request arrives with a header it recognizes.
+- **The client IP.** Behind a proxy every request comes from the proxy's address. Rate limits, logs and the superuser IP allow-list use the client IP, so tell iglo.base which header carries it: dashboard **Settings → Application → IP proxy headers**, or `trustedProxy.headers` in the settings API. Use a header that only your proxy sets, such as `X-Forwarded-For`. Leave **Use leftmost IP** off for the configs below: nginx appends the real client address to the right of any value the client sent, Caddy replaces an untrusted incoming value with the client address, and iglo.base takes the rightmost address, which is the address your proxy wrote in both cases. If a client could send the header itself and your proxy passes it on unchanged, the client IP can be faked. The dashboard shows "Detected proxy header" when a request arrives with a header it recognizes.
 
 ### Caddy
 
@@ -270,9 +270,6 @@ Caddy sets `X-Forwarded-For` to the client's address by itself and drops a value
 ### nginx
 
 `/etc/nginx/conf.d/iglo.conf`, with a certificate from Let's Encrypt (for example with `certbot`) or your own. It works on nginx 1.22 and later and talks HTTP/1.1 to clients, which is enough for SSE. To add HTTP/2, write `listen 443 ssl http2;` (nginx before 1.25.1) or add `http2 on;` (1.25.1 and later).
-
-```nginx
-
 
 ```nginx
 server {
@@ -398,7 +395,7 @@ There is no `update` command. A version number is not a promise of a release sch
 
 ## Other commands
 
-The commands use the same global flags. Run them with the same `--dir` as the server; they can run while the server is up, but `superuser ips` takes effect only after a restart (see below).
+The commands use the same global flags. Run them with the same `--dir` as the server; they can run while the server is up. A running server keeps settings and collections in memory, so a change a command makes to them takes effect only after a restart: `superuser ips` (see below), and `migrate up`, `migrate down` or `migrate collections` when a migration changes collections or settings. PocketBase picks such changes up while it runs.
 
 ### `superuser`
 
@@ -430,7 +427,7 @@ Applies and manages the JavaScript files in `pb_migrations`:
 
 The three commands that ask read the answer from standard input; without a terminal the answer is no and the command is cancelled, so in a script pipe it in (`echo y | ./iglo-base migrate create add_posts`).
 
-`serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
+`serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. If you run it against a running server, restart the server afterwards: until then it serves the collections it loaded at start. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
 
 ### `update`
 
