@@ -49,6 +49,8 @@ export interface Recorded {
   label: string;
   request: Scenario;
   response: ScenarioResponse;
+  // when the response arrived (ms since the epoch)
+  at: number;
 }
 
 export interface RequestOptions {
@@ -178,7 +180,7 @@ export class Client {
       ...(body === undefined ? {} : { body }),
       expectedStatus: 0,
     };
-    this.recorded.push({ label: `${method} ${path}`, request, response });
+    this.recorded.push({ label: `${method} ${path}`, request, response, at: Date.now() });
     return response;
   }
 }
@@ -512,7 +514,9 @@ export function compareRecorded(
           comparable(entry.response, control),
           comparable(peer.response, subject),
           { start, request: entry.request },
-          new Pairing(),
+          // the legs run one after the other, so a token's exp is later by
+          // the time between the two answers
+          new Pairing({ clockOffset: Math.round((peer.at - entry.at) / 1000) }),
         ).map((d) => `leg ${leg + 1}: ${entry.label}: ${d}`),
       );
     });

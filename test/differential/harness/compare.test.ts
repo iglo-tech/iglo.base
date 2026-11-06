@@ -2,11 +2,30 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { compareResponses, Pairing, type Context } from "@test/differential/harness/compare";
+import {
+  compareResponses,
+  Pairing,
+  tokenExpSlack,
+  type Context,
+} from "@test/differential/harness/compare";
 import type { ScenarioResponse } from "@test/scenarios/request";
 
 const fixtureId = "wsmn24bux7wo113";
 const fixtureTime = "2022-10-01 12:00:00.000Z";
+
+const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const jwt = (claims: Record<string, unknown>, header: unknown = { alg: "HS256", typ: "JWT" }) =>
+  `${b64(header)}.${b64(claims)}.sig`;
+const authClaims = (over: Record<string, unknown> = {}) => ({
+  id: "aaaaaaaaaaaaaaa",
+  type: "auth",
+  collectionId: "ccccccccccccccc",
+  refreshable: true,
+  exp: 2000000000,
+  ...over,
+});
+
+const user = (n: string) => ({ id: n.repeat(15) });
 
 const json = { "content-type": "application/json" };
 
@@ -144,12 +163,24 @@ function authMethodsBody(u: string, state: string): string {
   return JSON.stringify({ state, authURL: u, authUrl: u, legacy: [{ authURL: u }] });
 }
 
+const secrets = (up: string, ig: string, pairing = new Pairing()) =>
+  compareResponses(
+    res(`{"secret":"${up}"}`),
+    res(`{"secret":"${ig}"}`),
+    { start: { contains: () => false }, request: { url: "/api/x" } },
+    pairing,
+  );
+
 describe("generated values", () => {
   test("new IDs, tokens and timestamps at generated keys are compared by format", () => {
     expect(
       diff(
-        res('{"id":"aaaaaaaaaaaaaaa","token":"a.b.c","created":"2026-10-28 10:00:00.123Z"}'),
-        res('{"id":"bbbbbbbbbbbbbbb","token":"x.y.z","created":"2026-10-28 10:00:01.456Z"}'),
+        res(
+          `{"id":"aaaaaaaaaaaaaaa","token":"${jwt(authClaims())}","created":"2026-10-28 10:00:00.123Z"}`,
+        ),
+        res(
+          `{"id":"bbbbbbbbbbbbbbb","token":"${jwt(authClaims({ id: "bbbbbbbbbbbbbbb", collectionId: "ccccccccccccccc" }))}","created":"2026-10-28 10:00:01.456Z"}`,
+        ),
       ),
     ).toEqual([]);
     expect(diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"short"}'))).toEqual([
@@ -160,22 +191,80 @@ describe("generated values", () => {
 
   // two sign-ins in one second: upstream's tokens are equal (exp has whole
   // seconds), iglo.base's may not be, or the other way round
-  test("tokens are checked by format only, not paired", () => {
-    const pairing = new Pairing();
-    const check = (up: string, ig: string): string[] =>
+  describe("tokens are decoded and their claims compared", () => {
+    const start = { contains: (v: string) => ["ccccccccccccccc", "fixture0000000x"].includes(v) };
+    const checkWith = (pairing: Pairing, up: string, ig: string): string[] =>
       compareResponses(
         res(`{"token":"${up}"}`),
         res(`{"token":"${ig}"}`),
-        {
-          start: { contains: () => false },
-          request: { url: "/api/collections/users/auth-refresh" },
-        },
+        { start, request: { url: "/api/collections/users/auth-refresh" } },
         pairing,
       );
-    expect(check("a.b.c", "x.y.z")).toEqual([]);
-    expect(check("a.b.c", "p.q.r")).toEqual([]);
-    expect(check("d.e.f", "x.y.z")).toEqual([]);
-    expect(check("d.e.f", "not a token")).not.toEqual([]);
+    const check = (up: string, ig: string) => checkWith(new Pairing(), up, ig);
+
+    test("the same claims pass whatever the signature and a whole-second exp variation", () => {
+      const pairing = new Pairing();
+      const up = jwt(authClaims(user("a")));
+      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2000000001 })))).toEqual(
+        [],
+      );
+      // the same-second sign-in: upstream's equal tokens against two of ours
+      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2000000002 })))).toEqual(
+        [],
+      );
+      expect(check(jwt(authClaims({ exp: 2000000003 })), jwt(authClaims()))).toEqual([]);
+    });
+
+    test("a different type, collectionId, refreshable, header or id is a difference", () => {
+      const up = jwt(authClaims());
+      expect(check(up, jwt(authClaims({ type: "file" })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ collectionId: "ddddddddddddddd" })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ refreshable: false })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ extra: 1 })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims(), { alg: "HS512", typ: "JWT" }))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ id: "fixture0000000x" })))).not.toEqual([]);
+    });
+
+    test("an exp beyond the bound is a difference", () => {
+      const up = jwt(authClaims());
+      expect(check(up, jwt(authClaims({ exp: 2000000000 + tokenExpSlack + 1 })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ exp: 2000000000 - tokenExpSlack - 1 })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ exp: "2000000000" })))).not.toEqual([]);
+    });
+
+    test("exp follows the clock offset of legs that run one after the other", () => {
+      const offset = new Pairing({ clockOffset: 13 });
+      const up = jwt(authClaims());
+      expect(checkWith(offset, up, jwt(authClaims({ exp: 2000000013 })))).toEqual([]);
+      expect(checkWith(new Pairing({ clockOffset: 13 }), up, jwt(authClaims()))).not.toEqual([]);
+    });
+
+    test("two different users on one side mapped to one token on the other", () => {
+      const pairing = new Pairing();
+      expect(checkWith(pairing, jwt(authClaims(user("a"))), jwt(authClaims(user("x"))))).toEqual(
+        [],
+      );
+      // upstream's second user is another record, ours repeats the first
+      expect(
+        checkWith(pairing, jwt(authClaims(user("b"))), jwt(authClaims(user("x")))),
+      ).not.toEqual([]);
+      // and the reverse
+      expect(
+        checkWith(pairing, jwt(authClaims(user("a"))), jwt(authClaims(user("y")))),
+      ).not.toEqual([]);
+    });
+
+    test("a value that is not a decodable token is a difference", () => {
+      expect(check("d.e.f", "x.y.z")).not.toEqual([]);
+      expect(check(jwt(authClaims()), "not a token")).not.toEqual([]);
+    });
+
+    test("a secret pairs by value, whatever its claims", () => {
+      expect(secrets("a.b.c", "x.y.z")).toEqual([]);
+      const pairing = new Pairing();
+      expect(secrets("a.b.c", "x.y.z", pairing)).toEqual([]);
+      expect(secrets("d.e.f", "x.y.z", pairing)).not.toEqual([]);
+    });
   });
 
   // upstream reads the clock once per autodate field (M3.1)
@@ -527,7 +616,11 @@ describe("council round 2", () => {
 describe("council round 3", () => {
   test("the file token endpoint answers API JSON with a generated token", () => {
     expect(
-      diff(res('{"token":"a.b.c"}'), res('{"token":"x.y.z"}'), { url: "/api/files/token" }),
+      diff(
+        res(`{"token":"${jwt(authClaims({ type: "file" }))}"}`),
+        res(`{"token":"${jwt(authClaims({ type: "file", exp: 2000000001 }))}"}`),
+        { url: "/api/files/token" },
+      ),
     ).toEqual([]);
   });
 

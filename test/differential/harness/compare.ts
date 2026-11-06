@@ -45,6 +45,12 @@
 // - or it equals, as a whole JSON string, a value paired that way anywhere
 //   in the scenario's responses (a relation to a new record's id).
 //
+// A token (key `token`) is the exception to pairing by value: it is decoded
+// on both sides (`compareTokens`). The header and every claim except `exp`
+// must be equal, `id` and `collectionId` paired like generated ids, `exp`
+// within `tokenExpSlack` seconds (of the clock offset, if the two answer at different times); the signature is not compared. A `secret`
+// (an ECDSA-signed Apple client secret) pairs by value like other values.
+//
 // Each paired value is replaced by the same placeholder on both sides
 // before the byte comparison. Everything else compares exactly: ordinary
 // request data (a title that looks like an id), values from the starting
@@ -98,19 +104,18 @@ export interface Format {
   // while values of different slots may be equal on one side and not on
   // the other
   perSlot?: boolean;
-  // only the format is checked, the values are not paired: a value upstream
-  // derives from the clock (a JWT's `exp` has whole seconds) is equal for two
-  // sign-ins in one second there and not here, and the other way round
-  unpaired?: boolean;
+  // an auth or file token (a JWT upstream signs with HS256): the values are
+  // not paired, the decoded tokens are compared instead (`compareTokens`)
+  jwt?: boolean;
 }
 
 // formats of generated values
 const id: Format = { name: "id", pattern: /^[a-z0-9]{15}$/ }; // core.GenerateDefaultRandomId
-const token: Format = {
-  name: "token",
-  pattern: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
-  unpaired: true,
-}; // JWT
+const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const token: Format = { name: "token", pattern: jwtPattern, jwt: true }; // JWT
+// an Apple client secret: a JWT signed with ECDSA, so it differs per signing
+// and pairs like any other generated value
+const secret: Format = { name: "secret", pattern: jwtPattern };
 // types.DateTime's JSON form. Paired per slot: upstream reads the clock
 // once per autodate field, so a new record's created and updated can
 // differ by a millisecond or more on either side, but a record's created
@@ -144,7 +149,7 @@ export const generatedKeys = new Map<string, Format>([
   // forms/apple_client_secret_create.go: a signed client secret (ECDSA, so
   // its signature differs per signing; its claims are checked by
   // test/differential/auth/oauth2-providers.test.ts)
-  ["secret", token],
+  ["secret", secret],
   // apis/record_auth_with_oauth2.go: an access token's expiry in meta
   ["expiry", timestamp],
   // apis/record_auth_otp_request.go, apis/record_helpers.go (mfa)
@@ -383,6 +388,8 @@ export class Pairing {
   private readonly seen = new Set<string>();
   private readonly last = new Map<string, { up: string; ig: string }>();
 
+  readonly clockOffset: number;
+
   // every `updated` pair seen so far, by slot, if the Pairing keeps them
   private readonly history: Map<string, { up: string; ig: string }[]> | undefined;
 
@@ -391,8 +398,12 @@ export class Pairing {
   // later writes were paired. Such a value is accepted when exactly that
   // pair of `updated` values was seen together before; a new pair is checked
   // as any other. Everyone else keeps the strict rule.
-  constructor(options: { history?: boolean } = {}) {
+  // clockOffset: whole seconds iglo.base's response is later than upstream's
+  // (0 when the two answer the same request together; the round-trip suite
+  // runs its legs one after the other); a token's `exp` is checked against it
+  constructor(options: { history?: boolean; clockOffset?: number } = {}) {
     this.history = options.history === true ? new Map() : undefined;
+    this.clockOffset = options.clockOffset ?? 0;
   }
 
   // called before the values of a new response are paired
@@ -405,12 +416,6 @@ export class Pairing {
   // draws: the value is a record's `updated`, which a second write of the
   // record in the same response may draw again (see `sameMillisecond`)
   pair(format: Format, upstream: string, igloBase: string, slot = "", draws = false): boolean {
-    if (format.unpaired === true) {
-      const placeholder = JSON.stringify(`<generated ${format.name}>`);
-      this.upstream.set(JSON.stringify(upstream), placeholder);
-      this.igloBase.set(JSON.stringify(igloBase), placeholder);
-      return true;
-    }
     const scope = format.perSlot === true ? `${format.name}:${slot}` : format.name;
     const up = `${scope}:${upstream}`;
     const ig = `${scope}:${igloBase}`;
@@ -549,7 +554,16 @@ function pairGenerated(
     }
     const differ = (detail: string) =>
       differences.push(`${where(at.path)}: ${detail}: upstream ${up.raw}, iglo.base ${ig.raw}`);
-    if (ig.kind !== "string" || !format.pattern.test(ig.value)) {
+    if (format.jwt === true && ig.kind === "string" && format.pattern.test(ig.value)) {
+      const problem = compareTokens(up.value, ig.value, pairing, at.context);
+      if (problem) {
+        differ(problem);
+      } else {
+        const placeholder = JSON.stringify(`<generated ${format.name}>`);
+        pairing.upstream.set(up.raw, placeholder);
+        pairing.igloBase.set(ig.raw, placeholder);
+      }
+    } else if (ig.kind !== "string" || !format.pattern.test(ig.value)) {
       differ(`not both ${format.name}s`);
     } else if (!isGenerated(format, ig.value, at.context)) {
       differ(`generated ${format.name} expected, iglo.base's is in the starting data or request`);
@@ -579,6 +593,83 @@ function pairGenerated(
       }
     }
   }
+}
+
+// Upstream's token `exp` is whole seconds of the clock: two sign-ins in one
+// second get equal tokens there and not here, and the other way round. The two
+// servers also answer one request a moment apart, so the clock second can
+// change between them. `exp` may therefore differ by at most this many
+// seconds (the second boundary, plus the latency between the two requests).
+export const tokenExpSlack = 3;
+
+function decodeToken(
+  value: string,
+): { header: unknown; claims: Record<string, unknown> } | undefined {
+  try {
+    const [header, claims] = value
+      .split(".")
+      .slice(0, 2)
+      .map((part) => {
+        const json = Buffer.from(part, "base64url").toString("utf8");
+        return JSON.parse(json) as unknown;
+      });
+    if (typeof claims !== "object" || claims === null || Array.isArray(claims)) return undefined;
+    return { header, claims: claims as Record<string, unknown> };
+  } catch {
+    return undefined;
+  }
+}
+
+// A token upstream issues varies in `exp` only: its header and its other
+// claims (id, type, collectionId, refreshable) are fixed for a request. The
+// header and every claim except `exp` must be equal; `id` and `collectionId`
+// may differ only as a generated id paired with the other side's. The
+// signature is not compared. Returns the difference, if any.
+function compareTokens(
+  upstream: string,
+  igloBase: string,
+  pairing: Pairing,
+  context: Context,
+): string | undefined {
+  const up = decodeToken(upstream);
+  const ig = decodeToken(igloBase);
+  if (!up || !ig) {
+    return "token is not a decodable JWT";
+  }
+  if (JSON.stringify(up.header) !== JSON.stringify(ig.header)) {
+    return `token header differs: upstream ${JSON.stringify(up.header)}, iglo.base ${JSON.stringify(ig.header)}`;
+  }
+  const names = new Set([...Object.keys(up.claims), ...Object.keys(ig.claims)]);
+  for (const name of names) {
+    const a = up.claims[name];
+    const b = ig.claims[name];
+    if (name === "exp") {
+      if (
+        typeof a !== "number" ||
+        typeof b !== "number" ||
+        !Number.isInteger(a) ||
+        !Number.isInteger(b) ||
+        Math.abs(b - a - pairing.clockOffset) > tokenExpSlack
+      ) {
+        return `token claim exp differs by more than ${tokenExpSlack} s: upstream ${JSON.stringify(a)}, iglo.base ${JSON.stringify(b)}`;
+      }
+    } else if (JSON.stringify(a) === JSON.stringify(b)) {
+      continue;
+    } else if (
+      (name === "id" || name === "collectionId") &&
+      typeof a === "string" &&
+      typeof b === "string" &&
+      isGenerated(id, a, context) &&
+      isGenerated(id, b, context)
+    ) {
+      if (!pairing.pair(id, a, b)) {
+        return `token claim ${name} not paired consistently: upstream ${JSON.stringify(a)}, iglo.base ${JSON.stringify(b)}`;
+      }
+    } else {
+      return `token claim ${name} differs: upstream ${JSON.stringify(a)}, iglo.base ${JSON.stringify(b)}`;
+    }
+  }
+  return undefined;
 }
 
 // Two writes of one record (a batch's create and update of it) can land in
