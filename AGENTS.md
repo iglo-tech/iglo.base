@@ -10,7 +10,7 @@ License: MIT, inherited from PocketBase. Keep PocketBase's copyright notice in `
 
 ## Current state
 
-Design phase. The design is in `docs/design/` and is the source of truth until code exists. Read `docs/design/README.md` first. When code and design disagree, fix one of them in the same change.
+Released (v1.0.0, 2026-11-05); post-1.0 work follows the work plan. The design in `docs/design/` describes the code; read `docs/design/README.md` first. When code and design disagree, fix one of them in the same change.
 
 ## The two compatibility contracts
 
