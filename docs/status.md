@@ -4,23 +4,24 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-05
 
-Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). Active: P.2, macOS and linux-arm64 builds. Post-MVP tasks run one at a time (owner direction 2026-11-05): P.2 is the last one agents can do; P.4 needs the answer below.
+Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2026-11-05). No task active: every post-MVP task agents can do is merged (P.1, P.2, P.3, P.5). P.4 waits for the answer below.
 
 ## Needs you
 
-1. **Make the Docker image public.** It is published as `ghcr.io/iglo-tech/iglo.base:1.0.0`, but GitHub made the package private, and only an org admin can change that: github.com/orgs/iglo-tech/packages/container/iglo.base/settings → Change visibility → Public. Skip it if you want the image private.
-2. **P.4, docs on iglo.tech: where does the site live?** The plan puts the user docs at `https://iglo.tech/iglo.base/docs`. I need the site's repository (or "make it a folder in this repository, published by you"). Until then P.4 waits; the other post-MVP tasks go first.
+1. **Release v1.1.0?** `main` now has the faster start (P.3) and the macOS and linux-arm64 builds (P.2), which v1.0.0 lacks. Recommended: yes, so the Docker image also gets its arm64 variant (a v1.0.0 rebuild cannot, as that release has only the linux-x64 archive). Say "release 1.1.0" and I do it as for v1.0.0.
+2. **Make the Docker image public.** It is published as `ghcr.io/iglo-tech/iglo.base:1.0.0`, but GitHub made the package private, and only an org admin can change that: github.com/orgs/iglo-tech/packages/container/iglo.base/settings → Change visibility → Public. Skip it if you want the image private.
+3. **P.4, docs on iglo.tech: where does the site live?** The plan puts the user docs at `https://iglo.tech/iglo.base/docs`. I need the site's repository (or "make it a folder in this repository, published by you"). Until then P.4 waits; the other post-MVP tasks go first.
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.2 | review | [#67](https://github.com/iglo-tech/iglo.base/pull/67) | 2 | [brief](briefs/P.2.md); test tag green on all three platforms; bundled SQLite 3.53.4 on macOS (D34); native CI ends with flakes; round 1 CHANGES (macOS GIF thumb difference hidden by the test, tolerance too wide), Sonnet fixer fixed at `58c47c9` (macOS GIF thumbs were a real bug, now cropped to the first frame) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.2 | [#67](https://github.com/iglo-tech/iglo.base/pull/67) | 2026-11-06 (`89ddb92`) | Two review rounds (Opus; Sonnet fixer round 1): Opus APPROVE at `58c47c9`, `check` 0 failures; `test:reference` only the S3-files flake (row 140; cause found: pb_data copied while a `ranges_*` temp file is deleted). darwin-arm64 and linux-arm64 release builds, native CI jobs, multi-arch Docker; macOS loads a bundled SQLite 3.53.4 built from GitHub's mirror, checked by version and source id (D34). macOS GIF thumbs were cut from the whole canvas: fixed by a crop (Linux thumbs byte-identical). arm64 GIF thumbs differ slightly from upstream (04 row). Backlog: 04 row wording; crop skipped over 16 MP (macOS); main-thread fallback check touches system SQLite before the error; round-1 items (`large.png` on macOS, unwritable cache test, Docker push rebuilds instead of pushing the tested image) |
 | P.3 | [#66](https://github.com/iglo-tech/iglo.base/pull/66) | 2026-11-05 (`01aa2f7`) | One review round: Opus APPROVE at `e1691e1`, `check` and `test:reference` 0 failures. Startup 238–356 → 102–153 ms on 20 collections / 10.5k records (upstream 29–38 ms): bytecode build (+7 MB), lazy regexps, lazy nodemailer/zlib; idle RSS 84 → 77 MiB. Request path: no removable cost above 7% of the profile; 50-client p50 unchanged within host noise (list, view within 1.5×; expand about 1.6×, create 1.1–1.9×). The rest is structural (one JS thread). Backlog: `startup-db.ts` leaves `no-browser/` in the repo root; startup changes not measured one by one; two misplaced comments (`datetime.ts`, `png-raw.ts`) |
 | P.1 | [#65](https://github.com/iglo-tech/iglo.base/pull/65) | 2026-11-05 (`9a20749`) | Two review rounds (Opus; Sonnet fixer round 1, lead fixed round 2, docs only): round-2 blocker fixed as the reviewer prescribed, merged without round 3. Distroless image wrapping the release executable (D33), `/iglo-base` in `/`, volumes `/pb_data`, `/pb_migrations`, `/pb_public`; uid 65532. Published `ghcr.io/iglo-tech/iglo.base:1.0.0` and `:latest` (run 42088769396). Backlog: `docker/login-action` version, no `--rm` on the smoke container |
 | P.5 | [#64](https://github.com/iglo-tech/iglo.base/pull/64) | 2026-11-05 (`ae75e85`) | One review round: Opus APPROVE at `6384ed6`. Full dashboard checklist on the release build, every row passes, no defect; `bun run test:browser` (agent-browser, outside `check`): install, collection and record round trip, logs page. Backlog: stale comment in test/browser/support.ts; agent-browser leaves session files in `$XDG_RUNTIME_DIR`; no retry on element lookup; Crons page text still says jobs are registered with Go or JS (candidate dashboard patch) |
