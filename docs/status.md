@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 | P.7 | worker | task/P.7-backlog-sweep | 0 | Backlog sweep ([brief](briefs/P.7.md)) |
-| P.9 | worker | task/P.9-linux-only | 0 | Linux only: drop the macOS build ([brief](briefs/P.9.md)) |
+| P.9 | review | [#84](https://github.com/iglo-tech/iglo.base/pull/84) | 1 | Linux only: drop the macOS build ([brief](briefs/P.9.md)) |
 
 ## Done
 
