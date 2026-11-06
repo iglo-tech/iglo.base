@@ -95,3 +95,17 @@ test("an invalid percent escape is rejected before routing", async () => {
   expect(res.headers.get("connection")).toBe("close");
   expect(res.body).toBe("400 Bad Request");
 });
+
+test("a request settles when finishing the response fails after a panic", async () => {
+  // a panic no middleware recovered, after a status the response cannot carry
+  const mux = {
+    serveHTTP: async (rw: { writeHeader(status: number): void }) => {
+      rw.writeHeader(1000);
+      throw new Error("unrecovered panic");
+    },
+  };
+  const request = new Request(`${url}/anything`);
+  await expect(handleRequest(app, mux as never, request, null)).rejects.toThrow(
+    "unrecovered panic",
+  );
+});

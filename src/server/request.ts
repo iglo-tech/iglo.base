@@ -50,6 +50,7 @@ export class HttpRequest {
   // the mux pattern that matched the request
   pattern = "";
   #pathValues = new Map<string, string>();
+  #multipartErr: Error | undefined;
 
   form: Values | undefined;
   postForm: Values | undefined;
@@ -145,8 +146,9 @@ export class HttpRequest {
       // Let errors in parseForm fall through, and just return it at the end.
       parseFormErr = await this.parseForm();
     }
-    if (this.multipartForm !== undefined) {
-      return undefined;
+    // the body is spent after a parse: later calls keep its first error
+    if (this.multipartForm !== undefined || this.#multipartErr !== undefined) {
+      return this.#multipartErr;
     }
 
     const ct = this.headers.get("Content-Type") ?? "";
@@ -162,7 +164,8 @@ export class HttpRequest {
     const mr = new MultipartReader(bodyReader(this.body), boundary);
     const [form, err] = await mr.readForm(maxMemory);
     if (err !== undefined) {
-      return err instanceof Error ? err : new Error(String(err));
+      this.#multipartErr = err instanceof Error ? err : new Error(String(err));
+      return this.#multipartErr;
     }
 
     this.postForm ??= new Map();
@@ -174,6 +177,7 @@ export class HttpRequest {
       }
     }
     this.multipartForm = form as Form;
+    this.#multipartErr = parseFormErr;
 
     return parseFormErr;
   }

@@ -21,6 +21,9 @@ export const ErrBodyNotAllowed = new Error(
   "http: request method or response status code does not allow body",
 );
 
+// a write after finish() has nowhere to go
+export const ErrWriteAfterFinish = new Error("http: write after the response finished");
+
 // http.ErrNotSupported
 export const ErrNotSupported = new Error("feature not supported");
 
@@ -42,6 +45,8 @@ export class ResponseWriter {
   #afterResponse: (() => void)[] = [];
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
+  // finish() ran: later writes would never be sent
+  #finished = false;
   readonly #onCommit: ((response: Response) => void) | undefined;
   readonly #disableTimeout: (() => void) | undefined;
 
@@ -74,6 +79,9 @@ export class ResponseWriter {
   }
 
   write(data: Uint8Array | string): Error | undefined {
+    if (this.#finished) {
+      return ErrWriteAfterFinish;
+    }
     if (!this.#written) {
       this.writeHeader(200);
     }
@@ -106,6 +114,9 @@ export class ResponseWriter {
   // before the response is sent. Only valid before anything else is
   // written or flushed.
   writeBody(body: Blob | ReadableStream<Uint8Array> | Promise<Blob>): Error | undefined {
+    if (this.#finished) {
+      return ErrWriteAfterFinish;
+    }
     if (!this.#written) {
       this.writeHeader(200);
     }
@@ -157,16 +168,35 @@ export class ResponseWriter {
       this.#committed = true;
       const chunks = this.#chunks;
       this.#chunks = [];
-      const body = bodyAllowedForStatus(this.#sentStatus())
-        ? new ReadableStream<Uint8Array>({
-            start: (controller) => {
-              this.#controller = controller;
-              for (const chunk of chunks) {
-                controller.enqueue(chunk);
-              }
-            },
-          })
-        : null;
+      const whole = this.#body;
+      this.#body = null;
+      let body: ReadableStream<Uint8Array> | Blob | null = null;
+      if (!bodyAllowedForStatus(this.#sentStatus())) {
+        body = null;
+      } else if (whole instanceof Promise) {
+        // a body set by writeBody goes out with the flush, as it resolves
+        body = new ReadableStream<Uint8Array>({
+          start: async (controller) => {
+            try {
+              controller.enqueue(new Uint8Array(await (await whole).arrayBuffer()));
+              controller.close();
+            } catch (err) {
+              controller.error(err);
+            }
+          },
+        });
+      } else if (whole !== null) {
+        body = whole;
+      } else {
+        body = new ReadableStream<Uint8Array>({
+          start: (controller) => {
+            this.#controller = controller;
+            for (const chunk of chunks) {
+              controller.enqueue(chunk);
+            }
+          },
+        });
+      }
       this.#onCommit(this.#response(body));
     }
     return undefined;
@@ -187,6 +217,7 @@ export class ResponseWriter {
   // and returns undefined, or returns the buffered response (a promise when
   // the body is a promised Blob).
   finish(): Response | Promise<Response> | undefined {
+    this.#finished = true;
     let response: Response | Promise<Response> | undefined;
     try {
       response = this.#finish();

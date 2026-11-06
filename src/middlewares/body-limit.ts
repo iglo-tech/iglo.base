@@ -174,6 +174,11 @@ class MaxBytesReader implements ReadCloser, Rereader {
   reread(): void {
     if (isRereader(this.#reader)) {
       this.#reader.reread();
+      // an exceeded limit stays exceeded: the rewound copy is only the
+      // prefix that was read before the error
+      if (this.#stickyErr === ErrRequestEntityTooLarge) {
+        return;
+      }
       this.#remaining = this.limit;
       this.#stickyErr = undefined;
     }

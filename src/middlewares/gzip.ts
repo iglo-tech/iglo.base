@@ -23,6 +23,8 @@ class GzipResponseWriter extends ResponseWriter {
   wroteHeader = false;
   wroteBody = false;
   readonly chunks: Uint8Array[] = [];
+  // a body set by writeBody, compressed when the handler returns
+  body: Blob | ReadableStream<Uint8Array> | Promise<Blob> | undefined;
 
   constructor(readonly inner: ResponseWriter) {
     super();
@@ -41,9 +43,26 @@ class GzipResponseWriter extends ResponseWriter {
   }
 
   override write(data: Uint8Array | string): Error | undefined {
+    if (this.body !== undefined) {
+      return new Error("write after writeBody");
+    }
     this.wroteBody = true;
     this.chunks.push(typeof data === "string" ? new TextEncoder().encode(data) : data.slice());
     return undefined;
+  }
+
+  override writeBody(body: Blob | ReadableStream<Uint8Array> | Promise<Blob>): Error | undefined {
+    if (this.chunks.length > 0 || this.body !== undefined) {
+      return new Error("writeBody after other body writes");
+    }
+    this.wroteBody = true;
+    this.body = body;
+    return undefined;
+  }
+
+  // the cleanups belong to the response that is sent
+  override afterResponse(fn: () => void): void {
+    this.inner.afterResponse(fn);
   }
 
   // the first body write sends the (delayed) status to the inner writer
@@ -85,7 +104,19 @@ class GzipResponseWriter extends ResponseWriter {
     if (this.wroteHeader) {
       inner.writeHeader(this.code);
     }
-    if (this.wroteBody) {
+    if (this.body !== undefined) {
+      const body = this.body;
+      // the failure of a promised body reaches the server through the inner writer
+      const bytes: Promise<Uint8Array> =
+        body instanceof Promise
+          ? body.then((blob) => blob.bytes())
+          : body instanceof Blob
+            ? body.bytes()
+            : new Response(body).bytes();
+      const gzipped = bytes.then((b) => new Blob([Bun.gzipSync(new Uint8Array(b))]));
+      gzipped.catch(() => {});
+      inner.writeBody(gzipped);
+    } else if (this.wroteBody) {
       inner.write(Bun.gzipSync(new Uint8Array(Buffer.concat(this.chunks))));
     }
   }
