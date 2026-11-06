@@ -14,7 +14,7 @@ Nothing. v1.1.0 is being released (owner, 2026-11-06).
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.4 | worker | task/P.4-user-docs | 0 | Operations guide and differences page ([brief](briefs/P.4.md)) |
+| P.4 | review | [#72](https://github.com/iglo-tech/iglo.base/pull/72) | 1 | Operations guide and differences page ([brief](briefs/P.4.md)) |
 | P.6 | worker | task/P.6-test-reliability | 0 | Test flakes ([brief](briefs/P.6.md)) |
 
 ## Done
