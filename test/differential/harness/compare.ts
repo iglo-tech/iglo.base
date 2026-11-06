@@ -531,6 +531,13 @@ function isGenerated(format: Format, value: string, context: Context): boolean {
   return format.pattern.test(value) && !context.start.contains(value) && !sent(value, context);
 }
 
+// POST /api/sql: its `execTime` is how long the query took in milliseconds,
+// which differs between two runs of one server too (apis/sql.go), so it
+// compares as a number and nothing more
+function isSqlRun(context: Context): boolean {
+  return requestUrl(context)?.pathname === "/api/sql";
+}
+
 // whether upstream's response is API JSON that may carry generated values
 function isApiJson(upstream: ScenarioResponse, context: Context): boolean {
   const type = upstream.headers.get("content-type") ?? "";
@@ -677,7 +684,10 @@ function normalize(
       separators.push(json.slice(pos, next));
       pos = next;
     }
-    const inner = normalize(value, json, member(at, node, name), replace);
+    const inner =
+      name === "execTime" && value.kind === "number" && isSqlRun(at.context)
+        ? "0"
+        : normalize(value, json, member(at, node, name), replace);
     members.push({ name, text: json.slice(pos, value.start) + inner });
     pos = end(value);
   }

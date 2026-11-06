@@ -251,9 +251,22 @@ describe("what a zip has", () => {
   );
 });
 
+// The list while the auto-backup job prunes: upstream's List walks the
+// directory and answers 400 ("Failed to retrieve backup items") when a file
+// vanishes between the walk and its stat (apis/backup.go backupsList; once in
+// 37,693 requests). A request that raced a prune is repeated; a 400 that
+// stays is an error.
 async function keys(server: Server): Promise<string[]> {
-  const res = await fetch(`${server.url}/api/backups`, { headers: asSuperuser });
-  return ((await res.json()) as { key: string }[]).map((b) => b.key);
+  let last = "";
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const res = await fetch(`${server.url}/api/backups`, { headers: asSuperuser });
+    if (res.status === 200) {
+      return ((await res.json()) as { key: string }[]).map((b) => b.key);
+    }
+    last = `${res.status} ${await res.text()}`;
+    await Bun.sleep(50);
+  }
+  throw new Error(`GET /api/backups: ${last}`);
 }
 
 async function runJob(server: Server): Promise<void> {

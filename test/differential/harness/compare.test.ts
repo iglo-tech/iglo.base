@@ -516,3 +516,29 @@ describe("generated file names", () => {
     ).not.toEqual([]);
   });
 });
+
+describe("execTime of the SQL console", () => {
+  const sql: Context = {
+    start: { contains: () => false },
+    request: { method: "POST", url: "/api/sql" },
+  };
+  const body = (execTime: string) =>
+    res(`{"execTime":${execTime},"affectedRows":0,"columns":[],"rows":[]}`);
+
+  test("compares as a number only", () => {
+    expect(compareResponses(body("0.31"), body("1.7"), sql)).toEqual([]);
+    expect(compareResponses(body("0.31"), body('"x"'), sql)).not.toEqual([]);
+    expect(
+      compareResponses(
+        body("0.31"),
+        res('{"execTime":1,"affectedRows":1,"columns":[],"rows":[]}'),
+        sql,
+      ),
+    ).not.toEqual([]);
+  });
+
+  test("other endpoints compare it exactly", () => {
+    const other: Context = { ...sql, request: { method: "GET", url: "/api/x" } };
+    expect(compareResponses(body("0.31"), body("1.7"), other)).not.toEqual([]);
+  });
+});

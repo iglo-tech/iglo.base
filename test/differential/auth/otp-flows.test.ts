@@ -123,14 +123,42 @@ async function updateUser(server: Server, body: unknown): Promise<Reply> {
 const requestOTP = (server: Server, collection = "users", to = email): Promise<Reply> =>
   post(server, `/api/collections/${collection}/request-otp`, { email: to });
 
-const authWithOTP = (
+// Both servers save the OTP row's `sentTo` after the mail left (upstream:
+// apis/record_auth_otp_request.go), so a client that reads the message from
+// the mailbox and signs in at once can beat that save, and the sign-in then
+// does not verify the user. The helper waits for it as long as an OTP row
+// without `sentTo` exists (never, when the mail was refused: the row is
+// removed then; the wait ends after 3 seconds if it stays).
+async function awaitSentTo(server: Server, otpId: unknown): Promise<void> {
+  if (typeof otpId !== "string") {
+    return;
+  }
+  const until = Date.now() + 3000;
+  while (Date.now() < until) {
+    const rows = queryRows(server.dataDir, "SELECT sentTo FROM _otps WHERE id = ?", otpId) as {
+      sentTo: string;
+    }[];
+    if (rows.length === 0 || rows[0]?.sentTo !== "") {
+      return;
+    }
+    await Bun.sleep(25);
+  }
+}
+
+const authWithOTP = async (
   server: Server,
   otpId: unknown,
   password: string,
   extra: object = {},
   collection = "users",
-): Promise<Reply> =>
-  post(server, `/api/collections/${collection}/auth-with-otp`, { otpId, password, ...extra });
+): Promise<Reply> => {
+  await awaitSentTo(server, otpId);
+  return post(server, `/api/collections/${collection}/auth-with-otp`, {
+    otpId,
+    password,
+    ...extra,
+  });
+};
 
 const login = (server: Server, extra: object = {}, collection = "users"): Promise<Reply> =>
   post(server, `/api/collections/${collection}/auth-with-password`, {

@@ -22,7 +22,17 @@ export function copyDataDir(srcDir: string, destDir: string): void {
     recursive: true,
     // both servers of a differential run see the same mod times
     preserveTimestamps: true,
-    filter: (src) => !(srcDir === fixtureDir && vendoredOnly.has(src.slice(srcDir.length + 1))),
+    filter: (src) => {
+      const rel = src.slice(srcDir.length + 1);
+      // A running server keeps its short-lived temp files (range spools, zip
+      // staging) in <pb_data>/.pb_temp_to_delete and deletes them while a
+      // copy is being read; they are no data and a file that vanishes
+      // mid-copy fails the copy.
+      if (rel === ".pb_temp_to_delete" || rel.startsWith(".pb_temp_to_delete/")) {
+        return false;
+      }
+      return !(srcDir === fixtureDir && vendoredOnly.has(rel));
+    },
   });
 }
 

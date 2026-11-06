@@ -611,10 +611,16 @@ export function serveSuite(storage: "local" | "s3"): void {
     test("HEAD of a thumb", async () => {
       // the thumbs' encoded sizes differ (Content-Length); the rest is equal
       const [up, ig] = await both(main, `${pathOf(file("photo.png"))}?thumb=100x100`, {}, "HEAD");
-      // on S3 the mod time is the write's, which often falls in another second
-      const ignored = storage === "s3" ? /^(content-length|last-modified):/ : /^content-length:/;
+      const ignored = /^(content-length|last-modified):/;
       expect(differences(up, ig).filter((d) => !ignored.test(d))).toEqual([]);
       expect(ig.body.length).toBe(0);
+      // Last-Modified is the stored thumb's write time: each server wrote its
+      // own thumb when it first served the size, so the seconds can differ
+      // across a boundary. Both must send one, close together.
+      const modified = (r: Res) => Date.parse(r.headers.get("last-modified") ?? "");
+      expect(Number.isNaN(modified(up))).toBe(false);
+      expect(Number.isNaN(modified(ig))).toBe(false);
+      expect(Math.abs(modified(up) - modified(ig))).toBeLessThanOrEqual(5000);
     });
   });
 
