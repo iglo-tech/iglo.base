@@ -226,6 +226,18 @@ describe("TestDB_Transactional", () => {
     expect(db.newQuery("SELECT id FROM uniq ORDER BY id").column()).toEqual([1]);
   });
 
+  test("a statement prepared in a transaction SQLite rolled back can't run", () => {
+    const db = getPreparedDB();
+    db.newQuery("CREATE TABLE uniq (id INTEGER PRIMARY KEY)").execute();
+    db.newQuery("INSERT INTO uniq (id) VALUES (1)").execute();
+    const tx = db.begin();
+    const insert = tx.newQuery("INSERT INTO uniq (id) VALUES ({:id})").prepare();
+    insert.bind({ id: 2 }).execute();
+    expect(() => tx.newQuery("INSERT OR ROLLBACK INTO uniq (id) VALUES (1)").execute()).toThrow();
+    expect(() => insert.bind({ id: 3 }).execute()).toThrow(TxDoneError);
+    expect(db.newQuery("SELECT id FROM uniq ORDER BY id").column()).toEqual([1]);
+  });
+
   test("a commit failure is reported and leaves no open transaction", () => {
     const db = deferredFKDB();
     expect(() =>

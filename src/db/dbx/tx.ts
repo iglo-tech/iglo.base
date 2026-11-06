@@ -58,7 +58,7 @@ export class TxExecutor implements Executor {
 
   prepare(sql: string): Stmt {
     this.checkDone();
-    const stmt = new Stmt(this.conn, sql);
+    const stmt = new Stmt(this.conn, sql, () => this.checkDone());
     this.stmts.push(stmt);
     return stmt;
   }

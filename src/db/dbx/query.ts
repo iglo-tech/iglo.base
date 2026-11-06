@@ -219,9 +219,12 @@ export class Stmt {
   private readonly parts: ScriptPart[];
   private readonly single: Statement | null = null;
 
+  // guard runs before each execution: a transaction's statement refuses to run
+  // once the transaction is over (TxExecutor.checkDone)
   constructor(
     private readonly conn: Database,
     sql: string,
+    private readonly guard: (() => void) | null = null,
   ) {
     const parts = splitStatements(sql);
     this.parts = parts;
@@ -234,11 +237,13 @@ export class Stmt {
 
   exec(args: SQLQueryBindings[]): ExecResult {
     this.checkClosed();
+    this.guard?.();
     return execStatements(this.conn, this.parts, args, this.single);
   }
 
   query(args: SQLQueryBindings[]): Rows {
     this.checkClosed();
+    this.guard?.();
     return queryStatements(this.conn, this.parts, args, this.single, false);
   }
 
