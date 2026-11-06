@@ -60,22 +60,32 @@ const initiateBody = `<?xml version="1.0" encoding="UTF-8"?>
 // answers the requests of a multipart upload of key test_key: the failures
 // are given by the part number and the complete request status
 function multipartResponder(
-  options: { failPart?: number; failPartStatus?: number; completeStatus?: number } = {},
+  options: {
+    failPart?: number;
+    failPartStatus?: number;
+    completeStatus?: number;
+    completeBody?: string;
+    emptyEtagPart?: number;
+    initBody?: string;
+  } = {},
 ): (req: RecordedRequest) => Response {
   return (req) => {
     const params = new URLSearchParams(req.query);
     if (req.method === "POST" && req.query === "uploads") {
-      return new Response(initiateBody);
+      return new Response(options.initBody ?? initiateBody);
     }
     if (req.method === "PUT" && params.has("partNumber")) {
       const partNumber = Number(params.get("partNumber"));
       if (partNumber === options.failPart) {
         return new Response("", { status: options.failPartStatus ?? 400 });
       }
+      if (partNumber === options.emptyEtagPart) {
+        return new Response("");
+      }
       return new Response("", { headers: { ETag: `"etag${partNumber}"` } });
     }
     if (req.method === "POST" && params.has("uploadId")) {
-      return new Response("", { status: options.completeStatus ?? 200 });
+      return new Response(options.completeBody ?? "", { status: options.completeStatus ?? 200 });
     }
     return new Response("");
   };
@@ -255,5 +265,59 @@ describe("Uploader multipart upload", () => {
     for (const r of recorder.requests) {
       expectSignedWithHeader(r);
     }
+  });
+  const upload = (recorder: ReturnType<typeof startRecorder>) =>
+    new Uploader({
+      s3: s3For(recorder),
+      key: "test_key",
+      payload: new Blob(["abcdef"]),
+      headers: testHeaders(),
+      minPartSize: 3,
+    }).upload();
+
+  test("a 200 Complete response carrying an <Error> aborts the upload", async () => {
+    const recorder = startRecorder(
+      multipartResponder({
+        completeBody:
+          '<?xml version="1.0"?><Error><Code>InternalError</Code><Message>try again</Message></Error>',
+      }),
+    );
+
+    await expect(upload(recorder)).rejects.toThrow("200 InternalError: try again");
+    expect(recorder.requests.at(-1)?.method).toBe("DELETE");
+  });
+
+  test("a 200 Complete response with a result body succeeds", async () => {
+    const recorder = startRecorder(
+      multipartResponder({
+        completeBody:
+          "<CompleteMultipartUploadResult><Location>x</Location></CompleteMultipartUploadResult>",
+      }),
+    );
+
+    await upload(recorder);
+    expect(recorder.requests.some((r) => r.method === "DELETE")).toBe(false);
+  });
+
+  test("a part response without an ETag aborts the upload", async () => {
+    const recorder = startRecorder(multipartResponder({ emptyEtagPart: 1 }));
+
+    await expect(upload(recorder)).rejects.toThrow("missing ETag in the response of part 1");
+    expect(recorder.requests.at(-1)?.method).toBe("DELETE");
+    expect(
+      recorder.requests.filter((r) => r.method === "POST" && r.query.includes("uploadId=")),
+    ).toHaveLength(0);
+  });
+
+  test("an init response without an UploadId fails before any part is sent", async () => {
+    const recorder = startRecorder(
+      multipartResponder({
+        initBody:
+          "<InitiateMultipartUploadResult><UploadId></UploadId></InitiateMultipartUploadResult>",
+      }),
+    );
+
+    await expect(upload(recorder)).rejects.toThrow("missing UploadId");
+    expect(recorder.requests).toHaveLength(1);
   });
 });

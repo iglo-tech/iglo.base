@@ -14,7 +14,13 @@
 // headers its functions would set.
 
 import { joinErrors, wrapf } from "@/tools/filesystem/blob/bucket";
-import { escapeText, childText, parseRoot } from "@/tools/filesystem/internal/s3blob/s3/xml";
+import { ResponseError } from "@/tools/filesystem/internal/s3blob/s3/error";
+import {
+  escapeText,
+  childText,
+  parseRoot,
+  parseXml,
+} from "@/tools/filesystem/internal/s3blob/s3/xml";
 import { metadataPrefix, type S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 
 const defaultMaxConcurrency = 5;
@@ -141,7 +147,13 @@ export class Uploader {
       new Uint8Array(await resp.arrayBuffer()),
       "InitiateMultipartUploadResult",
     );
-    this.#uploadId = childText(body, "UploadId");
+    // S3 never answers an upload without an id; an empty one would send
+    // every later request with `uploadId=`
+    const uploadId = childText(body, "UploadId");
+    if (uploadId === "") {
+      throw new Error("missing UploadId in the multipart init response");
+    }
+    this.#uploadId = uploadId;
   }
 
   // https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html
@@ -184,7 +196,26 @@ export class Uploader {
       body: xmlParts,
       signal: this.#signal,
     });
-    await resp.arrayBuffer();
+
+    // S3 can answer 200 and report the failure in the body
+    // https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html#API_CompleteMultipartUpload_Example_4
+    const raw = new Uint8Array(await resp.arrayBuffer());
+    if (raw.length === 0) {
+      return;
+    }
+    let root;
+    try {
+      root = parseXml(raw);
+    } catch {
+      return;
+    }
+    if (root.name === "Error") {
+      const err = new ResponseError(resp.status);
+      err.code = childText(root, "Code");
+      err.s3Message = childText(root, "Message");
+      err.raw = raw;
+      throw err;
+    }
   }
 
   // the next part's bytes and number, or null at the end of the payload
@@ -246,6 +277,11 @@ export class Uploader {
     });
     await resp.arrayBuffer();
 
-    return { partNumber, etag: resp.headers.get("ETag") ?? "" };
+    // the Complete request needs the part's ETag
+    const etag = resp.headers.get("ETag") ?? "";
+    if (etag === "") {
+      throw new Error(`missing ETag in the response of part ${partNumber}`);
+    }
+    return { partNumber, etag };
   }
 }
