@@ -149,6 +149,15 @@ test("single upload sends the payload in one PUT", async () => {
   expectSignedWithHeader(req);
 });
 
+const upload = (recorder: ReturnType<typeof startRecorder>) =>
+  new Uploader({
+    s3: s3For(recorder),
+    key: "test_key",
+    payload: new Blob(["abcdef"]),
+    headers: testHeaders(),
+    minPartSize: 3,
+  }).upload();
+
 describe("Uploader multipart upload", () => {
   // the Go test's MaxConcurrency values; the worker count does not change
   // what goes on the wire
@@ -266,15 +275,6 @@ describe("Uploader multipart upload", () => {
       expectSignedWithHeader(r);
     }
   });
-  const upload = (recorder: ReturnType<typeof startRecorder>) =>
-    new Uploader({
-      s3: s3For(recorder),
-      key: "test_key",
-      payload: new Blob(["abcdef"]),
-      headers: testHeaders(),
-      minPartSize: 3,
-    }).upload();
-
   test("a 200 Complete response carrying an <Error> aborts the upload", async () => {
     const recorder = startRecorder(
       multipartResponder({

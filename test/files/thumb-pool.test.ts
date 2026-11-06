@@ -206,7 +206,7 @@ test("renders beyond PB_THUMBS_MAX_WORKERS wait for a worker", async () => {
   const pool = new ThumbPool({ getenv: env({ PB_THUMBS_MAX_WORKERS: "1" }) });
   try {
     const png = encodePng({ width: 40, height: 20, pix: new Uint8Array(40 * 20 * 4).fill(200) }, 6);
-    const size = { width: 10, height: 0, mode: "" };
+    const size = { width: 10, height: 0, mode: "" as const };
     const renders = [1, 2, 3].map(() => pool.render(png.slice(), "image/png", size));
     expect(pool.workers()).toBe(1);
     const thumbs = await Promise.all(renders);
@@ -220,7 +220,7 @@ test("renders beyond PB_THUMBS_MAX_WORKERS wait for a worker", async () => {
 test("close fails the renders queued for a worker", async () => {
   const pool = new ThumbPool({ getenv: env({ PB_THUMBS_MAX_WORKERS: "1" }) });
   const png = encodePng({ width: 40, height: 20, pix: new Uint8Array(40 * 20 * 4).fill(200) }, 6);
-  const size = { width: 10, height: 0, mode: "" };
+  const size = { width: 10, height: 0, mode: "" as const };
   const first = pool.render(png.slice(), "image/png", size);
   const second = pool.render(png.slice(), "image/png", size);
   pool.close();
