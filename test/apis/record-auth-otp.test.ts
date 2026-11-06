@@ -9,13 +9,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import {
-  insertMFA,
-  insertOTPs,
-  mfasCount,
-  otpRows,
-  setMFA,
-} from "@test/scenarios/record-auth-prepare";
+import { insertMFA, insertOTPs, otpRows, setMFA } from "@test/scenarios/record-auth-prepare";
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
@@ -142,7 +136,7 @@ describe("one-time secrets are consumed once", () => {
         post(url, "auth-with-otp", { otpId: otpAId, password: "123456" }),
         post(url, "auth-with-otp", { otpId: otpAId, password: "123456" }),
       ]);
-      const statuses = responses.map((r) => r.status).sort();
+      const statuses = responses.map((r) => r.status).toSorted();
       expect(statuses).toEqual([200, 400]);
 
       const refused = responses.find((r) => r.status === 400);
@@ -162,7 +156,7 @@ describe("one-time secrets are consumed once", () => {
         post(url, "auth-with-password", body),
         post(url, "auth-with-password", body),
       ]);
-      expect(responses.map((r) => r.status).sort()).toEqual([200, 400]);
+      expect(responses.map((r) => r.status).toSorted()).toEqual([200, 400]);
 
       const refused = responses.find((r) => r.status === 400);
       expect(await refused?.json()).toMatchObject({ message: "Invalid or expired MFA session." });

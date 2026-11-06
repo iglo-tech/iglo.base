@@ -76,7 +76,13 @@ export async function recordRequestVerification(e: RequestEvent): Promise<Handle
   }
 
   // run in background because we don't need to show the result to the client
-  void sendVerificationInBackground(e, record, resendKey);
+  //
+  // the resend key is taken before the send (upstream sets it after, with no
+  // check in between), so that concurrent requests send a single email. As
+  // upstream, a failed send keeps it.
+  const token = {};
+  e.app.store.set(resendKey, token);
+  void sendVerificationInBackground(e, record, resendKey, token);
 
   return e.noContent(204);
 }
@@ -85,6 +91,7 @@ async function sendVerificationInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
+  token: object,
 ): Promise<void> {
   const app = e.app;
   try {
@@ -93,9 +100,12 @@ async function sendVerificationInBackground(
     app.logger.error("Failed to send verification email", { error: err });
   }
 
-  app.store.set(resendKey, {});
+  // the timer removes only its own entry: a confirm may have cleared the key
+  // and a newer request set it again
   setTimeout(() => {
-    app.store.remove(resendKey);
+    if (app.store.get(resendKey) === token) {
+      app.store.remove(resendKey);
+    }
   }, resendLimitMs).unref();
 }
 
