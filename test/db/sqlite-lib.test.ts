@@ -3,9 +3,10 @@
 // that is the bundled library (IGLO_SQLITE_LIB when running from source), not
 // the system one; a missing library is a clear error, never a fallback.
 
+import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 
-import { bundledSQLiteVersion } from "@/db/sqlite-lib";
+import { bundledSQLiteSourceHash, bundledSQLiteVersion } from "@/db/sqlite-lib";
 
 import { sqliteInfo, type SqliteInfo } from "@test/db/support/sqlite-probe";
 import fixture from "@test/fixtures/sqlite-linux.json";
@@ -14,6 +15,19 @@ const want: SqliteInfo = { version: fixture.version, options: fixture.compileOpt
 
 test("the version scripts/build-sqlite.ts builds is the one of Linux", () => {
   expect(bundledSQLiteVersion).toBe(fixture.version);
+  expect(fixture.sourceId.endsWith(` ${bundledSQLiteSourceHash}`)).toBe(true);
+});
+
+test("the main thread uses the source of Linux's SQLite", () => {
+  sqliteInfo();
+  const db = new Database(":memory:");
+  try {
+    expect((db.query("select sqlite_source_id() as s").get() as { s: string }).s).toBe(
+      fixture.sourceId,
+    );
+  } finally {
+    db.close();
+  }
 });
 
 test("the main thread uses the SQLite version and options of Linux", () => {

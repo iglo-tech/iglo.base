@@ -61,6 +61,9 @@ interface Header {
   height: number;
   // imaging's EXIF orientation (0 when there is none)
   orientation: number;
+  // a GIF whose first frame is smaller than its logical screen: the frame's
+  // place, for decoders that return the whole screen (see cropToFrame)
+  gifFrame?: { left: number; top: number; screen: Size };
 }
 
 // The first step of createThumb: image.DecodeConfig's size checked
@@ -93,11 +96,20 @@ function readHeader(input: Uint8Array, maxPixels: number): Header {
   const config = checkSource(input, maxPixels);
   // libjpeg-turbo decodes a cut JPEG with a warning; Go's decoder fails
   checkJpegComplete(input);
-  const size = input[0] === 0x47 ? gifFirstFrame(input) : config;
+  const frame = input[0] === 0x47 ? gifFirstFrame(input) : undefined;
+  const size = frame ?? config;
   const orientation = readOrientation(input);
-  return orientation >= 5
-    ? { width: size.height, height: size.width, orientation }
-    : { width: size.width, height: size.height, orientation };
+  const header: Header =
+    orientation >= 5
+      ? { width: size.height, height: size.width, orientation }
+      : { width: size.width, height: size.height, orientation };
+  if (
+    frame !== undefined &&
+    (frame.width !== frame.screen.width || frame.height !== frame.screen.height)
+  ) {
+    header.gifFrame = { left: frame.left, top: frame.top, screen: frame.screen };
+  }
+  return header;
 }
 
 // The decode pipeline: Bun.Image's own EXIF orientation is turned off,
@@ -110,6 +122,19 @@ function openImage(input: Uint8Array, header: Header, maxPixels: number): Bun.Im
 
 async function pixels(img: Bun.Image): Promise<Raw> {
   return decodePng(await img.png({ compressionLevel: 0 }).bytes());
+}
+
+// image/gif returns the first frame at its own size. Bun.Image returns the
+// frame on Linux but, where it decodes with the system's image library
+// (macOS), the whole logical screen with the frame at its offset; the thumb
+// would then be planned on one size and cut from another. Both are made the
+// frame, so that the thumb does not depend on the OS (D34).
+function cropToFrame(raw: Raw, header: Header): Raw {
+  const g = header.gifFrame;
+  if (g === undefined || raw.width !== g.screen.width || raw.height !== g.screen.height) {
+    return raw;
+  }
+  return cropRect(raw, { x: g.left, y: g.top, width: header.width, height: header.height });
 }
 
 async function encode(raw: Raw, format: ReturnType<typeof thumbFormat>): Promise<Uint8Array> {
@@ -163,7 +188,7 @@ export async function createThumb(
     factor < 1.5
   ) {
     // the exact path: imaging's geometry on the full pixels
-    const decoded = await pixels(openImage(input, header, maxPixels));
+    const decoded = cropToFrame(await pixels(openImage(input, header, maxPixels)), header);
     return {
       bytes: await encode(thumbGeometry(decoded, size), format),
       contentType: thumbContentType,

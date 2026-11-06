@@ -25,6 +25,11 @@ export const sqliteLibraryEnv = "IGLO_SQLITE_LIB";
 // the SQLite release scripts/build-sqlite.ts builds (test/fixtures/sqlite-linux.json)
 export const bundledSQLiteVersion = "3.53.4";
 
+// the hash of that release's source, the end of sqlite_source_id(); a system
+// SQLite of the same version has another one
+export const bundledSQLiteSourceHash =
+  "bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc";
+
 let loaded = false;
 
 // Bun keeps one SQLite per process, so only the first thread to call
@@ -37,6 +42,13 @@ export function loadSQLite(embeddedPath?: string): void {
   if (loaded || process.platform !== "darwin") {
     return;
   }
+  // a thread started after the main thread loaded the library finds Bun's
+  // SQLite already the bundled one, and then needs no file (a full disk or a
+  // purged cache cannot fail it)
+  if (isBundled()) {
+    loaded = true;
+    return;
+  }
   const path = resolveLibrary(embeddedPath);
   let problem = "Bun did not accept it";
   try {
@@ -46,20 +58,32 @@ export function loadSQLite(embeddedPath?: string): void {
   } catch (err) {
     problem = err instanceof Error ? err.message : String(err);
   }
-  const version = activeVersion();
-  if (version !== bundledSQLiteVersion) {
-    throw failure(`${path}: ${problem || "loaded"}, but SQLite ${version} is in use`);
+  if (!isBundled()) {
+    throw failure(`${path}: ${problem || "loaded"}, but ${activeSQLite()} is in use`);
   }
   loaded = true;
 }
 
-function activeVersion(): string {
+function activeSQLite(): string {
   const db = new Database(":memory:");
   try {
-    return (db.query("select sqlite_version() as v").get() as { v: string }).v;
+    const row = db.query("select sqlite_version() as v, sqlite_source_id() as s").get() as {
+      v: string;
+      s: string;
+    };
+    return `SQLite ${row.v} (${row.s})`;
   } finally {
     db.close();
   }
+}
+
+// the version and the source hash are both the bundled release's
+function isBundled(): boolean {
+  const active = activeSQLite();
+  return (
+    active.startsWith(`SQLite ${bundledSQLiteVersion} (`) &&
+    active.endsWith(` ${bundledSQLiteSourceHash})`)
+  );
 }
 
 function failure(reason: string, cause?: unknown): Error {

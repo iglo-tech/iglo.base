@@ -105,17 +105,23 @@ const probe = `
   if (!Database.setCustomSQLite(process.env.PROBE_LIB)) throw new Error("setCustomSQLite returned false");
   const db = new Database(":memory:");
   const version = db.query("select sqlite_version() v").get().v;
+  const sourceId = db.query("select sqlite_source_id() s").get().s;
   const options = db.query("pragma compile_options").all().map((r) => r.compile_options).filter((o) => !o.startsWith("COMPILER="));
-  console.log(JSON.stringify({ version, options }));
+  console.log(JSON.stringify({ version, sourceId, options }));
 `;
 const got = JSON.parse(
   output(["env", `PROBE_LIB=${outfile}`, process.execPath, "-e", probe], repoRoot),
 );
 const missing = fixture.compileOptions.filter((o: string) => !got.options.includes(o));
 const extra = got.options.filter((o: string) => !fixture.compileOptions.includes(o));
-if (got.version !== fixture.version || missing.length > 0 || extra.length > 0) {
+if (
+  got.version !== fixture.version ||
+  got.sourceId !== fixture.sourceId ||
+  missing.length > 0 ||
+  extra.length > 0
+) {
   console.error(
-    `${outfile} differs from Bun's SQLite on Linux: version ${got.version} (want ${fixture.version}), missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`,
+    `${outfile} differs from Bun's SQLite on Linux: version ${got.version} (want ${fixture.version}), source ${got.sourceId} (want ${fixture.sourceId}), missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`,
   );
   process.exit(1);
 }

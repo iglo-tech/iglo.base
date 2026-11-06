@@ -12,20 +12,26 @@ export const sqliteLibraryPath = join(resolve(import.meta.dir, ".."), "dist", "l
 export async function prepareEmbeddedSQLite(target: string): Promise<void> {
   const darwinTarget =
     target === "" ? process.platform === "darwin" : target.startsWith("bun-darwin");
-  if (darwinTarget && (!existsSync(sqliteLibraryPath) || statSync(sqliteLibraryPath).size === 0)) {
+  // rebuilt when missing, empty or older than the build script (a changed
+  // define must not embed a stale library)
+  const buildScript = join(import.meta.dir, "build-sqlite.ts");
+  const stale =
+    !existsSync(sqliteLibraryPath) ||
+    statSync(sqliteLibraryPath).size === 0 ||
+    (darwinTarget &&
+      process.platform === "darwin" &&
+      statSync(sqliteLibraryPath).mtimeMs < statSync(buildScript).mtimeMs);
+  if (darwinTarget && stale) {
     if (process.platform !== "darwin") {
       console.error(
         `a darwin executable embeds ${sqliteLibraryPath}, which only macOS can build (bun scripts/build-sqlite.ts)`,
       );
       process.exit(1);
     }
-    const proc = Bun.spawn(
-      [process.execPath, join(import.meta.dir, "build-sqlite.ts"), sqliteLibraryPath],
-      {
-        stdout: "inherit",
-        stderr: "inherit",
-      },
-    );
+    const proc = Bun.spawn([process.execPath, buildScript, sqliteLibraryPath], {
+      stdout: "inherit",
+      stderr: "inherit",
+    });
     if ((await proc.exited) !== 0) {
       process.exit(1);
     }

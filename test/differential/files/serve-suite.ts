@@ -99,8 +99,16 @@ function tolerance(contentType: string, note: string): number {
   // upstream's resampling differs in the last bits from x64, and the GIF
   // encoder's error-diffusion dithering turns that into whole pixels of
   // another palette color (measured on a GitHub arm64 runner: 14.6 and 15.6,
-  // against exact on x64). Other formats still match closely (P.2, D34).
-  if (contentType === "image/gif" && process.arch === "arm64") {
+  // against exact on x64). Measured on linux-arm64 only, for photo.gif (the note
+  // "GIF, Plan 9 palette") at the
+  // sizes this suite requests; every other file and platform stays exact
+  // (04-api-compatibility.md, P.2, D34).
+  if (
+    contentType === "image/gif" &&
+    process.platform === "linux" &&
+    process.arch === "arm64" &&
+    note === "GIF, Plan 9 palette"
+  ) {
     return 25;
   }
   return 0.5;
@@ -344,15 +352,6 @@ export function serveSuite(storage: "local" | "s3"): void {
       expect(`${name}: ${ig.headers.get(name)}`).toBe(`${name}: ${up.headers.get(name)}`);
     }
     const [a, b] = await Promise.all([pixels(up.body), pixels(ig.body)]);
-    // On macOS Bun.Image decodes with the system's image library, and the thumb
-    // of a GIF whose first frame is smaller than its logical screen
-    // (gif-subframe.gif) has another size (50x38 against upstream's 50x33) and
-    // pixels 72.5 apart there (measured on a GitHub macOS runner; the cause is
-    // not investigated, D34). It is reported, not failed.
-    if (process.platform === "darwin" && file.note.includes("at (100, 150)")) {
-      report.push(`| ${file.name} | ${size} | differs on macOS | | |`);
-      return "thumb";
-    }
     expect(`${b.width}x${b.height}`).toBe(`${a.width}x${a.height}`);
     const errors = mae(a, b);
     const tol = tolerance(file.contentType, file.note);
