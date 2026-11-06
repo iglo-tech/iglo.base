@@ -206,7 +206,7 @@ Decided by the owner on 2026-10-28.
 
 ## D24. MVP targets Linux x64 only
 
-Decided by the owner on 2026-10-28.
+Decided by the owner on 2026-10-28. Amended by [D35](#d35-linux-only): darwin-arm64 dropped; releases are Linux only.
 
 - **Decision:** the MVP (1.0) is built, tested and released for linux-x64 only. CI runs one Linux x64 job (`bun run check` and `bun run test:reference`); the macOS job is removed. macOS (darwin-arm64) and linux-arm64 builds, the bundled SQLite for macOS (`Database.setCustomSQLite`) and macOS CI move to after 1.0 (task P.2).
 - **Why:** the owner wants a working MVP for x86 Linux first, with a lean CI, and no time spent on other platforms until then.
@@ -311,4 +311,5 @@ Task P.9, owner direction 2026-11-06: "we should drop macOS and Windows build, j
 - **Removed:** the darwin release job, `check-macos` in `ci.yml`, the bundled macOS SQLite (`scripts/build-sqlite.ts`, `scripts/sqlite-embed.ts`, `src/db/sqlite-lib.ts` and its calls, `IGLO_SQLITE_LIB`, the `dist/libsqlite3.dylib` import, the test preload, `test/db/sqlite-lib.test.ts` and its fixture). `scripts/build.ts` accepts `bun-linux-x64` and `bun-linux-arm64` only; any other `IGLO_TARGET` is refused.
 - **Kept:** code that is harmless and portable stays (`legacy_alter_table=OFF`, which matches upstream; `open` or `xdg-open` for `--open`; darwin-arm64 in `test/differential/upstream.lock` so the reference suite still runs from source on a Mac).
 - **Why:** nobody uses the macOS build, and it cost a SQLite build, a runner and a platform-specific test matrix. Running from source on macOS uses Bun's own SQLite.
+- **Considered:** keeping darwin-arm64 as an unsupported, untested build. Rejected: it would still need the bundled SQLite (D34) and a macOS runner for every release.
 - **Consequence:** the Bun-SQLite check against Linux (D34) is gone, so a Bun upgrade that changes SQLite is no longer caught by a fixture; the Linux test suite covers the behavior.

@@ -14,7 +14,7 @@ iglo.base ships one compiled executable per platform: linux-x64 and linux-arm64 
 
 ## What it produces
 
-- `iglo-base_<version>_linux_amd64.zip`, and `iglo-base_<version>_linux_arm64.zip`, each containing `iglo-base` (the executable), `LICENSE` and `README.txt` (a pointer to the repository). `<version>` is the tag without the leading `v`.
+- `iglo-base_<version>_linux_amd64.zip` and `iglo-base_<version>_linux_arm64.zip`, each containing `iglo-base` (the executable), `LICENSE` and `README.txt` (a pointer to the repository). `<version>` is the tag without the leading `v`.
 - `SHA256SUMS`, with the SHA-256 checksum of both archives.
 
 `IGLO_TARGET=bun-linux-arm64 bun run build` cross-compiles a linux-arm64 executable on any host; `bun-linux-x64` and `bun-linux-arm64` are the only targets `scripts/build.ts` accepts (D35).

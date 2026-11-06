@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-06
 
-Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64; image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
+Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
 
 ## Needs you
 
@@ -15,12 +15,12 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 | P.7 | worker | task/P.7-backlog-sweep | 0 | Backlog sweep ([brief](briefs/P.7.md)) |
-| P.9 | review | [#84](https://github.com/iglo-tech/iglo.base/pull/84) | 1 | Linux only: drop the macOS build ([brief](briefs/P.9.md)) |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.9 | [#84](https://github.com/iglo-tech/iglo.base/pull/84) | 2026-11-06 (`3a668d9`) | One review round: Opus APPROVE at `8514b34` (check 18,309/0, test:reference 4,410/0 on the rebased head; actionlint clean). Linux only (owner direction, D35): darwin release job, `check-macos`, the bundled macOS SQLite and its tests removed; darwin targets refused by the build. Release executable probed on upstream data (auth, lists, thumbs, logs, backup, restore, migrate). Backlog nits fixed by the lead on main (unused `@scripts/*` alias, D24 pointer, D35 Considered, releasing.md comma) |
 | P.6 | [#75](https://github.com/iglo-tech/iglo.base/pull/75) | 2026-11-06 (`59fcd4d`) | Two review rounds (Opus; Sonnet fixer round 1): Opus APPROVE at `eb3489c`. Every flake of the brief fixed at its cause: realtime and OAuth2 event order compared as sets (upstream sends each from its own goroutine), `updated` re-paired only for a second write of one record in one response (within 100 ms, never backwards), `execTime` as non-negative integers, OTP waits for `sentTo`, ports released on stop (peak 2,849 markers to 26), data-dir copy skips `.pb_temp_to_delete`, backups list waits for in-flight writes. New `updated-advances` differential test. Backlog: 4 rows (SDK token second, port takeover, global timeout, body-limit stall) |
 | P.8 | [#74](https://github.com/iglo-tech/iglo.base/pull/74) | 2026-11-06 (`2fb1ce6`) | One review round (Opus approve). Running servers reload settings and collections about 50 ms after another process (CLI, second iglo.base, PocketBase) writes a `pb_data/.notify` marker; probed both directions against upstream, CLI against each other's server, rolled-back saves, deleted or unwatchable `.notify`, a 90-save storm. Deviations: a window reloads every kind named in it (upstream only the last). Restart notes removed from the docs. Backlog: autobackup `cronMaxKeep prunes` reads the list while a backup is written (sent to P.6 fixer); macOS row in differences.md goes with P.9 |
 | P.4 | [#72](https://github.com/iglo-tech/iglo.base/pull/72) | 2026-11-06 (`0e23cac`) | Two review rounds (Opus; Sonnet fixer round 1, lead fixed round 2 as prescribed, docs only). `docs/operations.md` (install, flags and env vars, systemd, Docker, Caddy and nginx, backups, upgrades, CLI) and `docs/differences.md` (user-facing 04 plus a known gap). Found: CLI changes to settings and collections need a restart (P.8). Caddy and nginx configs checked by reading only (not installed). The dashboard's docs links (PB_DOCS_URL) wait for the site's hosting |
