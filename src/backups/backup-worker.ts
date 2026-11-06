@@ -65,6 +65,8 @@ async function handle(req: BackupRequest): Promise<boolean | undefined> {
       checkpoint(req.path);
       return undefined;
     case "zipOpen":
+      // a writer still open (its backup died before the abort) is dropped first
+      zipper?.abort();
       zipper = new ZipWriter(req.path);
       return undefined;
     case "zipAdd":

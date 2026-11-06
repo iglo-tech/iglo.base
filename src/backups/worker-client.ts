@@ -39,6 +39,8 @@ export class BackupWorker {
   readonly #worker = new Worker(workerURL());
   readonly #pending = new Map<number, Pending>();
   #nextId = 0;
+  // set once the worker errored or was stopped: it answers no call any more
+  #dead: Error | null = null;
 
   constructor() {
     this.#worker.addEventListener("message", (event: MessageEvent<BackupResponse>) => {
@@ -52,11 +54,16 @@ export class BackupWorker {
       }
     });
     this.#worker.addEventListener("error", (event: ErrorEvent) => {
-      this.#failAll(new Error(event.message));
+      this.#dead ??= new Error(event.message);
+      this.#failAll(this.#dead);
+      this.#worker.terminate();
     });
   }
 
   call(request: Call<BackupRequest>): Promise<boolean | undefined> {
+    if (this.#dead) {
+      return Promise.reject(this.#dead);
+    }
     const id = this.#nextId++;
     return new Promise((resolve, reject) => {
       this.#pending.set(id, { resolve, reject });
@@ -67,7 +74,8 @@ export class BackupWorker {
   }
 
   close(): void {
-    this.#failAll(new Error("the backup worker was stopped"));
+    this.#dead ??= new Error("the backup worker was stopped");
+    this.#failAll(this.#dead);
     this.#worker.terminate();
   }
 
