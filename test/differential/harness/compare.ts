@@ -36,12 +36,12 @@
 //   new record's created and updated may be equal on one side and not on
 //   the other, but each of them keeps its pairing across the responses
 //   compared with the same Pairing (a write and its read-back), and an
-//   `updated` must advance exactly where upstream's does (never move back). In the SDK suite a step's values may show any draw of that step (`beginStep`). The one exception:
+//   `updated` must advance exactly where upstream's does (never move back). In the SDK suite a step's values may show any `updated` the step's writes drew (`beginStep`). The one exception:
 //   a record's `updated` that appears a second time in one response (a
 //   batch's create and update of it) may pair again when the two writes
 //   landed in the same millisecond on one server only, that is one side
 //   repeats its previous value and the other side's is the same or a later
-//   millisecond, at most 5 ms after its previous (`sameMillisecond`).
+//   millisecond, at most 100 ms after its previous (one server saving a file between the two writes takes tens of ms) (`sameMillisecond`).
 // - or it equals, as a whole JSON string, a value paired that way anywhere
 //   in the scenario's responses (a relation to a new record's id).
 //
@@ -387,9 +387,9 @@ export class Pairing {
   }
 
   // The SDK suite compares the responses of a step and then the value the
-  // step returned, which shows the same records again: until the next
-  // beginStep, a pair that a same-millisecond redraw replaced is still
-  // accepted for its slot. Callers that never call it get no such leniency.
+  // step returned, which shows the same records again, possibly as they were
+  // before a later write of the step: until the next beginStep, an `updated`
+  // pair that a later pair of the step replaced is still accepted for its slot. Callers that never call it get no such leniency.
   beginStep(): void {
     this.superseded = new Map();
   }
@@ -412,11 +412,6 @@ export class Pairing {
     const again = this.seen.has(scope);
     this.seen.add(scope);
     if (draws && again && previous && sameMillisecond(previous, upstream, igloBase)) {
-      if (this.superseded) {
-        const list = this.superseded.get(scope) ?? [];
-        list.push(previous);
-        this.superseded.set(scope, list);
-      }
       const oldIg = this.forward.get(up);
       if (oldIg !== undefined) this.backward.delete(oldIg);
       const oldUp = this.backward.get(ig);
@@ -433,7 +428,19 @@ export class Pairing {
       return false;
     }
     const ok = this.pairNew(format, upstream, igloBase, up, ig);
-    if (ok) this.last.set(scope, { up: upstream, ig: igloBase });
+    if (ok) {
+      if (
+        draws &&
+        this.superseded &&
+        previous &&
+        (previous.up !== upstream || previous.ig !== igloBase)
+      ) {
+        const list = this.superseded.get(scope) ?? [];
+        list.push(previous);
+        this.superseded.set(scope, list);
+      }
+      this.last.set(scope, { up: upstream, ig: igloBase });
+    }
     return ok;
   }
 
@@ -575,7 +582,7 @@ function pairGenerated(
 // and the other side's value is the same millisecond or at most
 // `sameMillisecondSlack` later. A value that is earlier, further apart or
 // differs on both sides stays bound to its earlier pairing.
-const sameMillisecondSlack = 5;
+const sameMillisecondSlack = 100;
 
 function ms(value: string): number {
   return Date.parse(value.replace(" ", "T"));
