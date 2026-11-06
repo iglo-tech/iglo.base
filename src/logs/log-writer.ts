@@ -39,12 +39,15 @@ interface Running {
 export class LogWriter {
   readonly #path: string;
   readonly #onError: (text: string) => void;
+  readonly #timeoutMs: number;
   #running: Running | null = null;
   #waiters: { seq: number; resolve: () => void }[] = [];
 
-  constructor(path: string, onError: (text: string) => void) {
+  // timeoutMs bounds how long a stop waits for the thread
+  constructor(path: string, onError: (text: string) => void, timeoutMs = flushTimeoutMs) {
     this.#path = path;
     this.#onError = onError;
+    this.#timeoutMs = timeoutMs;
   }
 
   // posts one batch
@@ -89,7 +92,22 @@ export class LogWriter {
     const seq = ++running.posted;
     // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "close", seq });
-    await new Promise<void>((resolve) => this.#waiters.push({ seq, resolve }));
+    // as stopSync, the wait is bounded: a hung thread must not stall the
+    // suspend of a backup or a restore
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = await Promise.race([
+      new Promise<boolean>((resolve) => this.#waiters.push({ seq, resolve: () => resolve(false) })),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(true), this.#timeoutMs);
+      }),
+    ]);
+    clearTimeout(timer);
+    this.#drainErrors(running);
+    if (timedOut) {
+      this.#onError(
+        `Failed to stop the log writer: no answer within ${this.#timeoutMs}ms, the thread is terminated`,
+      );
+    }
     this.#end(running);
   }
 

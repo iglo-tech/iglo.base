@@ -99,6 +99,35 @@ describe("the log writer thread", () => {
     }
   }, 30_000);
 
+  test("stop gives up on a thread that does not answer, ends it and reports", async () => {
+    const root = freshDir();
+    const dataDir = join(root, "pb_data");
+    copyDataDir(fixtureDir, dataDir);
+    const auxPath = join(dataDir, "auxiliary.db");
+    const main = new Database(auxPath);
+    main.run("PRAGMA journal_mode = WAL");
+    const reported: string[] = [];
+    const writer = new LogWriter(auxPath, (text) => reported.push(text), 200);
+    try {
+      // the thread waits for this lock and so never reaches the close
+      main.run("BEGIN IMMEDIATE");
+      writer.write([["e".repeat(15), "2026-01-01 00:00:00.000Z", 0, "stuck", "{}"]]);
+      await writer.stop();
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toContain("Failed to stop the log writer");
+    } finally {
+      main.run("ROLLBACK");
+      main.close();
+    }
+
+    // the writer is usable again: a later batch starts a new thread
+    writer.write([["f".repeat(15), "2026-01-01 00:00:00.000Z", 0, "after", "{}"]]);
+    await writer.stop();
+    const messages = logRows(auxPath).map((r) => r.message);
+    expect(messages).toContain("after");
+    expect(messages).not.toContain("stuck");
+  }, 30_000);
+
   test("a backup taken while logs are written holds a consistent auxiliary.db", async () => {
     const app = await openFixtureApp({ ownLogger: true });
     apps.push(app);
