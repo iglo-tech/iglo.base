@@ -166,7 +166,10 @@ describe("one-time secrets are consumed once", () => {
 
       const refused = responses.find((r) => r.status === 400);
       expect(await refused?.json()).toMatchObject({ message: "Invalid or expired MFA session." });
+
+      // and the session is gone
+      const again = await post(url, "auth-with-password", body);
+      expect(again.status).toBe(400);
     });
-    await mfasCount("_pb_users_auth_", userId, 0)({ dataDir });
   });
 });

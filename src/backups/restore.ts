@@ -96,12 +96,19 @@ function checkExtractedData(dir: string): void {
 // If a failure occur during the restore process the dir changes are reverted.
 // If for whatever reason the revert is not possible, it throws out of the
 // restart and takes the process down (upstream's panic).
-export async function restoreBackup(app: App, name: string): Promise<void> {
-  if (app.store.has(StoreKeyActiveBackup)) {
-    throw new Error(ErrBackupActive);
-  }
+//
+// With `reserved` the caller has already set StoreKeyActiveBackup to name (the
+// restore endpoint takes it before it answers 204, so that nothing starts or
+// deletes the backup in the delay before the restore runs); restoreBackup
+// releases it on every exit path.
+export async function restoreBackup(app: App, name: string, reserved = false): Promise<void> {
+  if (!reserved) {
+    if (app.store.has(StoreKeyActiveBackup)) {
+      throw new Error(ErrBackupActive);
+    }
 
-  app.store.set(StoreKeyActiveBackup, name);
+    app.store.set(StoreKeyActiveBackup, name);
+  }
 
   try {
     // the log writer holds no batch and no connection to files that are
