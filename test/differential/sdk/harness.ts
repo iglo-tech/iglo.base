@@ -404,7 +404,7 @@ export function compareRecordings(
   start: ReturnType<typeof readStartingData>,
 ): string[] {
   const out: string[] = [];
-  const pairing = new Pairing();
+  const pairing = new Pairing({ history: true });
   const count = Math.max(upstream.steps.length, igloBase.steps.length);
   for (let i = 0; i < count; i++) {
     const up = upstream.steps[i];
@@ -413,7 +413,6 @@ export function compareRecordings(
       out.push(`step ${i + 1}: only ${up ? "upstream" : "iglo.base"} has "${(up ?? ig)?.label}"`);
       continue;
     }
-    pairing.beginStep();
     const where = `step ${i + 1} "${up.label}"`;
     if (up.label !== ig.label) {
       out.push(`${where}: iglo.base's step is "${ig.label}"`);

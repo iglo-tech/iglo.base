@@ -36,7 +36,7 @@
 //   new record's created and updated may be equal on one side and not on
 //   the other, but each of them keeps its pairing across the responses
 //   compared with the same Pairing (a write and its read-back), and an
-//   `updated` must advance exactly where upstream's does (never move back). In the SDK suite a step's values may show any `updated` the step's writes drew (`beginStep`). The one exception:
+//   `updated` must advance exactly where upstream's does (never move back). In the SDK suite (`new Pairing({ history: true })`) a step's value may also show an `updated` pair seen together before, as a realtime event or a batch's first item shows its record at an earlier moment. The one exception:
 //   a record's `updated` that appears a second time in one response (a
 //   batch's create and update of it) may pair again when the two writes
 //   landed in the same millisecond on one server only, that is one side
@@ -378,20 +378,21 @@ export class Pairing {
   private readonly seen = new Set<string>();
   private readonly last = new Map<string, { up: string; ig: string }>();
 
-  // pairs a same-millisecond redraw replaced, by slot, while a step is open
-  private superseded: Map<string, { up: string; ig: string }[]> | undefined;
+  // every `updated` pair seen so far, by slot, if the Pairing keeps them
+  private readonly history: Map<string, { up: string; ig: string }[]> | undefined;
+
+  // history: for the SDK suite, whose step values show records as they were
+  // at an earlier moment (a realtime event, a batch's first item) after
+  // later writes were paired. Such a value is accepted when exactly that
+  // pair of `updated` values was seen together before; a new pair is checked
+  // as any other. Everyone else keeps the strict rule.
+  constructor(options: { history?: boolean } = {}) {
+    this.history = options.history === true ? new Map() : undefined;
+  }
 
   // called before the values of a new response are paired
   beginResponse(): void {
     this.seen.clear();
-  }
-
-  // The SDK suite compares the responses of a step and then the value the
-  // step returned, which shows the same records again, possibly as they were
-  // before a later write of the step: until the next beginStep, an `updated`
-  // pair that a later pair of the step replaced is still accepted for its slot. Callers that never call it get no such leniency.
-  beginStep(): void {
-    this.superseded = new Map();
   }
 
   // false if either value is already paired with another one; slot is
@@ -405,7 +406,7 @@ export class Pairing {
     const previous = this.last.get(scope);
     if (
       draws &&
-      this.superseded?.get(scope)?.some((p) => p.up === upstream && p.ig === igloBase) === true
+      this.history?.get(scope)?.some((p) => p.up === upstream && p.ig === igloBase) === true
     ) {
       return true;
     }
@@ -429,15 +430,10 @@ export class Pairing {
     }
     const ok = this.pairNew(format, upstream, igloBase, up, ig);
     if (ok) {
-      if (
-        draws &&
-        this.superseded &&
-        previous &&
-        (previous.up !== upstream || previous.ig !== igloBase)
-      ) {
-        const list = this.superseded.get(scope) ?? [];
-        list.push(previous);
-        this.superseded.set(scope, list);
+      if (draws && this.history) {
+        const list = this.history.get(scope) ?? [];
+        list.push({ up: upstream, ig: igloBase });
+        this.history.set(scope, list);
       }
       this.last.set(scope, { up: upstream, ig: igloBase });
     }

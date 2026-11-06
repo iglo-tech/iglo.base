@@ -260,12 +260,11 @@ describe("generated values", () => {
     ).not.toEqual([]);
   });
 
-  test("a step shows every draw of its batch again, other callers do not", () => {
+  test("with history a step shows an earlier pair again, other callers do not", () => {
     const up = batchBody("2026-11-06 10:00:00.123Z", "2026-11-06 10:00:00.123Z");
     const ig = batchBody("2026-11-06 10:00:05.100Z", "2026-11-06 10:00:05.101Z");
     for (const step of [true, false]) {
-      const pairing = new Pairing();
-      if (step) pairing.beginStep();
+      const pairing = new Pairing({ history: step });
       expect(compareResponses(up, ig, writeContext(), pairing)).toEqual([]);
       const again = compareResponses(up, ig, writeContext(), pairing);
       expect(again.length === 0).toBe(step);
