@@ -58,20 +58,34 @@ export class Pairing {
   }
 }
 
-// same length, and every differing character is [a-z0-9] on both sides
+function escapeRegExp(s: string): string {
+  return s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+}
+
+// tools/filesystem/file.go normalizeName: a stored name is the cleaned base
+// name, "_", 10 random characters and the extension, and a base name of under
+// 3 characters gets 10 more random characters of its own. The random parts of
+// upstream's text are the only characters iglo.base's text may differ in:
+// the pattern is upstream's text with exactly those 10-character runs open.
 function sameShape(up: string, ig: string): boolean {
   if (up.length !== ig.length) {
     return false;
   }
-  for (let i = 0; i < up.length; i++) {
-    if (
-      up[i] !== ig[i] &&
-      !(/[a-z0-9]/.test(up[i] as string) && /[a-z0-9]/.test(ig[i] as string))
-    ) {
-      return false;
+  let source = "";
+  let at = 0;
+  const generated = /_[a-z0-9]{10}(?![a-z0-9])/g;
+  for (let m = generated.exec(up); m !== null; m = generated.exec(up)) {
+    let literal = up.slice(at, m.index);
+    if (at === 0 && /^[a-z0-9]{10,12}$/.test(literal)) {
+      // a short base name with its own random part
+      source += escapeRegExp(literal.slice(0, -10)) + "[a-z0-9]{10}";
+      literal = "";
     }
+    source += escapeRegExp(literal) + "_[a-z0-9]{10}";
+    at = m.index + m[0].length;
   }
-  return true;
+  source += escapeRegExp(up.slice(at));
+  return new RegExp(`^${source}$`).test(ig);
 }
 
 export function compareJSON(

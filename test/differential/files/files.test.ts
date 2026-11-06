@@ -9,8 +9,8 @@
 //
 //   - the responses must be equal, except for generated values: a new
 //     record's id, its created/updated (by format) and the random parts of
-//     generated file names (same length, differing only in [a-z0-9]
-//     characters). Each upstream value pairs with one iglo.base value
+//     generated file names (the 10 characters after the "_" of a stored
+//     name; everything else must be equal). Each upstream value pairs with one iglo.base value
 //     across the whole run;
 //   - pb_data/storage of the test collections must hold the same files on
 //     both sides, with iglo.base's ids and names mapped to upstream's
