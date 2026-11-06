@@ -19,7 +19,7 @@ Your existing PocketBase apps, SDKs and `pb_data` work unchanged. If you change 
 
 For a service, a reverse proxy with TLS, backups and upgrades, see the [operations guide](docs/operations.md).
 
-Your API is at http://127.0.0.1:8090/api/. All data goes into `pb_data/` next to the executable.
+Your API is at http://127.0.0.1:8090/api/. All data goes into `pb_data/`: next to the executable when you start it with a path (`./iglo-base`), in the working directory when you start it by name through `PATH`. Pass `--dir` to choose (see the [operations guide](docs/operations.md#flags)).
 
 Use any PocketBase client, for example the [JavaScript SDK](https://github.com/pocketbase/js-sdk):
 
@@ -35,15 +35,15 @@ const posts = await pb.collection("posts").getList(1, 20);
 | Platform | Archive |
 |---|---|
 | Linux x64 | `iglo-base_<version>_linux_amd64.zip` |
-| Linux arm64 | `iglo-base_<version>_linux_arm64.zip` (from the release after 1.0.0) |
-| macOS on Apple silicon | `iglo-base_<version>_darwin_arm64.zip` (from the release after 1.0.0) |
+| Linux arm64 | `iglo-base_<version>_linux_arm64.zip` (from 1.1.0) |
+| macOS on Apple silicon | `iglo-base_<version>_darwin_arm64.zip` (from 1.1.0) |
 
 Windows and Intel Macs are not supported. Check the archive with `sha256sum -c SHA256SUMS`. The macOS build is not signed: after downloading, run `xattr -d com.apple.quarantine iglo-base` once.
 
 ### Docker
 
 ```sh
-docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:latest
+docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.1.0
 docker exec iglo /iglo-base superuser upsert admin@example.com 'a long password'
 ```
 
@@ -125,7 +125,7 @@ A few edge cases behave slightly differently, such as error texts for malformed 
 
 ## Status
 
-The current release is 1.0.0, from 5 November 2026. iglo.base is maintained by [iglo-tech](https://github.com/iglo-tech) for its own projects and published as is: there is no support promise and no release schedule. It is not an official PocketBase project.
+The current release is 1.1.0, from 6 November 2026. iglo.base is maintained by [iglo-tech](https://github.com/iglo-tech) for its own projects and published as is: there is no support promise and no release schedule. It is not an official PocketBase project.
 
 ## For developers
 

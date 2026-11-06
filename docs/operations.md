@@ -16,7 +16,7 @@ iglo.base is one executable. It serves the API, the admin dashboard (`/_/`) and 
    | Linux arm64 | `iglo-base_<version>_linux_arm64.zip` |
    | macOS on Apple silicon | `iglo-base_<version>_darwin_arm64.zip` |
 
-   Windows and Intel Macs are not supported. The linux/arm64 and macOS archives exist from the release after 1.0.0.
+   Windows and Intel Macs are not supported. The linux/arm64 and macOS archives exist from release 1.1.0; 1.0.0 has only the Linux x64 archive.
 
 2. Check the checksum. On Linux, with both files in one directory:
 
@@ -26,31 +26,36 @@ iglo.base is one executable. It serves the API, the admin dashboard (`/_/`) and 
 
    macOS has no `sha256sum`: compare the output of `shasum -a 256 <archive>` with the archive's line in `SHA256SUMS`.
 
-3. Unpack it and check the version:
+3. Unpack it:
 
    ```sh
    unzip iglo-base_<version>_linux_amd64.zip
-   ./iglo-base --version
    ```
 
    The archive holds `iglo-base` (the executable), `LICENSE` and `README.txt`.
 
-4. macOS only: the executable is not signed or notarized. Clear the quarantine attribute once:
+4. macOS only: the executable is not signed or notarized, and Gatekeeper blocks it until you clear the quarantine attribute. Do this once, before the first run:
 
    ```sh
    xattr -d com.apple.quarantine iglo-base
    ```
 
-   On first start the macOS build writes its SQLite library to `~/Library/Caches/iglo-base/sqlite/` (`$XDG_CACHE_HOME/iglo-base/sqlite/` if `XDG_CACHE_HOME` is set). For a service user whose home is not writable, set `XDG_CACHE_HOME` to a writable directory.
+5. Check the version:
+
+   ```sh
+   ./iglo-base --version
+   ```
+
+   On macOS, the first start writes its SQLite library to `~/Library/Caches/iglo-base/sqlite/` (`$XDG_CACHE_HOME/iglo-base/sqlite/` if `XDG_CACHE_HOME` is set). For a service user whose home is not writable, set `XDG_CACHE_HOME` to a writable directory.
 
 ### With Docker
 
 ```sh
 docker run -d --name iglo --restart unless-stopped -p 8090:8090 \
-  -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:latest
+  -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.1.0
 ```
 
-The image holds only the release executable (linux/amd64 and linux/arm64). Use a version tag (`:1.0.0`) instead of `:latest` in production, so a restart never changes the version. See [Docker container](#docker-container) below for volumes and permissions.
+The image holds only the release executable. It is multi-arch (linux/amd64 and linux/arm64) from 1.1.0; 1.0.0 has no arm64 variant. Use a version tag (`:1.1.0`) in production instead of `:latest`, so a restart never changes the version. See [Docker container](#docker-container) below for volumes and permissions.
 
 ### Create the first superuser
 
@@ -73,7 +78,7 @@ Run it with the same `--dir` as the server. It works while the server runs.
 ## Run
 
 ```sh
-./iglo-base serve
+./iglo-base serve --dir ./pb_data
 ```
 
 By default the server listens on `127.0.0.1:8090`, so only the same machine can connect. To accept other connections, set the address: `serve --http 0.0.0.0:8090`. Put a [reverse proxy](#reverse-proxy-with-tls) in front for TLS.
@@ -104,8 +109,8 @@ Global flags, accepted by `serve`, `superuser` and `migrate`:
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--dir <path>` | `pb_data` next to the executable | The data directory. |
-| `--publicDir <path>` | `pb_public` next to the executable | Directory of static files served at `/`. Nothing is served when it does not exist. It does not follow `--dir`. |
+| `--dir <path>` | `pb_data` in the directory of the command (see below) | The data directory. |
+| `--publicDir <path>` | `pb_public` in the directory of the command | Directory of static files served at `/`. Nothing is served when it does not exist. It does not follow `--dir`. |
 | `--indexFallback` | `true` | Serve `index.html` of `--publicDir` for a missing path, for single-page apps. Use `--indexFallback=false` to turn it off. |
 | `--migrationsDir <path>` | `pb_migrations` next to the `--dir` directory (`<dir>/../pb_migrations`) | Directory of JavaScript migration files. |
 | `--automigrate` | `true` | Write a migration file when you change collections in the dashboard. Use `--automigrate=false` to turn it off. Migrations in the directory are applied at start either way. |
@@ -117,7 +122,7 @@ Global flags, accepted by `serve`, `superuser` and `migrate`:
 
 The flags `--hooksDir`, `--hooksWatch` and `--hooksPool` are refused: iglo.base has no hooks.
 
-"Next to the executable" is the directory that holds `iglo-base`, not the working directory. In production, pass `--dir` (and `--publicDir`) explicitly.
+The defaults `pb_data`, `pb_public` and `pb_migrations` are taken from the directory of the command as you typed it. Started with a path (`./iglo-base`, `/usr/local/bin/iglo-base`, or the `ExecStart` of a systemd unit), that is the directory that holds the executable. Started by bare name through `PATH` (`iglo-base serve`), there is no directory in the name and they are the **working directory**. Start the same executable from another directory and you get a new, empty instance, so your data seems to be gone. Always pass `--dir` (and `--publicDir`) explicitly.
 
 ### Environment variables
 
@@ -130,12 +135,13 @@ None is needed. The server reads these:
 | `PB_THUMBS_MAX_WAIT` | `60` | Seconds a thumbnail request waits for a free worker. |
 | `PB_THUMBS_MAX_SOURCE_PIXELS` | `104857600` (100 × 2^20) | Largest source image, in pixels, that gets thumbnails. A larger image is served as it is. |
 | `PB_FILES_DELETE_MAX_WORKERS` | `2000` | Files deleted at the same time. |
-| `PB_ID_TOKEN_LEEWAY` | `300` | Seconds of clock difference accepted when checking an OpenID Connect ID token from an OAuth2 provider. |
-| `HTTP_PROXY`, `HTTPS_PROXY` | none | Used for the server's outgoing HTTP requests that go through `fetch`, such as the OAuth2 avatar download. |
-| `NO_COLOR` | | Turns off colors in the console output. |
+| `PB_ID_TOKEN_LEEWAY` | `300` | Seconds of clock difference accepted when checking an OpenID Connect ID token from an OAuth2 provider. Any integer, 0 and negative values included. |
+| `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` | none | Used for the server's outgoing HTTP requests that go through `fetch`, such as the OAuth2 avatar download. `NO_PROXY` lists the hosts that bypass the proxy. |
+| `NO_COLOR`, `TERM=dumb` | | Either one turns off colors in the console output. |
+| `TZ` | system time zone | The time zone for local time in console output and logs, as in Go. Stored timestamps and cron expressions are not affected: cron expressions, including the backup schedule, always run in UTC. |
 | `XDG_CACHE_HOME` | | macOS only: parent of the SQLite library cache. |
 
-A number that is not a positive integer falls back to the default.
+A value that is not a number falls back to the default.
 
 ### Directories
 
@@ -219,10 +225,10 @@ docker run -d --name iglo --restart unless-stopped \
   -v iglo-data:/pb_data \
   -v iglo-migrations:/pb_migrations \
   -v /srv/site:/pb_public:ro \
-  ghcr.io/iglo-tech/iglo.base:1.0.0
+  ghcr.io/iglo-tech/iglo.base:1.1.0
 ```
 
-- The executable is `/iglo-base` and the working directory is `/`, so the defaults are the mounts above: `/pb_data`, `/pb_migrations` (declared as volumes) and `/pb_public` (mount it if you serve static files). The default command is `serve --http 0.0.0.0:8090`. If you pass your own command, keep `serve` and add the flags after the image name: `... ghcr.io/iglo-tech/iglo.base:1.0.0 serve --http 0.0.0.0:8090 --origins https://app.example.com`.
+- The executable is `/iglo-base` and the working directory is `/`, so the defaults are the mounts above: `/pb_data`, `/pb_migrations` (declared as volumes) and `/pb_public` (mount it if you serve static files). The default command is `serve --http 0.0.0.0:8090`. If you pass your own command, keep `serve` and add the flags after the image name: `... ghcr.io/iglo-tech/iglo.base:1.1.0 serve --http 0.0.0.0:8090 --origins https://app.example.com`.
 - `-p 127.0.0.1:8090:8090` keeps the port off the public network when a reverse proxy runs on the same host. Without the `127.0.0.1:` prefix Docker publishes the port on all interfaces.
 - `--restart unless-stopped` starts the container after a crash or a reboot.
 - The process runs as uid and gid 65532. A new named volume gets that owner. For a bind mount, hand the directory over first: `sudo chown -R 65532:65532 /srv/iglo/pb_data`. With rootless Docker or Podman, see the [image notes](releasing.md#image).
@@ -231,7 +237,7 @@ docker run -d --name iglo --restart unless-stopped \
 
   ```sh
   docker exec iglo /iglo-base superuser upsert admin@example.com 'a long password'
-  docker run --rm -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.0.0 superuser upsert admin@example.com 'a long password'
+  docker run --rm -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.1.0 superuser upsert admin@example.com 'a long password'
   ```
 
 ## Reverse proxy with TLS
@@ -241,7 +247,7 @@ iglo.base serves plain HTTP. Let a reverse proxy end TLS. Keep iglo.base on `127
 Two things matter for the proxy:
 
 - **Realtime uses server-sent events (SSE).** `GET /api/realtime` is a response that stays open and sends events whenever they happen. The proxy must not buffer it and must not close it for being idle. The server sends `X-Accel-Buffering: no`, and closes a connection after 5 minutes without a message and after 30 minutes in all; the client SDKs then reconnect. Set the read timeout of the proxy above 5 minutes.
-- **The client IP.** Behind a proxy every request comes from the proxy's address. Rate limits, logs and the superuser IP allow-list use the client IP, so tell iglo.base which header carries it: dashboard **Settings → Application → IP proxy headers**, or `trustedProxy.headers` in the settings API. Use a header that only your proxy sets, such as `X-Forwarded-For`. Leave **Use leftmost IP** off for the configs below: both append the real client address to the right of any value the client sent, and iglo.base then takes the rightmost address. If a client could send the header itself and your proxy passes it on unchanged, the client IP can be faked. The dashboard shows "Detected proxy header" when a request arrives with a header it recognizes.
+- **The client IP.** Behind a proxy every request comes from the proxy's address. Rate limits, logs and the superuser IP allow-list use the client IP, so tell iglo.base which header carries it: dashboard **Settings → Application → IP proxy headers**, or `trustedProxy.headers` in the settings API. Use a header that only your proxy sets, such as `X-Forwarded-For`. Leave **Use leftmost IP** off for the configs below: nginx appends the real client address to the right of any value the client sent, Caddy replaces an untrusted incoming value with the client address, and iglo.base takes the rightmost address, which is the proxy's own in both cases. If a client could send the header itself and your proxy passes it on unchanged, the client IP can be faked. The dashboard shows "Detected proxy header" when a request arrives with a header it recognizes.
 
 ### Caddy
 
@@ -263,14 +269,12 @@ Caddy sets `X-Forwarded-For` to the client's address by itself and drops a value
 
 ### nginx
 
-`/etc/nginx/conf.d/iglo.conf`, with a certificate from Let's Encrypt (for example with `certbot`) or your own:
+`/etc/nginx/conf.d/iglo.conf`, with a certificate from Let's Encrypt (for example with `certbot`) or your own. It works on nginx 1.22 and later and talks HTTP/1.1 to clients, which is enough for SSE. To add HTTP/2, write `listen 443 ssl http2;` (nginx before 1.25.1) or add `http2 on;` (1.25.1 and later).
 
 ```nginx
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
 
+
+```nginx
 server {
     listen 80;
     server_name example.com;
@@ -279,7 +283,6 @@ server {
 
 server {
     listen 443 ssl;
-    http2 on;
     server_name example.com;
 
     ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
@@ -325,7 +328,7 @@ All data is in the data directory, so a backup is a copy of it.
 
 In the dashboard open **Settings → Backups**. You can create a backup, upload or download one, restore one, and schedule backups with a cron expression and the number of backups to keep. Backups are zip files of the data directory and are stored in `pb_data/backups/`, or in an S3 bucket when you enable S3 for backups there.
 
-The same functions are in the API for superusers:
+The same functions are in the API for superusers. This example needs `curl` and `jq` (`sudo apt install jq`):
 
 ```sh
 TOKEN=$(curl -s http://127.0.0.1:8090/api/collections/_superusers/auth-with-password \
@@ -347,6 +350,7 @@ To back up with a file copy, **stop the server first** and copy the whole data d
 
 ```sh
 sudo systemctl stop iglo-base
+sudo install -d /srv/backup
 sudo cp -a /var/lib/iglo-base /srv/backup/iglo-base-$(date +%F)
 sudo systemctl start iglo-base
 ```
@@ -371,9 +375,9 @@ Releases keep the data format, and the server applies its own migrations at star
 - **Docker:** pull the new image and create the container again on the same volumes:
 
   ```sh
-  docker pull ghcr.io/iglo-tech/iglo.base:1.0.1
+  docker pull ghcr.io/iglo-tech/iglo.base:<new-version>
   docker stop iglo && docker rm iglo
-  docker run -d --name iglo ... ghcr.io/iglo-tech/iglo.base:1.0.1
+  docker run -d --name iglo ... ghcr.io/iglo-tech/iglo.base:<new-version>
   ```
 
 There is no `update` command. A version number is not a promise of a release schedule: iglo.base is published as is.
@@ -394,7 +398,7 @@ There is no `update` command. A version number is not a promise of a release sch
 
 ## Other commands
 
-The commands use the same global flags. Run them with the same `--dir` as the server; they can run while the server is up.
+The commands use the same global flags. Run them with the same `--dir` as the server; they can run while the server is up, but `superuser ips` takes effect only after a restart (see below).
 
 ### `superuser`
 
@@ -408,7 +412,9 @@ The commands use the same global flags. Run them with the same `--dir` as the se
 ./iglo-base superuser ips                                          # no arguments: remove the restriction
 ```
 
-Mind the IP list: a request that is signed in as a superuser from any other address is refused with 403, so a wrong list locks you out of the dashboard. Behind a proxy it checks the client IP, so set the trusted proxy header first (see above).
+`superuser ips` writes the setting to the database, but a running iglo.base server keeps its settings in memory and does not read the change. The list takes effect when the server restarts (`sudo systemctl restart iglo-base`, `docker restart iglo`). This also holds for clearing the list. PocketBase v0.41.0 applies the change to a running server; iglo.base does not.
+
+Mind the IP list: a request that is signed in as a superuser from any other address is refused with 403, so a wrong list locks you out of the dashboard. Behind a proxy it checks the client IP, so set the trusted proxy header first (see above). If you are locked out, stop the server, run `./iglo-base superuser ips --dir <dir>` with no arguments, and start the server again. Clearing it while the server runs is not enough: restart it. The other `superuser` commands change records and act at once.
 
 ### `migrate`
 
@@ -416,11 +422,13 @@ Applies and manages the JavaScript files in `pb_migrations`:
 
 ```sh
 ./iglo-base migrate up                 # apply all pending migrations
-./iglo-base migrate down 1             # revert the last migration
+./iglo-base migrate down 1             # revert the last migration (asks y/N first)
 ./iglo-base migrate create add_posts   # new empty migration file (asks y/N first)
-./iglo-base migrate collections        # a file with a snapshot of the current collections
+./iglo-base migrate collections        # a file with a snapshot of the current collections (asks y/N first)
 ./iglo-base migrate history-sync       # drop history rows of migration files that no longer exist
 ```
+
+The three commands that ask read the answer from standard input; without a terminal the answer is no and the command is cancelled, so in a script pipe it in (`echo y | ./iglo-base migrate create add_posts`).
 
 `serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
 

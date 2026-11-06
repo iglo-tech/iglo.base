@@ -21,11 +21,11 @@ Still there: JavaScript migrations in `pb_migrations`, the `migrate` and `superu
 
 ## Platforms
 
-Release executables exist for Linux x64, Linux arm64 and macOS on Apple silicon, and a Docker image for linux/amd64 and linux/arm64. Windows, FreeBSD, 32-bit ARM and Intel Macs are not supported.
+Release executables exist for Linux x64, Linux arm64 and macOS on Apple silicon, and the Docker image is built for linux/amd64 and linux/arm64. The arm64 and macOS executables and the arm64 image start with release 1.1.0; 1.0.0 has only Linux x64. Windows, FreeBSD, 32-bit ARM and Intel Macs are not supported.
 
 ## Version output
 
-`./iglo-base --version` prints `iglo-base version <version>`. PocketBase prints `pocketbase version 0.41.0`. A build that did not come from a release prints `(untracked)`.
+`./iglo-base --version` prints `iglo-base version <version>`. PocketBase prints `pocketbase version 0.41.0`. A build that did not come from a release prints `(untracked)`. The `serve` banner prints no version, in both.
 
 ## Differences you may notice in the API
 
@@ -39,17 +39,18 @@ Each row says what a client could see. "No client sends this" means only a hand-
 | `GET /api/crons` | Built-in and your own jobs. | Built-in jobs only. |
 | Request logs | May include entries written by hooks. | Only iglo.base's own entries, in the same shape. |
 | `migrate down` that reaches a system migration | Removes its row, runs its down if it has one, and the next start applies it again. | For most system migrations: the same output, and the row stays. For the three schema migrations with a down (`1640988000_init.go`, `1640988000_aux_init.go`, `1763020353_update_default_auth_alert_templates.go`) the command fails before anything changes. |
-| Paths with `.` or `..` segments (also `%2e%2e`) or `\` | `307` redirect to the cleaned path. | Answered as the cleaned path, without the redirect. No client sends this. |
+| Paths with `.` or `..` segments | `307` redirect to the cleaned path. | Answered as the cleaned path, without the redirect. No client sends this. `%2e%2e` and `\` are not resolved in either. |
 | Repeated request header lines | `@request.headers.*` sees the first line. A trusted proxy header is read from its last line. | The lines are joined with `, `. With **Use leftmost IP** on, the leftmost IP of the first line is used. Only matters when a client or proxy sends the same header twice. |
 | A realtime client that stops reading | The server keeps every unsent message and delivers all of them if the client reads again. | The server closes the stream once more than 8 MiB are unsent. SDKs reconnect and subscribe again. |
 
 ### Timing
 
+In most cases iglo.base is faster than PocketBase; the cases where PocketBase leads, start time among them, are in the [README's performance section](../README.md#performance).
+
 | Area | PocketBase | iglo.base |
 |---|---|---|
 | `--queryTimeout` on reads inside a transaction and other synchronous reads | The statement is stopped at the deadline. Other requests go on. | The query fails with the same error (`context deadline exceeded; failed query: …`), but only after the statement finishes, and the server handles nothing else meanwhile. Reads outside transactions fail at the deadline, as in PocketBase. Matters only for a very slow query. |
 | `batch.timeout`, and a client that disconnects during a batch | A running request in the batch is abandoned at the deadline. A closed connection rolls the batch back. | The deadline is checked after each request of the batch, so a late batch is rolled back with the same response, but only once the running request ends. A closed connection is not noticed while the batch runs. |
-| Start time | About 30–40 ms on a database with 10,500 records. | About 120–150 ms on the same data. |
 
 ### Files and S3
 
@@ -57,8 +58,8 @@ Each row says what a client could see. "No client sends this" means only a hand-
 |---|---|---|
 | Downloading a backup or a file from S3 (`GET /api/backups/{key}` with S3 backups, `GET /api/files/…` with S3) | Streams from S3. A failure part way breaks the response off. | The bytes are copied to a temporary file in `pb_data/.pb_temp_to_delete` first, so the first byte arrives later and the file takes disk space meanwhile. A failure part way answers with the API's error (`400` for a backup, `404` for a file). |
 | Batch requests and OAuth2 sign-ups with files, with S3 | The file is uploaded inside the database transaction. | The upload happens before the transaction opens, and files no committed record refers to are deleted afterwards. The responses and the stored objects are the same, but a request that is then refused can leave its files in the bucket for a moment, and the upload does not count against `batch.timeout`. |
-| `$app.newFilesystem()` in a migration with S3 enabled | Returns an S3 filesystem. | Fails with an error that says why: a migration runs inside a transaction and cannot make network calls. |
-| `pb_public` files over 16 MiB (zip, pdf and similar types) | No `Content-Disposition` header. | `Content-Disposition: filename="<name>"`. Browsers show or download these files as before. |
+| `$app.newFilesystem()` in a migration | Returns a filesystem for the configured storage. | With S3 enabled it fails with an error that says why: a migration runs inside a transaction and cannot make network calls. On local storage it is not bound either (`app.newFilesystem is not available in iglo.base migrations`), so a migration that uses it works on PocketBase and fails here. |
+| `pb_public` files over 16 MiB, and multi-range responses over 16 MiB (zip, pdf and similar types) | No `Content-Disposition` header. | `Content-Disposition: filename="<name>"`. Browsers show or download these files as before. |
 | GIF thumbnails (`?thumb=`) on arm64 | Exact pixels. | On linux/arm64 and macOS the pixels of some GIF thumbnails differ from PocketBase's (the average error is about 15 on a 0–255 scale per channel). The cause is most likely different floating-point code in PocketBase's Go build on arm64. On x64 they are the same. |
 
 ### Errors
