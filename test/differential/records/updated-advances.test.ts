@@ -14,6 +14,12 @@ import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 
+interface Rec {
+  id: string;
+  created: string;
+  updated: string;
+}
+
 const roots: string[] = [];
 const stops: (() => Promise<unknown>)[] = [];
 
@@ -24,14 +30,14 @@ afterAll(async () => {
   }
 });
 
-async function api(url: string, method: string, path: string, body?: object): Promise<any> {
+async function api(url: string, method: string, path: string, body?: object): Promise<Rec> {
   const res = await fetch(url + path, {
     method,
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   expect(res.status).toBe(200);
-  return res.json();
+  return (await res.json()) as Rec;
 }
 
 async function check(url: string): Promise<void> {

@@ -267,6 +267,10 @@ function usersFileKey(dataDir: string): string {
 }
 
 // a copy of a directory with its modification times and extended attributes
+function modified(r: Res): number {
+  return Date.parse(r.headers.get("last-modified") ?? "");
+}
+
 function copyPreserving(source: string, target: string): void {
   mkdirSync(dirname(target), { recursive: true });
   const copy = Bun.spawnSync(["cp", "-a", source, target]);
@@ -617,7 +621,6 @@ export function serveSuite(storage: "local" | "s3"): void {
       // Last-Modified is the stored thumb's write time: each server wrote its
       // own thumb when it first served the size, so the seconds can differ
       // across a boundary. Both must send one, close together.
-      const modified = (r: Res) => Date.parse(r.headers.get("last-modified") ?? "");
       expect(Number.isNaN(modified(up))).toBe(false);
       expect(Number.isNaN(modified(ig))).toBe(false);
       expect(Math.abs(modified(up) - modified(ig))).toBeLessThanOrEqual(5000);

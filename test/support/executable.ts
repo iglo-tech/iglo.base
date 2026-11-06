@@ -3,7 +3,7 @@
 // streams and HTTP.
 
 import { mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 
 import { prepareEmbeddedSQLite } from "@scripts/sqlite-embed";
@@ -89,7 +89,9 @@ export async function run(args: string[], options: { cwd?: string } = {}): Promi
 // agents on a shared host cannot hand out the same port. A marker whose
 // process is gone is reused.
 const portRange = { from: 20_000, to: 32_000 };
-const claimDir = join(tmpdir(), "iglo-base-ports");
+// (not under tmpdir(): test/support/temp-root.ts points TMPDIR at a directory
+// of its own run, and the claims must be seen by every run on the host)
+const claimDir = join("/tmp", `iglo-base-ports-${userInfo().uid}`);
 const claimedHere = new Set<number>();
 
 function pidAlive(pid: number): boolean {

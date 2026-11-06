@@ -91,6 +91,12 @@ function count(o: Observation, name: string): number {
 // against the database state its own write left, not a later one.
 // Upstream sends each message from its own goroutine, so the events are
 // compared sorted, each as its event name and record data.
+// an event's data without its timestamps, which differ per server (the key
+// events are sorted by when the order is not defined)
+function dataKey(e: Observation): string {
+  return (e.data as string).replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
+}
+
 function sortedEvents(list: Observation[]): string[] {
   return list
     .map((e) => {
@@ -790,10 +796,7 @@ export const realtimeCases: RealtimeScenario[] = [
       // transaction makes is not defined, between two upstream runs too: the
       // events are compared as a set
       const observed = events(await demo1.settle());
-      // (sorted by the data without its timestamps, which differ per server)
-      const key = (e: Observation) =>
-        (e.data as string).replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
-      return { del, demo1: observed.toSorted((a, b) => (key(a) < key(b) ? -1 : 1)) };
+      return { del, demo1: observed.toSorted((a, b) => (dataKey(a) < dataKey(b) ? -1 : 1)) };
     },
   },
   {

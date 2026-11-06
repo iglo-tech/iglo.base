@@ -25,6 +25,14 @@ function diff(
   });
 }
 
+const batchContext = (method: string): Context => ({
+  start: { contains: () => false },
+  request: { method, url: "/api/batch" },
+});
+const updatedBody = (updated: string) => res(`{"id":"sdkbatchfile001","updated":"${updated}"}`);
+const sqlBody = (execTime: string) =>
+  res(`{"execTime":${execTime},"affectedRows":0,"columns":[],"rows":[]}`);
+
 describe("status and headers", () => {
   test("equal responses have no differences", () => {
     expect(diff(res('{"a":1}'), res('{"a":1}'))).toEqual([]);
@@ -196,43 +204,38 @@ describe("generated values", () => {
   // on one server and not on the other (batch create + update)
   test("a write draws a record's updated again, a read must show the last draw", () => {
     const pairing = new Pairing();
-    const context = (method: string): Context => ({
-      start: { contains: () => false },
-      request: { method, url: "/api/batch" },
-    });
-    const body = (updated: string) => res(`{"id":"sdkbatchfile001","updated":"${updated}"}`);
     // create and update: the same millisecond upstream, two on iglo.base
     expect(
       compareResponses(
-        body("2026-11-06 10:00:00.123Z"),
-        body("2026-11-06 10:00:05.100Z"),
-        context("POST"),
+        updatedBody("2026-11-06 10:00:00.123Z"),
+        updatedBody("2026-11-06 10:00:05.100Z"),
+        batchContext("POST"),
         pairing,
       ),
     ).toEqual([]);
     expect(
       compareResponses(
-        body("2026-11-06 10:00:00.123Z"),
-        body("2026-11-06 10:00:05.101Z"),
-        context("POST"),
+        updatedBody("2026-11-06 10:00:00.123Z"),
+        updatedBody("2026-11-06 10:00:05.101Z"),
+        batchContext("POST"),
         pairing,
       ),
     ).toEqual([]);
     // the read-back shows the last draw on both
     expect(
       compareResponses(
-        body("2026-11-06 10:00:00.123Z"),
-        body("2026-11-06 10:00:05.101Z"),
-        context("GET"),
+        updatedBody("2026-11-06 10:00:00.123Z"),
+        updatedBody("2026-11-06 10:00:05.101Z"),
+        batchContext("GET"),
         pairing,
       ),
     ).toEqual([]);
     // iglo.base reading the first draw back is a difference
     expect(
       compareResponses(
-        body("2026-11-06 10:00:00.123Z"),
-        body("2026-11-06 10:00:05.100Z"),
-        context("GET"),
+        updatedBody("2026-11-06 10:00:00.123Z"),
+        updatedBody("2026-11-06 10:00:05.100Z"),
+        batchContext("GET"),
         pairing,
       ),
     ).toContain(
@@ -243,7 +246,7 @@ describe("generated values", () => {
       compareResponses(
         res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:00.123Z"}'),
         res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:05.100Z"}'),
-        context("POST"),
+        batchContext("POST"),
         pairing,
       ),
     ).toEqual([]);
@@ -251,7 +254,7 @@ describe("generated values", () => {
       compareResponses(
         res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:00.123Z"}'),
         res('{"id":"sdkbatchfile001","created":"2026-11-06 10:00:05.101Z"}'),
-        context("POST"),
+        batchContext("POST"),
         pairing,
       ),
     ).toContain(
@@ -522,15 +525,12 @@ describe("execTime of the SQL console", () => {
     start: { contains: () => false },
     request: { method: "POST", url: "/api/sql" },
   };
-  const body = (execTime: string) =>
-    res(`{"execTime":${execTime},"affectedRows":0,"columns":[],"rows":[]}`);
-
   test("compares as a number only", () => {
-    expect(compareResponses(body("0.31"), body("1.7"), sql)).toEqual([]);
-    expect(compareResponses(body("0.31"), body('"x"'), sql)).not.toEqual([]);
+    expect(compareResponses(sqlBody("0.31"), sqlBody("1.7"), sql)).toEqual([]);
+    expect(compareResponses(sqlBody("0.31"), sqlBody('"x"'), sql)).not.toEqual([]);
     expect(
       compareResponses(
-        body("0.31"),
+        sqlBody("0.31"),
         res('{"execTime":1,"affectedRows":1,"columns":[],"rows":[]}'),
         sql,
       ),
@@ -539,6 +539,6 @@ describe("execTime of the SQL console", () => {
 
   test("other endpoints compare it exactly", () => {
     const other: Context = { ...sql, request: { method: "GET", url: "/api/x" } };
-    expect(compareResponses(body("0.31"), body("1.7"), other)).not.toEqual([]);
+    expect(compareResponses(sqlBody("0.31"), sqlBody("1.7"), other)).not.toEqual([]);
   });
 });
