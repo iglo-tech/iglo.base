@@ -78,6 +78,21 @@ function syncDir(dir: string): void {
   }
 }
 
+// Throws when an earlier restore left its record open (a rollback that failed
+// at a step): the record and the old dir may hold the only copy of the old
+// data, and a new restore would delete the record. Nothing is changed.
+export function assertNoOpenRestore(tempDir: string): void {
+  const { phase, unknown } = readPhase(tempDir);
+  if (isFinal(phase) || (phase === undefined && unknown.length === 0)) {
+    return;
+  }
+  const record = phase === undefined ? unknown.join(", ") : `${restorePhaseFile}.${phase}`;
+  throw new Error(
+    `an earlier restore did not finish (${record} in ${tempDir}); its old data may be ` +
+      `the only copy, so no new restore is started. Restart the app to roll it back`,
+  );
+}
+
 // Creates the record, before the first move; pb_data is untouched.
 export function startRestorePhase(tempDir: string): void {
   for (const name of readdirSync(tempDir)) {
