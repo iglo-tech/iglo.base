@@ -8,12 +8,14 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 ## Needs you
 
-1. **Release v1.1.0?** `main` now has the faster start (P.3) and the macOS and linux-arm64 builds (P.2), which v1.0.0 lacks. Recommended: yes, so the Docker image also gets its arm64 variant. Say "release 1.1.0".
+Nothing. v1.1.0 is being released (owner, 2026-11-06).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| P.4 | worker | task/P.4-user-docs | 0 | Operations guide and differences page ([brief](briefs/P.4.md)) |
+| P.6 | worker | task/P.6-test-reliability | 0 | Test flakes ([brief](briefs/P.6.md)) |
 
 ## Done
 
