@@ -23,3 +23,8 @@ Goal: releases ship only `iglo-base_<version>_linux_amd64.zip` and `iglo-base_<v
 - `release.yml` cannot be run without a tag: check it with `actionlint` if available, otherwise read it carefully, and say which in the PR.
 
 Worker rules from `docs/design/12-work-plan.md` apply. Open a PR against `main`; do not merge.
+
+## Added after P.8 merged
+
+- P.8 (#74) added a macOS platform note to `docs/differences.md` (upstream's watcher on macOS misses markers created and removed at once) and skips one differential notify test on macOS. Remove the note; the skip may stay only if it is harmless, otherwise drop the darwin branch.
+- P.6 (#75) is still open and touches `ci.yml` comments, `test/support/executable.ts` and test timeouts. Rebase on main before you open the PR, and if #75 has merged by then, resolve conflicts in its favour.
