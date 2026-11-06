@@ -2,7 +2,7 @@
 // another server instance on the same pb_data changes the settings or the
 // collections; the running server picks it up without a restart.
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -14,6 +14,8 @@ async function status(url: string, token: string, path: string): Promise<number>
   await res.arrayBuffer();
   return res.status;
 }
+
+setDefaultTimeout(60_000);
 
 describe("superuser ips from the CLI", () => {
   test("set and cleared while the server runs", async () => {

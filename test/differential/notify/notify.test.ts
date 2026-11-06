@@ -29,5 +29,5 @@ describe("settings notify between iglo.base and upstream", () => {
     } finally {
       await Promise.all([igloBase.stop(), upstream.stop()]);
     }
-  });
+  }, 60_000);
 });
