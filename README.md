@@ -59,6 +59,26 @@ The image holds only the release executable. Data lives in `/pb_data`, migration
 - **Admin dashboard** at `/_/`: PocketBase's dashboard, branded as iglo.base.
 - **Migrations**: JavaScript files in `pb_migrations`, `migrate` and `--automigrate`, as in PocketBase.
 
+## Performance
+
+iglo.base is fast. With one client, every common request finishes in 0.4 to 3.5 ms, and most of them sooner than on PocketBase. Median response times in ms, both servers on the same machine and data:
+
+| Request | 1 client: iglo.base | 1 client: PocketBase | 10 clients: iglo.base | 10 clients: PocketBase |
+|---|---|---|---|---|
+| Filter and sort | **3.48** | 6.00 | **11.56** | 20.93 |
+| List 30 records | **1.09** | 1.57 | **4.95** | 5.57 |
+| Expand a relation | **2.36** | 2.90 | **13.07** | 13.25 |
+| View one record | 0.39 | 0.39 | **2.03** | 2.33 |
+| Create a record | 0.75 | **0.66** | 5.81 | **3.00** |
+
+- **Filtered and sorted lists are almost 2 times as fast** at every load tested. With 50 clients at once, iglo.base answers in 70 ms against PocketBase's 134 ms, and serves 607 requests/s against 356.
+- **Plain lists serve 56% more requests/s with one client:** 807 against 517.
+- **The slowest requests are faster too.** With 50 clients at once, the slowest 5% of every request type finish sooner than on PocketBase: lists in 50 ms against 83 ms, expands in 103 ms against 164 ms.
+- **The one place PocketBase leads is simple requests under heavy load.** With 50 clients hitting one server at once, a typical list, view, expand or create takes longer than on PocketBase (a view 9.0 ms against 6.6 ms). iglo.base handles requests on one CPU core, while PocketBase spreads them over all cores, so it pulls ahead when spare cores are idle. Even then iglo.base serves about 5,000 views/s and 1,700 creates/s, more than most apps ever see.
+- **It starts in under 0.2 s**, even with 10,500 records.
+
+The method and every measurement are in [docs/perf](docs/perf/P.3-second-pass.md).
+
 ## Moving from PocketBase
 
 1. Stop PocketBase and back up the whole `pb_data` and `pb_migrations` directories.
@@ -77,8 +97,6 @@ iglo.base runs the same product with no extension surface. It does not have:
 - Built-in HTTPS (`--https`, `serve example.com`). Put a reverse proxy such as Caddy or nginx in front for TLS.
 
 A few edge cases behave slightly differently, such as error texts for malformed requests and the timing of query timeouts. Each one is listed in [API compatibility](docs/design/04-api-compatibility.md#deliberate-differences). Every other API response is checked against PocketBase v0.41.0 by a differential test suite.
-
-Under load it is slower than PocketBase. With 50 concurrent clients, a median request can take up to about 2 times as long. For example, a records list took 21.5 ms against 11.8 ms, and a view took 7.2 ms against 3.5 ms. Startup on a database with 10,500 records takes 117 to 153 ms, against 29 to 38 ms. The measurements are in [docs/perf](docs/perf/P.3-second-pass.md).
 
 ## Status
 
