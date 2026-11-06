@@ -158,6 +158,26 @@ describe("generated values", () => {
     ]);
   });
 
+  // two sign-ins in one second: upstream's tokens are equal (exp has whole
+  // seconds), iglo.base's may not be, or the other way round
+  test("tokens are checked by format only, not paired", () => {
+    const pairing = new Pairing();
+    const check = (up: string, ig: string): string[] =>
+      compareResponses(
+        res(`{"token":"${up}"}`),
+        res(`{"token":"${ig}"}`),
+        {
+          start: { contains: () => false },
+          request: { url: "/api/collections/users/auth-refresh" },
+        },
+        pairing,
+      );
+    expect(check("a.b.c", "x.y.z")).toEqual([]);
+    expect(check("a.b.c", "p.q.r")).toEqual([]);
+    expect(check("d.e.f", "x.y.z")).toEqual([]);
+    expect(check("d.e.f", "not a token")).not.toEqual([]);
+  });
+
   // upstream reads the clock once per autodate field (M3.1)
   test("timestamps need not pair: created and updated may differ on either side", () => {
     expect(

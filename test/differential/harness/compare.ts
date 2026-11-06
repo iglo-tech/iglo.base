@@ -98,6 +98,10 @@ export interface Format {
   // while values of different slots may be equal on one side and not on
   // the other
   perSlot?: boolean;
+  // only the format is checked, the values are not paired: a value upstream
+  // derives from the clock (a JWT's `exp` has whole seconds) is equal for two
+  // sign-ins in one second there and not here, and the other way round
+  unpaired?: boolean;
 }
 
 // formats of generated values
@@ -105,6 +109,7 @@ const id: Format = { name: "id", pattern: /^[a-z0-9]{15}$/ }; // core.GenerateDe
 const token: Format = {
   name: "token",
   pattern: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
+  unpaired: true,
 }; // JWT
 // types.DateTime's JSON form. Paired per slot: upstream reads the clock
 // once per autodate field, so a new record's created and updated can
@@ -400,6 +405,12 @@ export class Pairing {
   // draws: the value is a record's `updated`, which a second write of the
   // record in the same response may draw again (see `sameMillisecond`)
   pair(format: Format, upstream: string, igloBase: string, slot = "", draws = false): boolean {
+    if (format.unpaired === true) {
+      const placeholder = JSON.stringify(`<generated ${format.name}>`);
+      this.upstream.set(JSON.stringify(upstream), placeholder);
+      this.igloBase.set(JSON.stringify(igloBase), placeholder);
+      return true;
+    }
     const scope = format.perSlot === true ? `${format.name}:${slot}` : format.name;
     const up = `${scope}:${upstream}`;
     const ig = `${scope}:${igloBase}`;
