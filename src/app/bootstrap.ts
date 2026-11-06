@@ -160,9 +160,5 @@ export async function clearBootstrap(app: App): Promise<void> {
   app.logger.close();
 
   app.thumbs.close();
-  try {
-    app.databases.close();
-  } finally {
-    await app.databases.closed();
-  }
+  await app.databases.shutdown();
 }
