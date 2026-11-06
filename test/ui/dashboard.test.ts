@@ -22,7 +22,8 @@ beforeAll(async () => {
     startServer([], join(tempDir(), "pb_data")),
     startServer(["--dev"], join(tempDir(), "pb_data")),
   ]);
-});
+  // the first file to need the executable compiles it (macOS runner: > 5 s)
+}, 120_000);
 
 afterAll(async () => {
   await Promise.all([server?.stop(), devServer?.stop()]);

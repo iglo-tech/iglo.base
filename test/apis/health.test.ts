@@ -13,7 +13,9 @@ let server: RunningServer;
 
 beforeAll(async () => {
   server = await startServer([], join(tempDir(), "pb_data"));
-});
+  // the first file to need the executable compiles it, which takes longer than
+  // the default 5 s hook timeout on a loaded runner
+}, 120_000);
 
 afterAll(async () => {
   await server.stop();
