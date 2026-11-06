@@ -19,9 +19,6 @@
 //     "rename" events), so a removal counts too; the create and the remove
 //     of one marker land in the same debounce window, so it is one reload.
 //     A leftover marker of a crashed instance removed by hand reloads once.
-//   - on macOS the marker is removed 200 ms after it is created, not at once,
-//     because upstream's kqueue watcher would otherwise miss it; the events
-//     of markers that are gone are ignored there.
 //   - upstream reloads what the last event of a window names; this reloads
 //     every kind named in the window, so a settings save followed by a
 //     collections save within 50 ms reloads both.
@@ -30,7 +27,7 @@
 // the read workers run SQL on their own connections and keep no copy, so
 // nothing else needs the reload.
 
-import { existsSync, type FSWatcher, mkdirSync, rmSync, watch, writeFileSync } from "node:fs";
+import { type FSWatcher, mkdirSync, rmSync, watch, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { ErrorLogger } from "@/app/app";
@@ -39,13 +36,6 @@ import { randomString } from "@/tools/security/random";
 
 // upstream's debounce
 const debounceMs = 50;
-
-// macOS: upstream's fsnotify watches the directory with kqueue, which learns
-// what changed by listing the directory after the event, so a marker that is
-// removed at once is never seen. The marker stays this long on macOS; this
-// watcher then also ignores the events of markers that are already gone.
-const onDarwin = process.platform === "darwin";
-const darwinMarkerMs = 200;
 
 export interface NotifyTx {
   onComplete(fn: (txErr: unknown) => void): void;
@@ -79,7 +69,6 @@ export class NotifyWatcher implements Notifier {
   #watcher: FSWatcher | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #pending = { settings: false, collections: false };
-  readonly #removals = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(config: NotifyWatcherConfig) {
     this.instanceId = "@" + (config.instanceId ?? randomString(10));
@@ -109,10 +98,6 @@ export class NotifyWatcher implements Notifier {
         if (name === "" || name.endsWith(this.instanceId)) {
           return;
         }
-        // macOS: the marker's removal is not a change
-        if (onDarwin && !existsSync(join(this.dir, name))) {
-          return;
-        }
         if (name.startsWith("settings@")) {
           this.#pending.settings = true;
         } else if (name.startsWith("collections@")) {
@@ -137,10 +122,6 @@ export class NotifyWatcher implements Notifier {
   // The OnTerminate part: stops watching and removes the own markers.
   close(): void {
     this.#stopTimer();
-    for (const timer of this.#removals) {
-      clearTimeout(timer);
-    }
-    this.#removals.clear();
     this.#pending = { settings: false, collections: false };
     if (this.#watcher !== null) {
       try {
@@ -175,19 +156,6 @@ export class NotifyWatcher implements Notifier {
       writeFileSync(file, "", { mode: 0o644 });
     } catch (err) {
       this.#logger.warn("Failed to write watcher file", { error: err, file });
-    }
-    if (onDarwin) {
-      const timer = setTimeout(() => {
-        this.#removals.delete(timer);
-        try {
-          rmSync(file, { force: true });
-        } catch {
-          // ignored, as upstream does
-        }
-      }, darwinMarkerMs);
-      timer.unref?.();
-      this.#removals.add(timer);
-      return;
     }
     try {
       rmSync(file, { force: true });

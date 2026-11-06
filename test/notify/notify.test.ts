@@ -124,9 +124,7 @@ describe("two iglo.base servers on one pb_data", () => {
       await waitFor(".notify dir", async () => (existsSync(notifyDir) ? true : undefined));
       const token = await login(server.url);
       await patchSettings(server.url, token, { meta: { appName: "marker" } });
-      await waitFor("the marker to be removed", async () =>
-        readdirSync(notifyDir).length === 0 ? true : undefined,
-      );
+      expect(readdirSync(notifyDir)).toEqual([]);
     } finally {
       await server.stop();
     }
