@@ -61,23 +61,46 @@ The image holds only the release executable. Data lives in `/pb_data`, migration
 
 ## Performance
 
-iglo.base is fast. With one client, every common request finishes in 0.4 to 3.5 ms, and most of them sooner than on PocketBase. Median response times in ms, both servers on the same machine and data:
+iglo.base is fast. With one client, every common request finishes in 0.4 ms to 3.5 ms, most of them sooner than on PocketBase. Both servers were measured on the same machine with the same data.
 
-| Request | 1 client: iglo.base | 1 client: PocketBase | 10 clients: iglo.base | 10 clients: PocketBase |
-|---|---|---|---|---|
-| Filter and sort | **3.48** | 6.00 | **11.56** | 20.93 |
-| List 30 records | **1.09** | 1.57 | **4.95** | 5.57 |
-| Expand a relation | **2.36** | 2.90 | **13.07** | 13.25 |
-| View one record | 0.39 | 0.39 | **2.03** | 2.33 |
-| Create a record | 0.75 | **0.66** | 5.81 | **3.00** |
+**Median response time** (lower is better; the faster server in bold):
 
-- **Filtered and sorted lists are almost 2 times as fast** at every load tested. With 50 clients at once, iglo.base answers in 70 ms against PocketBase's 134 ms, and serves 607 requests/s against 356.
+| Request | 1 client: iglo.base | 1 client: PocketBase | 10 clients: iglo.base | 10 clients: PocketBase | 50 clients: iglo.base | 50 clients: PocketBase |
+|---|---|---|---|---|---|---|
+| Filter and sort | **3.48 ms** | 6.00 ms | **11.56 ms** | 20.93 ms | **70.10 ms** | 133.48 ms |
+| List 30 records | **1.09 ms** | 1.57 ms | **4.95 ms** | 5.57 ms | 28.66 ms | **19.77 ms** |
+| Expand a relation | **2.36 ms** | 2.90 ms | **13.07 ms** | 13.25 ms | 71.00 ms | **44.22 ms** |
+| View one record | 0.39 ms | 0.39 ms | **2.03 ms** | 2.33 ms | 8.99 ms | **6.58 ms** |
+| Create a record | 0.75 ms | **0.66 ms** | 5.81 ms | **3.00 ms** | 27.03 ms | **14.48 ms** |
+
+**Slowest 5% of requests with 50 clients** (the 95th percentile; lower is better):
+
+| Request | iglo.base | PocketBase |
+|---|---|---|
+| Filter and sort | **147.33 ms** | 241.03 ms |
+| List 30 records | **49.68 ms** | 82.87 ms |
+| Expand a relation | **102.92 ms** | 163.75 ms |
+| View one record | **18.28 ms** | 27.72 ms |
+| Create a record | **45.91 ms** | 52.06 ms |
+
+- **Filtered and sorted lists are almost 2 times as fast at every load**, and serve 607 requests/s against 356 with 50 clients.
 - **Plain lists serve 56% more requests/s with one client:** 807 against 517.
-- **The slowest requests are faster too.** With 50 clients at once, the slowest 5% of every request type finish sooner than on PocketBase: lists in 50 ms against 83 ms, expands in 103 ms against 164 ms.
-- **The one place PocketBase leads is simple requests under heavy load.** With 50 clients hitting one server at once, a typical list, view, expand or create takes longer than on PocketBase (a view 9.0 ms against 6.6 ms). iglo.base handles requests on one CPU core, while PocketBase spreads them over all cores, so it pulls ahead when spare cores are idle. Even then iglo.base serves about 5,000 views/s and 1,700 creates/s, more than most apps ever see.
-- **It starts in under 0.2 s**, even with 10,500 records.
+- **Response times are steadier.** With 50 clients, the slowest 5% of every request type finish sooner than on PocketBase.
+- **PocketBase's typical response is quicker for simple requests under heavy load.** With 50 clients hitting one server at once, the median list, expand, view and create are faster on PocketBase. iglo.base handles requests on one CPU core, while PocketBase spreads them over all cores. Even then iglo.base serves about 5,000 views/s and 1,700 creates/s.
+- **It starts in 117 ms to 153 ms** on a database with 10,500 records (PocketBase: 29 ms to 38 ms).
 
-The method and every measurement are in [docs/perf](docs/perf/P.3-second-pass.md).
+**Memory** (RSS, lower is better):
+
+| Situation | iglo.base | PocketBase |
+|---|---|---|
+| Just started, idle | 74 MiB | **35 MiB** |
+| After the 50-client benchmark above | **171 MiB to 199 MiB** | 178 MiB to 389 MiB |
+| Per open realtime connection (1,000 connections) | **12 KiB** | 50 KiB |
+| Peak during a 60 s request burst that writes about 1 million log entries | **163 MiB** | 1,299 MiB |
+
+iglo.base starts with more memory, for the Bun runtime and its four database read workers, and then grows less under load.
+
+The method and every measurement are in [docs/perf](docs/perf/P.3-second-pass.md), with the memory runs in [M7.1a](docs/perf/M7.1a-profile.md), [M5.1](docs/perf/M5.1-realtime.md) and [M5.5](docs/perf/M5.5-logs.md).
 
 ## Moving from PocketBase
 
