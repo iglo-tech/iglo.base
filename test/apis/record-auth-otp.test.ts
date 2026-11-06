@@ -13,6 +13,7 @@ import { insertOTPs, otpRows, setMFA } from "@test/scenarios/record-auth-prepare
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
+import { hostHasSendmail } from "@test/support/sendmail";
 
 const email = "test@example.com";
 const userId = "4q1xlclmfloku33";
@@ -112,8 +113,8 @@ describe("the OTP email", () => {
     });
   });
 
-  test("a failed send keeps the 200 and removes the OTP", async () => {
-    // the fixture has SMTP off and the host has no sendmail
+  // the fixture has SMTP off and the host must have no sendmail (macOS has one)
+  test.skipIf(hostHasSendmail)("a failed send keeps the 200 and removes the OTP", async () => {
     const dataDir = usersWithoutMFA();
 
     await withServer(dataDir, async (url) => {

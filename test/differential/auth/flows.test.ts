@@ -17,6 +17,7 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
+import { hostHasSendmail } from "@test/support/sendmail";
 import { startUpstream } from "@test/support/upstream";
 
 const pw = "1234567890";
@@ -210,26 +211,29 @@ describe("auth origins and MFAs across servers", () => {
     expect(origins(igloBase.dataDir, userId)).toEqual(expected);
   });
 
-  test("a login from a new device without a mailer stores no origin on either server", async () => {
-    const dataDir = preparedCopy();
-    const [upstream, igloBase] = await Promise.all([
-      start("upstream", copyOf(dataDir)),
-      start("igloBase", copyOf(dataDir)),
-    ]);
-    for (const server of [upstream, igloBase]) {
-      expect((await login(server, "users", "test@example.com")).status).toBe(200);
-      const other = await fetch(`${server.url}/api/collections/users/auth-with-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "User-Agent": "another device" },
-        body: JSON.stringify({ identity: "test@example.com", password: pw }),
-      });
-      // the failed alert never fails the auth
-      expect(other.status).toBe(200);
-    }
-    await Promise.all([stop(upstream), stop(igloBase)]);
-    expect(origins(igloBase.dataDir, userId)).toEqual(origins(upstream.dataDir, userId));
-    expect(origins(igloBase.dataDir, userId)).toHaveLength(1);
-  });
+  test.skipIf(hostHasSendmail)(
+    "a login from a new device without a mailer stores no origin on either server",
+    async () => {
+      const dataDir = preparedCopy();
+      const [upstream, igloBase] = await Promise.all([
+        start("upstream", copyOf(dataDir)),
+        start("igloBase", copyOf(dataDir)),
+      ]);
+      for (const server of [upstream, igloBase]) {
+        expect((await login(server, "users", "test@example.com")).status).toBe(200);
+        const other = await fetch(`${server.url}/api/collections/users/auth-with-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "User-Agent": "another device" },
+          body: JSON.stringify({ identity: "test@example.com", password: pw }),
+        });
+        // the failed alert never fails the auth
+        expect(other.status).toBe(200);
+      }
+      await Promise.all([stop(upstream), stop(igloBase)]);
+      expect(origins(igloBase.dataDir, userId)).toEqual(origins(upstream.dataDir, userId));
+      expect(origins(igloBase.dataDir, userId)).toHaveLength(1);
+    },
+  );
 
   // with a working mailer upstream sends the alert and then stores the
   // second origin; the mailer is M4.4

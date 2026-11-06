@@ -32,3 +32,58 @@ jobs:
           path: .upstream
           key: upstream-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('test/differential/upstream.lock') }}
       - run: bun run test:reference
+
+  # linux-arm64 and darwin-arm64 exist only as GitHub runners, so these two
+  # jobs are where those platforms are tested (D24, D34). Same commands as
+  # `check`; on demand only.
+  check-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      # the reference run goes on when `check` failed, so one run reports both
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ !cancelled() }}
+        with:
+          path: .upstream
+          key: upstream-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('test/differential/upstream.lock') }}
+      - run: bun run test:reference
+        if: ${{ !cancelled() }}
+
+  check-macos:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      # the bundled SQLite for tests that run from source; the executable
+      # built by `bun run build` embeds it (D34)
+      IGLO_SQLITE_LIB: ${{ github.workspace }}/dist/libsqlite3.dylib
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      # tests use 127.0.0.2 as a second client address; Linux answers on all
+      # of 127.0.0.0/8, macOS only on the aliases it has
+      - name: Loopback alias 127.0.0.2
+        run: sudo ifconfig lo0 alias 127.0.0.2 up
+      # also fails when the library's version or compile options differ from
+      # Bun's SQLite on Linux
+      - name: Build the bundled SQLite
+        run: bun scripts/build-sqlite.ts "$IGLO_SQLITE_LIB"
+      - name: The bundled SQLite is the one in use
+        run: bun test test/db/sqlite-lib.test.ts
+      - run: bun run check
+      # the reference run goes on when `check` failed, so one run reports both
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ !cancelled() }}
+        with:
+          path: .upstream
+          key: upstream-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('test/differential/upstream.lock') }}
+      - run: bun run test:reference
+        if: ${{ !cancelled() }}

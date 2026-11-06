@@ -30,7 +30,7 @@ Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM,
 - `bun:sqlite` as the only database. No other database, Redis or external queue.
 - Upstream's S3 client ported on `fetch` for S3 storage and backups (`Bun.S3Client` cannot return the raw error bodies the API shows), `Bun.password` for bcrypt, Web Crypto for JWT and AES-GCM.
 - The admin dashboard is upstream's `ui/` (vanilla JS, Shablon, Vite), vendored with a small patch set (`docs/design/08-admin-ui.md`).
-- One compiled executable is the release artifact. The official Docker image (`Dockerfile`, `.github/workflows/docker.yml`, D33) only wraps that executable; it never builds from source. Do not add compose files, other registries or other distribution paths.
+- One compiled executable per platform (linux-x64, linux-arm64, darwin-arm64; D24, D34) is the release artifact. The official Docker image (`Dockerfile`, `.github/workflows/docker.yml`, D33; linux/amd64 and linux/arm64) only wraps those executables; it never builds from source. Do not add compose files, other registries or other distribution paths.
 
 ## Rules
 
@@ -61,7 +61,7 @@ The port is split into tasks in `docs/design/12-work-plan.md`. A task's worker f
 
 ## Verification
 
-Run from the repository root. Verification is local (D25): run `bun run check` and `bun run test:reference` on this host before a PR is ready. CI (`.github/workflows/ci.yml`) runs the same commands only on demand and is not a merge gate. The MVP targets linux-x64 only (D24); macOS and arm64 come after 1.0.
+Run from the repository root. Verification is local (D25): run `bun run check` and `bun run test:reference` on this host before a PR is ready. CI (`.github/workflows/ci.yml`) runs the same commands only on demand and is not a merge gate. Releases ship linux-x64, linux-arm64 and darwin-arm64 executables (D24, D34); this host runs linux-x64 only, and the other two are tested natively by the on-demand `ci.yml` jobs `check-linux-arm64` and `check-macos`.
 
 ```sh
 bun install --frozen-lockfile   # install

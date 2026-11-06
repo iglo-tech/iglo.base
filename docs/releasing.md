@@ -1,27 +1,31 @@
 # Releasing
 
-iglo.base ships one artifact, the compiled linux-x64 executable (D24, D3).
-`.github/workflows/release.yml` builds it.
+iglo.base ships one compiled executable per platform: linux-x64, linux-arm64 and darwin-arm64 (D24, D3, D34).
+`.github/workflows/release.yml` builds each on a runner of its own platform.
 
 ## How to release
 
 1. Run `bun run check` and `bun run test:reference` on the host (D25) from the commit to release.
 2. Tag that commit and push the tag: `git tag v0.1.0 && git push origin v0.1.0`. The tag must be `vMAJOR.MINOR.PATCH` with an optional `-prerelease` suffix; the workflow fails on anything else.
-3. The workflow runs `bun run check`, builds with the version from the tag, smoke-tests the executable (`--version` prints the tag's version, `serve` on a temporary directory answers `/api/health` with 200), archives it and creates a **draft** GitHub release. Tags with a `-` suffix are marked as pre-releases. `test:reference` is not part of the workflow (it takes over 10 minutes); it is the manual step 1.
+3. The workflow builds with the version from the tag on three runners (`ubuntu-latest`, `ubuntu-24.04-arm`, `macos-15`), smoke-tests each executable on its own platform (`--version` prints the tag's version, `serve` on a temporary directory answers `/api/health` with 200; on macOS also the bundled SQLite was written to the cache), archives them, writes one `SHA256SUMS` and creates a **draft** GitHub release. The linux-x64 job also runs `bun run check`. Tags with a `-` suffix are marked as pre-releases. `test:reference` is not part of the workflow (it takes over 10 minutes); it is the manual step 1 for linux-x64. For the other two platforms start the on-demand CI workflow before tagging (`gh workflow run ci.yml --ref <branch>`): its jobs `check-linux-arm64` and `check-macos` run `bun run check` and `bun run test:reference` natively.
 4. Review the draft and publish it by hand. Nothing is public until then.
 
 `workflow_dispatch` is a dry run, also when it is started on a tag: it builds and uploads the archive as a workflow artifact (version `0.0.0-dryrun.<run number>`) and creates no release.
 
 ## What it produces
 
-- `iglo-base_<version>_linux_amd64.zip`, containing `iglo-base` (the executable), `LICENSE` and `README.txt` (a pointer to the repository). `<version>` is the tag without the leading `v`.
-- `SHA256SUMS`, with the archive's SHA-256 checksum.
+- `iglo-base_<version>_linux_amd64.zip`, `iglo-base_<version>_linux_arm64.zip` and `iglo-base_<version>_darwin_arm64.zip`, each containing `iglo-base` (the executable), `LICENSE` and `README.txt` (a pointer to the repository). `<version>` is the tag without the leading `v`.
+- `SHA256SUMS`, with the SHA-256 checksum of all three archives.
+
+The darwin-arm64 executable carries its own SQLite library (the same version and compile options as Bun's on Linux, built from the GitHub mirror of SQLite by `scripts/build-sqlite.ts`; [D34](design/10-decisions.md#d34-macos-sqlite-built-embedded-and-loaded)). On first start it writes the library to `~/Library/Caches/iglo-base/sqlite/` (`$XDG_CACHE_HOME/iglo-base/sqlite/` if set; set it for a service user whose home is not writable) and loads it; if that fails it stops with an error instead of using the system SQLite. `bun run build` on macOS builds the library itself (needs `clang`, `make` and `tclsh`); a darwin executable cannot be built on Linux. `IGLO_TARGET=bun-linux-arm64 bun run build` cross-compiles a linux-arm64 executable on any host.
+
+The executables are not signed or notarized. After downloading on macOS, clear the quarantine attribute before the first start: `xattr -d com.apple.quarantine iglo-base`.
 
 `iglo-base --version` prints `iglo-base version <version>`; a build outside the release (plain `bun run build`) prints `iglo-base version (untracked)`. The version is set at build time: `IGLO_VERSION=0.1.0 bun run build` (`scripts/build.ts` passes it to `bun build --define` and to the dashboard footer).
 
 ## Image
 
-`.github/workflows/docker.yml` wraps a published release in a linux/amd64 image (D33). It runs when a release is published, and by hand with `workflow_dispatch` and a `tag` input (for example `v1.0.0`) for a release that already exists. It does not build iglo.base: it downloads `iglo-base_<version>_linux_amd64.zip` and `SHA256SUMS` with `gh release download`, checks the checksum, and the `Dockerfile` copies the executable into `gcr.io/distroless/base-debian13:nonroot` (pinned by digest). Before pushing it smoke-tests the image: `--version` prints the version, `serve` answers `/api/health` with 200 and `docker stop` exits 0. The checkout does not keep the job token.
+`.github/workflows/docker.yml` wraps a published release in one multi-arch image, linux/amd64 and linux/arm64 (D33, D34). It runs when a release is published, and by hand with `workflow_dispatch` and a `tag` input (for example `v1.0.0`) for a release that already exists. It does not build iglo.base: it downloads `iglo-base_<version>_linux_amd64.zip`, `iglo-base_<version>_linux_arm64.zip` and `SHA256SUMS` with `gh release download` (`scripts/docker-context.sh`), checks the checksums, and the `Dockerfile` copies the executable of the image's architecture into `gcr.io/distroless/base-debian13:nonroot` (pinned by digest; it must list linux/arm64). Before pushing, each architecture's image is built and smoke-tested on a runner of that architecture (`ubuntu-latest`, `ubuntu-24.04-arm`; no emulation), then one `docker buildx build --platform linux/amd64,linux/arm64 --push` publishes the manifest. The smoke test: `--version` prints the version, `serve` answers `/api/health` with 200 and `docker stop` exits 0. The checkout does not keep the job token.
 
 It pushes `ghcr.io/iglo-tech/iglo.base:<version>` and `:latest` only when the tag is the repository's latest published release (`gh release view` without a tag, never a pre-release), so rebuilding an older release or a patch on an older line does not move it. Only this job has `packages: write`; there are no other secrets. A draft release is refused.
 
@@ -51,6 +55,8 @@ sha256sum -c SHA256SUMS      # in the directory with both files
 unzip iglo-base_0.1.0_linux_amd64.zip
 ./iglo-base --version
 ```
+
+macOS has no `sha256sum`: compare `shasum -a 256 <archive>` with the archive's line in `SHA256SUMS`.
 
 ## Switching a deployment
 

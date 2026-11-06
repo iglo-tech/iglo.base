@@ -95,6 +95,24 @@ function tolerance(contentType: string, note: string): number {
   if (contentType === "image/webp" && !note.includes("lossless")) {
     return 9;
   }
+  // On arm64 the Go compiler most likely fuses multiplications and additions
+  // (FMA), so upstream's resampling differs in the last bits from x64, and the
+  // GIF encoder's error-diffusion dithering turns that into whole pixels of
+  // another palette color (exact on x64). Mean errors measured on GitHub
+  // linux-arm64 and macOS (darwin-arm64) runners:
+  //   photo.gif (note "GIF, Plan 9 palette"): 14.6 and 15.6 on linux, 14.58
+  //     (100x100) and 16.95 (300x300f) on macOS;
+  //   the GIFs with a 600x400 first frame (gif-subframe.gif,
+  //     limit-gif-screen-at.gif; 100x100): 15.554 on both.
+  // Allowed for those files on arm64 only; every other GIF and platform stays
+  // exact (04-api-compatibility.md, D34).
+  if (
+    contentType === "image/gif" &&
+    process.arch === "arm64" &&
+    (note === "GIF, Plan 9 palette" || note.includes("first frame 600x400"))
+  ) {
+    return 25;
+  }
   return 0.5;
 }
 
@@ -343,7 +361,9 @@ export function serveSuite(storage: "local" | "s3"): void {
       `| ${file.name} | ${size} | ${a.width}x${a.height} ${up.headers.get("content-type")} | same | ${errors.map((e) => e.toFixed(2)).join(" / ")} | ${tol} |`,
     );
     for (const e of errors) {
-      expect(e).toBeLessThanOrEqual(tol);
+      if (e > tol) {
+        throw new Error(`${file.name} ${size}: mean error ${e} is above ${tol}`);
+      }
     }
 
     // the stored thumbs: same .attrs apart from the MD5 of their own bytes
@@ -657,9 +677,13 @@ export function serveSuite(storage: "local" | "s3"): void {
         Range: "bytes=0-0",
       });
       expect(up.status).toBe(206);
-      expect(up.headers.get("content-disposition")).toBe(
-        `inline; filename="${file("large.png").name}"`,
-      );
+      // both servers agree (`same`); on macOS upstream serves this one as an
+      // attachment, so the literal is checked on Linux only
+      if (process.platform === "linux") {
+        expect(up.headers.get("content-disposition")).toBe(
+          `inline; filename="${file("large.png").name}"`,
+        );
+      }
     });
   });
 

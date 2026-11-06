@@ -405,7 +405,7 @@ function gifConfig(r: ByteSource): Size {
 // its own size, not the logical screen's, and an error when it does not
 // fit in the logical screen (newImageFromDescriptor). Extensions are
 // skipped by their sub-blocks; the frame's pixel data is not checked here.
-export function gifFirstFrame(b: Uint8Array): Size {
+export function gifFirstFrame(b: Uint8Array): Size & { left: number; top: number; screen: Size } {
   const r = bytesSource(b);
   const screen = gifConfig(r);
   const fields = b[10] as number;
@@ -428,7 +428,7 @@ export function gifFirstFrame(b: Uint8Array): Size {
       if (left + width > screen.width || top + height > screen.height) {
         throw new Error("gif: frame bounds larger than image bounds");
       }
-      return { width, height };
+      return { width, height, left, top, screen };
     } else if (c === 0x3b) {
       throw new Error("gif: missing image data");
     } else {

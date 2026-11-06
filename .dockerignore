@@ -1,6 +1,7 @@
-# The build context is only the unpacked release executable and empty
+# The build context is only the unpacked release executables (amd64/ and arm64/) and empty
 # pb_data and pb_migrations directories (see Dockerfile).
 *
-!iglo-base
+!amd64
+!arm64
 !pb_data
 !pb_migrations

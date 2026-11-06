@@ -5,7 +5,7 @@
 - **Runtime:** Bun ≥ 1.4, TypeScript, native ESM.
 - **HTTP:** `Bun.serve` with a small router that matches upstream's route patterns (`/api/collections/{collection}/records/{id}`). No Express or other framework.
 - **Database:** `bun:sqlite`, the two upstream files `pb_data/data.db` and `pb_data/auxiliary.db`, with upstream's pragmas ([Data compatibility](03-data-compatibility.md#sqlite-settings)).
-- **Distribution:** one executable from `bun build --compile`, with the admin dashboard, system migrations and email templates embedded. linux-x64 for the MVP; linux-arm64 and darwin-arm64 after 1.0 (D24).
+- **Distribution:** one executable from `bun build --compile`, with the admin dashboard, system migrations and email templates embedded. linux-x64, linux-arm64 and darwin-arm64 (D24, D34); the darwin executable also embeds its SQLite library.
 - **No external services** apart from the optional SMTP server, S3 bucket, OAuth2 providers and Let's Encrypt.
 
 ## Shared ground with other iglo.\* projects
@@ -14,7 +14,7 @@ These conventions are the same as [iglo.monitor](https://github.com/iglo-tech/ig
 
 - Bun as runtime and package manager (`bun.lock`), with no npm or Node fallback paths. (The vendored dashboard keeps its own Vite build, run with Bun.)
 - SQLite as the only database.
-- One compiled executable as the release artifact. Releases are built on `v*` tags ([Releasing](../releasing.md)). The official linux/amd64 Docker image on ghcr.io wraps the released executable and does not build anything ([D33](10-decisions.md#d33-the-docker-image-wraps-the-release-executable)).
+- One compiled executable as the release artifact. Releases are built on `v*` tags ([Releasing](../releasing.md)). The official Docker image on ghcr.io (linux/amd64 and linux/arm64, one manifest) wraps the released executables and does not build anything ([D33](10-decisions.md#d33-the-docker-image-wraps-the-release-executable), [D34](10-decisions.md#d34-macos-sqlite-built-embedded-and-loaded)).
 - `oxlint` and `oxfmt`, plus a pre-commit format hook.
 - Renovate for dependency updates.
 - `@/` path aliases and no relative imports. Import from the module that owns a symbol, with no barrel files.

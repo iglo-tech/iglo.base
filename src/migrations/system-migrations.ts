@@ -36,6 +36,7 @@ import { type CollectionsApp, runInAppTransaction } from "@/collections/collecti
 import type { Builder } from "@/db/dbx/builder";
 import { newFromDB } from "@/db/dbx/db";
 import { HashExp } from "@/db/dbx/expression";
+import { loadSQLite } from "@/db/sqlite-lib";
 import { auxRunInTransaction } from "@/db/tx";
 import { auxHasTable } from "@/db/table";
 import {
@@ -217,6 +218,7 @@ export function checkExistingDataDir(dataDir: string): void {
 const companionSuffixes: readonly string[] = Object.freeze(["-journal", "-wal", "-shm"]);
 
 function checkDataDBFile(filename: string, flags: number): void {
+  loadSQLite();
   const conn = new Database(filename, flags);
   try {
     if (checkDataDB(newFromDB(conn, "sqlite")) === "older") {

@@ -5,8 +5,11 @@
 
 import { readUiPack } from "@/apis/ui-pack";
 import { runCli } from "@/cli/root";
+import { loadSQLite } from "@/db/sqlite-lib";
 // the dashboard build, packed by scripts/ui/build.ts (bun run build)
 import uiPack from "@dist/ui.pack" with { type: "file" };
+// the SQLite library of the darwin executable (D34); an empty file elsewhere
+import sqliteLibrary from "@dist/libsqlite3.dylib" with { type: "file" };
 
 // osutils.LaunchURL: xdg-open on Linux (open on macOS), not waited for;
 // skipped without a display, where it cannot open a browser
@@ -20,6 +23,9 @@ function launchURL(url: string): void {
   }
   Bun.spawn(["xdg-open", url], { stdio: ["ignore", "ignore", "ignore"] }).unref();
 }
+
+// before the first database connection of any thread (D34)
+loadSQLite(sqliteLibrary);
 
 const shutdown = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

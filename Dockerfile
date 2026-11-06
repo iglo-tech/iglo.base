@@ -1,7 +1,9 @@
 # Official iglo.base image (D33). It does not build iglo.base: it wraps the
 # release executable. The build context holds the unpacked, checksum-verified
-# release (`iglo-base`) and the empty directories `pb_data` and `pb_migrations`; the Docker workflow
-# (.github/workflows/docker.yml) prepares both. See docs/releasing.md#image.
+# release executable of each architecture (`amd64/iglo-base`, `arm64/iglo-base`)
+# and the empty directories `pb_data` and `pb_migrations`; the Docker workflow
+# (.github/workflows/docker.yml) prepares them, and the image for linux/amd64
+# and linux/arm64 is built as one multi-arch manifest (D34). See docs/releasing.md#image.
 #
 # gcr.io/distroless/base-debian13:nonroot: glibc, CA certificates and tzdata,
 # no shell; the executable links only libc, libm, libdl and libpthread.
@@ -25,7 +27,9 @@ COPY --chown=65532:65532 pb_migrations /pb_migrations
 # executable" (src/cli/root.ts), so they resolve to /pb_data, /pb_public,
 # /pb_migrations and /pb_hooks for serve and for every other command
 # (`docker exec <c> /iglo-base superuser upsert ...`), without flags.
-COPY --chmod=0755 iglo-base /iglo-base
+# TARGETARCH (amd64, arm64) is set by BuildKit for the platform being built
+ARG TARGETARCH
+COPY --chmod=0755 ${TARGETARCH}/iglo-base /iglo-base
 WORKDIR /
 
 VOLUME /pb_data
