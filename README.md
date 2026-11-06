@@ -35,8 +35,8 @@ const posts = await pb.collection("posts").getList(1, 20);
 | Platform | Archive |
 |---|---|
 | Linux x64 | `iglo-base_<version>_linux_amd64.zip` |
-| Linux arm64 | `iglo-base_<version>_linux_arm64.zip` (from 1.1.0) |
-| macOS on Apple silicon | `iglo-base_<version>_darwin_arm64.zip` (from 1.1.0) |
+| Linux arm64 | `iglo-base_<version>_linux_arm64.zip` |
+| macOS on Apple silicon | `iglo-base_<version>_darwin_arm64.zip` |
 
 Windows and Intel Macs are not supported. Check the archive with `sha256sum -c SHA256SUMS`. The macOS build is not signed: after downloading, run `xattr -d com.apple.quarantine iglo-base` once.
 
