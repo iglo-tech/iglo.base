@@ -76,12 +76,6 @@ In most cases iglo.base is faster than PocketBase; the cases where PocketBase le
 |---|---|---|
 | OAuth2 avatar download with `HTTP_PROXY` or `HTTPS_PROXY` set on the server | Never uses a proxy. | Uses them. The address checks still apply to the target. |
 
-## Known gap
-
-| Area | PocketBase | iglo.base |
-|---|---|---|
-| A CLI command that changes settings or collections while the server runs (`superuser ips`, `migrate up`, `migrate down`, `migrate collections`) | The running server reloads them within about 50 ms. | The running server keeps what it loaded at start until it is restarted: restart it after such a command. This is not a deliberate difference; it is planned to be fixed. |
-
 ## Where the list comes from
 
 The list is kept in [API compatibility, deliberate differences](design/04-api-compatibility.md#deliberate-differences), together with the design decisions behind each row. The decisions on [what was removed](design/01-scope.md) are in the design notes. Anything else that differs from PocketBase v0.41.0 is a bug.

@@ -9,6 +9,7 @@
 // builds the app that `serve` runs on.
 
 import type { Clock } from "@/app/clock";
+import { NotifyWatcher } from "@/app/notify-watcher";
 import { ThumbPool } from "@/files/thumb-pool";
 import { type AppFilesystem, newAppFilesystem } from "@/app/filesystem";
 import type { Databases } from "@/db/base";
@@ -84,6 +85,9 @@ export interface App {
   // Cron returns the app cron instance (its built-in jobs are in
   // src/app/crons.ts; only serve starts it, ClearBootstrap stops it).
   readonly cron: Cron;
+  // the multi-instance notify watcher (src/app/notify-watcher.ts;
+  // bootstrap starts it, ClearBootstrap stops it)
+  readonly notify: NotifyWatcher;
   // the migrations directory automigrate writes to (--automigrate,
   // plugins/migratecmd); undefined when it is off
   readonly automigrateDir?: string;
@@ -126,6 +130,7 @@ export function newApp(config: AppConfig): App {
   const getenv = config.getenv ?? (() => "");
   return Object.freeze({
     ...config,
+    notify: new NotifyWatcher({ dataDir: config.dataDir, logger: config.logger }),
     settings,
     getenv,
     restart: config.restart ?? notServing,

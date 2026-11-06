@@ -7,8 +7,9 @@
 // default settings written, as upstream's fresh install does) and removes
 // the pb_data temp directory. An existing data.db is checked without
 // writing to pb_data first, so older data is refused before any file is
-// created. Async because the settings may be encrypted (Web Crypto). Not
-// here yet: the multi-instance notify watcher (`.notify`).
+// created. Async because the settings may be encrypted (Web Crypto). The
+// last step starts the multi-instance notify watcher (`.notify`,
+// src/app/notify-watcher.ts).
 //
 // ClearBootstrap is clearBootstrap: it stops the cron ticker, gives the jobs
 // still running a moment to finish, writes the queued logs and closes the
@@ -23,6 +24,7 @@ import { registerCrons } from "@/app/crons";
 import { LocalTempDirName } from "@/app/filesystem";
 import { loadAutobackupJob } from "@/backups/autobackup";
 import { recoverInterruptedRestore, removeRestoreTemp } from "@/backups/restore-phase";
+import { reloadCachedCollections } from "@/collections/collection-query";
 import { loadCollectionsCache } from "@/collections/collection-save";
 import { Logger, type LogTickerFunc } from "@/logs/logger";
 import { newDefaultSettings } from "@/settings/settings-model";
@@ -138,6 +140,12 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     // ignored, as upstream does
   }
 
+  // the OnBootstrap notify watcher (priority -998, after the app is bootstrapped)
+  app.notify.start({
+    settings: () => reloadSettings(app),
+    collections: () => reloadCachedCollections(app),
+  });
+
   return app;
 }
 
@@ -145,6 +153,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 // db connections, stopping cron ticker, stopping the thumb workers).
 // Resolves once the read worker threads have exited.
 export async function clearBootstrap(app: App): Promise<void> {
+  app.notify.close();
   app.cron.stop();
   await app.cron.waitForRunning(cronShutdownWaitMs);
 

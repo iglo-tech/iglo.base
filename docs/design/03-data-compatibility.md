@@ -26,6 +26,7 @@ pb_data/
   backups/<name>.zip
   .autocert_cache/
   .pb_temp_to_delete/           removed at startup
+  .notify/                      upstream's multi-instance notify markers (P.8); created by serve and CLI commands, empty between saves
 ```
 
 Other files in `pb_data` are left alone and included in backups, as upstream does. Real deployments have them: `types.d.ts` written by upstream's JS VM plugin, stale `logs.db-wal`/`-shm` files from before v0.23, or files a deploy tool keeps there.
