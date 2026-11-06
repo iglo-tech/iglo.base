@@ -15,7 +15,7 @@ Released [v1.0.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.0.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| P.2 | worker | task/P.2-platforms | 0 | [brief](briefs/P.2.md) |
+| P.2 | review | [#67](https://github.com/iglo-tech/iglo.base/pull/67) | 1 | [brief](briefs/P.2.md); test tag green on all three platforms; bundled SQLite 3.53.4 on macOS (D34); native CI ends with flakes |
 
 ## Done
 
