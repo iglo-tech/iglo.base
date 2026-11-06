@@ -169,49 +169,36 @@ async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
   }
 
   const key = e.request.pathValue("key");
-  const { app } = e;
 
-  // reserve the backup/restore slot right away (synchronously with the check
-  // above), so that a delete of the same key or another backup/restore
-  // request is refused for the whole time until the restore ends
-  app.store.set(StoreKeyActiveBackup, key);
-  let started = false;
+  let fsys: System | S3System;
+  try {
+    fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
+  } catch (err) {
+    return e.internalServerError("Failed to load backups filesystem.", err);
+  }
 
   try {
-    let fsys: System | S3System;
+    let exists = false;
+    let existsErr: unknown = null;
     try {
-      fsys = app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
+      exists = await fsys.exists(key);
     } catch (err) {
-      return e.internalServerError("Failed to load backups filesystem.", err);
+      existsErr = err;
     }
-
-    try {
-      let exists = false;
-      let existsErr: unknown = null;
-      try {
-        exists = await fsys.exists(key);
-      } catch (err) {
-        existsErr = err;
-      }
-      if (!exists) {
-        return e.badRequestError("Missing or invalid backup file.", existsErr);
-      }
-    } finally {
-      fsys.close();
+    if (!exists) {
+      return e.badRequestError("Missing or invalid backup file.", existsErr);
     }
-
-    setTimeout(() => {
-      // restoreBackup releases the reservation on every exit path
-      restoreBackup(app, key, true).catch((err: unknown) => {
-        app.logger.error("Failed to restore backup", { key, error: err });
-      });
-    }, restoreDelayMs);
-    started = true;
-
-    return e.noContent(204);
   } finally {
-    if (!started) {
-      app.store.remove(StoreKeyActiveBackup);
-    }
+    fsys.close();
   }
+
+  const { app } = e;
+
+  setTimeout(() => {
+    restoreBackup(app, key).catch((err: unknown) => {
+      app.logger.error("Failed to restore backup", { key, error: err });
+    });
+  }, restoreDelayMs);
+
+  return e.noContent(204);
 }

@@ -422,56 +422,6 @@ describe("one backup or restore at a time", () => {
   });
 });
 
-describe("the restore endpoint reserves the slot before it answers", () => {
-  test("a delete of the key and a new backup are refused until the restore ends", async () => {
-    const app = await open();
-    createTestBackups(app.dataDir);
-
-    // hold the delayed start; the test runs it by hand
-    const realSetTimeout = globalThis.setTimeout;
-    const delayed: (() => void)[] = [];
-    globalThis.setTimeout = ((fn: () => void) => {
-      delayed.push(fn);
-      return 0;
-    }) as unknown as typeof setTimeout;
-    let res: Response;
-    try {
-      res = await send(app, "POST", "/api/backups/test1.zip/restore");
-    } finally {
-      globalThis.setTimeout = realSetTimeout;
-    }
-    expect(res.status).toBe(204);
-    expect(delayed).toHaveLength(1);
-
-    const del = await send(app, "DELETE", "/api/backups/test1.zip");
-    expect(del.status).toBe(400);
-    expect(await del.json()).toEqual({
-      data: {},
-      message: "The backup is currently being used and cannot be deleted.",
-      status: 400,
-    });
-    const create = await send(app, "POST", "/api/backups", "{}");
-    expect(create.status).toBe(400);
-    const again = await send(app, "POST", "/api/backups/test2.zip/restore");
-    expect(again.status).toBe(400);
-
-    const files = app.filesystem.newBackupsFilesystem();
-    expect(files.exists("test1.zip")).toBe(true);
-    files.close();
-
-    // the delayed start fails (no restart under a test app) and releases the slot
-    delayed[0]?.();
-    await until(() => !app.store.has(StoreKeyActiveBackup));
-  });
-
-  test("a missing backup answers 400 and leaves no reservation", async () => {
-    const app = await open();
-    const res = await send(app, "POST", "/api/backups/missing.zip/restore");
-    expect(res.status).toBe(400);
-    expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
-  });
-});
-
 describe("TestRestoreBackup", () => {
   test("pending and missing errors", async () => {
     const app = await open();
