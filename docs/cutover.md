@@ -1,6 +1,6 @@
 # Cutover runbook: from PocketBase v0.41.0 to iglo.base
 
-How to switch a running PocketBase v0.41.0 (or v0.40.x) instance to iglo.base on the same `pb_data`, and how to go back. It is generic: it holds no details of any deployment. The way back works because iglo.base never converts `pb_data` ([data compatibility](design/03-data-compatibility.md)): PocketBase v0.41.0 opens the directory again after iglo.base has run on it.
+How to switch a running PocketBase v0.41.0 (or v0.40.x) instance to iglo.base on the same `pb_data`, and how to go back. It is generic: it holds no details of any deployment. For running iglo.base afterwards (service, reverse proxy, backups, upgrades) see the [operations guide](operations.md); for what is different, [Differences from PocketBase](differences.md). The way back works because iglo.base never converts `pb_data` ([data compatibility](design/03-data-compatibility.md)): PocketBase v0.41.0 opens the directory again after iglo.base has run on it.
 
 The procedure was rehearsed once on a copy of a real production backup (task M7.4, [D32](design/10-decisions.md#d32-an-agent-runs-the-cutover-rehearsal-on-the-staging-copy)); the rehearsal's counts are in that task's pull request.
 
@@ -23,7 +23,7 @@ What does not carry over:
 - `--hooksDir`, `--hooksWatch` and `--hooksPool`: iglo.base refuses them and exits with status 1. Remove them from the command line (PocketBase Docker images often pass `--hooksDir` even when no hooks are used).
 - A `pb_hooks/` directory next to `pb_data`, even an empty one, makes iglo.base print a warning on stderr at start. Move it away if it holds no hooks.
 - `--https` and `serve example.com`: iglo.base serves plain HTTP only ([D30](design/10-decisions.md#d30-no-tls-in-the-app)). TLS ends at the reverse proxy.
-- Anything else listed under deliberate differences in [04-api-compatibility.md](design/04-api-compatibility.md): read it once before the switch.
+- Anything else listed in [Differences from PocketBase](differences.md): read it once before the switch.
 
 The `--dir` default is `pb_data` next to the executable, as in PocketBase. Pass `--dir` explicitly and keep the same value in both binaries.
 

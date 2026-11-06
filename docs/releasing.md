@@ -60,4 +60,4 @@ macOS has no `sha256sum`: compare `shasum -a 256 <archive>` with the archive's l
 
 ## Switching a deployment
 
-[cutover.md](cutover.md) is the runbook for moving a PocketBase v0.41.0 deployment to a released executable and back.
+The [operations guide](operations.md) covers installing and running a release. [cutover.md](cutover.md) is the runbook for moving a PocketBase v0.41.0 deployment to a released executable and back.
