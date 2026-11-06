@@ -66,6 +66,12 @@ interface Job {
   reject: (err: Error) => void;
 }
 
+interface Waiter {
+  resolve: () => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout> | undefined;
+}
+
 interface Slot {
   worker: Worker;
   job: Job | null;
@@ -81,7 +87,9 @@ export class ThumbPool {
   readonly #pending = new Map<string, Promise<void>>();
   // thumbGenSem
   #free: number;
-  readonly #waiters: (() => void)[] = [];
+  readonly #waiters: Waiter[] = [];
+  // renders waiting for a worker (all maxWorkers are busy)
+  readonly #queue: Job[] = [];
   readonly #slots: Slot[] = [];
   #nextId = 1;
   #closed = false;
@@ -156,17 +164,32 @@ export class ThumbPool {
         size,
         maxPixels: this.maxSourcePixels(),
       };
-      const slot = this.#slots.find((s) => s.job === null) ?? this.#spawn();
+      this.#queue.push({ message, resolve, reject });
+      this.#drain();
+    });
+  }
+
+  // Hands the queued renders to idle workers, starting workers up to
+  // maxWorkers.
+  #drain(): void {
+    while (this.#queue.length > 0 && !this.#closed) {
+      const slot =
+        this.#slots.find((s) => s.job === null) ??
+        (this.#slots.length < this.maxWorkers ? this.#spawn() : null);
+      if (slot === null) {
+        return;
+      }
+      const job = this.#queue.shift() as Job;
       if (slot.idleTimer !== null) {
         clearTimeout(slot.idleTimer);
         slot.idleTimer = null;
       }
-      slot.job = { message, resolve, reject };
+      slot.job = job;
       slot.worker.ref();
       // a Worker's postMessage has no target origin (that is window.postMessage)
       // oxlint-disable-next-line unicorn/require-post-message-target-origin
-      slot.worker.postMessage(message, [buffer]);
-    });
+      slot.worker.postMessage(job.message, [job.message.input]);
+    }
   }
 
   // the number of started workers (for tests and measurements)
@@ -174,9 +197,18 @@ export class ThumbPool {
     return this.#slots.length;
   }
 
-  // Stops the workers; a render in progress fails.
+  // Stops the workers; a render in progress, a queued render and a
+  // generation waiting for a slot fail.
   close(): void {
     this.#closed = true;
+    const err = new Error("the thumb pool is closed");
+    for (const job of this.#queue.splice(0)) {
+      job.reject(err);
+    }
+    for (const waiter of this.#waiters.splice(0)) {
+      clearTimeout(waiter.timer);
+      waiter.reject(err);
+    }
     for (const slot of this.#slots.splice(0)) {
       this.#stop(slot, new Error("the thumb pool is closed"));
     }
@@ -199,11 +231,13 @@ export class ThumbPool {
         job.reject(new Error(res.error));
       }
       this.#idle(slot);
+      this.#drain();
     });
     worker.addEventListener("error", (event: ErrorEvent) => {
       // the worker's thread failed (e.g. out of memory) and exits
       this.#remove(slot);
       this.#stop(slot, new Error(`thumb worker failed: ${event.message}`));
+      this.#drain();
     });
     worker.unref();
     this.#slots.push(slot);
@@ -244,27 +278,33 @@ export class ThumbPool {
 
   // semaphore.Acquire with a PB_THUMBS_MAX_WAIT deadline
   #acquire(): Promise<void> {
+    if (this.#closed) {
+      return Promise.reject(new Error("the thumb pool is closed"));
+    }
     if (this.#free > 0 && this.#waiters.length === 0) {
       this.#free--;
       return Promise.resolve();
     }
     return new Promise((resolve, reject) => {
-      const waiter = (): void => {
-        clearTimeout(timer);
-        resolve();
+      const waiter: Waiter = {
+        resolve: () => {
+          clearTimeout(waiter.timer);
+          resolve();
+        },
+        reject,
+        timer: undefined,
       };
       // a timer past 2^31-1 ms (24.8 days) would fire at once; such a wait
       // never ends in practice
-      const timer =
-        this.maxWaitMs <= maxTimerMs
-          ? setTimeout(() => {
-              const i = this.#waiters.indexOf(waiter);
-              if (i !== -1) {
-                this.#waiters.splice(i, 1);
-              }
-              reject(new Error("context deadline exceeded"));
-            }, this.maxWaitMs)
-          : undefined;
+      if (this.maxWaitMs <= maxTimerMs) {
+        waiter.timer = setTimeout(() => {
+          const i = this.#waiters.indexOf(waiter);
+          if (i !== -1) {
+            this.#waiters.splice(i, 1);
+          }
+          reject(new Error("context deadline exceeded"));
+        }, this.maxWaitMs);
+      }
       this.#waiters.push(waiter);
     });
   }
@@ -272,7 +312,7 @@ export class ThumbPool {
   #release(): void {
     const next = this.#waiters.shift();
     if (next !== undefined) {
-      next(); // the slot passes to the waiter
+      next.resolve(); // the slot passes to the waiter
       return;
     }
     this.#free++;

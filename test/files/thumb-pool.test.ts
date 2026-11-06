@@ -188,3 +188,42 @@ test("render runs in a worker; a closed pool refuses", async () => {
     await rejection(pool.render(png, "image/png", { width: 10, height: 0, mode: "" })),
   ).toContain("closed");
 });
+
+test("close fails the generations waiting for a slot at once", async () => {
+  const pool = new ThumbPool({ getenv: env({ PB_THUMBS_MAX_WORKERS: "1" }) }); // 60 s wait
+  const gate = deferred();
+  const first = pool.generate("a", () => gate.promise);
+  const second = pool.generate("b", async () => {});
+  pool.close();
+  expect(await rejection(second)).toBe("the thumb pool is closed");
+  // a generation after close is refused as well
+  expect(await rejection(pool.generate("c", async () => {}))).toBe("the thumb pool is closed");
+  gate.resolve();
+  await first;
+});
+
+test("renders beyond PB_THUMBS_MAX_WORKERS wait for a worker", async () => {
+  const pool = new ThumbPool({ getenv: env({ PB_THUMBS_MAX_WORKERS: "1" }) });
+  try {
+    const png = encodePng({ width: 40, height: 20, pix: new Uint8Array(40 * 20 * 4).fill(200) }, 6);
+    const size = { width: 10, height: 0, mode: "" };
+    const renders = [1, 2, 3].map(() => pool.render(png.slice(), "image/png", size));
+    expect(pool.workers()).toBe(1);
+    const thumbs = await Promise.all(renders);
+    expect(thumbs.map((t) => t.contentType)).toEqual(["image/png", "image/png", "image/png"]);
+    expect(pool.workers()).toBe(1);
+  } finally {
+    pool.close();
+  }
+});
+
+test("close fails the renders queued for a worker", async () => {
+  const pool = new ThumbPool({ getenv: env({ PB_THUMBS_MAX_WORKERS: "1" }) });
+  const png = encodePng({ width: 40, height: 20, pix: new Uint8Array(40 * 20 * 4).fill(200) }, 6);
+  const size = { width: 10, height: 0, mode: "" };
+  const first = pool.render(png.slice(), "image/png", size);
+  const second = pool.render(png.slice(), "image/png", size);
+  pool.close();
+  expect(await rejection(first)).toContain("closed");
+  expect(await rejection(second)).toContain("closed");
+});
