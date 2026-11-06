@@ -5,8 +5,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   chmodSync,
+  closeSync,
   existsSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -20,7 +22,7 @@ import { deflateRawSync } from "node:zlib";
 
 import { create } from "@/tools/archive/create";
 import { extract } from "@/tools/archive/extract";
-import { ZipReader } from "@/tools/archive/zip-reader";
+import { ZipReader, type ZipEntry } from "@/tools/archive/zip-reader";
 import { ZipWriter } from "@/tools/archive/zip-writer";
 
 import { tempDir } from "@test/support/executable";
@@ -348,6 +350,38 @@ describe("zip format", () => {
     expect(end.getUint32(16, true)).toBe(0xffffffff);
     expect(bytes.includes(Buffer.from([0x50, 0x4b, 0x06, 0x06]))).toBe(true);
   }, 30_000);
+
+  test("a closed or aborted writer refuses more files", () => {
+    const dir = newDir();
+    writeFileSync(join(dir, "f"), "x");
+    const fd = openSync(join(dir, "f"), "r");
+    try {
+      const closed = new ZipWriter(join(newDir(), "a.zip"));
+      closed.close();
+      expect(() => closed.addFile(join(dir, "f"), "f")).toThrow("closed writer");
+      expect(() => closed.addOpenFile(fd, "f")).toThrow("closed writer");
+
+      const aborted = new ZipWriter(join(newDir(), "b.zip"));
+      aborted.abort();
+      expect(() => aborted.addFile(join(dir, "f"), "f")).toThrow("closed writer");
+      expect(() => aborted.addOpenFile(fd, "f")).toThrow("closed writer");
+    } finally {
+      closeSync(fd);
+    }
+  });
+
+  test("a closed reader refuses to read entries and can be closed again", async () => {
+    const dir = newDir();
+    writeFileSync(join(dir, "f"), "content");
+    const zipPath = join(newDir(), "t.zip");
+    create(dir, zipPath);
+
+    const zr = new ZipReader(zipPath);
+    const entry = zr.files[0] as ZipEntry;
+    zr.close();
+    zr.close();
+    await expect(zr.copyTo(entry, () => {})).rejects.toThrow("reader is closed");
+  });
 
   test("a named pipe is left out", () => {
     const dir = newDir();
