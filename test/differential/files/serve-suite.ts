@@ -95,19 +95,19 @@ function tolerance(contentType: string, note: string): number {
   if (contentType === "image/webp" && !note.includes("lossless")) {
     return 9;
   }
-  // On arm64 the Go compiler most likely fuses multiplications and additions (FMA), so
-  // upstream's resampling differs in the last bits from x64, and the GIF
-  // encoder's error-diffusion dithering turns that into whole pixels of
-  // another palette color (measured on a GitHub arm64 runner: 14.6 and 15.6,
-  // against exact on x64). Measured on linux-arm64 only, for photo.gif (the note
-  // "GIF, Plan 9 palette") at the
-  // sizes this suite requests; every other file and platform stays exact
-  // (04-api-compatibility.md, P.2, D34).
+  // On arm64 the Go compiler most likely fuses multiplications and additions
+  // (FMA), so upstream's resampling differs in the last bits from x64, and the
+  // GIF encoder's error-diffusion dithering turns that into whole pixels of
+  // another palette color. Measured on a GitHub linux-arm64 runner (exact on
+  // x64) as a mean error of 14.6 and 15.6 for photo.gif (the note "GIF, Plan 9
+  // palette") and 15.554 for gif-subframe.gif at 100x100 (the note with
+  // "at (100, 150)"). Allowed for those two files on linux-arm64 only; every
+  // other GIF and platform stays exact (04-api-compatibility.md, D34).
   if (
     contentType === "image/gif" &&
     process.platform === "linux" &&
     process.arch === "arm64" &&
-    note === "GIF, Plan 9 palette"
+    (note === "GIF, Plan 9 palette" || note.includes("at (100, 150)"))
   ) {
     return 25;
   }

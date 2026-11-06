@@ -35,21 +35,28 @@ let loaded = false;
 // Bun keeps one SQLite per process, so only the first thread to call
 // `Database.setCustomSQLite` loads the library; a later call in a worker
 // may fail or be refused. Every call therefore ends with a check that the
-// SQLite in use is the bundled version, and that check decides.
+// SQLite in use is the bundled release (version and source hash), and that
+// check decides.
 // `embeddedPath` is the embedded library's path when the caller knows it
 // (src/main.ts imports it); threads that cannot import it look it up.
 export function loadSQLite(embeddedPath?: string): void {
   if (loaded || process.platform !== "darwin") {
     return;
   }
-  // a thread started after the main thread loaded the library finds Bun's
-  // SQLite already the bundled one, and then needs no file (a full disk or a
-  // purged cache cannot fail it)
-  if (isBundled()) {
-    loaded = true;
-    return;
+  // Nothing may open a database before setCustomSQLite: that would load the
+  // system SQLite. But when the library cannot be written (a full disk, a
+  // cache macOS purged) and an earlier thread has loaded it already, Bun's
+  // SQLite is the bundled one and no file is needed.
+  let path: string;
+  try {
+    path = resolveLibrary(embeddedPath);
+  } catch (err) {
+    if (isBundled()) {
+      loaded = true;
+      return;
+    }
+    throw err;
   }
-  const path = resolveLibrary(embeddedPath);
   let problem = "Bun did not accept it";
   try {
     if (Database.setCustomSQLite(path)) {
