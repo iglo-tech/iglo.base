@@ -86,7 +86,7 @@ jobs:
           fi
 
           version="$(node -p "require('./sdk/package.json').version")"
-          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "Version '$version' in sdk/package.json is not valid semver" >&2
             exit 1
           fi
@@ -217,6 +217,10 @@ jobs:
           path: sdk/dist
           if-no-files-found: error
 
+  # Runs publish when not skipping all. On dry runs, publish always executes:
+  # running `npm pack --dry-run` if the version is already published on npm, or
+  # `npm publish --dry-run` if unpublished. On real runs, it executes only if
+  # the version is not yet published.
   publish:
     name: publish
     needs: check
@@ -256,6 +260,7 @@ jobs:
         env:
           DRY_RUN: ${{ needs.check.outputs.dry_run }}
           NPM_TAG: ${{ needs.check.outputs.npm_tag }}
+          NPM_EXISTS: ${{ needs.check.outputs.npm_exists }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
@@ -266,8 +271,13 @@ jobs:
             printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n' >> ~/.npmrc
           fi
           if [ "$DRY_RUN" = "true" ]; then
-            echo "Dry run: running npm publish --tag $NPM_TAG --dry-run"
-            npm publish --tag "$NPM_TAG" --dry-run
+            if [ "$NPM_EXISTS" = "true" ]; then
+              echo "Notice: iglo.base version is already published on npm; running npm pack --dry-run (npm publish --dry-run fails on existing versions in npm 11)"
+              npm pack --dry-run
+            else
+              echo "Dry run: running npm publish --tag $NPM_TAG --dry-run"
+              npm publish --tag "$NPM_TAG" --dry-run
+            fi
           else
             echo "Publishing iglo.base with tag $NPM_TAG"
             npm publish --provenance --access public --tag "$NPM_TAG"
@@ -350,15 +360,51 @@ jobs:
           set -euo pipefail
           tag="sdk-v${VERSION}"
 
-          # Determine target commit from npm gitHead, falling back to workflow commit
-          git_head="$(npm view "iglo.base@${VERSION}" gitHead 2>/dev/null || true)"
-          target_commit="$GITHUB_SHA"
-          if printf '%s' "$git_head" | grep -Eq '^[0-9a-f]{40}$'; then
-            echo "Using npm gitHead as tag target: $git_head"
-            target_commit="$git_head"
-          else
-            echo "npm gitHead not found or not a 40-hex SHA; falling back to workflow commit: $target_commit"
-          fi
+          # Determine target commit from npm gitHead: fail on registry errors,
+          # fall back to workflow commit only when the field is absent.
+          target_commit="$(node -e '
+            const { spawnSync } = require("child_process");
+            const pkg = `iglo.base@${process.argv[1]}`;
+            const fallback = process.argv[2];
+            const res = spawnSync("npm", ["view", pkg, "gitHead", "--json"], { encoding: "utf8" });
+            if (res.status === 0) {
+              const out = res.stdout.trim();
+              if (!out) {
+                console.error(`npm gitHead is absent for ${pkg}; falling back to workflow commit ${fallback}`);
+                process.stdout.write(fallback);
+                process.exit(0);
+              }
+              let gitHead = "";
+              try {
+                gitHead = JSON.parse(out);
+              } catch {
+                gitHead = out;
+              }
+              if (typeof gitHead === "string" && /^[0-9a-f]{40}$/.test(gitHead)) {
+                console.error(`Using npm gitHead as tag target: ${gitHead} (from ${pkg})`);
+                process.stdout.write(gitHead);
+                process.exit(0);
+              } else {
+                console.error(`npm gitHead for ${pkg} is not a 40-hex SHA ("${gitHead}"); falling back to workflow commit ${fallback}`);
+                process.stdout.write(fallback);
+                process.exit(0);
+              }
+            }
+            let errCode = "";
+            try {
+              const data = JSON.parse(res.stdout);
+              errCode = data.error?.code || "";
+            } catch {}
+            if (errCode === "E404") {
+              console.error(`Package ${pkg} not found on npm (E404); falling back to workflow commit ${fallback}`);
+              process.stdout.write(fallback);
+              process.exit(0);
+            }
+            console.error(`npm view failed for ${pkg} on registry error (exit ${res.status}):\n${res.stdout}\n${res.stderr}`);
+            process.exit(1);
+          ' "$VERSION" "$GITHUB_SHA")"
+
+          echo "Target commit for tag $tag is $target_commit"
 
           # Check if tag already exists on remote
           tag_exists=false

@@ -58,46 +58,52 @@ The JavaScript SDK in `sdk/` is published independently to npm as `iglo.base` un
 2. Merging the PR to `main` triggers `.github/workflows/sdk-release.yml`.
 3. The workflow runs three isolated jobs under least privilege:
    - `check` (read-only, `contents: read`): checks out without persistent credentials (`persist-credentials: false`), sets up Node 24 and Bun, verifies `npm --version` >= 11.5.1, validates semver, checks git tags via `git ls-remote --exit-code`, checks npm registry via `npm view --json` (only `E404` is treated as not published; network or server errors fail immediately), extracts non-empty release notes from `sdk/CHANGELOG.md`, runs lint, SDK typecheck, SDK unit tests (`bun test sdk/test`), build (`bun run sdk:build`), package checks (`bun run sdk:check-package`), and uploads `sdk/dist` as an artifact (`sdk-dist`).
-   - `publish` (`contents: read`, `id-token: write`): downloads the `sdk-dist` artifact and publishes the exact build with `npm publish --provenance --access public`. Plain versions publish under `--tag latest`; prerelease versions (`*-*`) publish under `--tag next`. If the repository secret `NPM_TOKEN` is present, it is used as `NODE_AUTH_TOKEN` (for the initial bootstrap); otherwise OIDC trusted publishing is used. If the version is already published on npm, this job is skipped.
-   - `release` (`contents: write`): runs when `publish` succeeds or was skipped because the version is already on npm. It resolves the commit that was published using the npm registry's `gitHead` (`npm view iglo.base@<version> gitHead`), falling back to the workflow commit if `gitHead` is absent. It checks if the git tag `sdk-v<version>` and GitHub release exist, and creates only what is missing. Prerelease versions create GitHub releases with `--prerelease`. All SDK releases use `--latest=false` so server releases remain latest.
+   - `publish` (`contents: read`, `id-token: write`): downloads the `sdk-dist` artifact and publishes the exact build with `npm publish --provenance --access public`. Plain versions publish under `--tag latest`; prerelease versions (`*-*`) publish under `--tag next`. Every non-prerelease version publishes as `latest`; if a patch release is made on an older maintenance line (e.g. 1.0.5 after 1.1.0), it moves the `latest` tag unless managed manually with `npm dist-tag`. If the repository secret `NPM_TOKEN` is present, it is used as `NODE_AUTH_TOKEN` (for the initial bootstrap); otherwise OIDC trusted publishing is used. If the version is already published on npm, this job is skipped.
+   - `release` (`contents: write`): runs when `publish` succeeds or was skipped because the version is already on npm. It resolves the commit that was published using the npm registry's `gitHead` (`npm view iglo.base@<version> gitHead`), failing on registry errors and falling back to the workflow commit only if `gitHead` is absent. It checks if the git tag `sdk-v<version>` and GitHub release exist, and creates only what is missing. Prerelease versions create GitHub releases with `--prerelease`. All SDK releases use `--latest=false` so server releases remain latest.
 
 If both `iglo.base@<version>` and tag `sdk-v<version>` already exist, the workflow exits successfully without republishing. If the git tag exists on remote but npm does not have the version, the workflow fails loudly so the mismatch can be investigated.
 
 ### Partial failure recovery
 
 If the `publish` step succeeds on npm but the subsequent tag or GitHub release creation fails (or a runner terminates), the workflow is safely recoverable:
-- Re-running the workflow or failed jobs detects that `iglo.base@<version>` is already published on npm.
+- Re-running the workflow with "Re-run all jobs" (choose "Re-run all jobs", not only failed jobs, so `check` re-detects that `iglo.base@<version>` is already published on npm rather than reusing a cached `npm_exists=false`).
 - The `publish` job is skipped (preventing npm `E403` cannot publish over existing version errors).
-- The `release` job runs, reads `npm view iglo.base@<version> gitHead` to point the tag at the published commit, and creates the missing git tag and GitHub release with the release notes from `sdk/CHANGELOG.md`.
+- The `release` job runs, reads `npm view iglo.base@<version> gitHead` to point the tag at the published commit (failing on registry errors, and falling back to the workflow commit only if `gitHead` is absent), and creates the missing git tag and GitHub release with the release notes from `sdk/CHANGELOG.md`.
 - For manual recovery, check the published commit with `npm view iglo.base@<version> gitHead`, tag it with `git tag sdk-v<version> <commit> && git push origin sdk-v<version>`, and run `gh release create sdk-v<version> --title sdk-v<version> --notes-file <notes> --latest=false`.
 
 ### Dry run and branch rules
 
 - Manual runs via `workflow_dispatch` default to `dry-run: true`.
 - A real publish (`dry-run: false`) is only permitted when running on `refs/heads/main`; running on any other branch with dry-run off fails early with a clear error.
-- Running a dry run on an already published version still runs the full build, checks, and `npm publish --dry-run` path, allowing packaging verification at any time on any branch.
+- Running a dry run on an already published version still runs the full build and checks, then runs `npm pack --dry-run` with a notice that the version is already published (because npm 11's `npm publish --dry-run` fails with exit 1 on existing versions). For an unpublished version, dry run executes `npm publish --dry-run`. This allows packaging verification at any time on any branch.
 
 ### One-time npm setup and bootstrap
 
 Releases use npm trusted publishing (OIDC with `permissions: id-token: write`). npm trusted publishing requires npm CLI >= 11.5.1 and Node >= 22.14.0 (the workflow runs Node 24 with npm 11).
 
-npm requires that a package already exist on the registry before a trusted publisher can be configured in package settings. Because `iglo.base` is a new package, the first release (1.0.0) requires a one-time bootstrap:
+npm requires that a package already exist on the registry before a trusted publisher can be configured in package settings. In addition, npm enforces that a newly created trusted publisher configuration must complete its first successful publish within 2 days (48 hours), otherwise the pending configuration expires and must be recreated. Because `iglo.base` is a new package, the first release (1.0.0) requires a one-time bootstrap:
 
-1. **Bootstrap publish via `NPM_TOKEN` secret:**
-   - On npmjs.com, generate a granular access token with write/publish permissions for `iglo.base`.
-   - Store it as repository secret `NPM_TOKEN` on GitHub (`Settings` -> `Secrets and variables` -> `Actions`).
-   - Merge the 1.0.0 release PR to `main` (or run `sdk-release.yml` on `main` with `dry-run: false`). The publish job uses `NPM_TOKEN` as `NODE_AUTH_TOKEN` and publishes 1.0.0 with `--provenance`.
-   - On npmjs.com, navigate to package `iglo.base` -> **Settings** -> **Trusted Publishers** -> **Add trusted publisher**:
+1. **Bootstrap publish of 1.0.0 via `NPM_TOKEN` secret:**
+   - Because `iglo.base` does not exist on npm yet, generate a **granular access token** on npmjs.com with **"All packages"** set to **Read and write (publish and stage)**. Check **"Bypass two-factor authentication"** (required so automated CI can publish without an interactive OTP) and set a short expiration date. (Note: npm will remove the ability to publish new package versions directly with a granular access token in January 2027, so the initial bootstrap must be performed before then.)
+   - Store the token as repository secret `NPM_TOKEN` on GitHub (`Settings` -> `Secrets and variables` -> `Actions`).
+   - `sdk/package.json` is already 1.0.0 on `main`, so no push trigger will fire. Trigger the bootstrap publish manually: go to the **Actions** tab -> **SDK release** -> **Run workflow** on branch `main` with **dry-run** unchecked (`dry-run: false`). The publish job uses `NPM_TOKEN` as `NODE_AUTH_TOKEN` and publishes 1.0.0 to npm with `--provenance`, then the release job tags `sdk-v1.0.0` and creates the GitHub release.
+   - Do **not** delete the token or secret yet. Keep `NPM_TOKEN` in place as a fallback until trusted publishing has been verified by a successful publish.
+2. **Configure npm Trusted Publisher:**
+   - Once 1.0.0 is live on npm, navigate on npmjs.com to package `iglo.base` -> **Settings** -> **Trusted Publishers** -> **Add trusted publisher**:
      - **Publisher:** GitHub
      - **Organization/User:** `iglo-tech`
      - **Repository:** `iglo.base`
      - **Workflow filename:** `sdk-release.yml`
-   - Set the package to require 2FA / disallow token publishing if desired.
-   - Delete the repository secret `NPM_TOKEN` and revoke the npm token. All subsequent releases use OIDC trusted publishing with no stored secrets.
-2. **Alternative manual bootstrap:**
-   - Alternatively, build the SDK locally from a clean checkout on `main` (`bun run sdk:build`) and publish once by hand from `sdk/` (`npm publish --access public`) using interactive 2FA login (note: this initial publish will lack GitHub Actions provenance attestation). Then configure trusted publishing on npmjs.com as above.
-3. **npm time limit:**
-   - npm enforces that a newly created trusted publisher configuration must complete its first successful publish within 2 days (48 hours), otherwise the pending configuration expires and must be recreated. With the secret bootstrap approach above, the package is already published when the trusted publisher is added, avoiding expiration.
+     - **Environment:** Leave empty (the workflow does not use a GitHub Environment).
+     - **Allowed actions:** Check/enable direct publishing (`npm publish`). By default, npm configurations created after September 3, 2026 only allow `npm stage publish`; direct `npm publish` must be explicitly enabled so automated releases can publish directly without requiring a maintainer to manually promote staged versions.
+3. **Validate Trusted Publisher within 2 days:**
+   - A newly created trusted publisher configuration expires after **2 days (48 hours)** if it has not completed its first successful publish.
+   - To validate the configuration permanently, the next release (e.g. 1.0.1 or 1.0.1-rc.1) must be published through OIDC within 2 days of creating the configuration. Delete the repository secret `NPM_TOKEN` before this run so npm uses OIDC rather than falling back to the traditional token.
+   - **What happens if the configuration expires:** The configuration is permanently invalidated and can no longer be used or edited. If this occurs, subsequent OIDC publish jobs fail with authentication errors. To recover, go to package `iglo.base` -> **Settings** -> **Trusted Publishers**, delete the expired configuration, add a new trusted publisher configuration following step 2 above, and publish the release within 2 days.
+   - Once the trusted publisher has completed its first successful publish, the configuration is permanently validated and exempt from expiry. Delete `NPM_TOKEN` from GitHub repository secrets (if not already deleted) and revoke the token on npmjs.com. All future releases use keyless OIDC trusted publishing.
+4. **Alternative manual bootstrap:**
+   - Alternatively, build the SDK locally from a clean checkout on `main` (`bun run sdk:build`) and publish 1.0.0 once by hand from `sdk/` (`npm publish --access public`) using interactive 2FA login (note: this initial publish will lack GitHub Actions provenance attestation).
+   - After manual publishing, run `sdk-release.yml` on `main` with `dry-run: false`. That run detects `npm_exists=true` with the git tag missing, skips `publish`, and runs `release` to create the `sdk-v1.0.0` git tag and GitHub release. Then configure trusted publishing on npmjs.com as described above.
 
 ### Concurrency and queue behavior
 
