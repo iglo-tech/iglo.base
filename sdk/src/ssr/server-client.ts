@@ -5,8 +5,15 @@ import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { RecordModel } from "@sdk/tools/dtos";
 import type { SendOptions } from "@sdk/tools/options";
-import type { Loose } from "@sdk/tools/loose";
-import type { Cookie, CookieAdapter, CreateServerClientOptions } from "@sdk/ssr/types";
+import type { Loose, LooseObject } from "@sdk/tools/loose";
+import type {
+  Cookie,
+  CookieAdapter,
+  CookieToSet,
+  CookieValueMap,
+  CreateServerClientOptions,
+  SessionCache,
+} from "@sdk/ssr/types";
 import {
   DEFAULT_COOKIE_KEY,
   SSR_NO_CACHE_HEADERS,
@@ -15,12 +22,56 @@ import {
   findSessionCookie,
   isHttpLocalUrl,
   normalizeCookies,
+  parseSessionValue,
 } from "@sdk/ssr/cookies";
+import { noStoreFetch } from "@sdk/ssr/no-store-fetch";
 
+/** Tokens past their `exp` by up to this many seconds still count as valid (clock skew). */
+const CLOCK_SKEW_SEC = 60;
+
+/**
+ * What one `auth-refresh` flight found. It is shared by every request that joined the
+ * flight; each request applies it to its own client, auth store and cookies.
+ */
 type RefreshOutcome =
-  | { kind: "ok"; token: string; record: AuthRecord; serverDateHeader?: string }
-  | { kind: "revoked"; status: number; error: ClientResponseError }
-  | { kind: "transient"; status?: number; error: unknown };
+  | { kind: "ok"; token: string; record: AuthRecord }
+  | { kind: "revoked"; error: ClientResponseError }
+  | { kind: "transient"; error: unknown };
+
+function unauthorized(message: string): ClientResponseError {
+  return new ClientResponseError({ status: 401, data: { message } });
+}
+
+/** The key that ties a token to its collection's learned lifetime. */
+function collectionKey(payload: LooseObject, record: AuthRecord | undefined | null): string {
+  return payload.collectionId || record?.collectionId || record?.collectionName || "";
+}
+
+/** A record that belongs to another token is dropped; a cookie can be edited by its user. */
+function matchRecord(token: string, record: AuthRecord): AuthRecord {
+  const payload = getTokenPayload(token);
+  if (record && payload.id && record.id !== payload.id) {
+    return null;
+  }
+  return record;
+}
+
+function resolveSecure(options: CreateServerClientOptions): boolean {
+  if (options.secure !== undefined) {
+    return options.secure;
+  }
+  if (options.cookies.isSecure !== undefined) {
+    return options.cookies.isSecure;
+  }
+  if (options.origin) {
+    return !isHttpLocalUrl(options.origin);
+  }
+  if (options.request) {
+    return !isHttpLocalUrl(options.request.url);
+  }
+  // Unknown app origin: secure by default. Apps on http://localhost pass `origin` or `request`.
+  return true;
+}
 
 export class ServerClient extends Client {
   readonly cookies: CookieAdapter;
@@ -29,11 +80,13 @@ export class ServerClient extends Client {
   private readonly _options: CreateServerClientOptions;
   private readonly _clock: () => number;
   private _clockOffsetMs: number = 0;
-  private _lastServerDateHeader?: string;
   private _initialized: boolean = false;
-  private _lastKnownToken: string = "";
+  // true while this client applies a change it made itself; the auth-store listener skips it
+  private _applying: boolean = false;
+  private _lastToken: string = "";
 
   readonly auth: {
+    /** Checks the session with iglo.base now, bypassing the cache. Throws when it is not valid. */
     verify: () => Promise<AuthRecord>;
   };
 
@@ -46,123 +99,44 @@ export class ServerClient extends Client {
     this._cookieName = options.cookieName ?? DEFAULT_COOKIE_KEY;
     this._clock = options.clock ?? Date.now;
     this._clockOffsetMs = options.sessionCache?.clockOffsetMs ?? 0;
-
-    // Secure & __Host- follow the app's own request / origin, never the iglo.base URL
-    if (options.secure !== undefined) {
-      this._isSecure = options.secure;
-    } else if ((options.cookies as { isSecure?: boolean }).isSecure !== undefined) {
-      this._isSecure = (options.cookies as { isSecure?: boolean }).isSecure!;
-    } else if (options.origin) {
-      this._isSecure = !isHttpLocalUrl(options.origin);
-    } else if (options.request) {
-      this._isSecure = !isHttpLocalUrl(options.request.url);
-    } else {
-      this._isSecure = true;
-    }
+    this._isSecure = resolveSecure(options);
 
     this.autoCancellation(false);
 
-    const originalAfterSend = this.afterSend;
-    this.afterSend = async (
-      response: Response,
-      data: Loose,
-      sendOptions?: SendOptions,
-    ): Promise<Loose> => {
-      const dateHeader = response.headers?.get?.("date") || response.headers?.get?.("Date");
-      if (dateHeader) {
-        this._lastServerDateHeader = dateHeader;
-        const serverTimeMs = Date.parse(dateHeader);
-        if (!Number.isNaN(serverTimeMs)) {
-          this._clockOffsetMs = serverTimeMs - this._clock();
-          if (this._options.sessionCache) {
-            this._options.sessionCache.clockOffsetMs = this._clockOffsetMs;
-          }
-        }
-      }
-
-      // Learn collection lifetime from auth responses seen by SDK
-      if (response.ok && data && typeof data === "object") {
-        const respObj = data as Record<string, unknown>;
-        const token = typeof respObj["token"] === "string" ? respObj["token"] : "";
-        if (token && dateHeader) {
-          const payload = getTokenPayload(token);
-          // Impersonate tokens have refreshable === false; exclude them
-          if (payload.exp && payload.refreshable !== false) {
-            const serverTimeMs = Date.parse(dateHeader);
-            if (!Number.isNaN(serverTimeMs)) {
-              const serverTimeSec = Math.floor(serverTimeMs / 1000);
-              const lifetime = payload.exp - serverTimeSec;
-              const rec = respObj["record"] as Record<string, unknown> | undefined;
-              const collectionId =
-                payload.collectionId ||
-                (typeof rec?.["collectionId"] === "string" ? rec["collectionId"] : "") ||
-                (typeof rec?.["collectionName"] === "string" ? rec["collectionName"] : "");
-              if (lifetime > 0 && collectionId && this._options.sessionCache) {
-                this._options.sessionCache.setCollectionLifetime(collectionId, lifetime);
-              }
-            }
-          }
-        }
-      }
-
-      if (originalAfterSend) {
-        return sendOptions
-          ? originalAfterSend(response, data, sendOptions)
-          : originalAfterSend(response, data);
-      }
-      return data;
-    };
-
-    // Listen to auth changes on the server client (sign-in, sign-out, clear)
-    let isHandlingAuthStoreChange = false;
-    this.authStore.onChange((newToken, record) => {
-      if (!this._initialized || isHandlingAuthStoreChange) {
+    // Auth changes the app makes on this client (authWithPassword, authStore.clear(), ...)
+    // write or clear the cookie and update the cache. Changes made by this client during a
+    // check go through `_applying` and write the cookie once, in `_applyOutcome`.
+    this.authStore.onChange((token, record) => {
+      if (!this._initialized || this._applying) {
         return;
       }
-      isHandlingAuthStoreChange = true;
-      try {
-        if (newToken) {
-          this._lastKnownToken = newToken;
-          const payload = getTokenPayload(newToken);
-          if (record && payload.id && record.id !== payload.id) {
-            record = null;
-          }
-          if (this._options.sessionCache) {
-            this._options.sessionCache.set(newToken, record, this._clock()).catch(() => {});
-          }
-          this._writeSessionCookie(newToken, record);
-        } else {
-          this._handleRevoked(this._lastKnownToken);
-        }
-      } finally {
-        isHandlingAuthStoreChange = false;
+      if (token) {
+        this._saveSession(token, record, true);
+      } else {
+        this._dropSession(this._lastToken);
       }
     });
 
     this.auth = {
-      verify: () => this.verifyAuth(),
+      verify: () => this._checkSession(true),
     };
   }
 
   /**
-   * Overriding send ensures cache: 'no-store' and custom fetch stick
-   * even if application code assigns pb.beforeSend.
+   * Every request goes through here: `cache: "no-store"` is applied at the fetch layer,
+   * and the server's clock and the collection lifetime are read from each response.
    */
   override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
-    options.cache = "no-store";
-    if (this._options.fetch && !options.fetch) {
-      options.fetch = this._options.fetch;
-    }
-    return super.send<T>(path, options);
+    const seen: { date?: string | null } = {};
+    options.fetch = noStoreFetch(options.fetch ?? this._options.fetch, (response) => {
+      seen.date = response.headers.get("date");
+    });
+    const data = await super.send<T>(path, options);
+    this._observeResponse(seen.date, data);
+    return data;
   }
 
-  async verifyAuth(): Promise<AuthRecord> {
-    return this._performSessionCheck(true);
-  }
-
-  /**
-   * Internal initialization: reads cookies from adapter and runs check/refresh.
-   */
+  /** Reads the cookie, then checks or refreshes the session. */
   async init(): Promise<this> {
     await this._loadCookieAndCheck();
     this._initialized = true;
@@ -177,282 +151,229 @@ export class ServerClient extends Client {
       return;
     }
 
-    const cookies = normalizeCookies(rawCookies as Cookie[] | Record<string, string>);
-    const matched = findSessionCookie(cookies, this._cookieName);
-
-    if (!matched || !matched.value) {
-      this.authStore.clear();
+    const matched = findSessionCookie(
+      normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
+      this._cookieName,
+    );
+    const session = matched?.value ? parseSessionValue(matched.value) : undefined;
+    if (!session) {
+      this._setLocalSession("", null);
       return;
     }
 
-    // Load token & record from cookie
-    let token = "";
-    let record: AuthRecord = null;
-    try {
-      let rawJson = matched.value;
-      if (rawJson.startsWith(`${matched.name}=`)) {
-        rawJson =
-          rawJson
-            .slice(matched.name.length + 1)
-            .split(";")[0]
-            ?.trim() ?? "";
-      }
-      const parsed = JSON.parse(rawJson);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        token = typeof parsed["token"] === "string" ? parsed["token"] : "";
-        record = (parsed["record"] || parsed["model"] || null) as AuthRecord;
-      }
-    } catch {}
-
-    if (token) {
-      this._lastKnownToken = token;
-      const payload = getTokenPayload(token);
-      if (record && payload.id && record.id !== payload.id) {
-        record = null;
-      }
-      this.authStore.save(token, record);
-    } else {
-      // Fallback to loadFromCookie
-      const cookiePayload = matched.value.startsWith(`${matched.name}=`)
-        ? matched.value
-        : `${matched.name}=${matched.value}`;
-      this.authStore.loadFromCookie(cookiePayload, matched.name);
-      if (this.authStore.token) {
-        this._lastKnownToken = this.authStore.token;
-        const payload = getTokenPayload(this.authStore.token);
-        if (this.authStore.record && payload.id && this.authStore.record.id !== payload.id) {
-          this.authStore.save(this.authStore.token, null);
-        }
-      }
-    }
-
-    if (!this.authStore.token) {
-      return;
-    }
-
-    await this._performSessionCheck(false);
+    this._lastToken = session.token;
+    this._setLocalSession(session.token, matchRecord(session.token, session.record));
+    await this._checkSession(false);
   }
 
-  private async _performSessionCheck(force: boolean): Promise<AuthRecord> {
+  private async _checkSession(force: boolean): Promise<AuthRecord> {
     const token = this.authStore.token;
     if (!token) {
       if (force) {
-        throw new ClientResponseError({
-          status: 401,
-          data: { message: "The request requires valid authentication token." },
-        });
+        throw unauthorized("The request requires valid authentication token.");
       }
       return null;
     }
 
     const payload = getTokenPayload(token);
     const nowMs = this._clock();
-    const effectiveNowMs = nowMs + this._clockOffsetMs;
-    const effectiveNowSec = Math.floor(effectiveNowMs / 1000);
+    const nowSec = Math.floor((nowMs + this._clockOffsetMs) / 1000);
 
-    // 60s clock-skew allowance on token expiration
-    if (payload.exp && effectiveNowSec > payload.exp + 60) {
-      await this._handleRevoked(token);
+    if (payload.exp && nowSec > payload.exp + CLOCK_SKEW_SEC) {
+      this._dropSession(token);
       if (force) {
-        throw new ClientResponseError({
-          status: 401,
-          data: { message: "The token is expired." },
-        });
+        throw unauthorized("The token is expired.");
       }
       return null;
     }
 
-    const sessionCache = this._options.sessionCache;
-    const ttlMs = sessionCache ? sessionCache.ttl : 0;
-    const collectionId =
-      payload.collectionId ||
-      this.authStore.record?.collectionId ||
-      this.authStore.record?.collectionName;
-
-    if (sessionCache && !force) {
-      const cached = await sessionCache.get(token);
-      if (cached) {
-        const isFresh = nowMs - cached.checkedAt < ttlMs;
-        const learnedLifetime = collectionId
-          ? sessionCache.getCollectionLifetime(collectionId)
-          : undefined;
-
-        // Refresh when less than half of the learned lifetime remains.
-        // If lifetime is not known yet, the first check refreshes once to learn it.
-        if (learnedLifetime !== undefined && learnedLifetime > 0) {
-          const remaining = payload.exp ? payload.exp - effectiveNowSec : Infinity;
-          const isUnderHalfLife = remaining < learnedLifetime / 2;
-
-          if (isFresh && !isUnderHalfLife) {
-            // Cached and fresh -> no request to iglo.base
-            this.authStore.save(token, cached.record);
-            return cached.record;
-          }
+    const cache = this._options.sessionCache;
+    if (cache && !force) {
+      const cached = await cache.get(token);
+      const lifetime = cache.getCollectionLifetime(collectionKey(payload, this.authStore.record));
+      // Lifetime unknown (first check in this process): refresh once to learn it.
+      if (cached && lifetime && nowMs - cached.checkedAt < cache.ttl) {
+        const remaining = payload.exp ? payload.exp - nowSec : 0;
+        if (remaining >= lifetime / 2) {
+          this._setLocalSession(token, cached.record);
+          return cached.record;
         }
       }
     }
 
-    // Need check/refresh
-    const executeRefresh = async (): Promise<RefreshOutcome> => {
-      const collection =
-        this.authStore.record?.collectionName ||
-        this.authStore.record?.collectionId ||
-        payload.collectionId ||
-        (this.authStore.isSuperuser ? "_superusers" : "users");
-
-      try {
-        const fetchFunc = this._options.fetch || fetch;
-        const sendOpts: SendOptions = {
-          method: "POST",
-          headers: {
-            Authorization: token,
-          },
-          fetch: fetchFunc,
-        };
-
-        const res = await this.send<{ token: string; record: RecordModel }>(
-          `/api/collections/${encodeURIComponent(collection)}/auth-refresh`,
-          sendOpts,
-        );
-
-        const newToken = res?.token || token;
-        const newRecord = (res?.record as AuthRecord) || this.authStore.record;
-
-        return {
-          kind: "ok",
-          token: newToken,
-          record: newRecord,
-          serverDateHeader: this._lastServerDateHeader,
-        };
-      } catch (err: unknown) {
-        if (err instanceof ClientResponseError) {
-          if (err.status === 401 || err.status === 403 || err.status === 404) {
-            return {
-              kind: "revoked",
-              status: err.status,
-              error: err,
-            };
-          }
-          return {
-            kind: "transient",
-            status: err.status,
-            error: err,
-          };
-        }
-        return {
-          kind: "transient",
-          error: err,
-        };
-      }
-    };
-
-    let outcome: RefreshOutcome;
-    if (sessionCache) {
-      outcome = await sessionCache.runSingleFlight(token, executeRefresh);
-    } else {
-      outcome = await executeRefresh();
-    }
-
-    // Apply the outcome to this client instance, auth store, and cookies
-    if (outcome.kind === "ok") {
-      const newToken = outcome.token;
-      const newRecord = outcome.record;
-      this._lastKnownToken = newToken;
-
-      if (sessionCache) {
-        const newPayload = getTokenPayload(newToken);
-        if (newPayload.exp && outcome.serverDateHeader && newPayload.refreshable !== false) {
-          const serverTimeMs = Date.parse(outcome.serverDateHeader);
-          if (!Number.isNaN(serverTimeMs)) {
-            const serverTimeSec = Math.floor(serverTimeMs / 1000);
-            const learned = newPayload.exp - serverTimeSec;
-            const colId = newPayload.collectionId || collectionId;
-            if (learned > 0 && colId) {
-              sessionCache.setCollectionLifetime(colId, learned);
-            }
-          }
-        }
-        await sessionCache.set(newToken, newRecord, this._clock());
-        if (newToken !== token) {
-          await sessionCache.delete(token);
-        }
-      }
-
-      this.authStore.save(newToken, newRecord);
-
-      if (newToken !== token) {
-        this._writeSessionCookie(newToken, newRecord);
-      }
-
-      return newRecord;
-    }
-
-    if (outcome.kind === "revoked") {
-      this._handleRevoked(token);
-      if (force) {
-        throw outcome.error;
-      }
-      return null;
-    }
-
-    // outcome.kind === "transient" (network error or 5xx)
-    // Keep normal request's session and do not touch cookie
-    if (this.authStore.record && payload.id && this.authStore.record.id !== payload.id) {
-      this.authStore.clear();
-    }
-
-    if (force) {
-      throw outcome.error;
-    }
-    return this.authStore.record;
+    const outcome = cache
+      ? await cache.runSingleFlight(token, () => this._requestRefresh(token))
+      : await this._requestRefresh(token);
+    return this._applyOutcome(token, outcome, force, cache, nowMs);
   }
 
-  private _writeSessionCookie(token: string, record: AuthRecord): void {
-    if (!this.cookies.setAll) {
-      return;
-    }
+  /** One `auth-refresh` for the token. Runs once per flight; see `RefreshOutcome`. */
+  private async _requestRefresh(token: string): Promise<RefreshOutcome> {
     const payload = getTokenPayload(token);
-    const nowSec = Math.floor((this._clock() + this._clockOffsetMs) / 1000);
-
-    const cookieToSet = buildSessionCookieToSet(token, record, {
-      cookieName: this._cookieName,
-      secure: this._isSecure,
-      nowSeconds: nowSec,
-      exp: payload.exp,
-      cookieOptions: this._options.cookieOptions,
-    });
+    const collection =
+      this.authStore.record?.collectionName ||
+      this.authStore.record?.collectionId ||
+      payload.collectionId ||
+      (this.authStore.isSuperuser ? "_superusers" : "users");
 
     try {
-      const res = this.cookies.setAll([cookieToSet], { ...SSR_NO_CACHE_HEADERS });
-      if (res && typeof (res as Promise<void>).catch === "function") {
-        (res as Promise<void>).catch(() => {});
+      const res = await this.send<{ token: string; record: RecordModel }>(
+        `/api/collections/${encodeURIComponent(collection)}/auth-refresh`,
+        { method: "POST", headers: { Authorization: token } },
+      );
+      return {
+        kind: "ok",
+        token: res?.token || token,
+        record: (res?.record as AuthRecord) ?? this.authStore.record,
+      };
+    } catch (err: unknown) {
+      if (
+        err instanceof ClientResponseError &&
+        (err.status === 401 || err.status === 403 || err.status === 404)
+      ) {
+        return { kind: "revoked", error: err };
       }
-    } catch {
-      // In Next.js Server Components, setAll may throw if cookies are read-only
+      return { kind: "transient", error: err };
     }
   }
 
-  private _handleRevoked(token: string): void {
-    this.authStore.clear();
+  private async _applyOutcome(
+    token: string,
+    outcome: RefreshOutcome,
+    force: boolean,
+    cache: SessionCache | undefined,
+    checkedAtMs: number,
+  ): Promise<AuthRecord> {
+    switch (outcome.kind) {
+      case "ok": {
+        const record = matchRecord(outcome.token, outcome.record);
+        const changed = outcome.token !== token;
+        if (cache) {
+          if (changed) {
+            await cache.delete(token);
+          }
+          await cache.set(outcome.token, record, checkedAtMs);
+        }
+        this._setLocalSession(outcome.token, record, changed);
+        return record;
+      }
 
-    if (this._options.sessionCache && token) {
-      this._options.sessionCache.delete(token).catch(() => {});
+      case "revoked":
+        // 401/403/404: the session is over for this request and its cookie is cleared
+        this._dropSession(token);
+        if (force) {
+          throw outcome.error;
+        }
+        return null;
+
+      case "transient":
+        // Network error or 5xx: keep the session, do not touch the cookie or the cache
+        if (force) {
+          throw outcome.error;
+        }
+        return this.authStore.record;
     }
+  }
 
-    if (this.cookies.setAll) {
-      const clearedCookies = buildClearedSessionCookies({
+  /** Sets the auth store without triggering the listener; optionally writes the cookie. */
+  private _setLocalSession(token: string, record: AuthRecord, writeCookie: boolean = false): void {
+    this._lastToken = token;
+    this._applyLocally(() => {
+      if (token) {
+        this.authStore.save(token, record);
+      } else {
+        this.authStore.clear();
+      }
+    });
+    if (token && writeCookie) {
+      this._writeCookie(token, record);
+    }
+  }
+
+  /** A change made by the app on this client: update the cache and the cookie. */
+  private _saveSession(token: string, record: AuthRecord, writeCookie: boolean): void {
+    const matched = matchRecord(token, record);
+    this._setLocalSession(token, matched, writeCookie);
+    this._options.sessionCache?.set(token, matched, this._clock()).catch(() => {});
+  }
+
+  /** Ends the session on this client: the auth store, the cache entry and the cookie. */
+  private _dropSession(token: string): void {
+    this._setLocalSession("", null);
+    if (token) {
+      this._options.sessionCache?.delete(token).catch(() => {});
+    }
+    this._writeCookies(
+      buildClearedSessionCookies({
         cookieName: this._cookieName,
         secure: this._isSecure,
         cookieOptions: this._options.cookieOptions,
-      });
-      try {
-        const res = this.cookies.setAll(clearedCookies, { ...SSR_NO_CACHE_HEADERS });
-        if (res && typeof (res as Promise<void>).catch === "function") {
-          (res as Promise<void>).catch(() => {});
-        }
-      } catch {
-        // In Next.js Server Components, setAll may throw if cookies are read-only
-      }
+      }),
+    );
+  }
+
+  private _applyLocally(fn: () => void): void {
+    const was = this._applying;
+    this._applying = true;
+    try {
+      fn();
+    } finally {
+      this._applying = was;
+    }
+  }
+
+  private _writeCookie(token: string, record: AuthRecord): void {
+    const payload = getTokenPayload(token);
+    const nowSec = Math.floor((this._clock() + this._clockOffsetMs) / 1000);
+    this._writeCookies([
+      buildSessionCookieToSet(token, record, {
+        cookieName: this._cookieName,
+        secure: this._isSecure,
+        nowSeconds: nowSec,
+        exp: payload.exp,
+        cookieOptions: this._options.cookieOptions,
+      }),
+    ]);
+  }
+
+  private _writeCookies(cookies: CookieToSet[]): void {
+    if (!this.cookies.setAll) {
+      return;
+    }
+    try {
+      // Next.js Server Components throw here (cookies are read-only); the request still answers
+      Promise.resolve(this.cookies.setAll(cookies, { ...SSR_NO_CACHE_HEADERS })).catch(() => {});
+    } catch {
+      // see above
+    }
+  }
+
+  /** Learns the server's clock and the collection's token lifetime from one response. */
+  private _observeResponse(dateHeader: string | null | undefined, data: Loose): void {
+    const serverMs = dateHeader ? Date.parse(dateHeader) : NaN;
+    if (Number.isNaN(serverMs)) {
+      return;
+    }
+    this._clockOffsetMs = serverMs - this._clock();
+    if (this._options.sessionCache) {
+      this._options.sessionCache.clockOffsetMs = this._clockOffsetMs;
+    }
+
+    const body = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+    const token = typeof body["token"] === "string" ? body["token"] : "";
+    if (!token) {
+      return;
+    }
+    const payload = getTokenPayload(token);
+    // Impersonate tokens are not refreshable and do not describe the collection's lifetime
+    if (!payload.exp || payload.refreshable === false) {
+      return;
+    }
+    const record = body["record"] as AuthRecord;
+    const lifetime = payload.exp - Math.floor(serverMs / 1000);
+    const key = collectionKey(payload, record);
+    if (lifetime > 0 && key) {
+      this._options.sessionCache?.setCollectionLifetime(key, lifetime);
     }
   }
 }

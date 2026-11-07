@@ -18,6 +18,11 @@ export type CookieValueMap = Record<string, string>;
 export interface CookieAdapter {
   getAll: () => Cookie[] | Promise<Cookie[]> | CookieValueMap | Promise<CookieValueMap>;
   setAll?: (cookies: CookieToSet[], headers?: Record<string, string>) => void | Promise<void>;
+  /**
+   * Whether the app's own request is https (set by adapters that know the request).
+   * The session cookie is `Secure` and `__Host-` prefixed unless this is false.
+   */
+  isSecure?: boolean;
 }
 
 export interface SessionCacheEntry {

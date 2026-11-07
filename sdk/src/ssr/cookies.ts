@@ -35,6 +35,7 @@ export function normalizeCookies(raw: Cookie[] | CookieValueMap | undefined | nu
   return Object.entries(raw).map(([name, value]) => ({ name, value }));
 }
 
+/** The `__Host-` prefixed session cookie wins; the plain name is read as a migration fallback. */
 export function findSessionCookie(
   cookies: Cookie[],
   baseName: string = DEFAULT_COOKIE_KEY,
@@ -45,6 +46,42 @@ export function findSessionCookie(
     return hostMatch;
   }
   return cookies.find((c) => c.name === baseName);
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Reads the token and user record from a session cookie value. Adapters may hand over
+ * the value decoded (the request adapter does) or as sent by the browser (Next.js does),
+ * so the raw text is tried first and the percent-decoded text second, each decoded once.
+ */
+export function parseSessionValue(raw: string): { token: string; record: AuthRecord } | undefined {
+  const candidates = raw === safeDecode(raw) ? [raw] : [raw, safeDecode(raw)];
+  for (const candidate of candidates) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return undefined;
+    }
+    const obj = parsed as Record<string, unknown>;
+    const token = typeof obj["token"] === "string" ? obj["token"] : "";
+    if (!token) {
+      return undefined;
+    }
+    const record = (obj["record"] ?? obj["model"] ?? null) as AuthRecord;
+    return { token, record };
+  }
+  return undefined;
 }
 
 export function formatSessionCookieValue(
@@ -60,106 +97,77 @@ export function formatSessionCookieValue(
   return (parsed[wireName] as string) ?? "";
 }
 
+interface CookieSettings {
+  cookieName?: string;
+  secure?: boolean;
+  cookieOptions?: Partial<SerializeOptions>;
+}
+
+/** `cookieOptions.secure` overrides the flag; the default is secure (`__Host-`). */
+function isSecureSession(settings: CookieSettings): boolean {
+  return settings.cookieOptions?.secure ?? settings.secure ?? true;
+}
+
+/**
+ * Serialize options shared by writes and clears. The app's `cookieOptions` come first,
+ * then the name rules: `__Host-` requires `Secure`, `Path=/` and no `Domain`.
+ */
+function serializeBase(settings: CookieSettings, secure: boolean): SerializeOptions {
+  const opts: SerializeOptions = {
+    path: "/",
+    sameSite: "lax",
+    httpOnly: true,
+    ...settings.cookieOptions,
+    secure,
+  };
+  if (secure) {
+    delete opts.domain;
+    opts.path = "/";
+  }
+  return opts;
+}
+
 export function buildSessionCookieToSet(
   token: string,
   record: AuthRecord,
-  options: {
-    cookieName?: string;
-    secure?: boolean;
-    nowSeconds?: number;
-    exp?: number;
-    cookieOptions?: Partial<SerializeOptions>;
-  },
+  options: CookieSettings & { nowSeconds?: number; exp?: number },
 ): CookieToSet {
-  const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
-  const isSecure =
-    options.cookieOptions?.secure !== undefined
-      ? options.cookieOptions.secure
-      : (options.secure ?? true);
-  const wireName = isSecure ? `__Host-${baseName}` : baseName;
+  const secure = isSecureSession(options);
+  const wireName = secure
+    ? `__Host-${options.cookieName ?? DEFAULT_COOKIE_KEY}`
+    : (options.cookieName ?? DEFAULT_COOKIE_KEY);
 
   const nowSec = options.nowSeconds ?? Math.floor(Date.now() / 1000);
   const exp = options.exp;
-  const maxAge = exp !== undefined ? Math.max(0, exp - nowSec) : undefined;
-  const expires = exp !== undefined ? new Date(exp * 1000) : undefined;
-
   const serializeOpts: SerializeOptions = {
-    path: "/",
-    sameSite: "lax",
-    httpOnly: true,
-    ...options.cookieOptions,
-    secure: isSecure,
-    maxAge: maxAge,
-    expires: expires,
+    ...serializeBase(options, secure),
+    maxAge: exp !== undefined ? Math.max(0, exp - nowSec) : undefined,
+    expires: exp !== undefined ? new Date(exp * 1000) : undefined,
   };
-
-  if (isSecure) {
-    delete serializeOpts.domain;
-    serializeOpts.path = "/";
-  }
-
-  const value = formatSessionCookieValue(wireName, token, record, serializeOpts);
 
   return {
     name: wireName,
-    value: value,
+    value: formatSessionCookieValue(wireName, token, record, serializeOpts),
     options: serializeOpts,
   };
 }
 
-export function buildClearedSessionCookie(options: {
-  cookieName?: string;
-  secure?: boolean;
-  cookieOptions?: Partial<SerializeOptions>;
-}): CookieToSet {
-  const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
-  const isSecure =
-    options.cookieOptions?.secure !== undefined
-      ? options.cookieOptions.secure
-      : (options.secure ?? true);
-  const wireName = isSecure ? `__Host-${baseName}` : baseName;
-
-  const serializeOpts: SerializeOptions = {
-    path: "/",
-    sameSite: "lax",
-    httpOnly: true,
-    ...options.cookieOptions,
-    secure: isSecure,
-    maxAge: 0,
-    expires: new Date(0),
-  };
-
-  if (isSecure) {
-    delete serializeOpts.domain;
-    serializeOpts.path = "/";
-  }
-
-  return {
-    name: wireName,
+/**
+ * Expiring cookies for a session end. When the session cookie is `Secure`, the plain
+ * name is cleared too: a `pb_auth` written before the prefix was in use must not survive.
+ */
+export function buildClearedSessionCookies(settings: CookieSettings): CookieToSet[] {
+  const baseName = settings.cookieName ?? DEFAULT_COOKIE_KEY;
+  const clear = (name: string, secure: boolean): CookieToSet => ({
+    name,
     value: "",
-    options: serializeOpts,
-  };
-}
+    options: { ...serializeBase(settings, secure), maxAge: 0, expires: new Date(0) },
+  });
 
-export function buildClearedSessionCookies(options: {
-  cookieName?: string;
-  secure?: boolean;
-  cookieOptions?: Partial<SerializeOptions>;
-}): CookieToSet[] {
-  const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
-  const isSecure =
-    options.cookieOptions?.secure !== undefined
-      ? options.cookieOptions.secure
-      : (options.secure ?? true);
-
-  if (isSecure) {
-    return [
-      buildClearedSessionCookie({ ...options, secure: true, cookieName: baseName }),
-      buildClearedSessionCookie({ ...options, secure: false, cookieName: baseName }),
-    ];
+  if (isSecureSession(settings)) {
+    return [clear(`__Host-${baseName}`, true), clear(baseName, false)];
   }
-
-  return [buildClearedSessionCookie({ ...options, secure: false, cookieName: baseName })];
+  return [clear(baseName, false)];
 }
 
 export function createRequestCookieAdapter(

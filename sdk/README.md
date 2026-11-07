@@ -417,12 +417,14 @@ To accomplish this, the SDK provides 2 function hooks:
 
 ### Server-side rendering
 
-iglo.base provides server-side rendering support out of the box via the `iglo.base/ssr` entry point:
+`iglo.base/ssr` is the server-side entry point. It works with any server that handles Web `Request`/`Response` (Bun, Hono, Deno, and framework middleware built on them). Its exports:
 
-- `createServerClient`: Creates a scoped `Client` per request, resumed from the session cookie, with `cache: "no-store"` and `autoCancellation(false)`. Supports server-side authentication (`authWithPassword`, `authRefresh`, `authStore.clear()`) with automatic cookie updates.
-- `createSessionCache`: In-memory LRU session cache per process, with sliding refresh at half token lifetime (learned automatically from auth responses) and single-flight request sharing.
-- `createRequestCookieAdapter`: Reference cookie adapter for standard Web `Request`/`Response` handlers (Bun, Hono, Deno).
-- `createSuperuserClient`: Long-lived superuser client with auto-refresh and browser token minting via `impersonate(collection, id, options)`.
+- `createServerClient`: a `Client` per request, resumed from the session cookie. Requests are sent with `cache: "no-store"`.
+- `createSessionCache`: one in-memory cache per process. It skips the session check for recently checked sessions and shares one refresh between parallel requests.
+- `createRequestCookieAdapter`: the cookie adapter for Web `Request`/`Response` handlers.
+- `createSuperuserClient`: a long-lived superuser client. `impersonate(collection, id, duration)` mints a short token (15 minutes by default) for page JavaScript and realtime.
+
+`iglo.base/ssr` is server-only. A browser bundle that imports its named exports fails at build time; a namespace import (`import * as ssr`) throws when it loads.
 
 ```js
 import {
@@ -431,23 +433,23 @@ import {
   createSessionCache,
 } from "iglo.base/ssr";
 
-// Process-wide session cache
-const sessionCache = createSessionCache({ ttl: 300, maxEntries: 1000 });
+// one per process; ttl is in milliseconds (default 5 minutes)
+const sessionCache = createSessionCache({ ttl: 5 * 60 * 1000, maxEntries: 10_000 });
 
 export default {
   async fetch(request) {
     const cookies = createRequestCookieAdapter(request);
     const pb = await createServerClient({
-      url: "http://127.0.0.1:8090", // iglo.base / PocketBase backend URL
-      request,                      // incoming Request (determines Secure / __Host- prefix)
+      url: "http://127.0.0.1:8090", // iglo.base backend URL
+      request, // the app's own request: decides Secure and the __Host- prefix
       cookies,
       sessionCache,
     });
 
-    // Sign in on server: cookie is automatically written via adapter
+    // Sign in: the session cookie is written through the adapter
     // await pb.collection("users").authWithPassword("user@example.com", "secret");
 
-    // Sign out on server: cookie is cleared via adapter
+    // Sign out: the session cookie is cleared through the adapter
     // pb.authStore.clear();
 
     const records = await pb.collection("example").getList(1, 20);
@@ -456,23 +458,28 @@ export default {
       headers: { "Content-Type": "application/json" },
     });
 
+    // apply the cookies and headers queued during the request
     return cookies.applyToResponse(response);
   },
 };
 ```
 
+Things to know:
+
+- Pass the app's own request (`request`), or its `origin`, or `secure`. These decide the cookie security. The backend URL is never used for that. Without any of them the cookie is secure, so a local `http://localhost` app should pass `origin` or `request`.
+- `await pb.auth.verify()` checks the session with iglo.base now, skipping the cache. Use it on pages that must not show a revoked session for up to the cache TTL (account settings, payments). It throws when the session is not valid.
+- A 401 from a data call does not sign the user out. Only the session check does.
+- Between checks a revoked session can still render as signed in for up to the cache TTL. Data calls are unaffected: iglo.base rejects the revoked token on every call.
+
 #### Cookie Security & `__Host-` Prefix
 
-Cookie attributes (`Secure` and the `__Host-` prefix) are derived from the application's incoming request URL (or explicit `origin` / `secure` options), **never** from the backend iglo.base URL:
-- HTTPS requests receive `Secure; Path=/; SameSite=Lax` and the `__Host-` cookie prefix (`__Host-pb_auth`).
-- Local HTTP dev (`http://localhost`, `127.0.0.1`, `::1`) uses the plain `pb_auth` cookie without `Secure` so local development works without TLS setup.
-- When clearing cookies on secure origins, both `__Host-pb_auth` and plain `pb_auth` are cleared to prevent stale fallback cookies.
+The session cookie is `__Host-pb_auth` (`Secure`, `Path=/`, no `Domain`, `HttpOnly`, `SameSite=Lax`) when the app's request is https. Over local http (`localhost`, `127.0.0.1`, `::1`) it is the plain `pb_auth` without `Secure`. When the session ends, both names are cleared on https.
 
 #### Token Lifetime & Single-Flight Refresh
 
-- Each auth collection's token lifetime is learned dynamically from auth responses (`exp` claim minus response `Date` header) and cached per collection in process memory.
-- Sessions are refreshed when less than half of their learned lifetime remains.
-- Concurrent requests for the same session share a single background refresh request; 401/403/404 revokes clear all waiting sessions, while transient 5xx errors preserve existing sessions.
+- The SDK learns each auth collection's token lifetime from the responses it sees (`exp` minus the response `Date`). It never assumes a fixed lifetime. The first check of a collection refreshes once to learn it.
+- A session is refreshed when less than half of its lifetime remains.
+- Parallel requests for one session share one refresh. A 401, 403 or 404 signs out every waiting request. A network error or 5xx keeps the session.
 
 Below you could find legacy low-level cookie store examples:
 

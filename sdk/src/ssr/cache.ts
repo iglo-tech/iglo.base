@@ -2,8 +2,8 @@
 import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import type { SessionCache, SessionCacheEntry, SessionCacheOptions } from "@sdk/ssr/types";
 
-const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const DEFAULT_MAX_ENTRIES = 10_000;
+export const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+export const DEFAULT_MAX_ENTRIES = 10_000;
 
 export async function hashToken(token: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -20,6 +20,10 @@ export async function hashToken(token: string): Promise<string> {
   return hex;
 }
 
+/**
+ * Creates the per-process session cache. Pass one instance to every `createServerClient`
+ * of the process; it is never a module global.
+ */
 export function createSessionCache(options?: SessionCacheOptions): SessionCache {
   const ttl = options?.ttl ?? DEFAULT_TTL_MS;
   const maxEntries = options?.maxEntries ?? DEFAULT_MAX_ENTRIES;
@@ -29,47 +33,60 @@ export function createSessionCache(options?: SessionCacheOptions): SessionCache 
   const inFlight = new Map<string, Promise<unknown>>();
   const collectionLifetimes = new Map<string, number>();
 
+  // Hashing is asynchronous, so the map operations are queued in call order. A `set`
+  // started by an auth change is then always visible to a `get` that follows it.
+  let queue: Promise<unknown> = Promise.resolve();
+  const serial = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = queue.then(task);
+    queue = run.catch(() => {});
+    return run;
+  };
+
   return {
-    async get(token: string): Promise<SessionCacheEntry | undefined> {
+    get(token: string): Promise<SessionCacheEntry | undefined> {
       if (!token) {
-        return undefined;
+        return Promise.resolve(undefined);
       }
-      const key = await hashToken(token);
-      const entry = map.get(key);
-      if (!entry) {
-        return undefined;
-      }
-      // LRU refresh: re-insert at tail
-      map.delete(key);
-      map.set(key, entry);
-      return entry;
-    },
-
-    async set(token: string, record: AuthRecord, checkedAt?: number): Promise<void> {
-      if (!token) {
-        return;
-      }
-      const key = await hashToken(token);
-      const timestamp = checkedAt ?? clock();
-
-      if (map.has(key)) {
-        map.delete(key);
-      } else if (map.size >= maxEntries) {
-        const oldestKey = map.keys().next().value;
-        if (oldestKey !== undefined) {
-          map.delete(oldestKey);
+      return serial(async () => {
+        const key = await hashToken(token);
+        const entry = map.get(key);
+        if (!entry) {
+          return undefined;
         }
-      }
-
-      map.set(key, { record, checkedAt: timestamp });
+        // LRU refresh: re-insert at tail
+        map.delete(key);
+        map.set(key, entry);
+        return entry;
+      });
     },
 
-    async delete(token: string): Promise<void> {
+    set(token: string, record: AuthRecord, checkedAt?: number): Promise<void> {
       if (!token) {
-        return;
+        return Promise.resolve();
       }
-      const key = await hashToken(token);
-      map.delete(key);
+      const timestamp = checkedAt ?? clock();
+      return serial(async () => {
+        const key = await hashToken(token);
+        if (map.has(key)) {
+          map.delete(key);
+        } else if (map.size >= maxEntries) {
+          const oldestKey = map.keys().next().value;
+          if (oldestKey !== undefined) {
+            map.delete(oldestKey);
+          }
+        }
+        map.set(key, { record, checkedAt: timestamp });
+      });
+    },
+
+    delete(token: string): Promise<void> {
+      if (!token) {
+        return Promise.resolve();
+      }
+      return serial(async () => {
+        const key = await hashToken(token);
+        map.delete(key);
+      });
     },
 
     clear(): void {
@@ -126,5 +143,3 @@ export function createSessionCache(options?: SessionCacheOptions): SessionCache 
     clockOffsetMs: 0,
   };
 }
-
-export { DEFAULT_TTL_MS, DEFAULT_MAX_ENTRIES };

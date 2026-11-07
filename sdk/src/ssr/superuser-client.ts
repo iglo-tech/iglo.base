@@ -7,6 +7,7 @@ import type { SendOptions } from "@sdk/tools/options";
 import type { Loose } from "@sdk/tools/loose";
 import type { CreateSuperuserClientOptions } from "@sdk/ssr/types";
 import { registerAutoRefresh } from "@sdk/tools/refresh";
+import { noStoreFetch } from "@sdk/ssr/no-store-fetch";
 
 const DEFAULT_BROWSER_TOKEN_DURATION_SEC = 15 * 60; // 15 minutes (900 seconds)
 const DEFAULT_AUTO_REFRESH_THRESHOLD_SEC = 300; // 5 minutes
@@ -27,10 +28,7 @@ export class SuperuserClient extends Client {
    * even if application code assigns pb.beforeSend.
    */
   override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
-    options.cache = "no-store";
-    if (this._options.fetch && !options.fetch) {
-      options.fetch = this._options.fetch;
-    }
+    options.fetch = noStoreFetch(options.fetch ?? this._options.fetch);
     return super.send<T>(path, options);
   }
 
