@@ -22,3 +22,19 @@ console.log(
 );
 const e = new ClientResponseError({ status: 404 });
 console.log(e.name, e.status);
+
+import {
+  createServerClient,
+  createSuperuserClient,
+  createSessionCache,
+  createRequestCookieAdapter,
+  SSR_NO_CACHE_HEADERS,
+} from "iglo.base/ssr";
+console.log(
+  "esm ssr",
+  typeof createServerClient,
+  typeof createSuperuserClient,
+  typeof createSessionCache,
+  typeof createRequestCookieAdapter,
+  SSR_NO_CACHE_HEADERS["Cache-Control"],
+);

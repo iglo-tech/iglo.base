@@ -125,6 +125,40 @@ try {
     }
   }
 
+  // 6. Bundler build with the browser condition must fail at build time
+  const browserBuild = Bun.spawnSync(
+    [
+      "bun",
+      "build",
+      "browser-ssr-entry.js",
+      "--outfile",
+      "browser-ssr-out.js",
+      "--target",
+      "browser",
+    ],
+    { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+  );
+  if (browserBuild.exitCode !== 0) {
+    console.log("ok   bundler build with browser condition failed as expected");
+  } else {
+    failed = true;
+    console.log("FAIL bundler build with browser condition should have failed at build time");
+  }
+
+  // Bundler build with node target for iglo.base/ssr must succeed
+  const nodeSsrBuild = Bun.spawnSync(
+    ["bun", "build", "browser-ssr-entry.js", "--outfile", "node-ssr-out.js", "--target", "node"],
+    { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+  );
+  if (nodeSsrBuild.exitCode === 0) {
+    console.log("ok   bun build of iglo.base/ssr with node target succeeded");
+  } else {
+    failed = true;
+    console.log(
+      `FAIL bun build of iglo.base/ssr with node target: ${nodeSsrBuild.stderr.toString()}`,
+    );
+  }
+
   // 6. Type checks: tsc resolves declarations under node16, nodenext and bundler
   const base = [
     "node",
