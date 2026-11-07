@@ -1,12 +1,13 @@
 name: Docker
 
-# Wraps a published release's executables in one multi-arch image
+# Wraps a published server release's executables in one multi-arch image
 # (linux/amd64 and linux/arm64, D33, D34) and pushes it to
-# ghcr.io/iglo-tech/iglo.base. It never builds iglo.base: it downloads the
-# release archives and SHA256SUMS, verifies the checksums, and the Dockerfile
-# copies the executable of each architecture in. Each image is smoke-tested
-# on a runner of its own architecture before anything is pushed. `workflow_dispatch` with a tag builds an existing
-# release. See docs/releasing.md#image.
+# ghcr.io/iglo-tech/iglo.base. It ignores non-server releases (such as sdk-v*).
+# It never builds iglo.base: it downloads the release archives and SHA256SUMS,
+# verifies the checksums, and the Dockerfile copies the executable of each
+# architecture in. Each image is smoke-tested on a runner of its own
+# architecture before anything is pushed. `workflow_dispatch` with a tag builds
+# an existing release. See docs/releasing.md#image.
 on:
   release:
     types: [published]
@@ -29,6 +30,7 @@ env:
 
 jobs:
   release:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

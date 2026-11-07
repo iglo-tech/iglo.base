@@ -1,0 +1,180 @@
+name: SDK release
+
+# A push to main touching sdk/package.json publishes the new SDK version to
+# npm as `iglo.base` with provenance via npm trusted publishing (OIDC; D36),
+# then tags sdk-v<version> and creates a GitHub release (--latest=false).
+# If the version is already on npm or already tagged, it ends successfully
+# without publishing or tagging. A missing CHANGELOG section fails.
+# A manual workflow_dispatch run supports dry-run testing.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "sdk/package.json"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run: publish --dry-run, do not tag or create release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check version and registry
+        id: check
+        run: |
+          set -eu
+          version="$(node -p "require('./sdk/package.json').version")"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$'; then
+            echo "Version '$version' in sdk/package.json is not valid semver" >&2
+            exit 1
+          fi
+
+          tag="sdk-v${version}"
+
+          tag_exists=false
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+            tag_exists=true
+          fi
+
+          npm_exists=false
+          if npm view "iglo.base@${version}" version >/dev/null 2>&1; then
+            npm_exists=true
+          fi
+
+          if [ "$tag_exists" = true ] || [ "$npm_exists" = true ]; then
+            echo "iglo.base@${version} is already published on npm or tagged as $tag; skipping release."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          node -e '
+            const fs = require("fs");
+            const text = fs.readFileSync("sdk/CHANGELOG.md", "utf8");
+            const version = process.argv[1];
+            const lines = text.split("\n");
+            let inSection = false;
+            const sectionLines = [];
+            for (const line of lines) {
+              const m = line.match(/^##\s+(?:v)?(\S+)/);
+              if (m) {
+                if (inSection) break;
+                if (m[1] === version) {
+                  inSection = true;
+                  continue;
+                }
+              }
+              if (inSection) {
+                sectionLines.push(line);
+              }
+            }
+            const notes = sectionLines.join("\n").trim();
+            if (!inSection || !notes) {
+              console.error(`sdk/CHANGELOG.md has no section for version ${version}`);
+              process.exit(1);
+            }
+          ' "$version"
+
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: version
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun x tsc --noEmit -p sdk/tsconfig.json && bun x tsc --noEmit -p sdk/test/tsconfig.json
+      - name: Test
+        run: bun test sdk/test
+      - name: Build
+        run: bun run sdk:build
+      - name: Check package
+        run: bun run sdk:check-package
+      - name: Publish to npm
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || false }}
+        run: |
+          set -eu
+          cd sdk
+          if [ "$DRY_RUN" = true ]; then
+            echo "Dry run: running npm publish --dry-run"
+            npm publish --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+      - name: Tag and release
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry-run) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -eu
+          tag="sdk-v${VERSION}"
+          flags=""
+          case "$VERSION" in *-*) flags="--prerelease" ;; esac
+
+          node -e '
+            const fs = require("fs");
+            const text = fs.readFileSync("sdk/CHANGELOG.md", "utf8");
+            const version = process.argv[1];
+            const lines = text.split("\n");
+            let inSection = false;
+            const sectionLines = [];
+            for (const line of lines) {
+              const m = line.match(/^##\s+(?:v)?(\S+)/);
+              if (m) {
+                if (inSection) break;
+                if (m[1] === version) {
+                  inSection = true;
+                  continue;
+                }
+              }
+              if (inSection) {
+                sectionLines.push(line);
+              }
+            }
+            const notes = sectionLines.join("\n").trim();
+            if (!inSection || !notes) {
+              console.error(`sdk/CHANGELOG.md has no section for version ${version}`);
+              process.exit(1);
+            }
+            process.stdout.write(notes + "\n");
+          ' "$VERSION" | gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --notes-file - \
+            --latest=false \
+            $flags

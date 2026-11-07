@@ -48,6 +48,33 @@ docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/i
 - No shell, `wget` or `curl` exists in the image, so compose or Kubernetes health checks that exec into the container cannot work. Check `/api/health` from the host or the reverse proxy instead.
 - The image is not an official PocketBase image. Update the digest in the `Dockerfile` by hand when the base needs a refresh.
 
+## SDK releases
+
+The JavaScript SDK in `sdk/` is published independently to npm as `iglo.base` under `sdk-v<version>` tags (D36). `.github/workflows/sdk-release.yml` automates releases.
+
+### How to release
+
+1. In a single PR, bump `"version"` in `sdk/package.json` and add a new section `## <version>` in `sdk/CHANGELOG.md` with the release notes.
+2. Merging the PR to `main` triggers `.github/workflows/sdk-release.yml`.
+3. The workflow builds the SDK (`bun run sdk:build`), runs the SDK checks (oxlint, typecheck for `sdk/`, `bun test sdk/test`, `bun run sdk:check-package`), publishes from `sdk/` with `npm publish --provenance --access public` via npm trusted publishing, creates the git tag `sdk-v<version>` on the published commit, and creates a GitHub release for it with that version's CHANGELOG section as release notes. The release is created with `--latest=false`, so the server's releases remain "latest".
+
+If `iglo.base@<version>` is already published on npm or the tag `sdk-v<version>` already exists, the workflow exits successfully without doing anything (so ordinary edits to `sdk/package.json` that do not bump the version publish nothing). If `sdk/CHANGELOG.md` has no section for that version, the workflow refuses and fails.
+
+### Dry run
+
+To test the SDK build and packaging without publishing or tagging, run `SDK release` with `workflow_dispatch` on GitHub Actions and set the `dry-run` input to `true`. It runs `npm publish --dry-run` from `sdk/` and skips creating the tag and GitHub release.
+
+### One-time npm setup
+
+Releases use npm trusted publishing (OIDC with `permissions: id-token: write`). There are no npm tokens or secrets stored in the repository.
+
+The repository owner configures the trusted publisher once on npmjs.com for package `iglo.base`:
+- **GitHub Organization:** `iglo-tech`
+- **Repository:** `iglo.base`
+- **Workflow filename:** `sdk-release.yml`
+
+If this setup is missing or misconfigured, the publish step fails with npm's error (`E403` or OIDC token rejection), and nothing is tagged or released.
+
 ## Verifying a download
 
 ```sh
