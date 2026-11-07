@@ -69,6 +69,11 @@ export class NotifyWatcher implements Notifier {
   #watcher: FSWatcher | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #pending = { settings: false, collections: false };
+  // the reloads that wait for the running one (at most one follow-up)
+  #queued = { settings: false, collections: false };
+  // the running reload loop; one at a time, close() waits for it
+  #running: Promise<void> | null = null;
+  #closed = false;
 
   constructor(config: NotifyWatcherConfig) {
     this.instanceId = "@" + (config.instanceId ?? randomString(10));
@@ -82,7 +87,8 @@ export class NotifyWatcher implements Notifier {
   // A failure is a warning, not an error. reloadSettings and
   // reloadCollections are the app's own reloads.
   start(reload: { settings: () => Promise<void>; collections: () => void }): void {
-    this.close();
+    this.#stop();
+    this.#closed = false;
 
     try {
       mkdirSync(this.dir, { recursive: true });
@@ -119,9 +125,18 @@ export class NotifyWatcher implements Notifier {
     }
   }
 
-  // The OnTerminate part: stops watching and removes the own markers.
-  close(): void {
+  // The OnTerminate part: stops watching and removes the own markers. No
+  // reload starts after it; it resolves once the running one has finished,
+  // so the databases can close under nothing.
+  async close(): Promise<void> {
+    this.#closed = true;
+    this.#stop();
+    await this.#running;
+  }
+
+  #stop(): void {
     this.#stopTimer();
+    this.#queued = { settings: false, collections: false };
     this.#pending = { settings: false, collections: false };
     if (this.#watcher !== null) {
       try {
@@ -173,21 +188,39 @@ export class NotifyWatcher implements Notifier {
 
   #fire(reload: { settings: () => Promise<void>; collections: () => void }): void {
     this.#timer = null;
-    const { settings, collections } = this.#pending;
+    if (this.#closed) {
+      return;
+    }
+    this.#queued.settings ||= this.#pending.settings;
+    this.#queued.collections ||= this.#pending.collections;
     this.#pending = { settings: false, collections: false };
 
-    if (settings) {
-      this.#logger.debug("Reloading settings after notify event");
-      reload.settings().catch((err: unknown) => {
-        this.#logger.warn("Failed to reload app settings after notify", { error: err });
-      });
-    }
-    if (collections) {
-      this.#logger.debug("Reloading cached collections after notify event");
-      try {
-        reload.collections();
-      } catch (err) {
-        this.#logger.warn("Failed to reload cached collections after notify", { error: err });
+    // events during a running reload coalesce into one follow-up
+    this.#running ??= this.#drain(reload).finally(() => {
+      this.#running = null;
+    });
+  }
+
+  async #drain(reload: { settings: () => Promise<void>; collections: () => void }): Promise<void> {
+    while (!this.#closed && (this.#queued.settings || this.#queued.collections)) {
+      const { settings, collections } = this.#queued;
+      this.#queued = { settings: false, collections: false };
+
+      if (settings) {
+        this.#logger.debug("Reloading settings after notify event");
+        try {
+          await reload.settings();
+        } catch (err) {
+          this.#logger.warn("Failed to reload app settings after notify", { error: err });
+        }
+      }
+      if (collections && !this.#closed) {
+        this.#logger.debug("Reloading cached collections after notify event");
+        try {
+          reload.collections();
+        } catch (err) {
+          this.#logger.warn("Failed to reload cached collections after notify", { error: err });
+        }
       }
     }
   }

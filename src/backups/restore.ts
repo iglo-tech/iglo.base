@@ -94,8 +94,10 @@ function checkExtractedData(dir: string): void {
 //  4. Restart the app (on successful app bootstrap it will also remove the old pb_data).
 //
 // If a failure occur during the restore process the dir changes are reverted.
-// If for whatever reason the revert is not possible, it throws out of the
-// restart and takes the process down (upstream's panic).
+// If for whatever reason the revert is not possible, the error goes to the
+// caller of the restart, which fails the restore; the interrupted restore is
+// rolled back (or the start refused) at the next start, so pb_data is never
+// served half-reverted. A shutdown during the restart window does not revert.
 export async function restoreBackup(app: App, name: string): Promise<void> {
   if (app.store.has(StoreKeyActiveBackup)) {
     throw new Error(ErrBackupActive);

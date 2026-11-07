@@ -114,14 +114,17 @@ export async function runServeCommand(
 
   for (;;) {
     const stop = new AbortController();
-    let restart: { revert: () => void; failed: (err: unknown) => void } | undefined;
+    // every app.restart call of this app instance, oldest first: the ones
+    // that join the first restart settle with it, and every one of them
+    // reverts if the process does not execve
+    const restarts: { revert: () => void; failed: (err: unknown) => void }[] = [];
 
     const appContext = await bootstrapApp(
       app,
       ctx,
       (revert) =>
         new Promise<void>((_resolve, reject) => {
-          restart = { revert, failed: reject };
+          restarts.push({ revert, failed: reject });
           stop.abort();
         }),
     );
@@ -155,20 +158,40 @@ export async function runServeCommand(
       await clearBootstrap(appContext);
     }
 
-    // a process that is shutting down starts on the new pb_data next time
-    const requested = restart as typeof restart | undefined;
-    if (requested === undefined || ctx.shutdown.aborted) {
+    if (restarts.length === 0) {
       return;
     }
 
-    try {
-      if (ctx.restart === undefined) {
-        throw new Error("restart is not supported here");
+    // the restart did not happen (shutdown, or no execve): put the data dirs
+    // back, newest change first, and settle every pending call
+    let failure: unknown = new Error("restart is not supported here");
+    if (ctx.shutdown.aborted) {
+      // a process that is shutting down starts on the new data next time
+      // (upstream does not revert on a signal): reject the calls only
+      const err = new Error("the app is shutting down");
+      for (const pending of restarts) {
+        pending.failed(err);
       }
-      ctx.restart();
-    } catch (err) {
-      requested.revert();
-      requested.failed(err);
+      return;
+    } else if (ctx.restart !== undefined) {
+      try {
+        ctx.restart();
+        continue;
+      } catch (err) {
+        failure = err;
+      }
+    }
+    for (const pending of restarts.toReversed()) {
+      try {
+        pending.revert();
+      } catch (err) {
+        pending.failed(err);
+        continue;
+      }
+      pending.failed(failure);
+    }
+    if (ctx.shutdown.aborted) {
+      return;
     }
   }
 }

@@ -23,6 +23,8 @@ class GzipResponseWriter extends ResponseWriter {
   wroteHeader = false;
   wroteBody = false;
   readonly chunks: Uint8Array[] = [];
+  // a body set by writeBody, compressed when the handler returns
+  body: Blob | ReadableStream<Uint8Array> | Promise<Blob> | undefined;
 
   constructor(readonly inner: ResponseWriter) {
     super();
@@ -41,9 +43,26 @@ class GzipResponseWriter extends ResponseWriter {
   }
 
   override write(data: Uint8Array | string): Error | undefined {
+    if (this.body !== undefined) {
+      return new Error("write after writeBody");
+    }
     this.wroteBody = true;
     this.chunks.push(typeof data === "string" ? new TextEncoder().encode(data) : data.slice());
     return undefined;
+  }
+
+  override writeBody(body: Blob | ReadableStream<Uint8Array> | Promise<Blob>): Error | undefined {
+    if (this.chunks.length > 0 || this.body !== undefined) {
+      return new Error("writeBody after other body writes");
+    }
+    this.wroteBody = true; // an empty body is found out in close()
+    this.body = body;
+    return undefined;
+  }
+
+  // the cleanups belong to the response that is sent
+  override afterResponse(fn: () => void): void {
+    this.inner.afterResponse(fn);
   }
 
   // the first body write sends the (delayed) status to the inner writer
@@ -63,9 +82,34 @@ class GzipResponseWriter extends ResponseWriter {
   }
 
   // The deferred part of upstream's middleware: writes the status, the
-  // headers and the (compressed) body to the inner writer.
-  close(): void {
+  // headers and the (compressed) body to the inner writer. A body set by
+  // writeBody is read first: when it holds no bytes nothing was written, as
+  // upstream's writer sees it, so the response is not encoded.
+  async close(): Promise<void> {
     const inner = this.inner;
+    let gzipped: Promise<Blob> | undefined;
+    if (this.body !== undefined) {
+      const body = this.body;
+      const bytes: Promise<Uint8Array> =
+        body instanceof Promise
+          ? body.then((blob) => blob.bytes())
+          : body instanceof Blob
+            ? body.bytes()
+            : new Response(body).bytes();
+      try {
+        const raw = await bytes;
+        if (raw.length === 0) {
+          this.wroteBody = false;
+        } else {
+          gzipped = Promise.resolve(new Blob([Bun.gzipSync(new Uint8Array(raw))]));
+        }
+      } catch (err) {
+        // the failure of the body reaches the server through the inner writer
+        gzipped = Promise.reject(err);
+        gzipped.catch(() => {});
+      }
+    }
+
     if (!this.wroteBody) {
       if (this.header.get("Content-Encoding") === gzipScheme) {
         this.header.delete("Content-Encoding");
@@ -85,7 +129,9 @@ class GzipResponseWriter extends ResponseWriter {
     if (this.wroteHeader) {
       inner.writeHeader(this.code);
     }
-    if (this.wroteBody) {
+    if (gzipped !== undefined) {
+      inner.writeBody(gzipped);
+    } else if (this.wroteBody) {
       inner.write(Bun.gzipSync(new Uint8Array(Buffer.concat(this.chunks))));
     }
   }
@@ -111,7 +157,7 @@ export function gzip(): Handler<RequestEvent> {
         // nothing is written to body or error is returned.
         // See issue echo#424, echo#407.
         e.response = rw;
-        grw.close();
+        await grw.close();
       }
     },
   };

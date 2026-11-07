@@ -285,8 +285,18 @@ export async function handleRequest(
         // a panic that no middleware recovered
         const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
         app.logger.debug(`http: panic serving ${req.remoteAddr}: ${message}`);
-        rw.finish();
-        reject(err);
+        try {
+          // runs the afterResponse cleanups; its response is not sent
+          const response = rw.finish();
+          if (response instanceof Promise) {
+            response.catch(() => {});
+          }
+        } catch {
+          // the panic is the error that is reported
+        } finally {
+          // the request settles even if finish throws (an invalid status)
+          reject(err);
+        }
       },
     );
   });

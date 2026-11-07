@@ -120,9 +120,14 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 
     loadAutobackupJob(app);
   } catch (err) {
+    // the read workers must not outlive a failed bootstrap
     try {
       logger.close();
-      databases.close();
+    } catch {
+      // the bootstrap error is the one reported
+    }
+    try {
+      await databases.shutdown();
     } catch {
       // the bootstrap error is the one reported
     }
@@ -153,12 +158,32 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 // db connections, stopping cron ticker, stopping the thumb workers).
 // Resolves once the read worker threads have exited.
 export async function clearBootstrap(app: App): Promise<void> {
-  app.notify.close();
-  app.cron.stop();
-  await app.cron.waitForRunning(cronShutdownWaitMs);
+  // every step runs even if an earlier one failed; the errors are
+  // rethrown together
+  const errs: unknown[] = [];
+  const step = async (fn: () => void | Promise<void>): Promise<void> => {
+    try {
+      await fn();
+    } catch (err) {
+      errs.push(err);
+    }
+  };
 
-  app.logger.close();
+  await step(() => app.notify.close());
+  await step(() => app.cron.stop());
+  await step(() => app.cron.waitForRunning(cronShutdownWaitMs));
+  await step(() => app.logger.close());
+  await step(() => app.thumbs.close());
+  await step(() => app.databases.shutdown());
 
-  app.thumbs.close();
-  await app.databases.shutdown();
+  if (errs.length === 1) {
+    throw errs[0];
+  }
+  if (errs.length > 1) {
+    // like errors.Join: each message on its own line
+    throw new AggregateError(
+      errs,
+      errs.map((e) => (e instanceof Error ? e.message : String(e))).join("\n"),
+    );
+  }
 }
