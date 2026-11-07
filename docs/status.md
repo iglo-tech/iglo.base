@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.12 | fix (Gemini) | [#90](https://github.com/iglo-tech/iglo.base/pull/90) | 1 | SDK npm releases; [brief](briefs/P.12.md). P.13a (SSR design, `docs/design/13-ssr.md`, D38) done by the lead; P.13b follows P.12 |
+| P.12 | fix (Gemini) | [#90](https://github.com/iglo-tech/iglo.base/pull/90) | 2 | SDK npm releases; [brief](briefs/P.12.md). P.13a (SSR design, `docs/design/13-ssr.md`, D38) done by the lead; P.13b follows P.12 |
 
 ## Done
 
