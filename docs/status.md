@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-None. Every work-plan task is merged (P.10 last, 2026-11-07); the lead runs of 2026-11-07 01:29 and 07:29 UTC found nothing left to start. The hardening backlog holds only safely handled D26 differences, which the plan leaves unfixed; new work needs a new work-plan task.
+| P.11 | worker | — | 0 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows |
 
 ## Done
 

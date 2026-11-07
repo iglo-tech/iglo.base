@@ -313,3 +313,15 @@ Task P.9, owner direction 2026-11-06: "we should drop macOS and Windows build, j
 - **Why:** nobody uses the macOS build, and it cost a SQLite build, a runner and a platform-specific test matrix. Running from source on macOS uses Bun's own SQLite.
 - **Considered:** keeping darwin-arm64 as an unsupported, untested build. Rejected: it would still need the bundled SQLite (D34) and a macOS runner for every release.
 - **Consequence:** the Bun-SQLite check against Linux (D34) is gone, so a Bun upgrade that changes SQLite is no longer caught by a fixture; the Linux test suite covers the behavior.
+
+## D36. iglo.base owns its JavaScript SDK
+
+Tasks P.11 and P.12, owner direction 2026-11-07: "I want own the SDK, start with just copying it and adjusting to the project stack, full TypeScript coverage, auto releases on CI"; kept in this repository and published to npm (owner). Details decided by agents on 2026-11-07, for owner review.
+
+- **Decision:** the PocketBase JavaScript SDK v0.28.1 (`ff30f71041aeb8107001bb1ac82ad56a4fbeb93c`, MIT, https://github.com/pocketbase/js-sdk, archived) is copied into `sdk/` as a Bun workspace and published to npm as `iglo.base`. It stays a drop-in for the `pocketbase` package: the same default export `PocketBase`, named exports, entry points (`.`, `./cjs`, `./umd`) and runtime support (browsers, Node, Deno, Bun, React Native). The repository's private root package is renamed `iglo.base-server`.
+- **Stack:** Bun for build (`Bun.build`), tests (`bun test`) and installs; `tsc` for type checking and declaration files; oxlint and oxfmt with the repository's settings. The SDK's source uses no Bun-only APIs, since it runs in browsers and Node too. It has no runtime dependencies.
+- **Types:** strict TypeScript with the repository's compiler settings, no `any` in the SDK's source (lint error), and type tests for the public generics. Upstream's deliberately loose public shapes (for example the `RecordModel` index signature) keep their assignability for user code, each with a lint exception and a reason.
+- **Versions:** independent semver starting at 1.0.0, tags `sdk-v<version>`. A merge to `main` that changes `sdk/package.json`'s version publishes that version to npm with provenance through npm trusted publishing (no token in the repository), then tags it and creates a GitHub release.
+- **Testing:** the SDK's own unit tests (upstream's, ported to `bun test`) run in `bun run check`; the differential SDK suite (M5.8, `test/differential/sdk/`) uses the workspace SDK instead of the `pocketbase` package, so every SDK method runs against both servers.
+- **Why:** the owner wants a client that follows iglo.base. The SDK is a client library, not a server extension surface (D5 is unaffected); it adds a second published artifact next to the executables and the Docker image.
+- **Considered:** a separate repository (rejected by the owner); a scoped `@iglo-tech/...` name (needs an npm organization; `iglo.base` matches the project and was free on 2026-11-07); GitHub Packages (consumers would need registry auth even for a public package).
