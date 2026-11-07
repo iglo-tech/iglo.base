@@ -2,6 +2,7 @@
 // Differential tests against both upstream PocketBase v0.41.0 and iglo.base.
 
 import { describe, expect } from "bun:test";
+import { join } from "node:path";
 import {
   createServerClient,
   createSuperuserClient,
@@ -16,6 +17,44 @@ import { setMFA } from "@test/scenarios/record-auth-prepare";
 import { ClientResponseError } from "iglo.base";
 
 const noMFA = ({ dataDir }: { dataDir: string }) => setMFA("users", false, "")({ dataDir });
+
+const countingProxyPath = join(import.meta.dir, "counting-proxy.ts");
+
+/** Starts counting-proxy.ts in its own process in front of `targetUrl`. */
+async function startCountingProxy(targetUrl: string) {
+  const child = Bun.spawn([process.execPath, countingProxyPath, targetUrl], {
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  const reader = child.stdout.getReader();
+  const decoder = new TextDecoder();
+  let output = "";
+  while (!output.includes("\n")) {
+    const { value, done } = await reader.read();
+    if (done) {
+      throw new Error("counting proxy exited before it started");
+    }
+    output += decoder.decode(value);
+  }
+  const { port } = JSON.parse(output.split("\n")[0] ?? "") as { port: number };
+  const url = `http://127.0.0.1:${port}`;
+  return {
+    url,
+    reset: async (): Promise<void> => {
+      await fetch(`${url}/__reset`);
+    },
+    counts: async (): Promise<{ sessionChecks: number; dataRequests: number }> => {
+      const body = (await (await fetch(`${url}/__counts`)).json()) as {
+        sessionChecks: number;
+        dataRequests: number;
+      };
+      return body;
+    },
+    stop: (): void => {
+      child.kill();
+    },
+  };
+}
 
 describe("SSR differential", () => {
   sdkTest(
@@ -65,35 +104,9 @@ describe("SSR differential", () => {
       let mockClock = Date.now();
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
-      // Start counting proxy in front of the server to count requests at the server boundary
-      let sessionCheckRequests = 0;
-      let dataRequests = 0;
-
-      const serverUrl = new URL(env.url);
-      const proxy = Bun.serve({
-        port: 0,
-        idleTimeout: 60,
-        async fetch(req) {
-          const url = new URL(req.url);
-          if (url.pathname.includes("/auth-refresh")) {
-            sessionCheckRequests++;
-          } else {
-            dataRequests++;
-          }
-          const target = new URL(url.pathname + url.search, env.url);
-          const headers = new Headers(req.headers);
-          headers.set("host", serverUrl.host);
-          const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== null;
-          return fetch(target.toString(), {
-            method: req.method,
-            headers,
-            body: hasBody ? req.body : undefined,
-            ...(hasBody ? { duplex: "half" } : {}),
-          });
-        },
-      });
-
-      const proxyBaseUrl = `http://127.0.0.1:${proxy.port}`;
+      // Requests are counted at the server boundary by a proxy in its own process
+      const proxy = await startCountingProxy(env.url);
+      const proxyBaseUrl = proxy.url;
 
       try {
         // Initial request learns the collection lifetime from server response
@@ -114,8 +127,7 @@ describe("SSR differential", () => {
         });
 
         // Reset server-side request counters before testing warm cache
-        sessionCheckRequests = 0;
-        dataRequests = 0;
+        await proxy.reset();
 
         // 200 parallel requests for user A and 200 for user B (400 total)
         // Requests use plain createServerClient without any custom fetch
@@ -144,6 +156,7 @@ describe("SSR differential", () => {
         const [resA, resB] = await Promise.all([Promise.all(tasksA), Promise.all(tasksB)]);
 
         // With warm cache: 0 session check requests reached the server, counted by proxy in front of server
+        const { sessionChecks: sessionCheckRequests, dataRequests } = await proxy.counts();
         expect(sessionCheckRequests).toBe(0);
         expect(dataRequests).toBe(400);
 
@@ -164,7 +177,7 @@ describe("SSR differential", () => {
           dataRequests,
         });
       } finally {
-        proxy.stop(true);
+        proxy.stop();
       }
     },
   );
