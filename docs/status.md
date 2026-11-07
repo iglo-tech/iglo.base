@@ -8,7 +8,9 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 ## Needs you
 
-Nothing.
+P.13 SSR plan (subtasks P.13a–f, research by lead + Gemini 2026-11-07; plan shown in the lead thread):
+- **A. Browser token:** HttpOnly cookie plus a 15-minute token minted by the app server's superuser client via `impersonate` (recommended), or a cookie readable by JavaScript.
+- **B. Server change:** iglo.base reads the auth cookie itself? Recommended: no, not now (nothing in the plan needs it).
 
 ## Active
 
