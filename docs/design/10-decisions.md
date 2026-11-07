@@ -336,3 +336,12 @@ Owner direction 2026-11-07: "offload more work to Gemini Flash 3.8, so any codin
 - **Switch:** agents already running when this was decided (the P.11 Sonnet worker) finish their run; every agent started after it uses Gemini.
 - **Why:** Claude usage limits are the constraint; coding is the bulk of the tokens.
 - **Consequence:** the council (D25) is unchanged. A Gemini worker or fixer that fails or hangs gets the usual one retry (runbook, Failures) on Gemini; agents do not fall back to Claude models for coding.
+
+## D38. SSR in the SDK
+
+Task P.13, owner direction 2026-11-07: SSR must work out of the box with any JavaScript framework, solved in the SDK with superuser clients in memory and a user client per request resumed from the cookie, no re-authentication per request, and the user record kept in the cookie. The browser-token and server-change choices were decided by the lead on 2026-11-07 (owner: "make up your mind"), for owner review. Design: [13-ssr.md](13-ssr.md).
+
+- **Decision:** `iglo.base/ssr` and framework adapters in the SDK package; an HttpOnly session cookie with the token and the user record; a bounded in-memory session cache (5-minute TTL, 10,000 entries by default) with sliding refresh at half the token's lifetime; browser and realtime use 15-minute tokens minted by the app server's superuser client through `impersonate`, falling back to a JavaScript-readable cookie without superuser credentials; OAuth2 by PKCE redirect or popup hand-off; Origin checks on state-changing requests.
+- **Why:** every problem PocketBase lists has an SDK answer, and iglo.base's stateless tokens make refresh races harmless. The short browser token keeps the long-lived session away from page JavaScript at no server cost.
+- **Considered:** a JavaScript-readable cookie for everyone (Supabase, PocketBase's advice): simpler, but any XSS steals a 7-day session; iglo.base reading the auth cookie itself: new API behavior and a CSRF surface on the server, and nothing in the design needs it; JWKS tokens: would change the token format.
+- **Consequence:** a revoked session can render as signed in for up to the cache TTL; data calls are unaffected. Apps without superuser credentials get the weaker readable cookie.
