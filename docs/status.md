@@ -8,19 +8,20 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 ## Needs you
 
-Nothing.
+- npm bootstrap for the first SDK release (`iglo.base` 1.0.0): only the owner has the npm account. Shown to the owner in the lead thread 2026-11-07; steps in `docs/releasing.md` (SDK releases).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.12 | fix (Gemini, docs; lead verifies after round 3) | [#90](https://github.com/iglo-tech/iglo.base/pull/90) | 3 | SDK npm releases; [brief](briefs/P.12.md). P.13a (SSR design, `docs/design/13-ssr.md`, D38) done by the lead; P.13b follows P.12 |
+| P.13b | worker (Gemini) | — | 0 | SSR server core; [brief](briefs/P.13b.md), design `docs/design/13-ssr.md` (D38). P.13c–f follow |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.12 | [#90](https://github.com/iglo-tech/iglo.base/pull/90) | 2026-11-07 (`4a7a640`) | Three review rounds (Opus; Gemini worker and fixers; lead verified the round-3 docs fix and merged per the three-round rule). `sdk-release.yml`: check / publish (OIDC, optional one-time `NPM_TOKEN` bootstrap) / release jobs, Node 24 + npm >= 11.5.1, main-only real publish, prereleases under `next`, recoverable tag and release, `docker.yml` ignores `sdk-v*`. 1.0.0 waits for the owner's npm bootstrap |
 | P.11 | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 2026-11-07 (`619b08a`) | Two review rounds (Opus; Sonnet worker, Gemini fixers). PocketBase JS SDK v0.28.1 in `sdk/` as npm `iglo.base` 1.0.0: ESM only (owner), strict types without internal `any`, 149 upstream tests on `bun test`, type tests, package check; differential SDK suite uses it. Fixed upstream crash `loadFromCookie("pb_auth=null")`. Check 18,498/0; test:reference 4,420/1 (upstream thumb flake, backlog) |
 | P.10c | [#86](https://github.com/iglo-tech/iglo.base/pull/86) | 2026-11-07 (`0b21096`) | Two review rounds (Opus; lead fixed round 1 and the round-2 docs item; the round-2 reviewer drafted its verdict but never posted it). Check 18,347/0, test:reference 4,421/0 at `7020fb3`. A transaction SQLite ended on its own refuses further statements, prepared ones too (no measurable cost, `docs/perf/P.10c-tx-state.md`); S3 multipart rejects an empty UploadId or ETag and a 200 Complete with `<Error>` (new 04 row); zip closed guards; `uploadFileSteps` cancels its writer on an early stop; thumb pool close rejects waiters and enforces `maxWorkers`; `safeFetch` cancels the body at the redirect limit. Dropped as upstream behavior: init abort without an id, S3 timeouts, sidecar order, file-field state after a failed transaction |
 | P.10b | [#88](https://github.com/iglo-tech/iglo.base/pull/88) | 2026-11-07 (`f337a60`) | Two review rounds (Opus; Sonnet fixer round 1): Opus APPROVE at `608b23b` (check 18,326/0, test:reference 4,421/0). Restart calls always settle (a shutdown keeps a restore's new data, as upstream), teardown runs every step, notify watcher runs one reload at a time and `close()` waits for it, a multipart parse error is kept, `writeBody`+`flush` and gzip `writeBody`/`afterResponse` fixed, a panic always settles the request. Dropped as upstream behavior: `reread()` clearing the body limit, `status()` 0 after a fresh flush |
