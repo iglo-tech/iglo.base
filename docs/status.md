@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.12 | worker (Gemini) | — | 0 | SDK npm releases; [brief](briefs/P.12.md). First worker stopped on the Gemini quota at 10:30 UTC before pushing; retried 11:35 UTC. P.13a (SSR design, `docs/design/13-ssr.md`, D38) written by the lead 2026-11-07; P.13b follows P.12 |
+| P.12 | worker (Gemini) | — | 0 | SDK npm releases; [brief](briefs/P.12.md). First worker stopped on the Gemini quota at 10:30 UTC before pushing; the 11:35 UTC retry failed at once on the same quota; next retry after the pause. P.13a (SSR design, `docs/design/13-ssr.md`, D38) written by the lead 2026-11-07; P.13b follows P.12 |
 
 ## Done
 
@@ -277,7 +277,7 @@ Decisions and plan changes made by agents while the owner was away.
 
 ## Paused until
 
-Not paused. The Gemini quota pause (2026-11-07 10:30–11:30 UTC) ended; P.12 restarted 11:35 UTC.
+Paused until 2026-11-07 12:40 UTC (Gemini 3.8 Flash quota still exhausted at 11:35 UTC; D37 allows no Claude fallback for coding).
 
 - 2026-10-28 (plan change, before M1.6): M1.6 was about 3,000 upstream Go lines (twice the task size limit), and parts of it need later tasks: the rule check needs the record field resolver (M2.2), the view query check needs view.go (M1.7), and import needs collection save (M1.7). It is split. M1.6 ports the collection model, options, templates, FieldsList and `tools/dbutils`. A new task M1.6a ports collection validation and queries, with rule and view-query cases pending. M1.7 takes over collection save and delete, import, `updateGeneratedIdIfExists` and the view helpers in `collection_query.go`, and M2.2 takes over the rule check. The critical path is now … → M1.5b → M1.6 → M1.6a → M1.7 → M1.8 → …
 - 2026-10-28 (M1.6 PR): the lead accepted the worker's open points. `ParseIndex` needs upstream's `tools/tokenizer`, which no task owned; it is ported in M1.6 as `src/tools/tokenizer/`. Go's v2 JSON decoding of nested option structs is in `src/collections/go-json-struct.ts` (merging it with `src/tools/types/go-json.ts` is left for later). `dbExport()` returns upstream's typed values, so M1.7's save converts them before binding. `durationTime()` returns nanoseconds as a `bigint`.
