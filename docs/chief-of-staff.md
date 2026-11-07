@@ -22,18 +22,18 @@ The lead role from the [work plan](design/12-work-plan.md), run by a scheduled a
 | `brief` | Write the brief from the work plan's template: exact upstream files at v0.41.0 (read them in `.upstream/pocketbase` after `bun run upstream:prepare`, or the same pinned checkout at `/home/t3-code/upstream/pocketbase` on this host), owned paths, acceptance commands. Record the task as active in `status.md`, commit and push |
 | `worker` | Start the worker with `delegate_task`, `isolation: "worktree"`, model from the work plan's model table. The brief is its whole context, followed by the worker instructions below |
 | `review` | When the worker reports its PR with the local check and `test:reference` passing, start the reviewer (`delegate_task`, `isolation: "worktree"`, `role: "review"`) with the reviewer instructions below, the PR URL and head commit, and nothing about your own opinion. CI is not waited for (D25) |
-| `fix` | Judge every finding yourself (the council is you and the reviewer, D25). Agree: for each finding, find its whole class first (the same mistake on sibling paths, inputs and fields) so the next round does not find the next instance; fix small ones yourself on the branch (run the affected tests, then `bun run check` and `bun run test:reference` once), or start one fixer with all of them and the instruction to fix each finding's whole class. Disagree: answer in a PR comment with upstream's behavior and D26 as the reference. Exotic-input findings that are handled safely go to the hardening backlog in `status.md`. Then start a re-review of the new head: the fixes and the code they touch. Count rounds in `status.md` |
+| `fix` | Judge every finding yourself (the council is you and the reviewer, D25). Agree: for each finding, find its whole class first (the same mistake on sibling paths, inputs and fields) so the next round does not find the next instance; start one Gemini fixer with all of them and the instruction to fix each finding's whole class. Disagree: answer in a PR comment with upstream's behavior and D26 as the reference. Exotic-input findings that are handled safely go to the hardening backlog in `status.md`. Then start a re-review of the new head: the fixes and the code they touch. Count rounds in `status.md` |
 | `merge` | The reviewer approved the head, or you and the reviewer agree that what remains is backlog, and the local check passed on that head: `gh pr merge --squash --delete-branch`, then `git pull --ff-only` |
 
 After three council rounds without agreement, decide yourself: upstream's behavior (scenarios, differential suite) is the tiebreaker. Write the reasoning in a PR comment, then merge or make the change.
 
 ## Agents
 
-Anthropic models only (D29). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
+Workers on Gemini 3.8 Flash, reviewer on Claude Opus 5.5 (D37, amends D29). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
 
 | Agent | `target` |
 |---|---|
-| Worker, fixer or helper (the default for every agent except the reviewer; owner direction, 2026-11-02) | `{ "providerInstanceId": "claudeAgent", "model": "claude-sonnet-5-5", "options": { "effort": "medium" } }` |
+| Worker, fixer or helper: all coding and testing, the default for every agent except the reviewer (owner direction 2026-11-07, D37) | `{ "providerInstanceId": "antigravity", "model": "gemini-3.8-flash", "options": { "thinking_level": "high" } }` |
 | Opus reviewer (a fresh agent, never the task's worker or fixer) | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "high" } }` |
 
 ### Worker instructions
@@ -44,7 +44,7 @@ Append to every worker and fixer brief:
 You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the task yourself.
 - Read AGENTS.md and the docs named in the brief first. Follow the "Rules for workers" in docs/design/12-work-plan.md.
 - Upstream PocketBase v0.41.0 source: .upstream/pocketbase after `bun run upstream:prepare` (the same pinned commit is at /home/t3-code/upstream/pocketbase on this host; read only). Read it; never port from memory.
-- Use Claude Sonnet 5.5 subagents at medium effort for bulk mechanical work (for example converting upstream table tests to scenario data); keep the judgment calls yourself.
+- Use subagents on the same model as you for bulk mechanical work (for example converting upstream table tests to scenario data); keep the judgment calls yourself.
 - Work on branch task/<id>-<slug> from origin/main. Commit with short messages. Push and open one PR titled "<id>: <title>" against main. The PR body maps each upstream file to its iglo.base file and lists anything left out, with a reason.
 - Run the acceptance commands and the full local check (`bun run check`, then `bun run test:reference`, never in parallel: the host has limited memory) before you finish. `test:reference` takes over 10 minutes, past the Bash foreground limit, so give the long run to the Bash tool's background mode and wait for it with the Monitor tool in the same turn. Do not end your turn while a check runs: each ended turn wakes the lead for nothing. CI is not used. Do not merge. Do not watch the PR.
 - A fixer fixes each finding's whole class: search for the same mistake on sibling code paths, inputs and fields before pushing, and say in the PR comment what was checked.
@@ -76,11 +76,11 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md (brief:
 
 ## Rules
 
-- **Token thrift (owner direction, 2026-10-29).** Usage limits are the constraint, not wall time. Fix small findings yourself instead of starting a fixer; give a fixer all findings of a round at once; re-reviews cover the fixes only; keep `status.md` short (one line per merged task, details live in the PR); read only the parts of files you need.
+- **Token thrift (owner direction, 2026-10-29).** Usage limits are the constraint, not wall time. Claude tokens are the scarce ones (D37): the lead and the Opus reviewer judge, they do not code. Even small fixes go to one Gemini fixer with all findings of a round at once; the lead edits only `status.md`, briefs and plan or decision docs; re-reviews cover the fixes only; keep `status.md` short (one line per merged task, details live in the PR); read only the parts of files you need.
 
 - **Focus (owner direction, 2026-10-28).** Ship a working MVP for linux-x64 (D24). Follow the critical path; do not spend agents on macOS, arm64, optional cleanups or carried notes unless they block the current task. CI is one Linux x64 job; a check is green when that job passes.
 
-- **Owner decisions (owner direction, 2026-11-05).** The only things the owner reads are the short "Needs you" section at the top of `status.md` and the options shown with the built-in visualization (`html_render`): each decision with its options, pros and cons, the lead's recommendation and one line of reasoning. Never leave a question only in a chat message; remove an item once answered.
+- **Owner decisions (owner direction, 2026-11-05, 2026-11-07).** Decide yourself whenever you have a clear recommendation, and log it for owner review. Ask the owner only what only the owner can decide, and only in the chat with the built-in visualization (`html_render`): the problem explained, the options with pros and cons, the option you would pick and why. Never point the owner to a file (`status.md`, briefs, docs); "Needs you" in `status.md` is the lead's record of open owner items, not something to send the owner to. Remove an item once answered.
 - **No owner input.** Every question is decided by the lead. Design decisions go into `docs/design/10-decisions.md` marked "Decided by agents on <date>, for owner review" and are listed in `status.md`.
 - **Pace.** One task at a time. At most two agents at once (worker or fixer, and reviewer). If an agent fails with a usage or rate limit, write "Paused until <now + 60 min>" in `status.md`, commit, push, release the lock and end the run. Do not retry in a loop. The host resumes limited Claude threads at the reset: if the failed agent's thread is running again, or will be (the failure names a reset time), refresh the heartbeat and keep the lock instead of pausing.
 - **Failures.** A worker that ends without a usable PR gets one retry with a sharper brief. After that, mark the task blocked in `status.md` with the reason and move to the next task whose dependencies are met.

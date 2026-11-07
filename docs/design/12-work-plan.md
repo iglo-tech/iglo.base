@@ -17,8 +17,8 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 
 | Work | Model |
 |---|---|
-| Lead | Claude Opus 5.5 |
-| Workers, fixers and helpers (all tasks, including bulk mechanical work) | Claude Sonnet 5.5, medium effort (owner direction, 2026-11-02) |
+| Lead | Claude Opus 5.5 (judges; does not code, D37) |
+| Workers, fixers and helpers (all coding and testing, including bulk mechanical work) | Gemini 3.8 Flash, high thinking, through the `antigravity` provider (owner direction 2026-11-07, D37) |
 | Reviewer | Claude Opus 5.5 at high effort, a fresh agent (D29) |
 
 ### One task
@@ -48,7 +48,7 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 ### Rules for workers
 
 - Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
-- Hand bulk mechanical work to Claude Sonnet 5.5 subagents at medium effort, and keep the judgment calls yourself.
+- Hand bulk mechanical work to subagents on your own model, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
 - If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.
 - No new runtime dependency, no change to a decision record, no change to another task's module without the lead.
@@ -210,6 +210,7 @@ M7.4 is the only task that touches production data. The owner approved an agent 
 | P.10 | Implicit state machine fixes (owner request, 2026-11-06): the lead's audit of lifecycle state kept in flags, store keys, rows and timers, fixed in three parallel bundles by owning module: P.10a auth and jobs (OTP and MFA consume, backup worker and restore lock, resend throttles, log writer stop), P.10b server lifecycle (restart, teardown, notify watcher, body limit, response writer), P.10c storage (transaction state, S3 multipart, zip, upload writers, thumb pool, file field). Briefs in `docs/briefs/P.10a.md`–`P.10c.md`. Items that match upstream behavior stay as they are | P.7 |
 | P.11 | Own JavaScript SDK (owner direction 2026-11-07, D36): copy the PocketBase JS SDK v0.28.1 into `sdk/` as the `iglo.base` npm package, on the project stack (Bun build and tests, tsc, oxlint, oxfmt), strict types without `any`, upstream's tests ported, the differential SDK suite switched to it | P.10 |
 | P.12 | SDK releases (D36): a workflow that publishes a new `sdk/package.json` version to npm with provenance (trusted publishing), tags `sdk-v<version>` and creates a GitHub release; `docs/releasing.md` | P.11 |
+| P.13 | SSR out of the box (owner direction 2026-11-07): iglo.base and its SDK must work with any JS SSR framework (SvelteKit, Next.js, Nuxt, Astro, Remix and others) without users solving the problems PocketBase's docs list under "Why not JS SSR" (https://pocketbase.io/docs/how-to-use/#why-not-js-ssr, discussion pocketbase#5313): per-request SDK instances and auth state without leaks, cookie auth, server-side and mixed OAuth2, realtime without proxying, request overhead. Approach (owner, 2026-11-07, from years of SSR apps): solve it in the SDK, with at most minor, optional server changes. Long-lived superuser-only clients stay in memory for privileged server work; every request gets its own user client, resumed from the request's cookie, validated and refreshed, and the refreshed cookie written back. Owner, 2026-11-07: the cookie keeps the user record next to the token, as `exportToCookie` does now (the record is small; pages read it without a request); no re-authentication per request: a validated session is kept in a bounded in-memory cache (a few MB is fine) and checked or refreshed against iglo.base only when its cache entry expires or the token nears expiry. Decided by the lead on 2026-11-07 (owner: "make up your mind"), for owner review: the session cookie is HttpOnly; the browser gets a 15-minute non-renewable token minted by the app server's superuser client through the existing `impersonate` endpoint, handed over at render and renewed through an adapter route (without superuser credentials the SDK falls back to a cookie readable by JavaScript); iglo.base gets no server change for SSR (it does not read auth cookies). First a design (`docs/design/13-ssr.md`) built on that approach: every listed problem and how the SDK covers it (session resume, validation, refresh and its races, cookie defaults, OAuth2, realtime from the browser, framework adapters), and any optional server change with its API-contract decision (owner decisions go to Needs you). Implementation tasks follow the design | P.11 |
 
 ## Order
 
