@@ -1,0 +1,42 @@
+// js-sdk v0.28.1 tests/services/HealthService.spec.ts
+import { describe, test, beforeAll, afterAll, afterEach } from "bun:test";
+import { assert } from "@sdk-test/assert";
+import { FetchMock } from "@sdk-test/mocks";
+import Client from "@sdk/Client";
+import { HealthService } from "@sdk/services/HealthService";
+
+describe("HealthService", function () {
+  const client = new Client("test_base_url");
+  const service = new HealthService(client);
+  const fetchMock = new FetchMock();
+
+  beforeAll(function () {
+    fetchMock.init();
+  });
+
+  afterAll(function () {
+    fetchMock.restore();
+  });
+
+  afterEach(function () {
+    fetchMock.clearMocks();
+  });
+
+  describe("check()", function () {
+    test("Should send a health check request", async function () {
+      fetchMock.on({
+        method: "GET",
+        url: service.client.buildURL("/api/health") + "?q1=123",
+        additionalMatcher: (_, config) => {
+          return config?.headers?.["x-test"] === "456";
+        },
+        replyCode: 200,
+        replyBody: { code: 200, message: "test", data: {} },
+      });
+
+      const result = await service.check({ q1: 123, headers: { "x-test": "456" } });
+
+      assert.deepEqual(result, { code: 200, message: "test", data: {} });
+    });
+  });
+});

@@ -31,6 +31,7 @@ Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM,
 - Upstream's S3 client ported on `fetch` for S3 storage and backups (`Bun.S3Client` cannot return the raw error bodies the API shows), `Bun.password` for bcrypt, Web Crypto for JWT and AES-GCM.
 - The admin dashboard is upstream's `ui/` (vanilla JS, Shablon, Vite), vendored with a small patch set (`docs/design/08-admin-ui.md`).
 - One compiled executable per platform (linux-x64, linux-arm64; D24, D35) is the release artifact. The official Docker image (`Dockerfile`, `.github/workflows/docker.yml`, D33; linux/amd64 and linux/arm64) only wraps those executables; it never builds from source. Do not add compose files, other registries or other distribution paths.
+- The JavaScript SDK in `sdk/` (a Bun workspace; D36) is a second published artifact: the npm package `iglo.base`, a copy of the PocketBase JS SDK v0.28.1 that stays a drop-in for `pocketbase`. It is built with `Bun.build` and `tsc` into `sdk/dist/`, uses no Bun-only APIs and no runtime dependencies, and has its own `@sdk/*` alias (the root's `@/*` maps to `src/`). Strict types, no `any` in `sdk/src` except the aliases in `sdk/src/tools/loose.ts`. Changes keep behavior identical to the upstream SDK unless a task says otherwise. The npm package is the only other distribution path allowed.
 
 ## Rules
 
@@ -71,10 +72,12 @@ bun run typecheck               # tsc --noEmit
 bun run test                    # bun test; builds the executable and tests it
 bun run build                   # scripts/build.ts: dashboard pack, then bun build --compile of src/main.ts and the workers into dist/iglo-base (IGLO_VERSION sets the version)
 bun run upstream:prepare        # pinned reference tools into .upstream/ (network; verified by SHA-256)
-bun run test:reference          # upstream:prepare, then the smoke tests in test/differential/
+bun run sdk:build               # sdk/scripts/build.ts: tsc + Bun.build of sdk/ into sdk/dist/ (ES, CommonJS, UMD, declarations)
+bun run sdk:check-package       # npm pack, install into a temporary project, import/require/umd with Node and Bun, tsc consumer checks
+bun run test:reference          # sdk:build and upstream:prepare, then the smoke tests in test/differential/
 bun run test:browser            # dashboard browser tests in test/browser/ (needs agent-browser; not part of check)
 ```
 
-`bun run check` runs lint, format:check, typecheck, test and build after install; `bun test` skips `test/differential/` (see `bunfig.toml`). `bun run test:reference` needs `git`, `unzip` and `tar`; Windows and macOS are out of scope (D18, D35). `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
+`bun run check` runs lint, format:check, typecheck (which builds the SDK first and checks `sdk/` too), test (which includes the SDK's unit tests in `sdk/test`, upstream's ported to `bun test` against a fetch mock), build (server executable and SDK) and `sdk:check-package` after install; `bun test` skips `test/differential/` (see `bunfig.toml`). `bun run test:reference` needs `git`, `unzip` and `tar`; Windows and macOS are out of scope (D18, D35). `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
 
 Changes to the database access layer, filters, realtime or file handling must include before/after measurements, stored under `docs/perf/`.

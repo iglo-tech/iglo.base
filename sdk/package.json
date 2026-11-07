@@ -1,0 +1,46 @@
+{
+  "name": "iglo.base",
+  "version": "1.0.0",
+  "description": "JavaScript SDK for iglo.base (fork of the PocketBase JavaScript SDK v0.28.1)",
+  "keywords": [
+    "iglo.base",
+    "javascript-sdk",
+    "js-sdk",
+    "pocketbase",
+    "pocketbase-js"
+  ],
+  "license": "MIT",
+  "author": "Gani Georgiev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iglo-tech/iglo.base.git",
+    "directory": "sdk"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/iglo-base.es.mjs",
+  "module": "./dist/iglo-base.es.mjs",
+  "types": "./dist/types/src/index.d.ts",
+  "react-native": "./dist/iglo-base.es.js",
+  "exports": {
+    ".": {
+      "types": "./dist/types/src/index.d.ts",
+      "default": "./dist/iglo-base.es.mjs"
+    },
+    "./cjs": {
+      "types": "./dist/cjs.d.cts",
+      "default": "./dist/iglo-base.cjs"
+    },
+    "./umd": {
+      "types": "./dist/umd.d.ts",
+      "default": "./dist/iglo-base.umd.js"
+    },
+    "./package.json": "./package.json"
+  }
+}

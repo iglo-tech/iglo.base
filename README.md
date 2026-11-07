@@ -21,10 +21,10 @@ For a service, a reverse proxy with TLS, backups and upgrades, see the [operatio
 
 Your API is at http://127.0.0.1:8090/api/. All data goes into `pb_data/`: next to the executable when you start it with a path (`./iglo-base`), in the working directory when you start it by name through `PATH`. Pass `--dir` to choose (see the [operations guide](docs/operations.md#flags)).
 
-Use any PocketBase client, for example the [JavaScript SDK](https://github.com/pocketbase/js-sdk):
+Use any PocketBase client. The JavaScript SDK is published to npm as [`iglo.base`](sdk/README.md) (`npm install iglo.base`); it is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/js-sdk) v0.28.1 and a drop-in for the `pocketbase` package, which works too:
 
 ```js
-import PocketBase from "pocketbase";
+import PocketBase from "iglo.base"; // or "pocketbase"
 
 const pb = new PocketBase("http://127.0.0.1:8090");
 const posts = await pb.collection("posts").getList(1, 20);

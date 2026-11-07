@@ -18,7 +18,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "@test/*": ["./test/*"],
-      "@dist/*": ["./dist/*"]
+      "@dist/*": ["./dist/*"],
+      "@sdk/*": ["./sdk/src/*"],
+      "@sdk-test/*": ["./sdk/test/*"]
     }
   },
   "include": ["src", "test", "scripts"]
