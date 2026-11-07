@@ -530,9 +530,11 @@ describe("SSR Core", () => {
         getAll: () => [{ name: "pb_auth", value: JSON.stringify({ token }) }],
       };
 
+      const cache = createSessionCache();
       const client = await createServerClient({
         url: "http://localhost:8090",
         cookies,
+        sessionCache: cache,
         clock: () => localTimeSec * 1000,
       });
 
@@ -543,6 +545,8 @@ describe("SSR Core", () => {
         }),
         {},
       );
+
+      expect(cache.clockOffsetMs).toBe(1_001_000 * 1000 - localTimeSec * 1000);
 
       // Now verifyAuth will see the corrected clock skew and recognize the token is expired!
       let rejected = false;
@@ -616,6 +620,11 @@ describe("SSR Core", () => {
       } as any);
       expect(impersonateCalls).toBe(2);
       expect(minted2.token).toBe("impersonated_browser_token_abc");
+
+      // Also via impersonate alias
+      const minted3 = await superuser.impersonate("users", "user123", 600);
+      expect(impersonateCalls).toBe(3);
+      expect(minted3.token).toBe("impersonated_browser_token_abc");
     });
   });
 });

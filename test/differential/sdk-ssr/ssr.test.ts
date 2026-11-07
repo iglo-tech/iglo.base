@@ -7,6 +7,8 @@ import {
   createSuperuserClient,
   createSessionCache,
   DEFAULT_TTL_MS,
+  type Cookie,
+  type CookieAdapter,
   type CookieToSet,
 } from "iglo.base/ssr";
 import { password, sdkTest, superuserToken } from "@test/differential/sdk/harness";
@@ -20,65 +22,62 @@ describe("SSR differential", () => {
     "two users, 200 parallel requests each through createServerClient, warm cache 0 check requests",
     { prepare: noMFA },
     async (env) => {
-      const admin = env.superuser();
-
-      // Create two distinct users
-      const userA = await env.step("create userA", () =>
-        admin.collection("users").create({
-          email: "user_a@example.com",
-          password: password,
-          passwordConfirm: password,
-          name: "User A",
-        }),
+      // Authenticate two distinct fixture users
+      const authA = await env.derived(
+        "auth userA",
+        () => env.client().collection("users").authWithPassword("test@example.com", password),
+        (res) => ({ email: res.record.email }),
       );
 
-      const userB = await env.step("create userB", () =>
-        admin.collection("users").create({
-          email: "user_b@example.com",
-          password: password,
-          passwordConfirm: password,
-          name: "User B",
-        }),
+      const authB = await env.derived(
+        "auth userB",
+        () => env.client().collection("users").authWithPassword("test2@example.com", password),
+        (res) => ({ email: res.record.email }),
       );
 
-      // Authenticate each user to obtain real tokens
-      const clientA = env.client();
-      const authA = await env.step("auth userA", () =>
-        clientA.collection("users").authWithPassword("user_a@example.com", password),
-      );
-
-      const clientB = env.client();
-      const authB = await env.step("auth userB", () =>
-        clientB.collection("users").authWithPassword("user_b@example.com", password),
-      );
-
-      const cookieA = [
+      let cookieJarA: Cookie[] = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: authA.token, record: authA.record }),
         },
       ];
-      const cookieB = [
+      let cookieJarB: Cookie[] = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: authB.token, record: authB.record }),
         },
       ];
 
+      const cookiesA: CookieAdapter = {
+        getAll: () => cookieJarA,
+        setAll: (c: CookieToSet[]) => {
+          cookieJarA = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
+        },
+      };
+      const cookiesB: CookieAdapter = {
+        getAll: () => cookieJarB,
+        setAll: (c: CookieToSet[]) => {
+          cookieJarB = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
+        },
+      };
+
       let mockClock = 1_000_000_000;
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
       // Warm the cache for both users
+      await sessionCache.set(authA.token, authA.record, mockClock);
+      await sessionCache.set(authB.token, authB.record, mockClock);
+
       await createServerClient({
         url: env.url,
-        cookies: { getAll: () => cookieA },
+        cookies: cookiesA,
         sessionCache,
         clock: () => mockClock,
       });
 
       await createServerClient({
         url: env.url,
-        cookies: { getAll: () => cookieB },
+        cookies: cookiesB,
         sessionCache,
         clock: () => mockClock,
       });
@@ -104,39 +103,39 @@ describe("SSR differential", () => {
       const tasksA = Array.from({ length: 200 }, async () => {
         const pb = await createServerClient({
           url: env.url,
-          cookies: { getAll: () => cookieA },
+          cookies: cookiesA,
           sessionCache,
           clock: () => mockClock,
           fetch: countingFetch,
         });
-        return pb.collection("users").getOne(userA.id);
+        return pb.collection("users").getOne(authA.record.id);
       });
 
       const tasksB = Array.from({ length: 200 }, async () => {
         const pb = await createServerClient({
           url: env.url,
-          cookies: { getAll: () => cookieB },
+          cookies: cookiesB,
           sessionCache,
           clock: () => mockClock,
           fetch: countingFetch,
         });
-        return pb.collection("users").getOne(userB.id);
+        return pb.collection("users").getOne(authB.record.id);
       });
 
       const [resA, resB] = await Promise.all([Promise.all(tasksA), Promise.all(tasksB)]);
 
-      // With warm cache: 0 session check requests reached the server
+      // With warm cache: 0 session check requests reached the server, counted at the server
       expect(sessionCheckRequests).toBe(0);
       expect(dataRequests).toBe(400);
 
       // Verify data isolation: every response shows only its own user's data
       for (const record of resA) {
-        expect(record.id).toBe(userA.id);
-        expect(record.email).toBe("user_a@example.com");
+        expect(record.id).toBe(authA.record.id);
+        expect(record.email).toBe("test@example.com");
       }
       for (const record of resB) {
-        expect(record.id).toBe(userB.id);
-        expect(record.email).toBe("user_b@example.com");
+        expect(record.id).toBe(authB.record.id);
+        expect(record.email).toBe("test2@example.com");
       }
 
       env.record("results.count", {

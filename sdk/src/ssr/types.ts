@@ -32,6 +32,7 @@ export interface SessionCache {
   clear(): void;
   runSingleFlight<T>(token: string, fn: () => Promise<T>): Promise<T>;
   readonly size: number;
+  clockOffsetMs?: number;
 }
 
 export interface SessionCacheOptions {

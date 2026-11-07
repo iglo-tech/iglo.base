@@ -38,6 +38,7 @@ export class ServerClient extends Client {
     this.cookies = options.cookies;
     this._cookieName = options.cookieName ?? DEFAULT_COOKIE_KEY;
     this._clock = options.clock ?? Date.now;
+    this._clockOffsetMs = options.sessionCache?.clockOffsetMs ?? 0;
 
     if (options.secure !== undefined) {
       this._isSecure = options.secure;
@@ -73,6 +74,9 @@ export class ServerClient extends Client {
         const serverTimeMs = Date.parse(dateHeader);
         if (!Number.isNaN(serverTimeMs)) {
           this._clockOffsetMs = serverTimeMs - this._clock();
+          if (this._options.sessionCache) {
+            this._options.sessionCache.clockOffsetMs = this._clockOffsetMs;
+          }
         }
       }
 

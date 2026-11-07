@@ -97,6 +97,7 @@ export function createSessionCache(options?: SessionCacheOptions): SessionCache 
     get size(): number {
       return map.size;
     },
+    clockOffsetMs: 0,
   };
 }
 

@@ -110,6 +110,14 @@ export class SuperuserClient extends Client {
   ): Promise<{ token: string; record: RecordModel }> {
     return this.mintBrowserToken(collectionOrRecord, recordIdOrDuration, duration);
   }
+
+  async impersonate(
+    collectionOrRecord: string | RecordModel,
+    recordIdOrDuration?: string | number,
+    duration?: number,
+  ): Promise<{ token: string; record: RecordModel }> {
+    return this.mintBrowserToken(collectionOrRecord, recordIdOrDuration, duration);
+  }
 }
 
 export async function createSuperuserClient(
