@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.11 | worker | — | 0 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows |
+| P.11 | worker | — | 0 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows. Worker is Sonnet (started before D37); later agents Gemini 3.8 Flash |
 
 ## Done
 

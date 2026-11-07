@@ -17,8 +17,8 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 
 | Work | Model |
 |---|---|
-| Lead | Claude Opus 5.5 |
-| Workers, fixers and helpers (all tasks, including bulk mechanical work) | Claude Sonnet 5.5, medium effort (owner direction, 2026-11-02) |
+| Lead | Claude Opus 5.5 (judges; does not code, D37) |
+| Workers, fixers and helpers (all coding and testing, including bulk mechanical work) | Gemini 3.8 Flash, high thinking, through the `antigravity` provider (owner direction 2026-11-07, D37) |
 | Reviewer | Claude Opus 5.5 at high effort, a fresh agent (D29) |
 
 ### One task
@@ -48,7 +48,7 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 ### Rules for workers
 
 - Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
-- Hand bulk mechanical work to Claude Sonnet 5.5 subagents at medium effort, and keep the judgment calls yourself.
+- Hand bulk mechanical work to subagents on your own model, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
 - If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.
 - No new runtime dependency, no change to a decision record, no change to another task's module without the lead.

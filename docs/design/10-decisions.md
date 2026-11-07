@@ -325,3 +325,12 @@ Tasks P.11 and P.12, owner direction 2026-11-07: "I want own the SDK, start with
 - **Testing:** the SDK's own unit tests (upstream's, ported to `bun test`) run in `bun run check`; the differential SDK suite (M5.8, `test/differential/sdk/`) uses the workspace SDK instead of the `pocketbase` package, so every SDK method runs against both servers.
 - **Why:** the owner wants a client that follows iglo.base. The SDK is a client library, not a server extension surface (D5 is unaffected); it adds a second published artifact next to the executables and the Docker image.
 - **Considered:** a separate repository (rejected by the owner); a scoped `@iglo-tech/...` name (needs an npm organization; `iglo.base` matches the project and was free on 2026-11-07); GitHub Packages (consumers would need registry auth even for a public package).
+
+## D37. Gemini 3.8 Flash does the coding
+
+Owner direction 2026-11-07: "offload more work to Gemini Flash 3.8, so any coding, testing etc. should be done by this model, Opus 5.5 is just for making sure the stuff was delivered the right way, there are no gaps, no code quality issues"; switch whenever possible without stopping running tasks. Amends [D29](#d29-anthropic-models-only).
+
+- **Decision:** workers, fixers and helpers run on Gemini 3.8 Flash (`antigravity` provider, high thinking). The lead (Claude Opus 5.5, medium) and the reviewer (Claude Opus 5.5, high, a fresh agent) only judge: briefs, scope, review, gaps and code quality. The lead no longer makes small fixes itself; they go to a Gemini fixer.
+- **Switch:** agents already running when this was decided (the P.11 Sonnet worker) finish their run; every agent started after it uses Gemini.
+- **Why:** Claude usage limits are the constraint; coding is the bulk of the tokens.
+- **Consequence:** the council (D25) is unchanged. A Gemini worker or fixer that fails or hangs gets the usual one retry (runbook, Failures) on Gemini; agents do not fall back to Claude models for coding.
