@@ -305,7 +305,7 @@ export default class Client {
       return raw;
     }
 
-    const paramsWithPlaceholders: LooseObject = {};
+    const paramsWithPlaceholders: Record<string, unknown> = {};
     for (const k in params) {
       paramsWithPlaceholders["{:" + k + "}"] = params[k];
     }
@@ -317,6 +317,7 @@ export default class Client {
       return raw; // no params to replace
     }
 
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- keeps stringify scoped inside filter
     function stringify(val: unknown): string {
       switch (typeof val) {
         case "boolean":
@@ -418,6 +419,7 @@ export default class Client {
       } else if (Object.keys(result).length) {
         // legacy behavior
         options = result as SendOptions;
+        // oxlint-disable-next-line no-unused-expressions -- upstream short-circuit logging
         console?.warn &&
           console.warn(
             "Deprecated format of beforeSend return: please use `return { url, options }`, instead of `return options`.",

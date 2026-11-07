@@ -1,8 +1,9 @@
 // Checks the built package from the outside, the way a consumer uses it:
 // `npm pack`, install the tarball into a temporary project, then
-//   - import it as ESM and require it as CommonJS, with Node and with Bun,
-//   - evaluate the ./umd file in a fake `window`,
-//   - type check ESM, CommonJS and bundler-style imports against the declarations.
+//   - import it as ESM with Node and with Bun,
+//   - bun build of `import PocketBase from "iglo.base"`,
+//   - type check ESM and bundler-style imports against the declarations (node16, nodenext, bundler),
+//   - verify npm pack --dry-run contains no CJS/UMD files.
 // Run `bun run sdk:build` first.
 import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -27,6 +28,26 @@ function run(name: string, cmd: string[]): void {
 }
 
 try {
+  // 1. Verify npm pack --dry-run contains no CJS/UMD files
+  const packDry = Bun.spawnSync(["npm", "pack", "--dry-run", "--json"], {
+    cwd: sdkRoot,
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  if (packDry.exitCode !== 0) {
+    throw new Error("npm pack --dry-run failed");
+  }
+  const dryPacked = JSON.parse(packDry.stdout.toString())[0] as {
+    files: Array<{ path: string }>;
+  };
+  const dryFiles = dryPacked.files.map((f) => f.path);
+  const badFiles = dryFiles.filter((f) => /\b(cjs|umd)\b/i.test(f) || /\.c[jt]s$/i.test(f));
+  if (badFiles.length > 0) {
+    throw new Error(`npm pack --dry-run contains CJS/UMD files: ${badFiles.join(", ")}`);
+  }
+  console.log(`ok   npm pack --dry-run contains no CJS/UMD files (${dryFiles.length} files)`);
+
+  // 2. Build tarball
   const pack = Bun.spawnSync(["npm", "pack", "--pack-destination", tmp, "--json"], {
     cwd: sdkRoot,
     stdout: "pipe",
@@ -52,9 +73,10 @@ try {
   }
   console.log(`ok   package files (${files.length}): ${files.join(" ")}`);
 
+  // 3. Install in consumer project
   await writeFile(
     join(tmp, "package.json"),
-    '{"name":"consumer","private":true,"version":"0.0.0"}',
+    '{"name":"consumer","private":true,"type":"module","version":"0.0.0"}',
   );
   run("npm install tarball", [
     "npm",
@@ -65,12 +87,45 @@ try {
   ]);
   await cp(consumerSources, tmp, { recursive: true });
 
+  // 4. Node ESM import and Bun import
   for (const runtime of ["node", "bun"]) {
     run(`${runtime} import (ESM)`, [runtime, "esm.mjs"]);
-    run(`${runtime} require (CommonJS)`, [runtime, "cjs.cjs"]);
-    run(`${runtime} ./umd in a fake window`, [runtime, "umd.cjs"]);
   }
 
+  // 5. bun build of import PocketBase from "iglo.base"
+  const buildResult = Bun.spawnSync(
+    ["bun", "build", "bundle-entry.js", "--outfile", "bundle-out.js", "--target", "node"],
+    { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+  );
+  if (buildResult.exitCode !== 0) {
+    failed = true;
+    console.log(
+      `FAIL bun build of import PocketBase from "iglo.base"\n${buildResult.stderr.toString()}`,
+    );
+  } else {
+    const runNode = Bun.spawnSync(["node", "bundle-out.js"], {
+      cwd: tmp,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const runBun = Bun.spawnSync(["bun", "bundle-out.js"], {
+      cwd: tmp,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    if (runNode.exitCode === 0 && runBun.exitCode === 0) {
+      console.log(
+        `ok   bun build of import PocketBase from "iglo.base": ${runNode.stdout.toString().trim()}`,
+      );
+    } else {
+      failed = true;
+      console.log(
+        `FAIL run bundled output: node=${runNode.stderr.toString()} bun=${runBun.stderr.toString()}`,
+      );
+    }
+  }
+
+  // 6. Type checks: tsc resolves declarations under node16, nodenext and bundler
   const base = [
     "node",
     tsc,
@@ -90,7 +145,6 @@ try {
     "--moduleResolution",
     "node16",
     "esm-types.mts",
-    "cjs-types.cts",
   ]);
   run("tsc module=nodenext", [
     ...base,
@@ -99,7 +153,6 @@ try {
     "--moduleResolution",
     "nodenext",
     "esm-types.mts",
-    "cjs-types.cts",
   ]);
   run("tsc moduleResolution=bundler", [
     ...base,

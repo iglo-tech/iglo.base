@@ -14,6 +14,7 @@ import type { LooseObject } from "@sdk/tools/loose";
  * field-vchar   = VCHAR / obs-text
  * obs-text      = %x80-FF
  */
+// oxlint-disable-next-line no-control-regex -- RFC 6265 cookie spec allows horizontal tab (U+0009)
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
 
 export interface ParseOptions {
@@ -25,7 +26,7 @@ export interface ParseOptions {
  * The object has the various cookies as keys(names) => values
  */
 export function cookieParse(str: string, options?: ParseOptions): LooseObject {
-  const result: LooseObject = {};
+  const result: Record<string, string> = {};
 
   if (typeof str !== "string") {
     return result;

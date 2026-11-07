@@ -86,7 +86,7 @@ export class FetchMock {
 
         return new Promise((resolve, reject) => {
           setTimeout(() => {
-            if (!!config?.signal?.aborted) {
+            if (config?.signal?.aborted) {
               reject(new ClientResponseError());
             }
             resolve(response);

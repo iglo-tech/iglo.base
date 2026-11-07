@@ -28,17 +28,8 @@ This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/
 
 ## Installation
 
-### Browser (manually via script tag)
+### Browser (ES modules)
 
-```html
-<script src="/path/to/dist/iglo-base.umd.js"></script>
-<script type="text/javascript">
-    const pb = new PocketBase("https://example.com")
-    ...
-</script>
-```
-
-_OR if you are using ES modules:_
 ```html
 <script type="module">
     import PocketBase from '/path/to/dist/iglo-base.es.mjs'
@@ -48,18 +39,14 @@ _OR if you are using ES modules:_
 </script>
 ```
 
-### Node.js (via npm)
+### Node.js / Bun (via npm)
 
 ```sh
 npm install iglo.base --save
 ```
 
 ```js
-// Using ES modules (default)
 import PocketBase from 'iglo.base'
-
-// OR if you are using CommonJS modules
-const PocketBase = require('iglo.base/cjs')
 ```
 
 > 🔧 For **Node < 17** you'll need to load a `fetch()` polyfill.

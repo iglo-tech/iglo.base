@@ -225,7 +225,7 @@ export class RealtimeService extends BaseService {
 
     // check for at least one non-empty subscription
     for (let key in this.subscriptions) {
-      if (!!this.subscriptions[key]?.length) {
+      if (this.subscriptions[key]?.length) {
         return true;
       }
     }
@@ -262,6 +262,7 @@ export class RealtimeService extends BaseService {
       }
     } catch (err) {
       for (let p of pending) {
+        // oxlint-disable-next-line no-unused-expressions -- upstream ternary dispatch for promise resolution
         err ? p.reject(err) : p.resolve();
       }
     } finally {
@@ -410,6 +411,7 @@ export class RealtimeService extends BaseService {
 
     this.eventSource = new EventSource(this.client.buildURL("/api/realtime"));
 
+    // oxlint-disable-next-line unicorn/prefer-add-event-listener -- EventSource.onerror matches upstream assignment
     this.eventSource.onerror = () => {
       this.connectErrorHandler(new Error("Failed to establish realtime connection."));
     };

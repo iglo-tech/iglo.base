@@ -1,5 +1,4 @@
 // js-sdk v0.28.1 src/stores/AsyncAuthStore.ts
-import type { LooseObject } from "@sdk/tools/loose";
 import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
 
 export type AsyncSaveFunc = (serializedPayload: string) => Promise<void>;
@@ -86,19 +85,26 @@ export class AsyncAuthStore extends BaseAuthStore {
   /**
    * Initializes the auth store state.
    */
-  private async _loadInitial(payload?: string | Promise<unknown>) {
+  private async _loadInitial(payload?: unknown) {
     try {
-      payload = (await payload) as string | undefined;
+      const resolved: unknown = await payload;
 
-      if (payload) {
-        let parsed: LooseObject = {};
-        if (typeof payload === "string") {
-          parsed = JSON.parse(payload) || {};
-        } else if (typeof payload === "object") {
-          parsed = payload as LooseObject;
+      if (resolved) {
+        let parsed: Record<string, unknown> | undefined;
+        if (typeof resolved === "string") {
+          const json: unknown = JSON.parse(resolved);
+          if (typeof json === "object" && json !== null) {
+            parsed = json as Record<string, unknown>;
+          } else {
+            parsed = {};
+          }
+        } else if (typeof resolved === "object" && resolved !== null) {
+          parsed = resolved as Record<string, unknown>;
         }
 
-        this.save(parsed.token || "", parsed.record || parsed.model || null);
+        const token = typeof parsed!.token === "string" ? parsed!.token : "";
+        const recordOrModel = (parsed!.record || parsed!.model || null) as AuthRecord;
+        this.save(token, recordOrModel);
       }
     } catch {}
   }

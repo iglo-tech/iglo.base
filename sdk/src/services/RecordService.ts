@@ -588,12 +588,14 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
         const redirectURL = this.client.buildURL("/api/oauth2-redirect");
 
+        // oxlint-disable-next-line no-async-promise-executor -- upstream async promise executor
         return new Promise(async (resolve, reject) => {
           // find the AbortController associated with the current request key (if any)
           const cancelController = requestKey
             ? this.client["cancelControllers"]?.[requestKey]
             : undefined;
           if (cancelController) {
+            // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
             cancelController.signal.onabort = () => {
               cleanup();
               reject(
@@ -635,6 +637,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
                 // reset the cancelController listener as it will be triggered by the next api call
                 if (cancelController?.signal?.onabort) {
+                  // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
                   cancelController.signal.onabort = null;
                 }
 
@@ -655,7 +658,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
               cleanup();
             });
 
-            const replacements: LooseObject = {
+            const replacements: Record<string, string> = {
               state: realtime.clientId,
             };
             if (config.scopes?.length) {
@@ -666,6 +669,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
             let urlCallback =
               config.urlCallback ||
+              // oxlint-disable-next-line no-shadow -- upstream callback parameter name matches URL
               function (url: string) {
                 if (eagerDefaultPopup) {
                   eagerDefaultPopup.location.href = url;
@@ -680,6 +684,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
           } catch (err) {
             // reset the cancelController listener in case the request key is reused
             if (cancelController?.signal?.onabort) {
+              // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
               cancelController.signal.onabort = null;
             }
 
@@ -1137,7 +1142,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
   // URL (and URLSearchParams) doesn't seem to be fully supported in React Native
   //
   // note: for details behind some of the decode/encode parsing check https://unixpapa.com/js/querystring.html
-  private _replaceQueryParams(url: string, replacements: LooseObject = {}): string {
+  private _replaceQueryParams(url: string, replacements: Record<string, unknown> = {}): string {
     let urlPath = url;
     let query = "";
 
@@ -1171,7 +1176,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       if (replacements[key] == null) {
         delete parsedParams[key];
       } else {
-        parsedParams[key] = replacements[key];
+        parsedParams[key] = String(replacements[key]);
       }
     }
 

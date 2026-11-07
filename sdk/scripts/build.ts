@@ -1,12 +1,12 @@
-// Builds sdk/dist: the ES, CommonJS and browser (UMD-style) bundles, source maps and
-// declaration files. Replaces js-sdk v0.28.1's rollup.config.mjs.
+// Builds sdk/dist: the ESM bundle, source maps and declaration files.
+// Replaces js-sdk v0.28.1's rollup.config.mjs.
 //
 // 1. `tsc` emits ES2021 JavaScript (Bun.build does not lower syntax such as class fields)
 //    and the declaration files.
 // 2. The `@sdk/` alias is rewritten to relative `.js` specifiers in the declarations, so
 //    consumers resolve them without any alias.
-// 3. `Bun.build` bundles and minifies the emitted JavaScript.
-import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+// 3. `Bun.build` bundles and minifies the emitted JavaScript into ESM format.
+import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
 const sdkRoot = join(import.meta.dirname, "..");
@@ -60,66 +60,26 @@ for await (const file of walk(typesDir)) {
     await writeFile(file, rewritten);
   }
 }
-// the entry helpers only exist to build the cjs and umd bundles
-await rm(join(typesDir, "scripts"), { recursive: true, force: true });
 
-await writeFile(
-  join(dist, "cjs.d.cts"),
-  [
-    "// The CommonJS build is the client class itself (`module.exports = Client`).",
-    "// The declarations are ES modules, so they are imported with resolution-mode `import`.",
-    'type ClientModule = typeof import("./types/src/Client.js", { with: { "resolution-mode": "import" } });',
-    'declare const Client: ClientModule["default"];',
-    'type Client = InstanceType<ClientModule["default"]>;',
-    "export = Client;",
-    "",
-  ].join("\n"),
-);
-await writeFile(
-  join(dist, "umd.d.ts"),
-  `import Client from "./types/src/Client.js";\nexport default Client;\n`,
-);
-
-// 3. bundles
+// 3. ESM bundle
 await writeFile(
   join(jsDir, "tsconfig.json"),
   JSON.stringify({ compilerOptions: { paths: { "@sdk/*": ["./src/*"] } } }),
 );
 
-const common = {
+const out = await Bun.build({
   target: "browser",
   minify: { whitespace: true, syntax: true, identifiers: false },
   sourcemap: "linked",
   tsconfig: join(jsDir, "tsconfig.json"),
   root: jsDir,
-} as const;
-
-async function bundle(entry: string, format: "esm" | "cjs" | "iife", name: string): Promise<void> {
-  const out = await Bun.build({
-    ...common,
-    entrypoints: [join(jsDir, entry)],
-    format,
-    outdir: dist,
-    naming: name,
-  });
-  if (!out.success) {
-    throw new Error(`Bun.build ${name} failed:\n${out.logs.map(String).join("\n")}`);
-  }
+  entrypoints: [join(jsDir, "src/index.js")],
+  format: "esm",
+  outdir: dist,
+  naming: "iglo-base.es.mjs",
+});
+if (!out.success) {
+  throw new Error(`Bun.build failed:\n${out.logs.map(String).join("\n")}`);
 }
-
-await bundle("src/index.js", "esm", "iglo-base.es.mjs");
-await bundle("scripts/cjs-entry.js", "cjs", "iglo-base.cjs");
-await bundle("scripts/umd-entry.js", "iife", "iglo-base.umd.js");
-
-// React Native does not recognize the .mjs extension by default
-// (js-sdk issue #47), so the ES bundle is also shipped as .js.
-await cp(join(dist, "iglo-base.es.mjs"), join(dist, "iglo-base.es.js"));
-await mkdir(dist, { recursive: true });
-await cp(join(dist, "iglo-base.es.mjs.map"), join(dist, "iglo-base.es.js.map"));
-const esJs = join(dist, "iglo-base.es.js");
-await writeFile(
-  esJs,
-  (await readFile(esJs, "utf8")).replace("iglo-base.es.mjs.map", "iglo-base.es.js.map"),
-);
 
 await rm(jsDir, { recursive: true, force: true });

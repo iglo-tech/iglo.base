@@ -72,8 +72,8 @@ bun run typecheck               # tsc --noEmit
 bun run test                    # bun test; builds the executable and tests it
 bun run build                   # scripts/build.ts: dashboard pack, then bun build --compile of src/main.ts and the workers into dist/iglo-base (IGLO_VERSION sets the version)
 bun run upstream:prepare        # pinned reference tools into .upstream/ (network; verified by SHA-256)
-bun run sdk:build               # sdk/scripts/build.ts: tsc + Bun.build of sdk/ into sdk/dist/ (ES, CommonJS, UMD, declarations)
-bun run sdk:check-package       # npm pack, install into a temporary project, import/require/umd with Node and Bun, tsc consumer checks
+bun run sdk:build               # sdk/scripts/build.ts: tsc + Bun.build of sdk/ into sdk/dist/ (ESM bundle and declarations)
+bun run sdk:check-package       # npm pack, install into a temporary project, import with Node and Bun, bun build, tsc consumer checks
 bun run test:reference          # sdk:build and upstream:prepare, then the smoke tests in test/differential/
 bun run test:browser            # dashboard browser tests in test/browser/ (needs agent-browser; not part of check)
 ```

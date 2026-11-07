@@ -14,8 +14,8 @@ export abstract class CrudService<M> extends BaseService {
   /**
    * Response data decoder.
    */
-  decode<T = M>(data: LooseObject): T {
-    return data as T;
+  decode<T = M>(data: Record<string, unknown>): T {
+    return data as unknown as T;
   }
 
   /**
@@ -75,14 +75,18 @@ export abstract class CrudService<M> extends BaseService {
       options.query,
     );
 
-    return this.client.send(this.baseCrudPath, options).then((responseData: LooseObject) => {
-      responseData.items =
-        responseData.items?.map((item: LooseObject) => {
-          return this.decode<T>(item);
-        }) || [];
+    return this.client
+      .send(this.baseCrudPath, options)
+      .then((responseData: Record<string, unknown>) => {
+        responseData.items =
+          (responseData.items as Array<Record<string, unknown>>)?.map(
+            (item: Record<string, unknown>) => {
+              return this.decode<T>(item);
+            },
+          ) || [];
 
-      return responseData as ListResult<T>;
-    });
+        return responseData as unknown as ListResult<T>;
+      });
   }
 
   /**
@@ -161,7 +165,7 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-      .then((responseData: LooseObject) => this.decode<T>(responseData));
+      .then((responseData: Record<string, unknown>) => this.decode<T>(responseData));
   }
 
   /**
@@ -182,7 +186,7 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath, options)
-      .then((responseData: LooseObject) => this.decode<T>(responseData));
+      .then((responseData: Record<string, unknown>) => this.decode<T>(responseData));
   }
 
   /**
@@ -207,7 +211,7 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-      .then((responseData: LooseObject) => this.decode<T>(responseData));
+      .then((responseData: Record<string, unknown>) => this.decode<T>(responseData));
   }
 
   /**

@@ -1,5 +1,4 @@
 // js-sdk v0.28.1 src/stores/BaseAuthStore.ts
-import type { LooseObject } from "@sdk/tools/loose";
 import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
 import { isTokenExpired, getTokenPayload } from "@sdk/tools/jwt";
 import { type RecordModel } from "@sdk/tools/dtos";
@@ -135,16 +134,20 @@ export class BaseAuthStore {
   loadFromCookie(cookie: string, key = defaultCookieKey): void {
     const rawData = cookieParse(cookie || "")[key] || "";
 
-    let data: LooseObject = {};
+    let data: Record<string, unknown> = {};
     try {
-      data = JSON.parse(rawData);
+      const parsed: unknown = JSON.parse(rawData);
       // normalize
-      if (typeof data === null || typeof data !== "object" || Array.isArray(data)) {
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
         data = {};
+      } else {
+        data = parsed as Record<string, unknown>;
       }
     } catch {}
 
-    this.save(data.token || "", data.record || data.model || null);
+    const token = typeof data["token"] === "string" ? data["token"] : "";
+    const recordOrModel = (data["record"] || data["model"] || null) as AuthRecord;
+    this.save(token, recordOrModel);
   }
 
   /**
@@ -232,6 +235,7 @@ export class BaseAuthStore {
 
   protected triggerChange(): void {
     for (const callback of this._onChangeCallbacks) {
+      // oxlint-disable-next-line no-unused-expressions -- upstream short-circuit callback execution
       callback && callback(this.token, this.record);
     }
   }

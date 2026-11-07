@@ -29,17 +29,7 @@
       "files": ["sdk/**"],
       "rules": {
         "eqeqeq": "off",
-        "no-underscore-dangle": "off",
-        "unicorn/prefer-add-event-listener": "off",
-        "no-async-promise-executor": "off",
-        "no-unused-expressions": "off",
-        "no-constant-binary-expression": "off",
-        "unicorn/consistent-function-scoping": "off",
-        "block-scoped-var": "off",
-        "no-control-regex": "off",
-        "no-useless-escape": "off",
-        "no-shadow": "off",
-        "no-extra-boolean-cast": "off"
+        "no-underscore-dangle": "off"
       }
     },
     {

@@ -1,16 +1,15 @@
 // js-sdk v0.28.1 src/stores/LocalAuthStore.ts
-import type { LooseObject } from "@sdk/tools/loose";
 import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+
+/** The auth data as stored by `save()`; `model` is the legacy name of `record`. */
+type StoredAuthData = { token?: string; record?: AuthRecord; model?: AuthRecord };
 
 /**
  * The default token store for browsers with auto fallback
  * to runtime/memory if local storage is undefined (e.g. in node env).
  */
-/** The auth data as stored by `save()`; `model` is the legacy name of `record`. */
-type StoredAuthData = { token?: string; record?: AuthRecord; model?: AuthRecord };
-
 export class LocalAuthStore extends BaseAuthStore {
-  private storageFallback: LooseObject = {};
+  private storageFallback: Record<string, unknown> = {};
   private storageKey: string;
 
   constructor(storageKey = "pocketbase_auth") {

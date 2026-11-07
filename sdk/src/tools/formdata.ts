@@ -1,5 +1,4 @@
 // js-sdk v0.28.1 src/tools/formdata.ts
-import type { LooseObject } from "@sdk/tools/loose";
 
 // `global` is provided by React Native (Hermes) and Node; it is not part of the DOM typings.
 declare const global: { HermesInternal?: unknown } | undefined;
@@ -41,9 +40,14 @@ export function isFormData(body: unknown): boolean {
 /**
  * Checks if the submitted body object has at least one Blob/File field value.
  */
-export function hasFileField(body: LooseObject): boolean {
-  for (const key in body) {
-    const values = Array.isArray(body[key]) ? body[key] : [body[key]];
+export function hasFileField(body: unknown): boolean {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+
+  const obj = body as Record<string, unknown>;
+  for (const key in obj) {
+    const values = Array.isArray(obj[key]) ? obj[key] : [obj[key]];
     for (const v of values) {
       if (isFile(v)) {
         return true;
@@ -71,9 +75,10 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
   }
 
   const form = new FormData();
+  const obj = body as Record<string, unknown>;
 
-  for (const key in body) {
-    const val = (body as LooseObject)[key];
+  for (const key in obj) {
+    const val = obj[key];
 
     // skip undefined values for consistency with JSON.stringify
     // (see https://github.com/pocketbase/pocketbase/issues/6731#issuecomment-2812382827)
@@ -83,14 +88,14 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
 
     if (typeof val === "object" && !hasFileField({ data: val })) {
       // send json-like values as jsonPayload to avoid the implicit string value normalization
-      let payload: LooseObject = {};
+      const payload: Record<string, unknown> = {};
       payload[key] = val;
       form.append("@jsonPayload", JSON.stringify(payload));
     } else {
       // in case of mixed string and file/blob
       const normalizedVal = Array.isArray(val) ? val : [val];
-      for (let v of normalizedVal) {
-        form.append(key, v);
+      for (const v of normalizedVal) {
+        form.append(key, v as Blob | string);
       }
     }
   }
@@ -110,14 +115,16 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
  *     (aka. scientific notations, "Infinity", "0.0", "0001", etc. are kept as string)
  *   - any other string (empty string too) is left as it is
  */
-export function convertFormDataToObject(formData: FormData): LooseObject {
-  let result: LooseObject = {};
+export function convertFormDataToObject(formData: FormData): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   formData.forEach((v, k) => {
     if (k === "@jsonPayload" && typeof v == "string") {
       try {
-        let parsed = JSON.parse(v);
-        Object.assign(result, parsed);
+        const parsed: unknown = JSON.parse(v);
+        if (typeof parsed === "object" && parsed !== null) {
+          Object.assign(result, parsed);
+        }
       } catch (err) {
         console.warn("@jsonPayload error:", err);
       }
@@ -126,7 +133,7 @@ export function convertFormDataToObject(formData: FormData): LooseObject {
         if (!Array.isArray(result[k])) {
           result[k] = [result[k]];
         }
-        result[k].push(inferFormDataValue(v));
+        (result[k] as unknown[]).push(inferFormDataValue(v));
       } else {
         result[k] = inferFormDataValue(v);
       }
@@ -136,7 +143,7 @@ export function convertFormDataToObject(formData: FormData): LooseObject {
   return result;
 }
 
-const inferNumberCharsRegex = /^[\-\.\d]+$/;
+const inferNumberCharsRegex = /^[-.\d]+$/;
 
 function inferFormDataValue(value: unknown): unknown {
   if (typeof value != "string") {

@@ -79,6 +79,25 @@ describe("AsyncAuthStore", function () {
       assert.equal(store.token, "test");
       assert.deepEqual(store.record, { id: "id1" } as any);
     });
+
+    test("load initial from unexpected value (number/boolean) saves nothing", async function () {
+      let calls: any = [];
+
+      const store = new AsyncAuthStore({
+        save: async (payload) => {
+          calls.push(payload);
+        },
+        initial: Promise.resolve(123 as any),
+      });
+
+      const callsPromise = new Promise((resolve) => {
+        setTimeout(() => resolve(calls), 0);
+      });
+      await expect(callsPromise).resolves.toStrictEqual([]);
+
+      assert.equal(store.token, "");
+      assert.equal(store.record, null);
+    });
   });
 
   describe("save()", function () {

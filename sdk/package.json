@@ -27,19 +27,11 @@
   "main": "./dist/iglo-base.es.mjs",
   "module": "./dist/iglo-base.es.mjs",
   "types": "./dist/types/src/index.d.ts",
-  "react-native": "./dist/iglo-base.es.js",
+  "react-native": "./dist/iglo-base.es.mjs",
   "exports": {
     ".": {
       "types": "./dist/types/src/index.d.ts",
       "default": "./dist/iglo-base.es.mjs"
-    },
-    "./cjs": {
-      "types": "./dist/cjs.d.cts",
-      "default": "./dist/iglo-base.cjs"
-    },
-    "./umd": {
-      "types": "./dist/umd.d.ts",
-      "default": "./dist/iglo-base.umd.js"
     },
     "./package.json": "./package.json"
   }

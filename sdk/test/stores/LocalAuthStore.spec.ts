@@ -168,6 +168,14 @@ describe("LocalAuthStore", function () {
       assert.equal(store.token, data.token);
       assert.deepEqual((store.record as any).id, data.record?.id);
     });
+
+    test("Should not throw on pb_auth=null cookie value (upstream bug)", function () {
+      const store = new LocalAuthStore();
+      store.save("test_token", { id: "123" } as any);
+      store.loadFromCookie("pb_auth=null");
+      assert.equal(store.token, "");
+      assert.equal(store.record, null);
+    });
   });
 
   describe("exportToCookie()", function () {
