@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.11 | fix (Gemini) | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 1 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows. Worker is Sonnet (started before D37); later agents Gemini 3.8 Flash |
+| P.11 | review | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 2 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows. Worker is Sonnet (started before D37); later agents Gemini 3.8 Flash |
 
 ## Done
 
