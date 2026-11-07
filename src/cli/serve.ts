@@ -162,8 +162,8 @@ export async function runServeCommand(
       return;
     }
 
-    // the restart did not happen (shutdown, or no execve): put the data dirs
-    // back, newest change first, and settle every pending call
+    // the restart did not happen: on a shutdown keep the new data dirs, else
+    // (no execve) put them back, newest change first; settle every pending call
     let failure: unknown = new Error("restart is not supported here");
     if (ctx.shutdown.aborted) {
       // a process that is shutting down starts on the new data next time
