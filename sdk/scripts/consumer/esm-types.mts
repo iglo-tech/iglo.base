@@ -16,4 +16,39 @@ const store: BaseAuthStore = pb.authStore;
 const bsr: BeforeSendResult = { url: "http://127.0.0.1:1" };
 // @ts-expect-error number is not a string
 const bad: string = e.status;
-export { a, b, s, n, store, bsr, bad };
+
+import {
+  createServerClient,
+  createSuperuserClient,
+  createSessionCache,
+  createRequestCookieAdapter,
+  type ServerClient,
+  type SuperuserClient,
+  type SessionCache,
+  type RequestCookieAdapter,
+} from "iglo.base/ssr";
+const dummyReq = new Request("https://example.com");
+const cookieAdapter: RequestCookieAdapter = createRequestCookieAdapter(dummyReq);
+const serverClientPromise: Promise<ServerClient> = createServerClient({
+  url: "https://example.com",
+  cookies: cookieAdapter,
+});
+const superuserClientPromise: Promise<SuperuserClient> = createSuperuserClient({
+  url: "https://example.com",
+  token: "test",
+});
+const cache: SessionCache = createSessionCache();
+
+export {
+  a,
+  b,
+  s,
+  n,
+  store,
+  bsr,
+  bad,
+  cookieAdapter,
+  serverClientPromise,
+  cache,
+  superuserClientPromise,
+};

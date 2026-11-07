@@ -20,7 +20,7 @@ This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/
     - [Specify TypeScript definitions](#specify-typescript-definitions)
     - [Custom request options](#custom-request-options)
     - [Send hooks](#send-hooks)
-    - [SSR integration](#ssr-integration)
+    - [Server-side rendering](#server-side-rendering)
     - [Security](#security)
 - [Definitions](#definitions)
 - [Development](#development)
@@ -415,29 +415,45 @@ To accomplish this, the SDK provides 2 function hooks:
     // use the created client as usual...
     ```
 
-### SSR integration
+### Server-side rendering
 
-Unfortunately, **there is no "one size fits all" solution** because each framework handle SSR differently (_and even in a single framework there is more than one way of doing things_).
+iglo.base provides server-side rendering support out of the box via the `iglo.base/ssr` entry point:
 
-But in general, the idea is to use a cookie based flow:
-
-1. Create a new `PocketBase` instance for each server-side request
-2. "Load/Feed" your `pb.authStore` with data from the request cookie
-3. Perform your application server-side actions
-4. Before returning the response to the client, update the cookie with the latest `pb.authStore` state
-
-All [`BaseAuthStore`](https://github.com/iglo-tech/iglo.base/blob/main/sdk/src/stores/BaseAuthStore.ts) instances have 2 helper methods that
-should make working with cookies a little bit easier:
+- `createServerClient`: Creates a scoped `Client` per request, resumed from the session cookie, with `cache: "no-store"` and `autoCancellation(false)`.
+- `createSessionCache`: In-memory LRU session cache per process, with sliding refresh at half token lifetime and single-flight request sharing.
+- `createRequestCookieAdapter`: Reference cookie adapter for standard Web `Request`/`Response` handlers (Bun, Hono, Deno).
+- `createSuperuserClient`: Long-lived superuser client with auto-refresh and browser token minting (`mintBrowserToken`).
 
 ```js
-// update the store with the parsed data from the cookie string
-pb.authStore.loadFromCookie('pb_auth=...');
+import {
+  createServerClient,
+  createRequestCookieAdapter,
+  createSessionCache,
+} from "iglo.base/ssr";
 
-// exports the store data as cookie, with option to extend the default SameSite, Secure, HttpOnly, Path and Expires attributes
-pb.authStore.exportToCookie({ httpOnly: false }); // Output: 'pb_auth=...'
+const sessionCache = createSessionCache();
+
+export default {
+  async fetch(request) {
+    const cookies = createRequestCookieAdapter(request);
+    const pb = await createServerClient({
+      url: "http://127.0.0.1:8090",
+      cookies,
+      sessionCache,
+    });
+
+    const records = await pb.collection("example").getList(1, 20);
+
+    const response = new Response(JSON.stringify(records), {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    return cookies.applyToResponse(response);
+  },
+};
 ```
 
-Below you could find several examples:
+Below you could find legacy low-level cookie store examples:
 
 <details>
   <summary><strong>SvelteKit</strong></summary>

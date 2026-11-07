@@ -33,6 +33,11 @@
       "types": "./dist/types/src/index.d.ts",
       "default": "./dist/iglo-base.es.mjs"
     },
+    "./ssr": {
+      "types": "./dist/types/src/ssr/index.d.ts",
+      "browser": "./dist/ssr-browser.es.mjs",
+      "default": "./dist/ssr.es.mjs"
+    },
     "./package.json": "./package.json"
   }
 }

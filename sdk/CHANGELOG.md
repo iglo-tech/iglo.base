@@ -1,3 +1,7 @@
+## Unreleased
+
+- SSR server core (`iglo.base/ssr`): `createServerClient` per-request client with cookie resumption and sliding refresh, `createSuperuserClient` with impersonation token minting, `createSessionCache` with LRU eviction and SHA-256 token hashing, single-flight deduplication, clock-skew correction, and `createRequestCookieAdapter` for plain Web Request/Response handlers.
+
 ## 1.0.0
 
 - Forked from the PocketBase JavaScript SDK v0.28.1 (`ff30f71041aeb8107001bb1ac82ad56a4fbeb93c`) and published as `iglo.base`. ESM-only package (`import PocketBase from "iglo.base"`).
