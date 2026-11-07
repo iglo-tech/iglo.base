@@ -58,7 +58,7 @@ export class TxExecutor implements Executor {
 
   prepare(sql: string): Stmt {
     this.checkDone();
-    const stmt = new Stmt(this.conn, sql);
+    const stmt = new Stmt(this.conn, sql, () => this.checkDone());
     this.stmts.push(stmt);
     return stmt;
   }
@@ -66,15 +66,20 @@ export class TxExecutor implements Executor {
   // marks the transaction done and closes its prepared statements
   // (sql.Tx.closePrepared)
   end(): void {
-    this.checkDone();
+    if (this.done) {
+      throw new TxDoneError();
+    }
     this.done = true;
     for (const stmt of this.stmts.splice(0)) {
       stmt.close();
     }
   }
 
+  // A transaction SQLite ended on its own (SQLITE_FULL, IOERR, interrupt,
+  // INSERT OR ROLLBACK) is over for the caller too: statements would
+  // otherwise run in autocommit mode and commit one by one.
   private checkDone(): void {
-    if (this.done) {
+    if (this.done || !this.conn.inTransaction) {
       throw new TxDoneError();
     }
   }

@@ -117,6 +117,7 @@ function uint64(view: DataView, pos: number): number {
 export class ZipReader {
   readonly #fd: number;
   readonly #size: number;
+  #closed = false;
   #baseOffset = 0;
   readonly files: ZipEntry[] = [];
 
@@ -132,11 +133,20 @@ export class ZipReader {
     }
   }
 
+  // Closes the file; closing again does nothing.
   close(): void {
+    if (this.#closed) {
+      return;
+    }
+    this.#closed = true;
     closeSync(this.#fd);
   }
 
   #readAt(p: Uint8Array, offset: number): number {
+    // the OS may have given the closed fd to another file by now
+    if (this.#closed) {
+      throw new Error("zip: reader is closed");
+    }
     let n = 0;
     while (n < p.length) {
       const m = readSync(this.#fd, p, n, p.length - n, offset + n);
@@ -453,6 +463,9 @@ export class ZipReader {
       inflate.once("close", resolve);
       inflate.once("error", reject);
     });
+    // an inflate error between two awaits must not be an unhandled rejection;
+    // the awaits below still see it
+    ended.catch(() => {});
 
     try {
       for (let left = length, pos = offset; left > 0;) {

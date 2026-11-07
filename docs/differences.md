@@ -44,6 +44,7 @@ Each row says what a client could see. "No client sends this" means only a hand-
 | A realtime client that stops reading | The server keeps every unsent message and delivers all of them if the client reads again. | The server closes the stream once more than 8 MiB are unsent. SDKs reconnect and subscribe again. |
 | The same OTP or MFA session sent twice at once (a double submit) | Both requests log in. | One logs in; the other gets `400 Invalid or expired OTP.` (`400 Invalid or expired MFA session.` when the repeated factor is a password), as for a used code. |
 | Several password-reset or verification requests for one email at once | Each sends an email. | One email; the two-minute resend limit starts when the request arrives. |
+| S3 answers a large upload's final step with `200` and an error body | The upload counts as successful, although the file was not stored. | The upload fails as any other S3 error does, and nothing references the missing file. |
 
 ### Timing
 

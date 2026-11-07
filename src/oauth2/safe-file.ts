@@ -205,11 +205,13 @@ async function safeFetch(rawURL: string, signal: AbortSignal, opts: SafeFileOpti
       return res;
     }
 
+    // the redirect's body is not read, also when the limit stops the download
+    await res.body?.cancel();
+
     if (requests >= maxRequests) {
       throw new Error(`stopped after ${maxRequests} redirects`);
     }
 
-    await res.body?.cancel();
     url = new URL(location, url);
   }
 }

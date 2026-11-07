@@ -156,6 +156,7 @@ export class ZipWriter {
   //
   // Throws the open or read error. Nothing is written when the open fails.
   addFile(localPath: string, zipPath: string): boolean {
+    this.#checkOpen();
     const info = lstatSync(localPath);
     if (!info.isFile() && !info.isSymbolicLink()) {
       return false;
@@ -178,8 +179,17 @@ export class ZipWriter {
   // the mode and mod time of its fstat. It may have been deleted by now. The
   // fd stays open.
   addOpenFile(fd: number, zipPath: string): void {
+    this.#checkOpen();
     const info = fstatSync(fd);
     this.#addEntry(fd, zipPath, info.mode, info.mtime);
+  }
+
+  // zip.Writer's "write to closed writer": the fd may belong to another
+  // file by now
+  #checkOpen(): void {
+    if (this.#closed) {
+      throw new Error("zip: write to closed writer");
+    }
   }
 
   #addEntry(fd: number, zipPath: string, mode: number, modified: Date): void {

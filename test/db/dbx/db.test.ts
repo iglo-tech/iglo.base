@@ -210,6 +210,34 @@ describe("TestDB_Transactional", () => {
     expect(() => tx.rollback()).toThrow(TxDoneError);
   });
 
+  test("a transaction SQLite rolled back on its own can't run more statements", () => {
+    const db = getPreparedDB();
+    db.newQuery("CREATE TABLE uniq (id INTEGER PRIMARY KEY)").execute();
+    db.newQuery("INSERT INTO uniq (id) VALUES (1)").execute();
+    const tx = db.begin();
+    tx.newQuery("INSERT INTO uniq (id) VALUES (2)").execute();
+    // OR ROLLBACK ends the whole transaction on the conflict
+    expect(() => tx.newQuery("INSERT OR ROLLBACK INTO uniq (id) VALUES (1)").execute()).toThrow();
+    expect(db.conn().inTransaction).toBe(false);
+    // a caller that swallows the error must not write in autocommit mode
+    expect(() => tx.newQuery("INSERT INTO uniq (id) VALUES (3)").execute()).toThrow(TxDoneError);
+    expect(() => tx.newQuery("SELECT 1").row()).toThrow(TxDoneError);
+    expect(() => tx.commit()).toThrow();
+    expect(db.newQuery("SELECT id FROM uniq ORDER BY id").column()).toEqual([1]);
+  });
+
+  test("a statement prepared in a transaction SQLite rolled back can't run", () => {
+    const db = getPreparedDB();
+    db.newQuery("CREATE TABLE uniq (id INTEGER PRIMARY KEY)").execute();
+    db.newQuery("INSERT INTO uniq (id) VALUES (1)").execute();
+    const tx = db.begin();
+    const insert = tx.newQuery("INSERT INTO uniq (id) VALUES ({:id})").prepare();
+    insert.bind({ id: 2 }).execute();
+    expect(() => tx.newQuery("INSERT OR ROLLBACK INTO uniq (id) VALUES (1)").execute()).toThrow();
+    expect(() => insert.bind({ id: 3 }).execute()).toThrow(TxDoneError);
+    expect(db.newQuery("SELECT id FROM uniq ORDER BY id").column()).toEqual([1]);
+  });
+
   test("a commit failure is reported and leaves no open transaction", () => {
     const db = deferredFKDB();
     expect(() =>

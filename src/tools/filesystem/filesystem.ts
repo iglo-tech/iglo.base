@@ -293,6 +293,10 @@ export class System {
     try {
       const w = this.newWriter(fileKey, opts);
 
+      // The consumer may stop the generator early (return() or a break),
+      // so the writer is cancelled in finally unless close() was reached:
+      // close() ends the writer whether it succeeds or fails.
+      let closing = false;
       try {
         const buf = new Uint8Array(Math.min(uploadBufferSize, Math.max(file.size, 1)));
         for (;;) {
@@ -303,12 +307,14 @@ export class System {
           w.write(buf.subarray(0, n));
           yield;
         }
-      } catch (err) {
-        w.cancel();
-        throw err;
-      }
 
-      w.close();
+        closing = true;
+        w.close();
+      } finally {
+        if (!closing) {
+          w.cancel();
+        }
+      }
     } finally {
       f.close();
     }
