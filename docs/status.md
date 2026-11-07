@@ -15,7 +15,7 @@ Nothing.
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.11 | review | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 2 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows. Worker is Sonnet (started before D37); later agents Gemini 3.8 Flash |
+| P.11 | fix (Gemini, docs) | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 2 | Own JS SDK (owner direction 2026-11-07, D36); [brief](briefs/P.11.md). P.12 (SDK releases) follows. Worker is Sonnet (started before D37); later agents Gemini 3.8 Flash |
 
 ## Done
 
@@ -100,6 +100,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-11-07 (P.11) | SDK | `react-native` points to the `.mjs` bundle (older Metro may not resolve it); source maps point to intermediate JS, not `sdk/src`. Reference flake: `s3-files` "concurrent requests generate one thumb", upstream made 2 thumbs once |
 | 2026-11-03 (M7.1b) | Logs | A restore suspends the log writer for the whole (S3) download; logs taken meanwhile are held in memory and lost when the restore succeeds |
 | 2026-11-03 (M7.1b) | Logs | SIGTERM while a backup zips loses the logs held during the zip |
 | 2026-11-03 (M7.1b) | db | `row()`/`rowAsync()` on `SELECT *` keep stale column names after a column is added (pre-existing; no request path today) |
