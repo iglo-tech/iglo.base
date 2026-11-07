@@ -20,5 +20,5 @@
       "@sdk-test-types/*": ["./types-test/*"]
     }
   },
-  "include": ["src", "types-test", "scripts/umd-entry.ts"]
+  "include": ["src", "types-test"]
 }

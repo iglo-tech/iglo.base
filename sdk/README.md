@@ -3,7 +3,7 @@ iglo.base JavaScript SDK
 
 JavaScript SDK (browser, Node, Deno, Bun and React Native) for the [iglo.base](https://github.com/iglo-tech/iglo.base) API.
 
-This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/js-sdk) v0.28.1 (MIT), maintained with iglo.base. It is a drop-in replacement for the `pocketbase` package (same default export, named exports and entry points) and also works with PocketBase v0.41.0.
+This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/js-sdk) v0.28.1 (MIT), maintained with iglo.base. It keeps the `pocketbase` package's API (same default export and named exports) and works with PocketBase v0.41.0 too, but ships ES modules only (no `./cjs`, `./umd` or script-tag build).
 
 - [Installation](#installation)
 - [Usage](#usage)

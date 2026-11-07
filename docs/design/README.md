@@ -28,7 +28,7 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 - **Upstream's dashboard is reused** with a small, listed patch set and iglo.base branding only (D17).
 - **Upstream releases after v0.41.0:** security and bug fixes ported by hand (D16).
 - **Release binaries:** linux-x64 and linux-arm64 (D18, D24, D35).
-- **A JavaScript SDK of its own:** upstream's SDK v0.28.1 is copied into `sdk/` and published to npm as `iglo.base`, a drop-in for the `pocketbase` package (D36).
+- **A JavaScript SDK of its own:** upstream's SDK v0.28.1 is copied into `sdk/` and published to npm as `iglo.base`. It keeps the `pocketbase` package's API, ships ES modules only (no `./cjs`, `./umd` or script-tag build; D36).
 - **Filters and rules are ported file by file,** aiming for the same SQL, because they are security boundaries.
 - **Upstream's names stay:** `pb_data`, `pb_public`, `PB_*` variables, flags and commands.
 
