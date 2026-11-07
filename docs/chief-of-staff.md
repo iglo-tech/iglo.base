@@ -22,18 +22,18 @@ The lead role from the [work plan](design/12-work-plan.md), run by a scheduled a
 | `brief` | Write the brief from the work plan's template: exact upstream files at v0.41.0 (read them in `.upstream/pocketbase` after `bun run upstream:prepare`, or the same pinned checkout at `/home/t3-code/upstream/pocketbase` on this host), owned paths, acceptance commands. Record the task as active in `status.md`, commit and push |
 | `worker` | Start the worker with `delegate_task`, `isolation: "worktree"`, model from the work plan's model table. The brief is its whole context, followed by the worker instructions below |
 | `review` | When the worker reports its PR with the local check and `test:reference` passing, start the reviewer (`delegate_task`, `isolation: "worktree"`, `role: "review"`) with the reviewer instructions below, the PR URL and head commit, and nothing about your own opinion. CI is not waited for (D25) |
-| `fix` | Judge every finding yourself (the council is you and the reviewer, D25). Agree: for each finding, find its whole class first (the same mistake on sibling paths, inputs and fields) so the next round does not find the next instance; start one Gemini fixer with all of them and the instruction to fix each finding's whole class. Disagree: answer in a PR comment with upstream's behavior and D26 as the reference. Exotic-input findings that are handled safely go to the hardening backlog in `status.md`. Then start a re-review of the new head: the fixes and the code they touch. Count rounds in `status.md` |
+| `fix` | Judge every finding yourself (the council is you and the reviewer, D25). Agree: for each finding, find its whole class first (the same mistake on sibling paths, inputs and fields) so the next round does not find the next instance; start one Haiku fixer with all of them and the instruction to fix each finding's whole class. Disagree: answer in a PR comment with upstream's behavior and D26 as the reference. Exotic-input findings that are handled safely go to the hardening backlog in `status.md`. Then start a re-review of the new head: the fixes and the code they touch. Count rounds in `status.md` |
 | `merge` | The reviewer approved the head, or you and the reviewer agree that what remains is backlog, and the local check passed on that head: `gh pr merge --squash --delete-branch`, then `git pull --ff-only` |
 
 After three council rounds without agreement, decide yourself: upstream's behavior (scenarios, differential suite) is the tiebreaker. Write the reasoning in a PR comment, then merge or make the change.
 
 ## Agents
 
-Workers on Gemini 3.8 Flash, reviewer on Claude Opus 5.5 (D37, amends D29). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
+Workers on Claude Haiku 5.5, reviewer on Claude Opus 5.5 (D37). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
 
 | Agent | `target` |
 |---|---|
-| Worker, fixer or helper: all coding and testing, the default for every agent except the reviewer (owner direction 2026-11-07, D37) | `{ "providerInstanceId": "antigravity", "model": "gemini-3.8-flash", "options": { "thinking_level": "high" } }` |
+| Worker, fixer or helper: all coding and testing, the default for every agent except the reviewer (owner direction 2026-11-07, D37) | `{ "providerInstanceId": "claudeAgent", "model": "claude-haiku-5-5", "options": { "effort": "high" } }` |
 | Opus reviewer (a fresh agent, never the task's worker or fixer) | `{ "providerInstanceId": "claudeAgent", "model": "claude-opus-5-5", "options": { "effort": "high" } }` |
 
 ### Worker instructions
@@ -76,7 +76,7 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md (brief:
 
 ## Rules
 
-- **Token thrift (owner direction, 2026-10-29).** Usage limits are the constraint, not wall time. Claude tokens are the scarce ones (D37): the lead and the Opus reviewer judge, they do not code. Even small fixes go to one Gemini fixer with all findings of a round at once; the lead edits only `status.md`, briefs and plan or decision docs; re-reviews cover the fixes only; keep `status.md` short (one line per merged task, details live in the PR); read only the parts of files you need.
+- **Token thrift (owner direction, 2026-10-29).** Usage limits are the constraint, not wall time. Opus tokens are the scarce ones (D37): the lead and the Opus reviewer judge, they do not code. Even small fixes go to one Haiku fixer with all findings of a round at once; the lead edits only `status.md`, briefs and plan or decision docs; re-reviews cover the fixes only; keep `status.md` short (one line per merged task, details live in the PR); read only the parts of files you need.
 
 - **Focus (owner direction, 2026-10-28).** Ship a working MVP for linux-x64 (D24). Follow the critical path; do not spend agents on macOS, arm64, optional cleanups or carried notes unless they block the current task. CI is one Linux x64 job; a check is green when that job passes.
 

@@ -328,7 +328,7 @@ Tasks P.11 and P.12, owner direction 2026-11-07: "I want own the SDK, start with
 - **Why:** the owner wants a client that follows iglo.base. The SDK is a client library, not a server extension surface (D5 is unaffected); it adds a second published artifact next to the executables and the Docker image.
 - **Considered:** a separate repository (rejected by the owner); a scoped `@iglo-tech/...` name (needs an npm organization; `iglo.base` matches the project and was free on 2026-11-07); GitHub Packages (consumers would need registry auth even for a public package).
 
-## D37. Gemini 3.8 Flash does the coding
+## D37. A cheaper model does the coding
 
 Owner direction 2026-11-07: "offload more work to Gemini Flash 3.8, so any coding, testing etc. should be done by this model, Opus 5.5 is just for making sure the stuff was delivered the right way, there are no gaps, no code quality issues"; switch whenever possible without stopping running tasks. Amends [D29](#d29-anthropic-models-only).
 
@@ -336,6 +336,7 @@ Owner direction 2026-11-07: "offload more work to Gemini Flash 3.8, so any codin
 - **Switch:** agents already running when this was decided (the P.11 Sonnet worker) finish their run; every agent started after it uses Gemini.
 - **Why:** Claude usage limits are the constraint; coding is the bulk of the tokens.
 - **Consequence:** the council (D25) is unchanged. A Gemini worker or fixer that fails or hangs gets the usual one retry (runbook, Failures) on Gemini; agents do not fall back to Claude models for coding.
+- **Amended 2026-11-07 (owner: "switch gemini to haiku 5.5"):** workers, fixers and helpers run on Claude Haiku 5.5 at high effort (`claudeAgent` provider) instead of Gemini, after the Antigravity quota stopped four Gemini agents in one day. Everything else stands: Opus only judges, the lead does not code. The Gemini fixer stopped on the quota was replaced by a Haiku fixer.
 
 ## D38. SSR in the SDK
 
@@ -345,3 +346,11 @@ Task P.13, owner direction 2026-11-07: SSR must work out of the box with any Jav
 - **Why:** every problem PocketBase lists has an SDK answer, and iglo.base's stateless tokens make refresh races harmless. The short browser token keeps the long-lived session away from page JavaScript at no server cost.
 - **Considered:** a JavaScript-readable cookie for everyone (Supabase, PocketBase's advice): simpler, but any XSS steals a 7-day session; iglo.base reading the auth cookie itself: new API behavior and a CSRF surface on the server, and nothing in the design needs it; JWKS tokens: would change the token format.
 - **Consequence:** a revoked session can render as signed in for up to the cache TTL; data calls are unaffected. Apps without superuser credentials get the weaker readable cookie.
+
+## D39. Haiku 5.5 does the coding
+
+Owner direction 2026-11-07 (22:53 UTC): "switch gemini to haiku 5.5". Amends [D37](#d37-gemini-38-flash-does-the-coding).
+
+- **Decision:** workers, fixers and helpers run on Claude Haiku 5.5 (`claudeAgent` provider, high effort) instead of Gemini 3.8 Flash. The lead and the reviewer stay on Claude Opus 5.5 and still only judge.
+- **Switch:** the P.13b round-1 Gemini fixer had already stopped on the Antigravity quota; its uncommitted work was pushed as a WIP commit and a Haiku fixer continues it. Every agent started after this uses Haiku.
+- **Consequence:** coding now spends Claude usage too, so Claude usage or rate limits pause the whole pipeline (runbook, Pace). No fallback to Gemini or other models.
