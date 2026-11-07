@@ -18,7 +18,7 @@ How the [port plan](09-port-plan.md) is split into tasks that agents do one at a
 | Work | Model |
 |---|---|
 | Lead | Claude Opus 5.5 (judges; does not code, D37) |
-| Workers, fixers and helpers (all coding and testing, including bulk mechanical work) | Claude Haiku 5.5 at high effort (owner direction 2026-11-07, D37; was Gemini 3.8 Flash earlier that day) |
+| Workers, fixers and helpers (all coding and testing, including bulk mechanical work) | Claude Haiku 5.5 at high effort (owner direction 2026-11-07, D39; was Gemini 3.8 Flash earlier that day, D37) |
 | Reviewer | Claude Opus 5.5 at high effort, a fresh agent (D29) |
 
 ### One task

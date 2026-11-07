@@ -29,7 +29,7 @@ After three council rounds without agreement, decide yourself: upstream's behavi
 
 ## Agents
 
-Workers on Claude Haiku 5.5, reviewer on Claude Opus 5.5 (D37). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
+Workers on Claude Haiku 5.5, reviewer on Claude Opus 5.5 (D37, D39). Call `orchestrator_capabilities` once per run before the first `delegate_task`.
 
 | Agent | `target` |
 |---|---|
@@ -76,7 +76,7 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md (brief:
 
 ## Rules
 
-- **Token thrift (owner direction, 2026-10-29).** Usage limits are the constraint, not wall time. Opus tokens are the scarce ones (D37): the lead and the Opus reviewer judge, they do not code. Even small fixes go to one Haiku fixer with all findings of a round at once; the lead edits only `status.md`, briefs and plan or decision docs; re-reviews cover the fixes only; keep `status.md` short (one line per merged task, details live in the PR); read only the parts of files you need.
+- **Token thrift (owner direction, 2026-10-29).** Usage limits are the constraint, not wall time. Opus tokens are the scarce ones (D37, D39): the lead and the Opus reviewer judge, they do not code. Even small fixes go to one Haiku fixer with all findings of a round at once; the lead edits only `status.md`, briefs and plan or decision docs; re-reviews cover the fixes only; keep `status.md` short (one line per merged task, details live in the PR); read only the parts of files you need.
 
 - **Focus (owner direction, 2026-10-28).** Ship a working MVP for linux-x64 (D24). Follow the critical path; do not spend agents on macOS, arm64, optional cleanups or carried notes unless they block the current task. CI is one Linux x64 job; a check is green when that job passes.
 
