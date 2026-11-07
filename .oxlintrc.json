@@ -8,7 +8,7 @@
   "env": {
     "builtin": true
   },
-  "ignorePatterns": ["dist/**", "ui/**"],
+  "ignorePatterns": ["dist/**", "sdk/dist/**", "ui/**"],
   "rules": {
     "no-restricted-imports": [
       "error",
@@ -23,5 +23,20 @@
     ],
     "typescript/no-explicit-any": "error",
     "eqeqeq": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["sdk/**"],
+      "rules": {
+        "eqeqeq": "off",
+        "no-underscore-dangle": "off"
+      }
+    },
+    {
+      "files": ["sdk/test/**"],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ]
 }

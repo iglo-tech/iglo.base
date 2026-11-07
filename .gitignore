@@ -13,3 +13,7 @@
 # Dashboard build output and dependencies (bun run ui:build).
 /ui/dist/
 /ui/node_modules/
+
+# SDK build output (bun run sdk:build).
+/sdk/dist/
+/sdk/node_modules/

@@ -1,0 +1,60 @@
+// js-sdk v0.28.1 src/services/FileService.ts
+import type { LooseObject } from "@sdk/tools/loose";
+import { BaseService } from "@sdk/services/BaseService";
+import { type CommonOptions, type FileOptions, serializeQueryParams } from "@sdk/tools/options";
+
+export class FileService extends BaseService {
+  /**
+   * @deprecated Please replace with `pb.files.getURL()`.
+   */
+  getUrl(record: LooseObject, filename: string, queryParams: FileOptions = {}): string {
+    console.warn("Please replace pb.files.getUrl() with pb.files.getURL()");
+    return this.getURL(record, filename, queryParams);
+  }
+
+  /**
+   * Builds and returns an absolute record file url for the provided filename.
+   */
+  getURL(record: LooseObject, filename: string, queryParams: FileOptions = {}): string {
+    if (!filename || !record?.id || !(record?.collectionId || record?.collectionName)) {
+      return "";
+    }
+
+    const parts = [];
+    parts.push("api");
+    parts.push("files");
+    parts.push(encodeURIComponent(record.collectionId || record.collectionName));
+    parts.push(encodeURIComponent(record.id));
+    parts.push(encodeURIComponent(filename));
+
+    let result = this.client.buildURL(parts.join("/"));
+
+    // normalize the download query param for consistency with the Dart sdk
+    if (queryParams.download === false) {
+      delete queryParams.download;
+    }
+
+    const params = serializeQueryParams(queryParams);
+    if (params) {
+      result += (result.includes("?") ? "&" : "?") + params;
+    }
+
+    return result;
+  }
+
+  /**
+   * Requests a new private file access token for the current auth model.
+   *
+   * @throws {ClientResponseError}
+   */
+  async getToken(options?: CommonOptions): Promise<string> {
+    options = Object.assign(
+      {
+        method: "POST",
+      },
+      options,
+    );
+
+    return this.client.send("/api/files/token", options).then((data) => data?.token || "");
+  }
+}
