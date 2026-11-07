@@ -1,12 +1,14 @@
 // docs/design/13-ssr.md ("Clients", "Browser client and realtime")
 import Client from "@sdk/Client";
 import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import { getTokenPayload } from "@sdk/tools/jwt";
 import type { RecordModel } from "@sdk/tools/dtos";
 import type { SendOptions } from "@sdk/tools/options";
+import type { Loose } from "@sdk/tools/loose";
 import type { CreateSuperuserClientOptions } from "@sdk/ssr/types";
 import { registerAutoRefresh } from "@sdk/tools/refresh";
 
-const DEFAULT_BROWSER_TOKEN_DURATION_SEC = 15 * 60; // 15 minutes
+const DEFAULT_BROWSER_TOKEN_DURATION_SEC = 15 * 60; // 15 minutes (900 seconds)
 const DEFAULT_AUTO_REFRESH_THRESHOLD_SEC = 300; // 5 minutes
 
 export class SuperuserClient extends Client {
@@ -18,27 +20,32 @@ export class SuperuserClient extends Client {
 
     this._options = options;
     this.autoCancellation(false);
+  }
 
-    if (options.fetch) {
-      const customFetch = options.fetch;
-      const originalBeforeSend = this.beforeSend;
-      this.beforeSend = (url: string, sendOptions: SendOptions) => {
-        if (!sendOptions.fetch) {
-          sendOptions.fetch = customFetch;
-        }
-        if (originalBeforeSend) {
-          return originalBeforeSend(url, sendOptions);
-        }
-        return { url, options: sendOptions };
-      };
+  /**
+   * Overriding send ensures cache: 'no-store' and custom fetch stick
+   * even if application code assigns pb.beforeSend.
+   */
+  override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
+    options.cache = "no-store";
+    if (this._options.fetch && !options.fetch) {
+      options.fetch = this._options.fetch;
     }
+    return super.send<T>(path, options);
   }
 
   async init(): Promise<this> {
     const threshold = this._options.autoRefreshThreshold ?? DEFAULT_AUTO_REFRESH_THRESHOLD_SEC;
 
     if (this._options.token) {
-      this.authStore.save(this._options.token, null);
+      const payload = getTokenPayload(this._options.token);
+      const initialRecord: RecordModel = {
+        id: payload.id || "",
+        collectionId: payload.collectionId || "_superusers",
+        collectionName: "_superusers",
+      };
+      this.authStore.save(this._options.token, initialRecord);
+
       if (threshold > 0) {
         registerAutoRefresh(
           this,
@@ -58,7 +65,7 @@ export class SuperuserClient extends Client {
     return this;
   }
 
-  async mintBrowserToken(
+  async impersonate(
     collectionOrRecord: string | RecordModel,
     recordIdOrDuration?: string | number,
     duration?: number,
@@ -101,22 +108,6 @@ export class SuperuserClient extends Client {
       token: res.token,
       record: res.record,
     };
-  }
-
-  async mintUserToken(
-    collectionOrRecord: string | RecordModel,
-    recordIdOrDuration?: string | number,
-    duration?: number,
-  ): Promise<{ token: string; record: RecordModel }> {
-    return this.mintBrowserToken(collectionOrRecord, recordIdOrDuration, duration);
-  }
-
-  async impersonate(
-    collectionOrRecord: string | RecordModel,
-    recordIdOrDuration?: string | number,
-    duration?: number,
-  ): Promise<{ token: string; record: RecordModel }> {
-    return this.mintBrowserToken(collectionOrRecord, recordIdOrDuration, duration);
   }
 }
 

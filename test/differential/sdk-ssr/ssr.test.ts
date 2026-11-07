@@ -13,7 +13,7 @@ import {
 } from "iglo.base/ssr";
 import { password, sdkTest, superuserToken } from "@test/differential/sdk/harness";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
-import { ClientResponseError } from "@sdk/ClientResponseError";
+import { ClientResponseError } from "iglo.base";
 
 const noMFA = ({ dataDir }: { dataDir: string }) => setMFA("users", false, "")({ dataDir });
 
@@ -61,89 +61,111 @@ describe("SSR differential", () => {
         },
       };
 
-      let mockClock = 1_000_000_000;
+      // Near real-time clock (not 1970) so half-life calculations match real server token exp
+      let mockClock = Date.now();
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
-      // Warm the cache for both users
-      await sessionCache.set(authA.token, authA.record, mockClock);
-      await sessionCache.set(authB.token, authB.record, mockClock);
-
-      await createServerClient({
-        url: env.url,
-        cookies: cookiesA,
-        sessionCache,
-        clock: () => mockClock,
-      });
-
-      await createServerClient({
-        url: env.url,
-        cookies: cookiesB,
-        sessionCache,
-        clock: () => mockClock,
-      });
-
-      // Count requests reaching the server
+      // Start counting proxy in front of the server to count requests at the server boundary
       let sessionCheckRequests = 0;
       let dataRequests = 0;
 
-      const countingFetch = async (
-        input: string | URL | Request,
-        init?: RequestInit,
-      ): Promise<Response> => {
-        const urlStr = String(input instanceof Request ? input.url : input);
-        if (urlStr.includes("/auth-refresh")) {
-          sessionCheckRequests++;
-        } else {
-          dataRequests++;
-        }
-        return fetch(input, init);
-      };
+      const serverUrl = new URL(env.url);
+      const proxy = Bun.serve({
+        port: 0,
+        idleTimeout: 60,
+        async fetch(req) {
+          const url = new URL(req.url);
+          if (url.pathname.includes("/auth-refresh")) {
+            sessionCheckRequests++;
+          } else {
+            dataRequests++;
+          }
+          const target = new URL(url.pathname + url.search, env.url);
+          const headers = new Headers(req.headers);
+          headers.set("host", serverUrl.host);
+          const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== null;
+          return fetch(target.toString(), {
+            method: req.method,
+            headers,
+            body: hasBody ? req.body : undefined,
+            ...(hasBody ? { duplex: "half" } : {}),
+          });
+        },
+      });
 
-      // 200 parallel requests for user A and 200 for user B (400 total)
-      const tasksA = Array.from({ length: 200 }, async () => {
-        const pb = await createServerClient({
-          url: env.url,
+      const proxyBaseUrl = `http://127.0.0.1:${proxy.port}`;
+
+      try {
+        // Initial request learns the collection lifetime from server response
+        await createServerClient({
+          url: proxyBaseUrl,
+          origin: "http://localhost:3000",
           cookies: cookiesA,
           sessionCache,
           clock: () => mockClock,
-          fetch: countingFetch,
         });
-        return pb.collection("users").getOne(authA.record.id);
-      });
 
-      const tasksB = Array.from({ length: 200 }, async () => {
-        const pb = await createServerClient({
-          url: env.url,
+        await createServerClient({
+          url: proxyBaseUrl,
+          origin: "http://localhost:3000",
           cookies: cookiesB,
           sessionCache,
           clock: () => mockClock,
-          fetch: countingFetch,
         });
-        return pb.collection("users").getOne(authB.record.id);
-      });
 
-      const [resA, resB] = await Promise.all([Promise.all(tasksA), Promise.all(tasksB)]);
+        // Reset server-side request counters before testing warm cache
+        sessionCheckRequests = 0;
+        dataRequests = 0;
 
-      // With warm cache: 0 session check requests reached the server, counted at the server
-      expect(sessionCheckRequests).toBe(0);
-      expect(dataRequests).toBe(400);
+        // 200 parallel requests for user A and 200 for user B (400 total)
+        // Requests use plain createServerClient without any custom fetch
+        const tasksA = Array.from({ length: 200 }, async () => {
+          const pb = await createServerClient({
+            url: proxyBaseUrl,
+            origin: "http://localhost:3000",
+            cookies: cookiesA,
+            sessionCache,
+            clock: () => mockClock,
+          });
+          return pb.collection("users").getOne(authA.record.id);
+        });
 
-      // Verify data isolation: every response shows only its own user's data
-      for (const record of resA) {
-        expect(record.id).toBe(authA.record.id);
-        expect(record.email).toBe("test@example.com");
+        const tasksB = Array.from({ length: 200 }, async () => {
+          const pb = await createServerClient({
+            url: proxyBaseUrl,
+            origin: "http://localhost:3000",
+            cookies: cookiesB,
+            sessionCache,
+            clock: () => mockClock,
+          });
+          return pb.collection("users").getOne(authB.record.id);
+        });
+
+        const [resA, resB] = await Promise.all([Promise.all(tasksA), Promise.all(tasksB)]);
+
+        // With warm cache: 0 session check requests reached the server, counted by proxy in front of server
+        expect(sessionCheckRequests).toBe(0);
+        expect(dataRequests).toBe(400);
+
+        // Verify data isolation: every response shows only its own user's data
+        for (const record of resA) {
+          expect(record.id).toBe(authA.record.id);
+          expect(record.email).toBe("test@example.com");
+        }
+        for (const record of resB) {
+          expect(record.id).toBe(authB.record.id);
+          expect(record.email).toBe("test2@example.com");
+        }
+
+        env.record("results.count", {
+          countA: resA.length,
+          countB: resB.length,
+          sessionCheckRequests,
+          dataRequests,
+        });
+      } finally {
+        proxy.stop(true);
       }
-      for (const record of resB) {
-        expect(record.id).toBe(authB.record.id);
-        expect(record.email).toBe("test2@example.com");
-      }
-
-      env.record("results.count", {
-        countA: resA.length,
-        countB: resB.length,
-        sessionCheckRequests,
-        dataRequests,
-      });
     },
   );
 
@@ -166,7 +188,7 @@ describe("SSR differential", () => {
         client.collection("users").authWithPassword("revoke_test@example.com", password),
       );
 
-      let mockClock = 1_000_000_000;
+      let mockClock = Date.now();
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
       const cookieVal = [
@@ -179,6 +201,7 @@ describe("SSR differential", () => {
       // Warm the session cache
       await createServerClient({
         url: env.url,
+        origin: "http://localhost:3000",
         cookies: { getAll: () => cookieVal },
         sessionCache,
         clock: () => mockClock,
@@ -196,6 +219,7 @@ describe("SSR differential", () => {
       const clearedCookiesDataCall: CookieToSet[] = [];
       const pbData = await createServerClient({
         url: env.url,
+        origin: "http://localhost:3000",
         cookies: {
           getAll: () => cookieVal,
           setAll: (c) => {
@@ -210,16 +234,15 @@ describe("SSR differential", () => {
       try {
         await pbData.collection("users").getOne(user.id);
       } catch (err: unknown) {
-        const resErr = err as { constructor?: { name?: string }; status?: number } | null;
-        if (
-          err instanceof ClientResponseError ||
-          resErr?.constructor?.name === "ClientResponseError" ||
-          resErr?.status === 404
-        ) {
+        if (err instanceof ClientResponseError && (err.status === 404 || err.status === 401)) {
           dataCallRejected = true;
         }
       }
       expect(dataCallRejected).toBe(true);
+
+      // An ordinary data call 401/404 does not clear the session or cookie
+      expect(clearedCookiesDataCall.length).toBe(0);
+      expect(pbData.authStore.isValid).toBe(true);
 
       // 2. Fresh login, then revoke and check after cache TTL
       const freshAuth = await env.step("auth fresh", () =>
@@ -249,6 +272,7 @@ describe("SSR differential", () => {
       const clearedCookiesTTL: CookieToSet[] = [];
       const pbTTL = await createServerClient({
         url: env.url,
+        origin: "http://localhost:3000",
         cookies: {
           getAll: () => freshCookie,
           setAll: (c) => {
@@ -260,6 +284,7 @@ describe("SSR differential", () => {
       });
 
       // Cache TTL expired -> session check called server -> server returned 401 -> cleared!
+      expect(pbTTL.authStore.isValid).toBe(false);
       expect(pbTTL.authStore.token).toBe("");
       expect(clearedCookiesTTL.length).toBeGreaterThan(0);
       expect(clearedCookiesTTL[0]!.value).toBe("");
@@ -292,8 +317,8 @@ describe("SSR differential", () => {
         token: superuserToken,
       });
 
-      const minted = await env.step("mint browser token", () =>
-        superuser.mintBrowserToken("users", user.id, 900),
+      const minted = await env.step("impersonate browser token", () =>
+        superuser.impersonate("users", user.id, 900),
       );
 
       expect(minted.token).toBeDefined();

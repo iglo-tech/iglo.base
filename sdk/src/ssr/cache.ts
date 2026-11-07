@@ -21,11 +21,13 @@ export async function hashToken(token: string): Promise<string> {
 }
 
 export function createSessionCache(options?: SessionCacheOptions): SessionCache {
+  const ttl = options?.ttl ?? DEFAULT_TTL_MS;
   const maxEntries = options?.maxEntries ?? DEFAULT_MAX_ENTRIES;
   const clock = options?.clock ?? Date.now;
 
   const map = new Map<string, SessionCacheEntry>();
   const inFlight = new Map<string, Promise<unknown>>();
+  const collectionLifetimes = new Map<string, number>();
 
   return {
     async get(token: string): Promise<SessionCacheEntry | undefined> {
@@ -73,6 +75,7 @@ export function createSessionCache(options?: SessionCacheOptions): SessionCache 
     clear(): void {
       map.clear();
       inFlight.clear();
+      collectionLifetimes.clear();
     },
 
     async runSingleFlight<T>(token: string, fn: () => Promise<T>): Promise<T> {
@@ -97,6 +100,29 @@ export function createSessionCache(options?: SessionCacheOptions): SessionCache 
     get size(): number {
       return map.size;
     },
+
+    get ttl(): number {
+      return ttl;
+    },
+
+    get maxEntries(): number {
+      return maxEntries;
+    },
+
+    getCollectionLifetime(collectionId: string): number | undefined {
+      if (!collectionId) {
+        return undefined;
+      }
+      return collectionLifetimes.get(collectionId);
+    },
+
+    setCollectionLifetime(collectionId: string, lifetimeSec: number): void {
+      if (!collectionId || lifetimeSec <= 0) {
+        return;
+      }
+      collectionLifetimes.set(collectionId, lifetimeSec);
+    },
+
     clockOffsetMs: 0,
   };
 }

@@ -92,6 +92,17 @@ const ssrOut = await Bun.build({
   format: "esm",
   outdir: dist,
   naming: "ssr.es.mjs",
+  plugins: [
+    {
+      name: "external-iglo-base",
+      setup(build) {
+        build.onResolve(
+          { filter: /^@sdk\/(Client|ClientResponseError|stores\/BaseAuthStore)$/ },
+          () => ({ path: "./iglo-base.es.mjs", external: true }),
+        );
+      },
+    },
+  ],
 });
 if (!ssrOut.success) {
   throw new Error(`Bun.build (ssr) failed:\n${ssrOut.logs.map(String).join("\n")}`);

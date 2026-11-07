@@ -10,13 +10,17 @@ import type { Cookie, CookieAdapter, CreateServerClientOptions } from "@sdk/ssr/
 import {
   DEFAULT_COOKIE_KEY,
   SSR_NO_CACHE_HEADERS,
-  buildClearedSessionCookie,
+  buildClearedSessionCookies,
   buildSessionCookieToSet,
   findSessionCookie,
   isHttpLocalUrl,
   normalizeCookies,
 } from "@sdk/ssr/cookies";
-import { DEFAULT_TTL_MS } from "@sdk/ssr/cache";
+
+type RefreshOutcome =
+  | { kind: "ok"; token: string; record: AuthRecord; serverDateHeader?: string }
+  | { kind: "revoked"; status: number; error: ClientResponseError }
+  | { kind: "transient"; status?: number; error: unknown };
 
 export class ServerClient extends Client {
   readonly cookies: CookieAdapter;
@@ -25,6 +29,9 @@ export class ServerClient extends Client {
   private readonly _options: CreateServerClientOptions;
   private readonly _clock: () => number;
   private _clockOffsetMs: number = 0;
+  private _lastServerDateHeader?: string;
+  private _initialized: boolean = false;
+  private _lastKnownToken: string = "";
 
   readonly auth: {
     verify: () => Promise<AuthRecord>;
@@ -40,28 +47,20 @@ export class ServerClient extends Client {
     this._clock = options.clock ?? Date.now;
     this._clockOffsetMs = options.sessionCache?.clockOffsetMs ?? 0;
 
+    // Secure & __Host- follow the app's own request / origin, never the iglo.base URL
     if (options.secure !== undefined) {
       this._isSecure = options.secure;
+    } else if ((options.cookies as { isSecure?: boolean }).isSecure !== undefined) {
+      this._isSecure = (options.cookies as { isSecure?: boolean }).isSecure!;
+    } else if (options.origin) {
+      this._isSecure = !isHttpLocalUrl(options.origin);
+    } else if (options.request) {
+      this._isSecure = !isHttpLocalUrl(options.request.url);
     } else {
-      const isLocal = isHttpLocalUrl(options.url);
-      this._isSecure = !isLocal;
+      this._isSecure = true;
     }
 
     this.autoCancellation(false);
-
-    const originalBeforeSend = this.beforeSend;
-    this.beforeSend = (url: string, sendOptions: SendOptions) => {
-      // Next.js and intermediate caches must not store SSR responses
-      sendOptions.cache = "no-store";
-      if (this._options.fetch && !sendOptions.fetch) {
-        sendOptions.fetch = this._options.fetch;
-      }
-
-      if (originalBeforeSend) {
-        return originalBeforeSend(url, sendOptions);
-      }
-      return { url, options: sendOptions };
-    };
 
     const originalAfterSend = this.afterSend;
     this.afterSend = async (
@@ -71,6 +70,7 @@ export class ServerClient extends Client {
     ): Promise<Loose> => {
       const dateHeader = response.headers?.get?.("date") || response.headers?.get?.("Date");
       if (dateHeader) {
+        this._lastServerDateHeader = dateHeader;
         const serverTimeMs = Date.parse(dateHeader);
         if (!Number.isNaN(serverTimeMs)) {
           this._clockOffsetMs = serverTimeMs - this._clock();
@@ -80,8 +80,29 @@ export class ServerClient extends Client {
         }
       }
 
-      if (response.status === 401 && this.authStore.token) {
-        await this._handleRevoked(this.authStore.token);
+      // Learn collection lifetime from auth responses seen by SDK
+      if (response.ok && data && typeof data === "object") {
+        const respObj = data as Record<string, unknown>;
+        const token = typeof respObj["token"] === "string" ? respObj["token"] : "";
+        if (token && dateHeader) {
+          const payload = getTokenPayload(token);
+          // Impersonate tokens have refreshable === false; exclude them
+          if (payload.exp && payload.refreshable !== false) {
+            const serverTimeMs = Date.parse(dateHeader);
+            if (!Number.isNaN(serverTimeMs)) {
+              const serverTimeSec = Math.floor(serverTimeMs / 1000);
+              const lifetime = payload.exp - serverTimeSec;
+              const rec = respObj["record"] as Record<string, unknown> | undefined;
+              const collectionId =
+                payload.collectionId ||
+                (typeof rec?.["collectionId"] === "string" ? rec["collectionId"] : "") ||
+                (typeof rec?.["collectionName"] === "string" ? rec["collectionName"] : "");
+              if (lifetime > 0 && collectionId && this._options.sessionCache) {
+                this._options.sessionCache.setCollectionLifetime(collectionId, lifetime);
+              }
+            }
+          }
+        }
       }
 
       if (originalAfterSend) {
@@ -92,9 +113,47 @@ export class ServerClient extends Client {
       return data;
     };
 
+    // Listen to auth changes on the server client (sign-in, sign-out, clear)
+    let isHandlingAuthStoreChange = false;
+    this.authStore.onChange((newToken, record) => {
+      if (!this._initialized || isHandlingAuthStoreChange) {
+        return;
+      }
+      isHandlingAuthStoreChange = true;
+      try {
+        if (newToken) {
+          this._lastKnownToken = newToken;
+          const payload = getTokenPayload(newToken);
+          if (record && payload.id && record.id !== payload.id) {
+            record = null;
+          }
+          if (this._options.sessionCache) {
+            this._options.sessionCache.set(newToken, record, this._clock()).catch(() => {});
+          }
+          this._writeSessionCookie(newToken, record);
+        } else {
+          this._handleRevoked(this._lastKnownToken);
+        }
+      } finally {
+        isHandlingAuthStoreChange = false;
+      }
+    });
+
     this.auth = {
       verify: () => this.verifyAuth(),
     };
+  }
+
+  /**
+   * Overriding send ensures cache: 'no-store' and custom fetch stick
+   * even if application code assigns pb.beforeSend.
+   */
+  override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
+    options.cache = "no-store";
+    if (this._options.fetch && !options.fetch) {
+      options.fetch = this._options.fetch;
+    }
+    return super.send<T>(path, options);
   }
 
   async verifyAuth(): Promise<AuthRecord> {
@@ -106,6 +165,7 @@ export class ServerClient extends Client {
    */
   async init(): Promise<this> {
     await this._loadCookieAndCheck();
+    this._initialized = true;
     return this;
   }
 
@@ -137,9 +197,6 @@ export class ServerClient extends Client {
             .split(";")[0]
             ?.trim() ?? "";
       }
-      try {
-        rawJson = decodeURIComponent(rawJson);
-      } catch {}
       const parsed = JSON.parse(rawJson);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         token = typeof parsed["token"] === "string" ? parsed["token"] : "";
@@ -148,6 +205,11 @@ export class ServerClient extends Client {
     } catch {}
 
     if (token) {
+      this._lastKnownToken = token;
+      const payload = getTokenPayload(token);
+      if (record && payload.id && record.id !== payload.id) {
+        record = null;
+      }
       this.authStore.save(token, record);
     } else {
       // Fallback to loadFromCookie
@@ -155,6 +217,13 @@ export class ServerClient extends Client {
         ? matched.value
         : `${matched.name}=${matched.value}`;
       this.authStore.loadFromCookie(cookiePayload, matched.name);
+      if (this.authStore.token) {
+        this._lastKnownToken = this.authStore.token;
+        const payload = getTokenPayload(this.authStore.token);
+        if (this.authStore.record && payload.id && this.authStore.record.id !== payload.id) {
+          this.authStore.save(this.authStore.token, null);
+        }
+      }
     }
 
     if (!this.authStore.token) {
@@ -167,6 +236,12 @@ export class ServerClient extends Client {
   private async _performSessionCheck(force: boolean): Promise<AuthRecord> {
     const token = this.authStore.token;
     if (!token) {
+      if (force) {
+        throw new ClientResponseError({
+          status: 401,
+          data: { message: "The request requires valid authentication token." },
+        });
+      }
       return null;
     }
 
@@ -188,30 +263,37 @@ export class ServerClient extends Client {
     }
 
     const sessionCache = this._options.sessionCache;
-    const ttlMs = this._options.sessionCache ? DEFAULT_TTL_MS : 0;
+    const ttlMs = sessionCache ? sessionCache.ttl : 0;
+    const collectionId =
+      payload.collectionId ||
+      this.authStore.record?.collectionId ||
+      this.authStore.record?.collectionName;
 
     if (sessionCache && !force) {
       const cached = await sessionCache.get(token);
       if (cached) {
         const isFresh = nowMs - cached.checkedAt < ttlMs;
-        const lifetime = payload.exp
-          ? payload.iat
-            ? payload.exp - payload.iat
-            : (this._options.tokenDuration ?? 14 * 86400)
-          : 0;
-        const remaining = payload.exp ? payload.exp - effectiveNowSec : Infinity;
-        const isUnderHalfLife = lifetime > 0 && remaining < lifetime / 2;
+        const learnedLifetime = collectionId
+          ? sessionCache.getCollectionLifetime(collectionId)
+          : undefined;
 
-        if (isFresh && !isUnderHalfLife) {
-          // Cached and fresh -> no request to iglo.base
-          this.authStore.save(token, cached.record);
-          return cached.record;
+        // Refresh when less than half of the learned lifetime remains.
+        // If lifetime is not known yet, the first check refreshes once to learn it.
+        if (learnedLifetime !== undefined && learnedLifetime > 0) {
+          const remaining = payload.exp ? payload.exp - effectiveNowSec : Infinity;
+          const isUnderHalfLife = remaining < learnedLifetime / 2;
+
+          if (isFresh && !isUnderHalfLife) {
+            // Cached and fresh -> no request to iglo.base
+            this.authStore.save(token, cached.record);
+            return cached.record;
+          }
         }
       }
     }
 
     // Need check/refresh
-    const doRefresh = async (): Promise<AuthRecord> => {
+    const executeRefresh = async (): Promise<RefreshOutcome> => {
       const collection =
         this.authStore.record?.collectionName ||
         this.authStore.record?.collectionId ||
@@ -235,53 +317,97 @@ export class ServerClient extends Client {
 
         const newToken = res?.token || token;
         const newRecord = (res?.record as AuthRecord) || this.authStore.record;
-        this.authStore.save(newToken, newRecord);
 
-        const checkedTime = this._clock();
-        if (sessionCache) {
-          await sessionCache.set(newToken, newRecord, checkedTime);
-          if (newToken !== token) {
-            await sessionCache.delete(token);
-          }
-        }
-
-        if (newToken !== token) {
-          await this._writeSessionCookie(newToken, newRecord);
-        }
-
-        return newRecord;
-      } catch (err) {
+        return {
+          kind: "ok",
+          token: newToken,
+          record: newRecord,
+          serverDateHeader: this._lastServerDateHeader,
+        };
+      } catch (err: unknown) {
         if (err instanceof ClientResponseError) {
           if (err.status === 401 || err.status === 403 || err.status === 404) {
-            await this._handleRevoked(token);
-            if (force) {
-              throw err;
-            }
-            return null;
+            return {
+              kind: "revoked",
+              status: err.status,
+              error: err,
+            };
           }
+          return {
+            kind: "transient",
+            status: err.status,
+            error: err,
+          };
         }
-        // Network error or 5xx: keep session as is and do not touch cookie
-        if (force) {
-          throw err;
-        }
-        return this.authStore.record;
+        return {
+          kind: "transient",
+          error: err,
+        };
       }
     };
 
-    let resultRecord: AuthRecord = null;
+    let outcome: RefreshOutcome;
     if (sessionCache) {
-      resultRecord = await sessionCache.runSingleFlight(token, doRefresh);
+      outcome = await sessionCache.runSingleFlight(token, executeRefresh);
     } else {
-      resultRecord = await doRefresh();
+      outcome = await executeRefresh();
     }
 
-    if (resultRecord && (!this.authStore.record || this.authStore.token === token)) {
-      this.authStore.save(this.authStore.token || token, resultRecord);
+    // Apply the outcome to this client instance, auth store, and cookies
+    if (outcome.kind === "ok") {
+      const newToken = outcome.token;
+      const newRecord = outcome.record;
+      this._lastKnownToken = newToken;
+
+      if (sessionCache) {
+        const newPayload = getTokenPayload(newToken);
+        if (newPayload.exp && outcome.serverDateHeader && newPayload.refreshable !== false) {
+          const serverTimeMs = Date.parse(outcome.serverDateHeader);
+          if (!Number.isNaN(serverTimeMs)) {
+            const serverTimeSec = Math.floor(serverTimeMs / 1000);
+            const learned = newPayload.exp - serverTimeSec;
+            const colId = newPayload.collectionId || collectionId;
+            if (learned > 0 && colId) {
+              sessionCache.setCollectionLifetime(colId, learned);
+            }
+          }
+        }
+        await sessionCache.set(newToken, newRecord, this._clock());
+        if (newToken !== token) {
+          await sessionCache.delete(token);
+        }
+      }
+
+      this.authStore.save(newToken, newRecord);
+
+      if (newToken !== token) {
+        this._writeSessionCookie(newToken, newRecord);
+      }
+
+      return newRecord;
     }
-    return resultRecord;
+
+    if (outcome.kind === "revoked") {
+      this._handleRevoked(token);
+      if (force) {
+        throw outcome.error;
+      }
+      return null;
+    }
+
+    // outcome.kind === "transient" (network error or 5xx)
+    // Keep normal request's session and do not touch cookie
+    if (this.authStore.record && payload.id && this.authStore.record.id !== payload.id) {
+      this.authStore.clear();
+    }
+
+    if (force) {
+      throw outcome.error;
+    }
+    return this.authStore.record;
   }
 
-  private async _writeSessionCookie(token: string, record: AuthRecord): Promise<void> {
+  private _writeSessionCookie(token: string, record: AuthRecord): void {
     if (!this.cookies.setAll) {
       return;
     }
@@ -296,29 +422,37 @@ export class ServerClient extends Client {
       cookieOptions: this._options.cookieOptions,
     });
 
-    await this.cookies.setAll([cookieToSet], { ...SSR_NO_CACHE_HEADERS });
+    try {
+      const res = this.cookies.setAll([cookieToSet], { ...SSR_NO_CACHE_HEADERS });
+      if (res && typeof (res as Promise<void>).catch === "function") {
+        (res as Promise<void>).catch(() => {});
+      }
+    } catch {
+      // In Next.js Server Components, setAll may throw if cookies are read-only
+    }
   }
 
-  private _isRevoked: boolean = false;
-
-  private async _handleRevoked(token: string): Promise<void> {
-    if (this._isRevoked) {
-      return;
-    }
-    this._isRevoked = true;
+  private _handleRevoked(token: string): void {
     this.authStore.clear();
 
     if (this._options.sessionCache && token) {
-      await this._options.sessionCache.delete(token);
+      this._options.sessionCache.delete(token).catch(() => {});
     }
 
     if (this.cookies.setAll) {
-      const cleared = buildClearedSessionCookie({
+      const clearedCookies = buildClearedSessionCookies({
         cookieName: this._cookieName,
         secure: this._isSecure,
         cookieOptions: this._options.cookieOptions,
       });
-      await this.cookies.setAll([cleared], { ...SSR_NO_CACHE_HEADERS });
+      try {
+        const res = this.cookies.setAll(clearedCookies, { ...SSR_NO_CACHE_HEADERS });
+        if (res && typeof (res as Promise<void>).catch === "function") {
+          (res as Promise<void>).catch(() => {});
+        }
+      } catch {
+        // In Next.js Server Components, setAll may throw if cookies are read-only
+      }
     }
   }
 }

@@ -32,7 +32,11 @@ export interface SessionCache {
   clear(): void;
   runSingleFlight<T>(token: string, fn: () => Promise<T>): Promise<T>;
   readonly size: number;
+  readonly ttl: number;
+  readonly maxEntries: number;
   clockOffsetMs?: number;
+  getCollectionLifetime(collectionId: string): number | undefined;
+  setCollectionLifetime(collectionId: string, lifetimeSec: number): void;
 }
 
 export interface SessionCacheOptions {
@@ -47,10 +51,11 @@ export interface CreateServerClientOptions {
   cookieName?: string;
   sessionCache?: SessionCache;
   secure?: boolean;
+  origin?: string;
+  request?: Request;
   cookieOptions?: Partial<SerializeOptions>;
   lang?: string;
   clock?: () => number;
-  tokenDuration?: number;
   fetch?: (url: RequestInfo | URL, config?: RequestInit) => Promise<Response>;
 }
 

@@ -24,24 +24,30 @@ Read for this design (2026-11-07): PocketBase discussion #5313; the source of `@
 
 ### Clients
 
-- `createServerClient({ url, cookies, ... })` from `iglo.base/ssr`: a new SDK instance for one request, resumed from the request's cookie. `autoCancellation` is off and every request uses `cache: "no-store"` (Next.js caches `fetch` otherwise). It is never reused across requests.
-- `createSuperuserClient({ url, email, password })` or `({ url, token })` (an API key from `impersonate`): one long-lived instance per process, held in memory, `autoCancellation` off, re-authenticated before its token expires (upstream's `autoRefreshThreshold`). It is for privileged work and for minting browser tokens, never for a user's request.
+- `createServerClient({ url, cookies, ...options })` from `iglo.base/ssr`: a new SDK instance for one request, resumed from the request's cookie. `autoCancellation` is off and every request uses `cache: "no-store"` via an overridden `send` method (so Next.js never caches server client fetches, even if application code assigns `pb.beforeSend`). It is never reused across requests.
+- `createSuperuserClient({ url, email, password })` or `({ url, token })` (an API key from `impersonate`): one long-lived instance per process, held in memory, `autoCancellation` off, re-authenticated before its token expires (upstream's `autoRefreshThreshold`). It provides `impersonate(collectionOrRecord, recordIdOrDuration?, duration?)` to mint short user tokens for page JavaScript and realtime, never for serving user requests.
 - `iglo.base/ssr` is server-only: its package `exports` maps the `browser` condition to a module that throws with a clear message, so importing it into a client bundle fails at build time.
+- **Server-side sign-in and sign-out:** When auth state changes on a server client's `authStore` (`authWithPassword`, `authWithOAuth2Code`, `authRefresh`, `authStore.clear()`, `authStore.save()`), the cookie is written or cleared through the adapter with `SSR_NO_CACHE_HEADERS`, and the session cache is updated or evicted. A 401 from an ordinary data call does not log the user out; only the session check's `auth-refresh` outcome decides session validity.
 
 ### Session cookie
 
 - One cookie, `pb_auth` by default, written by the existing `exportToCookie`: the token and the user record (owner, 2026-11-07: pages read the user without a request). `exportToCookie` keeps upstream's fallback to the minimal record fields when the value would exceed 4,096 bytes.
 - Defaults: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` and the `__Host-` prefix except on `localhost`, `127.0.0.1` and `::1` over http; `Max-Age` from the token's `exp`.
-- Every response that writes the cookie also gets `Cache-Control: private, no-cache, no-store, must-revalidate, max-age=0`, so a CDN cannot hand one user's cookie to another (from Supabase).
+- Cookie security decisions follow the **application's incoming request URL / origin** (`request.url`, `origin`, or explicit `secure` option / `adapter.isSecure`), never the backend iglo.base URL. This correctly secures cookies when an HTTPS app communicates with a backend on `http://127.0.0.1:8090`, while allowing plain HTTP during localhost development.
+- When `Secure` is enabled, `__Host-` cookies omit any `Domain` attribute and enforce `Path=/`. On cookie revocation, both `__Host-pb_auth` and plain `pb_auth` are cleared to cleanly handle migrations.
+- Every response that writes the cookie also gets `Cache-Control: private, no-cache, no-store, must-revalidate, max-age=0`, `Expires: 0`, and `Pragma: no-cache`, so a CDN cannot hand one user's cookie to another (from Supabase).
 
 ### Session cache, check and refresh
 
 No request re-authenticates by default (owner, 2026-11-07). Per server process:
 
-- A bounded in-memory cache, keyed by a hash of the token, holds the user record and when the session was last checked against iglo.base. Default 10,000 entries (a few MB), least recently used dropped first; configurable.
-- A request whose token is in the cache and was checked within the TTL (default 5 minutes) uses the cached record with no request to iglo.base.
-- Otherwise, or when the token has less than half its lifetime left, the SDK calls `auth-refresh` once: success refreshes the cache entry and, when the new token differs, writes the cookie; 401/403/404 clears the cookie and the entry; a network error or 5xx keeps the session as it is and does not clear the cookie (the Convex Auth bug #174 logged users out on transient errors).
-- Parallel requests for the same token share one `auth-refresh`.
+- A bounded in-memory cache (`createSessionCache({ ttl, maxEntries, clock })`), keyed by a SHA-256 hash of the token, holds the user record, when the session was last checked, and learned collection token lifetimes. Defaults: 5-minute TTL, 10,000 entries (LRU eviction); configurable.
+- **Token lifetime learning:** Tokens have an `exp` claim but no `iat` claim. The SDK learns each auth collection's token lifetime from auth responses it sees (`authWithPassword`, `authWithOAuth2Code`, `authRefresh`; impersonate static tokens excluded): `lifetime = exp - serverNow` (from the response's `Date` header). Learned lifetimes are stored per collection ID in the session cache. Refresh occurs when less than half of that lifetime remains. Until the lifetime is known for a collection, the first check of a session refreshes once to learn it.
+- A request whose token is in the cache, checked within the TTL, and has at least half its lifetime remaining uses the cached record with no request to iglo.base.
+- **Single-flight outcome sharing:** Parallel requests for the same token share one `auth-refresh` flight. The flight returns a plain outcome `{ kind: "ok", token, record } | { kind: "revoked" } | { kind: "transient", error }`. Every waiting caller applies the outcome to its own client, auth store, and cookie adapter:
+  - `ok`: updates each client's auth store, records the learned lifetime, and writes the cookie if the token changed.
+  - `revoked` (401/403/404): clears every waiting caller's session, evicts the cache entry, and writes cleared cookies. If `force` was requested (`verify()`), throws the error.
+  - `transient` (network error or 5xx): keeps normal requests' sessions intact without touching cookies or cache. `pb.auth.verify()` throws the error to its own caller only.
 - Expiry checks allow 60 seconds of clock skew, and the SDK corrects for the difference between the app server's clock and iglo.base's `Date` header.
 - `pb.auth.verify()` forces a check for pages that must not show a revoked session for up to the TTL (account settings, payments).
 - Trade-off: between checks, a revoked session can still render as signed in for up to the TTL. Data calls are not affected: iglo.base rejects the revoked token on every API call.

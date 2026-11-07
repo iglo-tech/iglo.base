@@ -419,10 +419,10 @@ To accomplish this, the SDK provides 2 function hooks:
 
 iglo.base provides server-side rendering support out of the box via the `iglo.base/ssr` entry point:
 
-- `createServerClient`: Creates a scoped `Client` per request, resumed from the session cookie, with `cache: "no-store"` and `autoCancellation(false)`.
-- `createSessionCache`: In-memory LRU session cache per process, with sliding refresh at half token lifetime and single-flight request sharing.
+- `createServerClient`: Creates a scoped `Client` per request, resumed from the session cookie, with `cache: "no-store"` and `autoCancellation(false)`. Supports server-side authentication (`authWithPassword`, `authRefresh`, `authStore.clear()`) with automatic cookie updates.
+- `createSessionCache`: In-memory LRU session cache per process, with sliding refresh at half token lifetime (learned automatically from auth responses) and single-flight request sharing.
 - `createRequestCookieAdapter`: Reference cookie adapter for standard Web `Request`/`Response` handlers (Bun, Hono, Deno).
-- `createSuperuserClient`: Long-lived superuser client with auto-refresh and browser token minting (`mintBrowserToken`).
+- `createSuperuserClient`: Long-lived superuser client with auto-refresh and browser token minting via `impersonate(collection, id, options)`.
 
 ```js
 import {
@@ -431,16 +431,24 @@ import {
   createSessionCache,
 } from "iglo.base/ssr";
 
-const sessionCache = createSessionCache();
+// Process-wide session cache
+const sessionCache = createSessionCache({ ttl: 300, maxEntries: 1000 });
 
 export default {
   async fetch(request) {
     const cookies = createRequestCookieAdapter(request);
     const pb = await createServerClient({
-      url: "http://127.0.0.1:8090",
+      url: "http://127.0.0.1:8090", // iglo.base / PocketBase backend URL
+      request,                      // incoming Request (determines Secure / __Host- prefix)
       cookies,
       sessionCache,
     });
+
+    // Sign in on server: cookie is automatically written via adapter
+    // await pb.collection("users").authWithPassword("user@example.com", "secret");
+
+    // Sign out on server: cookie is cleared via adapter
+    // pb.authStore.clear();
 
     const records = await pb.collection("example").getList(1, 20);
 
@@ -452,6 +460,19 @@ export default {
   },
 };
 ```
+
+#### Cookie Security & `__Host-` Prefix
+
+Cookie attributes (`Secure` and the `__Host-` prefix) are derived from the application's incoming request URL (or explicit `origin` / `secure` options), **never** from the backend iglo.base URL:
+- HTTPS requests receive `Secure; Path=/; SameSite=Lax` and the `__Host-` cookie prefix (`__Host-pb_auth`).
+- Local HTTP dev (`http://localhost`, `127.0.0.1`, `::1`) uses the plain `pb_auth` cookie without `Secure` so local development works without TLS setup.
+- When clearing cookies on secure origins, both `__Host-pb_auth` and plain `pb_auth` are cleared to prevent stale fallback cookies.
+
+#### Token Lifetime & Single-Flight Refresh
+
+- Each auth collection's token lifetime is learned dynamically from auth responses (`exp` claim minus response `Date` header) and cached per collection in process memory.
+- Sessions are refreshed when less than half of their learned lifetime remains.
+- Concurrent requests for the same session share a single background refresh request; 401/403/404 revokes clear all waiting sessions, while transient 5xx errors preserve existing sessions.
 
 Below you could find legacy low-level cookie store examples:
 

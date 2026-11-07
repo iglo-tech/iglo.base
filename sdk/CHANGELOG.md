@@ -1,6 +1,6 @@
 ## Unreleased
 
-- SSR server core (`iglo.base/ssr`): `createServerClient` per-request client with cookie resumption and sliding refresh, `createSuperuserClient` with impersonation token minting, `createSessionCache` with LRU eviction and SHA-256 token hashing, single-flight deduplication, clock-skew correction, and `createRequestCookieAdapter` for plain Web Request/Response handlers.
+- SSR server core (`iglo.base/ssr`): `createServerClient` per-request client with cookie resumption, sliding refresh with dynamic token lifetime learning (`Date` header), app-origin cookie security (`__Host-` prefix and dual-clear on HTTPS), server sign-in/out cookie lifecycle sync; `createSuperuserClient` with impersonation token minting; `createSessionCache` with LRU eviction and SHA-256 token hashing; single-flight deduplication sharing auth outcomes; and `createRequestCookieAdapter` for standard Web Request/Response handlers. Shared chunk ensures cross-entry class identity (`instanceof ClientResponseError`).
 
 ## 1.0.0
 

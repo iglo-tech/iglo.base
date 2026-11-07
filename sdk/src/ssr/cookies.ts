@@ -1,5 +1,5 @@
 // docs/design/13-ssr.md ("Session cookie", "Clients")
-import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
 import type { Cookie, CookieToSet, CookieValueMap, RequestCookieAdapter } from "@sdk/ssr/types";
 
@@ -53,29 +53,11 @@ export function formatSessionCookieValue(
   record: AuthRecord,
   options?: SerializeOptions,
 ): string {
-  const rawData: { token: string; record: Record<string, unknown> | null } = {
-    token: token,
-    record: record ? JSON.parse(JSON.stringify(record)) : null,
-  };
-
-  let serialized = cookieSerialize(wireName, JSON.stringify(rawData), options);
-  const resultLength =
-    typeof Blob !== "undefined" ? new Blob([serialized]).size : serialized.length;
-
-  if (rawData.record && resultLength > 4096) {
-    rawData.record = {
-      id: String(rawData.record["id"] ?? ""),
-      email: rawData.record["email"] ?? "",
-    };
-    const extraProps = ["collectionId", "collectionName", "verified"];
-    for (const prop of extraProps) {
-      if (record && prop in record) {
-        rawData.record[prop] = (record as Record<string, unknown>)[prop];
-      }
-    }
-  }
-
-  return JSON.stringify(rawData);
+  const tempStore = new BaseAuthStore();
+  tempStore.save(token, record);
+  const cookieStr = tempStore.exportToCookie(options, wireName);
+  const parsed = cookieParse(cookieStr);
+  return (parsed[wireName] as string) ?? "";
 }
 
 export function buildSessionCookieToSet(
@@ -90,7 +72,10 @@ export function buildSessionCookieToSet(
   },
 ): CookieToSet {
   const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
-  const isSecure = options.secure ?? true;
+  const isSecure =
+    options.cookieOptions?.secure !== undefined
+      ? options.cookieOptions.secure
+      : (options.secure ?? true);
   const wireName = isSecure ? `__Host-${baseName}` : baseName;
 
   const nowSec = options.nowSeconds ?? Math.floor(Date.now() / 1000);
@@ -102,11 +87,16 @@ export function buildSessionCookieToSet(
     path: "/",
     sameSite: "lax",
     httpOnly: true,
+    ...options.cookieOptions,
     secure: isSecure,
     maxAge: maxAge,
     expires: expires,
-    ...options.cookieOptions,
   };
+
+  if (isSecure) {
+    delete serializeOpts.domain;
+    serializeOpts.path = "/";
+  }
 
   const value = formatSessionCookieValue(wireName, token, record, serializeOpts);
 
@@ -123,24 +113,53 @@ export function buildClearedSessionCookie(options: {
   cookieOptions?: Partial<SerializeOptions>;
 }): CookieToSet {
   const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
-  const isSecure = options.secure ?? true;
+  const isSecure =
+    options.cookieOptions?.secure !== undefined
+      ? options.cookieOptions.secure
+      : (options.secure ?? true);
   const wireName = isSecure ? `__Host-${baseName}` : baseName;
 
   const serializeOpts: SerializeOptions = {
     path: "/",
     sameSite: "lax",
     httpOnly: true,
+    ...options.cookieOptions,
     secure: isSecure,
     maxAge: 0,
     expires: new Date(0),
-    ...options.cookieOptions,
   };
+
+  if (isSecure) {
+    delete serializeOpts.domain;
+    serializeOpts.path = "/";
+  }
 
   return {
     name: wireName,
     value: "",
     options: serializeOpts,
   };
+}
+
+export function buildClearedSessionCookies(options: {
+  cookieName?: string;
+  secure?: boolean;
+  cookieOptions?: Partial<SerializeOptions>;
+}): CookieToSet[] {
+  const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
+  const isSecure =
+    options.cookieOptions?.secure !== undefined
+      ? options.cookieOptions.secure
+      : (options.secure ?? true);
+
+  if (isSecure) {
+    return [
+      buildClearedSessionCookie({ ...options, secure: true, cookieName: baseName }),
+      buildClearedSessionCookie({ ...options, secure: false, cookieName: baseName }),
+    ];
+  }
+
+  return [buildClearedSessionCookie({ ...options, secure: false, cookieName: baseName })];
 }
 
 export function createRequestCookieAdapter(
