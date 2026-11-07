@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13b | fix (Gemini) | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 1 | SSR server core; [brief](briefs/P.13b.md), design `docs/design/13-ssr.md` (D38). P.13c–f follow |
+| P.13b | fix (Gemini, waiting on quota; host resumes it) | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 1 | SSR server core; [brief](briefs/P.13b.md), design `docs/design/13-ssr.md` (D38). P.13c–f follow |
 
 ## Done
 
