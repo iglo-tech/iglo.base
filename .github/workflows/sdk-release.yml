@@ -3,9 +3,10 @@ name: SDK release
 # A push to main touching sdk/package.json publishes the new SDK version to
 # npm as `iglo.base` with provenance via npm trusted publishing (OIDC; D36),
 # then tags sdk-v<version> and creates a GitHub release (--latest=false).
-# If the version is already on npm or already tagged, it ends successfully
-# without publishing or tagging. A missing CHANGELOG section fails.
-# A manual workflow_dispatch run supports dry-run testing.
+# If the version and tag already exist, it ends successfully without publishing.
+# A missing CHANGELOG section fails.
+# A manual workflow_dispatch run defaults to dry-run: true and allows testing
+# build and packaging on any branch. Real publishing requires refs/heads/main.
 on:
   push:
     branches:
@@ -17,7 +18,7 @@ on:
       dry-run:
         description: "Dry run: publish --dry-run, do not tag or create release"
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
@@ -27,44 +28,132 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  version:
+  check:
+    name: check
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
       contents: read
     outputs:
-      version: ${{ steps.check.outputs.version }}
-      publish: ${{ steps.check.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+      npm_tag: ${{ steps.version.outputs.npm_tag }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+      dry_run: ${{ steps.version.outputs.dry_run }}
+      npm_exists: ${{ steps.version.outputs.npm_exists }}
+      tag_exists: ${{ steps.version.outputs.tag_exists }}
+      skip_all: ${{ steps.version.outputs.skip_all }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Check version and registry
-        id: check
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Verify npm version
         run: |
-          set -eu
+          set -euo pipefail
+          npm_version="$(npm --version)"
+          echo "npm version: $npm_version"
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && minor < 5) || (major === 11 && minor === 5 && patch < 1)) {
+              console.error(`npm >= 11.5.1 is required for trusted publishing (found ${process.argv[1]})`);
+              process.exit(1);
+            }
+          ' "$npm_version"
+      - name: Inspect version, branch, and registry
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_DRY_RUN: ${{ inputs.dry-run }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+
+          dry_run="true"
+          if [ "$EVENT_NAME" = "push" ]; then
+            dry_run="false"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            dry_run="${INPUT_DRY_RUN:-true}"
+          fi
+
+          if [ "$dry_run" = "false" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "A real publish is allowed only when running on refs/heads/main (current ref: $GITHUB_REF)" >&2
+            exit 1
+          fi
+
           version="$(node -p "require('./sdk/package.json').version")"
-          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$'; then
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "Version '$version' in sdk/package.json is not valid semver" >&2
             exit 1
           fi
 
+          npm_tag="latest"
+          is_prerelease="false"
+          case "$version" in
+            *-*)
+              npm_tag="next"
+              is_prerelease="true"
+              ;;
+          esac
+
           tag="sdk-v${version}"
 
-          tag_exists=false
-          if [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
-            tag_exists=true
+          # Check git tag on remote
+          tag_exists="false"
+          remote_exit=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 || remote_exit=$?
+          if [ "$remote_exit" -eq 0 ]; then
+            tag_exists="true"
+          elif [ "$remote_exit" -eq 2 ]; then
+            tag_exists="false"
+          else
+            echo "git ls-remote failed with exit code $remote_exit" >&2
+            exit 1
           fi
 
-          npm_exists=false
-          if npm view "iglo.base@${version}" version >/dev/null 2>&1; then
-            npm_exists=true
+          # Check npm registry (only E404 means not published; network or other errors fail)
+          npm_exists="false"
+          npm_status="$(node -e '
+            const { spawnSync } = require("child_process");
+            const res = spawnSync("npm", ["view", `iglo.base@${process.argv[1]}`, "version", "--json"], { encoding: "utf8" });
+            if (res.status === 0) {
+              process.stdout.write("EXISTS\n");
+              process.exit(0);
+            }
+            let errCode = "";
+            try {
+              const data = JSON.parse(res.stdout);
+              errCode = data.error?.code || "";
+            } catch {}
+            if (errCode === "E404") {
+              process.stdout.write("NOT_FOUND\n");
+              process.exit(0);
+            }
+            console.error(`npm view failed (exit ${res.status}):\n${res.stdout}\n${res.stderr}`);
+            process.exit(1);
+          ' "$version")"
+
+          if [ "$npm_status" = "EXISTS" ]; then
+            npm_exists="true"
           fi
 
-          if [ "$tag_exists" = true ] || [ "$npm_exists" = true ]; then
-            echo "iglo.base@${version} is already published on npm or tagged as $tag; skipping release."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          # If tag exists but version is not on npm, fail explicitly
+          if [ "$dry_run" = "false" ] && [ "$tag_exists" = "true" ] && [ "$npm_exists" = "false" ]; then
+            echo "Tag $tag already exists in git, but iglo.base@${version} is not published on npm. Resolve this mismatch manually." >&2
+            exit 1
           fi
 
+          skip_all="false"
+          if [ "$dry_run" = "false" ] && [ "$tag_exists" = "true" ] && [ "$npm_exists" = "true" ]; then
+            echo "iglo.base@${version} is already published on npm and tagged as $tag; skipping build and release."
+            skip_all="true"
+          fi
+
+          # Verify CHANGELOG section exists and is non-empty
           node -e '
             const fs = require("fs");
             const text = fs.readFileSync("sdk/CHANGELOG.md", "utf8");
@@ -87,65 +176,139 @@ jobs:
             }
             const notes = sectionLines.join("\n").trim();
             if (!inSection || !notes) {
-              console.error(`sdk/CHANGELOG.md has no section for version ${version}`);
+              console.error(`sdk/CHANGELOG.md has no non-empty section for version ${version}`);
               process.exit(1);
             }
           ' "$version"
 
-          echo "publish=true" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "npm_tag=$npm_tag" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+          echo "npm_exists=$npm_exists" >> "$GITHUB_OUTPUT"
+          echo "tag_exists=$tag_exists" >> "$GITHUB_OUTPUT"
+          echo "skip_all=$skip_all" >> "$GITHUB_OUTPUT"
+      - name: Install dependencies
+        if: steps.version.outputs.skip_all != 'true'
+        run: bun install --frozen-lockfile
+      - name: Lint
+        if: steps.version.outputs.skip_all != 'true'
+        run: bun run lint
+      - name: Typecheck
+        if: steps.version.outputs.skip_all != 'true'
+        run: |
+          set -euo pipefail
+          bun x tsc --noEmit -p sdk/tsconfig.json
+          bun x tsc --noEmit -p sdk/test/tsconfig.json
+      - name: Test
+        if: steps.version.outputs.skip_all != 'true'
+        run: bun test sdk/test
+      - name: Build
+        if: steps.version.outputs.skip_all != 'true'
+        run: bun run sdk:build
+      - name: Check package
+        if: steps.version.outputs.skip_all != 'true'
+        run: bun run sdk:check-package
+      - name: Upload built SDK artifact
+        if: steps.version.outputs.skip_all != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sdk-dist
+          path: sdk/dist
+          if-no-files-found: error
 
-  release:
-    needs: version
-    if: needs.version.outputs.publish == 'true'
+  publish:
+    name: publish
+    needs: check
+    if: |
+      needs.check.outputs.skip_all != 'true' &&
+      (needs.check.outputs.dry_run == 'true' || needs.check.outputs.npm_exists != 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version-file: package.json
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
-      - run: bun install --frozen-lockfile
-      - name: Lint
-        run: bun run lint
-      - name: Typecheck
-        run: bun x tsc --noEmit -p sdk/tsconfig.json && bun x tsc --noEmit -p sdk/test/tsconfig.json
-      - name: Test
-        run: bun test sdk/test
-      - name: Build
-        run: bun run sdk:build
-      - name: Check package
-        run: bun run sdk:check-package
+          node-version: 24
+      - name: Verify npm version
+        run: |
+          set -euo pipefail
+          npm_version="$(npm --version)"
+          echo "npm version: $npm_version"
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && minor < 5) || (major === 11 && minor === 5 && patch < 1)) {
+              console.error(`npm >= 11.5.1 is required for trusted publishing (found ${process.argv[1]})`);
+              process.exit(1);
+            }
+          ' "$npm_version"
+      - name: Download built SDK artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sdk-dist
+          path: sdk/dist
       - name: Publish to npm
         env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || false }}
+          DRY_RUN: ${{ needs.check.outputs.dry_run }}
+          NPM_TAG: ${{ needs.check.outputs.npm_tag }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          set -eu
+          set -euo pipefail
           cd sdk
-          if [ "$DRY_RUN" = true ]; then
-            echo "Dry run: running npm publish --dry-run"
-            npm publish --dry-run
-          else
-            npm publish --provenance --access public
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "Using NPM_TOKEN secret for authentication (bootstrap publish)"
+            export NODE_AUTH_TOKEN="$NPM_TOKEN"
+            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n' >> ~/.npmrc
           fi
-      - name: Tag and release
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry-run) }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          set -eu
-          tag="sdk-v${VERSION}"
-          flags=""
-          case "$VERSION" in *-*) flags="--prerelease" ;; esac
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run: running npm publish --tag $NPM_TAG --dry-run"
+            npm publish --tag "$NPM_TAG" --dry-run
+          else
+            echo "Publishing iglo.base with tag $NPM_TAG"
+            npm publish --provenance --access public --tag "$NPM_TAG"
+          fi
 
+  release:
+    name: release
+    needs: [check, publish]
+    if: |
+      !cancelled() && !failure() &&
+      needs.check.outputs.dry_run != 'true' &&
+      needs.check.outputs.skip_all != 'true' &&
+      (needs.publish.result == 'success' || (needs.publish.result == 'skipped' && needs.check.outputs.npm_exists == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Verify npm version
+        run: |
+          set -euo pipefail
+          npm_version="$(npm --version)"
+          echo "npm version: $npm_version"
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && minor < 5) || (major === 11 && minor === 5 && patch < 1)) {
+              console.error(`npm >= 11.5.1 is required (found ${process.argv[1]})`);
+              process.exit(1);
+            }
+          ' "$npm_version"
+      - name: Extract release notes
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
           node -e '
             const fs = require("fs");
             const text = fs.readFileSync("sdk/CHANGELOG.md", "utf8");
@@ -168,13 +331,73 @@ jobs:
             }
             const notes = sectionLines.join("\n").trim();
             if (!inSection || !notes) {
-              console.error(`sdk/CHANGELOG.md has no section for version ${version}`);
+              console.error(`sdk/CHANGELOG.md has no non-empty section for version ${version}`);
               process.exit(1);
             }
-            process.stdout.write(notes + "\n");
-          ' "$VERSION" | gh release create "$tag" \
-            --target "$GITHUB_SHA" \
-            --title "$tag" \
-            --notes-file - \
-            --latest=false \
-            $flags
+            fs.writeFileSync("release-notes.txt", notes + "\n");
+          ' "$VERSION"
+          if [ ! -s release-notes.txt ]; then
+            echo "Release notes file is empty" >&2
+            exit 1
+          fi
+      - name: Create tag and GitHub release
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          IS_PRERELEASE: ${{ needs.check.outputs.is_prerelease }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="sdk-v${VERSION}"
+
+          # Determine target commit from npm gitHead, falling back to workflow commit
+          git_head="$(npm view "iglo.base@${VERSION}" gitHead 2>/dev/null || true)"
+          target_commit="$GITHUB_SHA"
+          if printf '%s' "$git_head" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Using npm gitHead as tag target: $git_head"
+            target_commit="$git_head"
+          else
+            echo "npm gitHead not found or not a 40-hex SHA; falling back to workflow commit: $target_commit"
+          fi
+
+          # Check if tag already exists on remote
+          tag_exists=false
+          remote_exit=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 || remote_exit=$?
+          if [ "$remote_exit" -eq 0 ]; then
+            tag_exists=true
+          elif [ "$remote_exit" -eq 2 ]; then
+            tag_exists=false
+          else
+            echo "git ls-remote failed with exit code $remote_exit" >&2
+            exit 1
+          fi
+
+          # Check if GitHub release already exists
+          release_exists=false
+          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+            release_exists=true
+          fi
+
+          flags=""
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            flags="--prerelease"
+          fi
+
+          if [ "$tag_exists" = "false" ] || [ "$release_exists" = "false" ]; then
+            echo "Creating release $tag on target $target_commit"
+            target_flag=()
+            if [ "$tag_exists" = "false" ]; then
+              target_flag=("--target" "$target_commit")
+            fi
+            # shellcheck disable=SC2086
+            gh release create "$tag" \
+              --repo "$GH_REPO" \
+              "${target_flag[@]}" \
+              --title "$tag" \
+              --notes-file release-notes.txt \
+              --latest=false \
+              $flags
+          else
+            echo "Tag $tag and release already exist; nothing to do."
+          fi
