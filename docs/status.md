@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13d | review (Opus) | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 2 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
+| P.13d | fix (Haiku) | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 2 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
 
 ## Done
 
@@ -104,6 +104,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-11-08 (P.13d) | SSR | The browser client's 30 s renewal floor uses the device clock (setting the clock back can delay a renewal past expiry) |
 | 2026-11-08 (P.13c) | SSR | Not limited: `redirectTo` length at start (a long one can come back as `missing-cookie`); `completeOAuth2` does not check the adapter can write cookies; the replay test replays without a cookie; popup hand-off accepts any auth collection, including `_superusers` |
 | 2026-11-07 (P.11) | SDK | `react-native` points to the `.mjs` bundle (older Metro may not resolve it); source maps point to intermediate JS, not `sdk/src`. Reference flake: `s3-files` "concurrent requests generate one thumb", upstream made 2 thumbs once |
 | 2026-11-03 (M7.1b) | Logs | A restore suspends the log writer for the whole (S3) download; logs taken meanwhile are held in memory and lost when the restore succeeds |
