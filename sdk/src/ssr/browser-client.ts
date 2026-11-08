@@ -18,7 +18,7 @@ import {
 } from "@sdk/ssr/cookies";
 import type { FetchFunction } from "@sdk/ssr/no-store-fetch";
 
-/** The token is renewed when this fraction of its remaining lifetime is left...  */
+/** The token is renewed when this fraction of its remaining lifetime is left... */
 const RENEW_FRACTION = 0.5;
 /** ...but never later than this before its expiry. */
 const RENEW_BEFORE_EXPIRY_MS = 60_000;
