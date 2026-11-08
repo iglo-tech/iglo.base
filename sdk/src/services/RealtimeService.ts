@@ -28,6 +28,10 @@ export class RealtimeService extends BaseService {
   private pendingConnects: Array<promiseCallbacks> = [];
   private pendingSubmits: Array<promiseCallbacks> = [];
   private isProcessingPendingSubmits: boolean = false;
+  // Bumped by every close. A continuation of a connection captures the value when the connection
+  // opens and does nothing once it differs: the connection was closed, or replaced by a new one
+  // (a `reconnect()` while the subscriptions are being sent, for example).
+  private connectionGeneration: number = 0;
 
   /**
    * Returns whether the realtime connection has been established.
@@ -441,20 +445,34 @@ export class RealtimeService extends BaseService {
   private initConnect() {
     this.disconnect(true);
 
+    // Every continuation of this connection (its timeout, its error handlers and its PB_CONNECT
+    // work) checks this before it touches the client's state. A closed or replaced connection
+    // must not resolve the pending connects, reset the attempts or cancel the next reconnect:
+    // those belong to the connection that is current now.
+    const generation = this.connectionGeneration;
+    const isCurrent = () => generation === this.connectionGeneration;
+
     // wait up to 15s for connect
     clearTimeout(this.connectTimeoutId);
     this.connectTimeoutId = setTimeout(() => {
-      this.connectErrorHandler(new Error("EventSource connect took too long."));
+      if (isCurrent()) {
+        this.connectErrorHandler(new Error("EventSource connect took too long."));
+      }
     }, this.maxConnectTimeout);
 
     this.eventSource = new EventSource(this.client.buildURL("/api/realtime"));
 
     // oxlint-disable-next-line unicorn/prefer-add-event-listener -- EventSource.onerror matches upstream assignment
     this.eventSource.onerror = () => {
-      this.connectErrorHandler(new Error("Failed to establish realtime connection."));
+      if (isCurrent()) {
+        this.connectErrorHandler(new Error("Failed to establish realtime connection."));
+      }
     };
 
     this.eventSource.addEventListener("PB_CONNECT", (e) => {
+      if (!isCurrent()) {
+        return;
+      }
       const msgEvent = e as MessageEvent;
       this.clientId = msgEvent?.lastEventId;
       this.lastSentSubscriptions = [];
@@ -478,9 +496,14 @@ export class RealtimeService extends BaseService {
           // We want both p1 and p2 to complete AFTER their subscribe
           // (SSE connect + submit subscription) calls complete.
           let maxResubmit = 3;
-          while (this.hasUnsentSubscriptions() && maxResubmit > 0) {
+          while (isCurrent() && this.hasUnsentSubscriptions() && maxResubmit > 0) {
             maxResubmit--;
             await this.submitSubscriptions();
+          }
+
+          // the subscriptions may have been sent while the connection was closed or replaced
+          if (!isCurrent()) {
+            return;
           }
 
           // resolve connect promises
@@ -505,11 +528,14 @@ export class RealtimeService extends BaseService {
           // just as a last resort in case the 3 retries from above weren't enough,
           // check for unset subscriptions after the pendingConnects has been resolved
           // (aka. subscribe in that case is no longer "blocked" because isConnected would be true)
-          if (this.hasUnsentSubscriptions()) {
+          if (isCurrent() && this.hasUnsentSubscriptions()) {
             await this.submitSubscriptions();
           }
         })
         .catch((err) => {
+          if (!isCurrent()) {
+            return; // a closed connection's failure is not the current one's
+          }
           this.clientId = "";
           this.lastSentSubscriptions = [];
           this.connectErrorHandler(err);
@@ -550,8 +576,13 @@ export class RealtimeService extends BaseService {
       this.predefinedReconnectIntervals[this.reconnectAttempts] ||
       this.predefinedReconnectIntervals[this.predefinedReconnectIntervals.length - 1];
     this.reconnectAttempts++;
+    const generation = this.connectionGeneration;
     this.reconnectTimeoutId = setTimeout(() => {
-      this.initConnect();
+      // disconnect() cancels this timer; the check keeps it from ever opening a connection that
+      // was superseded in the meantime
+      if (generation === this.connectionGeneration) {
+        this.initConnect();
+      }
     }, timeout);
   }
 
@@ -561,6 +592,8 @@ export class RealtimeService extends BaseService {
    * `onDisconnect` hook, which means a network or server error, is not called.
    */
   private disconnect(fromReconnect = false, notify = true): void {
+    this.connectionGeneration++;
+
     if (notify && this.clientId && this.onDisconnect) {
       this.onDisconnect(Object.keys(this.subscriptions));
     }

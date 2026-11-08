@@ -5,6 +5,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import { createBrowserClient, type CreateBrowserClientOptions } from "@sdk/ssr/browser-client";
+import type { FetchFunction } from "@sdk/ssr/no-store-fetch";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { Loose } from "@sdk/tools/loose";
+import type { SendOptions } from "@sdk/tools/options";
 import {
   API,
   APP,
@@ -343,6 +347,42 @@ describe("createBrowserClient", () => {
     await pending;
     expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(1);
     expect(pb.authStore.token).toBe("");
+  });
+
+  test("a failed renewal of a session that has since changed schedules nothing for the new one", async () => {
+    let answer!: (res: Response) => void;
+    const held = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+    const { pb, clock, ft } = harness(() => ({ [RENEW]: () => held }));
+    const other = authToken(Math.floor(START / 1000) + 900, "u2");
+
+    const pending = pb.renew().catch((err: unknown) => err);
+    pb.authStore.save(other, record("u2")); // another user signs in while the renewal is out
+    answer(json(clock, 503, { status: 503, message: "down", data: {} }));
+    await pending;
+    await settle();
+
+    expect(pb.authStore.token).toBe(other);
+    // only the new token's renewal is pending: at half its 900 s lifetime, not a retry at 1 s
+    expect(ft.delays()).toEqual([450_000]);
+  });
+
+  test("a renewal for a new session does not share the old session's request", async () => {
+    let answer!: (res: Response) => void;
+    const held = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+    const { pb, api } = harness(() => ({ [RENEW]: () => held }));
+    const other = authToken(Math.floor(START / 1000) + 900, "u2");
+
+    const first = pb.renew().catch((err: unknown) => err);
+    pb.authStore.save(other, record("u2"));
+    const second = pb.renew().catch((err: unknown) => err);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(2);
+
+    answer(new Response(null, { status: 401 }));
+    await Promise.all([first, second]);
   });
 
   test("realtime subscriptions are resubmitted with the new token after a renewal", async () => {
@@ -771,6 +811,236 @@ describe("realtime recovers from an outage", () => {
     });
 
     pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+});
+
+/**
+ * While set, a subscription POST hangs until its request is aborted: a connection whose first
+ * subscription request is still in flight when the user changes.
+ */
+let fakeRealtimeHangs = false;
+
+function realtimeAnswer(): Handler {
+  return (call) => {
+    if (!fakeRealtimeHangs) {
+      return new Response(null, { status: 204 });
+    }
+    return new Promise<Response>((_resolve, reject) => {
+      const aborted = () => reject(new DOMException("The operation was aborted.", "AbortError"));
+      if (call.signal?.aborted) {
+        aborted();
+      } else {
+        call.signal?.addEventListener("abort", aborted, { once: true });
+      }
+    });
+  };
+}
+
+/** Subscribed as `u1`, then the live connection drops: the new connection's POST hangs. */
+async function droppedWithPostInFlight() {
+  const token = authToken(Math.floor(START / 1000) + 900, "u1");
+  const h = harness((c) => ({ [RENEW]: renewed(c), "POST /api/realtime": realtimeAnswer() }), {
+    token,
+    record: record("u1"),
+  });
+  await h.pb.collection("demo").subscribe("*", () => {});
+
+  fakeRealtimeHangs = true;
+  fakeSources[0]?.fail();
+  await settle();
+  await rt.advance(200); // client2 connects, and its subscriptions are sent
+  expect(fakeSources).toHaveLength(2);
+  expect(lastOf(realtimePosts(h.api))?.body).toEqual({
+    clientId: "client2",
+    subscriptions: ["demo/*"],
+  });
+  return h;
+}
+
+/**
+ * A user change while a new connection's subscription POST is in flight. The POST hangs until
+ * the change aborts it, so the stale continuation of that connection runs after the change. The
+ * realtime connection must still come back for the current authorization.
+ */
+describe("realtime survives a user change during a subscription POST", () => {
+  let savedEventSource: unknown;
+  let restoreTimers: (() => void) | undefined;
+  beforeEach(() => {
+    savedEventSource = globalThis.EventSource;
+    setGlobal("EventSource", FakeEventSource);
+    resetFakeEventSources();
+    fakeOffline = false;
+    fakeRealtimeHangs = false;
+    restoreTimers = installRealtimeTimers();
+  });
+  afterEach(() => {
+    fakeRealtimeHangs = false;
+    restoreTimers?.();
+    setGlobal("EventSource", savedEventSource);
+  });
+
+  test("(a) the user signs out during the subscription POST", async () => {
+    const { pb, api } = await droppedWithPostInFlight();
+
+    pb.authStore.clear();
+    await settle();
+    fakeRealtimeHangs = false;
+    expect(rt.delays()).toEqual([300]); // the backoff goes on from the attempt in flight
+
+    await rt.advance(300);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(pb.realtime.clientId).toBe("client3");
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBeNull();
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("(b) the user signs out and another user signs in during the subscription POST", async () => {
+    const { pb, api } = await droppedWithPostInFlight();
+    const other = authToken(Math.floor(START / 1000) + 900, "u2");
+
+    pb.authStore.clear();
+    pb.authStore.save(other, record("u2"));
+    await settle();
+    fakeRealtimeHangs = false;
+
+    await rt.advance(rt.delays()[0] ?? 0);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(pb.realtime.clientId).toBe("client3");
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBe(other);
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("(c) the user signs out during the first subscribe() POST", async () => {
+    const token = authToken(Math.floor(START / 1000) + 900, "u1");
+    const { pb, api } = harness(
+      (c) => ({ [RENEW]: renewed(c), "POST /api/realtime": realtimeAnswer() }),
+      { token, record: record("u1") },
+    );
+
+    fakeRealtimeHangs = true;
+    const subscribing = pb.collection("demo").subscribe("*", () => {});
+    await settle();
+    expect(fakeSources).toHaveLength(1);
+    expect(realtimePosts(api)).toHaveLength(1); // the first subscribe's POST is in flight
+
+    pb.authStore.clear();
+    await settle();
+    fakeRealtimeHangs = false;
+    expect(rt.delays()).toEqual([200]);
+
+    await rt.advance(200);
+    await subscribing; // resolves once the new connection is up, not before
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(pb.realtime.clientId).toBe("client2");
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBeNull();
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client2",
+      subscriptions: ["demo/*"],
+    });
+
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+});
+
+/**
+ * A plain SDK client (upstream's `Client`), with no browser client on top. Its requests go to the
+ * stub, so its realtime retries are observable.
+ */
+class PlainClient extends Client {
+  constructor(private readonly stub: FetchFunction) {
+    super(API, new BaseAuthStore());
+  }
+
+  override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
+    return super.send<T>(path, { ...options, fetch: this.stub });
+  }
+}
+
+/**
+ * A plain client's realtime without any auth change keeps the upstream retry: the same backoff
+ * steps, and the subscriptions are restored on the new connection.
+ */
+describe("a plain client's realtime retries as upstream does", () => {
+  let savedEventSource: unknown;
+  let restoreTimers: (() => void) | undefined;
+  beforeEach(() => {
+    savedEventSource = globalThis.EventSource;
+    setGlobal("EventSource", FakeEventSource);
+    resetFakeEventSources();
+    fakeOffline = false;
+    fakeRealtimeHangs = false;
+    restoreTimers = installRealtimeTimers();
+  });
+  afterEach(() => {
+    fakeOffline = false;
+    fakeRealtimeHangs = false;
+    restoreTimers?.();
+    setGlobal("EventSource", savedEventSource);
+  });
+
+  test("a dropped connection is retried on the backoff steps, then restored", async () => {
+    const clock = testClock(START);
+    const api = stubApi(clock, { "POST /api/realtime": realtimeAnswer() });
+    const pb = new PlainClient(api.fetch);
+    await pb.collection("demo").subscribe("*", () => {});
+
+    fakeOffline = true;
+    fakeSources[0]?.fail();
+    await settle();
+    expect(rt.delays()).toEqual([200]);
+    await rt.advance(200); // the first attempt fails while offline
+    expect(rt.delays()).toEqual([300]);
+
+    fakeOffline = false;
+    await rt.advance(300);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a connection that drops while its first subscription POST is in flight is retried", async () => {
+    const clock = testClock(START);
+    const api = stubApi(clock, { "POST /api/realtime": realtimeAnswer() });
+    const pb = new PlainClient(api.fetch);
+    await pb.collection("demo").subscribe("*", () => {});
+
+    fakeRealtimeHangs = true;
+    fakeSources[0]?.fail();
+    await settle();
+    await rt.advance(200); // client2 connects; its POST hangs
+    expect(fakeSources).toHaveLength(2);
+
+    // the new connection drops with its POST in flight: the retry must still be scheduled
+    fakeRealtimeHangs = false;
+    fakeSources[1]?.fail();
+    await settle();
+    expect(rt.delays()).toEqual([300]);
+
+    await rt.advance(300);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+
     await pb.realtime.unsubscribe();
   });
 });

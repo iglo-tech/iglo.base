@@ -43,6 +43,8 @@ export interface Call {
   url: string;
   headers: Headers;
   body: unknown;
+  /** The request's abort signal, so a handler can hang until the request is cancelled. */
+  signal?: AbortSignal;
 }
 
 export type Handler = (call: Call) => Response | Promise<Response>;
@@ -78,6 +80,7 @@ export function stubApi(clock: TestClock, routes: Record<string, Handler>) {
       url: url.href,
       headers: new Headers(init?.headers),
       body,
+      signal: init?.signal ?? undefined,
     };
     calls.push(call);
     const handler = routes[`${method} ${url.pathname}`];
