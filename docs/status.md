@@ -15,12 +15,13 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13e | fix (Haiku) | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 3 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
+| P.13f | worker (Haiku) | | 0 | SSR user guide `docs/ssr.md` and site entry in iglo-tech/iglo.tech; [brief](briefs/P.13f.md). Last open task |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.13e | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 2026-11-08 (`8dc82bd`) | Three review rounds (Opus; Haiku worker and fixers), then the lead verified the agreed round-3 docs fix and merged under the three-round rule. Adapters `iglo.base/ssr/{next,sveltekit,nuxt,astro,react-router}` on a shared core (no-cache on every session or token response, CSRF, routes, Node-only Next proxy, RR `sessionHeaders`), Next.js and SvelteKit examples with their own lockfiles, `bun run test:examples` (both servers, 10/10). Check 18,789/0; test:reference 4,432/0 |
 | P.13d | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 2026-11-08 (`8289dea`) | Four review rounds (Opus; Haiku worker and fixers). `mintBrowserToken`, `handleBrowserTokenRenew` (impersonate 404 → 401, else 503), `readableCookie` fallback, `createBrowserClient` on `iglo.base/ssr/browser` (renewal on server time, capped timers, single-flight per token, `handOff`), realtime resubmits for the same user and reconnects on a user change (connection generation). Check 18,660/0; test:reference 4,432/0 |
 | P.13c | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 2026-11-08 (`5b3bbf3`) | Two review rounds (Opus; Haiku worker and fixer). `startOAuth2`/`completeOAuth2` on `ServerClient` (temporary `__Host-pb_oauth2`, state + PKCE, same-origin `redirectTo`, non-query providers such as Apple refused → popup), `handlePopupHandOff`, `checkCsrf`/`checkOrigin`. On https only `__Host-` cookie names are read (session too). Check 18,596/0; test:reference 4,427/0 |
 | P.13b | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 2026-11-08 (`8240a24`) | Three review rounds (Opus; Gemini worker, Gemini then Haiku fixers, D39). `iglo.base/ssr`: `createServerClient` on a `getAll`/`setAll` cookie adapter, HttpOnly `pb_auth` with token and record (`__Host-`/Secure from the app's request), bounded session cache (5 min, 10k, SHA-256 keys), refresh at half the lifetime learned per collection from auth responses, single-flight, 401/403/404 clear, 5xx keeps, `verify()`, `createSuperuserClient` with `impersonate`, browser-condition guard, one SDK copy across entries. Differential: 2 users × 200 parallel, zero session requests when warm, revocation, impersonate realtime. Fixed a harness cap (Bun's 256 concurrent requests per process) by moving the counting proxy to its own process. Check 19,563/0; test:reference 4,424/0 |
@@ -106,6 +107,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 | Since | Area | Difference |
 |---|---|---|
 | 2026-11-08 (P.13e) | Tests | Killed test runs leave `iglo-base-build-*`/`iglo-base-run-*` dirs (~120 MB each) in `/tmp`, which is a RAM tmpfs here; the lead deleted 15 older than 3 h on 2026-11-08. A harness-level cleanup (or a repo-local temp root) would stop the leak |
+| 2026-11-08 (P.13e) | SSR | A namespace import (`import *`) of a server-only subpath under the browser condition fails only at runtime, not at build |
 | 2026-11-08 (P.13e) | SSR | In Nuxt, a handler's own `Cache-Control` overrides the adapter's no-cache headers (the app's explicit choice) |
 | 2026-11-08 (P.13d) | SSR | The browser client's 30 s renewal floor uses the device clock (setting the clock back can delay a renewal past expiry) |
 | 2026-11-08 (P.13c) | SSR | Not limited: `redirectTo` length at start (a long one can come back as `missing-cookie`); `completeOAuth2` does not check the adapter can write cookies; the replay test replays without a cookie; popup hand-off accepts any auth collection, including `_superusers` |
