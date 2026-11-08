@@ -152,4 +152,42 @@ if (!browserClientOut.success) {
   );
 }
 
+// the framework adapters (iglo.base/ssr/next, /sveltekit, /nuxt, /astro, /react-router): each
+// one is an edge-safe bundle of its own code. The core (`@sdk/ssr/index`) is external, so every
+// adapter shares the one ssr.es.mjs with iglo.base/ssr, and the SDK classes come from the main
+// entry as above.
+for (const adapter of ["next", "sveltekit", "nuxt", "astro", "react-router"]) {
+  const adapterOut = await Bun.build({
+    target: "browser",
+    minify: { whitespace: true, syntax: true, identifiers: false },
+    sourcemap: "linked",
+    tsconfig: join(jsDir, "tsconfig.json"),
+    root: jsDir,
+    entrypoints: [join(jsDir, `src/ssr/${adapter}.js`)],
+    format: "esm",
+    outdir: dist,
+    naming: `ssr-${adapter}.es.mjs`,
+    plugins: [
+      {
+        name: "external-iglo-base",
+        setup(build) {
+          build.onResolve(
+            { filter: /^@sdk\/(Client|ClientResponseError|stores\/BaseAuthStore)$/ },
+            () => ({ path: "./iglo-base.es.mjs", external: true }),
+          );
+          build.onResolve({ filter: /^@sdk\/ssr\/index$/ }, () => ({
+            path: "./ssr.es.mjs",
+            external: true,
+          }));
+        },
+      },
+    ],
+  });
+  if (!adapterOut.success) {
+    throw new Error(
+      `Bun.build (ssr-${adapter}) failed:\n${adapterOut.logs.map(String).join("\n")}`,
+    );
+  }
+}
+
 await rm(jsDir, { recursive: true, force: true });

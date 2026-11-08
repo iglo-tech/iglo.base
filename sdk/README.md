@@ -604,6 +604,16 @@ if (!guard.ok) return guard.response; // 403
 
 Behind a proxy that changes the public origin, list that origin in `allowedOrigins`. Next.js Server Actions have their own check, so the guard is not needed there.
 
+#### Framework adapters
+
+Each adapter is a subpath of `iglo.base` with no dependencies. It resumes the session per request, writes the cookies back with no-cache headers, runs the CSRF check, answers the renew, popup and OAuth2 routes, and sets the page's server client and browser-token function. The app creates the session cache and the superuser client once and passes them in. Each adapter is server-only: its `browser` condition fails at build time. The routes default to `/api/pb/renew`, `/api/pb/popup` and `/api/pb/oauth2/start/<provider>` and `/api/pb/oauth2/callback`, and `routes` changes them; `csrf: false` turns the CSRF check off.
+
+- **`iglo.base/ssr/next`**: `createNextAuth({ next, ... })` returns `middleware(request)` for `middleware.ts` (pass `next: (init) => NextResponse.next(init)`, since the SDK cannot import `next/server`), and `serverSession({ cookies, headers })` for Server Components. A refresh inside a Server Component updates memory only, because cookies there are read-only. Server Actions keep Next.js's own CSRF check. See [`examples/nextjs`](https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs).
+- **`iglo.base/ssr/sveltekit`**: `createSvelteKitAuth(options)` returns `handle`, which sets `event.locals.pb` and `event.locals.pbBrowserToken`. See [`examples/sveltekit`](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit).
+- **`iglo.base/ssr/nuxt`**: `createNuxtAuth(options)` returns `middleware(event)` for a Nitro server middleware. It sets `event.context.pb` and `event.context.pbBrowserToken`. The event is a small structural shape the app maps from h3, so the adapter needs no h3 import.
+- **`iglo.base/ssr/astro`**: `createAstroAuth(options)` returns `onRequest(context, next)` for an Astro middleware. It sets `Astro.locals.pb` and `Astro.locals.pbBrowserToken` and writes cookies through `context.cookies`.
+- **`iglo.base/ssr/react-router`**: `createReactRouterAuth(options)` returns `session(request)`, for a loader or action on the Web `Request`. It answers the adapter routes and the CSRF check with a `Response`; otherwise it returns the resumed session and the headers to return with the data (for example `data(value, { headers })`).
+
 #### Cookie Security & `__Host-` Prefix
 
 The session cookie is `__Host-pb_auth` (`Secure`, `Path=/`, no `Domain`, `HttpOnly`, `SameSite=Lax`) when the app's request is https. Over local http (`localhost`, `127.0.0.1`, `::1`) it is the plain `pb_auth` without `Secure`. On https a plain `pb_auth` is ignored, because a sibling subdomain can set it; over http only the plain name is read. When the session ends, both names are cleared on https.

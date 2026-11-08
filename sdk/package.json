@@ -42,6 +42,31 @@
       "types": "./dist/types/src/ssr/browser-client.d.ts",
       "default": "./dist/ssr-browser-client.es.mjs"
     },
+    "./ssr/next": {
+      "types": "./dist/types/src/ssr/next.d.ts",
+      "browser": "./dist/ssr-browser.es.mjs",
+      "default": "./dist/ssr-next.es.mjs"
+    },
+    "./ssr/sveltekit": {
+      "types": "./dist/types/src/ssr/sveltekit.d.ts",
+      "browser": "./dist/ssr-browser.es.mjs",
+      "default": "./dist/ssr-sveltekit.es.mjs"
+    },
+    "./ssr/nuxt": {
+      "types": "./dist/types/src/ssr/nuxt.d.ts",
+      "browser": "./dist/ssr-browser.es.mjs",
+      "default": "./dist/ssr-nuxt.es.mjs"
+    },
+    "./ssr/astro": {
+      "types": "./dist/types/src/ssr/astro.d.ts",
+      "browser": "./dist/ssr-browser.es.mjs",
+      "default": "./dist/ssr-astro.es.mjs"
+    },
+    "./ssr/react-router": {
+      "types": "./dist/types/src/ssr/react-router.d.ts",
+      "browser": "./dist/ssr-browser.es.mjs",
+      "default": "./dist/ssr-react-router.es.mjs"
+    },
     "./package.json": "./package.json"
   }
 }

@@ -13,6 +13,15 @@ const sdkRoot = join(import.meta.dirname, "..");
 const consumerSources = join(import.meta.dirname, "consumer");
 const tsc = join(sdkRoot, "..", "node_modules", "typescript", "lib", "tsc.js");
 
+// The framework adapters (docs/design/13-ssr.md): each subpath and its factory.
+const FRAMEWORK_ADAPTERS = [
+  { name: "next", factory: "createNextAuth" },
+  { name: "sveltekit", factory: "createSvelteKitAuth" },
+  { name: "nuxt", factory: "createNuxtAuth" },
+  { name: "astro", factory: "createAstroAuth" },
+  { name: "react-router", factory: "createReactRouterAuth" },
+] as const;
+
 const tmp = await mkdtemp(join(tmpdir(), "iglo-sdk-consumer-"));
 let failed = false;
 
@@ -90,6 +99,47 @@ try {
   // 4. Node ESM import and Bun import
   for (const runtime of ["node", "bun"]) {
     run(`${runtime} import (ESM)`, [runtime, "esm.mjs"]);
+    run(`${runtime} import (framework adapters)`, [runtime, "adapters.mjs"]);
+  }
+
+  // Each framework adapter subpath: a browser-condition bundle fails at build time, a node
+  // bundle succeeds (the adapters are server-only, docs/design/13-ssr.md "Framework adapters").
+  for (const adapter of FRAMEWORK_ADAPTERS) {
+    const entry = `adapter-${adapter.name}-entry.js`;
+    await writeFile(
+      join(tmp, entry),
+      `import { ${adapter.factory} } from "iglo.base/ssr/${adapter.name}";\nconsole.log(typeof ${adapter.factory});\n`,
+    );
+    const browserAdapter = Bun.spawnSync(
+      ["bun", "build", entry, "--outfile", `browser-${adapter.name}-out.js`, "--target", "browser"],
+      { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+    );
+    if (browserAdapter.exitCode !== 0) {
+      console.log(`ok   browser bundle of iglo.base/ssr/${adapter.name} failed as expected`);
+    } else {
+      failed = true;
+      console.log(`FAIL browser bundle of iglo.base/ssr/${adapter.name} should fail at build time`);
+    }
+    const nodeAdapter = Bun.spawnSync(
+      ["bun", "build", entry, "--outfile", `node-${adapter.name}-out.js`, "--target", "node"],
+      { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+    );
+    const nodeAdapterRun =
+      nodeAdapter.exitCode === 0
+        ? Bun.spawnSync(["node", `node-${adapter.name}-out.js`], {
+            cwd: tmp,
+            stdout: "pipe",
+            stderr: "pipe",
+          })
+        : undefined;
+    if (nodeAdapterRun?.exitCode === 0) {
+      console.log(`ok   node bundle and run of iglo.base/ssr/${adapter.name}`);
+    } else {
+      failed = true;
+      console.log(
+        `FAIL node bundle of iglo.base/ssr/${adapter.name}: ${nodeAdapter.stderr.toString()}${nodeAdapterRun?.stderr.toString() ?? ""}`,
+      );
+    }
   }
 
   // 5. bun build of import PocketBase from "iglo.base"
@@ -217,6 +267,7 @@ try {
     "--moduleResolution",
     "bundler",
     "bundler-types.ts",
+    "bundler-adapters.ts",
     "esm-types.mts",
   ]);
 } finally {
