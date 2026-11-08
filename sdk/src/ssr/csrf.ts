@@ -2,7 +2,7 @@
 import {
   createRequestCookieAdapter,
   DEFAULT_COOKIE_KEY,
-  findSessionCookie,
+  hasSessionCookieName,
 } from "@sdk/ssr/cookies";
 
 export interface CsrfOptions {
@@ -74,16 +74,18 @@ export function checkOrigin(request: Request, allowedOrigins?: readonly string[]
 /**
  * The CSRF guard for an adapter's request handler, called before the handler runs. It rejects
  * `POST`, `PUT`, `PATCH` and `DELETE` requests that carry the session cookie unless their origin
- * passes `checkOrigin`. Requests without the session cookie, and `GET`, `HEAD` and `OPTIONS`,
- * pass. A rejection carries a ready 403 `Response`. Frameworks with their own check (Next.js
- * Server Actions) may skip this.
+ * passes `checkOrigin`. Requests without the session cookie (under either name), and `GET`, `HEAD`
+ * and `OPTIONS`, pass. A rejection carries a ready 403 `Response`. Frameworks with their own check
+ * (Next.js Server Actions) may skip this.
  */
 export function checkCsrf(request: Request, options: CsrfOptions = {}): CsrfResult {
+  // the configuration is validated first, so an invalid entry throws on every request
+  normalizeAllowed(options.allowedOrigins);
   if (!STATE_CHANGING_METHODS.has(request.method.toUpperCase())) {
     return { ok: true };
   }
   const cookies = createRequestCookieAdapter(request).getAll();
-  if (!findSessionCookie(cookies, options.cookieName ?? DEFAULT_COOKIE_KEY)) {
+  if (!hasSessionCookieName(cookies, options.cookieName ?? DEFAULT_COOKIE_KEY)) {
     return { ok: true };
   }
 

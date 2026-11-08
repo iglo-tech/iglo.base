@@ -437,7 +437,27 @@ describe("SSR server core: round-1 regressions", () => {
       expect(names).toEqual(["__Host-pb_auth", "pb_auth"]);
     });
 
-    test("a session cookie under the plain name (before the prefix) is still read", async () => {
+    test("on https a session cookie under the plain name is ignored: anonymous, and no request is made", async () => {
+      // a sibling subdomain can set the plain name for the parent domain; the SDK must not sign in with it
+      const token = serverToken({ exp: NOW + 86_400, id: "u_plain" });
+      const requests: string[] = [];
+      const { adapter } = jar([{ name: "pb_auth", value: sessionValue(token, { id: "u_plain" }) }]);
+      const pb = await createServerClient({
+        url: API,
+        origin: HTTPS_APP,
+        cookies: adapter,
+        clock: () => CLOCK,
+        fetch: async (input) => {
+          requests.push(String(input));
+          return new Response("{}", { status: 500 });
+        },
+      });
+      expect(pb.authStore.isValid).toBe(false);
+      expect(pb.authStore.record).toBeNull();
+      expect(requests).toEqual([]);
+    });
+
+    test("on http the plain name is the session cookie that is read", async () => {
       const token = serverToken({ exp: NOW + 86_400, id: "u_plain" });
       fetchMock.on({
         method: "POST",
@@ -449,7 +469,7 @@ describe("SSR server core: round-1 regressions", () => {
       const { adapter } = jar([{ name: "pb_auth", value: sessionValue(token, { id: "u_plain" }) }]);
       const pb = await createServerClient({
         url: API,
-        origin: HTTPS_APP,
+        origin: APP,
         cookies: adapter,
         clock: () => CLOCK,
       });

@@ -39,17 +39,32 @@ export function normalizeCookies(raw: Cookie[] | CookieValueMap | undefined | nu
   return Object.entries(raw).map(([name, value]) => ({ name, value }));
 }
 
-/** The `__Host-` prefixed session cookie wins; the plain name is read as a migration fallback. */
-export function findSessionCookie(
+/** The name a cookie is written under: `__Host-` prefixed on secure origins, plain otherwise. */
+export function cookieWireName(baseName: string, secure: boolean): string {
+  return secure ? `__Host-${baseName}` : baseName;
+}
+
+/**
+ * The cookie the SDK reads, by the one name it is written under for `secure` (see
+ * `cookieWireName`). On a secure origin the plain name is never read: a sibling subdomain can set
+ * a cookie for the parent domain under any name, but only the host itself can set a `__Host-` one.
+ */
+export function findCookie(
   cookies: Cookie[],
-  baseName: string = DEFAULT_COOKIE_KEY,
+  baseName: string,
+  secure: boolean,
 ): Cookie | undefined {
-  const prefixed = `__Host-${baseName}`;
-  const hostMatch = cookies.find((c) => c.name === prefixed);
-  if (hostMatch) {
-    return hostMatch;
-  }
-  return cookies.find((c) => c.name === baseName);
+  const name = cookieWireName(baseName, secure);
+  return cookies.find((c) => c.name === name);
+}
+
+/**
+ * Whether a session cookie is present under either name. The CSRF guard does not know how the
+ * app named its cookie (`secure` may come from the app's settings), so both names count: the
+ * guard checks more requests, never fewer. Reading a value is still `findCookie`'s job.
+ */
+export function hasSessionCookieName(cookies: Cookie[], baseName: string): boolean {
+  return cookies.some((c) => c.name === `__Host-${baseName}` || c.name === baseName);
 }
 
 export function safeDecode(value: string): string {
@@ -158,8 +173,9 @@ export function buildSessionCookieToSet(
 
 /**
  * Expiring cookies for a cookie's end, one per name the cookie may have been written under.
- * When `secure`, the plain name is cleared too: a cookie written before the prefix was in use
- * must not survive. `optionsFor` gives the serialize options of each name's write.
+ * When `secure`, the plain name is cleared too. It is never read on a secure origin, so this
+ * only removes what some other writer or an older build left under it. `optionsFor` gives the
+ * serialize options of each name's write.
  */
 function buildClearedCookies(
   baseName: string,

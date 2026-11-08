@@ -25,7 +25,8 @@ import {
   buildClearedSessionCookies,
   buildOAuth2CookieToSet,
   buildSessionCookieToSet,
-  findSessionCookie,
+  findCookie,
+  isSecureSession,
   type CookieSettings,
   isHttpLocalUrl,
   normalizeCookies,
@@ -38,6 +39,7 @@ import {
   OAuth2Error,
   constantTimeEqual,
   parseOAuth2Cookie,
+  returnsToQueryString,
   safeRedirectPath,
   validateCallbackUrl,
   withRedirectUri,
@@ -175,7 +177,8 @@ export class ServerClient extends Client {
    * Returns the URL with `callbackUrl` as its `redirect_uri`. The caller redirects to it and
    * applies the adapter's cookies to that response.
    *
-   * @throws {OAuth2Error} `unknown-provider`, `invalid-callback` or `no-cookie-writer`
+   * @throws {OAuth2Error} `unknown-provider`, `unsupported-provider` (a POST callback, such as
+   *   Sign in with Apple), `invalid-callback` or `no-cookie-writer`
    * @throws {ClientResponseError} when iglo.base refuses the auth methods
    */
   async startOAuth2(provider: string, options: StartOAuth2Options): Promise<string> {
@@ -193,6 +196,14 @@ export class ServerClient extends Client {
       throw new OAuth2Error(
         "unknown-provider",
         `OAuth2 provider "${provider}" is not enabled for the ${collection} collection.`,
+      );
+    }
+    if (!returnsToQueryString(info.authURL)) {
+      // refused before any cookie is written: the callback could not complete (see 13-ssr.md)
+      throw new OAuth2Error(
+        "unsupported-provider",
+        `OAuth2 provider "${provider}" returns to the callback by POST, which the redirect flow ` +
+          "cannot read. Use the popup flow (authWithOAuth2 and handlePopupHandOff) for it.",
       );
     }
 
@@ -239,9 +250,10 @@ export class ServerClient extends Client {
     } catch {
       return undefined;
     }
-    const matched = findSessionCookie(
+    const matched = findCookie(
       normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
       OAUTH2_COOKIE_KEY,
+      isSecureSession(this._cookieSettings()),
     );
     return matched?.value ? parseOAuth2Cookie(matched.value) : undefined;
   }
@@ -315,9 +327,10 @@ export class ServerClient extends Client {
       return;
     }
 
-    const matched = findSessionCookie(
+    const matched = findCookie(
       normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
       this._cookieName,
+      isSecureSession(this._cookieSettings()),
     );
     const session = matched?.value ? parseSessionValue(matched.value) : undefined;
     if (!session) {

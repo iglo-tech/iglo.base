@@ -149,9 +149,13 @@ async function callbackRoute(
   browser: Browser,
   iglo: ReturnType<typeof fakeIglo>,
   query: string,
-  options: { clock?: () => number; sessionCache?: ReturnType<typeof createSessionCache> } = {},
+  options: {
+    clock?: () => number;
+    sessionCache?: ReturnType<typeof createSessionCache>;
+    origin?: string;
+  } = {},
 ) {
-  const request = browser.request(`${CALLBACK}?${query}`);
+  const request = browser.request(`${options.origin ?? APP}/callback?${query}`);
   const cookies = createRequestCookieAdapter(request);
   const pb = await createServerClient({
     url: API,
@@ -720,5 +724,78 @@ describe("popup hand-off", () => {
       { url: API, fetch: iglo.fetch, allowedOrigins: ["https://www.example.com"] },
     );
     expect(response.status).toBe(200);
+  });
+});
+
+describe("OAuth2 redirect flow: cookie names follow the origin", () => {
+  test("on https a temporary cookie under the plain name is ignored (cookie tossing)", async () => {
+    // A sibling subdomain sets the plain name with its own state and verifier. The victim's
+    // callback must not use it: missing-cookie, no code exchange, and the plain cookie is cleared.
+    const browser = new Browser();
+    const iglo = fakeIglo(authOk("attacker"));
+    const planted = {
+      state: STATE,
+      codeVerifier: "attacker_verifier_0123456789abcdefghijklmnop",
+      provider: "oidc",
+      collection: "users",
+      redirectURL: CALLBACK,
+      redirectTo: "/",
+      exp: Date.now() + 600_000,
+    };
+    browser.jar.set("pb_oauth2", encodeURIComponent(JSON.stringify(planted)));
+
+    const { result, response } = await callbackRoute(browser, iglo, `code=C&state=${STATE}`);
+
+    expect(result.ok).toBe(false);
+    expect((result as { error: OAuth2Error }).error.kind).toBe("missing-cookie");
+    expect(iglo.calls.some((c) => c.path.endsWith("auth-with-oauth2"))).toBe(false);
+    expect(browser.jar.has("pb_oauth2")).toBe(false);
+    expect(response.headers.getSetCookie().some((c) => c.startsWith("pb_auth="))).toBe(false);
+  });
+
+  test("on http the plain name is the one written and read: the flow signs in", async () => {
+    const LOCAL = "http://localhost:3000";
+    const browser = new Browser();
+    const iglo = fakeIglo(authOk("u1"));
+    await startRoute(browser, iglo, { origin: LOCAL });
+    expect(browser.jar.has("pb_oauth2")).toBe(true);
+
+    const { result, response } = await callbackRoute(browser, iglo, `code=123&state=${STATE}`, {
+      origin: LOCAL,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(response.headers.getSetCookie().some((c) => c.startsWith("pb_auth="))).toBe(true);
+    expect(browser.jar.has("pb_oauth2")).toBe(false);
+    expect(browser.jar.has("pb_auth")).toBe(true);
+  });
+
+  test("Sign in with Apple (response_mode=form_post) is refused before any cookie is written", async () => {
+    const APPLE_AUTH_URL =
+      "https://appleid.apple.com/auth/authorize?client_id=com.example.app&response_mode=form_post" +
+      "&response_type=code&scope=name%20email&state=" +
+      STATE +
+      "&redirect_uri=";
+    const iglo = fakeIglo({
+      "GET /api/collections/users/auth-methods": () =>
+        json(
+          200,
+          authMethods({
+            providers: [
+              { name: "apple", displayName: "Apple", state: STATE, authURL: APPLE_AUTH_URL },
+            ],
+          }),
+        ),
+    });
+    const request = new Request(`${APP}/login`);
+    const cookies = createRequestCookieAdapter(request);
+    const pb = await createServerClient({ url: API, cookies, request, fetch: iglo.fetch });
+
+    const error = await pb.startOAuth2("apple", { callbackUrl: CALLBACK }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(OAuth2Error);
+    expect((error as OAuth2Error).kind).toBe("unsupported-provider");
+    expect(cookies.queuedCookies).toEqual([]);
+    expect(iglo.calls.map((c) => c.path)).toEqual(["/api/collections/users/auth-methods"]);
   });
 });

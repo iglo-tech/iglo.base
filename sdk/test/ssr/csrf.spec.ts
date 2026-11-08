@@ -116,6 +116,13 @@ describe("checkCsrf", () => {
     );
   });
 
+  test("an invalid allowedOrigins entry throws on a GET and on a request with no session cookie", () => {
+    const options = { allowedOrigins: ["not a url"] };
+    expect(() => checkCsrf(req("GET", SESSION), options)).toThrow(TypeError);
+    expect(() => checkCsrf(req("POST", {}), options)).toThrow(TypeError);
+    expect(() => checkCsrf(req("POST", { origin: APP }), options)).toThrow(TypeError);
+  });
+
   test("the origin 'null' is rejected", () => {
     expect(checkCsrf(req("POST", { ...SESSION, origin: "null" })).ok).toBe(false);
   });

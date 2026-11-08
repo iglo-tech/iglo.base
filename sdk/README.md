@@ -481,7 +481,6 @@ import {
   createServerClient,
   createRequestCookieAdapter,
   createSessionCache,
-  checkCsrf,
 } from "iglo.base/ssr";
 
 const BACKEND = "http://127.0.0.1:8090";
@@ -510,10 +509,11 @@ export async function callback(request) {
 
 - `startOAuth2(provider, { callbackUrl, redirectTo?, collection? })` returns the provider's URL. It also sets a 10-minute temporary cookie with the state and the PKCE verifier. `redirectTo` must be a same-origin path; anything else becomes `/`.
 - `completeOAuth2(request)` checks `state` against that cookie, exchanges the code and sets the session cookie. It deletes the temporary cookie on every outcome. It returns `{ ok: true, redirectTo, auth }` or `{ ok: false, redirectTo, error }`. A replayed callback fails with `missing-cookie`.
-- Errors are `OAuth2Error` instances with a `kind`: `unknown-provider`, `invalid-callback`, `missing-cookie`, `expired`, `state-mismatch`, `provider-error`, `missing-code`. A failure the server reports is its `ClientResponseError`.
-- The temporary cookie is not signed. It is bound to the `state` of the flow, and on https it is `__Host-` prefixed, so only your own origin can set it. Two sign-ins in one browser at once: the second one replaces the first.
+- Errors are `OAuth2Error` instances with a `kind`: `unknown-provider`, `unsupported-provider`, `invalid-callback`, `missing-cookie`, `expired`, `state-mismatch`, `provider-error`, `missing-code`. A failure the server reports is its `ClientResponseError`.
+- Sign in with Apple returns to the callback by a cross-site POST, which this flow cannot read. `startOAuth2` refuses it with `unsupported-provider`; use the popup sign-in below for Apple.
+- The temporary cookie is not signed. It is bound to the `state` of the flow. On https it is `__Host-pb_oauth2`, and the SDK reads only that name, so a sibling subdomain cannot plant one. Two sign-ins in one browser at once: the second one replaces the first.
 
-Popup sign-in (`authWithOAuth2()` in the browser, then a POST of the token): the adapter route calls `handlePopupHandOff(request, { url, sessionCache })`. It accepts a `POST` with the JSON body `{ "token": "..." }` from the same origin, checks the token with one `auth-refresh` and sets the session cookie. It answers `200 { "record": ... }`, or `401` with no cookie for a revoked token.
+Popup sign-in (`authWithOAuth2()` in the browser, then a POST of the token; this is the flow for Apple): the adapter route calls `handlePopupHandOff(request, { url, sessionCache })`. It accepts a `POST` with the JSON body `{ "token": "..." }` from the same origin, checks the token with one `auth-refresh` and sets the session cookie. It answers `200 { "record": ... }`, or `401` with no cookie for a revoked token.
 
 #### CSRF
 
@@ -528,7 +528,7 @@ Behind a proxy that changes the public origin, list that origin in `allowedOrigi
 
 #### Cookie Security & `__Host-` Prefix
 
-The session cookie is `__Host-pb_auth` (`Secure`, `Path=/`, no `Domain`, `HttpOnly`, `SameSite=Lax`) when the app's request is https. Over local http (`localhost`, `127.0.0.1`, `::1`) it is the plain `pb_auth` without `Secure`. When the session ends, both names are cleared on https.
+The session cookie is `__Host-pb_auth` (`Secure`, `Path=/`, no `Domain`, `HttpOnly`, `SameSite=Lax`) when the app's request is https. Over local http (`localhost`, `127.0.0.1`, `::1`) it is the plain `pb_auth` without `Secure`. On https a plain `pb_auth` is ignored, because a sibling subdomain can set it; over http only the plain name is read. When the session ends, both names are cleared on https.
 
 #### Token Lifetime & Single-Flight Refresh
 

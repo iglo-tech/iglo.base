@@ -9,6 +9,7 @@ export const DEFAULT_OAUTH2_COLLECTION = "users";
 export type OAuth2ErrorKind =
   | "invalid-callback"
   | "unknown-provider"
+  | "unsupported-provider"
   | "no-cookie-writer"
   | "missing-cookie"
   | "expired"
@@ -167,4 +168,20 @@ export function parseOAuth2Cookie(raw: string): OAuth2Pending | undefined {
 /** The provider's authorization URL with the callback as its `redirect_uri`. */
 export function withRedirectUri(authURL: string, callbackUrl: string): string {
   return authURL + encodeURIComponent(callbackUrl);
+}
+
+/**
+ * Whether the provider returns to the callback as a GET with `code`, `state` and `error` in the
+ * query string. Upstream asks Apple for `response_mode=form_post`, so Apple returns with a
+ * cross-site POST whose form body this flow does not read, and whose `SameSite=Lax` cookie the
+ * browser does not send. Only `response_mode=query`, or no `response_mode`, passes; any other
+ * mode is refused. An unreadable URL is refused too.
+ */
+export function returnsToQueryString(authURL: string): boolean {
+  try {
+    const mode = new URL(authURL).searchParams.get("response_mode");
+    return mode === null || mode === "query";
+  } catch {
+    return false;
+  }
 }
