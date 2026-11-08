@@ -233,6 +233,47 @@ describe("sessionHeaders: the route's headers function", () => {
     expect(merged.get("cache-control")).toBe(SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null);
   });
 
+  test("a boundary route renders a session route's thrown response: the root keeps the parent headers and gets the no-cache headers and the rotated cookie as React Router's own", async () => {
+    // the session route threw data(…, { headers: headers() }); React Router calls the root's headers
+    // function with the thrown response's headers as errorHeaders, and no loader headers of its own
+    const auth = setup();
+    const { headers } = await sessionOf(
+      auth,
+      request("/notes/1", { cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1") }),
+    );
+    expect(headers.getSetCookie().length).toBeGreaterThan(0);
+
+    const root = sessionHeaders({
+      loaderHeaders: new Headers(),
+      actionHeaders: new Headers(),
+      parentHeaders: new Headers({ "x-parent": "1", "Cache-Control": "public, max-age=60" }),
+      errorHeaders: headers,
+    });
+
+    expect(root.get("x-parent")).toBe("1");
+    expect(root.get("cache-control")).toBe(SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null);
+    expect(root.get("pragma")).toBe("no-cache");
+    expect(root.get("expires")).toBe("0");
+    // React Router appends the Set-Cookie lines of the error headers itself
+    expect(root.getSetCookie()).toEqual([]);
+  });
+
+  test("a boundary route renders an anonymous thrown response: the page stays cacheable", async () => {
+    const auth = setup();
+    const { headers } = await sessionOf(auth, request("/public"));
+
+    const root = sessionHeaders({
+      loaderHeaders: new Headers(),
+      actionHeaders: new Headers(),
+      parentHeaders: new Headers(),
+      errorHeaders: headers,
+    });
+
+    expect(root.get("cache-control")).toBeNull();
+    expect(root.get("pragma")).toBeNull();
+    expect(root.getSetCookie()).toEqual([]);
+  });
+
   test("an anonymous loader gets no no-cache headers and no cookies", async () => {
     const auth = setup();
     const { headers } = await sessionOf(auth, request("/public"));
