@@ -47,6 +47,8 @@ Variables:
   security and the OAuth2 callback URL).
 - `PORT` and `HOST`: where `bun run start` listens (default `3000` and `127.0.0.1`).
 
+OAuth2 callbacks: the redirect flow this example uses needs `<APP_ORIGIN>/api/pb/oauth2/callback` registered with each provider. A provider that returns by POST (Sign in with Apple) uses the popup flow instead, which registers `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider. The example does not show the popup flow; the guide does.
+
 The fallback, with no superuser variables:
 
 ```sh

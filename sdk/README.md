@@ -421,6 +421,10 @@ To accomplish this, the SDK provides 2 function hooks:
 
 `iglo.base/ssr` is server-only: import it only in server code. Its exports include `createServerClient`, `createSuperuserClient`, `createSessionCache`, `createRequestCookieAdapter`, `mintBrowserToken`, `handleBrowserTokenRenew`, `handlePopupHandOff`, `checkCsrf`, `checkOrigin` and `SSR_NO_CACHE_HEADERS`. The framework adapters are `iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro` and `/react-router`.
 
+`createSessionCache({ ttl, maxEntries })` takes two optional options. `ttl` is in milliseconds (default 300000, five minutes), and `maxEntries` defaults to 10000. A session served from the cache can stay signed in for up to `ttl` after iglo.base revokes it; the guide's [session cache](https://github.com/iglo-tech/iglo.base/blob/main/docs/ssr.md#the-session-cache) section covers the trade-off.
+
+For a provider that returns by POST, such as Sign in with Apple, use the popup flow (`authWithOAuth2()` in the browser, then `handOff()`). Register `<PB_PUBLIC_URL>/api/oauth2-redirect` with that provider, not the app's callback URL; the guide's [OAuth2 providers](https://github.com/iglo-tech/iglo.base/blob/main/docs/ssr.md#oauth2-providers) section explains both flows.
+
 For setup, the framework sections, caching headers, security notes and troubleshooting, read the **[server-side rendering guide](https://github.com/iglo-tech/iglo.base/blob/main/docs/ssr.md)**. The example apps are in [`examples/nextjs`](https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs) and [`examples/sveltekit`](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit).
 
 ### Security

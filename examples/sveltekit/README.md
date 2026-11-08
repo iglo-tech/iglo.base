@@ -40,6 +40,8 @@ Environment variables:
 | `APP_ORIGIN` | The app's public origin, such as `https://app.example.com`. Required. |
 | `PORT`, `HOST`, `ORIGIN` | Read by `adapter-node` (`ORIGIN` is the public origin, the same as `APP_ORIGIN`). |
 
+OAuth2 callbacks: the redirect flow this example uses needs `<APP_ORIGIN>/api/pb/oauth2/callback` registered with each provider. A provider that returns by POST (Sign in with Apple) uses the popup flow instead, which registers `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider. The example does not show the popup flow; the guide does.
+
 For the fallback, run it without the superuser variables:
 
 ```sh
