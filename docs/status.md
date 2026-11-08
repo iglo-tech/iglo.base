@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13e | review (Opus) | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 2 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
+| P.13e | fix (Haiku) | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 2 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
 
 ## Done
 
@@ -105,6 +105,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-11-08 (P.13e) | SSR | In Nuxt, a handler's own `Cache-Control` overrides the adapter's no-cache headers (the app's explicit choice) |
 | 2026-11-08 (P.13d) | SSR | The browser client's 30 s renewal floor uses the device clock (setting the clock back can delay a renewal past expiry) |
 | 2026-11-08 (P.13c) | SSR | Not limited: `redirectTo` length at start (a long one can come back as `missing-cookie`); `completeOAuth2` does not check the adapter can write cookies; the replay test replays without a cookie; popup hand-off accepts any auth collection, including `_superusers` |
 | 2026-11-07 (P.11) | SDK | `react-native` points to the `.mjs` bundle (older Metro may not resolve it); source maps point to intermediate JS, not `sdk/src`. Reference flake: `s3-files` "concurrent requests generate one thumb", upstream made 2 thumbs once |
