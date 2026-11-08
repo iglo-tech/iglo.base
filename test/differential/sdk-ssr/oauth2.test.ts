@@ -49,7 +49,11 @@ function cookieShapes(response: Response): string[] {
   return response.headers
     .getSetCookie()
     .map((line) =>
-      line.replace(/^([^=]+)=[^;]*/, "$1=<value>").replace(/Max-Age=\d+/i, "Max-Age=<n>"),
+      line
+        .replace(/^([^=]+)=[^;]*/, "$1=<value>")
+        .replace(/Max-Age=\d+/i, "Max-Age=<n>")
+        // both servers derive Expires from the token's exp, issued a second apart
+        .replace(/Expires=[^;]+/i, "Expires=<date>"),
     )
     .toSorted();
 }
