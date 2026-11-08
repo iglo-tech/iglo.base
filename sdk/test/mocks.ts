@@ -11,6 +11,7 @@ export type RequestMock = {
   ) => boolean;
   delay?: number;
   replyCode?: number;
+  replyHeaders?: Record<string, string> | Headers | (() => Record<string, string> | Headers);
   replyBody?: any;
 };
 
@@ -39,7 +40,12 @@ export class FetchMock {
     ) => {
       for (let mock of this.mocks) {
         // match url and method
-        if (mock.url !== url || config?.method !== mock.method) {
+        const matchUrl =
+          mock.url === url ||
+          (typeof mock.url === "string" &&
+            typeof url === "string" &&
+            url.startsWith(mock.url + "?"));
+        if (!matchUrl || config?.method !== mock.method) {
           continue;
         }
 
@@ -71,10 +77,19 @@ export class FetchMock {
           continue;
         }
 
+        const headersInit =
+          typeof mock.replyHeaders === "function" ? mock.replyHeaders() : mock.replyHeaders;
+        const headers =
+          headersInit instanceof Headers ? headersInit : new Headers(headersInit || {});
+        if (!headers.has("date")) {
+          headers.set("date", new Date().toUTCString());
+        }
+
         const response = {
           url: url,
           status: mock.replyCode,
           statusText: "test",
+          headers: headers,
           json: async () => {
             if (typeof mock.replyBody == "function") {
               return mock.replyBody();

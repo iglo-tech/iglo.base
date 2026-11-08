@@ -61,7 +61,7 @@ for await (const file of walk(typesDir)) {
   }
 }
 
-// 3. ESM bundle
+// 3. ESM bundles
 await writeFile(
   join(jsDir, "tsconfig.json"),
   JSON.stringify({ compilerOptions: { paths: { "@sdk/*": ["./src/*"] } } }),
@@ -80,6 +80,47 @@ const out = await Bun.build({
 });
 if (!out.success) {
   throw new Error(`Bun.build failed:\n${out.logs.map(String).join("\n")}`);
+}
+
+const ssrOut = await Bun.build({
+  target: "node",
+  minify: { whitespace: true, syntax: true, identifiers: false },
+  sourcemap: "linked",
+  tsconfig: join(jsDir, "tsconfig.json"),
+  root: jsDir,
+  entrypoints: [join(jsDir, "src/ssr/index.js")],
+  format: "esm",
+  outdir: dist,
+  naming: "ssr.es.mjs",
+  plugins: [
+    {
+      name: "external-iglo-base",
+      setup(build) {
+        build.onResolve(
+          { filter: /^@sdk\/(Client|ClientResponseError|stores\/BaseAuthStore)$/ },
+          () => ({ path: "./iglo-base.es.mjs", external: true }),
+        );
+      },
+    },
+  ],
+});
+if (!ssrOut.success) {
+  throw new Error(`Bun.build (ssr) failed:\n${ssrOut.logs.map(String).join("\n")}`);
+}
+
+const ssrBrowserOut = await Bun.build({
+  target: "browser",
+  minify: { whitespace: true, syntax: true, identifiers: false },
+  sourcemap: "linked",
+  tsconfig: join(jsDir, "tsconfig.json"),
+  root: jsDir,
+  entrypoints: [join(jsDir, "src/ssr/browser.js")],
+  format: "esm",
+  outdir: dist,
+  naming: "ssr-browser.es.mjs",
+});
+if (!ssrBrowserOut.success) {
+  throw new Error(`Bun.build (ssr-browser) failed:\n${ssrBrowserOut.logs.map(String).join("\n")}`);
 }
 
 await rm(jsDir, { recursive: true, force: true });

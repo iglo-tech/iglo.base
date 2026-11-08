@@ -20,7 +20,7 @@ This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/
     - [Specify TypeScript definitions](#specify-typescript-definitions)
     - [Custom request options](#custom-request-options)
     - [Send hooks](#send-hooks)
-    - [SSR integration](#ssr-integration)
+    - [Server-side rendering](#server-side-rendering)
     - [Security](#security)
 - [Definitions](#definitions)
 - [Development](#development)
@@ -415,29 +415,73 @@ To accomplish this, the SDK provides 2 function hooks:
     // use the created client as usual...
     ```
 
-### SSR integration
+### Server-side rendering
 
-Unfortunately, **there is no "one size fits all" solution** because each framework handle SSR differently (_and even in a single framework there is more than one way of doing things_).
+`iglo.base/ssr` is the server-side entry point. It works with any server that handles Web `Request`/`Response` (Bun, Hono, Deno, and framework middleware built on them). Its exports:
 
-But in general, the idea is to use a cookie based flow:
+- `createServerClient`: a `Client` per request, resumed from the session cookie. Requests are sent with `cache: "no-store"`.
+- `createSessionCache`: one in-memory cache per process. It skips the session check for recently checked sessions and shares one refresh between parallel requests.
+- `createRequestCookieAdapter`: the cookie adapter for Web `Request`/`Response` handlers.
+- `createSuperuserClient`: a long-lived superuser client. `impersonate(collection, id, duration)` mints a short token (15 minutes by default) for page JavaScript and realtime. A client built from a non-refreshable token (an `impersonate` API key) does not refresh it; its requests fail once it expires.
 
-1. Create a new `PocketBase` instance for each server-side request
-2. "Load/Feed" your `pb.authStore` with data from the request cookie
-3. Perform your application server-side actions
-4. Before returning the response to the client, update the cookie with the latest `pb.authStore` state
-
-All [`BaseAuthStore`](https://github.com/iglo-tech/iglo.base/blob/main/sdk/src/stores/BaseAuthStore.ts) instances have 2 helper methods that
-should make working with cookies a little bit easier:
+`iglo.base/ssr` is server-only. A browser bundle that imports its named exports fails at build time; a namespace import (`import * as ssr`) throws when it loads.
 
 ```js
-// update the store with the parsed data from the cookie string
-pb.authStore.loadFromCookie('pb_auth=...');
+import {
+  createServerClient,
+  createRequestCookieAdapter,
+  createSessionCache,
+} from "iglo.base/ssr";
 
-// exports the store data as cookie, with option to extend the default SameSite, Secure, HttpOnly, Path and Expires attributes
-pb.authStore.exportToCookie({ httpOnly: false }); // Output: 'pb_auth=...'
+// one per process; ttl is in milliseconds (default 5 minutes)
+const sessionCache = createSessionCache({ ttl: 5 * 60 * 1000, maxEntries: 10_000 });
+
+export default {
+  async fetch(request) {
+    const cookies = createRequestCookieAdapter(request);
+    const pb = await createServerClient({
+      url: "http://127.0.0.1:8090", // iglo.base backend URL
+      request, // the app's own request: decides Secure and the __Host- prefix
+      cookies,
+      sessionCache,
+    });
+
+    // Sign in: the session cookie is written through the adapter
+    // await pb.collection("users").authWithPassword("user@example.com", "secret");
+
+    // Sign out: the session cookie is cleared through the adapter
+    // pb.authStore.clear();
+
+    const records = await pb.collection("example").getList(1, 20);
+
+    const response = new Response(JSON.stringify(records), {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    // apply the cookies and headers queued during the request
+    return cookies.applyToResponse(response);
+  },
+};
 ```
 
-Below you could find several examples:
+Things to know:
+
+- Pass the app's own request (`request`), or its `origin`, or `secure`. These decide the cookie security. The backend URL is never used for that. Without any of them the cookie is secure, so a local `http://localhost` app should pass `origin` or `request`.
+- `await pb.auth.verify()` checks the session with iglo.base now, skipping the cache. Use it on pages that must not show a revoked session for up to the cache TTL (account settings, payments). It throws when the session is not valid.
+- A 401 from a data call does not sign the user out. Only the session check does.
+- Between checks a revoked session can still render as signed in for up to the cache TTL. Data calls are unaffected: iglo.base rejects the revoked token on every call.
+
+#### Cookie Security & `__Host-` Prefix
+
+The session cookie is `__Host-pb_auth` (`Secure`, `Path=/`, no `Domain`, `HttpOnly`, `SameSite=Lax`) when the app's request is https. Over local http (`localhost`, `127.0.0.1`, `::1`) it is the plain `pb_auth` without `Secure`. When the session ends, both names are cleared on https.
+
+#### Token Lifetime & Single-Flight Refresh
+
+- The SDK learns each auth collection's token lifetime from the sign-in and refresh responses it sees (`exp` minus the response `Date`). It never assumes a fixed lifetime. The first check of a collection refreshes once to learn it.
+- A session check uses the cached record, with no request, only when the session was checked within the cache `ttl` (default 5 minutes), the collection's lifetime is known, and at least half of the lifetime remains. Otherwise it calls `auth-refresh`: on the first check after the `ttl`, and whenever less than half of the lifetime remains.
+- Parallel requests for one session share one refresh. A 401, 403 or 404 signs out every waiting request. A network error or 5xx keeps the session.
+
+Below you could find legacy low-level cookie store examples:
 
 <details>
   <summary><strong>SvelteKit</strong></summary>
