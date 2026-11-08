@@ -423,6 +423,7 @@ To accomplish this, the SDK provides 2 function hooks:
 - `createSessionCache`: one in-memory cache per process. It skips the session check for recently checked sessions and shares one refresh between parallel requests.
 - `createRequestCookieAdapter`: the cookie adapter for Web `Request`/`Response` handlers.
 - `createSuperuserClient`: a long-lived superuser client. `impersonate(collection, id, duration)` mints a short token (15 minutes by default) for page JavaScript and realtime. A client built from a non-refreshable token (an `impersonate` API key) does not refresh it; its requests fail once it expires.
+- `pb.startOAuth2()` and `pb.completeOAuth2()`: the OAuth2 redirect flow, on the server client (see below). `handlePopupHandOff()`: the adapter route that completes a popup sign-in. `checkCsrf()` and `checkOrigin()`: the Origin check for state-changing requests.
 
 `iglo.base/ssr` is server-only. A browser bundle that imports its named exports fails at build time; a namespace import (`import * as ssr`) throws when it loads.
 
@@ -470,6 +471,60 @@ Things to know:
 - `await pb.auth.verify()` checks the session with iglo.base now, skipping the cache. Use it on pages that must not show a revoked session for up to the cache TTL (account settings, payments). It throws when the session is not valid.
 - A 401 from a data call does not sign the user out. Only the session check does.
 - Between checks a revoked session can still render as signed in for up to the cache TTL. Data calls are unaffected: iglo.base rejects the revoked token on every call.
+
+#### OAuth2 sign-in (redirect flow)
+
+The redirect flow runs on two routes of your app. The provider sends the browser back to `callbackUrl`, which must be registered with the provider exactly as written here.
+
+```js
+import {
+  createServerClient,
+  createRequestCookieAdapter,
+  createSessionCache,
+  checkCsrf,
+} from "iglo.base/ssr";
+
+const BACKEND = "http://127.0.0.1:8090";
+const CALLBACK = "https://app.example.com/auth/callback";
+const sessionCache = createSessionCache();
+
+// GET /auth/login: redirect to the provider
+export async function login(request) {
+  const cookies = createRequestCookieAdapter(request);
+  const pb = await createServerClient({ url: BACKEND, request, cookies, sessionCache });
+  const location = await pb.startOAuth2("oidc", { callbackUrl: CALLBACK, redirectTo: "/dashboard" });
+  const response = new Response(null, { status: 302, headers: { Location: location } });
+  return cookies.applyToResponse(response);
+}
+
+// GET /auth/callback: the provider's redirect back
+export async function callback(request) {
+  const cookies = createRequestCookieAdapter(request);
+  const pb = await createServerClient({ url: BACKEND, request, cookies, sessionCache });
+  const result = await pb.completeOAuth2(request);
+  // result.ok: the session cookie is set. Otherwise result.error says why (an OAuth2Error or the server's ClientResponseError).
+  const response = new Response(null, { status: 302, headers: { Location: result.redirectTo } });
+  return cookies.applyToResponse(response);
+}
+```
+
+- `startOAuth2(provider, { callbackUrl, redirectTo?, collection? })` returns the provider's URL. It also sets a 10-minute temporary cookie with the state and the PKCE verifier. `redirectTo` must be a same-origin path; anything else becomes `/`.
+- `completeOAuth2(request)` checks `state` against that cookie, exchanges the code and sets the session cookie. It deletes the temporary cookie on every outcome. It returns `{ ok: true, redirectTo, auth }` or `{ ok: false, redirectTo, error }`. A replayed callback fails with `missing-cookie`.
+- Errors are `OAuth2Error` instances with a `kind`: `unknown-provider`, `invalid-callback`, `missing-cookie`, `expired`, `state-mismatch`, `provider-error`, `missing-code`. A failure the server reports is its `ClientResponseError`.
+- The temporary cookie is not signed. It is bound to the `state` of the flow, and on https it is `__Host-` prefixed, so only your own origin can set it. Two sign-ins in one browser at once: the second one replaces the first.
+
+Popup sign-in (`authWithOAuth2()` in the browser, then a POST of the token): the adapter route calls `handlePopupHandOff(request, { url, sessionCache })`. It accepts a `POST` with the JSON body `{ "token": "..." }` from the same origin, checks the token with one `auth-refresh` and sets the session cookie. It answers `200 { "record": ... }`, or `401` with no cookie for a revoked token.
+
+#### CSRF
+
+Cookie-authenticated, state-changing requests need an Origin check. `checkCsrf` rejects a `POST`, `PUT`, `PATCH` or `DELETE` that carries the session cookie unless its `Origin` (or `Referer` when there is no `Origin`) is your own origin or one of `allowedOrigins`. Requests without the session cookie, and `GET`, `HEAD` and `OPTIONS`, pass.
+
+```js
+const guard = checkCsrf(request, { allowedOrigins: ["https://www.example.com"] });
+if (!guard.ok) return guard.response; // 403
+```
+
+Behind a proxy that changes the public origin, list that origin in `allowedOrigins`. Next.js Server Actions have their own check, so the guard is not needed there.
 
 #### Cookie Security & `__Host-` Prefix
 

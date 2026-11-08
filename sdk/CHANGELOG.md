@@ -1,5 +1,7 @@
 ## Unreleased
 
+- SSR OAuth2 and CSRF (`iglo.base/ssr`): `pb.startOAuth2(provider, { callbackUrl, redirectTo?, collection? })` and `pb.completeOAuth2(request)` for the redirect flow, with a 10-minute temporary cookie bound to the state and a typed result (`OAuth2Error` or the server's `ClientResponseError`); `redirectTo` accepts same-origin paths only; `handlePopupHandOff(request, options)` completes a popup sign-in from a same-origin POST, checked with one `auth-refresh`; `checkCsrf(request, { allowedOrigins? })` and `checkOrigin` reject cross-site state-changing requests that carry the session cookie.
+
 - SSR server core (`iglo.base/ssr`): `createServerClient` per request, resumed from the session cookie, with requests sent `cache: "no-store"` at the fetch layer; `createSuperuserClient` with `impersonate`; `createSessionCache({ ttl, maxEntries, clock })` (LRU, SHA-256 token keys, `ttl` in milliseconds); token lifetimes learned from auth responses, sliding refresh at half the lifetime; single-flight refresh that applies each outcome per request; `pb.auth.verify()`; server sign-in and sign-out write the session cookie; app-origin cookie security (`__Host-` and `Secure` follow the app's own request, not the backend URL); `createRequestCookieAdapter` for Web `Request`/`Response` handlers. The `ssr` entry shares the SDK's classes with `iglo.base`, so `instanceof ClientResponseError` agrees across both.
 
 ## 1.0.0
