@@ -6,25 +6,45 @@ import { getTokenPayload } from "@sdk/tools/jwt";
 import type { RecordModel } from "@sdk/tools/dtos";
 import type { SendOptions } from "@sdk/tools/options";
 import type { Loose, LooseObject } from "@sdk/tools/loose";
+import type { RecordAuthResponse } from "@sdk/services/RecordService";
 import type {
   Cookie,
   CookieAdapter,
   CookieToSet,
   CookieValueMap,
+  CompleteOAuth2Result,
   CreateServerClientOptions,
   SessionCache,
+  StartOAuth2Options,
 } from "@sdk/ssr/types";
 import {
   DEFAULT_COOKIE_KEY,
+  OAUTH2_COOKIE_KEY,
   SSR_NO_CACHE_HEADERS,
+  buildClearedOAuth2Cookies,
   buildClearedSessionCookies,
+  buildOAuth2CookieToSet,
   buildSessionCookieToSet,
-  findSessionCookie,
+  findCookie,
+  isSecureSession,
+  type CookieSettings,
   isHttpLocalUrl,
   normalizeCookies,
   parseSessionValue,
 } from "@sdk/ssr/cookies";
 import { noStoreFetch } from "@sdk/ssr/no-store-fetch";
+import {
+  DEFAULT_OAUTH2_COLLECTION,
+  OAUTH2_STATE_TTL_MS,
+  OAuth2Error,
+  constantTimeEqual,
+  parseOAuth2Cookie,
+  returnsToQueryString,
+  safeRedirectPath,
+  validateCallbackUrl,
+  withRedirectUri,
+  type OAuth2Pending,
+} from "@sdk/ssr/oauth2";
 
 /** Tokens past their `exp` by up to this many seconds still count as valid (clock skew). */
 const CLOCK_SKEW_SEC = 60;
@@ -150,6 +170,155 @@ export class ServerClient extends Client {
     return this;
   }
 
+  /**
+   * OAuth2 redirect flow, step 1 (docs/design/13-ssr.md, "OAuth2"). Reads the provider's
+   * authorization URL, which carries the server's `state` and PKCE challenge, and stores the
+   * state, the PKCE verifier, the provider and `redirectTo` in the temporary cookie (10 minutes).
+   * Returns the URL with `callbackUrl` as its `redirect_uri`. The caller redirects to it and
+   * applies the adapter's cookies to that response.
+   *
+   * @throws {OAuth2Error} `unknown-provider`, `unsupported-provider` (a POST callback, such as
+   *   Sign in with Apple), `invalid-callback` or `no-cookie-writer`
+   * @throws {ClientResponseError} when iglo.base refuses the auth methods
+   */
+  async startOAuth2(provider: string, options: StartOAuth2Options): Promise<string> {
+    const callbackUrl = validateCallbackUrl(options.callbackUrl);
+    const collection = options.collection ?? DEFAULT_OAUTH2_COLLECTION;
+    if (!this.cookies.setAll) {
+      throw new OAuth2Error("no-cookie-writer", "The cookie adapter cannot write cookies.");
+    }
+
+    const methods = await this.collection(collection).listAuthMethods();
+    const info = methods.oauth2?.enabled
+      ? methods.oauth2.providers.find((p) => p.name === provider)
+      : undefined;
+    if (!info) {
+      throw new OAuth2Error(
+        "unknown-provider",
+        `OAuth2 provider "${provider}" is not enabled for the ${collection} collection.`,
+      );
+    }
+    if (!returnsToQueryString(info.authURL)) {
+      // refused before any cookie is written: the callback could not complete (see 13-ssr.md)
+      throw new OAuth2Error(
+        "unsupported-provider",
+        `OAuth2 provider "${provider}" returns to the callback by POST, which the redirect flow ` +
+          "cannot read. Use the popup flow (authWithOAuth2 and handlePopupHandOff) for it.",
+      );
+    }
+
+    const pending: OAuth2Pending = {
+      state: info.state,
+      codeVerifier: info.codeVerifier ?? "",
+      provider,
+      collection,
+      redirectURL: callbackUrl,
+      redirectTo: safeRedirectPath(options.redirectTo ?? "/"),
+      exp: this._clock() + OAUTH2_STATE_TTL_MS,
+    };
+    await this.cookies.setAll(
+      [buildOAuth2CookieToSet(JSON.stringify(pending), this._cookieSettings())],
+      { ...SSR_NO_CACHE_HEADERS },
+    );
+    return withRedirectUri(info.authURL, callbackUrl);
+  }
+
+  /**
+   * OAuth2 redirect flow, step 2: the callback route. Reads `code`, `state` and `error` from the
+   * callback URL and checks `state` against the temporary cookie. On success it exchanges the
+   * code, which writes the session cookie as any sign-in does. The temporary cookie is deleted
+   * on every outcome. Failures are returned, not thrown, with `redirectTo` for the caller.
+   *
+   * @throws only for failures that are not about this sign-in (a network error, a bug)
+   */
+  async completeOAuth2(input: string | URL | { url: string }): Promise<CompleteOAuth2Result> {
+    const callback = new URL(
+      typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+    );
+    try {
+      const pending = await this._readOAuth2Cookie();
+      return await this._finishOAuth2(callback, pending);
+    } finally {
+      this._writeCookies(buildClearedOAuth2Cookies(this._cookieSettings()));
+    }
+  }
+
+  private async _readOAuth2Cookie(): Promise<OAuth2Pending | undefined> {
+    let rawCookies: unknown;
+    try {
+      rawCookies = await this.cookies.getAll();
+    } catch {
+      return undefined;
+    }
+    const matched = findCookie(
+      normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
+      OAUTH2_COOKIE_KEY,
+      isSecureSession(this._cookieSettings()),
+    );
+    return matched?.value ? parseOAuth2Cookie(matched.value) : undefined;
+  }
+
+  private async _finishOAuth2(
+    callback: URL,
+    pending: OAuth2Pending | undefined,
+  ): Promise<CompleteOAuth2Result> {
+    const redirectTo = pending ? safeRedirectPath(pending.redirectTo) : "/";
+    const fail = (error: OAuth2Error | ClientResponseError): CompleteOAuth2Result => ({
+      ok: false,
+      redirectTo,
+      error,
+    });
+
+    if (!pending) {
+      return fail(new OAuth2Error("missing-cookie", "The OAuth2 sign-in was not started here."));
+    }
+    if (this._clock() > pending.exp) {
+      return fail(new OAuth2Error("expired", "The OAuth2 sign-in took too long. Start it again."));
+    }
+    const state = callback.searchParams.get("state") ?? "";
+    if (state === "" || !constantTimeEqual(state, pending.state)) {
+      return fail(new OAuth2Error("state-mismatch", "The OAuth2 state does not match."));
+    }
+    const providerError = callback.searchParams.get("error");
+    if (providerError !== null) {
+      return fail(
+        new OAuth2Error(
+          "provider-error",
+          `The OAuth2 provider returned an error: ${providerError}`,
+          providerError,
+        ),
+      );
+    }
+    const code = callback.searchParams.get("code") ?? "";
+    if (code === "") {
+      return fail(new OAuth2Error("missing-code", "The OAuth2 callback has no code."));
+    }
+
+    try {
+      const auth: RecordAuthResponse = await this.collection(pending.collection).authWithOAuth2Code(
+        pending.provider,
+        code,
+        pending.codeVerifier,
+        pending.redirectURL,
+      );
+      return { ok: true, redirectTo, auth };
+    } catch (err: unknown) {
+      if (err instanceof ClientResponseError) {
+        return fail(err);
+      }
+      throw err;
+    }
+  }
+
+  /** The cookie rules of this client's session cookie, for the cookies that follow it. */
+  private _cookieSettings(): CookieSettings {
+    return {
+      secure: this._isSecure,
+      cookieName: this._cookieName,
+      cookieOptions: this._options.cookieOptions,
+    };
+  }
+
   private async _loadCookieAndCheck(): Promise<void> {
     let rawCookies: unknown;
     try {
@@ -158,9 +327,10 @@ export class ServerClient extends Client {
       return;
     }
 
-    const matched = findSessionCookie(
+    const matched = findCookie(
       normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
       this._cookieName,
+      isSecureSession(this._cookieSettings()),
     );
     const session = matched?.value ? parseSessionValue(matched.value) : undefined;
     if (!session) {
