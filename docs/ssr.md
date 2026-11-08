@@ -13,9 +13,9 @@ PocketBase's [how-to guide](https://pocketbase.io/docs/how-to-use/#why-not-js-ss
 | PocketBase's warning | What the SDK does | What your app still has to do |
 |---|---|---|
 | Security issues from an incorrectly initialized and shared SDK instance in a long-running server process | A new server client for each request, resumed from that request's cookie. It is never shared, and it is never reused across requests. Every request is sent with `cache: "no-store"`. The only long-lived client is the superuser client, which mints browser tokens and never answers a user's request. | Create a server client in each request, never as a module-level `pb` that serves users. Keep superuser credentials on the server. Do not use the superuser client for a user's data calls. |
-| OAuth2 is hard to do server-side, or mixes client-side handling with a shared cookie | The redirect flow runs on the server (`startOAuth2`, `completeOAuth2`). It checks `state` and PKCE, and keeps its temporary state in a 10-minute cookie. Providers that return by POST, such as Sign in with Apple, use a popup flow that hands the token to the server, which then sets the session cookie. | Register the callback URL with each provider, and make it the same as `callbackUrl`. Choose the popup flow for providers that return by POST. Decide where users go after sign-in (`redirectTo`). Set the public `origin` when the app runs behind a proxy. |
+| OAuth2 is hard to do server-side, or mixes client-side handling with a shared cookie | The redirect flow runs on the server (`startOAuth2`, `completeOAuth2`). It checks `state` and PKCE, and keeps its temporary state in a 10-minute cookie. Providers that return by POST, such as Sign in with Apple, use a popup flow that hands the token to the server, which then sets the session cookie. | Register each provider's redirect URL for the flow you use: the app's callback for the redirect flow, and iglo.base's `/api/oauth2-redirect` for the popup flow (see [OAuth2 providers](#oauth2-providers)). Choose the popup flow for providers that return by POST. Decide where users go after sign-in (`redirectTo`). Set the public `origin` when the app runs behind a proxy. |
 | Proxying realtime connections duplicates what PocketBase already does | The server mints a short-lived browser token for each page with `impersonate` (15 minutes by default). The browser connects to iglo.base directly and renews the token through your app's renew route. The long-lived session never reaches page JavaScript, and your server does not proxy realtime. | Give the browser client the public URL of iglo.base. Make sure the browser may reach it (see `--origins` in the [operations guide](operations.md#flags)). Pass the token, the record and `serverTime` from the page. |
-| Performance problems from a single Node.js process and many calls between the browser, Node.js and PocketBase | Sessions that were checked recently need no request to iglo.base: a per-process session cache (5 minutes by default) skips the check, and parallel refreshes of one session share a single request. Realtime does not pass through the app server. | Size the session cache for your traffic (`maxEntries`). Keep the number of data calls per page low. The SDK does not cache data, and the app server still runs Node.js. Cache public pages where it is safe, and never cache a user's page (see [caching and CDNs](#caching-and-cdns)). |
+| Performance problems from a single Node.js process and many calls between the browser, Node.js and PocketBase | Sessions that were checked recently need no request to iglo.base: a per-process session cache (5 minutes by default) skips the check, and parallel refreshes of one session share a single request. Realtime does not pass through the app server. | Size the session cache for your traffic (see [the session cache](#the-session-cache)). Keep the number of data calls per page low. The SDK does not cache data, and the app server still runs Node.js. Cache public pages where it is safe, and never cache a user's page (see [caching and CDNs](#caching-and-cdns)). |
 
 ## The model
 
@@ -35,7 +35,7 @@ npm install iglo.base
 
 The package is ES modules only. It has the main entry (`iglo.base`, the client), `iglo.base/ssr` (server only), `iglo.base/ssr/browser` (safe for the browser) and one entry per framework (`iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro`, `/react-router`).
 
-The SDK reads no environment variables. The example apps use these names, and you can use any others:
+The SDK reads no environment variables. The example apps use these names, and you can use any others. Read the superuser credentials at run time, never at build time (see [security notes](#security-notes)):
 
 | Variable | Use |
 |---|---|
@@ -91,6 +91,27 @@ Superusers may act only from the IP addresses in the [superuser IP list](operati
 
 Pass `readableCookie: true` instead of a superuser client, and the adapters answer from the session itself. This works, but it is weaker against XSS. The session cookie is then readable by page scripts, so any script on the page can read the session token for as long as the session lasts. Use it only when you cannot keep a superuser credential on the server. Without a superuser and without `readableCookie: true`, the adapters throw a `TypeError` when they are created.
 
+### The session cache
+
+Create one cache per process with `createSessionCache({ ttl, maxEntries })`, and pass it as `sessionCache`. Both options are optional:
+
+| Option | Meaning | Default |
+|---|---|---|
+| `ttl` | how long a session that was checked with iglo.base is trusted without another check, **in milliseconds** | `300000` (5 minutes) |
+| `maxEntries` | how many sessions the cache holds. When it is full, the least recently used session is dropped | `10000` |
+
+```js
+import { createSessionCache } from "iglo.base/ssr";
+
+const sessionCache = createSessionCache({ ttl: 60 * 1000, maxEntries: 50_000 }); // 1 minute
+```
+
+`ttl` counts milliseconds, so `ttl: 60` is 60 milliseconds, not a minute. A `ttl` of `0` turns the skip off, so every request checks its session with iglo.base. A cached session is skipped only while at least half its token lifetime is left, so a session close to expiry is checked anyway.
+
+Size `maxEntries` to about the number of distinct signed-in users that one process sees within one `ttl`. The cache keeps one entry per session: a hash of the token and the user's record. A session that was dropped is checked again on its next request, so a small `maxEntries` costs checks, not correctness. Each process has its own cache, so with several processes each cache sees only the requests routed to it. Choose `ttl` by the trade-off below, not by traffic.
+
+**The trade-off is revocation.** A session served from the cache can still count as signed in for up to `ttl` after iglo.base has revoked it, for example when the user is deleted or the user's password changes. A shorter `ttl` shrinks that window and makes more checks; a longer one saves checks and widens the window. Data calls are not affected, because iglo.base rejects a revoked token on each call. A page that must see a revocation at once calls `verify()`, which bypasses the cache (see "Protect a page" in your framework's section).
+
 ### The adapter options
 
 Every framework adapter takes the same options. The app creates `sessionCache` and `superuser` once, when the process starts:
@@ -98,7 +119,7 @@ Every framework adapter takes the same options. The app creates `sessionCache` a
 | Option | Meaning |
 |---|---|
 | `url` | iglo.base's URL as the app server reaches it |
-| `sessionCache` | the cache from `createSessionCache()` |
+| `sessionCache` | the cache from `createSessionCache()` (see [the session cache](#the-session-cache)) |
 | `superuser` | the superuser client (required unless `readableCookie: true`) |
 | `origin` | your app's public origin. It sets the cookie's security and the OAuth2 callback URL. Default: the request's origin |
 | `secure` | forces the cookie's security (`Secure` and the `__Host-` prefix) |
@@ -112,6 +133,25 @@ Every framework adapter takes the same options. The app creates `sessionCache` a
 
 The default routes are `POST /api/pb/renew` (browser token renewal), `POST /api/pb/popup` (popup hand-off), `GET /api/pb/oauth2/start/{provider}` and `GET /api/pb/oauth2/callback`.
 
+## OAuth2 providers
+
+A provider sign-in has two flows. Each returns to a different URL, so register the URL for each flow your app uses with the provider:
+
+| Flow | Use it for | Register with the provider |
+|---|---|---|
+| Redirect flow | Providers that return by `GET`, such as Google and GitHub | `<APP_ORIGIN>/api/pb/oauth2/callback`, the app's callback URL |
+| Popup flow | Providers that return by `POST`, such as Sign in with Apple | `<PB_PUBLIC_URL>/api/oauth2-redirect`, iglo.base's own URL |
+
+Two things to get right:
+
+- **The popup flow registers iglo.base's URL, not your app's.** The provider returns to iglo.base, which completes the sign-in and hands the token to the app. `PB_PUBLIC_URL` is the URL the browser reaches. The browser client builds the redirect URL from its `url` option, so pass the public URL there too. The browser must reach iglo.base, because the popup navigates there.
+- **The URL must match exactly.** Register it as shown, with the same scheme and no trailing slash. The redirect flow's callback URL is built from the `origin` option (or `APP_ORIGIN`), so set that to your public origin, especially behind a proxy.
+
+In the redirect flow the server does the work. The start route (`/api/pb/oauth2/start/{provider}?redirectTo=`) sends the browser to the provider, and the callback signs the user in and returns to `redirectTo`. The start route refuses providers that return by POST, with `unsupported-provider`.
+
+In the popup flow the browser does the work. `authWithOAuth2()` opens the provider in a popup, and `handOff()` posts the popup token to the app's popup route (`/api/pb/popup`), which sets the session cookie. Call `authWithOAuth2()` before any `await` in the click handler, so the browser allows the popup.
+
+Each framework section below shows its own routes.
 
 ## Next.js
 
@@ -199,7 +239,7 @@ For a page that must check the session on every request, call `server.auth.verif
 
 The proxy answers the adapter's OAuth2 routes, so you write no route for the redirect flow. `GET /api/pb/oauth2/start/{provider}?redirectTo=/` sends the browser to the provider, and `GET /api/pb/oauth2/callback` signs the user in and redirects to `redirectTo`. Register `<APP_ORIGIN>/api/pb/oauth2/callback` with the provider, and set `APP_ORIGIN`. Without it the callback URL uses the request's origin, which can be an internal address behind a proxy. The example's [`app/login/page.tsx`](https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs/app/login/page.tsx) links each provider of the `users` collection to the start route. A failed callback adds `oauth2_error=<kind>` to `redirectTo`; the example does not read it.
 
-Providers that return by POST, such as Sign in with Apple, cannot use the redirect flow. The start route answers `400` (`unsupported-provider`) for them. Use the popup flow instead. The example app has no popup page, so this client component is the pattern. Call `authWithOAuth2` before any `await` in the click handler, so the browser allows the popup it opens:
+Providers that return by POST, such as Sign in with Apple, cannot use the redirect flow. The start route answers `400` (`unsupported-provider`) for them. Use the popup flow instead, and register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider for it, not the callback above (see [OAuth2 providers](#oauth2-providers)). The example app has no popup page, so this client component is the pattern. Call `authWithOAuth2` before any `await` in the click handler, so the browser allows the popup it opens:
 
 ```tsx
 "use client";
@@ -367,7 +407,7 @@ The adapter answers the redirect flow on its default routes: `GET /api/pb/oauth2
 {/each}
 ```
 
-A failed flow redirects to `redirectTo` (default `/`) with `oauth2_error=<kind>` added. Providers that return by POST (Apple, for example) need the popup flow, which the example does not show.
+A failed flow redirects to `redirectTo` (default `/`) with `oauth2_error=<kind>` added. Providers that return by POST (Apple, for example) need the popup flow, which the example does not show. For that flow, register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider, not the callback above (see [OAuth2 providers](#oauth2-providers)).
 
 ### Browser client and realtime
 
@@ -407,6 +447,25 @@ The hook checks the `Origin` header before your routes run. It applies to `POST`
 
 Nuxt runs the adapter as a Nitro server middleware. Create it once per server process, as a lazy promise (as in `examples/nextjs/lib/auth.ts`, which retries a failed creation). Set `origin` to your public origin; without it, the origin comes from `Host` and `x-forwarded-proto`. Use `readableCookie: true` only without superuser credentials.
 
+The URLs and credentials are Nuxt runtime config, so they are read at run time, and `NUXT_*` environment variables override the defaults. Declare them in `nuxt.config.ts`. Nuxt parses each `NUXT_*` value as JSON when it can, so `NUXT_PB_SUPERUSER_PASSWORD=1234567890` reaches the code as a number, not a string; the sample converts the values with `String()`, and do the same for any setting that may look like a number, `true` or `null`:
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+  runtimeConfig: {
+    // server only: NUXT_PB_URL, NUXT_PB_SUPERUSER_EMAIL, NUXT_PB_SUPERUSER_PASSWORD, NUXT_APP_ORIGIN
+    pbUrl: "",
+    pbSuperuserEmail: "",
+    pbSuperuserPassword: "",
+    appOrigin: "",
+    public: {
+      // the URL the browser reaches iglo.base at: NUXT_PUBLIC_PB_URL
+      pbUrl: "",
+    },
+  },
+});
+```
+
 `server/utils/auth.ts`:
 
 ```ts
@@ -417,17 +476,18 @@ let authPromise: Promise<NuxtAuth> | undefined;
 
 export function getAuth(): Promise<NuxtAuth> {
   authPromise ??= (async () => {
-    const url = process.env.PB_URL as string;
+    const config = useRuntimeConfig();
+    // Nuxt reads NUXT_* values as JSON-like, so a numeric password arrives as a number: String() it
     const superuser = await createSuperuserClient({
-      url,
-      email: process.env.PB_SUPERUSER_EMAIL,
-      password: process.env.PB_SUPERUSER_PASSWORD,
+      url: config.pbUrl,
+      email: String(config.pbSuperuserEmail),
+      password: String(config.pbSuperuserPassword),
     });
     return createNuxtAuth({
-      url,
+      url: config.pbUrl,
       sessionCache: createSessionCache(),
       superuser,
-      origin: process.env.APP_ORIGIN,
+      origin: config.appOrigin || undefined,
     });
   })().catch((err: unknown) => {
     authPromise = undefined;
@@ -492,25 +552,39 @@ The adapter writes the session cookie when the auth store on `event.context.pb` 
 
 ### Read the user on a page
 
-In an API route, `event.context.pb.authStore` holds the session: `record` is the user, `isValid` says whether it is valid. A page passes the browser token to the client instead. During the server render, call `event.context.pbBrowserToken()` (it returns `{ token, record, expiresAt, serverTime }`, or `null`), get the event with `useRequestEvent()` (a Nuxt composable), and keep the result in `useState`.
+In an API route, `event.context.pb.authStore` holds the session: `record` is the user, `isValid` says whether it is valid. A page gets its browser token from a server route, not from the server render. A `<NuxtLink>` navigation runs the page in the browser, where `import.meta.server` is false, so a token minted only during the server render is missing on that navigation. The route is called on the server render and on client navigation alike.
+
+`server/api/account/session.get.ts`:
+
+```ts
+import { defineEventHandler } from "h3";
+
+export default defineEventHandler(async (event) => {
+  const mint = event.context.pbBrowserToken as () => Promise<unknown>;
+  // { session } is { session: { token, record, expiresAt, serverTime } } or { session: null }: h3 sends a bare null as an empty body
+  return { session: await mint() };
+});
+```
 
 `pages/account.vue`:
 
 ```vue
 <script setup lang="ts">
 import { createBrowserClient, type CreateBrowserClientOptions } from "iglo.base/ssr/browser";
+
 type Session = { token: string; record: NonNullable<CreateBrowserClientOptions["record"]>; serverTime: number };
 
-const session = useState<Session | null>("pb", () => null);
-if (import.meta.server) {
-  const mint = useRequestEvent()?.context.pbBrowserToken as (() => Promise<Session | null>) | undefined;
-  session.value = (await mint?.()) ?? null;
-}
+definePageMeta({ middleware: "auth" }); // signed-out users go to /login (see "Protect a page")
+
+// The same request runs during the server render and on a <NuxtLink> navigation, so the
+// browser client always starts with a token.
+const { data } = await useFetch<{ session: Session | null }>("/api/account/session", { key: "account-session" });
+const session = computed(() => data.value?.session);
 
 let pb: ReturnType<typeof createBrowserClient> | undefined;
 onMounted(() => {
   pb = createBrowserClient({
-    url: useRuntimeConfig().public.pbUrl as string,
+    url: useRuntimeConfig().public.pbUrl,
     token: session.value?.token,
     record: session.value?.record,
     serverTime: session.value?.serverTime,
@@ -524,15 +598,45 @@ onBeforeUnmount(() => pb?.dispose());
 
 ### Protect a page
 
-`pb.auth.verify()` checks the session with iglo.base now and throws when it is not valid. Ordinary data calls never log the user out. In a protected API route, call it in a `try` and `throw createError({ statusCode: 401 })` from h3 in the `catch`. For a page, call it in a Nuxt route middleware on the server and return `navigateTo("/login")` on failure (a Nuxt API). Check the session in every API route that needs a user as well: a page check does not protect the API.
+Protect a page with the route middleware `middleware/auth.ts`, and set `definePageMeta({ middleware: "auth" })` on the page. Nuxt runs the middleware on the server for the first page, and in the browser on each `<NuxtLink>` navigation. In the browser `event.context` does not exist, so the middleware asks a server route instead. `useRequestFetch()` forwards the cookie on the server, and it is a plain `$fetch` in the browser.
+
+`middleware/auth.ts`:
+
+```ts
+export default defineNuxtRouteMiddleware(async () => {
+  try {
+    await useRequestFetch()("/api/account/me");
+  } catch {
+    return navigateTo("/login");
+  }
+});
+```
+
+`server/api/account/me.get.ts`:
+
+```ts
+import { createError, defineEventHandler } from "h3";
+import type { ServerClient } from "iglo.base/ssr";
+
+export default defineEventHandler(async (event) => {
+  const pb = event.context.pb as ServerClient;
+  try {
+    return await pb.auth.verify(); // asks iglo.base now, bypassing the session cache
+  } catch {
+    throw createError({ statusCode: 401 });
+  }
+});
+```
+
+Check the session in every API route that needs a user as well: a page check does not protect the API. In such a route, call `verify()` in a `try` and throw `createError({ statusCode: 401 })` from h3 in the `catch`.
 
 ### OAuth2 sign-in
 
-The default routes do the flow: link to `/api/pb/oauth2/start/{provider}?redirectTo=/account`, and register `https://<your origin>/api/pb/oauth2/callback` with the provider. A failed callback redirects to `redirectTo` with `oauth2_error=<kind>`. Your routes need no code. For providers that return by POST (Apple and others), sign in with a popup: in the browser, `pb.collection("users").authWithOAuth2({ provider: "apple" })`, then `await pb.handOff()`. The popup route reads the JSON body through the `readBody` mapping above.
+The default routes do the flow: link to `/api/pb/oauth2/start/{provider}?redirectTo=/account`, and register `https://<your origin>/api/pb/oauth2/callback` with the provider. A failed callback redirects to `redirectTo` with `oauth2_error=<kind>`. Your routes need no code. For providers that return by POST (Apple and others), sign in with a popup: in the browser, `pb.collection("users").authWithOAuth2({ provider: "apple" })`, then `await pb.handOff()`. The popup route reads the JSON body through the `readBody` mapping above. For that flow, register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider (see [OAuth2 providers](#oauth2-providers)).
 
 ### Browser client and realtime
 
-The browser client is created in `onMounted`, so it never runs on the server; set `runtimeConfig.public.pbUrl` in `nuxt.config.ts`. Realtime uses the usual `pb.collection("posts").subscribe(...)`. Call the unsubscribe function it returns, and `dispose()`, when the page is torn down.
+The browser client is created in `onMounted`, so it never runs on the server. Its URL is `runtimeConfig.public.pbUrl` from the config above, which `NUXT_PUBLIC_PB_URL` overrides. Realtime uses the usual `pb.collection("posts").subscribe(...)`. Call the unsubscribe function it returns, and `dispose()`, when the page is torn down.
 
 ### CSRF
 
@@ -559,12 +663,20 @@ import { createAstroAuth, type AstroAuth } from "iglo.base/ssr/astro";
 let auth: Promise<AstroAuth> | undefined;
 export function getAuth(): Promise<AstroAuth> {
   auth ??= (async () => {
-    const superuser = await createSuperuserClient({ url: import.meta.env.PB_URL, email: import.meta.env.PB_SUPERUSER_EMAIL, password: import.meta.env.PB_SUPERUSER_PASSWORD });
-    return createAstroAuth({ url: import.meta.env.PB_URL, origin: import.meta.env.APP_ORIGIN, sessionCache: createSessionCache(), superuser });
+    // read at run time with process.env: Astro replaces import.meta.env values at build time
+    const url = process.env.PB_URL as string;
+    const superuser = await createSuperuserClient({
+      url,
+      email: process.env.PB_SUPERUSER_EMAIL,
+      password: process.env.PB_SUPERUSER_PASSWORD,
+    });
+    return createAstroAuth({ url, origin: process.env.APP_ORIGIN, sessionCache: createSessionCache(), superuser });
   })().catch((error) => { auth = undefined; throw error; }); // a failed start is retried
   return auth;
 }
 ```
+
+Do not read the superuser credentials or the iglo.base URL with `import.meta.env`. Astro fills that in at build time, so the password would be written into `dist/server`, and the values set when the server starts would be ignored (see [security notes](#security-notes)).
 
 Run it from `src/middleware.ts`, the pattern Astro documents (`defineMiddleware`, exported as `onRequest`):
 
@@ -642,19 +754,21 @@ try {
 
 ### OAuth2 sign-in
 
-The adapter mounts `GET /api/pb/oauth2/start/{provider}?redirectTo=` and `GET /api/pb/oauth2/callback`; do not add files under `/api/pb/`. Register `https://<your-origin>/api/pb/oauth2/callback` with each provider. The login page links to the start route, for example `<a href="/api/pb/oauth2/start/google?redirectTo=/dashboard">`. A failed sign-in returns to `redirectTo` with `oauth2_error=<kind>` added.
+The adapter mounts `GET /api/pb/oauth2/start/{provider}?redirectTo=` and `GET /api/pb/oauth2/callback`; do not add files under `/api/pb/`. Register `https://<your-origin>/api/pb/oauth2/callback` with each provider. The login page links to the start route, for example `<a href="/api/pb/oauth2/start/google?redirectTo=/dashboard">`. A failed sign-in returns to `redirectTo` with `oauth2_error=<kind>` added. A provider that returns by POST (Apple) needs the popup flow in the browser, shown below. For that flow, register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider, not the callback above (see [OAuth2 providers](#oauth2-providers)).
 
 ### Browser client and realtime
 
-The browser token goes in a `data-` attribute, so it sits in the page's HTML for its 15-minute default lifetime. `dispose()` stops only the renewal timers, so the sample also calls the unsubscribe function that `subscribe` returns.
+The browser token goes in a `data-` attribute, so it sits in the page's HTML for its 15-minute default lifetime. The browser's URL is read per request too, so the build does not fix it. `dispose()` stops only the renewal timers, so the sample also calls the unsubscribe function that `subscribe` returns.
 
 ```astro
 ---
 // src/pages/tasks.astro
 export const prerender = false;
 const browser = await Astro.locals.pbBrowserToken();
+// the URL the browser reaches iglo.base at, read per request (not inlined at build time)
+const url = process.env.PB_PUBLIC_URL ?? process.env.PB_URL;
 ---
-<div id="live" data-session={JSON.stringify(browser)}>waiting</div>
+<div id="live" data-url={url} data-session={JSON.stringify(browser)}>waiting</div>
 
 <script>
   import { createBrowserClient } from "iglo.base/ssr/browser";
@@ -662,7 +776,7 @@ const browser = await Astro.locals.pbBrowserToken();
   const session = JSON.parse(el.dataset.session ?? "null");
   if (session) {
     const client = createBrowserClient({
-      url: import.meta.env.PUBLIC_PB_URL,
+      url: el.dataset.url!,
       token: session.token,
       record: session.record,
       serverTime: session.serverTime,
@@ -676,6 +790,8 @@ const browser = await Astro.locals.pbBrowserToken();
   }
 </script>
 ```
+
+This sample does not use view transitions. If you add `<ClientRouter />`, a bundled `<script>` is not run again by a client-side navigation, so the page would not start its client. Give links to pages like this one the `data-astro-reload` attribute, which makes the browser load the page in full (see Astro's view transitions guide).
 
 ### CSRF
 
@@ -786,7 +902,7 @@ The adapter answers the OAuth2 start and callback itself. A link to `/api/pb/oau
 
 `session()` answers these routes by their path, so each path must reach a route module that calls it. In `app/routes.ts`, add four routes for the default paths: `route("api/pb/renew", "routes/api.pb.renew.ts")` and `route("api/pb/popup", "routes/api.pb.popup.ts")`, which are `POST` routes, and `route("api/pb/oauth2/start/:provider", "routes/api.pb.oauth2.start.ts")` and `route("api/pb/oauth2/callback", "routes/api.pb.oauth2.callback.ts")`, which are `GET` routes. In each module, call `session(request)` and return `result.response`. The renew and popup modules export an `action`; the start and callback modules export a `loader`, since a route with only a `loader` does not receive `POST`s.
 
-Providers that return by POST, such as Sign in with Apple, cannot use this redirect flow: the start route answers `400` (`unsupported-provider`). Use the popup flow below.
+Providers that return by POST, such as Sign in with Apple, cannot use this redirect flow: the start route answers `400` (`unsupported-provider`). Use the popup flow below, and register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider for it (see [OAuth2 providers](#oauth2-providers)).
 
 ### Browser client and realtime
 
@@ -836,7 +952,7 @@ export default function Notes() {
 }
 ```
 
-Realtime is the same `subscribe` call as the rest of the SDK. For popup sign-in, call `client.collection("users").authWithOAuth2({ provider })` in the browser, then `await client.handOff()`.
+Realtime is the same `subscribe` call as the rest of the SDK. For popup sign-in, call `client.collection("users").authWithOAuth2({ provider })` in the browser, then `await client.handOff()`. Register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider for that flow.
 
 ### CSRF
 
@@ -865,6 +981,7 @@ import {
 } from "iglo.base/ssr";
 
 const PB_URL = process.env.PB_URL!; // iglo.base as this server reaches it
+const PB_PUBLIC_URL = process.env.PB_PUBLIC_URL ?? PB_URL; // iglo.base as the browser reaches it
 const APP_ORIGIN = process.env.APP_ORIGIN!; // your public origin, no path
 const secure = new URL(APP_ORIGIN).protocol === "https:";
 const superuser = process.env.PB_SUPERUSER_EMAIL
@@ -951,7 +1068,7 @@ async function accountPage(pb: ServerClient): Promise<Response> {
   }
   const bt = await mintBrowserToken(pb, superuser);
   if (!bt) return new Response(null, { status: 303, headers: { Location: "/login" } });
-  const boot = JSON.stringify(bt).replaceAll("<", "\\u003c"); // no "</script>" in the JSON
+  const boot = JSON.stringify({ url: PB_PUBLIC_URL, ...bt }).replaceAll("<", "\\u003c"); // no "</script>" in the JSON
   const html = `<script id="boot" type="application/json">${boot}</script><script type="module" src="/account.js"></script>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
@@ -962,7 +1079,7 @@ async function accountPage(pb: ServerClient): Promise<Response> {
 
 ### OAuth2 sign-in
 
-Two routes: `startOAuth2` redirects to the provider and keeps the state in a short cookie, and `completeOAuth2` reads the callback. `callbackUrl` must equal the redirect URI registered with the provider. A provider that returns by `POST` (Apple) needs the popup flow instead.
+Two routes: `startOAuth2` redirects to the provider and keeps the state in a short cookie, and `completeOAuth2` reads the callback. `callbackUrl` must equal the redirect URI registered with the provider. A provider that returns by `POST` (Apple) needs the popup flow instead: the browser calls `authWithOAuth2()`, then posts the token to `handlePopupHandOff` (the `/api/pb/popup` route in `handle`). Register `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider for that flow (see [OAuth2 providers](#oauth2-providers)).
 
 ```ts
 async function oauth2Route(request: Request, pathname: string): Promise<Response | undefined> {
@@ -993,12 +1110,12 @@ async function oauth2Route(request: Request, pathname: string): Promise<Response
 
 `mintBrowserToken(pb, superuser)` returns the token, record and server clock, or `null`. The page passes them to its script as JSON (the `pages` sample). The script calls `dispose()` when the page goes away.
 
-```ts
-// public/account.js, bundled for the browser
+```js
+// public/account.js, bundled for the browser: plain JavaScript, no type annotations
 import { createBrowserClient } from "iglo.base/ssr/browser";
-const boot = JSON.parse(document.getElementById("boot")!.textContent!);
+const boot = JSON.parse(document.getElementById("boot").textContent);
 const pb = createBrowserClient({
-  url: "https://iglo.example.com", // iglo.base as the browser reaches it
+  url: boot.url, // iglo.base as the browser reaches it, set by the server at run time
   token: boot.token, record: boot.record, serverTime: boot.serverTime,
   renewUrl: "/api/pb/renew", handOffUrl: "/api/pb/popup",
 });
@@ -1046,7 +1163,7 @@ Public pages that do not depend on the user can be cached as usual. Set their he
 - **CSRF.** A `POST`, `PUT`, `PATCH` or `DELETE` that carries the session cookie must come from your app's origin or from one of the origins in `csrf.allowedOrigins`. The guard reads `Origin`, and reads `Referer` only when `Origin` is missing. A request with neither, or with `Origin: null`, is refused with 403. Requests without the session cookie pass, so a sign-in form works without a token. Entries in `allowedOrigins` must be origins, with no path; an invalid entry throws on every call.
 - **Open redirects.** `redirectTo` must be a same-origin path that starts with one `/`. `//host`, a backslash, a control character, or any value that resolves to another origin becomes `/`. The SDK checks the stored value again when the OAuth2 flow completes. Check your own redirect targets the same way.
 - **OAuth2 state.** The redirect flow compares `state` in constant time, uses PKCE, and rejects a temporary cookie older than 10 minutes. It keeps one temporary cookie per browser, so a sign-in started in a second tab before the first finishes fails there with `state-mismatch`. The temporary cookie is not signed, so the state binding stops a stale or mismatched cookie. It does not stop someone who can write cookies for your host.
-- **Superuser credentials.** Keep the superuser email, password or token in your server's secret store. Never put them in a browser bundle, a page, a repository or a log. Limit the superuser to the [IP list](operations.md#superuser) that your app server uses, and rotate the password or the token when someone who should not have it has seen it.
+- **Superuser credentials.** Keep the superuser email, password or token in your server's secret store. Never put them in a browser bundle, a page, a repository or a log. Read them at run time, with `process.env`, `Bun.env`, SvelteKit's `$env/dynamic/private` or Nuxt's `runtimeConfig`. A build step that inlines them writes them into the build output: Astro and Vite replace `import.meta.env.*` at build time, and Next.js inlines any `NEXT_PUBLIC_*` variable into the browser bundle, so never use that prefix for a secret. After a build, search the output (for example `dist/`) for the password to confirm it is not there. Limit the superuser to the [IP list](operations.md#superuser) that your app server uses, and rotate the password or the token when someone who should not have it has seen it.
 - **Browser tokens.** A browser token is valid for 15 minutes by default, can be used only for the one user, and cannot be refreshed. Keep `browserTokenDuration` short. The renew route checks the session with iglo.base before it mints a new one, so a revoked session cannot keep renewing.
 - **Plain http.** The default cookie is `Secure`. Browsers store a `Secure` cookie only from an https page, or from `localhost` (and `127.0.0.1` and `::1`). So over plain http outside localhost, sign-in can appear to work and the next page shows the user signed out. Use https. If you set `secure: false` to make it work over http, the session cookie then travels in clear text, and anyone on the network can read or replace it. Over http, the OAuth2 temporary cookie is read under its plain name, which anyone who can write cookies for your host can set. Do not run the callback over plain http outside localhost.
 - **The readable-cookie fallback.** See [the fallback](#without-superuser-credentials). Any script on the page can read the session token.
@@ -1091,6 +1208,10 @@ The CSRF guard refused the request. The request carried the session cookie, and 
 - `provider-error`: the provider returned an error, with its code in `error`.
 - `unsupported-provider` from the start route: the provider returns by POST (Sign in with Apple). Use the popup flow.
 - `server`: iglo.base refused the exchange. Check the callback URL: it must be the redirect URI registered with the provider.
+
+### The provider rejects the redirect URI
+
+The provider's error names a redirect URI that does not match what it has registered. Each flow registers its own URL (see [OAuth2 providers](#oauth2-providers)). The redirect flow needs `<APP_ORIGIN>/api/pb/oauth2/callback`. The popup flow, which Sign in with Apple and other providers that return by POST need, needs `<PB_PUBLIC_URL>/api/oauth2-redirect`, iglo.base's own URL. Registering the app's callback for the popup flow makes the provider refuse the sign-in.
 
 ### Realtime does not deliver events
 
