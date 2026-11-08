@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13f | review (Opus) | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 1 | SSR user guide `docs/ssr.md` and site entry in iglo-tech/iglo.tech; [brief](briefs/P.13f.md). Last open task |
+| P.13f | fix (Haiku) | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 1 | SSR user guide `docs/ssr.md` and site entry in iglo-tech/iglo.tech; [brief](briefs/P.13f.md). Last open task |
 
 ## Done
 
