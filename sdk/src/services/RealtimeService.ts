@@ -127,20 +127,27 @@ export class RealtimeService extends BaseService {
   }
 
   /**
-   * Closes the SSE connection and opens a new one with the same subscriptions. The new connection
-   * gets its own client ID, and the subscriptions are sent on it with the client's current
-   * authorization. Upstream keeps a connection's authorization on the server and only accepts a
-   * change to the same record (a guest may then sign in), so a different user or a sign-out needs
-   * a new connection (docs/design/13-ssr.md, "Browser client and realtime"). A no-op without
-   * subscriptions.
+   * Closes the SSE connection and opens a new one with the same subscriptions, after an intended
+   * change of authorization. The new connection gets its own client ID, and the subscriptions are
+   * sent on it with the client's current authorization. Upstream keeps a connection's
+   * authorization on the server and only accepts a change to the same record (a guest may then
+   * sign in), so a different user or a sign-out needs a new connection
+   * (docs/design/13-ssr.md, "Browser client and realtime").
+   *
+   * The new connection is opened the way a dropped one is reopened: its first attempt waits the
+   * first backoff step, and a failed attempt retries in the background with the usual backoff
+   * (`connectErrorHandler`). Unlike a dropped connection, it does not call `onDisconnect`, since
+   * nothing went wrong on the network or the server. The returned promise resolves when the
+   * reconnect is scheduled, not when the new connection is up. A no-op without subscriptions.
    */
   reconnect(): Promise<void> {
     if (!this.hasSubscriptionListeners()) {
-      this.disconnect();
+      this.disconnect(false, false);
       return Promise.resolve();
     }
-    this.disconnect();
-    return this.connect();
+    this.disconnect(true, false);
+    this.scheduleReconnect();
+    return Promise.resolve();
   }
 
   /**
@@ -530,6 +537,15 @@ export class RealtimeService extends BaseService {
 
     // otherwise -> reconnect in the background
     this.disconnect(true);
+    this.scheduleReconnect();
+  }
+
+  /**
+   * Schedules the next connection attempt after the backoff step for the current attempt count,
+   * and counts the attempt. Shared by a dropped connection and by `reconnect()`, so both retry
+   * the same way.
+   */
+  private scheduleReconnect(): void {
     const timeout =
       this.predefinedReconnectIntervals[this.reconnectAttempts] ||
       this.predefinedReconnectIntervals[this.predefinedReconnectIntervals.length - 1];
@@ -539,8 +555,13 @@ export class RealtimeService extends BaseService {
     }, timeout);
   }
 
-  private disconnect(fromReconnect = false): void {
-    if (this.clientId && this.onDisconnect) {
+  /**
+   * Closes the connection. `fromReconnect` keeps the reconnect attempts and the pending connects,
+   * for a retry. `notify` is false when the close is intended (a `reconnect()`), so the
+   * `onDisconnect` hook, which means a network or server error, is not called.
+   */
+  private disconnect(fromReconnect = false, notify = true): void {
+    if (notify && this.clientId && this.onDisconnect) {
       this.onDisconnect(Object.keys(this.subscriptions));
     }
 

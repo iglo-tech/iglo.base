@@ -494,14 +494,35 @@ function lastOf<T>(items: T[]): T | undefined {
   return items[items.length - 1];
 }
 
+/**
+ * The realtime service's own timers: its backoff and its connect timeout use the global
+ * `setTimeout`, so they run on a fake clock, `rt`, and the tests advance it. Returns the function
+ * that restores the globals.
+ */
+let rt: ReturnType<typeof fakeTimers>;
+function installRealtimeTimers(): () => void {
+  const savedSetTimeout = globalThis.setTimeout;
+  const savedClearTimeout = globalThis.clearTimeout;
+  rt = fakeTimers(testClock(START));
+  setGlobal("setTimeout", rt.timers.setTimeout);
+  setGlobal("clearTimeout", rt.timers.clearTimeout);
+  return () => {
+    setGlobal("setTimeout", savedSetTimeout);
+    setGlobal("clearTimeout", savedClearTimeout);
+  };
+}
+
 describe("realtime follows the signed-in user", () => {
   let savedEventSource: unknown;
+  let restoreTimers: (() => void) | undefined;
   beforeEach(() => {
     savedEventSource = globalThis.EventSource;
     setGlobal("EventSource", FakeEventSource);
     resetFakeEventSources();
+    restoreTimers = installRealtimeTimers();
   });
   afterEach(() => {
+    restoreTimers?.();
     setGlobal("EventSource", savedEventSource);
   });
 
@@ -511,6 +532,7 @@ describe("realtime follows the signed-in user", () => {
 
     pb.authStore.clear();
     await settle();
+    await rt.advance(200); // the reconnect's first attempt
 
     expect(fakeSources).toHaveLength(2);
     expect(fakeSources[0]?.closed).toBe(true);
@@ -536,6 +558,7 @@ describe("realtime follows the signed-in user", () => {
 
     pb.authStore.save(other, record("u2"));
     await settle();
+    await rt.advance(200);
 
     expect(fakeSources).toHaveLength(2);
     expect(fakeSources[0]?.closed).toBe(true);
@@ -561,6 +584,7 @@ describe("realtime follows the signed-in user", () => {
 
     await pb.renew();
     await settle();
+    await rt.advance(200);
 
     expect(fakeSources).toHaveLength(2);
     expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBe(other);
@@ -581,6 +605,7 @@ describe("realtime follows the signed-in user", () => {
 
     await pb.renew().catch(() => {});
     await settle();
+    await rt.advance(200);
 
     expect(pb.authStore.token).toBe("");
     expect(fakeSources).toHaveLength(2);
@@ -604,6 +629,147 @@ describe("realtime follows the signed-in user", () => {
     await settle();
     expect(fakeSources).toHaveLength(1);
     expect(realtimePosts(api)).toHaveLength(2);
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+});
+
+/**
+ * Realtime recovers from an outage. The realtime service's own backoff timers run on a fake clock
+ * (its `setTimeout` is the global one), so the tests advance them without sleeping. While
+ * `fakeOffline` is set, every new connection fails at once, as an unreachable iglo.base does.
+ */
+describe("realtime recovers from an outage", () => {
+  let savedEventSource: unknown;
+  let restoreTimers: (() => void) | undefined;
+  beforeEach(() => {
+    savedEventSource = globalThis.EventSource;
+    setGlobal("EventSource", FakeEventSource);
+    resetFakeEventSources();
+    fakeOffline = false;
+    restoreTimers = installRealtimeTimers();
+  });
+  afterEach(() => {
+    fakeOffline = false;
+    restoreTimers?.();
+    setGlobal("EventSource", savedEventSource);
+  });
+
+  test("a sign-out during an outage: retried with the usual backoff, then restored as a guest", async () => {
+    const { pb, api } = await subscribed("u1");
+    const hooks: string[][] = [];
+    pb.realtime.onDisconnect = (subs) => {
+      hooks.push(subs);
+    };
+
+    fakeOffline = true;
+    pb.authStore.clear();
+    await settle();
+    expect(pb.realtime.isConnected).toBe(false);
+    expect(rt.delays()).toEqual([200]); // the first backoff step, as after a dropped connection
+
+    await rt.advance(200); // the first attempt fails while offline
+    expect(rt.delays()).toEqual([300]); // the next step
+
+    fakeOffline = false;
+    await rt.advance(300); // the network is back
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBeNull();
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+    expect(hooks).toEqual([]); // an intended reconnect is not a disconnect
+
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a user switch during an outage: retried, then restored for the new user", async () => {
+    const { pb, api } = await subscribed("u1");
+    const other = authToken(Math.floor(START / 1000) + 900, "u2");
+
+    fakeOffline = true;
+    pb.authStore.save(other, record("u2"));
+    await settle();
+    expect(rt.delays()).toEqual([200]);
+
+    await rt.advance(200);
+    expect(rt.delays()).toEqual([300]);
+
+    fakeOffline = false;
+    await rt.advance(300);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBe(other);
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a dropped connection during an outage: retried with the usual backoff, with no auth change", async () => {
+    const { pb, api, token } = await subscribed("u1");
+    const hooks: string[][] = [];
+    pb.realtime.onDisconnect = (subs) => {
+      hooks.push(subs);
+    };
+
+    fakeOffline = true;
+    fakeSources[0]?.fail(); // the live connection drops
+    await settle();
+    expect(hooks).toEqual([["demo/*"]]); // a real disconnect still calls the hook
+    expect(rt.delays()).toEqual([200]);
+
+    await rt.advance(200);
+    expect(rt.delays()).toEqual([300]);
+
+    fakeOffline = false;
+    await rt.advance(300);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBe(token);
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+    expect(hooks).toHaveLength(1);
+
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a subscription POST that fails on the new connection is retried too", async () => {
+    const token = authToken(Math.floor(START / 1000) + 900, "u1");
+    let realtimeUp = true;
+    const { pb, api } = harness(
+      (c) => ({
+        [RENEW]: renewed(c),
+        "POST /api/realtime": () =>
+          realtimeUp
+            ? new Response(null, { status: 204 })
+            : json(c, 503, { status: 503, message: "down", data: {} }),
+      }),
+      { token, record: record("u1") },
+    );
+    await pb.collection("demo").subscribe("*", () => {});
+
+    realtimeUp = false;
+    pb.authStore.clear();
+    await settle();
+    await rt.advance(200); // connects, but the subscriptions are refused with 503
+    expect(pb.realtime.isConnected).toBe(false);
+    expect(rt.delays()).toEqual([300]);
+
+    realtimeUp = true;
+    await rt.advance(300);
+    expect(pb.realtime.isConnected).toBe(true);
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client3",
+      subscriptions: ["demo/*"],
+    });
+
     pb.dispose();
     await pb.realtime.unsubscribe();
   });
@@ -633,20 +799,31 @@ function resetFakeEventSources(): void {
   fakeClientSeq = 0;
 }
 
+/** While set, every new connection fails at once: iglo.base cannot be reached. */
+let fakeOffline = false;
+
 /**
  * A test-only EventSource: it announces a connection (client1, client2, ...) on the next
- * microtask, and records whether the client closed it.
+ * microtask, and records whether the client closed it. While offline it fails instead.
  */
 class FakeEventSource {
   readonly #listeners = new Map<string, Set<(e: { data: string; lastEventId: string }) => void>>();
-  onerror: unknown = null;
+  onerror: (() => void) | null = null;
   closed = false;
   constructor(readonly url: string) {
     fakeSources.push(this);
     const clientId = `client${++fakeClientSeq}`;
     queueMicrotask(() => {
+      if (fakeOffline) {
+        this.onerror?.();
+        return;
+      }
       this.#emit("PB_CONNECT", { data: "{}", lastEventId: clientId });
     });
+  }
+  /** The live connection fails, as when the network drops. */
+  fail(): void {
+    this.onerror?.();
   }
   addEventListener(type: string, listener: (e: { data: string; lastEventId: string }) => void) {
     let set = this.#listeners.get(type);

@@ -433,12 +433,58 @@ describe("handleBrowserTokenRenew: configuration and mint failures", () => {
     expect(calls.some((c) => c.path.endsWith("/impersonate/u1"))).toBe(true);
   });
 
-  test("impersonate answering 401 is also 401 and clears the cookies", async () => {
+  test("impersonate answering 401 (the superuser token is missing, expired or revoked) is 503, and the session cookie is kept", async () => {
     const clock = testClock(T0 * 1000);
     const session = authToken(T0 + 3600);
+    const refused = await renewWhenImpersonateAnswers(401, session);
+    expect(refused.res.status).toBe(503);
+    expect(refused.res.headers.get("cache-control")).toContain("no-store");
+    expect(setCookies(refused.res).filter((c) => /Max-Age=0/i.test(c))).toHaveLength(0);
+
+    // the user's session is untouched: once the superuser credentials work again, the same
+    // cookie renews
     const { fetch } = stubApi(clock, {
       "POST /api/collections/users/auth-refresh": () =>
         json(clock, 200, { token: session, record: record() }),
+      "POST /api/collections/users/impersonate/u1": () =>
+        json(clock, 200, { token: authToken(T0 + 900), record: record() }),
+    });
+    const su = await createSuperuserClient({
+      url: API,
+      token: superuserToken(T0 + 99999),
+      fetch,
+      clock,
+    });
+    const again = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
+      url: API,
+      clock,
+      fetch,
+      superuser: su,
+    });
+    expect(again.status).toBe(200);
+  });
+
+  test("impersonate answering 403 (the token is not a superuser's) is 503, and the session cookie is kept", async () => {
+    const { res } = await renewWhenImpersonateAnswers(403);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c))).toHaveLength(0);
+  });
+
+  test("impersonate answering 500 is 503, and the session cookie is kept", async () => {
+    const { res } = await renewWhenImpersonateAnswers(500);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c))).toHaveLength(0);
+  });
+
+  test("a 503 for refused superuser credentials still writes the session cookie the check refreshed", async () => {
+    const clock = testClock(T0 * 1000);
+    const session = authToken(T0 + 3600);
+    const refreshed = authToken(T0 + 7200);
+    const { fetch } = stubApi(clock, {
+      "POST /api/collections/users/auth-refresh": () =>
+        json(clock, 200, { token: refreshed, record: record() }),
       "POST /api/collections/users/impersonate/u1": () =>
         json(clock, 401, { status: 401, message: "no", data: {} }),
     });
@@ -454,34 +500,36 @@ describe("handleBrowserTokenRenew: configuration and mint failures", () => {
       fetch,
       superuser: su,
     });
-    expect(res.status).toBe(401);
-    expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c)).length).toBeGreaterThan(0);
-  });
-
-  test("impersonate failing for any other reason is 503, and the session is kept", async () => {
-    const clock = testClock(T0 * 1000);
-    const session = authToken(T0 + 3600);
-    for (const status of [403, 500]) {
-      const { fetch } = stubApi(clock, {
-        "POST /api/collections/users/auth-refresh": () =>
-          json(clock, 200, { token: session, record: record() }),
-        "POST /api/collections/users/impersonate/u1": () =>
-          json(clock, status, { status, message: "x", data: {} }),
-      });
-      const su = await createSuperuserClient({
-        url: API,
-        token: superuserToken(T0 + 99999),
-        fetch,
-        clock,
-      });
-      const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
-        url: API,
-        clock,
-        fetch,
-        superuser: su,
-      });
-      expect(res.status).toBe(503);
-      expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c))).toHaveLength(0);
-    }
+    expect(res.status).toBe(503);
+    expect(setCookies(res).some((c) => c.startsWith("pb_auth=") && !/Max-Age=0/i.test(c))).toBe(
+      true,
+    );
   });
 });
+
+/**
+ * A renew request whose superuser client reaches impersonate, which answers `status`. The
+ * session cookie carries `session`, and the session check (auth-refresh) succeeds.
+ */
+async function renewWhenImpersonateAnswers(status: number, session = authToken(T0 + 3600)) {
+  const clock = testClock(T0 * 1000);
+  const { fetch, calls } = stubApi(clock, {
+    "POST /api/collections/users/auth-refresh": () =>
+      json(clock, 200, { token: session, record: record() }),
+    "POST /api/collections/users/impersonate/u1": () =>
+      json(clock, status, { status, message: "answered", data: {} }),
+  });
+  const su = await createSuperuserClient({
+    url: API,
+    token: superuserToken(T0 + 99999),
+    fetch,
+    clock,
+  });
+  const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
+    url: API,
+    clock,
+    fetch,
+    superuser: su,
+  });
+  return { res, calls };
+}

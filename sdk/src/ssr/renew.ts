@@ -47,10 +47,13 @@ function errorResponse(status: number, message: string): Response {
  * freshly minted token, and the session cookie is rewritten if the session was refreshed.
  *
  * Answers: `401` when there is no valid session (the cookie is cleared when iglo.base revoked it,
- * or when impersonate refused the user because they were deleted after the check), `403` for a
- * foreign origin, `405` for another method, `503` when iglo.base cannot be reached or the mint
- * fails for another reason. A missing configuration (no superuser client and no
- * `readableCookie`) throws before any request to iglo.base is made.
+ * or when impersonate answers `404`: the user was deleted after the check, so the session is
+ * over), `403` for a foreign origin, `405` for another method, and `503` when iglo.base cannot be
+ * reached, when the session check fails for another reason, or when impersonate answers `401` or
+ * `403` (the superuser credentials were refused: missing, expired, revoked, or not a superuser's)
+ * or fails for another reason. A `503` keeps the session cookie: the user's session is fine, and
+ * an operator's credential problem must not sign every user out. A missing configuration (no
+ * superuser client and no `readableCookie`) throws before any request to iglo.base is made.
  */
 export async function handleBrowserTokenRenew(
   request: Request,
@@ -92,13 +95,19 @@ export async function handleBrowserTokenRenew(
     if (!(err instanceof ClientResponseError)) {
       throw err; // a programming error, not a sign-in problem
     }
-    if (err.status === 401 || err.status === 404) {
-      // impersonate refused the user (deleted since the check): the session is over. Clearing
-      // the client's auth store clears the session cookie through the adapter.
+    if (err.status === 404) {
+      // impersonate found no such record (deleted since the check): the session is over.
+      // Clearing the client's auth store clears the session cookie through the adapter.
       client.authStore.clear();
       return withCookies(errorResponse(401, "The session is not valid."), cookies);
     }
-    return errorResponse(503, "The browser token could not be minted. Try again.");
+    // 401 and 403 are the superuser credentials refused (missing, expired, revoked, or not a
+    // superuser's), not the user's session: the cookie is kept. The session may have been
+    // refreshed by the check, so its cookie is written either way.
+    return withCookies(
+      errorResponse(503, "The browser token could not be minted. Try again."),
+      cookies,
+    );
   }
   if (!minted) {
     return withCookies(errorResponse(401, "The session is not valid."), cookies);

@@ -24,7 +24,14 @@ export const DEFAULT_BROWSER_TOKEN_DURATION_SEC = 900;
  * be in fallback mode (`readableCookie`): the page then gets the session token, which the session
  * cookie already exposes to page JavaScript.
  *
+ * Errors from `impersonate` reach the caller as `ClientResponseError`, with the server's status.
+ * They mean different things, and the caller decides what each means for the session
+ * (`handleBrowserTokenRenew` does): `404` means the user is gone, while `401` (the superuser token
+ * is missing, expired or revoked) and `403` (it is not a superuser's) mean the superuser
+ * credentials were refused, which says nothing about the user's session.
+ *
  * @throws {TypeError} without a superuser client on a server client that is not in fallback mode
+ * @throws {ClientResponseError} when `impersonate` fails (see above)
  */
 export async function mintBrowserToken(
   server: ServerClient,

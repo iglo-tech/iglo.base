@@ -358,6 +358,9 @@ describe("browser client", () => {
 
       // the sign-out opens a new connection with the subscriptions, as a guest: the server accepts them
       await env.until(() => pb.realtime.isConnected, "the guest connection");
+      // isConnected turns true when PB_CONNECT arrives, before the subscriptions' answer is recorded:
+      // wait for the answers (subscribe, the renewal's resubmit, the guest connection's subscribe)
+      await env.until(() => realtimeStatuses.length >= 3, "the guest connection's subscriptions");
       expect(realtimeStatuses.every((s) => s === 204)).toBe(true);
       expect(pb.realtime.isConnected).toBe(true);
       env.record("realtime requests", realtimeStatuses.slice());
@@ -563,6 +566,72 @@ describe("browser client", () => {
 
       pb.dispose();
       await pb.realtime.unsubscribe();
+    },
+  );
+
+  sdkTest(
+    "a refused superuser credential answers 503 and keeps the user's session, on both servers",
+    { prepare: noMFA, timeout: TIMEOUT },
+    async (env) => {
+      const admin = env.superuser();
+      const browser = new Browser();
+      await signInAs(env.url, browser, USER_EMAIL);
+
+      // a second superuser, and an impersonate token for it (an API key). Deleting the superuser
+      // refuses the token, as an expired or rotated superuser credential is refused
+      // a fixed id, so the two servers' records match; the steps return nothing comparable from it
+      const second = "ssrrefusedsu001";
+      await env.step("create a second superuser", async () => {
+        await admin.collection("_superusers").create({
+          id: second,
+          email: "ssr-refused@example.com",
+          password,
+          passwordConfirm: password,
+        });
+        return "created";
+      });
+      let impersonatedToken = "";
+      await env.step("impersonate the second superuser", async () => {
+        const impersonated = await admin.collection("_superusers").impersonate(second, 3600);
+        impersonatedToken = impersonated.authStore.token;
+        return "impersonated";
+      });
+      const refused = await createSuperuserClient({
+        url: env.url,
+        token: impersonatedToken,
+      });
+      const working = await createSuperuserClient({ url: env.url, token: superuserToken });
+
+      const statuses: number[] = [];
+      const cookieClears: number[] = [];
+      const renew = async (superuser: Awaited<ReturnType<typeof createSuperuserClient>>) => {
+        const res = await handleBrowserTokenRenew(
+          browser.request(RENEW_URL, { method: "POST", headers: { origin: APP } }),
+          { url: env.url, superuser },
+        );
+        browser.store(res);
+        statuses.push(res.status);
+        cookieClears.push(res.headers.getSetCookie().filter((c) => /Max-Age=0/i.test(c)).length);
+        return res;
+      };
+
+      // the superuser credential works: the page renews
+      expect((await renew(refused)).status).toBe(200);
+
+      // the credential is refused: 503, and the user's session cookie is kept
+      await env.step("delete the second superuser", () =>
+        admin.collection("_superusers").delete(second),
+      );
+      expect((await renew(refused)).status).toBe(503);
+      expect(browser.jar.has("pb_auth")).toBe(true);
+
+      // the credential works again: the same session renews
+      expect((await renew(working)).status).toBe(200);
+      env.record("renew with a refused superuser credential", {
+        statuses: statuses.slice(),
+        clearedCookies: cookieClears.slice(),
+        sessionKept: browser.jar.has("pb_auth"),
+      });
     },
   );
 });
