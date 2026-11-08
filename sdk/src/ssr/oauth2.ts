@@ -175,13 +175,10 @@ export function withRedirectUri(authURL: string, callbackUrl: string): string {
  * query string. Upstream asks Apple for `response_mode=form_post`, so Apple returns with a
  * cross-site POST whose form body this flow does not read, and whose `SameSite=Lax` cookie the
  * browser does not send. Only `response_mode=query`, or no `response_mode`, passes; any other
- * mode is refused. An unreadable URL is refused too.
+ * mode is refused. The URL may be relative: upstream returns `?client_id=...` for a provider with
+ * no authorization endpoint, and the caller appends `redirect_uri` to it.
  */
 export function returnsToQueryString(authURL: string): boolean {
-  try {
-    const mode = new URL(authURL).searchParams.get("response_mode");
-    return mode === null || mode === "query";
-  } catch {
-    return false;
-  }
+  const mode = new URL(authURL, PROBE_ORIGIN).searchParams.get("response_mode");
+  return mode === null || mode === "query";
 }

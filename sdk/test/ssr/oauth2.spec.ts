@@ -770,6 +770,35 @@ describe("OAuth2 redirect flow: cookie names follow the origin", () => {
     expect(browser.jar.has("pb_auth")).toBe(true);
   });
 
+  test("a relative authURL, as upstream returns for a provider with no authorization endpoint, is accepted", async () => {
+    const RELATIVE_AUTH_URL = `?client_id=123&state=${STATE}&redirect_uri=`;
+    const iglo = fakeIglo({
+      "GET /api/collections/users/auth-methods": () =>
+        json(
+          200,
+          authMethods({
+            providers: [
+              {
+                name: "oidc",
+                displayName: "OIDC",
+                state: STATE,
+                authURL: RELATIVE_AUTH_URL,
+                codeVerifier: VERIFIER,
+              },
+            ],
+          }),
+        ),
+    });
+    const request = new Request(`${APP}/login`);
+    const cookies = createRequestCookieAdapter(request);
+    const pb = await createServerClient({ url: API, cookies, request, fetch: iglo.fetch });
+
+    const location = await pb.startOAuth2("oidc", { callbackUrl: CALLBACK });
+
+    expect(location.endsWith(`redirect_uri=${encodeURIComponent(CALLBACK)}`)).toBe(true);
+    expect(cookies.queuedCookies.map((c) => c.name)).toEqual(["__Host-pb_oauth2"]);
+  });
+
   test("Sign in with Apple (response_mode=form_post) is refused before any cookie is written", async () => {
     const APPLE_AUTH_URL =
       "https://appleid.apple.com/auth/authorize?client_id=com.example.app&response_mode=form_post" +
