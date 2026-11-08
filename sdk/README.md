@@ -487,6 +487,7 @@ import {
   createSuperuserClient,
   handleBrowserTokenRenew,
   mintBrowserToken,
+  SSR_NO_CACHE_HEADERS,
 } from "iglo.base/ssr";
 
 const BACKEND = "http://127.0.0.1:8090"; // iglo.base backend URL
@@ -506,14 +507,16 @@ export default {
       return handleBrowserTokenRenew(request, { url: BACKEND, sessionCache, superuser });
     }
 
-    // the page: mint the browser token and hand it over with the record
+    // the page: mint the browser token and hand it over with the record. The token is per user,
+    // so the page is never cached (SSR_NO_CACHE_HEADERS).
     const cookies = createRequestCookieAdapter(request);
     const pb = await createServerClient({ url: BACKEND, request, cookies, sessionCache });
     const page = await mintBrowserToken(pb, superuser); // null when nobody is signed in
     // escape "<" so the JSON cannot close the script element
     const json = JSON.stringify(page).replaceAll("<", "\\u003c");
     const html = `<script>window.__PB__ = ${json};</script><script type="module" src="/app.js"></script>`;
-    return cookies.applyToResponse(new Response(html, { headers: { "Content-Type": "text/html" } }));
+    const headers = { "Content-Type": "text/html", ...SSR_NO_CACHE_HEADERS };
+    return cookies.applyToResponse(new Response(html, { headers }));
   },
 };
 ```
@@ -522,11 +525,12 @@ export default {
 // browser, app.js (a bundle for the browser; no Bun or Node API)
 import { createBrowserClient } from "iglo.base/ssr/browser";
 
-const { token, record } = window.__PB__ ?? {};
+const { token, record, serverTime } = window.__PB__ ?? {};
 const pb = createBrowserClient({
   url: "http://127.0.0.1:8090", // the backend the browser can reach
   token,
   record,
+  serverTime, // the server's clock at minting: the page's clock is measured against it
   renewUrl: "/api/session/renew", // the app's route above
 });
 
@@ -536,10 +540,12 @@ await pb.collection("posts").subscribe("*", (e) => console.log(e.action, e.recor
 
 Things to know:
 
-- `renew()` runs on its own: at half of the token's remaining life, and never less than 60 seconds before it expires. Parallel calls share one request. A 401 from the renew route signs the page out (the store is cleared, and realtime continues as a guest). A network error or a 5xx keeps the token and retries with backoff until it expires.
+- `renew()` runs on its own: at half of the token's remaining life, and never less than 60 seconds before it expires. Successful renewals are at least 30 seconds apart. Parallel calls share one request. A 401 from the renew route signs the page out: the store is cleared, and realtime reconnects as a guest. A network error or a 5xx keeps the token and retries with backoff, at most ten times in a row; after that the store is cleared when the token expires.
+- Lifetimes are measured on the server's clock, from `serverTime` and from each renewal answer, so a device clock that is minutes off does not renew the token in a loop or drop the session.
+- Realtime follows the signed-in user. A renewal for the same user keeps the connection and resubmits its subscriptions with the new token. A sign-out, or a sign-in as another user, opens a new connection for the subscriptions, authorized as that user or as a guest.
 - `createBrowserClient` takes an injected `clock` and `timers` for tests. `pb.dispose()` stops the renewal timers.
-- `pb.handOff()` posts the popup token (from `authWithOAuth2()`) to a hand-off route (`handlePopupHandOff`) and then renews it, so the long-lived popup token does not stay in page memory. If the renewal fails, the store is cleared.
-- `mintBrowserToken` returns `null` when nobody is signed in, and the record is the server client's own, never data from the request. `expiresAt` is in milliseconds.
+- `pb.handOff()` posts the popup token (from `authWithOAuth2()`) to a hand-off route (`handlePopupHandOff`) and then renews it, so the long-lived popup token does not stay in page memory. On any failure, whatever the status, the store is cleared and the error is thrown.
+- `mintBrowserToken` returns `null` when nobody is signed in, and the record is the server client's own, never data from the request. `expiresAt` and `serverTime` are in milliseconds. The response that carries the token is per user: send it with `SSR_NO_CACHE_HEADERS`, as the example does, so no shared cache keeps it.
 - The renew route checks the session with iglo.base on each call (it does not use the session cache), so a session revoked since its last check is refused there.
 
 **Fallback without superuser credentials.** Without superuser credentials the page can still work: create the server client with `readableCookie: true`. The session cookie is then written without `HttpOnly`, and `mintBrowserToken(pb)` and `handleBrowserTokenRenew(request, { url, readableCookie: true })` answer from the session itself. The browser client, given no token, reads the cookie. This is weaker: any script on the page can read the session token for as long as the session lasts, so an XSS bug is a session takeover. Use the superuser path where you can.

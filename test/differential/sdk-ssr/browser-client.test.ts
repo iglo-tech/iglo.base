@@ -14,8 +14,9 @@ import {
   mintBrowserToken,
   type CookieAdapter,
   type CookieToSet,
+  type ServerClient,
 } from "iglo.base/ssr";
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient, type BrowserClient } from "iglo.base/ssr/browser";
 import { ClientResponseError, getTokenPayload } from "iglo.base";
 import { password, sdkTest, superuserToken, type SdkEnv } from "@test/differential/sdk/harness";
 import { Browser } from "@test/differential/sdk-ssr/browser";
@@ -29,6 +30,7 @@ const TIMEOUT = 120_000;
 const CHANGED_PASSWORD = "1234567890-changed";
 const PAGE_TOKEN_SEC = 600;
 const USER_EMAIL = "test@example.com";
+const OTHER_EMAIL = "test2@example.com";
 
 /** The app's cookie adapter over the browser's cookie jar (the session cookie). */
 function appCookies(browser: Browser): CookieAdapter {
@@ -107,6 +109,108 @@ async function createEventsCollection(env: SdkEnv, name: string): Promise<void> 
       fields: [{ name: "title", type: "text" }],
     }),
   );
+}
+
+/** A collection whose records only their `who` (the signed-in email) may read. */
+async function createWhoCollection(env: SdkEnv, name: string): Promise<void> {
+  await env.step(`create collection ${name}`, () =>
+    env.superuser().collections.create({
+      name,
+      type: "base",
+      listRule: "who = @request.auth.email",
+      viewRule: "who = @request.auth.email",
+      createRule: "",
+      fields: [
+        { name: "title", type: "text" },
+        { name: "who", type: "text" },
+      ],
+    }),
+  );
+}
+
+/** A collection anyone may read: its events mark the point up to which the page has heard. */
+async function createPublicCollection(env: SdkEnv, name: string): Promise<void> {
+  await env.step(`create collection ${name}`, () =>
+    env.superuser().collections.create({
+      name,
+      type: "base",
+      listRule: "",
+      viewRule: "",
+      createRule: "",
+      fields: [{ name: "title", type: "text" }],
+    }),
+  );
+}
+
+/** The app's server client for a user, signed in through the browser's cookie jar. */
+async function signInAs(backend: string, browser: Browser, email: string): Promise<ServerClient> {
+  const app = await createServerClient({
+    url: backend,
+    origin: APP,
+    cookies: appCookies(browser),
+  });
+  await app.collection("users").authWithPassword(email, password);
+  return app;
+}
+
+interface PageStatuses {
+  renew: number[];
+  realtime: number[];
+}
+
+/**
+ * A page as the app serves it: a browser token minted from the app's server client, and a browser
+ * client on it. The renew route runs in process with the browser's cookies and origin; realtime
+ * requests go straight to iglo.base, as they do from a real page.
+ */
+async function openPage(
+  env: SdkEnv,
+  browser: Browser,
+  app: ServerClient,
+  statuses: PageStatuses,
+): Promise<BrowserClient> {
+  const superuser = await createSuperuserClient({ url: env.url, token: superuserToken });
+  const page = await mintBrowserToken(app, superuser, { duration: PAGE_TOKEN_SEC });
+  if (!page) {
+    throw new Error("no page token");
+  }
+  const sessionCache = createSessionCache();
+  const pageFetch = async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url === RENEW_URL) {
+      const response = await handleBrowserTokenRenew(
+        browser.request(url, { method: init?.method ?? "GET", headers: { origin: APP } }),
+        { url: env.url, superuser, sessionCache },
+      );
+      browser.store(response);
+      statuses.renew.push(response.status);
+      return response;
+    }
+    const response = await fetch(input, init);
+    if (url.includes("/api/realtime")) {
+      statuses.realtime.push(response.status);
+    }
+    return response;
+  };
+  return createBrowserClient({
+    url: env.url,
+    token: page.token,
+    record: page.record,
+    serverTime: page.serverTime,
+    renewUrl: RENEW_URL,
+    fetch: pageFetch,
+  });
+}
+
+/** Creates a marker in the public collection and waits until the page has received it. */
+async function sentinel(env: SdkEnv, open: string, id: string, received: string[]): Promise<void> {
+  await env.step(`create sentinel ${id}`, () =>
+    env.superuser().collection(open).create({ id, title: "sentinel" }),
+  );
+  await env.until(() => received.includes(id), `the sentinel ${id}`);
 }
 
 interface SeenEvent {
@@ -252,7 +356,8 @@ describe("browser client", () => {
         sessionCookieCleared: !browser.jar.has("pb_auth"),
       });
 
-      // the subscription continues as a guest: its resubmission after the sign-out is accepted
+      // the sign-out opens a new connection with the subscriptions, as a guest: the server accepts them
+      await env.until(() => pb.realtime.isConnected, "the guest connection");
       expect(realtimeStatuses.every((s) => s === 204)).toBe(true);
       expect(pb.realtime.isConnected).toBe(true);
       env.record("realtime requests", realtimeStatuses.slice());
@@ -328,6 +433,136 @@ describe("browser client", () => {
         restoreGlobal(scope, "document", savedDocument);
         restoreGlobal(scope, "location", savedLocation);
       }
+    },
+  );
+
+  sdkTest(
+    "sign-out in another tab: realtime stops delivering the old user's records, and a guest can subscribe",
+    { prepare: noMFA, timeout: TIMEOUT },
+    async (env) => {
+      const admin = env.superuser();
+      const guarded = "ssr_browser_guard";
+      const guardedAgain = "ssr_browser_guard2";
+      const open = "ssr_browser_open";
+      await createWhoCollection(env, guarded);
+      await createWhoCollection(env, guardedAgain);
+      await createPublicCollection(env, open);
+
+      const browser = new Browser();
+      const app = await signInAs(env.url, browser, USER_EMAIL);
+      const statuses: PageStatuses = { renew: [], realtime: [] };
+      const pb = await openPage(env, browser, app, statuses);
+
+      const seen: string[] = [];
+      const received: string[] = [];
+      await pb.collection(guarded).subscribe("*", (e) => {
+        seen.push((e as unknown as SeenEvent).record.id);
+      });
+      await pb.collection(open).subscribe("*", (e) => {
+        received.push((e as unknown as SeenEvent).record.id);
+      });
+
+      await env.step("create (signed in)", () =>
+        admin.collection(guarded).create({ id: "ssrguard0000001", title: "one", who: USER_EMAIL }),
+      );
+      await env.until(() => seen.length >= 1, "the event while signed in");
+      env.record("events while signed in", seen.slice());
+
+      // the session ends in another tab: its cookie is cleared, and the page's renewal is refused
+      app.authStore.clear();
+      const before = statuses.realtime.length;
+      await pb.renew().catch(() => undefined);
+      await env.until(() => statuses.realtime.length > before, "the subscriptions as a guest");
+      expect(pb.authStore.token).toBe("");
+      env.record("renewal after sign-out", statuses.renew.slice());
+
+      // the old user's rule still holds for the record, and the page does not get it
+      await env.step("create (signed out, same record rule)", () =>
+        admin.collection(guarded).create({ id: "ssrguard0000002", title: "two", who: USER_EMAIL }),
+      );
+      await sentinel(env, open, "ssrsentinel0001", received);
+      expect(seen).toEqual(["ssrguard0000001"]);
+      env.record("events after sign-out", seen.slice());
+
+      // a guest can still subscribe, and gets no record it may not read
+      await pb.collection(guardedAgain).subscribe("*", () => {});
+      env.record("realtime requests", statuses.realtime.slice());
+      expect(statuses.realtime.every((s) => s === 204)).toBe(true);
+      expect(pb.realtime.isConnected).toBe(true);
+
+      pb.dispose();
+      await pb.realtime.unsubscribe();
+    },
+  );
+
+  sdkTest(
+    "another user signs in in the same browser: realtime follows the new user's rules",
+    { prepare: noMFA, timeout: TIMEOUT },
+    async (env) => {
+      const admin = env.superuser();
+      const collection = "ssr_browser_switch";
+      const open = "ssr_browser_open_switch";
+      await createWhoCollection(env, collection);
+      await createPublicCollection(env, open);
+
+      const browser = new Browser();
+      const app = await signInAs(env.url, browser, USER_EMAIL);
+      const statuses: PageStatuses = { renew: [], realtime: [] };
+      const pb = await openPage(env, browser, app, statuses);
+
+      const seen: string[] = [];
+      const received: string[] = [];
+      await pb.collection(collection).subscribe("*", (e) => {
+        seen.push((e as unknown as SeenEvent).record.id);
+      });
+      await pb.collection(open).subscribe("*", (e) => {
+        received.push((e as unknown as SeenEvent).record.id);
+      });
+
+      // as the first user: their record arrives, the other user's does not
+      await env.step("create for the first user", () =>
+        admin.collection(collection).create({ id: "ssrswitch000001", title: "a", who: USER_EMAIL }),
+      );
+      await env.until(() => seen.length >= 1, "the first user's event");
+      await env.step("create for the other user (before the switch)", () =>
+        admin
+          .collection(collection)
+          .create({ id: "ssrswitch000002", title: "b", who: OTHER_EMAIL }),
+      );
+      await sentinel(env, open, "ssrsentinel0001", received);
+      expect(seen).toEqual(["ssrswitch000001"]);
+
+      // the other user signs in in another tab: the same cookie jar, then the page renews
+      await signInAs(env.url, browser, OTHER_EMAIL);
+      const before = statuses.realtime.length;
+      await pb.renew();
+      await env.until(
+        () => statuses.realtime.length > before,
+        "the subscriptions for the new user",
+      );
+      env.record("after the switch", {
+        email: pb.authStore.record?.email,
+        renew: statuses.renew.slice(),
+        realtime: statuses.realtime.slice(),
+      });
+      expect(pb.authStore.record?.email).toBe(OTHER_EMAIL);
+
+      // the new user's record arrives; the first user's does not
+      await env.step("create for the other user (after the switch)", () =>
+        admin
+          .collection(collection)
+          .create({ id: "ssrswitch000003", title: "c", who: OTHER_EMAIL }),
+      );
+      await env.until(() => seen.length >= 2, "the other user's event");
+      await env.step("create for the first user (after the switch)", () =>
+        admin.collection(collection).create({ id: "ssrswitch000004", title: "d", who: USER_EMAIL }),
+      );
+      await sentinel(env, open, "ssrsentinel0002", received);
+      expect(seen).toEqual(["ssrswitch000001", "ssrswitch000003"]);
+      env.record("events after the switch", seen.slice());
+
+      pb.dispose();
+      await pb.realtime.unsubscribe();
     },
   );
 });

@@ -79,6 +79,12 @@ export interface BrowserToken {
   record: AuthRecord;
   /** When the token expires, in milliseconds since the epoch (from its `exp` claim). */
   expiresAt: number;
+  /**
+   * The server's clock when the token was minted, in milliseconds since the epoch: iglo.base's
+   * `Date` header as the minting client read it. The browser client measures its own clock
+   * against it, so a device clock that is off does not shorten or stretch the token's life.
+   */
+  serverTime: number;
 }
 
 export interface MintBrowserTokenOptions {
@@ -94,6 +100,8 @@ export interface CreateSuperuserClientOptions {
   autoRefreshThreshold?: number;
   lang?: string;
   fetch?: (url: RequestInfo | URL, config?: RequestInit) => Promise<Response>;
+  /** The clock (default `Date.now`), for tests. */
+  clock?: () => number;
 }
 
 export interface RequestCookieAdapter extends CookieAdapter {

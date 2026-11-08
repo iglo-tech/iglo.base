@@ -127,6 +127,23 @@ export class RealtimeService extends BaseService {
   }
 
   /**
+   * Closes the SSE connection and opens a new one with the same subscriptions. The new connection
+   * gets its own client ID, and the subscriptions are sent on it with the client's current
+   * authorization. Upstream keeps a connection's authorization on the server and only accepts a
+   * change to the same record (a guest may then sign in), so a different user or a sign-out needs
+   * a new connection (docs/design/13-ssr.md, "Browser client and realtime"). A no-op without
+   * subscriptions.
+   */
+  reconnect(): Promise<void> {
+    if (!this.hasSubscriptionListeners()) {
+      this.disconnect();
+      return Promise.resolve();
+    }
+    this.disconnect();
+    return this.connect();
+  }
+
+  /**
    * Unsubscribe from all subscription listeners with the specified topic.
    *
    * If `topic` is not provided, then this method will unsubscribe

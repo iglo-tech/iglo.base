@@ -18,15 +18,19 @@ import {
 } from "@sdk/ssr/cookies";
 import type { FetchFunction } from "@sdk/ssr/no-store-fetch";
 
-/** The token is renewed when this fraction of its remaining lifetime is left... */
+/** The token is renewed when this fraction of its remaining lifetime is left...  */
 const RENEW_FRACTION = 0.5;
 /** ...but never later than this before its expiry. */
 const RENEW_BEFORE_EXPIRY_MS = 60_000;
-/** Renewals closer together than this are not scheduled (guards a very short token). */
-const MIN_RENEW_DELAY_MS = 1_000;
+/** Successful renewals are at least this far apart, whatever the token's lifetime or the clocks say. */
+const MIN_RENEW_INTERVAL_MS = 30_000;
 /** Retry backoff after a network error or a 5xx: doubles from the base, capped. */
 const RETRY_BASE_MS = 1_000;
 const RETRY_MAX_MS = 30_000;
+/** Retries in a row before the client stops trying; the store is then cleared at the token's expiry. */
+const MAX_RETRIES = 10;
+/** The longest delay `setTimeout` takes (2^31 - 1 ms, about 24.8 days). Longer waits are re-armed. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 const RENEW_REQUEST: RequestInit = {
   method: "POST",
@@ -47,6 +51,12 @@ export interface CreateBrowserClientOptions {
   token?: string;
   /** The user record that goes with `token`. Dropped when its id is not the token's. */
   record?: AuthRecord;
+  /**
+   * The server's clock when `token` was minted (`BrowserToken.serverTime`, in milliseconds). The
+   * client measures its own clock against it. Without it the offset is learned from the first
+   * renewal, so pass it whenever the page has it.
+   */
+  serverTime?: number;
   /** The adapter route that renews the token (`handleBrowserTokenRenew`). Without it, no renewal. */
   renewUrl?: string;
   /** The adapter route that completes a popup sign-in (`handlePopupHandOff`). */
@@ -81,6 +91,18 @@ async function responseError(url: string, res: Response): Promise<ClientResponse
 }
 
 /**
+ * Who a token is for, as the realtime service's server sees it: `collectionId/id`, or `""` for
+ * no token (a guest). Two tokens with the same identity are the same record.
+ */
+function identityOf(token: string): string {
+  if (!token) {
+    return "";
+  }
+  const payload = getTokenPayload(token);
+  return `${payload.collectionId ?? ""}/${payload.id ?? ""}`;
+}
+
+/**
  * The readable session cookie, read from `document.cookie` (fallback mode). Its name follows the
  * rule the server writes it under: `__Host-` on https, the plain name otherwise.
  */
@@ -107,8 +129,8 @@ function readSessionCookie(baseName: string): { token: string; record: AuthRecor
 
 /**
  * The SDK client for a page. It holds a short browser token, renews it before it expires,
- * keeps its realtime subscriptions authorized across renewals, and hands a popup token off to
- * the server. Create it with `createBrowserClient`.
+ * keeps its realtime subscriptions authorized as the signed-in user changes, and hands a popup
+ * token off to the server. Create it with `createBrowserClient`.
  */
 export class BrowserClient extends Client {
   private readonly _options: CreateBrowserClientOptions;
@@ -118,12 +140,21 @@ export class BrowserClient extends Client {
   private _retries: number = 0;
   private _renewing: Promise<void> | undefined = undefined;
   private _disposed: boolean = false;
+  // iglo.base's clock minus this device's clock, learned from `serverTime`
+  private _offsetMs: number = 0;
+  // when the last successful renewal happened (this device's clock), for the renewal floor
+  private _lastRenewedAt: number | undefined = undefined;
+  // the identity the realtime connection's authorization was last submitted for
+  private _realtimeIdentity: string;
 
   constructor(options: CreateBrowserClientOptions) {
     super(options.url, new BaseAuthStore(), options.lang ?? "en-US");
     this._options = options;
     this._clock = options.clock ?? Date.now;
     this._timers = options.timers ?? defaultTimers;
+    if (options.serverTime !== undefined && Number.isFinite(options.serverTime)) {
+      this._offsetMs = options.serverTime - this._clock();
+    }
 
     const seeded = options.token
       ? {
@@ -134,9 +165,10 @@ export class BrowserClient extends Client {
     if (seeded) {
       this.authStore.save(seeded.token, seeded.record);
     }
+    this._realtimeIdentity = identityOf(this.authStore.token);
 
-    // every change of the token (renewal, sign-out, expiry) reschedules the renewal and
-    // resubmits the realtime subscriptions with the new authorization
+    // every change of the token (renewal, sign-out, expiry, a new sign-in) reschedules the
+    // renewal and brings the realtime connection in line with the new authorization
     this.authStore.onChange(() => this._authChanged());
     this._schedule();
   }
@@ -172,8 +204,8 @@ export class BrowserClient extends Client {
   /**
    * After `authWithOAuth2()` in a popup: posts the popup's token to the hand-off route, which
    * writes the HttpOnly session cookie, then renews the token. The long-lived popup token is
-   * replaced in page memory by the short minted one. If the renewal then fails, the store is
-   * cleared rather than keeping the popup token.
+   * replaced in page memory by the short minted one. On any failure the popup token is cleared
+   * from the store rather than kept.
    *
    * @throws {ClientResponseError} when the hand-off or the renewal is refused or fails
    */
@@ -187,6 +219,25 @@ export class BrowserClient extends Client {
       throw new ClientResponseError({ status: 401, data: { message: "There is no sign-in." } });
     }
 
+    try {
+      await this._postHandOff(url, token);
+      await this.renew();
+    } catch (err: unknown) {
+      // the popup token must not stay in page memory, whatever failed
+      if (this.authStore.token === token) {
+        this.authStore.clear();
+      }
+      throw err;
+    }
+  }
+
+  /** Stops the renewal timers. The client keeps working; it just stops renewing. */
+  dispose(): void {
+    this._disposed = true;
+    this._cancelTimer();
+  }
+
+  private async _postHandOff(url: string, token: string): Promise<void> {
     let res: Response;
     try {
       res = await this._fetch(url, {
@@ -199,44 +250,38 @@ export class BrowserClient extends Client {
     } catch (err: unknown) {
       throw networkError(url, err);
     }
-    if (res.status === 401) {
-      // the popup's token was revoked: the sign-in is over
-      if (this.authStore.token === token) {
-        this.authStore.clear();
-      }
-      throw await responseError(url, res);
-    }
     if (!res.ok) {
       throw await responseError(url, res);
     }
-
-    try {
-      await this.renew();
-    } catch (err: unknown) {
-      this.authStore.clear();
-      throw err;
-    }
-  }
-
-  /** Stops the renewal timers. The client keeps working; it just stops renewing. */
-  dispose(): void {
-    this._disposed = true;
-    this._cancelTimer();
   }
 
   private _fetch(url: string, init: RequestInit): Promise<Response> {
     return (this._options.fetch ?? globalThis.fetch)(url, init);
   }
 
+  /** The current token's expiry in the server's clock, in milliseconds. */
   private _expiresAt(): number | undefined {
     const exp = getTokenPayload(this.authStore.token).exp;
-    return typeof exp === "number" && exp > 0 ? exp * 1000 : undefined;
+    return typeof exp === "number" && Number.isFinite(exp) && exp > 0 ? exp * 1000 : undefined;
+  }
+
+  /** This device's clock, moved onto iglo.base's clock. */
+  private _serverNow(): number {
+    return this._clock() + this._offsetMs;
   }
 
   private _authChanged(): void {
     this._retries = 0;
     this._schedule();
-    this.realtime.resubmit().catch(() => {});
+
+    const identity = identityOf(this.authStore.token);
+    const sameRecord = identity === this._realtimeIdentity;
+    this._realtimeIdentity = identity;
+    // Upstream accepts a new token for the same record on a live connection, and refuses any
+    // other change with 403 (apis/realtime.go). A different user, or a sign-out, gets a new
+    // connection, so its client ID is authorized with the current token or as a guest.
+    const update = sameRecord ? this.realtime.resubmit() : this.realtime.reconnect();
+    update.catch(() => {});
   }
 
   private _schedule(): void {
@@ -248,32 +293,39 @@ export class BrowserClient extends Client {
     if (expiresAt === undefined) {
       return;
     }
-    const remaining = expiresAt - this._clock();
-    const delay = Math.max(
-      MIN_RENEW_DELAY_MS,
+    const remaining = expiresAt - this._serverNow();
+    let delay = Math.max(
+      0,
       Math.min(remaining * RENEW_FRACTION, remaining - RENEW_BEFORE_EXPIRY_MS),
     );
+    if (this._lastRenewedAt !== undefined) {
+      // a floor on how often successful renewals repeat (a short token, or a clock that is off)
+      delay = Math.max(delay, this._lastRenewedAt + MIN_RENEW_INTERVAL_MS - this._clock());
+    }
     this._setTimer(delay, () => {
       this.renew().catch(() => {});
     });
   }
 
-  /** After a network error or a 5xx: retries with backoff, or ends the token at its expiry. */
+  /**
+   * After a network error or a 5xx: retries with a bounded backoff. Once the retries are used up,
+   * or no further retry fits before the token ends, the store is cleared at the token's expiry.
+   */
   private _retryLater(): void {
     const expiresAt = this._expiresAt();
     if (this._disposed || expiresAt === undefined) {
       return;
     }
-    const attempt = ++this._retries;
+    const attempt = this._retries + 1;
     const backoff = Math.min(RETRY_BASE_MS * 2 ** (attempt - 1), RETRY_MAX_MS);
-    const now = this._clock();
-    if (now + backoff >= expiresAt) {
-      // no further attempt fits before the token ends
+    const now = this._serverNow();
+    if (attempt > MAX_RETRIES || now + backoff >= expiresAt) {
       this._setTimer(Math.max(0, expiresAt - now), () => {
         this.authStore.clear();
       });
       return;
     }
+    this._retries = attempt;
     this._setTimer(backoff, () => {
       this.renew().catch(() => {});
     });
@@ -307,9 +359,9 @@ export class BrowserClient extends Client {
       throw await responseError(url, res);
     }
 
-    let body: { token?: unknown; record?: unknown };
+    let body: { token?: unknown; record?: unknown; serverTime?: unknown };
     try {
-      body = (await res.json()) as { token?: unknown; record?: unknown };
+      body = (await res.json()) as { token?: unknown; record?: unknown; serverTime?: unknown };
     } catch (err: unknown) {
       this._retryLater();
       throw networkError(url, err);
@@ -321,16 +373,31 @@ export class BrowserClient extends Client {
       // the session changed while this renewal was in flight (a sign-out or a new sign-in)
       return;
     }
+    if (typeof body.serverTime === "number" && Number.isFinite(body.serverTime)) {
+      this._offsetMs = body.serverTime - this._clock();
+    }
     const record = (body.record ?? null) as AuthRecord;
+    this._lastRenewedAt = this._clock();
+    this._retries = 0;
+    // saving the token reschedules the next renewal and resubmits the realtime subscriptions
     this.authStore.save(body.token, recordForToken(body.token, record));
   }
 
+  /**
+   * Sets a timer. A delay above `setTimeout`'s maximum is waited for in steps: the timer is
+   * re-armed when it fires, so no delay is ever cut to 1 ms.
+   */
   private _setTimer(ms: number, callback: () => void): void {
     this._cancelTimer();
+    const wait = Math.min(Math.max(0, ms), MAX_TIMER_MS);
     this._timer = this._timers.setTimeout(() => {
       this._timer = undefined;
-      callback();
-    }, ms);
+      if (ms > MAX_TIMER_MS) {
+        this._setTimer(ms - MAX_TIMER_MS, callback);
+      } else {
+        callback();
+      }
+    }, wait);
   }
 
   private _cancelTimer(): void {
@@ -342,9 +409,9 @@ export class BrowserClient extends Client {
 }
 
 /**
- * Creates the browser client for a page. Pass the token and record from `mintBrowserToken`,
- * which the page gets at render, and the renew route's URL. Without a token, the readable
- * session cookie (fallback mode) is read.
+ * Creates the browser client for a page. Pass the token, its record and `serverTime` from
+ * `mintBrowserToken`, which the page gets at render, and the renew route's URL. Without a token,
+ * the readable session cookie (fallback mode) is read.
  */
 export function createBrowserClient(options: CreateBrowserClientOptions): BrowserClient {
   return new BrowserClient(options);

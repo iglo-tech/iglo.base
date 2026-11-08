@@ -149,6 +149,14 @@ export class ServerClient extends Client {
   }
 
   /**
+   * iglo.base's clock in milliseconds, as the last response's `Date` header read it (this
+   * process's clock when no response has said yet).
+   */
+  serverNow(): number {
+    return this._clock() + this._clockOffsetMs;
+  }
+
+  /**
    * Every request goes through here: `cache: "no-store"` is applied at the fetch layer,
    * and the server's clock and the collection lifetime are read from each response.
    */

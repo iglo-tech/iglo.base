@@ -12,8 +12,13 @@ export const DEFAULT_BROWSER_TOKEN_DURATION_SEC = 900;
 
 /**
  * What a page needs for its browser client, for the user the server client resumed: a token
- * from the superuser client's `impersonate` (a non-refreshable one, 15 minutes by default), and
- * the server client's validated record. The session token never leaves the server.
+ * from the superuser client's `impersonate` (a non-refreshable one, 15 minutes by default), the
+ * server's clock at minting (`serverTime`), and the server client's validated record. The session
+ * token never leaves the server.
+ *
+ * The result is per-user: the response that carries it must be `Cache-Control: no-store` and
+ * private (`SSR_NO_CACHE_HEADERS`, from `iglo.base/ssr`), or a shared cache can hand one user's
+ * token to another. The renew route already answers with those headers.
  *
  * Returns `null` when nobody is signed in. Without a superuser client, the server client must
  * be in fallback mode (`readableCookie`): the page then gets the session token, which the session
@@ -33,6 +38,7 @@ export async function mintBrowserToken(
   }
 
   let token: string;
+  let serverTime: number;
   if (superuser) {
     const collection = record.collectionName || record.collectionId;
     const minted = await superuser.impersonate(
@@ -41,8 +47,10 @@ export async function mintBrowserToken(
       options.duration ?? DEFAULT_BROWSER_TOKEN_DURATION_SEC,
     );
     token = minted.token;
+    serverTime = superuser.serverNow();
   } else if (server.readableCookie) {
     token = session;
+    serverTime = server.serverNow();
   } else {
     throw new TypeError(
       "mintBrowserToken needs a superuser client, or a server client with readableCookie",
@@ -54,5 +62,5 @@ export async function mintBrowserToken(
     throw new Error("the token has no expiry");
   }
   // the record is the server client's own, validated by its session check, never the minted one
-  return { token, record, expiresAt: exp * 1000 };
+  return { token, record, expiresAt: exp * 1000, serverTime };
 }

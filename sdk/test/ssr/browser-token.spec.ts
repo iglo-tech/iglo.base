@@ -63,11 +63,21 @@ describe("mintBrowserToken", () => {
       origin: APP,
       sessionCache: createSessionCache({ clock }),
     });
-    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99999), fetch });
+    const su = await createSuperuserClient({
+      url: API,
+      token: superuserToken(T0 + 99999),
+      fetch,
+      clock,
+    });
 
     const result = await mintBrowserToken(server, su);
 
-    expect(result).toEqual({ token: minted, record: record(), expiresAt: (T0 + 900) * 1000 });
+    expect(result).toEqual({
+      token: minted,
+      record: record(),
+      expiresAt: (T0 + 900) * 1000,
+      serverTime: T0 * 1000,
+    });
     expect(calls.map((c) => c.method + " " + c.path)).toContain(
       "POST /api/collections/users/impersonate/u1",
     );
@@ -154,7 +164,12 @@ describe("mintBrowserToken", () => {
       readableCookie: true,
     });
     const minted = await mintBrowserToken(server, undefined);
-    expect(minted).toEqual({ token: session, record: record(), expiresAt: (T0 + 3600) * 1000 });
+    expect(minted).toEqual({
+      token: session,
+      record: record(),
+      expiresAt: (T0 + 3600) * 1000,
+      serverTime: T0 * 1000,
+    });
     expect(calls.every((c) => c.path !== "/api/collections/users/impersonate/u1")).toBe(true);
   });
 });
@@ -188,6 +203,7 @@ describe("handleBrowserTokenRenew", () => {
       token: minted,
       record: record(),
       expiresAt: (T0 + 900) * 1000,
+      serverTime: T0 * 1000,
     });
   });
 
@@ -235,7 +251,18 @@ describe("handleBrowserTokenRenew", () => {
   test("no cookie is 401 without a request, with no-cache headers", async () => {
     const clock = testClock(T0 * 1000);
     const { fetch, calls } = stubApi(clock, {});
-    const res = await handleBrowserTokenRenew(renewRequest(), { url: API, clock, fetch });
+    const superuser = await createSuperuserClient({
+      url: API,
+      token: superuserToken(T0 + 99999),
+      fetch,
+      clock,
+    });
+    const res = await handleBrowserTokenRenew(renewRequest(), {
+      url: API,
+      clock,
+      fetch,
+      superuser,
+    });
     expect(res.status).toBe(401);
     expect(res.headers.get("cache-control")).toContain("no-store");
     expect(calls).toHaveLength(0);
@@ -324,6 +351,7 @@ describe("handleBrowserTokenRenew", () => {
       token: refreshed,
       record: record(),
       expiresAt: (T0 + 7200) * 1000,
+      serverTime: T0 * 1000,
     });
     const written = setCookies(res).find((c) => c.startsWith("pb_auth="));
     expect(written).toBeDefined();
@@ -364,5 +392,96 @@ describe("fallback cookie attributes", () => {
     await server.auth.verify();
     expect(written.length).toBeGreaterThan(0);
     expect(written.every((n) => n === "__Host-pb_auth")).toBe(true);
+  });
+});
+
+describe("handleBrowserTokenRenew: configuration and mint failures", () => {
+  test("a missing configuration throws before the session is read or refreshed", async () => {
+    const clock = testClock(T0 * 1000);
+    const session = authToken(T0 + 3600);
+    const { fetch, calls } = stubApi(clock, {});
+    await expect(
+      handleBrowserTokenRenew(renewRequest(cookieHeader(session)), { url: API, clock, fetch }),
+    ).rejects.toThrow(TypeError);
+    expect(calls).toHaveLength(0);
+  });
+
+  test("impersonate answering 404 (user deleted after the check) is 401, and the cookies are cleared", async () => {
+    const clock = testClock(T0 * 1000);
+    const session = authToken(T0 + 3600);
+    const { fetch, calls } = stubApi(clock, {
+      "POST /api/collections/users/auth-refresh": () =>
+        json(clock, 200, { token: session, record: record() }),
+      "POST /api/collections/users/impersonate/u1": () =>
+        json(clock, 404, { status: 404, message: "gone", data: {} }),
+    });
+    const su = await createSuperuserClient({
+      url: API,
+      token: superuserToken(T0 + 99999),
+      fetch,
+      clock,
+    });
+    const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
+      url: API,
+      clock,
+      fetch,
+      superuser: su,
+    });
+    expect(res.status).toBe(401);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c)).length).toBeGreaterThan(0);
+    expect(calls.some((c) => c.path.endsWith("/impersonate/u1"))).toBe(true);
+  });
+
+  test("impersonate answering 401 is also 401 and clears the cookies", async () => {
+    const clock = testClock(T0 * 1000);
+    const session = authToken(T0 + 3600);
+    const { fetch } = stubApi(clock, {
+      "POST /api/collections/users/auth-refresh": () =>
+        json(clock, 200, { token: session, record: record() }),
+      "POST /api/collections/users/impersonate/u1": () =>
+        json(clock, 401, { status: 401, message: "no", data: {} }),
+    });
+    const su = await createSuperuserClient({
+      url: API,
+      token: superuserToken(T0 + 99999),
+      fetch,
+      clock,
+    });
+    const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
+      url: API,
+      clock,
+      fetch,
+      superuser: su,
+    });
+    expect(res.status).toBe(401);
+    expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c)).length).toBeGreaterThan(0);
+  });
+
+  test("impersonate failing for any other reason is 503, and the session is kept", async () => {
+    const clock = testClock(T0 * 1000);
+    const session = authToken(T0 + 3600);
+    for (const status of [403, 500]) {
+      const { fetch } = stubApi(clock, {
+        "POST /api/collections/users/auth-refresh": () =>
+          json(clock, 200, { token: session, record: record() }),
+        "POST /api/collections/users/impersonate/u1": () =>
+          json(clock, status, { status, message: "x", data: {} }),
+      });
+      const su = await createSuperuserClient({
+        url: API,
+        token: superuserToken(T0 + 99999),
+        fetch,
+        clock,
+      });
+      const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
+        url: API,
+        clock,
+        fetch,
+        superuser: su,
+      });
+      expect(res.status).toBe(503);
+      expect(setCookies(res).filter((c) => /Max-Age=0/i.test(c))).toHaveLength(0);
+    }
   });
 });

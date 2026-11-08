@@ -43,11 +43,14 @@ function errorResponse(status: number, message: string): Response {
  * The adapter route that renews a browser token: `POST` from the same origin, with the session
  * cookie. It resumes the session through `createServerClient` and checks it with iglo.base
  * (`auth.verify()`): a session revoked since its last check is refused here, though the cache
- * still holds it. On success it answers `200 { token, record, expiresAt }` with a freshly minted
- * token, and the session cookie is rewritten if the session was refreshed.
+ * still holds it. On success it answers `200 { token, record, expiresAt, serverTime }` with a
+ * freshly minted token, and the session cookie is rewritten if the session was refreshed.
  *
- * Answers: `401` when there is no valid session (the cookie is cleared when iglo.base revoked it),
- * `403` for a foreign origin, `405` for another method, `503` when iglo.base cannot be reached.
+ * Answers: `401` when there is no valid session (the cookie is cleared when iglo.base revoked it,
+ * or when impersonate refused the user because they were deleted after the check), `403` for a
+ * foreign origin, `405` for another method, `503` when iglo.base cannot be reached or the mint
+ * fails for another reason. A missing configuration (no superuser client and no
+ * `readableCookie`) throws before any request to iglo.base is made.
  */
 export async function handleBrowserTokenRenew(
   request: Request,
@@ -59,6 +62,12 @@ export async function handleBrowserTokenRenew(
   const origin = checkOrigin(request, allowedOrigins);
   if (!origin.ok) {
     return errorResponse(403, "Cross-site request rejected.");
+  }
+  if (!superuser && options.readableCookie !== true) {
+    // a configuration error: thrown before the session is checked or refreshed
+    throw new TypeError(
+      "handleBrowserTokenRenew needs a superuser client, or readableCookie: true",
+    );
   }
 
   const cookies = createRequestCookieAdapter(request, { secure: options.secure });
@@ -81,7 +90,13 @@ export async function handleBrowserTokenRenew(
     minted = await mintBrowserToken(client, superuser, { duration });
   } catch (err: unknown) {
     if (!(err instanceof ClientResponseError)) {
-      throw err; // a configuration error, not a sign-in problem
+      throw err; // a programming error, not a sign-in problem
+    }
+    if (err.status === 401 || err.status === 404) {
+      // impersonate refused the user (deleted since the check): the session is over. Clearing
+      // the client's auth store clears the session cookie through the adapter.
+      client.authStore.clear();
+      return withCookies(errorResponse(401, "The session is not valid."), cookies);
     }
     return errorResponse(503, "The browser token could not be minted. Try again.");
   }

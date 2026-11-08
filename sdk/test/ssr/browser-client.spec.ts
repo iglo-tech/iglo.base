@@ -12,6 +12,7 @@ import {
   fakeTimers,
   json,
   record,
+  settle,
   stubApi,
   testClock,
   type Call,
@@ -37,6 +38,26 @@ function renewed(clock: TestClock, lifetimeSec = 900): Handler {
     });
   };
 }
+
+/**
+ * The renew route on a server whose clock is `aheadMs` behind the device's: its answer carries
+ * the server's time, and a token that lives `lifetimeSec` from it.
+ */
+function renewedFromServer(clock: TestClock, aheadMs: number, lifetimeSec = 900): Handler {
+  return () => {
+    const serverMs = clock() - aheadMs;
+    const exp = Math.floor(serverMs / 1000) + lifetimeSec;
+    return json(clock, 200, {
+      token: authToken(exp, "u1"),
+      record: record(),
+      expiresAt: exp * 1000,
+      serverTime: serverMs,
+    });
+  };
+}
+
+/** Upstream's largest setTimeout delay (2^31 - 1 ms). */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 function failing(clock: TestClock, status: number): Handler {
   return () => json(clock, status, { status, message: "failed", data: {} });
@@ -122,7 +143,119 @@ describe("createBrowserClient", () => {
 
   test("a token with less than a minute left renews at once", () => {
     const { ft } = harness(undefined, { token: authToken(Math.floor(START / 1000) + 30, "u1") });
-    expect(ft.delays()).toEqual([1_000]);
+    expect(ft.delays()).toEqual([0]);
+  });
+
+  test("a token lasting three years waits in steps no longer than setTimeout allows", async () => {
+    // 94670856 s is upstream's largest auth token duration; its half-life is over 24.8 days
+    const { ft, api, clock } = harness(undefined, {
+      token: authToken(Math.floor(START / 1000) + 94_670_856, "u1"),
+    });
+    expect(ft.delays()).toEqual([MAX_TIMER_MS]);
+    const halfLife = 94_670_856 * 500;
+
+    await ft.advance(MAX_TIMER_MS);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(0);
+    expect(ft.delays().every((d) => d <= MAX_TIMER_MS)).toBe(true);
+
+    await ft.advance(halfLife - MAX_TIMER_MS - 1);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(0);
+    await ft.advance(1);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(1);
+    expect(clock()).toBe(START + halfLife);
+  });
+
+  test("a device clock 20 minutes fast does not make a new token look expired", async () => {
+    const aheadMs = 20 * 60_000;
+    const clock = testClock(START + aheadMs);
+    const ft = fakeTimers(clock);
+    const api = stubApi(clock, { [RENEW]: renewedFromServer(clock, aheadMs) });
+    const pb = createBrowserClient({
+      url: API,
+      renewUrl: RENEW_URL,
+      clock,
+      timers: ft.timers,
+      fetch: api.fetch,
+      token: authToken(Math.floor(START / 1000) + 900, "u1"),
+      record: record(),
+      // the server's clock at minting: the device is 20 minutes ahead of it
+      serverTime: START,
+    });
+    expect(ft.delays()).toEqual([450_000]);
+
+    await ft.advance(449_999);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(0);
+    await ft.advance(1);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(1);
+    expect(pb.authStore.isValid).toBe(true);
+    expect(ft.delays()).toEqual([450_000]);
+    pb.dispose();
+  });
+
+  test("without serverTime, a fast clock renews once, then learns the server's time from the answer", async () => {
+    const aheadMs = 20 * 60_000;
+    const clock = testClock(START + aheadMs);
+    const ft = fakeTimers(clock);
+    const api = stubApi(clock, { [RENEW]: renewedFromServer(clock, aheadMs) });
+    const pb = createBrowserClient({
+      url: API,
+      renewUrl: RENEW_URL,
+      clock,
+      timers: ft.timers,
+      fetch: api.fetch,
+      token: authToken(Math.floor(START / 1000) + 900, "u1"),
+      record: record(),
+    });
+    // nothing is known yet: the token looks expired, so it renews at once
+    expect(ft.delays()).toEqual([0]);
+    await ft.advance(0);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(1);
+
+    // the answer taught the offset: the next renewal is at half the real lifetime
+    expect(ft.delays()).toEqual([450_000]);
+    await ft.advance(449_999);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(1);
+    pb.dispose();
+  });
+
+  test("successful renewals are at least 30 seconds apart, even for a token that lives under a minute", async () => {
+    const renewedAt: number[] = [];
+    const { ft, api, clock, pb } = harness(
+      (c) => ({
+        [RENEW]: (call) => {
+          renewedAt.push(c());
+          return renewed(c, 45)(call);
+        },
+      }),
+      { token: authToken(Math.floor(START / 1000) + 45, "u1") },
+    );
+
+    await ft.advance(5 * 60_000);
+    expect(callsTo(api.calls, "POST", "/api/session/renew").length).toBeGreaterThan(1);
+    expect(callsTo(api.calls, "POST", "/api/session/renew").length).toBeLessThanOrEqual(11);
+    for (let i = 1; i < renewedAt.length; i++) {
+      expect(renewedAt[i]! - renewedAt[i - 1]!).toBeGreaterThanOrEqual(30_000);
+    }
+    expect(clock()).toBe(START + 5 * 60_000);
+    pb.dispose();
+  });
+
+  test("retries are bounded: after ten, the store is cleared at expiry, not before", async () => {
+    const { ft, api, pb, clock } = harness((c) => ({ [RENEW]: failing(c, 503) }));
+    const expiresAt = START + 900_000;
+
+    // the first renewal at half life, then the ten retries (1 s doubling to 30 s): 181 s
+    await ft.advance(450_000 + 181_000);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(11);
+    expect(pb.authStore.token).not.toBe("");
+
+    await ft.advance(100_000);
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(11);
+    expect(pb.authStore.token).not.toBe("");
+
+    await ft.advance(expiresAt - clock());
+    expect(pb.authStore.token).toBe("");
+    expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(11);
   });
 
   test("parallel renew() calls share one request", async () => {
@@ -214,6 +347,7 @@ describe("createBrowserClient", () => {
 
   test("realtime subscriptions are resubmitted with the new token after a renewal", async () => {
     setGlobal("EventSource", FakeEventSource);
+    resetFakeEventSources();
     const { ft, api, pb, token } = harness((c) => ({
       [RENEW]: renewed(c),
       "POST /api/realtime": () => new Response(null, { status: 204 }),
@@ -231,6 +365,8 @@ describe("createBrowserClient", () => {
     expect(resubmitted?.headers.get("authorization")).toBe(pb.authStore.token);
     expect(resubmitted?.headers.get("authorization")).not.toBe(token);
     expect(resubmitted?.body).toEqual({ clientId: "client1", subscriptions: ["demo/*"] });
+    // the same record keeps its connection: only the authorization is resubmitted
+    expect(fakeSources).toHaveLength(1);
 
     await pb.realtime.unsubscribe();
   });
@@ -263,6 +399,43 @@ describe("createBrowserClient", () => {
     });
     await expect(pb.handOff()).rejects.toMatchObject({ status: 401 });
     expect(pb.authStore.token).toBe("");
+  });
+
+  test("handOff: a network error clears the popup token and reports the error", async () => {
+    const popup = authToken(Math.floor(START / 1000) + 36_000, "u1");
+    const clock = testClock(START);
+    const ft = fakeTimers(clock);
+    const pb = createBrowserClient({
+      url: API,
+      renewUrl: RENEW_URL,
+      handOffUrl: HAND_OFF_URL,
+      clock,
+      timers: ft.timers,
+      fetch: () => Promise.reject(new TypeError("offline")),
+      token: popup,
+      record: record(),
+    });
+    const error = await pb.handOff().then(
+      () => undefined,
+      (err: unknown) => err,
+    );
+    expect(error).toBeInstanceOf(ClientResponseError);
+    expect((error as ClientResponseError).status).toBe(0);
+    expect(pb.authStore.token).toBe("");
+    pb.dispose();
+  });
+
+  test("handOff: any other refusal (a 403 or a 500) clears the popup token too", async () => {
+    for (const status of [403, 500]) {
+      const popup = authToken(Math.floor(START / 1000) + 36_000, "u1");
+      const { pb } = harness((c) => ({ [HAND_OFF]: failing(c, status) }), {
+        token: popup,
+        handOffUrl: HAND_OFF_URL,
+      });
+      await expect(pb.handOff()).rejects.toMatchObject({ status });
+      expect(pb.authStore.token).toBe("");
+      pb.dispose();
+    }
   });
 
   test("handOff: when the renewal then fails, the popup token is not kept", async () => {
@@ -299,6 +472,143 @@ describe("createBrowserClient", () => {
   });
 });
 
+/** A browser client subscribed as the given user, with a realtime route that accepts. */
+async function subscribed(user = "u1") {
+  const token = authToken(Math.floor(START / 1000) + 900, user);
+  const h = harness(
+    (c) => ({
+      [RENEW]: renewed(c),
+      "POST /api/realtime": () => new Response(null, { status: 204 }),
+    }),
+    { token, record: record(user) },
+  );
+  await h.pb.collection("demo").subscribe("*", () => {});
+  return { ...h, user };
+}
+
+function realtimePosts(api: Harness["api"]): Call[] {
+  return callsTo(api.calls, "POST", "/api/realtime");
+}
+
+function lastOf<T>(items: T[]): T | undefined {
+  return items[items.length - 1];
+}
+
+describe("realtime follows the signed-in user", () => {
+  let savedEventSource: unknown;
+  beforeEach(() => {
+    savedEventSource = globalThis.EventSource;
+    setGlobal("EventSource", FakeEventSource);
+    resetFakeEventSources();
+  });
+  afterEach(() => {
+    setGlobal("EventSource", savedEventSource);
+  });
+
+  test("a sign-out (authStore.clear) opens a new connection, authorized as a guest", async () => {
+    const { pb, api } = await subscribed();
+    expect(fakeSources).toHaveLength(1);
+
+    pb.authStore.clear();
+    await settle();
+
+    expect(fakeSources).toHaveLength(2);
+    expect(fakeSources[0]?.closed).toBe(true);
+    const posts = realtimePosts(api);
+    const last = lastOf(posts);
+    expect(last?.headers.get("authorization")).toBeNull();
+    expect(last?.body).toEqual({ clientId: "client2", subscriptions: ["demo/*"] });
+
+    // a later subscribe works as a guest, on the new connection
+    await pb.collection("other").subscribe("*", () => {});
+    expect(lastOf(realtimePosts(api))?.body).toEqual({
+      clientId: "client2",
+      subscriptions: ["demo/*", "other/*"],
+    });
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBeNull();
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a sign-in as another user (in this tab) opens a new connection for that user", async () => {
+    const { pb, api } = await subscribed("u1");
+    const other = authToken(Math.floor(START / 1000) + 900, "u2");
+
+    pb.authStore.save(other, record("u2"));
+    await settle();
+
+    expect(fakeSources).toHaveLength(2);
+    expect(fakeSources[0]?.closed).toBe(true);
+    const last = lastOf(realtimePosts(api));
+    expect(last?.headers.get("authorization")).toBe(other);
+    expect(last?.body).toEqual({ clientId: "client2", subscriptions: ["demo/*"] });
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a renewal that answers another user (signed in in another tab) reconnects", async () => {
+    const token = authToken(Math.floor(START / 1000) + 900, "u1");
+    const other = authToken(Math.floor(START / 1000) + 900, "u2");
+    const { pb, api } = harness(
+      (c) => ({
+        [RENEW]: () =>
+          json(c, 200, { token: other, record: record("u2"), expiresAt: 0, serverTime: START }),
+        "POST /api/realtime": () => new Response(null, { status: 204 }),
+      }),
+      { token, record: record("u1") },
+    );
+    await pb.collection("demo").subscribe("*", () => {});
+
+    await pb.renew();
+    await settle();
+
+    expect(fakeSources).toHaveLength(2);
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBe(other);
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a renewal that the server refuses with 401 (cross-tab sign-out) reconnects as a guest", async () => {
+    const token = authToken(Math.floor(START / 1000) + 900, "u1");
+    const { pb, api } = harness(
+      (c) => ({
+        [RENEW]: failing(c, 401),
+        "POST /api/realtime": () => new Response(null, { status: 204 }),
+      }),
+      { token, record: record("u1") },
+    );
+    await pb.collection("demo").subscribe("*", () => {});
+
+    await pb.renew().catch(() => {});
+    await settle();
+
+    expect(pb.authStore.token).toBe("");
+    expect(fakeSources).toHaveLength(2);
+    expect(lastOf(realtimePosts(api))?.headers.get("authorization")).toBeNull();
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+
+  test("a sign-out with no subscriptions opens no connection", async () => {
+    const token = authToken(Math.floor(START / 1000) + 900, "u1");
+    const { pb } = harness(undefined, { token, record: record("u1") });
+    pb.authStore.clear();
+    await settle();
+    expect(fakeSources).toHaveLength(0);
+    pb.dispose();
+  });
+
+  test("a renewal of the same record keeps the connection", async () => {
+    const { pb, api } = await subscribed();
+    await pb.renew();
+    await settle();
+    expect(fakeSources).toHaveLength(1);
+    expect(realtimePosts(api)).toHaveLength(2);
+    pb.dispose();
+    await pb.realtime.unsubscribe();
+  });
+});
+
 /** A browser client with no token handed over: fallback mode reads the readable cookie. */
 function withoutToken() {
   const clock = testClock(START);
@@ -314,13 +624,28 @@ function cookieFor(token: string, name: string): string {
   return `${name}=${encodeURIComponent(JSON.stringify({ token, record: record() }))}`;
 }
 
-/** A test-only EventSource: it announces a connection (client1) on the next microtask. */
+/** Every connection the tests opened, in order, and the client IDs they were given. */
+const fakeSources: FakeEventSource[] = [];
+let fakeClientSeq = 0;
+
+function resetFakeEventSources(): void {
+  fakeSources.length = 0;
+  fakeClientSeq = 0;
+}
+
+/**
+ * A test-only EventSource: it announces a connection (client1, client2, ...) on the next
+ * microtask, and records whether the client closed it.
+ */
 class FakeEventSource {
   readonly #listeners = new Map<string, Set<(e: { data: string; lastEventId: string }) => void>>();
   onerror: unknown = null;
+  closed = false;
   constructor(readonly url: string) {
+    fakeSources.push(this);
+    const clientId = `client${++fakeClientSeq}`;
     queueMicrotask(() => {
-      this.#emit("PB_CONNECT", { data: "{}", lastEventId: "client1" });
+      this.#emit("PB_CONNECT", { data: "{}", lastEventId: clientId });
     });
   }
   addEventListener(type: string, listener: (e: { data: string; lastEventId: string }) => void) {
@@ -334,7 +659,9 @@ class FakeEventSource {
   removeEventListener(type: string, listener: (e: { data: string; lastEventId: string }) => void) {
     this.#listeners.get(type)?.delete(listener);
   }
-  close() {}
+  close() {
+    this.closed = true;
+  }
   #emit(type: string, e: { data: string; lastEventId: string }) {
     for (const listener of this.#listeners.get(type) ?? []) {
       listener(e);
