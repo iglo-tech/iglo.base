@@ -1,0 +1,25 @@
+# P.13c SSR OAuth2 and CSRF
+
+Written by the chief of staff on 2026-11-08. Owner direction 2026-11-07 (SSR out of the box, solved in the SDK). The spec is `docs/design/13-ssr.md` ("OAuth2", "CSRF") and D38 in `docs/design/10-decisions.md`; read both fully, and the merged P.13b code in `sdk/src/ssr/` (PR #91) that this builds on. The browser client and browser tokens (P.13d) and the framework adapters (P.13e) are later tasks: build only what they will sit on, and leave clear seams for them.
+
+## Scope
+
+- **Redirect flow, server only**, on `ServerClient` (or as functions in `iglo.base/ssr` taking one; say which and why):
+  - `startOAuth2(provider, { redirectTo, collection? })`: reads `listAuthMethods` for the auth collection, picks the provider, stores `state`, the PKCE `codeVerifier`, the provider name, the collection and `redirectTo` in a temporary cookie (`HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure`/`__Host-` by the same rule as the session cookie, `Max-Age` 600), and returns the provider's authorization URL (with the app's callback as `redirect_uri`) so the caller can answer with a redirect. Sign the temporary cookie value or bind it to `state` so a forged cookie cannot pick another verifier; use Web Crypto, no new dependency.
+  - `completeOAuth2(request or { url, ... })` on the callback route: reads `code`, `state` and `error` from the callback URL, checks `state` against the temporary cookie (constant-time compare), calls `authWithOAuth2Code` with the stored verifier and redirect URL, writes the session cookie the P.13b way (cache entry, `Cache-Control` headers), deletes the temporary cookie on success and on every failure, and returns `{ redirectTo }` for the caller's redirect. `redirectTo` must be a same-origin path (reject absolute URLs to other origins and `//host` forms: open-redirect guard). Errors are typed (`state mismatch`, `missing temporary cookie`, `provider error`, the server's `ClientResponseError`), never thrown as strings.
+- **Popup hand-off:** a server function for an adapter route (`POST`, JSON body `{ token }`, same origin) that checks the token with one `auth-refresh`, then writes the HttpOnly session cookie from the refreshed token and record. It never trusts the posted record. It is the seam P.13d's browser client posts to after the existing `authWithOAuth2()` popup.
+- **CSRF guard:** a helper the Web Request/Response core helper (and later the adapters) calls before handling a request: rejects `POST`, `PUT`, `PATCH` and `DELETE` requests that carry the session cookie and whose `Origin` (or `Referer` when `Origin` is absent) is not the request's own origin or one of the configured `allowedOrigins`; requests with neither header and a session cookie are rejected too. `GET`/`HEAD`/`OPTIONS` pass. Return a typed result (or a ready 403 `Response`) so frameworks with their own checks (Next.js Server Actions) can skip it. Behind proxies, the request's own origin comes from the request URL; document `allowedOrigins` for apps whose public origin differs.
+- Strict types, no `any` (D36 rules), `@sdk/*` imports, header comments naming the design section.
+
+## Tests
+
+- Unit tests in `sdk/test/ssr/` against the fetch mock: start sets the temporary cookie with the right attributes and URL parameters (PKCE S256 challenge, state); complete with a valid state signs in and clears the temporary cookie; state mismatch, missing or tampered cookie, provider `error=` callback, expired cookie and server 400 each clear the temporary cookie and leave no session; open-redirect inputs (`https://evil`, `//evil`, `/\evil`, `javascript:`) fall back to `/`; popup hand-off with a valid token sets the cookie, with a revoked token (401) sets nothing; CSRF: same origin passes, foreign origin rejected, `Referer` fallback, no header with a cookie rejected, no cookie passes, safe methods pass, `allowedOrigins` honored.
+- Differential tests in `test/differential/sdk-ssr/` (run by `test:reference`) against both iglo.base and upstream PocketBase, reusing the fake OAuth2 provider harness from `test/differential/auth/` (oauth2-flows, oauth2-provider-cases): the full redirect flow (start → provider → callback → `completeOAuth2`) signs a user in and the next `createServerClient` request sees that user from the cookie; a replayed callback (same code and state after completion) fails and leaves no session; the popup hand-off accepts a token from a real sign-in and rejects a token revoked by a password change.
+
+## Docs
+
+`docs/design/13-ssr.md` must match the code (fix the doc where the code had to differ, and say so in the PR). `sdk/README.md`: extend the "Server-side rendering" section with the OAuth2 redirect example on plain Web Request/Response and a short CSRF note; the per-framework guides are P.13f. `sdk/CHANGELOG.md`: add to "Unreleased".
+
+## Verification
+
+`bun run check` and `bun run test:reference` pass locally (one after the other). Worker rules from `docs/design/12-work-plan.md` apply. Open a PR titled "P.13c: SSR OAuth2 and CSRF" against `main`; do not merge.

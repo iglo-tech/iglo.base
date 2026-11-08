@@ -2,7 +2,7 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-07
+Updated: 2026-11-08
 
 Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
 
@@ -15,12 +15,13 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13b | review (Opus, round 3) | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 3 | SSR server core; [brief](briefs/P.13b.md), design `docs/design/13-ssr.md` (D38). P.13c–f follow |
+| P.13c | worker (Haiku) | | 0 | SSR OAuth2 and CSRF; [brief](briefs/P.13c.md), design `docs/design/13-ssr.md` (D38). P.13d–f follow |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.13b | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 2026-11-08 (`8240a24`) | Three review rounds (Opus; Gemini worker, Gemini then Haiku fixers, D39). `iglo.base/ssr`: `createServerClient` on a `getAll`/`setAll` cookie adapter, HttpOnly `pb_auth` with token and record (`__Host-`/Secure from the app's request), bounded session cache (5 min, 10k, SHA-256 keys), refresh at half the lifetime learned per collection from auth responses, single-flight, 401/403/404 clear, 5xx keeps, `verify()`, `createSuperuserClient` with `impersonate`, browser-condition guard, one SDK copy across entries. Differential: 2 users × 200 parallel, zero session requests when warm, revocation, impersonate realtime. Fixed a harness cap (Bun's 256 concurrent requests per process) by moving the counting proxy to its own process. Check 19,563/0; test:reference 4,424/0 |
 | P.12 | [#90](https://github.com/iglo-tech/iglo.base/pull/90) | 2026-11-07 (`4a7a640`) | Three review rounds (Opus; Gemini worker and fixers; lead verified the round-3 docs fix and merged per the three-round rule). `sdk-release.yml`: check / publish (OIDC, optional one-time `NPM_TOKEN` bootstrap) / release jobs, Node 24 + npm >= 11.5.1, main-only real publish, prereleases under `next`, recoverable tag and release, `docker.yml` ignores `sdk-v*`. 1.0.0 waits for the owner's npm bootstrap |
 | P.11 | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 2026-11-07 (`619b08a`) | Two review rounds (Opus; Sonnet worker, Gemini fixers). PocketBase JS SDK v0.28.1 in `sdk/` as npm `iglo.base` 1.0.0: ESM only (owner), strict types without internal `any`, 149 upstream tests on `bun test`, type tests, package check; differential SDK suite uses it. Fixed upstream crash `loadFromCookie("pb_auth=null")`. Check 18,498/0; test:reference 4,420/1 (upstream thumb flake, backlog) |
 | P.10c | [#86](https://github.com/iglo-tech/iglo.base/pull/86) | 2026-11-07 (`0b21096`) | Two review rounds (Opus; lead fixed round 1 and the round-2 docs item; the round-2 reviewer drafted its verdict but never posted it). Check 18,347/0, test:reference 4,421/0 at `7020fb3`. A transaction SQLite ended on its own refuses further statements, prepared ones too (no measurable cost, `docs/perf/P.10c-tx-state.md`); S3 multipart rejects an empty UploadId or ETag and a 200 Complete with `<Error>` (new 04 row); zip closed guards; `uploadFileSteps` cancels its writer on an early stop; thumb pool close rejects waiters and enforces `maxWorkers`; `safeFetch` cancels the body at the redirect limit. Dropped as upstream behavior: init abort without an id, S3 timeouts, sidecar order, file-field state after a failed transaction |
