@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13d | review (Opus) | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 3 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
+| P.13d | fix (Haiku) | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 3 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
 
 ## Done
 
