@@ -1,12 +1,13 @@
 // docs/design/13-ssr.md ("Framework adapters": iglo.base/ssr/react-router; "Session cookie"; "CSRF";
-// "OAuth2"). The React Router adapter through its public API: session() on a Web Request, which
-// answers with a route response or with the resumed session and the headers it wrote. iglo.base is
-// a fake fetch that answers the requests the adapter sends and fails any other.
+// "OAuth2"; "Response headers"). The React Router adapter through its public API: session() on a Web
+// Request, which answers with a route response or with the resumed session and the headers it wrote,
+// and sessionHeaders, the route's headers function. iglo.base is a fake fetch that answers the
+// requests the adapter sends and fails any other.
 import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
 import type { RequestSession } from "@sdk/ssr/adapter";
-import { createSessionCache } from "@sdk/ssr/index";
-import { createReactRouterAuth, type ReactRouterAuth } from "@sdk/ssr/react-router";
+import { createSessionCache, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
+import { createReactRouterAuth, sessionHeaders, type ReactRouterAuth } from "@sdk/ssr/react-router";
 import { getTokenPayload } from "@sdk/tools/jwt";
 
 const API = "http://127.0.0.1:8090";
@@ -171,6 +172,105 @@ async function responseOf(auth: ReactRouterAuth, req: Request): Promise<Response
   }
   return result.response;
 }
+
+describe("sessionHeaders: the route's headers function", () => {
+  // React Router builds a route's headers from the function's result: a loader's or action's
+  // headers reach the page or the .data response only through it, as the route re-exports it.
+
+  test("the no-cache headers and the cookies of a loader that resumed a signed-in session", async () => {
+    const auth = setup();
+    const { headers } = await sessionOf(
+      auth,
+      request("/live", { cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1") }),
+    );
+
+    const merged = sessionHeaders({
+      loaderHeaders: headers,
+      actionHeaders: new Headers(),
+      parentHeaders: new Headers(),
+    });
+
+    expect(merged.get("cache-control")).toBe(SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null);
+    expect(merged.get("pragma")).toBe("no-cache");
+    expect(merged.get("expires")).toBe("0");
+    // the Set-Cookie lines are React Router's to append (see sessionHeaders)
+    expect(merged.getSetCookie()).toEqual([]);
+    expect(headers.getSetCookie().length).toBeGreaterThan(0);
+  });
+
+  test("the no-cache headers of an action that signed in", async () => {
+    const auth = setup();
+    const result = await auth.session(request("/login", { method: "POST", origin: APP }));
+    if (!("session" in result)) {
+      throw new Error("the request was answered by the adapter, not passed on");
+    }
+    await result.session.server.collection("users").authWithPassword("u2@example.com", "pw");
+
+    const merged = sessionHeaders({
+      loaderHeaders: new Headers(),
+      actionHeaders: result.headers(),
+      parentHeaders: new Headers(),
+    });
+
+    expect(merged.get("cache-control")).toBe(SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null);
+    expect(merged.get("pragma")).toBe("no-cache");
+  });
+
+  test("the headers of an error response that carries user data", async () => {
+    const auth = setup();
+    const { headers } = await sessionOf(
+      auth,
+      request("/live", { cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1") }),
+    );
+
+    const merged = sessionHeaders({
+      loaderHeaders: new Headers(),
+      actionHeaders: new Headers(),
+      parentHeaders: new Headers(),
+      errorHeaders: headers,
+    });
+
+    expect(merged.get("cache-control")).toBe(SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null);
+  });
+
+  test("an anonymous loader gets no no-cache headers and no cookies", async () => {
+    const auth = setup();
+    const { headers } = await sessionOf(auth, request("/public"));
+
+    const merged = sessionHeaders({
+      loaderHeaders: headers,
+      actionHeaders: new Headers(),
+      parentHeaders: new Headers(),
+    });
+
+    expect(merged.get("cache-control")).toBeNull();
+    expect(merged.getSetCookie()).toEqual([]);
+  });
+
+  test("the headers of the parent route are kept", () => {
+    const merged = sessionHeaders({
+      loaderHeaders: new Headers(),
+      actionHeaders: new Headers(),
+      parentHeaders: new Headers({ "x-parent": "1", "Set-Cookie": "parent=1; Path=/" }),
+    });
+
+    expect(merged.get("x-parent")).toBe("1");
+    expect(merged.getSetCookie()).toEqual(["parent=1; Path=/"]);
+  });
+
+  test("the function does not change the headers it is given", async () => {
+    const auth = setup();
+    const { headers } = await sessionOf(
+      auth,
+      request("/live", { cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1") }),
+    );
+    const before = headers.get("cache-control");
+
+    sessionHeaders({ loaderHeaders: headers, actionHeaders: headers, parentHeaders: headers });
+
+    expect(headers.get("cache-control")).toBe(before);
+  });
+});
 
 describe("createReactRouterAuth: session", () => {
   test("resumes the session and returns the refreshed cookie in the headers", async () => {
