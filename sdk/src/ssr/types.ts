@@ -1,6 +1,9 @@
 // docs/design/13-ssr.md ("Clients", "Session cookie", "Session cache, check and refresh")
 import type { SerializeOptions } from "@sdk/tools/cookie";
 import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
+import type { RecordAuthResponse } from "@sdk/services/RecordService";
+import type { ClientResponseError } from "@sdk/ClientResponseError";
+import type { OAuth2Error } from "@sdk/ssr/oauth2";
 
 export interface Cookie {
   name: string;
@@ -82,3 +85,16 @@ export interface RequestCookieAdapter extends CookieAdapter {
   readonly queuedCookies: CookieToSet[];
   readonly queuedHeaders: Record<string, string>;
 }
+
+export interface StartOAuth2Options {
+  /** The app's callback URL, as registered with the provider (an absolute http(s) URL). */
+  callbackUrl: string;
+  /** Where the user goes after sign-in: a same-origin path. Anything else becomes `/`. */
+  redirectTo?: string;
+  /** The auth collection (default `users`). */
+  collection?: string;
+}
+
+export type CompleteOAuth2Result =
+  | { ok: true; redirectTo: string; auth: RecordAuthResponse }
+  | { ok: false; redirectTo: string; error: OAuth2Error | ClientResponseError };

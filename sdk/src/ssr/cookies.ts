@@ -11,6 +11,10 @@ export const SSR_NO_CACHE_HEADERS: Readonly<Record<string, string>> = Object.fre
 
 export const DEFAULT_COOKIE_KEY = "pb_auth";
 
+/** The temporary cookie of the OAuth2 redirect flow (docs/design/13-ssr.md, "OAuth2"). */
+export const OAUTH2_COOKIE_KEY = "pb_oauth2";
+export const OAUTH2_COOKIE_MAX_AGE_SEC = 600;
+
 export function isLocalhost(hostname: string): boolean {
   const clean = hostname.replace(/^\[|\]$/g, "").split(":")[0] ?? "";
   return clean === "localhost" || clean === "127.0.0.1" || clean === "::1";
@@ -48,7 +52,7 @@ export function findSessionCookie(
   return cookies.find((c) => c.name === baseName);
 }
 
-function safeDecode(value: string): string {
+export function safeDecode(value: string): string {
   try {
     return decodeURIComponent(value);
   } catch {
@@ -97,14 +101,14 @@ export function formatSessionCookieValue(
   return (parsed[wireName] as string) ?? "";
 }
 
-interface CookieSettings {
+export interface CookieSettings {
   cookieName?: string;
   secure?: boolean;
   cookieOptions?: Partial<SerializeOptions>;
 }
 
 /** `cookieOptions.secure` overrides the flag; the default is secure (`__Host-`). */
-function isSecureSession(settings: CookieSettings): boolean {
+export function isSecureSession(settings: CookieSettings): boolean {
   return settings.cookieOptions?.secure ?? settings.secure ?? true;
 }
 
@@ -153,21 +157,65 @@ export function buildSessionCookieToSet(
 }
 
 /**
- * Expiring cookies for a session end. When the session cookie is `Secure`, the plain
- * name is cleared too: a `pb_auth` written before the prefix was in use must not survive.
+ * Expiring cookies for a cookie's end, one per name the cookie may have been written under.
+ * When `secure`, the plain name is cleared too: a cookie written before the prefix was in use
+ * must not survive. `optionsFor` gives the serialize options of each name's write.
  */
-export function buildClearedSessionCookies(settings: CookieSettings): CookieToSet[] {
-  const baseName = settings.cookieName ?? DEFAULT_COOKIE_KEY;
-  const clear = (name: string, secure: boolean): CookieToSet => ({
+function buildClearedCookies(
+  baseName: string,
+  secure: boolean,
+  optionsFor: (cookieSecure: boolean) => SerializeOptions,
+): CookieToSet[] {
+  const clear = (name: string, cookieSecure: boolean): CookieToSet => ({
     name,
     value: "",
-    options: { ...serializeBase(settings, secure), maxAge: 0, expires: new Date(0) },
+    options: { ...optionsFor(cookieSecure), maxAge: 0, expires: new Date(0) },
   });
 
-  if (isSecureSession(settings)) {
+  if (secure) {
     return [clear(`__Host-${baseName}`, true), clear(baseName, false)];
   }
   return [clear(baseName, false)];
+}
+
+/** Expiring cookies for a session end. */
+export function buildClearedSessionCookies(settings: CookieSettings): CookieToSet[] {
+  return buildClearedCookies(
+    settings.cookieName ?? DEFAULT_COOKIE_KEY,
+    isSecureSession(settings),
+    (cookieSecure) => serializeBase(settings, cookieSecure),
+  );
+}
+
+/**
+ * The temporary OAuth2 cookie: HttpOnly, `SameSite=Lax` (the provider's redirect is a top-level
+ * GET), `Path=/`, `Max-Age` 600 and the same `Secure`/`__Host-` rule as the session cookie.
+ * The app's `cookieOptions` are not applied (apart from `secure`), so an app cannot make the
+ * cookie unreachable from the provider's redirect.
+ */
+export function buildOAuth2CookieToSet(value: string, settings: CookieSettings): CookieToSet {
+  const secure = isSecureSession(settings);
+  return {
+    name: secure ? `__Host-${OAUTH2_COOKIE_KEY}` : OAUTH2_COOKIE_KEY,
+    value,
+    options: {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      secure,
+      maxAge: OAUTH2_COOKIE_MAX_AGE_SEC,
+    },
+  };
+}
+
+/** Expiring cookies for the temporary OAuth2 cookie, written with the same name rule. */
+export function buildClearedOAuth2Cookies(settings: CookieSettings): CookieToSet[] {
+  return buildClearedCookies(OAUTH2_COOKIE_KEY, isSecureSession(settings), (cookieSecure) => ({
+    path: "/",
+    sameSite: "lax",
+    httpOnly: true,
+    secure: cookieSecure,
+  }));
 }
 
 export function createRequestCookieAdapter(
