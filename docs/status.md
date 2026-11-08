@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13e | worker (Haiku) | | 0 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
+| P.13e | review (Opus) | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 1 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
 
 ## Done
 
