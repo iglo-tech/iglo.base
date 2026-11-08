@@ -1,5 +1,7 @@
 # iglo.base with Next.js (App Router)
 
+The step-by-step guide for this app is the [Next.js section of the SSR guide](../../docs/ssr.md#nextjs).
+
 A small Next.js app that shows iglo.base's server-side rendering support through the
 `iglo.base/ssr/next` adapter (see `docs/design/13-ssr.md`, "Framework adapters"). It signs users
 in with a form, keeps the session in an HttpOnly cookie, checks it on each request, and shows a
@@ -44,6 +46,8 @@ Variables:
 - `APP_ORIGIN`: the app's public origin, such as `https://app.example.com` (sets the cookie's
   security and the OAuth2 callback URL).
 - `PORT` and `HOST`: where `bun run start` listens (default `3000` and `127.0.0.1`).
+
+OAuth2 callbacks: the redirect flow this example uses needs `<APP_ORIGIN>/api/pb/oauth2/callback` registered with each provider. A provider that returns by POST (Sign in with Apple) uses the popup flow instead, which registers `<PB_PUBLIC_URL>/api/oauth2-redirect` with the provider. The example does not show the popup flow; the guide does.
 
 The fallback, with no superuser variables:
 
