@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13e | review (Opus) | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 1 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
+| P.13e | fix (Haiku) | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 1 | SSR framework adapters (next, sveltekit, nuxt, astro, react-router) and Next.js/SvelteKit example apps with `test:examples`; [brief](briefs/P.13e.md). P.13f follows |
 
 ## Done
 
@@ -160,6 +160,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 ## For owner review
 
 - 2026-11-08 (P.13d, decided by agents, for owner review): the SDK's `RealtimeService` (copied from upstream's JS SDK) gets a connection generation. Besides the SSR fixes, this changes one plain-client path: a new connection that drops during its first subscription POST now retries with backoff, where upstream's SDK stopped for good. It is in `sdk/CHANGELOG.md`. The renew route signs the page out only on impersonate 404; a refused superuser credential answers 503 and keeps the session.
+- 2026-11-08 (P.13e round 1, decided by agents, for owner review): the framework adapters add the no-cache headers to every response of a request that carries a session cookie or mints a browser token. Anonymous responses stay cacheable.
 - 2026-11-08 (P.13e brief, decided by agents, for owner review): the example apps live in `examples/nextjs` and `examples/sveltekit`, each with its own lockfile outside the root workspace, and run end to end against both servers in a new `bun run test:examples`. It is not part of `check`, because it installs framework packages from npm and builds the apps.
 - 2026-11-08 (P.13c round 1, decided by agents, for owner review): on https the SSR client reads only `__Host-` cookie names (`__Host-pb_auth`, `__Host-pb_oauth2`). It no longer falls back to the plain name, which a sibling subdomain could plant (login CSRF). The SSR client is unreleased, so no older cookies are affected. Providers that call back with a form POST (Apple) are refused by `startOAuth2` and use the popup flow.
 - 2026-11-05 (owner direction): M7.2 user docs and M6.4 dashboard tests move after the MVP (P.4: docs on iglo.tech, e.g. iglo.tech/iglo.base/docs; P.5: checklist and automated browser tests). The 09-port-plan.md outdated lines are the lead's to fix.
