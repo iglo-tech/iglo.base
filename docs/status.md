@@ -15,12 +15,13 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13f | review (Opus) | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 2 | SSR user guide `docs/ssr.md` and site entry in iglo-tech/iglo.tech; [brief](briefs/P.13f.md). Last open task |
+None. Every task in the work plan is merged (2026-11-08); the lock is released. A new run has nothing to start until the owner adds work.
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.13f | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [iglo.tech#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 2026-11-08 (`578b14d`, site `ca8fac3`) | Two review rounds (Opus; Haiku worker and fixer). `docs/ssr.md` user guide (every "Why not JS SSR" problem, one section per framework, secrets read at run time, OAuth2 redirect vs popup URLs, session cache sizing, caching, security, troubleshooting), short SDK README section, site entry `/docs/iglo-base/ssr/` (not deployed; hosting is the owner's). Samples run in throwaway apps (Astro, Nuxt, React Router, Next.js, Bun). Check 18,789/0 |
 | P.13e | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 2026-11-08 (`8dc82bd`) | Three review rounds (Opus; Haiku worker and fixers), then the lead verified the agreed round-3 docs fix and merged under the three-round rule. Adapters `iglo.base/ssr/{next,sveltekit,nuxt,astro,react-router}` on a shared core (no-cache on every session or token response, CSRF, routes, Node-only Next proxy, RR `sessionHeaders`), Next.js and SvelteKit examples with their own lockfiles, `bun run test:examples` (both servers, 10/10). Check 18,789/0; test:reference 4,432/0 |
 | P.13d | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 2026-11-08 (`8289dea`) | Four review rounds (Opus; Haiku worker and fixers). `mintBrowserToken`, `handleBrowserTokenRenew` (impersonate 404 → 401, else 503), `readableCookie` fallback, `createBrowserClient` on `iglo.base/ssr/browser` (renewal on server time, capped timers, single-flight per token, `handOff`), realtime resubmits for the same user and reconnects on a user change (connection generation). Check 18,660/0; test:reference 4,432/0 |
 | P.13c | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 2026-11-08 (`5b3bbf3`) | Two review rounds (Opus; Haiku worker and fixer). `startOAuth2`/`completeOAuth2` on `ServerClient` (temporary `__Host-pb_oauth2`, state + PKCE, same-origin `redirectTo`, non-query providers such as Apple refused → popup), `handlePopupHandOff`, `checkCsrf`/`checkOrigin`. On https only `__Host-` cookie names are read (session too). Check 18,596/0; test:reference 4,427/0 |
@@ -160,10 +161,12 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | ID | Since | Reason |
 |---|---|---|
-| M1.8 | 2026-10-28 | The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
+| M1.8 | 2026-10-28 | Superseded, not blocked: split into M1.8a–c, all merged. The Terra worker and its retry ([brief](briefs/M1.8.md)) both stopped within a minute without code, each assuming a time limit that did not exist (no usage limit was reached); the retry left an empty draft PR [#19](https://github.com/iglo-tech/iglo.base/pull/19), closed. Replaced by M1.8a, M1.8b and M1.8c in the work plan |
 
 ## For owner review
 
+- 2026-11-08 (P.13f round 2, incident): the reviewer started a test server on port 18090 without checking the port. That port belongs to the `paszomistrz-qa-pocketbase-1` Docker container, so the setup requests went to that QA instance. They created user `u@x.io` in its `users` collection at 18:50:44 UTC, which the reviewer deleted at once (204). If that app has create hooks (verification mail, audit log), they may have fired once. Nothing else was written. The runbook's worker and reviewer instructions now require a free-port check, and requests only to processes the agent started.
+- 2026-11-08 (end of run): every task in the work plan is merged; P.13 (SSR out of the box) is complete. Left for the owner: the npm bootstrap for the first SDK release (Needs you), deploying the iglo.tech site, and these review items. The hardening backlog holds safe-input differences and test flakes; nothing in it blocks.
 - 2026-11-08 (P.13d, decided by agents, for owner review): the SDK's `RealtimeService` (copied from upstream's JS SDK) gets a connection generation. Besides the SSR fixes, this changes one plain-client path: a new connection that drops during its first subscription POST now retries with backoff, where upstream's SDK stopped for good. It is in `sdk/CHANGELOG.md`. The renew route signs the page out only on impersonate 404; a refused superuser credential answers 503 and keeps the session.
 - 2026-11-08 (P.13e round 1, decided by agents, for owner review): the framework adapters add the no-cache headers to every response of a request that carries a session cookie or mints a browser token. Anonymous responses stay cacheable.
 - 2026-11-08 (P.13e brief, decided by agents, for owner review): the example apps live in `examples/nextjs` and `examples/sveltekit`, each with its own lockfile outside the root workspace, and run end to end against both servers in a new `bun run test:examples`. It is not part of `check`, because it installs framework packages from npm and builds the apps.

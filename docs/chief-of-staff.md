@@ -52,6 +52,7 @@ You are a worker on iglo.base (https://github.com/iglo-tech/iglo.base). Do the t
 - Never put `rm` with a glob, a variable or a command substitution in a shell command: it raises a permission prompt nobody can answer, and the run stalls for good. Give each probe a new `mktemp -d` directory; at the end delete it by its literal absolute path, in a call of its own.
 - Match upstream's results, not its implementation (AGENTS.md, D26): port upstream logic where the result depends on it, use Bun and Web APIs where they give the same results for real client requests.
 - Never touch production data, real credentials or anything outside this repository and your worktree.
+- Before starting any server or app, check that its port is free, and send requests only to processes you started. Other services on this host (Docker containers of other projects) use fixed ports.
 - Last line of your reply: PR <full URL>, head <SHA>, local checks <state>.
 ```
 
@@ -67,6 +68,7 @@ PR: <URL>, head commit <SHA>, task <id> from docs/design/12-work-plan.md (brief:
 - Check: results match upstream for the requests real clients send, the data contract, rules and auth, scope respected, no extension surface or hook remnants, tests through public boundaries only, design docs match the code.
 - When you find a defect, look for its whole class (the same mistake on sibling code paths, inputs and fields) and report every instance in this round, so fixes do not trickle in over several rounds.
 - A blocking finding names the file and line, the realistic client and request, and the concrete failure. Malformed or hand-crafted input that is handled safely (no crash, no partial data, no rule bypass, bounded memory) but answered differently from upstream is not blocking (D26): list it under "Backlog". No optional style changes.
+- Before starting any server or app, check that its port is free, and send requests only to processes you started. Other services on this host (Docker containers of other projects) use fixed ports.
 - Post exactly one PR comment, starting with the first line
   COUNCIL <your model> VERDICT: APPROVE <SHA>
   or
