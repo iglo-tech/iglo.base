@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13b | fix (Haiku, round 2) | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 2 | SSR server core; [brief](briefs/P.13b.md), design `docs/design/13-ssr.md` (D38). P.13c–f follow |
+| P.13b | review (Opus, round 3) | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 3 | SSR server core; [brief](briefs/P.13b.md), design `docs/design/13-ssr.md` (D38). P.13c–f follow |
 
 ## Done
 
