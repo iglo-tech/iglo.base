@@ -4,6 +4,7 @@
 // answers the requests the adapter sends and fails any other, so no test touches the network.
 import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
+import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import { createSessionCache, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
 import { createNextAuth, type NextAuthOptions, type NextCookieStore } from "@sdk/ssr/next";
 import { getTokenPayload } from "@sdk/tools/jwt";
@@ -454,13 +455,35 @@ describe("createNextAuth: no-cache headers and runtime", () => {
     expect(response.headers.get("pragma")).toBe("no-cache");
   });
 
-  test("the Edge runtime is refused at creation with a message that names the Node.js runtime", () => {
-    const edge = globalThis as { EdgeRuntime?: unknown };
-    edge.EdgeRuntime = "";
-    try {
-      expect(() => setup()).toThrow(/Node\.js runtime/);
-    } finally {
-      delete edge.EdgeRuntime;
-    }
+  test("a pass-through response with immutable headers is sent as a copy with its headers, cookies and no-cache headers", async () => {
+    const { auth } = setup({
+      next: () =>
+        immutableResponse(new Response("next", { status: 200, headers: { "x-app": "1" } })),
+    });
+
+    const response = await auth.middleware(
+      request("/dashboard", { cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1") }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("next");
+    expect(response.headers.get("x-app")).toBe("1");
+    expect(cookieLine(response, "__Host-pb_auth")).toBeDefined();
+    expect(response.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+  });
+
+  test("an anonymous pass-through response with immutable headers is returned as it is", async () => {
+    const original = immutableResponse(new Response("public"));
+    const { auth } = setup({ next: () => original });
+
+    const response = await auth.middleware(request("/public"));
+
+    expect(response).toBe(original);
+  });
+
+  test("the browser stub names the Node.js runtime for a bundle that loads the server-only module", async () => {
+    await expect(import("@sdk/ssr/browser")).rejects.toThrow(/Node\.js runtime/);
   });
 });

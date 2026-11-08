@@ -139,7 +139,11 @@ export interface NoStorePolicy {
   readonly active: boolean;
   /** A cookie was written or a browser token minted: from now on the responses are user data. */
   markUserData(): void;
-  /** Sets the no-cache headers on a response of this request, when the policy is active. */
+  /**
+   * The response to send: when the policy is active, it carries the no-cache headers. A response
+   * with immutable headers comes back as a copy (see `withMutableHeaders`), so the app sends the
+   * returned response.
+   */
   apply(response: Response): Response;
 }
 
@@ -166,10 +170,12 @@ export function noStorePolicy(
       }
     },
     apply(response) {
-      if (active) {
-        setNoStoreHeaders(response.headers);
+      if (!active) {
+        return response;
       }
-      return response;
+      const mutable = withMutableHeaders(response);
+      setNoStoreHeaders(mutable.headers);
+      return mutable;
     },
   };
   if (active) {
@@ -180,15 +186,34 @@ export function noStorePolicy(
 
 /**
  * Sets SSR_NO_CACHE_HEADERS, replacing any the app set: a user's response must not be stored with
- * a public `Cache-Control`. A response with locked headers is sent as it is.
+ * a public `Cache-Control`. The headers must be mutable: see `withMutableHeaders`.
  */
 export function setNoStoreHeaders(headers: Headers): void {
   for (const [name, value] of Object.entries(SSR_NO_CACHE_HEADERS)) {
-    try {
-      headers.set(name, value);
-    } catch {
-      // immutable headers: the response goes out without them
-    }
+    headers.set(name, value);
+  }
+}
+
+/** A name no response carries: deleting it changes nothing, and it throws on immutable headers. */
+const MUTABILITY_PROBE = "x-iglo-base-probe";
+
+/**
+ * The response with headers that can be changed. In Node, the runtime the SSR apps run on, the
+ * headers of a `fetch()` response and of `Response.redirect()` are immutable, and so the no-cache
+ * headers could not be set on them. Such a response (an endpoint that returns a fetched response
+ * unchanged, say) is rebuilt with a copy of its headers, body and status. The copy does not keep
+ * `url` or `redirected`, which are read-only. Callers send the response this returns.
+ */
+export function withMutableHeaders(response: Response): Response {
+  try {
+    response.headers.delete(MUTABILITY_PROBE);
+    return response;
+  } catch {
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: new Headers(response.headers),
+    });
   }
 }
 

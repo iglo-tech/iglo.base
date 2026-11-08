@@ -9,6 +9,7 @@ import {
 } from "@sdk/ssr/index";
 import { createAstroAuth, type AstroAuth, type AstroContext } from "@sdk/ssr/astro";
 import type { AdapterOptions, AdapterRoutes } from "@sdk/ssr/adapter";
+import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import {
   API,
   APP,
@@ -431,6 +432,41 @@ describe("onRequest: concurrent requests", () => {
     expect(results.map((r) => r.seenId)).toEqual(["u1", "u2"]);
     expect(results[0]?.seenPb).not.toBe(results[1]?.seenPb);
     expect(api.calls.map((c) => idOf(c.headers.get("authorization")))).toEqual(["u1", "u2"]);
+  });
+});
+
+describe("onRequest: responses with immutable headers", () => {
+  test("a page response with immutable headers, such as a fetch() response returned unchanged, is sent as a copy with the no-cache headers", async () => {
+    const auth = await adapter(iglo());
+    const made = makeContext("/file", {
+      cookies: { pb_auth: sessionCookie(authToken(T0 + 3600, "u1")) },
+    });
+
+    const response = await auth.onRequest(made.context, async () =>
+      immutableResponse(
+        new Response("file", {
+          status: 200,
+          headers: { "Content-Type": "text/plain", "Cache-Control": "public, max-age=3600" },
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("file");
+    expect(response.headers.get("content-type")).toBe("text/plain");
+    expect(response.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+  });
+
+  test("an anonymous page response with immutable headers is returned as it is", async () => {
+    const auth = await adapter(iglo());
+    const made = makeContext("/file");
+    const original = immutableResponse(new Response("public"));
+
+    const response = await auth.onRequest(made.context, async () => original);
+
+    expect(response).toBe(original);
   });
 });
 
