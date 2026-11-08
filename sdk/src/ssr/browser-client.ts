@@ -138,7 +138,8 @@ export class BrowserClient extends Client {
   private readonly _timers: BrowserTimers;
   private _timer: unknown = undefined;
   private _retries: number = 0;
-  private _renewing: Promise<void> | undefined = undefined;
+  // the renewal in flight, and the token it renews: a new session does not share an old one's request
+  private _renewing: { token: string; promise: Promise<void> } | undefined = undefined;
   private _disposed: boolean = false;
   // iglo.base's clock minus this device's clock, learned from `serverTime`
   private _offsetMs: number = 0;
@@ -193,12 +194,16 @@ export class BrowserClient extends Client {
     if (!this._options.renewUrl) {
       return Promise.reject(new TypeError("renewUrl is not set"));
     }
-    if (!this._renewing) {
-      this._renewing = this._renewOnce().finally(() => {
-        this._renewing = undefined;
+    if (!this._renewing || this._renewing.token !== this.authStore.token) {
+      const token = this.authStore.token;
+      const promise: Promise<void> = this._renewOnce().finally(() => {
+        if (this._renewing?.promise === promise) {
+          this._renewing = undefined;
+        }
       });
+      this._renewing = { token, promise };
     }
-    return this._renewing;
+    return this._renewing.promise;
   }
 
   /**
@@ -311,6 +316,12 @@ export class BrowserClient extends Client {
    * After a network error or a 5xx: retries with a bounded backoff. Once the retries are used up,
    * or no further retry fits before the token ends, the store is cleared at the token's expiry.
    */
+  private _retryLaterIfSame(before: string): void {
+    if (this.authStore.token === before) {
+      this._retryLater();
+    }
+  }
+
   private _retryLater(): void {
     const expiresAt = this._expiresAt();
     if (this._disposed || expiresAt === undefined) {
@@ -335,11 +346,13 @@ export class BrowserClient extends Client {
     const url = this._options.renewUrl ?? "";
     const before = this.authStore.token;
 
+    // a failed renewal of a session that has since changed must not schedule the new session's
+    // retries, or clear it at the expiry of the old one's token
     let res: Response;
     try {
       res = await this._fetch(url, RENEW_REQUEST);
     } catch (err: unknown) {
-      this._retryLater();
+      this._retryLaterIfSame(before);
       throw networkError(url, err);
     }
 
@@ -351,7 +364,7 @@ export class BrowserClient extends Client {
       throw await responseError(url, res);
     }
     if (res.status >= 500) {
-      this._retryLater();
+      this._retryLaterIfSame(before);
       throw await responseError(url, res);
     }
     if (!res.ok) {
@@ -363,7 +376,7 @@ export class BrowserClient extends Client {
     try {
       body = (await res.json()) as { token?: unknown; record?: unknown; serverTime?: unknown };
     } catch (err: unknown) {
-      this._retryLater();
+      this._retryLaterIfSame(before);
       throw networkError(url, err);
     }
     if (typeof body.token !== "string" || body.token === "") {
