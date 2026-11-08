@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13c | review (Opus) | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 1 | SSR OAuth2 and CSRF; [brief](briefs/P.13c.md), design `docs/design/13-ssr.md` (D38). P.13d–f follow |
+| P.13c | fix (Haiku) | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 1 | SSR OAuth2 and CSRF; [brief](briefs/P.13c.md), design `docs/design/13-ssr.md` (D38). P.13d–f follow |
 
 ## Done
 
@@ -103,6 +103,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-11-08 (P.13c) | SSR | Not limited: `redirectTo` length at start (a long one can come back as `missing-cookie`); `completeOAuth2` does not check the adapter can write cookies; the replay test replays without a cookie; popup hand-off accepts any auth collection, including `_superusers` |
 | 2026-11-07 (P.11) | SDK | `react-native` points to the `.mjs` bundle (older Metro may not resolve it); source maps point to intermediate JS, not `sdk/src`. Reference flake: `s3-files` "concurrent requests generate one thumb", upstream made 2 thumbs once |
 | 2026-11-03 (M7.1b) | Logs | A restore suspends the log writer for the whole (S3) download; logs taken meanwhile are held in memory and lost when the restore succeeds |
 | 2026-11-03 (M7.1b) | Logs | SIGTERM while a backup zips loses the logs held during the zip |
@@ -155,6 +156,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 ## For owner review
 
+- 2026-11-08 (P.13c round 1, decided by agents, for owner review): on https the SSR client reads only `__Host-` cookie names (`__Host-pb_auth`, `__Host-pb_oauth2`). It no longer falls back to the plain name, which a sibling subdomain could plant (login CSRF). The SSR client is unreleased, so no older cookies are affected. Providers that call back with a form POST (Apple) are refused by `startOAuth2` and use the popup flow.
 - 2026-11-05 (owner direction): M7.2 user docs and M6.4 dashboard tests move after the MVP (P.4: docs on iglo.tech, e.g. iglo.tech/iglo.base/docs; P.5: checklist and automated browser tests). The 09-port-plan.md outdated lines are the lead's to fix.
 
 - 2026-11-05 (owner direction): the M7.1c performance results are accepted for 1.0 (p50 misses of the 1.5× bar at 50 clients are milliseconds; p95 within the bar). Performance comes back after the MVP as task P.3 in the work plan.
