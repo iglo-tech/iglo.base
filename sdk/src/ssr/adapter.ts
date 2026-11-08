@@ -170,7 +170,9 @@ export function noStorePolicy(
       }
     },
     apply(response) {
-      if (!active) {
+      // a network error (Response.error()) has no status to send and immutable headers: it goes out
+      // as it is, as withMutableHeaders returns it
+      if (!active || response.type === "error") {
         return response;
       }
       const mutable = withMutableHeaders(response);
@@ -203,8 +205,14 @@ const MUTABILITY_PROBE = "x-iglo-base-probe";
  * headers could not be set on them. Such a response (an endpoint that returns a fetched response
  * unchanged, say) is rebuilt with a copy of its headers, body and status. The copy does not keep
  * `url` or `redirected`, which are read-only. Callers send the response this returns.
+ *
+ * A network error (`Response.error()`, status 0) cannot be copied: `new Response` rejects status 0.
+ * It is returned as it is, and so are its headers.
  */
 export function withMutableHeaders(response: Response): Response {
+  if (response.type === "error") {
+    return response;
+  }
   try {
     response.headers.delete(MUTABILITY_PROBE);
     return response;

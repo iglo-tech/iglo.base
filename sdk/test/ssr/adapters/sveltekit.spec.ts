@@ -493,6 +493,21 @@ describe("handle: responses with immutable headers", () => {
   });
 });
 
+describe("handle: network errors", () => {
+  test("a signed-in response that is a network error (Response.error()) goes out as it is, with immutable headers", async () => {
+    const auth = await adapter(iglo());
+    const { event } = makeEvent("/file", {
+      cookies: { pb_auth: sessionCookie(authToken(T0 + 3600, "u1")) },
+    });
+    const original = immutableResponse(Response.error());
+
+    const response = await auth.handle({ event, resolve: async () => original });
+
+    expect(response).toBe(original);
+    expect(response.type).toBe("error");
+  });
+});
+
 describe("handle: no-cache headers on user data", () => {
   test("a request that carries the session cookie gets the no-cache headers, even when iglo.base is unreachable", async () => {
     const api = iglo({
