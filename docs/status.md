@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13c | fix (Haiku) | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 1 | SSR OAuth2 and CSRF; [brief](briefs/P.13c.md), design `docs/design/13-ssr.md` (D38). P.13d–f follow |
+| P.13c | review (Opus) | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 2 | SSR OAuth2 and CSRF; [brief](briefs/P.13c.md), design `docs/design/13-ssr.md` (D38). P.13d–f follow |
 
 ## Done
 
