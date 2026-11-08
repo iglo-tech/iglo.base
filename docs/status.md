@@ -15,12 +15,13 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13c | review (Opus) | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 2 | SSR OAuth2 and CSRF; [brief](briefs/P.13c.md), design `docs/design/13-ssr.md` (D38). P.13d–f follow |
+| P.13d | worker (Haiku) | | 0 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
 
 ## Done
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| P.13c | [#92](https://github.com/iglo-tech/iglo.base/pull/92) | 2026-11-08 (`5b3bbf3`) | Two review rounds (Opus; Haiku worker and fixer). `startOAuth2`/`completeOAuth2` on `ServerClient` (temporary `__Host-pb_oauth2`, state + PKCE, same-origin `redirectTo`, non-query providers such as Apple refused → popup), `handlePopupHandOff`, `checkCsrf`/`checkOrigin`. On https only `__Host-` cookie names are read (session too). Check 18,596/0; test:reference 4,427/0 |
 | P.13b | [#91](https://github.com/iglo-tech/iglo.base/pull/91) | 2026-11-08 (`8240a24`) | Three review rounds (Opus; Gemini worker, Gemini then Haiku fixers, D39). `iglo.base/ssr`: `createServerClient` on a `getAll`/`setAll` cookie adapter, HttpOnly `pb_auth` with token and record (`__Host-`/Secure from the app's request), bounded session cache (5 min, 10k, SHA-256 keys), refresh at half the lifetime learned per collection from auth responses, single-flight, 401/403/404 clear, 5xx keeps, `verify()`, `createSuperuserClient` with `impersonate`, browser-condition guard, one SDK copy across entries. Differential: 2 users × 200 parallel, zero session requests when warm, revocation, impersonate realtime. Fixed a harness cap (Bun's 256 concurrent requests per process) by moving the counting proxy to its own process. Check 19,563/0; test:reference 4,424/0 |
 | P.12 | [#90](https://github.com/iglo-tech/iglo.base/pull/90) | 2026-11-07 (`4a7a640`) | Three review rounds (Opus; Gemini worker and fixers; lead verified the round-3 docs fix and merged per the three-round rule). `sdk-release.yml`: check / publish (OIDC, optional one-time `NPM_TOKEN` bootstrap) / release jobs, Node 24 + npm >= 11.5.1, main-only real publish, prereleases under `next`, recoverable tag and release, `docker.yml` ignores `sdk-v*`. 1.0.0 waits for the owner's npm bootstrap |
 | P.11 | [#89](https://github.com/iglo-tech/iglo.base/pull/89) | 2026-11-07 (`619b08a`) | Two review rounds (Opus; Sonnet worker, Gemini fixers). PocketBase JS SDK v0.28.1 in `sdk/` as npm `iglo.base` 1.0.0: ESM only (owner), strict types without internal `any`, 149 upstream tests on `bun test`, type tests, package check; differential SDK suite uses it. Fixed upstream crash `loadFromCookie("pb_auth=null")`. Check 18,498/0; test:reference 4,420/1 (upstream thumb flake, backlog) |
