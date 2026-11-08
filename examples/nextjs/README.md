@@ -1,5 +1,7 @@
 # iglo.base with Next.js (App Router)
 
+The step-by-step guide for this app is the [Next.js section of the SSR guide](../../docs/ssr.md#nextjs).
+
 A small Next.js app that shows iglo.base's server-side rendering support through the
 `iglo.base/ssr/next` adapter (see `docs/design/13-ssr.md`, "Framework adapters"). It signs users
 in with a form, keeps the session in an HttpOnly cookie, checks it on each request, and shows a

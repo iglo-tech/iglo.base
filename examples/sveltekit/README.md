@@ -1,5 +1,7 @@
 # iglo.base SvelteKit example
 
+The step-by-step guide for this app is the [SvelteKit section of the SSR guide](../../docs/ssr.md#sveltekit).
+
 A SvelteKit 2 app that uses iglo.base's server-side rendering support through the adapter
 `iglo.base/ssr/sveltekit` (`docs/design/13-ssr.md`, "Framework adapters"). It shows:
 
