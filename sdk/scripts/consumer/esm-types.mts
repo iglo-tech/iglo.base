@@ -39,7 +39,13 @@ const superuserClientPromise: Promise<SuperuserClient> = createSuperuserClient({
 });
 const cache: SessionCache = createSessionCache();
 
+import { createBrowserClient, type BrowserClient } from "iglo.base/ssr/browser";
+const browserClient: BrowserClient = createBrowserClient({ url: "https://example.com" });
+const asPocketBase: PocketBase = browserClient;
+
 export {
+  asPocketBase,
+  browserClient,
   a,
   b,
   s,

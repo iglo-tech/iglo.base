@@ -10,6 +10,8 @@ export {
 export { OAuth2Error, type OAuth2ErrorKind } from "@sdk/ssr/oauth2";
 export { checkCsrf, checkOrigin } from "@sdk/ssr/csrf";
 export { handlePopupHandOff } from "@sdk/ssr/popup";
+export { mintBrowserToken, DEFAULT_BROWSER_TOKEN_DURATION_SEC } from "@sdk/ssr/browser-token";
+export { handleBrowserTokenRenew, type BrowserTokenRenewOptions } from "@sdk/ssr/renew";
 export type {
   Cookie,
   CookieToSet,
@@ -22,6 +24,8 @@ export type {
   RequestCookieAdapter,
   StartOAuth2Options,
   CompleteOAuth2Result,
+  BrowserToken,
+  MintBrowserTokenOptions,
 } from "@sdk/ssr/types";
 export type { CsrfOptions, CsrfResult, OriginCheck } from "@sdk/ssr/csrf";
 export type { PopupHandOffOptions } from "@sdk/ssr/popup";

@@ -113,6 +113,20 @@ export class RealtimeService extends BaseService {
   }
 
   /**
+   * Sends the current subscriptions again, with the client's current authorization. Upstream
+   * keeps a subscription's auth state on the server, so a new token for the same record is
+   * accepted and replaces it (docs/design/13-ssr.md, "Browser client and realtime"). A no-op
+   * when the connection is not established or there are no subscriptions.
+   */
+  resubmit(): Promise<void> {
+    if (!this.clientId || !this.hasSubscriptionListeners()) {
+      return Promise.resolve();
+    }
+    this.lastSentSubscriptions = [];
+    return this.submitSubscriptions();
+  }
+
+  /**
    * Unsubscribe from all subscription listeners with the specified topic.
    *
    * If `topic` is not provided, then this method will unsubscribe

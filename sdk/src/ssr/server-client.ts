@@ -31,6 +31,7 @@ import {
   isHttpLocalUrl,
   normalizeCookies,
   parseSessionValue,
+  recordForToken,
 } from "@sdk/ssr/cookies";
 import { noStoreFetch } from "@sdk/ssr/no-store-fetch";
 import {
@@ -74,15 +75,6 @@ function collectionKey(payload: LooseObject, record: AuthRecord | undefined | nu
   return payload.collectionId || record?.collectionId || record?.collectionName || "";
 }
 
-/** A record that belongs to another token is dropped; a cookie can be edited by its user. */
-function matchRecord(token: string, record: AuthRecord): AuthRecord {
-  const payload = getTokenPayload(token);
-  if (record && payload.id && record.id !== payload.id) {
-    return null;
-  }
-  return record;
-}
-
 function resolveSecure(options: CreateServerClientOptions): boolean {
   if (options.secure !== undefined) {
     return options.secure;
@@ -104,6 +96,7 @@ export class ServerClient extends Client {
   readonly cookies: CookieAdapter;
   private readonly _cookieName: string;
   private readonly _isSecure: boolean;
+  private readonly _readable: boolean;
   private readonly _options: CreateServerClientOptions;
   private readonly _clock: () => number;
   private _clockOffsetMs: number = 0;
@@ -127,6 +120,7 @@ export class ServerClient extends Client {
     this._clock = options.clock ?? Date.now;
     this._clockOffsetMs = options.sessionCache?.clockOffsetMs ?? 0;
     this._isSecure = resolveSecure(options);
+    this._readable = options.readableCookie === true;
 
     this.autoCancellation(false);
 
@@ -147,6 +141,11 @@ export class ServerClient extends Client {
     this.auth = {
       verify: () => this._checkSession(true),
     };
+  }
+
+  /** Whether the session cookie is readable by page JavaScript (`readableCookie`, the fallback). */
+  get readableCookie(): boolean {
+    return this._readable;
   }
 
   /**
@@ -316,6 +315,7 @@ export class ServerClient extends Client {
       secure: this._isSecure,
       cookieName: this._cookieName,
       cookieOptions: this._options.cookieOptions,
+      readable: this._readable,
     };
   }
 
@@ -339,7 +339,7 @@ export class ServerClient extends Client {
     }
 
     this._lastToken = session.token;
-    this._setLocalSession(session.token, matchRecord(session.token, session.record));
+    this._setLocalSession(session.token, recordForToken(session.token, session.record));
     await this._checkSession(false);
   }
 
@@ -423,7 +423,7 @@ export class ServerClient extends Client {
   ): Promise<AuthRecord> {
     switch (outcome.kind) {
       case "ok": {
-        const record = matchRecord(outcome.token, outcome.record);
+        const record = recordForToken(outcome.token, outcome.record);
         const changed = outcome.token !== token;
         if (cache) {
           if (changed) {
@@ -469,7 +469,7 @@ export class ServerClient extends Client {
 
   /** A change made by the app on this client: update the cache and the cookie. */
   private _saveSession(token: string, record: AuthRecord, writeCookie: boolean): void {
-    const matched = matchRecord(token, record);
+    const matched = recordForToken(token, record);
     this._setLocalSession(token, matched, writeCookie);
     this._options.sessionCache?.set(token, matched, this._clock()).catch(() => {});
   }
@@ -480,13 +480,7 @@ export class ServerClient extends Client {
     if (token) {
       this._options.sessionCache?.delete(token).catch(() => {});
     }
-    this._writeCookies(
-      buildClearedSessionCookies({
-        cookieName: this._cookieName,
-        secure: this._isSecure,
-        cookieOptions: this._options.cookieOptions,
-      }),
-    );
+    this._writeCookies(buildClearedSessionCookies(this._cookieSettings()));
   }
 
   private _applyLocally(fn: () => void): void {
@@ -504,11 +498,9 @@ export class ServerClient extends Client {
     const nowSec = Math.floor((this._clock() + this._clockOffsetMs) / 1000);
     this._writeCookies([
       buildSessionCookieToSet(token, record, {
-        cookieName: this._cookieName,
-        secure: this._isSecure,
+        ...this._cookieSettings(),
         nowSeconds: nowSec,
         exp: payload.exp,
-        cookieOptions: this._options.cookieOptions,
       }),
     ]);
   }

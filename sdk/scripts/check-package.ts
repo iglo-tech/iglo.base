@@ -145,6 +145,28 @@ try {
     console.log("FAIL bundler build with browser condition should have failed at build time");
   }
 
+  // The browser subpath bundles for the browser target (it is the browser-safe entry)
+  const browserSubpathBuild = Bun.spawnSync(
+    [
+      "bun",
+      "build",
+      "browser-entry.js",
+      "--outfile",
+      "browser-subpath-out.js",
+      "--target",
+      "browser",
+    ],
+    { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+  );
+  if (browserSubpathBuild.exitCode === 0) {
+    console.log("ok   bun build of iglo.base/ssr/browser with browser target succeeded");
+  } else {
+    failed = true;
+    console.log(
+      `FAIL bun build of iglo.base/ssr/browser with browser target: ${browserSubpathBuild.stderr.toString()}`,
+    );
+  }
+
   // Bundler build with node target for iglo.base/ssr must succeed
   const nodeSsrBuild = Bun.spawnSync(
     ["bun", "build", "browser-ssr-entry.js", "--outfile", "node-ssr-out.js", "--target", "node"],
