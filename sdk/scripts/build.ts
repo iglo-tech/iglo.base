@@ -123,4 +123,33 @@ if (!ssrBrowserOut.success) {
   throw new Error(`Bun.build (ssr-browser) failed:\n${ssrBrowserOut.logs.map(String).join("\n")}`);
 }
 
+// the browser client (iglo.base/ssr/browser): the SDK classes come from the main entry, as above
+const browserClientOut = await Bun.build({
+  target: "browser",
+  minify: { whitespace: true, syntax: true, identifiers: false },
+  sourcemap: "linked",
+  tsconfig: join(jsDir, "tsconfig.json"),
+  root: jsDir,
+  entrypoints: [join(jsDir, "src/ssr/browser-client.js")],
+  format: "esm",
+  outdir: dist,
+  naming: "ssr-browser-client.es.mjs",
+  plugins: [
+    {
+      name: "external-iglo-base",
+      setup(build) {
+        build.onResolve(
+          { filter: /^@sdk\/(Client|ClientResponseError|stores\/BaseAuthStore)$/ },
+          () => ({ path: "./iglo-base.es.mjs", external: true }),
+        );
+      },
+    },
+  ],
+});
+if (!browserClientOut.success) {
+  throw new Error(
+    `Bun.build (ssr-browser-client) failed:\n${browserClientOut.logs.map(String).join("\n")}`,
+  );
+}
+
 await rm(jsDir, { recursive: true, force: true });

@@ -28,6 +28,10 @@ export class RealtimeService extends BaseService {
   private pendingConnects: Array<promiseCallbacks> = [];
   private pendingSubmits: Array<promiseCallbacks> = [];
   private isProcessingPendingSubmits: boolean = false;
+  // Bumped by every close. A continuation of a connection captures the value when the connection
+  // opens and does nothing once it differs: the connection was closed, or replaced by a new one
+  // (a `reconnect()` while the subscriptions are being sent, for example).
+  private connectionGeneration: number = 0;
 
   /**
    * Returns whether the realtime connection has been established.
@@ -110,6 +114,44 @@ export class RealtimeService extends BaseService {
     return async (): Promise<void> => {
       return this.unsubscribeByTopicAndListener(topic, listener);
     };
+  }
+
+  /**
+   * Sends the current subscriptions again, with the client's current authorization. Upstream
+   * keeps a subscription's auth state on the server, so a new token for the same record is
+   * accepted and replaces it (docs/design/13-ssr.md, "Browser client and realtime"). A no-op
+   * when the connection is not established or there are no subscriptions.
+   */
+  resubmit(): Promise<void> {
+    if (!this.clientId || !this.hasSubscriptionListeners()) {
+      return Promise.resolve();
+    }
+    this.lastSentSubscriptions = [];
+    return this.submitSubscriptions();
+  }
+
+  /**
+   * Closes the SSE connection and opens a new one with the same subscriptions, after an intended
+   * change of authorization. The new connection gets its own client ID, and the subscriptions are
+   * sent on it with the client's current authorization. Upstream keeps a connection's
+   * authorization on the server and only accepts a change to the same record (a guest may then
+   * sign in), so a different user or a sign-out needs a new connection
+   * (docs/design/13-ssr.md, "Browser client and realtime").
+   *
+   * The new connection is opened the way a dropped one is reopened: its first attempt waits the
+   * first backoff step, and a failed attempt retries in the background with the usual backoff
+   * (`connectErrorHandler`). Unlike a dropped connection, it does not call `onDisconnect`, since
+   * nothing went wrong on the network or the server. The returned promise resolves when the
+   * reconnect is scheduled, not when the new connection is up. A no-op without subscriptions.
+   */
+  reconnect(): Promise<void> {
+    if (!this.hasSubscriptionListeners()) {
+      this.disconnect(false, false);
+      return Promise.resolve();
+    }
+    this.disconnect(true, false);
+    this.scheduleReconnect();
+    return Promise.resolve();
   }
 
   /**
@@ -403,20 +445,34 @@ export class RealtimeService extends BaseService {
   private initConnect() {
     this.disconnect(true);
 
+    // Every continuation of this connection (its timeout, its error handlers and its PB_CONNECT
+    // work) checks this before it touches the client's state. A closed or replaced connection
+    // must not resolve the pending connects, reset the attempts or cancel the next reconnect:
+    // those belong to the connection that is current now.
+    const generation = this.connectionGeneration;
+    const isCurrent = () => generation === this.connectionGeneration;
+
     // wait up to 15s for connect
     clearTimeout(this.connectTimeoutId);
     this.connectTimeoutId = setTimeout(() => {
-      this.connectErrorHandler(new Error("EventSource connect took too long."));
+      if (isCurrent()) {
+        this.connectErrorHandler(new Error("EventSource connect took too long."));
+      }
     }, this.maxConnectTimeout);
 
     this.eventSource = new EventSource(this.client.buildURL("/api/realtime"));
 
     // oxlint-disable-next-line unicorn/prefer-add-event-listener -- EventSource.onerror matches upstream assignment
     this.eventSource.onerror = () => {
-      this.connectErrorHandler(new Error("Failed to establish realtime connection."));
+      if (isCurrent()) {
+        this.connectErrorHandler(new Error("Failed to establish realtime connection."));
+      }
     };
 
     this.eventSource.addEventListener("PB_CONNECT", (e) => {
+      if (!isCurrent()) {
+        return;
+      }
       const msgEvent = e as MessageEvent;
       this.clientId = msgEvent?.lastEventId;
       this.lastSentSubscriptions = [];
@@ -440,9 +496,14 @@ export class RealtimeService extends BaseService {
           // We want both p1 and p2 to complete AFTER their subscribe
           // (SSE connect + submit subscription) calls complete.
           let maxResubmit = 3;
-          while (this.hasUnsentSubscriptions() && maxResubmit > 0) {
+          while (isCurrent() && this.hasUnsentSubscriptions() && maxResubmit > 0) {
             maxResubmit--;
             await this.submitSubscriptions();
+          }
+
+          // the subscriptions may have been sent while the connection was closed or replaced
+          if (!isCurrent()) {
+            return;
           }
 
           // resolve connect promises
@@ -467,11 +528,14 @@ export class RealtimeService extends BaseService {
           // just as a last resort in case the 3 retries from above weren't enough,
           // check for unset subscriptions after the pendingConnects has been resolved
           // (aka. subscribe in that case is no longer "blocked" because isConnected would be true)
-          if (this.hasUnsentSubscriptions()) {
+          if (isCurrent() && this.hasUnsentSubscriptions()) {
             await this.submitSubscriptions();
           }
         })
         .catch((err) => {
+          if (!isCurrent()) {
+            return; // a closed connection's failure is not the current one's
+          }
           this.clientId = "";
           this.lastSentSubscriptions = [];
           this.connectErrorHandler(err);
@@ -499,17 +563,38 @@ export class RealtimeService extends BaseService {
 
     // otherwise -> reconnect in the background
     this.disconnect(true);
+    this.scheduleReconnect();
+  }
+
+  /**
+   * Schedules the next connection attempt after the backoff step for the current attempt count,
+   * and counts the attempt. Shared by a dropped connection and by `reconnect()`, so both retry
+   * the same way.
+   */
+  private scheduleReconnect(): void {
     const timeout =
       this.predefinedReconnectIntervals[this.reconnectAttempts] ||
       this.predefinedReconnectIntervals[this.predefinedReconnectIntervals.length - 1];
     this.reconnectAttempts++;
+    const generation = this.connectionGeneration;
     this.reconnectTimeoutId = setTimeout(() => {
-      this.initConnect();
+      // disconnect() cancels this timer; the check keeps it from ever opening a connection that
+      // was superseded in the meantime
+      if (generation === this.connectionGeneration) {
+        this.initConnect();
+      }
     }, timeout);
   }
 
-  private disconnect(fromReconnect = false): void {
-    if (this.clientId && this.onDisconnect) {
+  /**
+   * Closes the connection. `fromReconnect` keeps the reconnect attempts and the pending connects,
+   * for a retry. `notify` is false when the close is intended (a `reconnect()`), so the
+   * `onDisconnect` hook, which means a network or server error, is not called.
+   */
+  private disconnect(fromReconnect = false, notify = true): void {
+    this.connectionGeneration++;
+
+    if (notify && this.clientId && this.onDisconnect) {
       this.onDisconnect(Object.keys(this.subscriptions));
     }
 

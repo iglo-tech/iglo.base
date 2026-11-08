@@ -62,3 +62,11 @@ if (!verified) {
   throw new Error("expected verify() to throw");
 }
 console.log("instanceof ClientResponseError: ok");
+
+// the browser subpath imports under Node too (it reads no browser global until it is asked to)
+import { createBrowserClient } from "iglo.base/ssr/browser";
+const browserPb = createBrowserClient({ url: "http://127.0.0.1:1", token: "" });
+if (!(browserPb instanceof PocketBase)) {
+  throw new Error("browser client is not an instance of PocketBase");
+}
+console.log("ssr/browser instanceof PocketBase: ok", typeof browserPb.realtime.subscribe);

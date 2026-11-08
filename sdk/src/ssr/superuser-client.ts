@@ -14,13 +14,22 @@ const DEFAULT_AUTO_REFRESH_THRESHOLD_SEC = 300; // 5 minutes
 
 export class SuperuserClient extends Client {
   private readonly _options: CreateSuperuserClientOptions;
+  private readonly _clock: () => number;
+  // iglo.base's clock minus this process's, as the last response's Date header said
+  private _clockOffsetMs: number = 0;
 
   constructor(options: CreateSuperuserClientOptions) {
     const authStore = new BaseAuthStore();
     super(options.url, authStore, options.lang ?? "en-US");
 
     this._options = options;
+    this._clock = options.clock ?? Date.now;
     this.autoCancellation(false);
+  }
+
+  /** iglo.base's clock in milliseconds, as the last response's `Date` header read it. */
+  serverNow(): number {
+    return this._clock() + this._clockOffsetMs;
   }
 
   /**
@@ -28,7 +37,12 @@ export class SuperuserClient extends Client {
    * even if application code assigns pb.beforeSend.
    */
   override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
-    options.fetch = noStoreFetch(options.fetch ?? this._options.fetch);
+    options.fetch = noStoreFetch(options.fetch ?? this._options.fetch, (response) => {
+      const serverMs = Date.parse(response.headers.get("date") ?? "");
+      if (!Number.isNaN(serverMs)) {
+        this._clockOffsetMs = serverMs - this._clock();
+      }
+    });
     return super.send<T>(path, options);
   }
 

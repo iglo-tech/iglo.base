@@ -38,6 +38,10 @@
       "browser": "./dist/ssr-browser.es.mjs",
       "default": "./dist/ssr.es.mjs"
     },
+    "./ssr/browser": {
+      "types": "./dist/types/src/ssr/browser-client.d.ts",
+      "default": "./dist/ssr-browser-client.es.mjs"
+    },
     "./package.json": "./package.json"
   }
 }

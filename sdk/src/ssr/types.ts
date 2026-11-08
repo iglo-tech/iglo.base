@@ -62,9 +62,34 @@ export interface CreateServerClientOptions {
   origin?: string;
   request?: Request;
   cookieOptions?: Partial<SerializeOptions>;
+  /**
+   * Fallback without superuser credentials (docs/design/13-ssr.md, "Browser client and realtime"):
+   * the session cookie is written without `HttpOnly`, so the browser client can read it. Weaker
+   * against XSS than the default: any script on the page can read the session token.
+   */
+  readableCookie?: boolean;
   lang?: string;
   clock?: () => number;
   fetch?: (url: RequestInfo | URL, config?: RequestInit) => Promise<Response>;
+}
+
+/** What a page needs to start a browser client: a short-lived token and the user's record. */
+export interface BrowserToken {
+  token: string;
+  record: AuthRecord;
+  /** When the token expires, in milliseconds since the epoch (from its `exp` claim). */
+  expiresAt: number;
+  /**
+   * The server's clock when the token was minted, in milliseconds since the epoch: iglo.base's
+   * `Date` header as the minting client read it. The browser client measures its own clock
+   * against it, so a device clock that is off does not shorten or stretch the token's life.
+   */
+  serverTime: number;
+}
+
+export interface MintBrowserTokenOptions {
+  /** Lifetime of the minted token in seconds (default 900, 15 minutes). */
+  duration?: number;
 }
 
 export interface CreateSuperuserClientOptions {
@@ -75,6 +100,8 @@ export interface CreateSuperuserClientOptions {
   autoRefreshThreshold?: number;
   lang?: string;
   fetch?: (url: RequestInfo | URL, config?: RequestInit) => Promise<Response>;
+  /** The clock (default `Date.now`), for tests. */
+  clock?: () => number;
 }
 
 export interface RequestCookieAdapter extends CookieAdapter {

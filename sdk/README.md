@@ -423,7 +423,9 @@ To accomplish this, the SDK provides 2 function hooks:
 - `createSessionCache`: one in-memory cache per process. It skips the session check for recently checked sessions and shares one refresh between parallel requests.
 - `createRequestCookieAdapter`: the cookie adapter for Web `Request`/`Response` handlers.
 - `createSuperuserClient`: a long-lived superuser client. `impersonate(collection, id, duration)` mints a short token (15 minutes by default) for page JavaScript and realtime. A client built from a non-refreshable token (an `impersonate` API key) does not refresh it; its requests fail once it expires.
-- `pb.startOAuth2()` and `pb.completeOAuth2()`: the OAuth2 redirect flow, on the server client (see below). `handlePopupHandOff()`: the adapter route that completes a popup sign-in. `checkCsrf()` and `checkOrigin()`: the Origin check for state-changing requests.
+- `mintBrowserToken()`: the short token and user record a page needs at render. `handleBrowserTokenRenew()`: the adapter route that renews that token. `pb.startOAuth2()` and `pb.completeOAuth2()`: the OAuth2 redirect flow, on the server client (see below). `handlePopupHandOff()`: the adapter route that completes a popup sign-in. `checkCsrf()` and `checkOrigin()`: the Origin check for state-changing requests.
+
+The browser client is a separate entry, `iglo.base/ssr/browser`, which is safe to bundle for the browser: `createBrowserClient()` (see "Browser client and realtime" below).
 
 `iglo.base/ssr` is server-only. A browser bundle that imports its named exports fails at build time; a namespace import (`import * as ssr`) throws when it loads.
 
@@ -471,6 +473,82 @@ Things to know:
 - `await pb.auth.verify()` checks the session with iglo.base now, skipping the cache. Use it on pages that must not show a revoked session for up to the cache TTL (account settings, payments). It throws when the session is not valid.
 - A 401 from a data call does not sign the user out. Only the session check does.
 - Between checks a revoked session can still render as signed in for up to the cache TTL. Data calls are unaffected: iglo.base rejects the revoked token on every call.
+
+#### Browser client and realtime
+
+A page talks to iglo.base directly for realtime and reads, with a short token minted at render, so the long-lived session never reaches page JavaScript. The app server mints the token with `impersonate` (15 minutes by default) and passes it to the page. The browser client renews it through an adapter route before it expires:
+
+```js
+// server, plain Web Request/Response (Bun, Deno, or any handler)
+import {
+  createServerClient,
+  createRequestCookieAdapter,
+  createSessionCache,
+  createSuperuserClient,
+  handleBrowserTokenRenew,
+  mintBrowserToken,
+  SSR_NO_CACHE_HEADERS,
+} from "iglo.base/ssr";
+
+const BACKEND = "http://127.0.0.1:8090"; // iglo.base backend URL
+const sessionCache = createSessionCache();
+const superuser = await createSuperuserClient({
+  url: BACKEND,
+  email: process.env.ADMIN_EMAIL,
+  password: process.env.ADMIN_PASSWORD,
+});
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    // POST /api/session/renew: same origin, with the session cookie, answers a fresh token
+    if (url.pathname === "/api/session/renew") {
+      return handleBrowserTokenRenew(request, { url: BACKEND, sessionCache, superuser });
+    }
+
+    // the page: mint the browser token and hand it over with the record. The token is per user,
+    // so the page is never cached (SSR_NO_CACHE_HEADERS).
+    const cookies = createRequestCookieAdapter(request);
+    const pb = await createServerClient({ url: BACKEND, request, cookies, sessionCache });
+    const page = await mintBrowserToken(pb, superuser); // null when nobody is signed in
+    // escape "<" so the JSON cannot close the script element
+    const json = JSON.stringify(page).replaceAll("<", "\\u003c");
+    const html = `<script>window.__PB__ = ${json};</script><script type="module" src="/app.js"></script>`;
+    const headers = { "Content-Type": "text/html", ...SSR_NO_CACHE_HEADERS };
+    return cookies.applyToResponse(new Response(html, { headers }));
+  },
+};
+```
+
+```js
+// browser, app.js (a bundle for the browser; no Bun or Node API)
+import { createBrowserClient } from "iglo.base/ssr/browser";
+
+const { token, record, serverTime } = window.__PB__ ?? {};
+const pb = createBrowserClient({
+  url: "http://127.0.0.1:8090", // the backend the browser can reach
+  token,
+  record,
+  serverTime, // the server's clock at minting: the page's clock is measured against it
+  renewUrl: "/api/session/renew", // the app's route above
+});
+
+// realtime: subscriptions are resubmitted with each renewed token
+await pb.collection("posts").subscribe("*", (e) => console.log(e.action, e.record));
+```
+
+Things to know:
+
+- `renew()` runs on its own: at half of the token's remaining life, and never less than 60 seconds before it expires. Successful renewals are at least 30 seconds apart. Parallel calls share one request. A 401 from the renew route signs the page out: the store is cleared, and realtime reconnects as a guest. A network error or a 5xx keeps the token and retries with backoff, at most ten times in a row; after that the store is cleared when the token expires.
+- Lifetimes are measured on the server's clock, from `serverTime` and from each renewal answer, so a device clock that is minutes off does not renew the token in a loop or drop the session.
+- Realtime follows the signed-in user. A renewal for the same user keeps the connection and resubmits its subscriptions with the new token. A sign-out, or a sign-in as another user, opens a new connection for the subscriptions, authorized as that user or as a guest. If iglo.base is unreachable then, the connection retries with the usual backoff, as a dropped one does. `onDisconnect` is not called for these changes.
+- `createBrowserClient` takes an injected `clock` and `timers` for tests. `pb.dispose()` stops the renewal timers.
+- `pb.handOff()` posts the popup token (from `authWithOAuth2()`) to a hand-off route (`handlePopupHandOff`) and then renews it, so the long-lived popup token does not stay in page memory. On any failure, whatever the status, the store is cleared and the error is thrown.
+- `mintBrowserToken` returns `null` when nobody is signed in, and the record is the server client's own, never data from the request. `expiresAt` and `serverTime` are in milliseconds. The response that carries the token is per user: send it with `SSR_NO_CACHE_HEADERS`, as the example does, so no shared cache keeps it.
+- The renew route checks the session with iglo.base on each call (it does not use the session cache), so a session revoked since its last check is refused there. It answers `401` only when the session is over: the user was deleted (`impersonate` answers 404), or the session was revoked. A superuser credential that is refused (`impersonate` answers 401 or 403) is a `503` that keeps the session cookie, so one expired superuser key does not sign every user out.
+
+**Fallback without superuser credentials.** Without superuser credentials the page can still work: create the server client with `readableCookie: true`. The session cookie is then written without `HttpOnly`, and `mintBrowserToken(pb)` and `handleBrowserTokenRenew(request, { url, readableCookie: true })` answer from the session itself. The browser client, given no token, reads the cookie. This is weaker: any script on the page can read the session token for as long as the session lasts, so an XSS bug is a session takeover. Use the superuser path where you can.
 
 #### OAuth2 sign-in (redirect flow)
 

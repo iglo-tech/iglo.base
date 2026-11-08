@@ -1,6 +1,7 @@
 // docs/design/13-ssr.md ("Session cookie", "Clients")
 import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
+import { getTokenPayload } from "@sdk/tools/jwt";
 import type { Cookie, CookieToSet, CookieValueMap, RequestCookieAdapter } from "@sdk/ssr/types";
 
 export const SSR_NO_CACHE_HEADERS: Readonly<Record<string, string>> = Object.freeze({
@@ -67,6 +68,18 @@ export function hasSessionCookieName(cookies: Cookie[], baseName: string): boole
   return cookies.some((c) => c.name === `__Host-${baseName}` || c.name === baseName);
 }
 
+/**
+ * The record that belongs to a token, or null: a record for another user is dropped, since a
+ * cookie can be edited by its user. Shared by the server and the browser client.
+ */
+export function recordForToken(token: string, record: AuthRecord): AuthRecord {
+  const payload = getTokenPayload(token);
+  if (record && payload.id && record.id !== payload.id) {
+    return null;
+  }
+  return record;
+}
+
 export function safeDecode(value: string): string {
   try {
     return decodeURIComponent(value);
@@ -120,6 +133,8 @@ export interface CookieSettings {
   cookieName?: string;
   secure?: boolean;
   cookieOptions?: Partial<SerializeOptions>;
+  /** Fallback mode: the session cookie is written without `HttpOnly` (docs/design/13-ssr.md). */
+  readable?: boolean;
 }
 
 /** `cookieOptions.secure` overrides the flag; the default is secure (`__Host-`). */
@@ -139,6 +154,10 @@ function serializeBase(settings: CookieSettings, secure: boolean): SerializeOpti
     ...settings.cookieOptions,
     secure,
   };
+  if (settings.readable) {
+    // the browser client reads this cookie (no superuser credentials; see 13-ssr.md, "Browser client")
+    opts.httpOnly = false;
+  }
   if (secure) {
     delete opts.domain;
     opts.path = "/";
