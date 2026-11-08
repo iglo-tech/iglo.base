@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13f | fix (Haiku) | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 1 | SSR user guide `docs/ssr.md` and site entry in iglo-tech/iglo.tech; [brief](briefs/P.13f.md). Last open task |
+| P.13f | review (Opus) | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 2 | SSR user guide `docs/ssr.md` and site entry in iglo-tech/iglo.tech; [brief](briefs/P.13f.md). Last open task |
 
 ## Done
 
@@ -106,6 +106,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 | Since | Area | Difference |
 |---|---|---|
+| 2026-11-08 (P.13f) | Tests | Flake: `sdk/test/ssr/server-core.spec.ts` "100 parallel page loads share one refresh" failed once in a full `check`, passed 25/25 alone |
 | 2026-11-08 (P.13e) | Tests | Killed test runs leave `iglo-base-build-*`/`iglo-base-run-*` dirs (~120 MB each) in `/tmp`, which is a RAM tmpfs here; the lead deleted 15 older than 3 h on 2026-11-08. A harness-level cleanup (or a repo-local temp root) would stop the leak |
 | 2026-11-08 (P.13e) | SSR | A namespace import (`import *`) of a server-only subpath under the browser condition fails only at runtime, not at build |
 | 2026-11-08 (P.13e) | SSR | In Nuxt, a handler's own `Cache-Control` overrides the adapter's no-cache headers (the app's explicit choice) |
