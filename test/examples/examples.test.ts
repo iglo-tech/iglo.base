@@ -211,6 +211,12 @@ async function drive(app: RunningApp, pb: PocketBase, readable: boolean): Promis
     expect(live.body).not.toContain(sessionTokenOf(jar));
   }
 
+  // pages and APIs that carry the session or the browser token are never stored by a cache
+  for (const path of ["/live", "/protected", "/api/me"]) {
+    const res = await exchange(`${app.url}${path}`, { jar });
+    expect(res.headers.get("cache-control")).toContain("no-store");
+  }
+
   // the renew route: GET is refused, a foreign origin is refused, the same origin renews
   const getRenew = await exchange(`${app.url}/api/pb/renew`, { jar });
   expect(getRenew.status).toBe(405);
@@ -248,11 +254,18 @@ async function drive(app: RunningApp, pb: PocketBase, readable: boolean): Promis
   expect(crossSite.status).toBe(403);
   expect((await exchange(`${app.url}/protected`, { jar })).status).toBe(200);
 
-  // revalidation: the password changes on the server; the next check signs the user out
+  // revalidation: the password changes on the server. The home page is served from the session
+  // cache (no request to iglo.base), so it still shows the session until the next check
   await changePassword(pb, CHANGED_PASSWORD);
+  const cached = await exchange(`${app.url}/`, { jar });
+  expect(cached.body).toContain(`signed in as ${USER.email}`);
+  // the protected page checks with iglo.base: the revoked session ends
   const revoked = await exchange(`${app.url}/protected`, { jar });
   expect(REDIRECTS).toContain(revoked.status);
   expect(revoked.location).toStartWith("/login");
+  // the next read of the home page, served by the same cache, is signed out
+  const afterCheck = await exchange(`${app.url}/`, { jar });
+  expect(afterCheck.body).toContain("signed out");
   // the API route answers for the revoked session too (a page cannot always clear its cookie:
   // a Next.js server component is read-only)
   expect((await exchange(`${app.url}/api/me`, { jar })).status).toBe(401);
@@ -273,17 +286,25 @@ async function drive(app: RunningApp, pb: PocketBase, readable: boolean): Promis
   expect(jar.cookies.has("pb_auth")).toBe(false);
   expect(REDIRECTS).toContain((await exchange(`${app.url}/protected`, { jar })).status);
 
-  // OAuth2 redirect flow against the fake provider: start, then the callback with its code
+  // OAuth2 redirect flow against the fake provider, started from the app's login page: the page
+  // offers the provider, its link starts the flow, and the callback with the provider's code ends it
   const oauthJar = new CookieJar();
-  const start = await exchange(
-    `${app.url}/api/pb/oauth2/start/${OAUTH_PROVIDER}?redirectTo=${encodeURIComponent("/protected")}`,
-    { jar: oauthJar },
-  );
+  const loginPage = await exchange(`${app.url}/login`, { jar: oauthJar });
+  expect(loginPage.status).toBe(200);
+  const startPath = new RegExp(`href="(/api/pb/oauth2/start/${OAUTH_PROVIDER})"`).exec(
+    loginPage.body,
+  )?.[1];
+  if (startPath === undefined) {
+    throw new Error(`the login page offers no ${OAUTH_PROVIDER} link: ${loginPage.body}`);
+  }
+  expect(loginPage.body).toContain("Sign in with");
+  const start = await exchange(`${app.url}${startPath}`, { jar: oauthJar });
   if (start.status !== 302) {
     throw new Error(`OAuth2 start answered ${start.status}: ${start.body}`);
   }
-  // the fixture provider's authURL is relative (a query only), like the SDK's OAuth2 test resolves it
-  const authorize = new URL(start.location ?? "", "http://placeholder.invalid/");
+  // the fake provider's authURL is absolute (freshDataDir); the start route sends the browser there
+  // with the app's callback as redirect_uri
+  const authorize = new URL(start.location ?? "");
   expect(authorize.searchParams.get("redirect_uri")).toBe(`${app.url}/api/pb/oauth2/callback`);
   expect(setCookieLine(start.setCookies, "pb_oauth2")).toBeDefined();
   const state = authorize.searchParams.get("state") ?? "";
@@ -294,8 +315,10 @@ async function drive(app: RunningApp, pb: PocketBase, readable: boolean): Promis
     { jar: oauthJar },
   );
   expect(callback.status).toBe(302);
-  expect(new URL(callback.location ?? "", app.url).pathname).toBe("/protected");
+  expect(new URL(callback.location ?? "", app.url).pathname).toBe("/");
   expect(setCookieLine(callback.setCookies, "pb_auth")).toBeDefined();
+  const oauthHome = await exchange(`${app.url}/`, { jar: oauthJar });
+  expect(oauthHome.body).toContain(`signed in as ${OAUTH_USER_EMAIL}`);
   const oauthMe = await exchange(`${app.url}/api/me`, { jar: oauthJar });
   expect((JSON.parse(oauthMe.body) as { email: string }).email).toBe(OAUTH_USER_EMAIL);
 

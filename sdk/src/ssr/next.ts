@@ -1,10 +1,14 @@
 // docs/design/13-ssr.md ("Framework adapters": iglo.base/ssr/next; "Session cookie"; "Session cache,
-// check and refresh"; "CSRF"; "OAuth2"). The Next.js App Router adapter. middleware.ts resumes the
-// session on every request and forwards the refreshed cookies in the request it passes on, so
-// Server Components (which cannot set cookies) read the session the middleware prepared.
+// check and refresh"; "CSRF"; "OAuth2"). The Next.js App Router adapter. proxy.ts (Next.js 16) or
+// middleware.ts (Next.js 15.5, Node.js runtime) resumes the session on every request and forwards
+// the refreshed cookies in the request it passes on, so Server Components (which cannot set cookies)
+// read the session the middleware prepared. Next.js gives Server Components and Server Actions no
+// response headers, so the no-cache headers come from the middleware's response and from the
+// dynamic rendering of pages that read cookies (docs/design/13-ssr.md, "Next.js").
 import {
   csrfRejection,
   handleRoute,
+  noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
   type AdapterOptions,
@@ -157,25 +161,36 @@ function storeWriter(cookies: NextCookieStore): (toSet: CookieToSet[]) => void {
  * The Next.js App Router adapter. The options carry the app's session cache and superuser client,
  * which it creates once; nothing here keeps state between requests.
  *
+ * It runs on the Node.js runtime only: Next.js 16 `proxy.ts` always does, and Next.js 15.5
+ * `middleware.ts` does with `export const runtime = "nodejs"`. The Edge runtime is not supported.
+ *
  * @throws {TypeError} without a superuser client and without `readableCookie: true`
+ * @throws {Error} on the Edge runtime, which the adapter cannot run on
  */
 export function createNextAuth(options: NextAuthOptions): NextAuth {
+  if ((globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== undefined) {
+    throw new Error(
+      'iglo.base/ssr/next needs the Node.js runtime: use proxy.ts (Next.js 16), or middleware.ts with export const runtime = "nodejs" (Next.js 15.5). The Edge runtime is not supported.',
+    );
+  }
   const resolved = resolveAdapterOptions(options);
   const passThrough = options.next;
 
   async function middleware(request: Request): Promise<Response> {
+    // Server Components cannot set headers, so only the middleware's own response gets them here
+    const policy = noStorePolicy(request, resolved);
     const rejected = csrfRejection(request, resolved);
     if (rejected) {
-      return rejected;
+      return policy.apply(rejected);
     }
     const routed = await handleRoute(request, resolved);
     if (routed) {
-      return routed;
+      return policy.apply(routed);
     }
 
     const cookies = createRequestCookieAdapter(request, { secure: configuredSecure(resolved) });
     const secure = cookies.isSecure;
-    await resumeSession(cookies, request, { ...resolved, secure });
+    await resumeSession(cookies, request, { ...resolved, secure }, policy);
 
     const response = passThrough({
       request: { headers: forwardedHeaders(request, cookies.queuedCookies, secure) },
@@ -183,7 +198,7 @@ export function createNextAuth(options: NextAuthOptions): NextAuth {
     if (cookies.queuedCookies.length > 0) {
       cookies.applyToResponse(response);
     }
-    return response;
+    return policy.apply(response);
   }
 
   async function serverSession(input: {

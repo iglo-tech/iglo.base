@@ -6,6 +6,8 @@ A SvelteKit 2 app that uses iglo.base's server-side rendering support through th
 - a session cookie that the `handle` hook resumes and refreshes on every request (`/`);
 - sign-in and sign-out with `locals.pb` (`/login`, `POST /session/login`, `POST /logout`);
 - a session check with iglo.base on every request (`/api/me`, `/protected`);
+- the OAuth2 redirect flow: `/login` links to `Sign in with <provider>` for each provider the
+  users collection has, and the adapter's callback signs the user in and returns to `/`;
 - a browser client for realtime updates, started from a short-lived token (`/live`).
 
 The adapter answers `/api/pb/renew`, `/api/pb/popup` and the OAuth2 routes itself. The app
@@ -48,7 +50,7 @@ PB_READABLE_COOKIE=1 PB_URL=http://127.0.0.1:8090 APP_ORIGIN=http://localhost:30
 | Route | What it does |
 |---|---|
 | `GET /` | `signed in as <email>` or `signed out` |
-| `GET /login` | The sign-in form. `?error=1` shows `wrong email or password`. |
+| `GET /login` | The sign-in form, and a `Sign in with <provider>` link per OAuth2 provider. `?error=1` shows `wrong email or password`. |
 | `POST /session/login` | Signs in with `authWithPassword`; 303 to `/` or `/login?error=1` |
 | `POST /logout` | Clears the session; 303 to `/` |
 | `GET /api/me` | `{ id, email }` for a valid session, otherwise 401 `{}` |

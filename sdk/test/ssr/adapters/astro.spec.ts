@@ -433,3 +433,53 @@ describe("onRequest: concurrent requests", () => {
     expect(api.calls.map((c) => idOf(c.headers.get("authorization")))).toEqual(["u1", "u2"]);
   });
 });
+
+describe("onRequest: no-cache headers on user data", () => {
+  test("a request that carries the session cookie gets the no-cache headers, even when iglo.base is unreachable", async () => {
+    const api = iglo({
+      "POST /api/collections/users/auth-refresh": () => json(clock, 500, { message: "down" }),
+    });
+    const auth = await adapter(api);
+    const { response, sets } = await run(auth, "/", {
+      cookies: { pb_auth: sessionCookie(authToken(T0 + 3600, "u1")) },
+    });
+
+    expect(sets).toHaveLength(0);
+    expect(response.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+  });
+
+  test("a cookie the page writes while it renders gets the no-cache headers on its response", async () => {
+    const api = iglo({
+      "POST /api/collections/users/auth-with-password": () =>
+        json(clock, 200, { token: authToken(T0 + 3600, "u1"), record: record("u1") }),
+    });
+    const auth = await adapter(api);
+    const made = makeContext("/login", { method: "POST" });
+    const response = await auth.onRequest(made.context, async () => {
+      const pb = (made.context.locals as { pb: ServerClient }).pb;
+      await pb.collection("users").authWithPassword("u1@example.com", "pw");
+      return new Response("signed in", { status: 303, headers: { Location: "/" } });
+    });
+
+    expect(made.sets).toHaveLength(1);
+    expect(response.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+  });
+
+  test("a POST with the session cookie from a foreign origin gets the no-cache headers on its 403", async () => {
+    const auth = await adapter(iglo());
+    const { response } = await run(auth, "/logout", {
+      method: "POST",
+      headers: { origin: "https://evil.example" },
+      cookies: { pb_auth: sessionCookie(authToken(T0 + 3600, "u1")) },
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+  });
+});

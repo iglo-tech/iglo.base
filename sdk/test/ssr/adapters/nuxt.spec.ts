@@ -439,3 +439,51 @@ describe("middleware: concurrent requests", () => {
     expect(api.calls.map((c) => idOf(c.headers.get("authorization")))).toEqual(["u1", "u2"]);
   });
 });
+
+describe("middleware: no-cache headers on user data", () => {
+  test("a request that carries the session cookie has the no-cache headers set before the handler runs", async () => {
+    const api = iglo({
+      "POST /api/collections/users/auth-refresh": () => json(clock, 500, { message: "down" }),
+    });
+    const auth = await adapter(api);
+    const { response, setCookies, setHeaders } = await run(auth, "/", {
+      cookies: { pb_auth: sessionCookie(authToken(T0 + 3600, "u1")) },
+    });
+
+    expect(response).toBeUndefined();
+    expect(setCookies).toHaveLength(0);
+    expect(setHeaders).toEqual(Object.entries(SSR_NO_CACHE_HEADERS));
+  });
+
+  test("a cookie the handler writes after the middleware sets the no-cache headers", async () => {
+    const api = iglo({
+      "POST /api/collections/users/auth-with-password": () =>
+        json(clock, 200, { token: authToken(T0 + 3600, "u1"), record: record("u1") }),
+    });
+    const auth = await adapter(api);
+    const { event, setCookies, setHeaders } = makeEvent("/login", { method: "POST" });
+    expect(await auth.middleware(event)).toBeUndefined();
+    expect(setHeaders).toEqual([]);
+
+    // Nitro runs the handler after the middleware returned, so the sign-in comes after the check
+    const pb = event.context["pb"] as ServerClient;
+    await pb.collection("users").authWithPassword("u1@example.com", "pw");
+
+    expect(setCookies).toHaveLength(1);
+    expect(setHeaders).toEqual(Object.entries(SSR_NO_CACHE_HEADERS));
+  });
+
+  test("a POST with the session cookie from a foreign origin gets the no-cache headers on its 403", async () => {
+    const auth = await adapter(iglo());
+    const { response } = await run(auth, "/logout", {
+      method: "POST",
+      headers: { origin: "https://evil.example" },
+      cookies: { pb_auth: sessionCookie(authToken(T0 + 3600, "u1")) },
+    });
+
+    expect(response?.status).toBe(403);
+    expect(response?.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+  });
+});

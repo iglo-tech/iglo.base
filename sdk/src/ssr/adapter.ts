@@ -7,7 +7,7 @@
 // app, and the app passes them in the options.
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import type { SerializeOptions } from "@sdk/tools/cookie";
-import { isHttpLocalUrl } from "@sdk/ssr/cookies";
+import { DEFAULT_COOKIE_KEY, hasSessionCookieName, isHttpLocalUrl } from "@sdk/ssr/cookies";
 import {
   checkCsrf,
   createRequestCookieAdapter,
@@ -120,23 +120,104 @@ export function appOrigin(request: Request, options: ResolvedAdapterOptions): st
 export interface RequestSession {
   /** The server client for this request only. Never shared across requests. */
   server: ServerClient;
-  /** Mints the page's browser token for the signed-in user (`null` when nobody is signed in). */
+  /**
+   * Mints the page's browser token for the signed-in user (`null` when nobody is signed in). A token
+   * that is minted marks the request's responses as user data (see `NoStorePolicy`).
+   */
   browserToken: () => Promise<BrowserToken | null>;
+}
+
+/**
+ * Whether a request's responses carry user data, and so must not be stored by a cache. The policy
+ * is on when the request carries a session cookie (under either name, as `checkCsrf` counts them),
+ * and turns on the first time the request writes a cookie or mints a browser token. Every response
+ * of an active request gets `SSR_NO_CACHE_HEADERS` (docs/design/13-ssr.md, "Session cookie").
+ * Anonymous requests that write nothing keep their responses cacheable.
+ */
+export interface NoStorePolicy {
+  /** Whether the responses of this request carry the no-cache headers. */
+  readonly active: boolean;
+  /** A cookie was written or a browser token minted: from now on the responses are user data. */
+  markUserData(): void;
+  /** Sets the no-cache headers on a response of this request, when the policy is active. */
+  apply(response: Response): Response;
+}
+
+/**
+ * The policy of one request. `onActive` runs once, when the policy turns on: at once when the
+ * request carries a session cookie, otherwise at the first write or mint. For a framework that
+ * sets headers before the handler's response is sent (Nitro) it sets them as they become needed.
+ */
+export function noStorePolicy(
+  request: Request,
+  options: ResolvedAdapterOptions,
+  onActive?: () => void,
+): NoStorePolicy {
+  const baseName = options.cookieName ?? DEFAULT_COOKIE_KEY;
+  let active = hasSessionCookieName(createRequestCookieAdapter(request).getAll(), baseName);
+  const policy: NoStorePolicy = {
+    get active() {
+      return active;
+    },
+    markUserData() {
+      if (!active) {
+        active = true;
+        onActive?.();
+      }
+    },
+    apply(response) {
+      if (active) {
+        setNoStoreHeaders(response.headers);
+      }
+      return response;
+    },
+  };
+  if (active) {
+    onActive?.();
+  }
+  return policy;
+}
+
+/**
+ * Sets SSR_NO_CACHE_HEADERS, replacing any the app set: a user's response must not be stored with
+ * a public `Cache-Control`. A response with locked headers is sent as it is.
+ */
+export function setNoStoreHeaders(headers: Headers): void {
+  for (const [name, value] of Object.entries(SSR_NO_CACHE_HEADERS)) {
+    try {
+      headers.set(name, value);
+    } catch {
+      // immutable headers: the response goes out without them
+    }
+  }
 }
 
 /**
  * Resumes the session of one request with `createServerClient`. `cookies` is the framework's
  * cookie access, mapped to `{ getAll, setAll, isSecure }`: writes made by the session check
- * (a refresh, a revoked session) go through its `setAll`, with `SSR_NO_CACHE_HEADERS`.
+ * (a refresh, a revoked session) go through its `setAll`. Each write and each minted browser token
+ * turns `policy` on, so the adapter sets the no-cache headers on the response it returns.
  */
 export async function resumeSession(
   cookies: CookieAdapter,
   request: Request,
   options: ResolvedAdapterOptions,
+  policy: NoStorePolicy = noStorePolicy(request, options),
 ): Promise<RequestSession> {
+  const tracked: CookieAdapter = {
+    ...cookies,
+    setAll: cookies.setAll
+      ? (toSet, headers) => {
+          if (toSet.length > 0) {
+            policy.markUserData();
+          }
+          return cookies.setAll?.(toSet, headers);
+        }
+      : undefined,
+  };
   const server = await createServerClient({
     url: options.url,
-    cookies,
+    cookies: tracked,
     origin: appOrigin(request, options),
     secure: secureFor(request, options),
     sessionCache: options.sessionCache,
@@ -149,8 +230,15 @@ export async function resumeSession(
   });
   return {
     server,
-    browserToken: () =>
-      mintBrowserToken(server, options.superuser, { duration: options.browserTokenDuration }),
+    browserToken: async () => {
+      const token = await mintBrowserToken(server, options.superuser, {
+        duration: options.browserTokenDuration,
+      });
+      if (token) {
+        policy.markUserData();
+      }
+      return token;
+    },
   };
 }
 

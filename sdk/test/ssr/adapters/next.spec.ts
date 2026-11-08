@@ -4,7 +4,7 @@
 // answers the requests the adapter sends and fails any other, so no test touches the network.
 import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
-import { createSessionCache } from "@sdk/ssr/index";
+import { createSessionCache, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
 import { createNextAuth, type NextAuthOptions, type NextCookieStore } from "@sdk/ssr/next";
 import { getTokenPayload } from "@sdk/tools/jwt";
 
@@ -435,5 +435,32 @@ describe("createNextAuth: serverSession", () => {
     const session = await auth.serverSession({ cookies: store, headers });
 
     expect(tokenVersion(session.server.authStore.token)).toBe(2);
+  });
+});
+
+describe("createNextAuth: no-cache headers and runtime", () => {
+  test("the pass-through response of a request that carries the session cookie gets the no-cache headers", async () => {
+    const { auth } = setup({
+      fetch: async () => json(500, { message: "down" }),
+    });
+
+    const response = await auth.middleware(
+      request("/dashboard", { cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1") }),
+    );
+
+    expect(response.headers.get("cache-control")).toBe(
+      SSR_NO_CACHE_HEADERS["Cache-Control"] ?? null,
+    );
+    expect(response.headers.get("pragma")).toBe("no-cache");
+  });
+
+  test("the Edge runtime is refused at creation with a message that names the Node.js runtime", () => {
+    const edge = globalThis as { EdgeRuntime?: unknown };
+    edge.EdgeRuntime = "";
+    try {
+      expect(() => setup()).toThrow(/Node\.js runtime/);
+    } finally {
+      delete edge.EdgeRuntime;
+    }
   });
 });

@@ -6,20 +6,16 @@
 // Cookie choice: reads come from the request's `Cookie` header, because Astro's cookie store has
 // no `getAll`. Writes go through `context.cookies.set`, which Astro applies to the response the
 // page renders. The `Set-Cookie` headers of the final response are never used. The no-cache
-// headers are set on the response `next()` returns, when cookies were written in this request.
-// Route answers carry their own cookies and headers and are returned as they are.
+// headers are set on the response `next()` returns whenever the request carries user data (see
+// `NoStorePolicy` in adapter.ts). Route answers carry their own cookies and headers.
 //
 // Typed structurally: nothing here imports `astro`.
 import type { SerializeOptions } from "@sdk/tools/cookie";
-import {
-  createRequestCookieAdapter,
-  SSR_NO_CACHE_HEADERS,
-  type CookieAdapter,
-  type CookieToSet,
-} from "@sdk/ssr/index";
+import { createRequestCookieAdapter, type CookieAdapter } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
+  noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
   type AdapterOptions,
@@ -73,20 +69,6 @@ function astroOptions(options: SerializeOptions | undefined): Record<string, unk
   };
 }
 
-/** Sets the no-cache headers the response does not carry yet. A response with locked headers is sent as it is. */
-function withNoCacheHeaders(response: Response): Response {
-  for (const [name, value] of Object.entries(SSR_NO_CACHE_HEADERS)) {
-    try {
-      if (!response.headers.has(name)) {
-        response.headers.set(name, value);
-      }
-    } catch {
-      // immutable headers: the response goes out without them
-    }
-  }
-  return response;
-}
-
 /**
  * Creates the Astro auth. Throws a `TypeError` without a superuser client and without
  * `readableCookie: true` (see `resolveAdapterOptions`).
@@ -97,38 +79,38 @@ export function createAstroAuth(options: AdapterOptions): AstroAuth {
   return {
     onRequest: async (context, next) => {
       const request = context.request;
+      // the no-cache headers go on every response of this request once it carries user data
+      const policy = noStorePolicy(request, resolved);
 
       const denied = csrfRejection(request, resolved);
       if (denied) {
-        return denied;
+        return policy.apply(denied);
       }
       // the routes run before the session is resumed (see sveltekit.ts)
       const routed = await handleRoute(request, resolved);
       if (routed) {
-        return routed;
+        return policy.apply(routed);
       }
 
       const requestCookies = createRequestCookieAdapter(request);
-      let wrote = false;
       const cookies: CookieAdapter = {
         getAll: () => requestCookies.getAll(),
         isSecure: requestCookies.isSecure,
-        setAll: (toSet: CookieToSet[]) => {
-          wrote = true;
+        setAll: (toSet) => {
           for (const c of toSet) {
             context.cookies.set(c.name, c.value, astroOptions(c.options));
           }
         },
       };
 
-      const session = await resumeSession(cookies, request, resolved);
+      const session = await resumeSession(cookies, request, resolved, policy);
       Object.assign(context.locals, {
         pb: session.server,
         pbBrowserToken: session.browserToken,
       });
 
-      const response = await next();
-      return wrote ? withNoCacheHeaders(response) : response;
+      // read after next(): the page's render may write cookies or mint a token
+      return policy.apply(await next());
     },
   };
 }

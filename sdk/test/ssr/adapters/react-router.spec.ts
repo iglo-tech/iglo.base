@@ -66,6 +66,11 @@ function fakeIglo(): Fetch {
         record: { id, collectionId: "users", collectionName: "users", email: `${id}@example.com` },
       });
     }
+    if (method === "POST" && pathname === "/api/collections/users/auth-with-password") {
+      const body = JSON.parse(String(config?.body ?? "{}")) as { identity?: string };
+      const id = (body.identity ?? "").split("@")[0] ?? "";
+      return json(200, { token: token(id, 1), record: record(id) });
+    }
     if (method === "GET" && pathname === "/api/collections/users/auth-methods") {
       return json(200, {
         password: { enabled: false, identityFields: [] },
@@ -143,7 +148,10 @@ function sessionTokenOf(line: string | undefined): string {
   return (JSON.parse(decodeURIComponent(value)) as { token: string }).token;
 }
 
-/** The session of a request the adapter does not answer itself; throws when it does. */
+/**
+ * The session of a request the adapter does not answer itself, and the headers it has at the
+ * moment the test reads them (the route reads them when it responds).
+ */
 async function sessionOf(
   auth: ReactRouterAuth,
   req: Request,
@@ -152,7 +160,7 @@ async function sessionOf(
   if (!("session" in result)) {
     throw new Error("the request was answered by the adapter, not passed on");
   }
-  return result;
+  return { session: result.session, headers: result.headers() };
 }
 
 /** The response of a request the adapter answers itself; throws when it does not. */
@@ -203,6 +211,64 @@ describe("createReactRouterAuth: session", () => {
     expect(headers.get("cache-control")).toContain("no-store");
     expect(headers.get("pragma")).toBe("no-cache");
     expect(headers.get("expires")).toBe("0");
+  });
+
+  test("a sign-in made after session() is in the headers the route reads when it responds", async () => {
+    const auth = setup();
+    const result = await auth.session(request("/login", { method: "POST", origin: APP }));
+    if (!("session" in result)) {
+      throw new Error("the request was answered by the adapter, not passed on");
+    }
+    // the handler signs in after the adapter has resumed the (anonymous) session
+    await result.session.server.collection("users").authWithPassword("u2@example.com", "pw");
+
+    const headers = result.headers();
+    const line = cookieLine(headers, "__Host-pb_auth");
+    expect(line).toBeDefined();
+    expect(line).not.toContain("Max-Age=0");
+    expect(getTokenPayload(sessionTokenOf(line))["id"]).toBe("u2");
+    expect(headers.get("cache-control")).toContain("no-store");
+  });
+
+  test("a sign-out made after session() clears the cookie in the headers the route reads", async () => {
+    const auth = setup();
+    const result = await auth.session(
+      request("/logout", {
+        method: "POST",
+        origin: APP,
+        cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1"),
+      }),
+    );
+    if (!("session" in result)) {
+      throw new Error("the request was answered by the adapter, not passed on");
+    }
+    result.session.server.authStore.clear();
+
+    // the session check refreshed the cookie first; the browser applies the lines in order, so the
+    // last line for the name is the one that stays
+    const lines = result
+      .headers()
+      .getSetCookie()
+      .filter((l) => l.startsWith("__Host-pb_auth="));
+    const last = lines[lines.length - 1];
+    expect(lines.length).toBe(2);
+    expect(last?.startsWith("__Host-pb_auth=;")).toBe(true);
+    expect(last).toContain("Max-Age=0");
+  });
+
+  test("a request carrying the session cookie gets the no-cache headers on its CSRF rejection", async () => {
+    const auth = setup();
+    const response = await responseOf(
+      auth,
+      request("/logout", {
+        method: "POST",
+        origin: "https://evil.example",
+        cookie: sessionCookie("__Host-pb_auth", token("u1", 1), "u1"),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("cache-control")).toContain("no-store");
   });
 
   test("a request without a session returns no Set-Cookie and no no-cache headers", async () => {

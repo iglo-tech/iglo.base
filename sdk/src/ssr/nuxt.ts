@@ -17,23 +17,25 @@
 // The middleware builds a Web `Request` from the event (the origin is `origin` from the options,
 // else `http(s)://host` from the Host header, with `https` when `x-forwarded-proto` says so). The
 // cookies are read from its `Cookie` header and written with `setCookie`. Those writes reach the
-// response through the framework's own response. When cookies were written and the request goes
-// on, `setHeader` adds the no-cache headers. A route answer is a `Response`: the app sends it
+// response through the framework's own response. Once the request carries user data, `setHeader`
+// adds the no-cache headers (see `NoStorePolicy` in adapter.ts). A route answer is a `Response`: the app sends it
 // with its framework's Web-response helper (h3's `sendWebResponse`), which keeps every header,
 // Set-Cookie included.
 //
 // The middleware returns `undefined` to let the request continue. A returned `Response` answers
-// it: a route's answer or the CSRF guard's 403.
+// it: a route's answer or the CSRF guard's 403. The no-cache headers go on every response of a
+// request that carries user data: its session cookie, a cookie it writes, or a browser token it
+// mints (`setHeader` is called as soon as one of them happens).
 import type { SerializeOptions } from "@sdk/tools/cookie";
 import {
   createRequestCookieAdapter,
   SSR_NO_CACHE_HEADERS,
   type CookieAdapter,
-  type CookieToSet,
 } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
+  noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
   type AdapterOptions,
@@ -155,39 +157,39 @@ export function createNuxtAuth(options: AdapterOptions): NuxtAuth {
   return {
     middleware: async (event) => {
       const request = await requestOf(event, resolved);
+      // Nitro sends the headers after the handler, so they are set as soon as the request turns
+      // out to carry user data: at once when it has a session cookie, else at the first write or
+      // mint (the handler runs after this middleware returns)
+      const policy = noStorePolicy(request, resolved, () => {
+        for (const [name, value] of Object.entries(SSR_NO_CACHE_HEADERS)) {
+          event.setHeader(name, value);
+        }
+      });
 
       const denied = csrfRejection(request, resolved);
       if (denied) {
-        return denied;
+        return policy.apply(denied);
       }
       // the routes run before the session is resumed (see sveltekit.ts)
       const routed = await handleRoute(request, resolved);
       if (routed) {
-        return routed;
+        return policy.apply(routed);
       }
 
       const requestCookies = createRequestCookieAdapter(request);
-      let wrote = false;
       const cookies: CookieAdapter = {
         getAll: () => requestCookies.getAll(),
         isSecure: requestCookies.isSecure,
-        setAll: (toSet: CookieToSet[]) => {
-          wrote = true;
+        setAll: (toSet) => {
           for (const c of toSet) {
             event.setCookie(c.name, c.value, nuxtOptions(c.options));
           }
         },
       };
 
-      const session = await resumeSession(cookies, request, resolved);
+      const session = await resumeSession(cookies, request, resolved, policy);
       event.context.pb = session.server;
       event.context.pbBrowserToken = session.browserToken;
-
-      if (wrote) {
-        for (const [name, value] of Object.entries(SSR_NO_CACHE_HEADERS)) {
-          event.setHeader(name, value);
-        }
-      }
       return undefined;
     },
   };

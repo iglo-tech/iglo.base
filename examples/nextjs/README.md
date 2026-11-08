@@ -8,13 +8,17 @@ realtime collection on a page whose browser client never sees the session token.
 What the pages show:
 
 - `/` shows the signed-in user's email, or `signed out`.
-- `/login` is the sign-in form. A wrong password comes back as `?error=1`.
+- `/login` is the sign-in form. A wrong password comes back as `?error=1`. Below it, `Sign in with <provider>` links to the OAuth2 redirect flow: the adapter's start route sends the browser to the provider, and its callback signs the user in and returns to `/`. The providers are the users collection's, so the link appears only when iglo.base has one configured.
 - `/protected` checks the session with iglo.base on every request, then redirects to `/login`.
 - `/live` subscribes to the `ssr_live` collection with a browser client and lists the ids of the
   records that arrive.
 - `/api/me` returns the signed-in user as JSON, or 401.
 - `POST /session/login` and `POST /logout` change the session. The adapter answers
   `/api/pb/renew`, `/api/pb/popup` and the OAuth2 routes itself.
+
+The request hook is `proxy.ts` (Next.js 16). A proxy runs on the Node.js runtime, which the
+adapter requires: the Edge runtime is not supported. On Next.js 15.5 the same code is a
+`middleware.ts` that exports `runtime = "nodejs"`.
 
 ## Run it
 

@@ -4,23 +4,23 @@
 // The SvelteKit adapter: a `handle` hook. The session is resumed from `event.cookies`, the server
 // client and the browser-token function go on `event.locals`, and the adapter's routes and the
 // CSRF guard run before the app's `resolve`. Cookie writes go to `event.cookies.set`, which
-// SvelteKit applies to the response `resolve` returns. Those writes also set the no-cache headers
-// on that response, when it does not carry them already (`event.setHeaders` is not used, since it
-// is missing on some SvelteKit versions).
+// SvelteKit applies to the response `resolve` returns. The no-cache headers go on the response
+// `resolve` returns whenever the request carries user data (a session cookie, a write, a minted
+// browser token). They are set on the response itself, since `event.setHeaders` is missing on some
+// SvelteKit versions.
 //
 // Typed structurally: nothing here imports `@sveltejs/kit`.
 import type { SerializeOptions } from "@sdk/tools/cookie";
 import {
   createRequestCookieAdapter,
-  SSR_NO_CACHE_HEADERS,
   type BrowserToken,
   type CookieAdapter,
-  type CookieToSet,
   type ServerClient,
 } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
+  noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
   type AdapterOptions,
@@ -94,20 +94,6 @@ function svelteKitOptions(options: SerializeOptions | undefined) {
   };
 }
 
-/** Sets the no-cache headers the response does not carry yet. A response with locked headers is sent as it is. */
-function withNoCacheHeaders(response: Response): Response {
-  for (const [name, value] of Object.entries(SSR_NO_CACHE_HEADERS)) {
-    try {
-      if (!response.headers.has(name)) {
-        response.headers.set(name, value);
-      }
-    } catch {
-      // immutable headers: the response goes out without them
-    }
-  }
-  return response;
-}
-
 /**
  * Creates the SvelteKit auth. Throws a `TypeError` without a superuser client and without
  * `readableCookie: true` (see `resolveAdapterOptions`).
@@ -118,39 +104,38 @@ export function createSvelteKitAuth(options: AdapterOptions): SvelteKitAuth {
   return {
     handle: async ({ event, resolve }) => {
       const request = event.request;
+      // the no-cache headers go on every response of this request once it carries user data
+      const policy = noStorePolicy(request, resolved);
 
       const denied = csrfRejection(request, resolved);
       if (denied) {
-        return denied;
+        return policy.apply(denied);
       }
       // the routes run before the session is resumed: they make their own client, so a
       // request answered by a route is not refreshed twice
       const routed = await handleRoute(request, resolved);
       if (routed) {
-        return routed;
+        return policy.apply(routed);
       }
 
-      const requestCookies = createRequestCookieAdapter(request);
-      let wrote = false;
       const cookies: CookieAdapter = {
         getAll: () => event.cookies.getAll(),
-        isSecure: requestCookies.isSecure,
-        setAll: (toSet: CookieToSet[]) => {
-          wrote = true;
+        isSecure: createRequestCookieAdapter(request).isSecure,
+        setAll: (toSet) => {
           for (const c of toSet) {
             event.cookies.set(c.name, c.value, svelteKitOptions(c.options));
           }
         },
       };
 
-      const session = await resumeSession(cookies, request, resolved);
+      const session = await resumeSession(cookies, request, resolved, policy);
       Object.assign(event.locals, {
         pb: session.server,
         pbBrowserToken: session.browserToken,
       } satisfies SvelteKitLocals);
 
-      const response = await resolve(event);
-      return wrote ? withNoCacheHeaders(response) : response;
+      // read after resolve: the app's loads and actions may write cookies or mint a token
+      return policy.apply(await resolve(event));
     },
   };
 }
