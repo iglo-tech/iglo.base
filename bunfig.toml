@@ -3,4 +3,4 @@
 [test]
 # one temporary root per run, deleted on exit (test/support/temp-root.ts)
 preload = ["./test/support/temp-root.ts"]
-pathIgnorePatterns = ["test/differential/**", "test/browser/**", ".upstream/**"]
+pathIgnorePatterns = ["test/differential/**", "test/browser/**", "test/examples/**", ".upstream/**"]

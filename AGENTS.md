@@ -76,6 +76,7 @@ bun run sdk:build               # sdk/scripts/build.ts: tsc + Bun.build of sdk/ 
 bun run sdk:check-package       # npm pack, install into a temporary project, import with Node and Bun, bun build, tsc consumer checks
 bun run test:reference          # sdk:build and upstream:prepare, then the smoke tests in test/differential/
 bun run test:browser            # dashboard browser tests in test/browser/ (needs agent-browser; not part of check)
+bun run test:examples         # example apps in examples/ against both servers, one at a time (needs agent-browser; not part of check)
 ```
 
 `bun run check` runs lint, format:check, typecheck (which builds the SDK first and checks `sdk/` too), test (which includes the SDK's unit tests in `sdk/test`, upstream's ported to `bun test` against a fetch mock), build (server executable and SDK) and `sdk:check-package` after install; `bun test` skips `test/differential/` (see `bunfig.toml`). `bun run test:reference` needs `git`, `unzip` and `tar`; Windows and macOS are out of scope (D18, D35). `bun run hooks:install` sets `core.hooksPath` to `.githooks`, whose pre-commit hook formats staged files with oxfmt. Markdown is not formatted by oxfmt.
