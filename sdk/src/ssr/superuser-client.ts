@@ -44,7 +44,10 @@ export class SuperuserClient extends Client {
       };
       this.authStore.save(this._options.token, initialRecord);
 
-      if (threshold > 0) {
+      // A non-refreshable token (an impersonate API key) cannot be renewed: the server answers
+      // its auth-refresh with 403. No refresh is registered, so its requests carry it until it
+      // expires and then fail with the server's 401.
+      if (threshold > 0 && payload.refreshable !== false) {
         registerAutoRefresh(
           this,
           threshold,

@@ -30,6 +30,13 @@ import { noStoreFetch } from "@sdk/ssr/no-store-fetch";
 const CLOCK_SKEW_SEC = 60;
 
 /**
+ * Only the responses that create or renew the caller's own session teach a collection's
+ * token lifetime. Other endpoints can return tokens with other lifetimes (`files/token`
+ * returns a 180-second file token; `impersonate` returns a non-refreshable one).
+ */
+const SESSION_RESPONSE_PATH = /\/auth-(?:with-password|with-otp|with-oauth2|refresh)$/;
+
+/**
  * What one `auth-refresh` flight found. It is shared by every request that joined the
  * flight; each request applies it to its own client, auth store and cookies.
  */
@@ -132,7 +139,7 @@ export class ServerClient extends Client {
       seen.date = response.headers.get("date");
     });
     const data = await super.send<T>(path, options);
-    this._observeResponse(seen.date, data);
+    this._observeResponse(path, seen.date, data);
     return data;
   }
 
@@ -348,8 +355,11 @@ export class ServerClient extends Client {
     }
   }
 
-  /** Learns the server's clock and the collection's token lifetime from one response. */
-  private _observeResponse(dateHeader: string | null | undefined, data: Loose): void {
+  /**
+   * Learns the server's clock from every response, and the collection's token lifetime from
+   * a session response (see `SESSION_RESPONSE_PATH`).
+   */
+  private _observeResponse(path: string, dateHeader: string | null | undefined, data: Loose): void {
     const serverMs = dateHeader ? Date.parse(dateHeader) : NaN;
     if (Number.isNaN(serverMs)) {
       return;
@@ -361,15 +371,19 @@ export class ServerClient extends Client {
 
     const body = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
     const token = typeof body["token"] === "string" ? body["token"] : "";
-    if (!token) {
+    if (!token || !SESSION_RESPONSE_PATH.test(path)) {
       return;
     }
     const payload = getTokenPayload(token);
-    // Impersonate tokens are not refreshable and do not describe the collection's lifetime
-    if (!payload.exp || payload.refreshable === false) {
+    // Only a session token of an auth collection, for the record it names, describes the
+    // collection's lifetime. Impersonate tokens are not refreshable (refreshable: false).
+    if (payload.type !== "auth" || !payload.exp || payload.refreshable === false) {
       return;
     }
     const record = body["record"] as AuthRecord;
+    if (!record || record.id !== payload.id) {
+      return;
+    }
     const lifetime = payload.exp - Math.floor(serverMs / 1000);
     const key = collectionKey(payload, record);
     if (lifetime > 0 && key) {

@@ -144,6 +144,64 @@ describe("SSR server core: round-1 regressions", () => {
       }
     });
 
+    test("a file token from files.getToken does not teach the collection lifetime", async () => {
+      // ttl covers the whole scenario, so the half-life rule alone decides the last load
+      const cache = createSessionCache({ ttl: 4 * 3600 * 1000 });
+      const base = NOW;
+      const token = serverToken({ exp: base + 3600, id: "u_ft", collectionId: "col_ft" });
+      const fileToken = dummyJWT({
+        exp: base + 180,
+        id: "u_ft",
+        collectionId: "col_ft",
+        type: "file",
+      });
+      let refreshCalls = 0;
+
+      fetchMock.on({
+        method: "POST",
+        url: `${API}/api/collections/col_ft/auth-refresh`,
+        replyCode: 200,
+        replyHeaders: { Date: new Date(base * 1000).toUTCString() },
+        replyBody: () => {
+          refreshCalls++;
+          return { token, record: { id: "u_ft", collectionId: "col_ft" } };
+        },
+      });
+      fetchMock.on({
+        method: "POST",
+        url: `${API}/api/files/token`,
+        replyCode: 200,
+        replyHeaders: { Date: new Date(base * 1000).toUTCString() },
+        replyBody: { token: fileToken },
+      });
+
+      const { adapter } = jar([{ name: "pb_auth", value: sessionValue(token) }]);
+      const pb = await createServerClient({
+        url: API,
+        origin: APP,
+        cookies: adapter,
+        sessionCache: cache,
+        clock: () => base * 1000,
+      });
+      expect(refreshCalls).toBe(1);
+      expect(cache.getCollectionLifetime("col_ft")).toBe(3600);
+
+      // A file token (180 s) is not a session response: the lifetime stays 3600 s
+      expect(await pb.files.getToken()).toBe(fileToken);
+      expect(cache.getCollectionLifetime("col_ft")).toBe(3600);
+
+      // 3000 s later 600 s remain, under half of 3600 s: the check refreshes. With a lifetime
+      // of 180 s the session would look fresh and no request would be made.
+      await createServerClient({
+        url: API,
+        origin: APP,
+        cookies: adapter,
+        sessionCache: cache,
+        clock: () => (base + 3000) * 1000,
+      });
+      expect(refreshCalls).toBe(2);
+    });
+
     test("a learned lifetime is kept when the app replaces pb.afterSend", async () => {
       const cache = createSessionCache();
       const base = NOW;
@@ -559,6 +617,63 @@ describe("SSR server core: round-1 regressions", () => {
       expect(pb.authStore.isValid).toBe(true);
     });
 
+    test("before the first response the clock offset is 0: 60 s of skew is allowed, more is not", async () => {
+      const serverNow = NOW;
+      let refreshCalls = 0;
+      fetchMock.on({
+        method: "POST",
+        url: `${API}/api/collections/users/auth-refresh`,
+        replyCode: 200,
+        replyHeaders: { Date: new Date(serverNow * 1000).toUTCString() },
+        replyBody: () => {
+          refreshCalls++;
+          return {
+            token: serverToken({ exp: serverNow + 86_400, id: "u_nooff" }),
+            record: { id: "u_nooff", collectionName: "users" },
+          };
+        },
+      });
+
+      // A fresh cache: no response has been seen, so no offset is known and it counts as 0.
+      // 30 s past exp is inside the 60 s allowance: the session is checked with the server.
+      const inside = createSessionCache();
+      const pbInside = await createServerClient({
+        url: API,
+        origin: APP,
+        cookies: {
+          getAll: () => [
+            {
+              name: "pb_auth",
+              value: sessionValue(serverToken({ exp: serverNow - 30, id: "u_nooff" })),
+            },
+          ],
+        },
+        sessionCache: inside,
+        clock: () => serverNow * 1000,
+      });
+      expect(refreshCalls).toBe(1);
+      expect(pbInside.authStore.isValid).toBe(true);
+
+      // 100 s past exp is beyond the allowance: dropped without a request
+      const beyond = createSessionCache();
+      const pbBeyond = await createServerClient({
+        url: API,
+        origin: APP,
+        cookies: {
+          getAll: () => [
+            {
+              name: "pb_auth",
+              value: sessionValue(serverToken({ exp: serverNow - 100, id: "u_nooff" })),
+            },
+          ],
+        },
+        sessionCache: beyond,
+        clock: () => serverNow * 1000,
+      });
+      expect(refreshCalls).toBe(1);
+      expect(pbBeyond.authStore.isValid).toBe(false);
+    });
+
     test("an app clock behind the server drops a token the server considers expired", async () => {
       const serverNow = NOW;
       const cache = createSessionCache();
@@ -719,6 +834,50 @@ describe("SSR server core: round-1 regressions", () => {
       expect(refreshCalls).toBe(1);
       await superuser.collection("users").getList(1, 1);
       expect(refreshCalls).toBe(2);
+    });
+
+    test("a non-refreshable token (impersonate API key) is never sent to auth-refresh", async () => {
+      let refreshCalls = 0;
+      let listCalls = 0;
+      const nowSec = Math.floor(Date.now() / 1000);
+      fetchMock.on({
+        method: "POST",
+        url: `${API}/api/collections/_superusers/auth-refresh`,
+        replyCode: 403,
+        replyBody: () => {
+          refreshCalls++;
+          return { code: 403, message: "Forbidden." };
+        },
+      });
+      fetchMock.on({
+        method: "GET",
+        url: `${API}/api/collections/users/records`,
+        replyCode: 200,
+        replyBody: () => {
+          listCalls++;
+          return { page: 1, perPage: 1, totalItems: 0, totalPages: 0, items: [] };
+        },
+      });
+
+      // Expires within the threshold: a refreshable token would be renewed before each request
+      const token = dummyJWT({
+        exp: nowSec + 200,
+        id: "su_imp",
+        collectionId: "_superusers",
+        type: "auth",
+        refreshable: false,
+      });
+      const superuser = await createSuperuserClient({
+        url: API,
+        token,
+        autoRefreshThreshold: 300,
+      });
+      await superuser.collection("users").getList(1, 1);
+      await superuser.collection("users").getList(1, 1);
+
+      expect(refreshCalls).toBe(0);
+      expect(listCalls).toBe(2);
+      expect(superuser.authStore.token).toBe(token);
     });
   });
 });

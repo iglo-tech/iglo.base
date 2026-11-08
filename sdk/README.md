@@ -422,7 +422,7 @@ To accomplish this, the SDK provides 2 function hooks:
 - `createServerClient`: a `Client` per request, resumed from the session cookie. Requests are sent with `cache: "no-store"`.
 - `createSessionCache`: one in-memory cache per process. It skips the session check for recently checked sessions and shares one refresh between parallel requests.
 - `createRequestCookieAdapter`: the cookie adapter for Web `Request`/`Response` handlers.
-- `createSuperuserClient`: a long-lived superuser client. `impersonate(collection, id, duration)` mints a short token (15 minutes by default) for page JavaScript and realtime.
+- `createSuperuserClient`: a long-lived superuser client. `impersonate(collection, id, duration)` mints a short token (15 minutes by default) for page JavaScript and realtime. A client built from a non-refreshable token (an `impersonate` API key) does not refresh it; its requests fail once it expires.
 
 `iglo.base/ssr` is server-only. A browser bundle that imports its named exports fails at build time; a namespace import (`import * as ssr`) throws when it loads.
 
@@ -477,8 +477,8 @@ The session cookie is `__Host-pb_auth` (`Secure`, `Path=/`, no `Domain`, `HttpOn
 
 #### Token Lifetime & Single-Flight Refresh
 
-- The SDK learns each auth collection's token lifetime from the responses it sees (`exp` minus the response `Date`). It never assumes a fixed lifetime. The first check of a collection refreshes once to learn it.
-- A session is refreshed when less than half of its lifetime remains.
+- The SDK learns each auth collection's token lifetime from the sign-in and refresh responses it sees (`exp` minus the response `Date`). It never assumes a fixed lifetime. The first check of a collection refreshes once to learn it.
+- A session check uses the cached record, with no request, only when the session was checked within the cache `ttl` (default 5 minutes), the collection's lifetime is known, and at least half of the lifetime remains. Otherwise it calls `auth-refresh`: on the first check after the `ttl`, and whenever less than half of the lifetime remains.
 - Parallel requests for one session share one refresh. A 401, 403 or 404 signs out every waiting request. A network error or 5xx keeps the session.
 
 Below you could find legacy low-level cookie store examples:

@@ -267,8 +267,16 @@ describe("SSR Core", () => {
         refreshable: true,
       });
 
+      // A cookie jar: each client reads what the previous one wrote
+      let cookieValue = JSON.stringify({ token: initialToken });
       const cookies: CookieAdapter = {
-        getAll: () => [{ name: "pb_auth", value: JSON.stringify({ token: initialToken }) }],
+        getAll: () => [{ name: "pb_auth", value: cookieValue }],
+        setAll: (c) => {
+          const written = c.find((item) => item.name === "pb_auth");
+          if (written) {
+            cookieValue = written.value;
+          }
+        },
       };
 
       fetchMock.on({

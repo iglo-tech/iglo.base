@@ -204,7 +204,9 @@ describe("SSR differential", () => {
       let mockClock = Date.now();
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
-      const cookieVal = [
+      // The browser's cookie jar. The warm-up refresh issues a new token and its cookie write
+      // must reach the next request, as it would in a browser; the next client reads the jar.
+      let cookieVal: Cookie[] = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: auth.token, record: auth.record }),
@@ -215,7 +217,12 @@ describe("SSR differential", () => {
       await createServerClient({
         url: env.url,
         origin: "http://localhost:3000",
-        cookies: { getAll: () => cookieVal },
+        cookies: {
+          getAll: () => cookieVal,
+          setAll: (c: CookieToSet[]) => {
+            cookieVal = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
+          },
+        },
         sessionCache,
         clock: () => mockClock,
       });
