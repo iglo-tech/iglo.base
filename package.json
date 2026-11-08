@@ -19,6 +19,7 @@
     "upstream:prepare": "bun scripts/upstream/prepare.ts",
     "test:reference": "bun run sdk:build && bun run upstream:prepare && bun test --timeout 120000 --path-ignore-patterns \"\" test/differential",
     "test:browser": "bun test --timeout 120000 --path-ignore-patterns \"\" test/browser",
+    "test:examples": "bun run sdk:build && bun run upstream:prepare && bun test --timeout 900000 --path-ignore-patterns \"\" test/examples",
     "test:roundtrip:large": "bun run upstream:prepare && bun --preload ./test/differential/fuzz/temp-root.ts test/differential/roundtrip/large.ts",
     "fuzz:filters": "bun run upstream:prepare && bun --preload ./test/differential/fuzz/temp-root.ts test/differential/fuzz/main.ts",
     "sdk:build": "bun sdk/scripts/build.ts",

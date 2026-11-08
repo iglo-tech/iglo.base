@@ -17,3 +17,10 @@
 # SDK build output (bun run sdk:build).
 /sdk/dist/
 /sdk/node_modules/
+
+# Example apps (examples/, bun run test:examples): dependencies and build output.
+/examples/*/node_modules/
+/examples/*/.next/
+/examples/*/.svelte-kit/
+/examples/*/build/
+/examples/*/next-env.d.ts

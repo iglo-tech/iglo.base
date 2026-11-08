@@ -13,8 +13,30 @@ const sdkRoot = join(import.meta.dirname, "..");
 const consumerSources = join(import.meta.dirname, "consumer");
 const tsc = join(sdkRoot, "..", "node_modules", "typescript", "lib", "tsc.js");
 
+// The framework adapters (docs/design/13-ssr.md): each subpath and its factory.
+const FRAMEWORK_ADAPTERS = [
+  { name: "next", factory: "createNextAuth" },
+  { name: "sveltekit", factory: "createSvelteKitAuth" },
+  { name: "nuxt", factory: "createNuxtAuth" },
+  { name: "astro", factory: "createAstroAuth" },
+  { name: "react-router", factory: "createReactRouterAuth" },
+] as const;
+
 const tmp = await mkdtemp(join(tmpdir(), "iglo-sdk-consumer-"));
 let failed = false;
+
+/**
+ * The browser condition of `iglo.base/ssr` and of its adapter subpaths maps to a stub that exports
+ * nothing (docs/design/13-ssr.md, "Clients"). Bundling a named import of it fails with bun's "No
+ * matching export" error for that name. True only for that failure: any other build error is not
+ * the expected one.
+ */
+function missingBrowserExport(output: string, name: string): boolean {
+  const pattern = new RegExp(
+    `No matching export in "[^"]*ssr-browser\\.es\\.mjs" for import "${name}"`,
+  );
+  return pattern.test(output);
+}
 
 function run(name: string, cmd: string[]): void {
   const result = Bun.spawnSync(cmd, { cwd: tmp, stdout: "pipe", stderr: "pipe" });
@@ -90,6 +112,52 @@ try {
   // 4. Node ESM import and Bun import
   for (const runtime of ["node", "bun"]) {
     run(`${runtime} import (ESM)`, [runtime, "esm.mjs"]);
+    run(`${runtime} import (framework adapters)`, [runtime, "adapters.mjs"]);
+  }
+
+  // Each framework adapter subpath: a browser-condition bundle fails at build time, a node
+  // bundle succeeds (the adapters are server-only, docs/design/13-ssr.md "Framework adapters").
+  for (const adapter of FRAMEWORK_ADAPTERS) {
+    const entry = `adapter-${adapter.name}-entry.js`;
+    await writeFile(
+      join(tmp, entry),
+      `import { ${adapter.factory} } from "iglo.base/ssr/${adapter.name}";\nconsole.log(typeof ${adapter.factory});\n`,
+    );
+    const browserAdapter = Bun.spawnSync(
+      ["bun", "build", entry, "--outfile", `browser-${adapter.name}-out.js`, "--target", "browser"],
+      { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+    );
+    const browserOutput = browserAdapter.stdout.toString() + browserAdapter.stderr.toString();
+    if (browserAdapter.exitCode !== 0 && missingBrowserExport(browserOutput, adapter.factory)) {
+      console.log(
+        `ok   browser bundle of iglo.base/ssr/${adapter.name} fails: ${adapter.factory} is not exported`,
+      );
+    } else {
+      failed = true;
+      console.log(
+        `FAIL browser bundle of iglo.base/ssr/${adapter.name}: expected a build error for ${adapter.factory}, got exit ${browserAdapter.exitCode}\n${browserOutput}`,
+      );
+    }
+    const nodeAdapter = Bun.spawnSync(
+      ["bun", "build", entry, "--outfile", `node-${adapter.name}-out.js`, "--target", "node"],
+      { cwd: tmp, stdout: "pipe", stderr: "pipe" },
+    );
+    const nodeAdapterRun =
+      nodeAdapter.exitCode === 0
+        ? Bun.spawnSync(["node", `node-${adapter.name}-out.js`], {
+            cwd: tmp,
+            stdout: "pipe",
+            stderr: "pipe",
+          })
+        : undefined;
+    if (nodeAdapterRun?.exitCode === 0) {
+      console.log(`ok   node bundle and run of iglo.base/ssr/${adapter.name}`);
+    } else {
+      failed = true;
+      console.log(
+        `FAIL node bundle of iglo.base/ssr/${adapter.name}: ${nodeAdapter.stderr.toString()}${nodeAdapterRun?.stderr.toString() ?? ""}`,
+      );
+    }
   }
 
   // 5. bun build of import PocketBase from "iglo.base"
@@ -138,11 +206,19 @@ try {
     ],
     { cwd: tmp, stdout: "pipe", stderr: "pipe" },
   );
-  if (browserBuild.exitCode !== 0) {
-    console.log("ok   bundler build with browser condition failed as expected");
+  const browserBuildOutput = browserBuild.stdout.toString() + browserBuild.stderr.toString();
+  if (
+    browserBuild.exitCode !== 0 &&
+    missingBrowserExport(browserBuildOutput, "createServerClient")
+  ) {
+    console.log(
+      "ok   bundler build of iglo.base/ssr with browser condition fails: createServerClient is not exported",
+    );
   } else {
     failed = true;
-    console.log("FAIL bundler build with browser condition should have failed at build time");
+    console.log(
+      `FAIL bundler build of iglo.base/ssr with browser condition: expected a build error for createServerClient, got exit ${browserBuild.exitCode}\n${browserBuildOutput}`,
+    );
   }
 
   // The browser subpath bundles for the browser target (it is the browser-safe entry)
@@ -217,6 +293,7 @@ try {
     "--moduleResolution",
     "bundler",
     "bundler-types.ts",
+    "bundler-adapters.ts",
     "esm-types.mts",
   ]);
 } finally {
