@@ -254,16 +254,15 @@ async function drive(app: RunningApp, pb: PocketBase, readable: boolean): Promis
   expect(crossSite.status).toBe(403);
   expect((await exchange(`${app.url}/protected`, { jar })).status).toBe(200);
 
-  // revalidation: the password changes on the server. The home page is served from the session
-  // cache (no request to iglo.base), so it still shows the session until the next check
+  // revalidation: the password changes on the server. The protected page checks with iglo.base,
+  // and the revoked session ends. (Whether the home page answers from the session cache before
+  // that check depends on token timing, so the test does not assert it: the unit tests cover the
+  // cache with an injected clock.)
   await changePassword(pb, CHANGED_PASSWORD);
-  const cached = await exchange(`${app.url}/`, { jar });
-  expect(cached.body).toContain(`signed in as ${USER.email}`);
-  // the protected page checks with iglo.base: the revoked session ends
   const revoked = await exchange(`${app.url}/protected`, { jar });
   expect(REDIRECTS).toContain(revoked.status);
   expect(revoked.location).toStartWith("/login");
-  // the next read of the home page, served by the same cache, is signed out
+  // the next read of the home page is signed out
   const afterCheck = await exchange(`${app.url}/`, { jar });
   expect(afterCheck.body).toContain("signed out");
   // the API route answers for the revoked session too (a page cannot always clear its cookie:
