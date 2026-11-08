@@ -15,7 +15,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 
-| P.13d | fix (Haiku) | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 3 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
+| P.13d | review (Opus) | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 4 | SSR browser client and realtime; [brief](briefs/P.13d.md), design `docs/design/13-ssr.md` (D38). P.13e–f follow |
 
 ## Done
 
@@ -158,6 +158,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 ## For owner review
 
+- 2026-11-08 (P.13d, decided by agents, for owner review): the SDK's `RealtimeService` (copied from upstream's JS SDK) gets a connection generation. Besides the SSR fixes, this changes one plain-client path: a new connection that drops during its first subscription POST now retries with backoff, where upstream's SDK stopped for good. It is in `sdk/CHANGELOG.md`. The renew route signs the page out only on impersonate 404; a refused superuser credential answers 503 and keeps the session.
 - 2026-11-08 (P.13c round 1, decided by agents, for owner review): on https the SSR client reads only `__Host-` cookie names (`__Host-pb_auth`, `__Host-pb_oauth2`). It no longer falls back to the plain name, which a sibling subdomain could plant (login CSRF). The SSR client is unreleased, so no older cookies are affected. Providers that call back with a form POST (Apple) are refused by `startOAuth2` and use the popup flow.
 - 2026-11-05 (owner direction): M7.2 user docs and M6.4 dashboard tests move after the MVP (P.4: docs on iglo.tech, e.g. iglo.tech/iglo.base/docs; P.5: checklist and automated browser tests). The 09-port-plan.md outdated lines are the lead's to fix.
 
