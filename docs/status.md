@@ -14,7 +14,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.2 | fixer round 1 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 1 | Brief `docs/briefs/S.2.md` (#77) |
+| S.2 | stopped by the owner (2026-11-09) before round 1 fixes | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 1 | Next: a fixer for the three blocking findings of the round-1 review (`users` defaults, implied auth indexes with ids, stdout logs in dev mode) plus two backlog items (`--dir` missing, narrower integer-name check); the fixer was cancelled before pushing. Then S.3–S.7. Restart only when the owner says so |
 
 
 
