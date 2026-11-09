@@ -113,6 +113,16 @@ Upstream's `serve example.com` and `--https` obtain Let's Encrypt certificates (
 
 A `.autocert_cache` directory written by upstream is left untouched and stays excluded from backups, as upstream excludes it.
 
+## Added: schema as code
+
+Decided by the owner on 2026-11-06 ([D40](10-decisions.md#d40-schema-as-code)). Built on the `develop` branch in tasks S.2–S.6 and released when all are merged. These go beyond PocketBase; none of them changes the data format, and without `--schema` the server behaves as upstream's.
+
+- `iglo.schema.json`, the schema of every collection, keyed by name, with a published JSON Schema;
+- `schema pull` (database to file), `schema plan` (what an apply would do, rolled back) and `schema types` (TypeScript types for the `iglo.base` SDK);
+- `serve --schema <file>`: the file and pending migrations applied at startup in one transaction, after a backup, with a final check of every record; the file holds no secrets (token secrets and OAuth2 providers stay in the database);
+- TypeScript data migrations with declared renames, next to the JavaScript migrations above;
+- `serve --mode dev|prod`: write-back of dashboard changes to the file in development; collections and settings locked in production (a deliberate API difference, D41).
+
 ## Kept: everything else
 
 **v1** ships in the first usable release (1.0). Nothing is dropped beyond the extension surface, the `update` command and automatic HTTPS.
