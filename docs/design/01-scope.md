@@ -119,7 +119,7 @@ Decided by the owner on 2026-11-06 ([D40](10-decisions.md#d40-schema-as-code)). 
 
 - `iglo.schema.json`, the schema of every collection, keyed by name, with a published JSON Schema;
 - `schema pull` (database to file), `schema plan` (what an apply would do, rolled back) and `schema types` (TypeScript types for the `iglo.base` SDK);
-- `serve --schema <file>`: the file and pending migrations applied at startup in one transaction, with a backup and a final check of every record;
+- `serve --schema <file>`: the file and pending migrations applied at startup in one transaction, after a backup, with a final check of every record; the file holds no secrets (token secrets and OAuth2 providers stay in the database);
 - TypeScript data migrations with declared renames, next to the JavaScript migrations above;
 - `serve --mode dev|prod`: write-back of dashboard changes to the file in development; collections and settings locked in production (a deliberate API difference, D41).
 
