@@ -14,7 +14,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.2 | review round 1 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 1 | Brief `docs/briefs/S.2.md` (#77) |
+| S.2 | fixer round 1 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 1 | Brief `docs/briefs/S.2.md` (#77) |
 
 
 
