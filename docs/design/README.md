@@ -17,6 +17,7 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 | 11 | [Open questions](11-open-questions.md) | What still needs the owner |
 | 12 | [Work plan](12-work-plan.md) | How the port is split into tasks for agents, briefed, reviewed and merged |
 | 13 | [SSR](13-ssr.md) | Server-side rendering with the SDK: clients, session cookie and cache, browser tokens, OAuth2, CSRF, adapters |
+| 14 | [Schema as code](14-schema.md) | The schema file: the description, the reader and the writer, defaults and implied fields, the JSON Schema |
 
 ## Decisions at a glance
 

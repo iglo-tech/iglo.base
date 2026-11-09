@@ -17,6 +17,7 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@schema/*": ["./schema/*"],
       "@test/*": ["./test/*"],
       "@dist/*": ["./dist/*"],
       "@sdk/*": ["./sdk/src/*"],

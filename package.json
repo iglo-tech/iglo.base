@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@types/bun": "1.4.4",
+    "ajv": "8.17.1",
     "iglo.base": "workspace:*",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",

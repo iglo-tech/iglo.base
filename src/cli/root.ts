@@ -17,6 +17,7 @@ import { argsMinusFirst, FlagError, parseFlags, stripFlags, type FlagSpec } from
 import { helpText, usageText, type CommandHelp } from "@/cli/help";
 import { migrateShort, runMigrateCommand } from "@/cli/migrate";
 import { findRemovedFlag, removedCommandMessage, removedFlagMessage } from "@/cli/removed";
+import { runSchemaCommand, schemaShort } from "@/cli/schema";
 import { runServeCommand, serveFlags, serveShort, serveUse } from "@/cli/serve";
 import { CommandError, runSuperuserCommand, superuserShort } from "@/cli/superuser";
 import { PanicError, registerMigrations } from "@/migrations/jsvm";
@@ -85,6 +86,7 @@ class CliError extends Error {
 
 const subcommands = [
   { name: "migrate", short: migrateShort },
+  { name: "schema", short: schemaShort },
   { name: "serve", short: serveShort },
   { name: "superuser", short: superuserShort },
 ];
@@ -302,6 +304,11 @@ async function execute(ctx: CliContext): Promise<number> {
       return 0;
     }
     await runServeCommand(resolve(parsed.values), parsed.values, parsed.args, ctx, migrations);
+    return 0;
+  }
+
+  if (commandName === "schema") {
+    await runSchemaCommand(resolve, persistent, ctx, name, version);
     return 0;
   }
 
