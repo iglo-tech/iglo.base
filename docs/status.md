@@ -14,7 +14,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.1 | lead writes D40 | `task/S.1-schema-decision` → `develop` | 1 | Schema-as-code track on `develop` (owner, 2026-11-09); issues #76–#83 updated to the current state |
+| S.2 | worker | `task/S.2-…` → `develop` | – | Brief `docs/briefs/S.2.md` (#77) |
 
 
 
@@ -22,6 +22,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| S.1 | [#96](https://github.com/iglo-tech/iglo.base/pull/96) → `develop` | 2026-11-09 (`aaedc5c`) | Three review rounds (Opus; lead wrote D40 and the fixes, docs only; round 3 applied as specified per the three-round rule). D40 schema as code: backup before the transaction, no secrets in the file, apply order (JS migrations, renames, views keep ids), `--mode` required with `--schema`, `@schema/` migration rows |
 | P.13f | [#95](https://github.com/iglo-tech/iglo.base/pull/95), site [iglo.tech#2](https://github.com/iglo-tech/iglo.tech/pull/2) | 2026-11-08 (`578b14d`, site `ca8fac3`) | Two review rounds (Opus; Haiku worker and fixer). `docs/ssr.md` user guide (every "Why not JS SSR" problem, one section per framework, secrets read at run time, OAuth2 redirect vs popup URLs, session cache sizing, caching, security, troubleshooting), short SDK README section, site entry `/docs/iglo-base/ssr/` (not deployed; hosting is the owner's). Samples run in throwaway apps (Astro, Nuxt, React Router, Next.js, Bun). Check 18,789/0 |
 | P.13e | [#94](https://github.com/iglo-tech/iglo.base/pull/94) | 2026-11-08 (`8dc82bd`) | Three review rounds (Opus; Haiku worker and fixers), then the lead verified the agreed round-3 docs fix and merged under the three-round rule. Adapters `iglo.base/ssr/{next,sveltekit,nuxt,astro,react-router}` on a shared core (no-cache on every session or token response, CSRF, routes, Node-only Next proxy, RR `sessionHeaders`), Next.js and SvelteKit examples with their own lockfiles, `bun run test:examples` (both servers, 10/10). Check 18,789/0; test:reference 4,432/0 |
 | P.13d | [#93](https://github.com/iglo-tech/iglo.base/pull/93) | 2026-11-08 (`8289dea`) | Four review rounds (Opus; Haiku worker and fixers). `mintBrowserToken`, `handleBrowserTokenRenew` (impersonate 404 → 401, else 503), `readableCookie` fallback, `createBrowserClient` on `iglo.base/ssr/browser` (renewal on server time, capped timers, single-flight per token, `handOff`), realtime resubmits for the same user and reconnects on a user change (connection generation). Check 18,660/0; test:reference 4,432/0 |
