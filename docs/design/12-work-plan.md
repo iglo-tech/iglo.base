@@ -212,6 +212,22 @@ M7.4 is the only task that touches production data. The owner approved an agent 
 | P.12 | SDK releases (D36): a workflow that publishes a new `sdk/package.json` version to npm with provenance (trusted publishing), tags `sdk-v<version>` and creates a GitHub release; `docs/releasing.md` | P.11 |
 | P.13 | SSR out of the box (owner direction 2026-11-07): iglo.base and its SDK must work with any JS SSR framework (SvelteKit, Next.js, Nuxt, Astro, Remix and others) without users solving the problems PocketBase's docs list under "Why not JS SSR" (https://pocketbase.io/docs/how-to-use/#why-not-js-ssr, discussion pocketbase#5313): per-request SDK instances and auth state without leaks, cookie auth, server-side and mixed OAuth2, realtime without proxying, request overhead. Approach (owner, 2026-11-07, from years of SSR apps): solve it in the SDK, with at most minor, optional server changes. Long-lived superuser-only clients stay in memory for privileged server work; every request gets its own user client, resumed from the request's cookie, validated and refreshed, and the refreshed cookie written back. Owner, 2026-11-07: the cookie keeps the user record next to the token, as `exportToCookie` does now (the record is small; pages read it without a request); no re-authentication per request: a validated session is kept in a bounded in-memory cache (a few MB is fine) and checked or refreshed against iglo.base only when its cache entry expires or the token nears expiry. Decided by the lead on 2026-11-07 (owner: "make up your mind"), for owner review: the session cookie is HttpOnly; the browser gets a 15-minute non-renewable token minted by the app server's superuser client through the existing `impersonate` endpoint, handed over at render and renewed through an adapter route (without superuser credentials the SDK falls back to a cookie readable by JavaScript); iglo.base gets no server change for SSR (it does not read auth cookies). First a design (`docs/design/13-ssr.md`) built on that approach: every listed problem and how the SDK covers it (session resume, validation, refresh and its races, cookie defaults, OAuth2, realtime from the browser, framework adapters), and any optional server change with its API-contract decision (owner decisions go to Needs you). Implementation tasks follow the design | P.11 |
 
+### Schema as code (branch `develop`)
+
+Owner direction 2026-11-09: the schema-as-code work ([#76](https://github.com/iglo-tech/iglo.base/issues/76)–[#81](https://github.com/iglo-tech/iglo.base/issues/81)) is built on the `develop` branch. Every task's PR targets `develop` and its worker branches from `origin/develop`. Nothing of it is released, and the iglo.tech site does not list its docs, until all six are merged; then `develop` merges to `main` and is released. The GitHub issue is each task's spec; the brief adds only what the issue leaves open. Decision record: D40.
+
+| ID | Task | Depends on |
+|---|---|---|
+| S.1 | Decision record D40 and the scope note ([#76](https://github.com/iglo-tech/iglo.base/issues/76)) | P.13 |
+| S.2 | Schema file format, its JSON Schema and `schema pull`; starts `docs/schema.md` ([#77](https://github.com/iglo-tech/iglo.base/issues/77)) | S.1 |
+| S.3 | `schema plan` and applying the schema at startup (`serve --schema`) ([#78](https://github.com/iglo-tech/iglo.base/issues/78)) | S.2 |
+| S.4 | TypeScript types from the schema (`schema types`), for the `iglo.base` SDK and its SSR clients ([#79](https://github.com/iglo-tech/iglo.base/issues/79)) | S.3 |
+| S.5 | Typed TypeScript migrations with declared renames ([#80](https://github.com/iglo-tech/iglo.base/issues/80)) | S.4 |
+| S.6 | Development and production modes: schema lock and write-back, D41 ([#81](https://github.com/iglo-tech/iglo.base/issues/81)) | S.5 |
+| S.7 | Merge `develop` into `main`, release the server and the SDK, list `docs/schema.md` on the iglo.tech site | S.6 |
+
+Read-only replicas ([#82](https://github.com/iglo-tech/iglo.base/issues/82) spike, then [#83](https://github.com/iglo-tech/iglo.base/issues/83), D42) are a separate track that starts after S.7; #83 needs S.6's production mode.
+
 ## Order
 
 ```text
