@@ -12,7 +12,9 @@
 // Missing options take their defaults (src/schema/defaults.ts). A system
 // collection the file leaves out is its default. The leading system fields
 // of a collection the file leaves out are placed first, in their default
-// order, as the writer assumes (src/schema/write.ts).
+// order, as the writer assumes (src/schema/write.ts). The indexes upstream
+// adds to an auth collection are not in the file and not in the description
+// (src/schema/implied.ts); the apply restores them.
 
 import { fieldFactory } from "@/fields/fields";
 import { SystemDynamicFieldNames } from "@/fields/field";
@@ -33,7 +35,7 @@ import {
   type SchemaObject,
   type SchemaValue,
 } from "@/schema/types";
-import { isIntegerLike, isPlainObject } from "@/schema/values";
+import { isArrayIndexName, isPlainObject } from "@/schema/values";
 
 // one problem in the file: where it is and what is wrong
 export interface SchemaIssue {
@@ -544,26 +546,26 @@ function unknownOptionMessage(key: string): string {
   return "unknown property";
 }
 
-// a collection name: word characters, not only digits (their order in an
-// object is not kept)
+// a collection name: word characters, and not an array index (a JSON object
+// orders those names first, so a file could not keep their order)
 function collectionNameProblem(name: string): string | undefined {
   if (!/^\w+$/.test(name)) {
     return "collection names are letters, digits and underscores";
   }
-  if (isIntegerLike(name)) {
-    return "collection names cannot be only digits: a schema file cannot keep their order";
+  if (isArrayIndexName(name)) {
+    return "collection names cannot be array indexes (whole numbers such as 0 or 12): a schema file cannot keep their order";
   }
   return undefined;
 }
 
-// a field name: word characters, 1 to 100 of them, not only digits and not
-// reserved
+// a field name: word characters, 1 to 100 of them, not an array index and
+// not reserved
 function fieldNameProblem(name: string): string | undefined {
   if (!/^\w+$/.test(name) || name.length > 100) {
     return "field names are 1 to 100 letters, digits and underscores";
   }
-  if (isIntegerLike(name)) {
-    return "field names cannot be only digits: a schema file cannot keep their order";
+  if (isArrayIndexName(name)) {
+    return "field names cannot be array indexes (whole numbers such as 0 or 12): a schema file cannot keep their order";
   }
   if (reservedFieldNames.has(name)) {
     return `${name} is a reserved name`;

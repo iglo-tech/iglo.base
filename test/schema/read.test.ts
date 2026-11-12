@@ -340,3 +340,74 @@ describe("reading an invalid file", () => {
     ).toEqual(['$.collections.posts: is missing "type" (one of base, auth, view)']);
   });
 });
+
+describe("names that are array indexes", () => {
+  test("refuses the whole numbers that JSON objects order first, for collections and fields", () => {
+    for (const name of ["0", "12", "2026", "4294967294"]) {
+      expect(errorsOf(file({ [name]: { type: "base" } })).map((issue) => issue.path)).toEqual([
+        `$.collections["${name}"]`,
+      ]);
+      expect(
+        errorsOf(file({ posts: { type: "base", fields: { [name]: { type: "text" } } } })).map(
+          (issue) => issue.path,
+        ),
+      ).toEqual([`$.collections.posts.fields["${name}"]`]);
+    }
+  });
+
+  test("accepts other digit names, and keeps the order of the fields", () => {
+    const schema = schemaOf(
+      file({
+        posts: {
+          type: "base",
+          fields: {
+            title: { type: "text" },
+            "01": { type: "text" },
+            "007": { type: "text" },
+            "4294967295": { type: "text" },
+          },
+        },
+        "01": { type: "base" },
+      }),
+    );
+    expect(collection(schema, "posts").fields.map((field) => field.name)).toEqual([
+      "id",
+      "title",
+      "01",
+      "007",
+      "4294967295",
+    ]);
+    expect(schema.collections.map((item) => item.name)).toContain("01");
+  });
+});
+
+describe("a block means the same schema under any collection name", () => {
+  test("users and another auth collection get the same defaults for the same block", () => {
+    const block = {
+      type: "auth",
+      fields: {
+        name: { type: "text" },
+        avatar: { type: "file" },
+        created: { type: "autodate" },
+        updated: { type: "autodate" },
+      },
+    };
+    const schema = schemaOf(file({ users: block, accounts: block }));
+    const { name: _usersName, ...users } = collection(schema, "users");
+    const { name: _accountsName, ...accounts } = collection(schema, "accounts");
+    expect(users).toEqual(accounts);
+    // the factory defaults of an auth collection, not the fresh install's users
+    expect(users.rules).toEqual({
+      list: null,
+      view: null,
+      create: null,
+      update: null,
+      delete: null,
+      auth: "",
+      manage: null,
+    });
+    // a plain file field has no limit; the fresh install's avatar limit is not a default
+    expect(users.fields.find((field) => field.name === "avatar")?.options.maxSelect).toBe(0);
+    expect(users.indexes).toEqual([]);
+  });
+});

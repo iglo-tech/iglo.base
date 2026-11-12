@@ -4,11 +4,12 @@
 // description in types.ts.
 //
 // The description keeps the API's option values and drops what the file
-// never holds: ids, timestamps, the OAuth2 providers (they hold secrets, D40)
-// and the view's derived fields are kept out of the file by the writer. A
-// relation's target id becomes the target's name.
+// never holds: ids, timestamps, the OAuth2 providers (they hold secrets, D40),
+// the implied indexes of an auth collection (src/schema/implied.ts) and the
+// view's derived fields. A relation's target id becomes the target's name.
 
 import type { Collection } from "@/collections/collection-model";
+import { explicitIndexes } from "@/schema/implied";
 import { isPlainObject } from "@/schema/values";
 import type { SchemaDescription } from "@/schema/types";
 import {
@@ -64,12 +65,13 @@ export function describeCollectionJSON(api: SchemaObject, nameOf: NameOf): Schem
     options.oauth2 = rest;
   }
 
+  const name = api.name as string;
   const collection: SchemaCollection = {
-    name: api.name as string,
+    name,
     type,
     system: api.system === true,
     rules,
-    indexes: (api.indexes as string[] | undefined) ?? [],
+    indexes: explicitIndexes((api.indexes as string[] | undefined) ?? [], { name, type }),
     fields:
       type === "view"
         ? []

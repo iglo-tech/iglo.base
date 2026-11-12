@@ -6,7 +6,7 @@
 // taken out, relation targets by name, view fields left out).
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import Ajv2020 from "ajv/dist/2020";
@@ -66,6 +66,23 @@ const ruleNames: Record<string, string> = {
   manageRule: "manage",
 };
 
+// The statements upstream adds to an auth collection by itself: a unique index
+// on tokenKey, and a unique index on email where email is not empty, under any
+// name (older databases name them after the collection id, see
+// src/schema/implied.ts). Quotes and spacing are taken out before the check.
+function impliedIndex(table: string, statement: string): boolean {
+  const text = statement.replace(/[`"]/g, "").replace(/\s+/g, " ").trim();
+  return (
+    text.startsWith("CREATE UNIQUE INDEX ") &&
+    (text.endsWith(` ON ${table} (tokenKey)`) ||
+      text.endsWith(` ON ${table} (email) WHERE email != ''`))
+  );
+}
+
+function explicitIndexes(item: ApiCollection): string[] {
+  return (item.indexes ?? []).filter((statement) => !impliedIndex(item.name, statement));
+}
+
 function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
   const names = new Map(apiCollections.map((item) => [item.id, item.name]));
   return apiCollections
@@ -118,7 +135,7 @@ function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
         type: item.type,
         system: item.system,
         rules,
-        indexes: item.indexes ?? [],
+        indexes: explicitIndexes(item),
         fields,
         options,
       } as unknown as SchemaCollection;
@@ -410,9 +427,16 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      expect(comparable(readBack(first.text).collections)).toEqual(
-        normalize((listed.json as { items: ApiCollection[] }).items),
-      );
+      const items = (listed.json as { items: ApiCollection[] }).items;
+      expect(comparable(readBack(first.text).collections)).toEqual(normalize(items));
+      // the file holds no id: not of a collection, not of a field, not in an index name
+      for (const item of items) {
+        expect(first.text).not.toContain(item.id);
+        for (const field of item.fields ?? []) {
+          expect(first.text).not.toContain(String(field.id));
+        }
+      }
+      expect(first.text).not.toMatch(/tokenKey_idx|email_idx|idx_tokenKey_|idx_email_/);
     });
 
     // move the title to the end of the user fields: the file follows
@@ -440,5 +464,111 @@ describe("schema command", () => {
     expect(names.indexOf("body")).toBeLessThan(names.indexOf("title"));
     expect(after.text).not.toBe(first.text);
     expect((await pull(dataDir)).text).toBe(after.text);
+  });
+
+  test("pull with --dev writes the schema alone to stdout, and the dev log to stderr", async () => {
+    const dataDir = copyOf(fixtureDir);
+    const result = await run(["--dir", dataDir, "schema", "pull", "--dev"]);
+    expect(result.exitCode).toBe(0);
+    // stdout parses as the file: no log line or SQL statement is in it
+    const file = JSON.parse(result.stdout) as object;
+    assertValid(file);
+    expect(result.stderr).toContain("SELECT");
+    expect(result.stderr).not.toContain("$schema");
+  });
+
+  test("a console.log in a migration file does not reach the stdout of a schema command", async () => {
+    const root = tempDir();
+    const migrations = join(root, "pb_migrations");
+    mkdirSync(migrations);
+    await Bun.write(
+      join(migrations, "1700000000_chatty.js"),
+      'console.log("migration output");\nmigrate(() => {}, () => {});\n',
+    );
+    const dataDir = copyOf(fixtureDir);
+    const json = await run(["--migrationsDir", migrations, "schema", "json-schema"]);
+    expect(json.exitCode).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual(schemaJSON);
+    expect(json.stderr).toContain("migration output");
+
+    const pulled = await run(["--dir", dataDir, "--migrationsDir", migrations, "schema", "pull"]);
+    expect(pulled.exitCode).toBe(0);
+    assertValid(JSON.parse(pulled.stdout) as object);
+    expect(pulled.stderr).toContain("migration output");
+  });
+
+  test("pull refuses a data directory that does not exist, and creates nothing", async () => {
+    const dataDir = join(tempDir(), "pb_data");
+    const result = await run(["--dir", dataDir, "schema", "pull"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain(`data directory ${JSON.stringify(dataDir)} does not exist`);
+    expect(existsSync(dataDir)).toBe(false);
+  });
+
+  test("pull refuses a data directory without a database, and creates no database", async () => {
+    const dataDir = join(tempDir(), "pb_data");
+    mkdirSync(dataDir);
+    const out = join(tempDir(), "iglo.schema.json");
+    const result = await run(["--dir", dataDir, "schema", "pull", "--out", out]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      `database ${JSON.stringify(join(dataDir, "data.db"))} does not exist: schema pull reads an existing database and does not create one`,
+    );
+    expect(readdirSync(dataDir)).toEqual([]);
+    expect(existsSync(out)).toBe(false);
+  });
+
+  test("the file leaves out the indexes upstream adds to an auth collection, under any name", async () => {
+    const dataDir = await withSuperuser(copyOf(fixtureDir));
+    const { text } = await pull(dataDir);
+    await withServer(dataDir, async (url) => {
+      const token = await login(url);
+      const items = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
+        items: ApiCollection[];
+      };
+      const auths = items.items.filter((item) => item.type === "auth");
+      expect(auths.length).toBeGreaterThan(0);
+      for (const item of auths) {
+        // the database has them: the API shows them with their names
+        expect((item.indexes ?? []).some((statement) => impliedIndex(item.name, statement))).toBe(
+          true,
+        );
+      }
+      // the older names of the fixture's users and _superusers are among them
+      const users = auths.find((item) => item.name === "users");
+      expect(users?.indexes).toContainEqual(expect.stringMatching(/tokenKey_idx/));
+      const superusers = auths.find((item) => item.name === "_superusers");
+      expect(superusers?.indexes).toContainEqual(
+        expect.stringMatching(/^CREATE UNIQUE INDEX `idx_tokenKey_/),
+      );
+    });
+    expect(text).not.toMatch(/tokenKey_idx|email_idx|idx_tokenKey_|idx_email_/);
+    expect(text).not.toContain("pbc_3323866339");
+  });
+
+  test("a fresh install writes its users collection in full, with its rules and options", async () => {
+    const dataDir = await withSuperuser(join(tempDir(), "pb_data"));
+    const { file } = await pull(dataDir);
+    const users = (file as { collections: Record<string, Record<string, unknown>> }).collections
+      .users;
+    expect(users).toMatchObject({
+      type: "auth",
+      rules: {
+        list: "id = @request.auth.id",
+        view: "id = @request.auth.id",
+        create: "",
+        update: "id = @request.auth.id",
+        delete: "id = @request.auth.id",
+      },
+      fields: {
+        name: { type: "text", max: 255 },
+        avatar: { type: "file", maxSelect: 1 },
+        created: { type: "autodate", onCreate: true },
+        updated: { type: "autodate", onCreate: true, onUpdate: true },
+      },
+      oauth2: { mappedFields: { name: "name", avatarURL: "avatar" } },
+    });
+    assertValid(file);
   });
 });

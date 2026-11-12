@@ -5,16 +5,18 @@
 // fields in their stored order, every object's keys in the order below,
 // two-space indent, a final newline. Options and fields equal to their
 // defaults are left out (src/schema/defaults.ts), and so are the system
-// collections that equal theirs and the system fields implied by the
-// collection type. A field whose name is integer-like cannot keep its place
-// (JSON objects order those names first), so the writer refuses it.
+// collections that equal theirs, the system fields implied by the collection
+// type, and the indexes upstream keeps on an auth collection by itself
+// (src/schema/implied.ts; the description holds no implied index). A name
+// that is an array index cannot keep its place (JSON objects order those
+// names first), so the writer refuses it.
 //
 // Extras (descriptions and tsType) are not in the database. A pull that
 // writes over an existing file keeps them, from extractExtras.
 
 import { objectValue, parseJSONTree, type JSONNode } from "@/schema/json-tree";
 import { defaultCollectionDescription, impliedFieldCount, fieldDefault } from "@/schema/defaults";
-import { isPlainObject, isIntegerLike, jsonEqual, withKeyOrder } from "@/schema/values";
+import { isPlainObject, isArrayIndexName, jsonEqual, withKeyOrder } from "@/schema/values";
 import {
   type SchemaCollection,
   type SchemaCollectionExtra,
@@ -51,9 +53,9 @@ export function formatSchema(description: SchemaDescription, options: FormatOpti
     if (collection.system && extra === undefined && sameCollection(collection, defaults)) {
       continue;
     }
-    if (isIntegerLike(collection.name)) {
+    if (isArrayIndexName(collection.name)) {
       throw new Error(
-        `collection name ${JSON.stringify(collection.name)} is made of digits; a schema file cannot keep the order of such names`,
+        `collection name ${JSON.stringify(collection.name)} is an array index (a whole number such as 0 or 12); a schema file cannot keep the order of such names`,
       );
     }
     collections[collection.name] = formatCollection(collection, defaults, extra);
@@ -152,9 +154,9 @@ function formatFields(
 
   const fields: SchemaObject = {};
   for (const field of collection.fields.slice(skip)) {
-    if (isIntegerLike(field.name)) {
+    if (isArrayIndexName(field.name)) {
       throw new Error(
-        `field name ${JSON.stringify(field.name)} is made of digits; a schema file cannot keep the order of such names`,
+        `field name ${JSON.stringify(field.name)} is an array index (a whole number such as 0 or 12); a schema file cannot keep the order of such names`,
       );
     }
     const base = fieldDefault(defaults, field.type, field.name);

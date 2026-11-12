@@ -8,7 +8,7 @@
 // file is S.3.
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
@@ -25,6 +25,7 @@ import type { AppConfig, CliContext } from "@/cli/root";
 import { bootstrapApp } from "@/cli/serve";
 import { CommandError } from "@/cli/superuser";
 import { findAllCollections } from "@/collections/collection-query";
+import { dataDBFilename } from "@/db/base";
 import { JSONSyntaxError } from "@/schema/json-tree";
 import { describeCollections } from "@/schema/describe";
 import { schemaJSONText } from "@/schema/json-schema";
@@ -156,11 +157,36 @@ export async function runSchemaCommand(
     config = resolveConfig(new Map());
   }
 
-  const app: App = await bootstrapApp(config, ctx);
+  // a pull reads an existing database: it never creates a data directory or
+  // a database (bootstrap would create both), so a wrong --dir is an error
+  requireExistingDatabase(resolve(ctx.cwd, config.dataDir));
+
+  const app: App = await bootstrapApp(config, logsToStderr(ctx));
   try {
     await pull(app, parsed.values.get("out") as string | undefined, ctx, version);
   } finally {
     await clearBootstrap(app);
+  }
+}
+
+// The stdout of `schema pull` is the schema and nothing else (D40): the
+// app's logs, the dev-mode SQL statements and the console output of JS
+// migration files go to stderr while the command runs.
+function logsToStderr(ctx: CliContext): CliContext {
+  return { ...ctx, out: { ...ctx.out, stdout: (text) => ctx.out.stderr(text) } };
+}
+
+function requireExistingDatabase(dataDir: string): void {
+  if (!existsSync(dataDir)) {
+    throw new CommandError(
+      `data directory ${JSON.stringify(dataDir)} does not exist: schema pull reads an existing database and does not create one (check --dir)`,
+    );
+  }
+  const database = join(dataDir, dataDBFilename);
+  if (!existsSync(database)) {
+    throw new CommandError(
+      `database ${JSON.stringify(database)} does not exist: schema pull reads an existing database and does not create one (check --dir)`,
+    );
   }
 }
 

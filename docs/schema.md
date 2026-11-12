@@ -69,6 +69,7 @@ Each collection is keyed by its name and has a `type`: `base`, `auth` or `view`.
 - `query`: the SELECT statement of a view.
 - `description`: a text for your editors and for the generated types. It is not stored in the database.
 - `system`: written only for a system collection that is not one of the five built in (`_superusers`, `_externalAuths`, `_mfas`, `_otps`, `_authOrigins`). Those five are system by name.
+- `users` is an auth collection like any other. Its rules, fields and options are written in full, so a file that has a `users` block says what it means, whatever the collection is called.
 - The options of an auth collection, under the same names the dashboard uses: `passwordAuth`, `oauth2`, `authAlert`, `mfa`, `otp`, `authToken`, `passwordResetToken`, `emailChangeToken`, `verificationToken`, `fileToken`, `verificationTemplate`, `resetPasswordTemplate` and `confirmEmailChangeTemplate`.
 
 ### Fields
@@ -88,6 +89,7 @@ The file only lists what you chose. Anything equal to its default is left out, a
 - **Ids.** Collections and fields are matched by name, so the file has no ids.
 - **System fields.** `id` is in every collection, and the auth collections also have `password`, `tokenKey`, `email`, `emailVisibility` and `verified`. They are implied. They are written only if you change them.
 - **System collections.** `_superusers`, `_externalAuths`, `_mfas`, `_otps` and `_authOrigins` are left out unless you change them.
+- **Implied indexes.** An auth collection always has a unique index on `tokenKey` and one on `email`, and upstream adds them itself. The file leaves them out, whatever their names are.
 - **Timestamps.** A collection's own creation and update times are not written. A field named `created` or `updated` is an ordinary autodate field, as in the dashboard, so it is written.
 
 The file never holds:
@@ -113,7 +115,9 @@ Without `--out` it writes the file to the terminal:
 ./iglo-base schema pull > iglo.schema.json
 ```
 
-It reads the database in `--dir` (the default is `pb_data` next to the executable), like the other commands. It does not change the database.
+It reads the database in `--dir` (the default is `pb_data` next to the executable), like the other commands. It does not change the database. If `--dir` has no database, the pull stops with an error and creates nothing.
+
+The standard output of `schema pull` is the file and nothing else. The log lines, and the SQL statements that `--dev` prints, go to the standard error.
 
 Some rules make the diffs small:
 
@@ -125,7 +129,7 @@ Some rules make the diffs small:
 
 When `--out` names a file that already exists, `schema pull` keeps its `description` and `tsType` values, because the database does not hold them. If that file is not JSON, the pull stops and leaves the file as it is. Fix the file or remove it, then run the pull again.
 
-A file whose names are only digits (`"2026"`) is refused, because JSON objects do not keep the order of such names. Rename the collection or field.
+A name that is a whole number such as `"2026"` or `"0"` is refused, because JSON objects put such names first and do not keep the order of the fields. Other digit names, such as `"007"`, are fine. Rename the collection or field if you need the whole number.
 
 `schema json-schema` prints the JSON Schema that the executable has built in. Use it to set up an editor without a network connection:
 

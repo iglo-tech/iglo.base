@@ -248,6 +248,14 @@ async function execute(ctx: CliContext): Promise<number> {
     throw new CliError(removedFlagMessage(removedFlag));
   }
 
+  // cobra Command.Find
+  const commandWords = stripFlags(ctx.args, persistent);
+  const commandName = commandWords[0];
+
+  // the stdout of a schema command is its data (D40), so the console output
+  // of JS migration files goes to stderr for it
+  const migrationLog = (text: string): void =>
+    commandName === "schema" ? ctx.out.stderr(text) : ctx.out.stdout(text);
   const eager = withMigrationsDir(eagerConfig(defaults, persistent, ctx.args));
   const migrations = allMigrations(
     registerMigrations({
@@ -259,15 +267,11 @@ async function execute(ctx: CliContext): Promise<number> {
       getenv: ctx.getenv ?? (() => ""),
       exit: ctx.exit ?? exitUnset,
       clock: { now: () => ctx.out.now() },
-      log: (line) => ctx.out.stdout(`${logTime(ctx.out.now())} ${line}\n`),
+      log: (line) => migrationLog(`${logTime(ctx.out.now())} ${line}\n`),
     }),
   );
   const resolve = (values: Map<string, unknown>): AppConfig =>
     withMigrationsDir(resolveConfig(defaults, values));
-
-  // cobra Command.Find
-  const commandWords = stripFlags(ctx.args, persistent);
-  const commandName = commandWords[0];
 
   if (commandName !== undefined) {
     const removed = removedCommandMessage(commandName);

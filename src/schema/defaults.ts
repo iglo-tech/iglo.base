@@ -1,23 +1,26 @@
 // The defaults the schema file is measured against (D40). Not an upstream
 // file.
 //
-// A collection that a file leaves out is the default of its name and type:
-// the five system collections are the ones a fresh install creates
-// (migrations/baseline.ts), and any other collection starts from the factory
-// defaults of its type (core/collection_model.go New*Collection). Options
-// and fields equal to their default are left out of the file; the reader
-// restores them from the same defaults.
+// The defaults of a collection are those of its name and type. The five
+// system collections are the ones a fresh install creates
+// (migrations/baseline.ts). Every other collection, `users` included,
+// starts from the factory defaults of its type (core/collection_model.go
+// New*Collection, what a new empty collection of that type is). So the same
+// block in a file means the same schema whatever the collection's name.
+// Options and fields equal to their default are left out of the file; the
+// reader restores them from the same defaults.
 //
 // System fields are implied: a collection's leading run of system fields
 // (`id`, and for auth collections `password`, `tokenKey`, `email`,
 // `emailVisibility`, `verified`, and the system collections' timestamps)
 // is written only when it differs from the default, as the writer and the
 // reader agree (src/schema/write.ts, src/schema/read.ts). `created` and
-// `updated` on a user collection are ordinary autodate fields, as upstream
-// makes them.
+// `updated` are ordinary autodate fields, as upstream makes them. The
+// indexes upstream adds to an auth collection are implied too
+// (src/schema/implied.ts), so the defaults hold no index.
 
 import { type CollectionType, type SchemaCollection, type SchemaField } from "@/schema/types";
-import { newCollection } from "@/collections/collection-model";
+import { type Collection, newCollection } from "@/collections/collection-model";
 import { fieldFactory } from "@/fields/fields";
 import { defaultCollections } from "@/migrations/baseline";
 import {
@@ -47,19 +50,27 @@ const noRelations: NameOf = (collectionId) => {
   return "";
 };
 
-// The default of a collection of this name and type, described.
+// The default of a collection of this name and type, described: the builtin
+// system collection of that name, or the factory default of the type.
 export function defaultCollectionDescription(type: CollectionType, name: string): SchemaCollection {
-  const builtin = defaultCollections().find(
-    (collection) => collection.name === name && collection.type === type,
+  const builtin = builtinCollection(name);
+  return describeCollectionModel(
+    builtin?.type === type ? builtin : newCollection(type, name),
+    noRelations,
   );
-  return describeCollectionModel(builtin ?? newCollection(type, name), noRelations);
 }
 
-// The defaults of a builtin collection (one a fresh install creates), or
+// The type of a system collection (one a fresh install creates), or
 // undefined for any other name.
 export function builtinCollectionType(name: string): CollectionType | undefined {
-  const builtin = defaultCollections().find((collection) => collection.name === name);
-  return builtin?.type as CollectionType | undefined;
+  return builtinCollection(name)?.type as CollectionType | undefined;
+}
+
+function builtinCollection(name: string): Collection | undefined {
+  if (!systemCollectionNames.includes(name)) {
+    return undefined;
+  }
+  return defaultCollections().find((collection) => collection.name === name);
 }
 
 // The factory default of a field of this type, described under this name.

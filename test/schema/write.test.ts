@@ -63,11 +63,11 @@ describe("writing a schema file", () => {
     });
     const description = read(text);
     const written = format(description);
+    // no indexes: the empty list is the default, and the implied indexes of an
+    // auth collection are not written
     expect(JSON.parse(written).collections.members).toEqual({
       type: "auth",
       rules: { list: "id = @request.auth.id", create: "" },
-      // the default indexes of an auth collection are not the empty list
-      indexes: [],
       fields: {
         nickname: { type: "text", max: 40 },
         avatar: { type: "file", maxSelect: 1, mimeTypes: ["image/png"] },
@@ -208,5 +208,24 @@ describe("extra keys", () => {
 
   test("an existing file that is not JSON is an error for the pull", () => {
     expect(() => extractExtras('{"collections": [')).toThrow("line 1, column 18");
+  });
+});
+
+describe("names that are not array indexes", () => {
+  test("keep their place in the file, as the reader reads them", () => {
+    const text = canonical({
+      $schema: url,
+      collections: {
+        "01": {
+          type: "base",
+          fields: {
+            b: { type: "text" },
+            "01": { type: "text" },
+            a: { type: "text" },
+          },
+        },
+      },
+    });
+    expect(format(read(text))).toBe(text);
   });
 });

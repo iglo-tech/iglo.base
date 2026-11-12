@@ -29,10 +29,12 @@ export function jsonEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
-// Object keys that JavaScript orders first, whatever the insertion order
-// (integer-like names). Schema names never are: the reader refuses them.
-export function isIntegerLike(name: string): boolean {
-  return /^\d+$/.test(name);
+// Object keys that JavaScript orders first, whatever the insertion order: the
+// canonical array indexes, "0" to "4294967294" (ECMA-262 array index). Only
+// these change order in a JSON object; "01", "007" and "4294967295" keep
+// their insertion order. Schema names that are array indexes are refused.
+export function isArrayIndexName(name: string): boolean {
+  return /^(0|[1-9]\d*)$/.test(name) && Number(name) <= 4294967294;
 }
 
 // A copy of the object whose keys come first in the given order, then the
