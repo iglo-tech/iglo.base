@@ -43,7 +43,7 @@ const pullShort = "Writes the schema file from the database";
 const pullExample = "schema pull --out iglo.schema.json";
 const jsonSchemaShort = "Prints the JSON Schema of the schema file, as this build embeds it";
 const planShort =
-  "Shows what applying the schema file would change, and whether it would apply, without changing the database";
+  "Shows what applying the schema file would change, and whether it would apply, without changing the database. On a live database it holds the write lock while it runs";
 const planExample = "schema plan --schema iglo.schema.json";
 
 function helpFlag(cmd: string): FlagSpec {

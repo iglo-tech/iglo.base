@@ -93,6 +93,10 @@ Flags of `serve`:
 | `--http <addr>` | `127.0.0.1:8090` | TCP address for the HTTP server, as `host:port`. |
 | `--origins <list>` | `*` | Allowed CORS origins, comma separated (`--origins https://a.example,https://b.example`). |
 | `--https <addr>` | none | Not supported. The server refuses to start (see [Differences](differences.md)). |
+| `--schema <file>` | none | The schema file (`iglo.schema.json`) to apply before the server starts. See [Schema as code](schema.md#applying-the-file-at-startup). |
+| `--allow-data-loss` | `false` | With `--schema`: let the apply delete fields and collections that hold data. Without it, an apply that would delete data stops before it changes anything. Without `--schema` it has no effect. |
+
+With `--schema`, the apply runs at every start, before the server answers requests. A file that is not valid, or an apply that fails, makes the start exit with status `1`, and the server does not start. The database is unchanged then. Without `--schema`, the server starts as before.
 
 Global flags, accepted by `serve`, `superuser` and `migrate`:
 
@@ -329,6 +333,10 @@ A restore replaces the data directory and restarts the server. See PocketBase's 
 
 A backup that lives only on the same disk does not protect you from losing the disk. Copy backups elsewhere or use S3.
 
+### Backups before a schema apply
+
+`serve --schema` makes a backup before an apply that changes something. It is named `pre-schema-<UTC time>.zip`, for example `pre-schema-20261112T101500Z.zip`, and it goes to the same backup storage (local or S3). The three newest `pre-schema-*` backups are kept, and older ones are deleted after a successful apply. The automatic backup setting `cronMaxKeep` does not touch them. If the backup fails, the server does not start. The details are in [Schema as code](schema.md#backups-before-an-apply).
+
 ### Copy the directory
 
 To back up with a file copy, **stop the server first** and copy the whole data directory (and `pb_migrations`):
@@ -416,6 +424,20 @@ Applies and manages the JavaScript files in `pb_migrations`:
 The three commands that ask read the answer from standard input; without a terminal the answer is no and the command is cancelled, so in a script pipe it in (`echo y | ./iglo-base migrate create add_posts`).
 
 `serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. A running server picks up the collections and settings changes of `migrate up`, `migrate down` and `migrate collections` within about 50 ms, without a restart. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
+
+### `schema`
+
+Reads and checks the schema file. See [Schema as code](schema.md).
+
+```sh
+./iglo-base schema pull --out iglo.schema.json                  # write the file from the database
+./iglo-base schema plan --schema iglo.schema.json               # what applying the file would change
+./iglo-base schema plan --schema iglo.schema.json --allow-data-loss
+```
+
+`schema pull` reads the database and writes the file. It changes nothing.
+
+`schema plan` runs the apply of the file and rolls it back. It prints the changes, the migrations that would run, the data that would be lost and every problem. It makes no backup. Its exit code is `0` when the file would apply, also when nothing changes, and `1` when it would not. It holds the database's write lock from its first write until it rolls back, so run it on a live server when a short pause in writes is acceptable. It needs an existing database in `--dir`.
 
 ### `update`
 

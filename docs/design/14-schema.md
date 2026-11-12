@@ -1,6 +1,6 @@
 # Schema as code
 
-Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [schema.md](../schema.md). Issue [#77](https://github.com/iglo-tech/iglo.base/issues/77) is the spec of the file format; this document is the design of the code. Built in S.2 (`schema pull`); S.3 adds the apply on the reader, S.4 the types, and later tasks extend this document.
+Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [schema.md](../schema.md). Issue [#77](https://github.com/iglo-tech/iglo.base/issues/77) is the spec of the file format; this document is the design of the code. Built in S.2 (`schema pull`) and S.3 (the apply, `schema plan` and `serve --schema`, [below](#the-apply-s3)); S.4 adds the types, and later tasks extend this document.
 
 ## Layout
 
@@ -13,9 +13,16 @@ Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [s
 | `src/schema/describe.ts` | Collections as the API returns them (`marshalJSON`) → the description |
 | `src/schema/write.ts` | The description → the file text; the extras of an existing file |
 | `src/schema/read.ts` | The file text → the complete description, or a list of errors with their JSON paths |
+| `src/schema/diff.ts` | The changes between two descriptions (collections, fields, rules, options, indexes); pure, no database |
+| `src/schema/apply.ts` | The apply and `plan`: the checks before the transaction, the steps of the transaction in order, the view rebuild, the record check call |
+| `src/schema/apply-json.ts` | The description → the JSON that the collections API takes (fields, rules and options, the collection object) |
+| `src/schema/check.ts` | The counts of the data-loss guard (rows, non-empty values) and the record check over the records of a collection |
+| `src/schema/report.ts` | The report of an apply or a plan: the changes, the migrations, the lost data and the problems, and its text |
+| `src/schema/backup.ts` | The pre-schema backup: its name, the call to upstream's backup code, the disk-space message and the retention of three |
 | `src/schema/json-schema.ts`, `schema/iglo.schema.json` | The JSON Schema, embedded in the executable with `import` |
 | `src/schema/url.ts` | The `$schema` URL of a release |
-| `src/cli/schema.ts` | `schema pull` and `schema json-schema`; `pull` refuses a data directory without a database, and sends the app's logs to stderr |
+| `src/cli/schema.ts` | `schema pull`, `schema plan` and `schema json-schema`; `pull` and `plan` refuse a data directory without a database, and send the app's logs to stderr |
+| `src/cli/serve.ts` | The flags `--schema` and `--allow-data-loss`; the file is read at every start, and the apply runs before the server starts, also on the restart after a restore |
 
 `describe` and `write` take no database. `read` takes no database either: the apply (S.3) checks the description against the database and runs the collection model's validation there. `schema pull` reads the database only through `findAllCollections`.
 
@@ -93,8 +100,54 @@ A JSON number is read as a double. The reader accepts an integer option only whe
 
 `schema/iglo.schema.json` is the file's JSON Schema (draft 2020-12). It is written by hand, from upstream's `core/field_*.go` and `core/collection_model*.go`, with a description for every property. It has one definition per field type, so each option is checked against its type, and `additionalProperties: false` everywhere, so an unknown option is an error. Tests validate every pulled file against it with ajv (a dev dependency), and the executable prints it with `schema json-schema`. The release workflow publishes it next to the archives and lists it in `SHA256SUMS`.
 
+## The apply (S.3)
+
+The apply writes the description into the database, in one write transaction, and `schema plan` runs the same transaction and rolls it back. `serve --schema` runs the apply before the server starts, at every start. The user's steps are in [schema.md](../schema.md#applying-the-file-at-startup).
+
+### Order
+
+The steps are the ones in the header comment of `src/schema/apply.ts`, which D40 sets. Before the transaction, read only: the changes are computed. When nothing changes and no JavaScript migration is pending, the apply stops (no backup, no record check). Otherwise the data-loss guard runs, when no migration is pending (so that the state it counts is known), and the backup is made; a failed backup stops the apply. Then, in one transaction:
+
+1. the pending JavaScript migrations (D23), with `up`, as serve ran them before;
+2. renames (S.5; none yet);
+3. the changes again, now that the migrations ran: a collection type change is a problem; the data-loss guard; the SQL views that the changes affect are dropped (their `_collections` rows and ids stay);
+4. widen: the new collections with their fields that are not relations, and the new plain fields of the existing collections;
+5. widen: the new relation fields, once every target exists;
+5a. TypeScript migrations (S.5; none yet);
+6. narrow: the new and changed collections in full (fields, indexes, rules, options); then the removed views, then the removed collections;
+7. the views of the affected view collections are saved again, each after the views its query reads;
+8. the record check, for the fields the apply added or changed;
+9. commit, or roll back so that the database is unchanged.
+
+A problem found in step 3 or step 8 stops the transaction (`StopApply`); the problems are in the report. A failed save (`SaveFailed`) becomes a problem that names its collection. After the transaction ends, whether it committed, rolled back or was a plan, the in-memory collection cache is reloaded.
+
+### Modules
+
+Each part of the apply is in one module, listed in the [layout](#layout) table. `diff.ts` computes what changes and knows nothing of the database. `apply.ts` owns the order. `apply-json.ts` builds the JSON that the save takes. `check.ts` reads the data. `report.ts` holds the result and its text, which is the output of `schema plan` and the message of a failed `serve`.
+
+### Decisions in the code
+
+- **Fields are matched by name and type.** A field with the same name and type keeps its stored id. A field with the same name and another type is a replacement: it is removed and added again in the narrow step (step 6), so the widen step adds only the fields that are new. The old values go, so the guard counts them.
+- **Indexes are compared by their definition.** `indexKey` takes the uniqueness, the columns with their collation and sort order, and the WHERE clause; names, quoting and spacing do not count. A desired index whose definition is stored already keeps the stored statement, and its name. The implied indexes of an auth collection (see above) are kept as stored, and the save adds the missing ones as upstream does.
+- **Ids are kept.** A collection is updated from its stored model, so its id stays. A field keeps the id it has when its type is unchanged. A relation names its target's id, which the apply looks up when it builds the JSON, so the target must exist first (step 5 comes after the new collections are added).
+- **Views are rebuilt when they are affected.** A view is dropped and created again when it is itself changed, or when its query names a collection that changes (added, changed or removed) or a view that is rebuilt. A name in a query is taken as a read, whether or not the view really reads it (a name in a string or a comment counts too). So the set can be larger than needed, and the extra views are created again as well. Views are created in an order where each comes after the views its query reads.
+- **Saves go through `saveCollection`, with the API's JSON.** `apply-json.ts` builds the JSON that the collections API takes, and the apply `unmarshalJSON`s it onto the stored model, as the API does. The file has no token secrets and no OAuth2 providers, so the stored ones stay. The result is the dashboard's, because the same save runs.
+- **The data-loss count.** For a removed or replaced field, the count is its non-empty values (NULL and the empty string are empty). For a removed collection, it is its rows. Removed views are not counted: they hold no data. Without `--allow-data-loss` each count is a problem, and the apply stops. The report shows the counts, with `(allowed by --allow-data-loss)` when the flag is set.
+- **The record check.** After the saves and the view rebuild, `check.ts` runs the field validators that the records API runs on save (`validateValue`, with the record save's app) over every record of each changed collection, for the fields that were added, changed or replaced. New collections are not checked: they have no records. Records are read in batches of 500 by id. Each failure is counted per field and per message, with up to five example ids. A required failure reads "required, N records empty" with the next step to add a migration or make the field optional. Unique indexes are not checked in advance: SQLite refuses the index when the save creates it, and `saveProblem` turns that refusal into a problem with the next step to make the values distinct.
+- **Added indexes show their table's rows.** For an added index, the report gives the row count of its table, so the plan shows how many records the index is built over.
+
+### Backups
+
+`backup.ts` names the backup `pre-schema-<UTC time>.zip` from the app's clock, and calls upstream's backup code (`createBackup`), the same code as the dashboard's backups, with the configured storage. The backup is made before the transaction and stays when the apply fails. Retention runs after a successful commit: the three newest `pre-schema-*` names are kept, and the rest are deleted. The retention is on the prefix only, so `cronMaxKeep` (the automatic backups, prefix `@auto_pb_backup_`) never sees these backups. A disk-space failure gets its own message: the size of the data directory (the bytes a backup copies) and the free space. The size is a walk, so it runs only on the failure path.
+
+### Left out, and why
+
+- **Renames of collections and fields (S.5).** A rename needs a declaration that keeps the data, which is a TypeScript migration file. Without one, a rename shows as a removal and an addition, and the data-loss guard refuses it.
+- **TypeScript migrations (S.5).** Step 5a is empty until then. The JavaScript migrations of step 1 are the only data migrations in this version.
+- **Modes and the development watcher (S.6).** `--mode` and the watcher that applies a file change on a running server are not in this version. `serve --schema` applies at start only.
+- **A plan on a copy.** D40 allows a copy, and the copy would avoid the write lock. This version plans on the live database, in the transaction it rolls back. The lock is documented in [schema.md](../schema.md#schema-plan).
+
 ## Not in this document yet
 
-- `schema plan` and the apply (S.3): applying the description to the database, with renames and the data-loss check.
-- `schema types` (S.4), migrations (S.5) and the server modes (S.6).
+- `schema types` (S.4), renames and TypeScript migrations (S.5) and the server modes (S.6).
 - Settings in the file (possible later, without secrets).

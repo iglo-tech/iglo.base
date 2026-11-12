@@ -227,7 +227,7 @@ describe("schema apply and schema plan", () => {
     delete (users.fields as Json).avatar;
     // the OAuth2 mapping of the removed field goes too, as the save unsets it
     const oauth2 = (users.oauth2 ?? {}) as Json;
-    oauth2.mappedFields = { ...((oauth2.mappedFields as Json | undefined) ?? {}), avatarURL: "" };
+    oauth2.mappedFields = { ...(oauth2.mappedFields as Json | undefined), avatarURL: "" };
     users.oauth2 = oauth2;
     users.authAlert = { enabled: false };
     const v1File = writeFile(site, "v1.json", v1);
@@ -546,5 +546,137 @@ describe("schema apply and schema plan", () => {
       await finished;
     }
     expect(preSchemaBackups(site).length).toBeGreaterThan(1);
+  });
+
+  test("a field that changes type is removed and added again, so its values need the flag", async () => {
+    const site = await createSite();
+    const v1 = withPosts(await currentFile(site));
+    (collectionsOf(v1).posts as Json).fields = {
+      title: { type: "text", max: 120 },
+      count: { type: "number" },
+    };
+    const v1File = writeFile(site, "v1.json", v1);
+    await applyOK(site, v1File);
+    await withServer(site, ["--schema", v1File], async (url, token) => {
+      const created = await api(url, token, "POST", "/api/collections/posts/records", {
+        title: "a",
+        count: 3,
+      });
+      expect(created.status).toBe(200);
+    });
+
+    const v2 = structuredClone(v1);
+    ((collectionsOf(v2).posts as Json).fields as Json).count = { type: "text" };
+    const v2File = writeFile(site, "v2.json", v2);
+
+    const planned = await plan(site, v2File);
+    expect(planned.exitCode).toBe(1);
+    expect(planned.stdout).toContain("! count: the type changes");
+    expect(planned.stdout).toContain("posts.count: 1 values would be deleted");
+
+    await applyFails(site, v2File);
+    await applyOK(site, v2File, ["--allow-data-loss"]);
+    const posts = (await pulled(site)).collections.find((c) => c.name === "posts");
+    expect(posts?.fields.find((f) => f.name === "count")?.type).toBe("text");
+  });
+
+  test("a relation between collections that the same file adds is applied", async () => {
+    const site = await createSite();
+    const v1 = withPosts(await currentFile(site));
+    const v2 = structuredClone(v1);
+    collectionsOf(v2).comments = {
+      type: "base",
+      fields: {
+        body: { type: "text", max: 500 },
+        post: { type: "relation", collection: "posts", maxSelect: 1 },
+      },
+    };
+    ((collectionsOf(v2).posts as Json).fields as Json).featured = {
+      type: "relation",
+      collection: "comments",
+      maxSelect: 1,
+    };
+    const v2File = writeFile(site, "v2.json", v2);
+    await applyOK(site, v2File);
+    expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("an index with the same definition under another name is not a change", async () => {
+    const site = await createSite();
+    const v1 = writeFile(site, "v1.json", withPosts(await currentFile(site)));
+    await applyOK(site, v1);
+
+    const renamed = withPosts(await currentFile(site));
+    (collectionsOf(renamed).posts as Json).indexes = [
+      "CREATE INDEX `title_lookup` ON `posts` (`title`)",
+    ];
+    const renamedFile = writeFile(site, "renamed.json", renamed);
+    const planned = await plan(site, renamedFile);
+    expect(planned.stdout).toContain("the schema is up to date");
+    await applyOK(site, renamedFile);
+    // the stored name stays
+    const posts = (await pulled(site)).collections.find((c) => c.name === "posts");
+    expect(posts?.indexes).toEqual(["CREATE INDEX `idx_posts_title` ON `posts` (`title`)"]);
+    expect(preSchemaBackups(site).length).toBe(1);
+  });
+
+  test("a start on an empty data directory creates the schema of the file", async () => {
+    const reference = await createSite();
+    const file = withPosts(await currentFile(reference));
+    const site = newSite();
+    const path = writeFile(site, "v1.json", file);
+
+    await applyOK(site, path);
+    expect(await pulled(site)).toEqual(described(JSON.stringify(file)));
+  });
+
+  test("a JavaScript migration that throws stops the apply and leaves the database as it was", async () => {
+    const site = await createSite();
+    const v1 = writeFile(site, "v1.json", withPosts(await currentFile(site)));
+    mkdirSync(join(site.root, "pb_migrations"), { recursive: true });
+    writeFileSync(
+      join(site.root, "pb_migrations", "1_fails.js"),
+      `migrate((app) => { throw new Error("boom") })`,
+    );
+    const bytes = dataDB(site);
+
+    const refused = await applyFails(site, v1);
+    expect(refused.stderr).toContain("failed to apply migration 1_fails.js");
+    expect(sameBytes(bytes, dataDB(site))).toBe(true);
+    expect(tableNames(site)).not.toContain("posts");
+  });
+});
+
+describe("schema apply flags", () => {
+  test("schema plan --help shows the flags and the write lock", async () => {
+    const result = await run(["schema", "plan", "--help"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("--schema string");
+    expect(result.stdout).toContain("--allow-data-loss");
+    expect(result.stdout).toContain("write lock");
+  });
+
+  test("schema plan needs the file", async () => {
+    const site = await createSite();
+    const result = await run(["--dir", site.dataDir, "schema", "plan"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("schema plan needs --schema <file>");
+  });
+
+  test("serve --help shows --schema and --allow-data-loss", async () => {
+    const result = await run(["serve", "--help"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("--schema string");
+    expect(result.stdout).toContain("--allow-data-loss");
+  });
+
+  test("a schema file that is not valid stops the start with its paths", async () => {
+    const site = await createSite();
+    const path = join(site.root, "bad.json");
+    writeFileSync(path, JSON.stringify({ collections: { posts: { type: "base", bogus: 1 } } }));
+    const refused = await applyFails(site, path);
+    expect(refused.stderr).toContain("the schema file is not valid");
+    expect(refused.stderr).toContain("$.collections.posts.bogus: unknown property");
+    expect(preSchemaBackups(site)).toEqual([]);
   });
 });

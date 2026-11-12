@@ -2,7 +2,7 @@
 
 Your collections can live in a file in your repository, next to your code. The file lists every collection and field. You can read it in a pull request, review it like any other change, and give it to an editor or an agent that checks it against a JSON Schema.
 
-This guide covers the file and `schema pull`, which writes the file from a database. Later versions of this guide add applying the file, the TypeScript types, migrations and the server modes.
+This guide covers the file, `schema pull`, which writes the file from a database, and applying the file: `serve --schema` at startup and `schema plan`, which shows what an apply would do. Later versions of this guide add the TypeScript types, migrations and the server modes.
 
 ## The file
 
@@ -136,3 +136,118 @@ A name that is a whole number such as `"2026"` or `"0"` is refused, because JSON
 ```sh
 ./iglo-base schema json-schema > iglo-schema-format.json
 ```
+
+## Applying the file at startup
+
+`serve --schema` applies the file before the server starts:
+
+```sh
+./iglo-base serve --dir ./pb_data --schema iglo.schema.json
+```
+
+It does this at every start, not only the first one. The file is read at each start, so a change to it takes effect at the next start. A restart after a restore from the dashboard applies the file too, so restored data gets the file's schema. Without `--schema`, the server works as before.
+
+An apply does these things, in this order:
+
+1. It reads the file and checks it. A file that is not valid stops the start.
+2. It compares the file with the database. If nothing would change, and no JavaScript migration in `pb_migrations` is waiting to run, it stops here. It makes no backup and checks no records.
+3. Otherwise it makes a backup (see [Backups before an apply](#backups-before-an-apply)) and opens one transaction. The data-loss guard (see [The data-loss guard](#the-data-loss-guard)) stops the apply when it finds data to delete. The guard runs before the backup when no migration is waiting; otherwise it runs inside the transaction, after the migrations.
+4. In the transaction, the JavaScript migrations in `pb_migrations` that have not run yet run first. A migration may create a collection that the file also lists; the apply then matches the file to what the migration created.
+5. Then the changes. New collections and new fields are added. A new relation field comes after all the collections it points to exist. New and changed collections are saved in full: their fields in the file's order, their indexes, rules and options. A field that the file no longer lists is dropped by the save of its collection. Removed collections are deleted after that. Views that the change affects are dropped and created again.
+6. Then every record of each collection whose fields were added or changed is checked against the rules the API applies when a record is saved.
+7. If every step works, the transaction is committed and the server starts. If any step fails, the transaction is rolled back and the database is unchanged.
+
+A few rules apply to the changes:
+
+- The apply does not read secrets from the file. Token secrets and OAuth2 providers stay as the database has them.
+- Indexes are compared by their definition, not by name. An index with the same definition under another name keeps the name it has.
+- A field whose type changes (same name, another type) is removed and added again. Its old values are lost, so the data-loss guard applies to it.
+- A collection's type cannot change. An apply that changes it stops.
+- While `--schema` is set, `--automigrate` is off, so the dashboard does not write migration files.
+- Renames of collections and fields, and TypeScript migrations, are not in this version. Modes (`--mode`) and the development file watcher are not in this version either. Each comes in a later version.
+
+## `schema plan`
+
+`schema plan` shows what applying the file would do, and changes nothing:
+
+```sh
+./iglo-base schema plan --schema iglo.schema.json
+```
+
+It runs the apply's transaction and rolls it back. It prints:
+
+- the changes, collection by collection;
+- the JavaScript migrations that would run;
+- the data that would be lost;
+- every problem, with up to five example record ids and the next step.
+
+It makes no backup. Its exit code is `0` when the file would apply, also when nothing would change, and `1` when it would not. Pass `--allow-data-loss` to see the plan with the deletion allowed.
+
+Like `schema pull`, it needs a database in `--dir` and creates none.
+
+Plan runs on the live database. It holds the database's write lock from its first write until it rolls back, so run it when a short pause in writes is acceptable.
+
+Example output, for a file that makes a field required while some of its records are empty:
+
+```text
+collections:
+  ~ posts (base)
+      ~ author: required
+problems:
+  posts.author: required, 312 records empty. Add a migration that fills it, or make the field optional.
+    examples: 7y2kq9mz4rt1ab5, c3n8w0xv6pl2de9, 9hd3ta0ls7ve2mq
+the schema would not apply: 1 problem
+```
+
+## Backups before an apply
+
+When an apply has something to change, it first backs up the data directory. The backup is named `pre-schema-<UTC time>.zip`, for example `pre-schema-20261112T101500Z.zip`. It goes to the backup storage that the dashboard uses, local or S3, and it is made with the same code as the dashboard's backups.
+
+- The backup is made before the transaction, and it stays when the apply fails.
+- If the backup fails, the start is refused and the schema is not applied.
+- A disk-space failure says how much room the backup needs (the size of the data directory) and how much is free. Free that space, or set a backup storage with room, and start again.
+- After a successful apply, the three newest `pre-schema-*` backups are kept, and older ones are deleted. If a deletion fails, the error is logged, and the apply still counts as successful.
+- The automatic backup setting `cronMaxKeep` does not touch pre-schema backups.
+
+## The data-loss guard
+
+An apply that would delete data stops before it changes anything, unless you pass `--allow-data-loss`:
+
+```sh
+./iglo-base serve --schema iglo.schema.json --allow-data-loss
+```
+
+Without `--schema`, the flag has no effect.
+
+A field holds data when one of its rows has a value that is not empty. A collection holds data when it has rows. The guard counts:
+
+- the values of a field that the file removes;
+- the values of a field whose type changes, since it is removed and added again;
+- the records of a collection that the file removes.
+
+Views hold no data, so removing a view is not counted. Without `--allow-data-loss`, each count is a problem in the report, and the apply stops.
+
+## When an apply fails
+
+If an apply fails, the server does not start. The start exits with status `1` and prints the reason on standard error. The database is unchanged. A pre-schema backup that was made before the transaction stays. Each later start fails the same way until the file or the migration is fixed. This is by design: the server stays down rather than run against a schema that does not match the data.
+
+The report lists what the apply would change and every problem. For example:
+
+```text
+collections:
+  ~ posts (base)
+      ~ author: required
+problems:
+  posts.author: required, 312 records empty. Add a migration that fills it, or make the field optional.
+    examples: 7y2kq9mz4rt1ab5, c3n8w0xv6pl2de9, 9hd3ta0ls7ve2mq
+the schema is not applied: 1 problem
+```
+
+Each problem names the field or collection, the number of records or values, and the next step. Examples:
+
+- Records that break a new rule, such as an empty required value: add a migration that fills the value, or make the field optional.
+- A unique index that two records break: make those values distinct, or change the index so that it is not unique. The problem names the collection and the duplicate values.
+- Data that would be deleted: pass `--allow-data-loss` if the deletion is intended, or keep the field or collection in the file.
+- A collection type change: keep the type in the file, or remove the collection and add one under another name.
+
+To see the report before you deploy, run `schema plan` with the same file.
