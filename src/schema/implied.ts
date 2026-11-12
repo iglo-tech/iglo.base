@@ -13,20 +13,24 @@
 //
 // The description holds no implied index either. The apply restores a missing
 // one through the collection save, as upstream does, and keeps an existing one
-// under the name it has.
+// under the name it has. The reader does not add them back: it cannot name
+// them without the collection id.
 //
-// An index is implied only when upstream would treat it as its own: a unique
-// index on the one column, on the collection's own table, with the WHERE
-// clause upstream gives (none for tokenKey; `email != ''` for email, written
-// with or without quotes and spaces). Any other index on these columns is an
-// explicit index, and the file lists it. A non-partial unique index on email
-// stays explicit: upstream would not add its own, but a fresh database built
-// from the file would get the partial one.
+// An index is implied only when it is the one upstream writes: unique, on the
+// one column (`tokenKey` or `email`, same case), with no COLLATE and no sort
+// order, on the collection's own table, and with the WHERE clause upstream
+// gives (none for tokenKey; `email` != '' for email). Quotes and spaces in the
+// WHERE clause do not count: upstream's older releases wrote `email` without
+// backticks. Any other index on these columns is an explicit index, and the
+// file lists it as stored: a COLLATE NOCASE email index is how an app makes
+// login case-insensitive, so it must not be dropped. A non-partial unique
+// index on email stays explicit too: upstream would not add its own, but a
+// fresh database built from the file would get the partial one.
 
 import { parseIndex } from "@/tools/dbutils/index";
 
 // upstream's implied indexes: the column, and the WHERE clause without its
-// quotes and spaces
+// quotes and spaces (initTokenKeyField: none; initEmailField: email != '')
 const impliedIndexes: readonly { column: string; where: string }[] = [
   { column: "tokenKey", where: "" },
   { column: "email", where: "email!=''" },
@@ -45,8 +49,11 @@ export function isImpliedIndex(
   if (!index.unique || index.columns.length !== 1 || index.tableName !== collection.name) {
     return false;
   }
-  const column = index.columns[0]?.name.toLowerCase();
-  const rule = impliedIndexes.find((item) => item.column.toLowerCase() === column);
+  const column = index.columns[0];
+  if (column === undefined || column.collate !== "" || column.sort !== "") {
+    return false;
+  }
+  const rule = impliedIndexes.find((item) => item.column === column.name);
   return rule !== undefined && index.where.replace(/[`"\s]/g, "") === rule.where;
 }
 

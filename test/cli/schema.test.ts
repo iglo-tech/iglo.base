@@ -69,13 +69,13 @@ const ruleNames: Record<string, string> = {
 // The statements upstream adds to an auth collection by itself: a unique index
 // on tokenKey, and a unique index on email where email is not empty, under any
 // name (older databases name them after the collection id, see
-// src/schema/implied.ts). Quotes and spacing are taken out before the check.
+// src/schema/implied.ts). Only the backticks are taken out: the text must be
+// upstream's otherwise, so a COLLATE or a sort order makes it an explicit index.
 function impliedIndex(table: string, statement: string): boolean {
-  const text = statement.replace(/[`"]/g, "").replace(/\s+/g, " ").trim();
+  const text = statement.replace(/`/g, "");
   return (
-    text.startsWith("CREATE UNIQUE INDEX ") &&
-    (text.endsWith(` ON ${table} (tokenKey)`) ||
-      text.endsWith(` ON ${table} (email) WHERE email != ''`))
+    new RegExp(`^CREATE UNIQUE INDEX \\S+ ON ${table} \\(tokenKey\\)$`).test(text) ||
+    new RegExp(`^CREATE UNIQUE INDEX \\S+ ON ${table} \\(email\\) WHERE email != ''$`).test(text)
   );
 }
 
@@ -545,6 +545,104 @@ describe("schema command", () => {
     });
     expect(text).not.toMatch(/tokenKey_idx|email_idx|idx_tokenKey_|idx_email_/);
     expect(text).not.toContain("pbc_3323866339");
+  });
+
+  test("an index that differs from upstream's own is written as stored, and the round trip is exact", async () => {
+    const dataDir = await withSuperuser(join(tempDir(), "pb_data"));
+    // Upstream adds its own tokenKey and email indexes only when no single-column
+    // unique index exists on the column. The custom ones here differ from
+    // upstream's in a COLLATE or a sort order, so the file keeps them as stored.
+    // The plain one gets upstream's own, which the file leaves out, and so does
+    // the one that spells upstream's email index with no backticks.
+    const created = [
+      {
+        name: "plain_auth",
+        indexes: [],
+      },
+      {
+        name: "nocase_auth",
+        indexes: [
+          "CREATE UNIQUE INDEX `idx_email_nocase` ON `nocase_auth` (`email` COLLATE NOCASE) WHERE `email` != ''",
+        ],
+      },
+      {
+        name: "desc_auth",
+        indexes: [
+          "CREATE UNIQUE INDEX `idx_email_desc` ON `desc_auth` (`email` DESC) WHERE `email` != ''",
+        ],
+      },
+      {
+        name: "unquoted_auth",
+        indexes: [
+          "CREATE UNIQUE INDEX `idx_email_plain` ON `unquoted_auth` (email) WHERE email != ''",
+        ],
+      },
+      {
+        name: "token_nocase_auth",
+        indexes: [
+          "CREATE UNIQUE INDEX `idx_token_nocase` ON `token_nocase_auth` (`tokenKey` COLLATE NOCASE)",
+        ],
+      },
+      {
+        name: "nonpartial_auth",
+        indexes: ["CREATE UNIQUE INDEX `idx_email_all` ON `nonpartial_auth` (`email`)"],
+      },
+      {
+        name: "plain_index_auth",
+        indexes: [
+          "CREATE INDEX `idx_email_nonunique` ON `plain_index_auth` (`email`) WHERE email != ''",
+        ],
+      },
+      {
+        name: "token_partial_auth",
+        indexes: [
+          "CREATE UNIQUE INDEX `idx_token_partial` ON `token_partial_auth` (`tokenKey`) WHERE tokenKey != ''",
+        ],
+      },
+    ];
+    await withServer(dataDir, async (url) => {
+      const token = await login(url);
+      for (const item of created) {
+        const res = await api(url, token, "POST", "/api/collections", {
+          name: item.name,
+          type: "auth",
+          indexes: item.indexes,
+        });
+        expect(res.status).toBe(200);
+      }
+    });
+
+    const { file, text } = await pull(dataDir);
+    assertValid(file);
+    const collections = (file as { collections: Record<string, { indexes?: string[] }> })
+      .collections;
+    expect(collections.plain_auth?.indexes).toBeUndefined();
+    expect(collections.nocase_auth?.indexes).toEqual([
+      "CREATE UNIQUE INDEX `idx_email_nocase` ON `nocase_auth` (`email` COLLATE NOCASE) WHERE `email` != ''",
+    ]);
+    expect(collections.desc_auth?.indexes).toEqual([
+      "CREATE UNIQUE INDEX `idx_email_desc` ON `desc_auth` (`email` DESC) WHERE `email` != ''",
+    ]);
+    // upstream's older spelling of its own email index (no backticks): implied
+    expect(collections.unquoted_auth?.indexes).toBeUndefined();
+    expect(collections.token_nocase_auth?.indexes).toEqual([
+      "CREATE UNIQUE INDEX `idx_token_nocase` ON `token_nocase_auth` (`tokenKey` COLLATE NOCASE)",
+    ]);
+    // the unique index without a WHERE, the non-unique one and the partial
+    // tokenKey index are not upstream's either: each is kept
+    for (const name of ["nonpartial_auth", "plain_index_auth", "token_partial_auth"]) {
+      expect(collections[name]?.indexes).toHaveLength(1);
+    }
+
+    // the same as GET /api/collections, minus the implied indexes
+    await withServer(dataDir, async (url) => {
+      const token = await login(url);
+      const listed = await api(url, token, "GET", "/api/collections?perPage=500");
+      const items = (listed.json as { items: ApiCollection[] }).items;
+      expect(comparable(readBack(text).collections)).toEqual(normalize(items));
+    });
+    // and the file pulled again is the same
+    expect((await pull(dataDir)).text).toBe(text);
   });
 
   test("a fresh install writes its users collection in full, with its rules and options", async () => {
