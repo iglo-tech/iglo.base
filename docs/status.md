@@ -14,7 +14,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.2 | review round 2 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 2 | Round-1 fixes at `b8880c3`. Lead: legacy index names with ids (`_<id>_username_idx`) are written as stored; S.3 compares indexes by definition |
+| S.2 | fixer round 2 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 2 | Round 1 fixes verified. Round 2: `COLLATE NOCASE` email index must stay explicit; docs name the legacy index-name exception. Lead: legacy index names with ids are written as stored |
 
 
 
