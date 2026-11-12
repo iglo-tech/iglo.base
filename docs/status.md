@@ -2,7 +2,7 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-09
+Updated: 2026-11-12
 
 Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
 
@@ -14,7 +14,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.2 | stopped by the owner (2026-11-09) before round 1 fixes | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 1 | Next: a fixer for the three blocking findings of the round-1 review (`users` defaults, implied auth indexes with ids, stdout logs in dev mode) plus two backlog items (`--dir` missing, narrower integer-name check); the fixer was cancelled before pushing. Then S.3–S.7. Restart only when the owner says so |
+| S.2 | fixer round 1 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 1 | Resumed 2026-11-12 (owner). Round-1 fixes: `users` defaults, implied auth indexes with ids, stdout logs in dev mode; backlog `--dir` missing, narrower integer-name check |
 
 
 
