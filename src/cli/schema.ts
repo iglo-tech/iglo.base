@@ -4,8 +4,10 @@
 //
 // `schema pull` reads the collections of the database through the app
 // (findAllCollections, never SQL on _collections) and writes the schema file
-// to --out, or to stdout. Nothing here writes to the database: applying a
-// file is S.3.
+// to --out, or to stdout; it writes nothing to the database.
+//
+// `schema plan` runs the apply of a file (src/schema/apply.ts) and rolls it
+// back: it prints what applying the file would change, and makes no backup.
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -26,17 +28,23 @@ import { bootstrapApp } from "@/cli/serve";
 import { CommandError } from "@/cli/superuser";
 import { findAllCollections } from "@/collections/collection-query";
 import { dataDBFilename } from "@/db/base";
+import { planSchema, SchemaFileError } from "@/schema/apply";
 import { JSONSyntaxError } from "@/schema/json-tree";
 import { describeCollections } from "@/schema/describe";
 import { schemaJSONText } from "@/schema/json-schema";
+import { formatReport, reportIsOK } from "@/schema/report";
 import { schemaURL } from "@/schema/url";
 import { extractExtras, formatSchema } from "@/schema/write";
+import type { Migration } from "@/migrations/migrations-runner";
 
 export const schemaShort = "Manage the schema file (schema as code)";
 
 const pullShort = "Writes the schema file from the database";
 const pullExample = "schema pull --out iglo.schema.json";
 const jsonSchemaShort = "Prints the JSON Schema of the schema file, as this build embeds it";
+const planShort =
+  "Shows what applying the schema file would change, and whether it would apply, without changing the database";
+const planExample = "schema plan --schema iglo.schema.json";
 
 function helpFlag(cmd: string): FlagSpec {
   return { name: "help", kind: "bool", shorthand: "h", usage: `help for ${cmd}` };
@@ -48,14 +56,28 @@ const outFlag: FlagSpec = {
   usage: "the file to write (default stdout)",
 };
 
+const schemaFlag: FlagSpec = {
+  name: "schema",
+  kind: "string",
+  usage: "the schema file to plan (required)",
+};
+
+const allowDataLossFlag: FlagSpec = {
+  name: "allow-data-loss",
+  kind: "bool",
+  usage: "plan the deletion of the fields and collections that hold data",
+};
+
 // Runs `schema ...`; ctx.args still starts with the command words. version
-// is the running version (the $schema URL of the file).
+// is the running version (the $schema URL of the file). migrations are the
+// JavaScript migrations of pb_migrations (plan runs them in its transaction).
 export async function runSchemaCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
   persistent: FlagSpec[],
   ctx: CliContext,
   name: string,
   version: string,
+  migrations: readonly Migration[],
 ): Promise<void> {
   const rest = argsMinusFirst(ctx.args, "schema", persistent);
   // cobra Command.Find: the first argument that is not a flag (or a flag's value)
@@ -67,6 +89,7 @@ export async function runSchemaCommand(
     runnable: false,
     subcommands: [
       { name: "json-schema", short: jsonSchemaShort },
+      { name: "plan", short: planShort },
       { name: "pull", short: pullShort },
     ],
     localFlags: [helpFlag("schema")],
@@ -113,6 +136,10 @@ export async function runSchemaCommand(
       return;
     }
     ctx.out.stdout(schemaJSONText);
+    return;
+  }
+  if (subName === "plan") {
+    await runPlan(resolveConfig, persistent, ctx, name, migrations, rest);
     return;
   }
   if (subName !== "pull") {
@@ -227,5 +254,92 @@ async function pull(
     ctx.out.stdout(text);
   } else {
     writeFileSync(path, text);
+  }
+}
+
+// `schema plan --schema <file> [--allow-data-loss]`: prints the plan on
+// standard output, and exits nonzero when the file would not apply.
+async function runPlan(
+  resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
+  persistent: FlagSpec[],
+  ctx: CliContext,
+  name: string,
+  migrations: readonly Migration[],
+  rest: string[],
+): Promise<void> {
+  const local = [helpFlag("schema plan"), schemaFlag, allowDataLossFlag];
+  let parsed;
+  try {
+    parsed = parseFlags(argsMinusFirst(rest, "plan", persistent), [...local, ...persistent], {
+      allowUnknown: false,
+    });
+  } catch (err) {
+    if (err instanceof FlagError) {
+      throw new CommandError(err.message);
+    }
+    throw err;
+  }
+  if (parsed.values.get("help") === true) {
+    ctx.out.stdout(
+      helpText({
+        path: `${name} schema plan`,
+        short: planShort,
+        example: planExample,
+        runnable: true,
+        subcommands: [],
+        localFlags: local,
+        inheritedFlags: persistent,
+      }),
+    );
+    return;
+  }
+
+  const given = parsed.values.get("schema") as string | undefined;
+  if (given === undefined) {
+    throw new CommandError("schema plan needs --schema <file>");
+  }
+  const schemaText = readPlanFile(resolve(ctx.cwd, given), given);
+
+  // pocketbase.go eagerParseFlags: the persistent flags of the whole line
+  let config: AppConfig;
+  try {
+    config = resolveConfig(parseFlags(ctx.args, persistent, { allowUnknown: true }).values);
+  } catch {
+    config = resolveConfig(new Map());
+  }
+
+  // like pull, a plan reads an existing database and creates none
+  requireExistingDatabase(resolve(ctx.cwd, config.dataDir));
+
+  const app: App = await bootstrapApp(config, logsToStderr(ctx));
+  try {
+    let report;
+    try {
+      report = planSchema(app, schemaText, {
+        allowDataLoss: parsed.values.get("allow-data-loss") === true,
+        migrations,
+      });
+    } catch (err) {
+      if (err instanceof SchemaFileError) {
+        throw new CommandError(err.message);
+      }
+      throw err;
+    }
+    ctx.out.stdout(formatReport(report));
+    if (!reportIsOK(report)) {
+      throw new CommandError("schema plan: the schema would not apply");
+    }
+  } finally {
+    await clearBootstrap(app);
+  }
+}
+
+function readPlanFile(path: string, given: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (err) {
+    throw new CommandError(
+      `cannot read the schema file ${JSON.stringify(given)}: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

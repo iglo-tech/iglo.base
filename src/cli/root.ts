@@ -312,7 +312,7 @@ async function execute(ctx: CliContext): Promise<number> {
   }
 
   if (commandName === "schema") {
-    await runSchemaCommand(resolve, persistent, ctx, name, version);
+    await runSchemaCommand(resolve, persistent, ctx, name, version, migrations);
     return 0;
   }
 
