@@ -1,3 +1,7 @@
+## 1.0.1-rc.0
+
+- Prerelease that validates npm trusted publishing from CI (OIDC, no token). No code changes from 1.0.0; published under the `next` tag.
+
 ## 1.0.0
 
 First release, published as `@iglo.tech/iglo.base` (npm organization `iglo.tech`, public access). Every import path keeps its subpath under this name, for example `@iglo.tech/iglo.base/ssr/browser`.
