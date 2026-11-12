@@ -4,7 +4,7 @@ Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in 
 
 Updated: 2026-11-12
 
-Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs go on the new site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech) (private), built 2026-11-06 (`1837059`, not deployed); it pulls the docs from this repository at build time. Hosting and domain are the owner's.
+Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs are on https://iglo.tech (site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech), deployed by its own agent; the SSR guide is live since 2026-11-09); it pulls the docs from this repository at build time.
 
 ## Needs you
 
@@ -167,6 +167,7 @@ Exotic-input differences from upstream that are handled safely (D26). Not fixed 
 
 ## For owner review
 
+- 2026-11-12 (owner direction): `serve --mode` defaults to `dev`, also with `--schema` ([#98](https://github.com/iglo-tech/iglo.base/pull/98) into `develop`, D40; #81 updated). Production deployments pass `--mode prod`.
 - 2026-11-09 (owner direction): schema as code (#76–#81) is built on `develop`, one PR per issue, released only when all six are merged (work plan, S.1–S.7). The issues were updated by the lead: decision numbers D40–D42 (D35–D37 were taken), types for the `iglo.base` SDK and its SSR clients (#79), one user guide `docs/schema.md`, the macOS lines removed from #83, and replicas (#82, #83) moved to a separate track after the release.
 - 2026-11-08 (P.13f round 2, incident): the reviewer started a test server on port 18090 without checking the port. That port belongs to the `paszomistrz-qa-pocketbase-1` Docker container, so the setup requests went to that QA instance. They created user `u@x.io` in its `users` collection at 18:50:44 UTC, which the reviewer deleted at once (204). If that app has create hooks (verification mail, audit log), they may have fired once. Nothing else was written. The runbook's worker and reviewer instructions now require a free-port check, and requests only to processes the agent started.
 - 2026-11-08 (end of run): every task in the work plan is merged; P.13 (SSR out of the box) is complete. Left for the owner: the npm bootstrap for the first SDK release (Needs you), deploying the iglo.tech site, and these review items. The hardening backlog holds safe-input differences and test flakes; nothing in it blocks.
