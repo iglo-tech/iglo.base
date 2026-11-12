@@ -8,13 +8,14 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 ## Needs you
 
-- npm bootstrap for the first SDK release (`iglo.base` 1.0.0): only the owner has the npm account. Shown to the owner in the lead thread 2026-11-07; steps in `docs/releasing.md` (SDK releases).
+- npm: create the organization `iglo.tech`, then `npm login` on this host once P.14 merges; the lead publishes `@iglo.tech/iglo.base` 1.0.0 and logs out. Then add the trusted publisher (steps in `docs/releasing.md` after P.14).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
 | S.2 | fixer round 2 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 2 | Round 1 fixes verified. Round 2: `COLLATE NOCASE` email index must stay explicit; docs name the legacy index-name exception. Lead: legacy index names with ids are written as stored |
+| P.14 | worker | `task/P.14-…` → `main` | – | Owner direction 2026-11-12: npm package `@iglo.tech/iglo.base` under org `iglo.tech`; runs alongside S.2 (owner priority). Then the first publish (owner `npm login`) |
 
 
 
