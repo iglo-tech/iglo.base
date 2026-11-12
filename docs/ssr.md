@@ -33,7 +33,7 @@ Install the SDK in your app:
 npm install @iglo.tech/iglo.base
 ```
 
-The package is ES modules only. It has the main entry (`iglo.base`, the client), `@iglo.tech/iglo.base/ssr` (server only), `@iglo.tech/iglo.base/ssr/browser` (safe for the browser) and one entry per framework (`@iglo.tech/iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro`, `/react-router`).
+The package is ES modules only. It has the main entry (`@iglo.tech/iglo.base`, the client), `@iglo.tech/iglo.base/ssr` (server only), `@iglo.tech/iglo.base/ssr/browser` (safe for the browser) and one entry per framework (`@iglo.tech/iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro`, `/react-router`).
 
 The SDK reads no environment variables. The example apps use these names, and you can use any others. Read the superuser credentials at run time, never at build time (see [security notes](#security-notes)):
 
