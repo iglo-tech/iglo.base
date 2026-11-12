@@ -1,7 +1,7 @@
 name: SDK release
 
 # A push to main touching sdk/package.json publishes the new SDK version to
-# npm as `iglo.base` with provenance via npm trusted publishing (OIDC; D36),
+# npm as `@iglo.tech/iglo.base` with provenance via npm trusted publishing (OIDC; D36),
 # then tags sdk-v<version> and creates a GitHub release (--latest=false).
 # If the version and tag already exist, it ends successfully without publishing.
 # A missing CHANGELOG section fails.
@@ -119,7 +119,7 @@ jobs:
           npm_exists="false"
           npm_status="$(node -e '
             const { spawnSync } = require("child_process");
-            const res = spawnSync("npm", ["view", `iglo.base@${process.argv[1]}`, "version", "--json"], { encoding: "utf8" });
+            const res = spawnSync("npm", ["view", `@iglo.tech/iglo.base@${process.argv[1]}`, "version", "--json"], { encoding: "utf8" });
             if (res.status === 0) {
               process.stdout.write("EXISTS\n");
               process.exit(0);
@@ -143,13 +143,13 @@ jobs:
 
           # If tag exists but version is not on npm, fail explicitly
           if [ "$dry_run" = "false" ] && [ "$tag_exists" = "true" ] && [ "$npm_exists" = "false" ]; then
-            echo "Tag $tag already exists in git, but iglo.base@${version} is not published on npm. Resolve this mismatch manually." >&2
+            echo "Tag $tag already exists in git, but @iglo.tech/iglo.base@${version} is not published on npm. Resolve this mismatch manually." >&2
             exit 1
           fi
 
           skip_all="false"
           if [ "$dry_run" = "false" ] && [ "$tag_exists" = "true" ] && [ "$npm_exists" = "true" ]; then
-            echo "iglo.base@${version} is already published on npm and tagged as $tag; skipping build and release."
+            echo "@iglo.tech/iglo.base@${version} is already published on npm and tagged as $tag; skipping build and release."
             skip_all="true"
           fi
 
@@ -261,25 +261,19 @@ jobs:
           DRY_RUN: ${{ needs.check.outputs.dry_run }}
           NPM_TAG: ${{ needs.check.outputs.npm_tag }}
           NPM_EXISTS: ${{ needs.check.outputs.npm_exists }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           cd sdk
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            echo "Using NPM_TOKEN secret for authentication (bootstrap publish)"
-            export NODE_AUTH_TOKEN="$NPM_TOKEN"
-            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n' >> ~/.npmrc
-          fi
           if [ "$DRY_RUN" = "true" ]; then
             if [ "$NPM_EXISTS" = "true" ]; then
-              echo "Notice: iglo.base version is already published on npm; running npm pack --dry-run (npm publish --dry-run fails on existing versions in npm 11)"
+              echo "Notice: @iglo.tech/iglo.base version is already published on npm; running npm pack --dry-run (npm publish --dry-run fails on existing versions in npm 11)"
               npm pack --dry-run
             else
               echo "Dry run: running npm publish --tag $NPM_TAG --dry-run"
               npm publish --tag "$NPM_TAG" --dry-run
             fi
           else
-            echo "Publishing iglo.base with tag $NPM_TAG"
+            echo "Publishing @iglo.tech/iglo.base with tag $NPM_TAG"
             npm publish --provenance --access public --tag "$NPM_TAG"
           fi
 
@@ -364,7 +358,7 @@ jobs:
           # fall back to workflow commit only when the field is absent.
           target_commit="$(node -e '
             const { spawnSync } = require("child_process");
-            const pkg = `iglo.base@${process.argv[1]}`;
+            const pkg = `@iglo.tech/iglo.base@${process.argv[1]}`;
             const fallback = process.argv[2];
             const res = spawnSync("npm", ["view", pkg, "gitHead", "--json"], { encoding: "utf8" });
             if (res.status === 0) {

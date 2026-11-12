@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import type { AuthRecord } from "iglo.base";
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import type { AuthRecord } from "@iglo.tech/iglo.base";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 
 interface LiveClientProps {
   token: string;

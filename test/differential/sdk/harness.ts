@@ -18,7 +18,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { expect, test } from "bun:test";
-import PocketBase, { ClientResponseError } from "iglo.base";
+import PocketBase, { ClientResponseError } from "@iglo.tech/iglo.base";
 
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
 import { installEventSource } from "@test/support/event-source";

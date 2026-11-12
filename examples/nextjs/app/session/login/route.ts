@@ -1,5 +1,5 @@
-import { ClientResponseError } from "iglo.base";
-import { SSR_NO_CACHE_HEADERS } from "iglo.base/ssr";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
+import { SSR_NO_CACHE_HEADERS } from "@iglo.tech/iglo.base/ssr";
 
 import { currentSession } from "@/lib/auth";
 

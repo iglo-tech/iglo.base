@@ -1,4 +1,4 @@
-// docs/design/13-ssr.md ("Framework adapters": iglo.base/ssr/react-router; "Session cookie"; "CSRF";
+// docs/design/13-ssr.md ("Framework adapters": @iglo.tech/iglo.base/ssr/react-router; "Session cookie"; "CSRF";
 // "OAuth2"; "Response headers"). The React Router adapter through its public API: session() on a Web
 // Request, which answers with a route response or with the resumed session and the headers it wrote,
 // and sessionHeaders, the route's headers function. iglo.base is a fake fetch that answers the

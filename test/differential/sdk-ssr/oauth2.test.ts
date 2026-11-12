@@ -11,7 +11,7 @@ import {
   handlePopupHandOff,
   OAuth2Error,
   type CompleteOAuth2Result,
-} from "iglo.base/ssr";
+} from "@iglo.tech/iglo.base/ssr";
 import { password, sdkTest, type SdkEnv } from "@test/differential/sdk/harness";
 import { Browser } from "@test/differential/sdk-ssr/browser";
 import { useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";

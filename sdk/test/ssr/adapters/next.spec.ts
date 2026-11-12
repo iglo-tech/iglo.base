@@ -1,4 +1,4 @@
-// docs/design/13-ssr.md ("Framework adapters": iglo.base/ssr/next; "Session cookie"; "CSRF"; "OAuth2").
+// docs/design/13-ssr.md ("Framework adapters": @iglo.tech/iglo.base/ssr/next; "Session cookie"; "CSRF"; "OAuth2").
 // The Next.js adapter through its public API: the middleware's pass-through response and the request
 // it forwards, and what serverSession reads from that request. iglo.base is a fake fetch that
 // answers the requests the adapter sends and fails any other, so no test touches the network.

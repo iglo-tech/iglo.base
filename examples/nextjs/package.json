@@ -9,7 +9,7 @@
     "start": "next start -p ${PORT:-3000} -H ${HOST:-127.0.0.1}"
   },
   "dependencies": {
-    "iglo.base": "file:../../sdk",
+    "@iglo.tech/iglo.base": "file:../../sdk",
     "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1"

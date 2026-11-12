@@ -42,11 +42,11 @@ This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/
 ### Node.js / Bun (via npm)
 
 ```sh
-npm install iglo.base --save
+npm install @iglo.tech/iglo.base --save
 ```
 
 ```js
-import PocketBase from 'iglo.base'
+import PocketBase from '@iglo.tech/iglo.base'
 ```
 
 > 🔧 For **Node < 17** you'll need to load a `fetch()` polyfill.
@@ -71,7 +71,7 @@ import PocketBase from 'iglo.base'
 ## Usage
 
 ```js
-import PocketBase from 'iglo.base';
+import PocketBase from '@iglo.tech/iglo.base';
 
 const pb = new PocketBase('http://127.0.0.1:8090');
 
@@ -190,7 +190,7 @@ Conveniently, the default store also takes care to automatically sync the auth s
 The SDK comes also with a helper [`AsyncAuthStore`](https://github.com/iglo-tech/iglo.base/blob/main/sdk/src/stores/AsyncAuthStore.ts) that you can use to integrate with any 3rd party async storage implementation (_usually this is needed when working with React Native_):
 ```js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PocketBase, { AsyncAuthStore } from 'iglo.base';
+import PocketBase, { AsyncAuthStore } from '@iglo.tech/iglo.base';
 
 const store = new AsyncAuthStore({
     save:    async (serialized) => AsyncStorage.setItem('pb_auth', serialized),
@@ -205,7 +205,7 @@ const pb = new PocketBase('http://127.0.0.1:8090', store)
 In some situations it could be easier to create your own custom auth store. For this you can extend [`BaseAuthStore`](https://github.com/iglo-tech/iglo.base/blob/main/sdk/src/stores/BaseAuthStore.ts) and pass the new custom instance as constructor argument to the client:
 
 ```js
-import PocketBase, { BaseAuthStore } from 'iglo.base';
+import PocketBase, { BaseAuthStore } from '@iglo.tech/iglo.base';
 
 class CustomAuthStore extends BaseAuthStore {
     save(token, model) {
@@ -417,9 +417,9 @@ To accomplish this, the SDK provides 2 function hooks:
 
 ### Server-side rendering
 
-`iglo.base/ssr` lets your server render pages for signed-in users. Each request gets its own client, the session lives in an HttpOnly cookie, and the browser receives only a short token for realtime. The SDK also provides the browser entry `iglo.base/ssr/browser` (`createBrowserClient`), which is safe to bundle for the browser.
+`@iglo.tech/iglo.base/ssr` lets your server render pages for signed-in users. Each request gets its own client, the session lives in an HttpOnly cookie, and the browser receives only a short token for realtime. The SDK also provides the browser entry `@iglo.tech/iglo.base/ssr/browser` (`createBrowserClient`), which is safe to bundle for the browser.
 
-`iglo.base/ssr` is server-only: import it only in server code. Its exports include `createServerClient`, `createSuperuserClient`, `createSessionCache`, `createRequestCookieAdapter`, `mintBrowserToken`, `handleBrowserTokenRenew`, `handlePopupHandOff`, `checkCsrf`, `checkOrigin` and `SSR_NO_CACHE_HEADERS`. The framework adapters are `iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro` and `/react-router`.
+`@iglo.tech/iglo.base/ssr` is server-only: import it only in server code. Its exports include `createServerClient`, `createSuperuserClient`, `createSessionCache`, `createRequestCookieAdapter`, `mintBrowserToken`, `handleBrowserTokenRenew`, `handlePopupHandOff`, `checkCsrf`, `checkOrigin` and `SSR_NO_CACHE_HEADERS`. The framework adapters are `@iglo.tech/iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro` and `/react-router`.
 
 `createSessionCache({ ttl, maxEntries })` takes two optional options. `ttl` is in milliseconds (default 300000, five minutes), and `maxEntries` defaults to 10000. A session served from the cache can stay signed in for up to `ttl` after iglo.base revokes it; the guide's [session cache](https://github.com/iglo-tech/iglo.base/blob/main/docs/ssr.md#the-session-cache) section covers the trade-off.
 

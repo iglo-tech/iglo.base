@@ -10,7 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "iglo.base": "file:../../sdk"
+    "@iglo.tech/iglo.base": "file:../../sdk"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.8",

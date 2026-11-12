@@ -1,6 +1,6 @@
 // docs/design/13-ssr.md ("Browser client and realtime", "Fallback without superuser credentials").
 //
-// Lives in `iglo.base/ssr` (the server entry), not in the browser entry: it needs the server
+// Lives in `@iglo.tech/iglo.base/ssr` (the server entry), not in the browser entry: it needs the server
 // client's validated session and the superuser client, and neither may reach a browser bundle.
 import type { ServerClient } from "@sdk/ssr/server-client";
 import type { SuperuserClient } from "@sdk/ssr/superuser-client";
@@ -17,7 +17,7 @@ export const DEFAULT_BROWSER_TOKEN_DURATION_SEC = 900;
  * token never leaves the server.
  *
  * The result is per-user: the response that carries it must be `Cache-Control: no-store` and
- * private (`SSR_NO_CACHE_HEADERS`, from `iglo.base/ssr`), or a shared cache can hand one user's
+ * private (`SSR_NO_CACHE_HEADERS`, from `@iglo.tech/iglo.base/ssr`), or a shared cache can hand one user's
  * token to another. The renew route already answers with those headers.
  *
  * Returns `null` when nobody is signed in. Without a superuser client, the server client must

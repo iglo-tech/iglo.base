@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { createBrowserClient } from "iglo.base/ssr/browser";
+  import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 
   let { data } = $props();
 
