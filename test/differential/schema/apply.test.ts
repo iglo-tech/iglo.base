@@ -142,6 +142,20 @@ async function changeUpstream(): Promise<void> {
   ] as const) {
     const created = await upstreamRequest("POST", "/api/collections", body);
     expect({ name, status: created.status }).toEqual({ name, status: 200 });
+    if (name === "members") {
+      // the file lists the implied system fields first, then the others, and
+      // the stored order is the file's (the API saves the order it is given,
+      // as the dashboard does when fields are reordered)
+      const stored = (created.json as { fields: Record<string, unknown>[] }).fields;
+      const reordered = [
+        ...stored.filter((field) => field.system === true),
+        ...stored.filter((field) => field.system !== true),
+      ];
+      const reorder = await upstreamRequest("PATCH", `/api/collections/${name}`, {
+        fields: reordered,
+      });
+      expect({ name, status: reorder.status }).toEqual({ name, status: 200 });
+    }
   }
 }
 
@@ -154,12 +168,17 @@ function storedSchema(dataDir: string): { collections: unknown[]; schema: unknow
       db.query("SELECT * FROM _collections ORDER BY name").all() as Record<string, unknown>[]
     ).map((row) => {
       const { created: _created, updated: _updated, options, fields, ...rest } = row;
+      // every token option has a random secret: its presence is compared
       const normalized = JSON.parse(String(options ?? "{}")) as Record<string, unknown>;
-      const authToken = normalized.authToken as Record<string, unknown> | undefined;
-      if (authToken !== undefined && typeof authToken.secret === "string") {
-        authToken.secret = authToken.secret === "" ? "" : "<secret>";
+      for (const value of Object.values(normalized)) {
+        const option = value as Record<string, unknown> | null;
+        if (option !== null && typeof option === "object" && typeof option.secret === "string") {
+          option.secret = option.secret === "" ? "" : "<secret>";
+        }
       }
-      return { ...rest, options: normalized, fields: JSON.parse(String(fields)) };
+      // a view's field ids get a random suffix when they are generated
+      const cloneIDs = String(fields).replace(/_clone_[A-Za-z0-9]{4}/g, "_clone_*");
+      return { ...rest, options: normalized, fields: JSON.parse(cloneIDs) };
     });
     const schema = db
       .query(

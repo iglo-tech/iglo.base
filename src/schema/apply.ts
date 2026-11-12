@@ -295,9 +295,9 @@ function applyInTransaction(
   }
 
   // 4 and 5: widen
-  widenNewCollections(app, desired, currentByName);
-  widenExistingFields(app, desired, changeByName, "plain");
-  widenExistingFields(app, desired, changeByName, "relation");
+  const deferred = widenNewCollections(app, desired, currentByName);
+  widenExistingFields(app, desired, changeByName, "plain", new Set());
+  widenExistingFields(app, desired, changeByName, "relation", deferred);
 
   // 5a: TypeScript migrations (S.5)
   applyTypeScriptMigrations();
@@ -460,24 +460,52 @@ function orderedViews(desired: SchemaDescription, rebuild: Set<string>): SchemaC
   return ordered;
 }
 
-// 4: the new collections, with their fields that are not relations
+// 4: the new collections, each in one save with all its fields, as the
+// dashboard saves a new collection (the table gets its columns at once). A
+// collection that relates to another new one waits until that one exists.
+// When the relations form a cycle, one collection goes first without its
+// relation fields; those are added in step 5. Returns the names of the
+// collections that went without them.
 function widenNewCollections(
   app: App,
   desired: SchemaDescription,
   currentByName: Map<string, SchemaCollection>,
-): void {
-  const idOf = collectionIdsOf(app);
-  for (const collection of desired.collections) {
-    if (collection.type === "view" || currentByName.has(collection.name)) {
-      continue;
+): Set<string> {
+  const pending = desired.collections.filter(
+    (collection) => collection.type !== "view" && !currentByName.has(collection.name),
+  );
+  const exists = new Set(currentByName.keys());
+  const deferred = new Set<string>();
+  const lookup: CollectionIdOf = (name) => collectionIdsOf(app)(name);
+  while (pending.length > 0) {
+    let index = pending.findIndex((collection) =>
+      relationTargets(collection).every((target) => exists.has(target)),
+    );
+    const cycle = index < 0;
+    if (cycle) {
+      index = 0;
     }
+    const [collection] = pending.splice(index, 1) as [SchemaCollection];
+    const relations = collection.fields.filter((field) => field.type === "relation");
     const fields = collection.fields
-      .filter((field) => field.type !== "relation")
-      .map((field) => fieldJSON(field, "", idOf));
+      .filter((field) => !cycle || field.type !== "relation")
+      .map((field) => fieldJSON(field, "", lookup));
+    if (cycle && relations.length > 0) {
+      deferred.add(collection.name);
+    }
     const model = newCollection(collection.type, collection.name);
     model.unmarshalJSON(JSON.stringify(collectionJSON(collection, "", { fields })));
     saveAs(app, model, collection.name);
+    exists.add(collection.name);
   }
+  return deferred;
+}
+
+// the names of the collections that a collection's relation fields target
+function relationTargets(collection: SchemaCollection): string[] {
+  return collection.fields
+    .filter((field) => field.type === "relation")
+    .map((field) => String(field.options.collection));
 }
 
 // 4 and 5: the added fields of the existing collections, the plain ones
@@ -487,16 +515,18 @@ function widenExistingFields(
   desired: SchemaDescription,
   changeByName: Map<string, CollectionChange>,
   pass: "plain" | "relation",
+  deferred: Set<string>,
 ): void {
   const idOf = collectionIdsOf(app);
   for (const collection of desired.collections) {
     const change = changeByName.get(collection.name);
-    if (collection.type === "view" || change === undefined) {
+    // a new collection is created by widenNewCollections, and only its
+    // relation fields a cycle deferred are added here (the relation pass)
+    if (change === undefined || collection.type === "view") {
       continue;
     }
-    // the plain pass creates the new collections' plain fields; the relation
-    // pass covers them too, once their targets exist
-    if (pass === "plain" && change.kind !== "changed") {
+    const isDeferredNew = change.kind === "added" && deferred.has(collection.name);
+    if (change.kind !== "changed" && !(pass === "relation" && isDeferredNew)) {
       continue;
     }
     const added = new Set(change.fields.filter((f) => f.kind === "added").map((f) => f.name));
