@@ -1,6 +1,6 @@
 // docs/design/13-ssr.md ("Browser client and realtime", "OAuth2": popup flow, "CSRF").
 //
-// The browser entry, `iglo.base/ssr/browser`. It is browser-safe: no server client, no
+// The browser entry, `@iglo.tech/iglo.base/ssr/browser`. It is browser-safe: no server client, no
 // superuser client, no Bun-only API. It returns a normal SDK Client, so `instanceof` checks
 // and the realtime and collection services are the main entry's own.
 import Client from "@sdk/Client";

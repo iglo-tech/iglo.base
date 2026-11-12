@@ -3,8 +3,8 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { createSessionCache, createSuperuserClient, type SuperuserClient } from "iglo.base/ssr";
-import { createNextAuth, type NextAuth, type NextCookieStore } from "iglo.base/ssr/next";
+import { createSessionCache, createSuperuserClient, type SuperuserClient } from "@iglo.tech/iglo.base/ssr";
+import { createNextAuth, type NextAuth, type NextCookieStore } from "@iglo.tech/iglo.base/ssr/next";
 
 /** The fallback without superuser credentials: the session cookie is readable by page scripts. */
 function readableCookie(): boolean {

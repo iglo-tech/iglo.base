@@ -1,4 +1,4 @@
-// docs/design/13-ssr.md ("Framework adapters": iglo.base/ssr/next; "Session cookie"; "Session cache,
+// docs/design/13-ssr.md ("Framework adapters": @iglo.tech/iglo.base/ssr/next; "Session cookie"; "Session cache,
 // check and refresh"; "CSRF"; "OAuth2"). The Next.js App Router adapter. proxy.ts (Next.js 16) or
 // middleware.ts (Next.js 15.5, Node.js runtime) resumes the session on every request and forwards
 // the refreshed cookies in the request it passes on, so Server Components (which cannot set cookies)

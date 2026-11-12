@@ -1,7 +1,7 @@
 // Checks the built package from the outside, the way a consumer uses it:
 // `npm pack`, install the tarball into a temporary project, then
 //   - import it as ESM with Node and with Bun,
-//   - bun build of `import PocketBase from "iglo.base"`,
+//   - bun build of `import PocketBase from "@iglo.tech/iglo.base"`,
 //   - type check ESM and bundler-style imports against the declarations (node16, nodenext, bundler),
 //   - verify npm pack --dry-run contains no CJS/UMD files.
 // Run `bun run sdk:build` first.
@@ -26,7 +26,7 @@ const tmp = await mkdtemp(join(tmpdir(), "iglo-sdk-consumer-"));
 let failed = false;
 
 /**
- * The browser condition of `iglo.base/ssr` and of its adapter subpaths maps to a stub that exports
+ * The browser condition of `@iglo.tech/iglo.base/ssr` and of its adapter subpaths maps to a stub that exports
  * nothing (docs/design/13-ssr.md, "Clients"). Bundling a named import of it fails with bun's "No
  * matching export" error for that name. True only for that failure: any other build error is not
  * the expected one.
@@ -121,7 +121,7 @@ try {
     const entry = `adapter-${adapter.name}-entry.js`;
     await writeFile(
       join(tmp, entry),
-      `import { ${adapter.factory} } from "iglo.base/ssr/${adapter.name}";\nconsole.log(typeof ${adapter.factory});\n`,
+      `import { ${adapter.factory} } from "@iglo.tech/iglo.base/ssr/${adapter.name}";\nconsole.log(typeof ${adapter.factory});\n`,
     );
     const browserAdapter = Bun.spawnSync(
       ["bun", "build", entry, "--outfile", `browser-${adapter.name}-out.js`, "--target", "browser"],
@@ -130,12 +130,12 @@ try {
     const browserOutput = browserAdapter.stdout.toString() + browserAdapter.stderr.toString();
     if (browserAdapter.exitCode !== 0 && missingBrowserExport(browserOutput, adapter.factory)) {
       console.log(
-        `ok   browser bundle of iglo.base/ssr/${adapter.name} fails: ${adapter.factory} is not exported`,
+        `ok   browser bundle of @iglo.tech/iglo.base/ssr/${adapter.name} fails: ${adapter.factory} is not exported`,
       );
     } else {
       failed = true;
       console.log(
-        `FAIL browser bundle of iglo.base/ssr/${adapter.name}: expected a build error for ${adapter.factory}, got exit ${browserAdapter.exitCode}\n${browserOutput}`,
+        `FAIL browser bundle of @iglo.tech/iglo.base/ssr/${adapter.name}: expected a build error for ${adapter.factory}, got exit ${browserAdapter.exitCode}\n${browserOutput}`,
       );
     }
     const nodeAdapter = Bun.spawnSync(
@@ -151,16 +151,16 @@ try {
           })
         : undefined;
     if (nodeAdapterRun?.exitCode === 0) {
-      console.log(`ok   node bundle and run of iglo.base/ssr/${adapter.name}`);
+      console.log(`ok   node bundle and run of @iglo.tech/iglo.base/ssr/${adapter.name}`);
     } else {
       failed = true;
       console.log(
-        `FAIL node bundle of iglo.base/ssr/${adapter.name}: ${nodeAdapter.stderr.toString()}${nodeAdapterRun?.stderr.toString() ?? ""}`,
+        `FAIL node bundle of @iglo.tech/iglo.base/ssr/${adapter.name}: ${nodeAdapter.stderr.toString()}${nodeAdapterRun?.stderr.toString() ?? ""}`,
       );
     }
   }
 
-  // 5. bun build of import PocketBase from "iglo.base"
+  // 5. bun build of import PocketBase from "@iglo.tech/iglo.base"
   const buildResult = Bun.spawnSync(
     ["bun", "build", "bundle-entry.js", "--outfile", "bundle-out.js", "--target", "node"],
     { cwd: tmp, stdout: "pipe", stderr: "pipe" },
@@ -168,7 +168,7 @@ try {
   if (buildResult.exitCode !== 0) {
     failed = true;
     console.log(
-      `FAIL bun build of import PocketBase from "iglo.base"\n${buildResult.stderr.toString()}`,
+      `FAIL bun build of import PocketBase from "@iglo.tech/iglo.base"\n${buildResult.stderr.toString()}`,
     );
   } else {
     const runNode = Bun.spawnSync(["node", "bundle-out.js"], {
@@ -183,7 +183,7 @@ try {
     });
     if (runNode.exitCode === 0 && runBun.exitCode === 0) {
       console.log(
-        `ok   bun build of import PocketBase from "iglo.base": ${runNode.stdout.toString().trim()}`,
+        `ok   bun build of import PocketBase from "@iglo.tech/iglo.base": ${runNode.stdout.toString().trim()}`,
       );
     } else {
       failed = true;
@@ -212,12 +212,12 @@ try {
     missingBrowserExport(browserBuildOutput, "createServerClient")
   ) {
     console.log(
-      "ok   bundler build of iglo.base/ssr with browser condition fails: createServerClient is not exported",
+      "ok   bundler build of @iglo.tech/iglo.base/ssr with browser condition fails: createServerClient is not exported",
     );
   } else {
     failed = true;
     console.log(
-      `FAIL bundler build of iglo.base/ssr with browser condition: expected a build error for createServerClient, got exit ${browserBuild.exitCode}\n${browserBuildOutput}`,
+      `FAIL bundler build of @iglo.tech/iglo.base/ssr with browser condition: expected a build error for createServerClient, got exit ${browserBuild.exitCode}\n${browserBuildOutput}`,
     );
   }
 
@@ -235,25 +235,25 @@ try {
     { cwd: tmp, stdout: "pipe", stderr: "pipe" },
   );
   if (browserSubpathBuild.exitCode === 0) {
-    console.log("ok   bun build of iglo.base/ssr/browser with browser target succeeded");
+    console.log("ok   bun build of @iglo.tech/iglo.base/ssr/browser with browser target succeeded");
   } else {
     failed = true;
     console.log(
-      `FAIL bun build of iglo.base/ssr/browser with browser target: ${browserSubpathBuild.stderr.toString()}`,
+      `FAIL bun build of @iglo.tech/iglo.base/ssr/browser with browser target: ${browserSubpathBuild.stderr.toString()}`,
     );
   }
 
-  // Bundler build with node target for iglo.base/ssr must succeed
+  // Bundler build with node target for @iglo.tech/iglo.base/ssr must succeed
   const nodeSsrBuild = Bun.spawnSync(
     ["bun", "build", "browser-ssr-entry.js", "--outfile", "node-ssr-out.js", "--target", "node"],
     { cwd: tmp, stdout: "pipe", stderr: "pipe" },
   );
   if (nodeSsrBuild.exitCode === 0) {
-    console.log("ok   bun build of iglo.base/ssr with node target succeeded");
+    console.log("ok   bun build of @iglo.tech/iglo.base/ssr with node target succeeded");
   } else {
     failed = true;
     console.log(
-      `FAIL bun build of iglo.base/ssr with node target: ${nodeSsrBuild.stderr.toString()}`,
+      `FAIL bun build of @iglo.tech/iglo.base/ssr with node target: ${nodeSsrBuild.stderr.toString()}`,
     );
   }
 

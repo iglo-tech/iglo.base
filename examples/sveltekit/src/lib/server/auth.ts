@@ -1,6 +1,6 @@
 import { env } from "$env/dynamic/private";
-import { createSessionCache, createSuperuserClient } from "iglo.base/ssr";
-import { createSvelteKitAuth, type SvelteKitAuth } from "iglo.base/ssr/sveltekit";
+import { createSessionCache, createSuperuserClient } from "@iglo.tech/iglo.base/ssr";
+import { createSvelteKitAuth, type SvelteKitAuth } from "@iglo.tech/iglo.base/ssr/sveltekit";
 
 /** The fallback without superuser credentials: the session cookie is readable by page scripts. */
 const readable = env.PB_READABLE_COOKIE === "1";

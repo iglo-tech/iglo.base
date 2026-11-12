@@ -1,6 +1,6 @@
 # Server-side rendering with iglo.base
 
-This guide shows how to render pages on your server and sign users in with iglo.base. It covers the server part of the SDK, `iglo.base/ssr`, the browser part, `iglo.base/ssr/browser`, and one section per framework. The server's API is the same as PocketBase v0.41.0's, so SSR needs no change on the server.
+This guide shows how to render pages on your server and sign users in with iglo.base. It covers the server part of the SDK, `@iglo.tech/iglo.base/ssr`, the browser part, `@iglo.tech/iglo.base/ssr/browser`, and one section per framework. The server's API is the same as PocketBase v0.41.0's, so SSR needs no change on the server.
 
 The SDK does the parts that are easy to get wrong: a client for each request, the session cookie, session checks, the browser token for realtime, and the cache and CSRF headers. Your app still decides its routes, its pages, what a user may see, and where users go after sign-in. Each section below says which is which.
 
@@ -30,10 +30,10 @@ PocketBase's [how-to guide](https://pocketbase.io/docs/how-to-use/#why-not-js-ss
 Install the SDK in your app:
 
 ```sh
-npm install iglo.base
+npm install @iglo.tech/iglo.base
 ```
 
-The package is ES modules only. It has the main entry (`iglo.base`, the client), `iglo.base/ssr` (server only), `iglo.base/ssr/browser` (safe for the browser) and one entry per framework (`iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro`, `/react-router`).
+The package is ES modules only. It has the main entry (`iglo.base`, the client), `@iglo.tech/iglo.base/ssr` (server only), `@iglo.tech/iglo.base/ssr/browser` (safe for the browser) and one entry per framework (`@iglo.tech/iglo.base/ssr/next`, `/sveltekit`, `/nuxt`, `/astro`, `/react-router`).
 
 The SDK reads no environment variables. The example apps use these names, and you can use any others. Read the superuser credentials at run time, never at build time (see [security notes](#security-notes)):
 
@@ -58,7 +58,7 @@ Then choose one of these:
 1. **Email and password.** Simple. The client signs in at start and signs in again with the password if a refresh is refused.
 
    ```js
-   import { createSessionCache, createSuperuserClient } from "iglo.base/ssr";
+   import { createSessionCache, createSuperuserClient } from "@iglo.tech/iglo.base/ssr";
 
    const superuser = await createSuperuserClient({
      url: process.env.PB_URL,
@@ -71,7 +71,7 @@ Then choose one of these:
 2. **An API key.** Sign in once as the superuser, mint a token with `impersonate` for the duration you choose, and store it as a secret. The client uses the token as it is. It cannot refresh it, so when it expires its requests fail until you replace it. Changing the superuser's password or `tokenKey` revokes it.
 
    ```js
-   import PocketBase from "iglo.base";
+   import PocketBase from "@iglo.tech/iglo.base";
 
    const admin = new PocketBase(process.env.PB_URL);
    await admin
@@ -101,7 +101,7 @@ Create one cache per process with `createSessionCache({ ttl, maxEntries })`, and
 | `maxEntries` | how many sessions the cache holds. When it is full, the least recently used session is dropped | `10000` |
 
 ```js
-import { createSessionCache } from "iglo.base/ssr";
+import { createSessionCache } from "@iglo.tech/iglo.base/ssr";
 
 const sessionCache = createSessionCache({ ttl: 60 * 1000, maxEntries: 50_000 }); // 1 minute
 ```
@@ -208,7 +208,7 @@ Sign-out works the same way: [`app/logout/route.ts`](https://github.com/iglo-tec
 "use server";
 
 import { redirect } from "next/navigation";
-import { ClientResponseError } from "iglo.base";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
 import { currentSession } from "@/lib/auth";
 export async function signIn(formData: FormData) {
   const { server } = await currentSession();
@@ -244,7 +244,7 @@ Providers that return by POST, such as Sign in with Apple, cannot use the redire
 ```tsx
 "use client";
 
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 
 export function PopupSignIn({ url, provider }: { url: string; provider: string }) {
   async function signIn() {
@@ -273,10 +273,10 @@ const session = await browserToken(); // null when nobody is signed in
   url={process.env.PB_PUBLIC_URL ?? process.env.PB_URL ?? ""} renewUrl="/api/pb/renew" />
 ```
 
-[`app/live/live-client.tsx`](https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs/app/live/live-client.tsx) is a `"use client"` component. It creates the browser client and subscribes with the SDK's usual calls. Import `iglo.base/ssr/browser` in client components, never `iglo.base/ssr`. Clean up with `pb.realtime.unsubscribe()` and `pb.dispose()`:
+[`app/live/live-client.tsx`](https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs/app/live/live-client.tsx) is a `"use client"` component. It creates the browser client and subscribes with the SDK's usual calls. Import `@iglo.tech/iglo.base/ssr/browser` in client components, never `@iglo.tech/iglo.base/ssr`. Clean up with `pb.realtime.unsubscribe()` and `pb.dispose()`:
 
 ```tsx
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 const pb = createBrowserClient({ url, token, record, serverTime, renewUrl });
 await pb.collection("ssr_live").subscribe("*", (e) => {
   // e.record is the new record
@@ -296,7 +296,7 @@ Next.js checks the origin of Server Actions itself. See [security notes](#securi
 
 ### Notes for Next.js
 
-- **Runtime.** Observed with Next.js 16.4.5: a `middleware.ts` without `runtime = "nodejs"` reaches the Edge build and the package's browser stub. Turbopack (the default) then fails `next build` with `Export createNextAuth doesn't exist in target module`. webpack (`next build --webpack`) builds with warnings, and every request answers `500` with `iglo.base/ssr is server-only`. See [troubleshooting](#troubleshooting).
+- **Runtime.** Observed with Next.js 16.4.5: a `middleware.ts` without `runtime = "nodejs"` reaches the Edge build and the package's browser stub. Turbopack (the default) then fails `next build` with `Export createNextAuth doesn't exist in target module`. webpack (`next build --webpack`) builds with warnings, and every request answers `500` with `@iglo.tech/iglo.base/ssr is server-only`. See [troubleshooting](#troubleshooting).
 - **Dynamic pages.** A page that reads the session is rendered dynamically, and Next.js sends `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`. Server Components have no response of their own to mark.
 - **Your Route Handlers.** A Route Handler that returns user data sends `SSR_NO_CACHE_HEADERS`, as the example's `/api/me` does: `Response.json({ id, email }, { headers: SSR_NO_CACHE_HEADERS })`.
 
@@ -309,8 +309,8 @@ Create the adapter once per process, in `src/lib/server/auth.ts` ([example](http
 
 ```ts
 import { env } from "$env/dynamic/private";
-import { createSessionCache, createSuperuserClient } from "iglo.base/ssr";
-import { createSvelteKitAuth, type SvelteKitAuth } from "iglo.base/ssr/sveltekit";
+import { createSessionCache, createSuperuserClient } from "@iglo.tech/iglo.base/ssr";
+import { createSvelteKitAuth, type SvelteKitAuth } from "@iglo.tech/iglo.base/ssr/sveltekit";
 
 let auth: Promise<SvelteKitAuth> | undefined;
 
@@ -352,7 +352,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 ```
 
-The hook sets `event.locals.pb` (this request's server client) and `event.locals.pbBrowserToken` (mints the page's browser token). Type them in `src/app.d.ts` with `interface Locals extends SvelteKitLocals {}`, where `SvelteKitLocals` is exported by `iglo.base/ssr/sveltekit` ([example](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit/src/app.d.ts)).
+The hook sets `event.locals.pb` (this request's server client) and `event.locals.pbBrowserToken` (mints the page's browser token). Type them in `src/app.d.ts` with `interface Locals extends SvelteKitLocals {}`, where `SvelteKitLocals` is exported by `@iglo.tech/iglo.base/ssr/sveltekit` ([example](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit/src/app.d.ts)).
 
 ### Sign in and sign out
 
@@ -360,7 +360,7 @@ Sign-in is an HTML form that posts to a `+server.ts` route. The route calls `aut
 
 ```ts
 import { redirect } from "@sveltejs/kit";
-import { ClientResponseError } from "iglo.base";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -411,10 +411,10 @@ A failed flow redirects to `redirectTo` (default `/`) with `oauth2_error=<kind>`
 
 ### Browser client and realtime
 
-`src/routes/live/+page.server.ts` returns the URL that the browser reaches iglo.base at (`PB_PUBLIC_URL`, else `PB_URL`) and `browser: await locals.pbBrowserToken()`, which is `null` when nobody is signed in ([example](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit/src/routes/live/+page.server.ts)). `src/routes/live/+page.svelte` starts the client in `onMount` ([example](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit/src/routes/live/+page.svelte)). It imports `createBrowserClient` from `iglo.base/ssr/browser`, the only iglo.base entry a `.svelte` file may import:
+`src/routes/live/+page.server.ts` returns the URL that the browser reaches iglo.base at (`PB_PUBLIC_URL`, else `PB_URL`) and `browser: await locals.pbBrowserToken()`, which is `null` when nobody is signed in ([example](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit/src/routes/live/+page.server.ts)). `src/routes/live/+page.svelte` starts the client in `onMount` ([example](https://github.com/iglo-tech/iglo.base/tree/main/examples/sveltekit/src/routes/live/+page.svelte)). It imports `createBrowserClient` from `@iglo.tech/iglo.base/ssr/browser`, the only iglo.base entry a `.svelte` file may import:
 
 ```ts
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 
 const pb = createBrowserClient({
   url: data.url,
@@ -437,8 +437,8 @@ The hook checks the `Origin` header before your routes run. It applies to `POST`
 ### Notes for SvelteKit
 
 - **Production server and origin.** The example uses `adapter-node`: build with `bun run build`, then run `node build`. `adapter-node` reads `PORT`, `HOST` and `ORIGIN`. Set `APP_ORIGIN` to the same public origin as `ORIGIN`, and pass it as the `origin` option. The adapter uses it for the cookie's `Secure` flag and `__Host-` prefix, the OAuth2 callback URL and the CSRF check. Behind a proxy the request's own URL can name another origin, so do not rely on it.
-- **Response headers.** The adapter sets the no-cache headers on the response that `resolve` returns, after your route has run. That covers pages, `+server.ts` routes, form actions and redirects, when the request carries a session cookie, writes a cookie or mints a browser token. A response that your code builds without going through `resolve` gets no headers from the adapter, so add `SSR_NO_CACHE_HEADERS` (exported by `iglo.base/ssr`) to it yourself. Prerendered pages are served to everyone, so never put user data in them.
-- **Browser code.** Do not import `iglo.base/ssr` in `.svelte` files or any module the browser loads. Keep it in `src/lib/server/`, `hooks.server.ts`, `+page.server.ts` and `+server.ts`. SvelteKit refuses to bundle `$lib/server/` into client code. The type import in `src/app.d.ts` is erased at build time.
+- **Response headers.** The adapter sets the no-cache headers on the response that `resolve` returns, after your route has run. That covers pages, `+server.ts` routes, form actions and redirects, when the request carries a session cookie, writes a cookie or mints a browser token. A response that your code builds without going through `resolve` gets no headers from the adapter, so add `SSR_NO_CACHE_HEADERS` (exported by `@iglo.tech/iglo.base/ssr`) to it yourself. Prerendered pages are served to everyone, so never put user data in them.
+- **Browser code.** Do not import `@iglo.tech/iglo.base/ssr` in `.svelte` files or any module the browser loads. Keep it in `src/lib/server/`, `hooks.server.ts`, `+page.server.ts` and `+server.ts`. SvelteKit refuses to bundle `$lib/server/` into client code. The type import in `src/app.d.ts` is erased at build time.
 
 
 ## Nuxt
@@ -469,8 +469,8 @@ export default defineNuxtConfig({
 `server/utils/auth.ts`:
 
 ```ts
-import { createSessionCache, createSuperuserClient } from "iglo.base/ssr";
-import { createNuxtAuth, type NuxtAuth } from "iglo.base/ssr/nuxt";
+import { createSessionCache, createSuperuserClient } from "@iglo.tech/iglo.base/ssr";
+import { createNuxtAuth, type NuxtAuth } from "@iglo.tech/iglo.base/ssr/nuxt";
 
 let authPromise: Promise<NuxtAuth> | undefined;
 
@@ -530,8 +530,8 @@ The middleware sets `event.context.pb` (the `ServerClient`) and `event.context.p
 
 ```ts
 import { defineEventHandler, readBody, sendRedirect } from "h3";
-import { ClientResponseError } from "iglo.base";
-import type { ServerClient } from "iglo.base/ssr";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
+import type { ServerClient } from "@iglo.tech/iglo.base/ssr";
 
 export default defineEventHandler(async (event) => {
   const pb = event.context.pb as ServerClient;
@@ -570,7 +570,7 @@ export default defineEventHandler(async (event) => {
 
 ```vue
 <script setup lang="ts">
-import { createBrowserClient, type CreateBrowserClientOptions } from "iglo.base/ssr/browser";
+import { createBrowserClient, type CreateBrowserClientOptions } from "@iglo.tech/iglo.base/ssr/browser";
 
 type Session = { token: string; record: NonNullable<CreateBrowserClientOptions["record"]>; serverTime: number };
 
@@ -616,7 +616,7 @@ export default defineNuxtRouteMiddleware(async () => {
 
 ```ts
 import { createError, defineEventHandler } from "h3";
-import type { ServerClient } from "iglo.base/ssr";
+import type { ServerClient } from "@iglo.tech/iglo.base/ssr";
 
 export default defineEventHandler(async (event) => {
   const pb = event.context.pb as ServerClient;
@@ -645,7 +645,7 @@ The middleware checks `POST`, `PUT`, `PATCH` and `DELETE` requests that carry a 
 ### Notes for Nuxt
 
 - **Headers.** The adapter's `setHeader` calls reach the response, because Nitro sends it after your handler. A handler that sets its own `Cache-Control` after the middleware overrides the no-cache value, so for user data keep `SSR_NO_CACHE_HEADERS` (server code only). Do not put user-data routes under `routeRules` caching (`cache`, `swr`, `isr`, `prerender`).
-- **Imports.** Import `iglo.base/ssr` and `iglo.base/ssr/nuxt` only in `server/`. Components use `iglo.base/ssr/browser`; the browser build of `iglo.base/ssr` throws on import. The repository has no Nuxt example; the Next.js one (https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs) shows the same flow.
+- **Imports.** Import `@iglo.tech/iglo.base/ssr` and `@iglo.tech/iglo.base/ssr/nuxt` only in `server/`. Components use `@iglo.tech/iglo.base/ssr/browser`; the browser build of `@iglo.tech/iglo.base/ssr` throws on import. The repository has no Nuxt example; the Next.js one (https://github.com/iglo-tech/iglo.base/tree/main/examples/nextjs) shows the same flow.
 
 
 ## Astro
@@ -657,8 +657,8 @@ Run Astro on the server: `output: "server"` in `astro.config.mjs`, with a server
 Create the adapter once per process, in `src/lib/auth.ts`. The superuser client signs in when it is created:
 
 ```ts
-import { createSessionCache, createSuperuserClient } from "iglo.base/ssr";
-import { createAstroAuth, type AstroAuth } from "iglo.base/ssr/astro";
+import { createSessionCache, createSuperuserClient } from "@iglo.tech/iglo.base/ssr";
+import { createAstroAuth, type AstroAuth } from "@iglo.tech/iglo.base/ssr/astro";
 
 let auth: Promise<AstroAuth> | undefined;
 export function getAuth(): Promise<AstroAuth> {
@@ -695,8 +695,8 @@ The adapter sets `context.locals.pb` and `context.locals.pbBrowserToken`. The SD
 /// <reference types="astro/client" />
 declare namespace App {
   interface Locals {
-    pb: import("iglo.base/ssr").ServerClient;
-    pbBrowserToken: () => Promise<import("iglo.base/ssr").BrowserToken | null>;
+    pb: import("@iglo.tech/iglo.base/ssr").ServerClient;
+    pbBrowserToken: () => Promise<import("@iglo.tech/iglo.base/ssr").BrowserToken | null>;
   }
 }
 ```
@@ -771,7 +771,7 @@ const url = process.env.PB_PUBLIC_URL ?? process.env.PB_URL;
 <div id="live" data-url={url} data-session={JSON.stringify(browser)}>waiting</div>
 
 <script>
-  import { createBrowserClient } from "iglo.base/ssr/browser";
+  import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
   const el = document.getElementById("live")!;
   const session = JSON.parse(el.dataset.session ?? "null");
   if (session) {
@@ -799,7 +799,7 @@ The middleware runs the CSRF guard before your page or endpoint. A `POST`, `PUT`
 
 ### Notes for Astro
 
-- Keep `iglo.base/ssr` and `iglo.base/ssr/astro` out of `<script>` tags and client components. Client code imports `iglo.base/ssr/browser`.
+- Keep `@iglo.tech/iglo.base/ssr` and `@iglo.tech/iglo.base/ssr/astro` out of `<script>` tags and client components. Client code imports `@iglo.tech/iglo.base/ssr/browser`.
 - Response headers: the middleware sets the no-cache headers on the response `next()` returns, when the request carries user data. Pages and endpoints return through `next()`, so a `new Response(...)` built in an endpoint needs no headers of its own. A prerendered page is the gap.
 
 
@@ -811,8 +811,8 @@ Create the adapter once per process, in a module only the server loads. The `.se
 
 ```ts
 // app/auth.server.ts
-import { createSessionCache, createSuperuserClient } from "iglo.base/ssr";
-import { createReactRouterAuth, type ReactRouterAuth } from "iglo.base/ssr/react-router";
+import { createSessionCache, createSuperuserClient } from "@iglo.tech/iglo.base/ssr";
+import { createReactRouterAuth, type ReactRouterAuth } from "@iglo.tech/iglo.base/ssr/react-router";
 
 const url = process.env.PB_URL as string; // iglo.base as this server reaches it
 let authPromise: Promise<ReactRouterAuth> | undefined;
@@ -935,7 +935,7 @@ The component starts the browser client in an effect, and disposes it in the cle
 // app/routes/notes.tsx (component part)
 import { useEffect } from "react";
 import { useLoaderData } from "react-router";
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 
 export default function Notes() {
   const { url, token, record, serverTime } = useLoaderData<typeof loader>();
@@ -960,10 +960,10 @@ For a `POST`, `PUT`, `PATCH` or `DELETE` that carries the session cookie, the ad
 
 ### Notes for React Router
 
-- **The one thing to add: `sessionHeaders`.** Every route module that calls `session()`, resource routes included, re-exports it as `headers`: `export { sessionHeaders as headers } from "iglo.base/ssr/react-router";`. So does every route with an `ErrorBoundary`, at least `app/root.tsx`. React Router builds a page's and a `.data` response's headers from this export. Without it, only the `Set-Cookie` lines of the loader's or action's headers reach the response, and the no-cache headers are lost. This was checked with `react-router@7.18.5` in framework mode. Check your version, and Remix, the same way.
+- **The one thing to add: `sessionHeaders`.** Every route module that calls `session()`, resource routes included, re-exports it as `headers`: `export { sessionHeaders as headers } from "@iglo.tech/iglo.base/ssr/react-router";`. So does every route with an `ErrorBoundary`, at least `app/root.tsx`. React Router builds a page's and a `.data` response's headers from this export. Without it, only the `Set-Cookie` lines of the loader's or action's headers reach the response, and the no-cache headers are lost. This was checked with `react-router@7.18.5` in framework mode. Check your version, and Remix, the same way.
 - **Boundary routes.** A session route that throws `data(…, { headers: headers() })` is rendered by the nearest boundary route, which takes those headers from its own export. Without the export on the root, the thrown response loses its no-cache headers and cookie writes.
 - **The adapter cannot change a built response.** Call `headers()` last; a response React Router has already built gets no later cookie writes.
-- **Browser build.** React Router drops the `headers` export from the browser build, so the adapter's import stays on the server. Import `iglo.base/ssr/react-router` only from loaders, actions, resource routes and `.server` modules.
+- **Browser build.** React Router drops the `headers` export from the browser build, so the adapter's import stays on the server. Import `@iglo.tech/iglo.base/ssr/react-router` only from loaders, actions, resource routes and `.server` modules.
 
 
 ## Plain Web handlers (Bun, Hono, Deno)
@@ -973,12 +973,12 @@ For a `POST`, `PUT`, `PATCH` or `DELETE` that carries the session cookie, the ad
 There is no adapter for plain handlers, so your `fetch` handler runs the steps in this order: CSRF check, SDK routes, session resume, your pages, then headers and cookies. Create the session cache and superuser client once per process, and the server client per request.
 
 ```ts
-import { ClientResponseError } from "iglo.base";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
 import {
   checkCsrf, createRequestCookieAdapter, createServerClient, createSessionCache,
   createSuperuserClient, handleBrowserTokenRenew, handlePopupHandOff, mintBrowserToken,
   OAuth2Error, SSR_NO_CACHE_HEADERS, type RequestCookieAdapter, type ServerClient,
-} from "iglo.base/ssr";
+} from "@iglo.tech/iglo.base/ssr";
 
 const PB_URL = process.env.PB_URL!; // iglo.base as this server reaches it
 const PB_PUBLIC_URL = process.env.PB_PUBLIC_URL ?? PB_URL; // iglo.base as the browser reaches it
@@ -1112,7 +1112,7 @@ async function oauth2Route(request: Request, pathname: string): Promise<Response
 
 ```js
 // public/account.js, bundled for the browser: plain JavaScript, no type annotations
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 const boot = JSON.parse(document.getElementById("boot").textContent);
 const pb = createBrowserClient({
   url: boot.url, // iglo.base as the browser reaches it, set by the server at run time
@@ -1170,11 +1170,11 @@ Public pages that do not depend on the user can be cached as usual. Set their he
 
 ## Troubleshooting
 
-### `iglo.base/ssr is server-only` in a browser bundle, or on Edge
+### `@iglo.tech/iglo.base/ssr is server-only` in a browser bundle, or on Edge
 
-The error means that a browser bundle or an Edge runtime loaded `iglo.base/ssr`. The package's browser condition resolves to a stub that throws this error. In a bundler, the build fails (Turbopack: `Export createNextAuth doesn't exist in target module`) or the page throws when it loads (webpack).
+The error means that a browser bundle or an Edge runtime loaded `@iglo.tech/iglo.base/ssr`. The package's browser condition resolves to a stub that throws this error. In a bundler, the build fails (Turbopack: `Export createNextAuth doesn't exist in target module`) or the page throws when it loads (webpack).
 
-Keep `iglo.base/ssr` in server-only modules: `lib/` or `$lib/server/` in SvelteKit, route handlers, middleware and server functions. Import `createBrowserClient` from `iglo.base/ssr/browser` in client code. On Next.js, run the request hook on the Node.js runtime. See [the Next.js section](#nextjs).
+Keep `@iglo.tech/iglo.base/ssr` in server-only modules: `lib/` or `$lib/server/` in SvelteKit, route handlers, middleware and server functions. Import `createBrowserClient` from `@iglo.tech/iglo.base/ssr/browser` in client code. On Next.js, run the request hook on the Node.js runtime. See [the Next.js section](#nextjs).
 
 ### Cookies are not set in Server Components
 

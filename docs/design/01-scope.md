@@ -6,7 +6,7 @@
 2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.41.0, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
 3. **No extension surface, except migrations.** No Go framework mode, JavaScript hooks or dashboard extensions. JavaScript migrations in `pb_migrations` are supported, as upstream runs them ([D23](10-decisions.md#d23-javascript-migrations-are-supported)). Behavior is fixed and fully covered by tests.
 4. **One stack:** Bun, TypeScript, SQLite, one executable, shared conventions with other iglo.\* projects.
-5. **A JavaScript client of its own.** The PocketBase JavaScript SDK v0.28.1 is copied into `sdk/`, typed strictly and published to npm as `iglo.base`. It keeps the `pocketbase` package's API, ships ES modules only (no `./cjs`, `./umd` or script-tag build; [D36](10-decisions.md#d36-iglobase-owns-its-javascript-sdk)). It is a client library, not an extension surface.
+5. **A JavaScript client of its own.** The PocketBase JavaScript SDK v0.28.1 is copied into `sdk/`, typed strictly and published to npm as `@iglo.tech/iglo.base`. It keeps the `pocketbase` package's API, ships ES modules only (no `./cjs`, `./umd` or script-tag build; [D36](10-decisions.md#d36-iglobase-owns-its-javascript-sdk)). It is a client library, not an extension surface.
 
 ## Non-goals
 

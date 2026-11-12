@@ -1,5 +1,5 @@
 import { redirect } from "@sveltejs/kit";
-import { ClientResponseError } from "iglo.base";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ request, locals }) => {

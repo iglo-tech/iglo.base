@@ -1,4 +1,4 @@
-// docs/design/13-ssr.md ("Framework adapters": iglo.base/ssr/react-router; "Session cookie";
+// docs/design/13-ssr.md ("Framework adapters": @iglo.tech/iglo.base/ssr/react-router; "Session cookie";
 // "Session cache, check and refresh"; "CSRF"; "OAuth2"; "Response headers"). The React Router 7 and
 // Remix adapter: a loader, action or resource route asks for the session of its Web Request, and
 // returns its data with the headers the session wrote. Each route that calls the session, and each
@@ -50,7 +50,7 @@ export interface RouteHeadersArgs {
 /**
  * The `headers` function of a route that uses the session, and of every route with an
  * `ErrorBoundary` (at least the root route). The route re-exports it:
- * `export { sessionHeaders as headers } from "iglo.base/ssr/react-router";`
+ * `export { sessionHeaders as headers } from "@iglo.tech/iglo.base/ssr/react-router";`
  *
  * React Router builds the headers of a page and of a `.data` response from the route's `headers`
  * export. A route without one copies only the Set-Cookie lines of its loader's and action's

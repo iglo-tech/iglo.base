@@ -11,10 +11,10 @@ import {
   type Cookie,
   type CookieAdapter,
   type CookieToSet,
-} from "iglo.base/ssr";
+} from "@iglo.tech/iglo.base/ssr";
 import { password, sdkTest, superuserToken } from "@test/differential/sdk/harness";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
-import { ClientResponseError } from "iglo.base";
+import { ClientResponseError } from "@iglo.tech/iglo.base";
 
 const noMFA = ({ dataDir }: { dataDir: string }) => setMFA("users", false, "")({ dataDir });
 

@@ -15,9 +15,9 @@ import {
   type CookieAdapter,
   type CookieToSet,
   type ServerClient,
-} from "iglo.base/ssr";
-import { createBrowserClient, type BrowserClient } from "iglo.base/ssr/browser";
-import { ClientResponseError, getTokenPayload } from "iglo.base";
+} from "@iglo.tech/iglo.base/ssr";
+import { createBrowserClient, type BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import { ClientResponseError, getTokenPayload } from "@iglo.tech/iglo.base";
 import { password, sdkTest, superuserToken, type SdkEnv } from "@test/differential/sdk/harness";
 import { Browser } from "@test/differential/sdk-ssr/browser";
 import { setMFA } from "@test/scenarios/record-auth-prepare";

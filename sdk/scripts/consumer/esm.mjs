@@ -5,7 +5,7 @@ import PocketBase, {
   AsyncAuthStore,
   getTokenPayload,
   cookieParse,
-} from "iglo.base";
+} from "@iglo.tech/iglo.base";
 const pb = new PocketBase("http://127.0.0.1:1");
 console.log(
   "esm",
@@ -29,7 +29,7 @@ import {
   createSessionCache,
   createRequestCookieAdapter,
   SSR_NO_CACHE_HEADERS,
-} from "iglo.base/ssr";
+} from "@iglo.tech/iglo.base/ssr";
 console.log(
   "esm ssr",
   typeof createServerClient,
@@ -55,7 +55,9 @@ try {
   if (err instanceof ClientResponseError) {
     verified = true;
   } else {
-    throw new Error("expected err instanceof ClientResponseError from iglo.base", { cause: err });
+    throw new Error("expected err instanceof ClientResponseError from @iglo.tech/iglo.base", {
+      cause: err,
+    });
   }
 }
 if (!verified) {
@@ -64,7 +66,7 @@ if (!verified) {
 console.log("instanceof ClientResponseError: ok");
 
 // the browser subpath imports under Node too (it reads no browser global until it is asked to)
-import { createBrowserClient } from "iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 const browserPb = createBrowserClient({ url: "http://127.0.0.1:1", token: "" });
 if (!(browserPb instanceof PocketBase)) {
   throw new Error("browser client is not an instance of PocketBase");

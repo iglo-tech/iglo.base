@@ -123,7 +123,7 @@ if (!ssrBrowserOut.success) {
   throw new Error(`Bun.build (ssr-browser) failed:\n${ssrBrowserOut.logs.map(String).join("\n")}`);
 }
 
-// the browser client (iglo.base/ssr/browser): the SDK classes come from the main entry, as above
+// the browser client (@iglo.tech/iglo.base/ssr/browser): the SDK classes come from the main entry, as above
 const browserClientOut = await Bun.build({
   target: "browser",
   minify: { whitespace: true, syntax: true, identifiers: false },
@@ -152,9 +152,9 @@ if (!browserClientOut.success) {
   );
 }
 
-// the framework adapters (iglo.base/ssr/next, /sveltekit, /nuxt, /astro, /react-router): each
+// the framework adapters (@iglo.tech/iglo.base/ssr/next, /sveltekit, /nuxt, /astro, /react-router): each
 // one is an edge-safe bundle of its own code. The core (`@sdk/ssr/index`) is external, so every
-// adapter shares the one ssr.es.mjs with iglo.base/ssr, and the SDK classes come from the main
+// adapter shares the one ssr.es.mjs with @iglo.tech/iglo.base/ssr, and the SDK classes come from the main
 // entry as above.
 for (const adapter of ["next", "sveltekit", "nuxt", "astro", "react-router"]) {
   const adapterOut = await Bun.build({

@@ -3,7 +3,7 @@
 The step-by-step guide for this app is the [SvelteKit section of the SSR guide](../../docs/ssr.md#sveltekit).
 
 A SvelteKit 2 app that uses iglo.base's server-side rendering support through the adapter
-`iglo.base/ssr/sveltekit` (`docs/design/13-ssr.md`, "Framework adapters"). It shows:
+`@iglo.tech/iglo.base/ssr/sveltekit` (`docs/design/13-ssr.md`, "Framework adapters"). It shows:
 
 - a session cookie that the `handle` hook resumes and refreshes on every request (`/`);
 - sign-in and sign-out with `locals.pb` (`/login`, `POST /session/login`, `POST /logout`);
