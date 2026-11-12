@@ -8,7 +8,7 @@ Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2
 
 ## Needs you
 
-- npm trusted publisher for `@iglo.tech/iglo.base` (owner, npmjs.com: GitHub Actions, `iglo-tech/iglo.base`, `sdk-release.yml`, no environment, Allow `npm publish`). Then the lead merges a `1.0.1-rc.0` prerelease within 2 days to validate it.
+Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged to `main` publishes to npm by OIDC trusted publishing (validated 2026-11-12 by `1.0.1-rc.0`, [#100](https://github.com/iglo-tech/iglo.base/pull/100), with provenance, under `next`).
 
 ## Active
 
