@@ -1,0 +1,1106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "iglo.base schema",
+  "description": "Schema-as-code file of an iglo.base database: its collections, their fields, rules, indexes and auth settings. Editors use it for autocomplete and validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The JSON Schema dialect of this file. Editors use it to choose the validator; it has no effect on the database."
+    },
+    "collections": {
+      "type": "object",
+      "title": "Collections",
+      "description": "Collections keyed by name. A collection left out is not changed (system collections) or removed (others).",
+      "propertyNames": {
+        "pattern": "^(?!\\d+$)\\w+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/collection"
+      }
+    }
+  },
+  "required": ["collections"],
+  "$defs": {
+    "collection": {
+      "title": "Collection",
+      "description": "A collection of records. The type property selects a base, auth or view collection and the properties it accepts.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/baseCollection"
+        },
+        {
+          "$ref": "#/$defs/authCollection"
+        },
+        {
+          "$ref": "#/$defs/viewCollection"
+        }
+      ]
+    },
+    "baseCollection": {
+      "title": "Base collection",
+      "description": "A regular collection of records.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "base",
+          "description": "Collection type, always \"base\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "system": {
+          "type": "boolean",
+          "description": "Set only on a system collection that is not one of the five upstream ones (_superusers, _externalAuths, _mfas, _otps, _authOrigins), which are system by name. A file that does not list it keeps the default."
+        },
+        "rules": {
+          "$ref": "#/$defs/baseRules",
+          "description": "API access rules of the collection."
+        },
+        "indexes": {
+          "type": "array",
+          "description": "Indexes on the collection's table. Each item is one CREATE [UNIQUE] INDEX statement, for example CREATE UNIQUE INDEX idx_slug ON posts (slug).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fields": {
+          "$ref": "#/$defs/fieldList",
+          "description": "Fields of the collection, keyed by name and listed in display order."
+        }
+      }
+    },
+    "authCollection": {
+      "title": "Auth collection",
+      "description": "A collection of records that can sign in, such as user accounts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "auth",
+          "description": "Collection type, always \"auth\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "system": {
+          "type": "boolean",
+          "description": "Set only on a system collection that is not one of the five upstream ones (_superusers, _externalAuths, _mfas, _otps, _authOrigins), which are system by name. A file that does not list it keeps the default."
+        },
+        "rules": {
+          "$ref": "#/$defs/authRules",
+          "description": "API access rules of the collection, including the sign-in rules."
+        },
+        "indexes": {
+          "type": "array",
+          "description": "Indexes on the collection's table. Each item is one CREATE [UNIQUE] INDEX statement, for example CREATE UNIQUE INDEX idx_slug ON posts (slug).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fields": {
+          "$ref": "#/$defs/fieldList",
+          "description": "Fields of the collection, keyed by name and listed in display order. The system auth fields are implied when not listed."
+        },
+        "passwordAuth": {
+          "$ref": "#/$defs/passwordAuth",
+          "description": "Sign-in with an identity field and a password."
+        },
+        "oauth2": {
+          "$ref": "#/$defs/oauth2",
+          "description": "Sign-in with an OAuth2 provider."
+        },
+        "mfa": {
+          "$ref": "#/$defs/mfa",
+          "description": "Multi-factor authentication settings."
+        },
+        "otp": {
+          "$ref": "#/$defs/otp",
+          "description": "Sign-in with a one-time password sent by email."
+        },
+        "authAlert": {
+          "$ref": "#/$defs/authAlert",
+          "description": "Alert sent when an account signs in from a new device."
+        },
+        "authToken": {
+          "$ref": "#/$defs/tokenOptions",
+          "description": "Lifetime of the sign-in token returned after authentication."
+        },
+        "passwordResetToken": {
+          "$ref": "#/$defs/tokenOptions",
+          "description": "Lifetime of the token in a password reset email."
+        },
+        "emailChangeToken": {
+          "$ref": "#/$defs/tokenOptions",
+          "description": "Lifetime of the token that confirms an email change."
+        },
+        "verificationToken": {
+          "$ref": "#/$defs/tokenOptions",
+          "description": "Lifetime of the token in an email verification message."
+        },
+        "fileToken": {
+          "$ref": "#/$defs/tokenOptions",
+          "description": "Lifetime of the token that grants access to protected files."
+        },
+        "verificationTemplate": {
+          "$ref": "#/$defs/emailTemplate",
+          "description": "Default email that asks a user to verify the email address. Uses the {TOKEN} placeholder."
+        },
+        "resetPasswordTemplate": {
+          "$ref": "#/$defs/emailTemplate",
+          "description": "Default email for resetting a password. Uses the {TOKEN} placeholder."
+        },
+        "confirmEmailChangeTemplate": {
+          "$ref": "#/$defs/emailTemplate",
+          "description": "Default email that confirms an email change. Uses the {TOKEN} placeholder."
+        }
+      }
+    },
+    "viewCollection": {
+      "title": "View collection",
+      "description": "A read-only collection whose records come from a SELECT query.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "query"],
+      "properties": {
+        "type": {
+          "const": "view",
+          "description": "Collection type, always \"view\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "system": {
+          "type": "boolean",
+          "description": "Set only on a system collection that is not one of the five upstream ones (_superusers, _externalAuths, _mfas, _otps, _authOrigins), which are system by name. A file that does not list it keeps the default."
+        },
+        "rules": {
+          "$ref": "#/$defs/baseRules",
+          "description": "API access rules of the view."
+        },
+        "query": {
+          "type": "string",
+          "description": "SELECT query that defines the view. The fields of the view are the columns of the query result, so the collection has no fields or indexes of its own."
+        }
+      }
+    },
+    "baseRules": {
+      "title": "Collection rules",
+      "description": "API access rules of the collection, one per action.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "list": {
+          "type": ["string", "null"],
+          "description": "Rule for listing records. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "view": {
+          "type": ["string", "null"],
+          "description": "Rule for viewing a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "create": {
+          "type": ["string", "null"],
+          "description": "Rule for creating a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "update": {
+          "type": ["string", "null"],
+          "description": "Rule for updating a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "delete": {
+          "type": ["string", "null"],
+          "description": "Rule for deleting a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        }
+      }
+    },
+    "authRules": {
+      "title": "Auth collection rules",
+      "description": "API access rules of an auth collection, one per action.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "list": {
+          "type": ["string", "null"],
+          "description": "Rule for listing records. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "view": {
+          "type": ["string", "null"],
+          "description": "Rule for viewing a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "create": {
+          "type": ["string", "null"],
+          "description": "Rule for creating a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "update": {
+          "type": ["string", "null"],
+          "description": "Rule for updating a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "delete": {
+          "type": ["string", "null"],
+          "description": "Rule for deleting a record. Null means only superusers; an empty string means everyone; any other value is a filter expression the record must match."
+        },
+        "auth": {
+          "type": ["string", "null"],
+          "description": "Rule applied after a successful sign-in and before the auth token is returned, for example verified = true. Null disallows sign-in altogether; an empty string lets any record sign in."
+        },
+        "manage": {
+          "type": ["string", "null"],
+          "description": "Gives admin-like permissions on a record, such as changing its password without the old one or setting verified directly. Applied in addition to the create and update rules."
+        }
+      }
+    },
+    "fieldList": {
+      "title": "Field list",
+      "description": "Fields keyed by name, in the order they are listed. That order is the order used by the API and the dashboard. The system fields are implied when not listed: id, and for auth collections password, tokenKey, email, emailVisibility and verified. Do not write them unless they differ from their defaults.",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^(?!\\d+$)\\w+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "field": {
+      "title": "Field",
+      "description": "One field of a collection. The type property selects the kind of field and the properties it accepts.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/textField"
+        },
+        {
+          "$ref": "#/$defs/editorField"
+        },
+        {
+          "$ref": "#/$defs/numberField"
+        },
+        {
+          "$ref": "#/$defs/boolField"
+        },
+        {
+          "$ref": "#/$defs/emailField"
+        },
+        {
+          "$ref": "#/$defs/urlField"
+        },
+        {
+          "$ref": "#/$defs/dateField"
+        },
+        {
+          "$ref": "#/$defs/autodateField"
+        },
+        {
+          "$ref": "#/$defs/selectField"
+        },
+        {
+          "$ref": "#/$defs/jsonField"
+        },
+        {
+          "$ref": "#/$defs/geoPointField"
+        },
+        {
+          "$ref": "#/$defs/relationField"
+        },
+        {
+          "$ref": "#/$defs/fileField"
+        },
+        {
+          "$ref": "#/$defs/passwordField"
+        }
+      ]
+    },
+    "textField": {
+      "title": "Text field",
+      "description": "A text value, with optional length limits, a regular expression and an optional primary key.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "text",
+          "description": "Field type, always \"text\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "min": {
+          "type": "integer",
+          "description": "Minimum number of characters. Zero means no minimum.",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum number of characters. Zero means the default limit of 5000.",
+          "minimum": 0
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regular expression the value must match. Empty means no pattern check."
+        },
+        "autogeneratePattern": {
+          "type": "string",
+          "description": "Regular expression used to generate a random value when a record is created without one, or when the :autogenerate modifier is used. Generated values must still pass min, max and pattern."
+        },
+        "primaryKey": {
+          "type": "boolean",
+          "description": "When true, this field is the record's primary key. A collection can have only one primary key, and it must be named id."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty value."
+        }
+      }
+    },
+    "editorField": {
+      "title": "Rich text (editor) field",
+      "description": "An HTML value edited with a rich text editor.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "editor",
+          "description": "Field type, always \"editor\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "maxSize": {
+          "type": "integer",
+          "description": "Maximum size of the value in bytes. Zero means the default limit of about 5 MB.",
+          "minimum": 0
+        },
+        "convertURLs": {
+          "type": "boolean",
+          "description": "Whether the editor converts URLs, for example removing the domain when a URL points at the same site."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty value."
+        }
+      }
+    },
+    "numberField": {
+      "title": "Number field",
+      "description": "A numeric value with optional bounds and an option to allow whole numbers only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "number",
+          "description": "Field type, always \"number\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "min": {
+          "type": ["number", "null"],
+          "description": "Smallest allowed value. Null means no minimum."
+        },
+        "max": {
+          "type": ["number", "null"],
+          "description": "Largest allowed value. Null means no maximum."
+        },
+        "onlyInt": {
+          "type": "boolean",
+          "description": "When true, the value must be a whole number."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-zero value."
+        }
+      }
+    },
+    "boolField": {
+      "title": "Boolean field",
+      "description": "A true or false value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "bool",
+          "description": "Field type, always \"bool\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires the value to be true."
+        }
+      }
+    },
+    "emailField": {
+      "title": "Email field",
+      "description": "An email address, with optional domain allow and deny lists.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "email",
+          "description": "Field type, always \"email\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "exceptDomains": {
+          "type": "array",
+          "description": "Domains that are not allowed in the email address. Cannot be combined with onlyDomains.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "onlyDomains": {
+          "type": "array",
+          "description": "Only email addresses on these domains are allowed. Cannot be combined with exceptDomains.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty email address."
+        }
+      }
+    },
+    "urlField": {
+      "title": "URL field",
+      "description": "A URL, with optional domain allow and deny lists.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "url",
+          "description": "Field type, always \"url\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "exceptDomains": {
+          "type": "array",
+          "description": "Domains that are not allowed in the URL. Cannot be combined with onlyDomains.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "onlyDomains": {
+          "type": "array",
+          "description": "Only URLs on these domains are allowed. Cannot be combined with exceptDomains.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty URL."
+        }
+      }
+    },
+    "dateField": {
+      "title": "Date field",
+      "description": "A date and time, with optional earliest and latest bounds.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "date",
+          "description": "Field type, always \"date\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "min": {
+          "type": "string",
+          "description": "Earliest allowed date and time, for example 2022-01-01 00:00:00.000Z. Empty means no minimum."
+        },
+        "max": {
+          "type": "string",
+          "description": "Latest allowed date and time, for example 2022-01-01 00:00:00.000Z. Empty means no maximum."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a set date and time."
+        }
+      }
+    },
+    "autodateField": {
+      "title": "Autodate field",
+      "description": "A date and time that the system sets itself when a record is created or updated.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "autodate",
+          "description": "Field type, always \"autodate\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "onCreate": {
+          "type": "boolean",
+          "description": "When true, the current date and time is set when the record is created."
+        },
+        "onUpdate": {
+          "type": "boolean",
+          "description": "When true, the current date and time is set when the record is updated."
+        }
+      }
+    },
+    "selectField": {
+      "title": "Select field",
+      "description": "One or more values chosen from a fixed list of options.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "select",
+          "description": "Field type, always \"select\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "values": {
+          "type": "array",
+          "description": "The allowed options.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxSelect": {
+          "type": "integer",
+          "description": "Maximum number of options a record can select. 1 means a single value; more than 1 means multiple values.",
+          "minimum": 0
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty value."
+        }
+      }
+    },
+    "jsonField": {
+      "title": "JSON field",
+      "description": "Any JSON value, with a maximum size.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "json",
+          "description": "Field type, always \"json\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "maxSize": {
+          "type": "integer",
+          "description": "Maximum size of the JSON value in bytes. Zero means the default limit of 1 MB.",
+          "minimum": 0
+        },
+        "tsType": {
+          "type": "string",
+          "description": "TypeScript type generated for this value, for example { tags: string[] }. Used only by generated types."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty JSON value (not null, an empty string, an empty array or an empty object)."
+        }
+      }
+    },
+    "geoPointField": {
+      "title": "Geo point field",
+      "description": "A geographic point with a longitude and a latitude.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "geoPoint",
+          "description": "Field type, always \"geoPoint\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires coordinates other than 0,0 (the Null Island point)."
+        }
+      }
+    },
+    "relationField": {
+      "title": "Relation field",
+      "description": "A link to records of another collection.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "relation",
+          "description": "Field type, always \"relation\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "collection": {
+          "type": "string",
+          "description": "Name of the related collection. The file uses collection names, not ids."
+        },
+        "cascadeDelete": {
+          "type": "boolean",
+          "description": "When true, this record is deleted when all of its linked records are deleted."
+        },
+        "minSelect": {
+          "type": "integer",
+          "description": "Minimum number of linked records. Zero means no minimum.",
+          "minimum": 0
+        },
+        "maxSelect": {
+          "type": "integer",
+          "description": "Maximum number of linked records. 1 means a single relation; more than 1 means multiple relations. Must be at least minSelect when minSelect is set.",
+          "minimum": 0
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires at least one linked record."
+        }
+      }
+    },
+    "fileField": {
+      "title": "File field",
+      "description": "One or more uploaded files, with size, type and thumbnail settings.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "file",
+          "description": "Field type, always \"file\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "maxSize": {
+          "type": "integer",
+          "description": "Maximum size of one uploaded file in bytes. Zero means the default limit of 5 MB.",
+          "minimum": 0
+        },
+        "maxSelect": {
+          "type": "integer",
+          "description": "Maximum number of files. 1 means a single value; more than 1 means multiple values.",
+          "minimum": 0
+        },
+        "mimeTypes": {
+          "type": "array",
+          "description": "Allowed file MIME types, for example image/png. Empty means any type is allowed.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "thumbs": {
+          "type": "array",
+          "description": "Thumbnail sizes generated for image files: WxH crops from the center, WxHt from the top, WxHb from the bottom, WxHf fits inside the box, 0xH resizes to a height and Wx0 resizes to a width. Examples: 100x100, 0x300.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "protected": {
+          "type": "boolean",
+          "description": "When true, a file token is needed to access the file. Files are public by default."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires at least one file."
+        }
+      }
+    },
+    "passwordField": {
+      "title": "Password field",
+      "description": "A secret string stored as a bcrypt hash and never returned by the API.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "password",
+          "description": "Field type, always \"password\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Note for editors and generated types only. It is not stored in the database."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help text shown under the field in the dashboard. It explains what the field is for."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "When true, the field is left out of API responses."
+        },
+        "presentable": {
+          "type": "boolean",
+          "description": "When true, the dashboard uses this field's value as the record label in relation previews."
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regular expression the value must match. Empty means no pattern check."
+        },
+        "min": {
+          "type": "integer",
+          "description": "Minimum number of characters. Zero means no minimum.",
+          "minimum": 0,
+          "maximum": 71
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum number of characters. Zero means the maximum of 71 bytes.",
+          "minimum": 0,
+          "maximum": 71
+        },
+        "cost": {
+          "type": "integer",
+          "description": "bcrypt cost factor used to hash the value. Zero means the default cost; otherwise use a value from 4 to 31.",
+          "anyOf": [
+            {
+              "const": 0
+            },
+            {
+              "minimum": 4,
+              "maximum": 31
+            }
+          ]
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Requires a non-empty value."
+        }
+      }
+    },
+    "passwordAuth": {
+      "title": "Password authentication",
+      "description": "Sign-in with an identity field and a password.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, records can sign in with an identity field and password."
+        },
+        "identityFields": {
+          "type": "array",
+          "description": "Fields that can be used as the identity at sign-in, for example email or username. Each field should have a single-column UNIQUE index.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "oauth2": {
+      "title": "OAuth2 authentication",
+      "description": "Sign-in with an external OAuth2 provider. Provider settings, including client IDs and secrets, are not part of this file.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, records can sign in with an OAuth2 provider."
+        },
+        "mappedFields": {
+          "$ref": "#/$defs/oauth2MappedFields",
+          "description": "Fields that receive the OAuth2 user data."
+        }
+      }
+    },
+    "oauth2MappedFields": {
+      "title": "OAuth2 mapped fields",
+      "description": "Names of the fields that receive the user data from the OAuth2 provider.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Field that receives the user id given by the provider."
+        },
+        "name": {
+          "type": "string",
+          "description": "Field that receives the user's full name."
+        },
+        "username": {
+          "type": "string",
+          "description": "Field that receives the user's username."
+        },
+        "avatarURL": {
+          "type": "string",
+          "description": "Field that receives the user's avatar URL."
+        }
+      }
+    },
+    "mfa": {
+      "title": "Multi-factor authentication",
+      "description": "Second factor required after the first sign-in step.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, multi-factor authentication (MFA) is enabled for the collection."
+        },
+        "duration": {
+          "type": "integer",
+          "description": "How long an MFA session stays valid, in seconds. Must be between 10 and 86400 when enabled.",
+          "minimum": 0
+        },
+        "rule": {
+          "type": "string",
+          "description": "Filter expression that limits MFA to the records that match it. Empty means MFA applies to every record."
+        }
+      }
+    },
+    "otp": {
+      "title": "One-time password",
+      "description": "Sign-in with a one-time password sent by email.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, records can sign in with a one-time password sent by email."
+        },
+        "duration": {
+          "type": "integer",
+          "description": "How long a one-time password stays valid, in seconds. Must be between 10 and 86400 when enabled.",
+          "minimum": 0
+        },
+        "length": {
+          "type": "integer",
+          "description": "Number of digits in the generated one-time password. At least 4 when enabled.",
+          "minimum": 0
+        },
+        "emailTemplate": {
+          "$ref": "#/$defs/emailTemplate",
+          "description": "Email that carries the one-time password. Uses the {OTP} placeholder for the password and {OTP_ID} for its id."
+        }
+      }
+    },
+    "authAlert": {
+      "title": "Auth alert",
+      "description": "Alert sent when an account signs in from a new device.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, the record receives an alert email on sign-in from a new device."
+        },
+        "emailTemplate": {
+          "$ref": "#/$defs/emailTemplate",
+          "description": "Alert email. Uses the {ALERT_INFO} placeholder for the details of the sign-in."
+        }
+      }
+    },
+    "tokenOptions": {
+      "title": "Token lifetime",
+      "description": "How long a token of this kind stays valid.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "duration": {
+          "type": "integer",
+          "description": "Lifetime of the token in seconds. Must be between 10 and 94670856 (about 3 years).",
+          "minimum": 0
+        }
+      }
+    },
+    "emailTemplate": {
+      "title": "Email template",
+      "description": "Subject and HTML body of an email the system sends. Placeholders in braces are replaced when the email is sent.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "Email subject. Placeholders such as {APP_NAME} are replaced when the email is sent."
+        },
+        "body": {
+          "type": "string",
+          "description": "Email body as HTML. Placeholders such as {APP_NAME} and {APP_URL} are replaced, plus the template-specific ones named in the property that uses this template."
+        }
+      }
+    }
+  }
+}
