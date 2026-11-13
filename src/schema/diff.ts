@@ -76,9 +76,6 @@ export function indexKey(statement: string): string {
   });
 }
 
-// The statement the database keeps for a desired index: the stored statement
-// with the same definition when there is one (so its name stays), else the
-// desired statement.
 // the statements without a repeated definition, the first one kept
 export function distinctIndexes(statements: readonly string[]): string[] {
   const seen = new Set<string>();
@@ -92,6 +89,9 @@ export function distinctIndexes(statements: readonly string[]): string[] {
   });
 }
 
+// The statement the database keeps for a desired index: the stored statement
+// with the same definition when there is one (so its name stays), else the
+// desired statement.
 export function keepStoredIndexes(desired: readonly string[], stored: readonly string[]): string[] {
   const byKey = new Map(stored.map((statement) => [indexKey(statement), statement]));
   return desired.map((statement) => byKey.get(indexKey(statement)) ?? statement);
