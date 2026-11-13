@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.3 | review | `task/S.3-schema-apply` → `develop`, PR 101 | 2 | Round 1 fixed in `caa597b`, `d748718` (check and test:reference pass); Opus round 2 reviews the fixes only |
+| S.3 | fixer | `task/S.3-schema-apply` → `develop`, PR 101 | 2 | Round 2: 4 of 6 fixed; left: relation cycle removal with rules/indexes on the cut field, unset geoPoint counted as data; docs note that pending migrations run twice (dry run) |
 
 
 
