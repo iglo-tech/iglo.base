@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.5 | worker | `task/S.5-…` → `develop` | – | Brief `docs/briefs/S.5.md` (#80) |
+| S.5 | review | `task/S.5-schema-migrations` → `develop`, PR 103 | 1 | Brief `docs/briefs/S.5.md` (#80). Upstream v0.41.0 starts with `@schema/` rows (recorded in D40). Opus round 1; worker skipped D40 step 2 clearing for removed fields (reviewer to judge) |
 
 
 
