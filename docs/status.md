@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.5 | fixer | `task/S.5-schema-migrations` → `develop`, PR 103 | 1 | Round 1: 3 findings (renames break on rule/index references the code missed; rename keys contradict types and multi-file order; helpers see the public record shape). Lead: with any rename, clear all rules and non-implied indexes in step 2 (D40 amended); renames run file by file in name order, loosely typed; helpers use the full stored record |
+| S.5 | review | `task/S.5-schema-migrations` → `develop`, PR 103 | 2 | Round 1 fixed in `f65e23b` (check and test:reference pass; rename of an indexed field 474 ms vs 264 ms without migrations on 10,000 rows). Lead accepted: views recreated on any rename instead of saved in step 2. Opus round 2 reviews the fixes only |
 
 
 
