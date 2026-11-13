@@ -1,58 +1,53 @@
 # S.3 schema apply at startup
 
-`serve --schema <file>` applies the schema file before the server starts (D40). This measures what that costs at startup: the server with no `--schema`, with a file that equals the database (nothing changes), with a file that adds one field (a pre-schema backup and the transaction), and with a file that adds a constraint that checks all 10,000 records. The baseline is the same server without `--schema`. This is the first measurement of this path, so there is no "before"; later changes to `src/schema/apply.ts`, `src/schema/backup.ts` or the record check compare against these numbers, measured the same way.
+`serve --schema <file>` applies the schema file before the server starts (D40). This measures what that costs at startup: the server with no `--schema`, with a file that equals the database (nothing changes), with a file that adds one field (a dry run, a pre-schema backup and the transaction), with a file that adds a constraint that checks all 10,000 records, and with a file that fails its record check (the restart-loop case). The baseline is the same server without `--schema`.
+
+This is the second measurement of this path. The first (2026-11-12, `82150bb`) is superseded: the round-1 fixes changed the apply, so the apply now runs a dry run before the backup and checks the records in the dry run and in the transaction. The table below is the one to compare against, and later changes to `src/schema/apply.ts`, `src/schema/backup.ts` or the record check compare against it, measured the same way.
 
 ## Setup
 
 | | |
 |---|---|
-| Date | 2026-11-12 |
-| Machine | VM: 6 vCPUs (`nproc`), 16 GiB RAM (`MemTotal` 16,382,680 kB; about 8.7 GiB available at the start), Linux 6.12 (Debian 13) |
+| Date | 2026-11-13 |
+| Machine | VM: 6 vCPUs (`nproc`), 16 GiB RAM, Linux 6.12 (Debian 13) |
 | Bun | 1.4.4 |
-| Binary | `bun build --compile --bytecode --format=esm` of `src/main.ts`, `src/db/read-worker.ts`, `src/files/thumb-worker.ts`, `src/backups/backup-worker.ts`, `src/logs/log-worker.ts` (the flags of `test/support/executable.ts`), 121,665,712 bytes, built into the scratch directory. The worktree was at `82150bb` with uncommitted edits to `src/cli/schema.ts`, `docs/` and tests, which the executable includes; `src/cli/serve.ts`, `src/schema/apply.ts` and `src/schema/backup.ts` are unmodified. |
-| Database | 26 collections: the 6 system collections (`_superusers`, `_externalAuths`, `_mfas`, `_otps`, `_authOrigins`, `users`) and 20 of ours: `items` (fields `title` text, `body` text, `qty` number, `flag` bool; 10,000 records) and `c01` to `c19` (fields `label` text, `count` number, `active` bool, `item` relation to `items`; no records). `pb_data` is 6,652 KiB (`du -sk`). |
+| Binary | `bun build --compile --bytecode --format=esm` of `src/main.ts`, `src/db/read-worker.ts`, `src/files/thumb-worker.ts`, `src/backups/backup-worker.ts`, `src/logs/log-worker.ts` (the flags of `test/support/executable.ts`), 121,682,096 bytes, built from commit `caa597b` (the round-1 fixes; this document is the next commit). |
+| Database | 26 collections: the 6 system collections (`_superusers`, `_externalAuths`, `_mfas`, `_otps`, `_authOrigins`, `users`) and 20 of ours: `items` (fields `title` text, `body` text, `qty` number, `flag` bool; 10,000 records) and `c01` to `c19` (fields `label` text, `count` number, `active` bool, `item` relation to `items`; no records). `pb_data` is 6,188 KiB (`du -sk`). The database was made again for this measurement through the API, so its data is not byte-identical to the 2026-11-12 base. |
 
 ## Method
 
-The base database was created through the API of a setup server (not measured): a superuser made with `superuser upsert`, the collections with `POST /api/collections`, and the 10,000 records with single `POST /api/collections/items/records` requests, 8 in flight (`POST /api/batch` is off by default). The schema files come from `schema pull` run on a copy of the base database, and were checked with `schema plan` on copies:
+The base database was created through the API of a setup server (not measured): a superuser made with `superuser upsert`, the collections with `POST /api/collections`, and the 10,000 records with single `POST /api/collections/items/records` requests, 8 in flight. The schema files come from `schema pull` run on the base database, and each was checked with `schema plan` on a copy:
 
 - `schema-base.json`: the database's own schema (`schema plan`: "the schema is up to date").
 - `schema-c.json`: `schema-base.json` plus a non-required text field `note` on `c01` (`schema plan`: `c01 (base) + note (text)`, "the schema would apply").
-- `schema-d.json`: `schema-base.json` with `required: true` on `items.title` (`schema plan`: `items (base) ~ title: required`).
+- `schema-d.json`: `schema-base.json` with `required: true` on `items.title` (`schema plan`: `items (base) ~ title: required`, "the schema would apply"; all 10,000 records are checked and pass).
+- `schema-e.json`: `schema-base.json` with `max: 8` on `items.title` (`schema plan`: 9,000 records fail the check, "the schema would not apply").
 
-Each measured run: `cp -a` of the base `pb_data` into a new directory under the scratch directory (so each run starts from the same database and a case does not change the next one's input); then `iglo-base serve --http 127.0.0.1:<port> --dir <copy>` (plus `--schema <file>` for cases b to d), started from the copy's directory. The port is taken from 21000 upward, checked with `ss -ltn` before each start. The clock starts just before the spawn, and the run ends at the first `200` from `GET /api/health`, polled every 2 ms with `fetch`. The `Server started at` line was not used. Then `SIGTERM` and wait for the exit (all exits were code 0). One server at a time. One unmeasured run of the baseline came first, to warm the executable in the page cache. Cases ran in the order a, b, c, d, five runs each, and the table gives the median, minimum and maximum of those five. Each run's copy was checked afterwards: case b left no backup; cases c and d each left one `pre-schema-*.zip` (1.29 MB, plus its `.attrs` sidecar) and their changes were present (`schema plan` on the copy then said "up to date").
+Each measured run: `cp -a` of the base `pb_data` into a new directory (so each run starts from the same database), then `iglo-base serve --http 127.0.0.1:<port> --dir <copy>` (plus `--schema <file>` for cases b to e), started from the copy's directory. The port is an ephemeral port taken from the kernel and released before the start. The clock starts just before the spawn, and the run ends at the first `200` from `GET /api/health`, polled every 2 ms with `fetch`. For case (e) the run ends when the process exits (the start is refused). Then `SIGTERM` and wait for the exit. One server at a time. One unmeasured round came first, to warm the executable in the page cache. Five measured rounds per case, in the order a, b, c, d, e. Each run's copy was checked afterwards: cases (c) and (d) each left exactly one `pre-schema-*.zip` with its `.attrs` sidecar, case (e) and the others left none, and the change of case (d) was present afterwards (`schema plan` on a copy of a run then said "the schema is up to date").
 
-Measurement script: a Bun script (`measure.ts`) that spawns the server and polls with `fetch`; the supplementary runs used the same script with the cases interleaved. Raw rows are in `results.jsonl` in the scratch directory.
+Measurement script: a Bun script that builds the base database, writes the four schema files and runs the rounds (kept in the scratch directory, not in the repository). The raw rows are in its `results.json`.
 
 ## Results
 
-Startup from spawn to `GET /api/health` 200, in milliseconds, five runs per case.
+Startup from spawn to `GET /api/health` 200 (or, for case e, from spawn to exit), in milliseconds, five runs per case.
 
-| Case | `--schema` file | What the server does before listening | Median | Min | Max |
-|---|---|---|---|---|---|
-| (a) | none | `up()` for pending migrations (none) | 112.4 | 90.4 | 179.7 |
-| (b) | `schema-base.json` (equal) | read the file, describe and diff the 26 collections; stop: no backup, no record check | 173.7 | 159.4 | 222.5 |
-| (c) | `schema-c.json` (one field on `c01`) | (b) plus the pre-schema backup, the transaction, and the record check of `c01` (0 records) | 455.3 | 361.9 | 482.1 |
-| (d) | `schema-d.json` (`required` on `items.title`) | (c) plus the record check of all 10,000 `items` records | 569.5 | 523.1 | 781.5 |
+| Case | `--schema` file | What the server does before listening | Median | Min | Max | Backups left |
+|---|---|---|---|---|---|---|
+| (a) | none | `up()` for pending migrations (none) | 88.1 | 81.3 | 99.8 | 0 |
+| (b) | `schema-base.json` (equal) | read the file, describe and diff the 26 collections; stop: no dry run, no backup, no record check | 153.3 | 134.8 | 183.3 | 0 |
+| (c) | `schema-c.json` (one field on `c01`) | (b) plus the dry run, the pre-schema backup, the transaction and the record check of `c01` (0 records) | 402.7 | 360.6 | 434.3 | 1 |
+| (d) | `schema-d.json` (`required` on `items.title`) | (c) plus the record check of all 10,000 `items` records, in the dry run and again in the transaction | 443.2 | 425.2 | 468.2 | 1 |
+| (e) | `schema-e.json` (`max: 8` on `items.title`, 9,000 records fail) | the dry run, which fails: the report is printed, the start exits with status 1; no backup | 295.5 | 269.2 | 321.2 | 0 |
 
-Supplementary runs, interleaved (five pairs each, to separate drift from cost):
-
-| Comparison | Case | Median | Min | Max | Paired difference, median (range) |
-|---|---|---|---|---|---|
-| Baseline vs (b), session 1 | (a) | 114.8 | 101.3 | 145.4 | |
-| | (b) | 204.3 | 149.9 | 244.5 | +87.8 (+5.3 to +143.2) |
-| Baseline vs `--automigrate=false`, session 2 | (a) | 128.6 | 105.4 | 166.3 | |
-| | `--automigrate=false`, no `--schema` | 109.4 | 93.6 | 156.7 | -10.7 (-40.3 to +14.7) |
-
-Database size (`du -sk` of the copy's `pb_data`): 6,652 KiB before; 6,652 KiB after (a) and (b); 7,916 KiB after (c) and (d). The difference is the pre-schema backup zip.
+The backup of this database is 1,231,552 bytes (the zip of a 6,188 KiB `pb_data`).
 
 ## What the numbers mean
 
-- The record check is linear in the records of the collection whose fields the apply added or changed, and it runs only for those. Case (d) minus case (c) is the check of 10,000 records: about +115 ms at the medians, roughly 11 µs per record. This is one size, so the linearity is the design's claim, not something this run tested at another size.
-- The backup is linear in the size of `pb_data`. The backup of this 6.6 MB database compresses to 1.29 MB. Cases (c) and (d) both pay it, and it is most of the +280 ms that case (c) adds over (b). The run did not time the backup and the transaction apart, so that split is an inference from the design, not a measurement.
-- Case (b) costs more than the baseline. This was not expected: with no change the apply only reads the file, describes the collections and diffs them. The interleaved pairs put the difference at about +90 ms (session 1), and `--automigrate=false` alone does not account for it (session 2: about -11 ms). The cause is in the schema read path (file parse, describe, diff, or first-use costs in those modules). It was not profiled.
-- The grouped baseline was bimodal (the first two runs about 175 ms, the next three 90 to 110 ms), so its min and max are wide. The interleaved runs are the better comparison for (a) against (b); they show the same ordering.
-- Startup on the record check is noisy (case d: 523 to 782 ms over five runs). The medians are the figures to compare.
+- Case (a) is the baseline. Case (b) costs about 65 ms more than (a), with no change to apply: the file is read, the 26 collections are described and diffed. This is the same cost as the 2026-11-12 measurement (about 60 ms), and it has not been profiled.
+- Case (c) costs about 250 ms more than (b). That is the dry run (the transaction, rolled back), the pre-schema backup (a 6 MB database compresses to 1.2 MB) and the transaction. The run does not time these apart, so the split is an inference from the design, not a measurement.
+- Case (d) costs about 40 ms more than (c) at the medians. The record check of 10,000 records now runs twice on an apply that changes a constraint: once in the dry run and once in the transaction. The two medians are close and their ranges overlap, so five runs do not resolve the record check's cost. The 2026-11-12 measurement, which ran the check once, had 115 ms for the same 10,000 records. The machine's state differs between the two sessions (the baseline moved from 112 ms to 88 ms), so the two sessions are not compared directly. The linearity of the check in the number of records is the design's claim, not something this run tested at another size.
+- Case (e) is the restart loop. A file that fails its check costs the dry run and nothing more: no backup is made, and the start exits with the report. Before the round-1 fix, each such start also made a full backup of `pb_data`, with no retention, so a restart loop filled the disk. This table does not re-measure that old behaviour.
+- The medians are the figures to compare. The runs were not interleaved in this measurement; the ranges show the run-to-run noise (about 20 to 40 ms).
 
 ## Commands
 
@@ -61,11 +56,12 @@ bun build --compile --bytecode --format=esm src/main.ts src/db/read-worker.ts \
   src/files/thumb-worker.ts src/backups/backup-worker.ts src/logs/log-worker.ts \
   --outfile <scratch>/bin/iglo-base
 iglo-base superuser upsert <email> <password> --dir <dir>/pb_data
-iglo-base serve --http 127.0.0.1:<port> --dir <dir>/pb_data        # setup, then the API calls of setup.ts
-iglo-base schema pull --dir <copy>/pb_data > schema-base.json
+iglo-base serve --http 127.0.0.1:<port> --dir <dir>/pb_data        # setup, then the API calls of the setup script
+iglo-base schema pull --dir <base>/pb_data > schema-base.json
 iglo-base schema plan --schema <file> --dir <copy>/pb_data
 iglo-base serve --http 127.0.0.1:<port> --dir <copy>/pb_data [--schema <file>]   # measured
-bun measure.ts <runs dir>
+bun measure.ts setup
+bun measure.ts measure 5
 ```
 
-The scratch directory held the binary, the base copy, the schema files, the run copies and the logs. Its data directories were deleted after this doc was written.
+The scratch directory held the binary, the base database, the schema files, the run copies, the logs and the script. Its data directories were deleted after this document was written.
