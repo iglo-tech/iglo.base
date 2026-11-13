@@ -16,14 +16,15 @@
 // this loop bootstraps and serves again; upstream bootstraps and reverts
 // but its server stays down, and the process exits after 3 seconds.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { httpsNotSupportedMessage, ignoredDirWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
+import { applySchema } from "@/schema/apply";
 import { type Migration, up } from "@/migrations/migrations-runner";
 import { logTime, serve } from "@/server/serve";
 import { reloadSettings } from "@/settings/settings-query";
@@ -51,6 +52,18 @@ export const serveFlags: FlagSpec[] = [
     kind: "string",
     usage:
       "TCP address to listen for the HTTPS server\n(if domain args are specified - default to 0.0.0.0:443, otherwise - default to empty string, aka. no TLS)\nThe incoming HTTP traffic also will be auto redirected to the HTTPS version",
+  },
+  {
+    name: "schema",
+    kind: "string",
+    usage:
+      "the schema file (iglo.schema.json) to apply before the server starts, at every start (D40)",
+  },
+  {
+    name: "allow-data-loss",
+    kind: "bool",
+    usage:
+      "with --schema: let the apply delete fields and collections that hold data (without it the apply stops)",
   },
 ];
 
@@ -112,7 +125,19 @@ export async function runServeCommand(
     ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirWarning(hooksDir)}\n`);
   }
 
+  // the schema file is read at every start (D40): a restart after a restore
+  // applies the file again
+  const schemaPath = values.get("schema") as string | undefined;
+  const allowDataLoss = values.get("allow-data-loss") === true;
+
   for (;;) {
+    const schemaText =
+      schemaPath === undefined
+        ? undefined
+        : readSchemaFile(resolve(ctx.cwd, schemaPath), schemaPath);
+    // --automigrate is off while --schema is set (D40)
+    const dbApp = schemaText === undefined ? app : { ...app, automigrate: false };
+
     const stop = new AbortController();
     // every app.restart call of this app instance, oldest first: the ones
     // that join the first restart settle with it, and every one of them
@@ -120,7 +145,7 @@ export async function runServeCommand(
     const restarts: { revert: () => void; failed: (err: unknown) => void }[] = [];
 
     const appContext = await bootstrapApp(
-      app,
+      dbApp,
       ctx,
       (revert) =>
         new Promise<void>((_resolve, reject) => {
@@ -130,8 +155,13 @@ export async function runServeCommand(
     );
 
     try {
-      // ensure that the latest migrations are applied before starting the server
-      up(appContext, migrations);
+      if (schemaText === undefined) {
+        // ensure that the latest migrations are applied before starting the server
+        up(appContext, migrations);
+      } else {
+        // the file's apply runs the migrations inside its transaction (D40)
+        await applySchema(appContext, schemaText, { allowDataLoss, migrations });
+      }
       await reloadSettings(appContext);
 
       // the jobs tick only under serve (OnServe's __pbCronStart__)
@@ -193,5 +223,17 @@ export async function runServeCommand(
     if (ctx.shutdown.aborted) {
       return;
     }
+  }
+}
+
+// the text of the schema file; a file that cannot be read stops the start
+function readSchemaFile(path: string, given: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (err) {
+    throw new Error(
+      `cannot read the schema file ${JSON.stringify(given)}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
   }
 }
