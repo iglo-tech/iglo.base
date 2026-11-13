@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.3 | review | `task/S.3-schema-apply` → `develop`, PR 101 | 3 | Round 2 fixed through `0935fba` (check and test:reference pass); Opus round 3 (final) reviews the fixes and what a dry run with a pending migration leaves in `pb_data` |
+| S.3 | fixer | `task/S.3-schema-apply` → `develop`, PR 101 | 3 (final) | Round 3: a pending migration in the dry run or `schema plan` deleted stored files and re-ran settings changes. Lead decision (three-round rule): apply the reviewer's fix (auxiliary transaction nested outside, reload settings after the dry run); the lead verifies, no further round |
 
 
 
