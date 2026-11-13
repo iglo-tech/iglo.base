@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.4 | review | `task/S.4-schema-types` → `develop`, PR 102 | 1 | Brief `docs/briefs/S.4.md` (#79); Opus round 1; lead flagged the generated SDK import name and the `pocketbase` package case |
+| S.4 | fixer | `task/S.4-schema-types` → `develop`, PR 102 | 1 | Round 1: 7 findings (SDK import name, json null, file clear/keep inputs, passwordConfirm required, SSR clients lose methods on cast, oxfmt-unstable output, system-collection name clash). Lead: system identifiers keep the leading underscore; generic `TypedPocketBase<C>`. `pocketbase` package per-call generics accepted |
 
 
 
