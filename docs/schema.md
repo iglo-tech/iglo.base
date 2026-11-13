@@ -260,3 +260,60 @@ Each problem names the field or collection, the number of records or values, and
 - A collection type change: keep the type in the file, or remove the collection and add one under another name.
 
 To see the report before you deploy, run `schema plan` with the same file.
+
+## Types
+
+`schema types` writes the TypeScript types of the collections, so that app code and the database cannot drift apart without the compiler saying so:
+
+```sh
+./iglo-base schema types --schema iglo.schema.json --out src/iglo.types.ts
+```
+
+- `--schema <file>` applies the file first, in a transaction that is rolled back: the same plan as `schema plan`, with its write lock and its notes, and no backup. The types are those of the applied schema, and no server is needed. Without it, the types come from the database as it is, so the database must already have the schema (a start with `--schema` applies it).
+- `--out <file>` writes the file. Without it, the types go to standard output.
+- `--check` compares `--out` with what the command would write, exits nonzero and names the file when they differ, and writes nothing. Run it with the same `--schema` in CI or a pre-commit hook.
+- `--dir` chooses the data directory, as for the other commands. The command reads an existing database and creates none.
+
+The same schema gives the same file, byte for byte. The file's header names the command, and it is laid out the way oxfmt lays out TypeScript, so a formatter run on it changes nothing.
+
+### What is generated
+
+For each collection, `Posts` below is its name in Pascal case (`my_posts` becomes `MyPosts`, `_otps` becomes `Otps`):
+
+- `PostsRecord`: every stored field, the hidden ones too (an auth collection's password, for example).
+- `PostsResponse<Expand = {}>`: what the API returns to a client that is not a superuser: `id`, `collectionId`, `collectionName`, the fields that are not hidden, and `expand`. The `Expand` argument types the expanded relations, for example `PostsResponse<{ author: AuthorsResponse }>`. A superuser's responses also carry the hidden fields; the types leave them out.
+- `PostsCreate` and `PostsUpdate`: the inputs. A field that is not required is optional, and so is a field the server fills in (the id, a text field with an autogenerate pattern). `PostsUpdate` also takes the modifiers `field+`, `+field` and `field-` where the API takes them: `field+` and `field-` on a number, and all three on a select, relation or file field. Autodate fields are not set by a request, and neither is an auth collection's `tokenKey`.
+- `Collections`: an enum of the collection names, `Collections.Posts` is `"posts"`.
+- `TypedPocketBase`: the client, with its `collection` method typed for each collection name. A name the schema does not have is a type error.
+
+A view collection gets the same types, from its resolved fields. The API is read-only for views, so their `Create` and `Update` types are not used.
+
+| Field type | Stored value (`Record`, `Response`) | Input (`Create`, `Update`) |
+| --- | --- | --- |
+| text, editor, email, url, date, password | `string` | `string` |
+| autodate | `string` | not set by a request |
+| number | `number` | `number`; `field+` and `field-` add and subtract |
+| bool | `boolean` | `boolean` |
+| select | the union of its values. A single select that is not required also includes `""`, which the API returns when it is not set. A multi-select is an array of the union | the same; `+field`, `field+` and `field-` |
+| relation | the id, or an array of ids | the same; `+field`, `field+` and `field-` |
+| file | the file name, or an array | `File \| Blob`, or an array; `+field` and `field+` add uploads, `field-` removes names |
+| json | the field's `tsType`, verbatim, or `unknown` without one | the same |
+| geoPoint | `{ lon: number; lat: number }` | the same |
+
+An auth collection's `email` is optional in a response, since the API returns it only when `emailVisibility` allows it. Its create takes `passwordConfirm`, and its update also takes `oldPassword`.
+
+A collection's and a field's `description` becomes JSDoc, and a json field's `tsType` is its type. Neither is in the database, so they come from the file: keep `--schema` in the command that generates the types.
+
+Two collections whose names give the same type name, such as `my_posts` and `myPosts` (both `MyPosts`), are an error that names both. Rename one of them.
+
+### Using the types
+
+```ts
+import PocketBase from "iglo.base";
+import type { PostsResponse, TypedPocketBase } from "./iglo.types";
+
+const pb = new PocketBase("https://example.com") as TypedPocketBase;
+const post: PostsResponse = await pb.collection("posts").getOne("RECORD_ID");
+```
+
+The server and browser clients of `iglo.base/ssr` (and `event.locals.pb` in SvelteKit) are subclasses of the same client, so the same cast types them. With the official `pocketbase` package, which keeps the same API, pass the record type to its generic instead: `pb.collection<PostsResponse>("posts")`.

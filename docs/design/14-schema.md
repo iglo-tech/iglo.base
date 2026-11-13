@@ -1,6 +1,6 @@
 # Schema as code
 
-Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [schema.md](../schema.md). Issue [#77](https://github.com/iglo-tech/iglo.base/issues/77) is the spec of the file format; this document is the design of the code. Built in S.2 (`schema pull`) and S.3 (the apply, `schema plan` and `serve --schema`, [below](#the-apply-s3)); S.4 adds the types, and later tasks extend this document.
+Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [schema.md](../schema.md). Issue [#77](https://github.com/iglo-tech/iglo.base/issues/77) is the spec of the file format; this document is the design of the code. Built in S.2 (`schema pull`), S.3 (the apply, `schema plan` and `serve --schema`, [below](#the-apply-s3)) and S.4 (`schema types`, [below](#types-s4)); later tasks extend this document.
 
 ## Layout
 
@@ -17,6 +17,7 @@ Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [s
 | `src/schema/apply.ts` | The apply and `plan`: the checks before the transaction, the steps of the transaction in order, the view rebuild, the record check call |
 | `src/schema/apply-json.ts` | The description → the JSON that the collections API takes (fields, rules and options, the collection object) |
 | `src/schema/check.ts` | The counts of the data-loss guard (rows, non-empty values) and the record check over the records of a collection |
+| `src/schema/typegen.ts` | The types of the collections from the API's collection JSON: the record, response, create and update types, the `Collections` enum and `TypedPocketBase` (S.4) |
 | `src/schema/report.ts` | The report of an apply or a plan: the changes, the migrations, the lost data and the problems, and its text |
 | `src/schema/backup.ts` | The pre-schema backup: its name, the call to upstream's backup code, the disk-space message and the retention of three |
 | `src/schema/json-schema.ts`, `schema/iglo.schema.json` | The JSON Schema, embedded in the executable with `import` |
@@ -147,7 +148,21 @@ Each part of the apply is in one module, listed in the [layout](#layout) table. 
 - **Modes and the development watcher (S.6).** `--mode` and the watcher that applies a file change on a running server are not in this version. `serve --schema` applies at start only.
 - **A plan on a copy.** D40 allows a copy, and the copy would avoid the write lock. This version plans on the live database, in the transaction it rolls back. The lock is documented in [schema.md](../schema.md#schema-plan).
 
+## Types (S.4)
+
+`schema types` (`src/cli/schema.ts`, `runTypes`) generates the types with `src/schema/typegen.ts`, which has no database access: `generateTypes(collections, schema?)` takes the collections as the API returns them (`marshalJSON`, so a view has its resolved fields) and, optionally, the file the types come from.
+
+- **Source of the types.** Without `--schema`, the collections are the database's. With `--schema`, `planSchema` runs the apply in its rolled-back transaction, and its `inspect` hook (`ApplyOptions.inspect`) reads the collections there, after the last step. The report goes to standard error, and a file that would not apply writes nothing. No backup is made. The descriptions and `tsType` are not in the database, so they come from the parsed file in every case where it is given.
+- **Output.** Sorted by collection name; fields keep the API's order; a header names the command; laid out the way oxfmt formats TypeScript (a union that is too long breaks with a leading `|` on each member, an array of a union in parentheses). A test runs `oxfmt --check` on a generated file, with a control that a misformatted file fails.
+- **Names.** A collection's type name is its words in Pascal case, split on `_` (`my_posts` is `MyPosts`); a name that starts with a digit gets a leading underscore. Two names with one type name are an error that names both, not a silent suffix: a suffix would change a type name without the user knowing. Field names that are not identifiers are quoted. Upstream reserves `collectionId`, `collectionName` and `expand`, so a response cannot repeat them.
+- **Field types.** Upstream's field types (`core/field_*.go`). Decisions: a single select that is not required includes `""`, because the API returns the empty value for an unset select, so a type without it would be wrong for the stored record; the modifiers of a select, relation and file take the field's values or ids, and a file's removal takes names. A file's upload is `File | Blob`. A request never sets an autodate field, and an auth collection's `tokenKey` is the server's. A hidden field is left out of the response, and the response a superuser gets carries it (upstream shows hidden fields to superusers only, `apis/record_crud.go`); the types describe the other clients' view, which the spec asks for.
+- **Modifiers left out.** Upstream's text fields also accept `field:autogenerate`. It is not one of the three modifiers the issue lists, so the types leave it out.
+- **Views.** Views get the same types. The API refuses writes to a view, so their create and update types are not used.
+- **TypedPocketBase.** `Omit<PocketBase, "collection">` with one overload per collection name. The `Client` class is the SDK's own, and the `ServerClient` and `BrowserClient` subclasses are assignable to it, so the SSR and browser clients need no type parameter and the SDK does not change in this task. The official `pocketbase` package has a class of its own, which the typed client cannot be cast to; the generated record types work with its generic `collection<M>()`, which the test checks.
+- **Package name.** The generated file imports from `iglo.base`, the name of the SDK package in this repository (`sdkPackage` in `typegen.ts`). P.14 renames the package to `@iglo.tech/iglo.base`; that change updates the one constant.
+- **Testing.** `test/cli/schema-types.test.ts` runs the command: the output is deterministic, `--check` passes on a fresh file and fails on a changed schema, `--schema` leaves `pb_data` byte for byte the same, a name clash and a file that would not apply are errors, and the output is oxfmt's format. `test/schema/types-sdk.test.ts` type-checks a fixture app with `tsc` (the plain, server and browser clients, the official package, and `@ts-expect-error` lines for the wrong names, values and fields), then runs a script against a server that a start with `--schema` serves, and checks each response's keys and JavaScript types. The official package is a test-only devDependency, pinned to the version the SDK is a copy of (0.28.1).
+
 ## Not in this document yet
 
-- `schema types` (S.4), renames and TypeScript migrations (S.5) and the server modes (S.6).
+- Renames and TypeScript migrations (S.5) and the server modes (S.6).
 - Settings in the file (possible later, without secrets).
