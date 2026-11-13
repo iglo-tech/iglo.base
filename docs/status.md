@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.3 | review | `task/S.3-schema-apply` → `develop`, PR 101 | 1 | Brief `docs/briefs/S.3.md` (#78); Opus round 1 |
+| S.3 | fixer | `task/S.3-schema-apply` → `develop`, PR 101 | 1 | Round 1: 6 blocking (backup name collision, restart-loop backups, view removal order, related-collection removal, implied index listed, guard counts empty values); lead added dry run before backup + retention after failure (D40 amendment) |
 
 
 
