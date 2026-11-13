@@ -25,6 +25,9 @@ export interface LostValues {
   collection: string;
   field?: string;
   rows: number;
+  // set for a select, file or relation that becomes single-valued: the rows
+  // hold more than one value, and the extra values go
+  becomesSingle?: boolean;
 }
 
 export interface ApplyReport {
@@ -144,7 +147,12 @@ export function formatReport(report: ApplyReport): string {
     lines.push("data that would be lost:");
     for (const item of report.lost) {
       const where = item.field === undefined ? item.collection : `${item.collection}.${item.field}`;
-      const what = item.field === undefined ? "records" : "values";
+      const what =
+        item.becomesSingle === true
+          ? "records hold more than one value"
+          : item.field === undefined
+            ? "records"
+            : "values";
       const allowed = report.allowDataLoss ? " (allowed by --allow-data-loss)" : "";
       lines.push(`  ${where}: ${item.rows} ${what}${allowed}`);
     }

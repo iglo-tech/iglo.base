@@ -8,8 +8,9 @@
 // not checked here: SQLite enforces them when the index is created, and the
 // apply reports that failure as a problem.
 //
-// The counts are for the plan: the rows of a table, and the non-empty values
-// of a column (what removing a field would lose).
+// The counts are for the plan: the rows of a table, the non-empty values of a
+// field (what removing it would lose), and the rows that hold more values than
+// a lowered maxSelect allows.
 
 import type { Collection } from "@/collections/collection-model";
 import type { CollectionsApp } from "@/collections/collection-query";
@@ -21,6 +22,7 @@ import { recordQuery, recordsTarget } from "@/records/record-query";
 import { interceptorApp } from "@/records/record-save";
 import type { Problem } from "@/schema/report";
 import type { Error as ValidationError } from "@/validation/error";
+import type { SchemaField } from "@/schema/types";
 
 // the records read per query of the check (the cursor is the record id)
 const batchSize = 500;
@@ -37,16 +39,61 @@ export function countRows(db: Databases, tableName: string): number {
   return Number(count ?? 0);
 }
 
-// the rows whose value in the column is not empty (NULL and "" are empty)
-export function countValues(db: Databases, tableName: string, column: string): number {
+// The SQL condition of an empty value of a field: what upstream stores when
+// the field is not set. NULL is empty for every type; the empty string for
+// text-like fields (and single select, file and relation); 0 for a number or a
+// bool; an empty list for a multi-value select, file or relation ("[]"); and
+// for json, the empty string, null and an empty list.
+export function emptyValueCondition(field: SchemaField): string {
+  const column = `[[${field.name}]]`;
+  const isNull = `${column} IS NULL`;
+  if (field.type === "number" || field.type === "bool") {
+    return `${isNull} OR ${column} = 0`;
+  }
+  if (field.type === "json") {
+    return `${isNull} OR ${column} IN ('', 'null', '[]')`;
+  }
+  if (maxSelectOf(field) > 1 && multiValueTypes.has(field.type)) {
+    return `${isNull} OR ${column} IN ('', '[]')`;
+  }
+  return `${isNull} OR ${column} = ''`;
+}
+
+// the types whose maxSelect makes them lists of values
+export const multiValueTypes: ReadonlySet<string> = new Set(["select", "file", "relation"]);
+
+// the maximum number of values of a select, file or relation (1 when unset)
+export function maxSelectOf(field: SchemaField): number {
+  return Math.max(1, Number(field.options.maxSelect ?? 1));
+}
+
+// the rows whose value of the field is not empty (see emptyValueCondition)
+export function countValues(db: Databases, tableName: string, field: SchemaField): number {
   if (!hasTable(db, tableName)) {
     return 0;
   }
   const [count] = db
     .db()
-    .newQuery(
-      `SELECT COUNT(*) FROM {{${tableName}}} WHERE [[${column}]] IS NOT NULL AND [[${column}]] != ''`,
-    )
+    .newQuery(`SELECT COUNT(*) FROM {{${tableName}}} WHERE NOT (${emptyValueCondition(field)})`)
+    .row();
+  return Number(count ?? 0);
+}
+
+// the rows that hold more values in a multi-value column than max: the values
+// of a list column are a JSON array; any other value holds none
+export function countBeyondMax(
+  db: Databases,
+  tableName: string,
+  column: string,
+  max: number,
+): number {
+  if (!hasTable(db, tableName)) {
+    return 0;
+  }
+  const size = `CASE WHEN json_valid([[${column}]]) THEN json_array_length([[${column}]]) ELSE 0 END`;
+  const [count] = db
+    .db()
+    .newQuery(`SELECT COUNT(*) FROM {{${tableName}}} WHERE ${size} > ${Math.trunc(max)}`)
     .row();
   return Number(count ?? 0);
 }

@@ -3,9 +3,14 @@
 // (src/backups/create.ts), written to the configured backup storage under a
 // name of its own.
 //
-// The name is pre-schema-<UTC time>.zip. Retention keeps the three newest
-// pre-schema backups, after a successful apply; cronMaxKeep prunes only the
-// automatic backups, so it never touches these.
+// The name is pre-schema-<UTC time with milliseconds>.zip, for example
+// pre-schema-20261113T172429.123Z.zip. Two applies in the same second get
+// different names. If a backup with the name already exists (two applies in
+// the same millisecond), the time moves on by one millisecond until the name is
+// free, so no backup is ever replaced. Retention keeps the three newest
+// pre-schema backups, after every apply that made one (a successful one, or
+// one that failed after its backup); cronMaxKeep prunes only the automatic
+// backups, so it never touches these.
 
 import { readdirSync, lstatSync, statfsSync } from "node:fs";
 import { join } from "node:path";
@@ -21,13 +26,25 @@ export const preSchemaKeep = 3;
 
 const bytesPerMiB = 1024 * 1024;
 
-// the time as the backup name carries it: 20261112T101500Z
+// the time as the backup name carries it: 20261113T172429.123Z (the ISO time
+// without its separators, so it still sorts by time)
 export function preSchemaBackupName(now: Date): string {
-  const time = now
-    .toISOString()
-    .replace(/\.\d+Z$/, "Z")
-    .replace(/[-:]/g, "");
-  return `${preSchemaPrefix}${time}.zip`;
+  return `${preSchemaPrefix}${now.toISOString().replace(/[-:]/g, "")}.zip`;
+}
+
+// the names of the pre-schema backups in the backups storage, sorted by name
+// (which is the time, so the newest sorts last)
+async function listPreSchema(app: App): Promise<string[]> {
+  const fsys = app.filesystem.newBackupsFilesystem();
+  try {
+    const files = await fsys.list(preSchemaPrefix);
+    return files
+      .map((file) => file.key)
+      .filter((key) => key.startsWith(preSchemaPrefix))
+      .toSorted();
+  } finally {
+    fsys.close();
+  }
 }
 
 // the bytes of pb_data that a backup holds (the backups and temp directories
@@ -82,9 +99,24 @@ function noSpaceMessage(app: App): string {
 }
 
 // Makes the pre-schema backup. It throws, and the apply stops, when the
-// backup fails (the schema is not changed then).
+// backup fails (the schema is not changed then). The name is free: a backup
+// with the same name is never replaced (see the header).
 export async function makePreSchemaBackup(app: App): Promise<string> {
-  const name = preSchemaBackupName(app.clock.now());
+  let name: string;
+  try {
+    const taken = new Set(await listPreSchema(app));
+    let time = app.clock.now();
+    name = preSchemaBackupName(time);
+    while (taken.has(name)) {
+      time = new Date(time.getTime() + 1);
+      name = preSchemaBackupName(time);
+    }
+  } catch (err) {
+    throw new Error(
+      `the pre-schema backup could not be named, so the schema is not applied: ${errorText(err)}`,
+      { cause: err },
+    );
+  }
   try {
     await createBackup(app, name);
   } catch (err) {
@@ -99,36 +131,28 @@ export async function makePreSchemaBackup(app: App): Promise<string> {
   return name;
 }
 
-// Keeps the newest preSchemaKeep pre-schema backups and deletes the others. A
-// failure is logged: the apply itself has succeeded.
+// Keeps the newest preSchemaKeep pre-schema backups and deletes the others. It
+// runs after every apply that made a backup, so at most preSchemaKeep exist
+// once the apply returns. A failure is logged: the apply's own result stands.
 export async function prunePreSchemaBackups(app: App): Promise<void> {
-  let fsys;
   try {
-    fsys = app.filesystem.newBackupsFilesystem();
-  } catch (err) {
-    app.logger.error("[schema] failed to initialize the backup filesystem", { error: err });
-    return;
-  }
-  try {
-    const files = await fsys.list(preSchemaPrefix);
-    // the names carry their UTC time, so the newest sorts last
-    const keys = files
-      .map((file) => file.key)
-      .filter((key) => key.startsWith(preSchemaPrefix))
-      .toSorted((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-    for (const key of keys.slice(preSchemaKeep)) {
-      try {
-        await fsys.delete(key);
-      } catch (err) {
-        app.logger.error("[schema] failed to remove an old pre-schema backup", {
-          key,
-          error: err,
-        });
+    const keys = await listPreSchema(app);
+    const fsys = app.filesystem.newBackupsFilesystem();
+    try {
+      for (const key of keys.toReversed().slice(preSchemaKeep)) {
+        try {
+          await fsys.delete(key);
+        } catch (err) {
+          app.logger.error("[schema] failed to remove an old pre-schema backup", {
+            key,
+            error: err,
+          });
+        }
       }
+    } finally {
+      fsys.close();
     }
   } catch (err) {
-    app.logger.error("[schema] failed to list the pre-schema backups", { error: err });
-  } finally {
-    fsys.close();
+    app.logger.error("[schema] failed to prune the pre-schema backups", { error: err });
   }
 }

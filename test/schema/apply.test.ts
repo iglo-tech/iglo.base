@@ -298,8 +298,9 @@ describe("schema apply and schema plan", () => {
     expect(refused.stderr).toContain("schema not applied; the database is unchanged");
     expect(refused.stderr).toContain("posts.title: required, 2 records empty.");
     expect(sameBytes(bytes, dataDB(site))).toBe(true);
-    // the backup is made before the transaction, and it stays
-    expect(preSchemaBackups(site).length).toBe(2);
+    // the dry run fails before the backup, so the refused start makes none:
+    // only the first apply's backup exists
+    expect(preSchemaBackups(site).length).toBe(1);
   });
 
   test("schema plan changes nothing, and says so when the file is up to date", async () => {
@@ -384,8 +385,6 @@ describe("schema apply and schema plan", () => {
     const site = await createSite();
     let file = await currentFile(site);
     for (const name of ["f1", "f2", "f3", "f4"]) {
-      // backups are named by the second, so each apply waits for the next one
-      await Bun.sleep(1100);
       const next = structuredClone(file);
       ((collectionsOf(next).users as Json).fields as Json)[name] = { type: "text" };
       file = next;
@@ -644,6 +643,337 @@ describe("schema apply and schema plan", () => {
     expect(refused.stderr).toContain("failed to apply migration 1_fails.js");
     expect(sameBytes(bytes, dataDB(site))).toBe(true);
     expect(tableNames(site)).not.toContain("posts");
+  });
+});
+
+describe("schema apply: names, restarts, removals, indexes and loss", () => {
+  test("two applies in the same second keep both backups, under different names", async () => {
+    const site = await createSite();
+    const v1 = writeFile(site, "v1.json", withPosts(await currentFile(site)));
+    await applyOK(site, v1);
+
+    const v2 = structuredClone(await currentFile(site));
+    collectionsOf(v2).tags = { type: "base", fields: { name: { type: "text" } } };
+    await applyOK(site, writeFile(site, "v2.json", v2));
+    const v3 = structuredClone(v2);
+    collectionsOf(v3).tags2 = { type: "base", fields: { name: { type: "text" } } };
+    await applyOK(site, writeFile(site, "v3.json", v3));
+
+    const kept = preSchemaBackups(site);
+    expect(kept.length).toBe(3);
+    // the name carries the UTC time with milliseconds, and no two are equal
+    for (const name of kept) {
+      expect(name).toMatch(/^pre-schema-\d{8}T\d{6}\.\d{3}Z\.zip$/);
+    }
+    expect(new Set(kept).size).toBe(kept.length);
+  });
+
+  test("failing starts make no backups, and the refused file changes nothing", async () => {
+    const site = await createSite();
+    const v1 = writeFile(
+      site,
+      "v1.json",
+      withPosts(await currentFile(site), { type: "text", max: 120 }),
+    );
+    await applyOK(site, v1);
+    await withServer(site, ["--schema", v1], async (url, token) => {
+      for (const title of ["", "kept"]) {
+        expect(
+          (await api(url, token, "POST", "/api/collections/posts/records", { title })).status,
+        ).toBe(200);
+      }
+    });
+    const bytes = dataDB(site);
+    const v2 = writeFile(site, "v2.json", withPosts(await currentFile(site)));
+
+    // a restart loop: each start fails the same way, and none makes a backup
+    for (let i = 0; i < 3; i++) {
+      const refused = await applyFails(site, v2);
+      expect(refused.stderr).toContain("posts.title: required, 1 records empty.");
+    }
+    expect(preSchemaBackups(site).length).toBe(1);
+    expect(sameBytes(bytes, dataDB(site))).toBe(true);
+  });
+
+  test("a failure after the backup keeps at most three pre-schema backups", async () => {
+    const site = await createSite();
+    const v1 = writeFile(site, "v1.json", withPosts(await currentFile(site)));
+    await applyOK(site, v1);
+
+    // a migration that passes the dry run and fails the real transaction: each
+    // run counts itself in a file (its length), and the odd runs, the real
+    // ones, throw
+    const migrations = join(site.root, "pb_migrations");
+    mkdirSync(migrations, { recursive: true });
+    const calls = join(site.root, "calls");
+    writeFileSync(
+      join(migrations, "1_flaky.js"),
+      `migrate(() => {
+        const file = ${JSON.stringify(calls)};
+        let n = 0;
+        try {
+          n = $os.readFile(file).length;
+        } catch (e) {
+          n = 0;
+        }
+        $os.writeFile(file, new Uint8Array(n + 1), 420);
+        if (n % 2 === 1) {
+          throw new Error("the real run fails");
+        }
+      });`,
+    );
+    const migrationArgs = ["--migrationsDir", migrations];
+
+    for (let i = 0; i < 4; i++) {
+      const refused = await applyFails(site, v1, migrationArgs);
+      expect(refused.stderr).toContain("failed to apply migration 1_flaky.js");
+      expect(refused.stderr).toContain("schema not applied; the database is unchanged");
+    }
+    // four backups were made after the first apply's one; the retention kept three
+    expect(preSchemaBackups(site).length).toBe(3);
+  });
+
+  test("a removed view that reads a dropped column is dropped first", async () => {
+    const site = await createSite();
+    const v1 = withPosts(await currentFile(site));
+    collectionsOf(v1).pv = {
+      type: "view",
+      query: "SELECT id, body FROM posts",
+      rules: { list: "", view: "" },
+    };
+    await applyOK(site, writeFile(site, "v1.json", v1));
+    expect(tableNames(site)).toContain("pv");
+
+    const v2 = structuredClone(v1);
+    delete collectionsOf(v2).pv;
+    (collectionsOf(v2).posts as Json).fields = {
+      title: { type: "text", required: true, max: 120 },
+    };
+    const v2File = writeFile(site, "v2.json", v2);
+    expect((await plan(site, v2File)).exitCode).toBe(0);
+    await applyOK(site, v2File);
+    expect(tableNames(site)).not.toContain("pv");
+    expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("a removed view over a view and a column the file adds is dropped before the change", async () => {
+    const site = await createSite();
+    const v1 = withPosts(await currentFile(site));
+    collectionsOf(v1).iv = {
+      type: "view",
+      query: "SELECT id, title FROM posts",
+      rules: { list: "", view: "" },
+    };
+    collectionsOf(v1).ov = {
+      type: "view",
+      query: "SELECT id, title FROM iv",
+      rules: { list: "", view: "" },
+    };
+    await applyOK(site, writeFile(site, "v1.json", v1));
+
+    const v2 = structuredClone(v1);
+    delete collectionsOf(v2).ov;
+    ((collectionsOf(v2).posts as Json).fields as Json).extra = { type: "text" };
+    const v2File = writeFile(site, "v2.json", v2);
+    await applyOK(site, v2File);
+    expect(tableNames(site)).toContain("iv");
+    expect(tableNames(site)).not.toContain("ov");
+    expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("removing two related collections deletes the referrer first, and a cycle is cut", async () => {
+    const site = await createSite();
+    const base = await currentFile(site);
+    // related: bbb relates to aaa
+    const v1 = structuredClone(base);
+    collectionsOf(v1).aaa = { type: "base", fields: { t: { type: "text" } } };
+    collectionsOf(v1).bbb = {
+      type: "base",
+      fields: { r: { type: "relation", collection: "aaa", maxSelect: 1 } },
+    };
+    // a cycle: ccc and ddd relate to each other
+    collectionsOf(v1).ccc = {
+      type: "base",
+      fields: { r: { type: "relation", collection: "ddd", maxSelect: 1 } },
+    };
+    collectionsOf(v1).ddd = {
+      type: "base",
+      fields: { r: { type: "relation", collection: "ccc", maxSelect: 1 } },
+    };
+    await applyOK(site, writeFile(site, "v1.json", v1));
+
+    // the file without any of them: the referrers go before their targets
+    const v2 = structuredClone(v1);
+    for (const name of ["aaa", "bbb", "ccc", "ddd"]) {
+      delete collectionsOf(v2)[name];
+    }
+    const v2File = writeFile(site, "v2.json", v2);
+    expect((await plan(site, v2File)).exitCode).toBe(0);
+    await applyOK(site, v2File);
+    for (const name of ["aaa", "bbb", "ccc", "ddd"]) {
+      expect(tableNames(site)).not.toContain(name);
+    }
+    expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("an implied auth index the file lists is compared by definition, under its stored name", async () => {
+    const site = await createSite();
+    const stored = (): string[] =>
+      JSON.parse(String(storedCollection(site, "users").indexes)) as string[];
+    const before = stored();
+    const implied = before.find(
+      (statement) => /`email`/.test(statement) && /UNIQUE/i.test(statement),
+    );
+    expect(implied).toBeDefined();
+
+    for (const statement of [
+      implied as string,
+      (implied as string).replace(/INDEX\s+`[^`]*`/, "INDEX `my_email`"),
+    ]) {
+      const file = await currentFile(site);
+      (collectionsOf(file).users as Json).indexes = [statement];
+      const path = writeFile(site, "implied.json", file);
+      const planned = await plan(site, path);
+      expect(planned.exitCode).toBe(0);
+      expect(planned.stdout).not.toContain("index added");
+      expect(planned.stdout).toContain("the schema is up to date");
+      await applyOK(site, path);
+      // the stored statements: the same ones, with the stored name
+      expect(stored()).toEqual(before);
+    }
+  });
+
+  test("empty values are not data: a removed field holding only empty values is removed without the flag", async () => {
+    const site = await createSite();
+    const fields: Json = {
+      title: { type: "text", max: 120 },
+      n: { type: "number" },
+      flag: { type: "bool" },
+      tags: { type: "select", values: ["a", "b", "c"], maxSelect: 3 },
+      files: { type: "file", maxSelect: 3 },
+      rel: { type: "relation", collection: "posts", maxSelect: 3 },
+    };
+    const v1 = withPosts(await currentFile(site));
+    (collectionsOf(v1).posts as Json).fields = fields;
+    const v1File = writeFile(site, "v1.json", v1);
+    await applyOK(site, v1File);
+    await withServer(site, ["--schema", v1File], async (url, token) => {
+      // only the title: the other fields hold the values the API gives an unset field
+      const created = await api(url, token, "POST", "/api/collections/posts/records", {
+        title: "x",
+      });
+      expect(created.status).toBe(200);
+      const record = created.json as Json;
+      expect(record.n).toBe(0);
+      expect(record.flag).toBe(false);
+      expect(record.tags).toEqual([]);
+      expect(record.files).toEqual([]);
+      expect(record.rel).toEqual([]);
+    });
+
+    const v2 = structuredClone(v1);
+    for (const name of ["n", "flag", "tags", "files", "rel"]) {
+      delete ((collectionsOf(v2).posts as Json).fields as Json)[name];
+    }
+    const v2File = writeFile(site, "v2.json", v2);
+    const planned = await plan(site, v2File);
+    expect(planned.exitCode).toBe(0);
+    expect(planned.stdout).not.toContain("data that would be lost");
+    await applyOK(site, v2File);
+    expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("the non-empty values of a removed field are counted: the plan lists them", async () => {
+    const site = await createSite();
+    const fields: Json = {
+      title: { type: "text", max: 120 },
+      n: { type: "number" },
+      flag: { type: "bool" },
+      tags: { type: "select", values: ["a", "b", "c"], maxSelect: 3 },
+      files: { type: "file", maxSelect: 3 },
+    };
+    const v1 = withPosts(await currentFile(site));
+    (collectionsOf(v1).posts as Json).fields = fields;
+    const v1File = writeFile(site, "v1.json", v1);
+    await applyOK(site, v1File);
+    await withServer(site, ["--schema", v1File], async (url, token) => {
+      for (const body of [{ title: "empty" }, { title: "full", n: 2, flag: true, tags: ["a"] }]) {
+        expect((await api(url, token, "POST", "/api/collections/posts/records", body)).status).toBe(
+          200,
+        );
+      }
+    });
+
+    const v2 = structuredClone(v1);
+    delete ((collectionsOf(v2).posts as Json).fields as Json).n;
+    delete ((collectionsOf(v2).posts as Json).fields as Json).flag;
+    delete ((collectionsOf(v2).posts as Json).fields as Json).tags;
+    delete ((collectionsOf(v2).posts as Json).fields as Json).files;
+    const planned = await plan(site, writeFile(site, "v2.json", v2));
+    expect(planned.exitCode).toBe(1);
+    expect(planned.stdout).toContain("posts.n: 1 values would be deleted");
+    expect(planned.stdout).toContain("posts.flag: 1 values would be deleted");
+    expect(planned.stdout).toContain("posts.tags: 1 values would be deleted");
+    expect(planned.stdout).not.toContain("posts.files");
+  });
+
+  test("lowering maxSelect to one counts the rows that hold more; a higher maximum is the record check's", async () => {
+    const site = await createSite();
+    const v1 = withPosts(await currentFile(site));
+    (collectionsOf(v1).posts as Json).fields = {
+      title: { type: "text", max: 120 },
+      tags: { type: "select", values: ["a", "b", "c"], maxSelect: 3 },
+    };
+    const v1File = writeFile(site, "v1.json", v1);
+    await applyOK(site, v1File);
+    await withServer(site, ["--schema", v1File], async (url, token) => {
+      for (const body of [
+        { title: "three", tags: ["a", "b", "c"] },
+        { title: "one", tags: ["a"] },
+      ]) {
+        expect((await api(url, token, "POST", "/api/collections/posts/records", body)).status).toBe(
+          200,
+        );
+      }
+    });
+    const withMax = (max: number): Json => {
+      const next = structuredClone(v1);
+      ((collectionsOf(next).posts as Json).fields as Json).tags = {
+        type: "select",
+        values: ["a", "b", "c"],
+        maxSelect: max,
+      };
+      return next;
+    };
+
+    // to two: no value is deleted, so it is not data loss; the record with
+    // three values fails the check, and the flag does not change that
+    const v2File = writeFile(site, "v2.json", withMax(2));
+    const toTwo = await plan(site, v2File);
+    expect(toTwo.exitCode).toBe(1);
+    expect(toTwo.stdout).toContain("posts.tags: Select no more than 2, 1 records fail the check");
+    expect(toTwo.stdout).not.toContain("data that would be lost");
+    await applyFails(site, v2File, ["--allow-data-loss"]);
+
+    // to one: the table keeps one value, so the extra values of the record with
+    // three are lost; the guard counts that, and the flag allows it
+    const v3File = writeFile(site, "v3.json", withMax(1));
+    const toOne = await plan(site, v3File);
+    expect(toOne.exitCode).toBe(1);
+    expect(toOne.stdout).toContain("posts.tags: 1 records hold more than one value");
+    await applyFails(site, v3File);
+    await applyOK(site, v3File, ["--allow-data-loss"]);
+    expect(await pulled(site)).toEqual(described(JSON.stringify(withMax(1))));
+    await withServer(site, ["--schema", v3File], async (url, token) => {
+      const listed = await api(
+        url,
+        token,
+        "GET",
+        "/api/collections/posts/records?filter=title='three'",
+      );
+      const items = (listed.json as { items: Json[] }).items;
+      expect(items[0]?.tags).toHaveLength(1);
+    });
   });
 });
 

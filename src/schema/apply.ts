@@ -4,23 +4,29 @@
 //
 //	before the transaction (read only): compute the changes. When nothing
 //	changes and no JavaScript migration is pending, stop: no backup and no
-//	record check. Otherwise refuse a data loss that the file would cause
-//	(when no migration is pending, so that the state is known), then make the
-//	pre-schema backup; a failed backup stops the apply.
+//	record check.
+//
+//	the dry run: the same transaction as `plan` (below), rolled back. When it
+//	fails, the report is printed and the start fails with no backup, so a
+//	restart loop makes no backups (D40, amended 2026-11-13).
+//
+//	the pre-schema backup; a failed backup stops the apply.
 //
 //	in one write transaction:
 //	  1. the pending JavaScript migrations (D23), with `up`, as serve ran them
 //	     before; they may change the structure first
 //	  2. renames (S.5; none yet)
 //	  3. the changes against the file, again; the data-loss guard; the SQL
-//	     views that the changes affect are dropped
+//	     views that the changes affect are dropped, and so are the removed
+//	     views (a removed view may read a column or a view that goes)
 //	  4. widen: new collections with their plain fields, and the new plain
 //	     fields of the existing ones (a replaced field, same name with
 //	     another type, waits for step 6, and the removed fields stay)
 //	  5. widen: the new relation fields, once every target exists
 //	  5a. TypeScript migrations (S.5; none yet)
 //	  6. narrow: the new and changed collections in full (fields, indexes,
-//	     rules, options); then the removed ones
+//	     rules, options); then the removed views; then the removed collections,
+//	     each after the collections that relate to it
 //	  7. the SQL views of the affected view collections are created again
 //	  8. the record check, for the fields the apply added or changed
 //	  9. commit; or roll back, so that the database is unchanged
@@ -36,6 +42,7 @@ import { Collection, newCollection } from "@/collections/collection-model";
 import {
   findAllCollections,
   findCollectionByNameOrId,
+  findCollectionReferences,
   reloadCachedCollections,
 } from "@/collections/collection-query";
 import { deleteCollection, saveCollection } from "@/collections/collection-save";
@@ -44,10 +51,18 @@ import { deleteView } from "@/db/table";
 import { runInTransaction } from "@/db/tx";
 import { collectionJSON, fieldJSON, settingsJSON, type CollectionIdOf } from "@/schema/apply-json";
 import { makePreSchemaBackup, prunePreSchemaBackups } from "@/schema/backup";
-import { countRows, countValues, recordProblems } from "@/schema/check";
+import {
+  countBeyondMax,
+  countRows,
+  countValues,
+  maxSelectOf,
+  multiValueTypes,
+  recordProblems,
+} from "@/schema/check";
 import { describeCollections } from "@/schema/describe";
 import {
   checkedFields,
+  distinctIndexes,
   diffSchemas,
   impliedStatements,
   keepStoredIndexes,
@@ -55,6 +70,7 @@ import {
   type CollectionChange,
   type SchemaChanges,
 } from "@/schema/diff";
+import { explicitIndexes } from "@/schema/implied";
 import {
   formatReport,
   newReport,
@@ -66,6 +82,8 @@ import { readSchema, type SchemaIssue } from "@/schema/read";
 import type { SchemaCollection, SchemaDescription } from "@/schema/types";
 import { isMigrationApplied, up, type Migration } from "@/migrations/migrations-runner";
 import { Errors } from "@/validation/error";
+
+type Json = Record<string, unknown>;
 
 // The file is not a valid schema: its problems, with their JSON paths.
 export class SchemaFileError extends Error {
@@ -121,7 +139,8 @@ export function parseSchemaFile(text: string): SchemaDescription {
 }
 
 // Applies the file, as serve does at startup. It throws a SchemaApplyError
-// when the apply stops, and the database is unchanged then.
+// when the apply stops, and the database is unchanged then. The dry run and
+// the backup come first: a failed dry run makes no backup.
 export async function applySchema(
   app: App,
   text: string,
@@ -137,25 +156,27 @@ export async function applySchema(
     return newReport("apply", options.allowDataLoss);
   }
 
-  // a data loss that is known now stops before the backup
-  if (pending.length === 0 && !options.allowDataLoss) {
-    const known = newReport("apply", false);
-    known.changes = changes;
-    collectLost(app.databases, current, changes, known);
-    if (!reportIsOK(known)) {
-      throw new SchemaApplyError(known);
-    }
+  // the dry run: the same transaction as `schema plan`, rolled back. A file
+  // that would fail fails here, before any backup is made
+  const dry = runTransaction(app, desired, options, "plan");
+  if (!reportIsOK(dry)) {
+    dry.mode = "apply";
+    throw new SchemaApplyError(dry);
   }
 
   const backup = await makePreSchemaBackup(app);
-
-  const report = runTransaction(app, desired, options, "apply");
-  report.backup = backup;
-  if (!reportIsOK(report)) {
-    throw new SchemaApplyError(report);
+  try {
+    const report = runTransaction(app, desired, options, "apply");
+    report.backup = backup;
+    if (!reportIsOK(report)) {
+      throw new SchemaApplyError(report);
+    }
+    return report;
+  } finally {
+    // after every apply that made a backup, successful or not: at most three
+    // pre-schema backups exist once the apply returns
+    await prunePreSchemaBackups(app);
   }
-  await prunePreSchemaBackups(app);
-  return report;
 }
 
 // Plans the file: the report of the changes, the migrations and every
@@ -268,7 +289,7 @@ function applyInTransaction(
       });
     }
   }
-  collectLost(app.databases, current, changes, report);
+  collectLost(app.databases, current, desired, changes, report);
   if (report.problems.length > 0) {
     throw new StopApply("problems");
   }
@@ -286,6 +307,13 @@ function applyInTransaction(
   const currentByName = new Map(current.collections.map((c) => [c.name, c]));
   const changeByName = new Map(changes.collections.map((c) => [c.name, c]));
 
+  // the removed views are dropped first: their query may read a column or a
+  // view that this transaction drops, and SQLite checks every view on an ALTER
+  for (const change of changes.collections) {
+    if (change.kind === "removed" && change.type === "view") {
+      deleteView(app.databases, change.name);
+    }
+  }
   // the views that the changes affect are dropped; the save creates them again
   const rebuild = viewsToRebuild(desired, changes);
   for (const name of rebuild) {
@@ -302,18 +330,20 @@ function applyInTransaction(
   // 5a: TypeScript migrations (S.5)
   applyTypeScriptMigrations();
 
-  // 6: narrow, then the removed collections (the views first)
+  // 6: narrow, then the removed views, then the removed collections in
+  // dependency order
   narrow(app, desired, changeByName);
   for (const change of changes.collections) {
     if (change.kind === "removed" && change.type === "view") {
       removeCollection(app, change.name);
     }
   }
-  for (const change of changes.collections) {
-    if (change.kind === "removed" && change.type !== "view") {
-      removeCollection(app, change.name);
-    }
-  }
+  removeCollections(
+    app,
+    changes.collections
+      .filter((change) => change.kind === "removed" && change.type !== "view")
+      .map((change) => change.name),
+  );
 
   // 7: the views, each after the views its query reads
   for (const view of orderedViews(desired, rebuild)) {
@@ -362,10 +392,15 @@ function collectionIdsOf(app: App): CollectionIdOf {
 }
 
 // Records what the changes remove. Without --allow-data-loss each one is a
-// problem, and the apply stops.
+// problem, and the apply stops. A removed or replaced field loses its non-empty
+// values. A select, file or relation that becomes single-valued loses the
+// extra values of the rows that hold more: the table sync keeps one value.
+// Any other lowered maxSelect deletes nothing (the table sync keeps the rows),
+// so the record check reports the rows that hold more, and the apply stops.
 function collectLost(
   db: Databases,
   current: SchemaDescription,
+  desired: SchemaDescription,
   changes: SchemaChanges,
   report: ApplyReport,
 ): void {
@@ -383,9 +418,28 @@ function collectLost(
       continue;
     }
     for (const field of lostFields(change)) {
-      const rows = countValues(db, change.name, field.name);
+      const old = before.fields.find((f) => f.name === field.name);
+      const rows = old === undefined ? 0 : countValues(db, change.name, old);
       if (rows > 0) {
         lost.push({ collection: change.name, field: field.name, rows });
+      }
+    }
+    const after = desired.collections.find((c) => c.name === change.name);
+    for (const field of change.fields) {
+      if (field.kind !== "changed" || !field.details.includes("maxSelect")) {
+        continue;
+      }
+      const old = before.fields.find((f) => f.name === field.name);
+      const now = after?.fields.find((f) => f.name === field.name);
+      if (old === undefined || now === undefined || !multiValueTypes.has(old.type)) {
+        continue;
+      }
+      if (old.type !== now.type || maxSelectOf(now) !== 1 || maxSelectOf(old) === 1) {
+        continue;
+      }
+      const rows = countBeyondMax(db, change.name, field.name, 1);
+      if (rows > 0) {
+        lost.push({ collection: change.name, field: field.name, rows, becomesSingle: true });
       }
     }
   }
@@ -395,6 +449,14 @@ function collectLost(
   }
   for (const item of lost) {
     const where = item.field === undefined ? item.collection : `${item.collection}.${item.field}`;
+    if (item.becomesSingle === true) {
+      report.problems.push({
+        where,
+        message: `${item.rows} records hold more than one value, so their extra values would be deleted`,
+        next: "Pass --allow-data-loss to delete them.",
+      });
+      continue;
+    }
     const what = item.field === undefined ? "records" : "values";
     report.problems.push({
       where,
@@ -573,29 +635,90 @@ function narrow(
       const id = before !== undefined && before.type === field.type ? before.id : "";
       return fieldJSON(field, id, idOf);
     });
-    const indexes = [
-      ...keepStoredIndexes(collection.indexes, model.indexes),
+    // the explicit indexes by definition (an implied one the file lists is
+    // the stored implied index, kept once); then the stored implied ones
+    const indexes = distinctIndexes([
+      ...keepStoredIndexes(explicitIndexes(collection.indexes, collection), model.indexes),
       ...impliedStatements(model.indexes, collection),
-    ];
+    ]);
     const members = { ...settingsJSON(collection), fields, indexes };
     model.unmarshalJSON(JSON.stringify(collectionJSON(collection, model.id, members)));
     saveAs(app, model, collection.name);
   }
 }
 
-// 6: a removed collection; its records and views go with it
-function removeCollection(app: App, name: string): void {
-  let model: Collection;
+// the stored collection of a name, or a SaveFailed that names it
+function storedModel(app: App, name: string): Collection {
   try {
-    model = findCollectionByNameOrId(app, name);
+    return findCollectionByNameOrId(app, name);
   } catch (err) {
     throw new SaveFailed(name, err);
   }
+}
+
+// 6: a removed collection; its records and views go with it
+function removeCollection(app: App, name: string): void {
+  const model = storedModel(app, name);
   try {
     deleteCollection(app, model);
   } catch (err) {
     throw new SaveFailed(name, err);
   }
+}
+
+// 6: the removed collections, in dependency order. The save refuses a
+// collection that another collection still relates to, so a collection goes
+// once nothing relates to it. A cycle of relations is cut first: one
+// collection is saved without its relation fields into the removed set, and
+// then the cycle is gone. A collection that is referenced by a collection the
+// apply keeps is no cycle of ours: the save refuses it and names the reference.
+function removeCollections(app: App, names: readonly string[]): void {
+  const pending = [...names];
+  while (pending.length > 0) {
+    const models = pending.map((name) => storedModel(app, name));
+    const free = models.findIndex((model) => {
+      try {
+        return findCollectionReferences(app, model, model.id).size === 0;
+      } catch (err) {
+        throw new SaveFailed(model.name, err);
+      }
+    });
+    if (free >= 0) {
+      removeCollection(app, pending[free] as string);
+      pending.splice(free, 1);
+      continue;
+    }
+    const ids = new Set(models.map((model) => model.id));
+    const referrer = models.find((model) =>
+      storedFields(model).some((field) => isRelationInto(field, ids)),
+    );
+    if (referrer === undefined) {
+      // nothing of the set relates to it: the save refuses it with the name of
+      // the reference it has (a collection the apply keeps)
+      removeCollection(app, pending[0] as string);
+      pending.shift();
+      continue;
+    }
+    cutRelationsInto(app, referrer, ids);
+  }
+}
+
+// the stored fields of a collection, as the API's JSON
+function storedFields(model: Collection): Json[] {
+  return JSON.parse(model.fields.marshalJSON()) as Json[];
+}
+
+// whether a field is a relation into a set of collections (by id)
+function isRelationInto(field: Json, ids: ReadonlySet<string>): boolean {
+  return field.type === "relation" && ids.has(String(field.collectionId));
+}
+
+// saves a removed collection without its relation fields into the set: the
+// collection goes after it, and its records were counted by the guard already
+function cutRelationsInto(app: App, model: Collection, ids: ReadonlySet<string>): void {
+  const fields = storedFields(model).filter((field) => !isRelationInto(field, ids));
+  model.unmarshalJSON(JSON.stringify({ id: model.id, name: model.name, type: model.type, fields }));
+  saveAs(app, model, model.name);
 }
 
 // 7: a view collection, saved with its query, rules and options; the save

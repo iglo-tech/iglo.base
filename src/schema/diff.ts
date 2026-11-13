@@ -9,7 +9,7 @@
 // definition, not their name (D40): an index with the same definition under
 // another name is the same index, and it keeps its stored name.
 
-import { isImpliedIndex } from "@/schema/implied";
+import { explicitIndexes, isImpliedIndex } from "@/schema/implied";
 import type {
   SchemaCollection,
   SchemaDescription,
@@ -79,6 +79,19 @@ export function indexKey(statement: string): string {
 // The statement the database keeps for a desired index: the stored statement
 // with the same definition when there is one (so its name stays), else the
 // desired statement.
+// the statements without a repeated definition, the first one kept
+export function distinctIndexes(statements: readonly string[]): string[] {
+  const seen = new Set<string>();
+  return statements.filter((statement) => {
+    const key = indexKey(statement);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 export function keepStoredIndexes(desired: readonly string[], stored: readonly string[]): string[] {
   const byKey = new Map(stored.map((statement) => [indexKey(statement), statement]));
   return desired.map((statement) => byKey.get(indexKey(statement)) ?? statement);
@@ -158,16 +171,22 @@ function fieldsReordered(current: SchemaCollection, desired: SchemaCollection): 
   return before.some((name, i) => name !== after[i]);
 }
 
+// The indexes of a collection that the change compares: the explicit ones. An
+// implied index (upstream's own, on an auth collection) is not compared, whether
+// the file lists it or not: the save restores a missing one and keeps the stored
+// one (D40).
 function indexChanges(current: SchemaCollection, desired: SchemaCollection): IndexChange[] {
-  const currentKeys = new Set(current.indexes.map(indexKey));
-  const desiredKeys = new Set(desired.indexes.map(indexKey));
+  const currentIndexes = explicitIndexes(current.indexes, current);
+  const desiredIndexes = explicitIndexes(desired.indexes, desired);
+  const currentKeys = new Set(currentIndexes.map(indexKey));
+  const desiredKeys = new Set(desiredIndexes.map(indexKey));
   const changes: IndexChange[] = [];
-  for (const statement of desired.indexes) {
+  for (const statement of desiredIndexes) {
     if (!currentKeys.has(indexKey(statement))) {
       changes.push({ kind: "added", statement });
     }
   }
-  for (const statement of current.indexes) {
+  for (const statement of currentIndexes) {
     if (!desiredKeys.has(indexKey(statement))) {
       changes.push({ kind: "removed", statement });
     }
@@ -228,7 +247,10 @@ export function diffSchemas(current: SchemaDescription, desired: SchemaDescripti
         fieldOrder: false,
         rules: [],
         options: [],
-        indexes: collection.indexes.map((statement) => ({ kind: "added", statement })),
+        indexes: explicitIndexes(collection.indexes, collection).map((statement) => ({
+          kind: "added",
+          statement,
+        })),
       });
       continue;
     }

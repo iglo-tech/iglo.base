@@ -89,7 +89,7 @@ The file only lists what you chose. Anything equal to its default is left out, a
 - **Ids.** Collections and fields are matched by name, so the file has no ids. One exception: an index that an old upstream migration named with the collection id (such as `_<id>_username_idx`) is written with that name, as it is stored. A name is not a reference, and the apply compares indexes by their definition, not by name.
 - **System fields.** `id` is in every collection, and the auth collections also have `password`, `tokenKey`, `email`, `emailVisibility` and `verified`. They are implied. They are written only if you change them.
 - **System collections.** `_superusers`, `_externalAuths`, `_mfas`, `_otps` and `_authOrigins` are left out unless you change them.
-- **Implied indexes.** An auth collection always has a unique index on `tokenKey` and one on `email`, and upstream adds them itself. The file leaves them out, whatever their names are. Only the index upstream writes counts: one with a `COLLATE` or a sort order, such as a case-insensitive email index, is kept.
+- **Implied indexes.** An auth collection always has a unique index on `tokenKey` and one on `email`, and upstream adds them itself. The file leaves them out, whatever their names are. A listed one is compared by its definition, under the name it has, so it is not a new index. Only the index upstream writes counts: one with a `COLLATE` or a sort order, such as a case-insensitive email index, is kept.
 - **Timestamps.** A collection's own creation and update times are not written. A field named `created` or `updated` is an ordinary autodate field, as in the dashboard, so it is written.
 
 The file never holds:
@@ -151,16 +151,17 @@ An apply does these things, in this order:
 
 1. It reads the file and checks it. A file that is not valid stops the start.
 2. It compares the file with the database. If nothing would change, and no JavaScript migration in `pb_migrations` is waiting to run, it stops here. It makes no backup and checks no records.
-3. Otherwise it makes a backup (see [Backups before an apply](#backups-before-an-apply)) and opens one transaction. The data-loss guard (see [The data-loss guard](#the-data-loss-guard)) stops the apply when it finds data to delete. The guard runs before the backup when no migration is waiting; otherwise it runs inside the transaction, after the migrations.
-4. In the transaction, the JavaScript migrations in `pb_migrations` that have not run yet run first. A migration may create a collection that the file also lists; the apply then matches the file to what the migration created.
-5. Then the changes. New collections are created, each with its fields, after the collections it relates to; new fields are added to the existing ones. A relation to a collection that does not exist yet is refused by the save, so when two new collections relate to each other, one of the relation fields is added after both exist. New and changed collections are saved in full: their fields in the file's order, their indexes, rules and options. A field that the file no longer lists is dropped by the save of its collection. Removed collections are deleted after that. Views that the change affects are dropped and created again.
-6. Then every record of each collection whose fields were added or changed is checked against the rules the API applies when a record is saved.
-7. If every step works, the transaction is committed and the server starts. If any step fails, the transaction is rolled back and the database is unchanged.
+3. It makes a dry run: the whole apply runs in one transaction that is rolled back, as `schema plan` runs it. If the dry run finds a problem, the start stops and prints the report. It makes no backup, so a server that fails on every start makes none either. The data-loss guard (see [The data-loss guard](#the-data-loss-guard)) is part of the dry run. The dry run holds the database's write lock while it runs, as `schema plan` does.
+4. It makes a backup (see [Backups before an apply](#backups-before-an-apply)). A backup that fails refuses the start, and the schema is not applied.
+5. It opens one transaction. The JavaScript migrations in `pb_migrations` that have not run yet run first. A migration may create a collection that the file also lists; the apply then matches the file to what the migration created.
+6. Then the changes. New collections are created, each with its fields, after the collections they relate to; new fields are added to the existing ones. A relation to a collection that does not exist yet is refused by the save, so when two new collections relate to each other, one of the relation fields is added after both exist. New and changed collections are saved in full: their fields in the file's order, their indexes, rules and options. A field that the file no longer lists is dropped by the save of its collection. Views that the change affects, and the views the file removes, are dropped first. Then the removed views go, and the removed collections go after the collections that relate to them.
+7. Then every record of each collection whose fields were added or changed is checked against the rules the API applies when a record is saved.
+8. If every step works, the transaction is committed and the server starts. If any step fails, the transaction is rolled back and the database is unchanged. The backup from step 4 stays, and the retention keeps the three newest pre-schema backups.
 
 A few rules apply to the changes:
 
 - The apply does not read secrets from the file. Token secrets and OAuth2 providers stay as the database has them.
-- Indexes are compared by their definition, not by name. An index with the same definition under another name keeps the name it has.
+- Indexes are compared by their definition, not by name. An index with the same definition under another name keeps the name it has. The implied index of an auth collection (the unique index on `tokenKey` and the one on `email`) is compared the same way: if the file lists it, the file's copy is the stored index, under its stored name. It is not an added index, and the file does not need to list it.
 - A field whose type changes (same name, another type) is removed and added again. Its old values are lost, so the data-loss guard applies to it.
 - A collection's type cannot change. An apply that changes it stops.
 - While `--schema` is set, `--automigrate` is off, so the dashboard does not write migration files.
@@ -185,7 +186,7 @@ It makes no backup. Its exit code is `0` when the file would apply, also when no
 
 Like `schema pull`, it needs a database in `--dir` and creates none.
 
-Plan runs on the live database. It holds the database's write lock from its first write until it rolls back, so run it when a short pause in writes is acceptable.
+Plan runs on the live database. It holds the database's write lock from its first write until it rolls back, so run it when a short pause in writes is acceptable. A start with `--schema` holds the lock for its dry run in the same way.
 
 Example output, for a file that makes a field required while some of its records are empty:
 
@@ -201,12 +202,14 @@ the schema would not apply: 1 problem
 
 ## Backups before an apply
 
-When an apply has something to change, it first backs up the data directory. The backup is named `pre-schema-<UTC time>.zip`, for example `pre-schema-20261112T101500Z.zip`. It goes to the backup storage that the dashboard uses, local or S3, and it is made with the same code as the dashboard's backups.
+When an apply has something to change and its dry run passes, it backs up the data directory before the transaction. The backup is named `pre-schema-<UTC time>.zip`, with milliseconds, for example `pre-schema-20261112T101500.123Z.zip`. It goes to the backup storage that the dashboard uses, local or S3, and it is made with the same code as the dashboard's backups.
 
-- The backup is made before the transaction, and it stays when the apply fails.
+- Two backups never share a name. If a backup of the same name already exists (two applies within one millisecond), the time moves on by a millisecond, so the older backup stays.
+- The backup stays when the apply fails after it.
 - If the backup fails, the start is refused and the schema is not applied.
 - A disk-space failure says how much room the backup needs (the size of the data directory) and how much is free. Free that space, or set a backup storage with room, and start again.
-- After a successful apply, the three newest `pre-schema-*` backups are kept, and older ones are deleted. If a deletion fails, the error is logged, and the apply still counts as successful.
+- A start whose dry run fails makes no backup at all. The report says why; fix the file or the data first.
+- After every apply that made a backup, successful or failed, the three newest `pre-schema-*` backups are kept, and older ones are deleted. So at most three exist once the apply returns, even when the server fails on every start. If a deletion fails, the error is logged; the apply's own result stands.
 - The automatic backup setting `cronMaxKeep` does not touch pre-schema backups.
 
 ## The data-loss guard
@@ -219,17 +222,20 @@ An apply that would delete data stops before it changes anything, unless you pas
 
 Without `--schema`, the flag has no effect.
 
-A field holds data when one of its rows has a value that is not empty. A collection holds data when it has rows. The guard counts:
+A field holds data when one of its rows has a value that is not empty. Empty is the value the API shows for a field that is not set: NULL and the empty text for text-like fields, `0` for a number or a bool, and an empty list for a multi-value select, file or relation (for a json field, also `null`). The guard counts:
 
 - the values of a field that the file removes;
 - the values of a field whose type changes, since it is removed and added again;
-- the records of a collection that the file removes.
+- the records of a collection that the file removes;
+- for a select, file or relation that the file makes single-valued, the rows that hold more than one value: the extra values go.
 
 Views hold no data, so removing a view is not counted. Without `--allow-data-loss`, each count is a problem in the report, and the apply stops.
 
+Lowering a `maxSelect` to two or more deletes no values. The rows that hold more than the new maximum then fail the record check, with a problem such as `posts.tags: Select no more than 2, 1 records fail the check`. `--allow-data-loss` does not change that: the apply stops until those records are fixed (a migration can do it) or the field keeps its maximum.
+
 ## When an apply fails
 
-If an apply fails, the server does not start. The start exits with status `1` and prints the reason on standard error. The database is unchanged. A pre-schema backup that was made before the transaction stays. Each later start fails the same way until the file or the migration is fixed. This is by design: the server stays down rather than run against a schema that does not match the data.
+If an apply fails, the server does not start. The start exits with status `1` and prints the reason on standard error. The database is unchanged. A failed dry run makes no backup. A failure after the backup (in the transaction) keeps that backup until the retention removes it. Each later start fails the same way until the file or the migration is fixed. This is by design: the server stays down rather than run against a schema that does not match the data.
 
 The report lists what the apply would change and every problem. For example:
 
@@ -246,8 +252,9 @@ the schema is not applied: 1 problem
 Each problem names the field or collection, the number of records or values, and the next step. Examples:
 
 - Records that break a new rule, such as an empty required value: add a migration that fills the value, or make the field optional.
-- A unique index that two records break: make those values distinct, or change the index so that it is not unique. The problem names the collection and the duplicate values.
+- A unique index that two records break: the problem names the collection and the column (SQLite does not report the values). Make those values distinct, or change the index so that it is not unique. To find the duplicates, query the column, for example `SELECT title, COUNT(*) FROM posts GROUP BY title HAVING COUNT(*) > 1`.
 - Data that would be deleted: pass `--allow-data-loss` if the deletion is intended, or keep the field or collection in the file.
+- A select, file or relation that is made single-valued and holds more values in some rows: the extra values are counted as data that would be deleted.
 - A collection type change: keep the type in the file, or remove the collection and add one under another name.
 
 To see the report before you deploy, run `schema plan` with the same file.

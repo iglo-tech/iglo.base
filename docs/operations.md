@@ -335,7 +335,7 @@ A backup that lives only on the same disk does not protect you from losing the d
 
 ### Backups before a schema apply
 
-`serve --schema` makes a backup before an apply that changes something. It is named `pre-schema-<UTC time>.zip`, for example `pre-schema-20261112T101500Z.zip`, and it goes to the same backup storage (local or S3). The three newest `pre-schema-*` backups are kept, and older ones are deleted after a successful apply. The automatic backup setting `cronMaxKeep` does not touch them. If the backup fails, the server does not start. The details are in [Schema as code](schema.md#backups-before-an-apply).
+`serve --schema` makes a backup before an apply that changes something and passes its dry run; a file that would fail makes no backup. It is named `pre-schema-<UTC time>.zip` with milliseconds, for example `pre-schema-20261112T101500.123Z.zip`, and it goes to the same backup storage (local or S3). The three newest `pre-schema-*` backups are kept, and older ones are deleted after every apply that made one, successful or failed, so a server that restarts on a failing file keeps at most three. The automatic backup setting `cronMaxKeep` does not touch them. If the backup fails, the server does not start. The details are in [Schema as code](schema.md#backups-before-an-apply).
 
 ### Copy the directory
 
