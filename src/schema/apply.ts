@@ -112,6 +112,10 @@ export interface ApplyOptions {
   allowDataLoss: boolean;
   // the JavaScript migrations of pb_migrations, in run order
   migrations: readonly Migration[];
+  // called in the transaction after its last step, with the database as the
+  // file leaves it (`schema types --schema` reads the collections here); a
+  // plan rolls the transaction back after it
+  inspect?: (app: App) => void;
 }
 
 // A save of a collection failed: the problem names the collection.
@@ -216,6 +220,7 @@ function runTransaction(
       runInTransaction(auxDatabases, (txDatabases) => {
         const txApp = txDatabases === app.databases ? app : { ...app, databases: txDatabases };
         applyInTransaction(txApp, desired, options, report);
+        options.inspect?.(txApp);
         if (mode === "plan") {
           throw new RollBack("plan");
         }

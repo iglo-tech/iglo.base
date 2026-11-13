@@ -28,14 +28,17 @@ import { bootstrapApp } from "@/cli/serve";
 import { CommandError } from "@/cli/superuser";
 import { findAllCollections } from "@/collections/collection-query";
 import { dataDBFilename } from "@/db/base";
-import { planSchema, SchemaFileError } from "@/schema/apply";
+import { parseSchemaFile, planSchema, SchemaFileError } from "@/schema/apply";
 import { JSONSyntaxError } from "@/schema/json-tree";
+import type { Collection } from "@/collections/collection-model";
 import { describeCollections } from "@/schema/describe";
 import { schemaJSONText } from "@/schema/json-schema";
 import { formatReport, reportIsOK } from "@/schema/report";
 import { schemaURL } from "@/schema/url";
+import { generateTypes, TypesError } from "@/schema/typegen";
 import { extractExtras, formatSchema } from "@/schema/write";
 import type { Migration } from "@/migrations/migrations-runner";
+import type { SchemaDescription, SchemaObject } from "@/schema/types";
 
 export const schemaShort = "Manage the schema file (schema as code)";
 
@@ -45,6 +48,9 @@ const jsonSchemaShort = "Prints the JSON Schema of the schema file, as this buil
 const planShort =
   "Shows what applying the schema file would change, and whether it would apply, without changing the database. On a live database it holds the write lock while it runs";
 const planExample = "schema plan --schema iglo.schema.json";
+const typesShort =
+  "Writes the TypeScript types of the collections, generated from the database (with --schema, from the file after it is applied in a rolled-back transaction)";
+const typesExample = "schema types --schema iglo.schema.json --out src/iglo.types.ts";
 
 function helpFlag(cmd: string): FlagSpec {
   return { name: "help", kind: "bool", shorthand: "h", usage: `help for ${cmd}` };
@@ -60,6 +66,19 @@ const schemaFlag: FlagSpec = {
   name: "schema",
   kind: "string",
   usage: "the schema file to plan (required)",
+};
+
+const typesSchemaFlag: FlagSpec = {
+  name: "schema",
+  kind: "string",
+  usage:
+    "apply this schema file first, in a rolled-back transaction, and generate the types of the result (no backup is made)",
+};
+
+const checkFlag: FlagSpec = {
+  name: "check",
+  kind: "bool",
+  usage: "exit nonzero when --out differs from what would be generated, and write nothing",
 };
 
 const allowDataLossFlag: FlagSpec = {
@@ -91,6 +110,7 @@ export async function runSchemaCommand(
       { name: "json-schema", short: jsonSchemaShort },
       { name: "plan", short: planShort },
       { name: "pull", short: pullShort },
+      { name: "types", short: typesShort },
     ],
     localFlags: [helpFlag("schema")],
     inheritedFlags: persistent,
@@ -140,6 +160,10 @@ export async function runSchemaCommand(
   }
   if (subName === "plan") {
     await runPlan(resolveConfig, persistent, ctx, name, migrations, rest);
+    return;
+  }
+  if (subName === "types") {
+    await runTypes(resolveConfig, persistent, ctx, name, migrations, rest);
     return;
   }
   if (subName !== "pull") {
@@ -341,5 +365,139 @@ function readPlanFile(path: string, given: string): string {
     throw new CommandError(
       `cannot read the schema file ${JSON.stringify(given)}: ${err instanceof Error ? err.message : String(err)}`,
     );
+  }
+}
+
+// the API's JSON of each collection, parsed (upstream's MarshalJSON, with the
+// fields a view has resolved)
+function collectionsJSON(collections: readonly Collection[]): SchemaObject[] {
+  return collections.map((collection) => JSON.parse(collection.marshalJSON()) as SchemaObject);
+}
+
+// `schema types [--out <file>] [--schema <file>] [--check]` (D40, S.4): the
+// types of the collections, from the database. With --schema, the file is
+// applied first in a rolled-back transaction (the plan, with its locks and
+// notes), so the types are those of the file and no server is needed. The
+// descriptions and tsType come from the file: the database does not hold them.
+async function runTypes(
+  resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
+  persistent: FlagSpec[],
+  ctx: CliContext,
+  name: string,
+  migrations: readonly Migration[],
+  rest: string[],
+): Promise<void> {
+  const local = [helpFlag("schema types"), outFlag, typesSchemaFlag, checkFlag];
+  let parsed;
+  try {
+    parsed = parseFlags(argsMinusFirst(rest, "types", persistent), [...local, ...persistent], {
+      allowUnknown: false,
+    });
+  } catch (err) {
+    if (err instanceof FlagError) {
+      throw new CommandError(err.message);
+    }
+    throw err;
+  }
+  if (parsed.values.get("help") === true) {
+    ctx.out.stdout(
+      helpText({
+        path: `${name} schema types`,
+        short: typesShort,
+        example: typesExample,
+        runnable: true,
+        subcommands: [],
+        localFlags: local,
+        inheritedFlags: persistent,
+      }),
+    );
+    return;
+  }
+
+  const out = parsed.values.get("out") as string | undefined;
+  const check = parsed.values.get("check") === true;
+  if (check && out === undefined) {
+    throw new CommandError("schema types --check needs --out <file>, the file to compare");
+  }
+  const given = parsed.values.get("schema") as string | undefined;
+
+  // pocketbase.go eagerParseFlags: the persistent flags of the whole line
+  let config: AppConfig;
+  try {
+    config = resolveConfig(parseFlags(ctx.args, persistent, { allowUnknown: true }).values);
+  } catch {
+    config = resolveConfig(new Map());
+  }
+
+  // like pull and plan, types read an existing database and create none
+  requireExistingDatabase(resolve(ctx.cwd, config.dataDir));
+
+  const app: App = await bootstrapApp(config, logsToStderr(ctx));
+  try {
+    let collections: SchemaObject[];
+    let schema: SchemaDescription | undefined;
+    if (given === undefined) {
+      collections = collectionsJSON(findAllCollections(app));
+    } else {
+      const schemaText = readPlanFile(resolve(ctx.cwd, given), given);
+      try {
+        schema = parseSchemaFile(schemaText);
+      } catch (err) {
+        if (err instanceof SchemaFileError) {
+          throw new CommandError(err.message);
+        }
+        throw err;
+      }
+      let applied: SchemaObject[] | undefined;
+      const report = planSchema(app, schemaText, {
+        allowDataLoss: false,
+        migrations,
+        inspect: (txApp) => {
+          applied = collectionsJSON(findAllCollections(txApp));
+        },
+      });
+      ctx.out.stderr(formatReport(report));
+      if (!reportIsOK(report) || applied === undefined) {
+        throw new CommandError(
+          "schema types: the schema would not apply, so there are no types for it",
+        );
+      }
+      collections = applied;
+    }
+
+    let text: string;
+    try {
+      text = generateTypes(collections, schema);
+    } catch (err) {
+      if (err instanceof TypesError) {
+        throw new CommandError(err.message);
+      }
+      throw err;
+    }
+
+    if (out === undefined) {
+      ctx.out.stdout(text);
+      return;
+    }
+    const path = resolve(ctx.cwd, out);
+    if (check) {
+      let current: string | undefined;
+      try {
+        current = readFileSync(path, "utf8");
+      } catch {
+        throw new CommandError(
+          `${JSON.stringify(out)} does not exist: run schema types with --out to create it`,
+        );
+      }
+      if (current !== text) {
+        throw new CommandError(
+          `${JSON.stringify(out)} is out of date with the database: run schema types again to update it`,
+        );
+      }
+      return;
+    }
+    writeFileSync(path, text);
+  } finally {
+    await clearBootstrap(app);
   }
 }
