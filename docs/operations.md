@@ -94,6 +94,7 @@ Flags of `serve`:
 | `--origins <list>` | `*` | Allowed CORS origins, comma separated (`--origins https://a.example,https://b.example`). |
 | `--https <addr>` | none | Not supported. The server refuses to start (see [Differences](differences.md)). |
 | `--schema <file>` | none | The schema file (`iglo.schema.json`) to apply before the server starts. See [Schema as code](schema.md#applying-the-file-at-startup). |
+| `--schemaMigrationsDir <dir>` | `migrations/` next to the schema file | With `--schema`: the directory of the TypeScript migrations, `<digits>_<name>.ts`, run once each in name order. See [Schema as code](schema.md#migrations). |
 | `--allow-data-loss` | `false` | With `--schema`: let the apply delete fields and collections that hold data. Without it, an apply that would delete data stops before it changes anything. Without `--schema` it has no effect. |
 
 With `--schema`, the apply runs at every start, before the server answers requests. A file that is not valid, or an apply that fails, makes the start exit with status `1`, and the server does not start. The database is unchanged then. Without `--schema`, the server starts as before.

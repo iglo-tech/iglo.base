@@ -25,6 +25,7 @@ import type { AppConfig, CliContext } from "@/cli/root";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { applySchema } from "@/schema/apply";
+import { loadSchemaMigrationsFor } from "@/schema/migration-files";
 import { type Migration, up } from "@/migrations/migrations-runner";
 import { logTime, serve } from "@/server/serve";
 import { reloadSettings } from "@/settings/settings-query";
@@ -64,6 +65,12 @@ export const serveFlags: FlagSpec[] = [
     kind: "bool",
     usage:
       "with --schema: let the apply delete fields and collections that hold data (without it the apply stops)",
+  },
+  {
+    name: "schemaMigrationsDir",
+    kind: "string",
+    usage:
+      "with --schema: the directory of the TypeScript migrations (default migrations/ next to the schema file)",
   },
 ];
 
@@ -129,12 +136,22 @@ export async function runServeCommand(
   // applies the file again
   const schemaPath = values.get("schema") as string | undefined;
   const allowDataLoss = values.get("allow-data-loss") === true;
+  const migrationsDir = values.get("schemaMigrationsDir") as string | undefined;
 
   for (;;) {
     const schemaText =
       schemaPath === undefined
         ? undefined
         : readSchemaFile(resolve(ctx.cwd, schemaPath), schemaPath);
+    // the TypeScript migrations load before the database opens: a file that
+    // does not load stops the start (D40, S.5)
+    const schemaMigrations =
+      schemaPath === undefined
+        ? []
+        : await loadSchemaMigrationsFor(
+            resolve(ctx.cwd, schemaPath),
+            migrationsDir === undefined ? undefined : resolve(ctx.cwd, migrationsDir),
+          );
     // --automigrate is off while --schema is set (D40)
     const dbApp = schemaText === undefined ? app : { ...app, automigrate: false };
 
@@ -160,7 +177,7 @@ export async function runServeCommand(
         up(appContext, migrations);
       } else {
         // the file's apply runs the migrations inside its transaction (D40)
-        await applySchema(appContext, schemaText, { allowDataLoss, migrations });
+        await applySchema(appContext, schemaText, { allowDataLoss, migrations, schemaMigrations });
       }
       await reloadSettings(appContext);
 

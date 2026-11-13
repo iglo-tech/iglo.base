@@ -534,6 +534,77 @@ function typedClientLines(names: readonly { base: string; name: string }[]): str
   ];
 }
 
+// a method of the migration helpers, generic over the collection name C; a
+// signature too long for a line is broken one parameter a line, as oxfmt does
+function methodLines(name: string, params: readonly string[], returns: string): string[] {
+  const head = `  ${name}<C extends keyof MigrationRecords>(`;
+  const line = `${head}${params.join(", ")}): ${returns};`;
+  if (line.length <= printWidth) {
+    return [line];
+  }
+  return [head, ...params.map((param) => `    ${param},`), `  ): ${returns};`];
+}
+
+// The migration types (D40, S.5): the records of each collection by name, the
+// helpers of a migration's up(tx), and Migration, which a migration file
+// default-exports `satisfies`. A rename's new name must be a field of the
+// generated record, so a rename to a name the file lacks is a type error. The
+// helpers match src/schema/migration-tx.ts.
+function migrationLines(names: readonly { base: string; name: string }[]): string[] {
+  const map = (title: string, value: (base: string) => string): string[] =>
+    names.length === 0
+      ? [`export interface ${title} {}`]
+      : [
+          `export interface ${title} {`,
+          ...names.map(({ base, name }) => `  ${keyText(name)}: ${value(base)};`),
+          "}",
+        ];
+  return [
+    "// a migration's up(tx) gets these helpers, on the apply transaction (synchronous)",
+    ...map("MigrationRecords", (base) => `${base}Response`),
+    "",
+    ...map("MigrationCreates", (base) => `${base}Create`),
+    "",
+    ...map("MigrationUpdates", (base) => `${base}Update`),
+    "",
+    "export interface MigrationQuery {",
+    "  filter?: string;",
+    "  sort?: string;",
+    "  params?: Record<string, unknown>;",
+    "}",
+    "",
+    "export interface MigrationTx {",
+    ...methodLines(
+      "records",
+      ["collection: C", "query?: MigrationQuery"],
+      "Generator<MigrationRecords[C]>",
+    ),
+    ...methodLines(
+      "findFirst",
+      ["collection: C", "query?: MigrationQuery"],
+      "MigrationRecords[C] | null",
+    ),
+    ...methodLines("findById", ["collection: C", "id: string"], "MigrationRecords[C] | null"),
+    ...methodLines("create", ["collection: C", "data: MigrationCreates[C]"], "MigrationRecords[C]"),
+    ...methodLines(
+      "update",
+      ["collection: C", "id: string", "data: MigrationUpdates[C]"],
+      "MigrationRecords[C]",
+    ),
+    ...methodLines("delete", ["collection: C", "id: string"], "void"),
+    "  sql(query: string, params?: Record<string, unknown>): Record<string, unknown>[];",
+    "}",
+    "",
+    "export type Migration = {",
+    "  renames?: {",
+    `    [C in keyof MigrationRecords]?: Record<string, keyof MigrationRecords[C] & string>;`,
+    "  };",
+    "  renameCollections?: Record<string, keyof MigrationRecords & string>;",
+    "  up?: (tx: MigrationTx) => void | Promise<never>;",
+    "};",
+  ];
+}
+
 // The generated file: the types of every collection, the Collections enum and
 // TypedPocketBase. `collections` are the API's collection objects; `schema`,
 // when given, is the file the types come from, for its descriptions and tsType.
@@ -575,5 +646,6 @@ export function generateTypes(collections: readonly Json[], schema?: SchemaDescr
   if (names.length > 0) {
     parts.push(enumLines(names), typedClientLines(names));
   }
+  parts.push(migrationLines(names));
   return parts.map((lines) => lines.join("\n")).join("\n\n") + "\n";
 }
