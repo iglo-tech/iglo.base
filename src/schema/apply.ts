@@ -12,7 +12,8 @@
 //
 //	the pre-schema backup; a failed backup stops the apply.
 //
-//	in one write transaction:
+//	in one write transaction (auxiliary.db outside, data.db inside it, as up()
+//	nests them; a rollback undoes both):
 //	  1. the pending JavaScript migrations (D23), with `up`, as serve ran them
 //	     before; they may change the structure first
 //	  2. renames (S.5; none yet)
@@ -48,7 +49,7 @@ import {
 import { deleteCollection, saveCollection } from "@/collections/collection-save";
 import type { Databases } from "@/db/base";
 import { deleteView } from "@/db/table";
-import { runInTransaction } from "@/db/tx";
+import { auxRunInTransaction, runInTransaction } from "@/db/tx";
 import { collectionJSON, fieldJSON, settingsJSON, type CollectionIdOf } from "@/schema/apply-json";
 import { makePreSchemaBackup, prunePreSchemaBackups } from "@/schema/backup";
 import {
@@ -202,12 +203,18 @@ function runTransaction(
 ): ApplyReport {
   const report = newReport(mode, options.allowDataLoss);
   try {
-    runInTransaction(app.databases, (txDatabases) => {
-      const txApp = txDatabases === app.databases ? app : { ...app, databases: txDatabases };
-      applyInTransaction(txApp, desired, options, report);
-      if (mode === "plan") {
-        throw new RollBack("plan");
-      }
+    // the auxiliary transaction is the outer one, the nesting up() uses, so
+    // the migrations' writes to both databases, and their after-commit work
+    // (file deletes), end with this transaction: a plan or a failed apply
+    // rolls them back together
+    auxRunInTransaction(app.databases, (auxDatabases) => {
+      runInTransaction(auxDatabases, (txDatabases) => {
+        const txApp = txDatabases === app.databases ? app : { ...app, databases: txDatabases };
+        applyInTransaction(txApp, desired, options, report);
+        if (mode === "plan") {
+          throw new RollBack("plan");
+        }
+      });
     });
     report.committed = mode === "apply" && reportIsOK(report);
   } catch (err) {

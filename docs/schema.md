@@ -151,14 +151,14 @@ An apply does these things, in this order:
 
 1. It reads the file and checks it. A file that is not valid stops the start.
 2. It compares the file with the database. If nothing would change, and no JavaScript migration in `pb_migrations` is waiting to run, it stops here. It makes no backup and checks no records.
-3. It makes a dry run: the whole apply runs in one transaction that is rolled back, as `schema plan` runs it. If the dry run finds a problem, the start stops and prints the report. It makes no backup, so a server that fails on every start makes none either. The data-loss guard (see [The data-loss guard](#the-data-loss-guard)) is part of the dry run. The dry run holds the database's write lock while it runs, as `schema plan` does.
+3. It makes a dry run: the whole apply runs in one transaction that is rolled back, as `schema plan` runs it. If the dry run finds a problem, the start stops and prints the report. It makes no backup, so a server that fails on every start makes none either. The data-loss guard (see [The data-loss guard](#the-data-loss-guard)) is part of the dry run. The dry run holds the write locks of both `data.db` and `auxiliary.db` while it runs, as `schema plan` does.
 4. It makes a backup (see [Backups before an apply](#backups-before-an-apply)). A backup that fails refuses the start, and the schema is not applied.
-5. It opens one transaction. The JavaScript migrations in `pb_migrations` that have not run yet run first. A migration may create a collection that the file also lists; the apply then matches the file to what the migration created.
+5. It opens one transaction on `auxiliary.db`, and inside it one on `data.db`, so a rollback undoes the writes to both. The JavaScript migrations in `pb_migrations` that have not run yet run first. A migration may create a collection that the file also lists; the apply then matches the file to what the migration created.
 6. Then the changes. New collections are created, each with its fields, after the collections they relate to; new fields are added to the existing ones. A relation to a collection that does not exist yet is refused by the save, so when two new collections relate to each other, one of the relation fields is added after both exist. New and changed collections are saved in full: their fields in the file's order, their indexes, rules and options. A field that the file no longer lists is dropped by the save of its collection. Views that the change affects, and the views the file removes, are dropped first. Then the removed views go, and the removed collections go after the collections that relate to them.
 7. Then every record of each collection whose fields were added or changed is checked against the rules the API applies when a record is saved.
 8. If every step works, the transaction is committed and the server starts. If any step fails, the transaction is rolled back and the database is unchanged. The backup from step 4 stays, and the retention keeps the three newest pre-schema backups.
 
-A pending migration runs twice on the start that applies it: once in the dry run of step 3, which rolls back its changes to the database, and then for real in this step. Effects outside the database are not rolled back. A file that the migration writes (for example with `$os.writeFile`), an outbound call, and a write to `auxiliary.db` happen twice; the auxiliary write commits when the migration's own transaction ends, even in the dry run. `schema plan` runs the pending migrations too, so a plan has the same effects outside the database. Keep `up` free of such effects, or make them safe to repeat.
+A pending migration runs twice on the start that applies it: once in the dry run of step 3, which rolls back its changes to `data.db` and `auxiliary.db`, and then for real in this step. A migration's deletes of records and collections remove their stored files only after the transaction commits, so a rolled back dry run or plan leaves the files in place. Effects that a migration makes itself outside the databases are not rolled back: a file it writes (for example with `$os.writeFile`) and an outbound call happen twice. `schema plan` runs the pending migrations too, so a plan has the same effects outside the databases. Keep `up` free of such effects, or make them safe to repeat.
 
 A few rules apply to the changes:
 
@@ -188,7 +188,7 @@ It makes no backup. Its exit code is `0` when the file would apply, also when no
 
 Like `schema pull`, it needs a database in `--dir` and creates none.
 
-Plan runs on the live database. It holds the database's write lock from its first write until it rolls back, so run it when a short pause in writes is acceptable. A start with `--schema` holds the lock for its dry run in the same way.
+Plan runs on the live database. It holds the write locks of `data.db` and `auxiliary.db` from its first write until it rolls back, so run it when a short pause in writes is acceptable: the server's writes to `auxiliary.db`, the request logs among them, wait for it. A start with `--schema` holds the locks for its dry run in the same way.
 
 Example output, for a file that makes a field required while some of its records are empty:
 

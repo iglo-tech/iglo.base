@@ -1083,6 +1083,206 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
   });
 });
 
+// docs holds a record with a stored file; notes holds a record whose body the
+// file removes, so the guard refuses the file (the migrations delete docs)
+function withDocsAndNotes(file: Json, notesFields: Json): Json {
+  const next = structuredClone(file);
+  collectionsOf(next).docs = {
+    type: "base",
+    fields: { title: { type: "text", max: 120 }, doc: { type: "file", maxSelect: 1 } },
+  };
+  collectionsOf(next).notes = { type: "base", fields: notesFields };
+  return next;
+}
+
+const notesBody = { body: { type: "text", max: 120 } };
+const notesWithoutBody = { other: { type: "text", max: 120 } };
+
+// a record with a stored file, created through the API as the superuser
+async function createWithFile(
+  url: string,
+  token: string,
+  title: string,
+): Promise<{ id: string; doc: string }> {
+  const form = new FormData();
+  form.append("title", title);
+  form.append("doc", new File(["the file"], "a.txt"));
+  const res = await fetch(`${url}/api/collections/docs/records`, {
+    method: "POST",
+    headers: { Authorization: token },
+    body: form,
+  });
+  expect(res.status).toBe(200);
+  return (await res.json()) as { id: string; doc: string };
+}
+
+// the ids of a table's rows in data.db
+function storedIds(site: Site, table: string): string[] {
+  const db = new Database(join(site.dataDir, "data.db"), { readonly: true });
+  try {
+    return (db.query(`SELECT id FROM "${table}" ORDER BY id`).all() as { id: string }[]).map(
+      (row) => row.id,
+    );
+  } finally {
+    db.close();
+  }
+}
+
+// the rows of auxiliary.db's _logs table
+function logRowCount(site: Site): number {
+  const db = new Database(join(site.dataDir, "auxiliary.db"), { readonly: true });
+  try {
+    return (db.query("SELECT COUNT(*) AS n FROM _logs").get() as { n: number }).n;
+  } finally {
+    db.close();
+  }
+}
+
+// a file that the apply deletes after the commit: the deletes run in the
+// background, so the check waits a little
+async function eventuallyGone(path: string): Promise<boolean> {
+  for (let i = 0; i < 100; i++) {
+    if (!existsSync(path)) {
+      return true;
+    }
+    await Bun.sleep(50);
+  }
+  return false;
+}
+
+// the site with docs (one record with a file) and notes (one record), and
+// the migrations directory the tests write their migration into
+async function siteWithStoredFile(): Promise<{
+  site: Site;
+  v1: string;
+  v2: string;
+  migrations: string[];
+  record: { id: string; doc: string };
+  collectionId: string;
+}> {
+  const site = await createSite();
+  const v1File = writeFile(site, "v1.json", withDocsAndNotes(await currentFile(site), notesBody));
+  await applyOK(site, v1File);
+  const record = await withServer(site, ["--schema", v1File], async (url, token) => {
+    const created = await createWithFile(url, token, "withfile");
+    const note = await fetch(`${url}/api/collections/notes/records`, {
+      method: "POST",
+      headers: { Authorization: token, "Content-Type": "application/json" },
+      body: JSON.stringify({ body: "kept" }),
+    });
+    expect(note.status).toBe(200);
+    return created;
+  });
+  // the record's file is on disk before any migration runs
+  const collectionId = storedCollection(site, "docs").id as string;
+  expect(existsSync(join(site.dataDir, "storage", collectionId, record.id, record.doc))).toBe(true);
+  const v2 = writeFile(
+    site,
+    "v2.json",
+    withDocsAndNotes(await currentFile(site), notesWithoutBody),
+  );
+  return {
+    site,
+    v1: v1File,
+    v2,
+    migrations: ["--migrationsDir", join(site.root, "pb_migrations")],
+    record,
+    collectionId,
+  };
+}
+
+function writeMigration(site: Site, name: string, source: string): void {
+  const dir = join(site.root, "pb_migrations");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, name), source);
+}
+
+describe("schema apply: migrations and the rollback of a plan or a refused start", () => {
+  test("a pending migration that deletes a record with a file keeps the record and the file when a plan or a refused start rolls back", async () => {
+    const { site, v2, migrations, record, collectionId } = await siteWithStoredFile();
+    writeMigration(
+      site,
+      "1_delete.js",
+      `migrate((app) => {
+        app.delete(app.findFirstRecordByFilter("docs", "title = 'withfile'"));
+      })`,
+    );
+    const file = join(site.dataDir, "storage", collectionId, record.id, record.doc);
+
+    // the plan runs the migration, the guard refuses the file, and the plan
+    // rolls back: the record and its file stay
+    const planned = await plan(site, v2, migrations);
+    expect(planned.exitCode).toBe(1);
+    expect(planned.stdout).toContain("notes.body: 1 values would be deleted");
+    expect(storedIds(site, "docs")).toEqual([record.id]);
+    expect(existsSync(file)).toBe(true);
+
+    // the same for a start that the guard refuses
+    const refused = await applyFails(site, v2, migrations);
+    expect(refused.stderr).toContain("notes.body: 1 values would be deleted");
+    expect(storedIds(site, "docs")).toEqual([record.id]);
+    expect(existsSync(file)).toBe(true);
+
+    // a start that allows the loss deletes the record and its file after the commit
+    await withServer(site, ["--schema", v2, ...migrations, "--allow-data-loss"], async () => {
+      expect(await eventuallyGone(file)).toBe(true);
+    });
+    expect(storedIds(site, "docs")).toEqual([]);
+  });
+
+  test("a pending migration that drops a collection with files keeps the collection and its files when a plan or a refused start rolls back", async () => {
+    const { site, v2, migrations, record, collectionId } = await siteWithStoredFile();
+    writeMigration(
+      site,
+      "1_drop.js",
+      `migrate((app) => {
+        app.delete(app.findCollectionByNameOrId("docs"));
+      })`,
+    );
+    const file = join(site.dataDir, "storage", collectionId, record.id, record.doc);
+
+    const planned = await plan(site, v2, migrations);
+    expect(planned.exitCode).toBe(1);
+    expect(planned.stdout).toContain("notes.body: 1 values would be deleted");
+    expect(storedIds(site, "docs")).toEqual([record.id]);
+    expect(existsSync(file)).toBe(true);
+
+    const refused = await applyFails(site, v2, migrations);
+    expect(refused.stderr).toContain("notes.body: 1 values would be deleted");
+    expect(storedIds(site, "docs")).toEqual([record.id]);
+    expect(existsSync(file)).toBe(true);
+
+    // a start that allows the loss drops the collection; its files go after the commit
+    await withServer(site, ["--schema", v2, ...migrations, "--allow-data-loss"], async () => {
+      expect(await eventuallyGone(join(site.dataDir, "storage", collectionId))).toBe(true);
+    });
+  });
+
+  test("schema plan commits nothing to auxiliary.db: a migration's log rows roll back", async () => {
+    const site = await createSite();
+    const v1 = writeFile(site, "v1.json", await currentFile(site));
+    await applyOK(site, v1);
+    const before = logRowCount(site);
+    writeMigration(
+      site,
+      "1_log.js",
+      `migrate((app) => {
+        app.auxDB().newQuery("INSERT INTO _logs (id, created, level, message, data) VALUES ('migrated', '2026-11-13 00:00:00.000Z', 0, 'from a migration', '{}')").execute();
+      })`,
+    );
+
+    const planned = await plan(site, v1, ["--migrationsDir", join(site.root, "pb_migrations")]);
+    expect(planned.exitCode).toBe(0);
+    expect(planned.stdout).toContain("1_log.js");
+    expect(logRowCount(site)).toBe(before);
+    // and again: a second plan still commits nothing
+    expect(
+      (await plan(site, v1, ["--migrationsDir", join(site.root, "pb_migrations")])).exitCode,
+    ).toBe(0);
+    expect(logRowCount(site)).toBe(before);
+  });
+});
+
 describe("schema apply flags", () => {
   test("schema plan --help shows the flags and the write lock", async () => {
     const result = await run(["schema", "plan", "--help"]);

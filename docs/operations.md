@@ -437,7 +437,7 @@ Reads and checks the schema file. See [Schema as code](schema.md).
 
 `schema pull` reads the database and writes the file. It changes nothing.
 
-`schema plan` runs the apply of the file and rolls it back. It prints the changes, the migrations that would run, the data that would be lost and every problem. It makes no backup. Its exit code is `0` when the file would apply, also when nothing changes, and `1` when it would not. It holds the database's write lock from its first write until it rolls back, so run it on a live server when a short pause in writes is acceptable. It needs an existing database in `--dir`.
+`schema plan` runs the apply of the file and rolls it back. It prints the changes, the migrations that would run, the data that would be lost and every problem. It makes no backup. Its exit code is `0` when the file would apply, also when nothing changes, and `1` when it would not. It holds the write locks of `data.db` and `auxiliary.db` from its first write until it rolls back, so run it on a live server when a short pause in writes is acceptable; the server's writes to `auxiliary.db` wait for it. It needs an existing database in `--dir`.
 
 ### `update`
 
