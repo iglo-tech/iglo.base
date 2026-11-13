@@ -547,8 +547,12 @@ function methodLines(name: string, params: readonly string[], returns: string): 
 
 // The migration types (D40, S.5): the records of each collection by name, the
 // helpers of a migration's up(tx), and Migration, which a migration file
-// default-exports `satisfies`. A rename's new name must be a field of the
-// generated record, so a rename to a name the file lacks is a type error. The
+// default-exports `satisfies`. A migration's helpers return the record as a
+// superuser's read does (every field, the hidden ones and the email; see
+// migration-tx.ts), so MigrationRecords is the stored record (its password and
+// token key are typed as stored; the helpers never return them). The renames are
+// loosely typed: the old names are not in the generated schema, so the apply
+// checks them against the database and the file, with clear errors. The
 // helpers match src/schema/migration-tx.ts.
 function migrationLines(names: readonly { base: string; name: string }[]): string[] {
   const map = (title: string, value: (base: string) => string): string[] =>
@@ -561,7 +565,7 @@ function migrationLines(names: readonly { base: string; name: string }[]): strin
         ];
   return [
     "// a migration's up(tx) gets these helpers, on the apply transaction (synchronous)",
-    ...map("MigrationRecords", (base) => `${base}Response`),
+    ...map("MigrationRecords", (base) => `${base}Record`),
     "",
     ...map("MigrationCreates", (base) => `${base}Create`),
     "",
@@ -596,10 +600,8 @@ function migrationLines(names: readonly { base: string; name: string }[]): strin
     "}",
     "",
     "export type Migration = {",
-    "  renames?: {",
-    `    [C in keyof MigrationRecords]?: Record<string, keyof MigrationRecords[C] & string>;`,
-    "  };",
-    "  renameCollections?: Record<string, keyof MigrationRecords & string>;",
+    "  renames?: Record<string, Record<string, string>>;",
+    "  renameCollections?: Record<string, string>;",
     "  up?: (tx: MigrationTx) => void | Promise<never>;",
     "};",
   ];

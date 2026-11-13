@@ -20,7 +20,10 @@ import { findRecordById } from "@/records/record-query";
 import { findRecordsByFilter } from "@/records/record-query-filter";
 import { newRecord, type Record as RecordModel } from "@/records/record-model";
 
-// the record of a helper: the API's JSON of the record (hidden fields are not in it)
+// the record of a helper: the record as a superuser's API read returns it, so
+// the hidden fields and the email are in it whatever emailVisibility says (the
+// generated types say the same). The password and the token key are never
+// returned, not even to a superuser, as upstream does.
 export type MigrationRow = Record<string, unknown>;
 
 export interface MigrationQuery {
@@ -43,8 +46,12 @@ export interface MigrationHelpers {
 // the type of the tx argument of up (the generated types declare it too)
 export type MigrationTx = MigrationHelpers;
 
-// the API's JSON of a record, read back as the helpers return it
+// the record as the helpers return it: every field unhidden and the email
+// visible, as upstream's superuser reads do (autoResolveRecordsFlags). The
+// migration runs as the superuser of the database, so no visibility applies.
 function rowOf(record: RecordModel): MigrationRow {
+  record.unhide(...record.collection().fields.fieldNames());
+  record.ignoreEmailVisibility(true);
   return JSON.parse(record.marshalJSON()) as MigrationRow;
 }
 

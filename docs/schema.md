@@ -292,6 +292,7 @@ The object has three keys and no others: `renames`, `renameCollections` and `up`
 
 - `up` runs in the apply transaction, after the fields and collections are added and before the file's changes narrow them (constraints, rules, indexes and removals). It is synchronous: an `up` that returns a promise, or that throws, fails the apply, and the transaction rolls back, so the database is as it was. The error names the file.
 - `tx` has these helpers. They read and write the records through the same validation the API applies to the record being saved.
+  - Records come back as a superuser's API read returns them: every field, the hidden ones and the email included. A password and a token key are never in them.
   - `records(collection, { filter, sort, params })`: an iterator over the matching records, read before the first one is returned.
   - `findFirst(collection, query)` and `findById(collection, id)`: the record, or `null`.
   - `create(collection, data)`, `update(collection, id, data)` and `delete(collection, id)`.
@@ -315,11 +316,11 @@ export default {
 } satisfies Migration;
 ```
 
-- A field is keyed by its collection's name as it is before the apply. A renamed collection is named by its new name in the file.
-- A rename runs before the file's changes, as a real rename: the field keeps its id and the column keeps its values; the collection keeps its id, its table, its records and their files, and the relations that point to it. Rate-limit rules that start with the old collection name are relabelled, as the dashboard does.
-- The stored rules and indexes that name a renamed field, or a renamed collection (`@collection.<old name>`), are cleared by the apply and then set from the file. Write the file's rules with the new names.
-- Only the renames of pending files run. A file that has run is not read again.
-- A rename is refused, with the reason, and the apply does not start, when: the old name does not exist; the new name already exists, or is not in the file; a name is renamed twice, or two renames give one name. A view and a system collection or field cannot be renamed. Remove the view and add one under the new name.
+- A field is keyed by its collection's name as it is before this file's own renames. A collection that this file renames is keyed by its old name in `renames` too, so `renames: { authors: { name: "fullname" } }` works next to `renameCollections: { authors: "writers" }`. A renamed collection is named by its new name in `renameCollections`.
+- A rename runs as a real rename: the field keeps its id and the column keeps its values; the collection keeps its id, its table, its records and their files, and the relations that point to it. Rate-limit rules that start with the old collection name are relabelled, as the dashboard does.
+- Pending files run in name order, each against the names the earlier files left, so a second file can rename what the first one renamed: `renames: { posts: { author: "byline" } }` in a later file works after `renames: { posts: { writer: "author" } }` in an earlier one. A file that has run is not read again. Within one file, a name cannot be renamed again: put the second rename in a file of its own.
+- When a file renames something, the apply clears every rule of the collections (the views are created again) and every index except the ones upstream adds to an auth collection, and then sets them from the file. So a rule or index that names an old name, in any form (a relation path, a back relation, an alias, an expression), is not an error. Write the file's rules and indexes with the new names. `schema plan` lists them as changes, because the file sets them again.
+- A rename is refused, with the reason, and the apply does not start, when: the old name does not exist; the new name already exists, or the file does not have it at the end of the pending renames; two renames of one file give one name, or a file renames a name it creates. A view and a system collection or field cannot be renamed. Remove the view and add one under the new name.
 - A field or collection that the file drops is not data loss when it is the old name of a rename; without the rename, the data-loss guard still stops the apply.
 
 `schema plan` lists each rename, and the rate-limit rules a collection rename relabels, before the changes and the migrations.

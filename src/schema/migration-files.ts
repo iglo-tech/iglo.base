@@ -32,8 +32,9 @@ export function schemaMigrationRecord(file: string): string {
 
 export type MigrationUp = (tx: MigrationTx) => unknown;
 
-// the renames a migration declares: a field of a collection (keyed by the
-// collection's name before the apply), and a collection
+// the renames a migration declares: a field of a collection, and a collection.
+// Both are keyed by the name before the file's own renames: a collection renamed
+// in the same file is keyed by its old name in `renames`
 export interface DeclaredRenames {
   renames: Record<string, Record<string, string>>;
   renameCollections: Record<string, string>;

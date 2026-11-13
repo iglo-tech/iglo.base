@@ -426,8 +426,13 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
       ],
       [
         "20261113160300_collide.ts",
-        `  renames: { posts: { writer: "author" } },`,
+        `  renames: { posts: { writer: "author", title: "author" } },`,
         ["renames collide"],
+      ],
+      [
+        "20261113160350_chain.ts",
+        `  renames: { posts: { writer: "author", author: "byline" } },`,
+        ["renamed again in the same file"],
       ],
     ];
     const schemaWithAuthor = {
@@ -436,13 +441,6 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     for (const [file, body, expected] of cases) {
       writeSchema(site, schemaWithAuthor);
       writeMigration(site, file, migrationSource(body));
-      if (file.includes("collide")) {
-        writeMigration(
-          site,
-          "20261113160250_again.ts",
-          migrationSource(`  renames: { posts: { writer: "editor" } },`),
-        );
-      }
       const before = digests(site.dataDir);
       const plan = await run([
         "--dir",
@@ -461,9 +459,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
       expect(digests(site.dataDir)).toEqual(before);
       expect(schemaRows(site.dataDir)).toEqual([]);
       // the next case starts without the declared renames of this one
-      for (const name of [file, "20261113160250_again.ts"]) {
-        rmFile(join(site.migrationsDir, name));
-      }
+      rmFile(join(site.migrationsDir, file));
     }
   });
 
@@ -783,6 +779,596 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     const sync = await run(["--dir", site.dataDir, "migrate", "history-sync"]);
     expect(sync.exitCode).toBe(0);
     expect(migrationRows(site.dataDir)).toContain("@schema/20261113240000_kept.ts");
+  });
+});
+
+// Declared renames across the references that a stored rule or index can
+// take (round 1 of S.5): the rules and indexes that name a renamed field or
+// collection in any form are cleared, and the file's are set again. A start
+// with the file and its renames applies, and `schema plan` says so first.
+async function renameScenario(
+  before: Record<string, unknown>,
+  seed: (url: string, token: string) => Promise<void>,
+  after: Record<string, unknown>,
+  migrations: [file: string, source: string][],
+  check: (url: string, token: string) => Promise<void>,
+): Promise<void> {
+  const site = await newSite();
+  writeSchema(site, before);
+  const first = await serveWith(site);
+  await seed(first.url, await superuser(first.url));
+  await first.stop();
+
+  writeSchema(site, after);
+  for (const [file, source] of migrations) {
+    writeMigration(site, file, source);
+  }
+  const plan = await run(["--dir", site.dataDir, "schema", "plan", "--schema", site.schemaPath]);
+  expect(plan.stdout).toContain("the schema would apply");
+  expect(plan.exitCode).toBe(0);
+
+  const server = await serveWith(site);
+  try {
+    await check(server.url, await superuser(server.url));
+  } finally {
+    await server.stop();
+  }
+  return site;
+}
+
+// the collection's rules, the fields and the indexes as the API returns them
+async function collectionOf(
+  url: string,
+  token: string,
+  name: string,
+): Promise<Record<string, unknown>> {
+  return (await api(url, token, "GET", `/api/collections/${name}`)).json;
+}
+
+const relationTo = (collection: string) => ({
+  type: "relation",
+  collection,
+  maxSelect: 1,
+});
+
+describe("declared renames: references, files and hidden fields (S.5)", () => {
+  test("a rule of another collection that reaches the renamed field through a relation is set again", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" }, writer: { type: "text" } }),
+        comments: {
+          type: "base",
+          rules: { list: 'post.writer != ""', view: "" },
+          fields: { text: { type: "text" }, post: relationTo("posts") },
+        },
+      },
+      async (url, token) => {
+        const post = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+          writer: "Ann",
+        });
+        expect(post.status).toBe(200);
+        const comment = await api(url, token, "POST", "/api/collections/comments/records", {
+          text: "hi",
+          post: post.json.id,
+        });
+        expect(comment.status).toBe(200);
+      },
+      {
+        posts: posts({ title: { type: "text" }, author: { type: "text" } }),
+        comments: {
+          type: "base",
+          rules: { list: 'post.author != ""', view: "" },
+          fields: {
+            text: { type: "text" },
+            post: relationTo("posts"),
+            score: { type: "number" },
+          },
+        },
+      },
+      [
+        [
+          "20261114100000_writer.ts",
+          migrationSource(`  renames: { posts: { writer: "author" } },`),
+        ],
+      ],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "comments")).listRule).toBe('post.author != ""');
+        const rows = await records(url, token, "comments");
+        expect(rows).toEqual([expect.objectContaining({ text: "hi" })]);
+      },
+    );
+  });
+
+  test("a rule that names the renamed field through a self relation is set again", async () => {
+    await renameScenario(
+      {
+        posts: {
+          type: "base",
+          rules: { list: 'parent.writer != ""', view: "" },
+          fields: {
+            title: { type: "text" },
+            writer: { type: "text" },
+            parent: relationTo("posts"),
+          },
+        },
+      },
+      async (url, token) => {
+        const parent = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "parent",
+          writer: "Ann",
+        });
+        expect(parent.status).toBe(200);
+        const child = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "child",
+          parent: parent.json.id,
+        });
+        expect(child.status).toBe(200);
+      },
+      {
+        posts: {
+          type: "base",
+          rules: { list: 'parent.author != ""', view: "" },
+          fields: {
+            title: { type: "text" },
+            author: { type: "text" },
+            parent: relationTo("posts"),
+          },
+        },
+      },
+      [["20261114100100_self.ts", migrationSource(`  renames: { posts: { writer: "author" } },`)]],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "posts")).listRule).toBe('parent.author != ""');
+        expect(await records(url, token, "posts")).toHaveLength(2);
+      },
+    );
+  });
+
+  test("a relation path into a renamed collection, with both collections renamed in one file", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" }, writer: { type: "text" } }),
+        comments: {
+          type: "base",
+          rules: { list: 'post.writer != ""', view: "" },
+          fields: { text: { type: "text" }, post: relationTo("posts") },
+        },
+      },
+      async (url, token) => {
+        const post = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+          writer: "Ann",
+        });
+        await api(url, token, "POST", "/api/collections/comments/records", {
+          text: "kept",
+          post: post.json.id,
+        });
+      },
+      {
+        posts: posts({ title: { type: "text" }, author: { type: "text" } }),
+        comments: {
+          type: "base",
+          rules: { list: 'post.author != ""', view: "" },
+          fields: { body: { type: "text" }, post: relationTo("posts") },
+        },
+      },
+      [
+        [
+          "20261114100200_both.ts",
+          migrationSource(
+            `  renames: { posts: { writer: "author" }, comments: { text: "body" } },`,
+          ),
+        ],
+      ],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "comments")).listRule).toBe('post.author != ""');
+        expect(await records(url, token, "comments")).toEqual([
+          expect.objectContaining({ body: "kept" }),
+        ]);
+      },
+    );
+  });
+
+  test("a back relation whose relation field is renamed", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" } }, { list: 'comments_via_post.id != ""', view: "" }),
+        comments: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { text: { type: "text" }, post: relationTo("posts") },
+        },
+      },
+      async (url, token) => {
+        const post = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+        });
+        await api(url, token, "POST", "/api/collections/comments/records", {
+          text: "c",
+          post: post.json.id,
+        });
+      },
+      {
+        posts: posts(
+          { heading: { type: "text" } },
+          { list: 'comments_via_article.id != ""', view: "" },
+        ),
+        comments: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { text: { type: "text" }, article: relationTo("posts") },
+        },
+      },
+      [
+        [
+          "20261114100300_back.ts",
+          migrationSource(
+            `  renames: { comments: { post: "article" }, posts: { title: "heading" } },`,
+          ),
+        ],
+      ],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "posts")).listRule).toBe(
+          'comments_via_article.id != ""',
+        );
+        expect(await records(url, token, "posts")).toEqual([
+          expect.objectContaining({ heading: "t" }),
+        ]);
+      },
+    );
+  });
+
+  test("a back relation through a renamed collection", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" } }, { list: 'comments_via_post.id != ""', view: "" }),
+        comments: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { text: { type: "text" }, post: relationTo("posts") },
+        },
+      },
+      async (url, token) => {
+        const post = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+        });
+        await api(url, token, "POST", "/api/collections/comments/records", {
+          text: "c",
+          post: post.json.id,
+        });
+      },
+      {
+        posts: posts(
+          { heading: { type: "text" } },
+          { list: 'replies_via_post.id != ""', view: "" },
+        ),
+        replies: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { text: { type: "text" }, post: relationTo("posts") },
+        },
+      },
+      [
+        [
+          "20261114100400_renamed_back.ts",
+          migrationSource(
+            `  renameCollections: { comments: "replies" },\n  renames: { posts: { title: "heading" } },`,
+          ),
+        ],
+      ],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "posts")).listRule).toBe(
+          'replies_via_post.id != ""',
+        );
+        expect(await records(url, token, "replies")).toEqual([
+          expect.objectContaining({ text: "c" }),
+        ]);
+      },
+    );
+  });
+
+  test("an alias in a rule that names a renamed field of another collection", async () => {
+    await renameScenario(
+      {
+        alpha: posts({ writer: { type: "text" } }),
+        zeta: {
+          type: "base",
+          rules: { list: '@collection.alpha:p.writer != ""', view: "" },
+          fields: { text: { type: "text" } },
+        },
+      },
+      async () => {},
+      {
+        alpha: posts({ author: { type: "text" } }),
+        zeta: {
+          type: "base",
+          rules: { list: '@collection.alpha:p.author != ""', view: "" },
+          fields: { body: { type: "text" } },
+        },
+      },
+      [
+        [
+          "20261114100500_alias.ts",
+          migrationSource(`  renames: { alpha: { writer: "author" }, zeta: { text: "body" } },`),
+        ],
+      ],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "zeta")).listRule).toBe(
+          '@collection.alpha:p.author != ""',
+        );
+      },
+    );
+  });
+
+  test("an expression index and a partial index on the renamed field are written again", async () => {
+    await renameScenario(
+      {
+        posts: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { title: { type: "text" }, writer: { type: "text" } },
+          indexes: [
+            "CREATE INDEX idx_w ON posts (lower(writer))",
+            "CREATE INDEX idx_t ON posts (title) WHERE writer != ''",
+          ],
+        },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+          writer: "Ann",
+        });
+      },
+      {
+        posts: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { title: { type: "text" }, author: { type: "text" } },
+          indexes: [
+            "CREATE INDEX idx_w ON posts (lower(author))",
+            "CREATE INDEX idx_t ON posts (title) WHERE author != ''",
+          ],
+        },
+      },
+      [
+        [
+          "20261114100600_indexes.ts",
+          migrationSource(`  renames: { posts: { writer: "author" } },`),
+        ],
+      ],
+      async (url, token) => {
+        const indexes = (await collectionOf(url, token, "posts")).indexes as string[];
+        expect(indexes.join("\n")).toContain("lower(author)");
+        expect(indexes.join("\n")).toContain("WHERE author");
+        expect(indexes.join("\n")).not.toContain("writer");
+        expect(await records(url, token, "posts")).toHaveLength(1);
+      },
+    );
+  });
+
+  test("a collection rename and a field rename of it in one file, keyed by the old name", async () => {
+    await renameScenario(
+      {
+        authors: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { name: { type: "text" } },
+        },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/authors/records", { name: "Ann" });
+      },
+      {
+        writers: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { fullname: { type: "text" } },
+        },
+      },
+      [
+        [
+          "20261114100700_writers.ts",
+          migrationSource(
+            `  renameCollections: { authors: "writers" },\n  renames: { authors: { name: "fullname" } },`,
+          ),
+        ],
+      ],
+      async (url, token) => {
+        expect(await records(url, token, "writers")).toEqual([
+          expect.objectContaining({ fullname: "Ann" }),
+        ]);
+      },
+    );
+  });
+
+  test("the same rename across two files: the collection in one, its field in the next", async () => {
+    await renameScenario(
+      {
+        authors: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { name: { type: "text" } },
+        },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/authors/records", { name: "Ann" });
+      },
+      {
+        writers: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { fullname: { type: "text" } },
+        },
+      },
+      [
+        [
+          "20261114100800_collection.ts",
+          migrationSource(`  renameCollections: { authors: "writers" },`),
+        ],
+        [
+          "20261114100900_field.ts",
+          migrationSource(`  renames: { writers: { name: "fullname" } },`),
+        ],
+      ],
+      async (url, token) => {
+        expect(await records(url, token, "writers")).toEqual([
+          expect.objectContaining({ fullname: "Ann" }),
+        ]);
+      },
+    );
+  });
+
+  test("a chain across two files, applied in two starts (the first file has run)", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    await api(server.url, token, "POST", "/api/collections/posts/records", {
+      title: "t",
+      writer: "Ann",
+    });
+    await server.stop();
+
+    // the first file runs in a start of its own
+    writeSchema(site, { posts: posts({ title: { type: "text" }, author: { type: "text" } }) });
+    writeMigration(
+      site,
+      "20261114101000_author.ts",
+      migrationSource(`  renames: { posts: { writer: "author" } },`),
+    );
+    server = await serveWith(site);
+    await server.stop();
+    expect(schemaRows(site.dataDir)).toEqual(["@schema/20261114101000_author.ts"]);
+
+    // the second one renames the first's result; the file runs against it
+    writeSchema(site, { posts: posts({ title: { type: "text" }, byline: { type: "text" } }) });
+    writeMigration(
+      site,
+      "20261114101100_byline.ts",
+      migrationSource(`  renames: { posts: { author: "byline" } },`),
+    );
+    const plan = await run(["--dir", site.dataDir, "schema", "plan", "--schema", site.schemaPath]);
+    expect(plan.exitCode).toBe(0);
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    const rows = await records(server.url, token, "posts");
+    expect(rows).toEqual([expect.objectContaining({ title: "t", byline: "Ann" })]);
+    expect(Object.keys(await fieldsOf(server.url, token, "posts"))).not.toContain("author");
+    await server.stop();
+    expect(schemaRows(site.dataDir)).toEqual([
+      "@schema/20261114101000_author.ts",
+      "@schema/20261114101100_byline.ts",
+    ]);
+  });
+
+  test("a helper reads the record as a superuser's read does: the email and the hidden fields", async () => {
+    const members = {
+      type: "auth",
+      rules: { list: "", view: "" },
+      fields: {
+        nick: { type: "text" },
+        secret: { type: "text", hidden: true },
+      },
+    };
+    await renameScenario(
+      { members },
+      async (url, token) => {
+        const created = await api(url, token, "POST", "/api/collections/members/records", {
+          email: "ann@example.test",
+          password: "1234567890",
+          passwordConfirm: "1234567890",
+          nick: "n",
+          secret: "s3cr3t",
+        });
+        expect(created.status).toBe(200);
+      },
+      {
+        members: {
+          ...members,
+          fields: {
+            nick: { type: "text" },
+            secret: { type: "text", hidden: true },
+            note: { type: "text" },
+          },
+        },
+      },
+      [
+        [
+          "20261114101200_read.ts",
+          `export default {\n  up(tx) {\n    const row = tx.findFirst("members", { filter: 'nick = "n"' });\n` +
+            `    if (row === null) throw new Error("no member");\n` +
+            `    tx.update("members", row.id, { note: \`\${row.email}|\${row.secret}\` });\n  },\n};\n`,
+        ],
+      ],
+      async (url, token) => {
+        const [member] = (await api(url, token, "GET", "/api/collections/members/records")).json
+          .items as Record<string, unknown>[];
+        expect(member?.note).toBe("ann@example.test|s3cr3t");
+        expect(member?.secret).toBe("s3cr3t");
+      },
+    );
+  });
+
+  test("a rename to a hidden field type-checks against the generated Migration type", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" }, secret: { type: "text" } }) });
+    (await serveWith(site)).stop();
+
+    writeSchema(site, {
+      posts: posts({ title: { type: "text" }, apikey: { type: "text", hidden: true } }),
+    });
+    const good = join(site.migrationsDir, "20261114101300_apikey.ts");
+    writeFileSync(
+      good,
+      `import type { Migration } from "../iglo.types";\n` +
+        `export default {\n  renames: { posts: { secret: "apikey" } },\n} satisfies Migration;\n`,
+    );
+    const typesPath = join(site.root, "iglo.types.ts");
+    const generated = await run([
+      "--dir",
+      site.dataDir,
+      "schema",
+      "types",
+      "--schema",
+      site.schemaPath,
+      "--out",
+      typesPath,
+    ]);
+    expect(generated.exitCode).toBe(0);
+
+    const tsconfig = join(site.root, "tsconfig.json");
+    writeFileSync(
+      tsconfig,
+      JSON.stringify({
+        compilerOptions: {
+          target: "ES2022",
+          lib: ["ES2022", "DOM"],
+          module: "Preserve",
+          moduleResolution: "bundler",
+          types: [],
+          strict: true,
+          noEmit: true,
+          skipLibCheck: true,
+          verbatimModuleSyntax: true,
+          paths: {
+            "@iglo.tech/iglo.base": [join(sdkSource, "index.ts")],
+            "@sdk/*": [join(sdkSource, "*")],
+          },
+        },
+        files: [typesPath, good],
+      }),
+    );
+    const tsc = Bun.spawn([join(repoRoot, "node_modules/.bin/tsc"), "-p", tsconfig], {
+      cwd: site.root,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(await tsc.exited).toBe(0);
+
+    const server = await serveWith(site);
+    const token = await superuser(server.url);
+    expect(Object.keys(await fieldsOf(server.url, token, "posts"))).toContain("apikey");
+    await server.stop();
   });
 });
 
