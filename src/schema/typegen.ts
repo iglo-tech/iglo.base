@@ -6,14 +6,15 @@
 // its resolved fields, and the field types and modifiers are upstream's
 // (core/field_*.go). The file's extra keys (a description, and a json field's
 // tsType) come from the schema file, because the database does not hold them
-// (D40). The output is deterministic and laid out as oxfmt lays it out, so
+// (D40). The output is deterministic and laid out the way oxfmt lays out
+// TypeScript (.oxfmtrc.json), so a formatter run on it changes nothing and
 // `schema types --check` and the pre-commit hook agree.
 
 import type { SchemaCollection, SchemaDescription, SchemaObject } from "@/schema/types";
 
-// the package the generated file takes the client types from: the SDK of
-// this repository (sdk/package.json; its npm name changes with P.14)
-export const sdkPackage = "iglo.base";
+// the package the generated file takes the client types from: the published
+// SDK (sdk/package.json), the name its users install
+export const sdkPackage = "@iglo.tech/iglo.base";
 
 // the line length of oxfmt (.oxfmtrc.json)
 const printWidth = 100;
@@ -30,7 +31,9 @@ export class TypesError extends Error {
 type Json = SchemaObject;
 
 // The type name of a collection: its words in Pascal case (`my_posts` is
-// MyPosts). A name that starts with a digit gets a leading underscore.
+// MyPosts). A name that starts with an underscore keeps it (`_superusers` is
+// _Superusers), as system collections do, so no user collection can take its
+// name; a name that starts with a digit gets one too.
 export function typeBase(name: string): string {
   const base = name
     .split("_")
@@ -40,15 +43,19 @@ export function typeBase(name: string): string {
   if (base === "") {
     throw new TypesError(`the collection ${JSON.stringify(name)} has no name for a type`);
   }
-  return /^\d/.test(base) ? `_${base}` : base;
+  return name.startsWith("_") || /^\d/.test(base) ? `_${base}` : base;
 }
 
-// A type: the members of a union, or an array of them. A single member is
-// written as it is; several are joined with " | " and, as an array, in
-// parentheses.
+// A member of a union: a type as written, or an array of a union of types
+// (`(a | b)[]`; an array of one type is written `a[]`)
+type Member = string | { of: string[] };
+
+// A type: the members of a union (none is `never`). A json field's tsType is
+// verbatim: it is written as the schema file has it, behind a formatter-ignore
+// comment, because only the user knows where its line breaks belong.
 interface TypeOf {
-  members: string[];
-  array: boolean;
+  members: Member[];
+  verbatim?: boolean;
 }
 
 // a property of an object type
@@ -59,18 +66,31 @@ interface Prop {
   type: TypeOf;
 }
 
-// the members of a union with no member is never
+// the type of one plain member
+function plain(...members: string[]): TypeOf {
+  return { members };
+}
+
+// the text of a member on one line
+function memberText(member: Member): string {
+  if (typeof member === "string") {
+    return member;
+  }
+  const of = membersOf(member.of);
+  return of.length === 1 ? `${of[0]}[]` : `(${of.join(" | ")})[]`;
+}
+
+// the members of a union, with `never` for a union with none
 function membersOf(members: readonly string[]): string[] {
   return members.length === 0 ? ["never"] : [...members];
 }
 
 // the type on one line
 function typeText(type: TypeOf): string {
-  const members = membersOf(type.members);
-  if (!type.array) {
-    return members.join(" | ");
+  if (type.members.length === 0) {
+    return "never";
   }
-  return members.length === 1 ? `${members[0]}[]` : `(${members.join(" | ")})[]`;
+  return type.members.map(memberText).join(" | ");
 }
 
 const identifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
@@ -90,42 +110,85 @@ function docLines(doc: string, indent: string): string[] {
   return [`${indent}/**`, ...lines.map((line) => `${indent} * ${line}`.trimEnd()), `${indent} */`];
 }
 
-// the lines of one property; a type too long for a line breaks the way oxfmt
-// breaks it: a union with a leading "| " on each member, an array of a union
-// with its members in parentheses
+// The lines of one member of a union that breaks, at the member's indent. An
+// array of a union that does not fit breaks inside its parentheses, with its
+// members four columns in and the closing parenthesis two columns in, as oxfmt
+// lays it out.
+function memberLines(member: Member, indent: string, suffix: string): string[] {
+  const inline = `${indent}| ${memberText(member)}${suffix}`;
+  if (
+    typeof member === "string" ||
+    inline.length <= printWidth ||
+    membersOf(member.of).length === 1
+  ) {
+    return [inline];
+  }
+  return [
+    `${indent}| (`,
+    ...membersOf(member.of).map((value) => `${indent}    | ${value}`),
+    `${indent}  )[]${suffix}`,
+  ];
+}
+
+// the lines of one property. A type too long for a line breaks the way oxfmt
+// breaks it: a union with a leading "| " on each member, and an array of a
+// union with its members in parentheses.
 function propLines(prop: Prop, indent: string): string[] {
   const doc = prop.doc === undefined ? [] : docLines(prop.doc, indent);
   const head = `${indent}${keyText(prop.key)}${prop.optional ? "?" : ""}`;
   const line = `${head}: ${typeText(prop.type)};`;
-  const members = membersOf(prop.type.members);
-  if (line.length <= printWidth || members.length === 1) {
+  if (prop.type.verbatim === true) {
+    // oxfmt leaves the line behind the comment as it is
+    return [...doc, `${indent}// oxfmt-ignore`, line];
+  }
+  if (line.length <= printWidth) {
     return [...doc, line];
   }
-  if (!prop.type.array) {
-    return [
-      ...doc,
-      `${head}:`,
-      ...members.map(
-        (member, index) => `${indent}  | ${member}${index === members.length - 1 ? ";" : ""}`,
-      ),
-    ];
+  const members = prop.type.members;
+  if (members.length === 1) {
+    // an array of a union breaks inside its parentheses; any other single type does not break
+    const only = members[0];
+    if (typeof only !== "string" && only !== undefined && only.of.length > 1) {
+      return [
+        ...doc,
+        `${head}: (`,
+        ...only.of.map((value) => `${indent}  | ${value}`),
+        `${indent})[];`,
+      ];
+    }
+    return [...doc, line];
   }
   return [
     ...doc,
-    `${head}: (`,
-    ...members.map((member) => `${indent}  | ${member}`),
-    `${indent})[];`,
+    `${head}:`,
+    ...members.flatMap((member, index) =>
+      memberLines(member, `${indent}  `, index === members.length - 1 ? ";" : ""),
+    ),
   ];
 }
 
-// the members of a select's values, or "never" when it has none
+// A string literal as oxfmt writes it: double quotes, unless the value has more
+// double quotes than single quotes, which take single quotes (prettier's rule).
+// The escapes that JSON writes are the ones oxfmt keeps.
+function stringLiteral(value: string): string {
+  const doubles = value.split('"').length - 1;
+  const singles = value.split("'").length - 1;
+  if (doubles <= singles) {
+    return JSON.stringify(value);
+  }
+  // every double quote in JSON's text is escaped by one backslash: unescape it
+  const body = JSON.stringify(value).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'");
+  return `'${body}'`;
+}
+
+// the members of a select's values
 function valueMembers(values: unknown): string[] {
   if (!Array.isArray(values)) {
     return [];
   }
   return values
     .filter((value): value is string => typeof value === "string")
-    .map((value) => JSON.stringify(value));
+    .map((value) => stringLiteral(value));
 }
 
 function isMultiple(field: Json): boolean {
@@ -145,6 +208,23 @@ interface FileField {
   tsType?: string;
 }
 
+// A json field's type: its tsType as written, or `unknown`. A field that is
+// not required reads null when it is unset (upstream stores no value), so the
+// type includes null. A tsType that binds looser than a union (a function, a
+// constructor or a conditional type) is parenthesized before `| null`.
+function jsonType(required: boolean, file: FileField | undefined): TypeOf {
+  const tsType = file?.tsType;
+  if (tsType === undefined) {
+    return required ? plain("unknown") : plain("unknown", "null");
+  }
+  const looseBinding = /=>|\bnew\b|\bextends\b/.test(tsType);
+  if (required) {
+    return { members: [tsType], verbatim: true };
+  }
+  const text = looseBinding ? `(${tsType}) | null` : `${tsType} | null`;
+  return { members: [text], verbatim: true };
+}
+
 // the type of a field's stored value, as the API returns it
 function storedType(field: Json, file: FileField | undefined, collection: string): TypeOf {
   const name = fieldName(field);
@@ -157,26 +237,26 @@ function storedType(field: Json, file: FileField | undefined, collection: string
     case "date":
     case "autodate":
     case "password":
-      return { members: ["string"], array: false };
+      return plain("string");
     case "number":
-      return { members: ["number"], array: false };
+      return plain("number");
     case "bool":
-      return { members: ["boolean"], array: false };
+      return plain("boolean");
     case "select": {
       const values = valueMembers(field.values);
       if (isMultiple(field)) {
-        return { members: values, array: true };
+        return { members: [{ of: values }] };
       }
       // an unset single select reads as "", the API's empty value, unless it is required
-      return { members: field.required === true ? values : ['""', ...values], array: false };
+      return { members: field.required === true ? values : ['""', ...values] };
     }
     case "relation":
     case "file":
-      return { members: ["string"], array: isMultiple(field) };
+      return isMultiple(field) ? { members: [{ of: ["string"] }] } : plain("string");
     case "json":
-      return { members: [file?.tsType ?? "unknown"], array: false };
+      return jsonType(field.required === true, file);
     case "geoPoint":
-      return { members: ["{ lon: number; lat: number }"], array: false };
+      return plain("{ lon: number; lat: number }");
     default:
       throw new TypesError(
         `the field ${JSON.stringify(name)} of ${JSON.stringify(collection)} has the type ${JSON.stringify(type)}, which schema types does not know`,
@@ -184,12 +264,30 @@ function storedType(field: Json, file: FileField | undefined, collection: string
   }
 }
 
-// the type a request sets a field to: a file is an upload
-function inputType(field: Json, file: FileField | undefined, collection: string): TypeOf {
-  if (field.type === "file") {
-    return { members: ["File", "Blob"], array: isMultiple(field) };
+// What a request sets a file field to (upstream's FileField.setValue and its
+// modifiers, core/field_file.go): a file, or for a multi-file field an array
+// of them. An update also takes the name of a file the record has (a string
+// keeps it, "" clears the field), and null clears a field that is not required.
+function fileValue(field: Json, forUpdate: boolean): Member[] {
+  const upload = forUpdate ? ["File", "Blob", "string"] : ["File", "Blob"];
+  return isMultiple(field) ? [...upload, { of: upload }] : upload;
+}
+
+// the type a request sets a field to
+function inputType(
+  field: Json,
+  file: FileField | undefined,
+  collection: string,
+  forUpdate: boolean,
+): TypeOf {
+  if (field.type !== "file") {
+    return storedType(field, file, collection);
   }
-  return storedType(field, file, collection);
+  const members = fileValue(field, forUpdate);
+  if (forUpdate && field.required !== true) {
+    members.push("null");
+  }
+  return { members };
 }
 
 // whether a field can be set through the API: the server sets autodate
@@ -218,8 +316,8 @@ function isOptionalOnCreate(field: Json): boolean {
 }
 
 // an optional property of a type, for an update's modifier
-function modifierProp(key: string, type: TypeOf): Prop {
-  return { key, optional: true, doc: undefined, type };
+function modifierProp(key: string, members: Member[]): Prop {
+  return { key, optional: true, doc: undefined, type: { members } };
 }
 
 // the modifiers an update takes for a field (upstream's FindSetter): the
@@ -229,18 +327,12 @@ function modifiersOf(field: Json): Prop[] {
   const name = fieldName(field);
   switch (field.type) {
     case "number":
-      return [
-        modifierProp(`${name}+`, { members: ["number"], array: false }),
-        modifierProp(`${name}-`, { members: ["number"], array: false }),
-      ];
+      return [modifierProp(`${name}+`, ["number"]), modifierProp(`${name}-`, ["number"])];
     case "select":
     case "relation": {
       // a value, or an array of values, the way the field takes it
       const values = field.type === "select" ? valueMembers(field.values) : ["string"];
-      const value: TypeOf = {
-        members: [...membersOf(values), typeText({ members: values, array: true })],
-        array: false,
-      };
+      const value: Member[] = [...membersOf(values), { of: values }];
       return [
         modifierProp(`+${name}`, value),
         modifierProp(`${name}+`, value),
@@ -248,15 +340,11 @@ function modifiersOf(field: Json): Prop[] {
       ];
     }
     case "file": {
-      const upload: TypeOf = {
-        members: ["File", "Blob", "(File | Blob)[]"],
-        array: false,
-      };
-      const remove: TypeOf = { members: ["string", "string[]"], array: false };
+      const upload = fileValue(field, true);
       return [
         modifierProp(`+${name}`, upload),
         modifierProp(`${name}+`, upload),
-        modifierProp(`${name}-`, remove),
+        modifierProp(`${name}-`, ["string", { of: ["string"] }]),
       ];
     }
     default:
@@ -264,20 +352,31 @@ function modifiersOf(field: Json): Prop[] {
   }
 }
 
-// the lines of a declaration with its properties
+// the lines of a declaration: its JSDoc, its head, its properties and its tail
 function declaration(
-  head: string,
+  heads: readonly string[],
   props: readonly Prop[],
   doc: string | undefined,
   tail: string,
+  indent: string,
 ): string[] {
   const lines: string[] = doc === undefined ? [] : docLines(doc, "");
-  lines.push(head);
+  lines.push(...heads);
   for (const prop of props) {
-    lines.push(...propLines(prop, "  "));
+    lines.push(...propLines(prop, indent));
   }
   lines.push(tail);
   return lines;
+}
+
+// an object type alias (`export type XCreate = {`): when that head is too
+// long for a line, oxfmt breaks after the `=` and indents the object
+function objectAlias(name: string, props: readonly Prop[], doc: string | undefined): string[] {
+  const head = `export type ${name} = {`;
+  if (head.length <= printWidth) {
+    return declaration([head], props, doc, "};", "  ");
+  }
+  return declaration([`export type ${name} =`, "  {"], props, doc, "  };", "    ");
 }
 
 // the four declarations of one collection
@@ -304,18 +403,13 @@ function collectionDeclarations(
   // the response: the id, the collection and the fields the API returns (not
   // the hidden ones), and the expanded relations
   const response: Prop[] = [
-    { key: "id", optional: false, doc: undefined, type: { members: ["string"], array: false } },
-    {
-      key: "collectionId",
-      optional: false,
-      doc: undefined,
-      type: { members: ["string"], array: false },
-    },
+    { key: "id", optional: false, doc: undefined, type: plain("string") },
+    { key: "collectionId", optional: false, doc: undefined, type: plain("string") },
     {
       key: "collectionName",
       optional: false,
       doc: undefined,
-      type: { members: [JSON.stringify(name)], array: false },
+      type: plain(JSON.stringify(name)),
     },
   ];
   for (const field of fields) {
@@ -335,7 +429,7 @@ function collectionDeclarations(
     key: "expand",
     optional: true,
     doc: "The relations that the request expanded, by field name.",
-    type: { members: ["Expand"], array: false },
+    type: plain("Expand"),
   });
 
   // the create and the update: the fields the request sets
@@ -347,50 +441,59 @@ function collectionDeclarations(
     }
     const key = fieldName(field);
     const doc = docOf(field);
-    const input = inputType(field, fileOf(field), name);
     if (key === "id") {
       // a record id is set on create only
-      create.push({ key, optional: true, doc, type: input });
+      create.push({ key, optional: true, doc, type: inputType(field, fileOf(field), name, false) });
       continue;
     }
-    create.push({ key, optional: isOptionalOnCreate(field), doc, type: input });
-    update.push({ key, optional: true, doc, type: input });
-    if (type === "auth" && key === "password") {
+    // a password is required on create, and so is its confirmation (upstream's
+    // RecordUpsert: a new record needs both)
+    const authPassword = type === "auth" && key === "password";
+    create.push({
+      key,
+      optional: isOptionalOnCreate(field) && !authPassword,
+      doc,
+      type: inputType(field, fileOf(field), name, false),
+    });
+    update.push({ key, optional: true, doc, type: inputType(field, fileOf(field), name, true) });
+    if (authPassword) {
       create.push({
         key: "passwordConfirm",
-        optional: true,
+        optional: false,
         doc: undefined,
-        type: { members: ["string"], array: false },
+        type: plain("string"),
       });
       update.push({
         key: "passwordConfirm",
         optional: true,
         doc: undefined,
-        type: { members: ["string"], array: false },
+        type: plain("string"),
       });
       update.push({
         key: "oldPassword",
         optional: true,
         doc: undefined,
-        type: { members: ["string"], array: false },
+        type: plain("string"),
       });
     }
     update.push(...modifiersOf(field));
   }
 
+  // the response's head takes its Expand parameter on its own line when it is too long
+  const responseHead = `export interface ${base}Response<Expand = {}> {`;
+  const responseHeads =
+    responseHead.length <= printWidth
+      ? [responseHead]
+      : [`export interface ${base}Response<`, "  Expand = {},", "> {"];
+
   return [
-    ...declaration(`export interface ${base}Record {`, record, file?.description, "}"),
+    ...declaration([`export interface ${base}Record {`], record, file?.description, "}", "  "),
     "",
-    ...declaration(
-      `export interface ${base}Response<Expand = {}> {`,
-      response,
-      file?.description,
-      "}",
-    ),
+    ...declaration(responseHeads, response, file?.description, "}", "  "),
     "",
-    ...declaration("export type " + base + "Create = {", create, file?.description, "};"),
+    ...objectAlias(`${base}Create`, create, file?.description),
     "",
-    ...declaration("export type " + base + "Update = {", update, file?.description, "};"),
+    ...objectAlias(`${base}Update`, update, file?.description),
   ];
 }
 
@@ -404,20 +507,31 @@ function enumLines(names: readonly { base: string; name: string }[]): string[] {
 }
 
 // TypedPocketBase: the client with a collection method for each collection's
-// name, so a name that is not in the schema is a type error
+// name, so a name that is not in the schema is a type error. It is generic
+// over the client, so a browser or server client keeps its own methods
+// (`TypedPocketBase<BrowserClient>`); the default is the plain client.
 function typedClientLines(names: readonly { base: string; name: string }[]): string[] {
   const overloads = names.flatMap(({ base, name }) => {
-    const line = `  collection(idOrName: ${JSON.stringify(name)} | Collections.${base}): RecordService<${base}Response>;`;
+    const value = `${JSON.stringify(name)} | Collections.${base}`;
+    const line = `  collection(idOrName: ${value}): RecordService<${base}Response>;`;
     if (line.length <= printWidth) {
       return [line];
     }
+    // the parameter breaks too when it is still too long: its union goes one member a line
+    const param = `    idOrName: ${value},`;
     return [
       "  collection(",
-      `    idOrName: ${JSON.stringify(name)} | Collections.${base},`,
+      ...(param.length <= printWidth
+        ? [param]
+        : ["    idOrName:", `      | ${JSON.stringify(name)}`, `      | Collections.${base},`]),
       `  ): RecordService<${base}Response>;`,
     ];
   });
-  return ['export type TypedPocketBase = Omit<PocketBase, "collection"> & {', ...overloads, "};"];
+  return [
+    'export type TypedPocketBase<C = PocketBase> = Omit<C, "collection"> & {',
+    ...overloads,
+    "};",
+  ];
 }
 
 // The generated file: the types of every collection, the Collections enum and

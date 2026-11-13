@@ -304,11 +304,13 @@ If you want to manually cancel pending requests, you could use `pb.cancelAllRequ
 For the types of your own collections, generate them from the schema with `schema types` (see [docs/schema.md](../docs/schema.md#types)). `pb.collection("posts")` is then typed as `PostsResponse`, and a collection name the schema does not have is a type error:
 
 ```ts
-import PocketBase from "iglo.base";
+import PocketBase from "@iglo.tech/iglo.base";
 import type { TypedPocketBase } from "./iglo.types";
 
 const pb = new PocketBase("https://example.com") as TypedPocketBase;
 ```
+
+The server and browser clients keep their methods when you pass their class: `createBrowserClient({ url }) as TypedPocketBase<BrowserClient>`.
 
 Without generated types, use the generics below.
 

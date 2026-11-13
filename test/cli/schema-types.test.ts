@@ -126,7 +126,8 @@ describe("schema types", () => {
     expect(text).toContain('status: "draft" | "published" | "archived";');
     expect(text).toContain('section?: "" | "news" | "sport";');
     expect(text).toContain('tags?: ("a" | "b")[];');
-    expect(text).toContain("meta: { readonly k: string };");
+    expect(text).toContain("meta: { readonly k: string } | null;");
+    expect(text).toContain("free?: unknown | null;");
     expect(text).toContain("place: { lon: number; lat: number };");
     expect(text).toContain("cover?: File | Blob;");
     expect(text).toContain('"views+"?: number;');
@@ -134,18 +135,40 @@ describe("schema types", () => {
     expect(text).toContain("/** Images. */");
     expect(text).toContain("/** People who write posts. */");
     expect(text).toContain("export enum Collections {");
-    expect(text).toContain('export type TypedPocketBase = Omit<PocketBase, "collection"> & {');
+    expect(text).toContain(
+      'export type TypedPocketBase<C = PocketBase> = Omit<C, "collection"> & {',
+    );
+    // the client types come from the published package
+    expect(text).toContain('import type PocketBase from "@iglo.tech/iglo.base";');
+    expect(text).toContain('import type { RecordService } from "@iglo.tech/iglo.base";');
+    expect(text).not.toContain('"iglo.base"');
+    // a system collection keeps its underscore in its type name
+    expect(text).toContain("export interface _OtpsRecord {");
+    expect(text).toContain('_Otps = "_otps",');
     // hidden fields are not in the response, and a view has its own fields
     expect(declarationOf(text, "export interface PostsResponse<")).not.toContain("pin");
     expect(declarationOf(text, "export interface PostsRecord {")).toContain("pin: string;");
     expect(declarationOf(text, "export interface PostListResponse<")).toContain("title: string;");
     // a password of an auth collection is set on create, and the email is optional on a response
-    expect(text).toContain("passwordConfirm?: string;");
+    expect(text).toContain("passwordConfirm: string;");
     expect(text).toContain("email?: string;");
     // tokenKey is the server's, and autodate fields are not set by a request
     expect(text).not.toContain("tokenKey?:");
     expect(declarationOf(text, "export type PostsCreate = {")).not.toContain("created");
     expect(declarationOf(text, "export type PostsCreate = {")).toContain("pin?: string;");
+    // a file is uploaded on create; an update also keeps a file by its name and clears it with "" or null
+    expect(declarationOf(text, "export type PostsUpdate = {")).toContain(
+      "cover?: File | Blob | string | null;",
+    );
+    expect(declarationOf(text, "export type PostsUpdate = {")).toContain(
+      '"+cover"?: File | Blob | string;',
+    );
+    expect(declarationOf(text, "export type PostsUpdate = {")).toContain(
+      "gallery?: File | Blob | string | (File | Blob | string)[] | null;",
+    );
+    expect(declarationOf(text, "export type PostsCreate = {")).toContain(
+      "gallery?: File | Blob | (File | Blob)[];",
+    );
   });
 
   test("--check passes on fresh output and fails, naming the file, after a schema change", async () => {
@@ -231,7 +254,7 @@ describe("schema types", () => {
     expect(text.stdout).toContain("export interface PostsRecord {");
     expect(text.stdout).not.toContain("/** Images. */");
     expect(text.stdout).not.toContain("{ readonly k: string }");
-    expect(text.stdout).toContain("meta: unknown;");
+    expect(text.stdout).toContain("meta: unknown | null;");
   });
 
   test("two collections with one type name are an error that names both", async () => {
@@ -310,6 +333,94 @@ describe("schema types", () => {
     const unformatted = join(site.root, "unformatted.ts");
     writeFileSync(unformatted, "const   x = 'a'\n");
     expect(await formatCheck(unformatted)).not.toBe(0);
+    expect(await formatCheck(out)).toBe(0);
+  });
+
+  test("a long name, long values, quotes and long types stay in oxfmt's format", async () => {
+    const site = await createSite();
+    // the collection's name is as long as a name can be (255 characters), and its
+    // fields are long; the values of the selects are long or contain quotes
+    const longName = `category_${"with_a_long_name_".repeat(12)}`.slice(0, 255);
+    const longField = "a_very_long_field_name_".repeat(4).replace(/_$/, "");
+    const longValues = [1, 2, 3, 4, 5, 6].map((i) => `alpha_value_number_${i}_with_a_long_name`);
+    const stress = {
+      collections: {
+        [longName]: {
+          type: "base",
+          rules: { list: "", view: "" },
+          description:
+            "A description that is wider than one hundred columns, so that it is one long line of JSDoc.\nA second line, with a */ inside it.",
+          fields: {
+            kind: { type: "select", values: longValues, maxSelect: 1, required: true },
+            kinds: { type: "select", values: longValues, maxSelect: 6 },
+            quoted: { type: "select", values: ['say "hi"', "it's", "both \" and '"], maxSelect: 1 },
+            [longField]: { type: "text", description: "A field with a long name." },
+            meta: {
+              type: "json",
+              tsType:
+                "{ title: string; subtitle: string; tags: string[]; author: { name: string; email: string } }",
+            },
+            fn: { type: "json", tsType: "() => void" },
+            cond: { type: "json", tsType: "string extends number ? 1 : 2" },
+            pair: { type: "json", required: true, tsType: "[number, number]" },
+            cover: { type: "file", maxSelect: 1 },
+            gallery: { type: "file", maxSelect: 9 },
+            ref: { type: "relation", collection: "other", maxSelect: 9 },
+          },
+        },
+        other: { type: "base", rules: { list: "", view: "" }, fields: { title: { type: "text" } } },
+      },
+    };
+    const schema = writeSchema(site.root, "stress.json", stress);
+    const out = join(site.root, "stress.ts");
+    const generated = await run([
+      "--dir",
+      site.dataDir,
+      "schema",
+      "types",
+      "--schema",
+      schema,
+      "--out",
+      out,
+    ]);
+    expect(generated.exitCode).toBe(0);
+
+    const text = readFileSync(out, "utf8");
+    expect(text).toContain(`'say "hi"'`);
+    // a function type binds looser than a union, so it is parenthesized before null
+    expect(text).toContain("fn: (() => void) | null;");
+    expect(await formatCheck(out)).toBe(0);
+  });
+
+  test("a user collection named superusers gets its own types, beside the system collection's", async () => {
+    const site = await createSite();
+    const schema = writeSchema(site.root, "names.json", {
+      collections: {
+        superusers: {
+          type: "base",
+          rules: { list: "", view: "" },
+          fields: { title: { type: "text" } },
+        },
+      },
+    });
+    const out = join(site.root, "names.ts");
+    const result = await run([
+      "--dir",
+      site.dataDir,
+      "schema",
+      "types",
+      "--schema",
+      schema,
+      "--out",
+      out,
+    ]);
+    expect(result.exitCode).toBe(0);
+    const text = readFileSync(out, "utf8");
+    expect(text).toContain("export interface SuperusersRecord {");
+    expect(text).toContain("export interface _SuperusersRecord {");
+    expect(text).toContain('Superusers = "superusers",');
+    expect(text).toContain('_Superusers = "_superusers",');
+    expect(text).toContain('"superusers" | Collections.Superusers');
     expect(await formatCheck(out)).toBe(0);
   });
 });

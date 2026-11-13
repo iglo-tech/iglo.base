@@ -34,9 +34,9 @@ const tsconfig = {
     isolatedModules: true,
     skipLibCheck: true,
     paths: {
-      "iglo.base": [join(sdkSource, "index.ts")],
-      "iglo.base/ssr": [join(sdkSource, "ssr/index.ts")],
-      "iglo.base/ssr/browser": [join(sdkSource, "ssr/browser-client.ts")],
+      "@iglo.tech/iglo.base": [join(sdkSource, "index.ts")],
+      "@iglo.tech/iglo.base/ssr": [join(sdkSource, "ssr/index.ts")],
+      "@iglo.tech/iglo.base/ssr/browser": [join(sdkSource, "ssr/browser-client.ts")],
       "@sdk/*": [join(sdkSource, "*")],
       pocketbase: [join(repoRoot, "node_modules/pocketbase/dist/pocketbase.es.d.mts")],
     },
@@ -47,9 +47,9 @@ const tsconfig = {
 // The typed client, in the four places an app uses it, and the wrong uses that
 // must not compile. The official package takes the generated record types as
 // its generic argument (the types do not depend on the SDK's classes).
-const typesApp = `import PocketBase from "iglo.base";
-import { createBrowserClient } from "iglo.base/ssr/browser";
-import { createServerClient } from "iglo.base/ssr";
+const typesApp = `import PocketBase from "@iglo.tech/iglo.base";
+import { createBrowserClient, type BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import { createServerClient, type ServerClient } from "@iglo.tech/iglo.base/ssr";
 import { Collections } from "./iglo.types";
 import type {
   AuthorsCreate,
@@ -76,6 +76,8 @@ export async function typed(): Promise<void> {
   const related: PostsResponse[] | undefined = expanded.expand?.related;
   const list = await pb.collection("posts").getList<PostsResponse>(1, 10);
   const views: number = list.items[0]?.views ?? 0;
+  // a json field that is not required reads null when it is unset
+  const meta: { readonly k: string } | null = post.meta;
 
   const created: PostsCreate = {
     title: "t",
@@ -98,6 +100,10 @@ export async function typed(): Promise<void> {
     "gallery+": [new Blob([])],
   };
   await pb.collection("posts").update(post.id, update);
+  // a file is kept by its name, and cleared with "" or null; meta is cleared with null
+  const kept: PostsUpdate = { cover: "old.png", gallery: ["a.png", "b.png"], meta: null };
+  const cleared: PostsUpdate = { cover: "", gallery: "", free: null, meta: null };
+  await pb.collection("posts").update(post.id, { ...kept, ...cleared });
   const author: AuthorsCreate = {
     email: "a@x.test",
     password: "1234567890",
@@ -107,19 +113,25 @@ export async function typed(): Promise<void> {
   };
   await pb.collection("authors").create(author);
 
-  const server: TypedPocketBase = await createServerClient({
+  // the SSR and browser clients keep their own methods: the type argument is their class
+  const server = (await createServerClient({
     url: "http://127.0.0.1:1",
     cookies: { getAll: () => [] },
-  });
+  })) as TypedPocketBase<ServerClient>;
+  const serverNow: ServerClient["serverNow"] = server.serverNow;
   const authors: AuthorsResponse[] = await server.collection("authors").getFullList<AuthorsResponse>();
-  const browser: TypedPocketBase = createBrowserClient({ url: "http://127.0.0.1:1" });
+  const browser = createBrowserClient({ url: "http://127.0.0.1:1" }) as TypedPocketBase<BrowserClient>;
+  const handOff: BrowserClient["handOff"] = browser.handOff;
   const page: PostListResponse[] = await browser.collection("post_list").getFullList<PostListResponse>();
-  void [status, section, nickname, related, views, authors, page];
+  void [status, section, nickname, related, views, meta, authors, page, serverNow, handOff];
 }
 
 export async function rejected(): Promise<void> {
   // @ts-expect-error a collection that the schema does not have
   pb.collection("nope");
+  const browser = createBrowserClient({ url: "http://127.0.0.1:1" }) as TypedPocketBase<BrowserClient>;
+  // @ts-expect-error a collection that the schema does not have, on a browser client too
+  browser.collection("nope");
   // @ts-expect-error a select value that the field does not have
   const badStatus: PostsCreate = { title: "t", status: "bogus" };
   // @ts-expect-error a field that the collection does not have
@@ -128,13 +140,21 @@ export async function rejected(): Promise<void> {
   const badUpdate: PostsUpdate = { "status+": "bogus" };
   // @ts-expect-error a relation takes an id, not a number
   const badAuthor: PostsCreate = { title: "t", status: "draft", author: 1 };
+  // @ts-expect-error a file is uploaded on create, so a name does not set one
+  const badCover: PostsCreate = { title: "t", status: "draft", cover: "old.png" };
+  // @ts-expect-error a file is a file, a name or "" or null, not a number
+  const badFile: PostsUpdate = { cover: 1 };
+  // @ts-expect-error a create needs the password's confirmation
+  const noConfirm: AuthorsCreate = { email: "a@x.test", password: "1234567890", nickname: "n" };
   const post = await pb.collection("posts").getOne("id");
   // @ts-expect-error a hidden field is not in the response
   const pin = post.pin;
+  // @ts-expect-error a json field that is not required reads null when it is unset
+  const metaKey = post.meta.k;
   const plain = await pb.collection("posts").getOne<PostsResponse<{}>>("id");
   // @ts-expect-error an expand that the response type does not declare
   const missing = plain.expand?.author;
-  void [badStatus, extra, badUpdate, badAuthor, pin, missing];
+  void [badStatus, extra, badUpdate, badAuthor, badCover, badFile, noConfirm, pin, metaKey, missing];
 }
 `;
 
@@ -162,11 +182,18 @@ export async function official(): Promise<void> {
 // The runtime check against a real server. Each response's keys and the
 // JavaScript types of its values are those the generated types give them; a
 // non-required select reads "" when unset, a json field reads null when unset.
-const liveApp = `import PocketBase from "iglo.base";
-import { createBrowserClient } from "iglo.base/ssr/browser";
-import { createServerClient } from "iglo.base/ssr";
+const liveApp = `import PocketBase from "@iglo.tech/iglo.base";
+import { createBrowserClient, type BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import { createServerClient, type ServerClient } from "@iglo.tech/iglo.base/ssr";
 import { Collections } from "./iglo.types";
-import type { AuthorsResponse, PostListResponse, PostsCreate, PostsResponse, TypedPocketBase } from "./iglo.types";
+import type {
+  AuthorsResponse,
+  PostListResponse,
+  PostsCreate,
+  PostsResponse,
+  PostsUpdate,
+  TypedPocketBase,
+} from "./iglo.types";
 
 // the process of the runtime (Bun), declared here: the fixture's tsconfig has no node types
 declare const process: { env: Record<string, string | undefined> };
@@ -236,10 +263,15 @@ checkShape(post, superPostShape, "create response");
 check(post.section === "", "an unset select reads empty");
 check(post.views === 3 && post.published === true, "the stored values");
 
+// a record without its json field: upstream stores no value, and the API returns null
 const second = await admin.collection("posts").create<PostsResponse>({
-  title: "Second", status: "published", meta: { k: "w" }, place: { lon: 0, lat: 0 }, pin: "1234",
+  title: "Second", status: "published", place: { lon: 0, lat: 0 }, pin: "1234",
 });
 check(second.section === "" && second.author === "", "an unset relation reads empty");
+check(second.meta === null && second.free === null, "an unset json field reads null");
+const clear: PostsUpdate = { meta: null, cover: "" };
+const cleared = await admin.collection("posts").update<PostsResponse>(second.id, clear);
+check(cleared.meta === null && cleared.cover === "", "null and an empty name clear the fields");
 
 const expanded = await admin.collection("posts").getOne<PostsResponse<{ author: AuthorsResponse }>>(
   post.id,
@@ -256,7 +288,7 @@ const view = await admin.collection("post_list").getFullList<PostListResponse>()
 checkShape(view[0] as object, { id: "string", collectionId: "string", collectionName: "string", title: "string" }, "view");
 
 // the SSR server client, anonymous: the public records and the email rule
-const server: TypedPocketBase = await createServerClient({ url, cookies: { getAll: () => [] } });
+const server = (await createServerClient({ url, cookies: { getAll: () => [] } })) as TypedPocketBase<ServerClient>;
 const authors = await server.collection("authors").getFullList<AuthorsResponse>();
 const seenAlice = authors.find((author) => author.nickname === "Alice");
 const seenBob = authors.find((author) => author.nickname === "Bob");
@@ -267,7 +299,7 @@ checkShape(serverPosts.items[0] as object, postShape, "server list item");
 check(serverPosts.items.every((item) => !("pin" in item)), "a hidden field is not in an anonymous response");
 
 // the browser client
-const browser: TypedPocketBase = createBrowserClient({ url });
+const browser = createBrowserClient({ url }) as TypedPocketBase<BrowserClient>;
 const page = await browser.collection("posts").getOne<PostsResponse>(post.id);
 checkShape(page, postShape, "browser response");
 check(page.title === "First" && !("pin" in page), "the browser client reads the record");
