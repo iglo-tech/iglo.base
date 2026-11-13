@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.4 | worker | `task/S.4-…` → `develop` | – | Brief `docs/briefs/S.4.md` (#79) |
+| S.4 | review | `task/S.4-schema-types` → `develop`, PR 102 | 1 | Brief `docs/briefs/S.4.md` (#79); Opus round 1; lead flagged the generated SDK import name and the `pocketbase` package case |
 
 
 
