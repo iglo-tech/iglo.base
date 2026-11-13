@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.4 | review | `task/S.4-schema-types` → `develop`, PR 102 | 2 | Round 1 fixed in `3c19bc9` (check and test:reference pass); Opus round 2 reviews the fixes only |
+| S.5 | worker | `task/S.5-…` → `develop` | – | Brief `docs/briefs/S.5.md` (#80) |
 
 
 
@@ -22,6 +22,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| S.4 | [#102](https://github.com/iglo-tech/iglo.base/pull/102) → `develop` | 2026-11-13 (`44c3852`) | Two review rounds (Opus; Haiku worker and fixer). `schema types [--out] [--schema] [--check]`: Record/Response/Create/Update per collection, `Collections`, generic `TypedPocketBase<C>` (SSR and browser clients keep their methods), imports `@iglo.tech/iglo.base`; system identifiers keep the leading underscore; output stable under oxfmt; official `pocketbase` package via per-call generics. Check 18,895/0, reference 4,436/0. Backlog: create types reject `null`/`""` on optional file fields (upstream ignores them); `// prettier-ignore` instead of `// oxfmt-ignore` for Prettier users; hidden fields in Create/Update (docs say superuser only) |
 | S.3 | [#101](https://github.com/iglo-tech/iglo.base/pull/101) → `develop` | 2026-11-13 (`ba09932`) | Three review rounds (Opus; Haiku worker and fixers), round-3 fixes applied per the lead and verified by the lead (test/schema 77/0). `serve --schema`, `schema plan`, `--allow-data-loss`; dry run before the backup and retention after failure (D40 amended); views removed first; related collections removed in dependency order; implied indexes compared by definition; empty values (incl. geoPoint) not counted as data; plan rolls back both databases and pending migrations' file deletes; settings reloaded after the dry run. Check 18,882/0, reference 4,435/0. Backlog: differential test covers additions only; effects a migration makes outside the databases (`$os.writeFile`) run twice (documented) |
 | P.14 | [#99](https://github.com/iglo-tech/iglo.base/pull/99) | 2026-11-12 (`73f4c2c`) | Two review rounds (Opus; Haiku worker and fixer; lead verified the docs-only round-1 fix). SDK renamed to `@iglo.tech/iglo.base` (owner); token bootstrap removed. Lead published 1.0.0 with the owner's `npm login` and 2FA code, then `npm logout`; release re-run created `sdk-v1.0.0` |
 | S.2 | [#97](https://github.com/iglo-tech/iglo.base/pull/97) → `develop` | 2026-11-12 (`520ae47`) | Three review rounds (Opus; Haiku worker and fixers). `src/schema/` reader, writer and order-keeping JSON parser, `schema/iglo.schema.json` (release asset), `schema pull`, `docs/schema.md`, `docs/design/14-schema.md`. `users` measured like any auth collection; implied auth indexes (exact upstream form only) left out; legacy id index names kept (lead). Check 18,842/0, reference 4,432/0. Backlog: `idx_email_<id>` name of a changed email index in the Ids note; `WHERE email != ' '` counts as implied; `__proto__` names; reader accepts view indexes/rules and `system: false` on system collections |
