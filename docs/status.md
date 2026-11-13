@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.3 | worker | `task/S.3-…` → `develop` | – | Brief `docs/briefs/S.3.md` (#78) |
+| S.3 | review | `task/S.3-schema-apply` → `develop`, PR 101 | 1 | Brief `docs/briefs/S.3.md` (#78); Opus round 1 |
 
 
 
