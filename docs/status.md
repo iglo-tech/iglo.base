@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.5 | review | `task/S.5-schema-migrations` → `develop`, PR 103 | 1 | Brief `docs/briefs/S.5.md` (#80). Upstream v0.41.0 starts with `@schema/` rows (recorded in D40). Opus round 1; worker skipped D40 step 2 clearing for removed fields (reviewer to judge) |
+| S.5 | fixer | `task/S.5-schema-migrations` → `develop`, PR 103 | 1 | Round 1: 3 findings (renames break on rule/index references the code missed; rename keys contradict types and multi-file order; helpers see the public record shape). Lead: with any rename, clear all rules and non-implied indexes in step 2 (D40 amended); renames run file by file in name order, loosely typed; helpers use the full stored record |
 
 
 
