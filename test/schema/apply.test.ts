@@ -920,6 +920,75 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
     expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
   });
 
+  test("the unset value of every field type is empty, so the fields go without the flag", async () => {
+    const site = await createSite();
+    const fields: Json = {
+      title: { type: "text", max: 120 },
+      n: { type: "number" },
+      flag: { type: "bool" },
+      day: { type: "date" },
+      note: { type: "editor" },
+      mail: { type: "email" },
+      link: { type: "url" },
+      secret: { type: "password" },
+      data: { type: "json" },
+      one: { type: "select", values: ["a", "b"], maxSelect: 1 },
+      tags: { type: "select", values: ["a", "b", "c"], maxSelect: 3 },
+      files: { type: "file", maxSelect: 3 },
+      rel: { type: "relation", collection: "posts", maxSelect: 3 },
+      geo: { type: "geoPoint" },
+    };
+    const v1 = withPosts(await currentFile(site));
+    (collectionsOf(v1).posts as Json).fields = fields;
+    const v1File = writeFile(site, "v1.json", v1);
+    await applyOK(site, v1File);
+    await withServer(site, ["--schema", v1File], async (url, token) => {
+      // only the title: every other field holds what the API gives an unset field
+      const created = await api(url, token, "POST", "/api/collections/posts/records", {
+        title: "x",
+      });
+      expect(created.status).toBe(200);
+      expect((created.json as Json).geo).toEqual({ lon: 0, lat: 0 });
+    });
+
+    const v2 = structuredClone(v1);
+    for (const name of Object.keys(fields)) {
+      if (name !== "title") {
+        delete ((collectionsOf(v2).posts as Json).fields as Json)[name];
+      }
+    }
+    const v2File = writeFile(site, "v2.json", v2);
+    const planned = await plan(site, v2File);
+    expect(planned.exitCode).toBe(0);
+    expect(planned.stdout).not.toContain("data that would be lost");
+    await applyOK(site, v2File);
+    expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("a geoPoint that holds a point is counted when the field is removed", async () => {
+    const site = await createSite();
+    const v1 = withPosts(await currentFile(site));
+    (collectionsOf(v1).posts as Json).fields = {
+      title: { type: "text", max: 120 },
+      geo: { type: "geoPoint" },
+    };
+    const v1File = writeFile(site, "v1.json", v1);
+    await applyOK(site, v1File);
+    await withServer(site, ["--schema", v1File], async (url, token) => {
+      const created = await api(url, token, "POST", "/api/collections/posts/records", {
+        title: "set",
+        geo: { lon: 1.5, lat: 2 },
+      });
+      expect(created.status).toBe(200);
+    });
+
+    const v2 = structuredClone(v1);
+    delete ((collectionsOf(v2).posts as Json).fields as Json).geo;
+    const planned = await plan(site, writeFile(site, "v2.json", v2));
+    expect(planned.exitCode).toBe(1);
+    expect(planned.stdout).toContain("posts.geo: 1 values would be deleted");
+  });
+
   test("the non-empty values of a removed field are counted: the plan lists them", async () => {
     const site = await createSite();
     const fields: Json = {

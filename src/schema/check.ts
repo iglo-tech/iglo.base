@@ -40,10 +40,12 @@ export function countRows(db: Databases, tableName: string): number {
 }
 
 // The SQL condition of an empty value of a field: what upstream stores when
-// the field is not set. NULL is empty for every type; the empty string for
-// text-like fields (and single select, file and relation); 0 for a number or a
-// bool; an empty list for a multi-value select, file or relation ("[]"); and
-// for json, the empty string, null and an empty list.
+// the field is not set (upstream's column defaults, core/field_*.go). NULL is
+// empty for every type; the empty string for text-like fields (and single
+// select, file and relation); 0 for a number or a bool; an empty list for a
+// multi-value select, file or relation ("[]"); for json, the empty string, null
+// and an empty list (its column has no default, so it is NULL when unset); and
+// for a geoPoint, the point {"lon":0,"lat":0} that its column defaults to.
 export function emptyValueCondition(field: SchemaField): string {
   const column = `[[${field.name}]]`;
   const isNull = `${column} IS NULL`;
@@ -52,6 +54,9 @@ export function emptyValueCondition(field: SchemaField): string {
   }
   if (field.type === "json") {
     return `${isNull} OR ${column} IN ('', 'null', '[]')`;
+  }
+  if (field.type === "geoPoint") {
+    return `${isNull} OR (json_extract(${column}, '$.lon') = 0 AND json_extract(${column}, '$.lat') = 0)`;
   }
   if (maxSelectOf(field) > 1 && multiValueTypes.has(field.type)) {
     return `${isNull} OR ${column} IN ('', '[]')`;

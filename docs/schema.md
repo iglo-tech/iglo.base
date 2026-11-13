@@ -222,7 +222,7 @@ An apply that would delete data stops before it changes anything, unless you pas
 
 Without `--schema`, the flag has no effect.
 
-A field holds data when one of its rows has a value that is not empty. Empty is the value the API shows for a field that is not set: NULL and the empty text for text-like fields, `0` for a number or a bool, and an empty list for a multi-value select, file or relation (for a json field, also `null`). The guard counts:
+A field holds data when one of its rows has a value that is not empty. Empty is the value the API shows for a field that is not set: NULL and the empty text for text-like fields, `0` for a number or a bool, an empty list for a multi-value select, file or relation (for a json field, also `null`), and the point `{"lon":0,"lat":0}` for a geoPoint. The guard counts:
 
 - the values of a field that the file removes;
 - the values of a field whose type changes, since it is removed and added again;
