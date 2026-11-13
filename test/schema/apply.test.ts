@@ -1258,6 +1258,31 @@ describe("schema apply: migrations and the rollback of a plan or a refused start
     });
   });
 
+  test("a migration that appends to the app name runs once per start: the stored name is Acme!", async () => {
+    const site = await createSite();
+    const v1 = writeFile(site, "v1.json", await currentFile(site));
+    await applyOK(site, v1);
+    await withServer(site, ["--schema", v1], async (url, token) => {
+      const res = await api(url, token, "PATCH", "/api/settings", { meta: { appName: "Acme" } });
+      expect(res.status).toBe(200);
+    });
+    writeMigration(
+      site,
+      "1_suffix.js",
+      `migrate((app) => {
+        const s = app.settings();
+        s.meta.appName = s.meta.appName + "!";
+        app.save(s);
+      })`,
+    );
+
+    await applyOK(site, v1, ["--migrationsDir", join(site.root, "pb_migrations")]);
+    await withServer(site, ["--schema", v1], async (url, token) => {
+      const res = await api(url, token, "GET", "/api/settings");
+      expect((res.json as { meta: { appName: string } }).meta.appName).toBe("Acme!");
+    });
+  });
+
   test("schema plan commits nothing to auxiliary.db: a migration's log rows roll back", async () => {
     const site = await createSite();
     const v1 = writeFile(site, "v1.json", await currentFile(site));

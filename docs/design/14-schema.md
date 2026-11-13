@@ -119,7 +119,7 @@ The steps are the ones in the header comment of `src/schema/apply.ts`, which D40
 8. the record check, for the fields the apply added or changed;
 9. commit, or roll back so that the database is unchanged.
 
-A problem found in step 3 or step 8 stops the transaction (`StopApply`); the problems are in the report. A failed save (`SaveFailed`) becomes a problem that names its collection. After the transaction ends, whether it committed, rolled back or was a plan, the in-memory collection cache is reloaded.
+A problem found in step 3 or step 8 stops the transaction (`StopApply`); the problems are in the report. A failed save (`SaveFailed`) becomes a problem that names its collection. After the transaction ends, whether it committed, rolled back or was a plan, the in-memory collection cache is reloaded. After the dry run the settings are reloaded too: a migration that edits `app.settings()` changed the live object, and the dry run rolled back only the stored row, so the real run starts from the stored settings.
 
 ### Modules
 

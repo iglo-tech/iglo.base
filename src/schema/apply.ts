@@ -81,6 +81,7 @@ import {
 } from "@/schema/report";
 import { readSchema, type SchemaIssue } from "@/schema/read";
 import { ruleKeys, type SchemaCollection, type SchemaDescription } from "@/schema/types";
+import { reloadSettings } from "@/settings/settings-query";
 import { isMigrationApplied, up, type Migration } from "@/migrations/migrations-runner";
 import { Errors } from "@/validation/error";
 
@@ -160,6 +161,10 @@ export async function applySchema(
   // the dry run: the same transaction as `schema plan`, rolled back. A file
   // that would fail fails here, before any backup is made
   const dry = runTransaction(app, desired, options, "plan");
+  // a migration that edits app.settings() changed the live object in memory,
+  // and the dry run rolled back the stored row only: the apply starts from
+  // the stored settings, so the migration runs once
+  await reloadSettings(app);
   if (!reportIsOK(dry)) {
     dry.mode = "apply";
     throw new SchemaApplyError(dry);
