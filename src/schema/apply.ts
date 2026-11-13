@@ -79,7 +79,7 @@ import {
   type Problem,
 } from "@/schema/report";
 import { readSchema, type SchemaIssue } from "@/schema/read";
-import type { SchemaCollection, SchemaDescription } from "@/schema/types";
+import { ruleKeys, type SchemaCollection, type SchemaDescription } from "@/schema/types";
 import { isMigrationApplied, up, type Migration } from "@/migrations/migrations-runner";
 import { Errors } from "@/validation/error";
 
@@ -714,10 +714,23 @@ function isRelationInto(field: Json, ids: ReadonlySet<string>): boolean {
 }
 
 // saves a removed collection without its relation fields into the set: the
-// collection goes after it, and its records were counted by the guard already
+// collection goes after it, and its records were counted by the guard already.
+// Its rules and indexes may use the cut fields, and the save checks them against
+// the fields it keeps, so they are cleared too (null rules, no indexes): the
+// collection is deleted in the same transaction, right after.
 function cutRelationsInto(app: App, model: Collection, ids: ReadonlySet<string>): void {
   const fields = storedFields(model).filter((field) => !isRelationInto(field, ids));
-  model.unmarshalJSON(JSON.stringify({ id: model.id, name: model.name, type: model.type, fields }));
+  const rules = Object.fromEntries(Object.keys(ruleKeys).map((key) => [key, null]));
+  model.unmarshalJSON(
+    JSON.stringify({
+      id: model.id,
+      name: model.name,
+      type: model.type,
+      fields,
+      indexes: [],
+      ...rules,
+    }),
+  );
   saveAs(app, model, model.name);
 }
 

@@ -646,6 +646,35 @@ describe("schema apply and schema plan", () => {
   });
 });
 
+// a cycle ccc ↔ ddd whose collections carry the settings the function gives
+// them; the next file removes both
+async function removeCycle(settings: (name: string) => Json): Promise<void> {
+  const site = await createSite();
+  const base = await currentFile(site);
+  const v1 = structuredClone(base);
+  collectionsOf(v1).ccc = {
+    type: "base",
+    fields: { r: { type: "relation", collection: "ddd", maxSelect: 1 } },
+    ...settings("ccc"),
+  };
+  collectionsOf(v1).ddd = {
+    type: "base",
+    fields: { r: { type: "relation", collection: "ccc", maxSelect: 1 } },
+    ...settings("ddd"),
+  };
+  await applyOK(site, writeFile(site, "v1.json", v1));
+
+  const v2 = structuredClone(v1);
+  delete collectionsOf(v2).ccc;
+  delete collectionsOf(v2).ddd;
+  const v2File = writeFile(site, "v2.json", v2);
+  expect((await plan(site, v2File)).exitCode).toBe(0);
+  await applyOK(site, v2File);
+  expect(tableNames(site)).not.toContain("ccc");
+  expect(tableNames(site)).not.toContain("ddd");
+  expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+}
+
 describe("schema apply: names, restarts, removals, indexes and loss", () => {
   test("two applies in the same second keep both backups, under different names", async () => {
     const site = await createSite();
@@ -814,6 +843,14 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
       expect(tableNames(site)).not.toContain(name);
     }
     expect(await pulled(site)).toEqual(described(JSON.stringify(v2)));
+  });
+
+  test("a cycle is cut when a rule of its collections uses the relation field", async () => {
+    await removeCycle(() => ({ rules: { list: 'r.id != ""' } }));
+  });
+
+  test("a cycle is cut when an index of its collections uses the relation field", async () => {
+    await removeCycle((name) => ({ indexes: [`CREATE INDEX idx_${name}_r ON ${name} (r)`] }));
   });
 
   test("an implied auth index the file lists is compared by definition, under its stored name", async () => {
