@@ -158,6 +158,8 @@ An apply does these things, in this order:
 7. Then every record of each collection whose fields were added or changed is checked against the rules the API applies when a record is saved.
 8. If every step works, the transaction is committed and the server starts. If any step fails, the transaction is rolled back and the database is unchanged. The backup from step 4 stays, and the retention keeps the three newest pre-schema backups.
 
+A pending migration runs twice on the start that applies it: once in the dry run of step 3, which rolls back its changes to the database, and then for real in this step. Effects outside the database are not rolled back. A file that the migration writes (for example with `$os.writeFile`), an outbound call, and a write to `auxiliary.db` happen twice; the auxiliary write commits when the migration's own transaction ends, even in the dry run. `schema plan` runs the pending migrations too, so a plan has the same effects outside the database. Keep `up` free of such effects, or make them safe to repeat.
+
 A few rules apply to the changes:
 
 - The apply does not read secrets from the file. Token secrets and OAuth2 providers stay as the database has them.
