@@ -41,6 +41,7 @@ import { EmailFormat } from "@/validation/is/rules";
 import { Length } from "@/validation/length";
 import { Match } from "@/validation/match";
 import { Max, Min } from "@/validation/minmax";
+import { schemaLockedMessage } from "@/schema/lock";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
@@ -69,6 +70,9 @@ function settingsList(e: RequestEvent): HandlerResult {
 }
 
 async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
+  if (e.app.schemaLocked) {
+    return e.forbiddenError(schemaLockedMessage, null);
+  }
   let newSettings: Settings;
   try {
     // OldSettings (a clone too) is only read by the update hook

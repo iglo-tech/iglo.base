@@ -93,6 +93,13 @@ Flags of `serve`:
 | `--http <addr>` | `127.0.0.1:8090` | TCP address for the HTTP server, as `host:port`. |
 | `--origins <list>` | `*` | Allowed CORS origins, comma separated (`--origins https://a.example,https://b.example`). |
 | `--https <addr>` | none | Not supported. The server refuses to start (see [Differences](differences.md)). |
+| `--schema <file>` | none | The schema file (`iglo.schema.json`) to apply before the server starts. See [Schema as code](schema.md#applying-the-file-at-startup). |
+| `--schemaMigrationsDir <dir>` | `migrations/` next to the schema file | With `--schema`: the directory of the TypeScript migrations, `<digits>_<name>.ts`, run once each in name order. See [Schema as code](schema.md#migrations). |
+| `--allow-data-loss` | `false` | With `--schema`: let the apply delete fields and collections that hold data. Without it, an apply that would delete data stops before it changes anything. Without `--schema` it has no effect. |
+| `--mode dev\|prod` | `dev` | With `--schema`: `dev` writes the dashboard's and the API's collection changes back to the file, and applies the file's edits and new migration files while the server runs; `prod` applies the file at startup and locks the collections and settings (answers `403`). Without `--schema` it has no effect. See [Development and production](schema.md#development-and-production). |
+| `--types <file>` | none | With `--schema`: the TypeScript types file to write from the applied schema, at each start and, in development, after each change. See [Types](schema.md#types). |
+
+With `--schema`, the apply runs at every start, before the server answers requests. A file that is not valid, or an apply that fails, makes the start exit with status `1`, and the server does not start. The database is unchanged then. Without `--schema`, the server starts as before.
 
 Global flags, accepted by `serve`, `superuser` and `migrate`:
 
@@ -130,6 +137,22 @@ None is needed. The server reads these:
 | `TZ` | system time zone | Go's local time zone, used where PocketBase uses it: some conversions of date values that carry no zone, and time values in JavaScript migrations. Stored timestamps are always UTC, and cron expressions, including the backup schedule, always run in UTC. |
 
 A value that is not a number falls back to the default. For the counts (`PB_THUMBS_*`, `PB_FILES_DELETE_MAX_WORKERS`), 0 and negative values fall back too; `PB_ID_TOKEN_LEEWAY` takes any integer.
+
+### Production with a schema file
+
+A production server keeps its schema in the repository, applies it at each start and does not let the dashboard or the API change the collections or the settings:
+
+```sh
+export USERS_GITHUB_CLIENT_SECRET='…'        # the OAuth2 secret that the schema file names
+./iglo-base serve --dir /srv/app/pb_data --mode prod --schema /srv/app/iglo.schema.json --http 127.0.0.1:8090
+```
+
+- **Environment variables.** Each secret in the schema file is `{"env": "NAME"}`; set `NAME` in the environment of the process (systemd `Environment=` or `EnvironmentFile=`, `docker run -e`). The server reads the variables at each start. A variable that is not set stops the start, and its message names the variable. Keep the file of variables out of the repository.
+- **Checking before the start.** `schema plan --dir /srv/app/pb_data --schema /srv/app/iglo.schema.json` shows what the start would change, with the variables set, and exits with `1` when the file would not apply.
+- **Changing the schema.** Change the file in the repository, deploy it, and restart the server. A restart applies the file again. The dashboard shows the collections and the settings read-only.
+- **Changing the settings.** The file does not hold the settings. Change them with a JavaScript migration in `pb_migrations` (`app.settings()`, then `app.save`), deploy it, and restart the server; the migration runs once, at the start. See [Changing the settings](schema.md#changing-the-settings).
+- **Backups.** The start makes a backup before it applies a change (see [Backups before a schema apply](#backups-before-an-apply)).
+- **Tokens.** Invalidating the tokens of an auth collection is a JavaScript migration in production; see [Invalidating the tokens](schema.md#invalidating-the-tokens).
 
 ### Directories
 
@@ -329,6 +352,10 @@ A restore replaces the data directory and restarts the server. See PocketBase's 
 
 A backup that lives only on the same disk does not protect you from losing the disk. Copy backups elsewhere or use S3.
 
+### Backups before a schema apply
+
+`serve --schema` makes a backup before an apply that changes something and passes its dry run; a file that would fail makes no backup. It is named `pre-schema-<UTC time>.zip` with milliseconds, for example `pre-schema-20261112T101500.123Z.zip`, and it goes to the same backup storage (local or S3). The three newest `pre-schema-*` backups are kept, and older ones are deleted after every apply that made one, successful or failed, so a server that restarts on a failing file keeps at most three. The automatic backup setting `cronMaxKeep` does not touch them. If the backup fails, the server does not start. The details are in [Schema as code](schema.md#backups-before-an-apply).
+
 ### Copy the directory
 
 To back up with a file copy, **stop the server first** and copy the whole data directory (and `pb_migrations`):
@@ -416,6 +443,20 @@ Applies and manages the JavaScript files in `pb_migrations`:
 The three commands that ask read the answer from standard input; without a terminal the answer is no and the command is cancelled, so in a script pipe it in (`echo y | ./iglo-base migrate create add_posts`).
 
 `serve` runs pending migrations at start, so `migrate up` is rarely needed by hand. A running server picks up the collections and settings changes of `migrate up`, `migrate down` and `migrate collections` within about 50 ms, without a restart. Pass `--migrationsDir` if the files are not in `<dir>/../pb_migrations`. Migration files use the same API as PocketBase's JavaScript migrations. iglo.base runs them with Bun.
+
+### `schema`
+
+Reads and checks the schema file. See [Schema as code](schema.md).
+
+```sh
+./iglo-base schema pull --out iglo.schema.json                  # write the file from the database
+./iglo-base schema plan --schema iglo.schema.json               # what applying the file would change
+./iglo-base schema plan --schema iglo.schema.json --allow-data-loss
+```
+
+`schema pull` reads the database and writes the file. It changes nothing.
+
+`schema plan` runs the apply of the file and rolls it back. It prints the changes, the migrations that would run, the data that would be lost and every problem. It makes no backup. Its exit code is `0` when the file would apply, also when nothing changes, and `1` when it would not. It holds the write locks of `data.db` and `auxiliary.db` from its first write until it rolls back, so run it on a live server when a short pause in writes is acceptable; the server's writes to `auxiliary.db` wait for it. It needs an existing database in `--dir`.
 
 ### `update`
 

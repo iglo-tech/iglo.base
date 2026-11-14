@@ -17,6 +17,7 @@ import { argsMinusFirst, FlagError, parseFlags, stripFlags, type FlagSpec } from
 import { helpText, usageText, type CommandHelp } from "@/cli/help";
 import { migrateShort, runMigrateCommand } from "@/cli/migrate";
 import { findRemovedFlag, removedCommandMessage, removedFlagMessage } from "@/cli/removed";
+import { runSchemaCommand, schemaShort } from "@/cli/schema";
 import { runServeCommand, serveFlags, serveShort, serveUse } from "@/cli/serve";
 import { CommandError, runSuperuserCommand, superuserShort } from "@/cli/superuser";
 import { PanicError, registerMigrations } from "@/migrations/jsvm";
@@ -85,6 +86,7 @@ class CliError extends Error {
 
 const subcommands = [
   { name: "migrate", short: migrateShort },
+  { name: "schema", short: schemaShort },
   { name: "serve", short: serveShort },
   { name: "superuser", short: superuserShort },
 ];
@@ -246,6 +248,14 @@ async function execute(ctx: CliContext): Promise<number> {
     throw new CliError(removedFlagMessage(removedFlag));
   }
 
+  // cobra Command.Find
+  const commandWords = stripFlags(ctx.args, persistent);
+  const commandName = commandWords[0];
+
+  // the stdout of a schema command is its data (D40), so the console output
+  // of JS migration files goes to stderr for it
+  const migrationLog = (text: string): void =>
+    commandName === "schema" ? ctx.out.stderr(text) : ctx.out.stdout(text);
   const eager = withMigrationsDir(eagerConfig(defaults, persistent, ctx.args));
   const migrations = allMigrations(
     registerMigrations({
@@ -257,15 +267,11 @@ async function execute(ctx: CliContext): Promise<number> {
       getenv: ctx.getenv ?? (() => ""),
       exit: ctx.exit ?? exitUnset,
       clock: { now: () => ctx.out.now() },
-      log: (line) => ctx.out.stdout(`${logTime(ctx.out.now())} ${line}\n`),
+      log: (line) => migrationLog(`${logTime(ctx.out.now())} ${line}\n`),
     }),
   );
   const resolve = (values: Map<string, unknown>): AppConfig =>
     withMigrationsDir(resolveConfig(defaults, values));
-
-  // cobra Command.Find
-  const commandWords = stripFlags(ctx.args, persistent);
-  const commandName = commandWords[0];
 
   if (commandName !== undefined) {
     const removed = removedCommandMessage(commandName);
@@ -301,7 +307,19 @@ async function execute(ctx: CliContext): Promise<number> {
       );
       return 0;
     }
-    await runServeCommand(resolve(parsed.values), parsed.values, parsed.args, ctx, migrations);
+    await runServeCommand(
+      resolve(parsed.values),
+      parsed.values,
+      parsed.args,
+      ctx,
+      migrations,
+      version,
+    );
+    return 0;
+  }
+
+  if (commandName === "schema") {
+    await runSchemaCommand(resolve, persistent, ctx, name, version, migrations);
     return 0;
   }
 

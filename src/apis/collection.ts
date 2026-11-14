@@ -43,6 +43,7 @@ import { marshalStruct } from "@/fields/field";
 import { automigrateOnCollectionChange } from "@/migrations/automigrate";
 import { requireSuperuserAuth } from "@/middlewares/require-auth";
 import { providerMetadata } from "@/oauth2/provider-list";
+import { schemaLockedMessage } from "@/schema/lock";
 import { newProvider } from "@/search/provider";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 import type { RouterGroup } from "@/server/group";
@@ -207,6 +208,9 @@ const factoryExtractType = structOf([
 ]);
 
 async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
+  if (e.app.schemaLocked) {
+    return e.forbiddenError(schemaLockedMessage, null);
+  }
   // populate the minimal required factory collection data (if any)
   const factoryExtract = { Type: "", Name: "" };
   const extractErr = await e.bindBody(factoryExtract, factoryExtractType);
@@ -242,12 +246,16 @@ async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
       // other generic db error
       return e.badRequestError(`Failed to create collection. Raw error: \n${errorText(err)}`, null);
     }
+    e.app.collectionsChanged?.([collection.name]);
 
     return e.json(200, collection);
   });
 }
 
 async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
+  if (e.app.schemaLocked) {
+    return e.forbiddenError(schemaLockedMessage, null);
+  }
   let collection: Collection;
   try {
     collection = findCollectionByNameOrId(e.app, e.request.pathValue("collection"));
@@ -276,12 +284,16 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
       // other generic db error
       return e.badRequestError(`Failed to update collection. Raw error: \n${errorText(err)}`, null);
     }
+    e.app.collectionsChanged?.([collection.name]);
 
     return e.json(200, collection);
   });
 }
 
 function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResult {
+  if (e.app.schemaLocked) {
+    return e.forbiddenError(schemaLockedMessage, null);
+  }
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
@@ -309,6 +321,7 @@ function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResu
 
       return e.badRequestError(msg, err);
     }
+    e.app.collectionsChanged?.([collection.name]);
 
     return e.noContent(204);
   });

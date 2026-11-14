@@ -4,9 +4,12 @@
 // surface): its default action runs directly. The handler never runs in a
 // transaction, so execAfterSuccessTx writes the response at once.
 
+import type { App } from "@/app/app";
 import type { RequestEvent } from "@/app/event-request";
 import { firstApiError } from "@/apis/record-helpers";
 import { importCollections } from "@/collections/collection-import";
+import { findAllCollections } from "@/collections/collection-query";
+import { schemaLockedMessage } from "@/schema/lock";
 import { sliceOf, structOf } from "@/server/unmarshal-request-data";
 import { errorsAs } from "@/server/error";
 import { Errors, NewError } from "@/validation/error";
@@ -14,6 +17,9 @@ import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 
 export async function collectionsImport(e: RequestEvent): Promise<Error | undefined> {
+  if (e.app.schemaLocked) {
+    return e.forbiddenError(schemaLockedMessage, null);
+  }
   const form: CollectionsImportForm = { Collections: [], DeleteMissing: false };
 
   let err = await e.bindBody(form as unknown as Record<string, unknown>, collectionsImportFormType);
@@ -34,11 +40,10 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
   }
 
   try {
-    importCollections(
-      e.app,
-      form.Collections as (Record<string, unknown> | null)[],
-      form.DeleteMissing,
-    );
+    const imported = form.Collections as (Record<string, unknown> | null)[];
+    const before = collectionNames(e.app);
+    importCollections(e.app, imported, form.DeleteMissing);
+    e.app.collectionsChanged?.(importChanges(before, collectionNames(e.app), imported));
   } catch (importErr) {
     // validation failure
     const validationErrors = errorsAs(importErr, Errors);
@@ -92,4 +97,28 @@ function checkMaps(collections: unknown[] | null): Error | undefined {
 
 function validateCollectionsImportForm(form: CollectionsImportForm): Error | null {
   return ValidateStruct(Field("collections", form.Collections, Required));
+}
+
+function collectionNames(app: App): Set<string> {
+  return new Set(findAllCollections(app).map((collection) => collection.name));
+}
+
+// the collections an import changes: the ones it names, and the ones it adds or deletes
+function importChanges(
+  before: ReadonlySet<string>,
+  after: ReadonlySet<string>,
+  imported: readonly (Record<string, unknown> | null)[],
+): string[] {
+  const changed = new Set<string>();
+  for (const item of imported) {
+    if (typeof item?.name === "string") {
+      changed.add(item.name);
+    }
+  }
+  for (const name of [...before, ...after]) {
+    if (before.has(name) !== after.has(name)) {
+      changed.add(name);
+    }
+  }
+  return [...changed];
 }

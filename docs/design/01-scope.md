@@ -113,6 +113,17 @@ Upstream's `serve example.com` and `--https` obtain Let's Encrypt certificates (
 
 A `.autocert_cache` directory written by upstream is left untouched and stays excluded from backups, as upstream excludes it.
 
+## Added: schema as code
+
+Decided by the owner on 2026-11-06 ([D40](10-decisions.md#d40-schema-as-code)). Built on the `develop` branch in tasks S.2–S.6 and released when all are merged. These go beyond PocketBase; none of them changes the data format, and without `--schema` the server behaves as upstream's.
+
+- `iglo.schema.json`, the schema of every collection, keyed by name, with a published JSON Schema;
+- `schema pull` (database to file; built in S.2, [design](14-schema.md)), `schema plan` (what an apply would do, rolled back; built in S.3, [design](14-schema.md)) and `schema types` (TypeScript types for the `iglo.base` SDK; built in S.4, [design](14-schema.md#types-s4));
+- `serve --schema <file>` (built in S.3, [design](14-schema.md)): the file and pending migrations applied at startup in one transaction, after a backup, with a final check of every record; the file holds no secrets (token secrets and OAuth2 providers stay in the database);
+- TypeScript data migrations with declared renames, next to the JavaScript migrations above (built in S.5, [design](14-schema.md#migrations-s5); the steps are in [schema.md](../schema.md#migrations));
+- `serve --mode dev|prod` (built in S.6, [design](14-schema.md#modes-and-providers-s6)): write-back of dashboard changes to the file in development, and the file's edits applied while the server runs; collections and settings locked in production (a deliberate API difference, D41);
+- OAuth2 providers in the file, with their secrets as environment references (built in S.6, [design](14-schema.md#providers)); a plain secret is refused.
+
 ## Kept: everything else
 
 **v1** ships in the first usable release (1.0). Nothing is dropped beyond the extension surface, the `update` command and automatic HTTPS.

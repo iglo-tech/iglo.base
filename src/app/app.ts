@@ -91,6 +91,13 @@ export interface App {
   // the migrations directory automigrate writes to (--automigrate,
   // plugins/migratecmd); undefined when it is off
   readonly automigrateDir?: string;
+  // production mode with a schema file (--mode prod, D41): the collection and
+  // settings writes answer 403, since the file manages them (src/schema/mode.ts)
+  readonly schemaLocked?: boolean;
+  // development mode with a schema file (D40): called after a collection
+  // create, update, delete or import through the API succeeds, so the file
+  // follows the database (src/schema/sync.ts)
+  readonly collectionsChanged?: (names: readonly string[]) => void;
   // Restart restarts (aka. replaces) the current running application
   // process (src/cli/serve.ts): it stops the server and the app, then
   // execve. It returns only if that fails: revert has then run, on closed
@@ -116,6 +123,9 @@ export interface AppConfig {
   getenv?: (name: string) => string;
   // the migrations directory, when --automigrate is on
   automigrateDir?: string;
+  // see App.schemaLocked and App.collectionsChanged
+  schemaLocked?: boolean;
+  collectionsChanged?: (names: readonly string[]) => void;
   // Restart; outside `serve` it fails
   restart?: App["restart"];
 }

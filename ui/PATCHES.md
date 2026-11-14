@@ -25,3 +25,7 @@ This directory is upstream PocketBase v0.41.0's `ui/` (commit `f6baa0c43f379de21
 ## Text
 
 12. **`src/settings/crons/pageCronsSettings.js`: the hint under the jobs list.** "App cron jobs can be registered only programmatically with Go or JavaScript" becomes "iglo.base has no app cron jobs of its own; only the built-in system jobs above run." Nothing registers jobs (D5).
+
+## Schema lock (D41)
+
+13. **`src/base/schemaLock.js` (new), imported by `src/main.js`.** With `serve --mode prod --schema`, the superuser health check has `data.schemaLocked: true`. Then the collection screens hide the sidebar's "New collection" and the collection settings button, the settings forms are inert (`inert`), the import review and clear buttons are disabled, the logs settings button is hidden, and a notice says the schema file manages them. Without the lock nothing happens.
