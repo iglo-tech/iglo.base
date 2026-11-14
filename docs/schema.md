@@ -533,4 +533,5 @@ An auth collection's OAuth2 providers can be in the file, so its whole sign-in s
 ## Limitations
 
 - **Unique indexes are absent while the migrations run, when a rename is pending.** The renames drop the indexes first (see [Renames](#renames)), so a migration that relies on a unique index to reject a duplicate succeeds. The apply then fails at step 6 with `Failed to create index`, and the rollback leaves the database as it was; only the message is less clear.
+- **Removing a chain of views together with what it reads.** When views that read each other are removed, and the innermost one reads a field or collection that the same file removes or renames, the start is refused and the database is left as it was. Split the change over two starts: remove the views first, then the field or collection.
 - **Only direct `import.meta.<name>` uses in the migration file itself are mapped to its path.** Aliases (`const m = import.meta`), destructuring, optional chaining, `import.meta.resolve` and helper modules see the migration's values or the data URL the bundle is loaded from.

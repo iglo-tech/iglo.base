@@ -14,7 +14,6 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.8 | review | `task/S.8-schema-followups` → `main`, PR 108 | 3 (final) | Round 2 fixed in `15e0c90` (check and test:reference exit 0). Lead accepted: a removed view chain whose inner view reads a field the file removes is refused safely (main refuses every removed chain). Opus round 3; then the lead decides |
 
 
 
@@ -22,6 +21,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| S.8 | [#108](https://github.com/iglo-tech/iglo.base/pull/108) | 2026-11-14 (`105c7fd`) | Three review rounds (Opus; Haiku worker and fixers); round 3 approved. Digit-led field names in rename index scan; views exist while TS migrations run (D40 order amended twice); removed views in dependency order; `records()` pages by id (+26–75% vs main accepted for bounded memory) and takes a name or id; create types accept null/"" on optional files; `// prettier-ignore`; case-only renames kept; six D34 links. Check 18,978/0, reference 4,438/0. Lead widened the removed-chain limitation in D40 and `docs/schema.md`. Backlog: spurious "Dependent view collection(s)" log rows |
 | R.2 | [#107](https://github.com/iglo-tech/iglo.base/pull/107) | 2026-11-14 | Gate failed, stopped after phase 1 (no review needed: the result applies a rule fixed in advance). 1-client create: today 0.65 ms, HTTP-client hop 1.15 ms, raw relay 0.85 ms (+0.18 ms vs +0.1 ms bar); an extra process alone costs ~0.07 ms per round trip. #83 closed. Prototype on `spike/R.2-gate` |
 | R.1 | [#106](https://github.com/iglo-tech/iglo.base/pull/106) | 2026-11-14 (`09fa277`) | One review round (Opus, approve; reviewer traced the create hop cost to the second JS HTTP layer). Spike: reads at 50 clients 0.61–1.11× PocketBase with 2 replicas, 0.32–0.61× with 4; 1-client create +0.3–0.5 ms through a replica. Lead decision: go with conditions for #83 (write-hop gate first, read pool per replica, `--schema` required, primary makes missing thumbnails, docs say writes do not scale); #82 closed. Prototype on `spike/replicas`, not merged |
 | S.7 | [#105](https://github.com/iglo-tech/iglo.base/pull/105) → `main` (merge commit) | 2026-11-14 (`335ffd9`) | One review round (Opus, approve). develop merged into main; closes #76–#81. Server [v1.2.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.0) published by the lead (x64 and arm64 archives, `iglo.schema.json`, SHA256SUMS verified; Docker image workflow on publish). SDK `@iglo.tech/iglo.base` 1.0.1 published automatically (`latest`, tag `sdk-v1.0.1`). Site listing of `docs/schema.md` sent to the iglo.tech project. Backlog: `docs/schema.md` Limitations says "step 7" in D40 numbering |
