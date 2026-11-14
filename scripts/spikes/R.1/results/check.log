@@ -1,0 +1,37 @@
+200                                      superuser login (proxied POST)
+200                                      health
+200                                      list posts perPage=30
+200                                      list posts filter+sort
+200                                      list posts expand author
+200                                      list posts expand author.team
+200                                      view post 42
+404                                      view missing record
+400                                      list invalid filter
+200                                      list members fields+page
+200                                      view member 5
+200                                      list posts as superuser
+200                                      list files_r1
+200                                      view file record
+200                                      list posts skipTotal
+200                                      create file record (proxied multipart POST)
+200                                      file download (replica)
+200                                      file download (primary)
+200                                      create post (proxied JSON POST)
+200                                      visible after create (replica read)
+ok=true subscribe 204, event received    realtime create event
+{
+ "n1": {
+  "checks": 21,
+  "diffs": []
+ },
+ "n2": {
+  "checks": 21,
+  "diffs": []
+ },
+ "n4": {
+  "checks": 21,
+  "diffs": []
+ }
+}
+CHECK OK: N=1, 2, 4 match N=0
+EXIT=0
