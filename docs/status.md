@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| R.1 | worker | `task/R.1-…` → `main` | – | Brief `docs/briefs/R.1.md` (#82): replicas spike, go/no-go for R.2 (#83) |
+| R.1 | review | `task/R.1-replicas-spike` → `main`, PR 106 | 1 | Worker: reads at 50 clients pass (4 replicas 0.32–0.61× PocketBase p50), 1-client reads faster, but a create through a replica costs +0.3–0.5 ms, so no-go if the 1-client clause covers writes. Opus round 1 judges the method and the go/no-go for R.2 |
 
 
 
