@@ -225,7 +225,7 @@ export async function runServeCommand(
         schemaLocked: schemaText !== undefined && mode === "prod",
         // development: the file follows the collection changes (D40)
         collectionsChanged:
-          sync !== undefined && mode === "dev" ? () => sync.writeBack() : undefined,
+          sync !== undefined && mode === "dev" ? (names) => sync.writeBack(names) : undefined,
       },
     );
     syncApp.current = appContext;

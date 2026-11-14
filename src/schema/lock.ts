@@ -5,4 +5,4 @@
 // settings update, answer 403 with this message (upstream's error body).
 
 export const schemaLockedMessage =
-  "The schema and settings are managed by the schema file (production mode, --mode prod): change iglo.schema.json and restart the server.";
+  "The schema and settings are managed by the schema file (production mode, --mode prod): change the collections in the schema file and restart the server. Change the settings with a JavaScript migration in pb_migrations (app.settings(), then app.save) and restart the server.";

@@ -163,6 +163,30 @@ describe("schema pull over a file", () => {
   });
 });
 
+// the file of the database with the users providers left out: the file the
+// setup of S.3 to S.5 had
+async function fileWithoutProviders(site: Site): Promise<string> {
+  const file = JSON.parse(await pulledFile(site)) as {
+    collections: Record<string, { oauth2?: Record<string, unknown> }>;
+  };
+  const users = file.collections.users;
+  if (users?.oauth2 !== undefined) {
+    delete users.oauth2.providers;
+  }
+  return JSON.stringify(file, null, 2);
+}
+
+describe("schema pull over a file that leaves the providers out", () => {
+  test("writes no providers and no note: the database keeps its providers", async () => {
+    const site = await createSiteWithProvider();
+    writeFileSync(site.schemaPath, await fileWithoutProviders(site));
+    const pulled = await run(["--dir", site.dataDir, "schema", "pull", "--out", site.schemaPath]);
+    expect(pulled.exitCode).toBe(0);
+    expect(providersOf(readFileSync(site.schemaPath, "utf8"))).toEqual([]);
+    expect(pulled.stderr).not.toContain(githubVariable);
+  });
+});
+
 describe("schema plan", () => {
   test("a variable that is not set fails the plan, and the message names it", async () => {
     const site = await createSiteWithProvider();
@@ -321,6 +345,37 @@ describe("sign-in with a provider from references", () => {
 });
 
 describe("development write-back", () => {
+  test("an unrelated dashboard edit leaves a file without providers without them, and the next start succeeds", async () => {
+    const site = await createSiteWithProvider();
+    writeFileSync(site.schemaPath, await fileWithoutProviders(site));
+    // no variable is set: the file needs none
+    const server = await startServer(["--schema", site.schemaPath], site.dataDir);
+    try {
+      const token = await login(server.url);
+      const created = await api(server.url, token, "POST", "/api/collections", {
+        name: "notes",
+        type: "base",
+        fields: [{ name: "body", type: "text" }],
+      });
+      expect(created.status).toBe(200);
+      const written = readFileSync(site.schemaPath, "utf8");
+      expect(written).toContain('"notes"');
+      expect(providersOf(written)).toEqual([]);
+      expect(written).not.toContain(githubVariable);
+    } finally {
+      const stopped = await server.stop();
+      expect(stopped.stderr).not.toContain("was not applied");
+    }
+
+    // the next start applies the file, and the database keeps its provider
+    const again = await startServer(["--schema", site.schemaPath], site.dataDir);
+    await again.stop();
+    const pulled = await run(["--dir", site.dataDir, "schema", "pull"]);
+    expect(providersOf(pulled.stdout)).toEqual([
+      { name: "github", clientId: "gh-client", clientSecret: { env: githubVariable } },
+    ]);
+  });
+
   test("a provider added in the dashboard is written with a generated reference, never its secret", async () => {
     const site = await createSiteWithProvider();
     const pulled = await run(["--dir", site.dataDir, "schema", "pull"]);

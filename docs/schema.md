@@ -269,7 +269,7 @@ The file says what the schema is. A migration changes the data, and only the dat
 
 Migration files are in `migrations/`, next to the schema file, or in the directory that `--schemaMigrationsDir` names (for `serve --schema`, `schema plan` and `schema types --schema`). A relative path is taken from the directory you run the command in.
 
-A file is named `<digits>_<name>.ts`, for example `20261113120000_rename_writer.ts`. The name is digits, an underscore, then lowercase letters, digits, `_` or `-`. Use a timestamp (`YYYYMMDDHHMMSS`), so the files run in the order they were written: the migrations run in file name order, and mixed widths of number do not sort. A file whose name does not fit, or that does not load, stops the start with the file's name.
+A file is named `<digits>_<name>.ts`, for example `20261113120000_rename_writer.ts`. The name is digits, an underscore, then lowercase letters, digits, `_` or `-`. Use a timestamp (`YYYYMMDDHHMMSS`), so the files run in the order they were written: the migrations run in file name order, and mixed widths of number do not sort. A file whose name does not fit, or that does not load, stops the start with the file's name. A migration is loaded from a bundle of its own text and the files it imports, so an edit is what runs, and a value import from the types file (`Collections`, for example) resolves.
 
 Each file default-exports an object that `satisfies Migration`. `Migration` comes from the types file that `schema types` writes, so the record helpers are typed:
 
@@ -454,20 +454,20 @@ With the official `pocketbase` package, which keeps the same API, pass the recor
 `--mode dev` is the default with `--schema`. The file and the database follow each other while the server runs:
 
 - **From the dashboard or the API to the file.** A collection that you create, change, delete or import in the dashboard, or through the collections API, is written back to `iglo.schema.json` within a second, and to the `--types` file when you give one. The server does not apply its own write. Your comments are not in the file (JSON has none); the file keeps its `description` and `tsType` keys.
-- **From the file to the database.** When you save the file, or add a migration file to `migrations/` next to it, the server applies the change at once, with the steps of the start (see [Applying the file at startup](#applying-the-file-at-startup)) but without a backup, since you are developing on your own data. Saves that arrive in a burst are applied once, after a short pause. A file that does not apply changes nothing: the report is printed in the terminal, and the server keeps the old schema.
-- **Edits that are not applied.** If the file has an edit that the server has not applied yet (for example, a file that does not parse), a change made in the dashboard is not written to the file, and the terminal says so. Fix or apply the file first; a write-back would have replaced your edit.
+- **From the file to the database.** When you save the file, or add or change a migration file in `migrations/` next to it (the directory may be made after the start), the server applies the change at once, with the steps of the start (see [Applying the file at startup](#applying-the-file-at-startup)) but without a backup, since you are developing on your own data. Saves that arrive in a burst are applied once, after a short pause. Only a change of content counts: a touched file, or another file in those directories (an editor's swap file, a log), changes nothing. A file that does not apply changes nothing: the report is printed in the terminal once for that content, and the server keeps the old schema. A fix of a migration in place applies at once, without a restart.
+- **Edits that are not applied.** The file is the source of truth. If the file has an edit that the server has not applied yet (for example, a file that does not parse), a change made in the dashboard or through the API is not written to the file, and the terminal says that the dashboard change to the collection *will be replaced by the pending file edit*. When the edit applies, the file replaces the dashboard change, so make the change in the file, or revert the edit first.
 
 ### Production
 
 `--mode prod` applies the file at each start, as before, and then **locks** the schema and the settings:
 
-- collection create, update, delete and import, and `PATCH /api/settings`, answer `403` with the message "The schema and settings are managed by the schema file". Superusers get the `403` too;
+- collection create, update, delete and import, and `PATCH /api/settings`, answer `403` with the message "The schema and settings are managed by the schema file". The message says where each change is made: the collections in the file, the settings in a migration. Superusers get the `403` too;
 - records, users, files, backups (a restore too, which restarts the server and applies the file again), logs and everything else work as usual;
 - the dashboard's collection and settings screens are read-only and say why.
 
 Change the schema in the repository, and restart the server: the start applies it. Nothing watches the file in production.
 
-The settings (SMTP, S3, backups, rate limits and the rest) are locked as well, and the file does not hold them yet. Set them before the production server starts: change them on a development server with the same data directory, then start the production server on it.
+The settings (SMTP, S3, backups, rate limits and the rest) are locked as well, and the file does not hold them. They change through a JavaScript migration and a restart, as described in [Changing the settings](#changing-the-settings).
 
 #### Invalidating the tokens
 
@@ -482,6 +482,20 @@ migrate((app) => {
 ```
 
 For another auth collection, change the collection name. Applied migrations are recorded, so the file runs once.
+
+#### Changing the settings
+
+The settings are not in the schema file, so in production a settings change is a JavaScript migration in `pb_migrations` and a restart. The migration edits the settings and saves them. It runs once, at the next start, before the server answers requests:
+
+```js
+migrate((app) => {
+  const settings = app.settings();
+  settings.meta.appName = "My app";
+  app.save(settings);
+}, (app) => {});
+```
+
+Name the file with a timestamp, as for the tokens. The TypeScript migrations in `migrations/` cannot change the settings: their helpers reach records and collections only.
 
 ## OAuth2 providers
 
@@ -511,7 +525,7 @@ An auth collection's OAuth2 providers can be in the file, so its whole sign-in s
 - **The variables.** Set `USERS_GITHUB_CLIENT_SECRET` in the environment of the server (for example in its systemd unit, or with `docker run -e`). A variable that is not set, or is empty, fails `schema plan` and the start, and the message names it. The value is never printed, never written to the file, and never in a report or a log.
 - **Listing the providers.** A file that lists `providers` sets them at every apply, from the file and the environment. A file that leaves `providers` out keeps the providers the database has, as before.
 - **Changes.** `schema plan` names what changes without showing a value: `provider github: clientSecret changed` means the variable holds another secret than the server has.
-- **The dashboard.** In development a provider you add in the dashboard is written to the file with a generated reference, such as `USERS_GOOGLE_CLIENT_SECRET`, and the terminal lists the variables to set. `schema pull` writes the references the same way, and keeps the references the file already has.
+- **The dashboard and the file.** In development a provider you add in the dashboard is written to the file with a generated reference, such as `USERS_GOOGLE_CLIENT_SECRET`, and the terminal lists the variables to set; the references the file already has are kept. A file that does not list `providers` for the collection gets none from the dashboard: the database keeps its providers, and the start does not need their variables. `schema pull` follows the same rules, and a new file gets the generated references.
 
 ## Limitations
 

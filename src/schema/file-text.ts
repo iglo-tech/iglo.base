@@ -5,6 +5,13 @@
 // as references (src/schema/providers.ts), written over the existing file's
 // extras (its descriptions, tsType and provider references). `notes` name the
 // environment variables that must hold a secret; they never hold a value.
+//
+// Providers are written where there is no existing file (a plain pull makes
+// one with the references and notes), or where the existing file already lists
+// providers for that collection. An existing file that leaves them out gets
+// none: the database keeps its providers, and an apply of the file leaves them
+// alone (D40). Writing them would add references the file never had, and the
+// next start would then need their variables.
 
 import type { App } from "@/app/app";
 import { findAllCollections } from "@/collections/collection-query";
@@ -35,13 +42,15 @@ export function schemaFileText(
       continue;
     }
     const stored = collection.providers ?? [];
-    if (stored.length === 0) {
-      collection.providers = undefined;
-      continue;
-    }
     const prior = previous?.ok
       ? previous.schema.collections.find((c) => c.name === collection.name)?.providers
       : undefined;
+    // an existing file that does not list providers for the collection keeps them out
+    const listed = prior !== undefined && prior.length > 0;
+    if (stored.length === 0 || (existing !== undefined && !listed)) {
+      collection.providers = undefined;
+      continue;
+    }
     const form = providersFileForm(collection.name, stored, prior, (name) => app.getenv(name));
     collection.providers = form.providers;
     notes.push(...form.notes);

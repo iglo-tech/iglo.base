@@ -150,6 +150,7 @@ export USERS_GITHUB_CLIENT_SECRET='…'        # the OAuth2 secret that the sche
 - **Environment variables.** Each secret in the schema file is `{"env": "NAME"}`; set `NAME` in the environment of the process (systemd `Environment=` or `EnvironmentFile=`, `docker run -e`). The server reads the variables at each start. A variable that is not set stops the start, and its message names the variable. Keep the file of variables out of the repository.
 - **Checking before the start.** `schema plan --dir /srv/app/pb_data --schema /srv/app/iglo.schema.json` shows what the start would change, with the variables set, and exits with `1` when the file would not apply.
 - **Changing the schema.** Change the file in the repository, deploy it, and restart the server. A restart applies the file again. The dashboard shows the collections and the settings read-only.
+- **Changing the settings.** The file does not hold the settings. Change them with a JavaScript migration in `pb_migrations` (`app.settings()`, then `app.save`), deploy it, and restart the server; the migration runs once, at the start. See [Changing the settings](schema.md#changing-the-settings).
 - **Backups.** The start makes a backup before it applies a change (see [Backups before a schema apply](#backups-before-an-apply)).
 - **Tokens.** Invalidating the tokens of an auth collection is a JavaScript migration in production; see [Invalidating the tokens](schema.md#invalidating-the-tokens).
 

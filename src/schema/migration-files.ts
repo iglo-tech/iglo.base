@@ -5,16 +5,15 @@
 // schema file or in the directory --schemaMigrationsDir names. It default
 // exports an object that `satisfies Migration` (the generated types file's
 // Migration, `schema types`): declared renames, and an `up(tx)` that runs in
-// the apply transaction, synchronously. Bun imports the file; a file that does
-// not load, a name that does not fit, or an export of another shape fails the
-// load with the file's name.
+// the apply transaction, synchronously. Bun bundles the file (importMigration);
+// a file that does not load, a name that does not fit, or an export of another
+// shape fails the load with the file's name.
 //
 // The files run once: the apply records each one in `_migrations` as
 // `@schema/<file name>` (see apply.ts), a name no pb_migrations file produces.
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import type { MigrationTx } from "@/schema/migration-tx";
 
@@ -99,13 +98,29 @@ export async function loadSchemaMigrations(
   return migrations;
 }
 
+// The module of one migration file. Bun caches a module by its path and
+// ignores a query string on a file, so an edited file would load its old
+// version (a fix after a failed apply, in development). The file is bundled
+// with the files it imports, and the bundle is imported by its text: an edit
+// changes the text, so the edited file loads fresh. Type-only imports are
+// erased; a value import (the types file's Collections, for example) is bundled.
+async function importMigration(path: string): Promise<{ default?: unknown }> {
+  const built = await Bun.build({ entrypoints: [path], target: "bun", format: "esm" });
+  const output = built.outputs[0];
+  if (!built.success || output === undefined) {
+    throw new Error(built.logs.map((log) => String(log)).join("\n") || "the bundle failed");
+  }
+  return (await import(`data:text/javascript,${encodeURIComponent(await output.text())}`)) as {
+    default?: unknown;
+  };
+}
+
 // the default export of one file, checked: an object with an up function and
 // the declarations, and no other key (a misspelled key would do nothing)
 async function loadMigration(path: string, file: string): Promise<SchemaMigration> {
   let exported: unknown;
   try {
-    const mod = (await import(pathToFileURL(path).href)) as { default?: unknown };
-    exported = mod.default;
+    exported = (await importMigration(path)).default;
   } catch (err) {
     throw new MigrationFileError(
       `the migration file ${file} does not load: ${err instanceof Error ? err.message : String(err)}`,

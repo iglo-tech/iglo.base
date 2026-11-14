@@ -246,7 +246,7 @@ async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
       // other generic db error
       return e.badRequestError(`Failed to create collection. Raw error: \n${errorText(err)}`, null);
     }
-    e.app.collectionsChanged?.();
+    e.app.collectionsChanged?.([collection.name]);
 
     return e.json(200, collection);
   });
@@ -284,7 +284,7 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
       // other generic db error
       return e.badRequestError(`Failed to update collection. Raw error: \n${errorText(err)}`, null);
     }
-    e.app.collectionsChanged?.();
+    e.app.collectionsChanged?.([collection.name]);
 
     return e.json(200, collection);
   });
@@ -321,7 +321,7 @@ function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResu
 
       return e.badRequestError(msg, err);
     }
-    e.app.collectionsChanged?.();
+    e.app.collectionsChanged?.([collection.name]);
 
     return e.noContent(204);
   });

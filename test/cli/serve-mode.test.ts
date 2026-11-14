@@ -8,7 +8,7 @@
 
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { run, startServer, tempDir, type RunningServer } from "@test/support/executable";
@@ -48,6 +48,21 @@ function postsFile(fields: string[], extra: Record<string, unknown> = {}): objec
       },
     },
   };
+}
+
+// a TypeScript migration that creates one post, or throws (a failing apply)
+function seedMigration(title: string, fail = false): string {
+  const body = fail
+    ? `throw new Error("boom");`
+    : `tx.create("posts", { title: ${JSON.stringify(title)} });`;
+  return `export default {\n  up(tx) {\n    ${body}\n  },\n};\n`;
+}
+
+async function hasPost(url: string, token: string, title: string): Promise<boolean> {
+  const list = await api(url, token, "GET", "/api/collections/posts/records");
+  return ((list.json.items as { title: string }[] | undefined) ?? []).some(
+    (item) => item.title === title,
+  );
 }
 
 async function login(url: string): Promise<string> {
@@ -139,6 +154,7 @@ describe("production mode", () => {
       });
       expect(settings.status).toBe(403);
       expect(String(settings.json.message)).toContain("managed by the schema file");
+      expect(String(settings.json.message)).toContain("pb_migrations");
 
       // the reads and the records work as usual
       expect((await api(url, token, "GET", "/api/collections")).status).toBe(200);
@@ -305,6 +321,42 @@ describe("production mode", () => {
     expect(after.length).toBe(50);
   });
 
+  test("settings change through a JavaScript migration at the restart, under --mode prod --schema", async () => {
+    const site = await newSite();
+    // the whole schema, as schema pull writes it (users included)
+    const pulled = await run(["--dir", site.dataDir, "schema", "pull"]);
+    expect(pulled.exitCode).toBe(0);
+    writeFileSync(site.schemaPath, pulled.stdout);
+
+    // the first start: the settings are locked
+    const first = await startWith(site, ["--mode", "prod", "--schema", site.schemaPath]);
+    try {
+      const refused = await api(first.url, first.token, "PATCH", "/api/settings", {
+        meta: { appName: "Changed by a migration" },
+      });
+      expect(refused.status).toBe(403);
+    } finally {
+      await first.server.stop();
+    }
+
+    // the operator adds the migration, and restarts: it changes the settings once
+    const migrations = join(site.root, "pb_migrations");
+    mkdirSync(migrations);
+    writeFileSync(
+      join(migrations, "1700000000_app_name.js"),
+      `migrate((app) => {\n  const settings = app.settings();\n  settings.meta.appName = "Changed by a migration";\n  app.save(settings);\n}, (app) => {});\n`,
+    );
+    const second = await startWith(site, ["--mode", "prod", "--schema", site.schemaPath]);
+    try {
+      const settings = await api(second.url, second.token, "GET", "/api/settings");
+      expect((settings.json.meta as { appName: string }).appName).toBe("Changed by a migration");
+      const health = await api(second.url, second.token, "GET", "/api/health");
+      expect((health.json.data as Record<string, unknown>).schemaLocked).toBe(true);
+    } finally {
+      await second.server.stop();
+    }
+  });
+
   test("without --schema nothing is locked, in either mode", async () => {
     for (const mode of [undefined, "prod", "dev"]) {
       const site = await newSite();
@@ -432,6 +484,104 @@ describe("development mode", () => {
       });
     } finally {
       await server.stop();
+    }
+  });
+
+  test("a migrations directory made after the start is watched: its migration files apply", async () => {
+    const site = await newSite();
+    rmSync(site.migrationsDir, { recursive: true });
+    const { server, url, token } = await startWith(site, ["--schema", site.schemaPath]);
+    try {
+      mkdirSync(site.migrationsDir);
+      // the directory is seen, and the apply of the empty directory has run
+      await Bun.sleep(800);
+      writeFileSync(
+        join(site.migrationsDir, "20261114101500_seed.ts"),
+        seedMigration("from a new directory"),
+      );
+      await until(() => hasPost(url, token, "from a new directory"), 3000);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  test("unrelated changes in the schema and migrations directories do not repeat a failed apply's report", async () => {
+    const site = await newSite();
+    const { server } = await startWith(site, ["--schema", site.schemaPath]);
+    try {
+      writeFileSync(
+        join(site.migrationsDir, "20261114101500_seed.ts"),
+        seedMigration("never created", true),
+      );
+      await Bun.sleep(800);
+      for (let i = 0; i < 3; i++) {
+        writeFileSync(join(site.root, `editor-${i}.swp`), "swap");
+        writeFileSync(join(site.migrationsDir, `notes-${i}.md`), "notes");
+        await Bun.sleep(400);
+      }
+    } finally {
+      const stopped = await server.stop();
+      expect(stopped.stderr.match(/was not applied/g)?.length).toBe(1);
+    }
+  });
+
+  test("a failed migration fixed in place applies without a restart", async () => {
+    const site = await newSite();
+    const { server, url, token } = await startWith(site, ["--schema", site.schemaPath]);
+    const file = join(site.migrationsDir, "20261114101500_seed.ts");
+    try {
+      writeFileSync(file, seedMigration("fixed later", true));
+      await Bun.sleep(800);
+      expect(await hasPost(url, token, "fixed later")).toBe(false);
+      writeFileSync(file, seedMigration("fixed later"));
+      await until(() => hasPost(url, token, "fixed later"), 3000);
+    } finally {
+      const stopped = await server.stop();
+      expect(stopped.stderr).toContain("boom");
+    }
+  });
+
+  test("a dashboard change does not hide a failing migration: the next apply reports it again", async () => {
+    const site = await newSite();
+    const { server, url, token } = await startWith(site, ["--schema", site.schemaPath]);
+    try {
+      writeFileSync(
+        join(site.migrationsDir, "20261114101500_seed.ts"),
+        seedMigration("never created", true),
+      );
+      await Bun.sleep(800);
+      // the write-back of this change is the next apply: the migration is still failing
+      const created = await api(url, token, "POST", "/api/collections", {
+        name: "notes",
+        type: "base",
+      });
+      expect(created.status).toBe(200);
+      await Bun.sleep(800);
+    } finally {
+      const stopped = await server.stop();
+      expect(stopped.stderr.match(/was not applied/g)?.length).toBe(2);
+    }
+  });
+
+  test("a dashboard change made while a file edit is pending says that the pending edit replaces it", async () => {
+    const site = await newSite();
+    const { server, url, token } = await startWith(site, ["--schema", site.schemaPath]);
+    const pending = "{ this edit does not parse";
+    try {
+      writeFileSync(site.schemaPath, pending);
+      await Bun.sleep(800);
+      const created = await api(url, token, "POST", "/api/collections", {
+        name: "notes",
+        type: "base",
+      });
+      expect(created.status).toBe(200);
+      // the file is not written over: the edit stays until it is applied or reverted
+      expect(readFileSync(site.schemaPath, "utf8")).toBe(pending);
+    } finally {
+      const stopped = await server.stop();
+      expect(stopped.stderr).toContain(
+        "the dashboard change to notes will be replaced by the pending file edit",
+      );
     }
   });
 });

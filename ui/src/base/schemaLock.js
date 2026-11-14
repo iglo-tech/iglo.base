@@ -9,7 +9,7 @@
 
 const noticeId = "iglo-schema-lock-notice";
 const noticeText =
-  "Collections and settings are managed by the schema file (production mode). Change iglo.schema.json and restart the server.";
+  "Collections and settings are managed by the schema file (production mode). Change the collections in the schema file and restart the server. Change the settings with a pb_migrations migration (app.settings(), then app.save) and restart the server.";
 
 // the buttons of the settings screens that write settings (text, trimmed)
 const settingsButtons = ["Review", "Clear"];
