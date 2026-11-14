@@ -14,10 +14,11 @@
 
 import type { App } from "@/app/app";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import { newExp } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { deleteRecordSync, saveRecordSync } from "@/records/record-save";
-import { findRecordById, findRecordsByIds } from "@/records/record-query";
-import { findRecordsByFilter } from "@/records/record-query-filter";
+import { findRecordById, recordQuery, recordsTarget } from "@/records/record-query";
+import { findRecordIdsByFilter, findRecordsByFilter } from "@/records/record-query-filter";
 import { newRecord, type Record as RecordModel } from "@/records/record-model";
 
 // the record of a helper: the record as a superuser's API read returns it, so
@@ -69,29 +70,29 @@ function refuseUploads(data: Record<string, unknown>): void {
 // the records that records() reads at a time
 const recordsPage = 500;
 
-// The ids of the records that match a query, in the query's order. They are
-// read a page at a time, and only the ids are kept, so the matches are fixed
-// before the migration's first record is yielded. With a sort, the id comes
-// last: the order is then total, so the pages do not overlap or skip rows. A
-// random sort differs on every query, so its matches are read in one query.
+// The ids of the records that match a query, in the query's order. One query
+// reads only the ids, so the matches are fixed before the first record is
+// yielded, and the records are then read a page at a time (records()). With a
+// sort, the id comes last, so rows with equal sort values keep one order on
+// every run. A random sort gives a new order on each query, so it is used as
+// it is.
 function matchingIds(app: App, collection: string, query: MigrationQuery): string[] {
-  const filter = query.filter ?? "";
-  const params = query.params ?? {};
   const sort = query.sort ?? "";
-  if (sort.includes("@random")) {
-    return findRecordsByFilter(app, collection, filter, sort, 0, 0, params).map((r) => r.id);
-  }
-  const order = sort === "" ? "" : `${sort},id`;
-  const ids: string[] = [];
-  for (let offset = 0; ; offset += recordsPage) {
-    const page = findRecordsByFilter(app, collection, filter, order, recordsPage, offset, params);
-    for (const record of page) {
-      ids.push(record.id);
-    }
-    if (page.length < recordsPage) {
-      return ids;
-    }
-  }
+  const order = sort === "" || sort.includes("@random") ? sort : `${sort},id`;
+  return findRecordIdsByFilter(app, collection, query.filter ?? "", order, query.params ?? {});
+}
+
+// The records with these ids, in one query. The ids are one bound JSON array,
+// read by json_each, and not a bound parameter each: binding 500 parameters
+// costs several times more than reading the records they name.
+function recordsOfIds(app: App, collection: string, ids: string[]): RecordModel[] {
+  return recordQuery(app, collection)
+    .andWhere(
+      newExp(`[[${collection}.id]] IN (SELECT value FROM json_each({:ids}))`, {
+        ids: JSON.stringify(ids),
+      }),
+    )
+    .all<RecordModel>(recordsTarget);
 }
 
 // The helpers of a migration on the transaction's App.
@@ -105,9 +106,10 @@ export function newMigrationHelpers(app: App): MigrationHelpers {
       const ids = matchingIds(app, collection, query);
       for (let start = 0; start < ids.length; start += recordsPage) {
         const page = ids.slice(start, start + recordsPage);
-        const byId = new Map(
-          findRecordsByIds(app, collection, page).map((record) => [record.id, record]),
-        );
+        const byId = new Map<string, RecordModel>();
+        for (const record of recordsOfIds(app, collection, page)) {
+          byId.set(record.id, record);
+        }
         for (const id of page) {
           const record = byId.get(id);
           if (record !== undefined) {

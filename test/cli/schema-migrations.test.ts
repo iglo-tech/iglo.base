@@ -1968,4 +1968,54 @@ describe("S.8 review round 1: the order of views and removals, and records() pag
       },
     );
   });
+
+  test("a migration iterates a sorted set of more than one page, each record once, in the sort's order", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" }, grp: { type: "number" } }) });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    const total = 1200;
+    for (let start = 0; start < total; start += 100) {
+      const created = await Promise.all(
+        Array.from({ length: 100 }, (_, i) =>
+          api(server.url, token, "POST", "/api/collections/posts/records", {
+            title: `p${start + i}`,
+            grp: (start + i) % 3,
+          }),
+        ),
+      );
+      expect(created.every((result) => result.status === 200)).toBe(true);
+    }
+    await server.stop();
+
+    // three values of grp: ties are in every page, so the order must be total
+    writeMigration(
+      site,
+      "20261114120600_sorted.ts",
+      migrationSource(`  up(tx) {
+    const seen = new Set<string>();
+    let last = Infinity;
+    let ordered = true;
+    for (const post of tx.records("posts", { sort: "-grp" })) {
+      const grp = Number(post.grp);
+      if (grp > last) {
+        ordered = false;
+      }
+      last = grp;
+      seen.add(String(post.id));
+    }
+    tx.create("posts", { title: "sorted " + seen.size + " " + ordered, grp: 0 });
+  },`),
+    );
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    const found = await api(
+      server.url,
+      token,
+      "GET",
+      `/api/collections/posts/records?perPage=1&filter=${encodeURIComponent('title = "sorted 1200 true"')}`,
+    );
+    expect(found.json.totalItems).toBe(1);
+    await server.stop();
+  });
 });
