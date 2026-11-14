@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.5 | review | `task/S.5-schema-migrations` → `develop`, PR 103 | 2 | Round 1 fixed in `f65e23b` (check and test:reference pass; rename of an indexed field 474 ms vs 264 ms without migrations on 10,000 rows). Lead accepted: views recreated on any rename instead of saved in step 2. Opus round 2 reviews the fixes only |
+| S.5 | fixer | `task/S.5-schema-migrations` → `develop`, PR 103 | 2 | Round 2: 4 findings (typecheck failed on the head the fixer reported green; step 2 missed identityFields unique index, mfa.rule and system-collection indexes; view-on-view rename; plan noise). Fixer applies the reviewer's fixes |
 
 
 
