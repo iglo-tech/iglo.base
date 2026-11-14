@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.8 | review | `task/S.8-schema-followups` → `main`, PR 108 | 1 | check and test:reference exit 0. Views now rebuilt before TS migrations and step 7 moved before collection removal (changes D40 order); `records()` pages by id. Opus round 1 |
+| S.8 | fixer | `task/S.8-schema-followups` → `main`, PR 108 | 1 | Round 1: 4 findings (view over two changed collections and removed-view-plus-new-view-over-view regress vs main; `records()` 10–20× slower via OFFSET pages; D40 order and a stale Limitations bullet). Fixer applies the reviewer's fixes |
 
 
 
