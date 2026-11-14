@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.8 | worker | `task/S.8-…` → `main` | – | Brief `docs/briefs/S.8.md`: eight S.2–S.7 backlog items, server 1.2.1 |
+| S.8 | review | `task/S.8-schema-followups` → `main`, PR 108 | 1 | check and test:reference exit 0. Views now rebuilt before TS migrations and step 7 moved before collection removal (changes D40 order); `records()` pages by id. Opus round 1 |
 
 
 
