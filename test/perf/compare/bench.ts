@@ -19,13 +19,24 @@
 // `bun --cpu-prof --cpu-prof-dir <dir>` and is stopped with SIGTERM after each
 // workload group so a .cpuprofile is written per run.
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 import {
   apiClient,
+  guardMemory,
   hostFacts,
+  memAvailableMiB,
   percentile,
   procStats,
   repoRoot,
@@ -33,6 +44,7 @@ import {
   upsertSuperuser,
   type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import { startCluster } from "@/../scripts/spikes/R.1/cluster";
 
 import { freePort } from "@test/support/executable";
 
@@ -205,6 +217,8 @@ interface Result {
   p99: number;
   errors: number;
   clientCpuMs: number;
+  // R.1: CPU time of each server process (primary first) during the measured run
+  serverCpuMs?: number[];
 }
 
 async function run(url: string, w: Workload, clients: number, secs: number): Promise<Result> {
@@ -321,6 +335,48 @@ async function startUp(
   return { server, startMs: performance.now() - t0 };
 }
 
+// R.1: "iglo-base" is today's server (N = 0); "iglo-r<N>" is the primary with N read-only replicas
+function replicasOf(target: string): number | undefined {
+  if (target === "iglo-base") {
+    return 0;
+  }
+  const m = /^iglo-r(\d+)$/.exec(target);
+  return m ? Number(m[1]) : undefined;
+}
+
+// CPU time (ms) of a process, utime + stime from /proc (fields 14 and 15; CLK_TCK is 100)
+function cpuMs(pid: number): number {
+  const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+  const f = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+  return (Number(f[11]) + Number(f[12])) * 10;
+}
+
+function loadavg(): string {
+  return readFileSync("/proc/loadavg", "utf8").split(" ").slice(0, 3).join(" ");
+}
+
+// R.1: the primary and N replicas; the public port is shared (SO_REUSEPORT)
+async function startReplicated(
+  dataDir: string,
+  root: string,
+  replicas: number,
+): Promise<{ server: Server; startMs: number; pids: number[] }> {
+  const t0 = performance.now();
+  const cluster = await startCluster({ exe: values.exe!, dataDir, cwd: root, replicas });
+  const startMs = performance.now() - t0;
+  return {
+    startMs,
+    pids: cluster.pids,
+    server: {
+      url: cluster.url,
+      port: Number(new URL(cluster.url).port),
+      pid: cluster.pids[0]!,
+      output: () => cluster.primaryLog(),
+      stop: () => cluster.stop(),
+    },
+  };
+}
+
 const fmt = (n: number | null, d = 2): string => (n === null ? "-" : n.toFixed(d));
 
 const median = (xs: number[]): number => {
@@ -330,7 +386,12 @@ const median = (xs: number[]): number => {
 
 mkdirSync(join(repoRoot, "dist"), { recursive: true });
 const root = mkdtempSync(join(repoRoot, "dist", "compare-"));
-const out: Record<string, unknown> = { host: hostFacts(), seconds, repeat };
+const out: Record<string, unknown> = {
+  host: hostFacts(),
+  cpus: availableParallelism(),
+  seconds,
+  repeat,
+};
 try {
   const base = values.keep ?? join(root, "base", "pb_data");
   if (!existsSync(join(base, "data.db"))) {
@@ -342,13 +403,36 @@ try {
   const runs: Record<string, Record<string, Result[]>> = {};
   const startup: Record<string, number[]> = {};
   const idle: Record<string, number[]> = {};
+  // R.1: RSS of every server process (primary first) idle and after each repetition,
+  // host load and MemAvailable before and after each configuration, and skipped configurations
+  const rss: Record<string, { idle: number[]; after: number[] }[]> = {};
+  const load: Record<string, { before: string; after: string; memBeforeMiB: number }[]> = {};
+  const skipped: string[] = [];
   for (let rep = 0; rep < repeat; rep++) {
     for (const target of targets) {
+      const replicas = replicasOf(target);
+      const mem = memAvailableMiB();
+      if (replicas === 4 && mem < 3 * 1024) {
+        skipped.push(`${target} rep ${rep}: MemAvailable ${mem.toFixed(0)} MiB < 3 GiB`);
+        console.error(`SKIPPED ${target} rep ${rep}: MemAvailable ${mem.toFixed(0)} MiB < 3 GiB`);
+        continue;
+      }
+      guardMemory(2048);
+      const loadBefore = loadavg();
       const dataDir = join(root, `${target}-${rep}`, "pb_data");
       mkdirSync(join(root, `${target}-${rep}`), { recursive: true });
       cpSync(base, dataDir, { recursive: true });
-      const { server, startMs } =
-        target === "upstream" ? await startUp(dataDir, root) : await startIglo(dataDir, root);
+      let started: { server: Server; startMs: number; pids: number[] };
+      if (target === "upstream") {
+        const s = await startUp(dataDir, root);
+        started = { ...s, pids: [s.server.pid] };
+      } else if (replicas === 0) {
+        const s = await startIglo(dataDir, root);
+        started = { ...s, pids: [s.server.pid] };
+      } else {
+        started = await startReplicated(dataDir, root, replicas!);
+      }
+      const { server, startMs, pids } = started;
       try {
         (startup[target] ??= []).push(startMs);
         if (values["no-logs"]) {
@@ -358,18 +442,31 @@ try {
         }
         // the idle time would show up in a CPU profile as one function's self time
         await Bun.sleep(values["cpu-prof"] ? 0 : 3000);
-        (idle[target] ??= []).push(procStats(server.pid).rssMiB);
+        const rssIdle = pids.map((pid) => procStats(pid).rssMiB);
+        (idle[target] ??= []).push(rssIdle[0]!);
+        const rssEntry = { idle: rssIdle, after: [] as number[] };
+        (rss[target] ??= []).push(rssEntry);
         for (const w of selected) {
           for (const c of clientCounts) {
             await run(server.url, w, c, warmup);
+            const cpu0 = pids.map(cpuMs);
             const r = await run(server.url, w, c, seconds);
+            r.serverCpuMs = pids.map((pid, i) => cpuMs(pid) - cpu0[i]!);
             ((runs[target] ??= {})[`${w.key}@${c}`] ??= []).push(r);
+            const cores = r.serverCpuMs.map((ms) => (ms / (seconds * 1000)).toFixed(2)).join("/");
             console.error(
-              `${rep} ${target} ${w.key}@${c}: ${r.rps.toFixed(0)} rps p50 ${r.p50.toFixed(2)} p99 ${r.p99.toFixed(2)} err ${r.errors} clientCPU ${r.clientCpuMs.toFixed(0)}ms`,
+              `${rep} ${target} ${w.key}@${c}: ${r.rps.toFixed(0)} rps p50 ${r.p50.toFixed(2)} p99 ${r.p99.toFixed(2)} err ${r.errors} clientCPU ${r.clientCpuMs.toFixed(0)}ms serverCores ${cores}`,
             );
           }
         }
-        (idle[`${target}-after`] ??= []).push(procStats(server.pid).rssMiB);
+        const rssAfter = pids.map((pid) => procStats(pid).rssMiB);
+        rssEntry.after = rssAfter;
+        (idle[`${target}-after`] ??= []).push(rssAfter[0]!);
+        (load[target] ??= []).push({
+          before: loadBefore,
+          after: loadavg(),
+          memBeforeMiB: mem,
+        });
       } finally {
         await server.stop();
         rmSync(join(root, `${target}-${rep}`), { recursive: true, force: true });
@@ -401,6 +498,9 @@ try {
   }
   console.log(table.join("\n"));
   for (const t of targets) {
+    if (!startup[t]) {
+      continue;
+    }
     console.log(
       `\n${t}: startup ${startup[t]!.map((x) => x.toFixed(0)).join("/")} ms (median ${median(startup[t]!).toFixed(0)}), idle RSS ${idle[t]!.map((x) => x.toFixed(1)).join("/")} MiB (median ${median(idle[t]!).toFixed(1)}), RSS after the run ${idle[`${t}-after`]!.map((x) => x.toFixed(0)).join("/")} MiB`,
     );
@@ -408,6 +508,9 @@ try {
   out.runs = runs;
   out.startup = startup;
   out.idle = idle;
+  out.rss = rss;
+  out.load = load;
+  out.skipped = skipped;
   if (values.json) {
     writeFileSync(values.json, JSON.stringify(out, null, 1));
   }
