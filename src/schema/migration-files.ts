@@ -118,7 +118,11 @@ async function importMigration(path: string): Promise<{ default?: unknown }> {
   if (!built.success || output === undefined) {
     throw new Error(buildFailure(built.logs, path));
   }
-  return (await import(`data:text/javascript,${encodeURIComponent(await output.text())}`)) as {
+  // base64, not URI-encoded: a bundle starts with a `// <file>.ts` comment, and Bun
+  // picks the loader from the `.ts` in a URI-encoded specifier (from source, the
+  // default export then comes back as the URL string). base64 has no `.`.
+  const text = await output.text();
+  return (await import(`data:text/javascript;base64,${Buffer.from(text).toString("base64")}`)) as {
     default?: unknown;
   };
 }
