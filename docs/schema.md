@@ -293,7 +293,7 @@ The object has three keys and no others: `renames`, `renameCollections` and `up`
 ### `up(tx)`
 
 - `up` runs in the apply transaction, after the fields and collections are added and before the file's changes narrow them (constraints, rules, indexes and removals). It is synchronous: an `up` that returns a promise, or that throws, fails the apply, and the transaction rolls back, so the database is as it was. The error names the file.
-- `tx` has these helpers. They read and write the records through the same validation the API applies to the record being saved.
+- `tx` has these helpers. They read and write the records through the same validation the API applies to the record being saved. A collection is given by its name or by its id.
   - Records come back as a superuser's API read returns them: every field, the hidden ones and the email included. A password and a token key are never in them.
   - `records(collection, { filter, sort, params })`: an iterator over the matching records. The matches are fixed before the first one is returned, whatever the migration writes meanwhile, and the records are read 500 at a time. A record that the migration changes or deletes before its page is read shows the change, or is skipped.
   - `findFirst(collection, query)` and `findById(collection, id)`: the record, or `null`.

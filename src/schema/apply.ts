@@ -41,10 +41,10 @@
 //	     each save, before the next one can drop a column they read
 //	  7. the SQL views of the affected view collections are created again
 //	     (step 5 made them for the migrations, and step 5a dropped them); then
-//	     the removed views, and then the removed collections, each after the
-//	     collections that relate to it. The views come first: deleting a
-//	     collection saves every view again to check it, and a view that is
-//	     missing makes that check fail
+//	     the removed views, each before the removed views it reads, and then
+//	     the removed collections, each after the collections that relate to
+//	     it. The views come first: deleting a collection saves every view
+//	     again to check it, and a view that is missing makes that check fail
 //	  8. the record check, for the fields the apply added or changed
 //	  9. commit; or roll back, so that the database is unchanged
 //
@@ -64,6 +64,7 @@ import {
   reloadCachedCollections,
 } from "@/collections/collection-query";
 import { deleteCollection, saveCollection } from "@/collections/collection-save";
+import { saveView as saveViewSQL } from "@/collections/view";
 import type { Databases } from "@/db/base";
 import { deleteView } from "@/db/table";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";
@@ -448,18 +449,37 @@ function applyInTransaction(
   // 6: narrow. A save re-saves the views whose fields it changed, and SQLite
   // refuses to drop a column that a view reads, so the views of this apply and
   // the removed views are dropped again after each save
-  const removedViews = changes.collections
-    .filter((change) => change.kind === "removed" && change.type === "view")
-    .map((change) => change.name);
+  const removedViews = removedViewsInOrder(
+    changes.collections
+      .filter((change) => change.kind === "removed" && change.type === "view")
+      .map((change) => change.name),
+    currentByName,
+  );
   narrow(app, desired, changeByName, [...views.map((view) => view.name), ...removedViews]);
 
   // 7: the views, each after the views its query reads; then the removed views,
-  // then the removed collections in dependency order. The views come first:
-  // deleting a collection saves every view again to check it (upstream's
-  // integrity check), and a view that is not in the database makes that check
-  // fail
+  // each before the views it reads; then the removed collections in dependency
+  // order. The views come first: deleting a collection saves every view again
+  // to check it (upstream's integrity check), and a view that is not in the
+  // database makes that check fail
   for (const view of views) {
     saveView(app, view);
+  }
+  // A removed view that another removed view reads has its SQL dropped by now,
+  // and the delete of its reader saves that view again to check it. So each
+  // such view is created again first, innermost first (removedViews lists the
+  // readers first, so the reverse is the order to create them in).
+  const readByRemoved = removedViews.filter((name) =>
+    removedViews.some(
+      (other) => other !== name && mentions(currentByName.get(other)?.query ?? "", name, other),
+    ),
+  );
+  for (const name of readByRemoved.toReversed()) {
+    try {
+      saveViewSQL(app, name, storedModel(app, name).viewQuery);
+    } catch (err) {
+      throw new SaveFailed(name, err);
+    }
   }
   for (const name of removedViews) {
     removeCollection(app, name);
@@ -1054,6 +1074,27 @@ function orderedViews(desired: SchemaDescription, rebuild: Set<string>): SchemaC
     );
     // a cycle of views is left to the save to refuse
     const [next] = pending.splice(ready < 0 ? 0 : ready, 1) as [SchemaCollection];
+    ordered.push(next);
+  }
+  return ordered;
+}
+
+// the removed views, each before the views its stored query reads: a view goes
+// once no other removed view reads it. Deleting a view saves every view again
+// to check it (upstream's integrity check), so the view it reads must still
+// exist when the reader goes.
+function removedViewsInOrder(names: readonly string[], stored: StoredCollections): string[] {
+  const pending = [...names];
+  const ordered: string[] = [];
+  while (pending.length > 0) {
+    const ready = pending.findIndex(
+      (name) =>
+        !pending.some(
+          (other) => other !== name && mentions(stored.get(other)?.query ?? "", name, other),
+        ),
+    );
+    // a cycle of views is left to the delete to refuse
+    const [next] = pending.splice(ready < 0 ? 0 : ready, 1) as [string];
     ordered.push(next);
   }
   return ordered;

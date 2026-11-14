@@ -13,6 +13,7 @@
 // the database, and the apply holds a write transaction.
 
 import type { App } from "@/app/app";
+import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { newExp } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
@@ -76,7 +77,7 @@ const recordsPage = 500;
 // sort, the id comes last, so rows with equal sort values keep one order on
 // every run. A random sort gives a new order on each query, so it is used as
 // it is.
-function matchingIds(app: App, collection: string, query: MigrationQuery): string[] {
+function matchingIds(app: App, collection: Collection, query: MigrationQuery): string[] {
   const sort = query.sort ?? "";
   const order = sort === "" || sort.includes("@random") ? sort : `${sort},id`;
   return findRecordIdsByFilter(app, collection, query.filter ?? "", order, query.params ?? {});
@@ -84,11 +85,12 @@ function matchingIds(app: App, collection: string, query: MigrationQuery): strin
 
 // The records with these ids, in one query. The ids are one bound JSON array,
 // read by json_each, and not a bound parameter each: binding 500 parameters
-// costs several times more than reading the records they name.
-function recordsOfIds(app: App, collection: string, ids: string[]): RecordModel[] {
+// costs several times more than reading the records they name. The column is
+// named by the collection's table name, so the migration may give its id too.
+function recordsOfIds(app: App, collection: Collection, ids: string[]): RecordModel[] {
   return recordQuery(app, collection)
     .andWhere(
-      newExp(`[[${collection}.id]] IN (SELECT value FROM json_each({:ids}))`, {
+      newExp(`[[${collection.name}.id]] IN (SELECT value FROM json_each({:ids}))`, {
         ids: JSON.stringify(ids),
       }),
     )
@@ -103,11 +105,13 @@ export function newMigrationHelpers(app: App): MigrationHelpers {
       // made while the migration iterates does not change the set or its order.
       // A record that the migration changes or deletes before the page holding
       // it is read shows the change, or is skipped
-      const ids = matchingIds(app, collection, query);
+      // the collection is resolved once, by name or by id, as the other helpers do
+      const model = findCollectionByNameOrId(app, collection);
+      const ids = matchingIds(app, model, query);
       for (let start = 0; start < ids.length; start += recordsPage) {
         const page = ids.slice(start, start + recordsPage);
         const byId = new Map<string, RecordModel>();
-        for (const record of recordsOfIds(app, collection, page)) {
+        for (const record of recordsOfIds(app, model, page)) {
           byId.set(record.id, record);
         }
         for (const id of page) {

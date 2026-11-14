@@ -2054,3 +2054,90 @@ describe("S.8 review round 1: the order of views and removals, and records() pag
     await server.stop();
   });
 });
+
+const view = (query: string) => ({ type: "view", rules: { list: "", view: "" }, query });
+
+describe("S.8 review round 2: a collection id in records(), and the order of view removals", () => {
+  test("a migration reads records by the collection's id, as its other helpers do", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" }, grp: { type: "number" } }) });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    for (let i = 0; i < 6; i += 1) {
+      const created = await api(server.url, token, "POST", "/api/collections/posts/records", {
+        title: `p${i}`,
+        grp: i % 3,
+      });
+      expect(created.status).toBe(200);
+    }
+    const id = String((await collectionOf(server.url, token, "posts")).id);
+    await server.stop();
+
+    writeMigration(
+      site,
+      "20261114120700_by_id.ts",
+      migrationSource(`  up(tx) {
+    const seen = [...tx.records(${JSON.stringify(id)}, { filter: "grp = 2", sort: "-title" })];
+    tx.create("posts", { title: "by id " + seen.length, grp: 0 });
+  },`),
+    );
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    const found = await api(
+      server.url,
+      token,
+      "GET",
+      `/api/collections/posts/records?perPage=1&filter=${encodeURIComponent('title = "by id 2"')}`,
+    );
+    expect(found.json.totalItems).toBe(1);
+    await server.stop();
+  });
+
+  // the inner view's name sorts first, so a removal in name order drops it
+  // while the outer view still reads it
+  test("removing a view together with the view that reads it applies, when the inner view's name sorts first", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" } }),
+        va: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, title FROM posts" },
+        vb: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, title FROM va" },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", { title: "a" });
+      },
+      { posts: posts({ title: { type: "text" } }) },
+      [],
+      async (url, token) => {
+        expect((await api(url, token, "GET", "/api/collections/va")).status).toBe(404);
+        expect((await api(url, token, "GET", "/api/collections/vb")).status).toBe(404);
+        expect(await records(url, token, "posts")).toEqual([
+          expect.objectContaining({ title: "a" }),
+        ]);
+      },
+    );
+  });
+
+  test("removing a chain of three views applies, whatever the order of their names", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" } }),
+        a_base: view("SELECT id, title FROM posts"),
+        m_mid: view("SELECT id, title FROM a_base"),
+        z_top: view("SELECT id, title FROM m_mid"),
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", { title: "a" });
+      },
+      { posts: posts({ title: { type: "text" } }) },
+      [],
+      async (url, token) => {
+        for (const name of ["a_base", "m_mid", "z_top"]) {
+          expect((await api(url, token, "GET", `/api/collections/${name}`)).status).toBe(404);
+        }
+        expect(await records(url, token, "posts")).toEqual([
+          expect.objectContaining({ title: "a" }),
+        ]);
+      },
+    );
+  });
+});
