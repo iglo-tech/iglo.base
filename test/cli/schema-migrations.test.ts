@@ -1969,6 +1969,41 @@ describe("S.8 review round 1: the order of views and removals, and records() pag
     );
   });
 
+  test("a rule that names a view field the same apply changes is checked against the file's view", async () => {
+    const site = await newSite();
+    writeSchema(site, {
+      posts: posts({ title: { type: "text" } }),
+      notes: posts({ body: { type: "text" } }),
+      v: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, title FROM posts" },
+    });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    expect(
+      (await api(server.url, token, "POST", "/api/collections/posts/records", { title: "x" }))
+        .status,
+    ).toBe(200);
+    await server.stop();
+
+    writeSchema(site, {
+      posts: posts({ title: { type: "text" } }),
+      notes: posts({ body: { type: "text" } }, { list: "@collection.v.heading != ''", view: "" }),
+      v: {
+        type: "view",
+        rules: { list: "", view: "" },
+        query: "SELECT id, title AS heading FROM posts",
+      },
+    });
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    expect((await rulesOf(server.url, token, "notes")).listRule).toBe(
+      "@collection.v.heading != ''",
+    );
+    expect(await records(server.url, token, "v")).toEqual([
+      expect.objectContaining({ heading: "x" }),
+    ]);
+    await server.stop();
+  });
+
   test("a migration iterates a sorted set of more than one page, each record once, in the sort's order", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, grp: { type: "number" } }) });
