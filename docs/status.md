@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.6 | review | `task/S.6-schema-modes` → `develop`, PR 104 | 3 (final) | Round 2 fixed through `65b8d85` (check, reference, browser exit 0; fixer stalled once and was restarted by the lead). Opus round 3 reviews the fixes in source and the compiled executable; then the lead decides |
+| S.6 | fixer | `task/S.6-schema-modes` → `develop`, PR 104 | 3 (final) | Round 3: round-2 fixes verified in source and compiled; one blocker: TS migrations do not load when run from source (URI data URL read as `.ts`). Lead decision (three-round rule): base64 data URL plus a from-source test; the lead verifies, no further round |
 
 
 
