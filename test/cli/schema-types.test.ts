@@ -129,7 +129,7 @@ describe("schema types", () => {
     expect(text).toContain("meta: { readonly k: string } | null;");
     expect(text).toContain("free?: unknown | null;");
     expect(text).toContain("place: { lon: number; lat: number };");
-    expect(text).toContain("cover?: File | Blob;");
+    expect(text).toContain('cover?: File | Blob | "" | null;');
     expect(text).toContain('"views+"?: number;');
     expect(text).toContain('"gallery-"?: string | string[];');
     expect(text).toContain("/** Images. */");
@@ -167,7 +167,7 @@ describe("schema types", () => {
       "gallery?: File | Blob | string | (File | Blob | string)[] | null;",
     );
     expect(declarationOf(text, "export type PostsCreate = {")).toContain(
-      "gallery?: File | Blob | (File | Blob)[];",
+      'gallery?: File | Blob | (File | Blob)[] | "" | null;',
     );
   });
 
@@ -365,6 +365,7 @@ describe("schema types", () => {
             pair: { type: "json", required: true, tsType: "[number, number]" },
             cover: { type: "file", maxSelect: 1 },
             gallery: { type: "file", maxSelect: 9 },
+            badge: { type: "file", maxSelect: 1, required: true },
             ref: { type: "relation", collection: "other", maxSelect: 9 },
           },
         },
@@ -389,6 +390,11 @@ describe("schema types", () => {
     expect(text).toContain(`'say "hi"'`);
     // a function type binds looser than a union, so it is parenthesized before null
     expect(text).toContain("fn: (() => void) | null;");
+    // a required file is uploaded on create; an optional one also takes "" and null, which upstream ignores
+    expect(text).toContain("badge: File | Blob;");
+    // the json line is kept by Prettier's ignore comment, the one oxfmt also honours
+    expect(text).toContain("// prettier-ignore");
+    expect(text).not.toContain("oxfmt-ignore");
     expect(await formatCheck(out)).toBe(0);
   });
 

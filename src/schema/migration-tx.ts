@@ -16,7 +16,7 @@ import type { App } from "@/app/app";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { deleteRecordSync, saveRecordSync } from "@/records/record-save";
-import { findRecordById } from "@/records/record-query";
+import { findRecordById, findRecordsByIds } from "@/records/record-query";
 import { findRecordsByFilter } from "@/records/record-query-filter";
 import { newRecord, type Record as RecordModel } from "@/records/record-model";
 
@@ -66,23 +66,54 @@ function refuseUploads(data: Record<string, unknown>): void {
   }
 }
 
+// the records that records() reads at a time
+const recordsPage = 500;
+
+// The ids of the records that match a query, in the query's order. They are
+// read a page at a time, and only the ids are kept, so the matches are fixed
+// before the migration's first record is yielded. With a sort, the id comes
+// last: the order is then total, so the pages do not overlap or skip rows. A
+// random sort differs on every query, so its matches are read in one query.
+function matchingIds(app: App, collection: string, query: MigrationQuery): string[] {
+  const filter = query.filter ?? "";
+  const params = query.params ?? {};
+  const sort = query.sort ?? "";
+  if (sort.includes("@random")) {
+    return findRecordsByFilter(app, collection, filter, sort, 0, 0, params).map((r) => r.id);
+  }
+  const order = sort === "" ? "" : `${sort},id`;
+  const ids: string[] = [];
+  for (let offset = 0; ; offset += recordsPage) {
+    const page = findRecordsByFilter(app, collection, filter, order, recordsPage, offset, params);
+    for (const record of page) {
+      ids.push(record.id);
+    }
+    if (page.length < recordsPage) {
+      return ids;
+    }
+  }
+}
+
 // The helpers of a migration on the transaction's App.
 export function newMigrationHelpers(app: App): MigrationHelpers {
   return {
     *records(collection, query = {}) {
-      // the matches are read before the first one is yielded, so a write
-      // made while the migration iterates does not change the set
-      const found = findRecordsByFilter(
-        app,
-        collection,
-        query.filter ?? "",
-        query.sort ?? "",
-        0,
-        0,
-        query.params ?? {},
-      );
-      for (const record of found) {
-        yield rowOf(record);
+      // the matches are fixed before the first record is yielded, so a write
+      // made while the migration iterates does not change the set or its order.
+      // A record that the migration changes or deletes before the page holding
+      // it is read shows the change, or is skipped
+      const ids = matchingIds(app, collection, query);
+      for (let start = 0; start < ids.length; start += recordsPage) {
+        const page = ids.slice(start, start + recordsPage);
+        const byId = new Map(
+          findRecordsByIds(app, collection, page).map((record) => [record.id, record]),
+        );
+        for (const id of page) {
+          const record = byId.get(id);
+          if (record !== undefined) {
+            yield rowOf(record);
+          }
+        }
       }
     },
 

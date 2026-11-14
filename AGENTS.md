@@ -10,7 +10,7 @@ License: MIT, inherited from PocketBase. Keep PocketBase's copyright notice in `
 
 ## Current state
 
-Released: v1.2.0 (schema as code, `serve --schema`, `schema pull`, `schema plan`, `schema types`, `serve --mode`); before it v1.1.0 (2026-11-06) and v1.0.0 (2026-11-05). Post-1.2 work follows the work plan. The design in `docs/design/` describes the code; read `docs/design/README.md` first. When code and design disagree, fix one of them in the same change.
+Released: v1.2.0 (schema as code, `serve --schema`, `schema pull`, `schema plan`, `schema types`, `serve --mode`); before it v1.1.0 (2026-11-06) and v1.0.0 (2026-11-05). v1.2.1 is the schema-as-code follow-ups (S.8: digit-led field names in renames, views readable in migrations, case-insensitive rename checks, paged `records()`, `// prettier-ignore` in generated types); S.8 makes it ready, and the lead publishes it after the merge. Post-1.2 work follows the work plan. The design in `docs/design/` describes the code; read `docs/design/README.md` first. When code and design disagree, fix one of them in the same change.
 
 ## The two compatibility contracts
 

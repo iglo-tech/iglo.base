@@ -14,7 +14,7 @@ These conventions are the same as [iglo.monitor](https://github.com/iglo-tech/ig
 
 - Bun as runtime and package manager (`bun.lock`), with no npm or Node fallback paths. (The vendored dashboard keeps its own Vite build, run with Bun.)
 - SQLite as the only database.
-- One compiled executable as the release artifact. Releases are built on `v*` tags ([Releasing](../releasing.md)). The official Docker image on ghcr.io (linux/amd64 and linux/arm64, one manifest) wraps the released executables and does not build anything ([D33](10-decisions.md#d33-the-docker-image-wraps-the-release-executable), [D34](10-decisions.md#d34-macos-sqlite-built-embedded-and-loaded)).
+- One compiled executable as the release artifact. Releases are built on `v*` tags ([Releasing](../releasing.md)). The official Docker image on ghcr.io (linux/amd64 and linux/arm64, one manifest) wraps the released executables and does not build anything ([D33](10-decisions.md#d33-the-docker-image-wraps-the-release-executable), [D34](10-decisions.md#d34-macos-sqlite-built-embedded-and-loaded-arm64-and-darwin-releases)).
 - `oxlint` and `oxfmt`, plus a pre-commit format hook.
 - Renovate for dependency updates.
 - `@/` path aliases and no relative imports. Import from the module that owns a symbol, with no barrel files.

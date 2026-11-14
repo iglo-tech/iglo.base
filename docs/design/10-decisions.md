@@ -149,7 +149,7 @@ Decided 2026-10-27.
 
 Decided 2026-10-27.
 
-- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only. Amended by [D24](#d24-mvp-targets-linux-x64-only): the MVP shipped linux-x64 only; linux-arm64 and darwin-arm64 followed in P.2 ([D34](#d34-macos-sqlite-built-embedded-and-loaded)); amended again by [D35](#d35-linux-only): Linux only, darwin-arm64 dropped.
+- **Decision:** release binaries for linux-x64, linux-arm64 and darwin-arm64 only. Amended by [D24](#d24-mvp-targets-linux-x64-only): the MVP shipped linux-x64 only; linux-arm64 and darwin-arm64 followed in P.2 ([D34](#d34-macos-sqlite-built-embedded-and-loaded-arm64-and-darwin-releases)); amended again by [D35](#d35-linux-only): Linux only, darwin-arm64 dropped.
 - **Why:** these are the platforms iglo.\* projects ship and deployments use. Windows needs extra work (no `sendmail`, restart by re-exec, file locking during restore) for no current user. Upstream's other targets (Windows, FreeBSD, 32-bit ARM and others) are dropped.
 
 ## D19. Drop the `update` command
@@ -212,7 +212,7 @@ Decided by the owner on 2026-10-28. Amended by [D35](#d35-linux-only): darwin-ar
 
 - **Decision:** the MVP (1.0) is built, tested and released for linux-x64 only. CI runs one Linux x64 job (`bun run check` and `bun run test:reference`); the macOS job is removed. macOS (darwin-arm64) and linux-arm64 builds, the bundled SQLite for macOS (`Database.setCustomSQLite`) and macOS CI move to after 1.0 (task P.2).
 - **Why:** the owner wants a working MVP for x86 Linux first, with a lean CI, and no time spent on other platforms until then.
-- **Consequence:** (done in P.2, [D34](#d34-macos-sqlite-built-embedded-and-loaded)) workers, fixers and the council do not investigate or fix macOS-only behavior before 1.0. Code that already handles macOS (for example `legacy_alter_table=OFF`, read-only WAL fixtures) stays. Amends D18.
+- **Consequence:** (done in P.2, [D34](#d34-macos-sqlite-built-embedded-and-loaded-arm64-and-darwin-releases)) workers, fixers and the council do not investigate or fix macOS-only behavior before 1.0. Code that already handles macOS (for example `legacy_alter_table=OFF`, read-only WAL fixtures) stays. Amends D18.
 
 
 ## D25. One cross-lab reviewer, local verification only
@@ -288,7 +288,7 @@ Task P.1, after v1.0.0 shipped.
 
 - **Decision:** `ghcr.io/iglo-tech/iglo.base:<version>` (and `:latest` only when the tag is the repository's latest published release) is a linux/amd64 image built by `.github/workflows/docker.yml` when a release is published, or by hand for an existing tag. The workflow downloads the release's `iglo-base_<version>_linux_amd64.zip` and `SHA256SUMS`, verifies the checksum and the `Dockerfile` copies the executable in; nothing is built from source. The base is `gcr.io/distroless/base-debian13:nonroot`, pinned by digest: the executable links only libc, libm, libdl and libpthread, and that image adds CA certificates and tzdata (SMTP, S3 and OAuth2 over TLS) with no shell or package manager. It runs as uid/gid 65532, with `/pb_data` and `/pb_migrations` as volumes, the executable at `/iglo-base` with working directory `/` (so the "next to the executable" defaults are `/pb_data`, `/pb_public`, `/pb_migrations` for serve and every CLI command), as PID 1 (SIGTERM reaches it), and `serve --http 0.0.0.0:8090` as the default command.
 - **Why:** the release stays the single source of truth, so the image holds the bytes that were reviewed and checksummed. Distroless base is the smallest glibc image with certificates; a debian slim image adds a shell and package tooling that nothing needs. ghcr.io needs no secrets beyond `GITHUB_TOKEN`.
-- **Consequence:** the digest is bumped by hand (Renovate may take it over later). Docker Hub and macOS images are out of scope; the linux/arm64 image came with [D34](#d34-macos-sqlite-built-embedded-and-loaded). Amends D3's "post-MVP" note.
+- **Consequence:** the digest is bumped by hand (Renovate may take it over later). Docker Hub and macOS images are out of scope; the linux/arm64 image came with [D34](#d34-macos-sqlite-built-embedded-and-loaded-arm64-and-darwin-releases). Amends D3's "post-MVP" note.
 
 ## D34. macOS SQLite: built, embedded and loaded; arm64 and darwin releases
 
@@ -307,7 +307,7 @@ Task P.2, after v1.0.0 shipped. Completes D24's post-1.0 part and amends [D33](#
 
 ## D35. Linux only
 
-Task P.9, owner direction 2026-11-06: "we should drop macOS and Windows build, just Linux x86 and arm. If someone wants to run this elsewhere, can use the source code." Amends [D18](#d18-release-platforms), [D24](#d24-mvp-targets-linux-x64-only) and [D34](#d34-macos-sqlite-built-embedded-and-loaded).
+Task P.9, owner direction 2026-11-06: "we should drop macOS and Windows build, just Linux x86 and arm. If someone wants to run this elsewhere, can use the source code." Amends [D18](#d18-release-platforms), [D24](#d24-mvp-targets-linux-x64-only) and [D34](#d34-macos-sqlite-built-embedded-and-loaded-arm64-and-darwin-releases).
 
 - **Decision:** releases ship `iglo-base_<version>_linux_amd64.zip`, `iglo-base_<version>_linux_arm64.zip` and one `SHA256SUMS`, plus the linux/amd64 + linux/arm64 Docker image. There is no darwin or Windows build. Other systems run from source with Bun; that is not tested or supported. The 1.0.0 and 1.1.0 releases keep their archives, darwin included.
 - **Removed:** the darwin release job, `check-macos` in `ci.yml`, the bundled macOS SQLite (`scripts/build-sqlite.ts`, `scripts/sqlite-embed.ts`, `src/db/sqlite-lib.ts` and its calls, `IGLO_SQLITE_LIB`, the `dist/libsqlite3.dylib` import, the test preload, `test/db/sqlite-lib.test.ts` and its fixture). `scripts/build.ts` accepts `bun-linux-x64` and `bun-linux-arm64` only; any other `IGLO_TARGET` is refused.

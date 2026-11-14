@@ -1640,3 +1640,264 @@ describe("declared renames: what step 2 clears, and what the plan shows (S.5, ro
 function rmFile(path: string): void {
   rmSync(path, { force: true });
 }
+
+describe("S.8 follow-ups: digit-led names, views in migrations, case in renames, paging", () => {
+  test("a renamed custom _superusers field whose name starts with a digit keeps its index", async () => {
+    await renameScenario(
+      {
+        _superusers: {
+          type: "auth",
+          fields: { "2fa": { type: "text" } },
+          indexes: ["CREATE INDEX idx_su_2fa ON _superusers (`2fa`)"],
+        },
+      },
+      async () => {},
+      {
+        _superusers: {
+          type: "auth",
+          fields: { twofa: { type: "text" } },
+          indexes: ["CREATE INDEX idx_su_2fa ON _superusers (`twofa`)"],
+        },
+      },
+      [
+        [
+          "20261114120000_twofa.ts",
+          migrationSource(`  renames: { _superusers: { "2fa": "twofa" } },`),
+        ],
+      ],
+      async (url, token) => {
+        expect(Object.keys(await fieldsOf(url, token, "_superusers"))).toContain("twofa");
+        expect(JSON.stringify((await collectionOf(url, token, "_superusers")).indexes)).toContain(
+          "(`twofa`)",
+        );
+      },
+    );
+  });
+
+  test("a migration reads a view that the apply renames over: the view exists while the migrations run", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" }, writer: { type: "text" } }),
+        names: {
+          type: "view",
+          rules: { list: "", view: "" },
+          query: "SELECT id, writer FROM posts",
+        },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "a",
+          writer: "Ann",
+        });
+      },
+      {
+        posts: posts({ title: { type: "text" }, author: { type: "text" } }),
+        names: {
+          type: "view",
+          rules: { list: "", view: "" },
+          query: "SELECT id, author FROM posts",
+        },
+      },
+      [
+        [
+          "20261114120100_views.ts",
+          migrationSource(`  renames: { posts: { writer: "author" } },
+  up(tx) {
+    const seen = [...tx.records("names")];
+    tx.create("posts", { title: "seen " + seen.length, author: String(seen[0]?.author) });
+  },`),
+        ],
+      ],
+      async (url, token) => {
+        const rows = await records(url, token, "posts");
+        expect(rows.map((row) => row.title).toSorted()).toEqual(["a", "seen 1"]);
+        expect(rows.find((row) => row.title === "seen 1")).toEqual(
+          expect.objectContaining({ author: "Ann" }),
+        );
+      },
+    );
+  });
+
+  test("a migration reads a view that the file changes: the new query is there while the migrations run", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" } }),
+        names: {
+          type: "view",
+          rules: { list: "", view: "" },
+          query: "SELECT id, title FROM posts",
+        },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", { title: "a" });
+      },
+      {
+        posts: posts({ title: { type: "text" } }),
+        names: {
+          type: "view",
+          rules: { list: "", view: "" },
+          query: "SELECT id, title AS shout FROM posts",
+        },
+      },
+      [
+        [
+          "20261114120200_shout.ts",
+          migrationSource(`  up(tx) {
+    const seen = [...tx.records("names")];
+    tx.create("posts", { title: "seen " + String(seen[0]?.shout) });
+  },`),
+        ],
+      ],
+      async (url, token) => {
+        const rows = await records(url, token, "posts");
+        expect(rows.map((row) => row.title).toSorted()).toEqual(["a", "seen a"]);
+      },
+    );
+  });
+
+  test("rename checks compare names without regard to case, and say so", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
+    (await serveWith(site)).stop();
+
+    const cases: [string, string, string[]][] = [
+      [
+        "20261114120300_case_field.ts",
+        `  renames: { posts: { writer: "Title" } },`,
+        ['already has a field "title"'],
+      ],
+      [
+        "20261114120310_case_collide.ts",
+        `  renames: { posts: { writer: "Author", title: "author" } },`,
+        ["renames collide"],
+      ],
+    ];
+    const schemaWithAuthor = {
+      posts: posts({ title: { type: "text" }, author: { type: "text" } }),
+    };
+    for (const [file, body, expected] of cases) {
+      writeSchema(site, schemaWithAuthor);
+      writeMigration(site, file, migrationSource(body));
+      const before = digests(site.dataDir);
+      const plan = await run([
+        "--dir",
+        site.dataDir,
+        "schema",
+        "plan",
+        "--schema",
+        site.schemaPath,
+      ]);
+      expect(plan.exitCode).not.toBe(0);
+      for (const text of expected) {
+        expect(plan.stdout + plan.stderr).toContain(text);
+      }
+      expect(await startFails(site)).toContain("not applied");
+      expect(digests(site.dataDir)).toEqual(before);
+      rmFile(join(site.migrationsDir, file));
+    }
+  });
+
+  test("a collection renamed to a name that differs only in case from another collection is refused", async () => {
+    const site = await newSite();
+    writeSchema(site, {
+      posts: posts({ title: { type: "text" } }),
+      news: posts({ title: { type: "text" } }),
+    });
+    (await serveWith(site)).stop();
+
+    writeSchema(site, { Posts: posts({ title: { type: "text" } }) });
+    writeMigration(
+      site,
+      "20261114120400_case_collection.ts",
+      migrationSource(`  renameCollections: { news: "Posts" },`),
+    );
+    const plan = await run(["--dir", site.dataDir, "schema", "plan", "--schema", site.schemaPath]);
+    expect(plan.exitCode).not.toBe(0);
+    expect(plan.stdout + plan.stderr).toContain('the collection "posts" already exists');
+    expect(await startFails(site)).toContain("not applied");
+  });
+
+  test("a rename that only changes the case of its own name keeps the data", async () => {
+    const site = await newSite();
+    writeSchema(site, {
+      posts: posts({ title: { type: "text" } }),
+      news: posts({ title: { type: "text" } }),
+    });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    expect(
+      (await api(server.url, token, "POST", "/api/collections/posts/records", { title: "kept" }))
+        .status,
+    ).toBe(200);
+    await server.stop();
+
+    writeSchema(site, {
+      Posts: posts({ Title: { type: "text" } }),
+      News: posts({ title: { type: "text" } }),
+    });
+    writeMigration(
+      site,
+      "20261114120450_case_only.ts",
+      migrationSource(`  renameCollections: { posts: "Posts", news: "News" },
+  renames: { posts: { title: "Title" } },`),
+    );
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    expect(Object.keys(await fieldsOf(server.url, token, "Posts"))).toContain("Title");
+    expect(await records(server.url, token, "Posts")).toEqual([
+      expect.objectContaining({ Title: "kept" }),
+    ]);
+    await server.stop();
+  });
+
+  test("a migration iterates more records than one page, each once, over a set fixed at its start", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" }, done: { type: "bool" } }) });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    const total = 1200;
+    for (let start = 0; start < total; start += 100) {
+      const created = await Promise.all(
+        Array.from({ length: 100 }, (_, i) =>
+          api(server.url, token, "POST", "/api/collections/posts/records", {
+            title: `p${start + i}`,
+            done: false,
+          }),
+        ),
+      );
+      expect(created.every((result) => result.status === 200)).toBe(true);
+    }
+    await server.stop();
+
+    // every match is updated in the loop, so a set read page by page would skip rows
+    writeMigration(
+      site,
+      "20261114120500_pages.ts",
+      migrationSource(`  up(tx) {
+    let count = 0;
+    for (const post of tx.records("posts", { filter: "done = false" })) {
+      tx.update("posts", post.id, { done: true });
+      count += 1;
+    }
+    tx.create("posts", { title: "counted " + count, done: true });
+  },`),
+    );
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    const counted = await api(
+      server.url,
+      token,
+      "GET",
+      `/api/collections/posts/records?perPage=1&filter=${encodeURIComponent('title = "counted 1200"')}`,
+    );
+    expect(counted.json.totalItems).toBe(1);
+    const open = await api(
+      server.url,
+      token,
+      "GET",
+      `/api/collections/posts/records?perPage=1&filter=${encodeURIComponent("done = false")}`,
+    );
+    expect(open.json.totalItems).toBe(0);
+    await server.stop();
+  });
+});

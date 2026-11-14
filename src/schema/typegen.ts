@@ -138,8 +138,8 @@ function propLines(prop: Prop, indent: string): string[] {
   const head = `${indent}${keyText(prop.key)}${prop.optional ? "?" : ""}`;
   const line = `${head}: ${typeText(prop.type)};`;
   if (prop.type.verbatim === true) {
-    // oxfmt leaves the line behind the comment as it is
-    return [...doc, `${indent}// oxfmt-ignore`, line];
+    // oxfmt leaves the line behind the comment as it is, and so does Prettier
+    return [...doc, `${indent}// prettier-ignore`, line];
   }
   if (line.length <= printWidth) {
     return [...doc, line];
@@ -284,7 +284,11 @@ function inputType(
     return storedType(field, file, collection);
   }
   const members = fileValue(field, forUpdate);
-  if (forUpdate && field.required !== true) {
+  if (field.required !== true) {
+    // a create takes "" and null too: upstream ignores them (core/field_file.go)
+    if (!forUpdate) {
+      members.push(stringLiteral(""));
+    }
     members.push("null");
   }
   return { members };
