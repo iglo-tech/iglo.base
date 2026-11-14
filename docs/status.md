@@ -2,9 +2,9 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-12
+Updated: 2026-11-14
 
-Released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs are on https://iglo.tech (site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech), deployed by its own agent; the SSR guide is live since 2026-11-09); it pulls the docs from this repository at build time.
+Released [v1.2.1](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.1) (2026-11-14; schema-as-code fixes) and [v1.2.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.0) (2026-11-14; schema as code), linux-x64 and linux-arm64, images published; SDK `@iglo.tech/iglo.base` 1.0.1 on npm. The work plan is complete; read-only replicas were not built (R.2 gate), with options under For owner review. Before that: released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs are on https://iglo.tech (site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech), deployed by its own agent; the SSR guide is live since 2026-11-09); it pulls the docs from this repository at build time.
 
 ## Needs you
 
