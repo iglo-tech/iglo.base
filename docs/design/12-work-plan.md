@@ -226,6 +226,7 @@ Owner direction 2026-11-09: the schema-as-code work ([#76](https://github.com/ig
 | S.5 | Typed TypeScript migrations with declared renames ([#80](https://github.com/iglo-tech/iglo.base/issues/80)) | S.4 |
 | S.6 | Development and production modes: schema lock and write-back, D41 ([#81](https://github.com/iglo-tech/iglo.base/issues/81)) | S.5 |
 | S.7 | Merge `develop` into `main`, release the server and the SDK, list `docs/schema.md` on the iglo.tech site | S.6 |
+| S.8 | Follow-ups from the S.2–S.7 reviews, server 1.2.1 | S.7 |
 
 Read-only replicas ([#82](https://github.com/iglo-tech/iglo.base/issues/82) spike, then [#83](https://github.com/iglo-tech/iglo.base/issues/83), D42) are a separate track that starts after S.7; #83 needs S.6's production mode.
 
