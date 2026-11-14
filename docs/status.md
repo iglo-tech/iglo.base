@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.6 | fixer | `task/S.6-schema-modes` → `develop`, PR 104 | 2 | Round 2: 4 findings (bundle errors lost their reason; `import.meta.dir`/`url` point at a data: URL; failed apply not retried after fixing data; two doc lines). Compiled executable, startup cost and fixes 1–3, 5, 6 verified. Fixer applies the reviewer's fixes |
+| S.6 | review | `task/S.6-schema-modes` → `develop`, PR 104 | 3 (final) | Round 2 fixed through `65b8d85` (check, reference, browser exit 0; fixer stalled once and was restarted by the lead). Opus round 3 reviews the fixes in source and the compiled executable; then the lead decides |
 
 
 
