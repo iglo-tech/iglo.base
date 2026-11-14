@@ -56,7 +56,8 @@ test("the collections screen has no way to create or edit a collection, and says
   await browser.waitForText("managed by the schema file");
   const text = await browser.bodyText();
   expect(text).not.toContain("New collection");
-  expect(text).toContain("iglo.schema.json");
+  // the notice says where each change is made: the file for the collections, a migration for the settings
+  expect(text).toContain("pb_migrations");
 });
 
 test("the settings screens are read-only", async () => {
