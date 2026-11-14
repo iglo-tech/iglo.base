@@ -9,8 +9,11 @@
 //     migration file's content in the migrations directory, is applied with the
 //     same steps as at startup but without the backup (applySchema with backup:
 //     false). Any other change in those directories is ignored. A failure
-//     prints the report once per distinct content and leaves the database as it
-//     was; the server keeps running on the old schema.
+//     prints the report once per content and modification time, and leaves the
+//     database as it was; the server keeps running on the old schema. A save or
+//     a touch of one of the files after a failure applies it again, so a fix
+//     that is in the data (a duplicate deleted through the API) takes effect
+//     without an edit of the text.
 //   - watch: the schema file's directory is watched, and the migrations
 //     directory when it exists. Its parent is watched too, so a migrations
 //     directory made, removed or replaced after the start is noticed.
@@ -77,7 +80,8 @@ interface Watch {
 
 export class SchemaSync {
   private recorded: Recorded | undefined;
-  // the state of the last apply that failed: it is reported once
+  // the state of the last apply that failed (the content and the modification
+  // times, see reapply): it is reported once
   private failed: string | undefined;
   private watches = new Map<string, Watch>();
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -159,7 +163,9 @@ export class SchemaSync {
   }
 
   // The apply of a changed file or migration. The state the server recorded is
-  // not applied again, and a failed state is not reported again.
+  // not applied again. A failed state is not reported again, until one of the
+  // files is saved or touched: the modification times are part of that key
+  // only, so the recorded content still counts as applied.
   async reapply(): Promise<void> {
     const { schemaPath, log } = this.options;
     let text: string;
@@ -171,7 +177,6 @@ export class SchemaSync {
     }
     const schema = hashOf(text);
     const migrations = this.migrationSignature();
-    const state = `${schema}\n${migrations}`;
     if (
       this.recorded !== undefined &&
       this.recorded.schema === schema &&
@@ -179,7 +184,8 @@ export class SchemaSync {
     ) {
       return;
     }
-    if (this.failed === state) {
+    const failedState = `${schema}\n${migrations}\n${this.modificationTimes()}`;
+    if (this.failed === failedState) {
       return;
     }
     const app = this.options.app();
@@ -206,7 +212,7 @@ export class SchemaSync {
     } catch (err) {
       // the report (or the file's problem, or a variable that is not set)
       // goes to the terminal; the database is unchanged
-      this.failed = state;
+      this.failed = failedState;
       const detail = err instanceof SchemaApplyError ? formatReport(err.report) : messageOf(err);
       for (const line of detail.split("\n")) {
         log(`schema: ${line}`);
@@ -290,6 +296,18 @@ export class SchemaSync {
     }
   }
 
+  // The modification times of the schema file and of the TypeScript migration
+  // files, in name order. Only a failed apply's key holds them: a save or a
+  // touch retries the apply, and a file that is not one of these never gets here
+  // (isRelevant).
+  private modificationTimes(): string {
+    const { schemaPath, migrationsDir } = this.options;
+    const migrationFiles = isDirectory(migrationsDir)
+      ? listTypeScript(migrationsDir).map((name) => join(migrationsDir, name))
+      : [];
+    return [schemaPath, ...migrationFiles].map(mtimeOf).join("\n");
+  }
+
   // The TypeScript migration files of the directory, by name, each with a
   // content hash: a change of content changes it, and nothing else does (a
   // touched file does not).
@@ -315,6 +333,15 @@ function hashOf(text: string): string {
 function readOrEmpty(path: string): string {
   try {
     return readFileSync(path, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+// a file's modification time in nanoseconds, or "" when it cannot be read
+function mtimeOf(path: string): string {
+  try {
+    return String(statSync(path, { bigint: true }).mtimeNs);
   } catch {
     return "";
   }

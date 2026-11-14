@@ -8,7 +8,7 @@
 
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { run, startServer, tempDir, type RunningServer } from "@test/support/executable";
@@ -560,6 +560,46 @@ describe("development mode", () => {
     } finally {
       const stopped = await server.stop();
       expect(stopped.stderr.match(/was not applied/g)?.length).toBe(2);
+    }
+  });
+
+  test("a failed unique index applies once its duplicate is deleted, when the file is touched", async () => {
+    const site = await newSite();
+    const { server, url, token } = await startWith(site, ["--schema", site.schemaPath]);
+    try {
+      // two records share a title, so the unique index is refused
+      for (let i = 0; i < 2; i++) {
+        const created = await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "dup",
+        });
+        expect(created.status).toBe(200);
+      }
+      const indexed = postsFile(["title"], {
+        indexes: ["CREATE UNIQUE INDEX idx_posts_title ON posts (title)"],
+      });
+      writeFileSync(site.schemaPath, JSON.stringify(indexed, null, 2));
+      await Bun.sleep(800);
+      const indexesOf = async (): Promise<unknown[]> =>
+        ((await api(url, token, "GET", "/api/collections/posts")).json.indexes as unknown[]) ?? [];
+      expect(await indexesOf()).toEqual([]);
+
+      // the duplicate is deleted through the API; a touch of the file retries the apply
+      const listed = await api(url, token, "GET", "/api/collections/posts/records");
+      const [duplicate] = listed.json.items as { id: string }[];
+      expect(duplicate).toBeDefined();
+      const deleted = await api(
+        url,
+        token,
+        "DELETE",
+        `/api/collections/posts/records/${duplicate?.id}`,
+      );
+      expect(deleted.status).toBe(204);
+      const now = new Date();
+      utimesSync(site.schemaPath, now, now);
+      await until(async () => (await indexesOf()).length === 1);
+    } finally {
+      const stopped = await server.stop();
+      expect(stopped.stderr).toContain("schema: applied iglo.schema.json");
     }
   });
 
