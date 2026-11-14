@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.7 | worker | `task/S.7-release` → `main` | – | Brief `docs/briefs/S.7.md`: merge develop (merge commit), server v1.2.0, SDK 1.0.1; lead tags, publishes and lists the guide on iglo.tech after the merge |
+| S.7 | review | `task/S.7-release` → `main`, PR 105 | 1 | Merge of develop (conflicts only in `package.json`, `bun.lock`), server v1.2.0 wording, SDK 1.0.1. check, reference, browser, examples exit 0; CI incl. linux-arm64 green. Opus round 1 reviews the merge and release readiness |
 
 
 
