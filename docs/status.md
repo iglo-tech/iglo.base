@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.6 | worker | `task/S.6-…` → `develop` | – | Brief `docs/briefs/S.6.md` (#81, with OAuth2 environment references) |
+| S.6 | review | `task/S.6-schema-modes` → `develop`, PR 104 | 1 | Brief `docs/briefs/S.6.md` (#81). Check, reference and browser pass. Opus round 1; lead asked to verify settings via migration in prod and the differential run with `--mode` flags |
 
 
 
