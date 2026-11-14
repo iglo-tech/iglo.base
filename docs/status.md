@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.8 | fixer | `task/S.8-schema-followups` → `main`, PR 108 | 2 | Round 2: round-1 fixes hold; 2 findings (`records()` with a collection id regressed; removing a view with a view that reads it fails in name order, also on main). Fixer applies the reviewer's fixes; round 3 is final |
+| S.8 | review | `task/S.8-schema-followups` → `main`, PR 108 | 3 (final) | Round 2 fixed in `15e0c90` (check and test:reference exit 0). Lead accepted: a removed view chain whose inner view reads a field the file removes is refused safely (main refuses every removed chain). Opus round 3; then the lead decides |
 
 
 
