@@ -13,7 +13,8 @@
 // `@schema/<file name>` (see apply.ts), a name no pb_migrations file produces.
 
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { MigrationTx } from "@/schema/migration-tx";
 
@@ -111,6 +112,7 @@ async function importMigration(path: string): Promise<{ default?: unknown }> {
     format: "esm",
     // the messages are returned, not thrown: Bun's thrown error says only "Bundle failed"
     throw: false,
+    define: importMetaOf(path),
   });
   const output = built.outputs[0];
   if (!built.success || output === undefined) {
@@ -118,6 +120,24 @@ async function importMigration(path: string): Promise<{ default?: unknown }> {
   }
   return (await import(`data:text/javascript,${encodeURIComponent(await output.text())}`)) as {
     default?: unknown;
+  };
+}
+
+// The import.meta values of a migration: the migration file's own location, not
+// the bundle's (which is in memory, under no path). They are replaced at the
+// build, so a migration reads the files next to it with import.meta.dir. A
+// module that the migration imports from elsewhere is bundled with the same
+// values, so inside it they are still the migration's.
+function importMetaOf(path: string): Record<string, string> {
+  const absolute = resolve(path);
+  const dir = dirname(absolute);
+  return {
+    "import.meta.dir": JSON.stringify(dir),
+    "import.meta.dirname": JSON.stringify(dir),
+    "import.meta.path": JSON.stringify(absolute),
+    "import.meta.filename": JSON.stringify(absolute),
+    "import.meta.file": JSON.stringify(basename(absolute)),
+    "import.meta.url": JSON.stringify(pathToFileURL(absolute).href),
   };
 }
 

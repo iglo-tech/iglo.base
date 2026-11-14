@@ -665,6 +665,26 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     expect(missingOutput).not.toContain("Bundle failed");
   });
 
+  test("import.meta.dir in a migration is the migration's directory: a file read next to it applies", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" } }) });
+    writeFileSync(join(site.migrationsDir, "seed.csv"), "title\nfirst row\nsecond row\n");
+    writeMigration(
+      site,
+      "20261113230000_seed.ts",
+      `import { readFileSync } from "node:fs";\nimport { join } from "node:path";\n\nexport default {\n  up(tx) {\n    const csv = readFileSync(join(import.meta.dir, "seed.csv"), "utf8");\n    tx.create("posts", { title: csv.split("\\n")[1] });\n  },\n};\n`,
+    );
+    const server = await serveWith(site);
+    try {
+      const token = await superuser(server.url);
+      const rows = await records(server.url, token, "posts");
+      expect(rows.map((row) => row.title)).toEqual(["first row"]);
+    } finally {
+      await server.stop();
+    }
+    expect(schemaRows(site.dataDir)).toEqual(["@schema/20261113230000_seed.ts"]);
+  });
+
   test("--schemaMigrationsDir names the directory of the migrations", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
