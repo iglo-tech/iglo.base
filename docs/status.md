@@ -14,6 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
+| R.1 | worker | `task/R.1-…` → `main` | – | Brief `docs/briefs/R.1.md` (#82): replicas spike, go/no-go for R.2 (#83) |
 
 
 

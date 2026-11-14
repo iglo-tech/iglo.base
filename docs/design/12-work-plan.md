@@ -229,6 +229,13 @@ Owner direction 2026-11-09: the schema-as-code work ([#76](https://github.com/ig
 
 Read-only replicas ([#82](https://github.com/iglo-tech/iglo.base/issues/82) spike, then [#83](https://github.com/iglo-tech/iglo.base/issues/83), D42) are a separate track that starts after S.7; #83 needs S.6's production mode.
 
+### Read-only replicas
+
+| ID | Task | Depends on |
+|---|---|---|
+| R.1 | Measurement spike: throwaway prototype on `spike/replicas`, `docs/perf/replicas-spike.md` with go/no-go ([#82](https://github.com/iglo-tech/iglo.base/issues/82)) | S.7 |
+| R.2 | `serve --mode prod --replicas N`, D42 ([#83](https://github.com/iglo-tech/iglo.base/issues/83)); only on go | R.1 |
+
 ## Order
 
 ```text
