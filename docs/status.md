@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.6 | review | `task/S.6-schema-modes` → `develop`, PR 104 | 2 | Round 1 fixed in `99cfee8`, `a458bc2` (check, reference, browser exit 0). TS migrations now bundled with `Bun.build` to load fresh; settings in prod via JS migration. Opus round 2 reviews the fixes, incl. the compiled executable |
+| S.6 | fixer | `task/S.6-schema-modes` → `develop`, PR 104 | 2 | Round 2: 4 findings (bundle errors lost their reason; `import.meta.dir`/`url` point at a data: URL; failed apply not retried after fixing data; two doc lines). Compiled executable, startup cost and fixes 1–3, 5, 6 verified. Fixer applies the reviewer's fixes |
 
 
 
