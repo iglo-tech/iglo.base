@@ -1,0 +1,28 @@
+0 iglo-base list@1: 935 rps p50 0.90 p99 4.27 err 0 clientCPU 611ms serverCores 1.17
+0 iglo-base view@1: 1964 rps p50 0.43 p99 2.30 err 0 clientCPU 956ms serverCores 0.85
+0 iglo-base create@1: 1233 rps p50 0.60 p99 4.06 err 0 clientCPU 674ms serverCores 1.04
+0 iglo-r2 list@1: 1157 rps p50 0.69 p99 2.77 err 0 clientCPU 684ms serverCores 0.00/0.95/0.00
+0 iglo-r2 view@1: 2726 rps p50 0.31 p99 0.82 err 0 clientCPU 1355ms serverCores 0.01/0.69/0.00
+0 iglo-r2 create@1: 804 rps p50 1.15 p99 4.43 err 0 clientCPU 598ms serverCores 0.91/0.23/0.00
+1 iglo-base list@1: 925 rps p50 0.89 p99 4.14 err 0 clientCPU 597ms serverCores 1.19
+1 iglo-base view@1: 1860 rps p50 0.45 p99 2.08 err 0 clientCPU 986ms serverCores 0.86
+1 iglo-base create@1: 1141 rps p50 0.65 p99 3.66 err 0 clientCPU 681ms serverCores 1.04
+1 iglo-r2 list@1: 1087 rps p50 0.69 p99 2.62 err 0 clientCPU 707ms serverCores 0.01/0.00/1.00
+1 iglo-r2 view@1: 2735 rps p50 0.31 p99 0.83 err 0 clientCPU 1386ms serverCores 0.01/0.00/0.68
+1 iglo-r2 create@1: 832 rps p50 1.03 p99 4.39 err 0 clientCPU 580ms serverCores 0.88/0.00/0.24
+2 iglo-base list@1: 956 rps p50 0.86 p99 4.43 err 0 clientCPU 615ms serverCores 1.17
+2 iglo-base view@1: 1864 rps p50 0.46 p99 2.01 err 0 clientCPU 973ms serverCores 0.83
+2 iglo-base create@1: 1109 rps p50 0.67 p99 3.81 err 0 clientCPU 684ms serverCores 1.06
+2 iglo-r2 list@1: 1155 rps p50 0.69 p99 2.46 err 0 clientCPU 744ms serverCores 0.01/0.99/0.00
+2 iglo-r2 view@1: 2674 rps p50 0.28 p99 1.96 err 0 clientCPU 1176ms serverCores 0.01/0.60/0.00
+2 iglo-r2 create@1: 796 rps p50 1.17 p99 4.40 err 0 clientCPU 584ms serverCores 0.89/0.21/0.00
+| Workload | Clients | iglo.base req/s | p50 | p95 | p99 | upstream req/s | p50 | p95 | p99 | p50 ratio | p95 ratio | req/s ratio |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| list 30 | 1 | 935 | 0.89 | 2.06 | 4.27 | - | - | - | - | - | - | - |
+| view | 1 | 1864 | 0.45 | 0.84 | 2.08 | - | - | - | - | - | - | - |
+| create (JSON) | 1 | 1141 | 0.65 | 1.79 | 3.81 | - | - | - | - | - | - | - |
+
+iglo-base: startup 82/110/120 ms (median 110), idle RSS 72.8/74.4/76.3 MiB (median 74.4), RSS after the run 139/137/138 MiB
+
+iglo-r2: startup 480/390/456 ms (median 456), idle RSS 75.0/75.3/74.3 MiB (median 75.0), RSS after the run 107/112/106 MiB
+EXIT=0

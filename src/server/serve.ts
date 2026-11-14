@@ -394,15 +394,20 @@ export async function serve(
   const mux = router.buildMux();
 
   const mainAddr = config.httpAddr;
-  const parsed = parseListenAddr(mainAddr === "" ? ":http" : mainAddr);
-  const hostname = await listenHost(parsed.hostname);
+  // R.1 spike (throwaway): "unix:<path>" listens on a Unix socket, the primary
+  // behind the read-only replicas (scripts/spikes/R.1/replica.ts)
+  const unixPath = mainAddr.startsWith("unix:") ? mainAddr.slice("unix:".length) : undefined;
+  const parsed =
+    unixPath === undefined
+      ? parseListenAddr(mainAddr === "" ? ":http" : mainAddr)
+      : { hostname: "", port: 0 };
+  const hostname = unixPath === undefined ? await listenHost(parsed.hostname) : "";
   const { port } = parsed;
 
   let server: ReturnType<typeof Bun.serve>;
   try {
     server = Bun.serve({
-      hostname,
-      port,
+      ...(unixPath === undefined ? { hostname, port } : { unix: unixPath }),
       development: false,
       // no server-wide cap (Bun's default is 128 MiB): the body limit middleware decides
       maxRequestBodySize: Number.MAX_SAFE_INTEGER,
