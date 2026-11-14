@@ -179,7 +179,7 @@ A few rules apply to the changes:
 
 It runs the apply's transaction and rolls it back. It prints:
 
-- the changes, collection by collection;
+- the changes, collection by collection. With a rename, a rule or option that the file sets to its stored value is not listed, and an index that the file keeps is listed as `index rebuilt`: the apply drops it and creates it again, and the row count is the size of the table it is built on;
 - the JavaScript migrations that would run;
 - the data that would be lost;
 - every problem, with up to five example record ids and the next step.
@@ -319,7 +319,7 @@ export default {
 - A field is keyed by its collection's name as it is before this file's own renames. A collection that this file renames is keyed by its old name in `renames` too, so `renames: { authors: { name: "fullname" } }` works next to `renameCollections: { authors: "writers" }`. A renamed collection is named by its new name in `renameCollections`.
 - A rename runs as a real rename: the field keeps its id and the column keeps its values; the collection keeps its id, its table, its records and their files, and the relations that point to it. Rate-limit rules that start with the old collection name are relabelled, as the dashboard does.
 - Pending files run in name order, each against the names the earlier files left, so a second file can rename what the first one renamed: `renames: { posts: { author: "byline" } }` in a later file works after `renames: { posts: { writer: "author" } }` in an earlier one. A file that has run is not read again. Within one file, a name cannot be renamed again: put the second rename in a file of its own.
-- When a file renames something, the apply clears every rule of the collections (the views are created again) and every index except the ones upstream adds to an auth collection, and then sets them from the file. So a rule or index that names an old name, in any form (a relation path, a back relation, an alias, an expression), is not an error. Write the file's rules and indexes with the new names. `schema plan` lists them as changes, because the file sets them again.
+- When a file renames something, the apply first drops the SQL views. It then clears the rules of every collection that is not a system collection (a system rule cannot change), the identity fields and the MFA rule of an auth collection (`email` and empty), and the indexes: every index of a collection that is not a system collection, and of a system collection the indexes that name a renamed field (upstream requires the others). The implied indexes of an auth collection are kept. The file's values are set again, and the views are created again. So a rule, option or index that names an old name, in any form (a relation path, a back relation, an alias, an expression), is not an error. Write the file's rules and indexes with the new names.
 - A rename is refused, with the reason, and the apply does not start, when: the old name does not exist; the new name already exists, or the file does not have it at the end of the pending renames; two renames of one file give one name, or a file renames a name it creates. A view and a system collection or field cannot be renamed. Remove the view and add one under the new name.
 - A field or collection that the file drops is not data loss when it is the old name of a rename; without the rename, the data-loss guard still stops the apply.
 
@@ -439,3 +439,8 @@ const posts = await server.collection("posts").getFullList<PostsResponse>();
 ```
 
 With the official `pocketbase` package, which keeps the same API, pass the record type to its generic instead: `pb.collection<PostsResponse>("posts")`.
+
+## Limitations
+
+- **A rule that names a view field that the same apply changes.** The rules are set in step 6 and the views are created again in step 7, so the rule is checked against the view the database still holds, and it fails with `unknown field`. The workaround is to keep the view's column name with an alias in its query.
+- **Unique indexes are absent while the migrations run, when a rename is pending.** The renames drop the indexes first (see [Renames](#renames)), so a migration that relies on a unique index to reject a duplicate succeeds. The apply then fails at step 6 with `Failed to create index`, and the rollback leaves the database as it was; only the message is less clear.

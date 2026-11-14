@@ -813,7 +813,6 @@ async function renameScenario(
   } finally {
     await server.stop();
   }
-  return site;
 }
 
 // the collection's rules, the fields and the indexes as the API returns them
@@ -1368,6 +1367,220 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
     const server = await serveWith(site);
     const token = await superuser(server.url);
     expect(Object.keys(await fieldsOf(server.url, token, "posts"))).toContain("apikey");
+    await server.stop();
+  });
+});
+
+// a members collection, an auth collection with MFA (and the OTP it needs) on a rule
+const membersOf = (field: string, rule: string) => ({
+  type: "auth",
+  rules: { list: "", view: "" },
+  fields: { [field]: { type: "text" } },
+  otp: { enabled: true },
+  mfa: { enabled: true, duration: 1800, rule },
+});
+
+// a custom field of _superusers, with the index that names it
+const superusersOf = (field: string) => ({
+  type: "auth",
+  fields: { [field]: { type: "text" } },
+  indexes: [`CREATE INDEX idx_su_n ON _superusers (${field})`],
+});
+
+describe("declared renames: what step 2 clears, and what the plan shows (S.5, round 2)", () => {
+  test("a login by username with a unique index survives a rename of an unrelated field", async () => {
+    const users = {
+      type: "auth",
+      rules: { list: "", view: "" },
+      fields: { username: { type: "text" } },
+      indexes: ["CREATE UNIQUE INDEX idx_users_username ON users (username)"],
+      passwordAuth: { identityFields: ["email", "username"] },
+    };
+    await renameScenario(
+      { users, posts: posts({ title: { type: "text" }, writer: { type: "text" } }) },
+      async (url, token) => {
+        const created = await api(url, token, "POST", "/api/collections/users/records", {
+          email: "ann@example.test",
+          password: "1234567890",
+          passwordConfirm: "1234567890",
+          username: "ann",
+        });
+        expect(created.status).toBe(200);
+        await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+          writer: "Ann",
+        });
+      },
+      { users, posts: posts({ title: { type: "text" }, author: { type: "text" } }) },
+      [
+        [
+          "20261114110000_author.ts",
+          migrationSource(`  renames: { posts: { writer: "author" } },`),
+        ],
+      ],
+      async (url, token) => {
+        const login = await fetch(`${url}/api/collections/users/auth-with-password`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ identity: "ann", password: "1234567890" }),
+        });
+        expect(login.status).toBe(200);
+        const stored = await collectionOf(url, token, "users");
+        expect(stored.passwordAuth).toEqual(
+          expect.objectContaining({ identityFields: ["email", "username"] }),
+        );
+        expect(JSON.stringify(stored.indexes)).toContain("idx_users_username");
+        expect(await records(url, token, "posts")).toEqual([
+          expect.objectContaining({ author: "Ann" }),
+        ]);
+      },
+    );
+  });
+
+  test("a rename of a field that the MFA rule names, and the rule is set again", async () => {
+    await renameScenario(
+      { members: membersOf("nick", "nick != ''") },
+      async (url, token) => {
+        const created = await api(url, token, "POST", "/api/collections/members/records", {
+          email: "ann@example.test",
+          password: "1234567890",
+          passwordConfirm: "1234567890",
+          nick: "n",
+        });
+        expect(created.status).toBe(200);
+      },
+      { members: membersOf("handle", "handle != ''") },
+      [["20261114110010_mfa.ts", migrationSource(`  renames: { members: { nick: "handle" } },`)]],
+      async (url, token) => {
+        expect((await collectionOf(url, token, "members")).mfa).toEqual(
+          expect.objectContaining({ rule: "handle != ''" }),
+        );
+        expect(await records(url, token, "members")).toEqual([
+          expect.objectContaining({ email: "ann@example.test" }),
+        ]);
+      },
+    );
+  });
+
+  test("a rename of a custom _superusers field that has an index", async () => {
+    await renameScenario(
+      { _superusers: superusersOf("nick") },
+      async () => {},
+      { _superusers: superusersOf("handle") },
+      [
+        [
+          "20261114110020_superusers.ts",
+          migrationSource(`  renames: { _superusers: { nick: "handle" } },`),
+        ],
+      ],
+      async (url, token) => {
+        const collection = await collectionOf(url, token, "_superusers");
+        expect(Object.keys(await fieldsOf(url, token, "_superusers"))).toContain("handle");
+        expect(Object.keys(await fieldsOf(url, token, "_superusers"))).not.toContain("nick");
+        expect(JSON.stringify(collection.indexes)).toContain("(handle)");
+      },
+    );
+  });
+
+  test("a view over a view that reads a renamed field is created again", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" }, writer: { type: "text" } }),
+        v1: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, writer FROM posts" },
+        v2: {
+          type: "view",
+          rules: { list: "", view: "" },
+          query: "SELECT id, writer AS w FROM v1",
+        },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", {
+          title: "t",
+          writer: "Ann",
+        });
+      },
+      {
+        posts: posts({ title: { type: "text" }, author: { type: "text" } }),
+        v1: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, author FROM posts" },
+        v2: {
+          type: "view",
+          rules: { list: "", view: "" },
+          query: "SELECT id, author AS w FROM v1",
+        },
+      },
+      [["20261114110030_views.ts", migrationSource(`  renames: { posts: { writer: "author" } },`)]],
+      async (url, token) => {
+        expect(await records(url, token, "v2")).toEqual([expect.objectContaining({ w: "Ann" })]);
+      },
+    );
+  });
+
+  test("the plan shows a real rule change, and not the rules and indexes that a rename clears and sets again", async () => {
+    const site = await newSite();
+    const teams = {
+      type: "base",
+      rules: { list: "", view: "" },
+      fields: { name: { type: "text" } },
+      indexes: ["CREATE INDEX idx_teams_name ON teams (name)"],
+    };
+    // logs in by username, so its identity fields and unique index stay as they are
+    const users = {
+      type: "auth",
+      rules: { list: "", view: "" },
+      fields: { username: { type: "text" } },
+      indexes: ["CREATE UNIQUE INDEX idx_users_username ON users (username)"],
+      passwordAuth: { identityFields: ["email", "username"] },
+    };
+    writeSchema(site, {
+      posts: posts({ title: { type: "text" }, writer: { type: "text" } }),
+      teams,
+      users,
+    });
+    let server = await serveWith(site);
+    let token = await superuser(server.url);
+    const team = await api(server.url, token, "POST", "/api/collections/teams/records", {
+      name: "red",
+    });
+    expect(team.status).toBe(200);
+    await server.stop();
+
+    // posts gets a list rule that names the renamed field; teams changes nothing
+    writeSchema(site, {
+      posts: {
+        type: "base",
+        rules: { list: 'author != ""', view: "" },
+        fields: { title: { type: "text" }, author: { type: "text" } },
+      },
+      teams,
+      users,
+    });
+    writeMigration(
+      site,
+      "20261114110200_author.ts",
+      migrationSource(`  renames: { posts: { writer: "author" } },`),
+    );
+    const plan = await run(["--dir", site.dataDir, "schema", "plan", "--schema", site.schemaPath]);
+    expect(plan.exitCode).toBe(0);
+    expect(plan.stdout).toContain("~ posts (base)\n      rules: list\n");
+    expect(plan.stdout).toMatch(
+      /~ teams \(base\)\n {6}index rebuilt: CREATE INDEX idx_teams_name ON teams \(name\) \(1 records in the table\)/,
+    );
+    expect(plan.stdout).not.toMatch(/~ teams \(base\)\n {6}rules/);
+    expect(plan.stdout).not.toContain("index added: CREATE INDEX idx_teams_name");
+    // the auth options are as stored, so only the index is listed, as rebuilt
+    expect(plan.stdout).toMatch(
+      /~ users \(auth\)\n {6}index rebuilt: CREATE UNIQUE INDEX idx_users_username ON users \(username\)/,
+    );
+    expect(plan.stdout).not.toMatch(/~ users \(auth\)\n {6}(rules|options)/);
+    expect(plan.stdout).toContain("the schema would apply");
+
+    server = await serveWith(site);
+    token = await superuser(server.url);
+    expect((await collectionOf(server.url, token, "posts")).listRule).toBe('author != ""');
+    expect((await collectionOf(server.url, token, "teams")).listRule).toBe("");
+    expect(JSON.stringify((await collectionOf(server.url, token, "teams")).indexes)).toContain(
+      "idx_teams_name",
+    );
     await server.stop();
   });
 });

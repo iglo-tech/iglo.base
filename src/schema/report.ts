@@ -108,9 +108,8 @@ function fieldLine(change: FieldChange): string {
 }
 
 function indexLine(change: IndexChange): string {
-  const kind = change.kind === "added" ? "added" : "removed";
   const rows = change.rows === undefined ? "" : ` (${change.rows} records in the table)`;
-  return `index ${kind}: ${change.statement}${rows}`;
+  return `index ${change.kind}: ${change.statement}${rows}`;
 }
 
 function collectionLines(change: CollectionChange): string[] {

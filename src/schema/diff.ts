@@ -33,9 +33,13 @@ export interface FieldChange {
 }
 
 export interface IndexChange {
-  kind: "added" | "removed";
+  // "rebuilt": the plan's kind for an index the file keeps, which a rename
+  // drops and creates again (apply.ts shownChanges); the apply's own changes
+  // never have it
+  kind: "added" | "removed" | "rebuilt";
   statement: string;
-  // the rows of the collection's table, set by the apply for an added index
+  // the rows of the collection's table, set by the apply for an added or
+  // rebuilt index
   rows?: number;
 }
 
