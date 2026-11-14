@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.8 | review | `task/S.8-schema-followups` → `main`, PR 108 | 2 | Round 1 fixed in `59585c5`, `bf630e1`, `dd58177` (check and test:reference exit 0). Lead: `records()` +26–75% over main (≈0.13 s at 40k rows) accepted for bounded memory; 20% bound waived. Opus round 2 reviews the fixes only |
+| S.8 | fixer | `task/S.8-schema-followups` → `main`, PR 108 | 2 | Round 2: round-1 fixes hold; 2 findings (`records()` with a collection id regressed; removing a view with a view that reads it fails in name order, also on main). Fixer applies the reviewer's fixes; round 3 is final |
 
 
 
