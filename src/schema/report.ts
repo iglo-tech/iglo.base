@@ -30,12 +30,27 @@ export interface LostValues {
   becomesSingle?: boolean;
 }
 
+// A declared rename (S.5): a field of a collection, or a collection. The rate
+// limit rules that a collection rename relabels are listed with it.
+export interface RenameItem {
+  kind: "field" | "collection";
+  collection?: string;
+  from: string;
+  to: string;
+  // the migration file that declares it
+  file: string;
+  rateLimits: { from: string; to: string }[];
+}
+
 export interface ApplyReport {
   mode: "apply" | "plan";
   allowDataLoss: boolean;
   changes: SchemaChanges;
-  // the JavaScript migrations that ran (or would run) in the transaction
+  // the JavaScript and TypeScript migrations that ran (or would run) in the
+  // transaction, in run order
   migrations: string[];
+  // the declared renames that ran (or would run), before the changes
+  renames: RenameItem[];
   lost: LostValues[];
   problems: Problem[];
   // the name of the backup made before the apply, when one was made
@@ -50,6 +65,7 @@ export function newReport(mode: "apply" | "plan", allowDataLoss: boolean): Apply
     allowDataLoss,
     changes: { collections: [] },
     migrations: [],
+    renames: [],
     lost: [],
     problems: [],
     committed: false,
@@ -63,7 +79,11 @@ export function reportIsOK(report: ApplyReport): boolean {
 
 // whether the report has any change to show
 export function reportChanged(report: ApplyReport): boolean {
-  return report.changes.collections.length > 0 || report.migrations.length > 0;
+  return (
+    report.changes.collections.length > 0 ||
+    report.migrations.length > 0 ||
+    report.renames.length > 0
+  );
 }
 
 const fieldMarks: Record<FieldChange["kind"], string> = {
@@ -88,9 +108,8 @@ function fieldLine(change: FieldChange): string {
 }
 
 function indexLine(change: IndexChange): string {
-  const kind = change.kind === "added" ? "added" : "removed";
   const rows = change.rows === undefined ? "" : ` (${change.rows} records in the table)`;
-  return `index ${kind}: ${change.statement}${rows}`;
+  return `index ${change.kind}: ${change.statement}${rows}`;
 }
 
 function collectionLines(change: CollectionChange): string[] {
@@ -133,6 +152,20 @@ export function formatReport(report: ApplyReport): string {
     lines.push("collections:");
     for (const change of report.changes.collections) {
       lines.push(...collectionLines(change));
+    }
+  }
+
+  if (report.renames.length > 0) {
+    lines.push(`renames ${report.mode === "plan" ? "that would run" : "run"}:`);
+    for (const rename of report.renames) {
+      const what =
+        rename.kind === "field"
+          ? `field ${rename.collection}.${rename.from} -> ${rename.to}`
+          : `collection ${rename.from} -> ${rename.to}`;
+      lines.push(`  ${what} (${rename.file})`);
+      for (const rule of rename.rateLimits) {
+        lines.push(`    rate limit rule ${rule.from} -> ${rule.to}`);
+      }
     }
   }
 

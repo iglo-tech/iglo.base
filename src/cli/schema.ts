@@ -29,6 +29,7 @@ import { CommandError } from "@/cli/superuser";
 import { findAllCollections } from "@/collections/collection-query";
 import { dataDBFilename } from "@/db/base";
 import { parseSchemaFile, planSchema, SchemaFileError } from "@/schema/apply";
+import { loadSchemaMigrationsFor, type SchemaMigration } from "@/schema/migration-files";
 import { JSONSyntaxError } from "@/schema/json-tree";
 import type { Collection } from "@/collections/collection-model";
 import { describeCollections } from "@/schema/describe";
@@ -85,6 +86,13 @@ const allowDataLossFlag: FlagSpec = {
   name: "allow-data-loss",
   kind: "bool",
   usage: "plan the deletion of the fields and collections that hold data",
+};
+
+const schemaMigrationsDirFlag: FlagSpec = {
+  name: "schemaMigrationsDir",
+  kind: "string",
+  usage:
+    "the directory of the TypeScript migrations of the schema (default migrations/ next to the schema file)",
 };
 
 // Runs `schema ...`; ctx.args still starts with the command words. version
@@ -291,7 +299,7 @@ async function runPlan(
   migrations: readonly Migration[],
   rest: string[],
 ): Promise<void> {
-  const local = [helpFlag("schema plan"), schemaFlag, allowDataLossFlag];
+  const local = [helpFlag("schema plan"), schemaFlag, allowDataLossFlag, schemaMigrationsDirFlag];
   let parsed;
   try {
     parsed = parseFlags(argsMinusFirst(rest, "plan", persistent), [...local, ...persistent], {
@@ -323,6 +331,7 @@ async function runPlan(
     throw new CommandError("schema plan needs --schema <file>");
   }
   const schemaText = readPlanFile(resolve(ctx.cwd, given), given);
+  const schemaMigrations = await migrationsOf(ctx, given, parsed.values);
 
   // pocketbase.go eagerParseFlags: the persistent flags of the whole line
   let config: AppConfig;
@@ -342,6 +351,7 @@ async function runPlan(
       report = planSchema(app, schemaText, {
         allowDataLoss: parsed.values.get("allow-data-loss") === true,
         migrations,
+        schemaMigrations,
       });
     } catch (err) {
       if (err instanceof SchemaFileError) {
@@ -355,6 +365,24 @@ async function runPlan(
     }
   } finally {
     await clearBootstrap(app);
+  }
+}
+
+// the TypeScript migrations of the schema file, from --schemaMigrationsDir when
+// it is given (D40, S.5); they load before the database is opened
+async function migrationsOf(
+  ctx: CliContext,
+  schemaFile: string,
+  values: Map<string, FlagValue>,
+): Promise<SchemaMigration[]> {
+  const dir = values.get("schemaMigrationsDir") as string | undefined;
+  try {
+    return await loadSchemaMigrationsFor(
+      resolve(ctx.cwd, schemaFile),
+      dir === undefined ? undefined : resolve(ctx.cwd, dir),
+    );
+  } catch (err) {
+    throw new CommandError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -387,7 +415,13 @@ async function runTypes(
   migrations: readonly Migration[],
   rest: string[],
 ): Promise<void> {
-  const local = [helpFlag("schema types"), outFlag, typesSchemaFlag, checkFlag];
+  const local = [
+    helpFlag("schema types"),
+    outFlag,
+    typesSchemaFlag,
+    checkFlag,
+    schemaMigrationsDirFlag,
+  ];
   let parsed;
   try {
     parsed = parseFlags(argsMinusFirst(rest, "types", persistent), [...local, ...persistent], {
@@ -440,6 +474,7 @@ async function runTypes(
       collections = collectionsJSON(findAllCollections(app));
     } else {
       const schemaText = readPlanFile(resolve(ctx.cwd, given), given);
+      const schemaMigrations = await migrationsOf(ctx, given, parsed.values);
       try {
         schema = parseSchemaFile(schemaText);
       } catch (err) {
@@ -452,6 +487,7 @@ async function runTypes(
       const report = planSchema(app, schemaText, {
         allowDataLoss: false,
         migrations,
+        schemaMigrations,
         inspect: (txApp) => {
           applied = collectionsJSON(findAllCollections(txApp));
         },

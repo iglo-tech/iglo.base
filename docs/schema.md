@@ -179,7 +179,7 @@ A few rules apply to the changes:
 
 It runs the apply's transaction and rolls it back. It prints:
 
-- the changes, collection by collection;
+- the changes, collection by collection. With a rename, a rule or option that the file sets to its stored value is not listed, and an index that the file keeps is listed as `index rebuilt`: the apply drops it and creates it again, and the row count is the size of the table it is built on;
 - the JavaScript migrations that would run;
 - the data that would be lost;
 - every problem, with up to five example record ids and the next step.
@@ -261,6 +261,115 @@ Each problem names the field or collection, the number of records or values, and
 
 To see the report before you deploy, run `schema plan` with the same file.
 
+## Migrations
+
+The file says what the schema is. A migration changes the data, and only the data, as a TypeScript file that the apply runs once, at the start, inside its transaction. Renames of fields and collections are declared in a migration, so the values stay.
+
+### Where they live
+
+Migration files are in `migrations/`, next to the schema file, or in the directory that `--schemaMigrationsDir` names (for `serve --schema`, `schema plan` and `schema types --schema`). A relative path is taken from the directory you run the command in.
+
+A file is named `<digits>_<name>.ts`, for example `20261113120000_rename_writer.ts`. The name is digits, an underscore, then lowercase letters, digits, `_` or `-`. Use a timestamp (`YYYYMMDDHHMMSS`), so the files run in the order they were written: the migrations run in file name order, and mixed widths of number do not sort. A file whose name does not fit, or that does not load, stops the start with the file's name.
+
+Each file default-exports an object that `satisfies Migration`. `Migration` comes from the types file that `schema types` writes, so the record helpers are typed:
+
+```ts
+import type { Migration } from "../src/iglo.types";
+
+export default {
+  renames: { posts: { writer: "author" } },
+  up(tx) {
+    for (const post of tx.records("posts", { filter: "slug = ''" })) {
+      tx.update("posts", post.id, { slug: post.id });
+    }
+  },
+} satisfies Migration;
+```
+
+The object has three keys and no others: `renames`, `renameCollections` and `up`.
+
+### `up(tx)`
+
+- `up` runs in the apply transaction, after the fields and collections are added and before the file's changes narrow them (constraints, rules, indexes and removals). It is synchronous: an `up` that returns a promise, or that throws, fails the apply, and the transaction rolls back, so the database is as it was. The error names the file.
+- `tx` has these helpers. They read and write the records through the same validation the API applies to the record being saved.
+  - Records come back as a superuser's API read returns them: every field, the hidden ones and the email included. A password and a token key are never in them.
+  - `records(collection, { filter, sort, params })`: an iterator over the matching records, read before the first one is returned.
+  - `findFirst(collection, query)` and `findById(collection, id)`: the record, or `null`.
+  - `create(collection, data)`, `update(collection, id, data)` and `delete(collection, id)`.
+  - `sql(query, params)`: a raw query on `data.db`, for what the helpers do not cover.
+- The record check (the last step of the apply, which checks every record against the final schema) runs after `up`, not during it. A migration can therefore fill a new required field in several passes: the field is optional while the migrations run, and the check finds any record that is still empty.
+- Not available: file uploads (the helpers refuse a `File` or `Blob` value) and network access (mail, S3, OAuth2). Nothing in the helpers reaches the network, but a `fetch` call inside `up` is not stopped, and it would hold the write transaction for as long as it takes. Do not make one.
+- Forward only: there is no `down`. The pre-schema backup is the way back.
+
+### Running once
+
+Each file that runs is recorded in `_migrations` as `@schema/<file name>`, in the same transaction as its changes, so a file runs once across restarts. A failed run records nothing. Do not rename a file that has run: the new name runs again. `migrate history-sync` keeps these rows.
+
+### Renames
+
+`renames` and `renameCollections` declare renames:
+
+```ts
+export default {
+  renames: { posts: { writer: "author" } },
+  renameCollections: { authors: "writers" },
+} satisfies Migration;
+```
+
+- A field is keyed by its collection's name as it is before this file's own renames. A collection that this file renames is keyed by its old name in `renames` too, so `renames: { authors: { name: "fullname" } }` works next to `renameCollections: { authors: "writers" }`. A renamed collection is named by its new name in `renameCollections`.
+- A rename runs as a real rename: the field keeps its id and the column keeps its values; the collection keeps its id, its table, its records and their files, and the relations that point to it. Rate-limit rules that start with the old collection name are relabelled, as the dashboard does.
+- Pending files run in name order, each against the names the earlier files left, so a second file can rename what the first one renamed: `renames: { posts: { author: "byline" } }` in a later file works after `renames: { posts: { writer: "author" } }` in an earlier one. A file that has run is not read again. Within one file, a name cannot be renamed again: put the second rename in a file of its own.
+- When a file renames something, the apply first drops the SQL views. It then clears the rules of every collection that is not a system collection (a system rule cannot change), the identity fields and the MFA rule of an auth collection (`email` and empty), and the indexes: every index of a collection that is not a system collection, and of a system collection the indexes that name a renamed field (upstream requires the others). The implied indexes of an auth collection are kept. The file's values are set again, and the views are created again. So a rule, option or index that names an old name, in any form (a relation path, a back relation, an alias, an expression), is not an error. Write the file's rules and indexes with the new names.
+- A rename is refused, with the reason, and the apply does not start, when: the old name does not exist; the new name already exists, or the file does not have it at the end of the pending renames; two renames of one file give one name, or a file renames a name it creates. A view and a system collection or field cannot be renamed. Remove the view and add one under the new name.
+- A field or collection that the file drops is not data loss when it is the old name of a rename; without the rename, the data-loss guard still stops the apply.
+
+`schema plan` lists each rename, and the rate-limit rules a collection rename relabels, before the changes and the migrations.
+
+### Recipes
+
+**Add a required field that existing records fill.** Add the field to the file as required, and add a migration that fills it:
+
+```json
+"slug": { "type": "text", "required": true }
+```
+
+```ts
+// migrations/20261113170000_slug.ts
+import type { Migration } from "../src/iglo.types";
+
+export default {
+  up(tx) {
+    for (const post of tx.records("posts")) {
+      tx.update("posts", post.id, { slug: String(post.title).toLowerCase().replace(/\W+/g, "-") });
+    }
+  },
+} satisfies Migration;
+```
+
+If a record stays empty, the record check stops the apply and names the field. The file is applied only when every record has the value.
+
+**Rename a field.** Change the name in the file, and declare the rename in a new migration:
+
+```ts
+// migrations/20261113180000_writer_is_author.ts
+import type { Migration } from "../src/iglo.types";
+
+export default {
+  renames: { posts: { writer: "author" } },
+} satisfies Migration;
+```
+
+**Rename a collection.** Change the name in the file, including the relations and rules that name it, and declare the rename:
+
+```ts
+// migrations/20261113190000_writers.ts
+import type { Migration } from "../src/iglo.types";
+
+export default {
+  renameCollections: { authors: "writers" },
+} satisfies Migration;
+```
+
 ## Types
 
 `schema types` writes the TypeScript types of the collections, so that app code and the database cannot drift apart without the compiler saying so:
@@ -274,7 +383,7 @@ To see the report before you deploy, run `schema plan` with the same file.
 - `--check` compares `--out` with what the command would write, exits nonzero and names the file when they differ, and writes nothing. Run it with the same `--schema` in CI or a pre-commit hook.
 - `--dir` chooses the data directory, as for the other commands. The command reads an existing database and creates none.
 
-The same schema gives the same file, byte for byte. The file's header names the command, and it is laid out the way oxfmt lays out TypeScript, so a formatter run on it changes nothing. A test checks that with long names, long values and quoted values. The one exception is a json field's `tsType`: it is written as the schema file has it, behind an `// oxfmt-ignore` comment, so a formatter leaves its line alone.
+The same schema gives the same file, byte for byte. The file also has the `Migration` type and the helper types of a migration (`MigrationTx`), which come from the applied schema, so a migration that names a missing field or gives a value of the wrong type is a compile error (see [Migrations](#migrations)). The file's header names the command, and it is laid out the way oxfmt lays out TypeScript, so a formatter run on it changes nothing. A test checks that with long names, long values and quoted values. The one exception is a json field's `tsType`: it is written as the schema file has it, behind an `// oxfmt-ignore` comment, so a formatter leaves its line alone.
 
 ### What is generated
 
@@ -330,3 +439,8 @@ const posts = await server.collection("posts").getFullList<PostsResponse>();
 ```
 
 With the official `pocketbase` package, which keeps the same API, pass the record type to its generic instead: `pb.collection<PostsResponse>("posts")`.
+
+## Limitations
+
+- **A rule that names a view field that the same apply changes.** The rules are set in step 6 and the views are created again in step 7, so the rule is checked against the view the database still holds, and it fails with `unknown field`. The workaround is to keep the view's column name with an alias in its query.
+- **Unique indexes are absent while the migrations run, when a rename is pending.** The renames drop the indexes first (see [Renames](#renames)), so a migration that relies on a unique index to reject a duplicate succeeds. The apply then fails at step 6 with `Failed to create index`, and the rollback leaves the database as it was; only the message is less clear.

@@ -16,15 +16,22 @@
 //	nests them; a rollback undoes both):
 //	  1. the pending JavaScript migrations (D23), with `up`, as serve ran them
 //	     before; they may change the structure first
-//	  2. renames (S.5; none yet)
+//	  2. the declared renames of the pending TypeScript migrations (S.5): the
+//	     SQL views are dropped first, then the stored rules, auth options and
+//	     indexes are cleared (none can name an old name then), and the files run
+//	     in name order, each checked against the names the earlier ones left,
+//	     then run as saves (fields keep their ids, a collection its id, so the
+//	     values, records, files and relations stay)
 //	  3. the changes against the file, again; the data-loss guard; the SQL
 //	     views that the changes affect are dropped, and so are the removed
 //	     views (a removed view may read a column or a view that goes)
 //	  4. widen: new collections with their plain fields, and the new plain
 //	     fields of the existing ones (a replaced field, same name with
-//	     another type, waits for step 6, and the removed fields stay)
+//	     another type, waits for step 6, and the removed fields stay); a
+//	     required field is added as optional, so a migration can fill it
 //	  5. widen: the new relation fields, once every target exists
-//	  5a. TypeScript migrations (S.5; none yet)
+//	  5a. TypeScript migrations (S.5): up(tx), synchronous, in name order,
+//	     each recorded as @schema/<file name> in this transaction
 //	  6. narrow: the new and changed collections in full (fields, indexes,
 //	     rules, options); then the removed views; then the removed collections,
 //	     each after the collections that relate to it
@@ -40,6 +47,7 @@
 
 import type { App } from "@/app/app";
 import { Collection, newCollection } from "@/collections/collection-model";
+import type { Field } from "@/fields/field";
 import {
   findAllCollections,
   findCollectionByNameOrId,
@@ -50,6 +58,7 @@ import { deleteCollection, saveCollection } from "@/collections/collection-save"
 import type { Databases } from "@/db/base";
 import { deleteView } from "@/db/table";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";
+import { parseIndex } from "@/tools/dbutils";
 import { collectionJSON, fieldJSON, settingsJSON, type CollectionIdOf } from "@/schema/apply-json";
 import { makePreSchemaBackup, prunePreSchemaBackups } from "@/schema/backup";
 import {
@@ -60,18 +69,19 @@ import {
   multiValueTypes,
   recordProblems,
 } from "@/schema/check";
-import { describeCollections } from "@/schema/describe";
+import { collectionNameOf, describeCollectionModel, describeCollections } from "@/schema/describe";
 import {
   checkedFields,
   distinctIndexes,
   diffSchemas,
+  indexKey,
   impliedStatements,
   keepStoredIndexes,
   lostFields,
   type CollectionChange,
   type SchemaChanges,
 } from "@/schema/diff";
-import { explicitIndexes } from "@/schema/implied";
+import { explicitIndexes, isImpliedIndex } from "@/schema/implied";
 import {
   formatReport,
   newReport,
@@ -80,9 +90,23 @@ import {
   type Problem,
 } from "@/schema/report";
 import { readSchema, type SchemaIssue } from "@/schema/read";
-import { ruleKeys, type SchemaCollection, type SchemaDescription } from "@/schema/types";
+import {
+  ruleKeys,
+  type SchemaCollection,
+  type SchemaDescription,
+  type SchemaField,
+  type SchemaObject,
+} from "@/schema/types";
 import { reloadSettings } from "@/settings/settings-query";
-import { isMigrationApplied, up, type Migration } from "@/migrations/migrations-runner";
+import {
+  isMigrationApplied,
+  saveAppliedMigration,
+  up,
+  type Migration,
+} from "@/migrations/migrations-runner";
+import { schemaMigrationRecord, type SchemaMigration } from "@/schema/migration-files";
+import { newMigrationHelpers } from "@/schema/migration-tx";
+import { fileProblems } from "@/schema/renames";
 import { Errors } from "@/validation/error";
 
 type Json = Record<string, unknown>;
@@ -112,6 +136,8 @@ export interface ApplyOptions {
   allowDataLoss: boolean;
   // the JavaScript migrations of pb_migrations, in run order
   migrations: readonly Migration[];
+  // the TypeScript migrations of the migrations directory, in name order
+  schemaMigrations?: readonly SchemaMigration[];
   // called in the transaction after its last step, with the database as the
   // file leaves it (`schema types --schema` reads the collections here); a
   // plan rolls the transaction back after it
@@ -153,7 +179,7 @@ export async function applySchema(
   options: ApplyOptions,
 ): Promise<ApplyReport> {
   const desired = parseSchemaFile(text);
-  const pending = pendingMigrations(app, options.migrations);
+  const pending = pendingMigrations(app, options);
 
   // read only: when nothing changes, there is nothing to back up or check
   const current = describeCollections(findAllCollections(app));
@@ -196,9 +222,21 @@ export function planSchema(app: App, text: string, options: ApplyOptions): Apply
   return runTransaction(app, desired, options, "plan");
 }
 
-// the names of the migrations that have not run yet
-function pendingMigrations(app: App, migrations: readonly Migration[]): string[] {
-  return migrations.filter((m) => !isMigrationApplied(app.databases, m.file)).map((m) => m.file);
+// the names of the migrations that have not run yet, JavaScript ones first
+function pendingMigrations(app: App, options: ApplyOptions): string[] {
+  return [
+    ...options.migrations
+      .filter((m) => !isMigrationApplied(app.databases, m.file))
+      .map((m) => m.file),
+    ...pendingSchemaMigrations(app, options).map((m) => m.file),
+  ];
+}
+
+// the TypeScript migrations that have not run yet, in name order
+function pendingSchemaMigrations(app: App, options: ApplyOptions): SchemaMigration[] {
+  return (options.schemaMigrations ?? []).filter(
+    (m) => !isMigrationApplied(app.databases, schemaMigrationRecord(m.file)),
+  );
 }
 
 // The transaction of an apply or a plan. A failure is a problem in the report,
@@ -288,13 +326,17 @@ function applyInTransaction(
   // 1. the pending JavaScript migrations
   report.migrations = up(app, options.migrations);
 
-  // 2. renames (S.5)
-  applyRenames();
+  // 2. the declared renames (S.5), from the pending TypeScript migrations
+  const pendingSchema = pendingSchemaMigrations(app, options);
+  const storedBeforeRenames = applyRenames(app, pendingSchema, desired, report);
+  const renamesRan = storedBeforeRenames !== undefined;
 
-  // 3. the changes, now that the migrations ran; the guard
+  // 3. the changes, now that the migrations ran; the guard. After renames the
+  // plan shows the changes against the stored state from before step 2
   const current = describeCollections(findAllCollections(app));
   const changes = diffSchemas(current, desired);
-  report.changes = changes;
+  report.changes =
+    storedBeforeRenames === undefined ? changes : shownChanges(app, storedBeforeRenames, desired);
   for (const change of changes.collections) {
     if (change.kind === "changed" && change.options.includes("type")) {
       const before = current.collections.find((c) => c.name === change.name);
@@ -310,12 +352,13 @@ function applyInTransaction(
   if (report.problems.length > 0) {
     throw new StopApply("problems");
   }
-  for (const change of changes.collections) {
+  // the rows of the tables that an index is built on (the plan shows them)
+  for (const change of report.changes.collections) {
     if (change.kind === "removed" || change.type === "view") {
       continue;
     }
     for (const index of change.indexes) {
-      if (index.kind === "added") {
+      if (index.kind === "added" || index.kind === "rebuilt") {
         index.rows = countRows(app.databases, change.name);
       }
     }
@@ -332,7 +375,7 @@ function applyInTransaction(
     }
   }
   // the views that the changes affect are dropped; the save creates them again
-  const rebuild = viewsToRebuild(desired, changes);
+  const rebuild = viewsToRebuild(desired, changes, renamesRan);
   for (const name of rebuild) {
     if (currentByName.get(name)?.type === "view") {
       deleteView(app.databases, name);
@@ -344,8 +387,8 @@ function applyInTransaction(
   widenExistingFields(app, desired, changeByName, "plain", new Set());
   widenExistingFields(app, desired, changeByName, "relation", deferred);
 
-  // 5a: TypeScript migrations (S.5)
-  applyTypeScriptMigrations();
+  // 5a: TypeScript migrations (S.5), each recorded in this transaction
+  runSchemaMigrations(app, pendingSchema, report);
 
   // 6: narrow, then the removed views, then the removed collections in
   // dependency order
@@ -386,14 +429,418 @@ function applyInTransaction(
   }
 }
 
-// The renames of the file (S.5). None are declared yet.
-function applyRenames(): void {
-  // nothing to rename until S.5
+// 2: the declared renames (S.5), from the pending TypeScript migrations. Runs
+// only when a pending file declares a rename. First every SQL view is dropped:
+// SQLite refuses to rename a column that a view over a view reads through
+// another view. Then the stored rules, auth options and indexes are cleared
+// (clearStoredReferences): a stored reference can name a renamed name in a form
+// this step does not list (a relation path, a back relation, an alias, an
+// expression or a partial index), and the save of any collection validates its
+// rules, options and indexes. Step 6 sets them from the file. Then the files
+// run in name order, each against the names the earlier ones left (a chain
+// across files works). Returns the collections as they were before the clearing
+// (undefined when no rename runs); every view is created again (steps 3 and 7),
+// since a view's query or rules may name an old name.
+function applyRenames(
+  app: App,
+  files: readonly SchemaMigration[],
+  desired: SchemaDescription,
+  report: ApplyReport,
+): StoredCollections | undefined {
+  const declaring = files.filter(
+    (file) =>
+      Object.keys(file.renames).length > 0 || Object.keys(file.renameCollections).length > 0,
+  );
+  if (declaring.length === 0) {
+    return undefined;
+  }
+  for (const model of findAllCollections(app)) {
+    if (model.type === "view") {
+      deleteView(app.databases, model.name);
+    }
+  }
+  const stored = storedCollections(app);
+  clearStoredReferences(app, renamedNamesOf(declaring));
+  const applied: AppliedRename[] = [];
+  for (const file of declaring) {
+    // the file's problems are checked against the names as they are now, and
+    // a refused file stops the apply before its renames run
+    const problems = fileProblems(describeCollections(findAllCollections(app)), file);
+    if (problems.length > 0) {
+      report.problems.push(...problems);
+      throw new StopApply("renames");
+    }
+    renameFile(app, file, report, applied);
+  }
+  // every rename must end in a name the file has (a chain's intermediate name
+  // is not in the file, so this is checked at the end)
+  const problems = appliedProblems(app, desired, applied);
+  if (problems.length > 0) {
+    report.problems.push(...problems);
+    throw new StopApply("renames");
+  }
+  return stored;
 }
 
-// The TypeScript migrations of the file (S.5). None are declared yet.
-function applyTypeScriptMigrations(): void {
-  // nothing to run until S.5
+// The collections before step 2, by id, as describeCollectionModel reads them
+// (names before the renames). shownChanges reads their rules, options and
+// indexes back: step 2 clears them.
+type StoredCollections = ReadonlyMap<string, SchemaCollection>;
+
+function storedCollections(app: App): StoredCollections {
+  const models = findAllCollections(app);
+  const nameOf = collectionNameOf(models);
+  return new Map(models.map((model) => [model.id, describeCollectionModel(model, nameOf)]));
+}
+
+// The changes that `schema plan` shows when a rename runs. Step 2 clears the
+// rules, auth options and indexes, so the changes against the cleared state
+// would list every one of them. Here the stored state is the one before step 2
+// (the renames applied, so the names are the file's): a rule or option that the
+// file sets to its stored value is not listed, and an index that the file keeps
+// is listed as rebuilt, since step 2 drops it and creates it again. The apply
+// itself still runs on the changes against the cleared state.
+function shownChanges(
+  app: App,
+  stored: StoredCollections,
+  desired: SchemaDescription,
+): SchemaChanges {
+  const models = findAllCollections(app);
+  const nameOf = collectionNameOf(models);
+  // the indexes of each collection as step 2 left them: an index stored before
+  // and absent here was dropped, so the file's copy of it is rebuilt
+  const afterStep2 = new Map<string, Set<string>>();
+  const before: SchemaDescription = {
+    collections: models.map((model) => {
+      const now = describeCollectionModel(model, nameOf);
+      afterStep2.set(model.id, new Set(now.indexes.map(indexKey)));
+      const was = stored.get(model.id);
+      return was === undefined
+        ? now
+        : { ...now, rules: was.rules, options: was.options, indexes: was.indexes };
+    }),
+  };
+  const changes = diffSchemas(before, desired).collections;
+  const idByName = new Map(models.map((model) => [model.name, model.id]));
+  for (const collection of desired.collections) {
+    const id = idByName.get(collection.name) ?? "";
+    const was = stored.get(id);
+    if (collection.type === "view" || was === undefined) {
+      continue;
+    }
+    const storedKeys = new Set(was.indexes.map(indexKey));
+    const present = afterStep2.get(id) ?? new Set<string>();
+    const kept = explicitIndexes(collection.indexes, collection).filter((statement) => {
+      const key = indexKey(statement);
+      return storedKeys.has(key) && !present.has(key);
+    });
+    if (kept.length === 0) {
+      continue;
+    }
+    let change = changes.find((item) => item.name === collection.name);
+    if (change === undefined) {
+      change = {
+        name: collection.name,
+        kind: "changed",
+        type: collection.type,
+        fields: [],
+        fieldOrder: false,
+        rules: [],
+        options: [],
+        indexes: [],
+      };
+      changes.push(change);
+    }
+    change.indexes.push(...kept.map((statement) => ({ kind: "rebuilt" as const, statement })));
+  }
+  return {
+    collections: changes.toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+  };
+}
+
+// a rename that ran: the collection and field keep their ids, so the end check
+// finds them by id, whatever their names became
+interface AppliedRename {
+  file: string;
+  collectionId: string;
+  // undefined for a collection rename
+  fieldId?: string;
+  to: string;
+  where: string;
+}
+
+// the renames of one file, run as one save per collection they touch. The
+// file's keys are the names before its own renames, and fileProblems has
+// checked them; the rate-limit rules are read before the saves relabel them,
+// for the report, as the plan shows the rules a collection rename changes.
+function renameFile(
+  app: App,
+  file: SchemaMigration,
+  report: ApplyReport,
+  applied: AppliedRename[],
+): void {
+  const models = findAllCollections(app);
+  const byName = new Map(models.map((model) => [model.name, model]));
+  const plans = new Map<string, { model: Collection; fields: Map<string, string>; to?: string }>();
+  const planOf = (model: Collection) => {
+    const plan = plans.get(model.id) ?? { model, fields: new Map<string, string>() };
+    plans.set(model.id, plan);
+    return plan;
+  };
+  const rules = app.settings.settings.RateLimits.Rules ?? [];
+
+  for (const [collectionName, pairs] of Object.entries(file.renames)) {
+    const model = byName.get(collectionName) as Collection;
+    for (const [from, to] of Object.entries(pairs)) {
+      const field = model.fields.toArray().find((f) => f.getName() === from) as Field;
+      planOf(model).fields.set(from, to);
+      applied.push({
+        file: file.file,
+        collectionId: model.id,
+        fieldId: field.getId(),
+        to,
+        where: `${collectionName}.${from}`,
+      });
+      report.renames.push({
+        kind: "field",
+        collection: collectionName,
+        from,
+        to,
+        file: file.file,
+        rateLimits: [],
+      });
+    }
+  }
+  for (const [from, to] of Object.entries(file.renameCollections)) {
+    const model = byName.get(from) as Collection;
+    planOf(model).to = to;
+    applied.push({ file: file.file, collectionId: model.id, to, where: from });
+    report.renames.push({
+      kind: "collection",
+      from,
+      to,
+      file: file.file,
+      rateLimits: rules
+        .filter((rule) => rule.Label.startsWith(from + ":"))
+        .map((rule) => ({ from: rule.Label, to: to + rule.Label.slice(from.length) })),
+    });
+  }
+
+  for (const { model, fields, to } of plans.values()) {
+    const json = JSON.parse(model.marshalJSON()) as Json;
+    if (fields.size > 0) {
+      json.fields = (json.fields as Json[]).map((field) => {
+        const renamed = fields.get(String(field.name));
+        return renamed === undefined ? field : { ...field, name: renamed };
+      });
+    }
+    const before = model.name;
+    if (to !== undefined) {
+      json.name = to;
+      // the implied indexes name the table: they are built again for the new one
+      json.indexes = (json.indexes as string[]).map((statement) => retabled(statement, to));
+    }
+    model.unmarshalJSON(JSON.stringify(json));
+    saveAs(app, model, to ?? before);
+  }
+}
+
+// the references that the renames clear (step 2): the rules of every collection
+// that is not a view or a system collection (a system rule cannot change); the
+// identity fields and the MFA rule of an auth collection, which may name a
+// renamed field (the identity fields become email, which the implied unique
+// index covers; the MFA rule becomes empty); and the indexes that clearedIndex
+// selects. A value already cleared is not changed. Step 6 sets them from the
+// file again: the reader fills every option the file leaves out with its
+// default, so the values the file keeps come back exactly.
+function clearStoredReferences(app: App, renamed: ReadonlyMap<string, ReadonlySet<string>>): void {
+  for (const model of findAllCollections(app)) {
+    if (model.type === "view") {
+      continue;
+    }
+    const json = JSON.parse(model.marshalJSON()) as Json;
+    let changed = false;
+    if (!model.system) {
+      for (const key of Object.keys(ruleKeyOfAPI)) {
+        if (json[key] !== undefined && json[key] !== null) {
+          json[key] = null;
+          changed = true;
+        }
+      }
+    }
+    if (model.type === "auth") {
+      changed = clearAuthReferences(json) || changed;
+    }
+    const indexes = json.indexes as string[];
+    const kept = indexes.filter(
+      (statement) => !clearedIndex(statement, model, renamed.get(model.name)),
+    );
+    if (kept.length !== indexes.length) {
+      json.indexes = kept;
+      changed = true;
+    }
+    if (changed) {
+      model.unmarshalJSON(JSON.stringify(json));
+      saveAs(app, model, model.name);
+    }
+  }
+}
+
+// Whether step 2 drops a stored index. Every explicit index of a collection that
+// is not a system one: an index names its columns, and the save of any
+// collection validates them. A system collection keeps its own indexes, since
+// upstream requires some of them (a unique index on the system fields of
+// _externalAuths), and drops only one that names a renamed field, as a custom
+// field of _superusers may have one. The implied ones are never dropped.
+function clearedIndex(
+  statement: string,
+  model: Collection,
+  renamed: ReadonlySet<string> | undefined,
+): boolean {
+  if (isImpliedIndex(statement, model)) {
+    return false;
+  }
+  if (!model.system) {
+    return true;
+  }
+  const words = statement.toLowerCase().match(/[a-z_][a-z0-9_]*/g) ?? [];
+  return words.some((word) => renamed?.has(word) === true);
+}
+
+// the field names that the declaring files rename, per collection name (the
+// names before and after each rename), lowercased as SQLite compares them
+function renamedNamesOf(files: readonly SchemaMigration[]): Map<string, Set<string>> {
+  const names = new Map<string, Set<string>>();
+  for (const file of files) {
+    for (const [collection, pairs] of Object.entries(file.renames)) {
+      const set = names.get(collection) ?? new Set<string>();
+      for (const [from, to] of Object.entries(pairs)) {
+        set.add(from.toLowerCase());
+        set.add(to.toLowerCase());
+      }
+      names.set(collection, set);
+    }
+  }
+  return names;
+}
+
+// clears the identity fields and the MFA rule of an auth collection's JSON;
+// whether a value changed
+function clearAuthReferences(json: Json): boolean {
+  let changed = false;
+  const passwordAuth = json.passwordAuth;
+  if (isObject(passwordAuth) && JSON.stringify(passwordAuth.identityFields) !== '["email"]') {
+    passwordAuth.identityFields = ["email"];
+    changed = true;
+  }
+  const mfa = json.mfa;
+  if (isObject(mfa) && mfa.rule !== undefined && mfa.rule !== null && mfa.rule !== "") {
+    mfa.rule = "";
+    changed = true;
+  }
+  return changed;
+}
+
+function isObject(value: unknown): value is Json {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// the end check of the renames: each one ends in a collection or field that
+// the file has, by the name it has now (found by id)
+function appliedProblems(
+  app: App,
+  desired: SchemaDescription,
+  applied: readonly AppliedRename[],
+): Problem[] {
+  const problems: Problem[] = [];
+  const byId = new Map(findAllCollections(app).map((model) => [model.id, model]));
+  for (const rename of applied) {
+    const model = byId.get(rename.collectionId);
+    if (model === undefined) {
+      continue;
+    }
+    const target = desired.collections.find((collection) => collection.name === model.name);
+    const note = `(declared in ${rename.file})`;
+    if (rename.fieldId === undefined) {
+      if (target === undefined) {
+        problems.push({
+          where: rename.where,
+          message: `renameCollections: the schema file has no collection ${JSON.stringify(model.name)} ${note}`,
+          next: "Name the collection in the file as the rename does.",
+        });
+      }
+      continue;
+    }
+    const field = model.fields.toArray().find((f) => f.getId() === rename.fieldId);
+    const name = field?.getName() ?? rename.to;
+    if (target === undefined || !target.fields.some((f) => f.name === name)) {
+      problems.push({
+        where: rename.where,
+        message: `renames: the schema file has no field ${JSON.stringify(name)} in ${model.name} ${note}`,
+        next: "Name the field in the file as the rename does.",
+      });
+    }
+  }
+  return problems;
+}
+
+// the rule keys of the API's collection JSON (listRule, ...)
+const ruleKeyOfAPI: Readonly<Record<string, string>> = Object.freeze({
+  listRule: "list",
+  viewRule: "view",
+  createRule: "create",
+  updateRule: "update",
+  deleteRule: "delete",
+  authRule: "auth",
+  manageRule: "manage",
+});
+
+// the statement with the table name the collection has now (a renamed
+// collection's indexes name the new table; the statement is built again)
+function retabled(statement: string, table: string): string {
+  const index = parseIndex(statement);
+  if (!index.isValid()) {
+    return statement;
+  }
+  index.tableName = table;
+  return index.build();
+}
+
+// 5a: the TypeScript migrations of the file (S.5), in name order. Each one's
+// up(tx) runs synchronously in the apply transaction; a throw or a promise
+// fails the apply, naming the file. Each run is recorded as @schema/<file>.
+function runSchemaMigrations(
+  app: App,
+  pending: readonly SchemaMigration[],
+  report: ApplyReport,
+): void {
+  for (const migration of pending) {
+    if (migration.up !== null) {
+      let result: unknown;
+      try {
+        result = migration.up(newMigrationHelpers(app));
+      } catch (err) {
+        throw new Error(`migration ${migration.file} failed: ${messageOf(err)}`, { cause: err });
+      }
+      if (isThenable(result)) {
+        // the promise is only observed here, so its rejection is not unhandled
+        result.then(undefined, () => {});
+        throw new Error(
+          `migration ${migration.file} returned a promise: up(tx) must be synchronous, and async work (mail, S3, OAuth2, fetch) cannot run inside the apply transaction`,
+        );
+      }
+    }
+    saveAppliedMigration(app.databases, app.clock, schemaMigrationRecord(migration.file));
+    report.migrations.push(migration.file);
+  }
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value !== null &&
+    (typeof value === "object" || typeof value === "function") &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
 }
 
 // the ids of the stored collections, by name
@@ -486,10 +933,20 @@ function collectLost(
 // The views to create again: the changed views, and every view that reads a
 // changed collection or a view that is created again. A view's query names
 // what it reads, so a name in it is taken as a dependency: that may
-// over-approximate, and the extra views are created again too.
-function viewsToRebuild(desired: SchemaDescription, changes: SchemaChanges): Set<string> {
-  const changed = new Set(changes.collections.map((c) => c.name));
+// over-approximate, and the extra views are created again too. After a rename
+// every view is created again: a view's rules are not in its query, so a rule
+// that names an old name is not found here, and the renames clear the rules of
+// the collections only (step 2).
+function viewsToRebuild(
+  desired: SchemaDescription,
+  changes: SchemaChanges,
+  renamesRan: boolean,
+): Set<string> {
   const views = desired.collections.filter((c) => c.type === "view");
+  if (renamesRan) {
+    return new Set(views.map((view) => view.name));
+  }
+  const changed = new Set(changes.collections.map((c) => c.name));
   const rebuild = new Set<string>();
   for (const view of views) {
     if (changed.has(view.name)) {
@@ -568,7 +1025,7 @@ function widenNewCollections(
     const relations = collection.fields.filter((field) => field.type === "relation");
     const fields = collection.fields
       .filter((field) => !cycle || field.type !== "relation")
-      .map((field) => fieldJSON(field, "", lookup));
+      .map((field) => plainFieldJSON(field, "", lookup));
     if (cycle && relations.length > 0) {
       deferred.add(collection.name);
     }
@@ -578,6 +1035,17 @@ function widenNewCollections(
     exists.add(collection.name);
   }
   return deferred;
+}
+
+// a field as widen adds it: not required yet. The file's narrow step (6)
+// makes it required, after the TypeScript migrations (5a) have filled it, so a
+// save in a migration does not need the value of a field it does not touch
+function plainFieldJSON(field: SchemaField, id: string, lookup: CollectionIdOf): SchemaObject {
+  const json = fieldJSON(field, id, lookup);
+  if (json.required === true) {
+    json.required = false;
+  }
+  return json;
 }
 
 // the names of the collections that a collection's relation fields target
@@ -618,7 +1086,10 @@ function widenExistingFields(
     // the stored fields stay as they are, with their ids; the new ones follow
     const model = findCollectionByNameOrId(app, collection.name);
     const stored = model.fields.marshalJSON().slice(1, -1);
-    const list = [stored, ...fields.map((field) => JSON.stringify(fieldJSON(field, "", idOf)))];
+    const list = [
+      stored,
+      ...fields.map((field) => JSON.stringify(plainFieldJSON(field, "", idOf))),
+    ];
     const text =
       `{"id":${JSON.stringify(model.id)},"name":${JSON.stringify(model.name)},` +
       `"type":${JSON.stringify(model.type)},"fields":[${list.filter((part) => part !== "").join(",")}]}`;
