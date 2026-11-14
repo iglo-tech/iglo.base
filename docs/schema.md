@@ -2,7 +2,7 @@
 
 Your collections can live in a file in your repository, next to your code. The file lists every collection and field. You can read it in a pull request, review it like any other change, and give it to an editor or an agent that checks it against a JSON Schema.
 
-This guide covers the file, `schema pull`, which writes the file from a database, and applying the file: `serve --schema` at startup and `schema plan`, which shows what an apply would do. Later versions of this guide add the TypeScript types, migrations and the server modes.
+This guide covers the file, `schema pull`, which writes the file from a database, and applying the file: `serve --schema` at startup and `schema plan`, which shows what an apply would do. It then covers the TypeScript types, migrations, the development and production modes, and OAuth2 providers in the file.
 
 ## The file
 
@@ -10,7 +10,7 @@ The file is `iglo.schema.json`. Its first line points at the JSON Schema of the 
 
 ```json
 {
-  "$schema": "https://github.com/iglo-tech/iglo.base/releases/download/v1.0.0/iglo.schema.json",
+  "$schema": "https://github.com/iglo-tech/iglo.base/releases/download/v1.2.0/iglo.schema.json",
   "collections": {
     "posts": {
       "type": "base",
@@ -53,6 +53,8 @@ The file is `iglo.schema.json`. Its first line points at the JSON Schema of the 
   }
 }
 ```
+
+The example is abridged: the file lists every collection, including the `users` collection that `author` relates to.
 
 The file has two top-level keys:
 
@@ -461,7 +463,7 @@ With the official `pocketbase` package, which keeps the same API, pass the recor
 
 `--mode prod` applies the file at each start, as before, and then **locks** the schema and the settings:
 
-- collection create, update, delete and import, and `PATCH /api/settings`, answer `403` with the message "The schema and settings are managed by the schema file". The message says where each change is made: the collections in the file, the settings in a migration. Superusers get the `403` too;
+- collection create, update, delete and import, and `PATCH /api/settings`, answer `403` with a message that begins "The schema and settings are managed by the schema file". The rest of the message says where each change is made: the collections in the file, the settings in a migration. Superusers get the `403` too;
 - records, users, files, backups (a restore too, which restarts the server and applies the file again), logs and everything else work as usual;
 - the dashboard's collection and settings screens are read-only and say why.
 
