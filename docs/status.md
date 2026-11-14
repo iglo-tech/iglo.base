@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.5 | fixer | `task/S.5-schema-migrations` → `develop`, PR 103 | 2 | Round 2: 4 findings (typecheck failed on the head the fixer reported green; step 2 missed identityFields unique index, mfa.rule and system-collection indexes; view-on-view rename; plan noise). Fixer applies the reviewer's fixes |
+| S.5 | review | `task/S.5-schema-migrations` → `develop`, PR 103 | 3 (final) | Round 2 fixed in `c96c186` (check and test:reference exit 0). System collections keep indexes in step 2 except those naming a renamed field (`_externalAuths` needs its unique index). Opus round 3 reviews the fixes; then the lead decides |
 
 
 
