@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| S.6 | fixer | `task/S.6-schema-modes` → `develop`, PR 104 | 1 | Round 1: 6 findings (write-back adds stored providers to a file that left them out, breaking the next start; new `migrations/` dir not watched; failed re-apply repeats on unrelated changes; fixed TS migration stays cached; wrong prod settings route in docs and 403 message; dashboard change silently undone by a pending file edit). Differential suite passes with `--mode dev`/`prod` (reviewer ran it). Lead: write-back never adds providers the file left out; file wins over a concurrent dashboard change, said clearly |
+| S.6 | review | `task/S.6-schema-modes` → `develop`, PR 104 | 2 | Round 1 fixed in `99cfee8`, `a458bc2` (check, reference, browser exit 0). TS migrations now bundled with `Bun.build` to load fresh; settings in prod via JS migration. Opus round 2 reviews the fixes, incl. the compiled executable |
 
 
 
