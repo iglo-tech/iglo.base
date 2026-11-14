@@ -1901,3 +1901,71 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
     await server.stop();
   });
 });
+
+describe("S.8 review round 1: the order of views and removals, and records() paging", () => {
+  // a view over two collections that the file changes: a new max on one, and
+  // a text field that becomes a number on the other (a replaced column)
+  const joinView = {
+    type: "view",
+    rules: { list: "", view: "" },
+    query: "SELECT b.id, a.name, b.pages FROM books b JOIN authors a ON a.id = b.author",
+  };
+  const changedTables = {
+    authors: posts({ name: { type: "text", max: 100 } }),
+    books: posts({ pages: { type: "number" }, author: { type: "text" } }),
+  };
+  const unchangedTables = {
+    authors: posts({ name: { type: "text" } }),
+    books: posts({ pages: { type: "text" }, author: { type: "text" } }),
+  };
+
+  test("a new view over two collections the file changes is created again after each save, so a column drop is not blocked", async () => {
+    await renameScenario(
+      unchangedTables,
+      async () => {},
+      { ...changedTables, stats: joinView },
+      [],
+      async (url, token) => {
+        expect(await records(url, token, "stats")).toEqual([]);
+        expect((await fieldsOf(url, token, "books")).pages?.type).toBe("number");
+      },
+    );
+  });
+
+  test("a view kept unchanged over two collections the file changes survives the narrow", async () => {
+    await renameScenario(
+      { ...unchangedTables, stats: joinView },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/authors/records", { name: "Ann" });
+      },
+      { ...changedTables, stats: joinView },
+      [],
+      async (url, token) => {
+        expect(await records(url, token, "stats")).toEqual([]);
+        expect((await fieldsOf(url, token, "books")).pages?.type).toBe("number");
+      },
+    );
+  });
+
+  test("a view removed while the file adds a view over a new view applies", async () => {
+    await renameScenario(
+      {
+        posts: posts({ title: { type: "text" } }),
+        va: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, title FROM posts" },
+      },
+      async (url, token) => {
+        await api(url, token, "POST", "/api/collections/posts/records", { title: "a" });
+      },
+      {
+        posts: posts({ title: { type: "text" } }),
+        vb: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, title FROM vc" },
+        vc: { type: "view", rules: { list: "", view: "" }, query: "SELECT id, title FROM posts" },
+      },
+      [],
+      async (url, token) => {
+        expect(await records(url, token, "vb")).toEqual([expect.objectContaining({ title: "a" })]);
+        expect((await api(url, token, "GET", "/api/collections/va")).status).toBe(404);
+      },
+    );
+  });
+});

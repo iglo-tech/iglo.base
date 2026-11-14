@@ -36,12 +36,15 @@
 //	     each recorded as @schema/<file name> in this transaction; then those
 //	     views are dropped again, since step 6 may drop a column they read
 //	  6. narrow: the new and changed collections in full (fields, indexes,
-//	     rules, options); then the removed views
+//	     rules, options). A save re-saves the views whose fields it changed, so
+//	     the views of this apply and the removed views are dropped again after
+//	     each save, before the next one can drop a column they read
 //	  7. the SQL views of the affected view collections are created again
 //	     (step 5 made them for the migrations, and step 5a dropped them); then
-//	     the removed collections, each after the collections that relate to it.
-//	     The views come first: deleting a collection saves every view again to
-//	     check it, and a view that is missing makes that check fail
+//	     the removed views, and then the removed collections, each after the
+//	     collections that relate to it. The views come first: deleting a
+//	     collection saves every view again to check it, and a view that is
+//	     missing makes that check fail
 //	  8. the record check, for the fields the apply added or changed
 //	  9. commit; or roll back, so that the database is unchanged
 //
@@ -442,20 +445,24 @@ function applyInTransaction(
     deleteView(app.databases, view.name);
   }
 
-  // 6: narrow, then the removed views
-  narrow(app, desired, changeByName);
-  for (const change of changes.collections) {
-    if (change.kind === "removed" && change.type === "view") {
-      removeCollection(app, change.name);
-    }
-  }
+  // 6: narrow. A save re-saves the views whose fields it changed, and SQLite
+  // refuses to drop a column that a view reads, so the views of this apply and
+  // the removed views are dropped again after each save
+  const removedViews = changes.collections
+    .filter((change) => change.kind === "removed" && change.type === "view")
+    .map((change) => change.name);
+  narrow(app, desired, changeByName, [...views.map((view) => view.name), ...removedViews]);
 
-  // 7: the views, each after the views its query reads; then the removed
-  // collections in dependency order. The views come first: deleting a collection
-  // saves every view again to check it (upstream's integrity check), and a view
-  // that is not in the database makes that check fail
+  // 7: the views, each after the views its query reads; then the removed views,
+  // then the removed collections in dependency order. The views come first:
+  // deleting a collection saves every view again to check it (upstream's
+  // integrity check), and a view that is not in the database makes that check
+  // fail
   for (const view of views) {
     saveView(app, view);
+  }
+  for (const name of removedViews) {
+    removeCollection(app, name);
   }
   removeCollections(
     app,
@@ -493,7 +500,7 @@ function applyInTransaction(
 // rules, options and indexes. Step 6 sets them from the file. Then the files
 // run in name order, each against the names the earlier ones left (a chain
 // across files works). Returns the collections as they were before the clearing
-// (undefined when no rename runs); every view is created again (steps 3 and 7),
+// (undefined when no rename runs); every view is created again (steps 5 and 7),
 // since a view's query or rules may name an old name.
 function applyRenames(
   app: App,
@@ -1158,10 +1165,13 @@ function widenExistingFields(
 // order (the stored ids kept, the replaced fields with new ones), the indexes
 // (by definition, with the stored names; the implied ones kept), the rules and
 // the options
+//
+// transient: the views to drop after each save (see step 6 of applyInTransaction).
 function narrow(
   app: App,
   desired: SchemaDescription,
   changeByName: Map<string, CollectionChange>,
+  transient: readonly string[],
 ): void {
   const idOf = collectionIdsOf(app);
   for (const collection of desired.collections) {
@@ -1188,6 +1198,9 @@ function narrow(
     const members = { ...settingsJSON(collection), fields, indexes };
     model.unmarshalJSON(JSON.stringify(collectionJSON(collection, model.id, members)));
     saveAs(app, model, collection.name);
+    for (const name of transient) {
+      deleteView(app.databases, name);
+    }
   }
 }
 
