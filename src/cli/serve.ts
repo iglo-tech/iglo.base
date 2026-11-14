@@ -16,14 +16,18 @@
 // this loop bootstraps and serves again; upstream bootstraps and reverts
 // but its server stays down, and the process exits after 3 seconds.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { httpsNotSupportedMessage, ignoredDirWarning } from "@/cli/removed";
 import type { AppConfig, CliContext } from "@/cli/root";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
+import { applySchema } from "@/schema/apply";
+import { loadSchemaMigrationsFor, schemaMigrationsDir } from "@/schema/migration-files";
+import { SchemaSync } from "@/schema/sync";
+import { schemaURL } from "@/schema/url";
 import { type Migration, up } from "@/migrations/migrations-runner";
 import { logTime, serve } from "@/server/serve";
 import { reloadSettings } from "@/settings/settings-query";
@@ -52,9 +56,44 @@ export const serveFlags: FlagSpec[] = [
     usage:
       "TCP address to listen for the HTTPS server\n(if domain args are specified - default to 0.0.0.0:443, otherwise - default to empty string, aka. no TLS)\nThe incoming HTTP traffic also will be auto redirected to the HTTPS version",
   },
+  {
+    name: "schema",
+    kind: "string",
+    usage:
+      "the schema file (iglo.schema.json) to apply before the server starts, at every start (D40)",
+  },
+  {
+    name: "allow-data-loss",
+    kind: "bool",
+    usage:
+      "with --schema: let the apply delete fields and collections that hold data (without it the apply stops)",
+  },
+  {
+    name: "schemaMigrationsDir",
+    kind: "string",
+    usage:
+      "with --schema: the directory of the TypeScript migrations (default migrations/ next to the schema file)",
+  },
+  {
+    name: "mode",
+    kind: "string",
+    usage:
+      "with --schema: dev writes the dashboard's collection changes back to the file and applies the file's changes while the server runs; prod applies the file at startup and locks the collections and settings (dev or prod)",
+    defaultText: "dev",
+  },
+  {
+    name: "types",
+    kind: "string",
+    usage:
+      "with --schema: the TypeScript types file to write from the applied schema (regenerated after each change in dev)",
+  },
 ];
 
 type AppContextRestart = App["restart"];
+
+// the schema file's hooks of the app (D40, D41): see App.schemaLocked and
+// App.collectionsChanged
+export type SchemaHooks = Pick<App, "schemaLocked" | "collectionsChanged">;
 
 // The app bootstrap that pocketbase.go's Execute runs before a command
 // (serve, superuser).
@@ -62,8 +101,10 @@ export async function bootstrapApp(
   app: AppConfig,
   ctx: CliContext,
   restart?: AppContextRestart,
+  schema: SchemaHooks = {},
 ): Promise<App> {
   return bootstrap({
+    ...schema,
     dataDir: app.dataDir,
     isDev: app.isDev,
     encryptionEnv: app.encryptionEnv,
@@ -93,6 +134,7 @@ export async function runServeCommand(
   domains: string[],
   ctx: CliContext,
   migrations: readonly Migration[],
+  version: string,
 ): Promise<void> {
   let httpAddr = (values.get("http") as string | undefined) ?? "";
   const httpsAddr = (values.get("https") as string | undefined) ?? "";
@@ -112,7 +154,58 @@ export async function runServeCommand(
     ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${ignoredDirWarning(hooksDir)}\n`);
   }
 
+  // the schema file is read at every start (D40): a restart after a restore
+  // applies the file again
+  const schemaPath = values.get("schema") as string | undefined;
+  const allowDataLoss = values.get("allow-data-loss") === true;
+  const migrationsDir = values.get("schemaMigrationsDir") as string | undefined;
+  // --mode: dev (the default) or prod (D40, D41). Without --schema neither changes anything.
+  const mode = (values.get("mode") as string | undefined) ?? "dev";
+  if (mode !== "dev" && mode !== "prod") {
+    throw new Error(`--mode must be dev or prod, not ${JSON.stringify(mode)}`);
+  }
+  const typesFlag = values.get("types") as string | undefined;
+  if (typesFlag !== undefined && schemaPath === undefined) {
+    throw new Error("--types needs --schema: the types are those of the schema file");
+  }
+
   for (;;) {
+    const schemaText =
+      schemaPath === undefined
+        ? undefined
+        : readSchemaFile(resolve(ctx.cwd, schemaPath), schemaPath);
+    // the TypeScript migrations load before the database opens: a file that
+    // does not load stops the start (D40, S.5)
+    const schemaMigrations =
+      schemaPath === undefined
+        ? []
+        : await loadSchemaMigrationsFor(
+            resolve(ctx.cwd, schemaPath),
+            migrationsDir === undefined ? undefined : resolve(ctx.cwd, migrationsDir),
+          );
+    // --automigrate is off while --schema is set (D40)
+    const dbApp = schemaText === undefined ? app : { ...app, automigrate: false };
+    // the schema file's sync: the types, and in development the write-back
+    // and the file watch (D40); the app is the one bootstrap opens below
+    const syncApp: { current?: App } = {};
+    const sync =
+      schemaText === undefined || schemaPath === undefined
+        ? undefined
+        : new SchemaSync({
+            schemaPath: resolve(ctx.cwd, schemaPath),
+            migrationsDir: schemaMigrationsDir(
+              resolve(ctx.cwd, schemaPath),
+              migrationsDir === undefined ? undefined : resolve(ctx.cwd, migrationsDir),
+            ),
+            migrationsNamed: migrationsDir !== undefined,
+            typesPath: typesFlag === undefined ? undefined : resolve(ctx.cwd, typesFlag),
+            schemaURL: schemaURL(version),
+            migrations,
+            allowDataLoss,
+            log: (line) => ctx.out.stderr(`${logTime(ctx.out.now())} ${line}\n`),
+            app: () => syncApp.current as App,
+          });
+
     const stop = new AbortController();
     // every app.restart call of this app instance, oldest first: the ones
     // that join the first restart settle with it, and every one of them
@@ -120,22 +213,42 @@ export async function runServeCommand(
     const restarts: { revert: () => void; failed: (err: unknown) => void }[] = [];
 
     const appContext = await bootstrapApp(
-      app,
+      dbApp,
       ctx,
       (revert) =>
         new Promise<void>((_resolve, reject) => {
           restarts.push({ revert, failed: reject });
           stop.abort();
         }),
+      {
+        // production: the file manages the collections and settings (D41)
+        schemaLocked: schemaText !== undefined && mode === "prod",
+        // development: the file follows the collection changes (D40)
+        collectionsChanged:
+          sync !== undefined && mode === "dev" ? (names) => sync.writeBack(names) : undefined,
+      },
     );
+    syncApp.current = appContext;
 
+    let stopWatching: (() => void) | undefined;
     try {
-      // ensure that the latest migrations are applied before starting the server
-      up(appContext, migrations);
+      if (schemaText === undefined) {
+        // ensure that the latest migrations are applied before starting the server
+        up(appContext, migrations);
+      } else {
+        // the file's apply runs the migrations inside its transaction (D40)
+        await applySchema(appContext, schemaText, { allowDataLoss, migrations, schemaMigrations });
+        sync?.adopt(schemaText);
+      }
       await reloadSettings(appContext);
 
       // the jobs tick only under serve (OnServe's __pbCronStart__)
       appContext.cron.start();
+
+      // development: the file's changes are applied while the server runs (D40)
+      if (sync !== undefined && mode === "dev") {
+        stopWatching = sync.watchFiles();
+      }
 
       await serve(
         appContext,
@@ -155,6 +268,7 @@ export async function runServeCommand(
         AbortSignal.any([ctx.shutdown, stop.signal]),
       );
     } finally {
+      stopWatching?.();
       await clearBootstrap(appContext);
     }
 
@@ -193,5 +307,17 @@ export async function runServeCommand(
     if (ctx.shutdown.aborted) {
       return;
     }
+  }
+}
+
+// the text of the schema file; a file that cannot be read stops the start
+function readSchemaFile(path: string, given: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (err) {
+    throw new Error(
+      `cannot read the schema file ${JSON.stringify(given)}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
   }
 }

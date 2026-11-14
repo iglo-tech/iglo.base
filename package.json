@@ -31,8 +31,10 @@
   "devDependencies": {
     "@iglo.tech/iglo.base": "workspace:*",
     "@types/bun": "1.4.4",
+    "ajv": "8.17.1",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",
+    "pocketbase": "0.28.1",
     "typescript": "7.0.2"
   },
   "engines": {

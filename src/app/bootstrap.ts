@@ -103,6 +103,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     stderrLog: config.stderrLog,
     getenv: config.getenv,
     automigrateDir: config.automigrateDir,
+    schemaLocked: config.schemaLocked,
+    collectionsChanged: config.collectionsChanged,
     restart: config.restart,
   });
 

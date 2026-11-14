@@ -59,6 +59,7 @@ The image holds only the release executable. Data lives in `/pb_data`, migration
 - **Operations**: backups to disk or S3, request logs, rate limits, scheduled maintenance jobs.
 - **Admin dashboard** at `/_/`: PocketBase's dashboard, branded as iglo.base.
 - **Migrations**: JavaScript files in `pb_migrations`, `migrate` and `--automigrate`, as in PocketBase.
+- **Schema as code**: an `iglo.schema.json` file in your repository, applied at startup with `serve --schema`, with TypeScript types for the SDK and typed migrations. Development and production modes ([docs/schema.md](docs/schema.md)).
 
 ## Performance
 
@@ -124,7 +125,7 @@ A few edge cases behave slightly differently, such as error texts for malformed 
 
 ## Status
 
-The current release is 1.2.0, from 6 November 2026. iglo.base is maintained by [iglo-tech](https://github.com/iglo-tech) for its own projects and published as is: there is no support promise and no release schedule. It is not an official PocketBase project.
+The current release is 1.2.0, which adds schema as code to 1.1.0 (6 November 2026). iglo.base is maintained by [iglo-tech](https://github.com/iglo-tech) for its own projects and published as is: there is no support promise and no release schedule. It is not an official PocketBase project.
 
 ## For developers
 

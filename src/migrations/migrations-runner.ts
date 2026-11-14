@@ -15,9 +15,10 @@ import type { Clock } from "@/app/clock";
 import { wrapError } from "@/collections/view";
 import type { Databases } from "@/db/base";
 import type { Builder } from "@/db/dbx/builder";
-import { HashExp, newExp, not } from "@/db/dbx/expression";
+import { and, HashExp, newExp, not } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";
+import { schemaMigrationPrefix } from "@/schema/migration-files";
 
 export const DefaultMigrationsTable = "_migrations";
 
@@ -148,13 +149,24 @@ export function down(app: App, list: readonly Migration[], toRevertCount: number
 }
 
 // RemoveMissingAppliedMigrations removes the db entries of all applied
-// migrations that are not listed in the list.
+// migrations that are not listed in the list. The TypeScript migrations of a
+// schema file (D40, S.5) are not in the list by design: their rows, the
+// `@schema/` ones, stay.
 export function removeMissingAppliedMigrations(app: Databases, list: readonly Migration[]): void {
   const names = list.map((m) => m.file);
 
   app
     .db()
-    .delete(DefaultMigrationsTable, not(new HashExp({ file: names })))
+    .delete(
+      DefaultMigrationsTable,
+      and(
+        not(new HashExp({ file: names })),
+        newExp("substr([[file]], 1, {:length}) <> {:prefix}", {
+          length: schemaMigrationPrefix.length,
+          prefix: schemaMigrationPrefix,
+        }),
+      ),
+    )
     .execute();
 }
 

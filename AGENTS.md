@@ -10,7 +10,7 @@ License: MIT, inherited from PocketBase. Keep PocketBase's copyright notice in `
 
 ## Current state
 
-Released (v1.0.0, 2026-11-05); post-1.0 work follows the work plan. The design in `docs/design/` describes the code; read `docs/design/README.md` first. When code and design disagree, fix one of them in the same change.
+Released: v1.2.0 (schema as code, `serve --schema`, `schema pull`, `schema plan`, `schema types`, `serve --mode`); before it v1.1.0 (2026-11-06) and v1.0.0 (2026-11-05). Post-1.2 work follows the work plan. The design in `docs/design/` describes the code; read `docs/design/README.md` first. When code and design disagree, fix one of them in the same change.
 
 ## The two compatibility contracts
 
@@ -21,7 +21,7 @@ These override convenience, style and performance. Read `docs/design/03-data-com
 
 ## No extension surface
 
-Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM, custom route registration, dashboard extensions, a public library API or "escape hatch" configuration that runs user code. See `docs/design/01-scope.md` and decision D5. The one exception is JavaScript migrations in `pb_migrations` (D23), run by Bun with the bindings upstream gives migration files. Internal modules may call each other; that is not an extension API.
+Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM, custom route registration, dashboard extensions, a public library API or "escape hatch" configuration that runs user code. See `docs/design/01-scope.md` and decision D5. The one exception is JavaScript migrations in `pb_migrations` (D23), run by Bun with the bindings upstream gives migration files. TypeScript data migrations next to the schema file (D40, built on `develop`) are the same exception: migration files, run only when the schema is applied (at startup, or on a file change in development mode). Internal modules may call each other; that is not an extension API.
 
 ## Stack
 

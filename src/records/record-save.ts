@@ -370,7 +370,7 @@ export function* settlePasswordHashes(app: RecordsApp, record: Record): Step {
 
 // the app the interceptors get: FieldApp with the filesystem, the record
 // lookup, the transaction state and the logger of app
-function interceptorApp(app: RecordsApp): InterceptorApp {
+export function interceptorApp(app: RecordsApp): InterceptorApp {
   return {
     ...fieldApp(app),
     newFilesystem: () => app.filesystem.newFilesystem(),

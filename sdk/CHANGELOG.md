@@ -1,3 +1,7 @@
+## 1.0.1
+
+- README: a pointer to the generated types (`iglo-base schema types`), for the types of your own collections. No code changes from 1.0.1-rc.0.
+
 ## 1.0.1-rc.0
 
 - Prerelease that validates npm trusted publishing from CI (OIDC, no token). No code changes from 1.0.0; published under the `next` tag.

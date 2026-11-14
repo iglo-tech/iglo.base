@@ -229,3 +229,17 @@ function usersCollection(): Collection {
 
   return users;
 }
+
+// The collections a fresh install creates, as new models (no ids are saved
+// here): the system collections and `users`. The schema file (src/schema)
+// compares them with the database to leave out what is unchanged.
+export function defaultCollections(): Collection[] {
+  return [
+    mfasCollection(),
+    otpsCollection(),
+    externalAuthsCollection(),
+    authOriginsCollection(),
+    superusersCollection(),
+    usersCollection(),
+  ];
+}
