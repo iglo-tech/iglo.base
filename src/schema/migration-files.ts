@@ -105,14 +105,35 @@ export async function loadSchemaMigrations(
 // changes the text, so the edited file loads fresh. Type-only imports are
 // erased; a value import (the types file's Collections, for example) is bundled.
 async function importMigration(path: string): Promise<{ default?: unknown }> {
-  const built = await Bun.build({ entrypoints: [path], target: "bun", format: "esm" });
+  const built = await Bun.build({
+    entrypoints: [path],
+    target: "bun",
+    format: "esm",
+    // the messages are returned, not thrown: Bun's thrown error says only "Bundle failed"
+    throw: false,
+  });
   const output = built.outputs[0];
   if (!built.success || output === undefined) {
-    throw new Error(built.logs.map((log) => String(log)).join("\n") || "the bundle failed");
+    throw new Error(buildFailure(built.logs, path));
   }
   return (await import(`data:text/javascript,${encodeURIComponent(await output.text())}`)) as {
     default?: unknown;
   };
+}
+
+// each message of a failed bundle, with its position: the file, line and column
+// (a message without one names the migration file)
+function buildFailure(logs: readonly (BuildMessage | ResolveMessage)[], path: string): string {
+  if (logs.length === 0) {
+    return `the bundle of ${path} failed`;
+  }
+  return logs
+    .map((log) =>
+      log.position === null || log.position === undefined
+        ? `${path}: ${log.message}`
+        : `${log.position.file}:${log.position.line}:${log.position.column}: ${log.message}`,
+    )
+    .join("\n");
 }
 
 // the default export of one file, checked: an object with an up function and
@@ -122,8 +143,9 @@ async function loadMigration(path: string, file: string): Promise<SchemaMigratio
   try {
     exported = (await importMigration(path)).default;
   } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
     throw new MigrationFileError(
-      `the migration file ${file} does not load: ${err instanceof Error ? err.message : String(err)}`,
+      `the migration file ${file} does not load:\n  ${reason.replaceAll("\n", "\n  ")}`,
     );
   }
   const shape = (message: string): MigrationFileError =>

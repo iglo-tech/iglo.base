@@ -634,6 +634,37 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     expect(broken.stdout + broken.stderr).toContain("20261113210000_broken.ts");
   });
 
+  test("a migration with a syntax error, or an import that does not resolve, names the file, the position and the reason", async () => {
+    const site = await newSite();
+    writeSchema(site, { posts: posts({ title: { type: "text" } }) });
+    const plan = () => run(["--dir", site.dataDir, "schema", "plan", "--schema", site.schemaPath]);
+
+    writeMigration(
+      site,
+      "20261113210000_syntax.ts",
+      `export default {\n  up(tx) {\n    tx.create("posts", { title: "x" ));\n  },\n};\n`,
+    );
+    const syntax = await plan();
+    expect(syntax.exitCode).not.toBe(0);
+    const syntaxOutput = syntax.stdout + syntax.stderr;
+    expect(syntaxOutput).toContain("20261113210000_syntax.ts:3:37");
+    expect(syntaxOutput).toContain('Expected "}" but found ")"');
+    rmFile(join(site.migrationsDir, "20261113210000_syntax.ts"));
+
+    writeMigration(
+      site,
+      "20261113220000_import.ts",
+      `import { title } from "../lib/nope";\nexport default {\n  up(tx) {\n    tx.create("posts", { title });\n  },\n};\n`,
+    );
+    const missing = await plan();
+    expect(missing.exitCode).not.toBe(0);
+    const missingOutput = missing.stdout + missing.stderr;
+    expect(missingOutput).toContain("20261113220000_import.ts");
+    expect(missingOutput).toContain("20261113220000_import.ts:1:");
+    expect(missingOutput).toContain("../lib/nope");
+    expect(missingOutput).not.toContain("Bundle failed");
+  });
+
   test("--schemaMigrationsDir names the directory of the migrations", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
