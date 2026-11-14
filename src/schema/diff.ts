@@ -10,6 +10,7 @@
 // another name is the same index, and it keeps its stored name.
 
 import { explicitIndexes, isImpliedIndex } from "@/schema/implied";
+import { providerChanges } from "@/schema/providers";
 import type {
   SchemaCollection,
   SchemaDescription,
@@ -54,6 +55,9 @@ export interface CollectionChange {
   rules: string[];
   // option names that differ; "query" for a view, "system" and "type" too
   options: string[];
+  // the providers that differ, as lines that name the provider and the key
+  // (src/schema/providers.ts); never a value
+  providers: string[];
   indexes: IndexChange[];
 }
 
@@ -251,6 +255,7 @@ export function diffSchemas(current: SchemaDescription, desired: SchemaDescripti
         fieldOrder: false,
         rules: [],
         options: [],
+        providers: providerChanges([], collection.providers ?? []),
         indexes: explicitIndexes(collection.indexes, collection).map((statement) => ({
           kind: "added",
           statement,
@@ -267,6 +272,10 @@ export function diffSchemas(current: SchemaDescription, desired: SchemaDescripti
       fieldOrder: collection.type === "view" ? false : fieldsReordered(before, collection),
       rules: ruleDiff(before, collection),
       options: optionDiff(before, collection),
+      providers:
+        collection.providers === undefined
+          ? []
+          : providerChanges(before.providers ?? [], collection.providers),
       indexes: collection.type === "view" ? [] : indexChanges(before, collection),
     };
     if (
@@ -274,6 +283,7 @@ export function diffSchemas(current: SchemaDescription, desired: SchemaDescripti
       change.fieldOrder ||
       change.rules.length > 0 ||
       change.options.length > 0 ||
+      change.providers.length > 0 ||
       change.indexes.length > 0
     ) {
       collections.push(change);
@@ -296,6 +306,7 @@ export function diffSchemas(current: SchemaDescription, desired: SchemaDescripti
         fieldOrder: false,
         rules: [],
         options: [],
+        providers: [],
         indexes: [],
       });
     }

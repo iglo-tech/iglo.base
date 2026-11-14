@@ -15,6 +15,7 @@
 // writes over an existing file keeps them, from extractExtras.
 
 import { objectValue, parseJSONTree, type JSONNode } from "@/schema/json-tree";
+import { assertFileProviders } from "@/schema/providers";
 import { defaultCollectionDescription, impliedFieldCount, fieldDefault } from "@/schema/defaults";
 import { isPlainObject, isArrayIndexName, jsonEqual, withKeyOrder } from "@/schema/values";
 import {
@@ -64,9 +65,10 @@ export function formatSchema(description: SchemaDescription, options: FormatOpti
   return JSON.stringify(file, null, 2) + "\n";
 }
 
-// the description with its extra keys left out
+// the description with its extra keys left out, and the providers (compared
+// apart: a default collection has none)
 function core(collection: SchemaCollection): SchemaCollection {
-  const { description: _description, ...rest } = collection;
+  const { description: _description, providers: _providers, ...rest } = collection;
   return {
     ...rest,
     fields: rest.fields.map((field) => coreField(field)),
@@ -124,6 +126,14 @@ function formatCollection(
     if (diff !== changed) {
       out[key] = diff;
     }
+  }
+
+  // the providers the file lists, in the oauth2 option (their secrets are
+  // references, checked here so that no value reaches the file: D40)
+  if (collection.providers !== undefined && collection.providers.length > 0) {
+    assertFileProviders(collection.name, collection.providers);
+    const oauth2 = isPlainObject(out.oauth2) ? out.oauth2 : {};
+    out.oauth2 = { ...oauth2, providers: collection.providers };
   }
 
   return withKeyOrder(out, collectionKeyOrder);

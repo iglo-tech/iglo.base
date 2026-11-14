@@ -52,6 +52,11 @@ export interface SchemaCollection {
   // the auth options of an auth collection (passwordAuth, oauth2, ...); none
   // for the other types
   options: SchemaObject;
+  // the OAuth2 providers, when the file lists them (undefined: the stored ones
+  // stay). In a file's description the secrets are environment references;
+  // in the apply they are the values read from the environment, and in the
+  // database description the stored values (src/schema/providers.ts)
+  providers?: SchemaObject[];
 }
 
 export interface SchemaDescription {

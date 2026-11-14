@@ -54,10 +54,12 @@ const noRelations: NameOf = (collectionId) => {
 // system collection of that name, or the factory default of the type.
 export function defaultCollectionDescription(type: CollectionType, name: string): SchemaCollection {
   const builtin = builtinCollection(name);
-  return describeCollectionModel(
+  const { providers: _providers, ...described } = describeCollectionModel(
     builtin?.type === type ? builtin : newCollection(type, name),
     noRelations,
   );
+  // the providers are not a default: a file that leaves them out keeps the stored ones
+  return described;
 }
 
 // The type of a system collection (one a fresh install creates), or

@@ -43,8 +43,12 @@ function healthCheck(e: RequestEvent): HandlerResult {
         break;
       }
     }
-    // a Go map: members in any order (written here in sorted order)
+    // a Go map: members in any order (written here in sorted order). The
+    // schemaLocked member is there only in production with a schema file (D41)
     data = { canBackup, possibleProxyHeader, realIP };
+    if (e.app.schemaLocked) {
+      data.schemaLocked = true;
+    }
   } else {
     data = {}; // ensure that it is returned as object
   }

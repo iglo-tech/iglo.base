@@ -96,6 +96,8 @@ Flags of `serve`:
 | `--schema <file>` | none | The schema file (`iglo.schema.json`) to apply before the server starts. See [Schema as code](schema.md#applying-the-file-at-startup). |
 | `--schemaMigrationsDir <dir>` | `migrations/` next to the schema file | With `--schema`: the directory of the TypeScript migrations, `<digits>_<name>.ts`, run once each in name order. See [Schema as code](schema.md#migrations). |
 | `--allow-data-loss` | `false` | With `--schema`: let the apply delete fields and collections that hold data. Without it, an apply that would delete data stops before it changes anything. Without `--schema` it has no effect. |
+| `--mode dev\|prod` | `dev` | With `--schema`: `dev` writes the dashboard's and the API's collection changes back to the file, and applies the file's edits and new migration files while the server runs; `prod` applies the file at startup and locks the collections and settings (answers `403`). Without `--schema` it has no effect. See [Development and production](schema.md#development-and-production). |
+| `--types <file>` | none | With `--schema`: the TypeScript types file to write from the applied schema, at each start and, in development, after each change. See [Types](schema.md#types). |
 
 With `--schema`, the apply runs at every start, before the server answers requests. A file that is not valid, or an apply that fails, makes the start exit with status `1`, and the server does not start. The database is unchanged then. Without `--schema`, the server starts as before.
 
@@ -135,6 +137,22 @@ None is needed. The server reads these:
 | `TZ` | system time zone | Go's local time zone, used where PocketBase uses it: some conversions of date values that carry no zone, and time values in JavaScript migrations. Stored timestamps are always UTC, and cron expressions, including the backup schedule, always run in UTC. |
 
 A value that is not a number falls back to the default. For the counts (`PB_THUMBS_*`, `PB_FILES_DELETE_MAX_WORKERS`), 0 and negative values fall back too; `PB_ID_TOKEN_LEEWAY` takes any integer.
+
+### Production with a schema file
+
+A production server keeps its schema in the repository, applies it at each start and does not let the dashboard or the API change the collections or the settings:
+
+```sh
+export USERS_GITHUB_CLIENT_SECRET='…'        # the OAuth2 secret that the schema file names
+./iglo-base serve --dir /srv/app/pb_data --mode prod --schema /srv/app/iglo.schema.json --http 127.0.0.1:8090
+```
+
+- **Environment variables.** Each secret in the schema file is `{"env": "NAME"}`; set `NAME` in the environment of the process (systemd `Environment=` or `EnvironmentFile=`, `docker run -e`). The server reads the variables at each start. A variable that is not set stops the start, and its message names the variable. Keep the file of variables out of the repository.
+- **Checking before the start.** `schema plan --dir /srv/app/pb_data --schema /srv/app/iglo.schema.json` shows what the start would change, with the variables set, and exits with `1` when the file would not apply.
+- **Changing the schema.** Change the file in the repository, deploy it, and restart the server. A restart applies the file again. The dashboard shows the collections and the settings read-only.
+- **Changing the settings.** The file does not hold the settings. Change them with a JavaScript migration in `pb_migrations` (`app.settings()`, then `app.save`), deploy it, and restart the server; the migration runs once, at the start. See [Changing the settings](schema.md#changing-the-settings).
+- **Backups.** The start makes a backup before it applies a change (see [Backups before a schema apply](#backups-before-an-apply)).
+- **Tokens.** Invalidating the tokens of an auth collection is a JavaScript migration in production; see [Invalidating the tokens](schema.md#invalidating-the-tokens).
 
 ### Directories
 

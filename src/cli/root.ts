@@ -307,7 +307,14 @@ async function execute(ctx: CliContext): Promise<number> {
       );
       return 0;
     }
-    await runServeCommand(resolve(parsed.values), parsed.values, parsed.args, ctx, migrations);
+    await runServeCommand(
+      resolve(parsed.values),
+      parsed.values,
+      parsed.args,
+      ctx,
+      migrations,
+      version,
+    );
     return 0;
   }
 

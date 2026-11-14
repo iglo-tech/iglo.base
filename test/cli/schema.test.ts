@@ -31,7 +31,14 @@ function copyOf(source: string): string {
 // the pulled file, parsed, after validating it against the published schema
 async function pull(dataDir: string, ...extra: string[]): Promise<{ text: string; file: object }> {
   const result = await run(["--dir", dataDir, "schema", "pull", ...extra]);
-  expect(result.stderr).toBe("");
+  // the only standard error a pull writes is the notes of the OAuth2 providers
+  // (the variables to set; never a value, D40)
+  expect(
+    result.stderr
+      .split("\n")
+      .filter((line) => !line.startsWith("note: ") && line !== "")
+      .join("\n"),
+  ).toBe("");
   expect(result.exitCode).toBe(0);
   return { text: result.stdout, file: JSON.parse(result.stdout) as object };
 }
@@ -164,7 +171,9 @@ function readBack(text: string): SchemaDescription {
 // hold (the pull writes none, so none is there)
 function comparable(collections: SchemaCollection[]): SchemaCollection[] {
   return collections.map((item) => {
-    const { description: _description, ...rest } = item;
+    // the API's view has no providers (their secrets are redacted); the file's
+    // providers are checked in test/cli/schema-providers.test.ts
+    const { description: _description, providers: _providers, ...rest } = item;
     return {
       ...rest,
       fields: rest.fields.map((field) => {
