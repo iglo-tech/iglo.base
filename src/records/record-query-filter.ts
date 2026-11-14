@@ -95,6 +95,25 @@ export function findRecordsByFilterAsync(
   return q.allAsync<Record>(recordsTarget);
 }
 
+// The ids of the records that match, in the sort's order: one query that reads
+// only the id column, with the filter and the sort of findRecordsByFilter. A
+// caller that needs the records reads them by id (findRecordsByIds), a page at
+// a time, so the set is held as ids and not as records.
+export function findRecordIdsByFilter(
+  app: RecordsApp,
+  collectionModelOrIdentifier: CollectionModelOrIdentifier,
+  filter: string,
+  sort: string,
+  ...params: Params[]
+): string[] {
+  const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
+  const db = app.databases.concurrentDB();
+  return recordsByFilterQuery(app, collection, filter, sort, 0, 0, params)
+    .select(db.quoteSimpleColumnName(collection.name) + ".id")
+    .build()
+    .column<string>();
+}
+
 function recordsByFilterQuery(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,

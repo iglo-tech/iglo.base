@@ -10,7 +10,7 @@ The file is `iglo.schema.json`. Its first line points at the JSON Schema of the 
 
 ```json
 {
-  "$schema": "https://github.com/iglo-tech/iglo.base/releases/download/v1.2.0/iglo.schema.json",
+  "$schema": "https://github.com/iglo-tech/iglo.base/releases/download/v1.2.1/iglo.schema.json",
   "collections": {
     "posts": {
       "type": "base",
@@ -156,7 +156,7 @@ An apply does these things, in this order:
 3. It makes a dry run: the whole apply runs in one transaction that is rolled back, as `schema plan` runs it. If the dry run finds a problem, the start stops and prints the report. It makes no backup, so a server that fails on every start makes none either. The data-loss guard (see [The data-loss guard](#the-data-loss-guard)) is part of the dry run. The dry run holds the write locks of both `data.db` and `auxiliary.db` while it runs, as `schema plan` does.
 4. It makes a backup (see [Backups before an apply](#backups-before-an-apply)). A backup that fails refuses the start, and the schema is not applied.
 5. It opens one transaction on `auxiliary.db`, and inside it one on `data.db`, so a rollback undoes the writes to both. The JavaScript migrations in `pb_migrations` that have not run yet run first. A migration may create a collection that the file also lists; the apply then matches the file to what the migration created.
-6. Then the changes. New collections are created, each with its fields, after the collections they relate to; new fields are added to the existing ones. A relation to a collection that does not exist yet is refused by the save, so when two new collections relate to each other, one of the relation fields is added after both exist. New and changed collections are saved in full: their fields in the file's order, their indexes, rules and options. A field that the file no longer lists is dropped by the save of its collection. Views that the change affects, and the views the file removes, are dropped first. Then the removed views go, and the removed collections go after the collections that relate to them.
+6. Then the changes. New collections are created, each with its fields, after the collections they relate to; new fields are added to the existing ones. A relation to a collection that does not exist yet is refused by the save, so when two new collections relate to each other, one of the relation fields is added after both exist. New and changed collections are saved in full: their fields in the file's order, their indexes, rules and options. A field that the file no longer lists is dropped by the save of its collection. Views that the change affects, and the views the file removes, are dropped first. Then the views of the file are created again, each after the views its query reads, and the removed views go, and then the removed collections go after the collections that relate to them.
 7. Then every record of each collection whose fields were added or changed is checked against the rules the API applies when a record is saved.
 8. If every step works, the transaction is committed and the server starts. If any step fails, the transaction is rolled back and the database is unchanged. The backup from step 4 stays, and the retention keeps the three newest pre-schema backups.
 
@@ -293,12 +293,13 @@ The object has three keys and no others: `renames`, `renameCollections` and `up`
 ### `up(tx)`
 
 - `up` runs in the apply transaction, after the fields and collections are added and before the file's changes narrow them (constraints, rules, indexes and removals). It is synchronous: an `up` that returns a promise, or that throws, fails the apply, and the transaction rolls back, so the database is as it was. The error names the file.
-- `tx` has these helpers. They read and write the records through the same validation the API applies to the record being saved.
+- `tx` has these helpers. They read and write the records through the same validation the API applies to the record being saved. A collection is given by its name or by its id.
   - Records come back as a superuser's API read returns them: every field, the hidden ones and the email included. A password and a token key are never in them.
-  - `records(collection, { filter, sort, params })`: an iterator over the matching records, read before the first one is returned.
+  - `records(collection, { filter, sort, params })`: an iterator over the matching records. The matches are fixed before the first one is returned, whatever the migration writes meanwhile, and the records are read 500 at a time. A record that the migration changes or deletes before its page is read shows the change, or is skipped.
   - `findFirst(collection, query)` and `findById(collection, id)`: the record, or `null`.
   - `create(collection, data)`, `update(collection, id, data)` and `delete(collection, id)`.
   - `sql(query, params)`: a raw query on `data.db`, for what the helpers do not cover.
+- A view can be read in `up` with `records`, `findFirst` or `sql`. The views are created before `up` runs, with the query the file gives them, and dropped again before the file's changes narrow the tables.
 - The record check (the last step of the apply, which checks every record against the final schema) runs after `up`, not during it. A migration can therefore fill a new required field in several passes: the field is optional while the migrations run, and the check finds any record that is still empty.
 - Not available: file uploads (the helpers refuse a `File` or `Blob` value) and network access (mail, S3, OAuth2). Nothing in the helpers reaches the network, but a `fetch` call inside `up` is not stopped, and it would hold the write transaction for as long as it takes. Do not make one.
 - Forward only: there is no `down`. The pre-schema backup is the way back.
@@ -322,7 +323,7 @@ export default {
 - A rename runs as a real rename: the field keeps its id and the column keeps its values; the collection keeps its id, its table, its records and their files, and the relations that point to it. Rate-limit rules that start with the old collection name are relabelled, as the dashboard does.
 - Pending files run in name order, each against the names the earlier files left, so a second file can rename what the first one renamed: `renames: { posts: { author: "byline" } }` in a later file works after `renames: { posts: { writer: "author" } }` in an earlier one. A file that has run is not read again. Within one file, a name cannot be renamed again: put the second rename in a file of its own.
 - When a file renames something, the apply first drops the SQL views. It then clears the rules of every collection that is not a system collection (a system rule cannot change), the identity fields and the MFA rule of an auth collection (`email` and empty), and the indexes: every index of a collection that is not a system collection, and of a system collection the indexes that name a renamed field (upstream requires the others). The implied indexes of an auth collection are kept. The file's values are set again, and the views are created again. So a rule, option or index that names an old name, in any form (a relation path, a back relation, an alias, an expression), is not an error. Write the file's rules and indexes with the new names.
-- A rename is refused, with the reason, and the apply does not start, when: the old name does not exist; the new name already exists, or the file does not have it at the end of the pending renames; two renames of one file give one name, or a file renames a name it creates. A view and a system collection or field cannot be renamed. Remove the view and add one under the new name.
+- A rename is refused, with the reason, and the apply does not start, when: the old name does not exist; the new name already exists (names are compared without regard to case, so `Title` clashes with `title`), or the file does not have it at the end of the pending renames; a rename that only changes the case of its own name is allowed; two renames of one file give one name, or a file renames a name it creates. A view and a system collection or field cannot be renamed. Remove the view and add one under the new name.
 - A field or collection that the file drops is not data loss when it is the old name of a rename; without the rename, the data-loss guard still stops the apply.
 
 `schema plan` lists each rename, and the rate-limit rules a collection rename relabels, before the changes and the migrations.
@@ -385,7 +386,7 @@ export default {
 - `--check` compares `--out` with what the command would write, exits nonzero and names the file when they differ, and writes nothing. Run it with the same `--schema` in CI or a pre-commit hook.
 - `--dir` chooses the data directory, as for the other commands. The command reads an existing database and creates none.
 
-The same schema gives the same file, byte for byte. The file also has the `Migration` type and the helper types of a migration (`MigrationTx`), which come from the applied schema, so a migration that names a missing field or gives a value of the wrong type is a compile error (see [Migrations](#migrations)). The file's header names the command, and it is laid out the way oxfmt lays out TypeScript, so a formatter run on it changes nothing. A test checks that with long names, long values and quoted values. The one exception is a json field's `tsType`: it is written as the schema file has it, behind an `// oxfmt-ignore` comment, so a formatter leaves its line alone.
+The same schema gives the same file, byte for byte. The file also has the `Migration` type and the helper types of a migration (`MigrationTx`), which come from the applied schema, so a migration that names a missing field or gives a value of the wrong type is a compile error (see [Migrations](#migrations)). The file's header names the command, and it is laid out the way oxfmt lays out TypeScript, so a formatter run on it changes nothing. A test checks that with long names, long values and quoted values. The one exception is a json field's `tsType`: it is written as the schema file has it, behind a `// prettier-ignore` comment, which oxfmt honours too, so a formatter leaves its line alone.
 
 ### What is generated
 
@@ -531,6 +532,5 @@ An auth collection's OAuth2 providers can be in the file, so its whole sign-in s
 
 ## Limitations
 
-- **A rule that names a view field that the same apply changes.** The rules are set in step 6 and the views are created again in step 7, so the rule is checked against the view the database still holds, and it fails with `unknown field`. The workaround is to keep the view's column name with an alias in its query.
 - **Unique indexes are absent while the migrations run, when a rename is pending.** The renames drop the indexes first (see [Renames](#renames)), so a migration that relies on a unique index to reject a duplicate succeeds. The apply then fails at step 6 with `Failed to create index`, and the rollback leaves the database as it was; only the message is less clear.
 - **Only direct `import.meta.<name>` uses in the migration file itself are mapped to its path.** Aliases (`const m = import.meta`), destructuring, optional chaining, `import.meta.resolve` and helper modules see the migration's values or the data URL the bundle is loaded from.

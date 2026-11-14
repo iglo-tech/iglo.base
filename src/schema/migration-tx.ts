@@ -13,11 +13,13 @@
 // the database, and the apply holds a write transaction.
 
 import type { App } from "@/app/app";
+import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import { newExp } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { deleteRecordSync, saveRecordSync } from "@/records/record-save";
-import { findRecordById } from "@/records/record-query";
-import { findRecordsByFilter } from "@/records/record-query-filter";
+import { findRecordById, recordQuery, recordsTarget } from "@/records/record-query";
+import { findRecordIdsByFilter, findRecordsByFilter } from "@/records/record-query-filter";
 import { newRecord, type Record as RecordModel } from "@/records/record-model";
 
 // the record of a helper: the record as a superuser's API read returns it, so
@@ -66,23 +68,58 @@ function refuseUploads(data: Record<string, unknown>): void {
   }
 }
 
+// the records that records() reads at a time
+const recordsPage = 500;
+
+// The ids of the records that match a query, in the query's order. One query
+// reads only the ids, so the matches are fixed before the first record is
+// yielded, and the records are then read a page at a time (records()). With a
+// sort, the id comes last, so rows with equal sort values keep one order on
+// every run. A random sort gives a new order on each query, so it is used as
+// it is.
+function matchingIds(app: App, collection: Collection, query: MigrationQuery): string[] {
+  const sort = query.sort ?? "";
+  const order = sort === "" || sort.includes("@random") ? sort : `${sort},id`;
+  return findRecordIdsByFilter(app, collection, query.filter ?? "", order, query.params ?? {});
+}
+
+// The records with these ids, in one query. The ids are one bound JSON array,
+// read by json_each, and not a bound parameter each: binding 500 parameters
+// costs several times more than reading the records they name. The column is
+// named by the collection's table name, so the migration may give its id too.
+function recordsOfIds(app: App, collection: Collection, ids: string[]): RecordModel[] {
+  return recordQuery(app, collection)
+    .andWhere(
+      newExp(`[[${collection.name}.id]] IN (SELECT value FROM json_each({:ids}))`, {
+        ids: JSON.stringify(ids),
+      }),
+    )
+    .all<RecordModel>(recordsTarget);
+}
+
 // The helpers of a migration on the transaction's App.
 export function newMigrationHelpers(app: App): MigrationHelpers {
   return {
     *records(collection, query = {}) {
-      // the matches are read before the first one is yielded, so a write
-      // made while the migration iterates does not change the set
-      const found = findRecordsByFilter(
-        app,
-        collection,
-        query.filter ?? "",
-        query.sort ?? "",
-        0,
-        0,
-        query.params ?? {},
-      );
-      for (const record of found) {
-        yield rowOf(record);
+      // the matches are fixed before the first record is yielded, so a write
+      // made while the migration iterates does not change the set or its order.
+      // A record that the migration changes or deletes before the page holding
+      // it is read shows the change, or is skipped
+      // the collection is resolved once, by name or by id, as the other helpers do
+      const model = findCollectionByNameOrId(app, collection);
+      const ids = matchingIds(app, model, query);
+      for (let start = 0; start < ids.length; start += recordsPage) {
+        const page = ids.slice(start, start + recordsPage);
+        const byId = new Map<string, RecordModel>();
+        for (const record of recordsOfIds(app, model, page)) {
+          byId.set(record.id, record);
+        }
+        for (const id of page) {
+          const record = byId.get(id);
+          if (record !== undefined) {
+            yield rowOf(record);
+          }
+        }
       }
     },
 

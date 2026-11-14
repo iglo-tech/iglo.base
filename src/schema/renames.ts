@@ -14,6 +14,12 @@
 // stops before anything is kept. A collision inside one file is refused: two
 // renames that give one name, a name that the same file renames again, or the
 // same old name twice.
+//
+// Collection and field names are unique without regard to case (upstream checks
+// them lowercased, and SQLite compares column and table names so), so a new name
+// that equals another item's name in any case is refused, with that item named.
+// A rename that only changes the case of its own name is allowed: it keeps the
+// data, as upstream's table sync does.
 
 import type { Problem } from "@/schema/report";
 import type { SchemaDescription } from "@/schema/types";
@@ -36,7 +42,9 @@ export function fileProblems(stored: SchemaDescription, file: SchemaMigration): 
     const note = `(declared in ${file.file})`;
     const collection = collections.get(from);
     if (collection === undefined) {
-      const created = Object.entries(file.renameCollections).find(([, value]) => value === from);
+      const created = Object.entries(file.renameCollections).find(
+        ([, value]) => value.toLowerCase() === from.toLowerCase(),
+      );
       problems.push(
         created === undefined
           ? {
@@ -64,11 +72,12 @@ export function fileProblems(stored: SchemaDescription, file: SchemaMigration): 
       problems.push({ where, message: `renameCollections: ${from} is renamed to itself ${note}` });
       continue;
     }
-    if (collections.has(to)) {
+    const clash = clashing(stored.collections, from, to);
+    if (clash !== undefined) {
       problems.push({
         where,
-        message: `renameCollections: the collection ${JSON.stringify(to)} already exists ${note}`,
-        next: "Rename the other collection first, or choose another name.",
+        message: `renameCollections: the collection ${JSON.stringify(clash.name)} already exists ${note}`,
+        next: "Rename the other collection first, or choose another name. Names are compared without regard to case.",
       });
     }
     collide(seenFrom, from, to, "collection", where, problems);
@@ -123,11 +132,12 @@ export function fileProblems(stored: SchemaDescription, file: SchemaMigration): 
         problems.push({ where, message: `renames: the field is renamed to itself ${note}` });
         continue;
       }
-      if (collection.fields.some((f) => f.name === to)) {
+      const clash = clashing(collection.fields, from, to);
+      if (clash !== undefined) {
         problems.push({
           where,
-          message: `renames: the collection ${collectionName} already has a field ${JSON.stringify(to)} ${note}`,
-          next: "Remove or rename that field first, or choose another name.",
+          message: `renames: the collection ${collectionName} already has a field ${JSON.stringify(clash.name)} ${note}`,
+          next: "Remove or rename that field first, or choose another name. Names are compared without regard to case.",
         });
       }
       collide(scopedFrom, from, to, "field", where, problems);
@@ -150,8 +160,21 @@ interface Pair {
   file: string;
 }
 
+// the item of `items` that the name `to` clashes with: another item whose name
+// is `to` in any case. The item `from` is renamed does not clash with itself
+// (a rename that only changes case).
+function clashing<T extends { name: string }>(
+  items: readonly T[],
+  from: string,
+  to: string,
+): T | undefined {
+  const lower = to.toLowerCase();
+  return items.find((item) => item.name !== from && item.name.toLowerCase() === lower);
+}
+
 // A name that two renames share, or a name that is renamed again: the rename
-// that comes second is refused, with the first one named.
+// that comes second is refused, with the first one named. Names are compared
+// without regard to case.
 function collide(
   seen: Map<string, string>,
   key: string,
@@ -160,7 +183,7 @@ function collide(
   where: string,
   problems: Problem[],
 ): void {
-  const other = seen.get(key);
+  const other = seen.get(key.toLowerCase());
   if (other !== undefined) {
     problems.push({
       where,
@@ -169,16 +192,18 @@ function collide(
     });
     return;
   }
-  seen.set(key, value);
+  seen.set(key.toLowerCase(), value);
 }
 
 // A name that another rename of the same file creates is renamed again (a
 // chain within one file): the apply does not guess the order, so it is refused.
 // A chain across files is fine: each file runs against the names the earlier
-// ones left.
+// ones left. Names are compared without regard to case.
 function chainProblems(pairs: readonly Pair[], problems: Problem[]): void {
   for (const pair of pairs) {
-    const next = pairs.find((other) => other !== pair && other.from === pair.to);
+    const next = pairs.find(
+      (other) => other !== pair && other.from.toLowerCase() === pair.to.toLowerCase(),
+    );
     if (next !== undefined) {
       problems.push({
         where: pair.where,
