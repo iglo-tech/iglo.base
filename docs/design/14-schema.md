@@ -1,6 +1,6 @@
 # Schema as code
 
-Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [schema.md](../schema.md). Issue [#77](https://github.com/iglo-tech/iglo.base/issues/77) is the spec of the file format; this document is the design of the code. Built in S.2 (`schema pull`), S.3 (the apply, `schema plan` and `serve --schema`, [below](#the-apply-s3)) and S.4 (`schema types`, [below](#types-s4)); later tasks extend this document.
+Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [schema.md](../schema.md). Issue [#77](https://github.com/iglo-tech/iglo.base/issues/77) is the spec of the file format; this document is the design of the code. Built in S.2 (`schema pull`), S.3 (the apply, `schema plan` and `serve --schema`, [below](#the-apply-s3)), S.4 (`schema types`, [below](#types-s4)), S.5 (migrations and renames, [below](#migrations-s5)) and S.6 (the modes and the OAuth2 providers, [below](#modes-and-providers-s6)).
 
 ## Layout
 
@@ -23,7 +23,11 @@ Decision record: [D40](10-decisions.md#d40-schema-as-code). The user guide is [s
 | `src/schema/json-schema.ts`, `schema/iglo.schema.json` | The JSON Schema, embedded in the executable with `import` |
 | `src/schema/url.ts` | The `$schema` URL of a release |
 | `src/cli/schema.ts` | `schema pull`, `schema plan` and `schema json-schema`; `pull` and `plan` refuse a data directory without a database, and send the app's logs to stderr |
-| `src/cli/serve.ts` | The flags `--schema` and `--allow-data-loss`; the file is read at every start, and the apply runs before the server starts, also on the restart after a restore |
+| `src/cli/serve.ts` | The flags `--schema`, `--allow-data-loss`, `--schemaMigrationsDir`, `--mode` and `--types`; the file is read at every start, and the apply runs before the server starts, also on the restart after a restore |
+| `src/schema/providers.ts` | The OAuth2 providers of the file: the environment references, their resolution, the change lines of the plan, and the file form of the stored providers (S.6) |
+| `src/schema/file-text.ts` | The file text of the database (`schema pull` and the development write-back) with the providers as references (S.6) |
+| `src/schema/sync.ts` | The development mode: the write-back after a collection change, the watch of the file and the migrations directory, the apply of a change without a backup, and the types file (S.6) |
+| `src/schema/lock.ts` | The message of the production lock, a `403` (S.6) |
 
 `describe` and `write` take no database. `read` takes no database either: the apply (S.3) checks the description against the database and runs the collection model's validation there. `schema pull` reads the database only through `findAllCollections`.
 
@@ -79,7 +83,7 @@ The writer maps a relation's `collectionId` to a name with the collections of th
 
 ## Secrets and providers
 
-The file never holds a token's `secret` or the OAuth2 `providers` list. The reader refuses them with a message that says why, and the describer drops `providers` (the collection JSON has it as an empty list or with the secrets; the writer never sees it). Settings are out of the file for now (D40).
+The file never holds a token's `secret`. The reader refuses it with a message that says why. The OAuth2 providers may be in the file, with their secrets as environment references (S.6, [below](#modes-and-providers-s6)); a plain secret is refused. The collection JSON has the secrets redacted, so the describer's API view has no providers, and the stored ones come from the model. Settings are out of the file for now (D40).
 
 ## Errors
 
@@ -145,7 +149,6 @@ Each part of the apply is in one module, listed in the [layout](#layout) table. 
 
 - **Renames of collections and fields (S.5).** A rename needs a declaration that keeps the data, which is a TypeScript migration file. Without one, a rename shows as a removal and an addition, and the data-loss guard refuses it.
 - **TypeScript migrations (S.5).** Step 5a is empty until then. The JavaScript migrations of step 1 are the only data migrations in this version.
-- **Modes and the development watcher (S.6).** `--mode` and the watcher that applies a file change on a running server are not in this version. `serve --schema` applies at start only.
 - **A plan on a copy.** D40 allows a copy, and the copy would avoid the write lock. This version plans on the live database, in the transaction it rolls back. The lock is documented in [schema.md](../schema.md#schema-plan).
 
 ## Types (S.4)
@@ -179,7 +182,28 @@ The TypeScript migrations and the declared renames (`src/schema/migration-files.
 - **History.** `removeMissingAppliedMigrations` (`migrate history-sync`) keeps the `@schema/` rows: its delete excludes the prefix. Upstream's binary, which has no such rows, is checked in `test/differential/schema/migrations.test.ts`: PocketBase v0.41.0 starts on the data, runs `migrate up` with the rows present, serves the stored records, and sees the renamed field.
 - **Decisions made in this task, for review.** (1) Names are `<digits>_<name>.ts` with lowercase names, so a file that does not fit stops the start. (2) A file's keys (a field's collection, and a collection) are the names before that file's own renames; a collection renamed in the same file keeps its old name in the file's `renames`. Files run in name order, each against the names the earlier ones left, so a chain across files is a chain of declarations, and a chain inside one file is refused. (3) `findById` and `findFirst` return `null`, not an error, for no match. (4) A new required field is added optional and made required by the narrow step: the alternative, a required field during the migrations, would make every save of an unrelated field fail until the value is set. (5) With a rename, step 2 clears the rules, the auth identity and MFA references, and the indexes (see above); the plan shows only what the file changes, with the kept indexes as `index rebuilt`. This is the cost of not finding each reference. Measured on 10,000 records (`docs/perf/S.5-migrations.md`): a start that renames a field costs about 0.2 s more than a start with nothing pending.
 
+## Modes and providers (S.6)
+
+Decision records: [D40](10-decisions.md#d40-schema-as-code) (amended 2026-11-13) and [D41](10-decisions.md#d41-production-mode-the-file-locks-the-schema-and-settings). The user's steps are in [schema.md](../schema.md#development-and-production).
+
+### Modes
+
+- **The flag.** `serve --mode dev|prod` (default `dev`). Without `--schema`, neither mode changes anything: the differential suite runs unchanged.
+- **Production** (`--mode prod --schema`). The start applies the file as before, then `App.schemaLocked` is set. The collection create, update, delete and import handlers and `PATCH /api/settings` answer `403` with `schemaLockedMessage` (`src/schema/lock.ts`) before they read the request body. `GET /api/health` adds `schemaLocked: true` for a superuser, which the dashboard reads. Nothing watches the file.
+- **Development** (`--mode dev --schema`, the default). Two paths, both in `src/schema/sync.ts`:
+  - *Write-back.* The collection handlers call `App.collectionsChanged()` after a successful save, delete or import. `SchemaSync.writeBack` writes `schemaFileText` (the database's description, with the file's extras and references) when the text differs, then the types. Before it writes, it records the text it writes, so the watch ignores that write. It refuses to write when the file on disk is not the text the server last recorded (an edit that is not applied): the edit would be lost. It never throws: a failure is a line on the terminal.
+  - *Re-apply.* A watch on the file's directory and on the migrations directory (`fs.watch`, a 200 ms pause) starts `reapply`. It applies the text when it differs from the recorded text, or when the migration files changed (their names and times), with `applySchema(..., { backup: false })`. That path runs the transaction alone: a failed step rolls the whole apply back, so no dry run and no backup are needed. A report, or a file problem, or a variable that is not set, goes to the terminal, and the recorded text stays the old one.
+- **Types.** `--types` writes the types of the applied schema at each apply: at the start in both modes, and after each change in development. A file whose content is unchanged is not written.
+- **Restore.** A restore restarts the process (serve's loop); the watch is closed with each loop, and the start applies the file again.
+
+### Providers
+
+- **The file.** `oauth2.providers` of an auth collection is read by `read.ts` (`oauth2`, `providers`, `provider`, `secretReference`, `referenceOr`). A provider has a `name` and a `clientSecret`, which must be a reference, `{"env": "NAME"}`; a plain string is refused. The other keys (`clientId`, `authURL`, `tokenURL`, `userInfoURL`, `displayName`, `pkce`, `extra`) are a value or a reference. For `pkce` the variable holds `true` or `false`; for `extra` it holds a JSON object. A one-member `{"env": …}` object is always a reference, so an `extra` object with exactly one `env` member cannot be written as a plain value.
+- **The description.** `SchemaCollection.providers` holds the providers of a file in file form (references), or is undefined when the file leaves the list out, which keeps the stored providers. The database's description (`describeCollectionModel`) holds the stored values, in memory only: the apply and the plan compare them and report key names. The writer's guard (`assertFileProviders`) throws when a secret reaching it is not a reference, so no value is written to a file, a log or a report.
+- **The apply.** `withProviderValues` resolves the references when `applySchema` or `planSchema` starts (`resolveProviders`). A variable that is not set, or set to nothing, stops it, and every missing name is in the message. The resolved providers are in the save's JSON (`settingsJSON`, merged into `oauth2`), and the save merges them as the API does, by name. The diff (`diffSchemas`) lists them with `providerChanges`, as `github added`, `github removed`, or `github: clientSecret changed`.
+- **The file form.** `providersFileForm` writes the stored providers for `schema pull` and the write-back. A secret is the reference the file already has for the provider, or a generated one: `<COLLECTION>_<PROVIDER>_<KEY>` in upper case (`USERS_GITHUB_CLIENT_SECRET`). A note names a variable whose value is not the stored secret, or is not set; a note never holds a value. A non-secret key keeps the file's reference while the variable holds the stored value; otherwise it is written as its value, and a default is left out.
+- **Testing.** `test/cli/schema-providers.test.ts`: the pull writes references and no value; the plan fails and names an unset variable; a changed secret is reported by name; a plain secret is refused; a pull keeps the file's references; a missing variable fails the start; a provider signs in against a fake provider with the secret from the environment, and the token exchange carries it; a provider added in the dashboard is written with a generated reference.
+
 ## Not in this document yet
 
-- The server modes (S.6).
 - Settings in the file (possible later, without secrets).

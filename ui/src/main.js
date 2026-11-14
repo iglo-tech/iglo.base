@@ -29,6 +29,7 @@ import "./base/tinymce";
 import "./base/colorPicker";
 import "./base/ruleField";
 import "./base/credits";
+import "./base/schemaLock";
 import "./base/searchbar";
 import "./base/uploadedFileThumb";
 import "./base/filePreviewModal";

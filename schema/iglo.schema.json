@@ -972,7 +972,7 @@
     },
     "oauth2": {
       "title": "OAuth2 authentication",
-      "description": "Sign-in with an external OAuth2 provider. Provider settings, including client IDs and secrets, are not part of this file.",
+      "description": "Sign-in with an external OAuth2 provider. The providers are listed here with their secrets as environment references; a plain secret is refused.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -983,6 +983,13 @@
         "mappedFields": {
           "$ref": "#/$defs/oauth2MappedFields",
           "description": "Fields that receive the OAuth2 user data."
+        },
+        "providers": {
+          "type": "array",
+          "description": "The OAuth2 providers of the collection. Listing them sets them from this file at every apply, and the secrets are read from the environment variables that the references name. Leave the list out to keep the providers the database has (for example, those set in the dashboard).",
+          "items": {
+            "$ref": "#/$defs/oauth2Provider"
+          }
         }
       }
     },
@@ -1099,6 +1106,92 @@
         "body": {
           "type": "string",
           "description": "Email body as HTML. Placeholders such as {APP_NAME} and {APP_URL} are replaced, plus the template-specific ones named in the property that uses this template."
+        }
+      }
+    },
+    "oauth2Provider": {
+      "title": "OAuth2 provider",
+      "description": "One OAuth2 provider. The name is the provider's (github, google, ...). clientSecret is an environment reference; the other keys are a value or a reference.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientSecret"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The provider's name, for example github."
+        },
+        "clientId": {
+          "$ref": "#/$defs/oauth2Value",
+          "description": "The client ID the provider issued."
+        },
+        "clientSecret": {
+          "$ref": "#/$defs/envReference",
+          "description": "The client secret, as the environment variable that holds it. A plain value is refused."
+        },
+        "authURL": {
+          "$ref": "#/$defs/oauth2Value",
+          "description": "The authorization URL (for custom providers)."
+        },
+        "tokenURL": {
+          "$ref": "#/$defs/oauth2Value",
+          "description": "The token URL (for custom providers)."
+        },
+        "userInfoURL": {
+          "$ref": "#/$defs/oauth2Value",
+          "description": "The user info URL (for custom providers)."
+        },
+        "displayName": {
+          "$ref": "#/$defs/oauth2Value",
+          "description": "The name shown on the sign-in button."
+        },
+        "pkce": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/envReference"
+            }
+          ],
+          "description": "Whether PKCE is used. A reference holds \"true\" or \"false\"."
+        },
+        "extra": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/envReference"
+            }
+          ],
+          "description": "Provider-specific options. A reference holds a JSON object."
+        }
+      }
+    },
+    "oauth2Value": {
+      "title": "Value or environment reference",
+      "description": "A text value, or the environment variable that holds it.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/envReference"
+        }
+      ]
+    },
+    "envReference": {
+      "title": "Environment reference",
+      "description": "The name of an environment variable, read when the schema is applied.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["env"],
+      "properties": {
+        "env": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "description": "The variable's name."
         }
       }
     }

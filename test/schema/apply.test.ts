@@ -472,9 +472,13 @@ describe("schema apply and schema plan", () => {
     const secrets = stored();
     expect(secrets.providers).toContain("kept-secret");
 
-    // a change of the users options, which the file holds without any secret
+    // a change of the users options in a file that leaves the providers out
+    // (a pulled file lists them, with references: see the OAuth2 tests), so the
+    // stored providers and their secrets stay
     const next = await currentFile(site);
-    (collectionsOf(next).users as Json).authAlert = { enabled: false };
+    const users = collectionsOf(next).users as Json;
+    delete (users.oauth2 as Json).providers;
+    users.authAlert = { enabled: false };
     await applyOK(site, writeFile(site, "v2.json", next));
     expect(stored().providers).toBe(secrets.providers);
     expect(stored().secret).toBe(secrets.secret);

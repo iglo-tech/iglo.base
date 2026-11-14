@@ -107,6 +107,7 @@ import {
 import { schemaMigrationRecord, type SchemaMigration } from "@/schema/migration-files";
 import { newMigrationHelpers } from "@/schema/migration-tx";
 import { fileProblems } from "@/schema/renames";
+import { resolveProviders } from "@/schema/providers";
 import { Errors } from "@/validation/error";
 
 type Json = Record<string, unknown>;
@@ -138,6 +139,9 @@ export interface ApplyOptions {
   migrations: readonly Migration[];
   // the TypeScript migrations of the migrations directory, in name order
   schemaMigrations?: readonly SchemaMigration[];
+  // false for a development re-apply (D40): no dry run and no backup, so the
+  // transaction alone keeps the database when the file fails. Default true.
+  backup?: boolean;
   // called in the transaction after its last step, with the database as the
   // file leaves it (`schema types --schema` reads the collections here); a
   // plan rolls the transaction back after it
@@ -178,7 +182,7 @@ export async function applySchema(
   text: string,
   options: ApplyOptions,
 ): Promise<ApplyReport> {
-  const desired = parseSchemaFile(text);
+  const desired = withProviderValues(app, parseSchemaFile(text));
   const pending = pendingMigrations(app, options);
 
   // read only: when nothing changes, there is nothing to back up or check
@@ -186,6 +190,17 @@ export async function applySchema(
   const changes = diffSchemas(current, desired);
   if (changes.collections.length === 0 && pending.length === 0) {
     return newReport("apply", options.allowDataLoss);
+  }
+
+  if (options.backup === false) {
+    // a development re-apply: the transaction is the whole apply, and it
+    // rolls back when a step fails
+    const report = runTransaction(app, desired, options, "apply");
+    await reloadSettings(app);
+    if (!reportIsOK(report)) {
+      throw new SchemaApplyError(report);
+    }
+    return report;
   }
 
   // the dry run: the same transaction as `schema plan`, rolled back. A file
@@ -218,8 +233,25 @@ export async function applySchema(
 // Plans the file: the report of the changes, the migrations and every
 // problem, with the database unchanged. No backup is made.
 export function planSchema(app: App, text: string, options: ApplyOptions): ApplyReport {
-  const desired = parseSchemaFile(text);
+  const desired = withProviderValues(app, parseSchemaFile(text));
   return runTransaction(app, desired, options, "plan");
+}
+
+// The file's providers with their values, read from the environment when the
+// apply or the plan runs (D40, S.6). A variable that is not set stops it, and
+// the message names the variable (src/schema/providers.ts).
+function withProviderValues(app: App, desired: SchemaDescription): SchemaDescription {
+  const getenv = (name: string): string => app.getenv(name);
+  return {
+    collections: desired.collections.map((collection) =>
+      collection.providers === undefined
+        ? collection
+        : {
+            ...collection,
+            providers: resolveProviders(collection.name, collection.providers, getenv),
+          },
+    ),
+  };
 }
 
 // the names of the migrations that have not run yet, JavaScript ones first
@@ -547,6 +579,7 @@ function shownChanges(
         fieldOrder: false,
         rules: [],
         options: [],
+        providers: [],
         indexes: [],
       };
       changes.push(change);

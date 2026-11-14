@@ -136,6 +136,9 @@ function collectionLines(change: CollectionChange): string[] {
   if (change.options.length > 0) {
     lines.push(`      options: ${change.options.join(", ")}`);
   }
+  for (const line of change.providers) {
+    lines.push(`      provider ${line}`);
+  }
   for (const index of change.indexes) {
     lines.push(`      ${indexLine(index)}`);
   }

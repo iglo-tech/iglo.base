@@ -32,12 +32,12 @@ import { parseSchemaFile, planSchema, SchemaFileError } from "@/schema/apply";
 import { loadSchemaMigrationsFor, type SchemaMigration } from "@/schema/migration-files";
 import { JSONSyntaxError } from "@/schema/json-tree";
 import type { Collection } from "@/collections/collection-model";
-import { describeCollections } from "@/schema/describe";
+import { schemaFileText, type SchemaFileText } from "@/schema/file-text";
 import { schemaJSONText } from "@/schema/json-schema";
 import { formatReport, reportIsOK } from "@/schema/report";
 import { schemaURL } from "@/schema/url";
 import { generateTypes, TypesError } from "@/schema/typegen";
-import { extractExtras, formatSchema } from "@/schema/write";
+import { extractExtras } from "@/schema/write";
 import type { Migration } from "@/migrations/migrations-runner";
 import type { SchemaDescription, SchemaObject } from "@/schema/types";
 
@@ -249,7 +249,8 @@ function requireExistingDatabase(dataDir: string): void {
   }
 }
 
-// the writer of `schema pull`: keeps the extra keys of an existing file
+// the writer of `schema pull`: keeps the extra keys and provider references of
+// an existing file (schema-file.ts); the secrets are never written (D40)
 async function pull(
   app: App,
   out: string | undefined,
@@ -258,10 +259,11 @@ async function pull(
 ): Promise<void> {
   const path = out === undefined ? undefined : resolve(ctx.cwd, out);
 
-  let extras;
+  let existing: string | undefined;
   if (path !== undefined && existsSync(path)) {
+    existing = readFileSync(path, "utf8");
     try {
-      extras = extractExtras(readFileSync(path, "utf8"));
+      extractExtras(existing);
     } catch (err) {
       if (err instanceof JSONSyntaxError) {
         throw new CommandError(
@@ -272,20 +274,20 @@ async function pull(
     }
   }
 
-  let text: string;
+  let result: SchemaFileText;
   try {
-    text = formatSchema(describeCollections(findAllCollections(app)), {
-      schemaURL: schemaURL(version),
-      extras,
-    });
+    result = schemaFileText(app, existing, schemaURL(version));
   } catch (err) {
     throw new CommandError(err instanceof Error ? err.message : String(err));
   }
+  for (const note of result.notes) {
+    ctx.out.stderr(`note: ${note}\n`);
+  }
 
   if (path === undefined) {
-    ctx.out.stdout(text);
+    ctx.out.stdout(result.text);
   } else {
-    writeFileSync(path, text);
+    writeFileSync(path, result.text);
   }
 }
 

@@ -10,6 +10,7 @@
 
 import type { Collection } from "@/collections/collection-model";
 import { explicitIndexes } from "@/schema/implied";
+import { storedProviders } from "@/schema/providers";
 import { isPlainObject } from "@/schema/values";
 import type { SchemaDescription } from "@/schema/types";
 import {
@@ -107,9 +108,19 @@ export function describeFieldJSON(api: SchemaObject, nameOf: NameOf): SchemaFiel
   };
 }
 
-// the description of a collection model (its marshaled JSON)
+// The description of a collection model (its marshaled JSON). An auth
+// collection's providers are the stored ones, with their secret values: apply
+// and plan compare them in memory and never write them. A file is written
+// from providersFileForm (src/schema/providers.ts), which holds references.
 export function describeCollectionModel(collection: Collection, nameOf: NameOf): SchemaCollection {
-  return describeCollectionJSON(JSON.parse(collection.marshalJSON()) as SchemaObject, nameOf);
+  const described = describeCollectionJSON(
+    JSON.parse(collection.marshalJSON()) as SchemaObject,
+    nameOf,
+  );
+  if (collection.type === "auth") {
+    described.providers = storedProviders(collection.oauth2);
+  }
+  return described;
 }
 
 // the name of a relation target by the id of its collection
@@ -129,7 +140,8 @@ export function collectionNameOf(collections: readonly Collection[]): NameOf {
   };
 }
 
-// the description of a set of collections, sorted by name
+// the description of a set of collections, sorted by name (the providers hold
+// stored values: see describeCollectionModel)
 export function describeCollections(collections: readonly Collection[]): SchemaDescription {
   const nameOf = collectionNameOf(collections);
   const described = collections.map((collection) => describeCollectionModel(collection, nameOf));

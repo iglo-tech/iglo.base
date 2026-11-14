@@ -94,8 +94,8 @@ The file only lists what you chose. Anything equal to its default is left out, a
 
 The file never holds:
 
-- **Secrets.** Token secrets (`secret` in `authToken` and the other token options) are not written, and the file with one is refused.
-- **OAuth2 providers.** The `providers` list holds client secrets, so it is not written. Set providers in the dashboard. Providers and their secrets are kept out of git on purpose.
+- **Token secrets.** The `secret` in `authToken` and the other token options is not written, and the file with one is refused.
+- **Secret values of OAuth2 providers.** A provider's `clientSecret` is an environment reference, `{"env": "NAME"}`, never the value. See [OAuth2 providers](#oauth2-providers). A plain secret is refused.
 - **Settings.** SMTP, S3, backups, and the other settings stay in the database for now.
 - **Records and migrations.** The file describes the schema. Records are not in it.
 
@@ -162,12 +162,12 @@ A pending migration runs twice on the start that applies it: once in the dry run
 
 A few rules apply to the changes:
 
-- The apply does not read secrets from the file. Token secrets and OAuth2 providers stay as the database has them.
+- The apply does not read token secrets from the file, and the token secrets stay as the database has them. OAuth2 providers are set from the file only when the file lists them (see [OAuth2 providers](#oauth2-providers)); a file that leaves them out keeps the stored ones.
 - Indexes are compared by their definition, not by name. An index with the same definition under another name keeps the name it has. The implied index of an auth collection (the unique index on `tokenKey` and the one on `email`) is compared the same way: if the file lists it, the file's copy is the stored index, under its stored name. It is not an added index, and the file does not need to list it.
 - A field whose type changes (same name, another type) is removed and added again. Its old values are lost, so the data-loss guard applies to it.
 - A collection's type cannot change. An apply that changes it stops.
 - While `--schema` is set, `--automigrate` is off, so the dashboard does not write migration files.
-- Renames of collections and fields, and TypeScript migrations, are not in this version. Modes (`--mode`) and the development file watcher are not in this version either. Each comes in a later version.
+- Renames of collections and fields are declared in TypeScript migrations (see [Migrations](#migrations)). The modes, `--mode dev|prod`, are described in [Development and production](#development-and-production).
 
 ## `schema plan`
 
@@ -439,6 +439,79 @@ const posts = await server.collection("posts").getFullList<PostsResponse>();
 ```
 
 With the official `pocketbase` package, which keeps the same API, pass the record type to its generic instead: `pb.collection<PostsResponse>("posts")`.
+
+## Development and production
+
+`serve` has two modes for a schema file. Without `--schema` neither changes anything.
+
+```sh
+./iglo-base serve --dir ./pb_data --schema iglo.schema.json --types src/iglo.types.ts        # development (the default)
+./iglo-base serve --dir ./pb_data --mode prod --schema iglo.schema.json                      # production
+```
+
+### Development
+
+`--mode dev` is the default with `--schema`. The file and the database follow each other while the server runs:
+
+- **From the dashboard or the API to the file.** A collection that you create, change, delete or import in the dashboard, or through the collections API, is written back to `iglo.schema.json` within a second, and to the `--types` file when you give one. The server does not apply its own write. Your comments are not in the file (JSON has none); the file keeps its `description` and `tsType` keys.
+- **From the file to the database.** When you save the file, or add a migration file to `migrations/` next to it, the server applies the change at once, with the steps of the start (see [Applying the file at startup](#applying-the-file-at-startup)) but without a backup, since you are developing on your own data. Saves that arrive in a burst are applied once, after a short pause. A file that does not apply changes nothing: the report is printed in the terminal, and the server keeps the old schema.
+- **Edits that are not applied.** If the file has an edit that the server has not applied yet (for example, a file that does not parse), a change made in the dashboard is not written to the file, and the terminal says so. Fix or apply the file first; a write-back would have replaced your edit.
+
+### Production
+
+`--mode prod` applies the file at each start, as before, and then **locks** the schema and the settings:
+
+- collection create, update, delete and import, and `PATCH /api/settings`, answer `403` with the message "The schema and settings are managed by the schema file". Superusers get the `403` too;
+- records, users, files, backups (a restore too, which restarts the server and applies the file again), logs and everything else work as usual;
+- the dashboard's collection and settings screens are read-only and say why.
+
+Change the schema in the repository, and restart the server: the start applies it. Nothing watches the file in production.
+
+The settings (SMTP, S3, backups, rate limits and the rest) are locked as well, and the file does not hold them yet. Set them before the production server starts: change them on a development server with the same data directory, then start the production server on it.
+
+#### Invalidating the tokens
+
+"Invalidate all previously issued tokens" in the dashboard is a collection update, so in production it is a JavaScript migration in `pb_migrations`, which runs once at the next start. It gives the collection a new token secret, and the tokens issued before it stop working. Name the file with a timestamp and a name, for example `pb_migrations/1700000000_invalidate_user_tokens.js`:
+
+```js
+migrate((app) => {
+  const users = app.findCollectionByNameOrId("users");
+  users.authToken.secret = $security.randomString(50);
+  app.save(users);
+}, (app) => {});
+```
+
+For another auth collection, change the collection name. Applied migrations are recorded, so the file runs once.
+
+## OAuth2 providers
+
+An auth collection's OAuth2 providers can be in the file, so its whole sign-in setup lives in the repository. The secret of each provider is read from an environment variable when the server starts or `schema plan` runs:
+
+```json
+{
+  "collections": {
+    "users": {
+      "type": "auth",
+      "oauth2": {
+        "enabled": true,
+        "providers": [
+          {
+            "name": "github",
+            "clientId": "Iv1.0123456789abcdef",
+            "clientSecret": { "env": "USERS_GITHUB_CLIENT_SECRET" }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+- **The secret is a reference.** `clientSecret` must be `{"env": "NAME"}`. A plain string is refused, with a message that says why. The other keys (`clientId`, `authURL`, `tokenURL`, `userInfoURL`, `displayName`, `pkce`, `extra`) may be plain values or references too: a reference to `pkce` holds `true` or `false`, and one to `extra` holds a JSON object.
+- **The variables.** Set `USERS_GITHUB_CLIENT_SECRET` in the environment of the server (for example in its systemd unit, or with `docker run -e`). A variable that is not set, or is empty, fails `schema plan` and the start, and the message names it. The value is never printed, never written to the file, and never in a report or a log.
+- **Listing the providers.** A file that lists `providers` sets them at every apply, from the file and the environment. A file that leaves `providers` out keeps the providers the database has, as before.
+- **Changes.** `schema plan` names what changes without showing a value: `provider github: clientSecret changed` means the variable holds another secret than the server has.
+- **The dashboard.** In development a provider you add in the dashboard is written to the file with a generated reference, such as `USERS_GOOGLE_CLIENT_SECRET`, and the terminal lists the variables to set. `schema pull` writes the references the same way, and keeps the references the file already has.
 
 ## Limitations
 

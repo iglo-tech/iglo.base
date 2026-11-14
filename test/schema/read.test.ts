@@ -255,19 +255,22 @@ describe("reading an invalid file", () => {
     ]);
   });
 
-  test("refuses a token secret and the OAuth2 providers", () => {
+  test("refuses a token secret and a plain OAuth2 secret", () => {
     const issues = errorsOf(
       file({
         members: {
           type: "auth",
           authToken: { duration: 3600, secret: "s3cret" },
-          oauth2: { enabled: true, providers: [] },
+          oauth2: {
+            enabled: true,
+            providers: [{ name: "github", clientId: "id", clientSecret: "plain" }],
+          },
         },
       }),
     ).map((issue) => `${issue.path}: ${issue.message}`);
     expect(issues).toEqual([
       "$.collections.members.authToken.secret: token secrets are not written in the schema file; remove this property",
-      "$.collections.members.oauth2.providers: OAuth2 providers are not written in the schema file (they hold secrets); set them in the dashboard",
+      '$.collections.members.oauth2.providers[0].clientSecret: a plain secret is refused: the file holds the variable that holds it, as {"env": "NAME"}',
     ]);
   });
 

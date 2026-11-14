@@ -25,7 +25,9 @@ import type { AppConfig, CliContext } from "@/cli/root";
 import type { App } from "@/app/app";
 import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { applySchema } from "@/schema/apply";
-import { loadSchemaMigrationsFor } from "@/schema/migration-files";
+import { loadSchemaMigrationsFor, schemaMigrationsDir } from "@/schema/migration-files";
+import { SchemaSync } from "@/schema/sync";
+import { schemaURL } from "@/schema/url";
 import { type Migration, up } from "@/migrations/migrations-runner";
 import { logTime, serve } from "@/server/serve";
 import { reloadSettings } from "@/settings/settings-query";
@@ -72,9 +74,26 @@ export const serveFlags: FlagSpec[] = [
     usage:
       "with --schema: the directory of the TypeScript migrations (default migrations/ next to the schema file)",
   },
+  {
+    name: "mode",
+    kind: "string",
+    usage:
+      "with --schema: dev writes the dashboard's collection changes back to the file and applies the file's changes while the server runs; prod applies the file at startup and locks the collections and settings (dev or prod)",
+    defaultText: "dev",
+  },
+  {
+    name: "types",
+    kind: "string",
+    usage:
+      "with --schema: the TypeScript types file to write from the applied schema (regenerated after each change in dev)",
+  },
 ];
 
 type AppContextRestart = App["restart"];
+
+// the schema file's hooks of the app (D40, D41): see App.schemaLocked and
+// App.collectionsChanged
+export type SchemaHooks = Pick<App, "schemaLocked" | "collectionsChanged">;
 
 // The app bootstrap that pocketbase.go's Execute runs before a command
 // (serve, superuser).
@@ -82,8 +101,10 @@ export async function bootstrapApp(
   app: AppConfig,
   ctx: CliContext,
   restart?: AppContextRestart,
+  schema: SchemaHooks = {},
 ): Promise<App> {
   return bootstrap({
+    ...schema,
     dataDir: app.dataDir,
     isDev: app.isDev,
     encryptionEnv: app.encryptionEnv,
@@ -113,6 +134,7 @@ export async function runServeCommand(
   domains: string[],
   ctx: CliContext,
   migrations: readonly Migration[],
+  version: string,
 ): Promise<void> {
   let httpAddr = (values.get("http") as string | undefined) ?? "";
   const httpsAddr = (values.get("https") as string | undefined) ?? "";
@@ -137,6 +159,15 @@ export async function runServeCommand(
   const schemaPath = values.get("schema") as string | undefined;
   const allowDataLoss = values.get("allow-data-loss") === true;
   const migrationsDir = values.get("schemaMigrationsDir") as string | undefined;
+  // --mode: dev (the default) or prod (D40, D41). Without --schema neither changes anything.
+  const mode = (values.get("mode") as string | undefined) ?? "dev";
+  if (mode !== "dev" && mode !== "prod") {
+    throw new Error(`--mode must be dev or prod, not ${JSON.stringify(mode)}`);
+  }
+  const typesFlag = values.get("types") as string | undefined;
+  if (typesFlag !== undefined && schemaPath === undefined) {
+    throw new Error("--types needs --schema: the types are those of the schema file");
+  }
 
   for (;;) {
     const schemaText =
@@ -154,6 +185,26 @@ export async function runServeCommand(
           );
     // --automigrate is off while --schema is set (D40)
     const dbApp = schemaText === undefined ? app : { ...app, automigrate: false };
+    // the schema file's sync: the types, and in development the write-back
+    // and the file watch (D40); the app is the one bootstrap opens below
+    const syncApp: { current?: App } = {};
+    const sync =
+      schemaText === undefined || schemaPath === undefined
+        ? undefined
+        : new SchemaSync({
+            schemaPath: resolve(ctx.cwd, schemaPath),
+            migrationsDir: schemaMigrationsDir(
+              resolve(ctx.cwd, schemaPath),
+              migrationsDir === undefined ? undefined : resolve(ctx.cwd, migrationsDir),
+            ),
+            migrationsNamed: migrationsDir !== undefined,
+            typesPath: typesFlag === undefined ? undefined : resolve(ctx.cwd, typesFlag),
+            schemaURL: schemaURL(version),
+            migrations,
+            allowDataLoss,
+            log: (line) => ctx.out.stderr(`${logTime(ctx.out.now())} ${line}\n`),
+            app: () => syncApp.current as App,
+          });
 
     const stop = new AbortController();
     // every app.restart call of this app instance, oldest first: the ones
@@ -169,8 +220,17 @@ export async function runServeCommand(
           restarts.push({ revert, failed: reject });
           stop.abort();
         }),
+      {
+        // production: the file manages the collections and settings (D41)
+        schemaLocked: schemaText !== undefined && mode === "prod",
+        // development: the file follows the collection changes (D40)
+        collectionsChanged:
+          sync !== undefined && mode === "dev" ? () => sync.writeBack() : undefined,
+      },
     );
+    syncApp.current = appContext;
 
+    let stopWatching: (() => void) | undefined;
     try {
       if (schemaText === undefined) {
         // ensure that the latest migrations are applied before starting the server
@@ -178,11 +238,17 @@ export async function runServeCommand(
       } else {
         // the file's apply runs the migrations inside its transaction (D40)
         await applySchema(appContext, schemaText, { allowDataLoss, migrations, schemaMigrations });
+        sync?.adopt(schemaText);
       }
       await reloadSettings(appContext);
 
       // the jobs tick only under serve (OnServe's __pbCronStart__)
       appContext.cron.start();
+
+      // development: the file's changes are applied while the server runs (D40)
+      if (sync !== undefined && mode === "dev") {
+        stopWatching = sync.watchFiles();
+      }
 
       await serve(
         appContext,
@@ -202,6 +268,7 @@ export async function runServeCommand(
         AbortSignal.any([ctx.shutdown, stop.signal]),
       );
     } finally {
+      stopWatching?.();
       await clearBootstrap(appContext);
     }
 

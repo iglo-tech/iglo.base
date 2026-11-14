@@ -7,6 +7,7 @@
 import type { RequestEvent } from "@/app/event-request";
 import { firstApiError } from "@/apis/record-helpers";
 import { importCollections } from "@/collections/collection-import";
+import { schemaLockedMessage } from "@/schema/lock";
 import { sliceOf, structOf } from "@/server/unmarshal-request-data";
 import { errorsAs } from "@/server/error";
 import { Errors, NewError } from "@/validation/error";
@@ -14,6 +15,9 @@ import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 
 export async function collectionsImport(e: RequestEvent): Promise<Error | undefined> {
+  if (e.app.schemaLocked) {
+    return e.forbiddenError(schemaLockedMessage, null);
+  }
   const form: CollectionsImportForm = { Collections: [], DeleteMissing: false };
 
   let err = await e.bindBody(form as unknown as Record<string, unknown>, collectionsImportFormType);
@@ -39,6 +43,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
       form.Collections as (Record<string, unknown> | null)[],
       form.DeleteMissing,
     );
+    e.app.collectionsChanged?.();
   } catch (importErr) {
     // validation failure
     const validationErrors = errorsAs(importErr, Errors);

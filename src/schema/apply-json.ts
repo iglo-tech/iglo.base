@@ -9,6 +9,7 @@
 
 import type { SchemaCollection, SchemaField, SchemaObject } from "@/schema/types";
 import { ruleKeys } from "@/schema/types";
+import { isPlainObject } from "@/schema/values";
 
 // the id of a collection by its name
 export type CollectionIdOf = (name: string) => string;
@@ -57,6 +58,12 @@ export function settingsJSON(collection: SchemaCollection): SchemaObject {
   }
   if (collection.type === "view") {
     json.viewQuery = collection.query ?? "";
+  }
+  // the providers the file lists, with the values read from the environment
+  // (the apply resolves them); the save merges them as the API's do
+  if (collection.type === "auth" && collection.providers !== undefined) {
+    const oauth2 = isPlainObject(json.oauth2) ? json.oauth2 : {};
+    json.oauth2 = { ...oauth2, providers: collection.providers };
   }
   return json;
 }

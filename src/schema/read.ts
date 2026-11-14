@@ -35,6 +35,7 @@ import {
   type SchemaObject,
   type SchemaValue,
 } from "@/schema/types";
+import { envNamePattern, secretProviderKeys } from "@/schema/providers";
 import { isArrayIndexName, isPlainObject } from "@/schema/values";
 
 // one problem in the file: where it is and what is wrong
@@ -278,7 +279,10 @@ class Reader {
       } else if (key === "query") {
         this.add(path, "only view collections have a query");
       } else if (authOptionKeys.includes(key)) {
-        const option = this.value(value, defaults.options[key] as SchemaValue, path);
+        const option =
+          key === "oauth2"
+            ? this.oauth2(value, defaults.options[key] as SchemaObject, path, collection)
+            : this.value(value, defaults.options[key] as SchemaValue, path);
         if (option !== undefined) {
           collection.options[key] = option;
         }
@@ -293,6 +297,177 @@ class Reader {
       collection.fields = this.withImpliedFields(collection.fields, defaults);
     }
     return collection;
+  }
+
+  // the oauth2 option: its members are read as the other auth options, and
+  // its providers list is read apart (the providers the file lists)
+  private oauth2(
+    node: JSONNode,
+    base: SchemaObject,
+    path: Segment[],
+    collection: SchemaCollection,
+  ): SchemaValue | undefined {
+    if (node.kind !== "object") {
+      this.add(path, "must be an object");
+      return undefined;
+    }
+    const providerNodes = node.members.filter((member) => member.key === "providers");
+    if (providerNodes.length > 1) {
+      this.add([...path, "providers"], 'duplicate property "providers"');
+    }
+    const [providerMember] = providerNodes;
+    if (providerMember !== undefined) {
+      collection.providers = this.providers(providerMember.value, [...path, "providers"]);
+    }
+    const rest: JSONNode = {
+      kind: "object",
+      members: node.members.filter((member) => member.key !== "providers"),
+    };
+    return this.value(rest, base as SchemaValue, path);
+  }
+
+  // the providers a file lists: each one's values, and a reference for every
+  // secret (D40, src/schema/providers.ts)
+  private providers(node: JSONNode, path: Segment[]): SchemaObject[] {
+    if (node.kind !== "array") {
+      this.add(path, "must be an array of OAuth2 providers");
+      return [];
+    }
+    const providers: SchemaObject[] = [];
+    const names = new Set<string>();
+    for (const [i, item] of node.items.entries()) {
+      const provider = this.provider(item, [...path, i]);
+      if (provider === undefined) {
+        continue;
+      }
+      const name = String(provider.name);
+      if (names.has(name)) {
+        this.add([...path, i, "name"], `duplicate provider ${JSON.stringify(name)}`);
+        continue;
+      }
+      names.add(name);
+      providers.push(provider);
+    }
+    return providers;
+  }
+
+  private provider(node: JSONNode, path: Segment[]): SchemaObject | undefined {
+    if (node.kind !== "object") {
+      this.add(path, "must be an object");
+      return undefined;
+    }
+    const members = this.members(node, path, "property");
+    const provider: SchemaObject = {};
+    let valid = true;
+
+    const nameNode = members.get("name");
+    if (nameNode?.kind !== "string" || nameNode.value === "") {
+      this.add([...path, "name"], "is required: the name of the provider (for example github)");
+      valid = false;
+    } else {
+      provider.name = nameNode.value;
+    }
+
+    for (const [key, value] of members) {
+      const keyPath = [...path, key];
+      if (key === "name") {
+        continue;
+      }
+      if (secretProviderKeys.includes(key)) {
+        const secret = this.secretReference(value, keyPath);
+        if (secret === undefined) {
+          valid = false;
+        } else {
+          provider[key] = secret;
+        }
+      } else if (key === "pkce") {
+        const pkce = this.referenceOr(value, keyPath, "boolean");
+        if (pkce !== undefined) {
+          provider[key] = pkce;
+        }
+      } else if (key === "extra") {
+        const extra = this.referenceOr(value, keyPath, "object");
+        if (extra !== undefined) {
+          provider[key] = extra;
+        }
+      } else if (providerStringKeys.includes(key)) {
+        const text = this.referenceOr(value, keyPath, "string");
+        if (text !== undefined) {
+          provider[key] = text;
+        }
+      } else {
+        this.add(keyPath, "unknown property");
+      }
+    }
+
+    for (const key of secretProviderKeys) {
+      if (!members.has(key)) {
+        this.add(
+          [...path, key],
+          `is required: write {"env": "NAME"} and set NAME in the environment`,
+        );
+        valid = false;
+      }
+    }
+    return valid ? provider : undefined;
+  }
+
+  // a secret: an environment reference only (a plain value is refused)
+  private secretReference(node: JSONNode, path: Segment[]): SchemaObject | undefined {
+    if (node.kind === "string") {
+      this.add(
+        path,
+        'a plain secret is refused: the file holds the variable that holds it, as {"env": "NAME"}',
+      );
+      return undefined;
+    }
+    const variable = referenceName(node);
+    if (variable === undefined) {
+      this.add(path, 'must be an environment reference, {"env": "NAME"}');
+      return undefined;
+    }
+    if (!envNamePattern.test(variable)) {
+      this.add(
+        [...path, "env"],
+        "must be an environment variable name (letters, digits and underscores)",
+      );
+      return undefined;
+    }
+    return { env: variable };
+  }
+
+  // a value that may be a reference to a variable, or a plain value of the
+  // given kind
+  private referenceOr(
+    node: JSONNode,
+    path: Segment[],
+    kind: "string" | "boolean" | "object",
+  ): SchemaValue | undefined {
+    const variable = referenceName(node);
+    if (variable !== undefined) {
+      if (!envNamePattern.test(variable)) {
+        this.add(
+          [...path, "env"],
+          "must be an environment variable name (letters, digits and underscores)",
+        );
+        return undefined;
+      }
+      return { env: variable };
+    }
+    if (kind === "string" && node.kind === "string") {
+      return node.value;
+    }
+    if (kind === "boolean" && node.kind === "boolean") {
+      return node.value;
+    }
+    if (kind === "object" && node.kind === "object") {
+      return plainValue(node) as SchemaObject;
+    }
+    this.add(
+      path,
+      `must be ${kind === "object" ? "an object" : `a ${kind}`} or an environment reference, {"env": "NAME"}`,
+    );
+    return undefined;
   }
 
   private rules(
@@ -540,11 +715,39 @@ function unknownOptionMessage(key: string): string {
   if (key === "secret") {
     return "token secrets are not written in the schema file; remove this property";
   }
-  if (key === "providers") {
-    return "OAuth2 providers are not written in the schema file (they hold secrets); set them in the dashboard";
-  }
   return "unknown property";
 }
+
+// the variable of an environment reference node ({"env": "NAME"}), or undefined
+function referenceName(node: JSONNode): string | undefined {
+  if (node.kind !== "object" || node.members.length !== 1) {
+    return undefined;
+  }
+  const [member] = node.members;
+  if (member?.key !== "env" || member.value.kind !== "string") {
+    return undefined;
+  }
+  return member.value.value;
+}
+
+// a JSON node as a value (object members keep their order)
+function plainValue(node: JSONNode): SchemaValue {
+  switch (node.kind) {
+    case "object":
+      return Object.fromEntries(node.members.map((m) => [m.key, plainValue(m.value)]));
+    case "array":
+      return node.items.map((item) => plainValue(item));
+    case "string":
+    case "number":
+    case "boolean":
+      return node.value;
+    case "null":
+      return null;
+  }
+}
+
+// the string keys of a provider that a reference may stand for
+const providerStringKeys = ["clientId", "authURL", "tokenURL", "userInfoURL", "displayName"];
 
 // a collection name: word characters, and not an array index (a JSON object
 // orders those names first, so a file could not keep their order)
