@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 mimetype_test.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 mimetype_test.go.
 //
 // Left out: TestConcurrent and TestExtend (SetLimit and Extend are not
 // ported), the DetectFile half of TestFaultyInput, the SetLimit(0) half of

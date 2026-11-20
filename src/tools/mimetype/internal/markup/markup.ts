@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/markup/markup.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/markup/markup.go.
 //
 // Package markup implements functions for extracting info from
 // HTML and XML documents.

@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/atom/table.go (names and constants)
+// Upstream: golang.org/x/net v0.62.0 html/atom/table.go (names and constants)
 // and html/atom/atom.go (lookup).
 //
 // Generated from atom/table.go by a script outside the repository. Do not edit by hand.

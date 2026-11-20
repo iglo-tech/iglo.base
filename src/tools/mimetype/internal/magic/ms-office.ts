@@ -1,7 +1,8 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/ms_office.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/ms_office.go.
 
 import { contains, hasPrefix, leUint32, lit } from "@/tools/mimetype/go-bytes";
 import {
+  type CDFType,
   CDFTypeDoc,
   CDFTypeGeneric,
   CDFTypeInstaller,
@@ -58,21 +59,7 @@ const docClsids = [
 // Doc matches a Microsoft Word 97-2003 file.
 // See: https://github.com/decalage2/oletools/blob/412ee36ae45e70f42123e835871bac956d958461/oletools/common/clsid.py
 export function Doc(raw: Uint8Array, _limit: number): boolean {
-  const fromParsing = cdfDetect(raw);
-  if (fromParsing === CDFTypeDoc) {
-    return true;
-  }
-  if (fromParsing !== CDFTypeGeneric) {
-    return false;
-  }
-  // Fallback for inputs where the CDF directory is past the read limit: match
-  // the root storage CLSID, which often lies within the first sectors.
-  for (const clsid of docClsids) {
-    if (matchOleClsid(raw, clsid)) {
-      return true;
-    }
-  }
-  return false;
+  return cdfOrClsid(raw, CDFTypeDoc, ...docClsids);
 }
 
 const pptClsid1 = Uint8Array.of(
@@ -122,17 +109,7 @@ const pptName = lit(
 
 // Ppt matches a Microsoft PowerPoint 97-2003 file or a PowerPoint 95 presentation.
 export function Ppt(raw: Uint8Array, _limit: number): boolean {
-  const fromParsing = cdfDetect(raw);
-  if (fromParsing === CDFTypePpt) {
-    return true;
-  }
-  if (fromParsing !== CDFTypeGeneric) {
-    return false;
-  }
-  // Fallback for inputs where the CDF directory is past the read limit.
-  // Root CLSID test is the safest way to identify the OLE, however, the format
-  // often places the root CLSID at the end of the file.
-  if (matchOleClsid(raw, pptClsid1) || matchOleClsid(raw, pptClsid2)) {
+  if (cdfOrClsid(raw, CDFTypePpt, pptClsid1, pptClsid2)) {
     return true;
   }
 
@@ -164,17 +141,7 @@ const xlsName = lit("W\x00k\x00s\x00S\x00S\x00W\x00o\x00r\x00k\x00B\x00o\x00o\x0
 
 // Xls matches a Microsoft Excel 97-2003 file.
 export function Xls(raw: Uint8Array, _limit: number): boolean {
-  const fromParsing = cdfDetect(raw);
-  if (fromParsing === CDFTypeXls) {
-    return true;
-  }
-  if (fromParsing !== CDFTypeGeneric) {
-    return false;
-  }
-  // Fallback for inputs where the CDF directory is past the read limit.
-  // Root CLSID test is the safest way to identify the OLE, however, the format
-  // often places the root CLSID at the end of the file.
-  if (matchOleClsid(raw, xlsClsid1) || matchOleClsid(raw, xlsClsid2)) {
+  if (cdfOrClsid(raw, CDFTypeXls, xlsClsid1, xlsClsid2)) {
     return true;
   }
 
@@ -234,16 +201,7 @@ const msgClsid = Uint8Array.of(
 );
 // Msg matches a Microsoft Outlook email file.
 export function Msg(raw: Uint8Array, _limit: number): boolean {
-  const fromParsing = cdfDetect(raw);
-  if (fromParsing === CDFTypeMsg) {
-    return true;
-  }
-  if (fromParsing !== CDFTypeGeneric) {
-    return false;
-  }
-  // Fallback for inputs where the CDF directory does not carry the streams the
-  // parser keys on: match the root storage CLSID instead.
-  return matchOleClsid(raw, msgClsid);
+  return cdfOrClsid(raw, CDFTypeMsg, msgClsid);
 }
 
 // Msi matches a Microsoft Windows Installer file.
@@ -273,6 +231,24 @@ const oneSig = Uint8Array.of(
 // One matches a Microsoft OneNote file.
 export function One(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, oneSig);
+}
+
+// cdfOrClsid checks if the raw input is detected as the given CDF type, and if
+// the CDF parser returns a generic result, falls back to matching root storage CLSIDs.
+function cdfOrClsid(raw: Uint8Array, want: CDFType, ...clsids: Uint8Array[]): boolean {
+  const fromParsing = cdfDetect(raw);
+  if (fromParsing === want) {
+    return true;
+  }
+  if (fromParsing !== CDFTypeGeneric) {
+    return false;
+  }
+  for (const clsid of clsids) {
+    if (matchOleClsid(raw, clsid)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Helper to match by a specific CLSID of a compound file.

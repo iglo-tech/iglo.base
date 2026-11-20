@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/const.go
+// Upstream: golang.org/x/net v0.62.0 html/const.go
 //
 // The whitespace sets are defined in parse.go upstream. They are kept here so
 // that doctype.ts can use them without importing parse.ts, which would form a cycle.

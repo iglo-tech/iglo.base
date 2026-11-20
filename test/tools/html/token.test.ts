@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/token_test.go
+// Upstream: golang.org/x/net v0.62.0 html/token_test.go
 //
 // Ports the tokenizer tests that do not depend on render.go or on how an
 // io.Reader chunks its input. The port reads the whole input at once, so the

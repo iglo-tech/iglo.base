@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/mp3/frame.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/mp3/frame.go.
 
 // minTruncatedSyncMatches is the minimum number of confirmed successive
 // header matches required to accept a candidate frame when the buffer ends

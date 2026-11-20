@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/ogg.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/ogg.go.
 
 import { hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 

@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 example_mimetype_test.go and
+// Upstream: gabriel-vasile/mimetype v1.4.16 example_mimetype_test.go and
 // example_reader_test.go, with each example's Output as assertions.
 //
 // Left out: Example_extend (Extend is not ported) and the DetectFile part of

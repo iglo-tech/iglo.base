@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/mp3/frame_test.go
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/mp3/frame_test.go
 
 import { describe, expect, test } from "bun:test";
 

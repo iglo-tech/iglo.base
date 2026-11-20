@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/token_test.go (tokenTests)
+// Upstream: golang.org/x/net v0.62.0 html/token_test.go (tokenTests)
 // Generated from token_test.go by a script outside the repository. Do not edit by hand.
 
 export interface TokenTestCase {

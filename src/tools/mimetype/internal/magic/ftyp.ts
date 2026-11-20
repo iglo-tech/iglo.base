@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/ftyp.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/ftyp.go.
 
 import { equal, lit } from "@/tools/mimetype/go-bytes";
 import { ftyp } from "@/tools/mimetype/internal/magic/magic";

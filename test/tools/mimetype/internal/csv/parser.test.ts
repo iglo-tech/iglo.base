@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/csv/parser_test.go
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/csv/parser_test.go
 
 import { describe, expect, test } from "bun:test";
 

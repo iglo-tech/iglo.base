@@ -168,7 +168,7 @@ describe("existing data", () => {
       const err = await openError(dataDir);
       expect(err).toBeInstanceOf(OlderDataError);
       expect((err as Error).message).toBe(
-        "This pb_data was written by an older PocketBase. Run PocketBase v0.41.0 on it once, then start iglo.base.",
+        "This pb_data was written by an older PocketBase. Run PocketBase v0.42.3 on it once, then start iglo.base.",
       );
       expect(dumpPbData(dataDir)).toEqual(before);
     });
@@ -204,7 +204,7 @@ describe("existing data", () => {
     );
     const before = dumpPbData(dataDir);
     expect(await open(dataDir)).toEqual([
-      "pb_data has migrations newer than PocketBase v0.41.0 (1790000000_future.go, 1790000001_future2.go); the data may come from a newer PocketBase.",
+      "pb_data has migrations newer than PocketBase v0.42.3 (1790000000_future.go, 1790000001_future2.go); the data may come from a newer PocketBase.",
     ]);
     expect(dumpPbData(dataDir)).toEqual(before);
   });

@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/text.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/text.go.
 
 import { contains, equal, hasPrefix, index, lit } from "@/tools/mimetype/go-bytes";
 import { fromBOM } from "@/tools/mimetype/internal/charset/charset";

@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 mimetype.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 mimetype.go.
 //
 // Package mimetype uses magic number signatures to detect the MIME type of a file.
 //

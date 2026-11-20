@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/oauth2 v0.37.0: token.go (Token, Type, Extra,
+// Upstream: golang.org/x/oauth2 v0.38.0: token.go (Token, Type, Extra,
 // expired, Valid), oauth2.go (Config.Exchange, tokenRefresher,
 // reuseTokenSource) and internal/token.go (RetrieveToken, newTokenRequest,
 // doTokenRoundTrip, tokenJSON, expirationTime)

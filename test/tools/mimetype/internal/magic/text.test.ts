@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/text_test.go
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/text_test.go
 // Only TestRFC822 is ported; BenchmarkJSONPathological is skipped.
 
 import { describe, expect, test } from "bun:test";

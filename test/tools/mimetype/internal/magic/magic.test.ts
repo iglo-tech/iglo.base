@@ -1,7 +1,8 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/magic_test.go
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/magic_test.go
 
 import { describe, expect, test } from "bun:test";
 
+import { MP3 } from "@/tools/mimetype/internal/magic/audio";
 import { shebang } from "@/tools/mimetype/internal/magic/magic";
 import { CompactWS, FullWord } from "@/tools/mimetype/internal/scan/bytes";
 import { raw } from "@test/tools/mimetype/go-literal";
@@ -253,4 +254,23 @@ describe("TestShebangCheck", () => {
       expect(result).toBe(tt.expected);
     });
   }
+});
+
+// TestID3v2LargeTag: an ID3v2 tag above 10 MiB (large embedded cover art)
+// is still audio/mpeg; v1.4.15 capped the tag size at 10 MiB.
+test("TestID3v2LargeTag", () => {
+  const size = 10 * 1024 * 1024 + 1;
+  const hdr = Uint8Array.of(
+    0x49,
+    0x44,
+    0x33,
+    3,
+    0,
+    0,
+    (size >> 21) & 0x7f,
+    (size >> 14) & 0x7f,
+    (size >> 7) & 0x7f,
+    size & 0x7f,
+  );
+  expect(MP3(hdr, 0)).toBe(true);
 });

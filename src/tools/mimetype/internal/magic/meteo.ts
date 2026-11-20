@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/meteo.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/meteo.go.
 
 import { hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 

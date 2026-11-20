@@ -1,4 +1,4 @@
-// Upstream: github.com/spf13/pflag v1.0.10 (flag.go, errors.go, bool.go, int.go,
+// Upstream: github.com/spf13/pflag v1.1.0 (flag.go, errors.go, bool.go, int.go,
 // string_slice.go) and github.com/spf13/cobra v1.10.2 (command.go: Find,
 // stripFlags, argsMinusFirstX), which upstream's pocketbase.go and cmd/ use.
 //
@@ -164,21 +164,20 @@ function setValue(values: Map<string, FlagValue>, spec: FlagSpec, raw: string): 
     case "string":
       values.set(spec.name, raw);
       return;
+    // pflag v1.1.0 replaces the strconv errors of its typed Set methods with
+    // these texts (bool.go, int.go); out-of-range ints get the same text.
     case "bool": {
       const parsed = parseBool(raw);
       if (parsed === undefined) {
-        throw invalid(`strconv.ParseBool: parsing ${JSON.stringify(raw)}: invalid syntax`);
+        throw invalid("must be true or false");
       }
       values.set(spec.name, parsed);
       return;
     }
     case "int": {
       const parsed = parseGoInt(raw);
-      if (parsed === undefined) {
-        throw invalid(`strconv.ParseInt: parsing ${JSON.stringify(raw)}: invalid syntax`);
-      }
-      if (parsed === "range") {
-        throw invalid(`strconv.ParseInt: parsing ${JSON.stringify(raw)}: value out of range`);
+      if (parsed === undefined || parsed === "range") {
+        throw invalid("must be an integer");
       }
       values.set(spec.name, parsed);
       return;

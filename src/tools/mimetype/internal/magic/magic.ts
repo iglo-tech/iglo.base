@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/magic.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/magic.go.
 //
 // Package magic holds the matching functions used to find MIME types.
 //
@@ -105,20 +105,8 @@ export function markup(raw: Uint8Array, ...sigs: Uint8Array[]): boolean {
   return false;
 }
 function markupCheck(sig: Uint8Array, raw: Uint8Array): boolean {
-  if (raw.length < sig.length + 1) {
+  if (!ciCheck(sig, raw)) {
     return false;
-  }
-
-  // perform case insensitive check
-  for (let i = 0; i < sig.length; i++) {
-    const b = sig[i] as number;
-    let db = raw[i] as number;
-    if (0x41 <= b && b <= 0x5a) {
-      db &= 0xdf;
-    }
-    if (b !== db) {
-      return false;
-    }
   }
   // Next byte must be space or right angle bracket.
   const db = raw[sig.length] as number;

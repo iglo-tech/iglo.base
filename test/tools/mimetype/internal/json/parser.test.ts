@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/json/parser_test.go
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/json/parser_test.go
 
 import { describe, expect, test } from "bun:test";
 

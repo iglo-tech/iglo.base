@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/video.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/video.go.
 
 import { equal, hasPrefix, index, lit } from "@/tools/mimetype/go-bytes";
 

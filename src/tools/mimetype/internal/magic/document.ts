@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/document.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/document.go.
 
 import { beUint32, contains, hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 import { offset } from "@/tools/mimetype/internal/magic/magic";

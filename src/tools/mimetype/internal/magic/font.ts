@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/font.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/font.go.
 
 import { beUint32, contains, equal, hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 

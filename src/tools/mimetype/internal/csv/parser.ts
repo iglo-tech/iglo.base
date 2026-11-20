@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/csv/parser.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/csv/parser.go.
 
 import type { Bytes } from "@/tools/mimetype/internal/scan/bytes";
 

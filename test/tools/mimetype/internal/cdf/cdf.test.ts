@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/cdf/cdf_test.go
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/cdf/cdf_test.go
 
 import { describe, expect, test } from "bun:test";
 
@@ -138,12 +138,29 @@ function dirEntryBytes(
   }
   put16(e, 64, 2 * (name.length + 1));
   e[66] = typ;
+  put32(e, 68, -1); // left sibling: none
+  put32(e, 72, -1); // right sibling: none
+  put32(e, 76, -1); // child: none
   if (uuid !== null) {
     copyInto(e.subarray(80, 96), uuid);
   }
   put32(e, 116, first);
   put32(e, 120, size);
   return e;
+}
+
+// linkDirTree links directory entries into the simplest valid tree: entry 0
+// (the root storage) points at entry 1 as its child and entries 1..n-1 are
+// chained through right-sibling pointers.
+function linkDirTree(dir: Uint8Array): Uint8Array {
+  const n = dir.length / dirEntrySize;
+  if (n > 1) {
+    put32(dir, 76, 1); // root child = entry 1
+  }
+  for (let i = 1; i < n - 1; i++) {
+    put32(dir, i * dirEntrySize + 72, i + 1);
+  }
+  return dir;
 }
 
 // summaryStream builds a minimal (Doc)SummaryInformation property-set stream
@@ -209,6 +226,7 @@ function makeCDF(
   if (dir.length > secSize) {
     throw new Error("directory larger than one sector");
   }
+  dir = linkDirTree(dir);
 
   return concat(
     padSector(secSize, testHeader(secSize, 1, -2, 0, [0])),
@@ -691,4 +709,118 @@ describe("TestSummaryAppNameNoPanic", () => {
       expect(got === null ? "" : bytesToText(got)).toBe(tc.want);
     });
   }
+});
+
+// TestDetectEmbeddedObjectSummary verifies that detection reads the document's
+// own root-level SummaryInformation and not one belonging to an embedded OLE
+// object. The embedded (Excel) summary appears before the root (Word) summary
+// in flat directory order, so a scan that ignores the storage hierarchy would
+// misdetect the file as XLS.
+//
+// Directory layout: Root Entry → child ObjectPool (storage, holding the
+// embedded summary) → right sibling root summary.
+test("TestDetectEmbeddedObjectSummary", () => {
+  for (const secSize of testSecSizes) {
+    const excel = summaryStream("Microsoft Excel", false);
+    const word = summaryStream("Microsoft Office Word", false);
+    expect(excel.length <= secSize && word.length <= secSize).toBe(true);
+
+    let dir = dirEntryBytes("Root Entry", dirTypeRootStorage, 2, secSize, null);
+    dir = concat(
+      dir,
+      dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, 3, excel.length, null),
+    );
+    dir = concat(dir, dirEntryBytes("ObjectPool", dirTypeUserStorage, -2, 0, null));
+    dir = concat(
+      dir,
+      dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, 4, word.length, null),
+    );
+    put32(dir, 76, 2); // root child = ObjectPool
+    put32(dir, 2 * dirEntrySize + 76, 1); // ObjectPool child = embedded summary
+    put32(dir, 2 * dirEntrySize + 72, 3); // ObjectPool right sibling = root summary
+
+    // sector 0: SAT, 1: dir, 2: root pool, 3: excel summary, 4: word summary
+    const data = concat(
+      padSector(secSize, testHeader(secSize, 1, -2, 0, [0])),
+      idSector(secSize, [-3, -2, -2, -2, -2]),
+      padSector(secSize, dir),
+      new Uint8Array(secSize),
+      padSector(secSize, excel),
+      padSector(secSize, word),
+    );
+    expect(detect(data)).toBe(CDFTypeDoc);
+  }
+});
+
+// buildQuadraticCDF builds the GHSA-jjmc-jx7j-hp68 proof-of-concept: an n-byte
+// OLE2 file crafted so that reading a single short stream costs O(n^2) CPU.
+//
+// It uses 128-byte sectors (secP2=7) and 1-byte short sectors (shortP2=0). SAT
+// sector 3 self-loops sector 6 (SAT[6]=6) so the short-stream pool read repeats
+// sector 6 until it fills ~n bytes. Sector 6 doubles as the SSAT: every entry
+// points at short-sector id x = n-2, so each ssatAt lookup walks the SSAT chain
+// ~x/32 times and readShort runs ~n iterations — Θ(n²/32) total.
+function buildQuadraticCDF(n: number): Uint8Array {
+  const secSize = 128;
+  const x = n - 2;
+  const data = new Uint8Array(n);
+
+  // Header.
+  data.set(cdfMagic, 0);
+  put16(data, 30, 7); // secP2: 128-byte sectors
+  put16(data, 32, 0); // shortP2: 1-byte short sectors
+  put32(data, 48, 4); // firstDirSec
+  put32(data, 56, 4096); // minStdStream
+  put32(data, 60, 6); // firstSSAT
+  put32(data, 68, 0xfffffffe); // firstMSAT: none
+  put32(data, 72, 0); // nMSAT
+  for (let i = 0; i < masterSATSize; i++) {
+    put32(data, 76 + 4 * i, -1);
+  }
+  put32(data, 76, 3); // masterSAT[0] = SAT sector 3
+
+  const off = (sec: number): number => secSize * (1 + sec);
+
+  // SAT sector 3: directory chain 4->5->end, short pool sector 6 self-loops.
+  const sat = off(3);
+  for (let i = 0; i < secSize / 4; i++) {
+    put32(data, sat + 4 * i, -1);
+  }
+  put32(data, sat + 4 * 4, 5); // SAT[4] = 5
+  put32(data, sat + 4 * 5, 0xfffffffe); // SAT[5] = ENDOFCHAIN
+  put32(data, sat + 4 * 6, 6); // SAT[6] = 6 (self-loop)
+
+  // Directory entry 0: Root Entry, short-stream pool at sector 6, child = 1.
+  const root = dirEntryBytes("Root Entry", dirTypeRootStorage, 6, 0, null);
+  put32(root, 76, 1);
+  copyInto(data.subarray(off(4)), root);
+
+  // Directory entry 1: a user stream whose short-sector chain starts at x.
+  copyInto(
+    data.subarray(off(5)),
+    dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, x, 1, null),
+  );
+
+  // Sector 6: every SSAT slot points at short-sector id x.
+  for (let i = 0; i < secSize / 4; i++) {
+    put32(data, off(6) + 4 * i, x);
+  }
+  return data;
+}
+
+// TestDetectQuadraticSSAT checks that CDF detection finishes quickly.
+// GHSA-jjmc-jx7j-hp68 showed that crafted inputs can make CDF detection run
+// quadratic with the size of the input. The bound is generous on purpose: the
+// fixed parser takes well under a millisecond on this input, and the quadratic
+// one takes seconds.
+test("TestDetectQuadraticSSAT", () => {
+  const n = 1 << 18; // 256 KiB
+  const data = buildQuadraticCDF(n);
+
+  const start = performance.now();
+  const got = detect(data);
+  const elapsed = performance.now() - start;
+
+  expect(got).toBe(CDFTypeGeneric);
+  expect(elapsed).toBeLessThan(1000);
 });
