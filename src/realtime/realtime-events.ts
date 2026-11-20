@@ -83,8 +83,16 @@ const clientsChunkSize = 150;
 // RealtimeClientAuthKey is the name of the realtime client store key that holds its auth state.
 export const RealtimeClientAuthKey = "auth";
 
-// RealtimeClientIPKey is the name of the realtime client store key that holds the IP of the connected client.
+// RealtimeClientIPKey is the name of the realtime client store key
+// that holds the IP of the client that initialized the realtime connection.
 export const RealtimeClientIPKey = "pbRealtimeClientIP";
+
+// RealtimeOAuth2SubscriptionClientIPKey is the name of the realtime client store key
+// that holds the IP of the client that submitted the OAuth2 subscription.
+//
+// Note that this is used mostly as a fallback in the OAuth2 redirect handler checks
+// to minimize false-positives in relation to https://ganigeorgiev.com/pocketbase/discussions/7758#comment-7ccdsr6gi1nd0y3.
+export const RealtimeOAuth2SubscriptionClientIPKey = "pbRealtimeOAuth2SubscriptionClientIP";
 
 // the app store keys of the broadcast queue and the auth record keys
 const broadcastQueueStoreKey = "@realtimeBroadcastQueue";

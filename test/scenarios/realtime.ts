@@ -137,7 +137,8 @@ function checkConnect(o: Observation): void {
   expect(first.data).toBe(`{"clientId":"${first.id}"}`);
   expect(first.id).toMatch(/^[A-Za-z0-9]{40}$/);
   expect(o.sameIP).toBe(204);
-  expect(o.otherIP).toBe(400);
+  // a subscription from another IP is not checked (D43)
+  expect(o.otherIP).toBe(204);
   // Expected the subscribers to be removed after connection close
   expect(o.afterClose).toBe(404);
 }
@@ -265,8 +266,20 @@ export const realtimeScenarios: RealtimeScenario[] = [
       return response(await ctx.subscribe(stream.clientId, ["test"], undefined, "127.0.0.2"));
     },
     check: (o) => {
-      expect(o.status).toBe(400);
-      expect((o.body as { data: unknown }).data).toEqual({});
+      // the subscription IP is not checked (D43); only the @oauth2 one is kept
+      // for the redirect handler's fallback
+      expect(o.status).toBe(204);
+    },
+  },
+  {
+    func: "TestRealtimeSubscribe",
+    name: "existing client with different IP (oauth2 subscription)",
+    run: async (ctx) => {
+      const stream = await ctx.open();
+      return response(await ctx.subscribe(stream.clientId, ["@oauth2"], undefined, "127.0.0.2"));
+    },
+    check: (o) => {
+      expect(o.status).toBe(204);
     },
   },
   {

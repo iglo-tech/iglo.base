@@ -32,6 +32,7 @@ import {
   isSameAuth,
   RealtimeClientAuthKey,
   RealtimeClientIPKey,
+  RealtimeOAuth2SubscriptionClientIPKey,
 } from "@/realtime/realtime-events";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
@@ -102,28 +103,41 @@ export function findOAuth2RedirectClient(
   try {
     client = app.subscriptionsBroker.clientById(state);
   } catch (err) {
-    app.logger.debug("Missing or invalid OAuth2 subscription client", {
+    app.logger.warn("Missing or invalid OAuth2 subscription client", {
       error: err,
       clientId: state,
     });
     return undefined;
   }
   if (client.isDiscarded() || !client.hasSubscription(oauth2SubscriptionTopic)) {
-    app.logger.debug("Missing or invalid OAuth2 subscription client", {
+    app.logger.warn("Missing or invalid OAuth2 subscription client", {
       error: null,
       clientId: state,
     });
     return undefined;
   }
 
-  // the client IP that completed the authentication must be the one that
-  // initialized the OAuth2 realtime connection
-  const clientIP = client.get(RealtimeClientIPKey);
-  if (typeof clientIP === "string" && clientIP !== "" && clientIP !== realIP) {
+  // additional check to minimize the risk of XSRF attack vectors
+  //
+  // note1: custom registered clients (aka. those without RealtimeClientIPKey in the store)
+  // are excluded from the check for backward compatibility
+  //
+  // note2: the extra subscriptionClientIP check is performed as fallback
+  // to minimize false-positives in case Google/Apple app reviewers use virtualized
+  // devices with multiple network interfaces during the OAuth2 "All in one" flow
+  // (https://ganigeorgiev.com/pocketbase/discussions/7758#comment-7ccdsr6gi1nd0y3)
+  const connectionClientIP = stringValue(client.get(RealtimeClientIPKey));
+  const subscriptionClientIP = stringValue(client.get(RealtimeOAuth2SubscriptionClientIPKey));
+  if (
+    connectionClientIP !== "" &&
+    realIP !== connectionClientIP &&
+    realIP !== subscriptionClientIP
+  ) {
     // the subscription is removed in any case (upstream's deferred Unsubscribe)
     client.unsubscribe(oauth2SubscriptionTopic);
-    app.logger.debug(
-      "The client IP that completed the authentication is different from the one that initialized the OAuth2 realtime connection",
+    app.logger.warn(
+      "The client IP that completed the authentication is different from the one that initialized the OAuth2 realtime connection/subscription",
+      { connectionClientIP, subscriptionClientIP, redirectClientIP: realIP },
     );
     return undefined;
   }
@@ -137,6 +151,12 @@ export function findOAuth2RedirectClient(
 export function sendOAuth2Redirect(client: Client, encodedData: Uint8Array): void {
   client.send(new Message(oauth2SubscriptionTopic, encodedData));
   client.unsubscribe(oauth2SubscriptionTopic);
+}
+
+// the client store value as a string, "" when it is missing or not a string
+// (Go's `client.Get(key).(string)`)
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 // closeRealtimeConnections ends every realtime stream of the app (graceful
@@ -320,21 +340,6 @@ async function realtimeSetSubscriptions(e: RequestEvent): Promise<HandlerResult>
     return e.notFoundError("Missing or invalid client id.", err);
   }
 
-  // for just in case to prevent someone changing a guest subscription
-  //
-  // note1: this is an extra precaution against clientId bruteforce attempts
-  // for installations allowing longer realtime connections duration
-  //
-  // note2: custom registered clients (aka. those without IP in the store)
-  // are excluded from the check for backward compatibility
-  const clientIP = client.get(RealtimeClientIPKey);
-  if (typeof clientIP === "string" && clientIP !== "" && clientIP !== e.realIP()) {
-    return e.badRequestError(
-      "Invalid realtime client.",
-      new Error("the subscription request IP doesn't match with the realtime client IP"),
-    );
-  }
-
   // for now allow only guest->auth upgrades and any other auth change is forbidden
   const clientAuth = clientAuthRecord(client);
   if (clientAuth !== undefined && !isSameAuth(clientAuth, e.auth)) {
@@ -346,6 +351,16 @@ async function realtimeSetSubscriptions(e: RequestEvent): Promise<HandlerResult>
 
   // update auth state
   client.set(RealtimeClientAuthKey, e.auth);
+
+  // store the IP of the first "@oauth2" subscription request
+  // to allow IP fallback checks in the redirect handler
+  if (
+    form.Subscriptions?.length === 1 &&
+    form.Subscriptions[0] === oauth2SubscriptionTopic &&
+    client.subscriptions().size === 0
+  ) {
+    client.set(RealtimeOAuth2SubscriptionClientIPKey, e.realIP());
+  }
 
   // unsubscribe from any previous existing subscriptions
   client.unsubscribe();
