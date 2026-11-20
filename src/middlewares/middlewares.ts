@@ -21,6 +21,9 @@ export const DefaultSuperuserIPsWhitelistMiddlewareId = "pbSuperuserIPsWhitelist
 export const DefaultSuperuserIPsWhitelistMiddlewarePriority =
   DefaultLoadAuthTokenMiddlewarePriority + 5;
 
+export const DefaultRejectUnknownTokenMiddlewareId = "pbRejectUnknownToken";
+export const DefaultRejectUnknownTokenMiddlewarePriority = 9999;
+
 export const DefaultSecurityHeadersMiddlewareId = "pbSecurityHeaders";
 export const DefaultSecurityHeadersMiddlewarePriority = DefaultRateLimitMiddlewarePriority - 10;
 

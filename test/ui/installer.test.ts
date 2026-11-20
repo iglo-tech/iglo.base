@@ -77,11 +77,12 @@ describe("installer", () => {
           { email: "first@example.com" },
         ]);
 
-        // the installer token stops working with its record: a guest request
+        // the installer token stops working with its record: a token that
+        // loads no record is rejected with 401 (rejectUnknownToken)
         const again = await fetch(`${server.url}/api/collections/_superusers/records`, {
           headers: { Authorization: token },
         });
-        expect(again.status).toBe(403);
+        expect(again.status).toBe(401);
       } finally {
         await server.stop();
       }

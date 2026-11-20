@@ -129,6 +129,8 @@ describe("auth records and stores", () => {
       }),
     );
     await env.fails("authRefresh (old token)", () => users.authRefresh());
+    // the revoked token would be sent with the login: rejectUnknownToken answers 401
+    pb.authStore.clear();
     await env.step("authWithPassword (changed)", () =>
       users.authWithPassword("signup@example.com", "changedpass1"),
     );

@@ -15,6 +15,7 @@ import {
   DefaultLoadAuthTokenMiddlewareId,
   DefaultPanicRecoverMiddlewareId,
   DefaultRateLimitMiddlewareId,
+  DefaultRejectUnknownTokenMiddlewareId,
   DefaultSecurityHeadersMiddlewareId,
   DefaultSuperuserIPsWhitelistMiddlewareId,
 } from "@/middlewares/middlewares";
@@ -61,6 +62,7 @@ test("the default middlewares run in upstream's priority order", async () => {
     DefaultSecurityHeadersMiddlewareId,
     DefaultRateLimitMiddlewareId,
     DefaultBodyLimitMiddlewareId,
+    DefaultRejectUnknownTokenMiddlewareId,
   ]);
 });
 

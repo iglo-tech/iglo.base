@@ -135,8 +135,9 @@ describe("TestRequireGuestOnly", () => {
       url: "/my/test",
       token: userExpiredToken,
       route: guestOnlyRoute,
-      expectedStatus: 200,
-      expectedBody: "test123",
+      expectedStatus: 401,
+      // rejectUnknownToken runs after the guard, with upstream's empty message
+      expectedBody: apiError(401, "Missing or invalid authentication."),
     },
     {
       name: "guest",

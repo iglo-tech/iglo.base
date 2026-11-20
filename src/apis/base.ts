@@ -24,6 +24,7 @@ import { bodyLimit } from "@/middlewares/body-limit";
 import { loadAuthToken } from "@/middlewares/load-auth-token";
 import { panicRecover } from "@/middlewares/panic-recover";
 import { rateLimit } from "@/middlewares/rate-limit";
+import { rejectUnknownToken } from "@/middlewares/reject-unknown-token";
 import { securityHeaders } from "@/middlewares/security-headers";
 import { bindRealtimeApi, type RealtimeOptions } from "@/realtime/realtime";
 import { superuserIPsWhitelist } from "@/middlewares/superuser-ips-whitelist";
@@ -61,6 +62,7 @@ export function newRouter(app: App, options: RouterOptions = {}): Router<Request
   pbRouter.bind(panicRecover());
   pbRouter.bind(rateLimit());
   pbRouter.bind(loadAuthToken());
+  pbRouter.bind(rejectUnknownToken());
   pbRouter.bind(superuserIPsWhitelist());
   pbRouter.bind(securityHeaders());
   pbRouter.bind(bodyLimit()); // BodyLimit(DefaultMaxBodySize)
