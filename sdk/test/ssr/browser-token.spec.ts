@@ -185,7 +185,13 @@ describe("handleBrowserTokenRenew", () => {
       "POST /api/collections/users/impersonate/u1": () =>
         json(clock, 200, { token: minted, record: record() }),
     });
-    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99999), fetch });
+    // the same clock as the response's serverTime, so a millisecond tick cannot move it
+    const su = await createSuperuserClient({
+      url: API,
+      token: superuserToken(T0 + 99999),
+      fetch,
+      clock,
+    });
 
     const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
       url: API,
