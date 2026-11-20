@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| U.1 | worker | `task/U.1-baseline-v0.42.3` | 0 | Owner 2026-11-20: baseline v0.42.3, ship v1.3.0 (D43) |
+| U.1 | review | [#109](https://github.com/iglo-tech/iglo.base/pull/109) | 1 | Owner 2026-11-20: baseline v0.42.3, ship v1.3.0 (D43) |
 
 
 
