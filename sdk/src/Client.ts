@@ -176,6 +176,7 @@ export default class Client {
   private cancelControllers: { [key: string]: AbortController } = {};
   private recordServices: { [key: string]: RecordService } = {};
   private enableAutoCancellation: boolean = true;
+  private enableAutoClearAuthStore: boolean = true;
 
   constructor(baseURL = "/", authStore?: BaseAuthStore | null, lang = "en-US") {
     this.baseURL = baseURL;
@@ -247,6 +248,16 @@ export default class Client {
    */
   autoCancellation(enable: boolean): Client {
     this.enableAutoCancellation = !!enable;
+
+    return this;
+  }
+
+  /**
+   * Enable or disable auto auth store cleanup in case of expired
+   * or invalidated token (e.g. after 401 response; true by default).
+   */
+  autoClearAuthStore(enable: boolean): Client {
+    this.enableAutoClearAuthStore = !!enable;
 
     return this;
   }
@@ -485,6 +496,13 @@ export default class Client {
       .catch((err) => {
         // wrap to normalize all errors
         throw new ClientResponseError(err);
+      })
+      .catch((err: ClientResponseError) => {
+        if (this.enableAutoClearAuthStore && err.status == 401) {
+          this.authStore.clear();
+        }
+
+        throw err;
       });
   }
 

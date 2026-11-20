@@ -3,7 +3,7 @@ iglo.base JavaScript SDK
 
 JavaScript SDK (browser, Node, Deno, Bun and React Native) for the [iglo.base](https://github.com/iglo-tech/iglo.base) API.
 
-This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/js-sdk) v0.28.1 (MIT), maintained with iglo.base. It keeps the `pocketbase` package's API (same default export and named exports) and works with PocketBase v0.41.0 too, but ships ES modules only (no `./cjs`, `./umd` or script-tag build).
+This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/js-sdk) v0.29.0 (MIT), maintained with iglo.base. It keeps the `pocketbase` package's API (same default export and named exports) and works with PocketBase v0.42.3 too, but ships ES modules only (no `./cjs`, `./umd` or script-tag build).
 
 - [Installation](#installation)
 - [Usage](#usage)
@@ -261,6 +261,11 @@ removeListener2();
 ```
 
 
+### Auth store auto clear
+
+By default the store is automatically cleared when a request returns a `401` response, for example for an expired or externally invalidated token. This keeps the stored token in step with the server.
+You can disable this behavior with `pb.autoClearAuthStore(false)`.
+
 ### Auto cancellation
 
 The SDK client will auto cancel duplicated pending requests for you.
@@ -472,6 +477,7 @@ const pb = new PocketBase(baseURL = '/', authStore = LocalAuthStore);
 |:----------------------------------|:------------------------------------------------------------------------------|
 | `pb.send(path, sendOptions = {})` | Sends an api http request.                                                    |
 | `pb.autoCancellation(enable)`     | Globally enable or disable auto cancellation for pending duplicated requests. |
+| `pb.autoClearAuthStore(enable)`   | Globally enable or disable clearing the auth store after a `401` response.   |
 | `pb.cancelAllRequests()`          | Cancels all pending requests.                                                 |
 | `pb.cancelRequest(cancelKey)`     | Cancels single request by its cancellation token key.                         |
 | `pb.buildURL(path)`               | Builds a full client url by safely concatenating the provided path.           |

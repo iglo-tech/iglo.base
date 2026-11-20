@@ -1,7 +1,8 @@
-// js-sdk v0.28.1 tests/Client.spec.ts
+// js-sdk v0.29.0 tests/Client.spec.ts
 import { describe, expect, test, beforeAll, afterAll, afterEach } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import Client from "@sdk/Client";
+import { ClientResponseError } from "@sdk/ClientResponseError";
 import { LocalAuthStore } from "@sdk/stores/LocalAuthStore";
 import { RecordService } from "@sdk/services/RecordService";
 import { FetchMock } from "@sdk-test/mocks";
@@ -169,6 +170,18 @@ describe("Client", function () {
       });
 
       assert.equal(result, `a > {:test1} && b = "test$$" || c = "test$$"`);
+    });
+
+    test("filter with param values matching the placeholders (regex chaining)", function () {
+      const client = new Client("test_base_url", null, "test_language_A");
+
+      const result = client.filter("a > {:test1} && b = {:test2} || c = {:test3}", {
+        test1: "{:test2}",
+        test2: "{:test1}",
+        test3: "{:test3}",
+      });
+
+      assert.equal(result, `a > "{:test2}" && b = "{:test1}" || c = "{:test3}"`);
     });
 
     test("filter expression with all placeholder types", function () {
@@ -754,5 +767,51 @@ describe("Client", function () {
       await expect(requestB).resolves.toBeDefined();
       await expect(requestC).resolves.toBeDefined();
     });
+  });
+
+  describe("auto clear authStore", function () {
+    const statusScenarios: Record<number, boolean> = {
+      200: false,
+      400: false,
+      402: false,
+      401: true,
+      403: false,
+      404: false,
+      408: false,
+      429: false,
+      500: false,
+      503: false,
+    };
+
+    function runScenario(enable: null | boolean, status: number, cleared: boolean) {
+      test(`enableAutoClearAuthStore=${enable} with status ${status}`, async function () {
+        const client = new Client("test_base_url");
+
+        if (enable != null) {
+          client.autoClearAuthStore(enable);
+        }
+
+        client.authStore.save("test_token");
+
+        assert.equal(client.authStore.token, "test_token");
+
+        try {
+          await client.send("/test", {
+            method: "GET",
+            fetch: async (): Promise<Response> => new Response(null, { status }),
+          });
+        } catch (_) {}
+
+        assert.equal(client.authStore.token, cleared ? "" : "test_token");
+      });
+    }
+
+    for (const key of Object.keys(statusScenarios)) {
+      const status = Number(key);
+
+      runScenario(null, status, statusScenarios[status]); // default
+      runScenario(true, status, statusScenarios[status]); // explicitly enabled
+      runScenario(false, status, false); // explicitly disabled
+    }
   });
 });

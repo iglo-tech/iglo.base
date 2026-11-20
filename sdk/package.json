@@ -1,7 +1,7 @@
 {
   "name": "@iglo.tech/iglo.base",
-  "version": "1.0.1",
-  "description": "JavaScript SDK for iglo.base (fork of the PocketBase JavaScript SDK v0.28.1)",
+  "version": "1.1.0",
+  "description": "JavaScript SDK for iglo.base (fork of the PocketBase JavaScript SDK v0.29.0)",
   "keywords": [
     "iglo.base",
     "javascript-sdk",
