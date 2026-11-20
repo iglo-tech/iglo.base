@@ -6,7 +6,7 @@ PocketBase's dashboard is a client of the public API. It talks to the server onl
 
 | | |
 |---|---|
-| Upstream source | `ui/` at v0.41.0: about 220 files, 35,000 lines of vanilla JavaScript and CSS, built with [Shablon](https://github.com/ganigeorgiev/shablon) and Vite |
+| Upstream source | `ui/` at v0.42.3 (`c5003ce`): about 220 files, 35,000 lines of vanilla JavaScript and CSS, built with [Shablon](https://github.com/ganigeorgiev/shablon) and Vite |
 | Runtime dependencies | the `pocketbase` JS SDK and Leaflet from npm; vendored in `public/libs`: Shablon (0BSD), TinyMCE 6.8.6 (MIT), uPlot, Prism |
 | License | MIT, part of PocketBase. TinyMCE must stay on 6.x: TinyMCE 7 and later are GPL-2.0-or-later without a commercial key |
 | In iglo.base | `ui/`, built with `bun run --cwd ui build` (Vite under Bun), output embedded in the executable and served at `/_/` |
