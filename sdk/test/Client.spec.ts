@@ -769,24 +769,24 @@ describe("Client", function () {
   });
 
   describe("auto clear authStore", function () {
-    const statusScenarios: Record<number, boolean> = {
-      200: false,
-      400: false,
-      402: false,
-      401: true,
-      403: false,
-      404: false,
-      408: false,
-      429: false,
-      500: false,
-      503: false,
-    };
+    // [status, whether the store is cleared by default]
+    const statusScenarios: Array<[number, boolean]> = [
+      [200, false],
+      [400, false],
+      [402, false],
+      [401, true],
+      [403, false],
+      [404, false],
+      [408, false],
+      [429, false],
+      [500, false],
+      [503, false],
+    ];
 
-    for (const key of Object.keys(statusScenarios)) {
-      const status = Number(key);
+    for (const [status, clearedByDefault] of statusScenarios) {
       const scenarios: Array<[string, null | boolean, boolean]> = [
-        ["default", null, statusScenarios[status]],
-        ["explicitly enabled", true, statusScenarios[status]],
+        ["default", null, clearedByDefault],
+        ["explicitly enabled", true, clearedByDefault],
         ["explicitly disabled", false, false],
       ];
 
