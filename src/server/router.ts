@@ -99,9 +99,11 @@ export class ResponseWriter {
     if (this.#controller) {
       try {
         this.#controller.enqueue(bytes);
-      } catch (err) {
-        // the client went away
-        return err instanceof Error ? err : new Error(String(err));
+      } catch {
+        // the client went away and Bun closed the response stream; Go's
+        // writer returns one of its benign write errors here, which the
+        // activity logger recognizes (src/middlewares/activity-logger.ts)
+        return new Error("write error: client disconnected");
       }
     } else {
       this.#chunks.push(bytes);

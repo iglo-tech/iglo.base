@@ -63,6 +63,29 @@ function cutStr(str: string, max: number): string {
   return str;
 }
 
+// benignErrors are usually returned after OK status has been already
+// written and are mostly informative (aka. can be safely ignored).
+//
+// See https://ganigeorgiev.com/pocketbase/discussions/8361.
+//
+// The last one is what the response writer returns when the client went
+// away mid-response (router.ts ResponseWriter.write), in place of Go's
+// write errors.
+const benignErrors = [
+  "http2: request body closed due to handler exiting",
+  "http2: stream closed",
+  "write: broken pipe",
+  "write error: client disconnected",
+];
+
+function canBeIgnored(err: Error | undefined): boolean {
+  if (err === undefined) {
+    return true;
+  }
+
+  return benignErrors.some((benign) => err.message.includes(benign));
+}
+
 function logRequest(event: RequestEvent, result: HandlerResult): void {
   const err = result ?? undefined;
 
@@ -71,12 +94,50 @@ function logRequest(event: RequestEvent, result: HandlerResult): void {
     return;
   }
 
-  // the non-error route has explicitly disabled the activity logger
-  if (err === undefined && event.get(requestEventKeySkipSuccessActivityLog) !== undefined) {
+  let status = event.status();
+
+  // check if it is "benign" to decide whether to log it as error or just info
+  const isOKState = status < 400 && status > 199 && canBeIgnored(err);
+
+  // the OK route has explicitly disabled the activity logger
+  if (isOKState && event.get(requestEventKeySkipSuccessActivityLog) !== undefined) {
     return;
   }
 
-  const attrs: { [key: string]: unknown } = { type: "request" };
+  const request = event.request;
+  const method = cutStr(request.method.toUpperCase(), 50);
+  const requestUri = cutStr(
+    request.rawQuery === "" ? request.escapedPath : `${request.escapedPath}?${request.rawQuery}`,
+    3000,
+  );
+
+  const attrs: { [key: string]: unknown } = {
+    type: "request",
+    url: requestUri,
+    method,
+    referer: cutStr(request.headers.get("Referer") ?? "", 2000),
+    userAgent: cutStr(request.headers.get("User-Agent") ?? "", 2000),
+  };
+
+  // parse the request error state no matter of the log type
+  if (err !== undefined) {
+    const errMsgSuffix = isOKState ? " (often benign, see #8361)" : "";
+
+    const apiErr = errorsAs(err, ApiError);
+    if (apiErr) {
+      // in case the status header wasn't written yet
+      if (status === 0) {
+        status = apiErr.status;
+      }
+
+      attrs.error = err.message + errMsgSuffix;
+      attrs.details = apiErr.rawData();
+    } else {
+      attrs.error = err.message + errMsgSuffix;
+    }
+  }
+
+  attrs.status = status;
 
   const started = event.get(requestEventKeyExecStart);
   if (typeof started === "number") {
@@ -87,36 +148,6 @@ function logRequest(event: RequestEvent, result: HandlerResult): void {
   if (meta !== undefined && meta !== null) {
     attrs.meta = meta;
   }
-
-  let status = event.status();
-  const request = event.request;
-  const method = cutStr(request.method.toUpperCase(), 50);
-  const requestUri = cutStr(
-    request.rawQuery === "" ? request.escapedPath : `${request.escapedPath}?${request.rawQuery}`,
-    3000,
-  );
-
-  // parse the request error
-  if (err !== undefined) {
-    const apiErr = errorsAs(err, ApiError);
-    if (apiErr) {
-      // the status header wasn't written yet
-      if (status === 0) {
-        status = apiErr.status;
-      }
-
-      attrs.error = err.message;
-      attrs.details = apiErr.rawData();
-    } else {
-      attrs.error = err.message;
-    }
-  }
-
-  attrs.url = requestUri;
-  attrs.method = method;
-  attrs.status = status;
-  attrs.referer = cutStr(request.headers.get("Referer") ?? "", 2000);
-  attrs.userAgent = cutStr(request.headers.get("User-Agent") ?? "", 2000);
 
   const { Logs } = event.app.settings;
 
@@ -137,9 +168,9 @@ function logRequest(event: RequestEvent, result: HandlerResult): void {
 
   const message = `${method} ${unescapeBytes(requestUri) ?? requestUri}`;
 
-  if (err !== undefined) {
-    event.app.logger.error(message, attrs);
-  } else {
+  if (isOKState) {
     event.app.logger.info(message, attrs);
+  } else {
+    event.app.logger.error(message, attrs);
   }
 }

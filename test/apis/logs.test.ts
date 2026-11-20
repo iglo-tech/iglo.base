@@ -13,11 +13,12 @@ import { runInTransaction } from "@/db/tx";
 import type { LogAttrs } from "@/logs/batch-handler";
 import type { Logger } from "@/logs/logger";
 import { formatLog } from "@/logs/log-printer";
+import { ResponseWriter } from "@/server/router";
 import { reloadSettings } from "@/settings/settings-query";
 
 import { openFixtureApp, type TestApp, type TestAppOptions } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/cron";
-import { serveTest } from "@test/support/router";
+import { newTestRequest, serveTest } from "@test/support/router";
 
 interface Row {
   id: string;
@@ -327,7 +328,51 @@ describe("request logs", () => {
     expect(res.status).toBe(307);
     h.tick();
     await h.settle();
-    expect(h.rows()).toEqual([]);
+    // the redirect's own request log is skipped; its failure is a WARN log
+    // (upstream's level), which the default minimum level stores
+    expect(h.rows().map((r) => [r.level, r.message])).toEqual([
+      [4, "Missing or invalid OAuth2 subscription client"],
+    ]);
+  });
+
+  test("a client that goes away mid-response logs an info line with the benign error", async () => {
+    const h = await open();
+    const router = newRouter(h.app);
+    const { promise: gate, resolve: release } = Promise.withResolvers<void>();
+    let writeErr: Error | undefined;
+    router.GET("/stream", async (e) => {
+      e.response.write("first");
+      e.response.flush();
+      await gate;
+      // the client is gone: Bun closed the response stream
+      writeErr = e.response.write("second");
+      return writeErr;
+    });
+
+    // serveTest waits for the whole handler; this one reads the streamed
+    // response while the handler is still running
+    const mux = router.buildMux();
+    const commit = Promise.withResolvers<Response>();
+    const writer = new ResponseWriter((response) => commit.resolve(response));
+    const served = mux.serveHTTP(
+      writer,
+      newTestRequest({ target: "/stream", remoteAddr: "127.0.0.1:1" }),
+    );
+    const streamed = await commit.promise;
+    await streamed.body!.cancel();
+    release();
+    await served;
+
+    expect(writeErr?.message).toBe("write error: client disconnected");
+    h.tick();
+    await h.settle();
+    const [row] = h.rows();
+    expect(row!.level).toBe(0);
+    expect(row!.message).toBe("GET /stream");
+    expect(JSON.parse(row!.data)).toMatchObject({
+      error: "write error: client disconnected (often benign, see #8361)",
+      status: 200,
+    });
   });
 });
 
