@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/crypto v0.58.0 blowfish/cipher.go and
+// Upstream: golang.org/x/crypto v0.59.0 blowfish/cipher.go and
 // blowfish/block.go
 //
 // Bruce Schneier's Blowfish cipher, used only by the bcrypt port

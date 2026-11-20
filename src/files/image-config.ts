@@ -1,5 +1,5 @@
 // Upstream: Go 1.27 image.DecodeConfig with the image/jpeg, image/png and
-// image/gif decoders, golang.org/x/image v0.47.0 webp (DecodeConfig), as
+// image/gif decoders, golang.org/x/image v0.48.0 webp (DecodeConfig), as
 // tools/filesystem/filesystem.go createThumb calls it; imaging v1.6.2
 // io.go (readOrientation) and the transforms of transform.go it applies.
 //

@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/crypto v0.58.0 blowfish/const.go
+// Upstream: golang.org/x/crypto v0.59.0 blowfish/const.go
 //
 // The startup permutation array and substitution boxes.
 // They are the hexadecimal digits of PI; see:
