@@ -63,6 +63,7 @@ const inlineServeContentTypes = [
   "image/png",
   "image/jpg",
   "image/jpeg",
+  "image/jxl",
   "image/gif",
   "image/webp",
   "image/x-icon",

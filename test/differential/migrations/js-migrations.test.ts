@@ -1,4 +1,4 @@
-// JavaScript migrations against the reference PocketBase v0.41.0 binary.
+// JavaScript migrations against the reference PocketBase v0.42.3 binary.
 // Not part of `bun test`: run `bun run test:reference`.
 //
 //   - the JS patterns of upstream's docs (patterns.ts) run on both servers
@@ -578,7 +578,7 @@ function cleanHelp(result: unknown): unknown {
     stderr: r.stderr.replace(created, "CREATED").split("\n").toSorted().join("\n"),
     stdout: r.stdout
       .replace(created, "CREATED")
-      .replace(/^ {6}--hooks\w+ .*\n/gm, "")
+      .replace(/^ {6}--hooks\w+(\[=true\|false\])? .*\n/gm, "")
       .replace(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
       .replace(/ +--/g, " --")
       .replace(/ {2,}/g, " ")
