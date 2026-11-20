@@ -113,4 +113,4 @@ unzip iglo-base_0.1.0_linux_amd64.zip
 
 ## Switching a deployment
 
-The [operations guide](operations.md) covers installing and running a release. [cutover.md](cutover.md) is the runbook for moving a PocketBase v0.41.0 deployment to a released executable and back.
+The [operations guide](operations.md) covers installing and running a release. [cutover.md](cutover.md) is the runbook for moving a PocketBase v0.42.3 deployment to a released executable and back.

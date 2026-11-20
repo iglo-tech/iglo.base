@@ -1,6 +1,6 @@
 # Server-side rendering with iglo.base
 
-This guide shows how to render pages on your server and sign users in with iglo.base. It covers the server part of the SDK, `@iglo.tech/iglo.base/ssr`, the browser part, `@iglo.tech/iglo.base/ssr/browser`, and one section per framework. The server's API is the same as PocketBase v0.41.0's, so SSR needs no change on the server.
+This guide shows how to render pages on your server and sign users in with iglo.base. It covers the server part of the SDK, `@iglo.tech/iglo.base/ssr`, the browser part, `@iglo.tech/iglo.base/ssr/browser`, and one section per framework. The server's API is the same as PocketBase v0.42.3's, so SSR needs no change on the server.
 
 The SDK does the parts that are easy to get wrong: a client for each request, the session cookie, session checks, the browser token for realtime, and the cache and CSRF headers. Your app still decides its routes, its pages, what a user may see, and where users go after sign-in. Each section below says which is which.
 
