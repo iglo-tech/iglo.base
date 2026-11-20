@@ -56,7 +56,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
       oauth2RedirectDataType,
     );
     if (bindErr) {
-      e.app.logger.debug("Failed to read OAuth2 redirect data", { error: bindErr });
+      e.app.logger.warn("Failed to read OAuth2 redirect data", { error: bindErr });
       return failureRedirect(e);
     }
   } else {
@@ -67,7 +67,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
   }
 
   if (data.State === "") {
-    e.app.logger.debug("Missing OAuth2 state parameter");
+    e.app.logger.warn("Missing OAuth2 state parameter");
     return failureRedirect(e);
   }
 
@@ -87,7 +87,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
       );
     } catch (err) {
       // non-critical error
-      e.app.logger.debug("Failed to parse and load Apple Redirect name data", { error: err });
+      e.app.logger.warn("Failed to parse and load Apple Redirect name data", { error: err });
     }
   }
 
@@ -100,7 +100,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
     }
     encodedData += "}";
   } catch (err) {
-    e.app.logger.debug("Failed to marshalize OAuth2 redirect data", { error: err });
+    e.app.logger.warn("Failed to marshalize OAuth2 redirect data", { error: err });
     client.unsubscribe(oauth2SubscriptionTopic);
     return failureRedirect(e);
   }
@@ -108,7 +108,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
   sendOAuth2Redirect(client, encoder.encode(encodedData));
 
   if (data.Error !== "" || data.Code === "") {
-    e.app.logger.debug("Failed OAuth2 redirect due to an error or missing code parameter", {
+    e.app.logger.warn("Failed OAuth2 redirect due to an error or missing code parameter", {
       error: data.Error,
       clientId: data.State,
     });

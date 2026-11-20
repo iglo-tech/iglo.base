@@ -18,6 +18,25 @@ export async function findLogById(app: Pick<App, "databases">, id: string): Prom
   return logQuery(app).andWhere(new HashExp({ id })).limit(1).oneAsync(new Log());
 }
 
+// CountLogs returns the total number of log entries, only the ones that
+// match the non-null expressions.
+export function countLogs(
+  app: Pick<App, "databases">,
+  ...optExprs: (Expression | null | undefined)[]
+): number {
+  const q = logQuery(app).select("count(*)");
+
+  for (const expr of optExprs) {
+    if (expr !== null && expr !== undefined) {
+      q.andWhere(expr);
+    }
+  }
+
+  const [total] = q.row();
+
+  return Number(total as bigint);
+}
+
 // LogsStatsItem defines the total number of logs for a specific time period.
 export interface LogsStatsItem {
   date: string;

@@ -1,5 +1,5 @@
 // Go regexp matching (src/tools/regexp/regexp.ts) against the reference
-// PocketBase v0.41.0 binary. Not part of `bun test`: run
+// PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // Upstream checks a text field value against the field's `pattern` with

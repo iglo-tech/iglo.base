@@ -1,5 +1,5 @@
 // docs/design/13-ssr.md ("Clients", "Session cookie", "Session cache, check and refresh", "Browser client and realtime")
-// Differential tests against both upstream PocketBase v0.41.0 and iglo.base.
+// Differential tests against both upstream PocketBase v0.42.3 and iglo.base.
 
 import { describe, expect } from "bun:test";
 import { join } from "node:path";
@@ -264,7 +264,10 @@ describe("SSR differential", () => {
       expect(clearedCookiesDataCall.length).toBe(0);
       expect(pbData.authStore.isValid).toBe(true);
 
-      // 2. Fresh login, then revoke and check after cache TTL
+      // 2. Fresh login, then revoke and check after cache TTL. The SDK would send
+      // the revoked token with the login request, which now fails with 401
+      // (rejectUnknownToken), so the store is cleared first
+      client.authStore.clear();
       const freshAuth = await env.step("auth fresh", () =>
         client.collection("users").authWithPassword("revoke_test@example.com", "newpassword12345"),
       );

@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/audio.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/audio.go.
 
 import { beUint16, equal, hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 import { extractFrame } from "@/tools/mimetype/internal/mp3/frame";
@@ -54,9 +54,7 @@ export function M3U(raw: Uint8Array, _limit: number): boolean {
 
 // AAC matches an Advanced Audio Coding file.
 export function AAC(raw: Uint8Array, _limit: number): boolean {
-  return (
-    raw.length > 1 && ((raw[0] === 0xff && raw[1] === 0xf1) || (raw[0] === 0xff && raw[1] === 0xf9))
-  );
+  return raw.length > 1 && raw[0] === 0xff && (raw[1] === 0xf1 || raw[1] === 0xf9);
 }
 
 const mo3Sig = lit("MO3");
@@ -149,26 +147,35 @@ function id3v2(raw: Uint8Array): boolean {
   }
 
   const size = (s6 << 21) | (s7 << 14) | (s8 << 7) | s9;
-  // Disallow too big frames, let's say 10MB.
-  return size > 0 && size < 10 * 1024 * 1024;
+  // The synchsafe integer is already bounded to 28 bits (~256MB). A 10MB
+  // cap rejected legitimate files with large ID3v2 album art. #839
+  return size > 0;
+}
+
+// iff checks for an Interchange File Format layout: 4-byte container tag,
+// 4-byte size, 4-byte format tag. It is shared with image.go's Webp.
+export function iff(raw: Uint8Array, container: Uint8Array, format: Uint8Array): boolean {
+  return (
+    raw.length > 12 && equal(raw.subarray(0, 4), container) && equal(raw.subarray(8, 12), format)
+  );
 }
 
 const riff = lit("RIFF");
-const wave = Uint8Array.of(0x57, 0x41, 0x56, 0x45);
+const wave = lit("WAVE");
 // Wav matches a Waveform Audio File Format file.
 export function Wav(raw: Uint8Array, _limit: number): boolean {
-  return raw.length > 12 && equal(raw.subarray(0, 4), riff) && equal(raw.subarray(8, 12), wave);
+  return iff(raw, riff, wave);
 }
 
-const form = Uint8Array.of(0x46, 0x4f, 0x52, 0x4d);
-const aiff = Uint8Array.of(0x41, 0x49, 0x46, 0x46);
+const form = lit("FORM");
+const aiff = lit("AIFF");
 // Aiff matches Audio Interchange File Format file.
 export function Aiff(raw: Uint8Array, _limit: number): boolean {
-  return raw.length > 12 && equal(raw.subarray(0, 4), form) && equal(raw.subarray(8, 12), aiff);
+  return iff(raw, form, aiff);
 }
 
 const qlcm = lit("QLCM");
 // Qcp matches a Qualcomm Pure Voice file.
 export function Qcp(raw: Uint8Array, _limit: number): boolean {
-  return raw.length > 12 && equal(raw.subarray(0, 4), riff) && equal(raw.subarray(8, 12), qlcm);
+  return iff(raw, riff, qlcm);
 }

@@ -355,9 +355,9 @@ export const cases: Case[] = [
     ],
   },
   {
-    name: "an invalid token is a guest",
+    name: "an invalid token is limited as a guest, then rejected with 401",
     rules: [rule("/rate/a", 0, "@guest"), rule("/rate/b", 0, "@auth")],
-    steps: [get("/rate/a", 429, auth("invalid")), get("/rate/b", 404, auth("invalid"))],
+    steps: [get("/rate/a", 429, auth("invalid")), get("/rate/b", 401, auth("invalid"))],
   },
   {
     name: "a superuser is never limited on collection routes",

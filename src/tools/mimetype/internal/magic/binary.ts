@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/binary.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/binary.go.
 
 import {
   beUint32,
@@ -137,28 +137,25 @@ export function Dbf(raw: Uint8Array, _limit: number): boolean {
   return dbfTypes.includes(raw[0] as number);
 }
 
+function elfType(raw: Uint8Array, t: number): boolean {
+  return (
+    raw.length > 17 && ((raw[16] === t && raw[17] === 0x00) || (raw[16] === 0x00 && raw[17] === t))
+  );
+}
+
 // ElfObj matches an object file.
 export function ElfObj(raw: Uint8Array, _limit: number): boolean {
-  return (
-    raw.length > 17 &&
-    ((raw[16] === 0x01 && raw[17] === 0x00) || (raw[16] === 0x00 && raw[17] === 0x01))
-  );
+  return elfType(raw, 0x01);
 }
 
 // ElfExe matches an executable file.
 export function ElfExe(raw: Uint8Array, _limit: number): boolean {
-  return (
-    raw.length > 17 &&
-    ((raw[16] === 0x02 && raw[17] === 0x00) || (raw[16] === 0x00 && raw[17] === 0x02))
-  );
+  return elfType(raw, 0x02);
 }
 
 // ElfLib matches a shared library file.
 export function ElfLib(raw: Uint8Array, _limit: number): boolean {
-  return (
-    raw.length > 17 &&
-    ((raw[16] === 0x03 && raw[17] === 0x00) || (raw[16] === 0x00 && raw[17] === 0x03))
-  );
+  return elfType(raw, 0x03);
 }
 
 // ElfDump matches a core dump file.

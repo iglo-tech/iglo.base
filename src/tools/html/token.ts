@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/token.go
+// Upstream: golang.org/x/net v0.62.0 html/token.go
 //
 // The tokenizer works on the complete input as a Uint8Array, the way the Go
 // tokenizer works on its buffer. Spans are absolute offsets into that buffer,

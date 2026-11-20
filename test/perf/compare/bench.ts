@@ -1,4 +1,4 @@
-// M7.1a: iglo.base against upstream PocketBase v0.41.0 on the same data: HTTP
+// M7.1a: iglo.base against upstream PocketBase v0.42.3 on the same data: HTTP
 // workloads at 1, 8 and 50 clients, startup time and idle RSS. Not shipped;
 // needs `bun run upstream:prepare` and `bun run build` (it runs dist/iglo-base
 // unless --exe is given). Report: docs/perf/M7.1a-profile.md.

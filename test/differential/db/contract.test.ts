@@ -1,7 +1,7 @@
 // The data contract (docs/design/03-data-compatibility.md): iglo.base opens a
 // copy of upstream's tests/data, writes to both files in transactions and
 // closes it; nothing iglo-specific is left in either file, and the
-// reference PocketBase v0.41.0 binary finds nothing pending, starts on the
+// reference PocketBase v0.42.3 binary finds nothing pending, starts on the
 // copy and serves what iglo.base wrote. Not part of `bun test`: run
 // `bun run test:reference`.
 

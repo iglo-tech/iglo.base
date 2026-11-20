@@ -1,4 +1,4 @@
-// P.8: iglo.base and upstream PocketBase v0.41.0 on the same pb_data notify
+// P.8: iglo.base and upstream PocketBase v0.42.3 on the same pb_data notify
 // each other about settings changes, in both directions.
 //
 // On macOS upstream's fsnotify uses kqueue, which lists the directory after

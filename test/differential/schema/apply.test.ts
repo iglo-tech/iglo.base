@@ -1,5 +1,5 @@
 // The schema file's apply (D40, S.3) against the reference PocketBase
-// v0.41.0 binary. Not part of `bun test`: run `bun run test:reference`.
+// v0.42.3 binary. Not part of `bun test`: run `bun run test:reference`.
 //
 // One fresh upstream install is copied for both sides. The same change is
 // made in two ways: iglo.base applies a schema file at startup (serve

@@ -1,4 +1,4 @@
-// Smoke test for the reference PocketBase v0.41.0 binary that
+// Smoke test for the reference PocketBase v0.42.3 binary that
 // `bun run upstream:prepare` puts in .upstream/bin. The differential suite
 // (M0.5) runs the same requests against upstream and iglo.base. Not part of
 // `bun test`: run `bun run test:reference`.

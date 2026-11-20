@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/scan/bytes.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/scan/bytes.go.
 //
 // Package scan has functions for scanning byte slices.
 //

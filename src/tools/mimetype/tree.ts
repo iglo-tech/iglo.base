@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 tree.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 tree.go.
 //
 // mimetype stores the list of MIME types in a tree structure with
 // "application/octet-stream" at the root of the hierarchy. The hierarchy

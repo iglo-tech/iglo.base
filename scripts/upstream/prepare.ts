@@ -1,5 +1,5 @@
 // Prepares the reference tools pinned in test/differential/upstream.lock under
-// .upstream/ (git-ignored): the PocketBase v0.41.0 source checkout at the
+// .upstream/ (git-ignored): the PocketBase v0.42.3 source checkout at the
 // pinned commit, and the host's pocketbase, Mailpit and versitygw binaries.
 //
 // Every archive is checked against its lock SHA-256 before it is unpacked. A

@@ -1,6 +1,6 @@
 // Differential cases for the dashboard routes (apis/serve.go, apis/base.go
 // Static, apis/extensions.go, apis/middlewares_gzip.go): the same requests
-// against the reference PocketBase v0.41.0 binary and the compiled iglo.base
+// against the reference PocketBase v0.42.3 binary and the compiled iglo.base
 // executable, comparing the status, the headers the routes set and the
 // bodies. Not part of `bun test`: run `bun run test:reference`.
 //

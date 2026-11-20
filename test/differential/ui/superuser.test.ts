@@ -1,5 +1,5 @@
 // Differential case for the superuser command (cmd/superuser.go): the same
-// command sequence with the reference PocketBase v0.41.0 binary and the
+// command sequence with the reference PocketBase v0.42.3 binary and the
 // compiled iglo.base executable, each on its own copy of the fixture. The
 // output and exit codes match, and both pb_data directories, opened by
 // upstream afterwards, have the same superusers and settings. Not part of
@@ -53,7 +53,7 @@ const sequence: string[][] = [
   ["ips", "--help"],
 ];
 
-const removedFlagLine = /^ {6}--(hooksDir|hooksPool|hooksWatch) .*\n/gm;
+const removedFlagLine = /^ {6}--(hooksDir|hooksPool|hooksWatch)(\[=true\|false\])? .*\n/gm;
 
 function normalize(text: string, bin: string): string {
   return text

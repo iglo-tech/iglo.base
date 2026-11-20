@@ -1,6 +1,6 @@
 # API compatibility
 
-Every client written for PocketBase v0.41.0 must work against iglo.base unchanged: the official JavaScript and Dart SDKs, community SDKs, the dashboard, and raw HTTP. The reference is the upstream binary, not the documentation. Where the docs and the binary disagree, the binary wins.
+Every client written for PocketBase v0.42.3 must work against iglo.base unchanged: the official JavaScript and Dart SDKs, community SDKs, the dashboard, and raw HTTP. The reference is the upstream binary, not the documentation. Where the docs and the binary disagree, the binary wins.
 
 ## What "compatible" means
 
@@ -37,7 +37,7 @@ Grouped as upstream's `apis/` files. Each file becomes one handler module in `sr
 | Dashboard | `GET /_/{path...}`, `GET /_/extensions.js` (see differences) |
 | Static | `GET /{path...}` from `pb_public`, when the directory exists, with `--indexFallback` |
 
-Everything that applies to all routes is ported as middleware with upstream's order and IDs: panic recovery, activity logger, `trustedProxy` client IP resolution, CORS (`--origins`), the default body limit (32 MiB, overridden per collection where upstream does), the rate limiter (rules from settings, labels like `*:auth`, `users:create`, `/api/`), gzip, superuser IP allow-list, and auth token loading from `Authorization` (with or without `Bearer `).
+Everything that applies to all routes is ported as middleware with upstream's order and IDs: panic recovery, activity logger, `trustedProxy` client IP resolution, CORS (`--origins`), the default body limit (32 MiB, overridden per collection where upstream does), the rate limiter (rules from settings, labels like `*:auth`, `users:create`, `/api/`), gzip, superuser IP allow-list, and auth token loading from `Authorization` (with or without `Bearer `). A token that loads no auth record (unknown, invalid or expired) is answered `401` before the route runs, on every route, as upstream v0.42.3 does (`rejectUnknownToken`), instead of running the request as a guest.
 
 ## Records list
 
@@ -55,12 +55,12 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 ## Realtime
 
 - `GET /api/realtime` opens an SSE stream (`text/event-stream`, `Cache-Control: no-store`, `X-Accel-Buffering: no`). The first event is `PB_CONNECT` with `{"clientId":"…"}` (40 characters) and the client ID as the SSE `id`; every event is written as `id:<clientId>\nevent:<name>\ndata:<data>\n\n`.
-- `POST /api/realtime` with `{ clientId, subscriptions: [...] }` replaces the topics (at most 1,000, each at most 2,500 characters) and answers `204`. An unknown client is `404`, a request from another IP than the connection's is `400`. The request's auth becomes the client's auth; only a guest client may gain an auth, any other change is `403`, as upstream.
+- `POST /api/realtime` with `{ clientId, subscriptions: [...] }` replaces the topics (at most 1,000, each at most 2,500 characters) and answers `204`. An unknown client is `404`. A request from another IP than the connection's is accepted, as upstream v0.42.3 does: the IP of the first `@oauth2` subscription is kept for the OAuth2 redirect check (see below). The request's auth becomes the client's auth; only a guest client may gain an auth, any other change is `403`, as upstream.
 - Topics: `<collection>/*`, `<collection>/<recordId>` (by collection name or id; `<collection>` alone is upstream's deprecated form of `/*`), each with an optional `?options={"query":{…},"headers":{…}}` suffix. The query and headers are applied when checking `listRule` (`/*`) or `viewRule` (`/<id>`), the `filter` query value as an extra filter (with `@request.*` and `@collection.*` for superusers only), and `expand` and `fields` shape the record.
 - Messages: event name is the topic as subscribed, data is `{"record":{…},"action":"create"|"update"|"delete"}` (in that key order), sent only to clients whose rule check passes for that record. Superuser subscribers get hidden fields; the auth record's owner, superusers and clients passing the `manageRule` get the email. A delete message carries the record as it was, checked before the delete. View collections get no record events.
 - An auth record's update refreshes the auth of its clients (and unsets it when the token key changed); its delete, its collection's delete or a change of the collection's auth token secret unsets it.
 - A connection is closed after 5 minutes without a delivered message and after 30 minutes in all; the SDKs reconnect and subscribe again. Broadcasting happens after the write transaction commits, never for a write that rolls back. As upstream, the API response comes after the broadcast's rule checks, subscription filters, email visibility checks and expands, which see the database as that write left it (a delete's as it was right before the row delete, with the expand read inside its transaction); only the sending to the streams follows the response.
-- OAuth2 popup flow: `/api/oauth2-redirect` sends the code to the `@oauth2` subscriber, as upstream (M4.5).
+- OAuth2 popup flow: `/api/oauth2-redirect` sends the code to the `@oauth2` subscriber, as upstream (M4.5). The redirect is accepted from the connection's IP or from the IP that made the `@oauth2` subscription (upstream v0.42.3); its failures are logged at WARN.
 - Bun detail: `Bun.serve`'s idle timeout (10 s by default, at most 255 s) would close an idle stream, so the realtime request calls `server.timeout(req, 0)`; no keep-alive comments are sent, as upstream sends none. A client with more than 8 MiB unsent is closed (see the table below).
 
 ## Batch
@@ -78,7 +78,7 @@ Response: `{ "page", "perPage", "totalItems", "totalPages", "items": [...] }`. H
 
 These are the only intended differences. Each one follows from removing extensions, the `update` command (D19) or automatic HTTPS (D30), or from not porting the system migrations (D15), except the two request normalization rows, which follow from the HTTP runtime (D22), the batch row, which follows from D28, the malformed-input row, which follows from D26, the mail error row, which follows from the SMTP client (`nodemailer`, [Architecture](02-architecture.md)) and D26, the query timeout row, which follows from `bun:sqlite` (D8), the realtime unsent-queue row, which follows from D27 (bounded memory, D26), the OTP/MFA and resend-limit rows, which close races upstream has (P.10a), the S3 Complete-error row, which avoids saving references to objects S3 did not create (P.10c), and the arm64 GIF thumb row, which follows from the platform's floating-point code generation in upstream (D34). Each is marked in the differential test suite; the repeated-header row's case is in `test/differential/records-read/` (M2.4). The query timeout row is about timing, not response content: `test/db/read-pool.test.ts` checks it.
 
-| Area | PocketBase v0.41.0 | iglo.base |
+| Area | PocketBase v0.42.3 | iglo.base |
 |---|---|---|
 | Custom routes from hooks or Go | whatever the app registered | 404, like any unknown route |
 | `serve example.com`, `--https` | Let's Encrypt certificates and HTTPS, HTTP redirected to HTTPS | refused at start (D30); TLS belongs to the reverse proxy |
@@ -89,7 +89,7 @@ These are the only intended differences. Each one follows from removing extensio
 | Collection create, update, delete and import, and `PATCH /api/settings`, with `serve --mode prod --schema` | applied | `403` with the message "The schema and settings are managed by the schema file …" (D41); superusers too. Every other endpoint is as upstream's |
 | `GET /api/health` for a superuser with `serve --mode prod --schema` | `data` has `canBackup`, `possibleProxyHeader` and `realIP` | the same, and `schemaLocked: true` (D41); without the lock the member is absent |
 | Logs `data` | may include hook-written entries | iglo.base entries only, with upstream's shapes |
-| `Server`-identifying output (`--version`) | `pocketbase version 0.41.0` | `iglo-base version <version>` (`(untracked)` for local builds; set by the release build, [releasing](../releasing.md)). The `serve` banner prints no version, as upstream's |
+| `Server`-identifying output (`--version`) | `pocketbase version 0.42.3` | `iglo-base version <version>` (`(untracked)` for local builds; set by the release build, [releasing](../releasing.md)). The `serve` banner prints no version, as upstream's |
 | `migrate down` reaching a system migration | removes its row and runs its down, if any; the next start applies it again | a system migration without a down keeps its row, with the same output: the next start would leave the data as it is. One with a down (`1640988000_init.go`, `1640988000_aux_init.go`, `1763020353_update_default_auth_alert_templates.go`) fails the command before anything changes, because iglo.base has no port of those schema migrations |
 | `update` command | downloads and installs a newer PocketBase release | not available; fails with an error ([D19](10-decisions.md#d19-drop-the-update-command)) |
 | GIF thumbs on arm64 (`?thumb=` of a GIF original) | exact pixels of the Go resampling and GIF encoder | on linux-arm64 the thumbs of `photo.gif` (mean error 14.6 and 15.6) and of the GIFs with a 600x400 first frame (`gif-subframe.gif`, `limit-gif-screen-at.gif`; 15.554 at 100x100) differ from upstream's (0-255 per channel, measured on GitHub arm64 runners; exact on x64): Go most likely fuses multiplications and additions on arm64, which shifts upstream's resampling in the last bits, and the GIF encoder's error-diffusion dithering turns that into pixels of another palette color ([D34](10-decisions.md#d34-macos-sqlite-built-embedded-and-loaded-arm64-and-darwin-releases), [D35](10-decisions.md#d35-linux-only)) |

@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/json/parser.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/json/parser.go.
 //
 // Go takes parser states from a sync.Pool; here each parse has its own.
 

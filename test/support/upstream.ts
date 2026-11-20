@@ -1,4 +1,4 @@
-// Starts the reference PocketBase v0.41.0 binary (.upstream/bin/pocketbase,
+// Starts the reference PocketBase v0.42.3 binary (.upstream/bin/pocketbase,
 // see scripts/upstream/prepare.ts) on a free 127.0.0.1 port with a new pb_data
 // directory. The tests talk to it only through HTTP.
 //

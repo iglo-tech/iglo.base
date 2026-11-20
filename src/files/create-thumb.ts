@@ -80,7 +80,7 @@ export function checkSource(src: Uint8Array | ByteSource, maxPixels: number): Si
   }
   if (config.width * config.height > maxPixels) {
     throw new Error(
-      `the original image is too large (${config.width}x${config.height}) and exceeds the total max allowed ${maxPixels} pixels`,
+      `the original image is too large (${config.width}x${config.height}) and exceeds the total max allowed ${maxPixels} pixels (you can set the env 'PB_THUMBS_MAX_SOURCE_PIXELS=max' to change the limit)`,
     );
   }
   return config;

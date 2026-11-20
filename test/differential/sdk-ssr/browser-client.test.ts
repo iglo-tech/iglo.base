@@ -1,5 +1,5 @@
 // docs/design/13-ssr.md ("Browser client and realtime", "Session cookie"). The browser client
-// against upstream PocketBase v0.41.0 and iglo.base, both in process with the SSR adapters:
+// against upstream PocketBase v0.42.3 and iglo.base, both in process with the SSR adapters:
 // the page token is minted at render, the browser client subscribes in realtime, renews on its
 // own clock and keeps its subscription, and a password change signs it out. A second test runs
 // the fallback without superuser credentials, where the browser client reads the cookie.

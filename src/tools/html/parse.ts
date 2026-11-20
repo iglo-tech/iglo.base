@@ -1,8 +1,14 @@
-// Upstream: golang.org/x/net v0.61.0 html/parse.go
+// Upstream: golang.org/x/net v0.62.0 html/parse.go
 //
 // Insertion modes are module-level functions over a Parser instance, as in Go.
 // The Go atom constants are the atom strings from atom.ts: `atom.Body` is
 // "body", and "" is the zero atom. Go panics become thrown errors.
+//
+// v0.62.0 buffers coalesced text in Parser.textNodes (appendText) so Go's
+// string concatenation is not quadratic. That is not ported: a JS string `+=`
+// has no such cost, and the parser never reads the Data of a text node before
+// the end of the parse (the open-element stack holds elements only), so the
+// tree is the same.
 
 import { equalFold } from "@/collections/go-strings";
 import { atom, lookup } from "@/tools/html/atom";

@@ -1,5 +1,5 @@
 // OTP auth and OTP-based MFA (src/apis/record-auth-otp-request.ts,
-// src/apis/record-auth-with-otp.ts) against the reference PocketBase v0.41.0
+// src/apis/record-auth-with-otp.ts) against the reference PocketBase v0.42.3
 // binary, beyond upstream's scenarios: the cases of otp-cases.ts, each on
 // fresh copies of the prepared fixture, compared as the scenario harness
 // compares. Not part of `bun test`: run `bun run test:reference`.

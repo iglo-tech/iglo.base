@@ -205,6 +205,32 @@ export const oauth2RedirectScenarios: RealtimeScenario[] = [
     },
   },
 
+  {
+    func: "TestRecordAuthWithOAuth2Redirect",
+    name: "client with different IP and fallback",
+    run: async (ctx) => {
+      // the connection comes from 127.0.0.1, the @oauth2 subscription from
+      // 127.0.0.2: the redirect from the subscription's IP is accepted
+      const stream = await ctx.open();
+      const id = stream.clientId;
+      const sub = await ctx.subscribe(id, ["@oauth2"], undefined, "127.0.0.2");
+      if (sub.status !== 204) {
+        throw new Error(`subscribe: ${sub.status} ${sub.body}`);
+      }
+      const result = redirectResult(await get(ctx, `?code=123&state=${id}`, "127.0.0.2"));
+      // the subscription is removed in any case
+      const again = redirectResult(await get(ctx, `?code=123&state=${id}`, "127.0.0.2"));
+      return { id, result, again, messages: events(await stream.settle()) };
+    },
+    check(o) {
+      expectRedirect(o["result"] as Observation, 307, success);
+      expectRedirect(o["again"] as Observation, 307, failure);
+      const messages = o["messages"] as { event: string; data: string }[];
+      expect(messages.map((m) => m.event)).toEqual(["@oauth2"]);
+      expect(messages[0]?.data).toBe(`{"state":"${o["id"] as string}","code":"123"}`);
+    },
+  },
+
   // beyond upstream's scenarios
   // -----------------------------------------------------------
   {

@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/netpbm.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/netpbm.go.
 
 import { hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 import { ASCIISpaces, Bytes, byteIsWS } from "@/tools/mimetype/internal/scan/bytes";

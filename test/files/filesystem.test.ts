@@ -60,6 +60,10 @@ async function createTestDir(): Promise<string> {
     ]),
   );
 
+  // jxl (a naked codestream): inline as an image
+  writeFileSync(join(d, "image.jxl"), new Uint8Array([0xff, 0x0a, 0, 0]));
+  writeFileSync(join(d, "image.jxl.attrs"), attrs("image/jxl"));
+
   // invalid/special characters
   writeFileSync(join(d, "image_!@ special"), png);
 
@@ -145,6 +149,19 @@ describe("TestFilesystemServe", () => {
         "Content-Disposition": `inline; filename="test_name.png"`,
         "Content-Type": "image/png",
         "Content-Length": String(pngSize),
+        "Content-Security-Policy": csp,
+        "Cache-Control": cacheControl,
+      }),
+    },
+    // jxl inline
+    {
+      path: "image.jxl",
+      name: "test_name.jxl",
+      expectError: false,
+      expectHeaders: () => ({
+        "Content-Disposition": `inline; filename="test_name.jxl"`,
+        "Content-Type": "image/jxl",
+        "Content-Length": "4",
         "Content-Security-Policy": csp,
         "Cache-Control": cacheControl,
       }),
@@ -359,7 +376,7 @@ describe("TestFilesystemCreateThumbWithMaxPixelsLimit", () => {
         expect(err !== undefined).toBe(expectErr);
         if (expectErr) {
           expect(String(err)).toContain(
-            "the original image is too large (5x5) and exceeds the total max allowed 24 pixels",
+            "the original image is too large (5x5) and exceeds the total max allowed 24 pixels (you can set the env 'PB_THUMBS_MAX_SOURCE_PIXELS=max' to change the limit)",
           );
         }
       } finally {

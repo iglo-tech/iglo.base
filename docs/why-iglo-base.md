@@ -33,7 +33,7 @@ On 2026-10-23 PocketBase v0.40.6 was announced as most likely the last release o
 
 ## Scope
 
-iglo.base aims for exact parity with PocketBase v0.41.0 for everything that is not an extension mechanism; see [Scope](design/01-scope.md). It does not add features in v1. It is not a Firebase or Supabase replacement and does not plan Postgres, multi-node or multi-tenant modes.
+iglo.base aims for exact parity with PocketBase v0.42.3 for everything that is not an extension mechanism; see [Scope](design/01-scope.md). It does not add features in v1. It is not a Firebase or Supabase replacement and does not plan Postgres, multi-node or multi-tenant modes.
 
 ## Credit and independence
 

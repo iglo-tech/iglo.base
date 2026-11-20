@@ -1,10 +1,10 @@
 // The TypeScript migrations and declared renames (D40, S.5) against the
-// reference PocketBase v0.41.0 binary. Not part of `bun test`: run
+// reference PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // iglo.base applies a schema file with a declared field rename and a
 // TypeScript migration (serve --schema, the compiled executable), and records
-// the migration as `@schema/<file name>` in `_migrations`. Upstream v0.41.0
+// the migration as `@schema/<file name>` in `_migrations`. Upstream v0.42.3
 // has no file for that row. The check (D40, recorded there): upstream starts
 // on the copy of the data, runs its own `migrate up` with the row present,
 // serves the records iglo.base stored, and reads the renamed field.

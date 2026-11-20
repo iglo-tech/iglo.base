@@ -1,5 +1,5 @@
 // Differential mode: every ported scenario against upstream PocketBase
-// v0.41.0 and iglo.base, each server on its own fresh copy of the vendored
+// v0.42.3 and iglo.base, each server on its own fresh copy of the vendored
 // fixture. Upstream must meet the scenario's expectations; iglo.base must
 // meet them too and answer like upstream after normalization
 // (test/differential/harness/compare.ts). Not part of `bun test`: run

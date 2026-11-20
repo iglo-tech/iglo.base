@@ -1,5 +1,5 @@
 // What a batch sends to realtime subscribers, against the reference
-// PocketBase v0.41.0 binary: nothing for a failed batch, and after a commit
+// PocketBase v0.42.3 binary: nothing for a failed batch, and after a commit
 // the same messages, byte for byte. Each case runs on its own fixture copy per
 // server (test/realtime/run.ts). Not part of `bun test`: run
 // `bun run test:reference`.

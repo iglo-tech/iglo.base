@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/database.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/database.go.
 
 import { hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 import { offset } from "@/tools/mimetype/internal/magic/magic";

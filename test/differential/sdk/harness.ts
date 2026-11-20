@@ -1,6 +1,6 @@
 // The JavaScript SDK suite's harness (docs/briefs/M5.8.md). A test is one
 // async function that drives the official `pocketbase` SDK against a
-// server; it runs once on upstream PocketBase v0.41.0 and once on
+// server; it runs once on upstream PocketBase v0.42.3 and once on
 // iglo.base, each on its own copy of the shared fixture. Every `step` of the
 // function records
 //

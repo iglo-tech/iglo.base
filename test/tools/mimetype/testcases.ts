@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 mimetype_test.go (the testcases
+// Upstream: gabriel-vasile/mimetype v1.4.16 mimetype_test.go (the testcases
 // table), shared by test/tools/mimetype/mimetype.test.ts and the reference
 // corpus in test/differential/mimetype/. Generated from the Go table with
 // strconv.Quote, so each g`...` body is the Go literal's bytes.

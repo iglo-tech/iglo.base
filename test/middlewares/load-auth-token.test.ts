@@ -29,7 +29,10 @@ beforeAll(async () => {
 
 afterAll(() => testApp.cleanup());
 
-// the e.auth a test route sees: "collectionName/id", or "" for a guest
+// the e.auth loadAuthToken leaves for the request: "collectionName/id", or ""
+// for a guest. A probe at priority 9998 reads it after loadAuthToken and
+// before rejectUnknownToken (9999), so a request the router rejects with 401
+// still reports its state.
 async function authOf(
   token: string | undefined,
   options: { preset?: (e: RequestEvent) => void } = {},
@@ -41,15 +44,18 @@ async function authOf(
     router.bind({ priority: -99999, func: (e) => (preset(e), e.next()) });
   }
   let seen = "";
-  router.GET("/my/test", (e) => {
-    seen = e.auth === undefined ? "" : `${e.auth.collection().name}/${e.auth.id}`;
-    return e.noContent(204);
+  router.bind({
+    priority: 9998,
+    func: (e) => {
+      seen = e.auth === undefined ? "" : `${e.auth.collection().name}/${e.auth.id}`;
+      return e.next();
+    },
   });
-  const res = await serveTest(router.buildMux(), {
+  router.GET("/my/test", (e) => e.noContent(204));
+  await serveTest(router.buildMux(), {
     target: "/my/test",
     headers: token === undefined ? {} : { Authorization: token },
   });
-  expect(res.status).toBe(204);
   return seen;
 }
 

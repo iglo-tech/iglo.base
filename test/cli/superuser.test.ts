@@ -64,7 +64,7 @@ describe("superuser", () => {
     const result = await superuser(fixtureCopy(), "upsert", "--help");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toStartWith(
-      "Creates, or updates if email exists, a single superuser\n\nUsage:\n  iglo-base superuser upsert [flags]\n\nExamples:\nsuperuser upsert test@example.com 1234567890\n\nFlags:\n  -h, --help   help for upsert\n",
+      "Creates, or updates if email exists, a single superuser\n\nUsage:\n  iglo-base superuser upsert [flags]\n\nExamples:\nsuperuser upsert test@example.com 1234567890\n\nFlags:\n  -h, --help[=true|false]   help for upsert\n",
     );
   });
 

@@ -351,6 +351,120 @@ add(
   concat(g`\x00\x00\x00\x18ftypisom\x00\x00\x00\x00`, frame, frame, frame),
 );
 
+// An OLE2 file of 512-byte sectors (3 KiB, inside the read limit) whose root
+// storage holds an ObjectPool storage with an embedded object's summary stream.
+// The embedded summary is the first SummaryInformation a flat directory scan
+// meets; the root's is the one that counts (v1.4.16, #837). pool is written at
+// offset 200 of the root pool sector, for a name a matcher may find there.
+function oleSummary(app: string): Uint8Array {
+  const value = new Uint8Array(app.length + 1); // NUL-terminated
+  for (let i = 0; i < app.length; i++) {
+    value[i] = app.charCodeAt(i);
+  }
+  const section = new Uint8Array(24 + value.length);
+  const sv = new DataView(section.buffer);
+  sv.setUint32(0, section.length, true);
+  sv.setUint32(4, 1, true); // one property
+  sv.setUint32(8, 0x12, true); // NameOfApplication
+  sv.setUint32(12, 16, true); // value offset in section
+  sv.setUint32(16, 0x1e, true); // VT_LPSTR
+  sv.setUint32(20, app.length + 1, true);
+  section.set(value, 24);
+  const stream = new Uint8Array(48 + section.length);
+  new DataView(stream.buffer).setUint32(44, 48, true); // section offset
+  stream.set(section, 48);
+  return stream;
+}
+
+// oleEntry encodes one 128-byte directory entry; -1 is "none".
+function oleEntry(
+  name: string,
+  typ: number,
+  child: number,
+  right: number,
+  first: number,
+  size: number,
+): Uint8Array {
+  const e = new Uint8Array(128);
+  const v = new DataView(e.buffer);
+  for (let i = 0; i < name.length; i++) {
+    v.setUint16(2 * i, name.charCodeAt(i), true);
+  }
+  v.setUint16(64, 2 * (name.length + 1), true);
+  e[66] = typ;
+  v.setUint32(68, 0xffffffff, true); // left sibling
+  v.setUint32(72, right >>> 0, true);
+  v.setUint32(76, child >>> 0, true);
+  v.setUint32(116, first >>> 0, true);
+  v.setUint32(120, size, true);
+  return e;
+}
+
+// pad512 zero-pads b to one 512-byte sector.
+function pad512(b: Uint8Array): Uint8Array {
+  const s = new Uint8Array(512);
+  s.set(b.subarray(0, 512));
+  return s;
+}
+
+function cdfEmbedded(rootApp: string, embeddedApp: string, pool = new Uint8Array(0)): Uint8Array {
+  const header = new Uint8Array(512);
+  const hv = new DataView(header.buffer);
+  header.set([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1], 0);
+  hv.setUint16(30, 9, true); // 512-byte sectors
+  hv.setUint16(32, 6, true); // 64-byte short sectors
+  hv.setUint32(48, 1, true); // first directory sector
+  hv.setUint32(56, 0, true); // minStdStream: every stream in long sectors
+  hv.setUint32(60, 0xfffffffe, true); // no SSAT
+  hv.setUint32(68, 0xfffffffe, true); // no extra master SAT sectors
+  hv.setUint32(72, 0, true);
+  for (let i = 0; i < 109; i++) {
+    hv.setUint32(76 + 4 * i, 0xffffffff, true);
+  }
+  hv.setUint32(76, 0, true); // master SAT: sector 0
+
+  // Sector 0 is the SAT; 1 the directory; 2 the root's short pool; 3 and 4 the
+  // two summary streams.
+  const sat = new Uint8Array(512);
+  const sv = new DataView(sat.buffer);
+  for (let i = 0; i < 128; i++) {
+    sv.setUint32(4 * i, 0xffffffff, true);
+  }
+  sv.setUint32(0, 0xfffffffd, true); // the SAT itself
+  for (let i = 1; i <= 4; i++) {
+    sv.setUint32(4 * i, 0xfffffffe, true); // single-sector chains
+  }
+
+  const embedded = oleSummary(embeddedApp);
+  const root = oleSummary(rootApp);
+  const dir = concat(
+    oleEntry("Root Entry", 5, 2, -1, 2, 0), // child: ObjectPool
+    oleEntry("\x05SummaryInformation", 2, -1, -1, 3, embedded.length), // embedded summary
+    oleEntry("ObjectPool", 1, 1, 3, -2, 0), // child: entry 1; right: entry 3
+    oleEntry("\x05SummaryInformation", 2, -1, -1, 4, root.length), // the root's summary
+  );
+  const rootPool = new Uint8Array(512);
+  rootPool.set(pool.subarray(0, 512 - 200), 200);
+  return concat(header, sat, pad512(dir), rootPool, pad512(embedded), pad512(root));
+}
+
+add(
+  "cdf: Word root, embedded Excel object",
+  cdfEmbedded("Microsoft Office Word", "Microsoft Excel"),
+);
+add(
+  "cdf: Excel root, embedded Word object",
+  cdfEmbedded("Microsoft Excel", "Microsoft Office Word"),
+);
+add(
+  "cdf: Word root, Workbook name in the first 4 KiB",
+  cdfEmbedded(
+    "Microsoft Office Word",
+    "Microsoft Office Word",
+    Uint8Array.from([..."Workbook"].flatMap((c) => [c.charCodeAt(0), 0])),
+  ),
+);
+
 // random bytes from a fixed seed
 let seed = 0x5eed;
 const rnd = () => {

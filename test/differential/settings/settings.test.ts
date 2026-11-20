@@ -1,6 +1,6 @@
 // The settings model and Settings API (src/settings, src/apis/settings.ts,
 // src/middlewares/superuser-ips-whitelist.ts) against the reference
-// PocketBase v0.41.0 binary. Not part of `bun test`: run
+// PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 //   - Cases (cases.ts): every request goes to both servers in the same

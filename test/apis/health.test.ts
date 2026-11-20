@@ -1,4 +1,5 @@
-// Upstream: apis/health_test.go (guest and regular user scenarios; the
+// Upstream: apis/health_test.go (guest and superuser scenarios; the regular user
+// scenario needs its user in the fixture, so it is here as an unknown token; the
 // superuser scenario needs serve to open pb_data, M1.2), the catch-all 404 from
 // tools/router/router.go BuildMux, the securityHeaders middleware
 // (apis/middlewares.go) and Go's ServeMux path cleaning.
@@ -52,19 +53,21 @@ describe("GET /api/health", () => {
     }
   });
 
-  test("regular user token gets the guest response", async () => {
+  // this pb_data has no such user: the token loads no record, so it is
+  // rejected with 401 before the route (rejectUnknownToken)
+  test("a regular user token that loads no record gets 401", async () => {
     const res = await fetch(`${server.url}/api/health`, {
       headers: {
         Authorization:
           "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
       },
     });
-    expect(res.status).toBe(200);
-    const text = await res.text();
-    expect(JSON.parse(text)).toEqual({ message: "API is healthy.", code: 200, data: {} });
-    for (const hidden of ["canBackup", "realIP", "possibleProxyHeader"]) {
-      expect(text).not.toContain(hidden);
-    }
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({
+      status: 401,
+      message: "Missing or invalid authentication.",
+      data: {},
+    });
   });
 
   test.todo("superuser gets canBackup, realIP and possibleProxyHeader (M1.2)");

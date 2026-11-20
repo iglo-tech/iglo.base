@@ -1,5 +1,5 @@
 // The data round-trip suite (docs/design/03-data-compatibility.md,
-// Verification) against the reference PocketBase v0.41.0 binary. Not part of
+// Verification) against the reference PocketBase v0.42.3 binary. Not part of
 // `bun test`: run `bun run test:reference`. The generated dataset is
 // `bun run test:roundtrip:large` (large.ts).
 //

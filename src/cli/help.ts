@@ -1,6 +1,10 @@
 // Upstream: github.com/spf13/cobra v1.10.2 (command.go default help and usage
-// templates) and github.com/spf13/pflag v1.0.10 (flag.go FlagUsagesWrapped),
-// which format upstream's --help output. Reproduced closely, not byte for byte.
+// templates) and github.com/spf13/pflag v1.1.0 (flag.go FlagUsagesWrapped; v1.0.10
+// before PocketBase v0.42.3 shows no "[=true|false]" on a boolean flag), which
+// format upstream's --help output. Reproduced closely, not byte for byte.
+// cobra prints flag usages with FlagUsages(), which is FlagUsagesWrapped(0),
+// so pflag v1.1.0's wrapN change (a word wider than the wrap width is emitted
+// alone) is not reachable here; only the width-0 path is ported.
 
 import type { FlagSpec } from "@/cli/flags";
 
@@ -40,6 +44,9 @@ export function flagUsages(specs: FlagSpec[]): string {
     const type = varname(spec);
     if (type) {
       head += ` ${type}`;
+    } else if (spec.kind === "bool") {
+      // pflag shows a boolean flag's accepted values after its name
+      head += "[=true|false]";
     }
     maxlen = Math.max(maxlen, head.length);
     let usage = spec.usage;

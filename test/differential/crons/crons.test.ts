@@ -1,5 +1,5 @@
 // Upstream: apis/cron.go, tools/cron/cron.go. `GET /api/crons` byte for byte
-// against upstream PocketBase v0.41.0: on a fresh install, on the fixture,
+// against upstream PocketBase v0.42.3: on a fresh install, on the fixture,
 // after a rate limit rule creates and removes `__pbRateLimitersCleanup__`;
 // and what the jobs do to rows and WAL files written while the servers run.
 // Not part of `bun test`: run `bun run test:reference`.

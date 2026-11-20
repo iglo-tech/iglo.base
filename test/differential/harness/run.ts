@@ -1,6 +1,6 @@
 // Upstream: tests/api.go (ApiScenario.test), tests/app.go (NewTestApp)
 //
-// Differential mode: runs one scenario against upstream PocketBase v0.41.0
+// Differential mode: runs one scenario against upstream PocketBase v0.42.3
 // and iglo.base, each on its own fresh copy of the scenario's prepared
 // fixture, checks both responses against the scenario's expectations and
 // compares them (test/differential/harness/compare.ts).

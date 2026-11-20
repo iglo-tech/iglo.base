@@ -1,23 +1,23 @@
 {
   "upstream": {
     "repository": "https://ganigeorgiev.com/git/pocketbase/pocketbase",
-    "tag": "v0.41.0",
-    "commit": "f6baa0c43f379de21cd806de97ad6a2b8ca97b83",
-    "downloadBase": "https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.41.0",
+    "tag": "v0.42.3",
+    "commit": "c5003ce63deee71cc6821f338f0d4e1994b3db40",
+    "downloadBase": "https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.42.3",
     "platforms": {
       "linux-x64": {
-        "archive": "pocketbase_0.41.0_linux_amd64.zip",
-        "sha256": "89c8de9cc1bc7f2c1e2f3c4290927b450ef1719713677e982b9c3dc175bc60af",
+        "archive": "pocketbase_0.42.3_linux_amd64.zip",
+        "sha256": "89b1ded352404c648dd92c2d884fc8ff7858138697cb1ccb52722ccaa0bbd2a9",
         "binaryPath": "pocketbase"
       },
       "linux-arm64": {
-        "archive": "pocketbase_0.41.0_linux_arm64.zip",
-        "sha256": "d547713b4833905e043516fb92b6f7dac3be928fbcd5c15f387333216bf5cb64",
+        "archive": "pocketbase_0.42.3_linux_arm64.zip",
+        "sha256": "f2af25259c5565e856aac5907a8fd9a7ce01d18375ac70b18121c9d41fd56dbe",
         "binaryPath": "pocketbase"
       },
       "darwin-arm64": {
-        "archive": "pocketbase_0.41.0_darwin_arm64.zip",
-        "sha256": "6d78c270adfeb1076fe6eb236e270994ba1ab84dfa0c0e7b9b30db7740b1982c",
+        "archive": "pocketbase_0.42.3_darwin_arm64.zip",
+        "sha256": "232c0d5bbb05185b70eb8b37fa3cd8be0ae9b5ae5cf94cbec6d93f98733e0893",
         "binaryPath": "pocketbase"
       }
     }

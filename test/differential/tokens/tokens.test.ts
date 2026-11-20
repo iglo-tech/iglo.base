@@ -1,6 +1,6 @@
 // Record tokens (src/records/record-tokens.ts), FindAuthRecordByToken
 // (src/records/record-query.ts), loadAuthToken and the Require* guards
-// (src/middlewares/) against the reference PocketBase v0.41.0 binary. Not
+// (src/middlewares/) against the reference PocketBase v0.42.3 binary. Not
 // part of `bun test`: run `bun run test:reference`.
 //
 // A fresh upstream install (superuser upsert, then serve) gets two auth
@@ -948,8 +948,8 @@ test("(b) upstream accepts iglo.base's auth tokens", () => {
     "alice:auth members list": { status: 200, totalItems: members.length },
     "alice:static members list": { status: 200, totalItems: members.length },
     "super:auth members list": { status: 200, totalItems: members.length },
-    // a guest by the list rule
-    "alice:expired members list": { status: 200, totalItems: 0 },
+    // an expired token loads no record: 401 before the list rule (rejectUnknownToken)
+    "alice:expired members list": { status: 401 },
     "super:auth collections": 200,
     "super:static collections": 200,
     "super2:auth collections": 200,

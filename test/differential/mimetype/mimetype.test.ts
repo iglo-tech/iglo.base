@@ -1,5 +1,5 @@
 // MIME detection (src/tools/mimetype) against the reference PocketBase
-// v0.41.0 binary. Not part of `bun test`: run `bun run test:reference`.
+// v0.42.3 binary. Not part of `bun test`: run `bun run test:reference`.
 //
 // For each corpus sample (corpus.ts), iglo.base's detect() gives a type m.
 // A collection gets file fields whose mimeTypes are:

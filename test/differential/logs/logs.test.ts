@@ -1,6 +1,6 @@
 // Upstream: apis/middlewares.go (activityLogger), core/log_model.go,
 // tools/logger, apis/logs.go. The same requests against upstream PocketBase
-// v0.41.0 and iglo.base: the `_logs` rows, as stored text, and each server
+// v0.42.3 and iglo.base: the `_logs` rows, as stored text, and each server
 // reading the rows the other wrote. Not part of `bun test`: run
 // `bun run test:reference`.
 

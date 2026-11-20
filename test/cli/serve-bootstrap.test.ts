@@ -27,7 +27,7 @@ async function expectRefusedWithoutWrites(dataDir: string): Promise<void> {
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe("");
   expect(result.stderr).toMatch(
-    /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} This pb_data was written by an older PocketBase\. Run PocketBase v0\.41\.0 on it once, then start iglo\.base\.\n$/,
+    /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} This pb_data was written by an older PocketBase\. Run PocketBase v0\.42\.3 on it once, then start iglo\.base\.\n$/,
   );
   expect(fileState(dataDir)).toEqual(before);
 }
@@ -238,7 +238,7 @@ describe("serve bootstrap", () => {
     const result = await server.stop();
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toMatch(
-      /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} WARN pb_data has migrations newer than PocketBase v0\.41\.0 \(1790000000_future\.go\); the data may come from a newer PocketBase\.\n$/,
+      /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} WARN pb_data has migrations newer than PocketBase v0\.42\.3 \(1790000000_future\.go\); the data may come from a newer PocketBase\.\n$/,
     );
     expect(dumpPbData(dataDir).migrations.some((m) => m.file === "1790000000_future.go")).toBe(
       true,

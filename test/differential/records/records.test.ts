@@ -1,4 +1,4 @@
-// The Record model (src/records) against the reference PocketBase v0.41.0
+// The Record model (src/records) against the reference PocketBase v0.42.3
 // binary. Not part of `bun test`: run `bun run test:reference`.
 //
 // On a fresh upstream install, the test creates an auth collection and a

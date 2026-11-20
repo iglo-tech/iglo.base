@@ -1,6 +1,6 @@
-# Cutover runbook: from PocketBase v0.41.0 to iglo.base
+# Cutover runbook: from PocketBase v0.42.3 to iglo.base
 
-How to switch a running PocketBase v0.41.0 (or v0.40.x) instance to iglo.base on the same `pb_data`, and how to go back. It is generic: it holds no details of any deployment. For running iglo.base afterwards (service, reverse proxy, backups, upgrades) see the [operations guide](operations.md); for what is different, [Differences from PocketBase](differences.md). The way back works because iglo.base never converts `pb_data` ([data compatibility](design/03-data-compatibility.md)): PocketBase v0.41.0 opens the directory again after iglo.base has run on it.
+How to switch a running PocketBase v0.42.3 (or v0.41.0 or v0.40.x) instance to iglo.base on the same `pb_data`, and how to go back. It is generic: it holds no details of any deployment. For running iglo.base afterwards (service, reverse proxy, backups, upgrades) see the [operations guide](operations.md); for what is different, [Differences from PocketBase](differences.md). The way back works because iglo.base never converts `pb_data` ([data compatibility](design/03-data-compatibility.md)): PocketBase v0.42.3 opens the directory again after iglo.base has run on it.
 
 The procedure was rehearsed once on a copy of a real production backup (task M7.4, [D32](design/10-decisions.md#d32-an-agent-runs-the-cutover-rehearsal-on-the-staging-copy)); the rehearsal's counts are in that task's pull request.
 
@@ -43,7 +43,7 @@ The iglo.base image (`ghcr.io/iglo-tech/iglo.base`, see [releasing.md](releasing
 1. Download the release archive (see [releasing.md](releasing.md)) and check it: `sha256sum -c SHA256SUMS`, `unzip` the archive, then `./iglo-base --version`.
 2. Note how PocketBase is started today: the full command line, the environment, the service manager unit and the reverse proxy configuration. The new unit differs in the binary path and the name, and drops the hooks flags listed above.
 3. Look at the settings in the PocketBase dashboard: trusted proxy headers, rate limits, SMTP, S3, scheduled backups. They carry over unchanged. Check that the reverse proxy sends the headers `trustedProxy.headers` names, because iglo.base resolves the client IP from them in the same way.
-4. Note the PocketBase version that runs today, from the binary (`./pocketbase --version`) or the image tag; `_migrations` cannot tell it, as several releases share the same newest system migration. If it is not v0.41.0, first move PocketBase to v0.41.0 and run it for a while: the rollback below starts PocketBase v0.41.0, and iglo.base ports v0.41.0's system migrations.
+4. Note the PocketBase version that runs today, from the binary (`./pocketbase --version`) or the image tag; `_migrations` cannot tell it, as several releases share the same newest system migration. If it is not v0.42.3, first move PocketBase to v0.42.3 and run it for a while: the rollback below starts PocketBase v0.42.3, and iglo.base ports v0.42.3's system migrations.
 
 ## The switch
 
@@ -76,7 +76,7 @@ Run these as a superuser (dashboard or API) against the live server:
 Use it whenever a check fails or the clients misbehave, at any time. Writes made while iglo.base ran stay in `pb_data`: PocketBase opens them.
 
 1. **Stop iglo.base** with SIGTERM and wait for the process to exit with status 0.
-2. **Start PocketBase v0.41.0** with its old command line and unit on the same `pb_data`. It starts with no error output and shows every collection and record, including those written while iglo.base ran.
+2. **Start PocketBase v0.42.3** with its old command line and unit on the same `pb_data`. It starts with no error output and shows every collection and record, including those written while iglo.base ran.
 3. Point the reverse proxy back if you changed it.
 
 If PocketBase does not open the directory (this was never observed in the rehearsal), stop it, restore `pb_data.before-iglo` and `pb_migrations.before-iglo` from the switch step 2 (together: migration files written by `--automigrate` while iglo.base ran would otherwise run again on PocketBase's next start) and start PocketBase on it. Writes since the switch are then lost.

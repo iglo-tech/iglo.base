@@ -13,7 +13,7 @@
 //     refuses a secret that is not a reference, so no value reaches a file;
 //   - a resolved provider (apply form) holds the values, passed to the save.
 //
-// Upstream v0.41.0 has one secret key, clientSecret: the other keys are
+// Upstream v0.42.3 has one secret key, clientSecret: the other keys are
 // ids, URLs, the display name, the PKCE flag and the extra map. Those may
 // also be references. A reference to a non-string key is read as text: pkce
 // as "true" or "false", extra as a JSON object.

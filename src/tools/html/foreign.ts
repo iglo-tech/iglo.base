@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/foreign.go
+// Upstream: golang.org/x/net v0.62.0 html/foreign.go
 
 import { equalFold } from "@/collections/go-strings";
 import { ElementNode, type Node } from "@/tools/html/node";

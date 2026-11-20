@@ -1,5 +1,5 @@
 // Password auth, refresh, auth methods, impersonate and MFA
-// (src/apis/record-auth*.ts) against the reference PocketBase v0.41.0
+// (src/apis/record-auth*.ts) against the reference PocketBase v0.42.3
 // binary, beyond upstream's scenarios: the cases of cases.ts, each on
 // fresh copies of the prepared fixture, compared as the scenario harness
 // compares. Not part of `bun test`: run `bun run test:reference`.

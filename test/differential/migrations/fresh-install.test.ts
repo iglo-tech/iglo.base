@@ -1,5 +1,5 @@
 // The fresh install (src/migrations) against the reference PocketBase
-// v0.41.0 binary. Not part of `bun test`: run `bun run test:reference`.
+// v0.42.3 binary. Not part of `bun test`: run `bun run test:reference`.
 //
 //   - upstream `serve` and iglo.base `serve` each start on an empty
 //     directory and stop. data.db and auxiliary.db must have the same

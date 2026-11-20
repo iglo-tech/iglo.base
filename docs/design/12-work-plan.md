@@ -37,7 +37,7 @@ The lead writes each brief from this template and passes it to the worker as its
 Task <id>: <title>
 Goal: <one sentence>
 Read first: AGENTS.md, docs/design/<docs>
-Upstream (v0.41.0): <files and tests to port>
+Upstream (v0.42.3): <files and tests to port>
 Owns: <src/... and test/... paths>
 Depends on: <task ids, already merged>
 Acceptance: <commands and scenario sets that must pass>
@@ -47,7 +47,7 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 
 ### Rules for workers
 
-- Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
+- Follow `AGENTS.md`. Upstream v0.42.3 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
 - Hand bulk mechanical work to subagents on your own model, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
 - If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.
@@ -112,7 +112,7 @@ Wave 0 is serial; the spikes run in parallel after M0.1.
 | M1.3 | Settings: model, defaults, validation, encryption, `_params`, the superuser IP check that reads them (from M2.3), and the Settings API (folded in from M3.5 on 2026-10-29; S3 and email test endpoints stubbed until M5.4 and M4.4, Apple client secret until M4.6) | `core/settings*.go`, `superuserIPsWhitelist` in `apis/middlewares.go`, `apis/settings.go` | M1.1, M1.1c, M1.2, M0.3 | Settings written by either server read back identically, encrypted and plain; settings scenarios pass except the test endpoints |
 | M1.4 | Simple fields: text, editor, number, bool, email, url, date, autodate, select, json, geoPoint | `core/field_*.go` | M1.1, M1.1a, M1.1b, M1.1c | Ported field tests pass |
 | M1.5 | Complex fields: relation and password (bcrypt hashes in Go's `$2a$` form) | `core/field_relation.go`, `field_password.go` | M1.4 | Ported field tests pass; password hashes written by either server verify in the other |
-| M1.5a | MIME detection: a port of `gabriel-vasile/mimetype` v1.4.15 (the whole detection tree, `Detect`, `DetectReader`, `Is`, `Extension`, aliases and the 4096-byte read limit), used by file uploads, file serving, mail attachments and file names | `gabriel-vasile/mimetype` v1.4.15 | M1.1 | Its test tables and testdata pass; the upstream binary accepts and rejects the same uploads by `mimeTypes` as iglo.base's detection predicts |
+| M1.5a | MIME detection: a port of `gabriel-vasile/mimetype` v1.4.16 (the whole detection tree, `Detect`, `DetectReader`, `Is`, `Extension`, aliases and the 4096-byte read limit), used by file uploads, file serving, mail attachments and file names | `gabriel-vasile/mimetype` v1.4.16 | M1.1 | Its test tables and testdata pass; the upstream binary accepts and rejects the same uploads by `mimeTypes` as iglo.base's detection predicts |
 | M1.5b | File field: settings, value normalization and modifiers, upload size and MIME checks (`core/validators/file.go`, the `filesystem.File` model); storing and deleting files stays with M3.2 | `core/field_file.go`, `core/validators/file.go`, `tools/filesystem/file.go` | M1.5, M1.5a | Ported field and validator tests pass; the same uploads are accepted or rejected as by the upstream binary |
 | M1.6 | Collection model: `Collection` and its constructors, JSON (options flattened as upstream), `PostScan`, `DBExport`, index helpers, default system fields and id, base, view and auth options with their defaults and auth email templates; `FieldsList`; `tools/dbutils` | `core/collection_model.go` (model part), `collection_model_*_options.go`, `collection_model_auth_templates.go`, `core/fields_list.go`, `tools/dbutils` | M1.5, M1.5b | Ported model, FieldsList and dbutils tests pass; `_collections` rows written by upstream read back and export byte for byte |
 | M1.6a | Collection validation and queries: `collectionValidator`, the options' `Validate` methods, `updateGeneratedIdIfExists`, find/cache/references/unique-name queries; the rule check waits for M2.2 and the view query check for M1.7; OAuth2 provider names are checked against upstream's fixed name list until M4.5 adds the providers | `core/collection_validate.go`, the `Validate` parts of `collection_model_*_options.go`, `updateGeneratedIdIfExists` in `core/collection_model.go`, `core/collection_query.go` (find, cache, references, unique name) | M1.6 | Ported validation and query tests pass, except rule and view-query cases, which are marked pending; validation errors (code, message, params) match upstream's |

@@ -78,7 +78,7 @@ describe("root command", () => {
     expect(result.stdout).toBe("");
     expect(result.stderr).toStartWith("Usage:\n  iglo-base [command]\n");
     expect(result.stderr).toContain(
-      'invalid argument "abc" for "--queryTimeout" flag: strconv.ParseInt: parsing "abc": invalid syntax\n',
+      'invalid argument "abc" for "--queryTimeout" flag: must be an integer\n',
     );
   });
 });
@@ -96,7 +96,7 @@ describe("flag values parsed as pflag does", () => {
       const result = await run(["serve", `--queryTimeout=${value}`, "--help"]);
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain(
-        `strconv.ParseInt: parsing ${JSON.stringify(value)}: invalid syntax`,
+        `invalid argument ${JSON.stringify(value)} for "--queryTimeout" flag: must be an integer`,
       );
     });
   }
@@ -105,7 +105,7 @@ describe("flag values parsed as pflag does", () => {
     const result = await run(["serve", "--queryTimeout=9223372036854775808", "--help"]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain(
-      'strconv.ParseInt: parsing "9223372036854775808": value out of range',
+      'invalid argument "9223372036854775808" for "--queryTimeout" flag: must be an integer',
     );
   });
 
@@ -161,7 +161,7 @@ describe("serve command", () => {
   test("invalid bool value", async () => {
     await expectError(
       ["serve", "--dev=maybe"],
-      'invalid argument "maybe" for "--dev" flag: strconv.ParseBool: parsing "maybe": invalid syntax',
+      'invalid argument "maybe" for "--dev" flag: must be true or false',
     );
   });
 

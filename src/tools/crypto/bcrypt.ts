@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/crypto v0.58.0 bcrypt/bcrypt.go and
+// Upstream: golang.org/x/crypto v0.59.0 bcrypt/bcrypt.go and
 // bcrypt/base64.go
 //
 // Hashes are computed with Bun.password (bcrypt). Go's bcrypt writes

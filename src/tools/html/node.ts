@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/node.go
+// Upstream: golang.org/x/net v0.62.0 html/node.go
 //
 // The Go nodeStack and insertionModeStack are slices with methods. Here they are
 // plain arrays, used with the stack helpers below. The Go methods pop and

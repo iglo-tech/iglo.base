@@ -1,7 +1,7 @@
 // Upstream: apis/base.go (Static), tools/router/event.go (FileFS), Go's
 // http.ServeContent, os.DirFS and mime.TypeByExtension, behind the static
 // route of examples/base/main.go (--publicDir, --indexFallback). The same
-// pb_public directory is served by upstream PocketBase v0.41.0 and the
+// pb_public directory is served by upstream PocketBase v0.42.3 and the
 // compiled iglo.base executable; every response is compared whole (see
 // pair.ts). Not part of `bun test`: run `bun run test:reference`.
 //

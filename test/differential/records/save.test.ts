@@ -1,6 +1,6 @@
 // Record save, validate and delete (src/records/record-save.ts, the
 // superusers checks, the auth refs and truncateCollection) against the
-// reference PocketBase v0.41.0 binary. Not part of `bun test`: run
+// reference PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // One fresh upstream install (`superuser upsert`) is copied for both

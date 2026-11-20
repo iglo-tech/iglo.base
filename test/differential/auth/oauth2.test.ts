@@ -1,5 +1,5 @@
 // OAuth2 sign-in (src/apis/record-auth-with-oauth2.ts, src/oauth2/) against
-// the reference PocketBase v0.41.0 binary, beyond upstream's scenarios: the
+// the reference PocketBase v0.42.3 binary, beyond upstream's scenarios: the
 // cases of oauth2-cases.ts, each on fresh copies of the prepared fixture,
 // compared as the scenario harness compares. Not part of `bun test`: run
 // `bun run test:reference`.

@@ -1,5 +1,5 @@
 // docs/design/13-ssr.md ("OAuth2", "CSRF"). The SDK's SSR OAuth2 helpers and popup hand-off, run against
-// upstream PocketBase v0.41.0 and iglo.base with the fake provider of test/differential/auth/.
+// upstream PocketBase v0.42.3 and iglo.base with the fake provider of test/differential/auth/.
 // Every recorded value is the same on both servers; tokens, generated ids and the random state
 // are checked for their shape and not recorded.
 

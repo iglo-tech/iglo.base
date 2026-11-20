@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/parse_test.go and node_test.go
+// Upstream: golang.org/x/net v0.62.0 html/parse_test.go and node_test.go
 //
 // Ports the tree-construction runner over the html5lib and Go .dat files.
 // Cases are read exactly as readParseTest reads them, dumped as dumpLevel

@@ -1,6 +1,7 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/image.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/image.go.
 
 import { equal, hasPrefix, leUint32, lit } from "@/tools/mimetype/go-bytes";
+import { iff } from "@/tools/mimetype/internal/magic/audio";
 import { offset } from "@/tools/mimetype/internal/magic/magic";
 import { Bytes } from "@/tools/mimetype/internal/scan/bytes";
 
@@ -209,10 +210,10 @@ function jpeg2k(raw: Uint8Array, sig: Uint8Array): boolean {
 }
 
 const riff = lit("RIFF");
-const webpSig = Uint8Array.of(0x57, 0x45, 0x42, 0x50);
+const webp = lit("WEBP");
 // Webp matches a WebP file.
 export function Webp(raw: Uint8Array, _limit: number): boolean {
-  return raw.length > 12 && equal(raw.subarray(0, 4), riff) && equal(raw.subarray(8, 12), webpSig);
+  return iff(raw, riff, webp);
 }
 
 const dwgVersions = [

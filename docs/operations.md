@@ -394,7 +394,7 @@ Releases keep the data format, and the server applies its own migrations at star
 
 There is no `update` command. A version number is not a promise of a release schedule: iglo.base is published as is.
 
-**Way back to PocketBase:** `pb_data` stays in PocketBase v0.41.0's format. To switch back, stop iglo.base and start PocketBase v0.41.0 on the same directory. The steps are in the [cutover runbook](cutover.md#rollback). For the way from PocketBase to iglo.base, see the same page.
+**Way back to PocketBase:** `pb_data` stays in PocketBase v0.42.3's format (the same as v0.41.0 and v0.40.x). To switch back, stop iglo.base and start PocketBase v0.42.3 on the same directory. The steps are in the [cutover runbook](cutover.md#rollback). For the way from PocketBase to iglo.base, see the same page.
 
 ## Logs and health
 

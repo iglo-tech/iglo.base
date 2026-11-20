@@ -1,5 +1,5 @@
 // M5.7: static files from --publicDir, the SPA fallback, CORS and a records
-// list over HTTP: upstream PocketBase v0.41.0, the iglo.base executable of
+// list over HTTP: upstream PocketBase v0.42.3, the iglo.base executable of
 // this tree and, with --before, an executable built from an earlier commit.
 // Not shipped; needs `bun run upstream:prepare`.
 //

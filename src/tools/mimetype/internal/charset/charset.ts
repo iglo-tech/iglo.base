@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/charset/charset.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/charset/charset.go.
 //
 // A charset is a Go string of the input's bytes; here it is in the string
 // form of src/tools/unicode/utf8.ts (bytesToText: an invalid UTF-8 byte is

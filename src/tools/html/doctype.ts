@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/doctype.go
+// Upstream: golang.org/x/net v0.62.0 html/doctype.go
 //
 // Go slices the doctype text by byte offsets, and strings.ToLower can change a
 // character's byte length (U+0130 is two bytes and lowercases to ASCII "i"). So

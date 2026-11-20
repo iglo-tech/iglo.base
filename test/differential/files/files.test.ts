@@ -1,5 +1,5 @@
 // Record files (src/fields/file.ts, src/tools/filesystem, the multipart
-// spill and the storage deletes) against the reference PocketBase v0.41.0
+// spill and the storage deletes) against the reference PocketBase v0.42.3
 // binary. Not part of `bun test`: run `bun run test:reference`.
 //
 // Setup: upstream creates the collections of cases.ts on a copy of the

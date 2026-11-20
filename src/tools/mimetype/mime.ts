@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 mime.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 mime.go.
 //
 // Extend (registering formats at run time) is left out: iglo.base has no
 // extension surface.

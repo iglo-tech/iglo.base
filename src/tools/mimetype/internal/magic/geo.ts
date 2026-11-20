@@ -1,4 +1,4 @@
-// Upstream: gabriel-vasile/mimetype v1.4.15 internal/magic/geo.go.
+// Upstream: gabriel-vasile/mimetype v1.4.16 internal/magic/geo.go.
 
 import { beUint32, hasPrefix, leUint32 } from "@/tools/mimetype/go-bytes";
 

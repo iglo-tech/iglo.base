@@ -1,5 +1,5 @@
 // Collection validation (src/collections/collection-validate.ts) against
-// the reference PocketBase v0.41.0 binary. Not part of `bun test`: run
+// the reference PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // On a fresh upstream install with the collections of validate-cases.ts,

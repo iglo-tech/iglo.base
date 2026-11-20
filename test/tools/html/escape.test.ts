@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/escape_test.go and html/entity_test.go
+// Upstream: golang.org/x/net v0.62.0 html/escape_test.go and html/entity_test.go
 
 import { describe, expect, test } from "bun:test";
 import { escapeString, unescapeString } from "@/tools/html/escape";

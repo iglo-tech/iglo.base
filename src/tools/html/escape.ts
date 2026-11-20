@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/escape.go
+// Upstream: golang.org/x/net v0.62.0 html/escape.go
 //
 // Byte-level entity handling works on Uint8Array views of UTF-8 input, as the
 // Go code works on []byte. The Go functions that mutate their argument in

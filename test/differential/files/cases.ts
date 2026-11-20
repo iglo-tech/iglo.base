@@ -89,6 +89,14 @@ export const collections: Record<string, unknown>[] = [
     fields: [{ name: "doc", type: "file", maxSelect: 1, required: true }],
   },
   {
+    name: "fmime",
+    type: "base",
+    fields: [
+      { name: "song", type: "file", maxSelect: 1, maxSize: 1 << 24, mimeTypes: ["audio/mpeg"] },
+      { name: "any", type: "file", maxSelect: 1, maxSize: 1 << 24 },
+    ],
+  },
+  {
     name: "fchild",
     type: "base",
     fields: [
@@ -103,6 +111,28 @@ export const collections: Record<string, unknown>[] = [
     ],
   },
 ];
+
+// An MP3 whose ID3v2 tag is 12 MiB (large embedded cover art): the header with
+// that synchsafe size, a zero-filled tag body and an MPEG frame. v1.4.15 capped
+// ID3v2 tags at 10 MiB, so it did not detect this file as audio/mpeg.
+const id3Large = (() => {
+  const size = 12 * 1024 * 1024;
+  const out = new Uint8Array(10 + size + 4);
+  out.set([
+    0x49,
+    0x44,
+    0x33,
+    0x03,
+    0x00,
+    0x00,
+    (size >> 21) & 0x7f,
+    (size >> 14) & 0x7f,
+    (size >> 7) & 0x7f,
+    size & 0x7f,
+  ]);
+  out.set([0xff, 0xfb, 0x90, 0x00], 10 + size);
+  return out;
+})();
 
 const longAscii = "a".repeat(290) + ".txt";
 // 127 two-byte characters and "x": the 255-byte cut is a whole character
@@ -442,5 +472,23 @@ export const cases: FileCase[] = [
     method: "GET",
     collection: "fmulti",
     ref: "n1",
+  },
+  // mimeTypes sees the whole 12 MiB tag; with no list the file is stored and
+  // served as audio/mpeg, inline (the round trips serve every stored file)
+  {
+    name: "mime: 12 MiB ID3v2 tag accepted by mimeTypes audio/mpeg",
+    status: 200,
+    method: "POST",
+    collection: "fmime",
+    ref: "m1",
+    parts: [file("song", "song.mp3", id3Large)],
+  },
+  {
+    name: "mime: 12 MiB ID3v2 tag stored without a mimeTypes list",
+    status: 200,
+    method: "POST",
+    collection: "fmime",
+    ref: "m2",
+    parts: [file("any", "song.mp3", id3Large)],
   },
 ];

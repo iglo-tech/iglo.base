@@ -3,7 +3,7 @@
 // .upstream/ at the repository root, which is git-ignored (by default a
 // symlink to a host-wide cache, see scripts/upstream/prepare.ts):
 //
-//   .upstream/pocketbase/        PocketBase v0.41.0 source checkout (read only)
+//   .upstream/pocketbase/        PocketBase v0.42.3 source checkout (read only)
 //   .upstream/bin/<tool>         host binaries: pocketbase, mailpit, versitygw
 //   .upstream/archives/          downloaded archives, kept for the next run
 

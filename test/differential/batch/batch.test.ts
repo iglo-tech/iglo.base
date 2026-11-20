@@ -1,4 +1,4 @@
-// POST /api/batch against the reference PocketBase v0.41.0 binary. Not part
+// POST /api/batch against the reference PocketBase v0.42.3 binary. Not part
 // of `bun test`: run `bun run test:reference`.
 //
 // One data set (schema.ts) on a pair of servers. Every case (cases.ts) is

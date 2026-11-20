@@ -1,8 +1,8 @@
-// Upstream: Go 1.27.2 net/http ServeMux, which tools/router BuildMux relies
+// Upstream: Go 1.27.4 net/http ServeMux, which tools/router BuildMux relies
 // on: pattern.go (parsing, precedence, conflicts), routing_tree.go
 // (matching), server.go (findHandler, matchOrRedirect, exactMatch,
 // cleanPath, stripHostPort, urlFromEscaped, Redirect, Error) and
-// net/url's PathUnescape. PocketBase v0.41.0 is built with Go 1.27.2.
+// net/url's PathUnescape. PocketBase v0.42.3 is built with Go 1.27.4.
 //
 // Patterns are "[METHOD ][HOST]/[PATH]" with {name}, {name...} and {$}
 // wildcards. The most specific pattern wins; conflicting patterns are

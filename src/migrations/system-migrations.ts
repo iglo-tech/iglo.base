@@ -117,7 +117,7 @@ const systemCollections: readonly (readonly [string, string])[] = Object.freeze(
 ]);
 
 export const olderDataMessage =
-  "This pb_data was written by an older PocketBase. Run PocketBase v0.41.0 on it once, then start iglo.base.";
+  "This pb_data was written by an older PocketBase. Run PocketBase v0.42.3 on it once, then start iglo.base.";
 
 // The start is refused: the pb_data needs system migrations iglo.base
 // does not port.
@@ -155,7 +155,7 @@ export function runSystemMigrations(app: CollectionsApp): SystemMigrationsResult
   const warnings =
     newer.length > 0
       ? [
-          `pb_data has migrations newer than PocketBase v0.41.0 (${newer.join(", ")}); the data may come from a newer PocketBase.`,
+          `pb_data has migrations newer than PocketBase v0.42.3 (${newer.join(", ")}); the data may come from a newer PocketBase.`,
         ]
       : [];
 

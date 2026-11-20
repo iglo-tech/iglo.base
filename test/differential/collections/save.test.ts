@@ -1,6 +1,6 @@
 // Collection save, delete and import (src/collections/collection-save.ts,
 // collection-import.ts, view.ts, collection-record-table-sync.ts) against
-// the reference PocketBase v0.41.0 binary. Not part of `bun test`: run
+// the reference PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // One fresh upstream install (`superuser upsert`) is copied for both

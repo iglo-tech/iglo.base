@@ -1,5 +1,5 @@
 // M3.1: records create, update and delete over HTTP, iglo.base against
-// upstream PocketBase v0.41.0 on the same data. Not shipped; needs
+// upstream PocketBase v0.42.3 on the same data. Not shipped; needs
 // `bun run upstream:prepare`.
 //
 //   nice -n 10 bun test/perf/records-write/bench.ts [--requests 2000] [--concurrency 1]

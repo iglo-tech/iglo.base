@@ -1,4 +1,4 @@
-// Upstream: golang.org/x/net v0.61.0 html/entity.go
+// Upstream: golang.org/x/net v0.62.0 html/entity.go
 // Generated from entity.go by a script outside the repository. Do not edit by hand.
 
 // All entities that do not end with ';' are 6 or fewer bytes long.
