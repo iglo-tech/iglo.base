@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| U.1 | review | [#109](https://github.com/iglo-tech/iglo.base/pull/109) | 2 (round 1: mimetype v1.4.16 and pflag 1.1.0 ported by fixer, `da00d46`) | Owner 2026-11-20: baseline v0.42.3, ship v1.3.0 (D43) |
+| U.2 | worker | `task/U.2-dashboard-sdk-1.3.0` | 0 | Dashboard from v0.42.3, SDK 1.1.0 (0.29.0), v1.3.0 prep |
 
 
 
@@ -22,6 +22,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| U.1 | [#109](https://github.com/iglo-tech/iglo.base/pull/109) | 2026-11-20 (`d327296`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. Reference pinned to v0.42.3; 401 on unknown tokens (35 routes matched upstream), realtime/OAuth2 IP fallback, logs VACUUM after 50k + WAL checkpoint, request log order and benign level, `image/jxl` inline, thumbs hint; round 1 added mimetype v1.4.16 (12 MiB ID3v2, CDF root walk, GHSA fix) and pflag 1.1.0 messages and help format. Check 18,992/0, reference 4,444/0. Backlog: tests for Ppt/Xls fall-through and .msg with embedded Word; one CDF sample tests nothing; `--origins` malformed-quote error text (older) |
 | S.8 | [#108](https://github.com/iglo-tech/iglo.base/pull/108) | 2026-11-14 (`105c7fd`) | Three review rounds (Opus; Haiku worker and fixers); round 3 approved. Digit-led field names in rename index scan; views exist while TS migrations run (D40 order amended twice); removed views in dependency order; `records()` pages by id (+26–75% vs main accepted for bounded memory) and takes a name or id; create types accept null/"" on optional files; `// prettier-ignore`; case-only renames kept; six D34 links. Check 18,978/0, reference 4,438/0. Lead widened the removed-chain limitation in D40 and `docs/schema.md`. Released as [v1.2.1](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.1) after CI (incl. linux-arm64) on `c59f41d`. Docker image published. Backlog: spurious "Dependent view collection(s)" log rows |
 | R.2 | [#107](https://github.com/iglo-tech/iglo.base/pull/107) | 2026-11-14 | Gate failed, stopped after phase 1 (no review needed: the result applies a rule fixed in advance). 1-client create: today 0.65 ms, HTTP-client hop 1.15 ms, raw relay 0.85 ms (+0.18 ms vs +0.1 ms bar); an extra process alone costs ~0.07 ms per round trip. #83 closed. Prototype on `spike/R.2-gate` |
 | R.1 | [#106](https://github.com/iglo-tech/iglo.base/pull/106) | 2026-11-14 (`09fa277`) | One review round (Opus, approve; reviewer traced the create hop cost to the second JS HTTP layer). Spike: reads at 50 clients 0.61–1.11× PocketBase with 2 replicas, 0.32–0.61× with 4; 1-client create +0.3–0.5 ms through a replica. Lead decision: go with conditions for #83 (write-hop gate first, read pool per replica, `--schema` required, primary makes missing thumbnails, docs say writes do not scale); #82 closed. Prototype on `spike/replicas`, not merged |
