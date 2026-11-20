@@ -123,6 +123,9 @@ export class ServerClient extends Client {
     this._readable = options.readableCookie === true;
 
     this.autoCancellation(false);
+    // A 401 from an ordinary data call never logs the user out here: only the session check
+    // decides it (docs/design/13-ssr.md), so the SDK's clear on 401 is off for this client.
+    this.autoClearAuthStore(false);
 
     // Auth changes the app makes on this client (authWithPassword, authStore.clear(), ...)
     // write or clear the cookie and update the cache. Changes made by this client during a

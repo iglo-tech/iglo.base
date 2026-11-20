@@ -25,6 +25,9 @@ export class SuperuserClient extends Client {
     this._options = options;
     this._clock = options.clock ?? Date.now;
     this.autoCancellation(false);
+    // The superuser session is renewed or re-created by this client; a 401 from one request
+    // does not clear it (docs/design/13-ssr.md).
+    this.autoClearAuthStore(false);
   }
 
   /** iglo.base's clock in milliseconds, as the last response's `Date` header read it. */
