@@ -1,6 +1,6 @@
 # R.2 write-hop gate: no-go
 
-Part of [#83](https://github.com/iglo-tech/iglo.base/issues/83) (R.2, `serve --mode prod --schema … --replicas N`). Phase 1 of the R.2 brief: build the cheaper write hop and measure a 1-client create through a replica against today's server. The lead's rule: the median through a replica must be within **+0.1 ms** of today's server (same session, at least 3 repetitions). **It is not. Phase 2 was not started.**
+Part of [#83](https://github.com/iglo-tech/iglo.base/issues/83); the decision is D42 in `docs/design/10-decisions.md` (R.2, `serve --mode prod --schema … --replicas N`). Phase 1 of the R.2 brief: build the cheaper write hop and measure a 1-client create through a replica against today's server. The lead's rule: the median through a replica must be within **+0.1 ms** of today's server (same session, at least 3 repetitions). **It is not. Phase 2 was not started.**
 
 Host: AMD Ryzen 5 1600, 6 CPUs, Linux 6.12, bun 1.4.4, shared with other agents (1-minute load average 2 to 4 during the runs, MemAvailable above 9 GiB). Harness and method: the R.1 spike's `test/perf/compare/bench.ts` and `scripts/spikes/R.1/cluster.ts`, unchanged except for the replica. One client, keep-alive, 1.5 s warm-up and 4 s measured per cell, `nice -n 10`, 3 repetitions. Each repetition runs `iglo-base` (today's server, N = 0) and `iglo-r2` (the primary with 2 replicas) in turn.
 
@@ -25,7 +25,7 @@ Hop B is the cheapest hop I could build (a relay that parses only the first requ
 
 Hop B's N = 0 numbers come from the same session, with their own medians: create 0.67, list 1.03, view 0.57. Today's server differs between the two sessions by 0.02 ms for create and 0.14 ms for list (host load), which is why each hop is compared with its own session.
 
-Raw rows: `scripts/spikes/R.2/results/gate-hop-a.log` and `gate-hop-b.log` (JSON next to them) on branch `spike/R.2-gate`.
+Raw rows: `scripts/spikes/R.2/results/gate-hop-a.log` and `gate-hop-b.log` (JSON next to them) on branch `spike/R.2-gate` (tag `archive/replicas-r2-gate`).
 
 ### Where a write through a replica spends its time
 
@@ -68,7 +68,7 @@ So the hops are correct, and the gate is about cost.
 
 ## What this means for #83
 
-- The gate fails under the rule as written, so the R.2 brief says to stop and the lead closes #83. Phase 2 (the `--replicas` feature, D42, the read pools, thumbnails, logs, crash and shutdown tests) was not started.
+- The gate fails under the rule as written, so the R.2 brief says to stop and the lead closes #83. Phase 2 (the `--replicas` feature, the read pools, thumbnails, logs, crash and shutdown tests) was not started.
 - R.1's read results stand. Writes through replicas do not scale either (R.1: create p50 at 50 clients is 2.5 to 3.2 times PocketBase's, and one primary write thread is the bottleneck), so a replica design only helps reads.
 - The write penalty is structural: one replica-to-primary hop on this host, +0.18 ms at best for a create and +0.50 ms for the simple hop. Options for the lead and the owner, in order of how much they change the design:
   1. Close #83 under the gate rule (the recommendation here).
@@ -84,4 +84,4 @@ So the hops are correct, and the gate is about cost.
 
 ## Reproduce
 
-On branch `spike/R.2-gate` (throwaway, not merged): `bun run build`, then `bun scripts/spikes/R.1/check.ts` for the correctness check, then `nice -n 10 bun test/perf/compare/bench.ts --target iglo-base,iglo-r2 --clients 1 --workloads create,list,view --seconds 4 --warmup 1.5 --repeat 3 --keep <absolute path of a built pb_data>`. The pb_data is built on the first run; pass an absolute path to `--keep`, since the bench resolves a relative one against its temporary directory.
+On branch `spike/R.2-gate` (throwaway, not merged; kept as tag `archive/replicas-r2-gate`, head `b755c28`, which also holds hop A in `src/replicas/primary-hop.ts`): `bun run build`, then `bun scripts/spikes/R.1/check.ts` for the correctness check, then `nice -n 10 bun test/perf/compare/bench.ts --target iglo-base,iglo-r2 --clients 1 --workloads create,list,view --seconds 4 --warmup 1.5 --repeat 3 --keep <absolute path of a built pb_data>`. The pb_data is built on the first run; pass an absolute path to `--keep`, since the bench resolves a relative one against its temporary directory.

@@ -1,6 +1,6 @@
 # R.1: read-only replicas, measurement spike
 
-Part of [#82](https://github.com/iglo-tech/iglo.base/issues/82). The throwaway prototype is on branch `spike/replicas` (head `8a1fa62`, never merged). It holds the replica code, the harness changes, and the raw bench and check logs in `scripts/spikes/R.1/results/`.
+Part of [#82](https://github.com/iglo-tech/iglo.base/issues/82). The throwaway prototype is on branch `spike/replicas` (head `8a1fa62`, never merged), kept permanently as tag `archive/replicas-r1-spike`. The decision that followed is D42 in `docs/design/10-decisions.md`; the follow-up gate is `docs/perf/R.2-gate.md`. It holds the replica code, the harness changes, and the raw bench and check logs in `scripts/spikes/R.1/results/`.
 
 ## Verdict
 
