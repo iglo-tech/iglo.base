@@ -25,7 +25,7 @@ Hop B is the cheapest hop I could build (a relay that parses only the first requ
 
 Hop B's N = 0 numbers come from the same session, with their own medians: create 0.67, list 1.03, view 0.57. Today's server differs between the two sessions by 0.02 ms for create and 0.14 ms for list (host load), which is why each hop is compared with its own session.
 
-Raw rows: `scripts/spikes/R.2/results/gate-hop-a.log` and `gate-hop-b.log` (JSON next to them) on branch `spike/R.2-gate` (tag `archive/replicas-r2-gate`).
+Raw rows: `scripts/spikes/R.2/results/gate-hop-a.log` and `gate-hop-b.log` (JSON next to them) on tag `archive/replicas-r2-gate`.
 
 ### Where a write through a replica spends its time
 
@@ -84,4 +84,4 @@ So the hops are correct, and the gate is about cost.
 
 ## Reproduce
 
-On branch `spike/R.2-gate` (throwaway, not merged; kept as tag `archive/replicas-r2-gate`, head `b755c28`, which also holds hop A in `src/replicas/primary-hop.ts`): `bun run build`, then `bun scripts/spikes/R.1/check.ts` for the correctness check, then `nice -n 10 bun test/perf/compare/bench.ts --target iglo-base,iglo-r2 --clients 1 --workloads create,list,view --seconds 4 --warmup 1.5 --repeat 3 --keep <absolute path of a built pb_data>`. The pb_data is built on the first run; pass an absolute path to `--keep`, since the bench resolves a relative one against its temporary directory.
+On tag `archive/replicas-r2-gate` (commit `b755c28`, throwaway, not merged; the branch `spike/R.2-gate` was deleted on 2026-11-20; which also holds hop A in `src/replicas/primary-hop.ts`): `bun run build`, then `bun scripts/spikes/R.1/check.ts` for the correctness check, then `nice -n 10 bun test/perf/compare/bench.ts --target iglo-base,iglo-r2 --clients 1 --workloads create,list,view --seconds 4 --warmup 1.5 --repeat 3 --keep <absolute path of a built pb_data>`. The pb_data is built on the first run; pass an absolute path to `--keep`, since the bench resolves a relative one against its temporary directory.

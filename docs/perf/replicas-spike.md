@@ -1,6 +1,6 @@
 # R.1: read-only replicas, measurement spike
 
-Part of [#82](https://github.com/iglo-tech/iglo.base/issues/82). The throwaway prototype is on branch `spike/replicas` (head `8a1fa62`, never merged), kept permanently as tag `archive/replicas-r1-spike`. The decision that followed is D42 in `docs/design/10-decisions.md`; the follow-up gate is `docs/perf/R.2-gate.md`. It holds the replica code, the harness changes, and the raw bench and check logs in `scripts/spikes/R.1/results/`.
+Part of [#82](https://github.com/iglo-tech/iglo.base/issues/82). The throwaway prototype is kept as tag `archive/replicas-r1-spike` (commit `8a1fa62`, never merged; the branch `spike/replicas` was deleted on 2026-11-20). The decision that followed is D42 in `docs/design/10-decisions.md`; the follow-up gate is `docs/perf/R.2-gate.md`. It holds the replica code, the harness changes, and the raw bench and check logs in `scripts/spikes/R.1/results/`.
 
 ## Verdict
 
@@ -19,7 +19,7 @@ Two results matter beyond the verdict:
 
 ## What was built
 
-Throwaway code, on `spike/replicas` only:
+Throwaway code, on tag `archive/replicas-r1-spike` only:
 
 - **Primary:** today's server. With replicas it listens on a Unix socket in a private `mktemp -d` directory (`--http unix:<path>`; the branch adds that listener to `src/server/serve.ts`). With N = 0 it listens on TCP as before.
 - **Replicas** (`scripts/spikes/R.1/replica.ts`): N processes on the public port with `Bun.serve({ reusePort: true })`. Each opens `data.db` and `auxiliary.db` read-only (`openReadOnly`), has no read pool, and loads the collections and settings once at start. The router is the primary's own (`newServeRouter`), and requests go through the primary's `handleRequest`, so middlewares, auth and error bodies are the same code. Only `GET` and `HEAD` for `/api/collections/{c}/records[/{id}]` and `/api/files/` are answered locally. Everything else, including `/api/realtime` (streamed), goes to the primary over the socket.
@@ -32,7 +32,7 @@ Throwaway code, on `spike/replicas` only:
 ## Method
 
 - **Host:** AMD Ryzen 5 1600, 6 CPUs, Linux 6.12, bun 1.4.4. The host is shared with other agents, and the 1-minute load average before each configuration ran from about 2 to 8 (see the host table). MemAvailable before each configuration was never below 8.4 GiB, so no configuration was skipped and the N = 4 rule (skip below 3 GiB) did not apply.
-- **Harness:** `test/perf/compare/bench.ts` from P.3, extended on `spike/replicas`. Targets: `iglo-base` (N = 0, the same start as P.3; the spike build differs from `main` only by the unused Unix-socket listener), `iglo-r1`, `iglo-r2`, `iglo-r4`, and `upstream`. Data: the P.3 benchmark data (3,000 posts, 200 members, 20 teams), built through PocketBase v0.41.0's API. Workloads: list (30 per page), list with filter and sort, list with expand author, view, and create (JSON). 1, 10 and 50 clients; 1.5 s warm-up and 4 s measured per cell; `nice -n 10`; one server configuration at a time; no check run during measurement.
+- **Harness:** `test/perf/compare/bench.ts` from P.3, extended on `archive/replicas-r1-spike`. Targets: `iglo-base` (N = 0, the same start as P.3; the spike build differs from `main` only by the unused Unix-socket listener), `iglo-r1`, `iglo-r2`, `iglo-r4`, and `upstream`. Data: the P.3 benchmark data (3,000 posts, 200 members, 20 teams), built through PocketBase v0.41.0's API. Workloads: list (30 per page), list with filter and sort, list with expand author, view, and create (JSON). 1, 10 and 50 clients; 1.5 s warm-up and 4 s measured per cell; `nice -n 10`; one server configuration at a time; no check run during measurement.
 - **Repetitions:** 3 per cell. Each repetition runs every configuration in turn, so host load reaches them alike. The tables give the median; the brackets give min to max.
 - **Memory:** RSS of every process, primary first, 3 s after start and after the five workloads.
 - **CPU:** per-process CPU time over each measured run (`/proc/<pid>/stat`), reported as cores busy. The load generator is the bench process on the same host, so its cores are in the CPU table too.
@@ -172,4 +172,4 @@ Start-up, median of 3 (primary plus replicas for N ≥ 1): N = 0 112 ms, N = 1 2
 
 ## Reproduce
 
-On `spike/replicas`: `bun run build`, then `bun scripts/spikes/R.1/check.ts`. For the bench, `nice -n 10 bun test/perf/compare/bench.ts --target iglo-base,iglo-r1,iglo-r2,iglo-r4,upstream --clients 1,10,50 --seconds 4 --warmup 1.5 --repeat 3 --workloads list,list-filter,list-expand1,view,create --keep <pb_data> --json out.json`, where `<pb_data>` is built by the same bench the first time it is missing, and then `bun scripts/spikes/R.1/summarize.ts out.json` prints these tables.
+On `archive/replicas-r1-spike` (`git checkout archive/replicas-r1-spike`): `bun run build`, then `bun scripts/spikes/R.1/check.ts`. For the bench, `nice -n 10 bun test/perf/compare/bench.ts --target iglo-base,iglo-r1,iglo-r2,iglo-r4,upstream --clients 1,10,50 --seconds 4 --warmup 1.5 --repeat 3 --workloads list,list-filter,list-expand1,view,create --keep <pb_data> --json out.json`, where `<pb_data>` is built by the same bench the first time it is missing, and then `bun scripts/spikes/R.1/summarize.ts out.json` prints these tables.

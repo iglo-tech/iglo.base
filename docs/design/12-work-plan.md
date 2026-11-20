@@ -234,7 +234,7 @@ Read-only replicas ([#82](https://github.com/iglo-tech/iglo.base/issues/82) spik
 
 | ID | Task | Depends on |
 |---|---|---|
-| R.1 | Measurement spike: throwaway prototype on `spike/replicas`, `docs/perf/replicas-spike.md` with go/no-go ([#82](https://github.com/iglo-tech/iglo.base/issues/82)) | S.7 |
+| R.1 | Measurement spike: throwaway prototype (tag `archive/replicas-r1-spike`), `docs/perf/replicas-spike.md` with go/no-go ([#82](https://github.com/iglo-tech/iglo.base/issues/82)) | S.7 |
 | R.2 | `serve --mode prod --replicas N` ([#83](https://github.com/iglo-tech/iglo.base/issues/83)); only on go. Gate failed, `docs/perf/R.2-gate.md`; not built (owner, 2026-11-20, D42) | R.1 |
 
 ## Order
