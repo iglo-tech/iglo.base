@@ -237,6 +237,15 @@ Read-only replicas ([#82](https://github.com/iglo-tech/iglo.base/issues/82) spik
 | R.1 | Measurement spike: throwaway prototype (tag `archive/replicas-r1-spike`), `docs/perf/replicas-spike.md` with go/no-go ([#82](https://github.com/iglo-tech/iglo.base/issues/82)) | S.7 |
 | R.2 | `serve --mode prod --replicas N` ([#83](https://github.com/iglo-tech/iglo.base/issues/83)); only on go. Gate failed, `docs/perf/R.2-gate.md`; not built (owner, 2026-11-20, D42) | R.1 |
 
+### Upstream v0.42.3 (server v1.3.0)
+
+Owner decision 2026-11-20 ([D43](10-decisions.md#d43-baseline-moved-from-v0410-to-v0423)): the reference moves from PocketBase v0.41.0 to v0.42.3 and the SDK reference to v0.29.0. Base branch `main`. The lead tags and publishes v1.3.0 after U.2 merges.
+
+| ID | Task | Depends on |
+|---|---|---|
+| U.1 | Server: pin v0.42.3 in the reference lock, port the v0.41.1–v0.42.3 server changes (401 on unknown tokens, realtime and OAuth2 IP checks, logs cleanup `VACUUM`, log levels, `image/jxl`), baseline references in docs | S.8 |
+| U.2 | Dashboard re-copied from v0.42.3 `ui/`, SDK 0.29.0 changes (SDK 1.1.0), v1.3.0 release prep | U.1 |
+
 ## Order
 
 ```text

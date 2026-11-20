@@ -426,3 +426,18 @@ Owner decision 2026-11-20, after the R.1 spike ([#82](https://github.com/iglo-te
   - **(A) Replicas for reads, writes sent to the primary's own address by the deployment.** No write cost, but each deployment needs a proxy with iglo-specific routes, and `GET` requests that write (OAuth2 redirects, missing thumbnails, rate limits) break silently when misrouted. Not recommended.
   - **(B) One public port, writes relayed with hop A (+0.2–0.5 ms per idle write).** The lead's pick if replicas are ever built: the routing lives in tested code, and the write cost is small next to network latency.
 - **If revisited:** build (B) as R.2 phase 2 with the brief's conditions: `--replicas N` only with `--mode prod --schema` (so the schema can't change under the replicas); a D8 read pool per replica (filter + sort was slower than today with 1–2 replicas without one); missing thumbnails made by the primary; replicas' request logs sent to the primary's writer; the full differential suite in replicas mode; crash and shutdown tests. Start from `src/replicas/primary-hop.ts` on `archive/replicas-r2-gate`. The trigger is a real deployment limited by reads, not a benchmark.
+
+## D43. Baseline moved from v0.41.0 to v0.42.3
+
+Owner decision 2026-11-20 (option A of two: move the baseline, or stay on v0.41.0 and take only internal fixes). Ships as server v1.3.0.
+
+- **Decision:** the reference becomes PocketBase v0.42.3 (`c5003ce63deee71cc6821f338f0d4e1994b3db40`, 2026-11-16), and the JS SDK reference becomes v0.29.0. The differential suite runs against the v0.42.3 binary. Work plan tasks U.1 (server) and U.2 (dashboard, SDK, release prep).
+- **Checked:** v0.41.1–v0.42.3 add no system migration and change no table, column or stored format. Data moves freely between iglo.base, v0.40.x, v0.41.x and v0.42.x, so rollback is unchanged. What changes for iglo.base:
+  - **API:** a request with an `Authorization` token that loads no auth record (unknown, invalid or expired, for example after a password change) gets 401 instead of running as a guest (`apis/middlewares.go` `rejectUnknownToken`). Apps that send stale tokens to public endpoints will notice; the v1.3.0 release notes say so.
+  - **API:** a realtime client may change its subscriptions from a different IP than the one that opened the connection; the OAuth2 redirect also accepts the IP that made the `@oauth2` subscription (`apis/realtime.go`, `apis/record_auth_with_oauth2_redirect.go`). This fixes failed OAuth2 logins on devices with several network interfaces.
+  - **Logs:** the `__pbLogsCleanup__` cron runs `VACUUM` on `auxiliary.db` after 50k or more logs were deleted since the last one, and `wal_checkpoint(TRUNCATE)` after every run; request logs use upstream's new attribute order and the "benign error" level rule; OAuth2 redirect failures log at WARN instead of DEBUG.
+  - **Files:** `image/jxl` is served inline; the "image too large" thumbnail error names `PB_THUMBS_MAX_SOURCE_PIXELS`.
+  - **Dashboard:** OAuth2 providers can be reordered, JPEG XL preview, `.webm` video, logs chart axis width, the login page clears a stale token on 401, license notes for the vendored fonts.
+  - **SDK 0.29.0:** `authStore` is cleared automatically after a 401 (`autoClearAuthStore(false)` turns it off).
+  The rest is not ported: Go and `modernc.org/sqlite` bumps, the Go cron race guard, hex encoding, `update/Config.Channel` (the `update` command is dropped, D19), JS VM types (extension surface). The S3 `CompleteMultipartUpload` body check was already in iglo.base.
+- **Why:** it keeps "behaves like upstream" literally true and takes a real OAuth2 login fix, at no data-format cost. Staying on v0.41.0 would have left the OAuth2 bug and made the next baseline move larger.
