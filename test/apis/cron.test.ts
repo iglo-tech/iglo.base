@@ -53,6 +53,22 @@ function send(
   return serveTest(newRouter(app).buildMux(), { method, target, headers });
 }
 
+// inserts n logs created in 2030-03-08, all past the 7 days kept at 2030-03-15
+function insertOldLogs(app: TestApp, n: number, from: number): void {
+  app.databases
+    .auxNonconcurrentDB()
+    .newQuery(
+      `WITH RECURSIVE n(i) AS (SELECT {:from} UNION ALL SELECT i + 1 FROM n WHERE i < {:last})
+       INSERT INTO _logs (id, created) SELECT 'old' || i, '2030-03-08 00:00:00.000Z' FROM n`,
+    )
+    .bind({ from, last: from + n - 1 })
+    .execute();
+}
+
+function freePages(app: TestApp): number {
+  return Number(app.databases.auxDB().newQuery("PRAGMA freelist_count").column<number>()[0] ?? 0);
+}
+
 async function runJob(app: TestApp, id: string): Promise<void> {
   const res = await send(app, "POST", `/api/crons/${id}`);
   expect(res.status).toBe(204);
@@ -254,6 +270,34 @@ describe("the cleanup jobs", () => {
     expect(app.warned).toEqual([]);
   });
 
+  test("__pbLogsCleanup__ vacuums the auxiliary db after 50,000 deleted logs since the last vacuum", async () => {
+    const app = await open(undefined, new Date("2030-03-15T12:00:00Z"));
+    app.settings.Logs.MaxDays = 7;
+
+    // 49,999 deletions: no vacuum, the freed pages stay in the file
+    insertOldLogs(app, 49_999, 1);
+    await runJob(app, "__pbLogsCleanup__");
+    expect(freePages(app)).toBeGreaterThan(0);
+
+    // one more deletion reaches the 50,000 counted since the last vacuum
+    insertOldLogs(app, 1, 50_000);
+    await runJob(app, "__pbLogsCleanup__");
+    expect(freePages(app)).toBe(0);
+    expect(app.warned).toEqual([]);
+  });
+
+  test("__pbLogsCleanup__ truncates the auxiliary WAL file after every run", async () => {
+    const app = await open(undefined, new Date("2030-03-15T12:00:00Z"));
+    app.settings.Logs.MaxDays = 7;
+    insertOldLogs(app, 10, 1);
+    expect(walSize(app, "auxiliary.db")).toBeGreaterThan(0);
+
+    await runJob(app, "__pbLogsCleanup__");
+
+    expect(walSize(app, "auxiliary.db")).toBe(0);
+    expect(app.warned).toEqual([]);
+  });
+
   test("deleteOldLogs formats the date in UTC with milliseconds", async () => {
     const app = await open();
     const db = app.databases.auxNonconcurrentDB();
@@ -279,7 +323,9 @@ describe("the cleanup jobs", () => {
     await runJob(app, "__pbMFACleanup__");
 
     expect(app.warned.map((w) => w.message)).toEqual([
+      "Failed to count logs before delete",
       "Failed to delete old logs",
+      "Failed to count logs after delete",
       "Failed to delete expired OTP sessions",
       "Failed to delete expired MFA sessions",
     ]);
@@ -409,7 +455,10 @@ describe("the shutdown", () => {
     expect(app.warned.map((w) => w.message)).toEqual([
       "Failed to delete expired OTP sessions",
       "Failed to delete expired MFA sessions",
+      "Failed to count logs before delete",
       "Failed to delete old logs",
+      "Failed to count logs after delete",
+      "Failed to run PRAGMA wal_checkpoint after logs cleanup",
       "Failed to run periodic PRAGMA wal_checkpoint for the main DB",
       "Failed to run periodic PRAGMA wal_checkpoint for the auxiliary DB",
       "Failed to run periodic PRAGMA optimize",
