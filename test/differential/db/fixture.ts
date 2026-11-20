@@ -1,6 +1,6 @@
 // Helpers for the database tests on upstream's tests/data fixture (from
 // the source checkout `bun run upstream:prepare` makes) and the reference
-// PocketBase v0.41.0 binary. The fixture itself is never opened: every test
+// PocketBase v0.42.3 binary. The fixture itself is never opened: every test
 // works on its own copy.
 
 import { createHash } from "node:crypto";

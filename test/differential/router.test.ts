@@ -1,5 +1,5 @@
 // Smoke cases for the router (M0.3): the same raw HTTP requests against the
-// reference PocketBase v0.41.0 binary and the compiled iglo.base executable,
+// reference PocketBase v0.42.3 binary and the compiled iglo.base executable,
 // comparing status, body, Location, Content-Type and the security headers.
 // The full differential harness is M0.5. Not part of `bun test`: run
 // `bun run test:reference`.

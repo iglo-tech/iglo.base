@@ -2,7 +2,7 @@
 // its callers: apis/health.go (realIP, possibleProxyHeader), the superuser
 // IP whitelist (apis/middlewares.go), the rate limiter's client key
 // (apis/middlewares_rate_limit.go) and the activity logger's userIP
-// (apis/middlewares.go). Upstream PocketBase v0.41.0 and the compiled
+// (apis/middlewares.go). Upstream PocketBase v0.42.3 and the compiled
 // iglo.base executable run on fixture copies with the same settings and get
 // the same requests; every request comes from 127.0.0.1. Not part of `bun
 // test`: run `bun run test:reference`.

@@ -4,7 +4,7 @@
 
 The project is `iglo.base`; its canonical repository is https://github.com/iglo-tech/iglo.base and its default branch is `main`.
 
-iglo.base is an independently maintained port of PocketBase v0.41.0 (`f6baa0c43f379de21cd806de97ad6a2b8ca97b83`) to Bun and TypeScript. Upstream moved from GitHub (now archived at v0.40.6) to https://ganigeorgiev.com/pocketbase/pocketbase; clone it from `https://ganigeorgiev.com/git/pocketbase/pocketbase`. v0.41.0 keeps v0.40.x's data format, so v0.40.x `pb_data` works too. iglo.base is not an official PocketBase edition and is not intended to operate as a public open-source community project. It is published "as is": no formal support process, no issue triage process, no release promise, and no community governance files.
+iglo.base is an independently maintained port of PocketBase v0.42.3 (`c5003ce63deee71cc6821f338f0d4e1994b3db40`) to Bun and TypeScript. Upstream moved from GitHub (now archived at v0.40.6) to https://ganigeorgiev.com/pocketbase/pocketbase; clone it from `https://ganigeorgiev.com/git/pocketbase/pocketbase`. v0.42.3 keeps the data format of v0.40.x and v0.41.0, so `pb_data` from those versions works too. iglo.base is not an official PocketBase edition and is not intended to operate as a public open-source community project. It is published "as is": no formal support process, no issue triage process, no release promise, and no community governance files.
 
 License: MIT, inherited from PocketBase. Keep PocketBase's copyright notice in `LICENSE`. Do not add code under incompatible licenses.
 
@@ -16,8 +16,8 @@ Released: v1.2.0 (schema as code, `serve --schema`, `schema pull`, `schema plan`
 
 These override convenience, style and performance. Read `docs/design/03-data-compatibility.md` and `docs/design/04-api-compatibility.md` before touching storage or HTTP code.
 
-1. **Data:** iglo.base opens a PocketBase v0.41.0 (or v0.40.x, same format) `pb_data` directory without converting it, and leaves it in a state PocketBase v0.41.0 can open. Never add iglo-specific tables, columns, indexes, triggers, `_params` rows or `_migrations` rows. Never rewrite stored values into a different format.
-2. **API:** every endpoint, field, status code, error body, header and realtime message that PocketBase v0.41.0 exposes behaves the same for the requests real clients send. Match results, not implementations: port upstream logic where the result depends on it and use Bun and Web APIs elsewhere. Malformed or hand-crafted input must be handled safely but may get a different error (D26). The reference is the upstream binary, checked by the differential test suite. Deliberate differences are listed in `docs/design/04-api-compatibility.md` and nowhere else.
+1. **Data:** iglo.base opens a PocketBase v0.42.3 (or v0.40.x or v0.41.0, same format) `pb_data` directory without converting it, and leaves it in a state PocketBase v0.42.3 can open. Never add iglo-specific tables, columns, indexes, triggers, `_params` rows or `_migrations` rows. Never rewrite stored values into a different format.
+2. **API:** every endpoint, field, status code, error body, header and realtime message that PocketBase v0.42.3 exposes behaves the same for the requests real clients send. Match results, not implementations: port upstream logic where the result depends on it and use Bun and Web APIs elsewhere. Malformed or hand-crafted input must be handled safely but may get a different error (D26). The reference is the upstream binary, checked by the differential test suite. Deliberate differences are listed in `docs/design/04-api-compatibility.md` and nowhere else.
 
 ## No extension surface
 
@@ -49,7 +49,7 @@ Do not add hooks, plugins, event buses for user code, an embedded JavaScript VM,
 ## Tests
 
 - Tests verify observable behavior through public boundaries: HTTP API, realtime streams, emails received by the SMTP sink (Mailpit), files on disk or in an S3 test server, and the `pb_data` directory read back by upstream PocketBase. Never read source files as text or assert on implementation details.
-- Upstream PocketBase v0.41.0 is the reference: the differential suite runs the same requests against both and compares normalized responses.
+- Upstream PocketBase v0.42.3 is the reference: the differential suite runs the same requests against both and compares normalized responses.
 - Port upstream's Go API scenarios (`apis/*_test.go`) as data-driven tests. Drop only their hook-event expectations.
 - Time-dependent behavior is tested with an injected clock, not by sleeping.
 - Use `agent-browser` to verify the admin dashboard.

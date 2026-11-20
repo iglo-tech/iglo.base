@@ -1,8 +1,8 @@
 # Differences from PocketBase
 
-iglo.base is a port of PocketBase v0.41.0. Your data, your SDKs and your API calls work the same. This page lists what is different, so you can decide whether iglo.base fits your project.
+iglo.base is a port of PocketBase v0.42.3. Your data, your SDKs and your API calls work the same. This page lists what is different, so you can decide whether iglo.base fits your project.
 
-For the API itself (endpoints, filters, rules, realtime) use PocketBase's documentation at [pocketbase.io/docs](https://pocketbase.io/docs/). It applies to iglo.base. Every API response is compared with PocketBase v0.41.0 by a test suite; the differences below are the ones that are known and intended.
+For the API itself (endpoints, filters, rules, realtime) use PocketBase's documentation at [pocketbase.io/docs](https://pocketbase.io/docs/). It applies to iglo.base. Every API response is compared with PocketBase v0.42.3 by a test suite; the differences below are the ones that are known and intended.
 
 ## What is not there
 
@@ -25,7 +25,7 @@ Release executables exist for Linux x64 and Linux arm64, and the Docker image is
 
 ## Version output
 
-`./iglo-base --version` prints `iglo-base version <version>`. PocketBase prints `pocketbase version 0.41.0`. A build that did not come from a release prints `(untracked)`. The `serve` banner prints no version, in both.
+`./iglo-base --version` prints `iglo-base version <version>`. PocketBase prints `pocketbase version 0.42.3`. A build that did not come from a release prints `(untracked)`. The `serve` banner prints no version, in both.
 
 ## Differences you may notice in the API
 
@@ -86,4 +86,4 @@ In most cases iglo.base is faster than PocketBase; the cases where PocketBase le
 
 ## Where the list comes from
 
-The list is kept in [API compatibility, deliberate differences](design/04-api-compatibility.md#deliberate-differences), together with the design decisions behind each row. The decisions on [what was removed](design/01-scope.md) are in the design notes. Anything else that differs from PocketBase v0.41.0 is a bug.
+The list is kept in [API compatibility, deliberate differences](design/04-api-compatibility.md#deliberate-differences), together with the design decisions behind each row. The decisions on [what was removed](design/01-scope.md) are in the design notes. Anything else that differs from PocketBase v0.42.3 is a bug.

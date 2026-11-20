@@ -1,5 +1,5 @@
 // The sign-in cases of the OAuth2 providers (src/oauth2/*.ts, one file per
-// provider), each run through /auth-with-oauth2 on upstream PocketBase v0.41.0
+// provider), each run through /auth-with-oauth2 on upstream PocketBase v0.42.3
 // and on iglo.base against the local mock (test/support/oauth2-mock.ts). The
 // users are realistic provider responses, and each case reaches one branch
 // of its provider: the email branches, the mapping quirks, the errors.

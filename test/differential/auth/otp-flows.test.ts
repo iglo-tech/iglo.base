@@ -1,6 +1,6 @@
 // OTP flows across both servers (src/apis/record-auth-otp-request.ts,
 // src/apis/record-auth-with-otp.ts, sendRecordOTP): each flow runs the same
-// steps on upstream PocketBase v0.41.0 and iglo.base, each on its own copy of
+// steps on upstream PocketBase v0.42.3 and iglo.base, each on its own copy of
 // the fixture and its own Mailpit, and the two transcripts (statuses and
 // bodies with generated values replaced) must be equal. The OTP passwords
 // are read from the Mailpit messages. The emails must match after the

@@ -2,7 +2,8 @@
 // and migrations/1778828400_normalize_indexes.go, as they run on a fresh
 // install
 //
-// The v0.41.0 end state of a fresh install (03-data-compatibility.md,
+// The end state of a fresh install of PocketBase v0.42.3, which is the same as
+// v0.41.0 (D43; 03-data-compatibility.md,
 // "Migrations"), built the way upstream's system migrations build it: the
 // same DDL text (sqlite_schema keeps it, whitespace included) and the
 // system collections saved through the collection save path, so the

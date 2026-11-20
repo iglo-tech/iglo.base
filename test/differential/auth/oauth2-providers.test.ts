@@ -1,4 +1,4 @@
-// The M4.6 OAuth2 providers against the reference PocketBase v0.41.0 binary
+// The M4.6 OAuth2 providers against the reference PocketBase v0.42.3 binary
 // (src/oauth2/*.ts, src/apis/record-auth-*.ts, src/apis/settings.ts): the
 // auth methods defaults of each provider, every sign-in case of
 // oauth2-provider-cases.ts, and the Apple client secret. Each run goes on its

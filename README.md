@@ -1,6 +1,6 @@
 # iglo.base
 
-**A self-hosted backend in one file: database, auth, file storage, realtime and an admin dashboard. Built on Bun and SQLite, and a drop-in replacement for [PocketBase](https://pocketbase.io) v0.41.0.**
+**A self-hosted backend in one file: database, auth, file storage, realtime and an admin dashboard. Built on Bun and SQLite, and a drop-in replacement for [PocketBase](https://pocketbase.io) v0.42.3.**
 
 Your existing PocketBase apps, SDKs and `pb_data` work unchanged. If you change your mind, PocketBase opens the same data again.
 
@@ -110,7 +110,7 @@ The method and every measurement are in [docs/perf](docs/perf/P.3-second-pass.md
 2. Start iglo.base with the same flags on the same directories.
 3. Clients keep the same URLs.
 
-To go back, stop iglo.base and start PocketBase v0.41.0 on the same directory. The full checklist, with the flags that carry over and the checks to run, is in the [cutover runbook](docs/cutover.md). Data from PocketBase v0.40.x works too.
+To go back, stop iglo.base and start PocketBase v0.42.3 on the same directory. The full checklist, with the flags that carry over and the checks to run, is in the [cutover runbook](docs/cutover.md). Data from PocketBase v0.40.x works too.
 
 ## How it differs from PocketBase
 
@@ -121,7 +121,7 @@ iglo.base runs the same product with no extension surface. It does not have:
 - The `update` command. Download a new release, or pull a new image.
 - Built-in HTTPS (`--https`, `serve example.com`). Put a reverse proxy such as Caddy or nginx in front for TLS.
 
-A few edge cases behave slightly differently, such as error texts for malformed requests and the timing of query timeouts. Each one is listed in [Differences from PocketBase](docs/differences.md). Every other API response is checked against PocketBase v0.41.0 by a differential test suite.
+A few edge cases behave slightly differently, such as error texts for malformed requests and the timing of query timeouts. Each one is listed in [Differences from PocketBase](docs/differences.md). Every other API response is checked against PocketBase v0.42.3 by a differential test suite.
 
 ## Status
 

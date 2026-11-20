@@ -1,6 +1,6 @@
 # SSR out of the box
 
-Task P.13, owner direction 2026-11-07. Decision record: [D38](10-decisions.md#d38-ssr-in-the-sdk). iglo.base and its SDK (`@iglo.tech/iglo.base` on npm, D36) work with any JavaScript SSR framework without users solving the problems PocketBase leaves to them ([docs](https://pocketbase.io/docs/how-to-use/#why-not-js-ssr), [discussion #5313](https://github.com/pocketbase/pocketbase/discussions/5313)). Everything is in the SDK; the server's API stays PocketBase v0.41.0's.
+Task P.13, owner direction 2026-11-07. Decision record: [D38](10-decisions.md#d38-ssr-in-the-sdk). iglo.base and its SDK (`@iglo.tech/iglo.base` on npm, D36) work with any JavaScript SSR framework without users solving the problems PocketBase leaves to them ([docs](https://pocketbase.io/docs/how-to-use/#why-not-js-ssr), [discussion #5313](https://github.com/pocketbase/pocketbase/discussions/5313)). Everything is in the SDK; the server's API stays PocketBase v0.42.3's.
 
 ## Sources
 

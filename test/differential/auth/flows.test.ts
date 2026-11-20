@@ -1,6 +1,6 @@
 // Auth flows across both servers (src/apis/record-auth*.ts): tokens issued
 // by either server are accepted by the other, `_authOrigins` and `_mfas`
-// rows written by iglo.base are read by upstream PocketBase v0.41.0
+// rows written by iglo.base are read by upstream PocketBase v0.42.3
 // unchanged (and the other way around), and password hashes written by
 // either server sign in on the other. Not part of `bun test`: run
 // `bun run test:reference`.

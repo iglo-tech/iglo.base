@@ -1,5 +1,5 @@
 // The normalization rules on real upstream responses: the same request
-// against two upstream PocketBase v0.41.0 servers, each on its own copy of
+// against two upstream PocketBase v0.42.3 servers, each on its own copy of
 // the fixture, must compare equal (the generated values pair), and a changed
 // byte that is not a generated value must be reported. The cases are the
 // ones from Sol's council review of PR #6, plus the members upstream writes

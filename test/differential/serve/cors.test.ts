@@ -1,7 +1,7 @@
 // Upstream: apis/middlewares_cors.go and its binding in apis/serve.go
 // (--origins, before the activity logger and the rate limiter), the www
 // redirect of apis/serve.go and apis/middlewares.go (wwwRedirect), and
-// securityHeaders. Upstream PocketBase v0.41.0 and the compiled iglo.base
+// securityHeaders. Upstream PocketBase v0.42.3 and the compiled iglo.base
 // executable get the same requests; every response is compared whole (see
 // pair.ts). A preflight under a matching rate limit rule is in
 // test/differential/rate-limit/cases.ts. Not part of `bun test`: run `bun

@@ -1,5 +1,5 @@
 // M5.2: memory of thumbnail generation and of serving a large file,
-// iglo.base against upstream PocketBase v0.41.0. Not shipped; needs
+// iglo.base against upstream PocketBase v0.42.3. Not shipped; needs
 // `bun run upstream:prepare` and `bun run build` (it runs dist/iglo-base).
 //
 //   nice -n 10 bun test/perf/files/measure.ts

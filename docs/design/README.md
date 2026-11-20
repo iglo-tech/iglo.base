@@ -1,6 +1,6 @@
 # iglo.base design
 
-Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its extension surface, as a drop-in replacement. Read in order.
+Kickoff design for porting PocketBase v0.42.3 to Bun + SQLite, without its extension surface, as a drop-in replacement. Read in order.
 
 | # | Doc | Covers |
 |---|---|---|
@@ -21,14 +21,14 @@ Kickoff design for porting PocketBase v0.41.0 to Bun + SQLite, without its exten
 
 ## Decisions at a glance
 
-- Port of PocketBase **v0.41.0** (`f6baa0c`, 2026-10-26), not an upstream-tracking fork. Same data format as v0.40.x (D21).
+- Port of PocketBase **v0.42.3** (`c5003ce`, 2026-11-16), not an upstream-tracking fork. Same data format as v0.40.x and v0.41.0 (D21, D43).
 - **MIT**, inherited from PocketBase, with its copyright notice kept.
 - **Bun ≥ 1.4, TypeScript, one compiled executable.** An official Docker image comes after the MVP (D3).
 - **The extension surface is removed:** no Go framework mode, `pb_hooks` or dashboard extensions. JavaScript migrations (`pb_migrations`, the `migrate` command, `--automigrate`) are kept (D23). The `update` command is also dropped (D19). Nothing else is removed.
 - **PocketBase's `pb_data` format, unchanged and two-way:** open existing data without migration, and leave it readable by PocketBase for rollback.
 - **PocketBase's API, verified against the upstream binary** by a differential test suite seeded with upstream's ~720 API scenarios.
 - **Upstream's dashboard is reused** with a small, listed patch set and iglo.base branding only (D17).
-- **Upstream releases after v0.41.0:** security and bug fixes ported by hand (D16).
+- **Upstream releases after v0.42.3:** security and bug fixes ported by hand (D16).
 - **Release binaries:** linux-x64 and linux-arm64 (D18, D24, D35).
 - **A JavaScript SDK of its own:** upstream's SDK v0.28.1 is copied into `sdk/` and published to npm as `@iglo.tech/iglo.base`. It keeps the `pocketbase` package's API, ships ES modules only (no `./cjs`, `./umd` or script-tag build; D36).
 - **Filters and rules are ported file by file,** aiming for the same SQL, because they are security boundaries.

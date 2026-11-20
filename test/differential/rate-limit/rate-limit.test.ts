@@ -1,5 +1,5 @@
 // Upstream: apis/middlewares_rate_limit_test.go. Each case of cases.ts runs
-// against upstream PocketBase v0.41.0 and iglo.base, each on its own copy of
+// against upstream PocketBase v0.42.3 and iglo.base, each on its own copy of
 // the prepared fixture: the same steps at the same time, with the same
 // statuses, Content-Type and error bodies. Not part of `bun test`: run
 // `bun run test:reference`.

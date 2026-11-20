@@ -2,16 +2,16 @@
 
 ## Goals
 
-1. **Drop-in replacement for PocketBase v0.41.0.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19, and automatic HTTPS, D30) and environment, so apps and SDKs do not change.
-2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.41.0, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
+1. **Drop-in replacement for PocketBase v0.42.3.** Same REST API, realtime protocol, admin dashboard, CLI (except `update`, D19, and automatic HTTPS, D30) and environment, so apps and SDKs do not change.
+2. **Same data directory.** Open an existing `pb_data` without migration or conversion, and leave it readable by PocketBase v0.42.3, so going back is always possible ([Data compatibility](03-data-compatibility.md)).
 3. **No extension surface, except migrations.** No Go framework mode, JavaScript hooks or dashboard extensions. JavaScript migrations in `pb_migrations` are supported, as upstream runs them ([D23](10-decisions.md#d23-javascript-migrations-are-supported)). Behavior is fixed and fully covered by tests.
 4. **One stack:** Bun, TypeScript, SQLite, one executable, shared conventions with other iglo.\* projects.
 5. **A JavaScript client of its own.** The PocketBase JavaScript SDK v0.28.1 is copied into `sdk/`, typed strictly and published to npm as `@iglo.tech/iglo.base`. It keeps the `pocketbase` package's API, ships ES modules only (no `./cjs`, `./umd` or script-tag build; [D36](10-decisions.md#d36-iglobase-owns-its-javascript-sdk)). It is a client library, not an extension surface.
 
 ## Non-goals
 
-- New features in v1. Anything PocketBase v0.41.0 does not do is out of scope until 1.0 ships.
-- Tracking upstream automatically. Upstream releases after v0.41.0 are reviewed by hand for security and bug fixes ([D16](10-decisions.md#d16-upstream-releases-after-v0410-fixes-only-by-hand)).
+- New features in v1. Anything PocketBase v0.42.3 does not do is out of scope until 1.0 ships.
+- Tracking upstream automatically. Upstream releases after v0.42.3 are reviewed by hand for security and bug fixes ([D16](10-decisions.md#d16-upstream-releases-after-v0410-fixes-only-by-hand)).
 - Any database other than SQLite. Multi-node, replication or horizontal scaling.
 - Byte-identical output where it does not affect clients (JSON key spacing, header order, thumbnail encoder bytes). Semantic equality is the bar; see [API compatibility](04-api-compatibility.md).
 - A public community project: no support process, no release promise, no community governance files (same stance as iglo.monitor).
@@ -152,6 +152,6 @@ Decided by the owner on 2026-11-06 ([D40](10-decisions.md#d40-schema-as-code)). 
 
 For 1.x:
 
-- a `pb_data` directory written by PocketBase v0.41.0 opens in iglo.base, and one written by iglo.base opens in PocketBase v0.41.0;
-- a client written against PocketBase v0.41.0 (official JS and Dart SDKs, community SDKs, raw HTTP) works against iglo.base without changes;
+- a `pb_data` directory written by PocketBase v0.42.3 opens in iglo.base, and one written by iglo.base opens in PocketBase v0.42.3;
+- a client written against PocketBase v0.42.3 (official JS and Dart SDKs, community SDKs, raw HTTP) works against iglo.base without changes;
 - the only API differences are the ones listed in [API compatibility](04-api-compatibility.md#deliberate-differences), all of which follow from removing extensions, the `update` command and automatic HTTPS.

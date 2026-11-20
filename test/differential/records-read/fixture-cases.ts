@@ -1,5 +1,5 @@
 // Records list and view requests on upstream's fixture
-// (test/fixtures/pocketbase), each sent to upstream v0.41.0 and iglo.base
+// (test/fixtures/pocketbase), each sent to upstream v0.42.3 and iglo.base
 // as a guest, a regular user and a superuser (records-read.test.ts).
 //
 // The URLs are sent as written (percent-encoded where Go's server would

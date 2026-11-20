@@ -1,6 +1,6 @@
 // Integers outside Number.MAX_SAFE_INTEGER survive a load and save through
 // the db layer (src/db/dbx/rows.ts): SQLite stores a scalar JSON number in
-// a JSON column as INTEGER, and the reference PocketBase v0.41.0 binary
+// a JSON column as INTEGER, and the reference PocketBase v0.42.3 binary
 // reads the exact value back after iglo.base saved the row with an
 // unrelated change. Not part of `bun test`: run `bun run test:reference`.
 

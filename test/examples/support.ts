@@ -1,6 +1,6 @@
 // Helpers for test/examples: an example app's production build and server process, a cookie jar
 // for a browser that follows the app's responses, and the requests the scenarios make. The
-// apps talk to iglo.base or upstream PocketBase v0.41.0 only over HTTP (docs/design/13-ssr.md).
+// apps talk to iglo.base or upstream PocketBase v0.42.3 only over HTTP (docs/design/13-ssr.md).
 
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";

@@ -37,7 +37,7 @@ The lead writes each brief from this template and passes it to the worker as its
 Task <id>: <title>
 Goal: <one sentence>
 Read first: AGENTS.md, docs/design/<docs>
-Upstream (v0.41.0): <files and tests to port>
+Upstream (v0.42.3): <files and tests to port>
 Owns: <src/... and test/... paths>
 Depends on: <task ids, already merged>
 Acceptance: <commands and scenario sets that must pass>
@@ -47,7 +47,7 @@ Measurements: <docs/perf/... if the task changes db, filters, realtime or files>
 
 ### Rules for workers
 
-- Follow `AGENTS.md`. Upstream v0.41.0 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
+- Follow `AGENTS.md`. Upstream v0.42.3 is the reference; read its source in the upstream checkout (`.upstream/pocketbase`, created by `bun run upstream:prepare`), never from memory.
 - Hand bulk mechanical work to subagents on your own model, and keep the judgment calls yourself.
 - Port upstream's tests for the area first and run them against the upstream binary, then port the code. Each ported file names its upstream source file in a header comment.
 - If upstream and the design disagree, or a test can only pass with a deliberate API difference, stop and report it in the PR. The lead decides it.

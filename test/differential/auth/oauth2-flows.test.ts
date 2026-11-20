@@ -1,6 +1,6 @@
 // OAuth2 flows across both servers (src/apis/record-auth-with-oauth2.ts,
 // src/apis/record-auth-with-oauth2-redirect.ts, src/records/external-auth-*):
-// each flow runs the same steps on upstream PocketBase v0.41.0 and iglo.base,
+// each flow runs the same steps on upstream PocketBase v0.42.3 and iglo.base,
 // each on its own copy of the fixture, and the two transcripts must be equal
 // once generated values are replaced. `_externalAuths` rows written by one
 // server are then read, used and deleted by the other. Not part of `bun test`:

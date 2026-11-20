@@ -1,5 +1,5 @@
 // The search Provider and the simple field resolver (src/search/) against
-// the reference PocketBase v0.41.0 binary. Not part of `bun test`: run
+// the reference PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // Upstream's collections list endpoint (apis/collection.go collectionsList)

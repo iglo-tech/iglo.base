@@ -2,7 +2,7 @@
 //
 // The scenario format for upstream's API table tests. Each scenario runs
 // against iglo.base alone with upstream's expectations (plain `bun test`,
-// test/scenarios/scenarios.test.ts) and against upstream v0.41.0 and
+// test/scenarios/scenarios.test.ts) and against upstream v0.42.3 and
 // iglo.base side by side (`bun run test:reference`,
 // test/differential/scenarios.test.ts). Both modes give every server its own
 // fresh copy of the fixture, as upstream's NewTestApp does.

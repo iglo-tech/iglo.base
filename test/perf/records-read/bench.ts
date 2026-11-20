@@ -1,5 +1,5 @@
 // M2.4: records list and view over HTTP, iglo.base against upstream
-// PocketBase v0.41.0 on the same data. Not shipped; needs
+// PocketBase v0.42.3 on the same data. Not shipped; needs
 // `bun run upstream:prepare`.
 //
 //   nice -n 10 bun test/perf/records-read/bench.ts [--requests 3000] [--concurrency 8] [--keep <dir>]

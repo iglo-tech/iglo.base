@@ -1,6 +1,6 @@
 // Verification, password reset and email change
 // (src/apis/record-auth-verification-*.ts, -password-reset-*.ts,
-// -email-change-*.ts) against the reference PocketBase v0.41.0 binary,
+// -email-change-*.ts) against the reference PocketBase v0.42.3 binary,
 // beyond upstream's scenarios: the cases of token-cases.ts, each on fresh
 // copies of the prepared fixture, compared as the scenario harness compares.
 // Not part of `bun test`: run `bun run test:reference`.

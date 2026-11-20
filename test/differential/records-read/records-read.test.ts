@@ -1,5 +1,5 @@
 // Records list and view (src/apis/record-crud.ts) against the reference
-// PocketBase v0.41.0 binary. Not part of `bun test`: run
+// PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // Two data sets, each served by both servers from copies of the same

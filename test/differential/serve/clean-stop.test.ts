@@ -2,7 +2,7 @@
 // apis/serve.go (the graceful shutdown). After a clean stop (SIGTERM) the
 // last connection to each database closes and SQLite removes the -wal and
 // -shm files, so the data directory holds the same database files in
-// upstream PocketBase v0.41.0 and iglo.base (M5.9 backlog). Not part of
+// upstream PocketBase v0.42.3 and iglo.base (M5.9 backlog). Not part of
 // `bun test`: run `bun run test:reference`.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";

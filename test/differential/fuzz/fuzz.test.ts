@@ -1,4 +1,4 @@
-// The filter fuzzer against the reference PocketBase v0.41.0 binary. Not part
+// The filter fuzzer against the reference PocketBase v0.42.3 binary. Not part
 // of `bun test`: run `bun run test:reference`. The fixed suite, then a short
 // run with a fixed seed; `bun run fuzz:filters` runs the long ones.
 

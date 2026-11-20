@@ -1,6 +1,6 @@
 // docs/design/13-ssr.md (the framework adapters, the session, OAuth2, CSRF, the browser client).
 // End to end: each example app (examples/nextjs, examples/sveltekit) runs in production mode
-// against iglo.base and against upstream PocketBase v0.41.0, on fresh copies of the fixture, and
+// against iglo.base and against upstream PocketBase v0.42.3, on fresh copies of the fixture, and
 // is driven over HTTP with a cookie jar. Once per app, a real browser (agent-browser) checks that
 // a realtime event reaches the live page. Run by `bun run test:examples`, never in parallel.
 

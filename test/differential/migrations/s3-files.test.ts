@@ -1,7 +1,7 @@
 // A JavaScript migration that clears a record's file while S3 storage is on
 // (M5.4b backlog): `migrate up` ends only after the file is deleted from the
 // bucket, as upstream's transaction runs its after-commit functions before it
-// returns. Compared with the reference PocketBase v0.41.0 binary. Not part of
+// returns. Compared with the reference PocketBase v0.42.3 binary. Not part of
 // `bun test`: run `bun run test:reference`.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";

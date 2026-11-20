@@ -1,4 +1,4 @@
-// Realtime against the reference PocketBase v0.41.0 binary: upstream's
+// Realtime against the reference PocketBase v0.42.3 binary: upstream's
 // realtime tests (test/scenarios/realtime.ts) and the extra cases
 // (test/differential/realtime/cases.ts). Each runs on its own fresh copy of
 // the vendored fixture per server, both servers at once; both must meet

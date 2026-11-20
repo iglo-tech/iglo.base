@@ -1,5 +1,5 @@
 // The OAuth2 redirect endpoint (src/apis/record-auth-with-oauth2-redirect.ts)
-// against the reference PocketBase v0.41.0 binary: each scenario of
+// against the reference PocketBase v0.42.3 binary: each scenario of
 // test/scenarios/record-auth-oauth2-redirect.ts runs on its own copy of the
 // fixture per server, both must meet the expectations, and the two
 // observations (status, Location, body, every SSE message) must be equal

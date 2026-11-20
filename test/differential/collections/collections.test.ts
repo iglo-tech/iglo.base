@@ -1,5 +1,5 @@
 // The collection model (src/collections) against the reference PocketBase
-// v0.41.0 binary. Not part of `bun test`: run `bun run test:reference`.
+// v0.42.3 binary. Not part of `bun test`: run `bun run test:reference`.
 //
 //   - created collections: on a fresh upstream install, the collections in
 //     cases.ts are created through POST /api/collections. With upstream

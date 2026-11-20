@@ -1,5 +1,5 @@
 // M3.3: POST /api/batch over HTTP, iglo.base against upstream PocketBase
-// v0.41.0 on the same data. Not shipped; needs `bun run upstream:prepare`.
+// v0.42.3 on the same data. Not shipped; needs `bun run upstream:prepare`.
 //
 //   nice -n 10 bun test/perf/batch/bench.ts [--batches 100] [--items 50] [--concurrency 1]
 //

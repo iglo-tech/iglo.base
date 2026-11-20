@@ -1,5 +1,5 @@
 // M5.1: 1,000 realtime connections on iglo.base and on upstream PocketBase
-// v0.41.0. Not shipped; needs `bun run upstream:prepare` and `bun run build`
+// v0.42.3. Not shipped; needs `bun run upstream:prepare` and `bun run build`
 // (it runs dist/iglo-base). Report: docs/perf/M5.1-realtime.md.
 //
 //   nice -n 10 bun test/perf/realtime/measure.ts [--target iglo-base,upstream] [--connections 1000]

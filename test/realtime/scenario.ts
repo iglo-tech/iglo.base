@@ -11,7 +11,7 @@
 //     fresh copy of the vendored fixture, checked against upstream's
 //     expectations (`check`);
 //   - `bun run test:reference` (test/differential/realtime/): upstream
-//     v0.41.0 and iglo.base, each on its own copy, both checked, and their
+//     v0.42.3 and iglo.base, each on its own copy, both checked, and their
 //     observations compared after normalizing client ids and timestamps.
 //
 // Hook-event expectations (ExpectedEvents, the enrich hook counts) are

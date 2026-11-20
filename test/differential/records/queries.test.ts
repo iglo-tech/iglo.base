@@ -1,6 +1,6 @@
 // The record queries (src/records/record-query.ts, FindRecordByViewFile
 // and DryRunView in src/collections/view.ts) against the reference
-// PocketBase v0.41.0 binary. Not part of `bun test`: run
+// PocketBase v0.42.3 binary. Not part of `bun test`: run
 // `bun run test:reference`.
 //
 // On a fresh upstream install, the test creates through upstream's API two

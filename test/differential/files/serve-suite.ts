@@ -1,5 +1,5 @@
 // Serving record files (GET /api/files/..., src/files/file-api.ts) and
-// thumbnails against the reference PocketBase v0.41.0 binary, on the local
+// thumbnails against the reference PocketBase v0.42.3 binary, on the local
 // storage (serve.test.ts) or on S3 (serve-s3.test.ts, against versitygw). Not
 // part of `bun test`: run `bun run test:reference`.
 //

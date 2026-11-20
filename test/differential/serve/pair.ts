@@ -1,5 +1,5 @@
 // Two servers for the serve-time differential tests (M5.7): upstream
-// PocketBase v0.41.0 and the compiled iglo.base executable, each on its own
+// PocketBase v0.42.3 and the compiled iglo.base executable, each on its own
 // copy of the (optionally prepared) vendored fixture, started with the same
 // extra `serve` arguments. Requests go over raw sockets (the target is sent
 // as written) and the responses are compared whole: status, every header

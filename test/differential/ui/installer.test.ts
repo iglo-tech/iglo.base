@@ -1,5 +1,5 @@
 // Differential case for the installer (apis/installer.go, apis/serve.go's
-// banner): a fresh pb_data on the reference PocketBase v0.41.0 binary and on
+// banner): a fresh pb_data on the reference PocketBase v0.42.3 binary and on
 // the compiled iglo.base executable. The banner and installer output match
 // with the port, time, token and executable path normalized; the token has
 // the same claims; it creates the first superuser through the same request

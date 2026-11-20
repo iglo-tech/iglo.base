@@ -2,7 +2,7 @@
 // and value conversions (modernc.org/sqlite: several statements in one
 // query, the declared column types, DATE/DATETIME/TIMESTAMP text parsed as
 // times) and database/sql's Scan into *string. The queries run one after
-// the other against upstream PocketBase v0.41.0 and the compiled iglo.base
+// the other against upstream PocketBase v0.42.3 and the compiled iglo.base
 // executable, each on its own fixture copy, so the writes of one query are
 // seen by the next. Only execTime is not compared. Not part of `bun test`:
 // run `bun run test:reference`.

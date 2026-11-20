@@ -1,5 +1,5 @@
 // The Collections API (src/apis/collection.ts, collection-import.ts)
-// against the reference PocketBase v0.41.0 binary. Not part of `bun test`:
+// against the reference PocketBase v0.42.3 binary. Not part of `bun test`:
 // run `bun run test:reference`.
 //
 //   - Sessions (api-cases.ts): every request goes to both servers in the
