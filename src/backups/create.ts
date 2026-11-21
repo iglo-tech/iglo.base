@@ -49,6 +49,7 @@ import type { FilesystemWatcher, System } from "@/tools/filesystem/filesystem";
 import { S3System } from "@/tools/filesystem/s3-system";
 import { snakecase } from "@/tools/inflector/inflector";
 import { pseudorandomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrBackupActive =
   "try again later - another backup/restore operation has already been started";
@@ -337,7 +338,7 @@ export async function uploadBackupFile(
   file: File,
   fileKey: string,
 ): Promise<void> {
-  if (fsys instanceof S3System) {
+  if (isInstance(S3System, fsys)) {
     await fsys.uploadFile(file, fileKey);
     return;
   }

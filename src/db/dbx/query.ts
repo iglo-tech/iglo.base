@@ -67,6 +67,7 @@ import { readRows } from "@/db/dbx/rows";
 import type { ReadMode, Rows } from "@/db/dbx/rows";
 import { isStructModel, scanStruct } from "@/db/dbx/struct";
 import type { StructModel } from "@/db/dbx/struct";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Params represents a list of parameter values to be bound to a SQL statement.
 // The map keys are the parameter names while the map values are the corresponding parameter values.
@@ -424,11 +425,11 @@ export class Query {
       let sv: string;
       if (typeof v === "string") {
         sv = "'" + v.replaceAll("'", "''") + "'";
-      } else if (v instanceof Uint8Array) {
+      } else if (isInstance(Uint8Array, v)) {
         sv = "0x" + Buffer.from(v).toString("hex");
       } else if (v === null || v === undefined) {
         sv = "<nil>";
-      } else if (v instanceof Float64) {
+      } else if (isInstance(Float64, v)) {
         sv = String(v.value);
       } else {
         sv = String(v);
@@ -689,7 +690,7 @@ export class Query {
   private realSql(): string | null {
     let reals: Set<string> | null = null;
     for (const name of this.placeholders) {
-      if (Object.hasOwn(this.boundParams, name) && this.boundParams[name] instanceof Float64) {
+      if (Object.hasOwn(this.boundParams, name) && isInstance(Float64, this.boundParams[name])) {
         (reals ??= new Set()).add(name);
       }
     }
@@ -735,9 +736,9 @@ export function replacePlaceholders(
       throw new Error("Named parameter not found: " + name);
     }
     const value = params[name];
-    if (value instanceof Float64) {
+    if (isInstance(Float64, value)) {
       result.push(value.value);
-    } else if (value instanceof BoundValue) {
+    } else if (isInstance(BoundValue, value)) {
       result.push(value.sql(result.length + 1));
     } else {
       result.push(value === undefined ? null : (value as SQLQueryBindings));

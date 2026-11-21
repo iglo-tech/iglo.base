@@ -3,6 +3,7 @@
 // apis/middlewares_test.go): they change or read the settings row of a
 // scenario's pb_data with SQLite. The fixture's settings value is plain
 // JSON stored as a BLOB; a changed value is written back as one.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
@@ -21,7 +22,9 @@ export function readStoredSettings(dataDir: string): SettingsJSON {
     const row = db.query("SELECT value FROM _params WHERE id = 'settings'").get() as {
       value: string | Uint8Array;
     };
-    const text = row.value instanceof Uint8Array ? new TextDecoder().decode(row.value) : row.value;
+    const text = isInstance(Uint8Array, row.value)
+      ? new TextDecoder().decode(row.value)
+      : row.value;
     return JSON.parse(text) as SettingsJSON;
   } finally {
     db.close();

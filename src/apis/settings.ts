@@ -47,6 +47,7 @@ import { schemaLockedMessage } from "@/schema/lock";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // bindSettingsApi registers the settings api endpoints.
 export function bindSettingsApi(_app: App, rg: RouterGroup<RequestEvent>): void {
@@ -207,7 +208,7 @@ async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
   const err = await submitTestS3Filesystem(e.app, form);
   if (err !== null) {
     // form error
-    if (err instanceof Errors) {
+    if (isInstance(Errors, err)) {
       return e.badRequestError("Failed to test the S3 filesystem.", err);
     }
 
@@ -352,7 +353,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
   const err = await submitTestEmailSend(e.app, form);
   if (err !== null) {
     // form error
-    if (err instanceof Errors) {
+    if (isInstance(Errors, err)) {
       return e.badRequestError("Failed to send the test email.", err);
     }
 
@@ -454,7 +455,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
   const [secret, err] = submitAppleClientSecretCreate(form, e.app.clock);
   if (err !== null) {
     // form error
-    if (err instanceof Errors) {
+    if (isInstance(Errors, err)) {
       return e.badRequestError("Invalid client secret data.", err);
     }
 

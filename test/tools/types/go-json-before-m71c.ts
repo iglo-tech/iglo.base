@@ -1,5 +1,6 @@
 // A copy of src/tools/types/go-json.ts as of M7.1b (before the faster writer of
 // M7.1c): the reference the writer tests compare the new output with.
+import { isInstance } from "@/tools/types/is-instance";
 
 // Upstream: Go 1.27 encoding/json/v2 and encoding/json (v1 on top of v2,
 // GOEXPERIMENT=jsonv2), internal/jsonwire (AppendQuote, AppendFloat,
@@ -171,21 +172,20 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
     }
     return out + "]";
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     // []byte is a base64 (StdEncoding) string
     return quote(value.toBase64(), flags);
   }
-  if (value instanceof Date) {
+  if (isInstance(Date, value)) {
     // time.Time is RFC 3339 with nanoseconds, trailing zeros trimmed
     return quote(formatRFC3339Nano(value), flags);
   }
-  const entries =
-    value instanceof Map
-      ? [...(value as Map<unknown, unknown>).entries()].map(([k, v]): [string, unknown] => [
-          String(k),
-          v,
-        ])
-      : Object.entries(value as object);
+  const entries = isInstance<Map<unknown, unknown>>(Map, value)
+    ? [...(value as Map<unknown, unknown>).entries()].map(([k, v]): [string, unknown] => [
+        String(k),
+        v,
+      ])
+    : Object.entries(value as object);
   return encodeObject(entries, flags, depth);
 }
 
@@ -1005,7 +1005,7 @@ function kindOf(node: Node): string {
   if (typeof node === "string") {
     return "string";
   }
-  if (node instanceof NumberNode) {
+  if (isInstance(NumberNode, node)) {
     return "number";
   }
   if (Array.isArray(node)) {
@@ -1046,7 +1046,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       if (node === null) {
         return 0;
       }
-      if (!(node instanceof NumberNode)) {
+      if (!isInstance(NumberNode, node)) {
         throw mismatch(node, "float64");
       }
       return parseFloat64(node.literal);
@@ -1055,7 +1055,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       if (node === null) {
         return 0;
       }
-      if (!(node instanceof NumberNode)) {
+      if (!isInstance(NumberNode, node)) {
         throw mismatch(node, t.kind);
       }
       return parseInt64(node.literal, t.kind);
@@ -1089,7 +1089,7 @@ function convertObject(
   goType: string,
   legacy: boolean,
 ): Record<string, unknown> {
-  if (!(node instanceof ObjectNode)) {
+  if (!isInstance(ObjectNode, node)) {
     throw mismatch(node, goType);
   }
   let firstError: unknown;
@@ -1144,13 +1144,13 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
       );
     }
   }
-  if (node instanceof NumberNode) {
+  if (isInstance(NumberNode, node)) {
     return parseFloat64(node.literal);
   }
   if (Array.isArray(node)) {
     return node.map((item) => convertAny(item, undefined, legacy));
   }
-  if (node instanceof ObjectNode) {
+  if (isInstance(ObjectNode, node)) {
     return convertObject(node, anyType, {}, "map[string]any", legacy);
   }
   return node;

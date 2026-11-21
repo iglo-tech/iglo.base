@@ -17,6 +17,7 @@
 // where it behaves as ValidateStruct.
 
 import { Errors } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Rule represents a validation rule.
 export interface Rule {
@@ -56,7 +57,7 @@ export function isValidatable(value: unknown): value is Validatable {
 //     value's `Validate()`. Return with the validation result.
 export function Validate(value: unknown, ...rules: Array<Rule>): Error | null {
   for (const rule of rules) {
-    if (rule instanceof SkipRule && rule.skip) {
+    if (isInstance(SkipRule, rule) && rule.skip) {
       return null;
     }
     const err = rule.validate(value);
@@ -76,7 +77,7 @@ export function Validate(value: unknown, ...rules: Array<Rule>): Error | null {
   if (Array.isArray(value)) {
     return validateSlice(value);
   }
-  if (value instanceof Map) {
+  if (isInstance<Map<unknown, unknown>>(Map, value)) {
     return validateMap([...value.entries()]);
   }
 

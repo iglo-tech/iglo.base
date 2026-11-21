@@ -16,6 +16,7 @@ import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import type { RuleFunc } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeDate = "date";
 
@@ -123,7 +124,7 @@ export class DateField implements Field {
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const val = record.getRaw(this.name);
-    if (!(val instanceof DateTime)) {
+    if (!isInstance(DateTime, val)) {
       return ErrUnsupportedValueType;
     }
 
@@ -163,7 +164,7 @@ export class DateField implements Field {
 
   private checkRange(min: DateTime, max: DateTime): RuleFunc {
     return (value) => {
-      if (!(value instanceof DateTime) || value.isZero()) {
+      if (!isInstance(DateTime, value) || value.isZero()) {
         return null; // nothing to check
       }
 

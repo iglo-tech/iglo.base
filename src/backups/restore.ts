@@ -43,6 +43,7 @@ import type { System } from "@/tools/filesystem/filesystem";
 import { moveDirContent } from "@/tools/osutils/dir";
 import { S3System } from "@/tools/filesystem/s3-system";
 import { pseudorandomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 // wait max 10 minutes to fetch the backup
 const fetchBackupTimeoutMs = 10 * 60 * 1000;
@@ -159,7 +160,7 @@ async function extractBackup(
   tempZip: string,
 ): Promise<void> {
   let src = localZip;
-  if (fsys instanceof S3System) {
+  if (isInstance(S3System, fsys)) {
     await fsys.download(name, tempZip);
     src = tempZip;
   }

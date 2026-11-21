@@ -76,6 +76,7 @@ import { DateTime } from "@/tools/types/datetime";
 import { bytesToText, sliceOf, stringType, textToBytes } from "@/tools/types/go-json";
 import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
 import { scanJSONArray } from "@/tools/types/json-array";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const CollectionTypeBase = "base";
 export const CollectionTypeAuth = "auth";
@@ -563,7 +564,7 @@ export class Collection
 
   private initIdField(): void {
     const existing = this.fields.getByName(FieldNameId);
-    const field = existing instanceof TextField ? existing : null;
+    const field = isInstance(TextField, existing) ? existing : null;
     if (field === null) {
       // create default field
       const created = new TextField({
@@ -593,7 +594,7 @@ export class Collection
 
   private initPasswordField(): void {
     const existing = this.fields.getByName(FieldNamePassword);
-    const field = existing instanceof PasswordField ? existing : null;
+    const field = isInstance(PasswordField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -615,7 +616,7 @@ export class Collection
 
   private initTokenKeyField(): void {
     const existing = this.fields.getByName(FieldNameTokenKey);
-    const field = existing instanceof TextField ? existing : null;
+    const field = isInstance(TextField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -653,7 +654,7 @@ export class Collection
 
   private initEmailField(): void {
     const existing = this.fields.getByName(FieldNameEmail);
-    const field = existing instanceof EmailField ? existing : null;
+    const field = isInstance(EmailField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -688,7 +689,7 @@ export class Collection
 
   private initEmailVisibilityField(): void {
     const existing = this.fields.getByName(FieldNameEmailVisibility);
-    const field = existing instanceof BoolField ? existing : null;
+    const field = isInstance(BoolField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -705,7 +706,7 @@ export class Collection
 
   private initVerifiedField(): void {
     const existing = this.fields.getByName(FieldNameVerified);
-    const field = existing instanceof BoolField ? existing : null;
+    const field = isInstance(BoolField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -814,7 +815,7 @@ function scanString(v: unknown, column: string): string {
       `sql: Scan error on column ${goQuote(column)}: converting NULL to string is unsupported`,
     );
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
+  if (typeof v === "string" || isInstance(Uint8Array, v)) {
     return bytesToText(v);
   }
   return String(v);
@@ -834,7 +835,7 @@ function scanBool(v: unknown, column: string): boolean {
       return false;
     }
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
+  if (typeof v === "string" || isInstance(Uint8Array, v)) {
     switch (bytesToText(v)) {
       case "1":
       case "t":

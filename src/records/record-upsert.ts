@@ -23,6 +23,7 @@ import { By, Validate } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { Equal } from "@/validators/equal";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 const accessLevelDefault = 0;
 const accessLevelManager = 1;
@@ -264,7 +265,7 @@ export class RecordUpsert {
     this.#disablePasswordValidations = false;
 
     const rawPassword = this.#record.getRaw(FieldNamePassword);
-    if (rawPassword instanceof PasswordFieldValue) {
+    if (isInstance(PasswordFieldValue, rawPassword)) {
       if (
         // programmatically set custom plain password value
         (rawPassword.plain !== "" && rawPassword.plain !== this.#password) ||

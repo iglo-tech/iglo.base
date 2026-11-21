@@ -31,6 +31,7 @@ import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { formatFloatV } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 import { join } from "node:path";
 
 const runSQLMaxRows = 1000;
@@ -232,7 +233,7 @@ function scanString(v: unknown, declType: string): string | null {
     // a REAL value: the rows read every INTEGER value as a bigint
     return formatFloatV(v);
   }
-  if (v instanceof Uint8Array) {
+  if (isInstance(Uint8Array, v)) {
     // unpaired U+DC80..U+DCFF stand for invalid bytes (bytesToText)
     return bytesToText(v).replaceAll(/(?<![\ud800-\udbff])[\udc80-\udcff]/g, "�");
   }

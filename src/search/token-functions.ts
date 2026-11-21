@@ -15,6 +15,7 @@ import {
   NullFallbackEnforced,
 } from "@/search/simple-field-resolver";
 import type { ResolverResult } from "@/search/simple-field-resolver";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the resolver of a function argument token; null is Go's nil result with
 // a nil error
@@ -35,7 +36,7 @@ function resolveArg(
   try {
     return argTokenResolverFunc(arg);
   } catch (error) {
-    if (error instanceof NilPointerPanic) {
+    if (isInstance(NilPointerPanic, error)) {
       throw error;
     }
     throw new Error(`${message}: ${errorText(error)}`, { cause: error });
@@ -223,7 +224,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
 
 // Go's != on the param values: a Float64 compares by its number
 function sameParam(a: unknown, b: unknown): boolean {
-  if (a instanceof Float64 && b instanceof Float64) {
+  if (isInstance(Float64, a) && isInstance(Float64, b)) {
     return a.value === b.value;
   }
   return a === b;

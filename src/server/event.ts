@@ -45,6 +45,7 @@ import { NewFileFromMultipart } from "@/tools/filesystem/file";
 import { InvalidModifierDataError, PickPanic, pick } from "@/tools/picker/pick";
 import { isJSONMarshaler, isJSONUnmarshaler, marshal } from "@/tools/types/go-json";
 import type { JSONUnmarshaler } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrUnsupportedContentType = newBadRequestError("Unsupported Content-Type", undefined);
 export const ErrInvalidRedirectStatusCode = newInternalServerError(
@@ -150,7 +151,7 @@ export class Event extends Resolver {
 
   // SetAll saves all items from m into the current event data store.
   setAll(m: Map<string, unknown> | Record<string, unknown>): void {
-    for (const [k, v] of m instanceof Map ? m : Object.entries(m)) {
+    for (const [k, v] of isInstance<Map<unknown, unknown>>(Map, m) ? m : Object.entries(m)) {
       this.set(k, v);
     }
   }
@@ -190,7 +191,7 @@ export class Event extends Resolver {
         data = pick(data, rawFields);
         picked = true;
       } catch (error) {
-        if (error instanceof PickPanic) {
+        if (isInstance(PickPanic, error)) {
           throw error; // a Go panic: the panic recovery middleware answers 500
         }
         if (!(error instanceof InvalidModifierDataError)) {

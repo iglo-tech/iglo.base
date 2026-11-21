@@ -160,6 +160,7 @@ import { structOf, unmarshalJSON } from "@/server/unmarshal-request-data";
 import type { FieldType } from "@/server/unmarshal-request-data";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { ErrorObject, NewError } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -216,7 +217,7 @@ function recordClass(clock: Clock, blank: WeakSet<object>, models: QueryModels):
 }
 
 function isFieldsListValue(v: unknown): v is FieldsList | Array<unknown> {
-  return v instanceof FieldsList || Array.isArray(v);
+  return isInstance(FieldsList, v) || Array.isArray(v);
 }
 
 // `collection.fields = ...` gets a list or an array of fields; rawOptions
@@ -225,10 +226,9 @@ const collectionAdapter = classAdapter(collectionClass, {
   set(target, key, value, m) {
     if (key === "rawOptions") {
       const raw = m.toHost(value);
-      (target as Collection).rawOptions =
-        raw instanceof JSONRaw
-          ? raw
-          : new JSONRaw(bytesToText(m.toBytes(value) ?? new Uint8Array()));
+      (target as Collection).rawOptions = isInstance(JSONRaw, raw)
+        ? raw
+        : new JSONRaw(bytesToText(m.toBytes(value) ?? new Uint8Array()));
       return true;
     }
     if (key !== "fields") {
@@ -238,7 +238,7 @@ const collectionAdapter = classAdapter(collectionClass, {
     if (!isFieldsListValue(host)) {
       throw new m.vm.TypeError(`Go type conversion error: could not convert ${String(value)}`);
     }
-    if (host instanceof FieldsList) {
+    if (isInstance(FieldsList, host)) {
       (target as Collection).fields = host;
     } else {
       const list = new FieldsList();
@@ -449,7 +449,7 @@ function adapters(
 
   return (target) => {
     for (const [type, adapter] of singles) {
-      if (target instanceof type) {
+      if (isInstance<object>(type, target)) {
         return adapter;
       }
     }
@@ -795,7 +795,7 @@ function bindCore(
 
   scope.Record = constructor(m, "Record", (collection, data) => {
     const target = m.targetOf(collection);
-    if (!(target instanceof Collection)) {
+    if (!isInstance(Collection, target)) {
       // Go's zero Record: a query gives it a collection
       const record = newRecord(new Collection());
       blank.add(record);
@@ -913,16 +913,16 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
 
   const target = m.targetOf(dst);
 
-  if (target instanceof DateTime) {
+  if (isInstance(DateTime, target)) {
     return; // a value, not a pointer
   }
 
-  if (target instanceof GoJSONMap || target instanceof GoJSONArray) {
+  if (isInstance(GoJSONMap, target) || isInstance(GoJSONArray, target)) {
     target.scan(raw);
     return;
   }
 
-  if (target instanceof Settings) {
+  if (isInstance(Settings, target)) {
     unmarshalSettings(raw, target);
     return;
   }
@@ -944,7 +944,7 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
     models.unmarshalArray(dst as Array<unknown>, decoded, (data) => {
       const model = models.modelOf(dst);
       const host = m.targetOf(model);
-      if (host instanceof Collection) {
+      if (isInstance(Collection, host)) {
         const collection = new Collection();
         collection.unmarshalJSON(data);
         return m.toVm(collection);
@@ -969,7 +969,7 @@ function toStringValue(m: Membrane, raw: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     return value.string();
   }
   try {
@@ -1008,10 +1008,10 @@ function toBytesValue(m: Membrane, raw: unknown): Uint8Array {
   if (typeof value === "string") {
     return textToBytes(value);
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     return textToBytes(value.bytes());
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     return value;
   }
   const bytes = Array.isArray(value) ? castBytes(value) : undefined;
@@ -1377,8 +1377,8 @@ export function bindAll(
 ): Membrane {
   const m = new Membrane(
     context,
-    (target) => (target instanceof RecordSlot ? target.record : target),
-    (target) => (target instanceof RecordModel ? new RecordSlot(target) : target),
+    (target) => (isInstance(RecordSlot, target) ? target.record : target),
+    (target) => (isInstance(RecordModel, target) ? new RecordSlot(target) : target),
   );
   const blank = new WeakSet<object>();
   const models = new QueryModels(m, blank);

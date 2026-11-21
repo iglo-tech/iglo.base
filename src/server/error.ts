@@ -8,6 +8,7 @@
 // their owning tasks (M1.x).
 
 import { NoRowsError } from "@/db/dbx/rows";
+import { isInstance } from "@/tools/types/is-instance";
 
 // SafeErrorItem defines a common error interface for a printable public safe error.
 export interface SafeErrorItem {
@@ -136,7 +137,7 @@ export function errorsAs<E extends Error>(
   type: abstract new (...args: Array<never>) => E,
 ): E | undefined {
   for (let current: unknown = err; current !== undefined && current !== null;) {
-    if (current instanceof type) {
+    if (isInstance<E>(type, current)) {
       return current;
     }
     // errors.Join: the first joined error that has one
@@ -337,7 +338,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function safeErrorsData(data: unknown): Record<string, unknown> {
-  if (data instanceof ValidationErrors) {
+  if (isInstance(ValidationErrors, data)) {
     return resolveSafeErrorsData(data.errors);
   }
   if (data instanceof Error) {
@@ -347,7 +348,7 @@ function safeErrorsData(data: unknown): Record<string, unknown> {
     }
     return {}; // not nil to ensure that is json serialized as object
   }
-  if (data instanceof Map) {
+  if (isInstance<Map<unknown, unknown>>(Map, data)) {
     return resolveSafeErrorsData(Object.fromEntries(data) as Record<string, unknown>);
   }
   if (isPlainObject(data)) {
@@ -371,8 +372,8 @@ function resolveSafeErrorsData(data: Record<string, unknown>): Record<string, un
 
 function isNestedError(err: unknown): boolean {
   return (
-    err instanceof ValidationErrors ||
-    err instanceof Map ||
+    isInstance(ValidationErrors, err) ||
+    isInstance<Map<unknown, unknown>>(Map, err) ||
     (isPlainObject(err) && !isSafeErrorItem(err))
   );
 }

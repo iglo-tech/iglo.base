@@ -174,6 +174,7 @@ import { jsonArrayValue } from "@/tools/types/json-array";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { Errors, NewError } from "@/validation/error";
 import { NormalizeUniqueIndexError } from "@/validators/db";
+import { isInstance } from "@/tools/types/is-instance";
 
 // -------------------------------------------------------------------
 // the chain runner
@@ -212,7 +213,7 @@ export function run(step: Step): void | Promise<void> {
     if (pending === null) {
       return;
     }
-    if (pending instanceof Promise) {
+    if (isInstance(Promise, pending)) {
       return runAsync(state, pending);
     }
   }
@@ -232,7 +233,7 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
       if (next === null) {
         return;
       }
-      if (next instanceof Promise) {
+      if (isInstance(Promise, next)) {
         pending = next;
         break;
       }
@@ -267,11 +268,11 @@ function advance(state: RunState): Promise<unknown> | null | undefined {
     stack.pop();
     return stack.length === 0 ? null : undefined;
   }
-  if (res.value instanceof Call) {
+  if (isInstance(Call, res.value)) {
     stack.push(res.value.step);
     return undefined;
   }
-  if (res.value instanceof Promise) {
+  if (isInstance(Promise, res.value)) {
     return res.value;
   }
   state.input = res.value;
@@ -282,7 +283,7 @@ function advance(state: RunState): Promise<unknown> | null | undefined {
 // stay synchronous.
 export function runSync(step: Step): void {
   const result = run(step);
-  if (result instanceof Promise) {
+  if (isInstance(Promise, result)) {
     // the promise still settles; its outcome no longer matters
     result.catch(() => {});
     throw new Error("record interceptors must be synchronous inside a transaction");
@@ -345,7 +346,7 @@ export function deleteRecordSync(app: RecordsApp, record: Record): void {
 function settleHashesSync(record: Record): void {
   for (const field of record.collection().fields) {
     const raw = field.type() === "password" ? record.getRaw(field.getName()) : undefined;
-    if (raw instanceof PasswordFieldValue && raw.hashPending()) {
+    if (isInstance(PasswordFieldValue, raw) && raw.hashPending()) {
       void raw.hash;
     }
   }
@@ -356,13 +357,13 @@ function settleHashesSync(record: Record): void {
 // not compute it on the event loop. Inside a transaction the hashes are
 // computed at once.
 export function* settlePasswordHashes(app: RecordsApp, record: Record): Step {
-  if (app.databases.nonconcurrentDB() instanceof Tx) {
+  if (isInstance(Tx, app.databases.nonconcurrentDB())) {
     settleHashesSync(record);
     return;
   }
   for (const field of record.collection().fields) {
     const raw = field.type() === "password" ? record.getRaw(field.getName()) : undefined;
-    if (raw instanceof PasswordFieldValue && raw.hashPending()) {
+    if (isInstance(PasswordFieldValue, raw) && raw.hashPending()) {
       yield raw.hashSettled();
     }
   }
@@ -407,7 +408,7 @@ export function* callFieldInterceptors(
     }
 
     const result = fn();
-    if (result instanceof Promise) {
+    if (isInstance(Promise, result)) {
       yield result;
     }
 
@@ -428,7 +429,7 @@ export function* callFieldInterceptors(
 
   // a synchronous result needs no round trip through the runner
   const result = fn();
-  if (result instanceof Promise) {
+  if (isInstance(Promise, result)) {
     yield result;
   }
 }
@@ -446,7 +447,7 @@ function noop(): Step {
 // RunInTransaction for a step: inside a transaction it is the same
 // transaction (src/db/tx.ts), so the step runs inline.
 export function* inTransaction(app: RecordsApp, fn: Next): Step {
-  if (app.databases.nonconcurrentDB() instanceof Tx) {
+  if (isInstance(Tx, app.databases.nonconcurrentDB())) {
     yield* fn(app);
     return;
   }
@@ -563,7 +564,7 @@ function reservePreUploadedId(record: Record): void {
   }
 
   for (const field of record.collection().fields) {
-    if (field instanceof FileField) {
+    if (isInstance(FileField, field)) {
       const id = field.preUploadedId(record);
       if (id !== "") {
         record.id = id;
@@ -608,7 +609,7 @@ function* afterSuccess(
     if (successAction === InterceptorActionAfterDelete) {
       // a promise while every delete worker is busy
       const waiting = deleteRecordFiles(app, record);
-      if (waiting instanceof Promise) {
+      if (isInstance(Promise, waiting)) {
         yield waiting;
       }
     }
@@ -645,7 +646,7 @@ function* afterSuccess(
     const result = afterTransaction(txErr, base);
 
     // an async interceptor ends after the transaction call returned
-    if (result instanceof Promise) {
+    if (isInstance(Promise, result)) {
       if (app.afterTransaction !== undefined) {
         app.afterTransaction.push(result);
         return;
@@ -944,7 +945,7 @@ function* deleteRefRecords(
   refIds: ReadonlyArray<string>,
   field: Field,
 ): Step {
-  if (!(field instanceof RelationField)) {
+  if (!isInstance(RelationField, field)) {
     throw new Error("only RelationField is supported at the moment, got " + field.type());
   }
   const relField = field;
@@ -1016,7 +1017,7 @@ export function isNoRows(err: unknown): boolean {
   if (isNoRowsError(err)) {
     return true;
   }
-  if (err instanceof AggregateError || err instanceof JoinedErrors) {
+  if (err instanceof AggregateError || isInstance(JoinedErrors, err)) {
     return err.errors.some(isNoRows);
   }
   if (err instanceof Error && err.cause !== undefined) {
@@ -1055,12 +1056,12 @@ function driverValues(data: Params): Params {
 // it is. Exported for the record create rule check (src/apis/record-crud.ts),
 // which binds a record's dbExport() as query parameters.
 export function driverValue(key: string, value: unknown): unknown {
-  if (value instanceof DateTime || value instanceof GeoPoint) {
+  if (isInstance(DateTime, value) || isInstance(GeoPoint, value)) {
     return value.value();
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     const v = value.value();
-    if (v instanceof Uint8Array) {
+    if (isInstance(Uint8Array, v)) {
       // a Go string with bytes that are not valid UTF-8, stored as TEXT
       return newExp(`CAST({:${jsonTextParam(key)}} AS TEXT)`, { [jsonTextParam(key)]: v });
     }

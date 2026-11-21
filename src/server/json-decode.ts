@@ -1,3 +1,4 @@
+import { isInstance } from "@/tools/types/is-instance";
 // Upstream: Go's encoding/json/v2 decoding rules as used by
 // tools/router (Event.BindBody with jsontext.Decoder and
 // MatchCaseInsensitiveNames, UnmarshalRequestData's @jsonPayload with
@@ -389,14 +390,14 @@ export function isJsonObject(
     typeof value === "object" &&
     value !== null &&
     !Array.isArray(value) &&
-    !(value instanceof JsonNumber)
+    !isInstance(JsonNumber, value)
   );
 }
 
 // The value as unmarshaled into a Go `any`: objects become plain objects,
 // numbers float64.
 export function toAny(value: JsonValue): unknown {
-  if (value instanceof JsonNumber) {
+  if (isInstance(JsonNumber, value)) {
     const n = Number(value.literal);
     if (!Number.isFinite(n)) {
       // out of float64 range: json/v2 fails instead of storing ±Inf

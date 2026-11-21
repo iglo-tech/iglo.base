@@ -1,3 +1,4 @@
+import { isInstance } from "@/tools/types/is-instance";
 // Upstream: Go 1.27 time/format.go (nextStdChunk, parse, getnum, skip,
 // lookup, parseTimeZone, parseNanoseconds, atoi), time/format_rfc3339.go
 // (parseRFC3339, the RFC3339 fast path, which accepts a subset of what the
@@ -755,7 +756,7 @@ export function parse(layout: string, value: string): ParsedTime {
         }
       }
     } catch (error) {
-      if (error instanceof BadValue) {
+      if (isInstance(BadValue, error)) {
         throw new ParseError(alayout, avalue);
       }
       throw error;

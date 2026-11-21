@@ -42,6 +42,7 @@
 //       and, on a copy of the changed pb_data, by iglo.base with the error
 //       FindAuthRecordByToken returns; an unchanged user's token stays
 //       valid on both.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, expect, test } from "bun:test";
@@ -175,7 +176,7 @@ async function api(
     headers.authorization = auth;
   }
   const init: RequestInit = { method, headers };
-  if (body instanceof FormData) {
+  if (isInstance(FormData, body)) {
     init.body = body;
   } else if (body !== undefined) {
     headers["content-type"] = "application/json";

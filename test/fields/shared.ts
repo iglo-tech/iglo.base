@@ -1,5 +1,6 @@
 // Upstream: core/field_test.go (the shared base-method, id, name and help
 // validation helpers every field test runs)
+import { isInstance } from "@/tools/types/is-instance";
 
 import { expect, test } from "bun:test";
 
@@ -18,7 +19,7 @@ function newField(fieldType: string): Field {
 }
 
 function errorKeys(err: Error | null): Record<string, unknown> {
-  return err instanceof Errors ? err.errors : {};
+  return isInstance(Errors, err) ? err.errors : {};
 }
 
 export function testFieldBaseMethods(fieldType: string): void {

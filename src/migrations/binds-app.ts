@@ -76,6 +76,7 @@ import {
 } from "@/records/record-save";
 import { Settings } from "@/settings/settings-model";
 import { saveSettingsSync } from "@/settings/settings-query";
+import { isInstance } from "@/tools/types/is-instance";
 
 // A function of the migration file with the (txApp) => error signature.
 export type RunTxFunc = (fn: unknown, txApp: App) => void;
@@ -276,9 +277,9 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
     save: (model: unknown) => save(app, model, true),
     saveNoValidate: (model: unknown) => save(app, model, false),
     delete: (model: unknown) => {
-      if (model instanceof Collection) {
+      if (isInstance(Collection, model)) {
         deleteCollection(app, model);
-      } else if (model instanceof RecordModel) {
+      } else if (isInstance(RecordModel, model)) {
         deleteRecordSync(app, model);
       } else {
         throw unsupportedModel(model);
@@ -288,14 +289,14 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       if (model === null) {
         return;
       }
-      if (model instanceof Collection) {
+      if (isInstance(Collection, model)) {
         const err = validateCollection(app, model);
         if (err !== null) {
           throw err;
         }
-      } else if (model instanceof RecordModel) {
+      } else if (isInstance(RecordModel, model)) {
         validateRecordSync(app, model);
-      } else if (model instanceof Settings) {
+      } else if (isInstance(Settings, model)) {
         const err = model.validate();
         if (err !== null) {
           throw err;
@@ -401,19 +402,19 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
 }
 
 function save(app: App, model: unknown, withValidations: boolean): void {
-  if (model instanceof Collection) {
+  if (isInstance(Collection, model)) {
     if (withValidations) {
       saveCollection(app, model);
     } else {
       saveCollectionNoValidate(app, model);
     }
-  } else if (model instanceof RecordModel) {
+  } else if (isInstance(RecordModel, model)) {
     if (withValidations) {
       saveRecordSync(app, model);
     } else {
       saveRecordNoValidateSync(app, model);
     }
-  } else if (model instanceof Settings) {
+  } else if (isInstance(Settings, model)) {
     saveSettings(app, model, withValidations);
   } else {
     throw unsupportedModel(model);

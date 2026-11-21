@@ -26,6 +26,7 @@ import { DateTime } from "@/tools/types/datetime";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { bytesToText } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
+import { isInstance } from "@/tools/types/is-instance";
 
 // EnsureString ensures the given value is a string. If the value is a byte
 // slice, it will be typecast into a string. An error is returned otherwise.
@@ -33,10 +34,10 @@ export function EnsureString(value: unknown): [string, Error | null] {
   if (typeof value === "string") {
     return [value, null];
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     return [bytesToText(value), null];
   }
-  if (value instanceof DateTime) {
+  if (isInstance(DateTime, value)) {
     return [value.string(), null];
   }
   return ["", new Error("must be either a string or byte slice")];
@@ -50,7 +51,7 @@ export function StringOrBytes(
   if (typeof value === "string") {
     return [true, value, false, null];
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     return [false, "", true, value];
   }
   return [false, "", false, null];
@@ -63,10 +64,10 @@ export function LengthOfValue(value: unknown): [number, Error | null] {
   if (typeof value === "string") {
     return [byteLength(value), null];
   }
-  if (value instanceof Uint8Array || Array.isArray(value)) {
+  if (isInstance(Uint8Array, value) || Array.isArray(value)) {
     return [value.length, null];
   }
-  if (value instanceof Map) {
+  if (isInstance<Map<unknown, unknown>>(Map, value)) {
     return [value.size, null];
   }
   if (isMap(value)) {
@@ -101,7 +102,7 @@ export function ToUint(value: unknown): [bigint, Error | null] {
 // all incompatible types. Any JS number converts (a Float64 threshold says
 // the value is a float64).
 export function ToFloat(value: unknown): [number, Error | null] {
-  if (value instanceof Float64) {
+  if (isInstance(Float64, value)) {
     return [value.value, null];
   }
   if (typeof value === "number") {
@@ -133,19 +134,19 @@ export function IsEmpty(value: unknown): boolean {
     default:
       break;
   }
-  if (value instanceof Float64) {
+  if (isInstance(Float64, value)) {
     return value.value === 0;
   }
-  if (value instanceof Uint8Array || Array.isArray(value)) {
+  if (isInstance(Uint8Array, value) || Array.isArray(value)) {
     return value.length === 0;
   }
-  if (value instanceof Map) {
+  if (isInstance<Map<unknown, unknown>>(Map, value)) {
     return value.size === 0;
   }
-  if (value instanceof DateTime) {
+  if (isInstance(DateTime, value)) {
     return value.isZero();
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     return value.bytes().length === 0;
   }
   if (isMap(value)) {
@@ -164,10 +165,10 @@ export function Indirect(value: unknown): [unknown, boolean] {
   if (value === null || value === undefined) {
     return [null, true];
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     return value.bytes().length === 0 ? [null, true] : Indirect(value.string());
   }
-  if (value instanceof GeoPoint) {
+  if (isInstance(GeoPoint, value)) {
     return Indirect(value.value());
   }
   return [value, false];
@@ -201,13 +202,13 @@ export function kindOf(value: unknown): string {
     default:
       break;
   }
-  if (value instanceof Float64) {
+  if (isInstance(Float64, value)) {
     return "float64";
   }
-  if (value instanceof Uint8Array || Array.isArray(value)) {
+  if (isInstance(Uint8Array, value) || Array.isArray(value)) {
     return "slice";
   }
-  if (value instanceof Map || isMap(value)) {
+  if (isInstance<Map<unknown, unknown>>(Map, value) || isMap(value)) {
     return "map";
   }
   return "struct";

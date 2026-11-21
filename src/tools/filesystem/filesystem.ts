@@ -46,6 +46,7 @@ import { serveContent } from "@/server/serve-content";
 import { detect } from "@/tools/mimetype/mimetype";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ThumbSizeRegex = lazyMustCompile(String.raw`^(\d+)x(\d+)(t|b|f)?$`);
 
@@ -499,7 +500,7 @@ export class System {
       try {
         const buf = new Uint8Array(spoolChunk);
         for (const part of parts) {
-          if (part instanceof Uint8Array) {
+          if (isInstance(Uint8Array, part)) {
             await out.write(part);
             continue;
           }

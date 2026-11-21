@@ -20,6 +20,7 @@ import { parseQuery, encodeValues, queryEscape } from "@/server/request";
 import type { Values } from "@/server/request";
 import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { anyType, mapOf, stringType, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // defaultExpiryDelta: how many seconds before its expiry a token counts as expired
 const defaultExpiryDeltaMs = 10_000;
@@ -75,7 +76,7 @@ export class Token {
     if (raw === null) {
       return undefined;
     }
-    if (!(raw instanceof Map)) {
+    if (!isInstance<Map<unknown, unknown>>(Map, raw)) {
       return Object.hasOwn(raw, key) ? raw[key] : undefined;
     }
 

@@ -19,6 +19,7 @@ import {
 } from "@/server/json-decode";
 import type { JsonValue } from "@/server/json-decode";
 import { goInt } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export type Kind =
   | "bool"
@@ -91,11 +92,15 @@ export interface MapRef {
 }
 
 function getValues(data: RequestData, key: string): Array<string> | undefined {
-  return data instanceof Map ? data.get(key) : Object.hasOwn(data, key) ? data[key] : undefined;
+  return isInstance<Map<unknown, unknown>>(Map, data)
+    ? data.get(key)
+    : Object.hasOwn(data, key)
+      ? data[key]
+      : undefined;
 }
 
 function entries(data: RequestData): Array<[string, Array<string>]> {
-  return data instanceof Map ? [...data] : Object.entries(data);
+  return isInstance<Map<unknown, unknown>>(Map, data) ? [...data] : Object.entries(data);
 }
 
 // UnmarshalRequestData unmarshals url.Values type of data (query,
@@ -572,7 +577,7 @@ function jsonKind(value: JsonValue): string {
   if (typeof value === "string") {
     return "string";
   }
-  if (value instanceof JsonNumber) {
+  if (isInstance(JsonNumber, value)) {
     return "number";
   }
   if (Array.isArray(value)) {
@@ -805,7 +810,7 @@ function unmarshalAny(value: JsonValue, current: unknown): unknown {
     return value;
   }
   if (typeof current === "number") {
-    if (!(value instanceof JsonNumber)) {
+    if (!isInstance(JsonNumber, value)) {
       throw cannot(value, "float64");
     }
     return toAny(value);
@@ -861,7 +866,7 @@ function jsonFieldValue(
         return value;
       case "float32":
       case "float64": {
-        if (!(value instanceof JsonNumber)) {
+        if (!isInstance(JsonNumber, value)) {
           throw cannot(value, type);
         }
         const n = Number(value.literal);
@@ -871,7 +876,7 @@ function jsonFieldValue(
         return type === "float32" ? Math.fround(n) : n;
       }
       default: {
-        if (!(value instanceof JsonNumber) || !/^-?[0-9]+$/.test(value.literal)) {
+        if (!isInstance(JsonNumber, value) || !/^-?[0-9]+$/.test(value.literal)) {
           throw cannot(value, type);
         }
         const n = BigInt(value.literal);

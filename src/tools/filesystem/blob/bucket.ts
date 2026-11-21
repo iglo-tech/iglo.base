@@ -26,6 +26,7 @@ import type {
   ListPage,
   ReaderAttributes,
 } from "@/tools/filesystem/blob/driver";
+import { isInstance } from "@/tools/types/is-instance";
 
 // ErrNotFound: resource not found
 export const ErrNotFound = new Error("resource not found");
@@ -67,7 +68,7 @@ export function errorsAs<T extends Error>(
   err: unknown,
   type: abstract new (...args: Array<never>) => T,
 ): T | null {
-  if (err instanceof type) {
+  if (isInstance<T>(type, err)) {
     return err;
   }
   if (err instanceof AggregateError) {

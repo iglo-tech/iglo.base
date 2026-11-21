@@ -76,6 +76,7 @@ import { columnify } from "@/tools/inflector/inflector";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { pseudorandomString, randomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 // a handler as a step: yields what RecordIO returns and gets it back resolved
 export type HandlerStep = Generator<unknown, HandlerResult, unknown>;
@@ -460,7 +461,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
   if (skipPlainPasswordRecordValidators) {
     // unset the plain value to skip the plain password field validators
     const raw = record.getRaw(FieldNamePassword);
-    if (raw instanceof PasswordFieldValue) {
+    if (isInstance(PasswordFieldValue, raw)) {
       raw.plain = "";
     }
   }
@@ -499,7 +500,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
       const value = driverValue(rawKey, v);
       const k = columnify(rawKey); // columnify is just as extra measure in case of custom fields
       const param = "__pb_create__" + k;
-      if (isExpression(value) && v instanceof JSONRaw) {
+      if (isExpression(value) && isInstance(JSONRaw, v)) {
         // JSON text that is not valid UTF-8: a Go string with its bytes
         setOwn(dummyParams, param, v.value());
         selects.push("CAST({:" + param + "} AS TEXT) AS [[" + k + "]]");

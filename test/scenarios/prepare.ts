@@ -1,6 +1,7 @@
 // Helpers for scenario `prepare` steps (upstream's BeforeTestFunc): they
 // change a scenario's fixture copy before any server starts on it, as
 // upstream's tests change the test app.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
@@ -46,7 +47,7 @@ export function setRateLimits(dataDir: string, rules: Array<RateLimitRuleData>):
       value: string | Uint8Array;
     };
     // the fixture stores the value as a BLOB; it is written back as one
-    const isBlob = row.value instanceof Uint8Array;
+    const isBlob = isInstance(Uint8Array, row.value);
     const text = isBlob ? new TextDecoder().decode(row.value as Uint8Array) : (row.value as string);
     const settings = JSON.parse(text) as { rateLimits: { enabled: boolean; rules: unknown } };
     settings.rateLimits.enabled = true;

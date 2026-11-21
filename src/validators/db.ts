@@ -5,6 +5,7 @@ import { HashExp } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { Errors, NewError } from "@/validation/error";
 import type { RuleFunc } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // UniqueId checks whether a field string id already exists in the
 // specified table.
@@ -60,7 +61,7 @@ export function NormalizeUniqueIndexError(
     return err;
   }
 
-  if (err instanceof Errors) {
+  if (isInstance(Errors, err)) {
     return err;
   }
 

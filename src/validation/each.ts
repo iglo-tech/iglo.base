@@ -8,6 +8,7 @@ import { Errors } from "@/validation/error";
 import { isMap } from "@/validation/util";
 import { Validate } from "@/validation/validation";
 import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Each returns a validation rule that loops through an iterable (map, slice
 // or array) and validates each value inside with the provided rules. An
@@ -37,8 +38,10 @@ export class EachRule implements Rule {
           errs.errors[String(i)] = err;
         }
       }
-    } else if (value instanceof Map || isMap(value)) {
-      const entries = value instanceof Map ? [...value.entries()] : Object.entries(value);
+    } else if (isInstance<Map<unknown, unknown>>(Map, value) || isMap(value)) {
+      const entries = isInstance<Map<unknown, unknown>>(Map, value)
+        ? [...value.entries()]
+        : Object.entries(value);
       for (const [k, val] of entries) {
         const err = Validate(val, ...this.rules);
         if (err !== null) {

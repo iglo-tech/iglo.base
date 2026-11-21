@@ -31,6 +31,7 @@ import { appendInt, fieldsOf, parse, unixToInternal } from "@/tools/types/go-tim
 import type { Instant } from "@/tools/types/go-time";
 import { UTC, dateIn, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
 import type { Location } from "@/tools/types/go-zoneinfo";
+import { isInstance } from "@/tools/types/is-instance";
 
 // DefaultDateLayout specifies the default app date strings layout.
 export const DefaultDateLayout = "2006-01-02 15:04:05.000Z";
@@ -227,10 +228,10 @@ export class DateTime {
   scan(value: unknown): void {
     let t: Instant;
     let loc: Location;
-    if (value instanceof DateTime) {
+    if (isInstance(DateTime, value)) {
       t = value.instant();
       loc = value.loc;
-    } else if (value instanceof Date) {
+    } else if (isInstance(Date, value)) {
       t = fromDate(value);
       loc = localLocation();
     } else if (typeof value === "string") {

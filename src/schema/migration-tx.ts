@@ -22,6 +22,7 @@ import { findRecordById, recordQuery, recordsTarget } from "@/records/record-que
 import { findRecordIdsByFilter, findRecordsByFilter } from "@/records/record-query-filter";
 import { newRecord } from "@/records/record-model";
 import type { Record as RecordModel } from "@/records/record-model";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the record of a helper: the record as a superuser's API read returns it, so
 // the hidden fields and the email are in it whatever emailVisibility says (the
@@ -61,7 +62,7 @@ function rowOf(record: RecordModel): MigrationRow {
 // a value the apply refuses: files need the request's upload path
 function refuseUploads(data: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(data)) {
-    if (value instanceof Blob) {
+    if (isInstance(Blob, value)) {
       throw new Error(
         `a migration cannot upload files (the value of ${JSON.stringify(key)} is a file)`,
       );

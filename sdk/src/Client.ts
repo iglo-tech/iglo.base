@@ -18,6 +18,7 @@ import type { RecordModel } from "@sdk/tools/dtos";
 import { normalizeUnknownQueryParams, serializeQueryParams } from "@sdk/tools/options";
 import type { SendOptions, FileOptions } from "@sdk/tools/options";
 import { isFormData, convertToFormDataIfNeeded } from "@sdk/tools/formdata";
+import { isInstance } from "@sdk/tools/is-instance";
 
 // @todo remove after upgrading the Node.js dev setup
 type ErrorLike = { name?: string; message?: string };
@@ -337,7 +338,7 @@ export default class Client {
             return "null";
           }
 
-          if (val instanceof Date) {
+          if (isInstance(Date, val)) {
             return JSON.stringify(val.toISOString().replace("T", " "));
           }
 

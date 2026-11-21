@@ -24,6 +24,7 @@
 //     rejects); after a restart,
 //     POST /api/collections/{c}/auth-with-password must succeed exactly
 //     when PasswordFieldValue.validate accepts the password.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -419,7 +420,7 @@ function storeModel(
   record: TestRecord,
 ): Record<string, [string, unknown]> {
   const fields = [...collection.fields].filter(
-    (f) => f.getName() !== "id" && !(f instanceof PasswordField),
+    (f) => f.getName() !== "id" && !isInstance(PasswordField, f),
   );
   if (fields.length === 0) {
     return {};
@@ -556,7 +557,7 @@ describe("values", () => {
       const stored: Record<string, string> = {};
       for (const field of collection.fields) {
         const name = field.getName();
-        if (field instanceof PasswordField) {
+        if (isInstance(PasswordField, field)) {
           const [hash] = field.driverValue(record) as [string, Error | null];
           passwords[name] = [record.getString(name), hash];
           stored[name] = hash;

@@ -9,6 +9,7 @@ import { Errors, InternalError, NewError } from "@/validation/error";
 import { isMap } from "@/validation/util";
 import { Validate } from "@/validation/validation";
 import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // ErrNotMap is the error that the value being validated is not a map.
 export const ErrNotMap = new Error("only a map can be validated");
@@ -72,7 +73,7 @@ export class MapRule implements Rule {
       return null;
     }
     const isObject = isMap(m);
-    if (!isObject && !(m instanceof globalThis.Map)) {
+    if (!isObject && !isInstance<Map<unknown, unknown>>(globalThis.Map, m)) {
       // must be a map
       return new InternalError(ErrNotMap);
     }

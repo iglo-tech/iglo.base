@@ -53,6 +53,7 @@ import { IPOrSubnet } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";
 import { maxSafeJSONInt } from "@/fields/field";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const paramsTable = "_params";
 
@@ -881,7 +882,7 @@ class ValidatableRule implements Validatable {
 function checkUniqueRuleLabel(value: unknown): Error | null {
   if (
     value !== null &&
-    !(Array.isArray(value) && value.every((v) => v instanceof ValidatableRule))
+    !(Array.isArray(value) && value.every((v) => isInstance(ValidatableRule, v)))
   ) {
     return ErrUnsupportedValueType;
   }

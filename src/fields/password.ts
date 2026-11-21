@@ -44,6 +44,7 @@ import { runeCount } from "@/validation/util";
 import { By } from "@/validation/validation";
 import { IsRegex } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypePassword = "password";
 
@@ -188,7 +189,7 @@ export class PasswordField
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const fp = record.getRaw(this.name);
-    if (!(fp instanceof PasswordFieldValue)) {
+    if (!isInstance(PasswordFieldValue, fp)) {
       return ErrUnsupportedValueType;
     }
 
@@ -264,7 +265,7 @@ export class PasswordField
   private getPasswordValue(record: FieldRecord): PasswordFieldValue {
     const raw = record.getRaw(this.name);
 
-    if (raw instanceof PasswordFieldValue) {
+    if (isInstance(PasswordFieldValue, raw)) {
       return raw;
     }
     // we assume that any raw string starting with $2 is bcrypt hash

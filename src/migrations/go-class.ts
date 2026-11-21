@@ -48,6 +48,7 @@ import type { GoType as JSONElemType } from "@/tools/types/go-json";
 import { stringType } from "@/tools/types/go-json";
 import { localLocation, lookup, UTC } from "@/tools/types/go-zoneinfo";
 import type { Location } from "@/tools/types/go-zoneinfo";
+import { isInstance } from "@/tools/types/is-instance";
 
 export type GoType =
   | "string"
@@ -106,7 +107,7 @@ function conversionError(m: Membrane, i: number, v: unknown, to: string): Error 
 }
 
 function isModel(v: unknown): boolean {
-  return v instanceof RecordModel || v instanceof Collection || v instanceof Settings;
+  return isInstance(RecordModel, v) || isInstance(Collection, v) || isInstance(Settings, v);
 }
 
 export function isField(v: unknown): v is Field {
@@ -432,13 +433,13 @@ function unsupportedType(go: unknown): string {
   if (typeof go === "function") {
     return "func(goja.FunctionCall) goja.Value, a func";
   }
-  if (go instanceof RecordModel) {
+  if (isInstance(RecordModel, go)) {
     return "core.Record, a struct";
   }
-  if (go instanceof Collection) {
+  if (isInstance(Collection, go)) {
     return "core.Collection, a struct";
   }
-  if (go instanceof Settings) {
+  if (isInstance(Settings, go)) {
     return "core.Settings, a struct";
   }
   const name = (go as object).constructor.name;
@@ -470,19 +471,19 @@ export function toSql(m: Membrane, v: unknown): unknown {
   const target = m.targetOf(v);
   const go = target ?? m.toHost(v);
 
-  if (go instanceof Uint8Array || isExpression(go)) {
+  if (isInstance(Uint8Array, go) || isExpression(go)) {
     return go;
   }
-  if (go instanceof GoPointer) {
+  if (isInstance(GoPointer, go)) {
     return go.float ? new Float64(go.value as number) : new BoundValue(go, () => go.value);
   }
-  if (go instanceof GoDuration) {
+  if (isInstance(GoDuration, go)) {
     return new BoundValue(go, () => go.ns);
   }
-  if (go instanceof GoFileMode) {
+  if (isInstance(GoFileMode, go)) {
     return new BoundValue(go, () => go.mode);
   }
-  if (go instanceof Date) {
+  if (isInstance(Date, go)) {
     // goja exports a JS Date in the local zone
     return new BoundValue(go, () => timeText(go, target === undefined ? localLocation() : UTC));
   }
@@ -497,7 +498,7 @@ export function toSql(m: Membrane, v: unknown): unknown {
 // single parameter (a JSONArray has a driver value, so it is one)
 function hashValue(m: Membrane, v: unknown): unknown {
   const sql = toSql(m, v);
-  if (sql instanceof BoundValue && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
+  if (isInstance(BoundValue, sql) && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
     return Array.from(v as Array<unknown>, (item) => toSql(m, item));
   }
   return sql;
@@ -514,7 +515,7 @@ function sqlParams(
     return params;
   }
   const target = m.targetOf(v);
-  const source = (target instanceof GoJSONMap ? target.data : (target ?? v)) as Record<
+  const source = (isInstance(GoJSONMap, target) ? target.data : (target ?? v)) as Record<
     string,
     unknown
   >;
@@ -526,7 +527,7 @@ function sqlParams(
       value:
         target === undefined
           ? value(item)
-          : item instanceof BoundValue || item instanceof Float64
+          : isInstance(BoundValue, item) || isInstance(Float64, item)
             ? item
             : value(m.toVm(item)),
       writable: true,
@@ -561,7 +562,7 @@ export function toGo(m: Membrane, value: unknown, type: GoType, current: unknown
       return Boolean(value);
     case "datetime": {
       const host = m.toHost(value);
-      return host instanceof DateTime ? host : new DateTime();
+      return isInstance(DateTime, host) ? host : new DateTime();
     }
     default:
       return m.toHost(value);

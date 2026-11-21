@@ -36,6 +36,7 @@ import { toStringE } from "@/tools/types/cast";
 import { anyType, marshal, unmarshal } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import type { Expression } from "@/db/dbx/expression";
+import { isInstance } from "@/tools/types/is-instance";
 
 // filter modifiers
 export const eachModifier = "each";
@@ -472,7 +473,7 @@ export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unkn
   if (isPlainMap(rawData)) {
     return mapVal(rawData, keys);
   }
-  if (rawData instanceof JSONRaw) {
+  if (isInstance(JSONRaw, rawData)) {
     let raw: unknown;
     try {
       raw = unmarshal(rawData.bytes(), anyType);
@@ -492,7 +493,7 @@ export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unkn
   if (Array.isArray(rawData)) {
     return arrVal(rawData, keys);
   }
-  if (rawData instanceof Uint8Array) {
+  if (isInstance(Uint8Array, rawData)) {
     return arrVal(Array.from(rawData), keys);
   }
 

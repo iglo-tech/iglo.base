@@ -63,6 +63,7 @@ import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import type { RuleFunc } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // auth.NameApple
 const NameApple = "apple";
@@ -357,7 +358,7 @@ function oldCanAssignUsername(app: RecordsApp, collection: Collection, username:
   }
 
   // ensure that the value matches the pattern of the username field (if text)
-  if (field instanceof TextField && field.validatePlainValue(username) !== null) {
+  if (isInstance(TextField, field) && field.validatePlainValue(username) !== null) {
     return false;
   }
 

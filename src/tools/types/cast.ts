@@ -13,6 +13,7 @@ import { date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
 import type { Instant } from "@/tools/types/go-time";
 import { UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
 import type { Location } from "@/tools/types/go-zoneinfo";
+import { isInstance } from "@/tools/types/is-instance";
 
 // how the time zone of a layout is applied (internal.TimeFormatType)
 const noTimezone = 0;
@@ -91,7 +92,7 @@ export function stringToDateLocated(s: string): [Instant, Location] {
 
 // ToTimeE(i) with the default location time.UTC
 export function toTimeE(i: unknown): Instant {
-  if (i instanceof Date) {
+  if (isInstance(Date, i)) {
     return fromDate(i);
   }
   switch (typeof i) {
@@ -129,7 +130,7 @@ export function toTimeLocated(i: unknown): [Instant, Location] {
       return [{ ...zeroInstant }, UTC];
     }
   }
-  if (typeof i === "bigint" || i instanceof Date) {
+  if (typeof i === "bigint" || isInstance(Date, i)) {
     return [toTime(i), localLocation()];
   }
   return [toTime(i), UTC];
@@ -182,7 +183,7 @@ export function toStringE(i: unknown): string {
   if (i === null) {
     return "";
   }
-  if (i instanceof Uint8Array) {
+  if (isInstance(Uint8Array, i)) {
     return bytesToText(i);
   }
   if (typeof i === "object" && typeof (i as { string?: unknown }).string === "function") {
@@ -213,7 +214,7 @@ export function toStringSliceE(i: unknown): Array<string> {
   if (Array.isArray(i)) {
     return i.map((item) => toStringE(item));
   }
-  if (i instanceof Uint8Array) {
+  if (isInstance(Uint8Array, i)) {
     // []byte is a slice of uint8 values
     return Array.from(i, String);
   }

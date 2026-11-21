@@ -19,6 +19,7 @@ import {
   setOwn,
   unmarshal,
 } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // NewFieldsList creates a new FieldsList instance with the provided fields.
 export function newFieldsList(...fields: Array<Field>): FieldsList {
@@ -323,7 +324,7 @@ export class FieldsList implements FieldsListReader {
     let data: string;
     if (value === null || value === undefined) {
       data = "";
-    } else if (value instanceof Uint8Array || typeof value === "string") {
+    } else if (isInstance(Uint8Array, value) || typeof value === "string") {
       data = bytesToText(value);
     } else {
       throw new Error(`failed to unmarshal FieldsList value ${goQuote(String(value))}`);

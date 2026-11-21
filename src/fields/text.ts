@@ -46,6 +46,7 @@ import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { IsRegex } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeText = "text";
 
@@ -405,7 +406,7 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
 
       let totalPrimaryKeys = 0;
       for (const field of collection.fields) {
-        if (field instanceof TextField && field.primaryKey) {
+        if (isInstance(TextField, field) && field.primaryKey) {
           totalPrimaryKeys++;
         }
 

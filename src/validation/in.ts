@@ -9,6 +9,7 @@ import { NewError } from "@/validation/error";
 import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty, isMap } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // ErrInInvalid is the error that returns in case of an invalid value for "in" rule.
 export const ErrInInvalid = NewError("validation_in_invalid", "must be a valid value");
@@ -64,7 +65,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
   }
-  if (a instanceof Uint8Array && b instanceof Uint8Array) {
+  if (isInstance(Uint8Array, a) && isInstance(Uint8Array, b)) {
     return a.length === b.length && a.every((v, i) => v === b[i]);
   }
   if (isMap(a) && isMap(b)) {

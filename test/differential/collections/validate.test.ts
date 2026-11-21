@@ -28,6 +28,7 @@
 //
 // A case marked pending on a later task runs as test.failing: it passes
 // while the model differs and fails once it agrees.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -213,7 +214,7 @@ function modelOutcome(c: ValidateCase, body: string): Outcome {
   if (err === null) {
     return { status: 200, body: "" };
   }
-  if (!(err instanceof Errors)) {
+  if (!isInstance(Errors, err)) {
     throw err;
   }
   const message =

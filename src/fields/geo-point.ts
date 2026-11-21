@@ -14,6 +14,7 @@ import { ErrRequired } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeGeoPoint = "geoPoint";
 
@@ -129,7 +130,7 @@ export class GeoPointField implements Field {
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const val = record.getRaw(this.name);
-    if (!(val instanceof GeoPoint)) {
+    if (!isInstance(GeoPoint, val)) {
       return ErrUnsupportedValueType;
     }
 

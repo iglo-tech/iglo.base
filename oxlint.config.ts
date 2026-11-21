@@ -113,7 +113,6 @@ export default defineConfig({
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
-        "@nkzw/no-instanceof": "off",
         "no-promise-executor-return": "off",
         "quality/no-chained-type-assertions": "off",
         "quality/no-conditional-empty-object-spread": "off",

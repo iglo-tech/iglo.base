@@ -5,6 +5,7 @@
 // with M1.6 (core/collection_model.go, core/fields_list.go) and M1.8
 // (core/record_model.go); upstream's tests.NewTestApp is a copy of the
 // vendored fixture opened with src/db.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { testLogger } from "@test/support/logger";
 import { expect } from "bun:test";
@@ -414,7 +415,7 @@ export function expectValidationErrors(
   err: Error | null,
   expectedKeys: ReadonlyArray<string>,
 ): void {
-  if (err !== null && !(err instanceof Errors)) {
+  if (err !== null && !isInstance(Errors, err)) {
     throw new Error(`expected validation Errors, got ${err.name}: ${err.message}`);
   }
   const keys = err === null ? [] : Object.keys(err.errors);

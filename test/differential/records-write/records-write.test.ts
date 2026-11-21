@@ -20,6 +20,7 @@
 // copy of iglo.base's pb_data. Every record of every collection, listed
 // by upstream from that copy, must equal the list upstream gives from its
 // own pb_data, and the passwords the cases set must sign in.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -331,12 +332,16 @@ describe("fresh install", () => {
           method,
           headers: {
             ...(auth === "" ? {} : { authorization: auth }),
-            ...(body === undefined || body instanceof FormData
+            ...(body === undefined || isInstance(FormData, body)
               ? {}
               : { "content-type": "application/json" }),
           },
           body:
-            body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+            body === undefined
+              ? undefined
+              : isInstance(FormData, body)
+                ? body
+                : JSON.stringify(body),
         });
         const text = await res.text();
         if (res.status !== 200 && res.status !== 204) {

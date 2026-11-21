@@ -28,6 +28,7 @@ import type { RecordsApp } from "@/records/record-query";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { jsonEach } from "@/tools/dbutils/json";
 import { toUniqueStringSlice } from "@/tools/list/list";
+import { isInstance } from "@/tools/types/is-instance";
 
 // maxNestedRels defines the max allowed nested relations depth
 // (core/record_field_resolver_runner.go).
@@ -185,7 +186,7 @@ function scanString(v: unknown): string {
       'sql: Scan error on column index 0, name "id": converting NULL to string is unsupported',
     );
   }
-  if (v instanceof Uint8Array) {
+  if (isInstance(Uint8Array, v)) {
     return new TextDecoder().decode(v);
   }
   return String(v);
@@ -239,7 +240,7 @@ function* expandRecordsPath(
     }
 
     const field = indirectRel.fields.getByName(backFieldName);
-    const indirectRelField = field instanceof RelationField ? field : null;
+    const indirectRelField = isInstance(RelationField, field) ? field : null;
     if (indirectRelField === null || indirectRelField.collectionId !== mainCollection.id) {
       throw new Error(
         `couldn't find back-relation field ${goQuote(backFieldName)} in collection ${goQuote(indirectRel.name)}`,
@@ -285,7 +286,7 @@ function* expandRecordsPath(
   } else {
     // direct relation
     const field = mainCollection.fields.getByName(part0);
-    relField = field instanceof RelationField ? field : null;
+    relField = isInstance(RelationField, field) ? field : null;
     if (relField === null) {
       throw new Error(
         `couldn't find relation field ${goQuote(part0)} in collection ${goQuote(mainCollection.name)}`,

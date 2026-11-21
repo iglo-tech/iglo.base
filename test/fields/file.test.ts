@@ -1,4 +1,5 @@
 // Upstream: core/field_file_test.go
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -549,7 +550,7 @@ describe("TestFileFieldFindGetter", () => {
   const record = app.findRecordById("demo3", "lcl9d87w22ml6jy");
 
   const field = record.collection.fields.getByName("files");
-  if (!(field instanceof FileField)) {
+  if (!isInstance(FileField, field)) {
     throw new Error(`Expected FileField, got ${field?.constructor.name}`);
   }
 

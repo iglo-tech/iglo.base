@@ -91,6 +91,7 @@ import { ErrRequired } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import { UploadedFileMimeType, UploadedFileSize } from "@/validators/file";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeFile = "file";
 
@@ -557,7 +558,7 @@ export class FileField
     // replace the uploaded file objects with their plain string names
     const newValue = this.toSliceValue(record.getRaw(this.name));
     for (const [i, v] of newValue.entries()) {
-      if (v instanceof File) {
+      if (isInstance(File, v)) {
         if (v.preUpload !== null) {
           v.preUpload.saved = true;
         }
@@ -915,7 +916,7 @@ export class FileField
 
     if (raw === null || raw === undefined) {
       // nothing to cast
-    } else if (raw instanceof File) {
+    } else if (isInstance(File, raw)) {
       result.push(raw);
     } else if (Array.isArray(raw)) {
       for (const v of raw) {
@@ -962,7 +963,7 @@ export class FileField
     const result: Array<File> = [];
 
     for (const raw of files) {
-      if (raw instanceof File) {
+      if (isInstance(File, raw)) {
         result.push(raw);
       }
     }
@@ -989,7 +990,7 @@ export class FileField
     if (typeof file === "string") {
       return file;
     }
-    if (file instanceof File) {
+    if (isInstance(File, file)) {
       return file.name;
     }
     return "";
@@ -1075,7 +1076,7 @@ type StorageSteps<T> = Generator<unknown, T, unknown>;
 function drive<T>(steps: StorageSteps<T>): T | Promise<T> {
   let r = steps.next();
   while (r.done !== true) {
-    if (r.value instanceof Promise) {
+    if (isInstance(Promise, r.value)) {
       return driveAsync(steps, r.value);
     }
     r = steps.next(r.value);
@@ -1095,7 +1096,7 @@ async function driveAsync<T>(steps: StorageSteps<T>, pending: Promise<unknown>):
     }
 
     let r = failed ? steps.throw(input) : steps.next(input);
-    while (r.done !== true && !(r.value instanceof Promise)) {
+    while (r.done !== true && !isInstance(Promise, r.value)) {
       r = steps.next(r.value);
     }
     if (r.done === true) {
@@ -1121,7 +1122,7 @@ function checkPreUpload(file: File, key: string): void {
 
 // the files of a record value ([]*filesystem.File type assertion)
 function filesOf(raw: unknown): Array<File> {
-  return Array.isArray(raw) ? raw.filter((v): v is File => v instanceof File) : [];
+  return Array.isArray(raw) ? raw.filter((v): v is File => isInstance(File, v)) : [];
 }
 
 // the strings of a record value ([]string type assertion)

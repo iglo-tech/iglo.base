@@ -3,6 +3,7 @@
 // a fixed provider URL (Apple's JWKS, Gitee's emails) never reaches a real
 // host. Only tests install it: the executable has no request or setting
 // that reaches it, and the differential suite never does.
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface StubRequest {
   method: string;
@@ -26,7 +27,7 @@ export function stubFetch(routes: { [url: string]: StubRoute }): StubbedFetch {
   const calls: Array<string> = [];
 
   const stub = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const url = new URL(input instanceof Request ? input.url : String(input));
+    const url = new URL(isInstance(Request, input) ? input.url : String(input));
     const key = url.origin + url.pathname;
     calls.push(key);
 

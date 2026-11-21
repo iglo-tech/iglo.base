@@ -33,6 +33,7 @@ import type { StaticFS as EmbeddedFS } from "@/apis/ui-pack";
 import { maxBufferedRangesSize, typeByExtension } from "@/server/serve-content";
 import type { HttpRange, ServedFile } from "@/server/serve-content";
 import { detectContentType } from "@/server/sniff";
+import { isInstance } from "@/tools/types/is-instance";
 
 // core.LocalTempDirName
 const localTempDirName = ".pb_temp_to_delete";
@@ -203,7 +204,7 @@ async function spool(
     try {
       const buf = new Uint8Array(spoolChunk);
       for (const part of parts) {
-        if (part instanceof Uint8Array) {
+        if (isInstance(Uint8Array, part)) {
           await dst.write(part);
           continue;
         }

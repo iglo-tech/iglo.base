@@ -13,6 +13,7 @@
 // ids, tokens, timestamps and file-name suffixes are replaced by their format
 // on both sides; everything else must be equal. Files and mails the call
 // produced are recorded as steps too (`record`).
+import { isInstance } from "@/tools/types/is-instance";
 
 import { rmSync } from "node:fs";
 import { join } from "node:path";
@@ -127,10 +128,10 @@ function replacer(_key: string, v: unknown): unknown {
       isAbort: v.isAbort,
     };
   }
-  if (v instanceof Blob) {
+  if (isInstance(Blob, v)) {
     return { blob: true, size: v.size, type: v.type };
   }
-  if (v instanceof PocketBase) {
+  if (isInstance(PocketBase, v)) {
     return {
       client: true,
       baseURL: v.baseURL,
@@ -223,9 +224,9 @@ class Recording implements SdkEnv {
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const url = String(input instanceof Request ? input.url : input);
+    const url = String(isInstance(Request, input) ? input.url : input);
     const method = (
-      init?.method ?? (input instanceof Request ? input.method : "GET")
+      init?.method ?? (isInstance(Request, input) ? input.method : "GET")
     ).toUpperCase();
     const res = await fetch(input, init);
     // the body is read here; the SDK gets an equal copy
@@ -385,7 +386,7 @@ function bodyText(body: unknown): string {
   if (typeof body === "string") {
     return body;
   }
-  if (body instanceof FormData) {
+  if (isInstance(FormData, body)) {
     // the SDK's JSON part (a batch's requests, the non-file values): the
     // comparison reads it as the request body
     const json = body.get("@jsonPayload");

@@ -65,6 +65,7 @@ import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By, Validate } from "@/validation/validation";
 import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the collection members the two helpers below read
 interface AuthOptionsCollection extends CollectionAuthOptions {
@@ -456,7 +457,7 @@ export class EmailTemplate {
     const entries =
       placeholders === null
         ? []
-        : placeholders instanceof Map
+        : isInstance(Map, placeholders)
           ? [...placeholders.entries()]
           : Object.entries(placeholders);
 

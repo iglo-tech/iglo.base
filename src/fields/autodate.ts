@@ -28,6 +28,7 @@ import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { Equal } from "@/validators/equal";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeAutodate = "autodate";
 
@@ -149,7 +150,7 @@ export class AutodateField implements Field, SetterFinder, RecordInterceptor {
     }
     if (oldCollection !== null) {
       const oldField = oldCollection.fields.getById(this.id);
-      if (oldField instanceof AutodateField) {
+      if (isInstance(AutodateField, oldField)) {
         oldOnCreate = oldField.onCreate;
         oldOnUpdate = oldField.onUpdate;
       }
@@ -278,7 +279,7 @@ export type AutodateFieldSettings = Pick<
 // runs after when the action succeeds, after the action's promise when it
 // is async
 function afterAction(result: void | Promise<void>, after: () => void): void | Promise<void> {
-  if (result instanceof Promise) {
+  if (isInstance(Promise, result)) {
     return result.then(after);
   }
   after();

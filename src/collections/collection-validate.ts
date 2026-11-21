@@ -66,6 +66,7 @@ import { When } from "@/validation/when";
 import { Equal } from "@/validators/equal";
 import { UniqueId } from "@/validators/db";
 import { ErrUnsupportedValueType, JoinValidationErrors } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 // core/db.go DefaultIdRegex
 const defaultIdRegex = lazyMustCompile(String.raw`^\w+$`);
@@ -286,7 +287,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   ensureNoFieldsTypeChange = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -310,7 +311,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkFieldDuplicates = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -353,7 +354,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkFieldValidators = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -401,7 +402,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkReservedAuthKeys = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -428,7 +429,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkMinFields = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -438,14 +439,14 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
 
     // all collections must have an "id" PK field
     const idField = value.getByName(FieldNameId);
-    if (!(idField instanceof TextField) || !idField.primaryKey) {
+    if (!isInstance(TextField, idField) || !idField.primaryKey) {
       return NewError("validation_missing_primary_key", `Missing or invalid "id" PK field.`);
     }
 
     switch (this.newC.type) {
       case CollectionTypeAuth: {
         const passwordField = value.getByName(FieldNamePassword);
-        if (!(passwordField instanceof PasswordField)) {
+        if (!isInstance(PasswordField, passwordField)) {
           return NewError(
             "validation_missing_password_field",
             `System "password" field is required.`,
@@ -456,7 +457,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const tokenKeyField = value.getByName(FieldNameTokenKey);
-        if (!(tokenKeyField instanceof TextField)) {
+        if (!isInstance(TextField, tokenKeyField)) {
           return NewError(
             "validation_missing_tokenKey_field",
             `System "tokenKey" field is required.`,
@@ -467,7 +468,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const emailField = value.getByName(FieldNameEmail);
-        if (!(emailField instanceof EmailField)) {
+        if (!isInstance(EmailField, emailField)) {
           return NewError("validation_missing_email_field", `System "email" field is required.`);
         }
         if (!emailField.system) {
@@ -475,7 +476,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const emailVisibilityField = value.getByName(FieldNameEmailVisibility);
-        if (!(emailVisibilityField instanceof BoolField)) {
+        if (!isInstance(BoolField, emailVisibilityField)) {
           return NewError(
             "validation_missing_emailVisibility_field",
             `System "emailVisibility" field is required.`,
@@ -486,7 +487,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const verifiedField = value.getByName(FieldNameVerified);
-        if (!(verifiedField instanceof BoolField)) {
+        if (!isInstance(BoolField, verifiedField)) {
           return NewError(
             "validation_missing_verified_field",
             `System "verified" field is required.`,
@@ -504,7 +505,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   ensureNoSystemFieldsChange = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 

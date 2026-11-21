@@ -58,6 +58,7 @@ import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { columnify } from "@/tools/inflector/inflector";
 import { existInSlice, toInterfaceSlice } from "@/tools/list/list";
 import { parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { isInstance } from "@/tools/types/is-instance";
 
 // The app members the record queries use (core/app.go).
 export type RecordsApp = CollectionsApp;
@@ -180,7 +181,7 @@ export function getCollectionByModelOrIdentifier(
   app: RecordsApp,
   collectionModelOrIdentifier: unknown,
 ): Collection {
-  if (collectionModelOrIdentifier instanceof Collection) {
+  if (isInstance(Collection, collectionModelOrIdentifier)) {
     return collectionModelOrIdentifier;
   }
   if (typeof collectionModelOrIdentifier === "string") {

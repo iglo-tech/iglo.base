@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 src/tools/options.ts
 import type { Loose, LooseObject } from "@sdk/tools/loose";
+import { isInstance } from "@sdk/tools/is-instance";
 export interface SendOptions extends RequestInit {
   // for backward compatibility and to minimize the verbosity,
   // any top-level field that doesn't exist in RequestInit or the
@@ -175,7 +176,7 @@ function prepareQueryParamValue(value: unknown): null | string {
     return null;
   }
 
-  if (value instanceof Date) {
+  if (isInstance(Date, value)) {
     return encodeURIComponent(value.toISOString().replace("T", " "));
   }
 

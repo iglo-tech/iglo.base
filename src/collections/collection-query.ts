@@ -52,6 +52,7 @@ import type { Cron } from "@/tools/cron/cron";
 import { existInSlice, nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
 import type { Store } from "@/tools/store/store";
 import type { Broker } from "@/tools/subscriptions/broker";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const StoreKeyCachedCollections = "pbAppCachedCollections";
 
@@ -261,7 +262,7 @@ function relationReferences(
 
   for (const c of collections) {
     for (const rawField of c.fields) {
-      if (rawField instanceof RelationField && rawField.collectionId === collection.id) {
+      if (isInstance(RelationField, rawField) && rawField.collectionId === collection.id) {
         const refs = result.get(c);
         if (refs === undefined) {
           result.set(c, [rawField]);

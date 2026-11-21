@@ -13,6 +13,7 @@
 
 import { anyType, goInt, mapOf, unmarshal } from "@/tools/types/go-json";
 import type { GoInt } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 const two63 = 2 ** 63;
 
@@ -125,7 +126,7 @@ export function toInt(i: unknown): GoInt {
 
 // a Go map[string]any: a plain object or a Map with string keys
 function isGoMap(i: unknown): i is { [key: string]: unknown } | Map<string, unknown> {
-  if (i instanceof Map) {
+  if (isInstance(Map, i)) {
     return true;
   }
   if (typeof i !== "object" || i === null) {
@@ -140,7 +141,7 @@ function isGoMap(i: unknown): i is { [key: string]: unknown } | Map<string, unkn
 // anything else (or a failed decoding) an empty map.
 export function toStringMap(i: unknown): Map<string, unknown> {
   if (isGoMap(i)) {
-    return new Map(i instanceof Map ? i : Object.entries(i));
+    return new Map(isInstance(Map, i) ? i : Object.entries(i));
   }
   if (typeof i === "string") {
     try {

@@ -11,6 +11,7 @@ import { Store } from "@/tools/store/store";
 import { toStringSlice } from "@/tools/types/cast";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { isJSONMarshaler, stringType, unmarshalSlicePartial } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 const cachedPatterns = new Store<string, RegExp>();
 
@@ -136,7 +137,7 @@ export function toUniqueStringSlice(value: unknown): Array<string> {
     }
   } else if (Array.isArray(value)) {
     result = toStringSlice(value);
-  } else if (isJSONMarshaler(value) && !(value instanceof GeoPoint)) {
+  } else if (isJSONMarshaler(value) && !isInstance(GeoPoint, value)) {
     // upstream's GeoPoint is not a json.Marshaler (its marshalJSON here is
     // only the encoding adapter), so it takes the cast branch below
     result =

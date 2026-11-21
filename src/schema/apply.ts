@@ -113,6 +113,7 @@ import { newMigrationHelpers } from "@/schema/migration-tx";
 import { fileProblems } from "@/schema/renames";
 import { resolveProviders } from "@/schema/providers";
 import { Errors } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 type Json = Record<string, unknown>;
 
@@ -302,9 +303,9 @@ function runTransaction(
     });
     report.committed = mode === "apply" && reportIsOK(report);
   } catch (error) {
-    if (error instanceof SaveFailed) {
+    if (isInstance(SaveFailed, error)) {
       report.problems.push(saveProblem(error));
-    } else if (!(error instanceof StopApply) && !(error instanceof RollBack)) {
+    } else if (!isInstance(StopApply, error) && !isInstance(RollBack, error)) {
       report.problems.push({ where: "schema", message: messageOf(error) });
     }
   } finally {
@@ -334,7 +335,7 @@ function saveProblem(err: SaveFailed): Problem {
 
 // the text of an error: a validation error lists its fields
 function messageOf(err: unknown): string {
-  if (err instanceof Errors) {
+  if (isInstance(Errors, err)) {
     return Object.entries(err.errors)
       .map(([key, value]) => `${key}: ${value === null ? "invalid" : messageOf(value)}`)
       .join("; ");

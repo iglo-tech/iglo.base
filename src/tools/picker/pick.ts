@@ -17,6 +17,7 @@ import { initModifer, Modifiers } from "@/tools/picker/modifiers";
 import type { Modifier, ModifierFactoryFunc } from "@/tools/picker/modifiers";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import { anyType, marshal, setOwn, unmarshal } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrInvalidModifierData = new Error(
   "failed to apply some of the field modifiers for the provided data",
@@ -91,7 +92,7 @@ export function pick(
   // ---
 
   // special cases to preserve the same fields format when used with single item or search results data.
-  const isSearchResult = data instanceof SearchResult;
+  const isSearchResult = isInstance<SearchResult<unknown>>(SearchResult, data);
 
   try {
     if (isSearchResult) {
@@ -102,7 +103,7 @@ export function pick(
       pickParsedFields(decoded, parsedFields);
     }
   } catch (error) {
-    if (error instanceof PickPanic) {
+    if (isInstance(PickPanic, error)) {
       throw error;
     }
     throw new InvalidModifierDataError(error);

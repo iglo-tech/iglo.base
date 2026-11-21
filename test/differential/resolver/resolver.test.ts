@@ -30,6 +30,7 @@
 // same auth record, query and headers, and each record's view through
 // CanAccessRecord (sync and async). The stored rules of the copy follow
 // upstream's for each case.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -142,7 +143,7 @@ async function api(
   if (auth !== "") {
     (init.headers as { [key: string]: string }).authorization = auth;
   }
-  if (body instanceof FormData) {
+  if (isInstance(FormData, body)) {
     init.body = body;
   } else if (body !== undefined) {
     (init.headers as { [key: string]: string })["content-type"] = "application/json";

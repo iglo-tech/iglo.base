@@ -4,6 +4,7 @@
 // and verified changes and on delete. Upstream has no unit tests for them
 // in core (its API tests cover them); the reference test
 // (test/differential/records/save.test.ts) compares them with upstream.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterEach, describe, expect, test } from "bun:test";
 
@@ -139,7 +140,7 @@ describe("ref validation", () => {
       const record = newRecord(collection);
       record.load(data);
       const err = await errorOf(saveRecord(app, record));
-      expect({ name, err: err instanceof Errors ? err.marshalJSON() : String(err) }).toEqual({
+      expect({ name, err: isInstance(Errors, err) ? err.marshalJSON() : String(err) }).toEqual({
         name,
         err: expected,
       });

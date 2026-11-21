@@ -43,6 +43,7 @@ import { existInSliceWithRegex, toInterfaceSlice, toUniqueStringSlice } from "@/
 import { pseudorandomString } from "@/tools/security/random";
 import { toString } from "@/tools/types/cast";
 import { marshal, textToBytes } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // maxNestedRels defines the max allowed nested relations depth.
 const maxNestedRels = 6;
@@ -380,7 +381,7 @@ class Runner {
   }
 
   private processRequestBodyRelationField(bodyField: Field): ResolverResult {
-    if (!(bodyField instanceof RelationField)) {
+    if (!isInstance(RelationField, bodyField)) {
       throw new Error(`failed to initialize data relation field ${goQuote(bodyField.getName())}`);
     }
     const relField = bodyField;
@@ -537,7 +538,7 @@ class Runner {
           throw new Error(`non-filterable back relation field ${goQuote(backField.getName())}`);
         }
 
-        if (!(backField instanceof RelationField)) {
+        if (!isInstance(RelationField, backField)) {
           throw new Error(
             `failed to initialize back relation field ${goQuote(backField.getName())}`,
           );
@@ -635,7 +636,7 @@ class Runner {
 
       // join the relation to the main query
       // ---
-      if (!(field instanceof RelationField)) {
+      if (!isInstance(RelationField, field)) {
         throw new Error(`failed to initialize relation field ${goQuote(prop)}`);
       }
       const relField = field;
@@ -863,7 +864,7 @@ function toSlice(value: unknown): Array<unknown> {
   if (Array.isArray(value)) {
     return [...value];
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     return Array.from(value);
   }
 

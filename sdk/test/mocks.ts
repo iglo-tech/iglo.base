@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 tests/mocks.ts
 import { ClientResponseError } from "@sdk/ClientResponseError";
+import { isInstance } from "@sdk/tools/is-instance";
 
 export type RequestMock = {
   method?: string;
@@ -79,8 +80,9 @@ export class FetchMock {
 
         const headersInit =
           typeof mock.replyHeaders === "function" ? mock.replyHeaders() : mock.replyHeaders;
-        const headers =
-          headersInit instanceof Headers ? headersInit : new Headers(headersInit || {});
+        const headers = isInstance(Headers, headersInit)
+          ? headersInit
+          : new Headers(headersInit || {});
         if (!headers.has("date")) {
           headers.set("date", new Date().toUTCString());
         }

@@ -5,6 +5,7 @@
 
 import type { Handler, HandlerFunc, Resolver } from "@/server/handler";
 import { Route } from "@/server/route";
+import { isInstance } from "@/tools/types/is-instance";
 
 // RouterGroup represents a collection of routes and other sub groups
 // that share common pattern prefix and middlewares.
@@ -150,7 +151,7 @@ export class RouterGroup<T extends Resolver> {
 
   #hasRoute(pattern: string, parents: Array<RouterGroup<T>>): boolean {
     for (const child of this.children) {
-      if (child instanceof RouterGroup) {
+      if (isInstance<RouterGroup<T>>(RouterGroup, child)) {
         if (child.#hasRoute(pattern, [...parents, this])) {
           return true;
         }

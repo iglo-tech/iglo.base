@@ -63,6 +63,7 @@ import { pseudorandomString } from "@/tools/security/random";
 import { toFloat64, toString, toStringE } from "@/tools/types/cast";
 import { marshal } from "@/tools/types/go-json";
 import { Store } from "@/tools/store/store";
+import { isInstance } from "@/tools/types/is-instance";
 
 // FilterData is a filter expression string following the `fexpr` package grammar.
 //
@@ -175,7 +176,7 @@ function placeholderReplacement(key: string, value: unknown): string {
   }
 
   let casted: string;
-  if (value instanceof Date) {
+  if (isInstance(Date, value)) {
     // time.Time is a fmt.Stringer (a Date is a UTC time.Time here)
     casted = timeString(value);
   } else {
@@ -310,7 +311,7 @@ function tryResolveToken(
   try {
     return [resolveToken(token, fieldResolver, state), undefined];
   } catch (error) {
-    if (error instanceof NilPointerPanic) {
+    if (isInstance(NilPointerPanic, error)) {
       throw error;
     }
     return [null, error];
@@ -688,7 +689,7 @@ function wrapLikeParams(params: Params | null | undefined): Params {
   const result: Params = {};
 
   for (const [k, v] of Object.entries(params ?? {})) {
-    let vStr = toString(v instanceof Float64 ? v.value : v);
+    let vStr = toString(isInstance(Float64, v) ? v.value : v);
     if (!containsUnescapedChar(vStr, "%")) {
       // note: this is done to minimize the breaking changes and to preserve the original autoescape behavior
       vStr = escapeUnescapedChars(vStr, "\\", "%", "_");

@@ -27,6 +27,7 @@ import { HttpRequest } from "@/server/request";
 import { RereadableReadCloser, streamReader } from "@/server/rereadable-read-closer";
 import { ResponseWriter } from "@/server/router";
 import type { Mux, Router } from "@/server/router";
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface Output {
   stdout(text: string): void;
@@ -290,7 +291,7 @@ export async function handleRequest(
         try {
           // runs the afterResponse cleanups; its response is not sent
           const response = rw.finish();
-          if (response instanceof Promise) {
+          if (isInstance<Promise<unknown>>(Promise, response)) {
             response.catch(() => {});
           }
         } catch {

@@ -22,6 +22,7 @@ import { goBase } from "@/tools/filesystem/file";
 import type { System } from "@/tools/filesystem/filesystem";
 import { S3System } from "@/tools/filesystem/s3-system";
 import { DateTime } from "@/tools/types/datetime";
+import { isInstance } from "@/tools/types/is-instance";
 
 // give some optimistic time to write the response before restarting the app
 const restoreDelayMs = 1000;
@@ -117,7 +118,7 @@ async function backupDownload(e: RequestEvent): Promise<Error | undefined> {
       );
     } catch (error) {
       // the router's ToApiError: only a local missing file is fs.ErrNotExist
-      return fsys instanceof S3System ? e.badRequestError("", error) : e.notFoundError("", error);
+      return isInstance(S3System, fsys) ? e.badRequestError("", error) : e.notFoundError("", error);
     }
 
     return undefined;

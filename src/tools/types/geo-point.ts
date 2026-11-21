@@ -13,6 +13,7 @@ import {
   unmarshalStruct,
 } from "@/tools/types/go-json";
 import type { JSONMarshaler } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export class GeoPoint implements JSONMarshaler {
   constructor(
@@ -76,14 +77,14 @@ export class GeoPoint implements JSONMarshaler {
     try {
       if (value === null || value === undefined) {
         // no cast needed
-      } else if (value instanceof GeoPoint) {
+      } else if (isInstance(GeoPoint, value)) {
         this.lon = value.lon;
         this.lat = value.lat;
-      } else if (value instanceof JSONRaw) {
+      } else if (isInstance(JSONRaw, value)) {
         if (value.bytes().length !== 0) {
           this.unmarshal(value.bytes());
         }
-      } else if (value instanceof Uint8Array || typeof value === "string") {
+      } else if (isInstance(Uint8Array, value) || typeof value === "string") {
         if (value.length !== 0) {
           this.unmarshal(value);
         }

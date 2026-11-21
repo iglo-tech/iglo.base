@@ -16,6 +16,7 @@ import { Float64, NewError } from "@/validation/error";
 import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty, ToFloat, ToInt, kindOf } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // ErrMinGreaterEqualThanRequired is the error that returns when a value is less than a specified threshold.
 export const ErrMinGreaterEqualThanRequired = NewError(
@@ -101,7 +102,7 @@ export class ThresholdRule implements Rule {
       if (this.compare(BigInt(t), n)) {
         return null;
       }
-    } else if (typeof t === "number" || t instanceof Float64) {
+    } else if (typeof t === "number" || isInstance(Float64, t)) {
       const [f, err] = ToFloat(v);
       if (err !== null) {
         return err;
@@ -109,8 +110,8 @@ export class ThresholdRule implements Rule {
       if (this.compare(typeof t === "number" ? t : t.value, f)) {
         return null;
       }
-    } else if (t instanceof DateTime) {
-      if (!(v instanceof DateTime)) {
+    } else if (isInstance(DateTime, t)) {
+      if (!isInstance(DateTime, v)) {
         return new Error(`cannot convert ${goTypeName(v)} to time.Time`);
       }
       if (v.isZero() || this.compareTime(t, v)) {
@@ -163,7 +164,7 @@ export class ThresholdRule implements Rule {
 
 // the Go type name of a value (reflect.Type's String) for error messages
 function goTypeName(value: unknown): string {
-  if (value instanceof DateTime) {
+  if (isInstance(DateTime, value)) {
     return "time.Time";
   }
   if (value === null || value === undefined) {

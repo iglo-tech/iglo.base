@@ -28,6 +28,7 @@ import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeRelation = "relation";
 
@@ -318,7 +319,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
       // prevent collectionId change
       if (oldCollection !== null) {
         const oldField = oldCollection.fields.getById(this.id);
-        if (oldField instanceof RelationField && oldField.collectionId !== v) {
+        if (isInstance(RelationField, oldField) && oldField.collectionId !== v) {
           return NewError(
             "validation_field_relation_change",
             "The relation collection cannot be changed.",

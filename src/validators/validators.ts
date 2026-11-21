@@ -3,6 +3,7 @@
 // Package validators implements some common custom PocketBase validators.
 
 import { Errors, NewError } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrUnsupportedValueType = NewError(
   "validation_unsupported_value_type",
@@ -18,8 +19,8 @@ export const ErrUnsupportedValueType = NewError(
 // If both arguments are not validation.Errors then it returns a combined
 // errors.Join error (null when both are null).
 export function JoinValidationErrors(errA: Error | null, errB: Error | null): Error | null {
-  const okA = errA instanceof Errors;
-  const okB = errB instanceof Errors;
+  const okA = isInstance(Errors, errA);
+  const okB = isInstance(Errors, errB);
 
   // merge
   if (okA && okB) {

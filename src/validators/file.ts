@@ -7,6 +7,7 @@ import type { GoInt } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import type { RuleFunc } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 // UploadedFileSize checks whether the validated [File] size is no more
 // than the provided maxBytes.
@@ -19,7 +20,7 @@ export function UploadedFileSize(maxBytes: GoInt): RuleFunc {
     if (value === null) {
       return null; // nothing to validate (a nil *filesystem.File)
     }
-    if (!(value instanceof File)) {
+    if (!isInstance(File, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -49,7 +50,7 @@ export function UploadedFileMimeType(validTypes: ReadonlyArray<string> | null): 
     if (value === null) {
       return null; // nothing to validate (a nil *filesystem.File)
     }
-    if (!(value instanceof File)) {
+    if (!isInstance(File, value)) {
       return ErrUnsupportedValueType;
     }
 

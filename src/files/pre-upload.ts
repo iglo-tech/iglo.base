@@ -29,6 +29,7 @@ import { TextField } from "@/fields/text";
 import { findRecordById } from "@/records/record-query";
 import type { File } from "@/tools/filesystem/file";
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface UploadTarget {
   collection: Collection;
@@ -94,7 +95,7 @@ export class PreUploads {
 // existing one may come from an import (core/field_text.go).
 function targetRecordId(app: App, target: UploadTarget): string | null {
   const field = target.collection.fields.getByName(FieldNameId);
-  if (!(field instanceof TextField)) {
+  if (!isInstance(TextField, field)) {
     return null;
   }
 

@@ -28,6 +28,7 @@ import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import type { RuleFunc } from "@/validation/validation";
 import { Equal } from "@/validators/equal";
+import { isInstance } from "@/tools/types/is-instance";
 
 export async function recordConfirmPasswordReset(e: RequestEvent): Promise<HandlerResult> {
   const collection = findAuthCollection(e);
@@ -117,7 +118,7 @@ function validateRecordConfirmPasswordResetForm(
 ): Error | null {
   let min = 1;
   const passField = collection.fields.getByName(FieldNamePassword);
-  if (passField instanceof PasswordField && passField.min > 0) {
+  if (isInstance(PasswordField, passField) && passField.min > 0) {
     min = Number(passField.min);
   }
 

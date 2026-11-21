@@ -30,6 +30,7 @@
 // "batch" step is upstream's POST /api/batch (enabled in upstream's
 // settings for the test) and iglo.base's creates in one transaction
 // (saveRecordSync in runInAppTransaction); only its success is modeled.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -445,7 +446,7 @@ function snapshot(db: Database): Snapshot {
       const row: Row = {};
       for (const [i, c] of columns.entries()) {
         let v = values[2 * i + 1];
-        if (v instanceof Uint8Array) {
+        if (isInstance(Uint8Array, v)) {
           v = "0x" + Buffer.from(v).toString("hex");
         } else if (typeof v === "bigint") {
           v = `${v}n`;

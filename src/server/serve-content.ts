@@ -29,6 +29,7 @@ import type { HttpRequest } from "@/server/request";
 import { detectContentType } from "@/server/sniff";
 import { httpError } from "@/server/router";
 import type { ResponseWriter } from "@/server/router";
+import { isInstance } from "@/tools/types/is-instance";
 
 // mime's builtinTypesLower (Go 1.27.2 mime/type.go)
 const builtinTypes: ReadonlyArray<[string, string]> = [
@@ -735,7 +736,7 @@ export function serveContent(
   file: Uint8Array | ServedFile | RemoteFile,
   modtime = 0n,
 ): void | Promise<void> {
-  const content = file instanceof Uint8Array ? file : "blob" in file ? file.blob : null;
+  const content = isInstance(Uint8Array, file) ? file : "blob" in file ? file.blob : null;
   // setLastModified
   if (!isZeroTime(modtime)) {
     w.header.set("Last-Modified", formatHttpTime(modtime));
@@ -754,7 +755,7 @@ export function serveContent(
     ctype = typeByExtension(name);
     if (ctype === "") {
       // read a chunk to decide between utf-8 text and binary
-      if (content instanceof Uint8Array) {
+      if (isInstance(Uint8Array, content)) {
         ctype = detectContentType(content.subarray(0, 512));
       } else if (content !== null) {
         const f = file as ServedFile;
@@ -770,7 +771,7 @@ export function serveContent(
   if (content === null) {
     size = (file as RemoteFile).size;
   } else {
-    size = content instanceof Blob ? content.size : content.length;
+    size = isInstance(Blob, content) ? content.size : content.length;
   }
 
   // handle Content-Range header.
@@ -837,11 +838,11 @@ export function serveContent(
     });
     parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
     sendSize = parts.reduce((n, p) => n + p.length, 0);
-    if (file instanceof Uint8Array) {
+    if (isInstance(Uint8Array, file)) {
       sendContent = new Uint8Array(
         Buffer.concat(
           parts.map((p) =>
-            p instanceof Uint8Array ? p : file.subarray(p.start, p.start + p.length),
+            isInstance(Uint8Array, p) ? p : file.subarray(p.start, p.start + p.length),
           ),
         ),
       );
@@ -850,7 +851,7 @@ export function serveContent(
     } else {
       sendContent = new Uint8Array(
         Buffer.concat(
-          parts.map((p) => (p instanceof Uint8Array ? p : file.read(p.start, p.length))),
+          parts.map((p) => (isInstance(Uint8Array, p) ? p : file.read(p.start, p.length))),
         ),
       );
     }
@@ -886,7 +887,7 @@ export function serveContent(
         return blob;
       });
     }
-    if (sendContent instanceof Uint8Array) {
+    if (isInstance(Uint8Array, sendContent)) {
       w.write(sendContent);
     } else {
       w.writeBody(sendContent);

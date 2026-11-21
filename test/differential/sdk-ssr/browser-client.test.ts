@@ -4,6 +4,7 @@
 // own clock and keeps its subscription, and a password change signs it out. A second test runs
 // the fallback without superuser credentials, where the browser client reads the cookie.
 // Every recorded value is compared across the two servers; tokens are recorded by shape only.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { describe, expect } from "bun:test";
 import {
@@ -179,7 +180,7 @@ async function openPage(
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const url = String(input instanceof Request ? input.url : input);
+    const url = String(isInstance(Request, input) ? input.url : input);
     if (url === RENEW_URL) {
       const response = await handleBrowserTokenRenew(
         browser.request(url, { method: init?.method ?? "GET", headers: { origin: APP } }),
@@ -276,7 +277,7 @@ describe("browser client", () => {
         input: string | URL | Request,
         init?: RequestInit,
       ): Promise<Response> => {
-        const url = String(input instanceof Request ? input.url : input);
+        const url = String(isInstance(Request, input) ? input.url : input);
         if (url === RENEW_URL) {
           const response = await handleBrowserTokenRenew(
             browser.request(url, { method: init?.method ?? "GET", headers: { origin: APP } }),

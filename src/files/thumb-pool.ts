@@ -23,6 +23,7 @@ import { availableParallelism } from "node:os";
 import type { Thumb } from "@/files/create-thumb";
 import type { ThumbSize } from "@/files/imaging";
 import { toInt64 } from "@/records/cast";
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface ThumbRequestMessage {
   id: number;
@@ -153,7 +154,7 @@ export class ThumbPool {
     const buffer =
       input.byteOffset === 0 &&
       input.byteLength === input.buffer.byteLength &&
-      input.buffer instanceof ArrayBuffer
+      isInstance(ArrayBuffer, input.buffer)
         ? input.buffer
         : input.slice().buffer;
     return new Promise((resolve, reject) => {

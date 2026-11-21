@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 src/tools/cookie.ts
 import type { LooseObject } from "@sdk/tools/loose";
+import { isInstance } from "@sdk/tools/is-instance";
 /**
  * -------------------------------------------------------------------
  * Simple cookie parse and serialize utilities mostly based on the
@@ -219,5 +220,5 @@ function defaultEncode(val: string | number | boolean): string {
  * Determines if value is a Date.
  */
 function isDate(val: unknown): boolean {
-  return Object.prototype.toString.call(val) === "[object Date]" || val instanceof Date;
+  return Object.prototype.toString.call(val) === "[object Date]" || isInstance(Date, val);
 }

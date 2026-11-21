@@ -1,4 +1,5 @@
 // Upstream: core/record_model_auth_test.go
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -110,7 +111,7 @@ describe("RecordSetRandomPassword", () => {
     expect(record.tokenKey()).not.toBe(oldTokenKey);
 
     const f = record.collection().fields.getByName(FieldNamePassword);
-    if (!(f instanceof PasswordField)) {
+    if (!isInstance(PasswordField, f)) {
       throw new Error("Expected PasswordField");
     }
 

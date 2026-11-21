@@ -18,6 +18,7 @@
 //     markers there, which match [a-z0-9]{10});
 //   - stored data: with upstream stopped, the record columns (typeof and
 //     value) and `_collections.fields` are compared with the model's.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -248,7 +249,7 @@ function contentBytes(content: Content): Uint8Array {
   if (typeof content === "string") {
     return encoder.encode(content);
   }
-  if (content instanceof Uint8Array) {
+  if (isInstance(Uint8Array, content)) {
     return content;
   }
   return new Uint8Array(content.size).fill(0x61); // "aaa…": text/plain
@@ -389,7 +390,7 @@ async function modelSubmit(
   let result = replaceModifiers(record, info);
   const uploadedFiles = new Map<string, Array<File>>();
   for (const field of record.collection.fields) {
-    if (!(field instanceof FileField)) {
+    if (!isInstance(FileField, field)) {
       continue;
     }
     const baseKey = field.getName();
@@ -520,7 +521,7 @@ let storageRejections = 0;
 function uploads(record: TestRecord): Array<File> {
   const out: Array<File> = [];
   for (const field of record.collection.fields) {
-    if (field instanceof FileField) {
+    if (isInstance(FileField, field)) {
       out.push(...(field.findGetter(field.getName() + ":unsaved")?.(record) as Array<File>));
     }
   }

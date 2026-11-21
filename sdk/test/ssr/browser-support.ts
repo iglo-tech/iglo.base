@@ -1,6 +1,7 @@
 // Shared helpers for the browser-side SSR unit tests (docs/design/13-ssr.md, "Browser client and
 // realtime"): a stub iglo.base for fetch, an injected clock and fake timers. Nothing here sleeps.
 import { dummyJWT } from "@sdk-test/mocks";
+import { isInstance } from "@sdk/tools/is-instance";
 
 export const API = "http://localhost:8090";
 export const APP = "http://localhost:3000";
@@ -64,7 +65,7 @@ export function json(clock: TestClock, status: number, body: unknown, headers?: 
 export function stubApi(clock: TestClock, routes: Record<string, Handler>) {
   const calls: Array<Call> = [];
   const fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = new URL(String(input instanceof Request ? input.url : input));
+    const url = new URL(String(isInstance(Request, input) ? input.url : input));
     const method = (init?.method ?? "GET").toUpperCase();
     let body: unknown = undefined;
     if (typeof init?.body === "string") {

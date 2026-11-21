@@ -14,6 +14,7 @@
 import { Errors, InternalError } from "@/validation/error";
 import { Validate } from "@/validation/validation";
 import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // FieldRules represents a rule set associated with a struct field.
 export class FieldRules {
@@ -45,7 +46,7 @@ export function ValidateStruct(...fields: Array<FieldRules>): Error | null {
       if (err instanceof InternalError) {
         return err;
       }
-      if (fr.anonymous && err instanceof Errors) {
+      if (fr.anonymous && isInstance(Errors, err)) {
         // merge errors from anonymous struct field
         for (const [name, value] of Object.entries(err.errors)) {
           errs.errors[name] = value;

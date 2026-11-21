@@ -13,6 +13,7 @@
 import type { RequestEvent } from "@/app/event-request";
 import type { Handler } from "@/server/handler";
 import { ResponseWriter } from "@/server/router";
+import { isInstance } from "@/tools/types/is-instance";
 
 const gzipScheme = "gzip";
 
@@ -90,12 +91,11 @@ class GzipResponseWriter extends ResponseWriter {
     let gzipped: Promise<Blob> | undefined;
     if (this.body !== undefined) {
       const body = this.body;
-      const bytes: Promise<Uint8Array> =
-        body instanceof Promise
-          ? body.then((blob) => blob.bytes())
-          : body instanceof Blob
-            ? body.bytes()
-            : new Response(body).bytes();
+      const bytes: Promise<Uint8Array> = isInstance<Promise<unknown>>(Promise, body)
+        ? body.then((blob) => blob.bytes())
+        : isInstance(Blob, body)
+          ? body.bytes()
+          : new Response(body).bytes();
       try {
         const raw = await bytes;
         if (raw.length === 0) {

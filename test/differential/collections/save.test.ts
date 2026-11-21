@@ -26,6 +26,7 @@
 // At the end, upstream is started on iglo.base's pb_data: it opens it
 // without errors, its integrity check passes, and its GET /api/collections
 // returns the same bodies as for its own sequence.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
@@ -219,7 +220,7 @@ function modelSave(target: string | undefined, body: string): Outcome {
   } catch (error) {
     const action = target === undefined ? "create" : "update";
     // validation failure
-    if (error instanceof Errors) {
+    if (isInstance(Errors, error)) {
       return apiError(newBadRequestError(`Failed to ${action} collection.`, error));
     }
     // other generic db error
@@ -279,7 +280,7 @@ function modelImport(body: string): Outcome {
     importCollections(model(), data, form.deleteMissing === true);
   } catch (error) {
     // validation failure
-    if (error instanceof Errors) {
+    if (isInstance(Errors, error)) {
       return apiError(newBadRequestError("Failed to import collections.", error));
     }
 

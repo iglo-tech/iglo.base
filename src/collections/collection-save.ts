@@ -81,6 +81,7 @@ import { JSONRaw } from "@/tools/types/json-raw";
 import { jsonArrayValue } from "@/tools/types/json-array";
 import { FieldsList } from "@/collections/fields-list";
 import { DateTime } from "@/tools/types/datetime";
+import { isInstance } from "@/tools/types/is-instance";
 
 // app.Save(collection): validates and saves the collection, its view or
 // records table and its indexes.
@@ -501,13 +502,13 @@ function driverValues(data: Params): Params {
 }
 
 function driverValue(key: string, value: unknown): unknown {
-  if (value instanceof FieldsList || value instanceof DateTime) {
+  if (isInstance(FieldsList, value) || isInstance(DateTime, value)) {
     return value.value();
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     const v = value.value();
     // the options text is valid UTF-8 (Collection.dbExport() marshals it)
-    return v instanceof Uint8Array ? bytesToText(v) : v;
+    return isInstance(Uint8Array, v) ? bytesToText(v) : v;
   }
   if (key === "indexes" && Array.isArray(value)) {
     return jsonArrayValue(value);

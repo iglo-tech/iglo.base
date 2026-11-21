@@ -9,6 +9,7 @@
 // upstream, the random placeholder and alias parts are matched with the
 // expected query's TEST marker (\w+); in addition every {:name} in the
 // SQL must have a bound param.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -35,7 +36,7 @@ function expectPatternRegex(expectPattern: string): RegExp {
 
 // a bound value as Go would hold it (Float64 is a Go float64)
 function goValue(v: unknown): unknown {
-  return v instanceof Float64 ? v.value : v;
+  return isInstance(Float64, v) ? v.value : v;
 }
 
 describe("TestRecordFieldResolverAllowedFields", () => {

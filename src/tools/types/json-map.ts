@@ -15,6 +15,7 @@ import {
   unmarshalMapInto,
 } from "@/tools/types/go-json";
 import type { GoType } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export type JSONMap<T> = Record<string, T>;
 
@@ -65,7 +66,7 @@ export function scanJSONMap<T = unknown>(
   let data: string;
   if (value === null || value === undefined) {
     data = "";
-  } else if (value instanceof Uint8Array || typeof value === "string") {
+  } else if (isInstance(Uint8Array, value) || typeof value === "string") {
     data = bytesToText(value);
   } else {
     throw new Error(`failed to unmarshal JSONMap[T] value: ${JSON.stringify(String(value))}`);

@@ -19,13 +19,15 @@
 // only); orientImage applies imaging's fixOrientation transforms with
 // Bun.Image's rotate, flip and flop, which give the same pixels.
 
+import { isInstance } from "@/tools/types/is-instance";
+
 // image.DecodeConfig: the decoder is chosen by the leading bytes, as
 // image.RegisterFormat's patterns do ("?" matches any byte). The source is
 // read in order, as Go's decoders read their io.Reader: the segments and
 // chunks the header walk skips are read in bounded pieces, never held
 // whole, so the check costs little memory however large the file is.
 export function decodeConfig(src: Uint8Array | ByteSource): Size {
-  const r = src instanceof Uint8Array ? bytesSource(src) : src;
+  const r = isInstance(Uint8Array, src) ? bytesSource(src) : src;
   const head = r.peek(15);
   const match = (pattern: string): boolean =>
     head.length >= pattern.length &&

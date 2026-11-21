@@ -85,6 +85,7 @@ import {
 import type { GoInt, GoType, JSONMarshaler } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { formatFloatV } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the options of marshalJSON (see there)
 const recordFlags = encodeFlags({ allowDuplicateNames: true, allowInvalidUTF8: true });
@@ -119,7 +120,7 @@ export function nullStringText(v: unknown): string | null {
   if (v === null || v === undefined) {
     return null;
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
+  if (typeof v === "string" || isInstance(Uint8Array, v)) {
     return bytesToText(v);
   }
   // INTEGER (int64)
@@ -408,7 +409,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
       let wasOldSlice = false;
       let oldSlice: Array<Record>;
-      if (old instanceof Record) {
+      if (isInstance(Record, old)) {
         oldSlice = [old];
       } else if (isRecordSlice(old)) {
         wasOldSlice = true;
@@ -422,7 +423,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
       let wasNewSlice = false;
       let newSlice: Array<Record>;
-      if (newValue instanceof Record) {
+      if (isInstance(Record, newValue)) {
         newSlice = [newValue];
       } else if (isRecordSlice(newValue)) {
         wasNewSlice = true;
@@ -686,7 +687,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
     const values = this.get(key);
 
     // Go's type assertion to []*filesystem.File
-    return Array.isArray(values) && values.every((v) => v instanceof File) ? values : null;
+    return Array.isArray(values) && values.every((v) => isInstance(File, v)) ? values : null;
   }
 
   // Deprecated: replaced with GetUnsavedFiles.
@@ -714,7 +715,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
     const rel = this.#expand.get(relField);
 
-    if (rel instanceof Record) {
+    if (isInstance(Record, rel)) {
       return rel;
     }
     if (isRecordSlice(rel) && rel.length > 0) {
@@ -738,7 +739,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
     const rel = this.#expand.get(relField);
 
-    if (rel instanceof Record) {
+    if (isInstance(Record, rel)) {
       return [rel];
     }
     if (isRecordSlice(rel)) {
@@ -756,7 +757,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
         continue;
       }
 
-      if (!(field instanceof FileField)) {
+      if (!isInstance(FileField, field)) {
         continue;
       }
 
@@ -1146,7 +1147,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
 // a Go []*Record: an array whose items are all records
 function isRecordSlice(v: unknown): v is Array<Record> {
-  return Array.isArray(v) && v.every((item) => item instanceof Record);
+  return Array.isArray(v) && v.every((item) => isInstance(Record, item));
 }
 
 function toMap(
@@ -1155,7 +1156,7 @@ function toMap(
   if (data === null || data === undefined) {
     return new Map();
   }
-  return new Map(data instanceof Map ? data : Object.entries(data));
+  return new Map(isInstance(Map, data) ? data : Object.entries(data));
 }
 
 function toDataMap(m: ReadonlyMap<string, unknown>): DataMap {
@@ -1179,11 +1180,11 @@ export function areValuesEqual(a: unknown, b: unknown): boolean {
     // Go's == on float64: NaN != NaN, 0 == -0
     return typeof b === "number" && a === b;
   }
-  if (a instanceof Uint8Array) {
-    return b instanceof Uint8Array && a.length === b.length && a.every((x, i) => x === b[i]);
+  if (isInstance(Uint8Array, a)) {
+    return isInstance(Uint8Array, b) && a.length === b.length && a.every((x, i) => x === b[i]);
   }
-  if (a instanceof JSONRaw) {
-    return b instanceof JSONRaw && a.bytes() === b.bytes();
+  if (isInstance(JSONRaw, a)) {
+    return isInstance(JSONRaw, b) && a.bytes() === b.bytes();
   }
   if (Array.isArray(a) && a.every(isPrimitive)) {
     return (

@@ -15,6 +15,7 @@
 import { hasInvalidUTF8 } from "@/server/json-decode";
 import { bytesToText, marshal, textToBytes } from "@/tools/types/go-json";
 import type { JSONMarshaler } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // ParseJSONRaw (parseJSONRaw) creates a new JSONRaw from the provided
 // value (a JSONRaw, number, string, Uint8Array, etc.).
@@ -66,9 +67,9 @@ export class JSONRaw implements JSONMarshaler {
     let data: string | undefined;
     if (value === null || value === undefined) {
       // no cast is needed
-    } else if (value instanceof Uint8Array || typeof value === "string") {
+    } else if (isInstance(Uint8Array, value) || typeof value === "string") {
       data = bytesToText(value);
-    } else if (value instanceof JSONRaw) {
+    } else if (isInstance(JSONRaw, value)) {
       data = value.raw;
     } else {
       data = marshal(value, { allowInvalidUTF8: true });

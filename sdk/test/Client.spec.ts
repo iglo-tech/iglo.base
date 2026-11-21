@@ -5,6 +5,7 @@ import Client from "@sdk/Client";
 import { LocalAuthStore } from "@sdk/stores/LocalAuthStore";
 import { RecordService } from "@sdk/services/RecordService";
 import { FetchMock } from "@sdk-test/mocks";
+import { isInstance } from "@sdk/tools/is-instance";
 
 describe("Client", () => {
   const fetchMock = new FetchMock();
@@ -309,7 +310,7 @@ describe("Client", () => {
             // multipart/form-data requests shouldn't have explicitly set Content-Type
             config?.headers?.["Content-Type"] ||
             // the body should have been converted to FormData
-            !(config.body instanceof FormData)
+            !isInstance(FormData, config.body)
           ) {
             return false;
           }

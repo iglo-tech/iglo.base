@@ -35,6 +35,7 @@ import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { byteLength } from "@/validation/util";
 import { By } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeJSON = "json";
 
@@ -180,7 +181,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const raw = record.getRaw(this.name);
-    if (!(raw instanceof JSONRaw)) {
+    if (!isInstance(JSONRaw, raw)) {
       return ErrUnsupportedValueType;
     }
 

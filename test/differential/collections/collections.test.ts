@@ -22,6 +22,7 @@
 //     updated row and marshal to the updated GET body.
 //   - fixture: every `_collections` row of upstream's test fixture, read
 //     into the model, marshals to upstream's GET body for it.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -113,7 +114,7 @@ async function request(
 function driverValues(exported: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(exported)) {
-    if (v instanceof FieldsList || v instanceof DateTime || v instanceof JSONRaw) {
+    if (isInstance(FieldsList, v) || isInstance(DateTime, v) || isInstance(JSONRaw, v)) {
       out[k] = v.value();
     } else if (Array.isArray(v)) {
       out[k] = jsonArrayValue(v);

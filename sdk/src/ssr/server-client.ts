@@ -47,6 +47,7 @@ import {
   withRedirectUri,
 } from "@sdk/ssr/oauth2";
 import type { OAuth2Pending } from "@sdk/ssr/oauth2";
+import { isInstance } from "@sdk/tools/is-instance";
 
 /** Tokens past their `exp` by up to this many seconds still count as valid (clock skew). */
 const CLOCK_SKEW_SEC = 60;
@@ -244,7 +245,7 @@ export class ServerClient extends Client {
    */
   async completeOAuth2(input: string | URL | { url: string }): Promise<CompleteOAuth2Result> {
     const callback = new URL(
-      typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+      typeof input === "string" ? input : isInstance(URL, input) ? input.href : input.url,
     );
     try {
       const pending = await this._readOAuth2Cookie();

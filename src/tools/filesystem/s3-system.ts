@@ -45,6 +45,7 @@ import type { ResponseWriter } from "@/server/router";
 import { serveContent } from "@/server/serve-content";
 import type { HttpRange } from "@/server/serve-content";
 import { detect } from "@/tools/mimetype/mimetype";
+import { isInstance } from "@/tools/types/is-instance";
 
 export class S3System {
   // calls go over the network, so they never run in a transaction
@@ -330,7 +331,7 @@ export class S3System {
     const out = await open(path, "wx", 0o600);
     try {
       for (const part of parts) {
-        if (part instanceof Uint8Array) {
+        if (isInstance(Uint8Array, part)) {
           await out.write(part);
         } else {
           await this.#copyRange(fileKey, part.start, part.length, out);

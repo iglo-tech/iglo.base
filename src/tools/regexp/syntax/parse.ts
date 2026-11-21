@@ -52,6 +52,7 @@ import {
 import type { RangeTable } from "@/tools/unicode/letter";
 import { CategoryAliases } from "@/tools/unicode/tables";
 import { DecodeRuneInString, RuneError, RuneSelf, goString } from "@/tools/unicode/utf8";
+import { isInstance } from "@/tools/types/is-instance";
 
 // An ErrorCode describes a failure to parse a regular expression.
 export type ErrorCode = string;
@@ -1580,7 +1581,7 @@ export function Parse(s: string | Uint8Array, flags: Flags): Regexp {
   try {
     return parse(str, flags & flagsMask);
   } catch (error) {
-    if (error instanceof limitPanic) {
+    if (isInstance(limitPanic, error)) {
       // too big or too deep
       throw new RegexpSyntaxError(error.code, str);
     }

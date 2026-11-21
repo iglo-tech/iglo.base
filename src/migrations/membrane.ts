@@ -29,6 +29,7 @@ import { BoundValue, Float64 } from "@/db/dbx/query";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
+import { isInstance } from "@/tools/types/is-instance";
 
 // returned by an adapter's get for a name it does not handle
 export const pass = Symbol("pass");
@@ -135,16 +136,16 @@ export class Membrane {
         if (v === null || this.#targets.has(v) || this.#bytes.has(v) || this.#slices.has(v)) {
           return v;
         }
-        if (v instanceof BoundValue) {
+        if (isInstance(BoundValue, v)) {
           return this.toVm(v.go);
         }
-        if (v instanceof Float64) {
+        if (isInstance(Float64, v)) {
           return v.value;
         }
-        if (v instanceof Uint8Array && !Buffer.isBuffer(v)) {
+        if (isInstance(Uint8Array, v) && !Buffer.isBuffer(v)) {
           return this.#newBytes(v, "bytes");
         }
-        if (v instanceof JSONRaw) {
+        if (isInstance(JSONRaw, v)) {
           return this.#newRaw(v);
         }
         if (Array.isArray(v)) {
@@ -154,7 +155,7 @@ export class Membrane {
           }
           return copy;
         }
-        if (v instanceof Map) {
+        if (isInstance(Map, v)) {
           return this.#mapObject(v);
         }
         return this.#proxies.get(v) ?? this.#newProxy(v);
@@ -180,10 +181,10 @@ export class Membrane {
     const target = this.#targets.get(v);
     if (target !== undefined) {
       const host = this.#unbox(target);
-      if (host instanceof GoJSONArray) {
+      if (isInstance(GoJSONArray, host)) {
         return [...host.items];
       }
-      return host instanceof GoJSONMap ? host.data : host;
+      return isInstance(GoJSONMap, host) ? host.data : host;
     }
 
     const bytes = this.#bytes.get(v);
@@ -198,7 +199,7 @@ export class Membrane {
     }
 
     // what crosses unwrapped: Buffer
-    if (v instanceof Uint8Array) {
+    if (isInstance(Uint8Array, v)) {
       return v;
     }
 
@@ -241,10 +242,10 @@ export class Membrane {
       return textToBytes(v);
     }
     const host = this.toHost(v);
-    if (host instanceof Uint8Array) {
+    if (isInstance(Uint8Array, host)) {
       return host;
     }
-    if (host instanceof JSONRaw) {
+    if (isInstance(JSONRaw, host)) {
       return textToBytes(host.bytes());
     }
     return Array.isArray(host) ? bytesOf(host) : undefined;
