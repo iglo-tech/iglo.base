@@ -16,6 +16,7 @@ import { HashExp } from "@/db/dbx/expression";
 
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {
@@ -56,7 +57,7 @@ describe("TestImportCollections", () => {
 
   const scenarios: Array<{
     name: string;
-    data: Array<Record<string, unknown>>;
+    data: Array<JsonObject>;
     deleteMissing: boolean;
     expectError: boolean;
     expectCollectionsCount: number;
@@ -328,7 +329,7 @@ describe("TestImportCollectionsByMarshaledJSON", () => {
 describe("TestImportCollectionsUpdateRules", () => {
   const scenarios: Array<{
     name: string;
-    data: Record<string, unknown>;
+    data: JsonObject;
     deleteMissing: boolean;
   }> = [
     {

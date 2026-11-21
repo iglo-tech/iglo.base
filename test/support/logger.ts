@@ -5,7 +5,7 @@
 import type { AppLogger } from "@/app/app";
 
 export function testLogger(onLog?: (message: string, cause: unknown) => void): AppLogger {
-  const log = (message: string, attrs?: { [key: string]: unknown }): void => {
+  const log = (message: string, attrs?: { error?: unknown }): void => {
     onLog?.(message, attrs?.error);
   };
   return {

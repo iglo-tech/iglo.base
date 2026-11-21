@@ -36,11 +36,7 @@ export async function recordRequestVerification(e: RequestEvent): Promise<Handle
   }
 
   const form: RecordRequestVerificationForm = { Email: "" };
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    recordRequestVerificationType,
-  );
+  const bindErr = await e.bindBody(form, recordRequestVerificationType);
   if (bindErr) {
     return firstApiError(
       bindErr,
@@ -92,7 +88,7 @@ async function sendVerificationInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
-  token: { [key: string]: unknown },
+  token: unknown,
 ): Promise<void> {
   const app = e.app;
   try {
@@ -116,9 +112,9 @@ const recordRequestVerificationType = structOf([
   { name: "Email", type: "string", tags: { form: "email", json: "email" } },
 ]);
 
-interface RecordRequestVerificationForm {
+type RecordRequestVerificationForm = {
   Email: string;
-}
+};
 
 function validateRecordRequestVerificationForm(form: RecordRequestVerificationForm): Error | null {
   return ValidateStruct(Field("email", form.Email, Required, Length(1, 255), EmailFormat));

@@ -17,6 +17,7 @@ import { freePort, startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
+import type { JsonObject } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -57,7 +58,7 @@ interface S3Target {
   secret?: string;
 }
 
-function s3Settings(target: S3Target | null): Record<string, unknown> {
+function s3Settings(target: S3Target | null): JsonObject {
   return target === null
     ? { enabled: false }
     : {

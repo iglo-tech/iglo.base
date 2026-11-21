@@ -12,6 +12,7 @@ import { Apple } from "@/oauth2/apple";
 import { Token } from "@/oauth2/token";
 import { json, stubFetch } from "@test/support/fetch-stub";
 import type { StubbedFetch } from "@test/support/fetch-stub";
+import type { JsonObject } from "@test/support/json";
 
 const jwksURL = "https://appleid.apple.com/auth/keys";
 const clientId = "com.example.app";
@@ -30,14 +31,14 @@ const now = (): number => Math.floor(Date.now() / 1000);
 
 // an id_token signed with key, with the header and claims given
 function idToken(
-  claims: { [key: string]: unknown },
-  opts: { key?: typeof privateKey; header?: { [key: string]: unknown } } = {},
+  claims: JsonObject,
+  opts: { key?: typeof privateKey; header?: JsonObject } = {},
 ): string {
   const head = `${b64url(JSON.stringify({ alg: "RS256", kid: "apple-key-1", ...opts.header }))}.${b64url(JSON.stringify(claims))}`;
   return `${head}.${b64url(sign("sha256", Buffer.from(head), opts.key ?? privateKey))}`;
 }
 
-const validClaims = (overrides: { [key: string]: unknown } = {}): { [key: string]: unknown } => ({
+const validClaims = (overrides: JsonObject = {}) => ({
   iss: "https://appleid.apple.com",
   aud: clientId,
   sub: "001234.abcdef.0123",
@@ -154,7 +155,7 @@ describe("Apple id_token", () => {
 
   test("an id_token without an expiration is rejected", async () => {
     stub = stubFetch({});
-    const claims = validClaims();
+    const claims: JsonObject = validClaims();
     delete claims["exp"];
     await Promise.resolve(
       expect(provider().fetchAuthUser(tokenWith(idToken(claims)))).rejects.toThrow(

@@ -80,6 +80,13 @@ async function throughput(
   return { qps: (done / elapsed) * 1000, lag: summarize(lags) };
 }
 
+// one workload's measurement: latency of its requests, throughput and the lag of the loop
+type Cell = {
+  latency: ReturnType<typeof summarize>;
+  qps: number;
+  lag: ReturnType<typeof summarize>;
+};
+
 const results: Array<unknown> = [];
 const datasets: Array<[Dataset, string | undefined]> = [
   ["fixture", values.fixture],
@@ -109,7 +116,7 @@ for (const [dataset, source] of datasets) {
             ? () => target.app.concurrentDB().newQuery("SELECT 1").all()
             : () => target.app.concurrentDB().newQuery("SELECT 1").allAsync();
         const hop = summarize(await latency(target, ping, 1000));
-        const cells: Record<string, unknown> = {};
+        const cells: Record<string, Cell> = {};
         for (const name of workloadNames) {
           guard();
           const ms = (name === "slow" ? 1.5 : 1) * seconds * 1000;

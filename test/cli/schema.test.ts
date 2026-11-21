@@ -12,9 +12,15 @@ import { join, resolve } from "node:path";
 import Ajv2020 from "ajv/dist/2020";
 
 import { readSchema } from "@/schema/read";
-import type { SchemaCollection, SchemaDescription, SchemaField } from "@/schema/types";
+import type {
+  SchemaCollection,
+  SchemaDescription,
+  SchemaField,
+  SchemaObject,
+} from "@/schema/types";
 import { run, startServer, tempDir } from "@test/support/executable";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import type { Json, JsonObject } from "@test/support/json";
 
 const schemaPath = resolve(import.meta.dir, "../../schema/iglo.schema.json");
 const schemaJSON = JSON.parse(readFileSync(schemaPath, "utf8")) as object;
@@ -32,7 +38,7 @@ function copyOf(source: string): string {
 async function pull(
   dataDir: string,
   ...extra: Array<string>
-): Promise<{ text: string; file: Record<string, unknown> }> {
+): Promise<{ text: string; file: JsonObject }> {
   const result = await run(["--dir", dataDir, "schema", "pull", ...extra]);
   // the only standard error a pull writes is the notes of the OAuth2 providers
   // (the variables to set; never a value, D40)
@@ -43,10 +49,10 @@ async function pull(
       .join("\n"),
   ).toBe("");
   expect(result.exitCode).toBe(0);
-  return { text: result.stdout, file: JSON.parse(result.stdout) as Record<string, unknown> };
+  return { text: result.stdout, file: JSON.parse(result.stdout) as JsonObject };
 }
 
-function assertValid(file: Record<string, unknown>): void {
+function assertValid(file: JsonObject): void {
   const ok = validate(file);
   expect(validate.errors ?? []).toEqual([]);
   expect(ok).toBe(true);
@@ -54,17 +60,18 @@ function assertValid(file: Record<string, unknown>): void {
 
 // the collections of GET /api/collections, in the shape of the schema file's
 // description: no ids, timestamps or providers; rules nested; relations by name
-interface ApiCollection {
+// an intersection, not an interface: a Json index signature cannot hold the
+// optional members, which are undefined when absent
+type ApiCollection = JsonObject & {
   id: string;
   name: string;
   type: string;
   system: boolean;
-  fields?: Array<Record<string, unknown>>;
+  fields?: Array<JsonObject>;
   indexes?: Array<string>;
   viewQuery?: string;
-  oauth2?: { providers?: unknown; [key: string]: unknown };
-  [key: string]: unknown;
-}
+  oauth2?: JsonObject & { providers?: Json };
+};
 
 const ruleNames: Record<string, string> = {
   listRule: "list",
@@ -98,7 +105,7 @@ function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection
   return apiCollections
     .map((item): SchemaCollection => {
       const rules: Record<string, string | null> = {};
-      const options: Record<string, unknown> = {};
+      const options: SchemaObject = {};
       for (const [key, value] of Object.entries(item)) {
         if (key in ruleNames) {
           rules[ruleNames[key] as string] = value as string | null;
@@ -127,7 +134,7 @@ function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection
           ? []
           : (item.fields ?? []).map((field) => {
               const { id: _id, name, type, system, collectionId, ...rest } = field;
-              const fieldOptions: Record<string, unknown> = { ...rest };
+              const fieldOptions: SchemaObject = { ...rest };
               if (collectionId !== undefined) {
                 fieldOptions.collection = names.get(collectionId as string) ?? "";
               }
@@ -150,7 +157,7 @@ function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection
     .toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+function isObject(value: unknown): value is SchemaObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -280,7 +287,7 @@ describe("schema command", () => {
 
     // a description and a tsType written by hand survive the next pull
     const edited = JSON.parse(written) as {
-      collections: Record<string, { description?: string; fields?: Record<string, object> }>;
+      collections: Record<string, { description?: string; fields?: Record<string, JsonObject> }>;
     };
     const demo = edited.collections.demo1;
     if (demo === undefined) {
@@ -417,8 +424,7 @@ describe("schema command", () => {
 
     const first = await pull(dataDir);
     assertValid(first.file);
-    const collections = (first.file as { collections: Record<string, Record<string, unknown>> })
-      .collections;
+    const collections = (first.file as { collections: Record<string, JsonObject> }).collections;
     expect(collections["_superusers"]).toEqual({ type: "auth", authToken: { duration: 3600 } });
     expect(collections.digest).toEqual({
       type: "view",
@@ -476,7 +482,7 @@ describe("schema command", () => {
     const result = await run(["--dir", dataDir, "schema", "pull", "--dev"]);
     expect(result.exitCode).toBe(0);
     // stdout parses as the file: no log line or SQL statement is in it
-    const file = JSON.parse(result.stdout) as Record<string, unknown>;
+    const file = JSON.parse(result.stdout) as JsonObject;
     assertValid(file);
     expect(result.stderr).toContain("SELECT");
     expect(result.stderr).not.toContain("$schema");
@@ -498,7 +504,7 @@ describe("schema command", () => {
 
     const pulled = await run(["--dir", dataDir, "--migrationsDir", migrations, "schema", "pull"]);
     expect(pulled.exitCode).toBe(0);
-    assertValid(JSON.parse(pulled.stdout) as Record<string, unknown>);
+    assertValid(JSON.parse(pulled.stdout) as JsonObject);
     expect(pulled.stderr).toContain("migration output");
   });
 
@@ -653,8 +659,7 @@ describe("schema command", () => {
   test("a fresh install writes its users collection in full, with its rules and options", async () => {
     const dataDir = await withSuperuser(join(tempDir(), "pb_data"));
     const { file } = await pull(dataDir);
-    const users = (file as { collections: Record<string, Record<string, unknown>> }).collections
-      .users;
+    const users = (file as { collections: Record<string, JsonObject> }).collections.users;
     expect(users).toMatchObject({
       type: "auth",
       rules: {

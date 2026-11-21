@@ -162,7 +162,7 @@ test("TestReplacePlaceholders", () => {
   const tests: Array<{
     id: string;
     placeholders: Array<string>;
-    params: Record<string, unknown>;
+    params: Record<string, string | number>;
     expectedParams: Array<number | string> | null;
     hasError: boolean;
   }> = [

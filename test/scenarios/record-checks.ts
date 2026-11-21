@@ -8,12 +8,18 @@ import { join } from "node:path";
 
 import { superuserToken } from "@test/scenarios/record-crud";
 import type { AfterContext } from "@test/scenarios/scenario";
+import type { Json, JsonObject } from "@test/support/json";
 
 type After = (ctx: AfterContext) => Promise<void>;
 
+// a value a record field or a SQLite column holds: JSON, or the blob and
+// integer values SQLite returns
+type Value = Json | bigint | Uint8Array;
+type Row = { [key: string]: Value };
+
 interface ApiResult {
   status: number;
-  json: { [key: string]: unknown };
+  json: JsonObject;
 }
 
 export async function superuserGet(url: string, path: string): Promise<ApiResult> {
@@ -22,11 +28,7 @@ export async function superuserGet(url: string, path: string): Promise<ApiResult
   return { status: res.status, json: text === "" ? {} : (JSON.parse(text) as ApiResult["json"]) };
 }
 
-function expectFields(
-  what: string,
-  record: { [key: string]: unknown },
-  fields: { [key: string]: unknown },
-): void {
+function expectFields(what: string, record: Row, fields: Row): void {
   for (const [k, v] of Object.entries(fields)) {
     if (JSON.stringify(record[k]) !== JSON.stringify(v)) {
       throw new Error(
@@ -37,11 +39,7 @@ function expectFields(
 }
 
 // the record exists, with these field values
-export function recordHas(
-  collection: string,
-  id: string,
-  fields: { [key: string]: unknown } = {},
-): After {
+export function recordHas(collection: string, id: string, fields: Row = {}): After {
   return async ({ url }) => {
     const res = await superuserGet(url, `/api/collections/${collection}/records/${id}`);
     if (res.status !== 200) {
@@ -63,12 +61,9 @@ export function recordMissing(collection: string, id: string): After {
 
 // the record of the response body was stored as returned: every field of
 // the response, plus these values (for fields the response hides)
-export function responseRecordStored(
-  collection: string,
-  fields: { [key: string]: unknown } = {},
-): After {
+export function responseRecordStored(collection: string, fields: Row = {}): After {
   return async (ctx) => {
-    const returned = JSON.parse(new TextDecoder().decode(ctx.body)) as { [key: string]: unknown };
+    const returned = JSON.parse(new TextDecoder().decode(ctx.body)) as JsonObject;
     const id = String(returned["id"]);
     const res = await superuserGet(ctx.url, `/api/collections/${collection}/records/${id}`);
     if (res.status !== 200) {
@@ -181,23 +176,21 @@ export function checks(...list: Array<After>): After {
 // the stored password hash of the record of the response body matches
 export function responsePasswordIs(collection: string, password: string): After {
   return async (ctx) => {
-    const returned = JSON.parse(new TextDecoder().decode(ctx.body)) as { [key: string]: unknown };
+    const returned = JSON.parse(new TextDecoder().decode(ctx.body)) as JsonObject;
     await passwordIs(collection, String(returned["id"]), password)(ctx);
   };
 }
 
 // the stored row has these column values (for records whose change
 // invalidates the superuser token the API checks use)
-export function rowHas(table: string, id: string, columns: { [key: string]: unknown }): After {
+export function rowHas(table: string, id: string, columns: Row): After {
   return ({ dataDir }) => {
-    const rows = queryRows(dataDir, `SELECT * FROM "${table}" WHERE id = ?`, id) as Array<{
-      [key: string]: unknown;
-    }>;
+    const rows = queryRows(dataDir, `SELECT * FROM "${table}" WHERE id = ?`, id) as Array<Row>;
     if (rows.length !== 1) {
       return Promise.reject(new Error(`${table}/${id}: expected the row, got ${rows.length}`));
     }
     try {
-      expectFields(`${table}/${id}`, rows[0] as { [key: string]: unknown }, columns);
+      expectFields(`${table}/${id}`, rows[0] as Row, columns);
     } catch (error) {
       return Promise.reject(error);
     }

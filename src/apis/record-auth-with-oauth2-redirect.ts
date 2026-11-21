@@ -37,12 +37,12 @@ const oauth2RedirectDataType = structOf([
   { name: "AppleUser", type: "string", tags: { form: "user", json: "-" } },
 ]);
 
-interface OAuth2RedirectData {
+type OAuth2RedirectData = {
   State: string;
   Code: string;
   Error: string;
   AppleUser: string;
-}
+};
 
 export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<HandlerResult> {
   // SkipSuccessActivityLog
@@ -51,11 +51,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
   const data: OAuth2RedirectData = { State: "", Code: "", Error: "", AppleUser: "" };
 
   if (e.request.method === "POST") {
-    const bindErr = await e.bindBody(
-      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-      data as unknown as { [key: string]: unknown },
-      oauth2RedirectDataType,
-    );
+    const bindErr = await e.bindBody(data, oauth2RedirectDataType);
     if (bindErr) {
       e.app.logger.warn("Failed to read OAuth2 redirect data", { error: bindErr });
       return failureRedirect(e);
@@ -161,12 +157,13 @@ function parseAndStoreAppleRedirectName(
 
   // https://developer.apple.com/documentation/signinwithapple/incorporating-sign-in-with-apple-into-other-platforms#Handle-the-response
   const extracted = unmarshal(serializedNameData, mapOf(anyType)) as
-    | { [key: string]: unknown }
-    | undefined;
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any from the Apple name document: its members are JSON values of any kind
+    { [key: string]: unknown } | undefined;
   const name = extracted?.["name"];
   if (name !== undefined && name !== null && (typeof name !== "object" || Array.isArray(name))) {
     throw new Error("json: cannot unmarshal into Go struct");
   }
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the name object of Apple's document, read by key (its members are JSON values of any kind)
   const parts = (name ?? {}) as { [key: string]: unknown };
 
   const fullName = appleNamePart(parts["firstName"]) + " " + appleNamePart(parts["lastName"]);

@@ -19,7 +19,7 @@ declare module "@jsquash/jpeg/encode.js" {
   export function init(module: WebAssembly.Module): Promise<void>;
   export default function encode(
     data: { data: Uint8ClampedArray; width: number; height: number },
-    options?: Record<string, unknown>,
+    options?: Record<string, string | number | boolean>,
   ): Promise<ArrayBuffer>;
 }
 
@@ -34,7 +34,7 @@ declare module "@jsquash/png/encode.js" {
   export function init(module: WebAssembly.Module): Promise<unknown>;
   export default function encode(
     data: { data: Uint8ClampedArray; width: number; height: number },
-    options?: Record<string, unknown>,
+    options?: Record<string, string | number | boolean>,
   ): Promise<ArrayBuffer>;
 }
 
@@ -61,12 +61,12 @@ declare module "wasm-vips" {
     width: number;
     height: number;
     autorot(): VipsImage;
-    resize(scale: number, options?: Record<string, unknown>): VipsImage;
+    resize(scale: number, options?: Record<string, string | number | boolean>): VipsImage;
     crop(left: number, top: number, width: number, height: number): VipsImage;
     hasAlpha(): boolean;
-    jpegsaveBuffer(options?: Record<string, unknown>): Uint8Array;
-    pngsaveBuffer(options?: Record<string, unknown>): Uint8Array;
-    gifsaveBuffer(options?: Record<string, unknown>): Uint8Array;
+    jpegsaveBuffer(options?: Record<string, string | number | boolean>): Uint8Array;
+    pngsaveBuffer(options?: Record<string, string | number | boolean>): Uint8Array;
+    gifsaveBuffer(options?: Record<string, string | number | boolean>): Uint8Array;
     delete(): void;
   }
   export interface Vips {
@@ -74,28 +74,40 @@ declare module "wasm-vips" {
       newFromBuffer(
         data: Uint8Array,
         strOptions?: string,
-        options?: Record<string, unknown>,
+        options?: Record<string, string | number | boolean>,
       ): VipsImage;
     };
     concurrency(n?: number): number;
     version(flag: number): number | string;
     Cache: { max(n: number): void };
   }
-  export default function Vips(options?: Record<string, unknown>): Promise<Vips>;
+  export interface VipsOptions {
+    dynamicLibraries?: Array<string>;
+    locateFile?: (name: string) => string;
+    mainScriptUrlOrBlob?: string;
+  }
+  export default function Vips(options?: VipsOptions): Promise<Vips>;
 }
 
 declare module "sharp" {
   interface Sharp {
     rotate(): Sharp;
-    resize(width: number, height: number, options?: Record<string, unknown>): Sharp;
+    resize(
+      width: number,
+      height: number,
+      options?: Record<string, string | number | boolean>,
+    ): Sharp;
     extract(region: { left: number; top: number; width: number; height: number }): Sharp;
-    jpeg(options?: Record<string, unknown>): Sharp;
-    png(options?: Record<string, unknown>): Sharp;
-    gif(options?: Record<string, unknown>): Sharp;
+    jpeg(options?: Record<string, string | number | boolean>): Sharp;
+    png(options?: Record<string, string | number | boolean>): Sharp;
+    gif(options?: Record<string, string | number | boolean>): Sharp;
     metadata(): Promise<{ width?: number; height?: number; orientation?: number }>;
     toBuffer(): Promise<Uint8Array>;
   }
-  export default function sharp(input: Uint8Array, options?: Record<string, unknown>): Sharp;
+  export default function sharp(
+    input: Uint8Array,
+    options?: Record<string, string | number | boolean>,
+  ): Sharp;
 }
 
 declare module "@/../scripts/spikes/M0.7/node_modules/wasm-vips/lib/vips-node.mjs" {

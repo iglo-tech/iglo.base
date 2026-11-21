@@ -179,7 +179,7 @@ async function loadMigration(path: string, file: string): Promise<SchemaMigratio
       "the default export must be an object (export default { up(tx) { ... } } satisfies Migration)",
     );
   }
-  const members = exported as Record<string, unknown>;
+  const members = exported as { up?: unknown; renames?: unknown; renameCollections?: unknown };
   for (const key of Object.keys(members)) {
     if (key !== "up" && key !== "renames" && key !== "renameCollections") {
       throw shape(
@@ -216,6 +216,6 @@ async function loadMigration(path: string, file: string): Promise<SchemaMigratio
   };
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+function isPlainObject(value: unknown): value is object {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }

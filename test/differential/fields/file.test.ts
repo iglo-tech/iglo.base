@@ -50,6 +50,7 @@ import {
 import type { Content, Part, UploadCase } from "@test/differential/fields/file-cases";
 import type { TestCollection } from "@test/support/fields";
 import { TestRecord, newBaseCollection, noDBApp } from "@test/support/fields";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -160,7 +161,7 @@ function settingsErrors(collection: TestCollection): Errors | null {
 function fieldsListJSON(collection: TestCollection): string {
   return marshal(
     [...collection.fields].map((field) => {
-      const data = unmarshal(field.marshalJSON(), mapOf(anyType)) as Record<string, unknown>;
+      const data = unmarshal(field.marshalJSON(), mapOf(anyType)) as JsonObject;
       data.type = field.type();
       return data;
     }),
@@ -544,7 +545,7 @@ async function submit(
   collection: TestCollection,
   record: TestRecord,
   parts: Array<Part>,
-): Promise<Record<string, unknown> | null> {
+): Promise<JsonObject | null> {
   const { contentType, body } = await multipart(parts);
   const errs = await modelSubmit(record, contentType, body);
 
@@ -589,7 +590,7 @@ async function submit(
     body: "",
   });
 
-  const saved = JSON.parse(res.text) as Record<string, unknown>;
+  const saved = JSON.parse(res.text) as JsonObject;
   const columns = storeModel(collection, record);
   // the response values are the stored names
   const responseColumns: Record<string, [string, unknown]> = {};
@@ -609,7 +610,7 @@ async function submit(
 }
 
 // the record upstream saved, as loaded from the database
-function savedRecord(collection: TestCollection, saved: Record<string, unknown>): TestRecord {
+function savedRecord(collection: TestCollection, saved: JsonObject): TestRecord {
   const record = new TestRecord(collection);
   record.id = saved.id as string;
   for (const field of collection.fields) {
@@ -622,7 +623,7 @@ function savedRecord(collection: TestCollection, saved: Record<string, unknown>)
 }
 
 // "$i" -> the i-th stored name of the key's field
-function resolveParts(parts: Array<Part>, saved: Record<string, unknown>): Array<Part> {
+function resolveParts(parts: Array<Part>, saved: JsonObject): Array<Part> {
   return parts.map((part) => {
     if (part.length !== 2 || !/^\$\d+$/.test(part[1])) {
       return part;
@@ -673,8 +674,8 @@ describe("uploads", () => {
       if (c.before !== undefined) {
         const saved = await submit(`${i} before`, collection, record, c.before);
         expect(saved).not.toBeNull();
-        record = savedRecord(collection, saved as Record<string, unknown>);
-        parts = resolveParts(c.parts, saved as Record<string, unknown>);
+        record = savedRecord(collection, saved as JsonObject);
+        parts = resolveParts(c.parts, saved as JsonObject);
       }
       await submit(String(i), collection, record, parts);
     });

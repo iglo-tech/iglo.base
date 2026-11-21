@@ -18,7 +18,7 @@ function newField(fieldType: string): Field {
   return factory();
 }
 
-function errorKeys(err: Error | null): Record<string, unknown> {
+function errorKeys(err: Error | null): Record<string, Error | null> {
   return isInstance(Errors, err) ? err.errors : {};
 }
 

@@ -10,6 +10,7 @@
 import { png, text } from "@test/differential/files/cases";
 import { rid } from "@test/differential/resolver/schema";
 import type { Client, RoundTripScenario } from "@test/differential/roundtrip/run";
+import type { JsonObject } from "@test/support/json";
 
 export const tags = ["a", "b", "c"];
 export const password = "1234567890";
@@ -73,7 +74,7 @@ async function checkTokens(c: Client): Promise<void> {
   }
 }
 
-export function settingsBody(tag: string, smtpPort: number): Record<string, unknown> {
+export function settingsBody(tag: string, smtpPort: number) {
   return {
     meta: {
       appName: `Round trip ${tag}`,
@@ -91,7 +92,7 @@ export function settingsBody(tag: string, smtpPort: number): Record<string, unkn
       rules: [{ label: "*:auth", maxRequests: 100 + tags.indexOf(tag), duration: 3 }],
     },
     trustedProxy: { headers: ["X-Real-IP"], useLeftmostIP: true },
-  };
+  } satisfies JsonObject;
 }
 
 // the JSON bodies at the edges of each field type; raw text keeps what
@@ -137,7 +138,7 @@ function edgeBodies(tag: string, people: Array<string>): Array<{ id: string; raw
   ];
 }
 
-function allFields(people: string): Array<Record<string, unknown>> {
+function allFields(people: string): Array<JsonObject> {
   return [
     { name: "t", type: "text" },
     { name: "ed", type: "editor", convertURLs: true },
@@ -462,10 +463,10 @@ async function batches(c: Client, tag: string): Promise<void> {
 async function changeFields(
   c: Client,
   name: string,
-  change: (fields: Array<Record<string, unknown>>) => Array<Record<string, unknown>>,
+  change: (fields: Array<JsonObject>) => Array<JsonObject>,
 ): Promise<void> {
   const current = (await c.get(collectionPath(name))) as {
-    fields: Array<Record<string, unknown>>;
+    fields: Array<JsonObject>;
   };
   await c.patch(collectionPath(name), { fields: change(current.fields) });
 }
@@ -511,7 +512,7 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   await c.patch(records(sch, rid(`${tag}sch1`)), { added: true });
   // rename, with an index on the field
   const beforeRename = (await c.get(collectionPath(sch))) as {
-    fields: Array<Record<string, unknown>>;
+    fields: Array<JsonObject>;
     indexes: Array<string>;
   };
   await c.patch(collectionPath(sch), {
@@ -678,7 +679,7 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   // schema of the other server's collections
   const renamed = `rt${p}_renamed`;
   const before = (await c.get(collectionPath(renamed))) as {
-    fields: Array<Record<string, unknown>>;
+    fields: Array<JsonObject>;
     indexes: Array<string>;
   };
   await c.patch(collectionPath(renamed), {
@@ -691,7 +692,7 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
     ),
   });
   const beforeRename = (await c.get(collectionPath(renamed))) as {
-    fields: Array<Record<string, unknown>>;
+    fields: Array<JsonObject>;
     indexes: Array<string>;
   };
   await c.patch(collectionPath(renamed), {

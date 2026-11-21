@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 src/services/CrudService.ts
 import type { LooseObject } from "@sdk/tools/loose";
+import type { JsonObject } from "@sdk/tools/json";
 import { BaseService } from "@sdk/services/BaseService";
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import type { ListResult } from "@sdk/tools/dtos";
@@ -14,6 +15,7 @@ export abstract class CrudService<M> extends BaseService {
   /**
    * Response data decoder.
    */
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape, parity with JS SDK v0.29.0 (D36)
   decode<T = M>(data: Record<string, unknown>): T {
     return data as T;
   }
@@ -77,13 +79,11 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath, options)
-      .then((responseData: Record<string, unknown>) => {
+      .then((responseData: { items?: unknown }) => {
         responseData.items =
-          (responseData.items as Array<Record<string, unknown>>)?.map(
-            (item: Record<string, unknown>) => {
-              return this.decode<T>(item);
-            },
-          ) || [];
+          (responseData.items as Array<JsonObject>)?.map((item: JsonObject) => {
+            return this.decode<T>(item);
+          }) || [];
 
         // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         return responseData as unknown as ListResult<T>;
@@ -166,7 +166,7 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-      .then((responseData: Record<string, unknown>) => this.decode<T>(responseData));
+      .then((responseData: JsonObject) => this.decode<T>(responseData));
   }
 
   /**
@@ -187,7 +187,7 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath, options)
-      .then((responseData: Record<string, unknown>) => this.decode<T>(responseData));
+      .then((responseData: JsonObject) => this.decode<T>(responseData));
   }
 
   /**
@@ -212,7 +212,7 @@ export abstract class CrudService<M> extends BaseService {
 
     return this.client
       .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-      .then((responseData: Record<string, unknown>) => this.decode<T>(responseData));
+      .then((responseData: JsonObject) => this.decode<T>(responseData));
   }
 
   /**

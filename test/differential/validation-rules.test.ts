@@ -30,6 +30,7 @@ import type { UpstreamServer } from "@test/support/upstream";
 import { sentenize } from "@/server/error";
 import type { Error as ValidationError } from "@/validation/error";
 import { Domain, EmailFormat, JSON as JSONRule, URL } from "@/validation/is/rules";
+import type { JsonObject } from "@test/support/json";
 
 const email = "rules@example.com";
 const password = "1234567890";
@@ -203,9 +204,9 @@ function errorItem(err: ValidationError | null): FieldError | null {
 async function createRecord(
   field: string,
   value: string,
-): Promise<{ status: number; error: FieldError | null; record: Record<string, unknown> }> {
+): Promise<{ status: number; error: FieldError | null; record: JsonObject }> {
   const res = await post("/api/collections/rules/records", { [field]: value });
-  const body = (await res.json()) as Record<string, unknown> & {
+  const body = (await res.json()) as JsonObject & {
     data?: Record<string, FieldError>;
   };
   if (res.status === 200) {

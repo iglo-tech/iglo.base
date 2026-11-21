@@ -4,6 +4,7 @@
 
 import { clientsToken, superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { multipart } from "@test/scenarios/multipart";
+import type { JsonObject } from "@test/support/json";
 
 export interface BatchItem {
   method: string;
@@ -24,7 +25,7 @@ export interface BatchCase {
   // the query of the batch URL
   query?: string;
   // `batch` settings for this case only
-  settings?: Record<string, unknown>;
+  settings?: JsonObject;
   // the collections read back from both servers after the case
   reads?: Array<string>;
 }

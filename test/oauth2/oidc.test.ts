@@ -7,13 +7,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { OIDC } from "@/oauth2/oidc";
 import { Token } from "@/oauth2/token";
+import type { JsonObject } from "@test/support/json";
 
 const nowSeconds = 1_900_000_000;
 const clock = { now: () => new Date(nowSeconds * 1000) };
 
 const b64url = (value: string): string => Buffer.from(value).toString("base64url");
 
-function idToken(claims: { [key: string]: unknown }): Token {
+function idToken(claims: JsonObject): Token {
   const jwt = [
     b64url(JSON.stringify({ alg: "HS256" })),
     b64url(JSON.stringify({ sub: "abc", aud: "client", ...claims })),

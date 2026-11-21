@@ -7,6 +7,7 @@
 
 import { rid } from "@test/differential/resolver/schema";
 import type { WriteCase } from "@test/differential/records-write/write-case";
+import type { JsonObject } from "@test/support/json";
 
 export type FreshIdentity = "guest" | "alice" | "bob" | "dave" | "superuser";
 
@@ -41,8 +42,8 @@ export const ruleShapes: Array<{ shape: string; rule: string | null }> = [
 ];
 
 // collections in creation order (each may refer to the ones before)
-export function freshCollections(ids: Ids): Array<{ [key: string]: unknown }> {
-  const shapeCollections = ruleShapes.map((s) => ({
+export function freshCollections(ids: Ids): Array<JsonObject> {
+  const shapeCollections = ruleShapes.map((s): JsonObject => ({
     name: `w_${s.shape}`,
     type: "base",
     listRule: "",
@@ -132,7 +133,7 @@ export function freshCollections(ids: Ids): Array<{ [key: string]: unknown }> {
 }
 
 // collections that refer to parents (created after it)
-export function freshCollections2(ids: Ids): Array<{ [key: string]: unknown }> {
+export function freshCollections2(ids: Ids): Array<JsonObject> {
   return [
     {
       name: "children",
@@ -200,8 +201,8 @@ export const membersCollection = {
 };
 
 // records the builder creates (collection, body)
-export function freshRecords(): Array<{ collection: string; body: { [key: string]: unknown } }> {
-  const out: Array<{ collection: string; body: { [key: string]: unknown } }> = [];
+export function freshRecords(): Array<{ collection: string; body: JsonObject }> {
+  const out: Array<{ collection: string; body: JsonObject }> = [];
   for (const [name, m] of Object.entries(members)) {
     out.push({
       collection: "members",
@@ -287,7 +288,7 @@ function ruleCases(): Array<WriteCase> {
     count: who === "guest" ? 3 : 7,
     secret: "from " + who,
   });
-  const updateBody: { [K in FreshIdentity]?: unknown } = {
+  const updateBody: { [K in FreshIdentity]?: JsonObject } = {
     guest: { title: "u_guest", count: 9 },
     alice: { "tags+": "c", "count+": 2 },
     bob: { title: "u_bob", tags: ["a", "b"], owner: members.bob.id },
@@ -328,8 +329,8 @@ function ruleCases(): Array<WriteCase> {
 const types = "/api/collections/w_types/records";
 const typesRecord = `${types}/${rid("types1")}`;
 
-const typesCreate = (name: string, body: { [key: string]: unknown }, id?: string): WriteCase => {
-  const idField: { [key: string]: unknown } = {};
+const typesCreate = (name: string, body: JsonObject, id?: string): WriteCase => {
+  const idField: JsonObject = {};
   if (id !== undefined) {
     idField.id = rid(id);
   }

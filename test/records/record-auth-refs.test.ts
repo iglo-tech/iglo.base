@@ -56,7 +56,7 @@ async function addRef(
   app: RecordsApp,
   collectionName: string,
   authRecord: Record,
-  extra: { [key: string]: unknown },
+  extra: { [key: string]: string },
 ): Promise<Record> {
   const ref = newRecord(findCollectionByNameOrId(app, collectionName));
   ref.load({
@@ -68,7 +68,7 @@ async function addRef(
   return ref;
 }
 
-const refExtras: { [name: string]: { [key: string]: unknown } } = {
+const refExtras: { [name: string]: { [key: string]: string } } = {
   [CollectionNameExternalAuths]: { provider: "github", providerId: "p1" },
   [CollectionNameMFAs]: { method: "password" },
   [CollectionNameOTPs]: { password: "1234567890", sentTo: "a@example.com" },
@@ -102,7 +102,7 @@ describe("ref validation", () => {
       provider: "github",
       providerId: "p1",
     };
-    const scenarios: Array<[string, { [key: string]: unknown }, string]> = [
+    const scenarios: Array<[string, { [key: string]: string }, string]> = [
       [
         "no data (the field validators)",
         {},

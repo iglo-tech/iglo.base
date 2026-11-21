@@ -36,7 +36,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item1" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
     fetchMock.on({
@@ -53,7 +53,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item2" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
     fetchMock.on({
@@ -70,7 +70,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -89,7 +89,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item1" }, { id: "item2" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
     fetchMock.on({
@@ -106,7 +106,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item3" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -123,7 +123,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item1" }, { id: "item2" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
     fetchMock.on({
@@ -138,7 +138,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item3" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -149,7 +149,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       replyCode: 200,
       replyBody: { id: "item-one" },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -168,7 +168,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         items: [{ id: "item1" }],
       },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -180,7 +180,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       replyCode: 200,
       replyBody: { id: "item-create" },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -192,7 +192,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       replyCode: 200,
       replyBody: { id: "item-update" },
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 
@@ -202,7 +202,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       url: service.client.buildURL(service.baseCrudPath) + "/" + encodeURIComponent(id) + "?q1=456",
       replyCode: 204,
       additionalMatcher: (_, config) => {
-        return (config?.headers as Record<string, string> | undefined)?.["x-test"] === "789";
+        return config?.headers?.["x-test"] === "789";
       },
     });
 

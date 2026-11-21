@@ -573,7 +573,7 @@ describe("stored shapes", () => {
     async () => {
       const source = fixtureCopy((dataDir) =>
         changeSettings(dataDir, (settings) => {
-          (settings as Record<string, unknown>).unknownTop = { nested: [1, 2, { a: null }] };
+          settings.unknownTop = { nested: [1, 2, { a: null }] };
           settings.meta = { ...settings.meta, unknownMeta: "x", appName: "shapes" };
           delete settings.batch;
         }),

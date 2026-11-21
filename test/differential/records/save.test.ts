@@ -60,6 +60,7 @@ import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import { collections, steps, tables, volatileColumns } from "@test/differential/records/save-cases";
 import type { Step } from "@test/differential/records/save-cases";
+import type { Json, JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -186,14 +187,14 @@ function setOwn<T>(obj: { [key: string]: T }, key: string, value: T): void {
 
 // JSON text with the object members sorted (Go writes maps in random order)
 function sortedJSON(text: string): string {
-  const sort = (v: unknown): unknown => {
+  const sort = (v: Json): Json => {
     if (Array.isArray(v)) {
       return v.map(sort);
     }
     if (v !== null && typeof v === "object") {
-      const out: { [key: string]: unknown } = {};
+      const out: JsonObject = {};
       for (const key of Object.keys(v).toSorted()) {
-        setOwn(out, key, sort((v as { [key: string]: unknown })[key]));
+        setOwn(out, key, sort(v[key] as Json));
       }
       return out;
     }
@@ -299,7 +300,7 @@ async function upstreamStep(step: Step, resolve: (id: string) => string): Promis
 // the model of upstream's handlers
 
 // the request body as RequestInfo.Body holds it
-function requestBody(body: { [key: string]: unknown }): DataMap {
+function requestBody(body: JsonObject): DataMap {
   return toAny(decodeValue(JSON.stringify(body))) as DataMap;
 }
 
@@ -327,7 +328,7 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
         {
           kind: "create",
           collection: step.collection,
-          body: { id, [step.field]: i === 0 ? "" : step.ids[i - 1] },
+          body: { id, [step.field]: i === 0 ? "" : (step.ids[i - 1] as string) },
         },
         resolve,
       );
@@ -514,8 +515,8 @@ async function getBodies(
   s: UpstreamServer,
   snap: Snapshot,
   aliases: Map<string, string>,
-): Promise<{ [key: string]: unknown }> {
-  const result: { [key: string]: unknown } = {};
+): Promise<{ [key: string]: JsonObject }> {
+  const result: { [key: string]: JsonObject } = {};
   for (const table of tables) {
     for (const id of snap.get(table)?.keys() ?? []) {
       const res = await request(s, "GET", `/api/collections/${table}/records/${id}`);
@@ -524,7 +525,7 @@ async function getBodies(
       for (const [real, name] of aliases) {
         text = text.replaceAll(real, name);
       }
-      const body = JSON.parse(text) as { [key: string]: unknown };
+      const body = JSON.parse(text) as JsonObject;
       for (const key of ["created", "updated"]) {
         if (key in body) {
           expect(body[key]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);

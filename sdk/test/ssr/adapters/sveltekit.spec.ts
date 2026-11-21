@@ -10,6 +10,7 @@ import {
 import { createSvelteKitAuth } from "@sdk/ssr/sveltekit";
 import type { SvelteKitAuth, SvelteKitEvent, SvelteKitLocals } from "@sdk/ssr/sveltekit";
 import type { AdapterOptions, AdapterRoutes } from "@sdk/ssr/adapter";
+import type { SerializeOptions } from "@sdk/tools/cookie";
 import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import {
   API,
@@ -31,7 +32,7 @@ const routesWith = (routes: Partial<AdapterRoutes>) => ({ routes });
 interface CookieWrite {
   name: string;
   value: string;
-  options: Record<string, unknown>;
+  options: SerializeOptions;
 }
 
 /** The user id a token names. */

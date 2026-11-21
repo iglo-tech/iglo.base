@@ -115,7 +115,10 @@ import { resolveProviders } from "@/schema/providers";
 import { Errors } from "@/validation/error";
 import { isInstance } from "@/tools/types/is-instance";
 
-type Json = Record<string, unknown>;
+// a JSON value as JSON.parse returns it, and the object of a stored collection
+// or field (the API's JSON form)
+type JsonValue = string | number | boolean | null | Array<JsonValue> | Json;
+type Json = { [key: string]: JsonValue };
 
 // The file is not a valid schema: its problems, with their JSON paths.
 export class SchemaFileError extends Error {

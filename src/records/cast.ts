@@ -128,6 +128,7 @@ export function toInt(i: unknown): GoInt {
 }
 
 // a Go map[string]any: a plain object or a Map with string keys
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: a plain object whose values are of any kind
 function isGoMap(i: unknown): i is { [key: string]: unknown } | Map<string, unknown> {
   if (isInstance(Map, i)) {
     return true;

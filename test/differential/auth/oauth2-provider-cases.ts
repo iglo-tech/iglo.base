@@ -12,6 +12,7 @@
 // the mock through userInfoURL.
 
 import { generateKeyPairSync } from "node:crypto";
+import type { JsonObject } from "@test/support/json";
 
 // one case of a provider
 export interface ProviderCase {
@@ -27,7 +28,7 @@ export interface ProviderCase {
   emails?: unknown;
   emailsStatus?: number;
   // the extra config options of the provider (Microsoft's idTokenEmailClaim)
-  extra?: { [key: string]: unknown };
+  extra?: JsonObject;
   // the status of upstream's answer, which the case must reach
   status: number;
   // the email of the record upstream answers with, when the case reaches one
@@ -40,7 +41,7 @@ const b64url = (value: string): string => Buffer.from(value).toString("base64url
 
 // an id_token with no valid signature: the Apple cases below stop before it
 // is checked, as the claims are validated first
-function idToken(claims: { [key: string]: unknown }): string {
+function idToken(claims: Partial<JsonObject>): string {
   return [
     b64url(JSON.stringify({ alg: "RS256", kid: "apple-test-key" })),
     b64url(JSON.stringify(claims)),
@@ -49,7 +50,7 @@ function idToken(claims: { [key: string]: unknown }): string {
 }
 
 const now = (): number => Math.floor(Date.now() / 1000);
-const appleClaims = (overrides: { [key: string]: unknown } = {}): { [key: string]: unknown } => ({
+const appleClaims = (overrides: Partial<JsonObject> = {}): Partial<JsonObject> => ({
   iss: "https://appleid.apple.com",
   aud: "123",
   sub: "001234.abcdef.0123",
@@ -62,7 +63,7 @@ const appleClaims = (overrides: { [key: string]: unknown } = {}): { [key: string
 
 // the claims of a Microsoft id_token: its signature is not checked, only
 // its times and the email claims
-const msClaims = (overrides: { [key: string]: unknown } = {}): { [key: string]: unknown } => ({
+const msClaims = (overrides: Partial<JsonObject> = {}): Partial<JsonObject> => ({
   iat: now() - 10,
   exp: now() + 3600,
   ...overrides,

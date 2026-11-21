@@ -5,14 +5,15 @@ import { describe, expect, test } from "bun:test";
 import { compareResponses, Pairing, tokenExpSlack } from "@test/differential/harness/compare";
 import type { Context } from "@test/differential/harness/compare";
 import type { ScenarioResponse } from "@test/scenarios/request";
+import type { JsonObject } from "@test/support/json";
 
 const fixtureId = "wsmn24bux7wo113";
 const fixtureTime = "2022-10-01 12:00:00.000Z";
 
 const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
-const jwt = (claims: Record<string, unknown>, header: unknown = { alg: "HS256", typ: "JWT" }) =>
+const jwt = (claims: JsonObject, header: unknown = { alg: "HS256", typ: "JWT" }) =>
   `${b64(header)}.${b64(claims)}.sig`;
-const authClaims = (over: Record<string, unknown> = {}) => ({
+const authClaims = (over: JsonObject = {}) => ({
   id: "aaaaaaaaaaaaaaa",
   type: "auth",
   collectionId: "ccccccccccccccc",

@@ -303,10 +303,10 @@ const realtimeSubscribeFormType = structOf([
   },
 ]);
 
-interface RealtimeSubscribeForm {
+type RealtimeSubscribeForm = {
   ClientId: string;
   Subscriptions: Array<string> | null;
-}
+};
 
 function validateRealtimeSubscribeForm(form: RealtimeSubscribeForm): Error | null {
   return ValidateStruct(
@@ -319,11 +319,7 @@ function validateRealtimeSubscribeForm(form: RealtimeSubscribeForm): Error | nul
 async function realtimeSetSubscriptions(e: RequestEvent): Promise<HandlerResult> {
   const form: RealtimeSubscribeForm = { ClientId: "", Subscriptions: null };
 
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    realtimeSubscribeFormType,
-  );
+  const bindErr = await e.bindBody(form, realtimeSubscribeFormType);
   if (bindErr) {
     return e.badRequestError("", bindErr);
   }

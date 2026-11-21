@@ -13,6 +13,7 @@ import Ajv2020 from "ajv/dist/2020";
 
 import { executable, run, startServer, tempDir } from "@test/support/executable";
 import type { RunResult } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
 
 const schemaJSON = JSON.parse(
@@ -81,7 +82,7 @@ async function api(
   method: string,
   path: string,
   body?: unknown,
-): Promise<{ status: number; json: Record<string, unknown> }> {
+): Promise<{ status: number; json: JsonObject }> {
   const res = await fetch(`${url}${path}`, {
     method,
     headers: { Authorization: token, "Content-Type": "application/json" },
@@ -90,7 +91,7 @@ async function api(
   const text = await res.text();
   return {
     status: res.status,
-    json: text === "" ? {} : (JSON.parse(text) as Record<string, unknown>),
+    json: text === "" ? {} : (JSON.parse(text) as JsonObject),
   };
 }
 
@@ -112,14 +113,14 @@ async function runWithEnv(args: Array<string>, env: Record<string, string>): Pro
 }
 
 // the file's oauth2 providers, parsed
-function providersOf(text: string): Array<Record<string, unknown>> {
+function providersOf(text: string): Array<JsonObject> {
   const file = JSON.parse(text) as {
-    collections: Record<string, { oauth2?: { providers?: Array<Record<string, unknown>> } }>;
+    collections: Record<string, { oauth2?: { providers?: Array<JsonObject> } }>;
   };
   return file.collections.users?.oauth2?.providers ?? [];
 }
 
-const providerFile = (secretRef: unknown, extra: Record<string, unknown> = {}): string =>
+const providerFile = (secretRef: unknown, extra: JsonObject = {}): string =>
   JSON.stringify({
     collections: {
       users: {
@@ -168,7 +169,7 @@ describe("schema pull over a file", () => {
 // setup of S.3 to S.5 had
 async function fileWithoutProviders(site: Site): Promise<string> {
   const file = JSON.parse(await pulledFile(site)) as {
-    collections: Record<string, { oauth2?: Record<string, unknown> }>;
+    collections: Record<string, { oauth2?: JsonObject }>;
   };
   const users = file.collections.users;
   if (users?.oauth2 !== undefined) {

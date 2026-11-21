@@ -78,6 +78,7 @@ import { openDataDir } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { serveTest } from "@test/support/router";
@@ -258,8 +259,8 @@ function claimsJSON(token: string): string {
   return new TextDecoder().decode(RawURLEncoding.decodeString(token.split(".")[1] as string));
 }
 
-function claimsOf(token: string): { [key: string]: unknown } {
-  return JSON.parse(claimsJSON(token)) as { [key: string]: unknown };
+function claimsOf(token: string): JsonObject {
+  return JSON.parse(claimsJSON(token)) as JsonObject;
 }
 
 // -------------------------------------------------------------------

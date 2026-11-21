@@ -41,6 +41,7 @@ import { anyType, marshal, sliceOf, unmarshal } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 
 // crc32Checksum (core/collection_model.go): the IEEE CRC-32 in decimal
 export function crc32Checksum(str: string): string {
@@ -335,7 +336,7 @@ export class TestApp implements FieldApp {
       .row();
     const [id, name, type, fieldsJSON] = row as [string, string, string, string];
     const fields = new TestFieldsList();
-    for (const data of unmarshal(fieldsJSON, sliceOf(anyType)) as Array<Record<string, unknown>>) {
+    for (const data of unmarshal(fieldsJSON, sliceOf(anyType)) as Array<JsonObject>) {
       const factory = fieldFactory(String(data.type));
       if (factory === undefined) {
         continue;

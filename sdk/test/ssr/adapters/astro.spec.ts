@@ -22,6 +22,7 @@ import {
   testClock,
 } from "@sdk-test/ssr/browser-support";
 import type { Handler } from "@sdk-test/ssr/browser-support";
+import type { SerializeOptions } from "@sdk/tools/cookie";
 
 const T0 = Math.floor(Date.now() / 1000);
 const clock = testClock(T0 * 1000);
@@ -31,7 +32,7 @@ const routesWith = (routes: Partial<AdapterRoutes>) => ({ routes });
 interface CookieWrite {
   name: string;
   value: string;
-  options: Record<string, unknown>;
+  options: SerializeOptions;
 }
 
 /** The user id a token names. */

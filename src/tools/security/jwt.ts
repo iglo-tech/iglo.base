@@ -15,10 +15,14 @@
 // The time comes from the caller (a Clock), never from Date.now().
 
 import type { Clock } from "@/app/clock";
+import type { GoMap } from "@/server/json-decode";
 import { RawURLEncoding } from "@/tools/security/base64";
 import { constantTimeCompare } from "@/tools/security/crypto";
 import { anyType, mapOf, marshal, setOwn, unmarshal } from "@/tools/types/go-json";
 
+// Go's jwt.MapClaims is a map[string]any: the claims are the values of the
+// decoded JSON object, and a token may hold any of them.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: claim values are JSON values of any kind, checked by the claims' own validation
 export type MapClaims = Record<string, unknown>;
 
 // golang-jwt's error kinds (ErrTokenMalformed, ErrTokenUnverifiable,
@@ -63,7 +67,7 @@ function hmacSHA256(text: string, key: string): Uint8Array {
 }
 
 export interface Unverified {
-  header: Record<string, unknown> | undefined;
+  header: GoMap | undefined;
   // the header's alg (Token.Method.Alg())
   alg: string;
   claims: MapClaims;
@@ -86,11 +90,9 @@ export function parseUnverifiedToken(token: string, claims: MapClaims): Unverifi
   } catch {
     throw new JWTError("token is malformed: could not base64 decode header");
   }
-  let header: Record<string, unknown> | undefined;
+  let header: GoMap | undefined;
   try {
-    header = unmarshal(headerBytes, mapOf(anyType), { legacy: true }) as
-      | Record<string, unknown>
-      | undefined;
+    header = unmarshal(headerBytes, mapOf(anyType), { legacy: true }) as GoMap | undefined;
   } catch {
     throw new JWTError("token is malformed: could not JSON decode header");
   }

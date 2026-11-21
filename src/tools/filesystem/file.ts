@@ -273,7 +273,7 @@ export class File {
 
   // AsMap implements [core.mapExtractor] and returns a value suitable to be
   // used in an API rule expression.
-  asMap(): Record<string, unknown> {
+  asMap() {
     return {
       name: this.name,
       originalName: this.originalName,

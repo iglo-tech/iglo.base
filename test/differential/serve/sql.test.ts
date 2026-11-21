@@ -12,6 +12,7 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { startPair } from "@test/differential/serve/pair";
 import type { Pair } from "@test/differential/serve/pair";
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { JsonObject } from "@test/support/json";
 
 let pair: Pair;
 
@@ -22,7 +23,7 @@ beforeAll(async () => {
 afterAll(() => pair?.stop());
 
 // a string is the query; an object is sent as the body as it is
-const queries: Array<string | Record<string, unknown>> = [
+const queries: Array<string | JsonObject> = [
   "select 1",
   "select 1.5, 1234567.0, 1e-7, 1e21, null, x'00ff41', 'a', 9007199254740993, -0.0, 1e300*1e300, 100000.0, 0.000001, x'e28241', '<a>&b', char(8232)",
   "select id, created, email, verified from users limit 2",
@@ -85,7 +86,7 @@ const queries: Array<string | Record<string, unknown>> = [
   "insert into x values(9)",
 ];
 
-async function run(base: string, q: string | Record<string, unknown>): Promise<string> {
+async function run(base: string, q: string | JsonObject): Promise<string> {
   const res = await fetch(`${base}/api/sql`, {
     method: "POST",
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },

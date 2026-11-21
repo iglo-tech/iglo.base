@@ -27,6 +27,7 @@ import { startServer } from "@test/support/executable";
 import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
 import type { MockRequest } from "@test/support/oauth2-mock";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -216,7 +217,7 @@ async function authMethods(kind: Kind): Promise<unknown> {
     const res = await fetch(`${server.url}/api/collections/users/auth-methods`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      oauth2: { providers: Array<{ [key: string]: unknown }> };
+      oauth2: { providers: Array<JsonObject> };
     };
     // state and the PKCE values are generated for each request
     return body.oauth2.providers.map((p) => ({
@@ -255,8 +256,8 @@ describe("auth methods defaults", () => {
 // secrets verify with its public key, and the header and claims agree with
 // upstream (the times aside)
 function decodeJWT(token: string): {
-  header: Record<string, unknown>;
-  claims: Record<string, unknown>;
+  header: JsonObject;
+  claims: JsonObject;
   signingInput: string;
   signature: Buffer;
   raw: { header: string; claims: string };

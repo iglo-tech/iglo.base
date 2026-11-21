@@ -35,6 +35,7 @@ import { join } from "node:path";
 import type { Collection } from "@/collections/collection-model";
 import { fieldApp, findCollectionByNameOrId } from "@/collections/collection-query";
 import { HashExp } from "@/db/dbx/expression";
+import type { Params } from "@/db/dbx/query";
 import { newRecordFromNullStringMap, nullStringMapFromRow } from "@/records/record-model";
 import type { Record as RecordModel } from "@/records/record-model";
 import { jsonArrayValue } from "@/tools/types/json-array";
@@ -59,6 +60,7 @@ import {
   userUpdates,
 } from "@test/differential/records/cases";
 import type { Payload } from "@test/differential/records/cases";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -151,7 +153,7 @@ async function saveRecord(collection: string, p: Payload, id?: string): Promise<
   return (JSON.parse(res.text) as { id: string }).id;
 }
 
-async function createCollection(body: Record<string, unknown>): Promise<string> {
+async function createCollection(body: JsonObject): Promise<string> {
   const res = await request("POST", "/api/collections", JSON.stringify(body));
   expect({ status: res.status, body: res.status === 200 ? "" : res.text }).toEqual({
     status: 200,
@@ -397,7 +399,7 @@ function driverValue(v: unknown): unknown {
 function storeExported(
   collection: Collection,
   app: TestCollectionsApp,
-  exported: { [key: string]: unknown },
+  exported: Params,
 ): { [name: string]: [string, unknown] } {
   const fields = [...collection.fields];
   const names = fields.map((f) => f.getName());

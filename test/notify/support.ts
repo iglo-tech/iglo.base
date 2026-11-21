@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { tempDir } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 
 export function fixtureCopy(): string {
   const dataDir = join(tempDir(), "pb_data");
@@ -39,11 +40,7 @@ export async function waitFor<T>(
   }
 }
 
-export async function patchSettings(
-  url: string,
-  token: string,
-  body: Record<string, unknown>,
-): Promise<void> {
+export async function patchSettings(url: string, token: string, body: JsonObject): Promise<void> {
   const res = await fetch(`${url}/api/settings`, {
     method: "PATCH",
     headers: { Authorization: token, "Content-Type": "application/json" },

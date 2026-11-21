@@ -30,6 +30,7 @@
 // ported caller uses.
 
 import { decodeUTF8Bytes } from "@/server/json-decode";
+import type { GoMap } from "@/server/json-decode";
 import { isInstance } from "@/tools/types/is-instance";
 
 // Values with their own JSON form, as Go's json.Marshaler. The returned
@@ -200,7 +201,7 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
     }
     return encodeObject(names, values, flags, depth);
   }
-  const obj = value as { [key: string]: unknown };
+  const obj = value as GoMap;
   const names = Object.keys(obj);
   const values: Array<unknown> = Array.from({ length: names.length });
   for (let i = 0; i < names.length; i++) {
@@ -1132,9 +1133,9 @@ export function unmarshal(
 export function unmarshalMapInto(
   data: string | Uint8Array,
   elem: GoType,
-  existing: Record<string, unknown>,
+  existing: GoMap,
   opts: UnmarshalOptions = {},
-): Record<string, unknown> | undefined {
+): GoMap | undefined {
   const node = parse(data, opts);
   if (node === null) {
     return undefined;
@@ -1314,7 +1315,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       }
       const target =
         typeof existing === "object" && existing !== null && !Array.isArray(existing)
-          ? (existing as Record<string, unknown>)
+          ? (existing as GoMap)
           : {};
       return convertObject(node, t.elem, target, "map", legacy);
     }
@@ -1324,10 +1325,10 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
 function convertObject(
   node: Node,
   elem: GoType,
-  target: Record<string, unknown>,
+  target: GoMap,
   goType: string,
   legacy: boolean,
-): Record<string, unknown> {
+): GoMap {
   if (!isInstance(ObjectNode, node)) {
     throw mismatch(node, goType);
   }
@@ -1380,13 +1381,7 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
       return convert(node, sliceOf(anyType), undefined, legacy);
     }
     if (typeof existing === "object") {
-      return convertObject(
-        node,
-        anyType,
-        existing as Record<string, unknown>,
-        "map[string]any",
-        legacy,
-      );
+      return convertObject(node, anyType, existing as GoMap, "map[string]any", legacy);
     }
   }
   if (isInstance(NumberNode, node)) {
@@ -1447,7 +1442,7 @@ function parseInt64(literal: string, goType: string): GoInt {
 }
 
 // Sets an own enumerable property, also for names like "__proto__".
-export function setOwn(target: Record<string, unknown>, name: string, value: unknown): void {
+export function setOwn(target: GoMap, name: string, value: unknown): void {
   Object.defineProperty(target, name, {
     value,
     writable: true,

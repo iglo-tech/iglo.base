@@ -22,8 +22,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
   }
   const form: CollectionsImportForm = { Collections: [], DeleteMissing: false };
 
-  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-  let err = await e.bindBody(form as unknown as Record<string, unknown>, collectionsImportFormType);
+  let err = await e.bindBody(form, collectionsImportFormType);
   err ??= checkMaps(form.Collections);
   if (err) {
     return firstApiError(
@@ -41,6 +40,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
   }
 
   try {
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go []map[string]any: each collection is a JSON object of any kind of value, read by the import
     const imported = form.Collections as Array<Record<string, unknown> | null>;
     const before = collectionNames(e.app);
     importCollections(e.app, imported, form.DeleteMissing);
@@ -81,10 +81,10 @@ const collectionsImportFormType = structOf([
   { name: "DeleteMissing", type: "bool", tags: { form: "deleteMissing", json: "deleteMissing" } },
 ]);
 
-interface CollectionsImportForm {
+type CollectionsImportForm = {
   Collections: Array<unknown> | null;
   DeleteMissing: boolean;
-}
+};
 
 // the error json/v2 gives for an element that is not a JSON object or null
 function checkMaps(collections: Array<unknown> | null): Error | undefined {
@@ -108,6 +108,7 @@ function collectionNames(app: App): Set<string> {
 function importChanges(
   before: ReadonlySet<string>,
   after: ReadonlySet<string>,
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go []map[string]any: each collection is a JSON object of any kind of value, read by name
   imported: ReadonlyArray<Record<string, unknown> | null>,
 ): Array<string> {
   const changed = new Set<string>();

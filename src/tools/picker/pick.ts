@@ -17,6 +17,7 @@ import { initModifer, Modifiers } from "@/tools/picker/modifiers";
 import type { Modifier, ModifierFactoryFunc } from "@/tools/picker/modifiers";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import { anyType, marshal, setOwn, unmarshal } from "@/tools/types/go-json";
+import type { GoMap } from "@/server/json-decode";
 import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrInvalidModifierData = new Error(
@@ -43,9 +44,6 @@ export class InvalidModifierDataError extends Error {
     this.name = "InvalidModifierDataError";
   }
 }
-
-// a decoded JSON object (Go's map[string]any)
-type DataMap = { [key: string]: unknown };
 
 // a field path and its optional modifier (Go's map[string]Modifier)
 type Fields = Map<string, Modifier | null>;
@@ -137,7 +135,7 @@ function parseFields(
   return result;
 }
 
-function isDataMap(v: unknown): v is DataMap {
+function isDataMap(v: unknown): v is GoMap {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
@@ -188,7 +186,7 @@ function goTypeName(v: unknown): string {
   return Array.isArray(v) ? "[]interface {}" : "map[string]interface {}";
 }
 
-function pickMapFields(data: DataMap, fields: Fields): void {
+function pickMapFields(data: GoMap, fields: Fields): void {
   if (fields.size === 0) {
     return; // nothing to pick
   }

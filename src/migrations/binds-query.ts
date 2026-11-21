@@ -17,7 +17,7 @@ import type { CustomMethod } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
 import { toInteger } from "@/migrations/membrane";
-import type { Membrane } from "@/migrations/membrane";
+import type { Membrane, MigrationObject } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { NotRecordQueryError, recordsTarget, recordTarget } from "@/records/record-query";
 import { goQuote } from "@/fields/field";
@@ -53,7 +53,7 @@ interface ShapeField {
 // what a set of a DynamicModel field ignores
 const ignored = Symbol("ignored");
 
-type DynamicModel = Record<string, unknown>;
+type DynamicModel = MigrationObject;
 
 // Rows: the cursor over a query's rows
 export class RowsCursor {
@@ -149,7 +149,7 @@ export class QueryModels {
     const model = this.m.vm.object();
 
     for (const key of Object.keys(shape).toSorted()) {
-      const value = (shape as Record<string, unknown>)[key];
+      const value = (shape as MigrationObject)[key];
       const name = convertGoToJSName(key.slice(0, 1).toUpperCase() + key.slice(1));
       const target = this.m.targetOf(value);
       if (isInstance(NullShape, target)) {
@@ -211,7 +211,7 @@ export class QueryModels {
     const shape = this.#shapeOf(dst) as Map<string, ShapeField>;
     for (const [column, field] of shape) {
       if (Object.hasOwn(decoded, column)) {
-        const value = (decoded as Record<string, unknown>)[column];
+        const value = (decoded as MigrationObject)[column];
         const model = dst as DynamicModel;
         model[field.name] = jsonShape(this.m, value, field, `${path}/${column}`, model[field.name]);
       }
@@ -469,7 +469,7 @@ function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
       if (typeof value !== "object" || m.targetOf(value) !== undefined) {
         return ignored;
       }
-      const host = m.toHost(value) as Record<string, unknown>;
+      const host = m.toHost(value) as MigrationObject;
       return m.toVm(new GoJSONMap(Array.isArray(host) ? Object.assign({}, host) : host));
     }
     default:

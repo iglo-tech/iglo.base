@@ -1,4 +1,5 @@
 // js-sdk v0.28.1 src/tools/formdata.ts
+import type { Json } from "@sdk/tools/json";
 
 // `global` is provided by React Native (Hermes) and Node; it is not part of the DOM typings.
 declare const global: { HermesInternal?: unknown } | undefined;
@@ -46,6 +47,7 @@ export function hasFileField(body: unknown): boolean {
     return false;
   }
 
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the user's request body: its values are arbitrary JS values (File, Blob, nested objects) that isFile() checks and nothing rewrites
   const obj = body as Record<string, unknown>;
   for (const key in obj) {
     const values = Array.isArray(obj[key]) ? obj[key] : [obj[key]];
@@ -76,6 +78,7 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
   }
 
   const form = new FormData();
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the user's request body: its values are arbitrary JS values (File, Blob, nested objects) that are appended or JSON-encoded unchanged
   const obj = body as Record<string, unknown>;
 
   for (const key in obj) {
@@ -89,6 +92,7 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
 
     if (typeof val === "object" && !hasFileField({ data: val })) {
       // send json-like values as jsonPayload to avoid the implicit string value normalization
+      // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- wraps the user's arbitrary value unchanged for JSON.stringify
       const payload: Record<string, unknown> = {};
       payload[key] = val;
       form.append("@jsonPayload", JSON.stringify(payload));
@@ -104,6 +108,9 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
   return form;
 }
 
+// A multipart value is a File (kept as is) or an inferred JSON value; repeated keys become arrays.
+type FormDataValue = Json | File | Array<FormDataValue>;
+
 /**
  * Converts the provided FormData instance into a plain object.
  *
@@ -116,8 +123,8 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
  *     (aka. scientific notations, "Infinity", "0.0", "0001", etc. are kept as string)
  *   - any other string (empty string too) is left as it is
  */
-export function convertFormDataToObject(formData: FormData): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
+export function convertFormDataToObject(formData: FormData): { [key: string]: FormDataValue } {
+  const result: { [key: string]: FormDataValue } = {};
 
   formData.forEach((v, k) => {
     if (k === "@jsonPayload" && typeof v == "string") {
@@ -134,7 +141,7 @@ export function convertFormDataToObject(formData: FormData): Record<string, unkn
         if (!Array.isArray(result[k])) {
           result[k] = [result[k]];
         }
-        (result[k] as Array<unknown>).push(inferFormDataValue(v));
+        (result[k] as Array<FormDataValue>).push(inferFormDataValue(v));
       } else {
         result[k] = inferFormDataValue(v);
       }
@@ -146,7 +153,7 @@ export function convertFormDataToObject(formData: FormData): Record<string, unkn
 
 const inferNumberCharsRegex = /^[-.\d]+$/;
 
-function inferFormDataValue(value: unknown): unknown {
+function inferFormDataValue(value: File | string): FormDataValue {
   if (typeof value != "string") {
     return value;
   }

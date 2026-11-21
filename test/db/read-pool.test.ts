@@ -142,7 +142,7 @@ test("the pool's connections are read-only and use upstream's pragmas", async ()
   const pragma = async (name: string) => (await db.newQuery(`PRAGMA ${name}`).rowAsync())[0];
   for (const p of connectPragmas) {
     const [, name, value] = /^(\w+)\((.*)\)$/.exec(p)!;
-    const expected: Record<string, unknown> = {
+    const expected: Record<string, string | number> = {
       busy_timeout: 10_000,
       journal_mode: "wal",
       journal_size_limit: 200_000_000,

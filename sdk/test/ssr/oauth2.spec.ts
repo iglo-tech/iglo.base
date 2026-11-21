@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
 import { ClientResponseError } from "@sdk/ClientResponseError";
+import type { JsonObject } from "@sdk/tools/json";
 import {
   createRequestCookieAdapter,
   createServerClient,
@@ -564,7 +565,7 @@ describe("OAuth2 redirect flow: complete", () => {
     await startRoute(browser, iglo);
     const stored = JSON.parse(
       decodeURIComponent(browser.jar.get("__Host-pb_oauth2") ?? "{}"),
-    ) as Record<string, unknown>;
+    ) as JsonObject;
     browser.jar.set(
       "__Host-pb_oauth2",
       encodeURIComponent(JSON.stringify({ ...stored, redirectTo: "//evil.example" })),

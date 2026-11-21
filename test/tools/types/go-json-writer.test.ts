@@ -229,7 +229,20 @@ describe("a marshaler's text", () => {
   });
 });
 
-function randomValue(r: () => number, depth = 0): unknown {
+// a Go value as the generator makes it: anything the marshaler accepts
+type GoValue =
+  | null
+  | undefined
+  | boolean
+  | number
+  | bigint
+  | string
+  | JSONRaw
+  | Array<GoValue>
+  | Map<string, GoValue>
+  | { [key: string]: GoValue };
+
+function randomValue(r: () => number, depth = 0): GoValue {
   const kind = Math.floor(r() * (depth > 3 ? 8 : 11));
   switch (kind) {
     case 0:
@@ -254,7 +267,7 @@ function randomValue(r: () => number, depth = 0): unknown {
       return Array.from({ length: n }, () => randomValue(r, depth + 1));
     }
     case 9: {
-      const o: Record<string, unknown> = {};
+      const o: { [key: string]: GoValue } = {};
       const n = Math.floor(r() * 6);
       const names = ["id", "b", "a", "10", "2", "é", "😀", "", "x y", '"', "__proto__", ""];
       for (let i = 0; i < n; i++) {
@@ -269,7 +282,7 @@ function randomValue(r: () => number, depth = 0): unknown {
       return o;
     }
     default: {
-      const m = new Map<string, unknown>();
+      const m = new Map<string, GoValue>();
       const n = Math.floor(r() * 5);
       for (let i = 0; i < n; i++) {
         m.set(randomString(r), randomValue(r, depth + 1));

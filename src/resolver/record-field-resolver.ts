@@ -77,6 +77,7 @@ export class RecordFieldResolver implements FieldResolver {
   app: RecordsApp;
   baseCollection: Collection;
   requestInfo: RequestInfo | null;
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a map of the @request.* values: context, method, query and headers as strings, body and auth as JSON-like values of any kind
   staticRequestInfo: { [key: string]: unknown };
   allowedFields: Array<string>;
   joins: Array<Join>;
@@ -429,6 +430,7 @@ export function paramValue(v: unknown): unknown {
 }
 
 // the own member of a map (Go's m[key], with the zero value nil)
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any (the request body or a decoded object): its own member, whose value is a JSON value of any kind
 export function ownValue(m: { [key: string]: unknown } | null | undefined, key: string): unknown {
   if (m === null || m === undefined || !Object.hasOwn(m, key)) {
     return null;
@@ -447,6 +449,7 @@ export function wrapResolverError(prefix: string, err: unknown): Error {
 }
 
 interface MapExtractor {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: the members of the extractor's map, values of any kind
   asMap(): { [key: string]: unknown };
 }
 
@@ -456,6 +459,7 @@ function isMapExtractor(v: unknown): v is MapExtractor {
   );
 }
 
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: a plain object whose values are of any kind
 function isPlainMap(v: unknown): v is { [key: string]: unknown } {
   if (typeof v !== "object" || v === null) {
     return false;
@@ -500,6 +504,7 @@ export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unkn
   throw new Error(`expected map or array, got ${String(rawData)}`);
 }
 
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: a plain object whose values are of any kind
 function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   const key = keys[0] as string;
   if (!Object.hasOwn(m, key)) {

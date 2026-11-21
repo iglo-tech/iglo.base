@@ -23,6 +23,7 @@ import { startServer } from "@test/support/executable";
 import type { MockProvider } from "@test/support/oauth2-mock";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -36,7 +37,7 @@ interface Server {
 
 interface Reply {
   status: number;
-  json: { [key: string]: unknown };
+  json: JsonObject;
 }
 
 const roots: Array<string> = [];
@@ -79,7 +80,7 @@ async function api(
 
 function signIn(
   server: Server,
-  extra: { [key: string]: unknown } = {},
+  extra: JsonObject = {},
   headers: Record<string, string> = {},
   query = "",
 ): Promise<Reply> {
@@ -144,11 +145,11 @@ async function oauth2Client(ctx: ScenarioContext): Promise<RealtimeStream> {
   return stream;
 }
 
-function externalAuthRows(dataDir: string): Array<{ [key: string]: unknown }> {
+function externalAuthRows(dataDir: string): Array<JsonObject> {
   return queryRows(
     dataDir,
     "SELECT * FROM _externalAuths WHERE provider = 'oidc' ORDER BY providerId",
-  ) as Array<{ [key: string]: unknown }>;
+  ) as Array<JsonObject>;
 }
 
 describe("the popup flow", () => {
@@ -343,7 +344,7 @@ describe("what a sign-in triggers", () => {
       await onBoth(
         async (server) => {
           const password = (mfaId?: string): Promise<Reply> => {
-            const body: { [key: string]: unknown } = {
+            const body: JsonObject = {
               identity: "test2@example.com",
               password: "1234567890",
             };

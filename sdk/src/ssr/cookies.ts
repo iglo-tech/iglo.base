@@ -3,6 +3,7 @@ import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
 import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
 import type { SerializeOptions } from "@sdk/tools/cookie";
+import type { JsonObject } from "@sdk/tools/json";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { Cookie, CookieToSet, CookieValueMap, RequestCookieAdapter } from "@sdk/ssr/types";
 
@@ -109,7 +110,7 @@ export function parseSessionValue(raw: string): { token: string; record: AuthRec
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return undefined;
     }
-    const obj = parsed as Record<string, unknown>;
+    const obj = parsed as JsonObject;
     const token = typeof obj["token"] === "string" ? obj["token"] : "";
     if (!token) {
       return undefined;

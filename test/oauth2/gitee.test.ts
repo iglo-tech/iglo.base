@@ -9,6 +9,7 @@ import { Gitee } from "@/oauth2/gitee";
 import { Token } from "@/oauth2/token";
 import { json, stubFetch } from "@test/support/fetch-stub";
 import type { StubbedFetch } from "@test/support/fetch-stub";
+import type { JsonObject } from "@test/support/json";
 
 const userURL = "https://gitee.com/api/v5/user";
 const emailsURL = "https://gitee.com/api/v5/emails";
@@ -23,7 +24,7 @@ afterEach(() => {
 // a Gitee user whose public email is `email`, with the emails lookup answered
 // by `emails` (a JSON body) and `status`
 function signIn(
-  user: { [key: string]: unknown },
+  user: JsonObject,
   emails: unknown,
   status = 200,
 ): Promise<{ email: string; id: string; name: string; username: string }> {
@@ -45,7 +46,7 @@ function signIn(
 }
 
 const gitee = { login: "gitee_user", name: "Gitee User", avatar_url: "", id: 99 };
-const primary = (email: string, extra: { [key: string]: unknown } = {}) => ({
+const primary = (email: string, extra: JsonObject = {}) => ({
   email,
   state: "confirmed",
   scope: ["primary", "emails"],

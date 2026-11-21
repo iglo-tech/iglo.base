@@ -25,6 +25,7 @@ import { startServer } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 export const listRules: { [collection: string]: string } = {
   // a relation in a rule (the fixture's demo1 has a null rule, which users
@@ -127,12 +128,12 @@ async function readModel(url: string, token: string): Promise<Model> {
   const list = (await getJson(`${url}/api/collections?perPage=500&sort=name`, token)) as {
     items: Array<ApiCollection>;
   };
-  const records = new Map<string, Array<Record<string, unknown>>>();
+  const records = new Map<string, Array<JsonObject>>();
   for (const c of list.items) {
     const page = (await getJson(
       `${url}/api/collections/${c.name}/records?perPage=500&sort=id`,
       token,
-    )) as { items: Array<Record<string, unknown>> };
+    )) as { items: Array<JsonObject> };
     records.set(c.name, page.items);
   }
   return buildModel(list.items, records);

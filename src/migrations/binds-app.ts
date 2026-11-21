@@ -48,7 +48,7 @@ import {
 import { auxRunInTransaction } from "@/db/tx";
 import { goArgs, goMethod } from "@/migrations/go-class";
 import type { Method } from "@/migrations/go-class";
-import type { Adapter, Membrane } from "@/migrations/membrane";
+import type { Adapter, Membrane, MigrationObject } from "@/migrations/membrane";
 import { pass } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { expandRecordsSync } from "@/records/record-query-expand";
@@ -322,10 +322,8 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       isCollectionNameUnique(app, name, ...excludeIds),
     truncateCollection: (c: Collection) => truncateCollection(app, c),
     reloadCachedCollections: () => reloadCachedCollections(app),
-    importCollections: (
-      data: ReadonlyArray<Record<string, unknown> | null>,
-      deleteMissing: boolean,
-    ) => importCollections(app, data, deleteMissing === true),
+    importCollections: (data: ReadonlyArray<MigrationObject | null>, deleteMissing: boolean) =>
+      importCollections(app, data, deleteMissing === true),
     importCollectionsByMarshaledJSON: (raw: string | Uint8Array, deleteMissing: boolean) =>
       importCollectionsByMarshaledJSON(app, raw, deleteMissing === true),
 

@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 
 interface Rec {
@@ -30,12 +31,7 @@ afterAll(async () => {
   }
 });
 
-async function api(
-  url: string,
-  method: string,
-  path: string,
-  body?: Record<string, unknown>,
-): Promise<Rec> {
+async function api(url: string, method: string, path: string, body?: JsonObject): Promise<Rec> {
   const res = await fetch(url + path, {
     method,
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },

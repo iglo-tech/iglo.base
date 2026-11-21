@@ -394,6 +394,12 @@ export function isJsonObject(
   );
 }
 
+// GoMap is a Go map[string]T: a map whose values are Go values of its element
+// type T. For map[string]any they are the JSON values unmarshaled into it
+// (toAny) and whatever the caller stored, so no narrower type holds for all T.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]T: the values have the Go element type T, which is not known statically
+export type GoMap = Record<string, unknown>;
+
 // The value as unmarshaled into a Go `any`: objects become plain objects,
 // numbers float64.
 export function toAny(value: JsonValue): unknown {
@@ -409,7 +415,7 @@ export function toAny(value: JsonValue): unknown {
     return value.map(toAny);
   }
   if (isJsonObject(value)) {
-    const out: Record<string, unknown> = {};
+    const out: GoMap = {};
     for (const [name, member] of value.members) {
       setOwn(out, name, toAny(member));
     }
@@ -419,6 +425,6 @@ export function toAny(value: JsonValue): unknown {
 }
 
 // Sets an own enumerable property, also for names like "__proto__".
-export function setOwn(obj: Record<string, unknown>, key: string, value: unknown): void {
+export function setOwn(obj: GoMap, key: string, value: unknown): void {
   Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true });
 }

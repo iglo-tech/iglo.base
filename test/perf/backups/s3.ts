@@ -143,7 +143,7 @@ async function measure(name: string, command: Array<string>): Promise<void> {
     label: string,
     work: () => Promise<void>,
     latency = true,
-  ): Promise<Record<string, unknown>> => {
+  ): Promise<Record<string, string | number>> => {
     await Bun.sleep(500);
     const before = vm(pid, "VmRSS");
     peak = before;

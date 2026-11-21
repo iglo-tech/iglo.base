@@ -175,6 +175,7 @@ export function Indirect(value: unknown): [unknown, boolean] {
 }
 
 // a plain object: a Go map
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any whose values are arbitrary validated values (the validators take each as unknown); narrowing to object would break the callers in in.ts and each.ts
 export function isMap(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null) {
     return false;

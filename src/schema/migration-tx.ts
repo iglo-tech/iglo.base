@@ -24,16 +24,30 @@ import { newRecord } from "@/records/record-model";
 import type { Record as RecordModel } from "@/records/record-model";
 import { isInstance } from "@/tools/types/is-instance";
 
+// a JSON value, as a record's JSON (the API's form) holds it
+type JsonValue = string | number | boolean | null | Array<JsonValue> | { [key: string]: JsonValue };
+
 // the record of a helper: the record as a superuser's API read returns it, so
 // the hidden fields and the email are in it whatever emailVisibility says (the
 // generated types say the same). The password and the token key are never
 // returned, not even to a superuser, as upstream does.
-export type MigrationRow = Record<string, unknown>;
+export type MigrationRow = { [key: string]: JsonValue };
+
+// the values a migration writes: JSON, or a file (refused, see refuseUploads)
+export type MigrationData = { [key: string]: JsonValue | Blob };
+
+// a value bound to a SQL parameter, or read from a SQL row
+export type SqlValue = string | number | bigint | boolean | Uint8Array | null;
+
+export type SqlParams = { [key: string]: SqlValue };
+
+// a row of sql(): its columns, by name
+export type SqlRow = { [column: string]: SqlValue };
 
 export interface MigrationQuery {
   filter?: string;
   sort?: string;
-  params?: Record<string, unknown>;
+  params?: SqlParams;
 }
 
 // the helpers of up(tx); the typed form is in the generated types file
@@ -41,10 +55,10 @@ export interface MigrationHelpers {
   records(collection: string, query?: MigrationQuery): Generator<MigrationRow, void, undefined>;
   findFirst(collection: string, query?: MigrationQuery): MigrationRow | null;
   findById(collection: string, id: string): MigrationRow | null;
-  create(collection: string, data: Record<string, unknown>): MigrationRow;
-  update(collection: string, id: string, data: Record<string, unknown>): MigrationRow;
+  create(collection: string, data: MigrationData): MigrationRow;
+  update(collection: string, id: string, data: MigrationData): MigrationRow;
   delete(collection: string, id: string): void;
-  sql(query: string, params?: Record<string, unknown>): Array<Record<string, unknown>>;
+  sql(query: string, params?: SqlParams): Array<SqlRow>;
 }
 
 // the type of the tx argument of up (the generated types declare it too)
@@ -60,7 +74,7 @@ function rowOf(record: RecordModel): MigrationRow {
 }
 
 // a value the apply refuses: files need the request's upload path
-function refuseUploads(data: Record<string, unknown>): void {
+function refuseUploads(data: MigrationData): void {
   for (const [key, value] of Object.entries(data)) {
     if (isInstance(Blob, value)) {
       throw new Error(
@@ -170,7 +184,7 @@ export function newMigrationHelpers(app: App): MigrationHelpers {
     },
 
     sql(query, params = {}) {
-      return app.databases.db().newQuery(query).bind(params).all<Record<string, unknown>>();
+      return app.databases.db().newQuery(query).bind(params).all<SqlRow>();
     },
   };
 }

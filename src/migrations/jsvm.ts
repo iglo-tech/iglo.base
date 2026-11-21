@@ -22,7 +22,7 @@ import type { BindConfig } from "@/migrations/binds";
 import { AppBinding } from "@/migrations/binds-app";
 import type { RunTxFunc } from "@/migrations/binds-app";
 import { throwResult } from "@/migrations/go-class";
-import type { Membrane } from "@/migrations/membrane";
+import type { Membrane, MigrationObject } from "@/migrations/membrane";
 import { addMigration } from "@/migrations/migrations-runner";
 import type { Migration, MigrationFunc } from "@/migrations/migrations-runner";
 
@@ -87,7 +87,7 @@ function filesContent(dirPath: string): Array<[string, string]> {
 }
 
 function runFile(config: JsvmConfig, file: string, content: string, list: Array<Migration>): void {
-  const sandbox: Record<string, unknown> = {};
+  const sandbox: MigrationObject = {};
   const context = vm.createContext(sandbox);
   const m = bindAll(sandbox, context, config);
 
@@ -225,7 +225,7 @@ function firstFrame(stack: string, file: string): string | undefined {
 }
 
 // console (goja_nodejs util.Format); every method prints the same way
-function newConsole(config: JsvmConfig): Record<string, unknown> {
+function newConsole(config: JsvmConfig) {
   const write = (...args: Array<unknown>): void => {
     config.log(formatLog(args));
   };
@@ -272,7 +272,7 @@ function formatLog(args: Array<unknown>): string {
 function newRequire(
   config: JsvmConfig,
   context: vm.Context,
-  sandbox: Record<string, unknown>,
+  sandbox: MigrationObject,
   m: Membrane,
 ): (name: string) => unknown {
   const cache = new Map<string, { exports: unknown }>();
@@ -329,7 +329,7 @@ function newRequire(
   return requireFrom(config.cwd);
 }
 
-function nativeModule(name: string, sandbox: Record<string, unknown>, m: Membrane): unknown {
+function nativeModule(name: string, sandbox: MigrationObject, m: Membrane): unknown {
   switch (name) {
     case "console":
       return sandbox.console;

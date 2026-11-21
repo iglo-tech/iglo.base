@@ -38,8 +38,9 @@ import {
 import { clientsToken, superuserToken, usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext, Scenario } from "@test/scenarios/scenario";
 import type { MockProvider, MockRequest } from "@test/support/oauth2-mock";
+import type { JsonObject } from "@test/support/json";
 
-const body = (extra: { [key: string]: unknown } = {}): string =>
+const body = (extra: JsonObject = {}): string =>
   JSON.stringify({ provider: "oidc", code: "123", redirectURL: "https://example.com", ...extra });
 
 const verified = (email: string, sub = "test_id"): { user: unknown } => ({
@@ -49,7 +50,7 @@ const verified = (email: string, sub = "test_id"): { user: unknown } => ({
 const b64url = (value: string | Uint8Array): string => Buffer.from(value).toString("base64url");
 
 // an unsigned-for-our-purposes id_token (the signature is checked only with a jwksURL)
-function jwt(claims: { [key: string]: unknown }, header: { [key: string]: unknown } = {}): string {
+function jwt(claims: JsonObject, header: JsonObject = {}): string {
   return [
     b64url(JSON.stringify({ alg: "HS256", ...header })),
     b64url(JSON.stringify(claims)),
@@ -58,7 +59,7 @@ function jwt(claims: { [key: string]: unknown }, header: { [key: string]: unknow
 }
 
 const now = (): number => Math.floor(Date.now() / 1000);
-const idTokenClaims = (): { [key: string]: unknown } => ({
+const idTokenClaims = (): JsonObject => ({
   sub: "id_token_user",
   aud: "123",
   exp: now() + 3600,
@@ -70,7 +71,7 @@ const idTokenClaims = (): { [key: string]: unknown } => ({
 // the provider reads the id_token: no userInfoURL
 function idTokenProvider(
   idToken: () => unknown,
-  extra?: { [key: string]: unknown },
+  extra?: JsonObject,
   spec: (p: MockProvider) => ProviderSpec = () => ({}),
 ): PrepareStep {
   let current: MockProvider;
@@ -94,8 +95,8 @@ function idTokenProvider(
   );
 }
 
-function extraOf(extra: { [key: string]: unknown }, p: MockProvider): { [key: string]: unknown } {
-  const merged: { [key: string]: unknown } = { ...extra };
+function extraOf(extra: JsonObject, p: MockProvider): JsonObject {
+  const merged: JsonObject = { ...extra };
   if (extra["jwksURL"] === "mock") {
     merged.jwksURL = p.jwksURL;
   }
@@ -156,7 +157,7 @@ function mfaRows(n: number) {
 function signingKeys() {
   const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const jwk = publicKey.export({ format: "jwk" });
-  const signed = (claims: { [key: string]: unknown }): string => {
+  const signed = (claims: JsonObject): string => {
     const head = `${b64url(JSON.stringify({ alg: "RS256", kid: "key1" }))}.${b64url(JSON.stringify(claims))}`;
     return `${head}.${b64url(sign("sha256", Buffer.from(head), privateKey))}`;
   };

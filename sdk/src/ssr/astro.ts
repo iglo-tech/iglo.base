@@ -24,7 +24,9 @@ import type { AdapterOptions, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 
 export interface AstroCookieStore {
   get(name: string): { value: string } | undefined;
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape: Astro's cookie options bag, kept open so user cookie stores compile (D36)
   set(name: string, value: string, options?: Record<string, unknown>): void;
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape: Astro's cookie options bag, kept open so user cookie stores compile (D36)
   delete(name: string, options?: Record<string, unknown>): void;
 }
 
@@ -57,7 +59,7 @@ function sameSiteOf(value: boolean | string | undefined): SameSite | undefined {
 }
 
 /** The serialize options of a core cookie write, in Astro's `cookies.set` shape. */
-function astroOptions(options: SerializeOptions | undefined): Record<string, unknown> {
+function astroOptions(options: SerializeOptions | undefined) {
   return {
     path: options?.path ?? "/",
     httpOnly: options?.httpOnly,

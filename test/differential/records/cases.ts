@@ -2,10 +2,12 @@
 // (records.test.ts). Values are JSON text, so numbers beyond 2^53 and the
 // member order of json values reach upstream exactly as written.
 
+import type { Json } from "@test/support/json";
+
 export interface FieldDef {
   name: string;
   type: string;
-  [setting: string]: unknown;
+  [setting: string]: Json;
 }
 
 // the auth collection: the default auth fields plus a text, a hidden text

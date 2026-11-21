@@ -9,4 +9,5 @@
 export type Loose = any;
 
 /** Open object bag used by public request and response shapes. */
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape, parity with JS SDK v0.29.0 (D36)
 export type LooseObject = { [key: string]: Loose };

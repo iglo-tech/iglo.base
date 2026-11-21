@@ -348,6 +348,7 @@ export function zeroSettingsData(): SettingsData {
 // Fills the members a decoding left unset (a struct reset by JSON null is
 // an empty object, a new slice element starts empty) with their Go zero
 // values, keeping the objects in place.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a reflective walk over the settings struct by field name (Go reflect); the visited values are the struct's own typed fields, and no narrower type names every field
 function fillZero(target: Record<string, unknown>, zero: Record<string, unknown>): void {
   for (const [name, zeroValue] of Object.entries(zero)) {
     const current = target[name];
@@ -359,6 +360,7 @@ function fillZero(target: Record<string, unknown>, zero: Record<string, unknown>
       typeof current === "object" &&
       current !== null
     ) {
+      // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the reflective walk of fillZero, see its signature
       fillZero(current as Record<string, unknown>, zeroValue as Record<string, unknown>);
     }
   }
@@ -366,16 +368,16 @@ function fillZero(target: Record<string, unknown>, zero: Record<string, unknown>
 
 function normalize(data: SettingsData): void {
   fillZero(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+    // oxlint-disable-next-line quality/no-chained-type-assertions quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change. The reflective walk of fillZero, see its signature
     data as unknown as Record<string, unknown>,
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+    // oxlint-disable-next-line quality/no-chained-type-assertions quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change. The reflective walk of fillZero, see its signature
     zeroSettingsData() as unknown as Record<string, unknown>,
   );
   for (const rule of data.RateLimits.Rules ?? []) {
     fillZero(
-      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+      // oxlint-disable-next-line quality/no-chained-type-assertions quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change. The reflective walk of fillZero, see its signature
       rule as unknown as Record<string, unknown>,
-      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+      // oxlint-disable-next-line quality/no-chained-type-assertions quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change. The reflective walk of fillZero, see its signature
       zeroRateLimitRule() as unknown as Record<string, unknown>,
     );
   }
@@ -466,7 +468,7 @@ export function unmarshalSettings(data: string | Uint8Array, s: Settings): void 
     throw new JsonSyntaxError("invalid UTF-8 within string");
   }
   try {
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+    // oxlint-disable-next-line quality/no-chained-type-assertions quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change. The field-by-name decoding of unmarshalJSON over the settings struct
     unmarshalJSON(value, s as unknown as Record<string, unknown>, settingsType, false);
   } finally {
     s.normalize();

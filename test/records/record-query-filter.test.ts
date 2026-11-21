@@ -36,6 +36,7 @@ import { Store } from "@/tools/store/store";
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 
 // a copy of the vendored fixture with a read worker pool
 function openPooledApp(): RecordsApp & { cleanup(): Promise<void> } {
@@ -120,7 +121,7 @@ function checkRecord(
   expect(record?.id).toBe(expectRecordId);
 }
 
-function requestInfo(init: { auth?: Record; body?: { [key: string]: unknown } }): RequestInfo {
+function requestInfo(init: { auth?: Record; body?: JsonObject }): RequestInfo {
   const info = new RequestInfo();
   info.auth = init.auth;
   if (init.body !== undefined) {
@@ -351,7 +352,7 @@ describe("TestCanAccessRecord", () => {
   type Scenario = [
     string,
     "superuser" | "user" | null,
-    { [key: string]: unknown } | undefined,
+    JsonObject | undefined,
     string | null,
     boolean,
     boolean,

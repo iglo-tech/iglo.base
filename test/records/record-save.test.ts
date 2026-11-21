@@ -42,6 +42,7 @@ import { Errors } from "@/validation/error";
 
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 const apps: Array<TestCollectionsApp> = [];
 
@@ -277,7 +278,7 @@ describe("TestRecordSaveWithAutoTokenKeyRefresh", () => {
     };
   })();
 
-  const scenarios: Array<[string, { [key: string]: unknown }, boolean]> = [
+  const scenarios: Array<[string, JsonObject, boolean]> = [
     ["no email or password change", { name: "example" }, false],
     ["password change", { password: "1234567890" }, true],
     ["email change", { email: "test_update@example.com" }, true],

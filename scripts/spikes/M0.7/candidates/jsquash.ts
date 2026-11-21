@@ -40,7 +40,7 @@ class ImageDataShim {
     readonly height: number,
   ) {}
 }
-(globalThis as Record<string, unknown>).ImageData ??= ImageDataShim;
+(globalThis as { ImageData?: typeof ImageDataShim }).ImageData ??= ImageDataShim;
 
 const pngWasm = pngWasmFile;
 

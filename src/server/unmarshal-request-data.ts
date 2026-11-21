@@ -17,7 +17,7 @@ import {
   setOwn,
   toAny,
 } from "@/server/json-decode";
-import type { JsonValue } from "@/server/json-decode";
+import type { GoMap, JsonValue } from "@/server/json-decode";
 import { goInt } from "@/tools/types/go-json";
 import { isInstance } from "@/tools/types/is-instance";
 
@@ -85,10 +85,16 @@ export const JSONPayloadKey = "@jsonPayload";
 
 export type RequestData = Map<string, Array<string>> | Record<string, Array<string>>;
 
+// StructDst is a Go struct value that the decoders fill: a plain object whose
+// fields hold values of their Go field types (strings, numbers, nested
+// structs, slices, any), so no narrower type is true for all of them.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go struct value: each field holds a value of its own Go type
+export type StructDst = Record<string, unknown>;
+
 // MapRef is a *map[string]any destination: unmarshaling a JSON null into it
 // sets the map to nil (null), as json/v2 does.
 export interface MapRef {
-  map: Record<string, unknown> | null;
+  map: GoMap | null;
 }
 
 function getValues(data: RequestData, key: string): Array<string> | undefined {
@@ -118,14 +124,14 @@ function entries(data: RequestData): Array<[string, Array<string>]> {
 export function unmarshalRequestData(data: RequestData | undefined, dst: MapRef): void;
 export function unmarshalRequestData(
   data: RequestData | undefined,
-  dst: Record<string, unknown>,
+  dst: StructDst,
   type: StructType,
   structTagKey?: string,
   structPrefix?: string,
 ): void;
 export function unmarshalRequestData(
   data: RequestData | undefined,
-  dst: MapRef | Record<string, unknown>,
+  dst: MapRef | StructDst,
   type?: StructType,
   structTagKey = "",
   structPrefix = "",
@@ -149,13 +155,7 @@ export function unmarshalRequestData(
     }
   } else {
     // set a default tag key
-    unmarshalInStructValue(
-      data,
-      dst as Record<string, unknown>,
-      type,
-      structTagKey || "form",
-      structPrefix,
-    );
+    unmarshalInStructValue(data, dst as StructDst, type, structTagKey || "form", structPrefix);
   }
 
   // @jsonPayload
@@ -164,7 +164,7 @@ export function unmarshalRequestData(
   // normalization alongside the other data values
   for (const payload of getValues(data, JSONPayloadKey) ?? []) {
     if (type) {
-      unmarshalJSON(decodeValue(payload), dst as Record<string, unknown>, type, false);
+      unmarshalJSON(decodeValue(payload), dst as StructDst, type, false);
     } else {
       unmarshalJSON(decodeValue(payload), dst as MapRef, undefined, false);
     }
@@ -211,7 +211,7 @@ function zeroValue(t: FieldType): unknown {
 // unmarshalInStructValue unmarshals data into the provided struct fields.
 function unmarshalInStructValue(
   data: RequestData,
-  dst: Record<string, unknown>,
+  dst: StructDst,
   type: StructType,
   structTagKey: string,
   structPrefix: string,
@@ -309,12 +309,12 @@ function unmarshalInStructValue(
 }
 
 // the (embedded or nested) struct object stored in dst[name], allocated if missing
-export function structValue(dst: Record<string, unknown>, name: string): Record<string, unknown> {
+export function structValue(dst: StructDst, name: string): StructDst {
   const current = dst[name];
   if (typeof current === "object" && current !== null) {
-    return current as Record<string, unknown>;
+    return current as StructDst;
   }
-  const value: Record<string, unknown> = {};
+  const value: StructDst = {};
   setOwn(dst, name, value);
   return value;
 }
@@ -638,7 +638,7 @@ interface JsonField {
   casing: "" | "ignore" | "strict";
   // the object that holds the field's property (an inlined embedded struct
   // is stored under its type name)
-  holder: (dst: Record<string, unknown>) => Record<string, unknown>;
+  holder: (dst: StructDst) => StructDst;
 }
 
 // the JSON-visible fields of a struct, embedded structs inlined
@@ -675,7 +675,7 @@ function jsonFields(type: StructType): Array<JsonField> {
 }
 
 // the fields' Go zero values, as reflect.Value.SetZero leaves a struct
-function resetStruct(dst: Record<string, unknown>, type: StructType): void {
+function resetStruct(dst: StructDst, type: StructType): void {
   for (const field of type.fields) {
     setOwn(dst, field.name, zeroValue(field.type));
   }
@@ -694,13 +694,13 @@ export function unmarshalJSON(
 ): void;
 export function unmarshalJSON(
   value: JsonValue,
-  dst: Record<string, unknown>,
+  dst: StructDst,
   type: StructType,
   caseInsensitive: boolean,
 ): void;
 export function unmarshalJSON(
   value: JsonValue,
-  dst: MapRef | Record<string, unknown>,
+  dst: MapRef | StructDst,
   type: StructType | undefined,
   caseInsensitive: boolean,
 ): void {
@@ -709,12 +709,12 @@ export function unmarshalJSON(
     ref.map = unmarshalMap(value, ref.map);
     return;
   }
-  unmarshalStruct(value, dst as Record<string, unknown>, type, caseInsensitive);
+  unmarshalStruct(value, dst as StructDst, type, caseInsensitive);
 }
 
 function unmarshalStruct(
   value: JsonValue,
-  dst: Record<string, unknown>,
+  dst: StructDst,
   type: StructType,
   caseInsensitive: boolean,
 ): void {
@@ -758,7 +758,7 @@ function unmarshalStruct(
   }
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+function isPlainObject(value: unknown): value is GoMap {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
@@ -768,10 +768,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 // json/v2 into a map[string]any: null gives a nil map, an object's members
 // are unmarshaled into the existing entries (see unmarshalAny).
-function unmarshalMap(
-  value: JsonValue,
-  current: Record<string, unknown> | null,
-): Record<string, unknown> | null {
+function unmarshalMap(value: JsonValue, current: GoMap | null): GoMap | null {
   if (value === null) {
     return null;
   }
@@ -902,8 +899,7 @@ function jsonFieldValue(
       }
       return value.map((item) => jsonFieldValue(item, type.elem, undefined, caseInsensitive));
     case "struct": {
-      const target =
-        typeof current === "object" && current !== null ? (current as Record<string, unknown>) : {};
+      const target = typeof current === "object" && current !== null ? (current as StructDst) : {};
       unmarshalStruct(value, target, type, caseInsensitive);
       return target;
     }

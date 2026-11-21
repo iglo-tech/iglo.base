@@ -20,16 +20,24 @@
 
 import { ValidationErrors } from "@/server/error";
 import { DateTime } from "@/tools/types/datetime";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 import { compareUTF8, isJSONMarshaler, marshal } from "@/tools/types/go-json";
 import { isInstance } from "@/tools/types/is-instance";
+
+// The params of a message template: Go's map[string]any, one value per name.
+// The values are arbitrary Go values (strings, numbers, Float64, slices, dates,
+// errors, maps), each printed as fmt prints it (printValue), so no narrower
+// value type holds for all of them.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any of template params; any Go value is printed as fmt's %v prints it (printValue)
+export type ErrorParams = Record<string, unknown>;
 
 // Error interface represents a validation error (Go's validation.Error).
 export interface Error extends globalThis.Error {
   code(): string;
   getMessage(): string;
   setMessage(message: string): Error;
-  params(): Record<string, unknown>;
-  setParams(params: Record<string, unknown> | null): Error;
+  params(): ErrorParams;
+  setParams(params: ErrorParams | null): Error;
 }
 
 // Float64 marks a number as a Go float64 for printing: a plain JS number
@@ -54,9 +62,9 @@ export class Float64 {
 export class ErrorObject extends globalThis.Error implements Error {
   readonly #code: string;
   readonly #message: string;
-  readonly #params: Record<string, unknown> | null;
+  readonly #params: ErrorParams | null;
 
-  constructor(code: string, message: string, params: Record<string, unknown> | null = null) {
+  constructor(code: string, message: string, params: ErrorParams | null = null) {
     super();
     this.name = "ErrorObject";
     this.#code = code;
@@ -82,7 +90,7 @@ export class ErrorObject extends globalThis.Error implements Error {
   }
 
   // SetParams set the error's params.
-  setParams(params: Record<string, unknown> | null): Error {
+  setParams(params: ErrorParams | null): Error {
     return new ErrorObject(this.#code, this.#message, params);
   }
 
@@ -92,7 +100,7 @@ export class ErrorObject extends globalThis.Error implements Error {
   }
 
   // Params returns the error's params ({} for Go's nil map).
-  params(): Record<string, unknown> {
+  params(): ErrorParams {
     return this.#params ?? {};
   }
 
@@ -112,7 +120,7 @@ export class ErrorObject extends globalThis.Error implements Error {
   }
 }
 
-function errorText(message: string, params: Record<string, unknown> | null): string {
+function errorText(message: string, params: ErrorParams | null): string {
   if (params === null || Object.keys(params).length === 0) {
     return message;
   }
@@ -187,7 +195,7 @@ export class Errors extends ValidationErrors {
   // MarshalJSON converts the Errors into a valid JSON.
   marshalJSON(): string {
     // a null-prototype object, so that a "__proto__" key stays a member
-    const errs = Object.create(null) as Record<string, unknown>;
+    const errs = Object.create(null) as Record<string, JSONMarshaler | string | null>;
     for (const [key, err] of Object.entries(this.errors)) {
       if (isJSONMarshaler(err)) {
         errs[key] = err;
@@ -223,7 +231,7 @@ export function NewError(code: string, message: string): Error {
 
 const actionPattern = /^\s*\.([A-Za-z_][A-Za-z0-9_]*)\s*$/;
 
-function executeTemplate(text: string, data: Record<string, unknown>): string {
+function executeTemplate(text: string, data: ErrorParams): string {
   let out = "";
   let i = 0;
   for (;;) {
@@ -286,7 +294,7 @@ export function printValue(value: unknown): string {
   }
   if (typeof value === "object") {
     const keys = Object.keys(value).toSorted(compareUTF8);
-    const record = value as Record<string, unknown>;
+    const record = value as ErrorParams;
     return "map[" + keys.map((k) => `${k}:${printValue(record[k])}`).join(" ") + "]";
   }
   return String(value);

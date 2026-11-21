@@ -71,6 +71,10 @@ import { isInstance } from "@/tools/types/is-instance";
 
 // Params represents a list of parameter values to be bound to a SQL statement.
 // The map keys are the parameter names while the map values are the corresponding parameter values.
+// The values are Go `any` values: dbx binds whatever a caller passes, a Go
+// value of any type (a driver.Valuer, a pointer's target, a list, a nil), and
+// the wrappers Float64 and BoundValue mark the ones bound specially.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go `any` parameter values, bound by database/sql with no fixed set of types
 export type Params = Record<string, unknown>;
 
 // Float64 is a param value bound as Go's SQLite driver binds a float64:
@@ -99,11 +103,12 @@ export class BoundValue {
 }
 
 // a result row keyed by column name, as bun:sqlite returns it
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go `any` column values: a row holds what the driver returns for each column, from a query or from rowsFromValues' callers
 export type Row = Record<string, unknown>;
 
 // sets map[key] as an own data property: plain assignment would call the
 // __proto__ setter for the key "__proto__"
-export function setOwn(map: Record<string, unknown>, key: string, value: unknown): void {
+export function setOwn(map: Params, key: string, value: unknown): void {
   if (key === "__proto__") {
     Object.defineProperty(map, key, {
       value,
@@ -117,7 +122,7 @@ export function setOwn(map: Record<string, unknown>, key: string, value: unknown
 }
 
 // Object.assign with setOwn
-export function assignOwn(target: Record<string, unknown>, source: Record<string, unknown>): void {
+export function assignOwn(target: Params, source: Params): void {
   for (const key of Object.keys(source)) {
     setOwn(target, key, source[key]);
   }

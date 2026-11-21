@@ -55,6 +55,7 @@ import { steps } from "@test/differential/collections/save-cases";
 import type { Ctx, Step } from "@test/differential/collections/save-cases";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { Json, JsonObject } from "@test/support/json";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 120_000;
@@ -117,14 +118,14 @@ function modelSQL(query: string): Array<Array<unknown>> {
   return model()
     .databases.concurrentDB()
     .newQuery(query)
-    .all<Record<string, unknown>>()
+    .all<JsonObject>()
     .map((row) => Object.values(row).map((v) => (v === null ? null : String(v))));
 }
 
-async function upstreamCollections(s: UpstreamServer): Promise<Array<Record<string, unknown>>> {
+async function upstreamCollections(s: UpstreamServer): Promise<Array<JsonObject>> {
   const res = await request(s, "GET", "/api/collections?perPage=500&sort=name");
   expect(res.status).toBe(200);
-  return (JSON.parse(res.text) as { items: Array<Record<string, unknown>> }).items;
+  return (JSON.parse(res.text) as { items: Array<JsonObject> }).items;
 }
 
 async function readCtx(): Promise<Ctx> {
@@ -139,7 +140,7 @@ async function readCtx(): Promise<Ctx> {
   };
   return {
     id: (name) => get(name).id as string,
-    fields: (name) => get(name).fields as Array<Record<string, unknown>>,
+    fields: (name) => get(name).fields as Array<JsonObject>,
     collection: get,
     all: () => structuredClone(items),
   };
@@ -277,7 +278,7 @@ function modelImport(body: string): Outcome {
     deleteMissing?: boolean;
   };
   const data = (unmarshal(JSON.stringify(form.collections), sliceOf(mapOf(anyType))) ??
-    []) as Array<Record<string, unknown>>;
+    []) as Array<JsonObject>;
 
   try {
     importCollections(model(), data, form.deleteMissing === true);
@@ -310,14 +311,15 @@ function modelImport(body: string): Outcome {
 
 // a JSON value with its object members sorted (Go's map order is random)
 function sortedJSON(text: string): string {
-  const sort = (v: unknown): unknown => {
+  const sort = (v: Json): Json => {
     if (Array.isArray(v)) {
       return v.map(sort);
     }
     if (typeof v === "object" && v !== null) {
-      const out: Record<string, unknown> = Object.create(null);
+      const out: JsonObject = Object.create(null);
       for (const key of Object.keys(v).toSorted()) {
-        out[key] = sort((v as Record<string, unknown>)[key]);
+        // a key of Object.keys is present: its value is Json, not undefined
+        out[key] = sort(v[key] as Json);
       }
       return out;
     }
@@ -334,7 +336,7 @@ function withoutCloneIds(text: string): string {
 
 // a collection's JSON with created, updated and the clone ids replaced
 function normalizedCollectionJSON(text: string): string {
-  const c = JSON.parse(withoutCloneIds(text)) as Record<string, unknown>;
+  const c = JSON.parse(withoutCloneIds(text)) as JsonObject;
   c.created = "<created>";
   c.updated = "<updated>";
   return sortedJSON(JSON.stringify(c));
@@ -358,12 +360,12 @@ function secretsOf(options: unknown, prefix = ""): Map<string, string> {
   return out;
 }
 
-function replaceSecrets(options: unknown, marks: Map<string, string>, prefix = ""): unknown {
+function replaceSecrets(options: Json, marks: Map<string, string>, prefix = ""): Json {
   if (Array.isArray(options)) {
     return options.map((v, i) => replaceSecrets(v, marks, `${prefix}.${i}`));
   }
   if (typeof options === "object" && options !== null) {
-    const out: Record<string, unknown> = {};
+    const out: JsonObject = {};
     for (const [key, value] of Object.entries(options)) {
       const path = prefix + "." + key;
       out[key] =
@@ -422,7 +424,7 @@ async function snapshot(side: Side): Promise<Snapshot> {
     const r = [...row];
     const id = String(r[1]);
     const optionsIndex = collectionColumns.indexOf("options");
-    const options = JSON.parse(String(r[optionsIndex])) as unknown;
+    const options = JSON.parse(String(r[optionsIndex])) as Json;
     const marks = new Map<string, string>();
     for (const [path, value] of secretsOf(options)) {
       const key = `${id}${path}`;
@@ -588,7 +590,7 @@ describe("collection save sequence against upstream", () => {
           ]);
 
           const have = await upstreamCollections(other);
-          const normalize = (items: Array<Record<string, unknown>>) =>
+          const normalize = (items: Array<JsonObject>) =>
             items.map((c) => normalizedCollectionJSON(JSON.stringify(c)));
           expect(normalize(have)).toEqual(normalize(want));
         } finally {

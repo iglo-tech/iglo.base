@@ -39,8 +39,9 @@ import type { Field } from "@/fields/field";
 import { isExpression } from "@/db/dbx/expression";
 import { BoundValue, Float64 } from "@/db/dbx/query";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
+import type { StructFields } from "@/migrations/json-values";
 import { toInteger } from "@/migrations/membrane";
-import type { Adapter, Membrane } from "@/migrations/membrane";
+import type { Adapter, Membrane, MigrationObject } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { Settings } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
@@ -252,7 +253,7 @@ export function goMethod(
   }
   return (...args) =>
     m.guard(() => {
-      const fn = (target as Record<string, unknown>)[key] as (...a: Array<unknown>) => unknown;
+      const fn = (target as MigrationObject)[key] as (...a: Array<unknown>) => unknown;
       return goResult(m, method, fn.apply(target, goArgs(m, method, args)));
     });
 }
@@ -506,20 +507,13 @@ function hashValue(m: Membrane, v: unknown): unknown {
 }
 
 // a map of values for SQL; a map goja holds as a Go value reads as its data
-function sqlParams(
-  m: Membrane,
-  v: unknown,
-  value: (item: unknown) => unknown,
-): Record<string, unknown> {
-  const params: Record<string, unknown> = {};
+function sqlParams(m: Membrane, v: unknown, value: (item: unknown) => unknown): MigrationObject {
+  const params: MigrationObject = {};
   if (typeof v !== "object" || v === null) {
     return params;
   }
   const target = m.targetOf(v);
-  const source = (isInstance(GoJSONMap, target) ? target.data : (target ?? v)) as Record<
-    string,
-    unknown
-  >;
+  const source = (isInstance(GoJSONMap, target) ? target.data : (target ?? v)) as MigrationObject;
   for (const key of Object.keys(source)) {
     const item = source[key];
     Object.defineProperty(params, key, {
@@ -582,11 +576,9 @@ function assignStruct(
   const fields = type.struct.fields ?? {};
   for (const [name, fieldType] of Object.entries(fields)) {
     const member =
-      typeof value === "object" && value !== null
-        ? (value as Record<string, unknown>)[name]
-        : undefined;
+      typeof value === "object" && value !== null ? (value as MigrationObject)[name] : undefined;
     if (member !== undefined) {
-      const holder = target as Record<string, unknown>;
+      const holder = target as StructFields;
       holder[name] = toGo(m, member, fieldType, holder[name]);
     }
   }
@@ -595,7 +587,7 @@ function assignStruct(
 
 // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
 function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknown {
-  const fields = holder as Record<string, unknown>;
+  const fields = holder as StructFields;
   const value = fields[name];
 
   if (typeof type === "object") {
@@ -662,7 +654,7 @@ export function classAdapter(cls: GoClass, overrides: Partial<Adapter> = {}): Ad
       if (!Object.hasOwn(fields, key)) {
         return false; // goja ignores it
       }
-      const holder = target as Record<string, unknown>;
+      const holder = target as StructFields;
       holder[key] = toGo(m, value, fields[key] as GoType, holder[key]);
       return true;
     },

@@ -58,6 +58,7 @@ export interface NuxtEvent {
   /** The request headers, as Node has them (`event.node.req.headers`). */
   headers: Record<string, string | Array<string> | undefined>;
   /** Nitro's per-request context: the middleware sets `pb` and `pbBrowserToken` on it. */
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape: Nitro's per-request context is an open bag shared with other middleware (D36)
   context: Record<string, unknown>;
   /** Reads the request body as JSON. Only the popup route calls it. */
   readBody?: () => Promise<unknown>;

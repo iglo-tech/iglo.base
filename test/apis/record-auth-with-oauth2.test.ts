@@ -32,6 +32,7 @@ import { Client } from "@/tools/subscriptions/client";
 import { openFixtureApp } from "@test/app/app";
 import type { TestApp } from "@test/app/app";
 import { json as jsonResponse, stubFetch } from "@test/support/fetch-stub";
+import type { JsonObject } from "@test/support/json";
 import { serveTest } from "@test/support/router";
 import { startS3Recorder } from "@test/support/s3-recorder";
 import type { RecordedRequest, S3Recorder } from "@test/support/s3-recorder";
@@ -94,15 +95,15 @@ const options = (user: AuthUser, extra: RecordAuthOptions = {}): RecordAuthOptio
 
 async function signIn(
   recordAuth: RecordAuthOptions,
-  body: { [key: string]: unknown },
-): Promise<{ status: number; json: { [key: string]: unknown } }> {
+  body: JsonObject,
+): Promise<{ status: number; json: JsonObject }> {
   const res = await serveTest(newRouter(app, { recordAuth }).buildMux(), {
     method: "POST",
     target: "/api/collections/users/auth-with-oauth2",
     body: JSON.stringify({ code: "123", redirectURL: "https://example.com", ...body }),
     headers: { "Content-Type": "application/json" },
   });
-  return { status: res.status, json: (await res.json()) as { [key: string]: unknown } };
+  return { status: res.status, json: (await res.json()) as JsonObject };
 }
 
 const mappedAvatar = new OAuth2KnownFields({
@@ -134,7 +135,7 @@ test("creating user (with mapped OAuth2 fields and avatarURL->file field)", asyn
 
   expect(status).toBe(200);
   expect(json["meta"]).toMatchObject({ isNew: true });
-  const record = json["record"] as { [key: string]: unknown };
+  const record = json["record"] as JsonObject;
   expect(record).toMatchObject({
     email: "oauth2@example.com",
     emailVisibility: true,
@@ -211,7 +212,7 @@ test("the production address check still refuses the avatar through the handler"
   );
 
   expect(status).toBe(200);
-  expect((json["record"] as { [key: string]: unknown })["avatar"]).toBe("");
+  expect((json["record"] as JsonObject)["avatar"]).toBe("");
   expect(app.warned.map((l) => l.message)).toContain("Failed to retrieve OAuth2 avatar");
 });
 
@@ -434,7 +435,7 @@ test("the Apple name from the redirect reaches the auth response", async () => {
       }),
       headers: { "Content-Type": "application/json" },
     });
-    const body = (await res.json()) as { meta: { [key: string]: unknown }; record: unknown };
+    const body = (await res.json()) as { meta: JsonObject; record: unknown };
 
     expect(res.status).toBe(200);
     expect(body.meta).toMatchObject({

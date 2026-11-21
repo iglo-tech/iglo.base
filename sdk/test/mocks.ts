@@ -1,14 +1,18 @@
 // js-sdk v0.28.1 tests/mocks.ts
 import { ClientResponseError } from "@sdk/ClientResponseError";
+import type { JsonObject } from "@sdk/tools/json";
+
+// The request init the SDK sends: its headers are always a plain record (Client.send builds them
+// with Object.assign), so the matchers can read them by name.
+export type MockRequestConfig = Omit<RequestInit, "headers"> & {
+  headers?: Record<string, string>;
+};
 
 export type RequestMock = {
   method?: string;
   url?: string;
-  body?: { [key: string]: any };
-  additionalMatcher?: (
-    url: RequestInfo | URL,
-    config: RequestInit | { [key: string]: any } | undefined,
-  ) => boolean;
+  body?: JsonObject;
+  additionalMatcher?: (url: RequestInfo | URL, config: MockRequestConfig | undefined) => boolean;
   delay?: number;
   replyCode?: number;
   replyHeaders?: Record<string, string> | Headers | (() => Record<string, string> | Headers);
@@ -34,10 +38,7 @@ export class FetchMock {
   init() {
     this.originalFetch = global?.fetch;
 
-    global.fetch = ((
-      url: RequestInfo | URL,
-      config: RequestInit | { [key: string]: any } | undefined,
-    ) => {
+    global.fetch = ((url: RequestInfo | URL, config: MockRequestConfig | undefined) => {
       for (const mock of this.mocks) {
         // match url and method
         const matchUrl =
@@ -51,11 +52,11 @@ export class FetchMock {
 
         // match body params
         if (mock.body) {
-          let configBody: { [key: string]: any } = {};
+          let configBody: JsonObject = {};
 
           // deserialize
           if (typeof config?.body === "string") {
-            configBody = JSON.parse(config?.body) as { [key: string]: any };
+            configBody = JSON.parse(config?.body) as JsonObject;
           }
 
           let hasMissingBodyParam = false;
@@ -101,7 +102,7 @@ export class FetchMock {
 
         return new Promise((resolve, reject) => {
           setTimeout(() => {
-            if ((config?.signal as AbortSignal | null | undefined)?.aborted) {
+            if (config?.signal?.aborted) {
               reject(new ClientResponseError());
               return;
             }

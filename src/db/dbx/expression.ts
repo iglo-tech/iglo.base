@@ -168,6 +168,11 @@ export class Exp implements Expression {
   }
 }
 
+// HashValues maps column names to the values HashExp filters by: a Go `any`
+// value (a bound parameter), a nil, a nested expression, or a list (IN).
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go `any` values of a hash expression: parameters of any Go type, nil, expressions and lists
+export type HashValues = Record<string, unknown>;
+
 // HashExp represents a hash expression.
 //
 // A hash expression is a map whose keys are DB column names which need to be filtered according
@@ -177,7 +182,7 @@ export class Exp implements Expression {
 // HashExp also handles nil values and slice values. For example, HashExp{"level": []interface{}{1, 2}, "dept": nil}
 // will generate: "level" IN (1, 2) AND "dept" IS NULL.
 export class HashExp implements Expression {
-  constructor(readonly values: Readonly<Record<string, unknown>>) {}
+  constructor(readonly values: HashValues) {}
 
   build(db: DB, params: Params): string {
     // ensure the hash exp generates the same SQL for different runs

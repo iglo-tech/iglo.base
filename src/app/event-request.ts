@@ -33,6 +33,7 @@ export class RequestInfo {
   query: { [key: string]: string } = {};
   headers: { [key: string]: string } = {};
   // null when the body unmarshals a JSON null (a nil map upstream)
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the request body decoded as a JSON object of any kind (null for a JSON null body)
   body: { [key: string]: unknown } | null = {};
   auth: Record | undefined;
   method = "";

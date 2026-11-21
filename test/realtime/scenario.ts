@@ -20,8 +20,18 @@
 import { superuserToken } from "@test/scenarios/record-crud";
 import { jsonRequest, RealtimeStream } from "@test/realtime/client";
 import type { HttpResult, SseEvent } from "@test/realtime/client";
+import type { Json, JsonObject } from "@test/support/json";
 
-export type Observation = { [key: string]: unknown };
+// what an observation holds: JSON values, an absent one (a lookup past the end
+// of a list) and an SSE event as the stream recorded it
+export type ObservedValue =
+  | Json
+  | undefined
+  | SseEvent
+  | Array<ObservedValue>
+  | { [key: string]: ObservedValue };
+
+export type Observation = { [key: string]: ObservedValue };
 
 export interface RealtimeScenario {
   // the Go test function (or "differential" for the extra cases)
@@ -56,7 +66,7 @@ export class ScenarioContext {
     token?: string,
     localAddress?: string,
   ): Promise<HttpResult> {
-    const body: { [key: string]: unknown } = { clientId };
+    const body: JsonObject = { clientId };
     if (subscriptions !== undefined) {
       body.subscriptions = subscriptions;
     }
@@ -110,7 +120,7 @@ export class ScenarioContext {
   }
 
   // a collection created through the API; returns its id, throws on failure
-  async createCollection(collection: { [key: string]: unknown }): Promise<string> {
+  async createCollection(collection: JsonObject): Promise<string> {
     const res = await this.api("POST", "/api/collections", collection);
     if (res.status !== 200) {
       throw new Error(`create collection: ${res.status} ${res.body}`);
@@ -127,9 +137,9 @@ export class ScenarioContext {
 
 // a response as observed: status and body (JSON parsed when possible)
 export function response(res: HttpResult): Observation {
-  let body: unknown = res.body;
+  let body: Json = res.body;
   try {
-    body = res.body === "" ? "" : JSON.parse(res.body);
+    body = res.body === "" ? "" : (JSON.parse(res.body) as Json);
   } catch {
     // not JSON
   }

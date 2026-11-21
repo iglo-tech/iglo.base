@@ -1,6 +1,7 @@
 // docs/design/13-ssr.md ("OAuth2"). Upstream: apis/record_auth_methods.go (state, PKCE verifier,
 // authURL ending in `&redirect_uri=`) and apis/record_auth_with_oauth2.go (the code exchange).
 import { safeDecode } from "@sdk/ssr/cookies";
+import type { JsonObject } from "@sdk/tools/json";
 
 /** The temporary cookie's lifetime, as its `Max-Age` (see `buildOAuth2CookieToSet`). */
 export const OAUTH2_STATE_TTL_MS = 600 * 1000;
@@ -135,7 +136,7 @@ export function parseOAuth2Cookie(raw: string): OAuth2Pending | undefined {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return undefined;
     }
-    const obj = parsed as Record<string, unknown>;
+    const obj = parsed as JsonObject;
     if (
       !isString(obj["state"], 256) ||
       obj["state"] === "" ||

@@ -312,6 +312,7 @@ export default class Client {
       return raw;
     }
 
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- values are the caller's filter parameters, arbitrary JS values that stringify() takes unchanged
     const paramsWithPlaceholders: Record<string, unknown> = {};
     for (const k in params) {
       paramsWithPlaceholders["{:" + k + "}"] = params[k];

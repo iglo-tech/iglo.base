@@ -2,6 +2,7 @@
 import { BatchHandler } from "@/logs/batch-handler";
 import { logDBExport } from "@/logs/log-model";
 import { generateDefaultRandomId } from "@/db/db";
+import type { Params } from "@/db/dbx/query";
 import { auxRunInTransaction } from "@/db/tx";
 
 import { openFixtureApp } from "@test/app/app";
@@ -37,7 +38,7 @@ time("random id", n, () => {
     generateDefaultRandomId();
   }
 });
-const rows: Array<{ [key: string]: unknown }> = [];
+const rows: Array<Params> = [];
 time("export", n, () => {
   for (const log of h.logs) {
     rows.push(logDBExport("id", log, 0));
@@ -75,10 +76,10 @@ time("insert, one prepared statement", m, () => {
 time("insert, one statement per batch", m, () => {
   for (let batch = 0; batch < m / 200; batch++) {
     auxRunInTransaction(app.databases, (tx) => {
-      const params: { [key: string]: unknown } = {};
+      const params: Params = {};
       const values: Array<string> = [];
       for (let i = 0; i < 200; i++) {
-        const row = rows[i] as { [key: string]: unknown };
+        const row = rows[i] as Params;
         values.push(`({:i${i}},{:c${i}},{:l${i}},{:m${i}},{:d${i}})`);
         params[`i${i}`] = generateDefaultRandomId();
         params[`c${i}`] = row.created;

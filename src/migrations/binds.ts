@@ -110,9 +110,11 @@ import {
 } from "@/migrations/go-class";
 import type { GoClass, Method } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
+import type { StructFields } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
 import { Membrane, pass, toInteger } from "@/migrations/membrane";
-import type { Adapter } from "@/migrations/membrane";
+import type { Adapter, MigrationObject } from "@/migrations/membrane";
+import type { DataMap } from "@/records/record-model";
 import { newRecord, Record as RecordModel } from "@/records/record-model";
 import {
   newAuthToken,
@@ -143,6 +145,7 @@ import type { RateLimitRule, RateLimitsConfig } from "@/settings/settings-model"
 import { equal, hs256, hs512, md5, sha256, sha512 } from "@/tools/security/crypto";
 import { encryptSync } from "@/tools/security/encrypt";
 import { StdEncoding } from "@/tools/security/base64";
+import type { MapClaims } from "@/tools/security/jwt";
 import { newJWT, parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
 import {
   pseudorandomString,
@@ -563,7 +566,7 @@ function structView(
       if (found === undefined) {
         throw new m.vm.GoError(`Field ${key} not found`);
       }
-      const holder = t as Record<string, unknown>;
+      const holder = t as StructFields;
       holder[found.name] = convertValue(value, found.type, holder[found.name]);
       settings.normalize();
       return true;
@@ -588,7 +591,7 @@ function memberView(
   name: string,
   type: FieldType,
 ): unknown {
-  const fields = holder as Record<string, unknown>;
+  const fields = holder as StructFields;
   const value = fields[name];
 
   if (Array.isArray(value) || (typeof type === "object" && type.kind === "slice")) {
@@ -630,7 +633,7 @@ function convertValue(value: unknown, type: FieldType | undefined, current: unkn
   if (type === undefined) {
     return value;
   }
-  const holder: Record<string, unknown> = {
+  const holder = {
     Value: typeof current === "object" && current !== null ? structuredClone(current) : null,
   };
   unmarshalJSON(
@@ -691,7 +694,7 @@ function newSettingsAdapter(): Adapter {
         return pass;
       }
       // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-      const holder = settings.settings as unknown as Record<string, unknown>;
+      const holder = settings.settings as unknown as StructFields;
       holder[found.name] = convertValue(value, found.type, holder[found.name]);
       settings.normalize();
       return true;
@@ -758,7 +761,7 @@ const namedFields: ReadonlyArray<readonly [string, string]> = Object.freeze([
 
 // BindCore
 function bindCore(
-  scope: Record<string, unknown>,
+  scope: MigrationObject,
   m: Membrane,
   models: QueryModels,
   blank: WeakSet<object>,
@@ -811,7 +814,7 @@ function bindCore(
     // goja exports only a plain object as a map
     const isMap = !Array.isArray(data) && !models.isDynamicModel(data);
     if (typeof data === "object" && data !== null && isMap && m.targetOf(data) === undefined) {
-      record.load(m.toHost(data) as Record<string, unknown>);
+      record.load(m.toHost(data) as DataMap);
     }
     return m.toVm(record);
   });
@@ -1032,7 +1035,7 @@ function toBytesValue(m: Membrane, raw: unknown): Uint8Array {
 // A namespace object of goja: Go functions with their signatures.
 function goNamespace(
   m: Membrane,
-  functions: Readonly<Record<string, unknown>>,
+  functions: Readonly<MigrationObject>,
   signatures: Readonly<Record<string, string>>,
 ): object {
   const namespace = m.vm.object();
@@ -1045,12 +1048,12 @@ function goNamespace(
 }
 
 // BindDbx
-function bindDbx(scope: Record<string, unknown>, m: Membrane): void {
+function bindDbx(scope: MigrationObject, m: Membrane): void {
   scope.$dbx = goNamespace(
     m,
     {
       exp: newExp,
-      hashExp: (data: Record<string, unknown> | null) => (data === null ? null : new HashExp(data)),
+      hashExp: (data: MigrationObject | null) => (data === null ? null : new HashExp(data)),
       not,
       and,
       or,
@@ -1110,7 +1113,7 @@ function decryptSync(cipherText: string, key: string): string {
 }
 
 // BindSecurity
-function bindSecurity(scope: Record<string, unknown>, m: Membrane, c: BindConfig): void {
+function bindSecurity(scope: MigrationObject, m: Membrane, c: BindConfig): void {
   scope.$security = goNamespace(
     m,
     {
@@ -1133,7 +1136,7 @@ function bindSecurity(scope: Record<string, unknown>, m: Membrane, c: BindConfig
       parseUnverifiedJWT: (token: string) => parseUnverifiedJWT(token, c.clock),
       parseJWT: (token: string, verificationKey: string) =>
         parseJWT(token, verificationKey, c.clock),
-      createJWT: (payload: Record<string, unknown>, signingKey: string, secDuration: number) =>
+      createJWT: (payload: MapClaims, signingKey: string, secDuration: number) =>
         newJWT(payload, signingKey, BigInt(secDuration) * 1_000_000_000n, c.clock),
 
       // encryption
@@ -1192,7 +1195,7 @@ function goFileMode(info: Stats | Dirent): GoFileMode {
   return new GoFileMode(info.isSymbolicLink() ? perm + 2 ** 27 : perm);
 }
 
-function fileInfo(name: string, info: Stats): Record<string, unknown> {
+function fileInfo(name: string, info: Stats) {
   return {
     name: () => path.basename(name),
     size: () => info.size,
@@ -1204,8 +1207,8 @@ function fileInfo(name: string, info: Stats): Record<string, unknown> {
 }
 
 // BindOS: the file and environment helpers; the rest fails with its name
-function bindOS(scope: Record<string, unknown>, m: Membrane, c: BindConfig): void {
-  const os: Record<string, unknown> = {
+function bindOS(scope: MigrationObject, m: Membrane, c: BindConfig): void {
+  const os: MigrationObject = {
     args: [...c.argv],
     exit: (code: number) => c.exit(code),
     getenv: (name: string) => c.getenv(name),
@@ -1307,8 +1310,8 @@ function clean(p: string): string {
 }
 
 // BindFilepath: the pure helpers; the rest fails with its name
-function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
-  const filepath: Record<string, unknown> = {
+function bindFilepath(scope: MigrationObject, m: Membrane): void {
+  const filepath: MigrationObject = {
     base: (p: string) => (p === "" ? "." : path.posix.basename(p) || "/"),
     clean,
     dir: (p: string) => clean(p.slice(0, p.lastIndexOf("/") + 1)),
@@ -1359,7 +1362,7 @@ function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
 }
 
 // the globals upstream gives a migration file that iglo.base leaves out
-function bindMissing(scope: Record<string, unknown>, m: Membrane): void {
+function bindMissing(scope: MigrationObject, m: Membrane): void {
   const network = "no network calls run inside a write transaction";
   scope.$http = missing(m, "$http", network, false);
   scope.FormData = missing(m, "FormData", network, true);
@@ -1381,11 +1384,7 @@ function bindMissing(scope: Record<string, unknown>, m: Membrane): void {
 
 // Sets the globals on a context's sandbox object and returns the membrane
 // of that context.
-export function bindAll(
-  sandbox: Record<string, unknown>,
-  context: Context,
-  c: BindConfig,
-): Membrane {
+export function bindAll(sandbox: MigrationObject, context: Context, c: BindConfig): Membrane {
   const m = new Membrane(
     context,
     (target) => (isInstance(RecordSlot, target) ? target.record : target),

@@ -53,6 +53,7 @@ import {
 import type { FieldDef } from "@test/differential/fields/cases";
 import type { TestCollection } from "@test/support/fields";
 import { TestRecord, newBaseCollection, noDBApp, interceptorArgs } from "@test/support/fields";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -156,7 +157,7 @@ function settingsErrors(collection: TestCollection): Errors | null {
 function fieldsListJSON(collection: TestCollection): string {
   return marshal(
     [...collection.fields].map((field) => {
-      const data = unmarshal(field.marshalJSON(), mapOf(anyType)) as Record<string, unknown>;
+      const data = unmarshal(field.marshalJSON(), mapOf(anyType)) as JsonObject;
       data.type = field.type();
       return data;
     }),
@@ -343,6 +344,7 @@ function modelRecordBody(
   columns: Record<string, [string, unknown]>,
 ): string {
   const read = new TestRecord(collection);
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the prepared values of the fields are the Go values prepareValue returns (unknown), marshaled unchanged
   const out: Record<string, unknown> = {
     collectionId,
     collectionName: collection.name,
@@ -383,7 +385,7 @@ describe("values", () => {
 
       // the model: record.Load of the decoded body, the "validate"
       // interceptors, then every field's ValidateValue
-      const body = unmarshal(bodyText, mapOf(anyType)) as Record<string, unknown>;
+      const body = unmarshal(bodyText, mapOf(anyType)) as JsonObject;
       const record = new TestRecord(model);
       record.set(key, body[key]);
       for (const field of model.fields) {

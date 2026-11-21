@@ -12,7 +12,7 @@ import { getDB, openTempDatabases } from "@test/db/support";
 
 const name = "__proto__";
 
-function own(key: string, value: unknown): Record<string, unknown> {
+function own(key: string, value: string | number): Record<string, string | number> {
   return { [key]: value };
 }
 

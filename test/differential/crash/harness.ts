@@ -17,6 +17,7 @@ import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import { testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
+import type { Json, JsonObject } from "@test/support/json";
 
 export type Kind = "upstream" | "iglo";
 
@@ -91,7 +92,7 @@ export async function enableBatch(target: { url: string }): Promise<void> {
   await patchSettings(target, { batch: { enabled: true, maxRequests: 5000, timeout: 60 } });
 }
 
-export function s3Settings(gw: Versitygw): Record<string, unknown> {
+export function s3Settings(gw: Versitygw): JsonObject {
   return {
     enabled: true,
     bucket: gw.bucket,
@@ -220,7 +221,7 @@ const fixtureIds = new Set<string>(
 
 export interface Record_ {
   id: string;
-  [key: string]: unknown;
+  [key: string]: Json;
 }
 
 export async function listRecords(

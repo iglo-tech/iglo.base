@@ -34,6 +34,7 @@ import {
 } from "@test/scenarios/record-checks";
 import { usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext, PrepareContext, Scenario } from "@test/scenarios/scenario";
+import type { JsonObject } from "@test/support/json";
 import {
   mailSent,
   noMailSent,
@@ -68,7 +69,7 @@ const secretNames: { [type in TokenType]: string } = {
 
 interface MintOptions {
   // the claims that replace the defaults (undefined removes one)
-  claims?: { [key: string]: unknown };
+  claims?: Partial<JsonObject>;
   // seconds until exp
   duration?: number;
   // sign with this record's key instead (a token of another record)
@@ -91,7 +92,7 @@ export function mint(
     const row = db
       .query(`SELECT tokenKey, email FROM "${collection}" WHERE id = ?`)
       .get(options.keyOf ?? recordId) as { tokenKey: string; email: string };
-    const claims: { [key: string]: unknown } = {
+    const claims: Partial<JsonObject> = {
       id: recordId,
       type,
       collectionId,
@@ -168,13 +169,17 @@ function rowsCount(table: string, recordId: string, n: number) {
   };
 }
 
+// a column value SQLite returns
+type Column = string | number | bigint | Uint8Array | null;
+
 // the columns of a row, as the fixture has them
-function fixtureColumn(table: string, id: string, column: string): unknown {
+function fixtureColumn(table: string, id: string, column: string): Column {
   const db = fixtureDB();
   try {
-    return (db.query(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as { [k: string]: unknown })[
+    // the callers name columns the fixture's table has
+    return (db.query(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as { [k: string]: Column })[
       column
-    ];
+    ] as Column;
   } finally {
     db.close();
   }

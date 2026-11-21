@@ -69,6 +69,7 @@ import { parseJson } from "@test/scenarios/json";
 import type { JsonNode } from "@test/scenarios/json";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
+import type { JsonObject } from "@test/support/json";
 
 // content-type and upstream's securityHeaders (apis/middlewares.go)
 export const comparedHeaders = [
@@ -607,9 +608,7 @@ function pairGenerated(
 // seconds (the second boundary, plus the latency between the two requests).
 export const tokenExpSlack = 3;
 
-function decodeToken(
-  value: string,
-): { header: unknown; claims: Record<string, unknown> } | undefined {
+function decodeToken(value: string): { header: unknown; claims: JsonObject } | undefined {
   try {
     const [header, claims] = value
       .split(".")
@@ -621,7 +620,7 @@ function decodeToken(
     if (typeof claims !== "object" || claims === null || Array.isArray(claims)) {
       return undefined;
     }
-    return { header, claims: claims as Record<string, unknown> };
+    return { header, claims: claims as JsonObject };
   } catch {
     return undefined;
   }

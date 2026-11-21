@@ -62,12 +62,18 @@ export interface SliceSource {
 
 type AnyFunction = (...args: Array<unknown>) => unknown;
 
+// A plain object whose members are JS values of any type: the migration
+// VM's objects and globals, and the members a migration file can read and
+// write. A value crosses the membrane unchanged, so no narrower type is true.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the members are JS values of any type that a migration file can hold; a membrane passes them through unchanged
+export type MigrationObject = Record<string, unknown>;
+
 interface VmIntrinsics {
   GoError: new (message: string) => Error & { value: unknown };
   TypeError: new (message: string) => Error;
   parse(text: string): unknown;
   objectPrototype: object;
-  object(): Record<string, unknown>;
+  object(): MigrationObject;
   array(): Array<unknown>;
 }
 
@@ -233,10 +239,10 @@ export class Membrane {
         return v;
     }
 
-    const copy: Record<string, unknown> = {};
+    const copy: MigrationObject = {};
     for (const key of Object.keys(v)) {
       Object.defineProperty(copy, key, {
-        value: this.toHost((v as Record<string, unknown>)[key]),
+        value: this.toHost((v as MigrationObject)[key]),
         writable: true,
         enumerable: true,
         configurable: true,

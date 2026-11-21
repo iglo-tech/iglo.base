@@ -91,6 +91,7 @@ import { isInstance } from "@/tools/types/is-instance";
 const recordFlags = encodeFlags({ allowDuplicateNames: true, allowInvalidUTF8: true });
 
 // A Go map[string]any: a plain object with own properties.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any of a record's public export: the field values, of the types each field stores
 export type DataMap = { [key: string]: unknown };
 
 // dbx.NullStringMap: each column's text, or null for a NULL column (not

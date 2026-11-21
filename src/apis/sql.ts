@@ -47,9 +47,9 @@ const runSQLFormType = structOf([
   { name: "Query", type: "string", tags: { form: "query", json: "query" } },
 ]);
 
-interface RunSQLForm {
+type RunSQLForm = {
   Query: string;
-}
+};
 
 async function runSQL(e: RequestEvent): Promise<HandlerResult> {
   // extra precaution in case manually invoked from somewhere else
@@ -59,8 +59,7 @@ async function runSQL(e: RequestEvent): Promise<HandlerResult> {
 
   const form: RunSQLForm = { Query: "" };
 
-  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-  const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, runSQLFormType);
+  const bindErr = await e.bindBody(form, runSQLFormType);
   if (bindErr) {
     return firstApiError(
       bindErr,

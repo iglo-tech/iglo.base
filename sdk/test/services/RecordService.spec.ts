@@ -5,6 +5,7 @@ import { crudServiceTestsSuite } from "@sdk-test/suites";
 import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { RecordService } from "@sdk/services/RecordService";
+import type { RecordAuthResponse } from "@sdk/services/RecordService";
 import type { RecordModel } from "@sdk/tools/dtos";
 
 describe("RecordService", () => {
@@ -263,7 +264,7 @@ describe("RecordService", () => {
   // ---------------------------------------------------------------
 
   function authResponseCheck(
-    result: { [key: string]: any },
+    result: RecordAuthResponse<RecordModel>,
     expectedToken: string,
     expectedRecord: RecordModel,
   ) {

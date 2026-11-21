@@ -11,6 +11,7 @@ import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections
 import { saveCollection } from "@/collections/collection-save";
 import { syncRecordTableSchema } from "@/collections/collection-record-table-sync";
 import { HashExp, newExp } from "@/db/dbx/expression";
+import type { Row } from "@/db/dbx/query";
 import { hasTable, tableColumns, tableIndexes, tableInfo } from "@/db/table";
 import { EmailField } from "@/fields/email";
 import { SelectField } from "@/fields/select";
@@ -263,7 +264,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
           .select(...selectedColumns)
           .from(collection.name)
           .where(new HashExp({ id: s.recordId }))
-          .one<Record<string, unknown>>();
+          .one<Row>();
 
         expect({ recordId: s.recordId, row: result }).toEqual({
           recordId: s.recordId,

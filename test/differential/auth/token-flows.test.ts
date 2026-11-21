@@ -29,6 +29,7 @@ import { freePort, startServer } from "@test/support/executable";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 // starting and stopping the servers is slow on some runners
 const timeout = 120_000;
@@ -51,10 +52,10 @@ interface Server {
 
 interface Reply {
   status: number;
-  json: { [key: string]: unknown };
+  json: JsonObject;
 }
 
-type Row = { [key: string]: unknown };
+type Row = JsonObject;
 
 type Confirm = (server: Server, token: string) => Promise<Reply>;
 
@@ -212,11 +213,9 @@ function mailedToken(raw: string): string {
   return match[0];
 }
 
-function claimsOf(token: string): { [key: string]: unknown } {
+function claimsOf(token: string): JsonObject {
   const payload = token.split(".")[1] as string;
-  const { exp, ...claims } = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
-    [key: string]: unknown;
-  };
+  const { exp, ...claims } = JSON.parse(Buffer.from(payload, "base64url").toString()) as JsonObject;
   expect(typeof exp).toBe("number");
   return claims;
 }
@@ -243,11 +242,11 @@ function normalizeMail(raw: string): string {
 // generated values replaced, for comparing two servers' replies
 function shape(reply: Reply): unknown {
   // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-  const json = JSON.parse(JSON.stringify(reply.json)) as { [key: string]: unknown };
+  const json = JSON.parse(JSON.stringify(reply.json)) as JsonObject;
   if (typeof json["token"] === "string") {
     json["token"] = "<token>";
   }
-  for (const item of [json, json["record"] as { [key: string]: unknown } | undefined]) {
+  for (const item of [json, json["record"] as JsonObject | undefined]) {
     if (item?.["updated"] !== undefined) {
       item["updated"] = "<updated>";
     }

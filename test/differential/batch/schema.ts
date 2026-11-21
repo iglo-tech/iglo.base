@@ -2,10 +2,11 @@
 // through upstream's API before both servers start on copies of it.
 
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { Json, JsonObject } from "@test/support/json";
 
 interface CollectionData {
   name: string;
-  [key: string]: unknown;
+  [key: string]: Json;
 }
 
 const title = { name: "title", type: "text", required: true };
@@ -22,7 +23,7 @@ const multipartContentType = `@request.headers.content_type ~ "multipart/form-da
 
 // the parents' id is filled in when its turn comes
 function collections(parentsId: string, parentsListView: string): Array<CollectionData> {
-  const parent = (extra: Record<string, unknown>): object => ({
+  const parent = (extra: JsonObject) => ({
     name: "parent",
     type: "relation",
     collectionId: parentsId,

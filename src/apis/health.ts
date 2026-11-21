@@ -18,9 +18,17 @@ export function bindHealthApi(_app: App, rg: RouterGroup<RequestEvent>): void {
   subGroup.GET("", healthCheck);
 }
 
+// the health data: the superuser's members (the others are an empty object)
+type HealthData = {
+  canBackup?: boolean;
+  possibleProxyHeader?: string;
+  realIP?: string;
+  schemaLocked?: boolean;
+};
+
 // healthCheck returns a 200 OK response if the server is healthy.
 function healthCheck(e: RequestEvent): HandlerResult {
-  let data: { [key: string]: unknown };
+  let data: HealthData;
 
   // @todo evaluate whether it is worth removing the extra info from the health endpoint
   if (e.hasSuperuserAuth()) {

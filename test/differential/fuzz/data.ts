@@ -9,6 +9,8 @@
 // fixture is prepared: ids are fixed, and fixedAutodates overwrites the only
 // autodate these collections have (they have no `updated`).
 
+import type { JsonObject } from "@test/support/json";
+
 export const fuzzTags = {
   name: "fuzz_tags",
   type: "base",
@@ -58,7 +60,7 @@ export const tagRecords: Array<string> = [
   ["50%", 100],
   ["", 0],
 ].map(([name, weight], i) => {
-  const row: Record<string, unknown> = { id: tagIds[i], name, weight };
+  const row: Partial<JsonObject> = { id: tagIds[i], name, weight };
   if (i % 2 === 0) {
     row.owner = "4q1xlclmfloku33";
   }

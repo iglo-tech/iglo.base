@@ -38,6 +38,7 @@ import { Twitter } from "@/oauth2/twitter";
 import { VK } from "@/oauth2/vk";
 import { Wakatime } from "@/oauth2/wakatime";
 import { Yandex } from "@/oauth2/yandex";
+import type { JsonObject } from "@test/support/json";
 
 // upstream's auth.Providers: 32 names
 const upstreamNames = [
@@ -466,7 +467,7 @@ describe("constructor defaults", () => {
 });
 
 // Microsoft's SetExtra: a non-empty idTokenEmailClaim adds "openid" once
-const initMicrosoft = (extra: { [key: string]: unknown } | null) =>
+const initMicrosoft = (extra: JsonObject | null) =>
   initProvider(new OAuth2ProviderConfig({ name: "microsoft", extra }));
 
 describe("Microsoft's extra config", () => {

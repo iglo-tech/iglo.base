@@ -32,13 +32,13 @@ export function jsonMapSet<T>(m: JSONMap<T>, key: string, value: T): void {
 // MarshalJSON: json v2 with Deterministic (sorted keys) and
 // AllowInvalidUTF8, forced to get the same output in mixed json v1 and v2
 // configurations.
-export function jsonMapMarshalJSON(m: JSONMap<unknown> | undefined): string {
+export function jsonMapMarshalJSON<T>(m: JSONMap<T> | undefined): string {
   return marshal(m ?? {}, { allowInvalidUTF8: true });
 }
 
 // String returns the string representation of the map (the bytes written before the error when it
 // cannot be marshaled, as json.Marshal returns them).
-export function jsonMapString(m: JSONMap<unknown> | undefined): string {
+export function jsonMapString<T>(m: JSONMap<T> | undefined): string {
   try {
     return jsonMapMarshalJSON(m);
   } catch (error) {
@@ -47,7 +47,7 @@ export function jsonMapString(m: JSONMap<unknown> | undefined): string {
 }
 
 // Value implements the db driver Valuer.
-export function jsonMapValue(m: JSONMap<unknown> | undefined): string {
+export function jsonMapValue<T>(m: JSONMap<T> | undefined): string {
   return jsonMapMarshalJSON(m);
 }
 

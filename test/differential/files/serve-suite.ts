@@ -69,6 +69,7 @@ import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
+import type { JsonObject } from "@test/support/json";
 
 const comparedHeaders = [
   "content-type",
@@ -245,7 +246,7 @@ function servedName(res: Res): string {
 const enc = (v: unknown): string => Buffer.from(JSON.stringify(v)).toString("base64url");
 
 // a file token signed as upstream signs them (HS256), with any claims
-function signToken(claims: Record<string, unknown>, key: string): string {
+function signToken(claims: JsonObject, key: string): string {
   const unsigned = `${enc({ alg: "HS256", typ: "JWT" })}.${enc(claims)}`;
   return `${unsigned}.${createHmac("sha256", key).update(unsigned).digest("base64url")}`;
 }
@@ -312,7 +313,7 @@ export function serveSuite(storage: "local" | "s3"): void {
   // a stored thumb's attributes, without what depends on its own bytes
   async function thumbAttributes(store: string, file: string): Promise<unknown> {
     if (gw === undefined) {
-      const attrs = JSON.parse(readFileSync(file + ".attrs", "utf8")) as Record<string, unknown>;
+      const attrs = JSON.parse(readFileSync(file + ".attrs", "utf8")) as JsonObject;
       expect(attrs["md5"]).toBe(createHash("md5").update(readFileSync(file)).digest("base64"));
       return { ...attrs, md5: "" };
     }

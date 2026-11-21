@@ -29,6 +29,7 @@ export class Microsoft extends BaseProvider {
 
   // If the idTokenEmailClaim extra option is set, "openid" is added to the
   // default scopes in order to get an id_token.
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the Extra config options (JSON values of any kind), as the base class
   override setExtra(data: { [key: string]: unknown }): void {
     super.setExtra(data);
 

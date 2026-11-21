@@ -7,7 +7,12 @@
 // not supported. No upstream endpoint binds XML.
 
 import { NumError, parseGoFloat, structValue } from "@/server/unmarshal-request-data";
-import type { FieldType, StructField, StructType } from "@/server/unmarshal-request-data";
+import type {
+  FieldType,
+  StructDst,
+  StructField,
+  StructType,
+} from "@/server/unmarshal-request-data";
 import { decodeUTF8Bytes, setOwn } from "@/server/json-decode";
 
 interface XmlElement {
@@ -527,18 +532,14 @@ function isExported(name: string): boolean {
 }
 
 // xml.Unmarshal into a struct described by type.
-export function unmarshalXML(
-  body: Uint8Array,
-  dst: Record<string, unknown>,
-  type: StructType,
-): void {
+export function unmarshalXML(body: Uint8Array, dst: StructDst, type: StructType): void {
   fillStruct(parseDocument(decodeUTF8Bytes(body)), dst, type);
 }
 
 interface XmlField {
   field: StructField;
   // the object that holds the field (embedded structs are stored under their type name)
-  holder: (dst: Record<string, unknown>) => Record<string, unknown>;
+  holder: (dst: StructDst) => StructDst;
 }
 
 function xmlFields(type: StructType): Array<XmlField> {
@@ -561,7 +562,7 @@ function xmlFields(type: StructType): Array<XmlField> {
   return out;
 }
 
-function fillStruct(el: XmlElement, root: Record<string, unknown>, type: StructType): void {
+function fillStruct(el: XmlElement, root: StructDst, type: StructType): void {
   const fields = xmlFields(type);
   for (const child of el.children) {
     const found = fields.find(
@@ -601,8 +602,7 @@ function elementValue(el: XmlElement, t: FieldType, current?: unknown): unknown 
   }
   if (typeof t === "object") {
     if (t.kind === "struct") {
-      const target =
-        typeof current === "object" && current !== null ? (current as Record<string, unknown>) : {};
+      const target = typeof current === "object" && current !== null ? (current as StructDst) : {};
       fillStruct(el, target, t);
       return target;
     }

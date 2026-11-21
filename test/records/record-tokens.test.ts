@@ -38,6 +38,7 @@ import { RawURLEncoding } from "@/tools/security/base64";
 import { parseUnverifiedJWT } from "@/tools/security/jwt";
 
 import { openTestApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 const Second = 1_000_000_000n;
 
@@ -126,7 +127,7 @@ test("TestNewFileToken", () => {
 function testRecordToken(
   tokenType: string,
   tokenFunc: (record: Record) => string,
-  expectedClaims: { [key: string]: unknown } | null,
+  expectedClaims: JsonObject | null,
 ): void {
   const app = openTestApp(clock);
   try {

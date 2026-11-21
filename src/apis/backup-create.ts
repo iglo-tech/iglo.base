@@ -18,9 +18,9 @@ const backupCreateFormType = structOf([
   { name: "Name", type: "string", tags: { form: "name", json: "name" } },
 ]);
 
-interface BackupCreateForm {
+type BackupCreateForm = {
   Name: string;
-}
+};
 
 export async function backupCreate(e: RequestEvent): Promise<Error | undefined> {
   if (e.app.store.has(StoreKeyActiveBackup)) {
@@ -35,11 +35,7 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
 
   const form: BackupCreateForm = { Name: "" };
 
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as Record<string, unknown>,
-    backupCreateFormType,
-  );
+  const bindErr = await e.bindBody(form, backupCreateFormType);
   if (bindErr) {
     return firstApiError(
       bindErr,

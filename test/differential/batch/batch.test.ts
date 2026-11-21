@@ -28,6 +28,7 @@ import { startServer } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const root = mkdtempSync(join(tmpdir(), "iglo-base-batch-"));
 const sourceDir = join(root, "source", "pb_data");
@@ -85,7 +86,7 @@ function batchRequest(c: BatchCase): Scenario {
   };
 }
 
-function settingsRequest(batch: Record<string, unknown>): Scenario {
+function settingsRequest(batch: JsonObject): Scenario {
   return {
     name: "settings",
     method: "PATCH",
@@ -97,7 +98,7 @@ function settingsRequest(batch: Record<string, unknown>): Scenario {
 }
 
 // sets the batch settings on one server; returns the ones to restore
-async function withSettings(url: string, batch: Record<string, unknown>): Promise<Scenario> {
+async function withSettings(url: string, batch: JsonObject): Promise<Scenario> {
   const current = await sendOk(url, {
     name: "settings",
     method: "GET",
@@ -105,7 +106,7 @@ async function withSettings(url: string, batch: Record<string, unknown>): Promis
     headers: { Authorization: superuserToken },
     expectedStatus: 200,
   });
-  const saved = (JSON.parse(new TextDecoder().decode(current.body)) as { batch: object }).batch;
+  const saved = (JSON.parse(new TextDecoder().decode(current.body)) as { batch: JsonObject }).batch;
   // a disabled batch with no limits does not pass the settings validation
   const next = { ...saved, ...batch };
   const res = await sendOk(url, settingsRequest(next));

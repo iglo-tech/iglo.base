@@ -21,6 +21,10 @@ import {
 } from "@/tools/types/go-json";
 import { isInstance } from "@/tools/types/is-instance";
 
+// a JSON value as the decoding gives it, and a JSON object (Go's map[string]any)
+type JsonValue = string | number | boolean | null | Array<JsonValue> | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
+
 // NewFieldsList creates a new FieldsList instance with the provided fields.
 export function newFieldsList(...fields: Array<Field>): FieldsList {
   const l = new FieldsList();
@@ -290,14 +294,14 @@ export class FieldsList implements FieldsListReader {
   }
 
   private marshalJSONWithPartial(): [string, unknown] {
-    const wrapper: Array<Record<string, unknown>> = [];
+    const wrapper: Array<JsonObject> = [];
 
     try {
       for (const f of this.list) {
         // precompute the json into a map so that we can append the type to a flatten object
         const raw = marshal(f);
 
-        const data = unmarshal(raw, mapOf(anyType)) as Record<string, unknown> | undefined;
+        const data = unmarshal(raw, mapOf(anyType)) as JsonObject | undefined;
         const obj = data ?? {};
         setOwn(obj, "type", f.type());
 

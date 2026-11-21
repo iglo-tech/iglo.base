@@ -16,6 +16,9 @@ export const LevelInfo = 0;
 export const LevelWarn = 4;
 export const LevelError = 8;
 
+// the attributes of a record: slog's values are arbitrary Go values (any), kept
+// as they are or normalized for the JSON log
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- slog attribute values are arbitrary Go values (any); the handler normalizes or marshals each one without a narrower type
 export type LogAttrs = { [key: string]: unknown };
 
 // slog.Group
@@ -211,13 +214,13 @@ function resolveAttr(data: JSONMap<unknown>, key: string, value: unknown): void 
   data[key] = normalizeLogAttrValue(value);
 }
 
-function isPlainMap(value: unknown): value is { [key: string]: unknown } {
+function isPlainMap(value: unknown): value is LogAttrs {
   const proto: unknown = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
 
-function serializeMap(errors: { [key: string]: unknown }): { [key: string]: unknown } {
-  const out: { [key: string]: unknown } = Object.create(null) as { [key: string]: unknown };
+function serializeMap(errors: LogAttrs): LogAttrs {
+  const out: LogAttrs = Object.create(null) as LogAttrs;
   for (const key of Object.keys(errors)) {
     out[key] = serializeLogError(errors[key]);
   }
@@ -243,7 +246,7 @@ function normalizeLogAttrValue(value: unknown): unknown {
   }
 
   if (typeof value === "object" && value !== null && isPlainMap(value)) {
-    const out: { [key: string]: unknown } = Object.create(null) as { [key: string]: unknown };
+    const out: LogAttrs = Object.create(null) as LogAttrs;
     for (const key of Object.keys(value)) {
       const v = value[key];
       out[key] = v instanceof Error ? serializeLogError(v) : normalizeLogAttrValue(v);

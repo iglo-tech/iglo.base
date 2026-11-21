@@ -42,11 +42,7 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
   }
 
   const form: AuthWithPasswordForm = { Identity: "", Password: "", IdentityField: "" };
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    authWithPasswordType,
-  );
+  const bindErr = await e.bindBody(form, authWithPasswordType);
   if (bindErr) {
     return firstApiError(
       bindErr,
@@ -137,11 +133,11 @@ const authWithPasswordType = structOf([
   { name: "IdentityField", type: "string", tags: { form: "identityField", json: "identityField" } },
 ]);
 
-interface AuthWithPasswordForm {
+type AuthWithPasswordForm = {
   Identity: string;
   Password: string;
   IdentityField: string;
-}
+};
 
 function validateAuthWithPasswordForm(
   form: AuthWithPasswordForm,
