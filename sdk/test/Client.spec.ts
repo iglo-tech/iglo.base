@@ -1,4 +1,4 @@
-// js-sdk v0.28.1 tests/Client.spec.ts
+// js-sdk v0.29.0 tests/Client.spec.ts
 import { describe, expect, test, beforeAll, afterAll, afterEach } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import Client from "@sdk/Client";
@@ -169,6 +169,18 @@ describe("Client", function () {
       });
 
       assert.equal(result, `a > {:test1} && b = "test$$" || c = "test$$"`);
+    });
+
+    test("filter with param values matching the placeholders (regex chaining)", function () {
+      const client = new Client("test_base_url", null, "test_language_A");
+
+      const result = client.filter("a > {:test1} && b = {:test2} || c = {:test3}", {
+        test1: "{:test2}",
+        test2: "{:test1}",
+        test3: "{:test3}",
+      });
+
+      assert.equal(result, `a > "{:test2}" && b = "{:test1}" || c = "{:test3}"`);
     });
 
     test("filter expression with all placeholder types", function () {
@@ -754,5 +766,54 @@ describe("Client", function () {
       await expect(requestB).resolves.toBeDefined();
       await expect(requestC).resolves.toBeDefined();
     });
+  });
+
+  describe("auto clear authStore", function () {
+    // [status, whether the store is cleared by default]
+    const statusScenarios: Array<[number, boolean]> = [
+      [200, false],
+      [400, false],
+      [402, false],
+      [401, true],
+      [403, false],
+      [404, false],
+      [408, false],
+      [429, false],
+      [500, false],
+      [503, false],
+    ];
+
+    for (const [status, clearedByDefault] of statusScenarios) {
+      const scenarios: Array<[string, null | boolean, boolean]> = [
+        ["default", null, clearedByDefault],
+        ["explicitly enabled", true, clearedByDefault],
+        ["explicitly disabled", false, false],
+      ];
+
+      for (const [label, enable, cleared] of scenarios) {
+        test(`${label}: status ${status} ${cleared ? "clears" : "keeps"} the token`, async function () {
+          const client = new Client("test_base_url");
+
+          if (enable != null) {
+            client.autoClearAuthStore(enable);
+          }
+
+          client.authStore.save("test_token");
+
+          assert.equal(client.authStore.token, "test_token");
+
+          try {
+            await client.send("/test", {
+              method: "GET",
+              fetch: async (): Promise<Response> => new Response(null, { status }),
+            });
+          } catch {
+            // the failed request is the point of the scenario
+          }
+
+          assert.equal(client.authStore.token, cleared ? "" : "test_token");
+        });
+      }
+    }
   });
 });

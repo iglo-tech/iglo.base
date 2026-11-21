@@ -19,16 +19,6 @@ app.pb.beforeSend = function(url, options) {
     return { url, options };
 };
 
-app.store.superuser = app.pb.authStore.record;
-app.pb.authStore.onChange((_, record) => {
-    if (!record && window.location.hash != LOGIN_PATH) {
-        app.modals.close();
-        window.location.hash = LOGIN_PATH;
-    }
-
-    app.store.superuser = record;
-});
-
 // refresh the token in the background
 if (app.pb.authStore.isValid) {
     app.pb.collection(app.pb.authStore.record?.collectionName || "_superusers")
@@ -43,14 +33,25 @@ if (app.pb.authStore.isValid) {
                 app.pb.authStore.clear();
             }
         });
+} else if (app.pb.authStore.token) {
+    app.pb.authStore.clear();
 }
 
 // load initial store data
+app.store.superuser = app.pb.authStore.record;
 app.pb.authStore.onChange((_, record) => {
+    app.store.superuser = record;
+
     if (record?.id) {
         app.store.loadCollections();
         app.store.loadSettings();
         app.store.loadOAuth2Providers();
+        return
+    }
+
+    if (window.location.hash != LOGIN_PATH) {
+        app.modals?.close(null, true);
+        window.location.hash = LOGIN_PATH;
     }
 });
 
@@ -225,7 +226,7 @@ window.app.checkApiError = function(err, showToast = true) {
     }
 
     // unauthorized
-    if (statusCode === 401 && window.location.hash != LOGIN_PATH) {
+    if (statusCode == 401) {
         app.pb.cancelAllRequests();
         return app.pb.authStore.clear();
     }

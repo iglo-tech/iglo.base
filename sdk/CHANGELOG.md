@@ -1,3 +1,8 @@
+## 1.1.0
+
+- Forked from the PocketBase JavaScript SDK v0.29.0 (`2764bb6621f369da23fc671af00d0b1d57cb9fda`), up from v0.28.1. The v0.28.2 changes are ported: the upstream error messages and comments link to the new host. Our links to iglo.base are unchanged.
+- ⚠️ `pb.authStore` is cleared automatically after a 401 response for an expired or externally invalidated token (JS SDK v0.29.0). iglo.base v1.3.0 answers 401 instead of guest access for a token that loads no record (D43), so an app that sends a stale token to a public endpoint now gets its store cleared. To keep the store, disable this with `pb.autoClearAuthStore(false)`. The SSR server and superuser clients (`createServerClient`, `createSuperuserClient`, `@iglo.tech/iglo.base/ssr`) turn it off: a `401` from a data call keeps their session or API key. `createBrowserClient` keeps the clear.
+
 ## 1.0.1
 
 - README: a pointer to the generated types (`iglo-base schema types`), for the types of your own collections. No code changes from 1.0.1-rc.0.

@@ -2,6 +2,7 @@
 import { describe, expect, test, beforeAll, afterAll, afterEach } from "bun:test";
 import { FetchMock, dummyJWT } from "@sdk-test/mocks";
 import { ClientResponseError } from "@sdk/ClientResponseError";
+import { createBrowserClient } from "@sdk/ssr/browser-client";
 import {
   createServerClient,
   createSuperuserClient,
@@ -11,6 +12,31 @@ import {
   type CookieToSet,
   type CookieAdapter,
 } from "@sdk/ssr/index";
+
+/** The posts list answers 401 while the token stays valid. */
+function denyPostsList(fetchMock: FetchMock): void {
+  fetchMock.on({
+    method: "GET",
+    url: "http://localhost:8090/api/collections/posts/records",
+    replyCode: 401,
+    replyBody: {
+      code: 401,
+      message: "The request requires valid record authorization token.",
+      data: {},
+    },
+  });
+}
+
+/** Resolves with the error a rejected call throws; fails the test if the call resolves. */
+async function failureOf(call: Promise<unknown>): Promise<ClientResponseError> {
+  try {
+    await call;
+  } catch (err) {
+    if (err instanceof ClientResponseError) return err;
+    throw err;
+  }
+  throw new Error("the call should have failed with a 401");
+}
 
 describe("SSR Core", () => {
   const fetchMock = new FetchMock();
@@ -834,6 +860,84 @@ describe("SSR Core", () => {
 
       // Since suToken was within 300s of expiry, the impersonate call triggered auto-refresh!
       expect(superuserRefreshCalls).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("Auth store on a 401", () => {
+    // The 401 answers a data call; the token itself is still valid.
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    test("createServerClient keeps its session on a 401", async () => {
+      const token = dummyJWT({
+        exp: nowSec + 3600,
+        id: "user1",
+        collectionId: "users",
+        type: "auth",
+        refreshable: true,
+      });
+      const cookies: CookieAdapter = {
+        getAll: () => [
+          { name: "pb_auth", value: JSON.stringify({ token, record: { id: "user1" } }) },
+        ],
+      };
+      fetchMock.on({
+        method: "POST",
+        url: "http://localhost:8090/api/collections/users/auth-refresh",
+        replyCode: 200,
+        replyHeaders: { Date: new Date(nowSec * 1000).toUTCString() },
+        replyBody: { token, record: { id: "user1", collectionName: "users" } },
+      });
+      denyPostsList(fetchMock);
+
+      const server = await createServerClient({
+        url: "http://localhost:8090",
+        origin: "http://localhost:3000",
+        cookies,
+        sessionCache: createSessionCache(),
+        clock: () => nowSec * 1000,
+      });
+
+      expect((await failureOf(server.collection("posts").getFullList())).status).toBe(401);
+      expect(server.authStore.token).toBe(token);
+      expect(server.authStore.isValid).toBe(true);
+    });
+
+    test("createSuperuserClient keeps its token on a 401", async () => {
+      // An API key from impersonate: not refreshable, so no refresh can hide the 401.
+      const token = dummyJWT({
+        exp: nowSec + 3600,
+        id: "su1",
+        collectionId: "_superusers",
+        type: "auth",
+        refreshable: false,
+      });
+      denyPostsList(fetchMock);
+
+      const superuser = await createSuperuserClient({ url: "http://localhost:8090", token });
+
+      expect((await failureOf(superuser.collection("posts").getFullList())).status).toBe(401);
+      expect(superuser.authStore.token).toBe(token);
+      expect(superuser.authStore.isValid).toBe(true);
+    });
+
+    test("createBrowserClient clears its store on the same 401", async () => {
+      const token = dummyJWT({
+        exp: nowSec + 3600,
+        id: "user1",
+        collectionId: "users",
+        type: "auth",
+        refreshable: true,
+      });
+      denyPostsList(fetchMock);
+
+      const browser = createBrowserClient({ url: "http://localhost:8090", token });
+      try {
+        expect((await failureOf(browser.collection("posts").getFullList())).status).toBe(401);
+        expect(browser.authStore.token).toBe("");
+        expect(browser.authStore.isValid).toBe(false);
+      } finally {
+        browser.dispose();
+      }
     });
   });
 });
