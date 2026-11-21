@@ -251,6 +251,7 @@ Owner decision 2026-11-20 ([D43](10-decisions.md#d43-baseline-moved-from-v0410-t
 | ID | Task | Depends on |
 |---|---|---|
 | L.1 | Adopt `@cloudflare/oxlint-config` and fix every issue it reports (D44) | U.2 |
+| L.2 | Turn on the twelve type-safety rules L.1 left off and fix what they report (D44) | L.1 |
 
 ## Order
 
