@@ -1,15 +1,33 @@
 import cloudflare from "@cloudflare/oxlint-config";
 import { defineConfig } from "oxlint";
 
+// No React or JSX in this project (owner, 2026-11-21): drop the React and
+// jsx-a11y plugins, their rules, and the React-only rules of the nkzw preset
+// (hooks and Relay).
+const reactOnlyRules = new Set(["@nkzw/require-use-effect-arguments", "@nkzw/ensure-relay-types"]);
+const isProjectRule = (name: string) =>
+  !/^(react|jsx-a11y)\//.test(name) && !reactOnlyRules.has(name);
+const keepProjectRules = <T>(rules: Record<string, T> | undefined) =>
+  Object.fromEntries(Object.entries(rules ?? {}).filter(([name]) => isProjectRule(name)));
+const preset = {
+  ...cloudflare,
+  plugins: cloudflare.plugins?.filter((plugin) => plugin !== "react" && plugin !== "jsx-a11y"),
+  rules: keepProjectRules(cloudflare.rules),
+  overrides: (cloudflare.overrides ?? []).map((override) => ({
+    ...override,
+    rules: keepProjectRules(override.rules),
+  })),
+};
+
 // Test support files (harnesses, fixtures, scenario data) get the same
 // relaxations the preset gives *.test.ts files.
 const testSupportFiles = ["test/**/*.ts", "sdk/test/**/*.ts"];
 
 export default defineConfig({
-  ...cloudflare,
+  ...preset,
   ignorePatterns: ["**/node_modules/**", "dist/**", "sdk/dist/**", "ui/**", "examples/**"],
   overrides: [
-    ...(cloudflare.overrides ?? []),
+    ...preset.overrides,
     {
       files: testSupportFiles,
       rules: {
@@ -67,7 +85,6 @@ export default defineConfig({
         "quality/no-unknown-returns": "off",
         "quality/no-unknown-type-aliases": "off",
         "quality/no-unsafe-dictionary-type": "off",
-        "react/rules-of-hooks": "off",
         "typescript/await-thenable": "off",
         "typescript/consistent-type-imports": "off",
         "typescript/no-array-delete": "off",
