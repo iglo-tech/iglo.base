@@ -41,7 +41,7 @@ function collectionPath(name: string): string {
 }
 
 async function collectionId(c: Client, name: string): Promise<string> {
-  return (await c.get(collectionPath(name))).id as string;
+  return ((await c.get(collectionPath(name))) as { id: string }).id;
 }
 
 interface SignIn {
@@ -179,7 +179,7 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
   const people = `rt${tag}_people`;
   const all = `rt${tag}_all`;
   const peopleId = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: people,
       type: "auth",
       listRule: "",
@@ -195,10 +195,10 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         { name: "avatar", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
       indexes: [`CREATE INDEX idx_${tag}_people_nick ON ${people} (nick)`],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   const allId = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: all,
       type: "base",
       listRule: "",
@@ -211,10 +211,10 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         `CREATE INDEX idx_${tag}_all_n ON ${all} (n)`,
         `CREATE UNIQUE INDEX idx_${tag}_all_em ON ${all} (em) WHERE em != ''`,
       ],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   const kids = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: `rt${tag}_kids`,
       type: "base",
       listRule: "",
@@ -231,10 +231,10 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         },
         { name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   const refs = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: `rt${tag}_refs`,
       type: "base",
       listRule: `@request.auth.id != ""`,
@@ -243,8 +243,8 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         { name: "one", type: "relation", collectionId: allId, maxSelect: 1 },
         { name: "many", type: "relation", collectionId: allId, maxSelect: 4 },
       ],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   await c.post("/api/collections", {
     name: `rt${tag}_view`,
     type: "view",
@@ -652,7 +652,8 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   await c.request("PATCH", records(all, rid(`${p}form2`)), {
     form: form({ f1: file(`replaced-${tag}.txt`, "replaced") }),
   });
-  const picturedNames = (await c.get(records(all, form1)))?.fm as Array<string> | undefined;
+  const picturedNames = ((await c.get(records(all, form1))) as { fm?: Array<string> } | undefined)
+    ?.fm;
   for (const name of picturedNames ?? []) {
     if (name.endsWith(".png")) {
       await c.get(`/api/files/${allId}/${form1}/${name}?thumb=30x0`, { token: "" });

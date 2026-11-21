@@ -93,7 +93,7 @@ export async function sendGenerics(): Promise<void> {
   // the default response type stays readable without a cast
   // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
   const untyped = await pb.send("/hello", {});
-  // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
+  // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-member-access -- type test: the loose SDK shape must read and assign without a cast
   const anything: string = untyped.message;
   void anything;
 
@@ -121,7 +121,7 @@ export async function realtimeGenerics(): Promise<void> {
 
   // the realtime service takes untyped data
   await pb.realtime.subscribe("topic", (data) => {
-    // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
+    // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-member-access -- type test: the loose SDK shape must read and assign without a cast
     const anything: string = data.whatever;
     void anything;
   });
@@ -189,7 +189,7 @@ export function clientResponseErrorTypes(): void {
       // the response bag stays readable without casts
       // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
       const message: string = error.response.message;
-      // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
+      // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-member-access -- type test: the loose SDK shape must read and assign without a cast
       const field: string = error.data.data.email.message;
       void [message, field];
     }

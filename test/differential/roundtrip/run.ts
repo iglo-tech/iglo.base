@@ -234,7 +234,8 @@ async function sweep(
   ) as {
     items: Array<Listed>;
   };
-  const fileToken = parse(await client.send("POST", "/api/files/token")).token as string;
+  const fileToken = (parse(await client.send("POST", "/api/files/token")) as { token: string })
+    .token;
 
   for (const collection of collections.items) {
     const sort = collection.type === "view" ? "id" : "@rowid";

@@ -60,9 +60,9 @@ try {
   if (packDry.exitCode !== 0) {
     throw new Error("npm pack --dry-run failed");
   }
-  const dryPacked = JSON.parse(packDry.stdout.toString())[0] as {
-    files: Array<{ path: string }>;
-  };
+  const dryPacked = (
+    JSON.parse(packDry.stdout.toString()) as [{ files: Array<{ path: string }> }]
+  )[0];
   const dryFiles = dryPacked.files.map((f) => f.path);
   const badFiles = dryFiles.filter((f) => /\b(cjs|umd)\b/i.test(f) || /\.c[jt]s$/i.test(f));
   if (badFiles.length > 0) {
@@ -79,10 +79,9 @@ try {
   if (pack.exitCode !== 0) {
     throw new Error("npm pack failed");
   }
-  const packed = JSON.parse(pack.stdout.toString())[0] as {
-    filename: string;
-    files: Array<{ path: string }>;
-  };
+  const packed = (
+    JSON.parse(pack.stdout.toString()) as [{ filename: string; files: Array<{ path: string }> }]
+  )[0];
   const files = packed.files.map((f) => f.path);
   for (const required of ["LICENSE", "README.md", "CHANGELOG.md", "package.json"]) {
     if (!files.includes(required)) {

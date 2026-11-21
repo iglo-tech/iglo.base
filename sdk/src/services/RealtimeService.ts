@@ -399,7 +399,7 @@ export class RealtimeService extends BaseService {
         })
         // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
         .catch((error) => {
-          if (error?.isAbort) {
+          if ((error as { isAbort?: boolean } | null | undefined)?.isAbort) {
             return; // silently ignore aborted pending requests
           }
           throw error;
