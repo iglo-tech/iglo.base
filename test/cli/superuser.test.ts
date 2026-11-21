@@ -310,7 +310,7 @@ describe("superuser otp", () => {
     expect(result.exitCode).toBe(0);
     expect(result.error).toBe("");
     const match =
-      /^Successfully created OTP for superuser "test@example.com":\n├─ Id:    (\w{15})\n├─ Pass:  (\d{6})\n└─ Valid: 120s\n\n$/.exec(
+      /^Successfully created OTP for superuser "test@example.com":\n├─ Id: {4}(\w{15})\n├─ Pass: {2}(\d{6})\n└─ Valid: 120s\n\n$/.exec(
         result.stdout,
       );
     expect(match).not.toBeNull();

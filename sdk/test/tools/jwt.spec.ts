@@ -16,7 +16,7 @@ describe("jwt", () => {
 
     test("Should fallback to empty object on invalid JWT string", () => {
       const testCases = ["", "abc", "a.b.c"];
-      for (let i in testCases) {
+      for (const i in testCases) {
         const tc = testCases[i]!;
         const payload = getTokenPayload(tc);
         assert.deepEqual(payload, {}, "scenario " + i);
@@ -50,7 +50,7 @@ describe("jwt", () => {
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjMsImV4cCI6MTkwODc4NDgwMH0.vVbRVx-Bs7pusxfU8TTTOEtNcUEYSzmJUboC68PB5iE",
         ],
       ];
-      for (let i in testCases) {
+      for (const i in testCases) {
         const tc = testCases[i]!;
         assert.equal(isTokenExpired(tc[1] as string), tc[0], "scenario " + i);
       }

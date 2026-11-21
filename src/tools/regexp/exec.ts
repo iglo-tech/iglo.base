@@ -328,9 +328,9 @@ export class machine {
     this.matchcap.fill(-1);
     let runq = this.q0;
     let nextq = this.q1;
-    let r = endOfText;
+    let r: number;
     let r1 = endOfText;
-    let width = 0;
+    let width: number;
     let width1 = 0;
     let p = i.step(pos);
     r = packedRune(p);
@@ -624,9 +624,9 @@ function doOnePass(re: program, i: input, pos: number, ncap: number): Array<numb
   const matchcap = Array.from({ length: ncap }, () => -1);
   let matched = false;
 
-  let r = endOfText;
+  let r: number;
   let r1 = endOfText;
-  let width = 0;
+  let width: number;
   let width1 = 0;
   let p = i.step(pos);
   r = packedRune(p);

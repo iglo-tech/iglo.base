@@ -88,10 +88,11 @@ function trimChars(s: string, cutset: string): string {
 // the input (io.EOF in Go).
 function readParseTest(r: LineReader): ParseTestCase | null {
   const ta: ParseTestCase = { text: "", want: "", context: "", scripting: true };
-  let { line, eof } = r.readSlice();
-  if (eof) {
+  const first = r.readSlice();
+  if (first.eof) {
     return null;
   }
+  let line = first.line;
   let b = "";
 
   // Read the HTML.
@@ -157,7 +158,7 @@ function readParseTest(r: LineReader): ParseTestCase | null {
   }
   let inQuote = false;
   for (;;) {
-    ({ line, eof } = r.readSlice());
+    line = r.readSlice().line;
     const trimmed = trimChars(line, "| \n");
     if (trimmed.length > 0) {
       if (line[0] === "|" && trimmed[0] === '"') {

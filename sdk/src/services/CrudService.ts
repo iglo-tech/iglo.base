@@ -246,7 +246,7 @@ export abstract class CrudService<M> extends BaseService {
 
     let result: Array<T> = [];
 
-    let request = async (page: number): Promise<Array<T>> => {
+    const request = async (page: number): Promise<Array<T>> => {
       return this.getList(page, batchSize || 1000, options).then((list) => {
         const castedList = list as unknown as ListResult<T>;
         const items = castedList.items;

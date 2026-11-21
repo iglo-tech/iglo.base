@@ -58,7 +58,7 @@ export class BaseAuthStore {
    * Alternatively you can also compare directly `pb.authStore.record?.collectionName`.
    */
   get isSuperuser(): boolean {
-    let payload = getTokenPayload(this.token);
+    const payload = getTokenPayload(this.token);
 
     return (
       payload.type == "auth" &&

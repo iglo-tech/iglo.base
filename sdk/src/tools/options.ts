@@ -140,7 +140,7 @@ export function normalizeUnknownQueryParams(options?: SendOptions): void {
   }
 
   options.query = options.query || {};
-  for (let key in options) {
+  for (const key in options) {
     if (knownSendOptionsKeys.includes(key)) {
       continue;
     }

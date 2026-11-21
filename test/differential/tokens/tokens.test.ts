@@ -183,7 +183,7 @@ async function api(
   }
   const res = await fetch(`${upstream.url}${path}`, init);
   const text = await res.text();
-  let json: unknown = null;
+  let json: unknown;
   try {
     json = text === "" ? null : (JSON.parse(text) as unknown);
   } catch {

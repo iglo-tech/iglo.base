@@ -79,7 +79,7 @@ function errorText(err: unknown): string {
 // The disk-space failure says how much room the backup needs, the size of the
 // data it copies, and how much is free.
 function noSpaceMessage(app: App): string {
-  let needed = "";
+  let needed: string;
   try {
     needed = `${(dataSize(app.dataDir) / bytesPerMiB).toFixed(1)} MiB`;
   } catch {

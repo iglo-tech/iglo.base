@@ -208,7 +208,7 @@ async function doTokenRoundTrip(c: TokenConfig, init: RequestInit): Promise<Toke
     );
 
   let token: Token;
-  let errorCode = "";
+  let errorCode: string;
   const content = mediaType(res.headers.get("Content-Type") ?? "");
   if (content === "application/x-www-form-urlencoded" || content === "text/plain") {
     // some endpoints return a query string

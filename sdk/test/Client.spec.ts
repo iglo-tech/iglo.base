@@ -229,7 +229,7 @@ describe("Client", () => {
       };
 
       let raw = "";
-      for (let key in params) {
+      for (const key in params) {
         if (raw) {
           raw += " || ";
         }
@@ -387,7 +387,7 @@ describe("Client", () => {
           "successMultipartAuto",
         ],
       ];
-      for (let testCase of testCases) {
+      for (const testCase of testCases) {
         const responseData = await testCase[0];
         assert.equal(responseData, testCase[1]);
       }

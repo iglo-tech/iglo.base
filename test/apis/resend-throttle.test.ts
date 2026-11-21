@@ -28,7 +28,7 @@ const resetLink = "/auth/confirm-password-reset/";
 const resendLimitMs = 2 * 60 * 1000;
 
 let opened: Array<TestApp> = [];
-let roots: Array<string> = [];
+const roots: Array<string> = [];
 
 // The limit timers are held, and a test fires them by hand. A
 // test ends only once the timers of its sends are held, so that none of them

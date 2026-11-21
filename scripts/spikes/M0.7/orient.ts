@@ -400,7 +400,6 @@ function webpConfig(b: Uint8Array): Size {
       if (len !== 10) {
         throw invalid;
       }
-      wantAlpha = ((b[data] as number) & 0x10) !== 0;
       const w =
         ((b[data + 4] as number) |
           ((b[data + 5] as number) << 8) |

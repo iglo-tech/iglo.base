@@ -121,7 +121,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     requestInfo.context = RequestInfoContextProtectedFile;
     requestInfo.auth = authRecord;
 
-    let ok = false;
+    let ok: boolean;
     try {
       ok = await canAccessRecordAsync(e.app, record, requestInfo, record.collection().viewRule);
     } catch {

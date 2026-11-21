@@ -786,13 +786,15 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
   log("generating the 50 MP JPEG");
   {
     const raw = synthetic(8660, 5773, 11);
-    let png: Uint8Array | undefined = encodePng(raw, 0);
-    raw.pix = new Uint8Array();
-    writeFileSync(
-      join(bigDir, "big.jpg"),
-      await new Bun.Image(png, { maxPixels: 1 << 30 }).jpeg({ quality: 90 }).bytes(),
-    );
-    png = undefined;
+    {
+      // the PNG bytes leave scope before the collection below
+      const png = encodePng(raw, 0);
+      raw.pix = new Uint8Array();
+      writeFileSync(
+        join(bigDir, "big.jpg"),
+        await new Bun.Image(png, { maxPixels: 1 << 30 }).jpeg({ quality: 90 }).bytes(),
+      );
+    }
     Bun.gc(true);
   }
   log("generating the 12 MP PNG");

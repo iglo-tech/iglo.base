@@ -137,7 +137,7 @@ function validateRecordId(app: RecordsApp, collectionNameOrId: string): RuleFunc
       return NewError("validation_invalid_collection", "Missing or invalid collection.");
     }
 
-    let exists = 0;
+    let exists: number;
     try {
       const [v] = app.databases
         .concurrentDB()

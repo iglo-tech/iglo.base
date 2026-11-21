@@ -413,7 +413,7 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
   const igloThumbs = new Set<string>();
   const startedAt = storedTimestamp(new Date());
   let lastSweep: Array<SweepEntry> | undefined;
-  let lastLogs: Set<string> | undefined;
+  const logsPerLeg: Array<Set<string>> = [];
 
   for (const [leg, kind] of legs.entries()) {
     const thumbsBefore = thumbPaths(dataDir);
@@ -444,13 +444,14 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
 
     // `_logs`: only that auxiliary.db written by upstream stays intact (M5.5)
     const logs = readLogs(dataDir);
+    const lastLogs = logsPerLeg.at(-1);
     if (lastLogs !== undefined) {
       const lost = [...lastLogs].filter((row) => !logs.has(row));
       if (lost.length > 0) {
         state.failures.push(`leg ${leg + 1}: ${lost.length} rows of _logs changed: ${lost[0]}`);
       }
     }
-    lastLogs = logs;
+    logsPerLeg.push(logs);
   }
 
   return {

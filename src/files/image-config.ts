@@ -586,7 +586,6 @@ function webpConfig(r: ByteSource): Size {
         throw invalid;
       }
       const d = r.read(10);
-      wantAlpha = ((d[0] as number) & 0x10) !== 0;
       const w = ((d[4] as number) | ((d[5] as number) << 8) | ((d[6] as number) << 16)) + 1;
       const h = ((d[7] as number) | ((d[8] as number) << 8) | ((d[9] as number) << 16)) + 1;
       if (w * h > 2 ** 31 - 1) {

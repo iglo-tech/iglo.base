@@ -11,7 +11,7 @@ function readLine(): string {
   const bytes: Array<number> = [];
   const buffer = new Uint8Array(1);
   for (;;) {
-    let read = 0;
+    let read: number;
     try {
       read = readSync(0, buffer, 0, 1, null);
     } catch (error) {

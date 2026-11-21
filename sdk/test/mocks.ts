@@ -38,7 +38,7 @@ export class FetchMock {
       url: RequestInfo | URL,
       config: RequestInit | { [key: string]: any } | undefined,
     ) => {
-      for (let mock of this.mocks) {
+      for (const mock of this.mocks) {
         // match url and method
         const matchUrl =
           mock.url === url ||

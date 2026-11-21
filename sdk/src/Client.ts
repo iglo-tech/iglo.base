@@ -274,7 +274,7 @@ export default class Client {
    * Cancels all pending requests.
    */
   cancelAllRequests(): Client {
-    for (let k in this.cancelControllers) {
+    for (const k in this.cancelControllers) {
       this.cancelControllers[k]?.abort();
     }
 
@@ -589,7 +589,7 @@ export default class Client {
     headers = headers || {};
     name = name.toLowerCase();
 
-    for (let key in headers) {
+    for (const key in headers) {
       if (key.toLowerCase() == name) {
         return headers[key] as string;
       }

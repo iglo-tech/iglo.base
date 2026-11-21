@@ -494,10 +494,10 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
 
     const dummyParams: Params = {};
     const selects: Array<string> = [];
-    for (let [k, v] of Object.entries(dummyExport)) {
+    for (const [rawKey, v] of Object.entries(dummyExport)) {
       // bound as Go's driver binds the typed values
-      const value = driverValue(k, v);
-      k = columnify(k); // columnify is just as extra measure in case of custom fields
+      const value = driverValue(rawKey, v);
+      const k = columnify(rawKey); // columnify is just as extra measure in case of custom fields
       const param = "__pb_create__" + k;
       if (isExpression(value) && v instanceof JSONRaw) {
         // JSON text that is not valid UTF-8: a Go string with its bytes

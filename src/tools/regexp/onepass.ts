@@ -371,7 +371,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
         ok = check(inst.out, m) && check(inst.arg, m);
         // check no-input paths to InstMatch
         let matchOut = m[inst.out] as boolean;
-        let matchArg = m[inst.arg] as boolean;
+        const matchArg = m[inst.arg] as boolean;
         if (matchOut && matchArg) {
           ok = false;
           break;
@@ -379,7 +379,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
         // Match on empty goes in inst.Out
         if (matchArg) {
           [inst.out, inst.arg] = [inst.arg, inst.out];
-          [matchOut, matchArg] = [matchArg, matchOut];
+          matchOut = matchArg;
         }
         if (matchOut) {
           m[pc] = true;

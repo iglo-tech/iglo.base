@@ -54,9 +54,9 @@ export class BatchService extends BaseService {
       });
 
       if (req.files) {
-        for (let key in req.files) {
+        for (const key in req.files) {
           const files = req.files[key] || [];
-          for (let file of files) {
+          for (const file of files) {
             formData.append("requests." + i + "." + key, file);
           }
         }
@@ -219,7 +219,7 @@ export class SubBatchService {
           // only files
           // ---
           request.files[key] = request.files[key] || [];
-          for (let file of foundFiles) {
+          for (const file of foundFiles) {
             request.files[key].push(file);
           }
         } else {
@@ -237,7 +237,7 @@ export class SubBatchService {
             }
 
             request.files[fileKey] = request.files[fileKey] || [];
-            for (let file of foundFiles) {
+            for (const file of foundFiles) {
               request.files[fileKey]!.push(file);
             }
           }

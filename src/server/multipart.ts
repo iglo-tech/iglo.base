@@ -133,7 +133,8 @@ export class Part implements IoReader {
 
   async populateHeaders(headerSizeLimit: number, headerLimit: number): Promise<unknown> {
     const r = new TextprotoReader(this.mr.bufReader);
-    let [header, err] = await readMIMEHeader(r, headerSizeLimit, headerLimit);
+    const [header, readErr] = await readMIMEHeader(r, headerSizeLimit, headerLimit);
+    let err = readErr;
     if (err === undefined) {
       this.header = header as MIMEHeader;
     }

@@ -428,7 +428,7 @@ describe("SSR Core", () => {
     });
 
     test("LRU eviction drops least recently used entry when maxEntries is exceeded", async () => {
-      let clockTime = 1000;
+      const clockTime = 1000;
       const cache = createSessionCache({
         maxEntries: 2,
         clock: () => clockTime,

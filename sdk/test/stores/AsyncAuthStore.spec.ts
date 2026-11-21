@@ -6,7 +6,7 @@ import { AsyncAuthStore } from "@sdk/stores/AsyncAuthStore";
 describe("AsyncAuthStore", () => {
   describe("construct()", () => {
     test("load empty initial", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -24,7 +24,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from string", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -43,7 +43,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from Promise<string>", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -62,7 +62,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from Promise<object>", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -81,7 +81,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from unexpected value (number/boolean) saves nothing", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -102,7 +102,7 @@ describe("AsyncAuthStore", () => {
 
   describe("save()", () => {
     test("trigger saveFunc", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -131,7 +131,7 @@ describe("AsyncAuthStore", () => {
 
   describe("clear()", () => {
     test("no explicit clearFunc", async () => {
-      let calls: any = [];
+      const calls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -157,8 +157,8 @@ describe("AsyncAuthStore", () => {
     });
 
     test("with explicit clearFunc", async () => {
-      let saveCalls: any = [];
-      let clearCalls: any = [];
+      const saveCalls: any = [];
+      const clearCalls: any = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {

@@ -542,7 +542,7 @@ export class Scanner {
     const args: Array<Token> = [];
 
     let expectComma = false;
-    let isComma = false;
+    let isComma: boolean;
     let isClosed = false;
 
     const start = this.read();

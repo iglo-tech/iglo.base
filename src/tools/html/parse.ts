@@ -313,8 +313,8 @@ export class Parser {
   // Section 12.2.6.1, "foster parenting".
   fosterParent(n: Node): void {
     let table: Node | null = null;
-    let parent: Node | null = null;
-    let prev: Node | null = null;
+    let parent: Node | null;
+    let prev: Node | null;
     let template: Node | null = null;
     let i: number;
     for (i = this.oe.length - 1; i >= 0; i--) {

@@ -81,7 +81,7 @@ function bEncode(e: WordEncoder, charset: string, s: Uint8Array): string {
   let out = "";
   let currentLen = 0;
   let last = 0;
-  let n = 0;
+  let n: number;
   for (let i = 0; i < s.length; i += n) {
     n = runeLen(s[i] as number);
 
@@ -105,7 +105,7 @@ function qEncode(e: WordEncoder, charset: string, s: Uint8Array): string {
   // If the charset is UTF-8, it must not split runes between words
   let out = "";
   let currentLen = 0;
-  let n = 0;
+  let n: number;
   for (let i = 0; i < s.length; i += n) {
     const b = s[i] as number;
     // Multi-byte characters must not be split across encoded-words.

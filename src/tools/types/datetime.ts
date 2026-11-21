@@ -226,7 +226,7 @@ export class DateTime {
   // give the zero time, as cast.ToTime does).
   scan(value: unknown): void {
     let t: Instant;
-    let loc: Location = UTC;
+    let loc: Location;
     if (value instanceof DateTime) {
       t = value.instant();
       loc = value.loc;

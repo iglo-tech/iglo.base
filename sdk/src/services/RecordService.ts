@@ -259,8 +259,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         (this.client.authStore.record?.collectionId === this.collectionIdOrName ||
           this.client.authStore.record?.collectionName === this.collectionIdOrName)
       ) {
-        let authExpand = Object.assign({}, this.client.authStore.record.expand);
-        let authRecord = Object.assign({}, this.client.authStore.record, item);
+        const authExpand = Object.assign({}, this.client.authStore.record.expand);
+        const authRecord = Object.assign({}, this.client.authStore.record, item);
         if (authExpand) {
           // for now "merge" only top-level expand
           authRecord.expand = Object.assign(authExpand, item.expand);
@@ -667,7 +667,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
             const url = this._replaceQueryParams(provider.authURL + redirectURL, replacements);
 
-            let urlCallback =
+            const urlCallback =
               config.urlCallback ||
               function (url: string) {
                 if (eagerDefaultPopup) {
@@ -1166,7 +1166,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     }
 
     // apply the replacements
-    for (let key in replacements) {
+    for (const key in replacements) {
       if (!replacements.hasOwnProperty(key)) {
         continue;
       }
@@ -1180,7 +1180,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     // construct back the full query string
     query = "";
-    for (let key in parsedParams) {
+    for (const key in parsedParams) {
       if (!parsedParams.hasOwnProperty(key)) {
         continue;
       }
@@ -1209,15 +1209,15 @@ function openBrowserPopup(url?: string): Window | null {
   let width = 1024;
   let height = 768;
 
-  let windowWidth = window.innerWidth;
-  let windowHeight = window.innerHeight;
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
 
   // normalize window size
   width = width > windowWidth ? windowWidth : width;
   height = height > windowHeight ? windowHeight : height;
 
-  let left = windowWidth / 2 - width / 2;
-  let top = windowHeight / 2 - height / 2;
+  const left = windowWidth / 2 - width / 2;
+  const top = windowHeight / 2 - height / 2;
 
   // note: we don't use the noopener and noreferrer attributes since
   // for some reason browser blocks such windows then url is undefined/blank

@@ -69,7 +69,7 @@ export function registerAutoRefresh(
 
     // the request wasn't sent with a custom token
     const headers = sendOptions.headers || {};
-    for (let key in headers) {
+    for (const key in headers) {
       if (
         key.toLowerCase() == "authorization" &&
         // the request wasn't sent with a custom token

@@ -228,7 +228,7 @@ function* expandRecordsPath(
     const backName = matches[1] as string;
     const backFieldName = matches[2] as string;
 
-    let indirectRel: Collection | null = null;
+    let indirectRel: Collection | null;
     try {
       indirectRel = getCollectionByModelOrIdentifier(app, backName);
     } catch {
@@ -292,7 +292,7 @@ function* expandRecordsPath(
       );
     }
 
-    let found: Collection | null = null;
+    let found: Collection | null;
     try {
       found = getCollectionByModelOrIdentifier(app, relField.collectionId);
     } catch {

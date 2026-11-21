@@ -99,7 +99,7 @@ describe("SSR differential", () => {
       };
 
       // Near real-time clock (not 1970) so half-life calculations match real server token exp
-      let mockClock = Date.now();
+      const mockClock = Date.now();
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
       // Requests are counted at the server boundary by a proxy in its own process

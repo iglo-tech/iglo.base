@@ -172,7 +172,7 @@ function claim(port: number): boolean {
     }
   }
   const owner = markerOwner(port);
-  let expired = false;
+  let expired: boolean;
   try {
     expired = Date.now() - statSync(marker).mtimeMs > claimLease;
   } catch {

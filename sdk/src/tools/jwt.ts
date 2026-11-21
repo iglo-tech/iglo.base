@@ -19,14 +19,19 @@ if (typeof atob === "function" && !isReactNative) {
   atobPolyfill = (input: string) => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
-    let str = String(input).replace(/=+$/, "");
+    const str = String(input).replace(/=+$/, "");
     if (str.length % 4 == 1) {
       throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
     }
 
+    // initialize result and counters
+    let bc = 0;
+    let bs: number | undefined;
+    let buffer: string | number;
+    let idx = 0;
+    let output = "";
     for (
-      // initialize result and counters
-      var bc = 0, bs: number | undefined, buffer: string | number, idx = 0, output = "";
+      ;
       // get next character
       (buffer = str.charAt(idx++));
       // character found in table? initialize bit storage and add its ascii value;
@@ -77,7 +82,7 @@ export function getTokenPayload(token: string): LooseObject {
  * @param [expirationThreshold] Time in seconds that will be subtracted from the token `exp` property.
  */
 export function isTokenExpired(token: string, expirationThreshold = 0): boolean {
-  let payload = getTokenPayload(token);
+  const payload = getTokenPayload(token);
 
   if (
     Object.keys(payload).length > 0 &&

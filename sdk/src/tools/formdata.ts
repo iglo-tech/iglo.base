@@ -163,7 +163,7 @@ function inferFormDataValue(value: unknown): unknown {
     (value[0] === "-" || (value[0]! >= "0" && value[0]! <= "9")) &&
     inferNumberCharsRegex.test(value)
   ) {
-    let num = +value;
+    const num = +value;
     if ("" + num === value) {
       return num;
     }

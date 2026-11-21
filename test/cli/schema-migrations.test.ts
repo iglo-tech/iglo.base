@@ -310,7 +310,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     writeSchema(site, {
       authors: { type: "base", rules: { list: "", view: "" }, fields: { name: { type: "text" } } },
     });
-    let server = await serveWith(site);
+    const server = await serveWith(site);
     const token = await superuser(server.url);
     const settings = await api(server.url, token, "PATCH", "/api/settings", {
       rateLimits: {
@@ -505,7 +505,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("a required field that stays empty fails the record check, and nothing is applied", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    let server = await serveWith(site);
+    const server = await serveWith(site);
     const token = await superuser(server.url);
     expect(
       (await api(server.url, token, "POST", "/api/collections/posts/records", { title: "x" }))

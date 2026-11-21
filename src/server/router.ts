@@ -176,7 +176,7 @@ export class ResponseWriter {
       this.#body = null;
       // the flushed response carries the whole body: later writes have no stream
       this.#bodyFlushed = whole !== null;
-      let body: ReadableStream<Uint8Array> | Blob | null = null;
+      let body: ReadableStream<Uint8Array> | Blob | null;
       if (!bodyAllowedForStatus(this.#sentStatus())) {
         body = null;
       } else if (whole instanceof Promise) {

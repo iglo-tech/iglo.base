@@ -23,8 +23,8 @@ test("Example_detect", async () => {
     ".txt",
   ]);
 
-  let err: Error | null;
-  [mtype, err] = await detectReader(new Blob([testBytes]));
+  const [readType, err] = await detectReader(new Blob([testBytes]));
+  mtype = readType;
   expect([mtype.is("text/plain"), mtype.string(), mtype.extension(), err]).toEqual([
     true,
     "text/plain; charset=utf-8",

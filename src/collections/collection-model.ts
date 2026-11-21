@@ -506,7 +506,7 @@ export class Collection
     for (let i = 2; i < 1000; i++) {
       // app.CollectionQuery() (collection-query.ts, which imports this
       // module); a query error counts as no match, as upstream ignores it
-      let exists = 0;
+      let exists: number;
       try {
         const [v] = modelQuery(app.databases, new Collection())
           .select("(1)")

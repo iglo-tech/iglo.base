@@ -102,7 +102,8 @@ export class Regexp {
   // String returns the Perl syntax of the regular expression.
   toString(): string {
     const flags = new Map<Regexp, number>();
-    let [must, cant] = calcFlags(this, flags);
+    const [mustFlags, cant] = calcFlags(this, flags);
+    let must = mustFlags;
     must |= (cant & ~flagI) << negShift;
     if (must !== 0) {
       must |= flagOff;

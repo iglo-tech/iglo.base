@@ -129,7 +129,7 @@ export function requireSameCollectionContextAuth(
         collectionPathParam = "collection";
       }
 
-      let collection: Collection | null = null;
+      let collection: Collection | null;
       try {
         collection = findCachedCollectionByNameOrId(
           e.app,

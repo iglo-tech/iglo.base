@@ -220,7 +220,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
 
     // ensure that the collection name doesn't collide with the id of any collection
     const dummyCollection = new Collection();
-    let found = false;
+    let found: boolean;
     try {
       modelQuery(this.app.databases, dummyCollection).model(v, dummyCollection);
       found = true;
@@ -644,7 +644,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
       duplicatedNames.add(toLower(parsed.indexName));
 
       // ensure that the index name is not used in another collection
-      let usedTblName = "";
+      let usedTblName: string;
       try {
         const [tblName] = this.app.databases
           .concurrentDB()

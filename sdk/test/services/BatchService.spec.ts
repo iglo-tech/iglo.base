@@ -251,7 +251,7 @@ describe("BatchService", () => {
         replyBody: true,
       });
 
-      let formData = new FormData();
+      const formData = new FormData();
       formData.append("title", "test_title");
       formData.append("description", "old");
       formData.append("number1", "123");

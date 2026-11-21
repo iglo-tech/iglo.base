@@ -657,7 +657,7 @@ export function summaryAppName(stream: Uint8Array): Uint8Array | null {
     if ((typ & typeVector) !== 0) {
       return null;
     }
-    let step = 0;
+    let step: number;
     switch (typ & typeMask) {
       case typeStringASCII:
         step = 1;

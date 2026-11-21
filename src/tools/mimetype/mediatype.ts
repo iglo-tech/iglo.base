@@ -25,7 +25,8 @@ const errDuplicateParamName = new MediaTypeError("mime: duplicate parameter name
 
 // checkMediaTypeDisposition
 function checkMediaTypeDisposition(s: string): MediaTypeError | null {
-  let [typ, rest] = consumeToken(s);
+  const [typ, restAfterType] = consumeToken(s);
+  let rest = restAfterType;
   if (typ === "") {
     return errNoMediaType;
   }
