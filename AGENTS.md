@@ -66,7 +66,7 @@ Run from the repository root. Verification is local (D25): run `bun run check` a
 
 ```sh
 bun install --frozen-lockfile   # install
-bun run lint                    # oxlint --deny-warnings, config in oxlint.config.ts (@cloudflare/oxlint-config, D44)
+bun run lint                    # builds sdk/dist types, then oxlint --deny-warnings (config: oxlint.config.ts, @cloudflare/oxlint-config, D44)
 bun run format:check            # oxfmt --check (bun run format writes)
 bun run typecheck               # tsc --noEmit
 bun run test                    # bun test; builds the executable and tests it

@@ -7,7 +7,7 @@
   ],
   "type": "module",
   "scripts": {
-    "lint": "oxlint --deny-warnings",
+    "lint": "bun run sdk:build && oxlint --deny-warnings",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "typecheck": "bun run sdk:build && tsc --noEmit && tsc --noEmit -p sdk/tsconfig.json && tsc --noEmit -p sdk/test/tsconfig.json",

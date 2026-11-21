@@ -1,6 +1,10 @@
 import cloudflare from "@cloudflare/oxlint-config";
 import { defineConfig } from "oxlint";
 
+// `bun run lint` builds the SDK declarations (sdk/dist) before oxlint runs: the
+// type-aware rules resolve @iglo.tech/iglo.base through sdk/package.json "types",
+// so without them the rules misreport test code on a fresh checkout (L.1).
+
 // No React or JSX in this project (owner, 2026-11-21): drop the React and
 // jsx-a11y plugins, their rules, and the React-only rules of the nkzw preset
 // (hooks and Relay).
