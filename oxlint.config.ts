@@ -47,6 +47,29 @@ export default defineConfig({
         "no-underscore-dangle": "off",
       },
     },
+    // Console output is allowed where it is the product: CLI tools, benchmarks,
+    // probes and crash or fuzz reports (L.1). The SDK keeps upstream's
+    // console.warn deprecation messages (behavior parity, D36). The counting proxy
+    // prints its port on stdout, which its parent process reads.
+    {
+      files: [
+        "scripts/**",
+        "sdk/scripts/**",
+        "sdk/src/**",
+        "test/perf/**",
+        "**/bench*.ts",
+        "**/*-probe.ts",
+        "test/differential/fuzz/**",
+        "test/differential/roundtrip/large.ts",
+        "test/differential/crash/**",
+        "test/differential/scenarios.test.ts",
+        "test/scenarios/scenarios.test.ts",
+        "test/differential/sdk-ssr/counting-proxy.ts",
+      ],
+      rules: {
+        "no-console": "off",
+      },
+    },
     // src/tools/html is a port of the x/net/html tree with its own Node class
     // (appendChild, no append): the DOM rule does not apply to it.
     {
@@ -77,7 +100,6 @@ export default defineConfig({
         "@nkzw/no-instanceof": "off",
         "import/no-namespace": "off",
         "no-case-declarations": "off",
-        "no-console": "off",
         "no-empty": "off",
         "no-promise-executor-return": "off",
         "no-prototype-builtins": "off",
