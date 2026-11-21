@@ -39,7 +39,7 @@ function build(filter: string): { sql: string; params: Params } {
   const expr = filterBuildExpr(filter, resolver, { clock });
   const sql = expr.build(newFromDB(new Database(":memory:"), "sqlite"), params);
   const names = new Map<string, string>();
-  const normalized = sql.replace(/\{:(t\w{8})\}|__(sm|ml|mr)\w{8}/g, (m: string) => {
+  const normalized = sql.replaceAll(/\{:(t\w{8})\}|__(sm|ml|mr)\w{8}/g, (m: string) => {
     if (!names.has(m)) {
       names.set(m, m.startsWith("{:") ? `{:p${names.size}}` : m.slice(0, 4) + names.size);
     }

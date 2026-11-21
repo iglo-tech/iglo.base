@@ -86,7 +86,7 @@ export function toLower(s: string): string {
     }
   }
   if (isASCII) {
-    return s.replace(/[A-Z]+/g, (m) => m.toLowerCase());
+    return s.replaceAll(/[A-Z]+/g, (m) => m.toLowerCase());
   }
 
   let out = "";

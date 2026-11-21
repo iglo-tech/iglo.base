@@ -231,14 +231,14 @@ export class DB extends EmbeddedBuilder {
   processSQL(s: string, reals?: ReadonlySet<string>): [string, Array<string>] {
     const placeholders: Array<string> = [];
     let count = 0;
-    s = s.replace(plRegex, (m) => {
+    s = s.replaceAll(plRegex, (m) => {
       count++;
       const name = m.slice(2, -1);
       placeholders.push(name);
       const placeholder = this.generatePlaceholder(count);
       return reals?.has(name) === true ? `+CAST(${placeholder} AS REAL)` : placeholder;
     });
-    s = s.replace(quoteRegex, (m) => {
+    s = s.replaceAll(quoteRegex, (m) => {
       if (m[0] === "{") {
         return this.quoteTableName(m.slice(2, -2));
       }

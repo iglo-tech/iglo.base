@@ -202,7 +202,7 @@ const authMethodsURL: Rule = (upstream, at) => {
     return undefined;
   }
   const source = upstream.value
-    .replace(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`)
+    .replaceAll(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`)
     .replace(/((?:\\\?|&)state=)[A-Za-z0-9]{30}(?=&|$)/, "$1[A-Za-z0-9]{30}")
     .replace(/((?:\\\?|&)code_challenge=)[A-Za-z0-9_-]{43}(?=&|$)/, "$1[A-Za-z0-9_-]{43}");
   return { name: "authURL", pattern: new RegExp(`^${source}$`) };
@@ -210,7 +210,7 @@ const authMethodsURL: Rule = (upstream, at) => {
 
 // a literal text in a regular expression
 function escapeRegExp(s: string): string {
-  return s.replace(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
+  return s.replaceAll(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
 }
 
 // tools/filesystem/file.go normalizeName: an uploaded file's stored name
@@ -272,7 +272,7 @@ const tempViewName: Rule = (upstream) => {
   if (upstream.kind !== "string" || !/temp_view_[A-Za-z0-9]{5}/.test(upstream.value)) {
     return undefined;
   }
-  const source = escapeRegExp(upstream.value).replace(
+  const source = escapeRegExp(upstream.value).replaceAll(
     /temp_view_[A-Za-z0-9]{5}/g,
     "temp_view_[A-Za-z0-9]{5}",
   );
@@ -298,7 +298,7 @@ const scaffoldIndex: Rule = (upstream, at) => {
   ) {
     return undefined;
   }
-  const source = escapeRegExp(upstream.value).replace(
+  const source = escapeRegExp(upstream.value).replaceAll(
     /(idx_[A-Za-z0-9_]+?_)[a-z0-9]{10}`/g,
     "$1[a-z0-9]{10}`",
   );

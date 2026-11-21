@@ -2157,7 +2157,7 @@ function afterBodyIM(p: Parser): boolean {
 // keepWhitespaceOnly is strings.Map with a mapping that keeps only the
 // ASCII whitespace characters the frameset modes allow.
 function keepWhitespaceOnly(s: string): string {
-  return s.replace(/[^ \t\n\f\r]/g, "");
+  return s.replaceAll(/[^ \t\n\f\r]/g, "");
 }
 
 // Section 12.2.6.4.20.

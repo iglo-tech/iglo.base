@@ -102,7 +102,7 @@ function keyText(key: string): string {
 
 // the JSDoc lines of a description, at an indent
 function docLines(doc: string, indent: string): Array<string> {
-  const text = doc.replace(/\*\//g, String.raw`*\/`);
+  const text = doc.replaceAll("*/", String.raw`*\/`);
   const lines = text.split(/\r?\n/);
   if (lines.length === 1) {
     return [`${indent}/** ${text} */`];
@@ -179,8 +179,8 @@ function stringLiteral(value: string): string {
   // every double quote in JSON's text is escaped by one backslash: unescape it
   const body = JSON.stringify(value)
     .slice(1, -1)
-    .replace(/\\"/g, '"')
-    .replace(/'/g, String.raw`\'`);
+    .replaceAll(String.raw`\"`, '"')
+    .replaceAll("'", String.raw`\'`);
   return `'${body}'`;
 }
 

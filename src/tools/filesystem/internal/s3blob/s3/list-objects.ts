@@ -21,7 +21,7 @@ export interface ListParams {
 // url.QueryEscape
 function queryEscape(s: string): string {
   return encodeURIComponent(s)
-    .replace(/[!'()*]/g, (c) => "%" + (c.codePointAt(0) as number).toString(16).toUpperCase())
+    .replaceAll(/[!'()*]/g, (c) => "%" + (c.codePointAt(0) as number).toString(16).toUpperCase())
     .replaceAll("%20", "+");
 }
 

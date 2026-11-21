@@ -115,7 +115,9 @@ async function crashedBackup(kind: Kind, storage: Storage, point: Point): Promis
 function normalized(paths: Array<string>): Array<string> {
   return paths
     .filter((p) => p !== "bulk.bin")
-    .map((p) => p.replace(/[0-9a-f]{16}\.tmp/g, "X.tmp").replace(/pb_backup_\w{6}/g, "pb_backup_X"))
+    .map((p) =>
+      p.replaceAll(/[0-9a-f]{16}\.tmp/g, "X.tmp").replaceAll(/pb_backup_\w{6}/g, "pb_backup_X"),
+    )
     .toSorted();
 }
 

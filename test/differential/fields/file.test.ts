@@ -287,7 +287,7 @@ const markerRandom: RandomSource = (length) => {
 
 // a regexp for upstream's text of a model text with markers
 function namePattern(modelText: string): RegExp {
-  let pattern = modelText.replace(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`);
+  let pattern = modelText.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`);
   for (const marker of markers) {
     if (pattern.includes(marker)) {
       pattern = pattern.replaceAll(marker, "[a-z0-9]{10}");
@@ -625,7 +625,7 @@ function resolveParts(parts: Array<Part>, saved: Record<string, unknown>): Array
     if (part.length !== 2 || !/^\$\d+$/.test(part[1])) {
       return part;
     }
-    const fieldName = part[0].replace(/^\+|[+-]$/g, "");
+    const fieldName = part[0].replaceAll(/^\+|[+-]$/g, "");
     const names = toUniqueStringSlice(saved[fieldName]);
     return [part[0], names[Number(part[1].slice(1))] as string];
   });

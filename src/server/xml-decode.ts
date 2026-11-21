@@ -657,7 +657,7 @@ function elementValue(el: XmlElement, t: FieldType, current?: unknown): unknown 
 
 // strings.TrimSpace: unicode.IsSpace characters at both ends
 function trimSpace(s: string): string {
-  return s.replace(
+  return s.replaceAll(
     /^[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/g,
     "",
   );

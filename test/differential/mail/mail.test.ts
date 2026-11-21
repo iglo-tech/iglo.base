@@ -227,10 +227,10 @@ interface Normalized {
 const jwtRegex = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g;
 
 function normalize(raw: string): Normalized {
-  let text = raw.replace(/\r\n/g, "\n");
+  let text = raw.replaceAll("\r\n", "\n");
 
   // Mailpit's Received header ends with the receive time
-  text = text.replace(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
+  text = text.replaceAll(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
 
   // SMTP messages only (sendmail adds its own)
   const date = /^Date: (.*)$/m.exec(text)?.[1];
@@ -253,12 +253,12 @@ function normalize(raw: string): Normalized {
   });
 
   // quoted-printable soft line breaks
-  text = text.replace(/=\n/g, "");
+  text = text.replaceAll("=\n", "");
 
-  text = text.replace(/\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z/g, "<datetime>");
+  text = text.replaceAll(/\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z/g, "<datetime>");
 
   const claims: Array<Record<string, unknown>> = [];
-  text = text.replace(jwtRegex, (token) => {
+  text = text.replaceAll(jwtRegex, (token) => {
     claims.push(
       JSON.parse(Buffer.from(token.split(".")[1] as string, "base64url").toString()) as Record<
         string,

@@ -395,7 +395,7 @@ export function normalizeExpands(paths: ReadonlyArray<string>): Array<string> {
   const normalized: Array<string> = [];
   for (let p of paths) {
     p = p.replaceAll(" ", ""); // replace spaces
-    p = p.replace(/^\.+|\.+$/g, ""); // trim incomplete paths
+    p = p.replaceAll(/^\.+|\.+$/g, ""); // trim incomplete paths
     if (p !== "") {
       normalized.push(p);
     }

@@ -23,7 +23,7 @@ const numberRegex = /^\p{N}$/u;
 // strings.TrimSpace (unicode.IsSpace, which unlike JS trim() includes
 // U+0085 and excludes U+FEFF)
 function trimSpace(s: string): string {
-  return s.replace(trimSpaceRegex, "");
+  return s.replaceAll(trimSpaceRegex, "");
 }
 
 // Greek letters with iota subscript, whose simple uppercase mapping (the
@@ -72,7 +72,7 @@ export function ucFirst(str: string): string {
 
 // Columnify strips invalid db identifier characters.
 export function columnify(str: string): string {
-  return str.replace(columnifyRemoveRegex, "");
+  return str.replaceAll(columnifyRemoveRegex, "");
 }
 
 // Sentenize converts and normalizes a string into a sentence.
@@ -94,7 +94,7 @@ export function sentenize(str: string): string {
 // Sanitize removes all characters matching the JS RegExp removePattern.
 // Throws if the pattern is not a valid regular expression.
 export function sanitize(str: string, removePattern: string): string {
-  return str.replace(new RegExp(removePattern, "g"), "");
+  return str.replaceAll(new RegExp(removePattern, "g"), "");
 }
 
 // Snakecase removes all non word characters and converts any english text

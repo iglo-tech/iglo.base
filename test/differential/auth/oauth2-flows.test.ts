@@ -106,11 +106,11 @@ function scrub(transcript: unknown): string {
     return value;
   };
   return JSON.stringify(sorted(transcript), null, 2)
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<token>")
-    .replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "<date>")
-    .replace(/"(id|recordRef|mfaId)": "[a-z0-9]{15}"/g, '"$1": "<id>"')
-    .replace(/users[0-9]{5}/g, "<username>")
-    .replace(/\b[A-Za-z0-9]{40}\b/g, "<client>");
+    .replaceAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<token>")
+    .replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "<date>")
+    .replaceAll(/"(id|recordRef|mfaId)": "[a-z0-9]{15}"/g, '"$1": "<id>"')
+    .replaceAll(/users[0-9]{5}/g, "<username>")
+    .replaceAll(/\b[A-Za-z0-9]{40}\b/g, "<client>");
 }
 
 // runs a flow on each server, on its own prepared fixture copy, one after

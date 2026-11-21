@@ -162,5 +162,5 @@ export function hasPrefixFold(str: string, prefix: string): boolean {
 }
 
 function asciiLower(s: string): string {
-  return s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+  return s.replaceAll(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
 }

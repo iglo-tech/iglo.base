@@ -224,7 +224,7 @@ export class S3 implements S3Config {
       dateTime = new Date()
         .toISOString()
         .replace(/\.\d+Z$/, "Z")
-        .replace(/[-:]/g, "");
+        .replaceAll(/[-:]/g, "");
       headers.set("x-amz-date", dateTime);
     }
 

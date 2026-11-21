@@ -19,7 +19,7 @@ export const OAUTH2_COOKIE_KEY = "pb_oauth2";
 export const OAUTH2_COOKIE_MAX_AGE_SEC = 600;
 
 export function isLocalhost(hostname: string): boolean {
-  const clean = hostname.replace(/^\[|\]$/g, "").split(":")[0] ?? "";
+  const clean = hostname.replaceAll(/^\[|\]$/g, "").split(":")[0] ?? "";
   return clean === "localhost" || clean === "127.0.0.1" || clean === "::1";
 }
 

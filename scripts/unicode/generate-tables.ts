@@ -49,7 +49,7 @@ function block(name: string): string {
 function mapEntries(name: string): Array<[string, string]> {
   return [...block(name).matchAll(/^\t"([^"]+)":\s*(.+),$/gm)].map((m) => [
     m[1] as string,
-    (m[2] as string).replace(/^"|"$/g, ""),
+    (m[2] as string).replaceAll(/^"|"$/g, ""),
   ]);
 }
 

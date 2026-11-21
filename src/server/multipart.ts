@@ -181,7 +181,7 @@ async function newPart(
 // strings.EqualFold against an ASCII string: only ASCII letters fold to
 // the letters of "quoted-printable"
 function asciiEqualFold(s: string, ascii: string): boolean {
-  return s.length === ascii.length && s.replace(/[A-Z]/g, (c) => c.toLowerCase()) === ascii;
+  return s.length === ascii.length && s.replaceAll(/[A-Z]/g, (c) => c.toLowerCase()) === ascii;
 }
 
 // partReader implements io.Reader by reading raw bytes directly from the

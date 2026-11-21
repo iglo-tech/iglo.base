@@ -325,7 +325,7 @@ function sortedJSON(text: string): string {
 // a view field copied from a collection gets a random "_clone_" id
 // (core/view.go parseQueryToFields)
 function withoutCloneIds(text: string): string {
-  return text.replace(/"_clone_[A-Za-z0-9]{4}"/g, `"_clone_<random>"`);
+  return text.replaceAll(/"_clone_[A-Za-z0-9]{4}"/g, `"_clone_<random>"`);
 }
 
 // a collection's JSON with created, updated and the clone ids replaced
@@ -515,8 +515,8 @@ describe("collection save sequence against upstream", () => {
         const got = modelOutcome(step, body);
         // DryRunView generates a fresh temporary name on each side.
         if (step.name === "reject malformed JSON in view sample") {
-          expected.body = expected.body.replace(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
-          got.body = got.body.replace(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
+          expected.body = expected.body.replaceAll(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
+          got.body = got.body.replaceAll(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
         }
 
         // upstream's outcome is the step's expectation

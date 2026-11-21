@@ -102,7 +102,7 @@ export class ExcerptModifier implements Modifier {
     const stripTags = (n: Node): void => {
       if (n.type === TextNode) {
         // collapse multiple spaces into one
-        let txt = n.data.replace(whitespaceRegex, " ");
+        let txt = n.data.replaceAll(whitespaceRegex, " ");
 
         if (hasPrevSpace) {
           txt = txt.replace(/^ +/, "");

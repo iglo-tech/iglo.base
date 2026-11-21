@@ -210,7 +210,7 @@ async function rawMessages(m: Mailpit, n: number): Promise<Array<string>> {
 const otpPasswordRegex = /<strong>(\d+)<\/strong>/;
 
 function unfold(raw: string): string {
-  return raw.replace(/\r\n/g, "\n").replace(/=\n/g, "");
+  return raw.replaceAll("\r\n", "\n").replaceAll("=\n", "");
 }
 
 function mailedPassword(raw: string): string {
@@ -224,8 +224,8 @@ function mailedPassword(raw: string): string {
 
 // the raw message without what differs per send, as mail.test.ts
 function normalizeMail(raw: string): string {
-  let text = raw.replace(/\r\n/g, "\n");
-  text = text.replace(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
+  let text = raw.replaceAll("\r\n", "\n");
+  text = text.replaceAll(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
   text = text.replace(/^Date: .*$/m, "Date: <date>");
   text = text.replace(/^(Message-I[Dd]): <[A-Za-z0-9]{15}@/m, "$1: <id@");
   const boundaries = [
@@ -234,10 +234,10 @@ function normalizeMail(raw: string): string {
   boundaries.forEach((b, i) => {
     text = text.replaceAll(b as string, `<boundary${i}>`);
   });
-  text = text.replace(/=\n/g, "");
+  text = text.replaceAll("=\n", "");
   return text
-    .replace(/<strong>\d+<\/strong>/g, "<strong>otp</strong>")
-    .replace(/\b\d{6,}\b/g, "otp");
+    .replaceAll(/<strong>\d+<\/strong>/g, "<strong>otp</strong>")
+    .replaceAll(/\b\d{6,}\b/g, "otp");
 }
 
 // -------------------------------------------------------------------

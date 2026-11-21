@@ -178,7 +178,7 @@ function storedSchema(dataDir: string): { collections: Array<unknown>; schema: A
         }
       }
       // a view's field ids get a random suffix when they are generated
-      const cloneIDs = String(fields).replace(/_clone_[A-Za-z0-9]{4}/g, "_clone_*");
+      const cloneIDs = String(fields).replaceAll(/_clone_[A-Za-z0-9]{4}/g, "_clone_*");
       return { ...rest, options: normalized, fields: JSON.parse(cloneIDs) };
     });
     const schema = db

@@ -73,7 +73,7 @@ const templateEscapes: { [c: string]: string } = {
 
 // html/template's escaper for a value in HTML text
 function templateEscape(s: string): string {
-  return s.replace(/[\0"&'+<>]/g, (c) => templateEscapes[c] as string);
+  return s.replaceAll(/[\0"&'+<>]/g, (c) => templateEscapes[c] as string);
 }
 
 // sendSystemAlertToAllSuperusers sends a system error alert to all superusers.

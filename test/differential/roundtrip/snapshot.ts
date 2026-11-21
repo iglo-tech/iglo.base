@@ -245,7 +245,7 @@ class Normalizer {
 
   // second pass: every occurrence of a learned name
   replaceNames(text: string): string {
-    return text.replace(word, (w) => this.names.get(w) ?? w);
+    return text.replaceAll(word, (w) => this.names.get(w) ?? w);
   }
 
   storagePath(path: string): string {
@@ -406,10 +406,10 @@ function readDataDb(path: string, normalizer: Normalizer, options: SnapshotOptio
               out = settingsCell(out, options.encryptionKey);
             }
             if (table === "_collections") {
-              out = out.replace(secret, (m, open: string, value: string, close: string) =>
+              out = out.replaceAll(secret, (m, open: string, value: string, close: string) =>
                 options.start.contains(value) ? m : `${open}<secret>${close}`,
               );
-              out = out.replace(cloneId, (m, id: string) =>
+              out = out.replaceAll(cloneId, (m, id: string) =>
                 options.start.contains(id) ? m : `"id":"_clone_<random>"`,
               );
             }

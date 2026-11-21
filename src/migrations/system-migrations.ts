@@ -184,7 +184,7 @@ export function checkExistingDataDir(dataDir: string): void {
 
   const companions = companionSuffixes.filter((suffix) => existsSync(dataPath + suffix));
   if (companions.length === 0) {
-    const uri = `file:${encodeURI(dataPath).replace(/[?#]/g, encodeURIComponent)}?immutable=1`;
+    const uri = `file:${encodeURI(dataPath).replaceAll(/[?#]/g, encodeURIComponent)}?immutable=1`;
     checkDataDBFile(uri, constants.SQLITE_OPEN_READONLY | constants.SQLITE_OPEN_URI);
     return;
   }

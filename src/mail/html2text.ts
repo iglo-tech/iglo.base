@@ -60,7 +60,7 @@ export function html2Text(htmlDocument: string): string {
     }
 
     if (n.type === TextNode) {
-      let txt = n.data.replace(whitespaceRegex, " ");
+      let txt = n.data.replaceAll(whitespaceRegex, " ");
 
       // the prev node has new line so it is safe to trim the indentation
       if (!canAddNewLine) {

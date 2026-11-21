@@ -29,7 +29,7 @@ const bytesPerMiB = 1024 * 1024;
 // the time as the backup name carries it: 20261113T172429.123Z (the ISO time
 // without its separators, so it still sorts by time)
 export function preSchemaBackupName(now: Date): string {
-  return `${preSchemaPrefix}${now.toISOString().replace(/[-:]/g, "")}.zip`;
+  return `${preSchemaPrefix}${now.toISOString().replaceAll(/[-:]/g, "")}.zip`;
 }
 
 // the names of the pre-schema backups in the backups storage, sorted by name

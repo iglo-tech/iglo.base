@@ -69,7 +69,7 @@ function normalizedCollections(dump: PbDataDump): Array<{ [key: string]: unknown
   return dump.collections.map((row) => {
     expect(row.created).toMatch(datePattern);
     expect(row.updated).toMatch(datePattern);
-    const options = String(row.options).replace(secretPattern, (_, secret: string) => {
+    const options = String(row.options).replaceAll(secretPattern, (_, secret: string) => {
       expect(secret).toMatch(/^[a-zA-Z0-9]{50}$/);
       return `"secret":"<secret>"`;
     });

@@ -132,7 +132,7 @@ function storedFiles(dataDir: string): Array<string> {
     for (const record of readdirSync(join(storage, collection))) {
       for (const name of readdirSync(join(storage, collection, record))) {
         out.push(
-          `${collection}/${record}/${name.replace(/_[a-z0-9]{10}/g, "").replace(/[0-9]{5,}/g, "")}`,
+          `${collection}/${record}/${name.replaceAll(/_[a-z0-9]{10}/g, "").replaceAll(/[0-9]{5,}/g, "")}`,
         );
       }
     }

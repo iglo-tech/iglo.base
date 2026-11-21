@@ -180,7 +180,7 @@ function decodeMessage(m: SinkMessage): string {
   // quoted-printable decoded text of the whole message
   return m.data
     .replaceAll("\r\n", "\n")
-    .replaceAll(/=\n/g, "")
+    .replaceAll("=\n", "")
     .replaceAll(/=([0-9A-F]{2})/g, (_s, hex: string) => String.fromCharCode(parseInt(hex, 16)));
 }
 

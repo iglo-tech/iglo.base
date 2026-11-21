@@ -25,7 +25,7 @@ type RegExpWithEscape = { escape?: (str: string) => string };
 if (!(RegExp as RegExpWithEscape).escape) {
   // https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript#answer-3561711
   (RegExp as RegExpWithEscape).escape = function (str: string): string {
-    return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, String.raw`\$&`);
+    return str.replaceAll(/[/\-\\^$*+?.()|[\]{}]/g, String.raw`\$&`);
   };
 }
 
@@ -352,7 +352,7 @@ export default class Client {
       }
     }
 
-    return raw.replace(new RegExp(pattern, "g"), (match) =>
+    return raw.replaceAll(new RegExp(pattern, "g"), (match) =>
       stringify(paramsWithPlaceholders[match]),
     );
   }

@@ -416,7 +416,7 @@ export function writeHeader(h: Header): string {
       // handler, so just drop invalid headers instead.
       continue;
     }
-    const v = trimString((h.get(key) as string).replace(/[\r\n]/g, " "));
+    const v = trimString((h.get(key) as string).replaceAll(/[\r\n]/g, " "));
     out += key + ": " + v + "\r\n";
   }
   return out;
@@ -477,7 +477,7 @@ function validHeaderFieldByte(c: number): boolean {
 // textproto.TrimString returns s without leading and trailing ASCII space
 // (space, tab, CR and LF).
 function trimString(s: string): string {
-  return s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+  return s.replaceAll(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
 }
 
 // -------------------------------------------------------------------

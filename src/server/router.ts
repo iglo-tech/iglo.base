@@ -320,7 +320,7 @@ const htmlReplacements: Record<string, string> = {
 };
 
 function htmlEscape(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => htmlReplacements[c] as string);
+  return s.replaceAll(/[&<>"']/g, (c) => htmlReplacements[c] as string);
 }
 
 function hexEscapeNonASCII(s: string): string {

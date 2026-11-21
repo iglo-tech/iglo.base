@@ -74,7 +74,10 @@ afterAll(async () => {
 // The value Go decodes from JSON.stringify(s): a lone surrogate (the string
 // form of an invalid UTF-8 byte) arrives as U+FFFD.
 function viaJSON(s: string): string {
-  return s.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "�");
+  return s.replaceAll(
+    /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g,
+    "�",
+  );
 }
 
 // mime.FormatMediaType(mime.ParseMediaType(s)) when it is s itself: no

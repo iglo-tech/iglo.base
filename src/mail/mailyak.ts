@@ -217,7 +217,7 @@ function randomBoundary(): string {
 
 // the trimRegex (`\r?\n`) of every setter
 function trim(s: string): string {
-  return s.replace(/\r?\n/g, "");
+  return s.replaceAll(/\r?\n/g, "");
 }
 
 function trimAll(addrs: Array<string>): Array<string> {

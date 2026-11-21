@@ -76,11 +76,11 @@ export function indexKey(statement: string): string {
   return JSON.stringify({
     unique: index.unique,
     columns: index.columns.map((column) => [
-      column.name.replace(/[`"[\]\s]/g, "").toLowerCase(),
+      column.name.replaceAll(/[`"[\]\s]/g, "").toLowerCase(),
       column.collate.toUpperCase(),
       column.sort.toUpperCase(),
     ]),
-    where: index.where.replace(/[`"\s]/g, ""),
+    where: index.where.replaceAll(/[`"\s]/g, ""),
   });
 }
 

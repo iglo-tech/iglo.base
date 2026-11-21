@@ -88,7 +88,7 @@ function count(o: Observation, name: string): number {
 // an event's data without its timestamps, which differ per server (the key
 // events are sorted by when the order is not defined)
 function dataKey(e: Observation): string {
-  return (e.data as string).replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
+  return (e.data as string).replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
 }
 
 function sortedEvents(list: Array<Observation>): Array<string> {

@@ -36,7 +36,7 @@ function loggedSelect(expr: Expression): string {
 
 // regexp.QuoteMeta, then TEST as \w+
 function expectPatternRegex(expectPattern: string): RegExp {
-  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, String.raw`\$&`);
+  const quoted = expectPattern.replaceAll(/[\\.+*?()|[\]{}^$]/g, String.raw`\$&`);
   return new RegExp("^" + quoted.replaceAll("TEST", String.raw`\w+`) + "$");
 }
 

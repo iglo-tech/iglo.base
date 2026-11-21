@@ -396,7 +396,7 @@ describe("Provider.Parse", () => {
         const result = await p.exec();
         expect([result.page, result.perPage]).toEqual([expectPage, expectPerPage]);
 
-        const sql = modelsQuery(testDB).replace(/\{:t\w+\}/g, "0");
+        const sql = modelsQuery(testDB).replaceAll(/\{:t\w+\}/g, "0");
         expect(sql).toBe(
           `SELECT * FROM \`test\` WHERE ${where} ORDER BY ${orderBy} LIMIT ${expectPerPage} OFFSET ${expectPerPage * (expectPage - 1)}`,
         );

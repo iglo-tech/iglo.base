@@ -473,7 +473,7 @@ const anyTimestamp = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g;
 // server are replaced by their place in the run.
 function comparable(res: ScenarioResponse, run: RunResult): ScenarioResponse {
   let body = new TextDecoder().decode(res.body);
-  body = body.replace(anyTimestamp, (ts) =>
+  body = body.replaceAll(anyTimestamp, (ts) =>
     ts >= run.startedAt && ts < "2100" ? "2000-01-01 00:00:00.000Z" : ts,
   );
   [...run.state.generatedIds].forEach((id, i) => {

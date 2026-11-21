@@ -66,7 +66,7 @@ export function generateBackupName(app: App, prefix: string): string {
     .now()
     .toISOString()
     .replace(/\.\d+Z$/, "")
-    .replace(/\D/g, "");
+    .replaceAll(/\D/g, "");
 
   return `${prefix}${appName}_${time}.zip`;
 }

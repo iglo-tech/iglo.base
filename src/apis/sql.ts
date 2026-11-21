@@ -234,7 +234,7 @@ function scanString(v: unknown, declType: string): string | null {
   }
   if (v instanceof Uint8Array) {
     // unpaired U+DC80..U+DCFF stand for invalid bytes (bytesToText)
-    return bytesToText(v).replace(/(?<![\ud800-\udbff])[\udc80-\udcff]/g, "�");
+    return bytesToText(v).replaceAll(/(?<![\ud800-\udbff])[\udc80-\udcff]/g, "�");
   }
   const text = String(v);
   if (declType === "DATE" || declType === "DATETIME" || declType === "TIMESTAMP") {
@@ -246,7 +246,7 @@ function scanString(v: unknown, declType: string): string | null {
 // strings.TrimSpace: Unicode White_Space at both ends
 function goTrimSpace(s: string): string {
   // \s without U+FEFF, plus U+0085
-  return s.replace(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
+  return s.replaceAll(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
 }
 
 // strings.ToUpper: each rune's simple upper case mapping (no expansions

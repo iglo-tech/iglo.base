@@ -569,18 +569,18 @@ describe("the migrate command", () => {
 // order depends on the clock
 function cleanHelp(result: unknown): unknown {
   const r = JSON.parse(
-    JSON.stringify(result).replace(/(pocketbase|iglo-base) migrate/g, "BIN migrate"),
+    JSON.stringify(result).replaceAll(/(pocketbase|iglo-base) migrate/g, "BIN migrate"),
   ) as { stdout: string; stderr: string };
   const created = /TIME_(new_file_name|collections_snapshot)/g;
   return {
     ...r,
-    stderr: r.stderr.replace(created, "CREATED").split("\n").toSorted().join("\n"),
+    stderr: r.stderr.replaceAll(created, "CREATED").split("\n").toSorted().join("\n"),
     stdout: r.stdout
-      .replace(created, "CREATED")
-      .replace(/^ {6}--hooks\w+(\[=true\|false\])? .*\n/gm, "")
-      .replace(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
-      .replace(/ +--/g, " --")
-      .replace(/ {2,}/g, " ")
+      .replaceAll(created, "CREATED")
+      .replaceAll(/^ {6}--hooks\w+(\[=true\|false\])? .*\n/gm, "")
+      .replaceAll(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
+      .replaceAll(/ +--/g, " --")
+      .replaceAll(/ {2,}/g, " ")
       .split("\n")
       .toSorted()
       .join("\n"),
@@ -677,7 +677,7 @@ const tokens = {
 };
 
 function normalizeFile(text: string): string {
-  return text.replace(generatedId, '"$1": "GENERATED"');
+  return text.replaceAll(generatedId, '"$1": "GENERATED"');
 }
 
 function normalizedFiles(s: Site): Array<[string, string]> {

@@ -180,7 +180,7 @@ export function normalize(o: Observation, unorderedData: boolean): string {
     2,
   );
   return text
-    .replace(clientIdPattern, (id) => {
+    .replaceAll(clientIdPattern, (id) => {
       let n = ids.get(id);
       if (n === undefined) {
         n = `<client${ids.size + 1}>`;
@@ -188,7 +188,7 @@ export function normalize(o: Observation, unorderedData: boolean): string {
       }
       return n;
     })
-    .replace(datePattern, "<date>");
+    .replaceAll(datePattern, "<date>");
 }
 
 function sortKeys(value: unknown): unknown {

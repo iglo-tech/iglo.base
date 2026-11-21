@@ -15,7 +15,7 @@ import { startUpstream } from "@test/support/upstream";
 function normalize(output: string, url: string): string {
   return output
     .replaceAll(url, "URL")
-    .replace(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
+    .replaceAll(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
     .replace(/pbinstall\/[\w-]+\.[\w-]+\.[\w-]+/, "pbinstall/TOKEN")
     .replace(/running: \S+ superuser upsert/, "running: BIN superuser upsert");
 }

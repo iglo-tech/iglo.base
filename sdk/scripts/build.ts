@@ -43,7 +43,7 @@ for await (const file of walk(typesDir)) {
     continue;
   }
   const text = await readFile(file, "utf8");
-  const rewritten = text.replace(
+  const rewritten = text.replaceAll(
     /(from\s*|import\s*\(\s*)(["'])@sdk\/([^"']+)\2/g,
     (_m, pre, q, spec) => {
       let rel = relative(dirname(file), join(srcTypes, spec)).split("\\").join("/");

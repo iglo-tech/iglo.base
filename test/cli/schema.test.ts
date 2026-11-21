@@ -82,7 +82,7 @@ const ruleNames: Record<string, string> = {
 // src/schema/implied.ts). Only the backticks are taken out: the text must be
 // upstream's otherwise, so a COLLATE or a sort order makes it an explicit index.
 function impliedIndex(table: string, statement: string): boolean {
-  const text = statement.replace(/`/g, "");
+  const text = statement.replaceAll("`", "");
   return (
     new RegExp(`^CREATE UNIQUE INDEX \\S+ ON ${table} \\(tokenKey\\)$`).test(text) ||
     new RegExp(`^CREATE UNIQUE INDEX \\S+ ON ${table} \\(email\\) WHERE email != ''$`).test(text)

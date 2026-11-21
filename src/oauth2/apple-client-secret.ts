@@ -46,7 +46,7 @@ function pemDER(text: string): Uint8Array<ArrayBuffer> {
     const blank = lines.indexOf("");
     start = blank === -1 ? lines.length : blank + 1;
   }
-  return StdEncoding.decodeString(lines.slice(start).join("").replace(/\s+/g, ""));
+  return StdEncoding.decodeString(lines.slice(start).join("").replaceAll(/\s+/g, ""));
 }
 
 // jwt.ParseECPrivateKeyFromPEM, and SigningMethodES256's curve check

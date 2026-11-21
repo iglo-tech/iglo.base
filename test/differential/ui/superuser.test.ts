@@ -57,9 +57,9 @@ const removedFlagLine = /^ {6}--(hooksDir|hooksPool|hooksWatch)(\[=true\|false\]
 
 function normalize(text: string, bin: string): string {
   return text
-    .replace(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
-    .replace(removedFlagLine, "")
-    .replace(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
+    .replaceAll(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
+    .replaceAll(removedFlagLine, "")
+    .replaceAll(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
     .replaceAll(`${bin} superuser`, "BIN superuser");
 }
 

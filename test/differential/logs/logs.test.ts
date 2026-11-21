@@ -349,7 +349,7 @@ describe("request logs", () => {
         const res = await fetch(`${server.url}/api/logs/stats?filter=data.status>=400`, {
           headers: { Authorization: superuserToken },
         });
-        stats.push((await res.text()).replace(/"date":"[^"]+"/g, '"date":""'));
+        stats.push((await res.text()).replaceAll(/"date":"[^"]+"/g, '"date":""'));
         await server.stop();
       }
       expect(stats[1]).toBe(stats[0]!);

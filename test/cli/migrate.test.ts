@@ -103,7 +103,7 @@ async function api(
 function matchesTemplate(actual: string, expected: string): boolean {
   const pattern = expected
     .trim()
-    .replace(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`)
+    .replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`)
     .replaceAll("@TEST_RANDOM", String.raw`\w+`);
   return new RegExp(`^${pattern}$`).test(actual.trim());
 }

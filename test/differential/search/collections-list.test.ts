@@ -355,7 +355,7 @@ beforeAll(async () => {
     res = await fetch(url, { headers: { authorization: token } });
     // the body is parsed with integers kept as text (page can be past 2^53)
     const text = await res.text();
-    const json = JSON.parse(text.replace(/:(-?\d+)([,}])/g, ':"$1"$2')) as {
+    const json = JSON.parse(text.replaceAll(/:(-?\d+)([,}])/g, ':"$1"$2')) as {
       items?: Array<{ id: string }>;
       page?: string;
       perPage?: string;

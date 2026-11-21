@@ -60,7 +60,7 @@ export class Pairing {
 }
 
 function escapeRegExp(s: string): string {
-  return s.replace(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
+  return s.replaceAll(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
 }
 
 // tools/filesystem/file.go normalizeName: a stored name is the cleaned base
@@ -181,7 +181,7 @@ export interface Side {
 }
 
 function resolveValue(v: string, side: Side): string {
-  return v.replace(
+  return v.replaceAll(
     /\$([a-z0-9]+)\.([a-z]+)(?:\.(\d+))?/g,
     (_m, ref: string, field: string, i?: string) => {
       const rec = side.records.get(ref);

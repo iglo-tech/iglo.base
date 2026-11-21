@@ -99,7 +99,7 @@ const rows = (m: Map<string, number>): Array<string> =>
     .slice(0, top)
     .map(([l, t]) =>
       values.md
-        ? `| ${l.replace(/\|/g, String.raw`\|`)} | ${ms(t)} | ${pct(t)}% |`
+        ? `| ${l.replaceAll("|", String.raw`\|`)} | ${ms(t)} | ${pct(t)}% |`
         : `${pct(t).padStart(5)}%  ${ms(t).padStart(6)} ms  ${l}`,
     );
 

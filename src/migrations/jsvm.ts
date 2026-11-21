@@ -239,7 +239,7 @@ function formatLog(args: Array<unknown>): string {
   const [first] = rest;
   if (typeof first === "string") {
     rest.shift();
-    text = first.replace(/%([sdj%])/g, (directive, verb: string) => {
+    text = first.replaceAll(/%([sdj%])/g, (directive, verb: string) => {
       if (verb === "%") {
         return "%";
       }

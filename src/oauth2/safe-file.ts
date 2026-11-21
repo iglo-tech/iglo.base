@@ -155,7 +155,7 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
   }
 
   // the brackets of an IPv6 literal aren't part of the address
-  const host = url.hostname.replace(/^\[|\]$/g, "");
+  const host = url.hostname.replaceAll(/^\[|\]$/g, "");
   const isAllowed = opts.isAllowedAddress ?? isAllowedAddress;
 
   let lastErr: unknown = new Error(`no addresses for ${host}`);

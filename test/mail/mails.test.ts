@@ -66,7 +66,7 @@ function lastHTML(to: string): string {
   expect(start).toBeGreaterThan(-1);
   const qp = data.slice(start).split("\r\n\r\n")[1]?.split("\r\n--")[0] ?? "";
   const bytes = Buffer.from(
-    qp.replace(/=([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16))),
+    qp.replaceAll(/=([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16))),
     "latin1",
   );
   return bytes.toString("utf8");

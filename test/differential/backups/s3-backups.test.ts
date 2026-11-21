@@ -93,12 +93,12 @@ interface Answer {
 function normalize(text: string): string {
   return (
     text
-      .replace(/127\.0\.0\.1:\d+/g, "S3")
-      .replace(/pb_settings_test_[A-Za-z0-9]+/g, "pb_settings_test_X")
-      .replace(/<RequestId>[^<]*<\/RequestId>/g, "<RequestId/>")
-      .replace(/<HostId>[^<]*<\/HostId>/g, "<HostId/>")
+      .replaceAll(/127\.0\.0\.1:\d+/g, "S3")
+      .replaceAll(/pb_settings_test_[A-Za-z0-9]+/g, "pb_settings_test_X")
+      .replaceAll(/<RequestId>[^<]*<\/RequestId>/g, "<RequestId/>")
+      .replaceAll(/<HostId>[^<]*<\/HostId>/g, "<HostId/>")
       // versitygw's signature error tells the date and the signature
-      .replace(
+      .replaceAll(
         /<(StringToSign|SignatureProvided|StringToSignBytes|CanonicalRequest|CanonicalRequestBytes)>[^<]*<\/\1>/g,
         "<$1/>",
       )
@@ -491,7 +491,7 @@ class ScriptedS3 {
       ),
       body: isPart
         ? `${bytes.length} bytes`
-        : new TextDecoder().decode(bytes).replace(/&#34;[0-9a-f]+&#34;/g, "ETAG"),
+        : new TextDecoder().decode(bytes).replaceAll(/&#34;[0-9a-f]+&#34;/g, "ETAG"),
     });
 
     const scripted = await this.script(req, url);

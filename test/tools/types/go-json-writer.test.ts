@@ -139,7 +139,7 @@ function randomJSONText(r: () => number, depth = 0): string {
           r() < 0.7
             ? names[Math.floor(r() * names.length)]!
             : // oxlint-disable-next-line no-control-regex
-              randomString(r).replace(/["\\\u0000-\u001f]/g, "");
+              randomString(r).replaceAll(/["\\\u0000-\u001f]/g, "");
         items.push(
           ws() + '"' + name + '"' + ws() + ":" + ws() + randomJSONText(r, depth + 1) + ws(),
         );

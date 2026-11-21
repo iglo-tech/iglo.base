@@ -199,7 +199,7 @@ function headerValue(headers: Headers, name: string): string {
 // netip.ParseAddr(strings.TrimSpace(ip)).StringExpanded(), or undefined
 // when it is not an IP address
 function parseAddrExpanded(ip: string): string | undefined {
-  const trimmed = ip.replace(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
+  const trimmed = ip.replaceAll(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
   try {
     ParseAddr(trimmed);
   } catch {

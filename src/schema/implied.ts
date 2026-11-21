@@ -54,7 +54,7 @@ export function isImpliedIndex(
     return false;
   }
   const rule = impliedIndexes.find((item) => item.column === column.name);
-  return rule !== undefined && index.where.replace(/[`"\s]/g, "") === rule.where;
+  return rule !== undefined && index.where.replaceAll(/[`"\s]/g, "") === rule.where;
 }
 
 // The statements of a collection that the description holds: all of them,

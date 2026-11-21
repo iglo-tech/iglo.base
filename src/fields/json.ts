@@ -290,5 +290,5 @@ const spaceChars =
 
 // strings.TrimSpace: leading and trailing unicode.IsSpace runes removed
 function trimSpace(s: string): string {
-  return s.replace(spaceChars, "");
+  return s.replaceAll(spaceChars, "");
 }

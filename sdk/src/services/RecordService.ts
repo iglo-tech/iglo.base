@@ -1160,8 +1160,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       }
 
       const pair = param.split("=");
-      parsedParams[decodeURIComponent(pair[0]!.replace(/\+/g, " "))] = decodeURIComponent(
-        (pair[1] || "").replace(/\+/g, " "),
+      parsedParams[decodeURIComponent(pair[0]!.replaceAll("+", " "))] = decodeURIComponent(
+        (pair[1] || "").replaceAll("+", " "),
       );
     }
 
@@ -1190,9 +1190,9 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       }
 
       query +=
-        encodeURIComponent(key.replace(/%20/g, "+")) +
+        encodeURIComponent(key.replaceAll("%20", "+")) +
         "=" +
-        encodeURIComponent(parsedParams[key]!.replace(/%20/g, "+"));
+        encodeURIComponent(parsedParams[key]!.replaceAll("%20", "+"));
     }
 
     return query != "" ? urlPath + "?" + query : urlPath;

@@ -21,7 +21,7 @@ const s3Config = {
 // a key is a URL path: "%", "#" and "?" are escaped so that url() reads them as
 // data, not as the start of a query or fragment
 function keyPath(goPath: string): string {
-  return goPath.replace(/[%#?]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  return goPath.replaceAll(/[%#?]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 }
 
 describe("S3.url", () => {

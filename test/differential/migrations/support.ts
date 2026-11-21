@@ -77,10 +77,10 @@ export function readMigrations(site: Site): Record<string, string> {
 // and in an error goja's script position.
 export function normalizeOutput(text: string, site: Site): string {
   return text
-    .replace(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "")
+    .replaceAll(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "")
     .replaceAll(site.root, "ROOT")
-    .replace(/\d{10}_/g, "TIME_")
-    .replace(/ at [^ ]*pb\.js:\d+:\d+(\(\d+\))?/g, "");
+    .replaceAll(/\d{10}_/g, "TIME_")
+    .replaceAll(/ at [^ ]*pb\.js:\d+:\d+(\(\d+\))?/g, "");
 }
 
 export const superuser = { identity: "admin@example.com", password: "1234567890" };

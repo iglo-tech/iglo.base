@@ -245,7 +245,7 @@ const errNoOverlap = new RangeError("invalid range: failed to overlap");
 
 // textproto.TrimString: trims ASCII spaces and tabs (and CR/LF).
 function trimString(s: string): string {
-  return s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+  return s.replaceAll(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
 }
 
 // strconv.ParseInt(s, 10, 64); undefined on error.

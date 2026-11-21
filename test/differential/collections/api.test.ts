@@ -123,8 +123,8 @@ interface StoredState {
 function mask(text: unknown): unknown {
   return typeof text === "string"
     ? text
-        .replace(/_clone_[A-Za-z0-9]{4}/g, "_clone_*")
-        .replace(/("secret":)"[A-Za-z0-9]{50}"/g, '$1"*"')
+        .replaceAll(/_clone_[A-Za-z0-9]{4}/g, "_clone_*")
+        .replaceAll(/("secret":)"[A-Za-z0-9]{50}"/g, '$1"*"')
     : text;
 }
 

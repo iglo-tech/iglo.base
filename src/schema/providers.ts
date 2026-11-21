@@ -86,10 +86,10 @@ export function storedProviders(config: OAuth2Config): Array<SchemaObject> {
 // the key, in upper case (USERS_GITHUB_CLIENT_SECRET).
 export function generatedEnvName(collection: string, provider: string, key: string): string {
   return [collection, provider, key]
-    .map((part) => part.replace(/([a-z0-9])([A-Z])/g, "$1_$2"))
+    .map((part) => part.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2"))
     .join("_")
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_");
+    .replaceAll(/[^A-Z0-9]+/g, "_");
 }
 
 // The value of a variable as its key expects it. Throws when the text does not

@@ -249,7 +249,7 @@ export function sentenize(str: string): string {
 
 // strings.TrimSpace (Unicode White_Space)
 function goTrimSpace(str: string): string {
-  return str.replace(/^[\s\u0085]+|[\s\u0085]+$/gu, "");
+  return str.replaceAll(/^[\s\u0085]+|[\s\u0085]+$/gu, "");
 }
 
 // NewApiError creates and returns new normalized ApiError instance.

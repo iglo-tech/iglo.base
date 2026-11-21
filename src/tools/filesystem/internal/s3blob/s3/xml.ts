@@ -32,7 +32,7 @@ const entities = new Map([
 ]);
 
 function decodeEntities(text: string, lineAt: () => number): string {
-  return text.replace(/&([^;&<]*)(;?)/g, (whole, name: string, semi: string) => {
+  return text.replaceAll(/&([^;&<]*)(;?)/g, (whole, name: string, semi: string) => {
     if (semi === "") {
       throw syntaxError(lineAt(), "invalid character entity & (no semicolon)");
     }
@@ -166,7 +166,7 @@ export function childText(element: XmlElement, name: string): string {
 
 // xml.EscapeText
 export function escapeText(s: string): string {
-  return s.replace(/[&<>'"\t\n\r]/g, (c) => {
+  return s.replaceAll(/[&<>'"\t\n\r]/g, (c) => {
     switch (c) {
       case "&":
         return "&amp;";
