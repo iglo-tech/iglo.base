@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.2 | worker | `task/L.2-type-safety-1` | 0 | Owner 2026-11-21 via D44: first 8 of the 12 rules L.1 left off (569 findings); L.3, L.4 follow |
+| L.2 | review | `task/L.2-type-safety-1` (#112) | 1 | Owner 2026-11-21 via D44: first 8 of the 12 rules L.1 left off (569 findings); L.3, L.4 follow |
 
 
 
