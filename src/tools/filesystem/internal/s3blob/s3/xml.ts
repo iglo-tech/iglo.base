@@ -16,7 +16,7 @@ import { bytesToText } from "@/tools/types/go-json";
 export interface XmlElement {
   name: string;
   text: string;
-  children: XmlElement[];
+  children: Array<XmlElement>;
 }
 
 function syntaxError(line: number, message: string): Error {
@@ -62,7 +62,7 @@ function localName(name: string): string {
 // read, as Unmarshal does, so what follows it may be anything (an HTML page).
 export function parseXml(raw: Uint8Array | string, expected?: string): XmlElement {
   const s = bytesToText(raw);
-  const stack: (XmlElement & { rawName: string })[] = [];
+  const stack: Array<XmlElement & { rawName: string }> = [];
   let pos = 0;
   const line = (): number => s.slice(0, pos).split("\n").length;
   const unexpectedEOF = (): Error =>

@@ -96,16 +96,16 @@ function model(): TestCollectionsApp {
 }
 
 // rows through upstream's POST /api/sql
-async function upstreamSQL(query: string): Promise<unknown[][]> {
+async function upstreamSQL(query: string): Promise<Array<Array<unknown>>> {
   const res = await request(server(), "POST", "/api/sql", JSON.stringify({ query }));
   if (res.status !== 200) {
     throw new Error(`POST /api/sql ${query}: ${res.status} ${res.text}`);
   }
-  return (JSON.parse(res.text) as { rows: unknown[][] }).rows;
+  return (JSON.parse(res.text) as { rows: Array<Array<unknown>> }).rows;
 }
 
 // the rows as upstream's /api/sql returns them (values as text)
-function modelSQL(query: string): unknown[][] {
+function modelSQL(query: string): Array<Array<unknown>> {
   return model()
     .databases.concurrentDB()
     .newQuery(query)
@@ -113,10 +113,10 @@ function modelSQL(query: string): unknown[][] {
     .map((row) => Object.values(row).map((v) => (v === null ? null : String(v))));
 }
 
-async function upstreamCollections(s: UpstreamServer): Promise<Record<string, unknown>[]> {
+async function upstreamCollections(s: UpstreamServer): Promise<Array<Record<string, unknown>>> {
   const res = await request(s, "GET", "/api/collections?perPage=500&sort=name");
   expect(res.status).toBe(200);
-  return (JSON.parse(res.text) as { items: Record<string, unknown>[] }).items;
+  return (JSON.parse(res.text) as { items: Array<Record<string, unknown>> }).items;
 }
 
 async function readCtx(): Promise<Ctx> {
@@ -131,7 +131,7 @@ async function readCtx(): Promise<Ctx> {
   };
   return {
     id: (name) => get(name).id as string,
-    fields: (name) => get(name).fields as Record<string, unknown>[],
+    fields: (name) => get(name).fields as Array<Record<string, unknown>>,
     collection: get,
     all: () => structuredClone(items),
   };
@@ -269,7 +269,7 @@ function modelImport(body: string): Outcome {
     deleteMissing?: boolean;
   };
   const data = (unmarshal(JSON.stringify(form.collections), sliceOf(mapOf(anyType))) ??
-    []) as Record<string, unknown>[];
+    []) as Array<Record<string, unknown>>;
 
   try {
     importCollections(model(), data, form.deleteMissing === true);
@@ -370,15 +370,15 @@ function replaceSecrets(options: unknown, marks: Map<string, string>, prefix = "
 
 interface Side {
   name: string;
-  sql(query: string): Promise<unknown[][]> | unknown[][];
+  sql(query: string): Promise<Array<Array<unknown>>> | Array<Array<unknown>>;
   // the secrets of the previous snapshot, by collection id and path
   secrets: Map<string, string>;
 }
 
 interface Snapshot {
-  schema: unknown[][];
-  collections: unknown[][];
-  records: Record<string, unknown[][]>;
+  schema: Array<Array<unknown>>;
+  collections: Array<Array<unknown>>;
+  records: Record<string, Array<Array<unknown>>>;
 }
 
 const collectionColumns = [
@@ -435,7 +435,7 @@ async function snapshot(side: Side): Promise<Snapshot> {
   side.secrets = secrets;
 
   const tables = new Set(schema.filter((r) => r[0] === "table").map((r) => String(r[1])));
-  const records: Record<string, unknown[][]> = {};
+  const records: Record<string, Array<Array<unknown>>> = {};
   for (const table of recordTables) {
     if (tables.has(table)) {
       records[table] = await side.sql(`SELECT * FROM [${table}] ORDER BY id`);
@@ -575,10 +575,12 @@ describe("collection save sequence against upstream", () => {
             JSON.stringify({ query: "PRAGMA integrity_check" }),
           );
           expect(integrity.status).toBe(200);
-          expect((JSON.parse(integrity.text) as { rows: unknown[][] }).rows).toEqual([["ok"]]);
+          expect((JSON.parse(integrity.text) as { rows: Array<Array<unknown>> }).rows).toEqual([
+            ["ok"],
+          ]);
 
           const have = await upstreamCollections(other);
-          const normalize = (items: Record<string, unknown>[]) =>
+          const normalize = (items: Array<Record<string, unknown>>) =>
             items.map((c) => normalizedCollectionJSON(JSON.stringify(c)));
           expect(normalize(have)).toEqual(normalize(want));
         } finally {

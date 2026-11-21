@@ -137,23 +137,28 @@ async function createCollection(body: object): Promise<string> {
 }
 
 // what the comparison phase needs from upstream
-const ids = new Map<string, string[]>(); // collection name -> record ids
+const ids = new Map<string, Array<string>>(); // collection name -> record ids
 const collectionIds = new Map<string, string>(); // collection name -> id
 const bodies = new Map<string, string>(); // "<collection>/<id>" -> guest GET body
-const listIds = new Map<string, string[]>(); // label -> ids of a list request
+const listIds = new Map<string, Array<string>>(); // label -> ids of a list request
 const totals = new Map<string, number>(); // label -> totalItems
 const authFound = new Map<string, boolean>(); // "<collection>/<email>" -> auth-with-password 200
-const viewFiles: { collection: string; field: string; name: string; id: string; status: number }[] =
-  [];
+const viewFiles: Array<{
+  collection: string;
+  field: string;
+  name: string;
+  id: string;
+  status: number;
+}> = [];
 
 // the filters whose list totals the counts are compared with, with the
 // equivalent dbx expressions
-const countCases: {
+const countCases: Array<{
   label: string;
   collection: string;
   filter: string;
-  exprs: () => (Expression | null)[];
-}[] = [
+  exprs: () => Array<Expression | null>;
+}> = [
   { label: "all posts", collection: posts, filter: "", exprs: () => [] },
   {
     label: "active posts",
@@ -199,13 +204,13 @@ const countCases: {
 async function listRecords(
   collection: string,
   filter: string,
-): Promise<{ ids: string[]; total: number }> {
+): Promise<{ ids: Array<string>; total: number }> {
   const q = new URLSearchParams({ perPage: "500" });
   if (filter !== "") {
     q.set("filter", filter);
   }
   const text = await ok(request("GET", `/api/collections/${collection}/records?${q}`));
-  const parsed = JSON.parse(text) as { totalItems: number; items: { id: string }[] };
+  const parsed = JSON.parse(text) as { totalItems: number; items: Array<{ id: string }> };
   return { ids: parsed.items.map((i) => i.id), total: parsed.totalItems };
 }
 
@@ -250,7 +255,7 @@ describe("upstream", () => {
     );
 
     for (const collection of [users, members]) {
-      const created: string[] = [];
+      const created: Array<string> = [];
       for (const [i, email] of emails.entries()) {
         const text = await ok(
           request(
@@ -270,7 +275,7 @@ describe("upstream", () => {
       ids.set(collection, created);
     }
 
-    const postIds: string[] = [];
+    const postIds: Array<string> = [];
     for (let i = 0; i < 24; i++) {
       const form = new FormData();
       form.append(
@@ -279,7 +284,7 @@ describe("upstream", () => {
           title: `post ${i}`,
           n: i % 9,
           active: i % 3 !== 0,
-          author: i % 4 === 0 ? "" : (ids.get(users) as string[])[i % emails.length],
+          author: i % 4 === 0 ? "" : (ids.get(users) as Array<string>)[i % emails.length],
         }),
       );
       if (i % 2 === 0) {
@@ -330,7 +335,7 @@ describe("upstream", () => {
       listIds.set(c.label, r.ids);
       totals.set(c.label, r.total);
     }
-    const some = [postIds[1], postIds[5], postIds[22]] as string[];
+    const some = [postIds[1], postIds[5], postIds[22]] as Array<string>;
     listIds.set(
       "some posts",
       (await listRecords(posts, some.map((id) => `id='${id}'`).join("||"))).ids,
@@ -361,11 +366,11 @@ describe("upstream", () => {
         const body = JSON.parse(bodies.get(`${collection}/${id}`) as string) as {
           [k: string]: unknown;
         };
-        const names: [string, string][] = [];
+        const names: Array<[string, string]> = [];
         if (body[single] !== "") {
           names.push([single, body[single] as string]);
         }
-        for (const name of body[multi] as string[]) {
+        for (const name of body[multi] as Array<string>) {
           names.push([multi, name]);
         }
         for (const [field, name] of names) {
@@ -390,7 +395,7 @@ function upstreamBody(collection: string, id: string): string {
   return b;
 }
 
-function expectBodies(collection: string, records: RecordModel[]): void {
+function expectBodies(collection: string, records: Array<RecordModel>): void {
   for (const r of records) {
     expect({ id: r.id, body: r.marshalJSON() }).toEqual({
       id: r.id,
@@ -441,11 +446,11 @@ describe("record queries on a copy of upstream's data.db", () => {
   });
 
   test("FindRecordsByIds", () => {
-    const postIds = ids.get(posts) as string[];
-    const some = [postIds[1], postIds[5], postIds[22]] as string[];
+    const postIds = ids.get(posts) as Array<string>;
+    const some = [postIds[1], postIds[5], postIds[22]] as Array<string>;
     const found = findRecordsByIds(app, posts, [...some, "missing", ""]);
     expect(found.map((r) => r.id).toSorted()).toEqual(
-      (listIds.get("some posts") as string[]).toSorted(),
+      (listIds.get("some posts") as Array<string>).toSorted(),
     );
     expectBodies(posts, found);
 
@@ -461,20 +466,20 @@ describe("record queries on a copy of upstream's data.db", () => {
       const found = findAllRecords(app, c.collection, ...c.exprs());
       expect({ label: c.label, ids: found.map((r) => r.id).toSorted() }).toEqual({
         label: c.label,
-        ids: (listIds.get(c.label) as string[]).toSorted(),
+        ids: (listIds.get(c.label) as Array<string>).toSorted(),
       });
       expectBodies(c.collection, found);
     }
   });
 
   test("FindFirstRecordByData", () => {
-    const postIds = ids.get(posts) as string[];
+    const postIds = ids.get(posts) as Array<string>;
     for (const [i, id] of postIds.entries()) {
       const found = findFirstRecordByData(app, posts, "title", `post ${i}`);
       expect(found.id).toBe(id);
       expectBodies(posts, [found]);
     }
-    const userIds = ids.get(users) as string[];
+    const userIds = ids.get(users) as Array<string>;
     for (const [i, email] of emails.entries()) {
       const found = findFirstRecordByData(app, users, "email", email);
       expect(found.id).toBe(userIds[i] as string);
@@ -497,7 +502,7 @@ describe("record queries on a copy of upstream's data.db", () => {
 
   test("FindAuthRecordByEmail", () => {
     for (const collection of [users, members]) {
-      const list = ids.get(collection) as string[];
+      const list = ids.get(collection) as Array<string>;
       for (const [i, email] of emails.entries()) {
         for (const e of [email, email.toLowerCase(), email.toUpperCase()]) {
           const expected = authFound.get(`${collection}/${e}`) as boolean;

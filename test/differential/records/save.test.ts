@@ -436,9 +436,9 @@ type Snapshot = Map<string, Map<string, Row>>; // table -> id -> row
 function snapshot(db: Database): Snapshot {
   const result: Snapshot = new Map();
   for (const table of tables) {
-    const columns = (db.query(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map(
-      (c) => c.name,
-    );
+    const columns = (
+      db.query(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>
+    ).map((c) => c.name);
     const select = columns.map((c) => `typeof("${c}"), "${c}"`).join(", ");
     const rows = new Map<string, Row>();
     for (const values of db.query(`SELECT ${select} FROM "${table}"`).values()) {
@@ -468,7 +468,7 @@ function normalize(
   current: Snapshot,
   previous: Snapshot | null,
   aliases: Map<string, string>,
-): { [table: string]: Row[] } {
+): { [table: string]: Array<Row> } {
   const alias = (v: unknown): unknown => {
     if (typeof v !== "string") {
       return v;
@@ -480,10 +480,10 @@ function normalize(
     return s;
   };
 
-  const out: { [table: string]: Row[] } = {};
+  const out: { [table: string]: Array<Row> } = {};
   for (const [table, rows] of current) {
     const prevRows = previous?.get(table);
-    const list: Row[] = [];
+    const list: Array<Row> = [];
     for (const [id, row] of rows) {
       const prevRow = prevRows?.get(id);
       const norm: Row = {};
@@ -547,7 +547,7 @@ describe("record save and delete", () => {
   let igloPrev: Snapshot | null = null;
   const upstreamAliases = new Map<string, string>();
   const igloAliases = new Map<string, string>();
-  const outcomes: { upstream: Outcome; iglo: Outcome }[] = [];
+  const outcomes: Array<{ upstream: Outcome; iglo: Outcome }> = [];
 
   beforeAll(() => {
     upstreamDB = new Database(join(upstreamDir, "data.db"), { safeIntegers: true });

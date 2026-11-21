@@ -18,11 +18,11 @@ import { testLogger } from "@test/support/logger";
 
 export interface TestApp extends App {
   // what the app logged
-  readonly logged: { message: string; cause: unknown }[];
+  readonly logged: Array<{ message: string; cause: unknown }>;
   // what the app logged at the Warn level
-  readonly warned: { message: string; cause: unknown }[];
+  readonly warned: Array<{ message: string; cause: unknown }>;
   // the warnings of the bootstrap
-  readonly warnings: string[];
+  readonly warnings: Array<string>;
   cleanup(): Promise<void>;
 }
 
@@ -54,9 +54,9 @@ export async function openFixtureApp(options: TestAppOptions = {}): Promise<Test
     copyDataDir(fixtureDir, dataDir);
   }
 
-  const logged: { message: string; cause: unknown }[] = [];
-  const warned: { message: string; cause: unknown }[] = [];
-  const warnings: string[] = [];
+  const logged: Array<{ message: string; cause: unknown }> = [];
+  const warned: Array<{ message: string; cause: unknown }> = [];
+  const warnings: Array<string> = [];
   const app = await bootstrap({
     dataDir,
     isDev: options.isDev ?? false,

@@ -17,8 +17,8 @@ export type JsonValue =
   | boolean
   | string
   | JsonNumber
-  | JsonValue[]
-  | { kind: "object"; members: [string, JsonValue][] };
+  | Array<JsonValue>
+  | { kind: "object"; members: Array<[string, JsonValue]> };
 
 export class JsonSyntaxError extends Error {
   constructor(message: string) {
@@ -191,9 +191,9 @@ class Parser {
     return Number.parseInt(hex, 16);
   }
 
-  array(): JsonValue[] {
+  array(): Array<JsonValue> {
     this.i++; // [
-    const out: JsonValue[] = [];
+    const out: Array<JsonValue> = [];
     this.skipWhitespace();
     if (this.s[this.i] === "]") {
       this.i++;
@@ -218,7 +218,7 @@ class Parser {
 
   object(): JsonValue {
     this.i++; // {
-    const members: [string, JsonValue][] = [];
+    const members: Array<[string, JsonValue]> = [];
     const seen = new Set<string>();
     this.skipWhitespace();
     if (this.s[this.i] === "}") {
@@ -298,7 +298,7 @@ export function decodeUTF8Bytes(bytes: Uint8Array): string {
     // fall through to the byte-by-byte decoder
   }
   let out = "";
-  let chunk: number[] = [];
+  let chunk: Array<number> = [];
   for (let i = 0; i < bytes.length;) {
     const [r, size] = decodeRune(bytes, i);
     chunk.push(r);
@@ -384,7 +384,7 @@ export function decodeValue(text: string): JsonValue {
 
 export function isJsonObject(
   value: JsonValue,
-): value is { kind: "object"; members: [string, JsonValue][] } {
+): value is { kind: "object"; members: Array<[string, JsonValue]> } {
   return (
     typeof value === "object" &&
     value !== null &&

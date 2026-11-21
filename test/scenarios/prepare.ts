@@ -39,7 +39,7 @@ export interface RateLimitRuleData {
 // Enables the settings' rate limiter with the given rules
 // (app.Settings().RateLimits in upstream's tests). The fixture's settings
 // row is plain JSON.
-export function setRateLimits(dataDir: string, rules: RateLimitRuleData[]): void {
+export function setRateLimits(dataDir: string, rules: Array<RateLimitRuleData>): void {
   const db = new Database(join(dataDir, "data.db"));
   try {
     const row = db.query("SELECT value FROM _params WHERE id = 'settings'").get() as {

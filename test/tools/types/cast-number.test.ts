@@ -9,7 +9,7 @@ import { describe, expect, test } from "bun:test";
 import { toBool, toBoolE, toFloat64, toFloat64E } from "@/tools/types/cast";
 
 describe("ToFloat64E", () => {
-  const cases: [unknown, number, boolean][] = [
+  const cases: Array<[unknown, number, boolean]> = [
     // positive numbers
     [8n, 8, false],
     [8, 8, false],
@@ -62,7 +62,7 @@ describe("ToFloat64E", () => {
 });
 
 describe("ToBoolE", () => {
-  const cases: [unknown, boolean, boolean][] = [
+  const cases: Array<[unknown, boolean, boolean]> = [
     [0, false, false],
     [0n, false, false],
     [0.0, false, false],

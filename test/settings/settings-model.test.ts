@@ -209,7 +209,7 @@ test("TestSettingsValidate", () => {
 function validationTable<T>(
   name: string,
   validate: (config: T) => Error | null,
-  scenarios: [string, T, string[]][],
+  scenarios: Array<[string, T, Array<string>]>,
 ): void {
   describe(name, () => {
     for (const [scenario, config, expectedErrors] of scenarios) {
@@ -445,7 +445,7 @@ describe("TestRateLimitsFindRateLimitRule", () => {
     ],
   });
 
-  const scenarios: [string[], string[], string][] = [
+  const scenarios: Array<[Array<string>, Array<string>, string]> = [
     [[], [], ""],
     [["missing"], [], ""],
     [["abc"], [], "abc"],
@@ -513,7 +513,7 @@ validationTable("TestRateLimitRuleValidate", validateRateLimitRule, [
 ]);
 
 describe("TestRateLimitRuleDurationTime", () => {
-  const scenarios: [RateLimitRule, number][] = [
+  const scenarios: Array<[RateLimitRule, number]> = [
     [rule(), 0],
     [rule({ Duration: 1234 }), 1234 * 1000],
   ];
@@ -526,7 +526,7 @@ describe("TestRateLimitRuleDurationTime", () => {
 });
 
 describe("TestRateLimitRuleString", () => {
-  const scenarios: [string, RateLimitRule, string][] = [
+  const scenarios: Array<[string, RateLimitRule, string]> = [
     ["empty", rule(), `{"label":"","audience":"","duration":0,"maxRequests":0}`],
     [
       "all fields",

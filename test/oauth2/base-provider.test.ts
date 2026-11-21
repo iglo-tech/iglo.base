@@ -33,7 +33,7 @@ interface Recorded {
   body: string;
 }
 
-const requests: Recorded[] = [];
+const requests: Array<Recorded> = [];
 let server: ReturnType<typeof Bun.serve>;
 let base = "";
 
@@ -90,7 +90,7 @@ describe("BaseProvider fields", () => {
   });
 
   // the zero value of each field, and a value it takes after being set
-  const cases: [string, string, unknown, unknown][] = [
+  const cases: Array<[string, string, unknown, unknown]> = [
     ["TestDisplayName", "displayName", "", "test"],
     ["TestOrder", "order", 0, 123],
     ["TestLogo", "logo", "", "test"],

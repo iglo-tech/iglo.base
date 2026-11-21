@@ -75,7 +75,7 @@ export type FilterData = string;
 // ParsedFilterCache holds previously parsed filter data expressions
 // (upstream's package-level parsedFilterData store).
 export class ParsedFilterCache {
-  readonly store = new Store<string, ExprGroup[]>();
+  readonly store = new Store<string, Array<ExprGroup>>();
 }
 
 export interface FilterBuildOptions {
@@ -96,7 +96,7 @@ export function filterBuildExpr(
   f: FilterData,
   fieldResolver: FieldResolver,
   options: FilterBuildOptions,
-  ...placeholderReplacements: Params[]
+  ...placeholderReplacements: Array<Params>
 ): Expression {
   return filterBuildExprWithLimit(
     f,
@@ -116,13 +116,13 @@ export function filterBuildExprWithLimit(
   fieldResolver: FieldResolver,
   maxExpressions: number,
   options: FilterBuildOptions,
-  ...placeholderReplacements: Params[]
+  ...placeholderReplacements: Array<Params>
 ): Expression {
   let raw = f;
 
   // replace the placeholder params in the raw string filter
   if (placeholderReplacements.length > 0) {
-    const replacements: [string, string][] = [];
+    const replacements: Array<[string, string]> = [];
 
     for (const p of placeholderReplacements) {
       for (const [key, value] of Object.entries(p)) {
@@ -139,7 +139,7 @@ export function filterBuildExprWithLimit(
   const cache = options.cache ?? null;
   const [cached, ok] = cache?.store.getOk(cacheKey) ?? [undefined, false];
   if (ok) {
-    return buildParsedFilterExpr(cached as ExprGroup[], fieldResolver, state);
+    return buildParsedFilterExpr(cached as Array<ExprGroup>, fieldResolver, state);
   }
 
   // depending on the users demand we may allow empty expressions
@@ -205,7 +205,7 @@ function timeString(d: Date): string {
 // strings.NewReplacer(oldnew...).Replace(s): at each position the first
 // pair (in argument order) whose old string matches is replaced, matches do
 // not overlap, and text that matches nothing is copied.
-function replaceAll(s: string, oldnew: readonly [string, string][]): string {
+function replaceAll(s: string, oldnew: ReadonlyArray<[string, string]>): string {
   let out = "";
   let i = 0;
   while (i < s.length) {
@@ -228,7 +228,7 @@ interface BuildState {
 }
 
 function buildParsedFilterExpr(
-  data: readonly ExprGroup[],
+  data: ReadonlyArray<ExprGroup>,
   fieldResolver: FieldResolver,
   state: BuildState,
 ): Expression {
@@ -423,7 +423,7 @@ function buildResolversExpr(left: ResolverResult, op: SignOp, right: ResolverRes
   return expr;
 }
 
-const normalizedIdentifiers: readonly [string, string][] = [
+const normalizedIdentifiers: ReadonlyArray<[string, string]> = [
   // if `null` field is missing, treat `null` identifier as NULL token
   ["null", "NULL"],
   // if `true` field is missing, treat `true` identifier as TRUE token
@@ -664,7 +664,7 @@ function isAnyMatchOp(op: SignOp): boolean {
 
 // mergeParams returns new dbx.Params where each provided params item
 // is merged in the order they are specified.
-export function mergeParams(...params: (Params | null | undefined)[]): Params {
+export function mergeParams(...params: Array<Params | null | undefined>): Params {
   const result: Params = {};
 
   for (const p of params) {
@@ -698,14 +698,14 @@ function wrapLikeParams(params: Params | null | undefined): Params {
 
 // []rune(str): the code points, with each invalid UTF-8 byte (a lone
 // surrogate) as U+FFFD
-function runes(str: string): string[] {
+function runes(str: string): Array<string> {
   return Array.from(str, (ch) => (ch.length === 1 && /[\ud800-\udfff]/.test(ch) ? "�" : ch));
 }
 
-function escapeUnescapedChars(str: string, ...escapeChars: string[]): string {
+function escapeUnescapedChars(str: string, ...escapeChars: Array<string>): string {
   const rs = runes(str);
   const total = rs.length;
-  const result: string[] = [];
+  const result: Array<string> = [];
 
   let match = false;
 
@@ -774,7 +774,7 @@ class OpExpr implements Expression {
 // concatExpr defines an expression that concatenates multiple
 // other expressions with a specified separator.
 class ConcatExpr implements Expression {
-  readonly parts: Expression[] = [];
+  readonly parts: Array<Expression> = [];
 
   constructor(private readonly separator: string) {}
 
@@ -786,7 +786,7 @@ class ConcatExpr implements Expression {
       return "";
     }
 
-    const stringParts: string[] = [];
+    const stringParts: Array<string> = [];
 
     for (const p of this.parts) {
       const sql = p.build(db, params);

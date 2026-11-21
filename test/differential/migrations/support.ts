@@ -11,7 +11,7 @@ import { defaultLayout, requireTool } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
 
 export type Kind = "upstream" | "iglo.base";
-export const kinds: readonly Kind[] = ["upstream", "iglo.base"];
+export const kinds: ReadonlyArray<Kind> = ["upstream", "iglo.base"];
 
 export interface Site {
   kind: Kind;
@@ -41,7 +41,7 @@ export interface RunResult {
 }
 
 // Runs the binary in the site's root, with stdin given or closed.
-export async function runIn(site: Site, args: string[], stdin?: string): Promise<RunResult> {
+export async function runIn(site: Site, args: Array<string>, stdin?: string): Promise<RunResult> {
   const proc = Bun.spawn([await binaryOf(site.kind), ...args, "--dir", site.dataDir], {
     cwd: site.root,
     stdin: stdin === undefined ? "ignore" : new TextEncoder().encode(stdin),
@@ -92,7 +92,7 @@ export interface Server {
 }
 
 // Starts the site's server with automigrate on, with a superuser.
-export async function serveSite(site: Site, args: string[] = []): Promise<Server> {
+export async function serveSite(site: Site, args: Array<string> = []): Promise<Server> {
   const upsert = await runIn(site, ["superuser", "upsert", superuser.identity, superuser.password]);
   if (upsert.exitCode !== 0) {
     throw new Error(`superuser upsert failed: ${upsert.stderr}`);

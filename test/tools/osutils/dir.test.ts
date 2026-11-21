@@ -8,7 +8,7 @@ import { moveDirContent } from "@/tools/osutils/dir";
 
 import { tempDir } from "@test/support/executable";
 
-let dirs: string[] = [];
+let dirs: Array<string> = [];
 
 afterEach(() => {
   for (const dir of dirs) {

@@ -31,7 +31,7 @@ export function rawRequest(
 
   return new Promise((resolve, reject) => {
     const socket = connect({ host: hostname, port: Number(port) });
-    const chunks: Buffer[] = [];
+    const chunks: Array<Buffer> = [];
     socket.setTimeout(10_000, () => socket.destroy(new Error("raw request timed out")));
     socket.on("connect", () => socket.write(head));
     socket.on("data", (chunk: Buffer) => chunks.push(chunk));

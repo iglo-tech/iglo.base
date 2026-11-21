@@ -63,7 +63,7 @@ interface Model1 {
   E: String123 | null;
   F: String123 | null;
   G: string;
-  H: string[];
+  H: Array<string>;
   I: Record<string, string>;
 }
 
@@ -130,7 +130,12 @@ describe("struct", () => {
   const m4 = new Model2(new Model3("abc"), new Model3("abc"), "");
   const m5 = new Model2(new Model3("internal"));
 
-  const rowsValidate: { tag: string; model: unknown; rules: FieldRules[]; err: string }[] = [
+  const rowsValidate: Array<{
+    tag: string;
+    model: unknown;
+    rules: Array<FieldRules>;
+    err: string;
+  }> = [
     // empty rules
     { tag: "t1.1", model: m1, rules: [], err: "" },
     { tag: "t1.2", model: m1, rules: [Field("A", m1.A), Field("B", m1.B)], err: "" },

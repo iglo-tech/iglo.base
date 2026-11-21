@@ -42,16 +42,16 @@ export class TxDoneError extends Error {
 
 export class TxExecutor implements Executor {
   done = false;
-  private readonly stmts: Stmt[] = [];
+  private readonly stmts: Array<Stmt> = [];
 
   constructor(readonly conn: Database) {}
 
-  exec(sql: string, args: SQLQueryBindings[]): ExecResult {
+  exec(sql: string, args: Array<SQLQueryBindings>): ExecResult {
     this.checkDone();
     return execStatements(this.conn, splitStatements(sql), args, null);
   }
 
-  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows {
+  query(sql: string, args: Array<SQLQueryBindings>, own: boolean): Rows {
     this.checkDone();
     return queryStatements(this.conn, splitStatements(sql), args, null, own);
   }

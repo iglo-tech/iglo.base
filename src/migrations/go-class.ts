@@ -59,7 +59,7 @@ export type GoType =
   | { slice: GoType; json?: JSONElemType }
   | { struct: GoClass; make(): object };
 
-export type CustomMethod = (target: never, args: unknown[], m: Membrane) => unknown;
+export type CustomMethod = (target: never, args: Array<unknown>, m: Membrane) => unknown;
 
 export type Method = string | CustomMethod;
 
@@ -74,7 +74,7 @@ export interface GoClass {
 }
 
 interface Signature {
-  params: string[];
+  params: Array<string>;
   variadic: string | undefined;
   result: string | undefined;
 }
@@ -211,7 +211,11 @@ export function throwResult(m: Membrane, result: unknown): void {
   throw new Error(`could not convert ${String(result)} to error`);
 }
 
-export function goArgs(m: Membrane, signature: string, args: readonly unknown[]): unknown[] {
+export function goArgs(
+  m: Membrane,
+  signature: string,
+  args: ReadonlyArray<unknown>,
+): Array<unknown> {
   const { params, variadic } = parseSignature(signature);
   const converted = params.map((code, i) => convertArg(m, code, args[i], i, i >= args.length));
   if (variadic !== undefined) {
@@ -238,13 +242,13 @@ export function goMethod(
   target: object,
   key: string,
   method: Method,
-): (...args: unknown[]) => unknown {
+): (...args: Array<unknown>) => unknown {
   if (typeof method === "function") {
     return (...args) => m.guard(() => method(target as never, args, m));
   }
   return (...args) =>
     m.guard(() => {
-      const fn = (target as Record<string, unknown>)[key] as (...a: unknown[]) => unknown;
+      const fn = (target as Record<string, unknown>)[key] as (...a: Array<unknown>) => unknown;
       return goResult(m, method, fn.apply(target, goArgs(m, method, args)));
     });
 }
@@ -492,7 +496,7 @@ export function toSql(m: Membrane, v: unknown): unknown {
 function hashValue(m: Membrane, v: unknown): unknown {
   const sql = toSql(m, v);
   if (sql instanceof BoundValue && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
-    return Array.from(v as unknown[], (item) => toSql(m, item));
+    return Array.from(v as Array<unknown>, (item) => toSql(m, item));
   }
   return sql;
 }
@@ -601,7 +605,7 @@ function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknow
       }
       const elem = type.slice;
       return m.sliceView({
-        read: () => (fields[name] ?? []) as unknown[],
+        read: () => (fields[name] ?? []) as Array<unknown>,
         write: (next) => {
           fields[name] = next;
         },
@@ -903,9 +907,9 @@ const fieldMethods: Readonly<Record<string, Method>> = {
 
 // the fields' `(value, error)` results and `error` results
 function tuple(key: "prepareValue" | "driverValue", params: number): CustomMethod {
-  return (target: Record<string, (...a: unknown[]) => [unknown, Error | null]>, args, m) => {
+  return (target: Record<string, (...a: Array<unknown>) => [unknown, Error | null]>, args, m) => {
     const hostArgs = Array.from({ length: params }, (_v, i) => m.toHost(args[i]));
-    const fn = target[key] as (...a: unknown[]) => [unknown, Error | null];
+    const fn = target[key] as (...a: Array<unknown>) => [unknown, Error | null];
     const [value, err] = fn.apply(target, hostArgs);
     if (err !== null) {
       throw err;

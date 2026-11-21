@@ -132,7 +132,7 @@ describe("RecordService CRUD", () => {
         .update(rec.id, { "files+": [new File(["x"], "extra.txt", { type: "text/plain" })] }),
     );
     await env.step("update (remove file)", () =>
-      su.collection("demo3").update(rec.id, { "files-": [(rec["files"] as string[])[0]] }),
+      su.collection("demo3").update(rec.id, { "files-": [(rec["files"] as Array<string>)[0]] }),
     );
   });
 

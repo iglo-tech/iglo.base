@@ -21,7 +21,7 @@ import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
 const email = "test@example.com";
 const userId = "4q1xlclmfloku33";
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -58,7 +58,7 @@ function post(url: string, path: string, body: unknown, token?: string): Promise
   });
 }
 
-function messagesSince(since: number, link: string): SinkMessage[] {
+function messagesSince(since: number, link: string): Array<SinkMessage> {
   return sharedSmtpSink().messages.filter((m) => m.received >= since && m.data.includes(link));
 }
 
@@ -92,7 +92,7 @@ const checked = (url: string, dataDir: string): AfterContext => ({
 });
 
 describe("existing auth record (after already sent)", () => {
-  const cases: [string, string, string][] = [
+  const cases: Array<[string, string, string]> = [
     [
       "apis/record_auth_verification_request_test.go",
       "request-verification",

@@ -46,7 +46,7 @@ export class Resolver {
 
 // Chain is the ordered handler list of a single route (hook.Hook).
 export class Chain<T extends Resolver> {
-  #handlers: { handler: Handler<T>; key: string }[] = [];
+  #handlers: Array<{ handler: Handler<T>; key: string }> = [];
   #anonymous = 0;
 
   // Bind registers the handler. A handler with the same non-empty id as an
@@ -72,7 +72,7 @@ export class Chain<T extends Resolver> {
   }
 
   // Unbind removes the handlers with the given ids.
-  unbind(...ids: string[]): void {
+  unbind(...ids: Array<string>): void {
     for (const id of ids) {
       const i = this.#handlers.findLastIndex((h) => h.key === id);
       if (i !== -1) {
@@ -87,7 +87,7 @@ export class Chain<T extends Resolver> {
 
   // Trigger executes the handlers one by one with the event, followed by the
   // one-off handlers. Each handler must call event.next() to continue.
-  trigger(event: T, ...oneOffHandlerFuncs: HandlerFunc<T>[]): Promise<HandlerResult> {
+  trigger(event: T, ...oneOffHandlerFuncs: Array<HandlerFunc<T>>): Promise<HandlerResult> {
     const funcs = [...this.#handlers.map((h) => h.handler.func), ...oneOffHandlerFuncs];
 
     event.setNextFunc(undefined); // reset in case the event is being reused

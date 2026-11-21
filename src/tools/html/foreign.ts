@@ -5,7 +5,10 @@ import { ElementNode, type Node } from "@/tools/html/node";
 import type { Attribute } from "@/tools/html/token";
 
 // adjustAttributeNames renames attributes in aa in place, using nameMap.
-export function adjustAttributeNames(aa: Attribute[], nameMap: ReadonlyMap<string, string>): void {
+export function adjustAttributeNames(
+  aa: Array<Attribute>,
+  nameMap: ReadonlyMap<string, string>,
+): void {
   for (const a of aa) {
     const newName = nameMap.get(a.key);
     if (newName !== undefined) {
@@ -16,7 +19,7 @@ export function adjustAttributeNames(aa: Attribute[], nameMap: ReadonlyMap<strin
 
 // adjustForeignAttributes adjusts the attributes of foreign elements (SVG,
 // MathML) that have a namespace prefix, such as xlink:href, in place.
-export function adjustForeignAttributes(aa: Attribute[]): void {
+export function adjustForeignAttributes(aa: Array<Attribute>): void {
   for (const a of aa) {
     if (a.key === "" || a.key[0] !== "x") {
       continue;

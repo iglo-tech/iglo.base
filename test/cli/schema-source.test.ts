@@ -35,7 +35,7 @@ function ensureUiPack(): Promise<void> {
 }
 
 // the source tree's `bun src/main.ts <args>`, run to completion
-async function fromSource(args: string[]): Promise<{ exitCode: number; output: string }> {
+async function fromSource(args: Array<string>): Promise<{ exitCode: number; output: string }> {
   await ensureUiPack();
   const proc = Bun.spawn([process.execPath, entry, ...args], {
     cwd: mkdtempSync(join(tmpdir(), "iglo-base-source-")),
@@ -161,7 +161,7 @@ describe("TypeScript migrations from source (S.6)", () => {
       }
       const list = await fetch(`${url}/api/collections/posts/records`);
       expect(list.status).toBe(200);
-      const body = (await list.json()) as { items: { title: string }[] };
+      const body = (await list.json()) as { items: Array<{ title: string }> };
       expect(body.items.map((item) => item.title)).toEqual(["from source"]);
     } finally {
       proc.kill();

@@ -106,7 +106,7 @@ test("NewApiError with validation data", () => {
 });
 
 describe("NewNotFoundError", () => {
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     ["", null, `{"data":{},"message":"The requested resource wasn't found.","status":404}`],
     ["demo", "rawData_test", `{"data":{},"message":"Demo.","status":404}`],
     [
@@ -123,7 +123,7 @@ describe("NewNotFoundError", () => {
 });
 
 describe("NewBadRequestError", () => {
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     [
       "",
       null,
@@ -144,7 +144,7 @@ describe("NewBadRequestError", () => {
 });
 
 describe("NewForbiddenError", () => {
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     ["", null, `{"data":{},"message":"You are not allowed to perform this request.","status":403}`],
     ["demo", "rawData_test", `{"data":{},"message":"Demo.","status":403}`],
     [
@@ -161,7 +161,7 @@ describe("NewForbiddenError", () => {
 });
 
 describe("NewUnauthorizedError", () => {
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     ["", null, `{"data":{},"message":"Missing or invalid authentication.","status":401}`],
     ["demo", "rawData_test", `{"data":{},"message":"Demo.","status":401}`],
     [
@@ -178,7 +178,7 @@ describe("NewUnauthorizedError", () => {
 });
 
 describe("NewInternalServerError", () => {
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     [
       "",
       null,
@@ -199,7 +199,7 @@ describe("NewInternalServerError", () => {
 });
 
 describe("NewTooManyRequestsError", () => {
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     ["", null, `{"data":{},"message":"Too Many Requests.","status":429}`],
     ["demo", "rawData_test", `{"data":{},"message":"Demo.","status":429}`],
     [
@@ -232,7 +232,7 @@ test("ApiError is", () => {
 
 describe("ToApiError", () => {
   const notFound = `{"data":{},"message":"The requested resource wasn't found.","status":404}`;
-  const scenarios: [string, unknown, string][] = [
+  const scenarios: Array<[string, unknown, string]> = [
     [
       "regular error",
       new Error("test"),
@@ -262,7 +262,7 @@ describe("ToApiError", () => {
 
 // Upstream: tools/inflector/inflector_test.go (TestSentenize)
 describe("sentenize", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["   ", ""],
     [".", "."],

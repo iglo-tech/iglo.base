@@ -162,7 +162,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 export async function clearBootstrap(app: App): Promise<void> {
   // every step runs even if an earlier one failed; the errors are
   // rethrown together
-  const errs: unknown[] = [];
+  const errs: Array<unknown> = [];
   const step = async (fn: () => void | Promise<void>): Promise<void> => {
     try {
       await fn();

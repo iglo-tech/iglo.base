@@ -26,7 +26,7 @@ import { superuserToken } from "@test/scenarios/cron";
 import { startVersitygw, type Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
-const roots: string[] = [];
+const roots: Array<string> = [];
 let gw: Versitygw;
 
 beforeAll(async () => {
@@ -111,7 +111,7 @@ function startUpload(url: string, bytes: number): Upload {
 type Storage = "local" | "s3";
 type Point = "partial-body" | "stored" | "answered";
 
-const points: Point[] = ["partial-body", "stored", "answered"];
+const points: Array<Point> = ["partial-body", "stored", "answered"];
 
 // Runs the upload against a server of kind and kills it at the point.
 async function crashedUpload(kind: Kind, storage: Storage, point: Point): Promise<string> {
@@ -124,7 +124,7 @@ async function crashedUpload(kind: Kind, storage: Storage, point: Point): Promis
   const collection = (await (await api(server, "GET", `/api/collections/${demo1}`)).json()) as {
     id: string;
   };
-  const objects = (): string[] =>
+  const objects = (): Array<string> =>
     storage === "s3"
       ? walk(join(gw.posixRoot, gw.bucket)).filter((p) => /big/.test(p))
       : walk(join(dataDir, "storage", collection.id)).filter((p) => /big/.test(p));

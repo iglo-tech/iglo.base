@@ -36,7 +36,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -82,7 +82,7 @@ function scrub(transcript: unknown): string {
 }
 
 // what the mock saw of one provider, without its per-server ids
-const seen = (requests: MockRequest[]) =>
+const seen = (requests: Array<MockRequest>) =>
   requests.map((r) => ({
     method: r.method,
     path: r.path,
@@ -215,7 +215,7 @@ async function authMethods(kind: Kind): Promise<unknown> {
     const res = await fetch(`${server.url}/api/collections/users/auth-methods`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      oauth2: { providers: { [key: string]: unknown }[] };
+      oauth2: { providers: Array<{ [key: string]: unknown }> };
     };
     // state and the PKCE values are generated for each request
     return body.oauth2.providers.map((p) => ({

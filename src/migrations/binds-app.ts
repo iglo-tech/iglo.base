@@ -82,7 +82,7 @@ export type RunTxFunc = (fn: TxFunc, txApp: App) => void;
 
 export class AppBinding {
   closed = false;
-  readonly methods: Record<string, (...args: never[]) => unknown>;
+  readonly methods: Record<string, (...args: Array<never>) => unknown>;
 
   constructor(
     readonly app: App,
@@ -123,7 +123,10 @@ function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
     );
   }
   return (relCollection, relIds) => {
-    const result = (fn as (...args: unknown[]) => unknown)(m.toVm(relCollection), m.toVm(relIds));
+    const result = (fn as (...args: Array<unknown>) => unknown)(
+      m.toVm(relCollection),
+      m.toVm(relIds),
+    );
     if (result === undefined || result === null) {
       return [];
     }
@@ -131,7 +134,7 @@ function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
     if (!Array.isArray(records)) {
       throw new Error(`could not convert ${String(result)} to []*core.Record`);
     }
-    return records as RecordModel[];
+    return records as Array<RecordModel>;
   };
 }
 
@@ -306,20 +309,20 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
     // collections
 
     collectionQuery: () => collectionQuery(app),
-    findAllCollections: (...types: string[]) => findAllCollections(app, ...types),
+    findAllCollections: (...types: Array<string>) => findAllCollections(app, ...types),
     findCollectionByNameOrId: (nameOrId: string) => findCollectionByNameOrId(app, nameOrId),
     findCachedCollectionByNameOrId: (nameOrId: string) =>
       findCachedCollectionByNameOrId(app, nameOrId),
-    findCollectionReferences: (c: Collection, ...excludeIds: string[]) =>
+    findCollectionReferences: (c: Collection, ...excludeIds: Array<string>) =>
       findCollectionReferences(app, c, ...excludeIds),
-    findCachedCollectionReferences: (c: Collection, ...excludeIds: string[]) =>
+    findCachedCollectionReferences: (c: Collection, ...excludeIds: Array<string>) =>
       findCachedCollectionReferences(app, c, ...excludeIds),
-    isCollectionNameUnique: (name: string, ...excludeIds: string[]) =>
+    isCollectionNameUnique: (name: string, ...excludeIds: Array<string>) =>
       isCollectionNameUnique(app, name, ...excludeIds),
     truncateCollection: (c: Collection) => truncateCollection(app, c),
     reloadCachedCollections: () => reloadCachedCollections(app),
     importCollections: (
-      data: readonly (Record<string, unknown> | null)[],
+      data: ReadonlyArray<Record<string, unknown> | null>,
       deleteMissing: boolean,
     ) => importCollections(app, data, deleteMissing === true),
     importCollectionsByMarshaledJSON: (raw: string | Uint8Array, deleteMissing: boolean) =>
@@ -350,15 +353,17 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
     findRecordById: (
       c: Collection | string,
       id: string,
-      ...filters: Parameters<typeof findRecordById>[3][]
+      ...filters: Array<Parameters<typeof findRecordById>[3]>
     ) => findRecordById(app, c, id, ...filters),
     findRecordsByIds: (
       c: Collection | string,
-      ids: readonly string[],
-      ...filters: Parameters<typeof findRecordsByIds>[3][]
+      ids: ReadonlyArray<string>,
+      ...filters: Array<Parameters<typeof findRecordsByIds>[3]>
     ) => findRecordsByIds(app, c, ids, ...filters),
-    findAllRecords: (c: Collection | string, ...exprs: Parameters<typeof findAllRecords>[2][]) =>
-      findAllRecords(app, c, ...exprs),
+    findAllRecords: (
+      c: Collection | string,
+      ...exprs: Array<Parameters<typeof findAllRecords>[2]>
+    ) => findAllRecords(app, c, ...exprs),
     findFirstRecordByData: (c: Collection | string, key: string, value: unknown) =>
       findFirstRecordByData(app, c, key, value),
     findRecordsByFilter: (
@@ -367,15 +372,15 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       sort?: string,
       limit?: number,
       offset?: number,
-      ...params: Params[]
+      ...params: Array<Params>
     ) => findRecordsByFilter(app, c, filter, sort ?? "", limit ?? 0, offset ?? 0, ...params),
-    findFirstRecordByFilter: (c: Collection | string, filter: string, ...params: Params[]) =>
+    findFirstRecordByFilter: (c: Collection | string, filter: string, ...params: Array<Params>) =>
       findFirstRecordByFilter(app, c, filter, ...params),
-    countRecords: (c: Collection | string, ...exprs: Parameters<typeof countRecords>[2][]) =>
+    countRecords: (c: Collection | string, ...exprs: Array<Parameters<typeof countRecords>[2]>) =>
       countRecords(app, c, ...exprs),
     findAuthRecordByEmail: (c: Collection | string, email: string) =>
       findAuthRecordByEmail(app, c, email),
-    findAuthRecordByToken: (token: string, ...validTypes: string[]) =>
+    findAuthRecordByToken: (token: string, ...validTypes: Array<string>) =>
       findAuthRecordByToken(app, token, ...validTypes),
     canAccessRecord: (
       record: RecordModel,
@@ -383,13 +388,13 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       accessRule: string | null,
     ) => canAccessRecord(app, record, requestInfo, accessRule),
     expandRecords: (
-      records: RecordModel[],
-      expands: readonly string[],
+      records: Array<RecordModel>,
+      expands: ReadonlyArray<string>,
       fetch: ExpandFetchSyncFunc | null,
     ) => expandRecordsSync(app, records, expands, fetch),
     expandRecord: (
       record: RecordModel,
-      expands: readonly string[],
+      expands: ReadonlyArray<string>,
       fetch: ExpandFetchSyncFunc | null,
     ) => expandRecordsSync(app, [record], expands, fetch),
   };

@@ -1,6 +1,6 @@
 // Upstream: Go go1.27.2 src/regexp/all_test.go tables, converted case for case.
 
-export const goodRe: string[] = [
+export const goodRe: Array<string> = [
   "",
   ".",
   "^.$",
@@ -20,7 +20,7 @@ export const goodRe: string[] = [
   "\\!\\\\",
 ];
 
-export const badRe: { re: string; err: string }[] = [
+export const badRe: Array<{ re: string; err: string }> = [
   { re: "*", err: "missing argument to repetition operator: `*`" },
   { re: "+", err: "missing argument to repetition operator: `+`" },
   { re: "?", err: "missing argument to repetition operator: `?`" },
@@ -42,7 +42,7 @@ export interface ReplaceTest {
   output: string;
 }
 
-export const replaceTests: ReplaceTest[] = [
+export const replaceTests: Array<ReplaceTest> = [
   // Test empty input and/or replacement, with pattern that matches the empty string.
   { pattern: "", replacement: "", input: "", output: "" },
   { pattern: "", replacement: "x", input: "", output: "x" },
@@ -174,7 +174,7 @@ export const replaceTests: ReplaceTest[] = [
   },
 ];
 
-export const replaceLiteralTests: ReplaceTest[] = [
+export const replaceLiteralTests: Array<ReplaceTest> = [
   // Substitutions
   { pattern: "a+", replacement: "($0)", input: "banana", output: "b($0)n($0)n($0)" },
   { pattern: "a+", replacement: "(${0})", input: "banana", output: "b(${0})n(${0})n(${0})" },
@@ -230,7 +230,7 @@ export interface MetaTest {
   isLiteral: boolean;
 }
 
-export const metaTests: MetaTest[] = [
+export const metaTests: Array<MetaTest> = [
   { pattern: "", output: "", literal: "", isLiteral: true },
   { pattern: "foo", output: "foo", literal: "foo", isLiteral: true },
   { pattern: "日本語+", output: "日本語\\+", literal: "日本語", isLiteral: false },
@@ -248,7 +248,7 @@ export const metaTests: MetaTest[] = [
 
 // See golang.org/issue/11175.
 // output is unused.
-export const literalPrefixTests: MetaTest[] = [
+export const literalPrefixTests: Array<MetaTest> = [
   { pattern: "^0^0$", output: "", literal: "0", isLiteral: false },
   { pattern: "^0^", output: "", literal: "", isLiteral: false },
   { pattern: "^0$", output: "", literal: "0", isLiteral: true },
@@ -265,11 +265,11 @@ export const literalPrefixTests: MetaTest[] = [
 export interface SubexpCase {
   input: string;
   num: number;
-  names: string[] | null;
-  indices: { name: string; index: number }[];
+  names: Array<string> | null;
+  indices: Array<{ name: string; index: number }>;
 }
 
-export const subexpCases: SubexpCase[] = [
+export const subexpCases: Array<SubexpCase> = [
   {
     input: "",
     num: 0,
@@ -373,7 +373,7 @@ export const subexpCases: SubexpCase[] = [
   },
 ];
 
-export const splitTests: { s: string; r: string; n: number; out: string[] | null }[] = [
+export const splitTests: Array<{ s: string; r: string; n: number; out: Array<string> | null }> = [
   { s: "foo:and:bar", r: ":", n: -1, out: ["foo", "and", "bar"] },
   { s: "foo:and:bar", r: ":", n: 1, out: ["foo:and:bar"] },
   { s: "foo:and:bar", r: ":", n: 2, out: ["foo", "and:bar"] },

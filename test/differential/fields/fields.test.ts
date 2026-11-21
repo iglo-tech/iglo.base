@@ -137,7 +137,7 @@ function modelField(def: FieldDef): Field {
   return field;
 }
 
-function modelCollection(name: string, defs: FieldDef[]): TestCollection {
+function modelCollection(name: string, defs: Array<FieldDef>): TestCollection {
   const collection = newBaseCollection(name);
   for (const def of defs) {
     collection.fields.add(modelField(def));
@@ -187,18 +187,18 @@ interface CreatedCollection {
   responseFields: string;
 }
 
-const createdCollections: CreatedCollection[] = [];
+const createdCollections: Array<CreatedCollection> = [];
 
 async function createCollection(
   name: string,
-  defs: FieldDef[],
+  defs: Array<FieldDef>,
 ): Promise<{ status: number; text: string }> {
   return request("POST", "/api/collections", JSON.stringify({ name, type: "base", fields: defs }));
 }
 
 // posts the collection and compares upstream's answer with the model's:
 // the error data of a rejected one, the field JSON of an accepted one
-async function checkCollection(name: string, defs: FieldDef[]): Promise<number> {
+async function checkCollection(name: string, defs: Array<FieldDef>): Promise<number> {
   const model = modelCollection(name, defs);
   const errs = settingsErrors(model);
 
@@ -253,7 +253,7 @@ interface StoredRecord {
   columns: Record<string, [string, unknown]>;
 }
 
-const storedRecords: StoredRecord[] = [];
+const storedRecords: Array<StoredRecord> = [];
 
 // the value a record field is bound with: DriverValue, or the value's own
 // driver.Valuer (DateTime, JSONRaw, GeoPoint; JSONArray for arrays)
@@ -291,13 +291,9 @@ function storeModel(
     db.run(
       `CREATE TABLE t (${fields.map((f) => `"${f.getName()}" ${f.columnType(app)}`).join(", ")})`,
     );
-    const values = fields.map((f) => bindValue(f, record)) as (
-      | string
-      | number
-      | boolean
-      | null
-      | Uint8Array
-    )[];
+    const values = fields.map((f) => bindValue(f, record)) as Array<
+      string | number | boolean | null | Uint8Array
+    >;
     db.query(`INSERT INTO t VALUES (${fields.map(() => "?").join(", ")})`).run(...values);
     return readColumns(
       db,
@@ -313,12 +309,12 @@ function storeModel(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): Record<string, [string, unknown]> {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: Record<string, [string, unknown]> = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];

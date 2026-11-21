@@ -107,12 +107,12 @@ function useApp(): () => TestCollectionsApp {
 describe("TestRecordQueryWithDifferentCollectionValues", () => {
   const getApp = useApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collection: (app: TestCollectionsApp) => unknown;
     expectedTotal: number;
     expectError: boolean;
-  }[] = [
+  }> = [
     { name: "with nil value", collection: () => null, expectedTotal: 0, expectError: true },
     {
       name: "with invalid or missing collection id/name",
@@ -268,10 +268,11 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
 describe("TestRecordQueryOne", () => {
   const getApp = useApp();
 
-  const scenarios: { name: string; collection: string; recordId: string; record: boolean }[] = [
-    { name: "record model", collection: "demo1", recordId: "84nmscqy84lsi1t", record: true },
-    { name: "custom struct", collection: "demo1", recordId: "84nmscqy84lsi1t", record: false },
-  ];
+  const scenarios: Array<{ name: string; collection: string; recordId: string; record: boolean }> =
+    [
+      { name: "record model", collection: "demo1", recordId: "84nmscqy84lsi1t", record: true },
+      { name: "custom struct", collection: "demo1", recordId: "84nmscqy84lsi1t", record: false },
+    ];
 
   for (const s of scenarios) {
     test(s.name, () => {
@@ -297,7 +298,12 @@ describe("TestRecordQueryOne", () => {
 describe("TestRecordQueryAll", () => {
   const getApp = useApp();
 
-  const scenarios: { name: string; collection: string; recordIds: string[]; record: boolean }[] = [
+  const scenarios: Array<{
+    name: string;
+    collection: string;
+    recordIds: Array<string>;
+    record: boolean;
+  }> = [
     {
       name: "slice of pointer Record models",
       collection: "demo1",
@@ -355,12 +361,12 @@ function activeFilter(active: boolean): RecordQueryFilter {
 describe("TestFindRecordById", () => {
   const getApp = useApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     collectionIdOrName: string;
     id: string;
-    filters: RecordQueryFilter[] | null;
+    filters: Array<RecordQueryFilter> | null;
     expectError: boolean;
-  }[] = [
+  }> = [
     { collectionIdOrName: "demo2", id: "missing", filters: null, expectError: true },
     { collectionIdOrName: "missing", id: "0yxhwia2amd8gec", filters: null, expectError: true },
     { collectionIdOrName: "demo2", id: "0yxhwia2amd8gec", filters: null, expectError: false },
@@ -455,13 +461,13 @@ describe("TestFindRecordById", () => {
 describe("TestFindRecordsByIds", () => {
   const getApp = useApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     collectionIdOrName: string;
-    ids: string[];
-    filters: RecordQueryFilter[] | null;
+    ids: Array<string>;
+    filters: Array<RecordQueryFilter> | null;
     expectTotal: number;
     expectError: boolean;
-  }[] = [
+  }> = [
     { collectionIdOrName: "demo2", ids: [], filters: null, expectTotal: 0, expectError: false },
     { collectionIdOrName: "demo2", ids: [""], filters: null, expectTotal: 0, expectError: false },
     {
@@ -581,12 +587,12 @@ describe("TestFindRecordsByIds", () => {
 describe("TestFindAllRecords", () => {
   const getApp = useApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     collectionIdOrName: string;
-    expressions: (Expression | null)[] | null;
-    expectIds: string[];
+    expressions: Array<Expression | null> | null;
+    expectIds: Array<string>;
     expectError: boolean;
-  }[] = [
+  }> = [
     { collectionIdOrName: "missing", expressions: null, expectIds: [], expectError: true },
     {
       collectionIdOrName: "demo2",
@@ -627,7 +633,7 @@ describe("TestFindAllRecords", () => {
 describe("TestFindFirstRecordByData", () => {
   const getApp = useApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     collectionIdOrName: string;
     key: string;
     value: unknown;
@@ -635,7 +641,7 @@ describe("TestFindFirstRecordByData", () => {
     expectError: boolean;
     // not upstream's: the error text
     expectErrorText?: string;
-  }[] = [
+  }> = [
     {
       collectionIdOrName: "missing",
       key: "id",
@@ -705,13 +711,13 @@ describe("TestFindFirstRecordByData", () => {
 describe("TestCountRecords", () => {
   const getApp = useApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collectionIdOrName: string;
-    expressions: (Expression | null)[] | null;
+    expressions: Array<Expression | null> | null;
     expectTotal: number;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "missing collection",
       collectionIdOrName: "missing",
@@ -776,14 +782,14 @@ describe("TestCountRecords", () => {
 });
 
 describe("TestFindAuthRecordByEmail", () => {
-  const scenarios: {
+  const scenarios: Array<{
     collectionIdOrName: string;
     email: string;
     nocaseIndex: boolean;
     expectError: boolean;
     // not upstream's: the error text
     expectErrorText?: string;
-  }[] = [
+  }> = [
     {
       collectionIdOrName: "missing",
       email: "test@example.com",
@@ -889,15 +895,15 @@ describe("TestFindAuthRecordByToken", () => {
   const unsigned = (claims: { [key: string]: unknown }): string =>
     newJWT(claims, "test", 3600n * 1_000_000_000n, clock);
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     token: string;
-    types: string[];
+    types: Array<string>;
     expectedId: string;
     // not upstream's: the error text, and another clock
     expectErrorText?: string;
     clock?: { now(): Date };
-  }[] = [
+  }> = [
     {
       name: "empty token",
       token: "",

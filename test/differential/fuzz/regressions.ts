@@ -16,9 +16,9 @@ export interface FixedCase {
 
 const cond = `id != "x"`;
 
-export const fixed: FixedCase[] = [];
+export const fixed: Array<FixedCase> = [];
 
-export const boundaries: FixedCase[] = [
+export const boundaries: Array<FixedCase> = [
   {
     name: "200 expressions",
     collection: "demo2",

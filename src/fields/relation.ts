@@ -189,7 +189,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
     return [this.normalizeValue(raw), null];
   }
 
-  private normalizeValue(raw: unknown): string | string[] {
+  private normalizeValue(raw: unknown): string | Array<string> {
     const val = toUniqueStringSlice(raw);
 
     if (!this.isMultiple()) {

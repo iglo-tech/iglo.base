@@ -79,7 +79,7 @@ export function exprIsZero(e: Expr): boolean {
 //
 // The group's Item could be either an `Expr` instance or `[]ExprGroup` slice (for nested expressions).
 export interface ExprGroup {
-  item: Expr | ExprGroup | ExprGroup[];
+  item: Expr | ExprGroup | Array<ExprGroup>;
   join: JoinOp;
 }
 
@@ -97,8 +97,8 @@ function zeroToken(): Token {
 // in the form of `ExprGroup` slice(s).
 //
 // Comments and whitespaces are ignored.
-export function parse(text: string): ExprGroup[] {
-  const result: ExprGroup[] = [];
+export function parse(text: string): Array<ExprGroup> {
+  const result: Array<ExprGroup> = [];
   const scanner = newScanner(text);
   let step = stepBeforeSign;
   let join: JoinOp = JoinAnd;

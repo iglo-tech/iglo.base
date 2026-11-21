@@ -60,7 +60,7 @@ describe("TestStatic", () => {
     expectError: boolean;
   }
 
-  const scenarios: StaticScenario[] = [
+  const scenarios: Array<StaticScenario> = [
     {
       path: "",
       indexFallback: false,
@@ -208,7 +208,7 @@ describe("TestEventFileFS", () => {
   // FileFS through Static: for an existing file or a directory with a
   // trailing slash, Static serves it with FileFS; "" is fs.ValidPath's
   // failure, reached here as the stat of the root's missing name
-  const scenarios: [name: string, path: string, expected: string][] = [
+  const scenarios: Array<[name: string, path: string, expected: string]> = [
     ["root with no explicit file", "/", "index"],
     ["root with explicit file", "/test.txt", "test"],
     ["sub dir with no explicit file", "/sub1/", "sub1 index"],

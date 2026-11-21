@@ -114,7 +114,7 @@ function ruleOnlyTZif(): string {
 }
 
 describe("time.Local", () => {
-  const scenarios: [string, string | undefined, Record<string, string | number>][] = [
+  const scenarios: Array<[string, string | undefined, Record<string, string | number>]> = [
     ["UTC", "UTC", base],
     ["Europe/Warsaw", "Europe/Warsaw", warsaw],
     ["America/New_York", "America/New_York", newYork],

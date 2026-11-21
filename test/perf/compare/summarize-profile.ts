@@ -16,12 +16,12 @@ const top = Number(values.top);
 interface Node {
   id: number;
   callFrame: { functionName: string; url: string; lineNumber: number };
-  children?: number[];
+  children?: Array<number>;
 }
 const profile = JSON.parse(readFileSync(positionals[0]!, "utf8")) as {
-  nodes: Node[];
-  samples: number[];
-  timeDeltas: number[];
+  nodes: Array<Node>;
+  samples: Array<number>;
+  timeDeltas: Array<number>;
 };
 
 const byId = new Map(profile.nodes.map((n) => [n.id, n]));
@@ -67,7 +67,7 @@ for (const [id, t] of selfByNode) {
   }
 }
 
-const groups: [string, RegExp][] = [
+const groups: Array<[string, RegExp]> = [
   ["idle (program, GC, native)", /^\((idle|program|garbage collector|root)\)/],
   ["SQLite and db layer", /src\/db\/|bun:sqlite|sqlite/i],
   ["record hydration and fields", /src\/records\/record-(model|query)|src\/fields\//],
@@ -93,7 +93,7 @@ for (const [l, t] of self) {
 
 const ms = (us: number): string => (us / 1000).toFixed(0);
 const pct = (us: number): string => ((us / total) * 100).toFixed(1);
-const rows = (m: Map<string, number>): string[] =>
+const rows = (m: Map<string, number>): Array<string> =>
   [...m]
     .toSorted((a, b) => b[1] - a[1])
     .slice(0, top)

@@ -117,14 +117,14 @@ describe("TestFilesystemServe", () => {
   const csp = "default-src 'none'; media-src 'self'; style-src 'unsafe-inline'; sandbox";
   const cacheControl = "max-age=2592000, stale-while-revalidate=86400";
 
-  const scenarios: {
+  const scenarios: Array<{
     path: string;
     name: string;
     query?: string;
     headers?: Record<string, string>;
     expectError: boolean;
     expectHeaders?: () => Record<string, string>;
-  }[] = [
+  }> = [
     // missing
     { path: "missing.txt", name: "test_name.txt", expectError: true },
     // existing regular file
@@ -283,7 +283,7 @@ test("TestFilesystemServeMultiRange", async () => {
 });
 
 describe("TestFilesystemCreateThumb", () => {
-  const scenarios: [file: string, thumb: string, size: string, expectedMimeType: string][] = [
+  const scenarios: Array<[file: string, thumb: string, size: string, expectedMimeType: string]> = [
     // missing
     ["missing.txt", "thumb_test_missing", "100x100", ""],
     // non-image existing file
@@ -353,7 +353,7 @@ describe("TestFilesystemCreateThumb", () => {
 });
 
 describe("TestFilesystemCreateThumbWithMaxPixelsLimit", () => {
-  const scenarios: [name: string, maxPixels: number, expectErr: boolean][] = [
+  const scenarios: Array<[name: string, maxPixels: number, expectErr: boolean]> = [
     ["default limit", 0, false],
     ["below limit", 24, true],
     ["exact limit", 25, false],

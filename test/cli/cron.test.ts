@@ -36,7 +36,7 @@ function expiredRows(dataDir: string): number {
   return count("data.db", "_otps") + count("data.db", "_mfas") + count("auxiliary.db", "_logs");
 }
 
-function context(args: string[], msBeforeMidnight: number, shutdown: AbortSignal): CliContext {
+function context(args: Array<string>, msBeforeMidnight: number, shutdown: AbortSignal): CliContext {
   const shift = midnight - msBeforeMidnight - Date.now();
   return {
     args,

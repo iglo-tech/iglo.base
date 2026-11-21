@@ -76,7 +76,7 @@ export function NetPAM(raw: Uint8Array, _limit: number): boolean {
   return false;
 }
 
-function netp(raw: Uint8Array, ...prefixes: string[]): boolean {
+function netp(raw: Uint8Array, ...prefixes: Array<string>): boolean {
   const s = new Bytes(raw);
   let foundPrefix = "";
   for (const p of prefixes) {

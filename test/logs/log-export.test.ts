@@ -43,7 +43,7 @@ const times = [
 ];
 
 function attrValue(r: () => number, depth: number): unknown {
-  const pick = <T>(a: T[]): T => a[Math.floor(r() * a.length)] as T;
+  const pick = <T>(a: Array<T>): T => a[Math.floor(r() * a.length)] as T;
   switch (Math.floor(r() * (depth > 2 ? 6 : 9))) {
     case 0:
       return null;

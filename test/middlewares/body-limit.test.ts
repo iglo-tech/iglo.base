@@ -83,13 +83,13 @@ async function send(url: string, body: string, lazyContentLength: boolean): Prom
 // a JSON object of n + 2 bytes (upstream's `"` + n bytes + `"`)
 const quoted = (n: number) => `{"a":"${"a".repeat(n - 6)}"}`;
 
-const scenarios: {
+const scenarios: Array<{
   name: string;
   url: string;
   body: () => string;
   lazy: boolean;
   status: number;
-}[] = [
+}> = [
   {
     name: "(eager content-length check) with body = default limit",
     url: "/a",

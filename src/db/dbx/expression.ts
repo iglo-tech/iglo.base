@@ -47,7 +47,7 @@ function paramsLen(params: Params): number {
 }
 
 // Go's sort.Strings (byte order for the ASCII names the builder sorts)
-export function sortStrings(names: string[]): string[] {
+export function sortStrings(names: Array<string>): Array<string> {
   return names.toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
@@ -62,31 +62,31 @@ export function not(e: Expression): Expression {
 }
 
 // And generates an AND expression which concatenates the given expressions with "AND".
-export function and(...exps: (Expression | null | undefined)[]): Expression {
+export function and(...exps: Array<Expression | null | undefined>): Expression {
   return new AndOrExp(exps, "AND");
 }
 
 // Or generates an OR expression which concatenates the given expressions with "OR".
-export function or(...exps: (Expression | null | undefined)[]): Expression {
+export function or(...exps: Array<Expression | null | undefined>): Expression {
   return new AndOrExp(exps, "OR");
 }
 
 // In generates an IN expression for the specified column and the list of allowed values.
 // If values is empty, a SQL "0=1" will be generated which represents a false expression.
-export function inExp(col: string, ...values: unknown[]): Expression {
+export function inExp(col: string, ...values: Array<unknown>): Expression {
   return new InExp(col, values, false);
 }
 
 // NotIn generates an NOT IN expression for the specified column and the list of disallowed values.
 // If values is empty, an empty string will be returned indicating a true expression.
-export function notIn(col: string, ...values: unknown[]): Expression {
+export function notIn(col: string, ...values: Array<unknown>): Expression {
   return new InExp(col, values, true);
 }
 
 // DefaultLikeEscape specifies the default special character escaping for LIKE expressions
 // The strings at 2i positions are the special characters to be escaped while those at 2i+1 positions
 // are the corresponding escaped versions.
-export const defaultLikeEscape: readonly string[] = Object.freeze([
+export const defaultLikeEscape: ReadonlyArray<string> = Object.freeze([
   "\\",
   "\\\\",
   "%",
@@ -104,23 +104,23 @@ export const defaultLikeEscape: readonly string[] = Object.freeze([
 //
 // You may call Escape() and/or Match() to change the default behavior. For example, Like("name", "key").Match(false, true)
 // generates "name" LIKE "key%".
-export function like(col: string, ...values: string[]): LikeExp {
+export function like(col: string, ...values: Array<string>): LikeExp {
   return new LikeExp(col, values, false, "LIKE");
 }
 
 // NotLike generates a NOT LIKE expression.
-export function notLike(col: string, ...values: string[]): LikeExp {
+export function notLike(col: string, ...values: Array<string>): LikeExp {
   return new LikeExp(col, values, false, "NOT LIKE");
 }
 
 // OrLike generates an OR LIKE expression.
 // This is similar to Like() except that the column should be like one of the possible values.
-export function orLike(col: string, ...values: string[]): LikeExp {
+export function orLike(col: string, ...values: Array<string>): LikeExp {
   return new LikeExp(col, values, true, "LIKE");
 }
 
 // OrNotLike generates an OR NOT LIKE expression.
-export function orNotLike(col: string, ...values: string[]): LikeExp {
+export function orNotLike(col: string, ...values: Array<string>): LikeExp {
   return new LikeExp(col, values, true, "NOT LIKE");
 }
 
@@ -185,7 +185,7 @@ export class HashExp implements Expression {
       return "";
     }
 
-    const parts: string[] = [];
+    const parts: Array<string> = [];
     for (const name of names) {
       const value = this.values[name];
       if (value === null || value === undefined) {
@@ -229,7 +229,7 @@ export class NotExp implements Expression {
 // AndOrExp represents an expression that concatenates multiple expressions using either "AND" or "OR".
 export class AndOrExp implements Expression {
   constructor(
-    private readonly exps: (Expression | null | undefined)[],
+    private readonly exps: Array<Expression | null | undefined>,
     private readonly op: string,
   ) {}
 
@@ -238,7 +238,7 @@ export class AndOrExp implements Expression {
       return "";
     }
 
-    const parts: string[] = [];
+    const parts: Array<string> = [];
     for (const a of this.exps) {
       if (a === null || a === undefined) {
         continue;
@@ -260,7 +260,7 @@ export class AndOrExp implements Expression {
 export class InExp implements Expression {
   constructor(
     private readonly col: string,
-    private readonly values: unknown[],
+    private readonly values: Array<unknown>,
     private readonly isNot: boolean,
   ) {}
 
@@ -272,7 +272,7 @@ export class InExp implements Expression {
       return "0=1";
     }
 
-    const values: string[] = [];
+    const values: Array<string> = [];
     for (const value of this.values) {
       if (value === null || value === undefined) {
         values.push("NULL");
@@ -300,11 +300,11 @@ export class InExp implements Expression {
 export class LikeExp implements Expression {
   private left = true;
   private right = true;
-  private escapeChars: readonly string[] = defaultLikeEscape;
+  private escapeChars: ReadonlyArray<string> = defaultLikeEscape;
 
   constructor(
     private readonly col: string,
-    private readonly values: string[],
+    private readonly values: Array<string>,
     private readonly isOr: boolean,
     // Like stores the LIKE operator. It can be "LIKE", "NOT LIKE".
     // It may also be customized as something like "ILIKE".
@@ -314,7 +314,7 @@ export class LikeExp implements Expression {
   // Escape specifies how a LIKE expression should be escaped.
   // Each string at position 2i represents a special character and the string at position 2i+1 is
   // the corresponding escaped version.
-  escape(...chars: string[]): this {
+  escape(...chars: Array<string>): this {
     this.escapeChars = chars;
     return this;
   }
@@ -335,7 +335,7 @@ export class LikeExp implements Expression {
       throw new Error("LikeExp.Escape must be a slice of even number of strings");
     }
 
-    const parts: string[] = [];
+    const parts: Array<string> = [];
     const col = db.quoteColumnName(this.col);
     for (let value of this.values) {
       const name = `p${paramsLen(params)}`;

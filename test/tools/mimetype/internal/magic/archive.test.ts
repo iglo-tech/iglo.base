@@ -6,7 +6,7 @@ import { tarParseOctal } from "@/tools/mimetype/internal/magic/archive";
 import { g, raw } from "@test/tools/mimetype/go-literal";
 
 // Go's octal literals (0227, 032033, ...) written as 0o227, 0o32033, ...
-const tests: { in: Uint8Array; want: number }[] = [
+const tests: Array<{ in: Uint8Array; want: number }> = [
   { in: g`0000000\x00`, want: 0 },
   { in: g` \x0000000\x00`, want: 0 },
   { in: g` \x0000003\x00`, want: 3 },

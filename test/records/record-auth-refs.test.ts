@@ -24,7 +24,7 @@ import { Errors } from "@/validation/error";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(): TestCollectionsApp {
   const app = openTestApp();
@@ -98,7 +98,7 @@ describe("ref validation", () => {
       provider: "github",
       providerId: "p1",
     };
-    const scenarios: [string, { [key: string]: unknown }, string][] = [
+    const scenarios: Array<[string, { [key: string]: unknown }, string]> = [
       [
         "no data (the field validators)",
         {},

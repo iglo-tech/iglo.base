@@ -15,17 +15,17 @@ import {
   unmarshal,
 } from "@/tools/types/go-json";
 
-export type JSONArray<T> = T[];
+export type JSONArray<T> = Array<T>;
 
 // MarshalJSON: json v2 with Deterministic and AllowInvalidUTF8, forced to
 // get the same output in mixed json v1 and v2 configurations.
-export function jsonArrayMarshalJSON(m: readonly unknown[] | undefined): string {
+export function jsonArrayMarshalJSON(m: ReadonlyArray<unknown> | undefined): string {
   return marshal(m ?? [], { allowInvalidUTF8: true });
 }
 
 // String returns the string representation of the array (the bytes written before the error when it cannot
 // be marshaled, as json.Marshal returns them).
-export function jsonArrayString(m: readonly unknown[] | undefined): string {
+export function jsonArrayString(m: ReadonlyArray<unknown> | undefined): string {
   try {
     return jsonArrayMarshalJSON(m);
   } catch (err) {
@@ -34,7 +34,7 @@ export function jsonArrayString(m: readonly unknown[] | undefined): string {
 }
 
 // Value implements the db driver Valuer.
-export function jsonArrayValue(m: readonly unknown[] | undefined): string {
+export function jsonArrayValue(m: ReadonlyArray<unknown> | undefined): string {
   return jsonArrayMarshalJSON(m);
 }
 
@@ -54,5 +54,5 @@ export function scanJSONArray<T = unknown>(value: unknown, elem: GoType = anyTyp
   if (data.length === 0) {
     data = "[]";
   }
-  return (unmarshal(data, sliceOf(elem)) as T[] | undefined) ?? [];
+  return (unmarshal(data, sliceOf(elem)) as Array<T> | undefined) ?? [];
 }

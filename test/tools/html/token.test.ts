@@ -69,7 +69,7 @@ test("TestPassthrough", () => {
   // original input.
   for (const tt of tokenTests) {
     const z = tokenizerFor(tt.html);
-    const parts: Uint8Array[] = [];
+    const parts: Array<Uint8Array> = [];
     for (;;) {
       const type = z.next();
       parts.push(z.rawBytes());
@@ -85,7 +85,7 @@ test("TestPassthrough", () => {
 test("TestBufAPI", () => {
   const s = "0<a>1</a>2<b>3<a>4<a>5</a>6</b>7</a>8<a/>9";
   const z = tokenizerFor(s);
-  const result: Uint8Array[] = [];
+  const result: Array<Uint8Array> = [];
   let depth = 0;
   loop: for (;;) {
     const tt = z.next();
@@ -171,22 +171,22 @@ interface H5Output {
   type: TokenType;
   dataAtom: string;
   data: string;
-  attr: Attribute[];
+  attr: Array<Attribute>;
 }
 
 interface H5Test {
   description: string;
   input: string;
   inputBytes: Uint8Array;
-  initialStates: string[];
-  output: H5Output[];
+  initialStates: Array<string>;
+  output: Array<H5Output>;
 }
 
 // unescapeUnicode is the Go helper: each \uXXXX becomes the UTF-8-like bytes of
 // that code point, without checking surrogates, so the result can be invalid UTF-8.
 const unicodeRegexp = /\\u([0-9a-fA-F]{4})/g;
 
-function encodeRawRune(n: number): number[] {
+function encodeRawRune(n: number): Array<number> {
   if (n <= 0x7f) {
     return [n];
   }
@@ -200,7 +200,7 @@ function encodeRawRune(n: number): number[] {
 }
 
 function unescapeUnicodeBytes(s: string): Uint8Array {
-  const out: number[] = [];
+  const out: Array<number> = [];
   let last = 0;
   for (const m of s.matchAll(unicodeRegexp)) {
     out.push(...encodeUTF8(s.slice(last, m.index)));
@@ -225,7 +225,7 @@ function compareCodePoints(a: string, b: string): number {
 }
 
 // sortTokenAttributes sorts each token's attributes by namespace+key+val, as the Go test does.
-function sortTokenAttributes(tokens: H5Output[]): void {
+function sortTokenAttributes(tokens: Array<H5Output>): void {
   for (const token of tokens) {
     token.attr.sort((a, b) =>
       compareCodePoints(a.namespace + a.key + a.val, b.namespace + b.key + b.val),
@@ -236,22 +236,22 @@ function sortTokenAttributes(tokens: H5Output[]): void {
 const h5libDir = `${import.meta.dir}/testdata/html5lib-tests/tokenizer`;
 
 // loadH5Tests reads the tests the way h5libTest.UnmarshalJSON does.
-function loadH5Tests(file: string): H5Test[] {
+function loadH5Tests(file: string): Array<H5Test> {
   const data = JSON.parse(readFileSync(`${h5libDir}/${file}`, "utf8")) as {
-    tests?: {
+    tests?: Array<{
       description: string;
       input: string;
       doubleEscaped?: boolean;
-      initialStates?: string[];
-      output: unknown[][];
-    }[];
+      initialStates?: Array<string>;
+      output: Array<Array<unknown>>;
+    }>;
   };
   // xmlViolation.test has no "tests" key. Go's loader then reuses the previous file's
   // slice; here such a file has no cases.
   return (data.tests ?? []).map((tc) => {
     const doubleEscaped = tc.doubleEscaped === true;
     const inputBytes = doubleEscaped ? unescapeUnicodeBytes(tc.input) : encodeUTF8(tc.input);
-    const output: H5Output[] = tc.output.map((testToken) => {
+    const output: Array<H5Output> = tc.output.map((testToken) => {
       const kind = testToken[0] as string;
       const token: H5Output = { type: 0, dataAtom: "", data: "", attr: [] };
       switch (kind) {
@@ -335,7 +335,7 @@ describe("TestHTML5LibTests", () => {
         h5SkipTests.has(name) || tc.initialStates.length > 0 || tc.input.includes("<!DOCTYPE");
       (skip ? test.skip : test)(name, () => {
         const z = new Tokenizer(tc.inputBytes);
-        const tokens: H5Output[] = [];
+        const tokens: Array<H5Output> = [];
         for (;;) {
           if (z.next() === ErrorToken) {
             if (z.error() === EOF) {

@@ -50,7 +50,7 @@ beforeAll(async () => {
     mkdirSync(join(pub, d), { recursive: true });
   }
   mkdirSync(outside);
-  const files: [string, string | Uint8Array][] = [
+  const files: Array<[string, string | Uint8Array]> = [
     ["index.html", "<!doctype html><title>root index</title>"],
     ["test.txt", "test"],
     ["sub1/index.html", "sub1 index"],
@@ -132,7 +132,7 @@ afterAll(async () => {
 
 type Req = [method: string, target: string, headers?: Record<string, string>];
 
-const requests: Req[] = [
+const requests: Array<Req> = [
   // files, index.html and directories
   ["GET", "/"],
   ["GET", "/index.html"],
@@ -292,7 +292,7 @@ describe.each([
   }
 
   test("a large download type gets Bun's Content-Disposition (reported difference)", async () => {
-    for (const headers of [{}, { Range: "bytes=0-9" }] as Record<string, string>[]) {
+    for (const headers of [{}, { Range: "bytes=0-9" }] as Array<Record<string, string>>) {
       const { upstream, igloBase } = await both(pair(), "GET", "/big.zip", headers, [
         "content-disposition",
       ]);

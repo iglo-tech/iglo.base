@@ -117,7 +117,7 @@ const oauth2User = (): AuthUser =>
     avatarURL,
   });
 
-function storedFiles(recordId: string): string[] {
+function storedFiles(recordId: string): Array<string> {
   const dir = join(app.dataDir, "storage", "_pb_users_auth_", recordId);
   return existsSync(dir) ? readdirSync(dir).filter((f) => !f.endsWith(".attrs")) : [];
 }

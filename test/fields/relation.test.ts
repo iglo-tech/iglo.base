@@ -30,7 +30,7 @@ describe("TestRelationFieldBaseMethods", () => {
 describe("TestRelationFieldColumnType", () => {
   const app = noDBApp();
 
-  const scenarios: { name: string; field: RelationField; expected: string }[] = [
+  const scenarios: Array<{ name: string; field: RelationField; expected: string }> = [
     { name: "single (zero)", field: new RelationField(), expected: "TEXT DEFAULT '' NOT NULL" },
     {
       name: "single",
@@ -52,7 +52,7 @@ describe("TestRelationFieldColumnType", () => {
 });
 
 describe("TestRelationFieldIsMultiple", () => {
-  const scenarios: { name: string; field: RelationField; expected: boolean }[] = [
+  const scenarios: Array<{ name: string; field: RelationField; expected: boolean }> = [
     { name: "zero", field: new RelationField(), expected: false },
     { name: "single", field: new RelationField({ maxSelect: 1 }), expected: false },
     { name: "multiple", field: new RelationField({ maxSelect: 2 }), expected: true },
@@ -68,7 +68,7 @@ describe("TestRelationFieldIsMultiple", () => {
 describe("TestRelationFieldPrepareValue", () => {
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: { raw: unknown; field: RelationField; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; field: RelationField; expected: string }> = [
     // single
     { raw: null, field: new RelationField({ maxSelect: 1 }), expected: `""` },
     { raw: "", field: new RelationField({ maxSelect: 1 }), expected: `""` },
@@ -103,7 +103,7 @@ describe("TestRelationFieldPrepareValue", () => {
 });
 
 describe("TestRelationFieldDriverValue", () => {
-  const scenarios: { raw: unknown; field: RelationField; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; field: RelationField; expected: string }> = [
     // single
     { raw: null, field: new RelationField({ maxSelect: 1 }), expected: `""` },
     { raw: "", field: new RelationField({ maxSelect: 1 }), expected: `""` },
@@ -158,12 +158,12 @@ describe("TestRelationFieldValidateValue", () => {
 
   const demo1 = app.findCollectionByNameOrId("demo1");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: RelationField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     // single
     {
       name: "[single] zero field value (not required)",
@@ -279,11 +279,11 @@ describe("TestRelationFieldValidateSettings", () => {
 
   const demo1 = app.findCollectionByNameOrId("demo1");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: (col: TestCollection) => RelationField;
-    expectErrors: string[];
-  }[] = [
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "zero minimal",
       field: () => new RelationField({ id: "test", name: "test" }),
@@ -367,14 +367,14 @@ describe("TestRelationFieldValidateSettings", () => {
 });
 
 describe("TestRelationFieldFindSetter", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     value: unknown;
     field: RelationField;
     hasSetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",

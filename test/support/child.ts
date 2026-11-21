@@ -12,7 +12,7 @@ export interface Child {
 }
 
 export function spawnChild(
-  command: string[],
+  command: Array<string>,
   options: { cwd: string; env?: Record<string, string> },
 ): Child {
   const proc = Bun.spawn(command, {

@@ -15,7 +15,7 @@ export interface Sample {
   data: Uint8Array;
 }
 
-const samples: Sample[] = [];
+const samples: Array<Sample> = [];
 const add = (name: string, data: Uint8Array) => samples.push({ name, data });
 
 // mimetype's testdata
@@ -48,7 +48,7 @@ add("empty", new Uint8Array(0));
 for (const b of [0x00, 0x09, 0x0a, 0x1b, 0x20, 0x41, 0x7f, 0x80, 0xc3, 0xff]) {
   add(`one byte ${b.toString(16)}`, Uint8Array.of(b));
 }
-const boms: [string, Uint8Array][] = [
+const boms: Array<[string, Uint8Array]> = [
   ["utf-8", g`\xef\xbb\xbf`],
   ["utf-16be", g`\xfe\xff`],
   ["utf-16le", g`\xff\xfe`],
@@ -256,7 +256,7 @@ function zipEntry(name: string, data: Uint8Array = new Uint8Array(0), extra = ne
   view.setUint16(28, extra.length, true);
   return concat(header, bin(name), extra, data);
 }
-const zips: [string, Uint8Array][] = [
+const zips: Array<[string, Uint8Array]> = [
   ["empty entry", zipEntry("a.txt")],
   ["docx", concat(zipEntry("[Content_Types].xml"), zipEntry("word/document.xml"))],
   ["xlsx", concat(zipEntry("_rels/.rels"), zipEntry("xl/workbook.xml"))],
@@ -475,4 +475,4 @@ for (const n of [1, 3, 16, 100, 1000, defaultLimit + 100]) {
   add(`random ${n}`, Uint8Array.from({ length: n }, rnd));
 }
 
-export const corpus: readonly Sample[] = samples;
+export const corpus: ReadonlyArray<Sample> = samples;

@@ -94,10 +94,10 @@ export class Logger implements AppLogger {
   readonly #handler: BatchHandler;
   readonly #ticker: LogTicker;
   // batches waiting for their turn on the event loop
-  readonly #pending = new Set<Log[]>();
+  readonly #pending = new Set<Array<Log>>();
   readonly #writer: LogWriter | null;
   // rows taken while the writer is suspended (a backup or restore runs)
-  #held: LogRow[][] = [];
+  #held: Array<Array<LogRow>> = [];
   #suspended = false;
   #stopped = false;
 
@@ -216,7 +216,7 @@ export class Logger implements AppLogger {
   }
 
   // don't block and wait for the write transaction to complete
-  #writeLater(logs: Log[]): void {
+  #writeLater(logs: Array<Log>): void {
     this.#pending.add(logs);
     setImmediate(() => {
       if (this.#pending.delete(logs)) {
@@ -225,7 +225,7 @@ export class Logger implements AppLogger {
     });
   }
 
-  #runLogsWrite(logs: Log[]): void {
+  #runLogsWrite(logs: Array<Log>): void {
     const { databases, stderrLog } = this.#config;
     const settings = this.#config.settings();
 
@@ -234,7 +234,7 @@ export class Logger implements AppLogger {
     }
 
     if (this.#writer !== null) {
-      const rows: LogRow[] = [];
+      const rows: Array<LogRow> = [];
       for (const log of logs) {
         try {
           const row = logDBExport(generateDefaultRandomId(), log, Number(settings.MaxDataSize));
@@ -277,7 +277,7 @@ export class Logger implements AppLogger {
     }
   }
 
-  #post(rows: LogRow[]): void {
+  #post(rows: Array<LogRow>): void {
     if (rows.length > 0) {
       this.#writer?.write(rows);
     }

@@ -27,7 +27,7 @@ export class Browser {
   readonly session = `iglo-browser-${process.pid}-${Date.now()}-${sessionCounter++}`;
   private readonly binary = requireAgentBrowser();
 
-  async run(...args: string[]): Promise<string> {
+  async run(...args: Array<string>): Promise<string> {
     const proc = Bun.spawn([this.binary, ...args], {
       stdout: "pipe",
       stderr: "pipe",

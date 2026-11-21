@@ -56,7 +56,7 @@ async function superusers(url: string): Promise<unknown> {
   const res = await fetch(`${url}/api/collections/_superusers/records?fields=email&sort=email`, {
     headers: { Authorization: token },
   });
-  return ((await res.json()) as { items: unknown[] }).items;
+  return ((await res.json()) as { items: Array<unknown> }).items;
 }
 
 test("fresh pb_data: banner, installer link and the first superuser", async () => {

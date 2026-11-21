@@ -68,7 +68,6 @@ export default defineConfig({
         "quality/no-unknown-type-aliases": "off",
         "quality/no-unsafe-dictionary-type": "off",
         "react/rules-of-hooks": "off",
-        "typescript/array-type": "off",
         "typescript/await-thenable": "off",
         "typescript/consistent-type-imports": "off",
         "typescript/no-array-delete": "off",

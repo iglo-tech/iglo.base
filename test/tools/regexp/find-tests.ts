@@ -9,10 +9,10 @@ export interface FindTest {
   pat: string;
   text: string;
   max: number;
-  matches: number[][] | null;
+  matches: Array<Array<number>> | null;
 }
 
-export const findTests: FindTest[] = [
+export const findTests: Array<FindTest> = [
   { pat: "", text: "", max: -1, matches: [[0, 0]] },
   { pat: "^abcdefg", text: "abcdefg", max: -1, matches: [[0, 7]] },
   { pat: "a+", text: "baaab", max: -1, matches: [[1, 4]] },

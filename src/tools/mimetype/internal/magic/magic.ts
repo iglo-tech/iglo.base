@@ -27,7 +27,7 @@ export function offset(raw: Uint8Array, sig: Uint8Array, off: number): boolean {
 }
 
 // ciPrefix is like prefix but the check is case insensitive.
-export function ciPrefix(raw: Uint8Array, ...sigs: Uint8Array[]): boolean {
+export function ciPrefix(raw: Uint8Array, ...sigs: Array<Uint8Array>): boolean {
   for (const s of sigs) {
     if (ciCheck(s, raw)) {
       return true;
@@ -55,7 +55,7 @@ function ciCheck(sig: Uint8Array, raw: Uint8Array): boolean {
 }
 
 // xml returns true if any of the provided XML signatures matches the raw input.
-export function xml(raw: Uint8Array, ...sigs: xmlSig[]): boolean {
+export function xml(raw: Uint8Array, ...sigs: Array<xmlSig>): boolean {
   const b = new Bytes(raw);
   b.trimLWS();
   if (b.length === 0) {
@@ -85,7 +85,7 @@ function xmlCheck(sig: xmlSig, raw: Uint8Array): boolean {
 const utf8BOM = Uint8Array.of(0xef, 0xbb, 0xbf);
 
 // markup returns true is any of the HTML signatures matches the raw input.
-export function markup(raw: Uint8Array, ...sigs: Uint8Array[]): boolean {
+export function markup(raw: Uint8Array, ...sigs: Array<Uint8Array>): boolean {
   const b = new Bytes(raw);
   if (hasPrefix(b.b, utf8BOM)) {
     // We skip the UTF-8 BOM if present to ensure we correctly
@@ -118,7 +118,7 @@ function markupCheck(sig: Uint8Array, raw: Uint8Array): boolean {
 }
 
 // ftyp returns true if any of the FTYP signatures matches the raw input.
-export function ftyp(raw: Uint8Array, ...sigs: Uint8Array[]): boolean {
+export function ftyp(raw: Uint8Array, ...sigs: Array<Uint8Array>): boolean {
   if (raw.length < 12) {
     return false;
   }
@@ -145,7 +145,7 @@ export interface shebangSig {
 //	#! /usr/bin/env php
 //
 // /usr/bin/env is the interpreter, php is the first and only argument.
-export function shebang(raw: Uint8Array, ...sigs: shebangSig[]): boolean {
+export function shebang(raw: Uint8Array, ...sigs: Array<shebangSig>): boolean {
   const b = new Bytes(raw);
   const line = b.line();
   if (line.length < 2 || line.b[0] !== 0x23 || line.b[1] !== 0x21) {

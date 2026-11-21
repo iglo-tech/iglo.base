@@ -51,7 +51,7 @@ describe("deep empty-width chains", () => {
     // optional groups
     const re = compile(nest("(", "a{2,1000}", ")", 990));
     expect(re.matchString("a")).toBe(false);
-    const m = re.findStringSubmatchIndex("a".repeat(1200)) as number[];
+    const m = re.findStringSubmatchIndex("a".repeat(1200)) as Array<number>;
     expect(m.length).toBe(2 * 991);
     expect(m.slice(0, 4)).toEqual([0, 1000, 0, 1000]);
     expect(compile(nest("(?:", "a{0,1000}", ")", 990)).matchString("")).toBe(true);

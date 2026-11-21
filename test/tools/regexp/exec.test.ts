@@ -67,8 +67,8 @@ describe("Fowler", () => {
 
 // testFowler runs the POSIX regular expression tests collected by Glenn
 // Fowler (testregex) and returns the failures.
-function testFowler(file: string): string[] {
-  const failures: string[] = [];
+function testFowler(file: string): Array<string> {
+  const failures: Array<string> = [];
   const data = readFileSync(join(testdata, file), "utf8");
   let lastRegexp = "";
   let lineno = 0;
@@ -210,7 +210,7 @@ function testFowler(file: string): string[] {
 
 function parseFowlerResult(
   s: string,
-): { compiled: boolean; matched: boolean; pos: number[] } | null {
+): { compiled: boolean; matched: boolean; pos: Array<number> } | null {
   //   Field 4: the test outcome. This is either one of the posix error
   //     codes (with REG_ omitted) or the match array, a list of (m,n)
   //     entries with m and n being first and last+1 positions in the
@@ -230,7 +230,7 @@ function parseFowlerResult(
     return { compiled: false, matched: false, pos: [] };
   }
 
-  const x: number[] = [];
+  const x: Array<number> = [];
   while (s !== "") {
     let end = ")";
     if (x.length % 2 === 0) {

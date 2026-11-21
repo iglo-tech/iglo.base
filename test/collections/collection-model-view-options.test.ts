@@ -15,10 +15,10 @@ import { expectValidationErrors } from "@test/collections/validation";
 interface Scenario {
   name: string;
   collection: (app: TestCollectionsApp) => ReturnType<typeof newViewCollection>;
-  expectedErrors: string[];
+  expectedErrors: Array<string>;
 }
 
-const scenarios: Scenario[] = [
+const scenarios: Array<Scenario> = [
   {
     name: "view with empty query",
     collection: () => newViewCollection("new_auth"),

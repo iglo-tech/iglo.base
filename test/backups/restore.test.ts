@@ -34,7 +34,7 @@ const asSuperuser = { Authorization: superuserToken };
 // a little past upstream's 1 second before the restore starts
 const restoreDelayMs = 1200;
 
-let cleanups: (() => void | Promise<unknown>)[] = [];
+let cleanups: Array<() => void | Promise<unknown>> = [];
 
 afterEach(async () => {
   for (const cleanup of cleanups) {
@@ -104,12 +104,12 @@ async function restored(url: string, name: string): Promise<boolean> {
 }
 
 // the restore failures in `_logs`, after the server stopped
-function restoreFailures(dataDir: string): { key: string; error: string }[] {
+function restoreFailures(dataDir: string): Array<{ key: string; error: string }> {
   const db = new Database(join(dataDir, "auxiliary.db"), { readonly: true });
   try {
     const rows = db
       .query("SELECT data FROM _logs WHERE level = 8 AND message = 'Failed to restore backup'")
-      .all() as { data: string }[];
+      .all() as Array<{ data: string }>;
     return rows.map((row) => JSON.parse(row.data) as { key: string; error: string });
   } finally {
     db.close();
@@ -159,7 +159,7 @@ describe("restore", () => {
     expect(stdout.match(/> REST API: /g)).toHaveLength(2);
   }, 30_000);
 
-  const refused: [string, (dir: string) => void][] = [
+  const refused: Array<[string, (dir: string) => void]> = [
     ["a zip without data.db", (dir) => writeFileSync(join(dir, "x.txt"), "x")],
     ["a data.db that is no database", (dir) => writeFileSync(join(dir, "data.db"), "garbage")],
     [

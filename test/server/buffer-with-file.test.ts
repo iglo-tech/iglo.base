@@ -9,7 +9,7 @@ const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 
 describe("NewBufferWithFile", () => {
-  const scenarios: [string, number, number][] = [
+  const scenarios: Array<[string, number, number]> = [
     ["negative limit", -1, DefaultMaxMemory],
     ["zero limit", 0, DefaultMaxMemory],
     ["> 0", 1, 1],

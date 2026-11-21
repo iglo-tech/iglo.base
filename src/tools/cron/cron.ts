@@ -67,7 +67,7 @@ export class Cron {
   readonly #timers: CronTimers;
   #timezone = "UTC";
   #interval = 60_000;
-  #jobs: Job[] = [];
+  #jobs: Array<Job> = [];
   // Go's startTimer: the delay until the first tick
   #startTimer: unknown;
   // Go's ticker: set from the first tick until Stop
@@ -138,7 +138,7 @@ export class Cron {
   }
 
   // Jobs returns a shallow copy of the currently registered cron jobs.
-  jobs(): Job[] {
+  jobs(): Array<Job> {
     return [...this.#jobs];
   }
 

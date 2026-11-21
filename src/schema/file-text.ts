@@ -22,7 +22,7 @@ import { readSchema } from "@/schema/read";
 
 export interface SchemaFileText {
   text: string;
-  notes: string[];
+  notes: Array<string>;
 }
 
 // the file text of the database; `existing` is the file it is written over,
@@ -35,7 +35,7 @@ export function schemaFileText(
   const description = describeCollections(findAllCollections(app));
   const extras = existing === undefined ? undefined : extractExtras(existing);
   const previous = existing === undefined ? undefined : readSchema(existing);
-  const notes: string[] = [];
+  const notes: Array<string> = [];
 
   for (const collection of description.collections) {
     if (collection.type !== "auth") {

@@ -118,7 +118,7 @@ export function decodeNested<T>(value: unknown, fields: Fields<T>): T {
 }
 
 // a nested array of structs (a JSON array decoded as `any`, null for nil)
-export function decodeNestedList<T>(value: unknown, fields: Fields<T>): T[] {
+export function decodeNestedList<T>(value: unknown, fields: Fields<T>): Array<T> {
   if (value === null || value === undefined) {
     return [];
   }

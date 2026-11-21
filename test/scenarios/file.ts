@@ -45,7 +45,7 @@ function bodyIsFile(relPath: string): (result: AfterContext) => void {
 
 // Each scenario gets a HEAD clone first, as the Go loop does: the same
 // name with "(HEAD) " in front, no expected content and no body check.
-function withHead(scenarios: Scenario[]): Scenario[] {
+function withHead(scenarios: Array<Scenario>): Array<Scenario> {
   return scenarios.flatMap((scenario) => {
     const head: Scenario = {
       ...scenario,

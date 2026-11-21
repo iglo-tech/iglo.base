@@ -8,7 +8,7 @@ import { describe, expect } from "bun:test";
 
 import { sdkTest, type SdkEnv } from "@test/differential/sdk/harness";
 
-const keys = (list: { key: string }[]): string[] => list.map((b) => b.key).toSorted();
+const keys = (list: Array<{ key: string }>): Array<string> => list.map((b) => b.key).toSorted();
 
 async function download(env: SdkEnv, label: string, url: string): Promise<void> {
   const res = await fetch(url);

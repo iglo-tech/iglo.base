@@ -122,8 +122,8 @@ export async function waitFor<T>(
 }
 
 // The paths (relative to dir) of every file and directory below it.
-export function walk(dir: string): string[] {
-  const out: string[] = [];
+export function walk(dir: string): Array<string> {
+  const out: Array<string> = [];
   const visit = (d: string): void => {
     let entries;
     try {
@@ -152,11 +152,11 @@ const fixturePaths = new Set(walk(fixtureDir));
 const databaseFile = /^(data|auxiliary)\.db(-wal|-shm)?$/;
 
 // Paths in a pb_data that the fixture does not have, databases aside.
-export function extras(dataDir: string): string[] {
+export function extras(dataDir: string): Array<string> {
   return walk(dataDir).filter((p) => !fixturePaths.has(p) && !databaseFile.test(p));
 }
 
-function schemaNames(path: string): string[] {
+function schemaNames(path: string): Array<string> {
   const db = new Database(path, { readonly: true });
   try {
     return (
@@ -222,8 +222,11 @@ export interface Record_ {
   [key: string]: unknown;
 }
 
-export async function listRecords(target: { url: string }, collection = demo1): Promise<Record_[]> {
-  const items: Record_[] = [];
+export async function listRecords(
+  target: { url: string },
+  collection = demo1,
+): Promise<Array<Record_>> {
+  const items: Array<Record_> = [];
   for (let page = 1; ; page++) {
     const res = await api(
       target,
@@ -231,7 +234,7 @@ export async function listRecords(target: { url: string }, collection = demo1): 
       `/api/collections/${collection}/records?perPage=500&sort=id&page=${page}`,
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { items: Record_[]; totalItems: number };
+    const body = (await res.json()) as { items: Array<Record_>; totalItems: number };
     items.push(...body.items);
     if (items.length >= body.totalItems) {
       return items;
@@ -242,7 +245,7 @@ export async function listRecords(target: { url: string }, collection = demo1): 
 // every file name a record lists can be downloaded, non-empty
 export async function checkFiles(
   target: { url: string },
-  records: Record_[],
+  records: Array<Record_>,
   skipFixture = false,
 ): Promise<number> {
   const tokenRes = await fetch(`${target.url}/api/files/token`, {
@@ -272,10 +275,10 @@ export async function checkFiles(
 }
 
 export interface Outcome {
-  records: Record_[];
+  records: Array<Record_>;
   files: number;
   // paths present after the start that the fixture does not have
-  leftovers: string[];
+  leftovers: Array<string>;
   // what options.inspect read
   inspected: unknown;
 }
@@ -310,7 +313,7 @@ export async function verifyAfterKill(
   }
 
   const iglo = await launch("iglo", dataDir);
-  let igloRecords: Record_[];
+  let igloRecords: Array<Record_>;
   let files: number;
   let igloInspected: unknown;
   try {
@@ -326,7 +329,7 @@ export async function verifyAfterKill(
   }
 
   const upstream = await launch("upstream", copy);
-  let upstreamRecords: Record_[];
+  let upstreamRecords: Array<Record_>;
   let upstreamInspected: unknown;
   try {
     upstreamRecords = await listRecords(upstream);
@@ -347,7 +350,7 @@ export async function verifyAfterKill(
 }
 
 // Files below storage/ that no record names.
-export function orphans(dataDir: string, records: Record_[]): string[] {
+export function orphans(dataDir: string, records: Array<Record_>): Array<string> {
   const named = new Set<string>();
   for (const r of records) {
     for (const field of ["file_one", "file_many"]) {
@@ -371,7 +374,7 @@ export function orphans(dataDir: string, records: Record_[]): string[] {
 }
 
 // the unnamed temp file of a spooled upload, or a started backup or restore
-export function tempEntries(dataDir: string): string[] {
+export function tempEntries(dataDir: string): Array<string> {
   const dir = join(dataDir, ".pb_temp_to_delete");
   return existsSync(dir) ? walk(dir) : [];
 }

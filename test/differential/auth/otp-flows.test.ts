@@ -33,7 +33,7 @@ const userId = "4q1xlclmfloku33";
 const usersId = "_pb_users_auth_";
 
 type Kind = "upstream" | "igloBase";
-const kinds: Kind[] = ["upstream", "igloBase"];
+const kinds: Array<Kind> = ["upstream", "igloBase"];
 
 interface Server {
   kind: Kind;
@@ -47,7 +47,7 @@ interface Reply {
   json: { [key: string]: unknown };
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 let mailpits: Record<Kind, Mailpit>;
 
@@ -135,9 +135,13 @@ async function awaitSentTo(server: Server, otpId: unknown): Promise<void> {
   }
   const until = Date.now() + 3000;
   while (Date.now() < until) {
-    const rows = queryRows(server.dataDir, "SELECT sentTo FROM _otps WHERE id = ?", otpId) as {
+    const rows = queryRows(
+      server.dataDir,
+      "SELECT sentTo FROM _otps WHERE id = ?",
+      otpId,
+    ) as Array<{
       sentTo: string;
-    }[];
+    }>;
     if (rows.length === 0 || rows[0]?.sentTo !== "") {
       return;
     }
@@ -174,16 +178,16 @@ async function clear(m: Mailpit): Promise<void> {
   await fetch(`${m.apiUrl}/api/v1/messages`, { method: "DELETE" });
 }
 
-async function messageIds(m: Mailpit): Promise<string[]> {
+async function messageIds(m: Mailpit): Promise<Array<string>> {
   const list = (await fetch(`${m.apiUrl}/api/v1/messages`).then((res) => res.json())) as {
-    messages: { ID: string }[];
+    messages: Array<{ ID: string }>;
   };
   return list.messages.map((msg) => msg.ID);
 }
 
 // waits for n OTP messages and returns them raw, the newest first (a login
 // alert from a new origin can arrive between them)
-async function rawMessages(m: Mailpit, n: number): Promise<string[]> {
+async function rawMessages(m: Mailpit, n: number): Promise<Array<string>> {
   const until = Date.now() + 10_000;
   for (;;) {
     const ids = await messageIds(m);
@@ -260,7 +264,7 @@ async function bothFlows(
   prepare: (dataDir: string) => void,
   flow: (server: Server, mail: Mailpit, step: (reply: Reply) => Reply) => Promise<void>,
 ): Promise<void> {
-  const transcripts: unknown[][] = [];
+  const transcripts: Array<Array<unknown>> = [];
   for (const kind of kinds) {
     const mail = mailpits[kind];
     await clear(mail);
@@ -268,7 +272,7 @@ async function bothFlows(
     smtpTo(dataDir, mail.smtpPort);
     prepare(dataDir);
     const server = await start(kind, dataDir);
-    const transcript: unknown[] = [];
+    const transcript: Array<unknown> = [];
     try {
       await flow(server, mail, (reply) => {
         transcript.push(shape(reply));
@@ -279,7 +283,7 @@ async function bothFlows(
     }
     transcripts.push(transcript);
   }
-  expect(transcripts[1]).toEqual(transcripts[0] as unknown[]);
+  expect(transcripts[1]).toEqual(transcripts[0] as Array<unknown>);
 }
 
 const usersWithoutMFA = (dataDir: string): void => {
@@ -292,7 +296,7 @@ describe("the OTP email", () => {
   test(
     "the message of each server is the same, and its password signs in",
     async () => {
-      const messages: string[] = [];
+      const messages: Array<string> = [];
       await bothFlows(usersWithoutMFA, async (server, mail, step) => {
         const { json } = step(await requestOTP(server));
         const [raw = ""] = await rawMessages(mail, 1);
@@ -392,7 +396,7 @@ describe("the OTP email", () => {
               server.dataDir,
               "SELECT sentTo FROM _otps WHERE id = ?",
               reply.json["otpId"] as string,
-            ) as { sentTo: string }[];
+            ) as Array<{ sentTo: string }>;
             expect(row?.sentTo).toBe("");
           },
         );
@@ -428,7 +432,7 @@ describe("repeated requests", () => {
     "the eleventh request reuses the last issued OTP and sends nothing",
     async () => {
       await bothFlows(usersWithoutMFA, async (server, mail, step) => {
-        const ids: unknown[] = [];
+        const ids: Array<unknown> = [];
         for (let i = 0; i < 11; i++) {
           ids.push(step(await requestOTP(server)).json["otpId"]);
         }

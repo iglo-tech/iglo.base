@@ -64,7 +64,7 @@ const secretPattern = /"secret":"([^"]*)"/g;
 
 // the `_collections` rows with the generated values replaced, after
 // checking their formats
-function normalizedCollections(dump: PbDataDump): { [key: string]: unknown }[] {
+function normalizedCollections(dump: PbDataDump): Array<{ [key: string]: unknown }> {
   return dump.collections.map((row) => {
     expect(row.created).toMatch(datePattern);
     expect(row.updated).toMatch(datePattern);

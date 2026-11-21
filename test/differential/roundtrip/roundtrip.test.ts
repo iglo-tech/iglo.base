@@ -42,7 +42,7 @@ import { superuserToken } from "@test/scenarios/record-crud";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 
 const smtpPort = sharedSmtpSink().port;
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 function tempRoot(): string {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-roundtrip-test-"));
@@ -75,7 +75,7 @@ function alteredDiff(
   change: (dataDir: string) => void,
   // whether the altered copy's thumbnails count as written by iglo.base
   igloThumbs = false,
-): string[] {
+): Array<string> {
   const dataDir = join(tempRoot(), "pb_data");
   cpSync(control.dataDir, dataDir, { recursive: true });
   change(dataDir);
@@ -111,7 +111,7 @@ function wrongMd5(path: string): void {
 }
 
 // the paths in storage/ that end with the suffix
-function storedPaths(dataDir: string, suffix: string): string[] {
+function storedPaths(dataDir: string, suffix: string): Array<string> {
   const glob = new Bun.Glob(`**/*${suffix}`);
   return [...glob.scanSync({ cwd: join(dataDir, "storage") })].map((path) =>
     join(dataDir, "storage", path),
@@ -134,7 +134,7 @@ function storedFile(dataDir: string, suffix: string): string {
 
 describe("upstream's fixture", () => {
   let outcome: Outcome;
-  const altered = (change: (dataDir: string) => void): string[] =>
+  const altered = (change: (dataDir: string) => void): Array<string> =>
     alteredDiff(outcome.control, outcome.start, change);
 
   beforeAll(async () => {
@@ -200,7 +200,7 @@ function thumbFile(path: string): boolean {
 
 describe("a fresh install", () => {
   let outcome: Outcome;
-  const altered = (change: (dataDir: string) => void, igloThumbs = false): string[] =>
+  const altered = (change: (dataDir: string) => void, igloThumbs = false): Array<string> =>
     alteredDiff(outcome.control, outcome.start, change, igloThumbs);
 
   beforeAll(async () => {

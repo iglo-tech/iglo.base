@@ -16,11 +16,11 @@ import { changeSettings } from "@test/scenarios/settings-prepare";
 const timeout = 60_000;
 
 interface Config {
-  headers: string[];
+  headers: Array<string>;
   useLeftmostIP: boolean;
 }
 
-const configs: [name: string, config: Config][] = [
+const configs: Array<[name: string, config: Config]> = [
   ["no trusted headers", { headers: [], useLeftmostIP: false }],
   [
     "X-Forwarded-For, rightmost",
@@ -82,7 +82,7 @@ function healthData(body: string): unknown {
 }
 
 // header sets, sent as single lines (fetch cannot repeat a header line)
-const sent: Record<string, string>[] = [
+const sent: Array<Record<string, string>> = [
   {},
   { "X-Forwarded-For": "10.0.0.1" },
   { "X-Forwarded-For": "10.0.0.2, 10.0.0.1" },
@@ -126,7 +126,7 @@ describe.each(configs)("%s", (name) => {
   }
 
   test("the rate limiter's client key", async () => {
-    const steps: Record<string, string>[] = [
+    const steps: Array<Record<string, string>> = [
       { "X-Forwarded-For": "1.1.1.1" },
       { "X-Forwarded-For": "1.1.1.1" },
       { "X-Forwarded-For": "1.1.1.2" },
@@ -138,7 +138,7 @@ describe.each(configs)("%s", (name) => {
       {},
       {},
     ];
-    const statuses: [number, number][] = [];
+    const statuses: Array<[number, number]> = [];
     for (const headers of steps) {
       const [up, ig] = await both(pair(), "/rate/x", headers);
       statuses.push([up.status, ig.status]);
@@ -165,7 +165,7 @@ describe.each(configs)("%s", (name) => {
           return "refused";
         }
         const list = (await res.json()) as {
-          items: { data: { userIP: string; remoteIP: string } }[];
+          items: Array<{ data: { userIP: string; remoteIP: string } }>;
         };
         const [row] = list.items;
         if (row) {

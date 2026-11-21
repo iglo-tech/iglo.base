@@ -81,9 +81,9 @@ describe("S3.url path escaping", () => {
 // with a response of its own. Restores the real fetch when the run ends.
 async function withStubbedFetch<T>(
   run: () => Promise<T>,
-): Promise<{ result: T; calls: { url: string; init: RequestInit }[] }> {
+): Promise<{ result: T; calls: Array<{ url: string; init: RequestInit }> }> {
   const realFetch = globalThis.fetch;
-  const calls: { url: string; init: RequestInit }[] = [];
+  const calls: Array<{ url: string; init: RequestInit }> = [];
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init: init ?? {} });
     return new Response("test_response");
@@ -97,7 +97,7 @@ async function withStubbedFetch<T>(
 
 describe("S3.signAndSend", () => {
   // the Go test's request and signature values, for the host example.com
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     path: string;
     headers: Record<string, string>;
@@ -105,7 +105,7 @@ describe("S3.signAndSend", () => {
     secretKey: string;
     url: string;
     expectedHeaders: Record<string, string>;
-  }[] = [
+  }> = [
     {
       name: "minimal",
       path: "/test",

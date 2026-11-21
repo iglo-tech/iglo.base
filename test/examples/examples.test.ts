@@ -364,7 +364,7 @@ async function realtimeInBrowser(app: RunningApp, pb: PocketBase): Promise<void>
   }
 }
 
-for (const app of EXAMPLE_APPS as readonly ExampleApp[]) {
+for (const app of EXAMPLE_APPS as ReadonlyArray<ExampleApp>) {
   describe(`example ${app.name}`, () => {
     beforeAll(() => installAndBuild(app), TIMEOUT);
 

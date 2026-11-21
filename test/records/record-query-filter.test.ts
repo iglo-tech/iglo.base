@@ -90,8 +90,8 @@ async function asyncErrorOf(fn: () => Promise<unknown>): Promise<unknown> {
 
 function checkRecords(
   expectError: string,
-  expectRecordIds: string[],
-  records: Record[] | undefined,
+  expectRecordIds: Array<string>,
+  records: Array<Record> | undefined,
   err: unknown,
 ): void {
   if (expectError !== "") {
@@ -148,12 +148,12 @@ describe("TestFindRecordsByFilter", () => {
     sort: string;
     limit: number;
     offset: number;
-    params: Params[];
+    params: Array<Params>;
     expectError: string;
-    expectRecordIds: string[];
+    expectRecordIds: Array<string>;
   }
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     {
       name: "missing collection",
       collectionIdOrName: "missing",
@@ -259,7 +259,7 @@ describe("TestFindRecordsByFilter", () => {
 
   for (const s of scenarios) {
     test(s.name, async () => {
-      let records: Record[] | undefined;
+      let records: Array<Record> | undefined;
       let err = errorOf(() => {
         records = findRecordsByFilter(
           app,
@@ -296,7 +296,7 @@ describe("TestFindRecordsByFilter", () => {
 
 describe("TestFindFirstRecordByFilter", () => {
   // [name, collectionIdOrName, filter, params, expectError, expectRecordId]
-  const scenarios: [string, string, string, Params[], string, string][] = [
+  const scenarios: Array<[string, string, string, Array<Params>, string, string]> = [
     ["missing collection", "missing", "id != ''", [], "sql: no rows in result set", ""],
     [
       "invalid filter",
@@ -355,7 +355,7 @@ describe("TestCanAccessRecord", () => {
     boolean,
   ];
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     ["as superuser with nil rule", "superuser", undefined, null, true, false],
     // the filter rule should be ignored
     ["as superuser with non-empty rule", "superuser", undefined, "id = ''", true, false],

@@ -29,7 +29,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 
 // a fixture copy with MFA off for users
@@ -97,12 +97,12 @@ function refresh(server: Server, collection: string, token: string) {
 function origins(
   dataDir: string,
   recordId: string,
-): { fingerprint: string; collectionRef: string }[] {
+): Array<{ fingerprint: string; collectionRef: string }> {
   return queryRows(
     dataDir,
     "SELECT collectionRef, recordRef, fingerprint FROM _authOrigins WHERE recordRef = ? ORDER BY created",
     recordId,
-  ) as { fingerprint: string; collectionRef: string }[];
+  ) as Array<{ fingerprint: string; collectionRef: string }>;
 }
 
 afterAll(async () => {
@@ -205,7 +205,7 @@ describe("auth origins and MFAs across servers", () => {
       {
         headers: { Authorization: superuserToken },
       },
-    ).then((r) => r.json() as Promise<{ items: { fingerprint: string }[] }>);
+    ).then((r) => r.json() as Promise<{ items: Array<{ fingerprint: string }> }>);
     expect(list.items.map((i) => i.fingerprint)).toEqual(expected.map((o) => o.fingerprint));
     await stop(upstreamOnIglo);
     expect(origins(igloBase.dataDir, userId)).toEqual(expected);

@@ -141,7 +141,7 @@ export interface LogsConfig {
 
 export interface TrustedProxyConfig {
   // Headers is a list of explicit trusted header(s) to check.
-  Headers: string[] | null;
+  Headers: Array<string> | null;
   // UseLeftmostIP specifies to use the left-mostish IP from the trusted headers.
   //
   // Note that this could be insecure when used with X-Forwarded-For header
@@ -176,8 +176,8 @@ export interface RateLimitRule {
 }
 
 export interface RateLimitsConfig {
-  Rules: RateLimitRule[] | null;
-  ExcludedIPs: string[] | null;
+  Rules: Array<RateLimitRule> | null;
+  ExcludedIPs: Array<string> | null;
   Enabled: boolean;
 }
 
@@ -185,7 +185,7 @@ export interface RateLimitsConfig {
 export interface SettingsData {
   // SuperuserIPs defines an optional list of the superuser allowed
   // individual IPs and subnets (in CIDR notation).
-  SuperuserIPs: string[] | null;
+  SuperuserIPs: Array<string> | null;
   SMTP: SMTPConfig;
   Backups: BackupsConfig;
   S3: S3Config;
@@ -386,7 +386,7 @@ function int(n: GoInt): string {
   return typeof n === "bigint" ? n.toString() : String(n);
 }
 
-function strings(list: string[] | null): string {
+function strings(list: Array<string> | null): string {
   return "[" + (list ?? []).map(str).join(",") + "]";
 }
 
@@ -488,10 +488,10 @@ export class Settings {
   }
 
   // shortcuts to the embedded struct's fields
-  get SuperuserIPs(): string[] | null {
+  get SuperuserIPs(): Array<string> | null {
     return this.settings.SuperuserIPs;
   }
-  set SuperuserIPs(v: string[] | null) {
+  set SuperuserIPs(v: Array<string> | null) {
     this.settings.SuperuserIPs = v;
   }
   get SMTP(): SMTPConfig {
@@ -817,11 +817,11 @@ export function validateTrustedProxy(_c: TrustedProxyConfig): Error | null {
 // (aka. the rule Audience will have to exist in one of the specified options).
 export function findRateLimitRule(
   c: RateLimitsConfig,
-  searchLabels: string[],
-  ...optOnlyAudience: string[]
+  searchLabels: Array<string>,
+  ...optOnlyAudience: Array<string>
 ): [RateLimitRule, boolean] {
   const rules = c.Rules ?? [];
-  const prefixRules: number[] = [];
+  const prefixRules: Array<number> = [];
 
   for (const [i, label] of searchLabels.entries()) {
     // check for direct match
@@ -882,9 +882,9 @@ function checkUniqueRuleLabel(value: unknown): Error | null {
   ) {
     return ErrUnsupportedValueType;
   }
-  const rules = ((value ?? []) as ValidatableRule[]).map((v) => v.rule);
+  const rules = ((value ?? []) as Array<ValidatableRule>).map((v) => v.rule);
 
-  const existing: string[] = [];
+  const existing: Array<string> = [];
 
   for (const [i, rule] of rules.entries()) {
     const fullKey = rule.Label + "@@" + rule.Audience;

@@ -19,7 +19,7 @@ function fixtureCopy(): string {
 
 async function superuser(
   dataDir: string,
-  ...args: string[]
+  ...args: Array<string>
 ): Promise<{ exitCode: number; stdout: string; error: string }> {
   const result = await run(["--dir", dataDir, "superuser", ...args]);
   return {
@@ -84,7 +84,7 @@ describe("superuser", () => {
 
 describe("superuser upsert", () => {
   const dataDir = fixtureCopy();
-  const scenarios: [string, string, string, string | undefined][] = [
+  const scenarios: Array<[string, string, string, string | undefined]> = [
     ["empty email and password", "", "", "missing or invalid email address"],
     ["empty email", "", "1234567890", "missing or invalid email address"],
     ["invalid email", "invalid", "1234567890", "missing or invalid email address"],
@@ -140,7 +140,7 @@ describe("superuser upsert", () => {
 
 describe("superuser create", () => {
   const dataDir = fixtureCopy();
-  const scenarios: [string, string, string, string | undefined][] = [
+  const scenarios: Array<[string, string, string, string | undefined]> = [
     ["empty email", "", "1234567890", "missing or invalid email address"],
     ["invalid email", "invalid", "1234567890", "missing or invalid email address"],
     [
@@ -187,7 +187,7 @@ describe("superuser create", () => {
 
 describe("superuser update", () => {
   const dataDir = fixtureCopy();
-  const scenarios: [string, string, string, string | undefined][] = [
+  const scenarios: Array<[string, string, string, string | undefined]> = [
     ["empty email", "", "1234567890", "missing or invalid email address"],
     ["invalid email", "invalid", "1234567890", "missing or invalid email address"],
     [

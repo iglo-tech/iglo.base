@@ -36,7 +36,7 @@ describe("TestJSONFieldPrepareValue", () => {
   const f = new JSONField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: { raw: unknown; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; expected: string }> = [
     { raw: "null", expected: `null` },
     { raw: "", expected: `""` },
     { raw: "true", expected: `true` },
@@ -79,12 +79,12 @@ describe("TestJSONFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: JSONField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new JSONField({ name: "test" }),
@@ -157,11 +157,11 @@ describe("TestJSONFieldValidateSettings", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: () => JSONField;
-    expectErrors: string[];
-  }[] = [
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "MaxSize < 0",
       field: () => new JSONField({ id: "test", name: "test", maxSize: -1 }),
@@ -194,7 +194,7 @@ describe("TestJSONFieldValidateSettings", () => {
 });
 
 describe("TestJSONFieldCalculateMaxBodySize", () => {
-  const scenarios: { field: JSONField; expected: number }[] = [
+  const scenarios: Array<{ field: JSONField; expected: number }> = [
     { field: new JSONField(), expected: DefaultJSONFieldMaxSize },
     { field: new JSONField({ maxSize: 10 }), expected: 10 },
   ];

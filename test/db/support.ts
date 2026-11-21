@@ -120,10 +120,10 @@ export function tempDir(prefix = "iglo-base-db-"): string {
 export function openTempDatabases(onSleep: (ms: number) => void = () => {}): {
   app: Databases;
   dataDir: string;
-  sleeps: number[];
+  sleeps: Array<number>;
 } {
   const dataDir = tempDir("iglo-base-pb_data-");
-  const sleeps: number[] = [];
+  const sleeps: Array<number> = [];
   const app = Databases.open({
     dataDir,
     sleep: (ms) => {

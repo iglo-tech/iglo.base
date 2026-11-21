@@ -133,7 +133,7 @@ function parseResponse(
 }
 
 function decodeChunked(raw: Buffer): { body: Uint8Array; complete: boolean } {
-  const parts: Buffer[] = [];
+  const parts: Array<Buffer> = [];
   let pos = 0;
   for (;;) {
     const lineEnd = raw.indexOf("\r\n", pos);

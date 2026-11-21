@@ -66,7 +66,7 @@ async function startIglo(exe: string, dataDir: string): Promise<Server> {
   };
 }
 
-async function measure(label: string, server: Server): Promise<string[]> {
+async function measure(label: string, server: Server): Promise<Array<string>> {
   const api = apiClient(server.url);
   await api.loginSuperuser("bench@example.com", password);
   await api.must("POST", "/api/collections", {
@@ -94,11 +94,11 @@ async function measure(label: string, server: Server): Promise<string[]> {
     passwordConfirm: password,
   });
 
-  const rows: string[] = [];
+  const rows: Array<string> = [];
   for (const op of ["sign-in", "create"] as const) {
-    const health: number[] = [];
-    const ops: number[] = [];
-    const walls: number[] = [];
+    const health: Array<number> = [];
+    const ops: Array<number> = [];
+    const walls: Array<number> = [];
     for (let round = 0; round < rounds; round++) {
       const state = { running: true };
       const probe = (async () => {
@@ -161,7 +161,7 @@ try {
   mkdirSync(base, { recursive: true });
   await upsertSuperuser(base, root, "bench@example.com", password);
 
-  const targets: { label: string; exe?: string }[] = values.exe
+  const targets: Array<{ label: string; exe?: string }> = values.exe
     ? values.exe.split(",").map((e) => ({ label: e.split("=")[0]!, exe: e.split("=")[1]! }))
     : [];
   if (values.upstream) {

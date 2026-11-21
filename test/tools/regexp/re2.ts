@@ -33,7 +33,7 @@ import { unquote } from "@test/tools/regexp/go-quote";
 
 export interface re2Result {
   ncase: number;
-  failures: string[];
+  failures: Array<string>;
 }
 
 interface compiled {
@@ -62,12 +62,12 @@ function isSingleBytes(s: string): boolean {
 // and the failures (at most 100, as Go stops there).
 export function testRE2(file: string, lines: Iterable<string>, every = 1): re2Result {
   let nregexp = 0;
-  let str: string[] = [];
-  let input: string[] = [];
+  let str: Array<string> = [];
+  let input: Array<string> = [];
   let inStrings = false;
   let re: compiled | null = null;
   let refull: compiled | null = null;
-  const failures: string[] = [];
+  const failures: Array<string> = [];
   let ncase = 0;
   let lineno = 0;
   const fail = (msg: string): boolean => {
@@ -154,7 +154,7 @@ export function testRE2(file: string, lines: Iterable<string>, every = 1): re2Re
         throw new Error(`${file}:${lineno}: have ${res.length} test results, want 4`);
       }
       // runFull, runPartial, runFullLongest, runPartialLongest
-      const runs: [Regexp, string][] = [
+      const runs: Array<[Regexp, string]> = [
         [refull.re, "[full]"],
         [re.re, ""],
         [refull.longest, "[full,longest]"],
@@ -197,20 +197,20 @@ export function testRE2(file: string, lines: Iterable<string>, every = 1): re2Re
   return { ncase, failures };
 }
 
-function equal(a: readonly number[] | null, b: readonly number[] | null): boolean {
+function equal(a: ReadonlyArray<number> | null, b: ReadonlyArray<number> | null): boolean {
   if (a === null || b === null) {
     return a === b;
   }
   return a.length === b.length && a.every((x, i) => x === b[i]);
 }
 
-function parseResult(file: string, lineno: number, res: string): number[] | null {
+function parseResult(file: string, lineno: number, res: string): Array<number> | null {
   // A single - indicates no match.
   if (res === "-") {
     return null;
   }
   // Otherwise, a space-separated list of pairs.
-  const out: number[] = [];
+  const out: Array<number> = [];
   for (const pair of res.split(" ")) {
     // - means no submatch.
     if (pair === "-") {

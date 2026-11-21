@@ -74,7 +74,7 @@ export function appleSecretPrivateKey(): string {
   return privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 }
 
-export const providerCases: ProviderCase[] = [
+export const providerCases: Array<ProviderCase> = [
   // apple
   {
     name: "apple: a missing id_token",

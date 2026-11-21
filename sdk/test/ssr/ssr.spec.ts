@@ -73,7 +73,7 @@ describe("SSR Core", () => {
         refreshable: true,
       });
 
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       let setHeaders: Record<string, string> | undefined;
 
       const cookies: CookieAdapter = {
@@ -134,7 +134,7 @@ describe("SSR Core", () => {
         refreshable: true,
       });
 
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       let setHeaders: Record<string, string> | undefined;
 
       const cookies: CookieAdapter = {
@@ -482,9 +482,9 @@ describe("SSR Core", () => {
         },
       });
 
-      const setCookiesCalls: CookieToSet[][] = [];
+      const setCookiesCalls: Array<Array<CookieToSet>> = [];
       const createTestClient = async () => {
-        const clearedCookies: CookieToSet[] = [];
+        const clearedCookies: Array<CookieToSet> = [];
         setCookiesCalls.push(clearedCookies);
         const cookies: CookieAdapter = {
           getAll: () => [{ name: "pb_auth", value: JSON.stringify({ token }) }],
@@ -593,7 +593,7 @@ describe("SSR Core", () => {
   describe("Server Sign-in and Sign-out", () => {
     test("authWithPassword writes cookie and updates session cache", async () => {
       const cache = createSessionCache();
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       let setHeaders: Record<string, string> | undefined;
 
       const cookies: CookieAdapter = {
@@ -651,7 +651,7 @@ describe("SSR Core", () => {
 
     test("authStore.clear() clears cookie and evicts session cache", async () => {
       const cache = createSessionCache();
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       const token = dummyJWT({
         exp: 1_500_000,
         id: "user_to_logout",

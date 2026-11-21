@@ -109,7 +109,7 @@ export class Apple extends BaseProvider {
 // the expiration are checked with the id_token leeway, and the issuer and
 // the audience must match. Every failed check is reported.
 function validateAppleClaims(claims: MapClaims, clock: Clock, audience: string): void {
-  const errors: string[] = [];
+  const errors: Array<string> = [];
 
   const exp = claims["exp"];
   if (exp === undefined || exp === null) {

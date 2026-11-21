@@ -91,7 +91,7 @@ const insertChildren = `INSERT INTO cchildren (id, parent) WITH RECURSIVE c(x) A
 const insertChain = `INSERT INTO cchain (id, parent) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${chainDepth}) SELECT printf('n%014d', x), CASE x WHEN 1 THEN '' ELSE printf('n%014d', x - 1) END FROM c`;
 const insertTruncate = `INSERT INTO trunc (id, title) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${truncateRows}) SELECT printf('t%014d', x), 'title ' || x FROM c`;
 
-function median(values: number[]): number {
+function median(values: Array<number>): number {
   const s = values.toSorted((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 === 1
@@ -108,7 +108,7 @@ async function time(
 ): Promise<number> {
   await setup();
   await fn(-1); // warm-up
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     await setup();
     const start = performance.now();
@@ -130,8 +130,8 @@ try {
   }
 
   const upstream = await startUpstream({ dataDir });
-  const results: [string, string, number][] = [];
-  const wideIds: string[] = [];
+  const results: Array<[string, string, number]> = [];
+  const wideIds: Array<string> = [];
   try {
     let token = "";
     const call = async (method: string, path: string, body?: unknown): Promise<string> => {
@@ -266,10 +266,10 @@ try {
     const sql = (query: string) => {
       app.databases.nonconcurrentDB().newQuery(query).execute();
     };
-    const created: string[] = [];
+    const created: Array<string> = [];
     const wide = findCachedCollectionByNameOrId(app, "wide");
 
-    const iglo: number[] = [
+    const iglo: Array<number> = [
       await time(200, async (i) => {
         const record = newRecord(wide);
         record.load(wideCreate(i));

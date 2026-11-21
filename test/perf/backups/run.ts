@@ -55,7 +55,7 @@ function vm(pid: number, key: string): number {
   return Number(new RegExp(`${key}:\\s+(\\d+)`).exec(status)?.[1] ?? 0) / 1024;
 }
 
-function percentile(sorted: number[], p: number): number {
+function percentile(sorted: Array<number>, p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
 }
 
@@ -69,7 +69,7 @@ interface Latency {
 // requests one after the other, and the event loop of the server shows in
 // their latency
 function sampleLatency(url: string): { stop: () => Promise<Latency> } {
-  const times: number[] = [];
+  const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {
     while (state.running) {
@@ -102,7 +102,7 @@ function round(n: number): number {
 
 async function measure(
   name: string,
-  command: string[],
+  command: Array<string>,
   dataDir: string,
   port: number,
 ): Promise<void> {

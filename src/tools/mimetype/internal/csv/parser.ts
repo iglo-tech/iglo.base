@@ -37,7 +37,7 @@ export class Parser {
   // encoding/csv parser.
   countFields(
     collectIndexes: boolean,
-  ): [fields: number, fieldPos: number[] | null, hasMore: boolean] {
+  ): [fields: number, fieldPos: Array<number> | null, hasMore: boolean] {
     let finished = false;
     let line: Uint8Array;
     let cutShort: boolean;
@@ -57,7 +57,7 @@ export class Parser {
     }
 
     let fields = 0;
-    const indexes: number[] = [];
+    const indexes: Array<number> = [];
     let originalLine = line;
     parseField: for (;;) {
       if (line.length === 0 || line[0] !== 0x22) {

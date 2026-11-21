@@ -31,7 +31,7 @@ beforeAll(async () => {
 
 afterAll(() => app.cleanup());
 
-function router(sleeps: number[]): ReturnType<typeof newRouter> {
+function router(sleeps: Array<number>): ReturnType<typeof newRouter> {
   return newRouter(app, {
     recordCrud: {
       sleep: (ms) => {
@@ -45,7 +45,7 @@ function router(sleeps: number[]): ReturnType<typeof newRouter> {
 const emptyFilter = "/api/collections/demo2/records?filter=title%3D'nope'";
 
 test("the fourth empty filtered list in a window is throttled", async () => {
-  const sleeps: number[] = [];
+  const sleeps: Array<number> = [];
   const mux = router(sleeps).buildMux();
 
   for (let i = 0; i < 3; i++) {
@@ -73,7 +73,7 @@ test("the fourth empty filtered list in a window is throttled", async () => {
 
 test("superusers, unfiltered and non-empty lists are not throttled", async () => {
   now = new Date(now.getTime() + 60_000);
-  const sleeps: number[] = [];
+  const sleeps: Array<number> = [];
   const mux = router(sleeps).buildMux();
 
   for (let i = 0; i < 5; i++) {

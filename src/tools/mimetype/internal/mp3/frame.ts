@@ -128,7 +128,7 @@ export class header {
       [0, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160],
     ];
     const mpeg1 = this.isMPEG1() ? 1 : 0;
-    return 2 * ((halfrate[mpeg1] as number[])[this.rawBitrate()] as number);
+    return 2 * ((halfrate[mpeg1] as Array<number>)[this.rawBitrate()] as number);
   }
 
   // sampleRateHz returns the sampling rate of the frame in Hz.

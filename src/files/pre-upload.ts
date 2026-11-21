@@ -34,15 +34,15 @@ export interface UploadTarget {
   collection: Collection;
   // "" for a record whose id is generated
   recordId: string;
-  files: File[];
+  files: Array<File>;
 }
 
 // the files stored for one transaction
 export class PreUploads {
   readonly #app: App;
-  readonly #files: File[];
+  readonly #files: Array<File>;
 
-  constructor(app: App, files: File[]) {
+  constructor(app: App, files: Array<File>) {
     this.#app = app;
     this.#files = files;
   }
@@ -81,7 +81,7 @@ export class PreUploads {
     }
   }
 
-  #logFailure(files: File[], err: unknown): void {
+  #logFailure(files: Array<File>, err: unknown): void {
     this.#app.logger.warn("Failed to cleanup the new uploaded file after record db write failure", {
       error: err,
       failedToDelete: files.map((f) => f.name),
@@ -122,9 +122,9 @@ function recordExists(app: App, target: UploadTarget, id: string): boolean {
 // local storage is written by the save itself, inside the transaction.
 export async function preUploadFiles(
   app: App,
-  targets: readonly UploadTarget[],
+  targets: ReadonlyArray<UploadTarget>,
 ): Promise<PreUploads> {
-  const stored: File[] = [];
+  const stored: Array<File> = [];
   if (!app.settings.S3.Enabled) {
     return new PreUploads(app, stored);
   }

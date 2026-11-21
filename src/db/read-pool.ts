@@ -31,7 +31,7 @@ export interface ReadRequestMessage {
   id: number;
   path: string;
   sql: string;
-  args: SQLQueryBindings[];
+  args: Array<SQLQueryBindings>;
   mode: ReadMode;
   // Query.withExactIntegers
   exactIntegers: boolean;
@@ -39,8 +39,8 @@ export interface ReadRequestMessage {
 
 // the result of an "all" read as the worker sends it
 export interface RowTable {
-  names: string[];
-  rows: unknown[][];
+  names: Array<string>;
+  rows: Array<Array<unknown>>;
 }
 
 export interface SerializedError {
@@ -117,10 +117,10 @@ export interface ReadPoolStats {
 }
 
 export class ReadPool {
-  private readonly slots: Slot[] = [];
-  private readonly queue: Request[] = [];
+  private readonly slots: Array<Slot> = [];
+  private readonly queue: Array<Request> = [];
   private readonly abandoned = new Set<Worker>();
-  private readonly exited: Promise<void>[] = [];
+  private readonly exited: Array<Promise<void>> = [];
   private nextId = 1;
   private closed = false;
 
@@ -193,7 +193,7 @@ export class ReadPool {
   private read(
     path: string,
     sql: string,
-    args: SQLQueryBindings[],
+    args: Array<SQLQueryBindings>,
     mode: ReadMode,
     deadline: Deadline | null,
     exactIntegers: boolean,

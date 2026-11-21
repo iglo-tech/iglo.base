@@ -7,7 +7,7 @@ import { formatFloatF, toString, toStringSlice } from "@/tools/types/cast";
 
 describe("ToString float64", () => {
   // strconv.FormatFloat(f, 'f', -1, 64)
-  const scenarios: [number, string][] = [
+  const scenarios: Array<[number, string]> = [
     [1, "1"],
     [1.5, "1.5"],
     [-0, "-0"],
@@ -29,7 +29,7 @@ describe("ToString float64", () => {
 });
 
 describe("ToString", () => {
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["a", "a"],
     [true, "true"],
     [12n, "12"],
@@ -48,7 +48,7 @@ describe("ToString", () => {
 });
 
 describe("ToStringSlice", () => {
-  const scenarios: [unknown, string[]][] = [
+  const scenarios: Array<[unknown, Array<string>]> = [
     [null, []],
     [
       [1, "a", true, null],

@@ -61,7 +61,7 @@ export function testDefaultFieldIdValidation(fieldType: string): void {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; field: () => Field; expectError: boolean }[] = [
+  const scenarios: Array<{ name: string; field: () => Field; expectError: boolean }> = [
     { name: "empty value", field: () => newField(fieldType), expectError: true },
     {
       name: "invalid length",
@@ -101,7 +101,7 @@ export function testDefaultFieldNameValidation(fieldType: string): void {
     return f;
   };
 
-  const scenarios: { name: string; field: () => Field; expectError: boolean }[] = [
+  const scenarios: Array<{ name: string; field: () => Field; expectError: boolean }> = [
     { name: "empty value", field: () => newField(fieldType), expectError: true },
     { name: "invalid length", field: named("a".repeat(101)), expectError: true },
     { name: "valid length", field: named("a".repeat(100)), expectError: false },
@@ -133,7 +133,7 @@ export function testDefaultFieldHelpValidation(fieldType: string): void {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; json: string; expectError: boolean }[] = [
+  const scenarios: Array<{ name: string; json: string; expectError: boolean }> = [
     { name: "empty value", json: `{}`, expectError: false },
     { name: "< max limit", json: `{"help":"abc"}`, expectError: false },
     { name: "= max limit", json: `{"help":"${"a".repeat(300)}"}`, expectError: false },

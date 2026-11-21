@@ -45,7 +45,7 @@ if (positionals[0] === "serve") {
     routes: {
       "/health": () => new Response("ok"),
       "/q/:w": async (req) => {
-        const rows = (await target.run(req.params.w as WorkloadName)) as unknown[];
+        const rows = (await target.run(req.params.w as WorkloadName)) as Array<unknown>;
         return Response.json({ rows: rows.length });
       },
     },
@@ -58,8 +58,8 @@ if (positionals[0] === "serve") {
 async function client(): Promise<void> {
   const modes = values.modes!.split(",").map(Number);
   const seconds = Number(values.seconds);
-  const results: unknown[] = [];
-  const datasets: [Dataset, string | undefined][] = [
+  const results: Array<unknown> = [];
+  const datasets: Array<[Dataset, string | undefined]> = [
     ["fixture", values.fixture],
     ["1m", values.big],
   ];
@@ -127,8 +127,8 @@ async function client(): Promise<void> {
 }
 
 async function load(url: string, name: string, ms: number) {
-  const q: number[] = [];
-  const health: number[] = [];
+  const q: Array<number> = [];
+  const health: Array<number> = [];
   const end = performance.now() + ms;
   const start = performance.now();
   const loops = Array.from({ length: 8 }, async () => {

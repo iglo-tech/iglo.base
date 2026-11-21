@@ -15,7 +15,7 @@ export type StubRoute = (req: StubRequest) => Response | Promise<Response>;
 
 export interface StubbedFetch {
   // the URLs (origin and path) requested while the stub was installed
-  calls: string[];
+  calls: Array<string>;
   restore(): void;
 }
 
@@ -23,7 +23,7 @@ export interface StubbedFetch {
 const realFetch = globalThis.fetch;
 
 export function stubFetch(routes: { [url: string]: StubRoute }): StubbedFetch {
-  const calls: string[] = [];
+  const calls: Array<string> = [];
 
   const stub = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : String(input));

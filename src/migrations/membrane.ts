@@ -37,25 +37,25 @@ export interface Adapter {
   get?(target: object, key: string, m: Membrane): unknown;
   set?(target: object, key: string, value: unknown, m: Membrane): boolean | typeof pass;
   // what Object.keys and `in` see, for a struct that is not a JS object
-  keys?(target: object, m: Membrane): readonly string[];
+  keys?(target: object, m: Membrane): ReadonlyArray<string>;
   // the migration file's object, when it is not a Proxy of the target
   create?(target: object, m: Membrane): object;
 }
 
 // A slice a struct holds: Array methods and index writes reach the struct.
 export interface SliceSource {
-  read(): readonly unknown[];
-  write(next: unknown[]): void;
+  read(): ReadonlyArray<unknown>;
+  write(next: Array<unknown>): void;
   fromGo?(item: unknown): unknown;
   toGo?(item: unknown): unknown;
   // goja refuses an item of another Go type: a sloppy `list[0] = v` is
   // ignored and a push throws, as for a refused Proxy set
   accepts?(item: unknown): boolean;
   // the Go methods of the slice type
-  methods?: { keys: readonly string[]; get(key: string): unknown };
+  methods?: { keys: ReadonlyArray<string>; get(key: string): unknown };
 }
 
-type AnyFunction = (...args: unknown[]) => unknown;
+type AnyFunction = (...args: Array<unknown>) => unknown;
 
 interface VmIntrinsics {
   GoError: new (message: string) => Error & { value: unknown };
@@ -63,7 +63,7 @@ interface VmIntrinsics {
   parse(text: string): unknown;
   objectPrototype: object;
   object(): Record<string, unknown>;
-  array(): unknown[];
+  array(): Array<unknown>;
 }
 
 const intrinsicsSource = `(function () {
@@ -188,7 +188,7 @@ export class Membrane {
 
     const bytes = this.#bytes.get(v);
     if (bytes !== undefined) {
-      const data = bytesOf(v as unknown[]);
+      const data = bytesOf(v as Array<unknown>);
       return bytes === "bytes" ? data : new JSONRaw(bytesToText(data));
     }
 
@@ -203,7 +203,7 @@ export class Membrane {
     }
 
     if (Array.isArray(v)) {
-      return Array.from(v as unknown[], (item) => this.toHost(item));
+      return Array.from(v as Array<unknown>, (item) => this.toHost(item));
     }
 
     switch (Object.prototype.toString.call(v)) {
@@ -279,7 +279,7 @@ export class Membrane {
   // The array a migration file sees for a slice a struct holds. Its target
   // is a VM array, so it is an array to the file and the Array methods run
   // on this Proxy, through the traps below; callbacks get the fromGo view.
-  sliceView(source: SliceSource, host?: object): unknown[] {
+  sliceView(source: SliceSource, host?: object): Array<unknown> {
     const fromGo = source.fromGo ?? ((item: unknown) => this.toVm(item));
     const toGo = source.toGo ?? ((item: unknown) => this.toHost(item));
 
@@ -391,7 +391,7 @@ export class Membrane {
     return this.toVm(value);
   }
 
-  #newBytes(data: Uint8Array, kind: "bytes" | "raw"): unknown[] {
+  #newBytes(data: Uint8Array, kind: "bytes" | "raw"): Array<unknown> {
     const array = this.vm.array();
     for (const byte of data) {
       array.push(byte);
@@ -401,7 +401,7 @@ export class Membrane {
   }
 
   // types.JSONRaw: a byte slice with the Go methods of its type
-  #newRaw(raw: JSONRaw): unknown[] {
+  #newRaw(raw: JSONRaw): Array<unknown> {
     const array = this.#newBytes(textToBytes(raw.bytes()), "raw");
     const current = (): JSONRaw => this.toHost(array) as JSONRaw;
     const replace = (next: JSONRaw): void => {
@@ -410,7 +410,7 @@ export class Membrane {
         array.push(byte);
       }
     };
-    const methods: Record<string, (...args: unknown[]) => unknown> = {
+    const methods: Record<string, (...args: Array<unknown>) => unknown> = {
       string: () => current().string(),
       toString: () => current().string(),
       marshalJSON: () => this.toVm(textToBytes(current().marshalJSON())),
@@ -545,6 +545,6 @@ export function toInteger(v: unknown): number {
 }
 
 // goja converts each element to a Go uint8
-function bytesOf(items: readonly unknown[]): Uint8Array {
+function bytesOf(items: ReadonlyArray<unknown>): Uint8Array {
   return Uint8Array.from(items, (item) => toInteger(item) & 0xff);
 }

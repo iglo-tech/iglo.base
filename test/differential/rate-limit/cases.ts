@@ -43,16 +43,16 @@ export interface Step {
 
 export interface Case {
   name: string;
-  rules: RateLimitRuleData[];
-  excludedIPs?: string[];
+  rules: Array<RateLimitRuleData>;
+  excludedIPs?: Array<string>;
   // defaults to true
   enabled?: boolean;
-  superuserIPs?: string[];
-  trustedProxyHeaders?: string[];
+  superuserIPs?: Array<string>;
+  trustedProxyHeaders?: Array<string>;
   prepare?: (ctx: PrepareContext) => void;
   // window cases: the steps must land in the planned seconds
   timed?: boolean;
-  steps: Step[];
+  steps: Array<Step>;
 }
 
 export const tooManyRequestsBody = `{"data":{},"message":"Too Many Requests.","status":429}\n`;
@@ -90,11 +90,11 @@ function get(url: string, status: number, headers?: Record<string, string>): Ste
   return { url, status, ...(headers ? { headers } : {}) };
 }
 
-function times(n: number, step: Step): Step[] {
+function times(n: number, step: Step): Array<Step> {
   return Array.from({ length: n }, () => step);
 }
 
-function batch(status: number, ...requests: unknown[]): Step {
+function batch(status: number, ...requests: Array<unknown>): Step {
   return { method: "POST", url: "/api/batch", body: { requests }, status };
 }
 
@@ -149,7 +149,7 @@ const otpCapped: Step = {
   message: "Too many attempts, please try again later with a new OTP.",
 };
 
-export const cases: Case[] = [
+export const cases: Array<Case> = [
   // TestDefaultRateLimitMiddleware
   {
     name: "TestDefaultRateLimitMiddleware",

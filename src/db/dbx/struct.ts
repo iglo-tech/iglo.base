@@ -50,7 +50,7 @@ export interface StructModel extends TableModel {
   dbColumns(): Params;
   // the primary key column names; defaults to ["id"] when dbColumns() has
   // an "id" column (dbx's ID/Id field fallback)
-  dbPrimaryKey?(): string[];
+  dbPrimaryKey?(): Array<string>;
   // populates the model from a row; a row may hold only some of the
   // columns (for example only the generated primary key after an insert)
   dbScan(row: Row): void;
@@ -67,7 +67,7 @@ export function isStructModel(value: unknown): value is StructModel {
 }
 
 // pk returns the primary key column names of the model.
-export function primaryKeyNames(model: StructModel): string[] {
+export function primaryKeyNames(model: StructModel): Array<string> {
   if (model.dbPrimaryKey) {
     return model.dbPrimaryKey();
   }
@@ -84,7 +84,11 @@ export function structPK(model: StructModel): Params | null {
 }
 
 // columns returns the model values indexed by their column names.
-export function structColumns(model: StructModel, include: string[], exclude: string[]): Params {
+export function structColumns(
+  model: StructModel,
+  include: Array<string>,
+  exclude: Array<string>,
+): Params {
   const all = model.dbColumns();
   let v: Params = {};
   if (include.length === 0) {

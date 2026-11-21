@@ -194,14 +194,17 @@ function hydrateRecord(collection: Collection, text: (name: string) => string | 
 // Note that this method is intended to load and Scan data from a database rows result.
 export function newRecordsFromNullStringMaps(
   collection: Collection,
-  rows: readonly NullStringMap[],
-): Record[] {
+  rows: ReadonlyArray<NullStringMap>,
+): Array<Record> {
   return rows.map((row) => newRecordFromNullStringMap(collection, row));
 }
 
 // newRecordsFromNullStringMaps for rows as the driver reads them
-export function newRecordsFromRows(collection: Collection, rows: readonly Row[]): Record[] {
-  const records: Record[] = Array.from({ length: rows.length });
+export function newRecordsFromRows(
+  collection: Collection,
+  rows: ReadonlyArray<Row>,
+): Array<Record> {
+  const records: Array<Record> = Array.from({ length: rows.length });
   for (let i = 0; i < rows.length; i++) {
     records[i] = newRecordFromRow(collection, rows[i]!);
   }
@@ -405,7 +408,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       const old = oldExpand.get(key);
 
       let wasOldSlice = false;
-      let oldSlice: Record[];
+      let oldSlice: Array<Record>;
       if (old instanceof Record) {
         oldSlice = [old];
       } else if (isRecordSlice(old)) {
@@ -419,7 +422,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       }
 
       let wasNewSlice = false;
-      let newSlice: Record[];
+      let newSlice: Array<Record>;
       if (newValue instanceof Record) {
         newSlice = [newValue];
       } else if (isRecordSlice(newValue)) {
@@ -667,7 +670,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // GetStringSlice returns the data value for "key" as a slice of non-zero unique strings.
-  getStringSlice(key: string): string[] {
+  getStringSlice(key: string): Array<string> {
     return toUniqueStringSlice(this.get(key));
   }
 
@@ -676,7 +679,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // validations or modifications (including changing the file name or content before persisting).
   //
   // Returns null (Go's nil slice) when the key is not a file field.
-  getUnsavedFiles(key: string): File[] | null {
+  getUnsavedFiles(key: string): Array<File> | null {
     if (!key.endsWith(":unsaved")) {
       key += ":unsaved";
     }
@@ -688,7 +691,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // Deprecated: replaced with GetUnsavedFiles.
-  getUploadedFiles(key: string): File[] | null {
+  getUploadedFiles(key: string): Array<File> | null {
     return this.getUnsavedFiles(key);
   }
 
@@ -729,7 +732,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // the return result and will wrap the single model as a slice.
   //
   // Returns null (Go's nil slice) if there is no such expand relation loaded.
-  expandedAll(relField: string): Record[] | null {
+  expandedAll(relField: string): Array<Record> | null {
     if (this.#expand === null) {
       return null;
     }
@@ -812,7 +815,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // Hide hides the specified fields from the public safe serialization of the record.
-  hide(...fieldNames: string[]): this {
+  hide(...fieldNames: Array<string>): this {
     for (const name of fieldNames) {
       (this.#customVisibility ??= new Store<string, boolean>()).set(name, false);
     }
@@ -822,7 +825,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
   // Unhide forces to unhide the specified fields from the public safe serialization
   // of the record (even when the collection field itself is marked as hidden).
-  unhide(...fieldNames: string[]): this {
+  unhide(...fieldNames: Array<string>): this {
     for (const name of fieldNames) {
       (this.#customVisibility ??= new Store<string, boolean>()).set(name, true);
     }
@@ -1143,7 +1146,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 }
 
 // a Go []*Record: an array whose items are all records
-function isRecordSlice(v: unknown): v is Record[] {
+function isRecordSlice(v: unknown): v is Array<Record> {
   return Array.isArray(v) && v.every((item) => item instanceof Record);
 }
 

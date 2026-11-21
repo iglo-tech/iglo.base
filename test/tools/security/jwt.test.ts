@@ -63,7 +63,7 @@ describe("ParseUnverifiedJWT", () => {
 });
 
 describe("ParseJWT", () => {
-  const scenarios: [string, string, string, boolean, MapClaims | undefined][] = [
+  const scenarios: Array<[string, string, string, boolean, MapClaims | undefined]> = [
     [
       "invalid formatted JWT",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCJ9",
@@ -129,7 +129,7 @@ describe("ParseJWT", () => {
 });
 
 describe("NewJWT", () => {
-  const scenarios: [string, MapClaims, string, number, boolean][] = [
+  const scenarios: Array<[string, MapClaims, string, number, boolean]> = [
     ["empty, zero duration", {}, "", 0, true],
     ["empty, 10 seconds duration", {}, "", 10 * Second, false],
     ["non-empty, 10 seconds duration", { name: "test" }, "test", 10 * Second, false],
@@ -244,7 +244,7 @@ describe("ParseJWT and ParseUnverifiedJWT edge cases", () => {
   const withNewline = b64(H) + ".\r\n" + b64(`{"id":"a"}`);
 
   // name, token, ParseUnverifiedJWT accepts, ParseJWT accepts
-  const scenarios: [string, string, boolean, boolean][] = [
+  const scenarios: Array<[string, string, boolean, boolean]> = [
     ["valid", valid, true, true],
     ["alg none", b64(`{"alg":"none","typ":"JWT"}`) + "." + b64(`{"id":"a"}`) + ".", true, false],
     ["alg HS512", tok(`{"alg":"HS512","typ":"JWT"}`, `{"id":"a"}`, "sha512"), true, false],

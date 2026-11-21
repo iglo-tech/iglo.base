@@ -34,7 +34,7 @@ export async function startUpstream(
     layout?: Layout;
     dataDir?: string;
     // more `serve` arguments (e.g. --encryptionEnv)
-    args?: string[];
+    args?: Array<string>;
     // more environment variables
     env?: Record<string, string>;
   } = {},

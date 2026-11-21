@@ -30,7 +30,7 @@ function rng(seed: number): () => number {
   };
 }
 
-const optionSets: MarshalOptions[] = [
+const optionSets: Array<MarshalOptions> = [
   {},
   { allowInvalidUTF8: true },
   { allowDuplicateNames: true },
@@ -128,7 +128,7 @@ function randomJSONText(r: () => number, depth = 0): string {
     }
     case 6: {
       const n = Math.floor(r() * 4);
-      const items: string[] = [];
+      const items: Array<string> = [];
       for (let i = 0; i < n; i++) {
         items.push(ws() + randomJSONText(r, depth + 1) + ws());
       }
@@ -136,7 +136,7 @@ function randomJSONText(r: () => number, depth = 0): string {
     }
     default: {
       const n = Math.floor(r() * 4);
-      const items: string[] = [];
+      const items: Array<string> = [];
       const names = ["a", "b", "1", "10", "2", "a", "é", "😀", "\\u0041", "\\/"];
       for (let i = 0; i < n; i++) {
         const name =

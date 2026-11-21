@@ -168,12 +168,12 @@ interface Saved {
   guestBody: string;
 }
 
-const saved: Saved[] = [];
+const saved: Array<Saved> = [];
 let saves = 0;
 
 describe("upstream", () => {
-  const userIds: string[] = [];
-  const allIds: string[] = [];
+  const userIds: Array<string> = [];
+  const allIds: Array<string> = [];
 
   test("collections and records", async () => {
     const usersId = await createCollection({
@@ -209,7 +209,7 @@ describe("upstream", () => {
       for (const [k, v] of Object.entries(json)) {
         if (v.includes("$firstDoc")) {
           const current = await request("GET", `/api/collections/${allCollection}/records/${id}`);
-          const docs = (JSON.parse(current.text) as { docs: string[] }).docs;
+          const docs = (JSON.parse(current.text) as { docs: Array<string> }).docs;
           json[k] = v.replace("$firstDoc", docs[0] as string);
         }
       }
@@ -224,7 +224,7 @@ describe("upstream", () => {
       viewRule: "",
       fields: numsFields,
     });
-    const numIds: string[] = [];
+    const numIds: Array<string> = [];
     for (const p of numsPayloads()) {
       numIds.push(await saveRecord(numsCollection, p));
       saves++;
@@ -370,7 +370,7 @@ describe("records read from data.db", () => {
 });
 
 // "<typeof> <value>" of each row of a two-column select
-function classes(db: Database, sql: string): string[] {
+function classes(db: Database, sql: string): Array<string> {
   return db
     .prepare(sql)
     .values()
@@ -407,14 +407,9 @@ function storeExported(
     mem.run(
       `CREATE TABLE t (${fields.map((f) => `"${f.getName()}" ${f.columnType(fieldApp(app))}`).join(", ")})`,
     );
-    const values = names.map((n) => driverValue(exported[n])) as (
-      | string
-      | number
-      | bigint
-      | boolean
-      | null
-      | Uint8Array
-    )[];
+    const values = names.map((n) => driverValue(exported[n])) as Array<
+      string | number | bigint | boolean | null | Uint8Array
+    >;
     mem.query(`INSERT INTO t VALUES (${names.map(() => "?").join(", ")})`).run(...values);
     return readColumns(mem, "t", names, null);
   } finally {
@@ -425,12 +420,12 @@ function storeExported(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): { [name: string]: [string, unknown] } {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM ${table}${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: { [name: string]: [string, unknown] } = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];

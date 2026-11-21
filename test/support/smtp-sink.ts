@@ -9,7 +9,7 @@
 
 export interface SinkMessage {
   // the RCPT TO addresses
-  to: string[];
+  to: Array<string>;
   // the DATA text, with quoted-printable soft line breaks removed
   data: string;
   // when it was received
@@ -18,7 +18,7 @@ export interface SinkMessage {
 
 export interface SmtpSink {
   port: number;
-  messages: SinkMessage[];
+  messages: Array<SinkMessage>;
 }
 
 let shared: SmtpSink | undefined;
@@ -30,14 +30,14 @@ export function sharedSmtpSink(): SmtpSink {
 
 interface Session {
   buffer: string;
-  to: string[];
+  to: Array<string>;
   inData: boolean;
   data: string;
 }
 
 // A new sink, for a test that must tell servers' mail apart.
 export function startSmtpSink(): SmtpSink {
-  const messages: SinkMessage[] = [];
+  const messages: Array<SinkMessage> = [];
   const decoder = new TextDecoder();
 
   const listener = Bun.listen<Session>({

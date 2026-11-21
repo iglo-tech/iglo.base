@@ -115,7 +115,7 @@ export class Event extends Resolver {
   // and returns a slice with filesystem.File instances (if any).
   //
   // Fails with ErrMissingFile when the key has no files.
-  async findUploadedFiles(key: string): Promise<File[]> {
+  async findUploadedFiles(key: string): Promise<Array<File>> {
     if (this.request.multipartForm === undefined) {
       const err = await this.request.parseMultipartForm(DefaultMaxMemory);
       if (err) {
@@ -128,7 +128,7 @@ export class Event extends Resolver {
       throw ErrMissingFile;
     }
 
-    const result: File[] = [];
+    const result: Array<File> = [];
 
     for (const fh of files) {
       result.push(await NewFileFromMultipart(fh));
@@ -673,7 +673,7 @@ export function expandIP(ip: string): string {
   if (!addr.includes(":")) {
     return "invalid IP";
   }
-  let groups: number[];
+  let groups: Array<number>;
   try {
     groups = parseIPv6(addr);
   } catch {
@@ -683,8 +683,8 @@ export function expandIP(ip: string): string {
   return zone ? `${expanded}%${zone}` : expanded;
 }
 
-function parseIPv6(addr: string): number[] {
-  let tail: number[] = [];
+function parseIPv6(addr: string): Array<number> {
+  let tail: Array<number> = [];
   let s = addr;
   // embedded IPv4 suffix
   const v4 = /:((?:\d{1,3}\.){3}\d{1,3})$/.exec(s);
@@ -703,7 +703,7 @@ function parseIPv6(addr: string): number[] {
     }
   }
   const double = s.indexOf("::");
-  let groups: number[];
+  let groups: Array<number>;
   if (double >= 0) {
     if (s.indexOf("::", double + 1) >= 0) {
       throw new Error("multiple ::");
@@ -724,7 +724,7 @@ function parseIPv6(addr: string): number[] {
   return groups;
 }
 
-function parseGroups(part: string): number[] {
+function parseGroups(part: string): Array<number> {
   if (part === "") {
     return [];
   }

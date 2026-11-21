@@ -44,7 +44,7 @@ class ManualClock implements Clock {
 
 const startTime = new Date("2026-10-29T12:00:00.000Z");
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(): TestCollectionsApp {
   const app = openTestApp(new ManualClock(startTime));
@@ -69,7 +69,7 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
 
 // the ids of the auth refs (external auths, MFAs, OTPs and auth origins)
 // of an auth record
-function refIds(app: RecordsApp, record: Record): string[] {
+function refIds(app: RecordsApp, record: Record): Array<string> {
   return [
     CollectionNameExternalAuths,
     CollectionNameMFAs,
@@ -78,7 +78,7 @@ function refIds(app: RecordsApp, record: Record): string[] {
   ].flatMap((name) => findAllRefsByRecord(app, name, record).map((r) => r.id));
 }
 
-function originIds(origins: AuthOrigin[]): string[] {
+function originIds(origins: Array<AuthOrigin>): Array<string> {
   return origins.map((o) => o.id);
 }
 
@@ -215,7 +215,7 @@ describe("TestAuthOriginPreValidate", () => {
 });
 
 describe("TestAuthOriginValidateHook", () => {
-  const scenarios: [string, (app: RecordsApp) => AuthOrigin, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => AuthOrigin, Array<string>]> = [
     ["empty", (app) => newAuthOrigin(app), ["collectionRef", "recordRef", "fingerprint"]],
     [
       "non-auth collection",
@@ -267,7 +267,7 @@ describe("TestAuthOriginValidateHook", () => {
 });
 
 describe("TestAuthOriginPasswordChangeDeletion", () => {
-  const scenarios: [string, string, string[]][] = [
+  const scenarios: Array<[string, string, Array<string>]> = [
     // no auth origin associated with it
     ["users", "test@example.com", []],
     [
@@ -298,7 +298,7 @@ describe("TestAuthOriginPasswordChangeDeletion", () => {
 // queries (core/auth_origin_query_test.go)
 
 describe("TestFindAllAuthOriginsByRecord", () => {
-  const scenarios: [string, string, string, string[]][] = [
+  const scenarios: Array<[string, string, string, Array<string>]> = [
     ["demo1", "demo1", "84nmscqy84lsi1t", []],
     [
       CollectionNameSuperusers,
@@ -326,7 +326,7 @@ describe("TestFindAllAuthOriginsByRecord", () => {
 });
 
 describe("TestFindAllAuthOriginsByCollection", () => {
-  const scenarios: [string, string[]][] = [
+  const scenarios: Array<[string, Array<string>]> = [
     ["demo1", []],
     [
       CollectionNameSuperusers,
@@ -348,7 +348,7 @@ describe("TestFindAllAuthOriginsByCollection", () => {
 });
 
 describe("TestFindAuthOriginById", () => {
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["", true],
     ["84nmscqy84lsi1t", true], // non-origin id
     ["9r2j0m74260ur8i", false],
@@ -370,7 +370,7 @@ describe("TestFindAuthOriginById", () => {
 
 describe("TestFindAuthOriginByRecordAndFingerprint", () => {
   // the record is demo1 (a non-auth record) or superuser test2@example.com
-  const scenarios: [boolean, string, boolean][] = [
+  const scenarios: Array<[boolean, string, boolean]> = [
     [false, "6afbfe481c31c08c55a746cccb88ece0", true],
     [true, "", true],
     [true, "abc", true],
@@ -401,7 +401,7 @@ describe("TestFindAuthOriginByRecordAndFingerprint", () => {
 });
 
 describe("TestDeleteAllAuthOriginsByRecord", () => {
-  const scenarios: [string, string, string, string[]][] = [
+  const scenarios: Array<[string, string, string, Array<string>]> = [
     ["demo1", "demo1", "84nmscqy84lsi1t", []], // non-auth record
     [
       CollectionNameSuperusers,

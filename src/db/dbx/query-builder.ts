@@ -42,21 +42,21 @@ export interface UnionInfo {
 // QueryBuilder builds different clauses for a SELECT SQL statement.
 export interface QueryBuilder {
   // BuildSelect generates a SELECT clause from the given selected column names.
-  buildSelect(cols: string[], distinct: boolean, option: string): string;
+  buildSelect(cols: Array<string>, distinct: boolean, option: string): string;
   // BuildFrom generates a FROM clause from the given tables.
-  buildFrom(tables: string[]): string;
+  buildFrom(tables: Array<string>): string;
   // BuildGroupBy generates a GROUP BY clause from the given group-by columns.
-  buildGroupBy(cols: string[]): string;
+  buildGroupBy(cols: Array<string>): string;
   // BuildJoin generates a JOIN clause from the given join information.
-  buildJoin(joins: JoinInfo[], params: Params): string;
+  buildJoin(joins: Array<JoinInfo>, params: Params): string;
   // BuildWhere generates a WHERE clause from the given expression.
   buildWhere(e: Expression | null, params: Params): string;
   // BuildHaving generates a HAVING clause from the given expression.
   buildHaving(e: Expression | null, params: Params): string;
   // BuildOrderByAndLimit generates the ORDER BY and LIMIT clauses.
-  buildOrderByAndLimit(sql: string, cols: string[], limit: number, offset: number): string;
+  buildOrderByAndLimit(sql: string, cols: Array<string>, limit: number, offset: number): string;
   // BuildUnion generates a UNION clause from the given union information.
-  buildUnion(unions: UnionInfo[], params: Params): string;
+  buildUnion(unions: Array<UnionInfo>, params: Params): string;
   // CombineUnion combines the nonempty unionClause with the provided sql string.
   //
   // The unionClause is expected to be the result of BuildUnion.
@@ -89,7 +89,7 @@ export class BaseQueryBuilder implements QueryBuilder {
     return this.database;
   }
 
-  buildSelect(cols: string[], distinct: boolean, option: string): string {
+  buildSelect(cols: Array<string>, distinct: boolean, option: string): string {
     let s = "SELECT ";
     if (distinct) {
       s += "DISTINCT ";
@@ -119,18 +119,18 @@ export class BaseQueryBuilder implements QueryBuilder {
     return s;
   }
 
-  buildFrom(tables: string[]): string {
+  buildFrom(tables: Array<string>): string {
     if (tables.length === 0) {
       return "";
     }
     return "FROM " + tables.map((table) => this.quoteTableNameAndAlias(table)).join(", ");
   }
 
-  buildJoin(joins: JoinInfo[], params: Params): string {
+  buildJoin(joins: Array<JoinInfo>, params: Params): string {
     if (joins.length === 0) {
       return "";
     }
-    const parts: string[] = [];
+    const parts: Array<string> = [];
     for (const join of joins) {
       let sql = join.join + " " + this.quoteTableNameAndAlias(join.table);
       const on = join.on !== null ? join.on.build(this.database, params) : "";
@@ -162,14 +162,14 @@ export class BaseQueryBuilder implements QueryBuilder {
     return "";
   }
 
-  buildGroupBy(cols: string[]): string {
+  buildGroupBy(cols: Array<string>): string {
     if (cols.length === 0) {
       return "";
     }
     return "GROUP BY " + cols.map((col) => this.database.quoteColumnName(col)).join(", ");
   }
 
-  buildOrderByAndLimit(sql: string, cols: string[], limit: number, offset: number): string {
+  buildOrderByAndLimit(sql: string, cols: Array<string>, limit: number, offset: number): string {
     const orderBy = this.buildOrderBy(cols);
     if (orderBy !== "") {
       sql += " " + orderBy;
@@ -181,7 +181,7 @@ export class BaseQueryBuilder implements QueryBuilder {
     return sql;
   }
 
-  buildUnion(unions: UnionInfo[], params: Params): string {
+  buildUnion(unions: Array<UnionInfo>, params: Params): string {
     if (unions.length === 0) {
       return "";
     }
@@ -205,7 +205,7 @@ export class BaseQueryBuilder implements QueryBuilder {
   }
 
   // BuildOrderBy generates the ORDER BY clause.
-  buildOrderBy(cols: string[]): string {
+  buildOrderBy(cols: Array<string>): string {
     if (cols.length === 0) {
       return "";
     }

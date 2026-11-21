@@ -22,7 +22,7 @@ export interface Mailpit {
 
 export interface MailpitOptions {
   // more mailpit arguments
-  args?: string[];
+  args?: Array<string>;
   // the SMTP listen address (127.0.0.1 unless set)
   smtpHost?: string;
 }

@@ -25,7 +25,7 @@ export const ErrKeyUnexpected = NewError("validation_key_unexpected", "key not e
 export class KeyRules {
   constructor(
     readonly key: unknown,
-    readonly rules: readonly Rule[],
+    readonly rules: ReadonlyArray<Rule>,
     readonly isOptional = false,
   ) {}
 
@@ -48,14 +48,14 @@ export class KeyRules {
 //
 // A nil value is considered valid. Use the Required rule to make sure a
 // map value is present.
-export function Map(...keys: KeyRules[]): MapRule {
+export function Map(...keys: Array<KeyRules>): MapRule {
   return new MapRule(keys, false);
 }
 
 // MapRule represents a rule set associated with a map.
 export class MapRule implements Rule {
   constructor(
-    private readonly keys: readonly KeyRules[],
+    private readonly keys: ReadonlyArray<KeyRules>,
     private readonly extraKeysAllowed: boolean,
   ) {}
 
@@ -75,7 +75,7 @@ export class MapRule implements Rule {
       // must be a map
       return new InternalError(ErrNotMap);
     }
-    const entries: [unknown, unknown][] = isObject ? Object.entries(m) : [...m.entries()];
+    const entries: Array<[unknown, unknown]> = isObject ? Object.entries(m) : [...m.entries()];
     const values = new globalThis.Map<unknown, unknown>(entries);
 
     const errs = new Errors();
@@ -123,7 +123,7 @@ export class MapRule implements Rule {
 }
 
 // Key specifies a map key and the corresponding validation rules.
-export function Key(key: unknown, ...rules: Rule[]): KeyRules {
+export function Key(key: unknown, ...rules: Array<Rule>): KeyRules {
   return new KeyRules(key, rules);
 }
 

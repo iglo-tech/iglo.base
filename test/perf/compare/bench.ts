@@ -152,7 +152,7 @@ interface Workload {
   status?: number;
 }
 
-const workloads: Workload[] = [
+const workloads: Array<Workload> = [
   { key: "list", name: "list 30", path: "/api/collections/posts/records?perPage=30" },
   {
     key: "list-filter",
@@ -208,7 +208,7 @@ interface Result {
 }
 
 async function run(url: string, w: Workload, clients: number, secs: number): Promise<Result> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   let errors = 0;
   const cpu0 = process.cpuUsage();
   const started = performance.now();
@@ -323,7 +323,7 @@ async function startUp(
 
 const fmt = (n: number | null, d = 2): string => (n === null ? "-" : n.toFixed(d));
 
-const median = (xs: number[]): number => {
+const median = (xs: Array<number>): number => {
   const s = xs.toSorted((a, b) => a - b);
   return s[Math.floor(s.length / 2)]!;
 };
@@ -339,9 +339,9 @@ try {
     await build(base, root);
   }
 
-  const runs: Record<string, Record<string, Result[]>> = {};
-  const startup: Record<string, number[]> = {};
-  const idle: Record<string, number[]> = {};
+  const runs: Record<string, Record<string, Array<Result>>> = {};
+  const startup: Record<string, Array<number>> = {};
+  const idle: Record<string, Array<number>> = {};
   for (let rep = 0; rep < repeat; rep++) {
     for (const target of targets) {
       const dataDir = join(root, `${target}-${rep}`, "pb_data");
@@ -377,7 +377,7 @@ try {
     }
   }
 
-  const table: string[] = [
+  const table: Array<string> = [
     "| Workload | Clients | iglo.base req/s | p50 | p95 | p99 | upstream req/s | p50 | p95 | p99 | p50 ratio | p95 ratio | req/s ratio |",
     "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
   ];

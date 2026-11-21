@@ -27,7 +27,7 @@ const password = "1234567890";
 const rows = 10_000;
 const insertRows = `INSERT INTO bench (id, title, n, active) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${rows}) SELECT printf('r%014d', x), 'title ' || x, x % 100, x % 2 FROM c`;
 
-function median(values: number[]): number {
+function median(values: Array<number>): number {
   const s = values.toSorted((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 === 1
@@ -37,7 +37,7 @@ function median(values: number[]): number {
 
 async function timeAsync(runs: number, fn: () => Promise<void>): Promise<number> {
   await fn(); // warm-up
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
     await fn();
@@ -48,7 +48,7 @@ async function timeAsync(runs: number, fn: () => Promise<void>): Promise<number>
 
 function timeSync(runs: number, fn: () => void): number {
   fn(); // warm-up
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
     fn();
@@ -69,7 +69,7 @@ try {
   }
 
   const upstream = await startUpstream({ dataDir });
-  const results: [string, string, number][] = [];
+  const results: Array<[string, string, number]> = [];
   try {
     const call = async (method: string, path: string, body?: unknown): Promise<string> => {
       const res = await fetch(`${upstream.url}${path}`, {
@@ -136,7 +136,7 @@ try {
   const app = openDataDir(copy);
   try {
     reloadCachedCollections(app);
-    const iglo: number[] = [
+    const iglo: Array<number> = [
       timeSync(200, () => {
         findRecordById(app, "bench", "r00000000005000");
       }),

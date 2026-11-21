@@ -91,8 +91,8 @@ function makeContext(
     headers.set("cookie", jar.map((c) => `${c.name}=${encodeURIComponent(c.value)}`).join("; "));
   }
   const request = new Request(url, { method: init.method ?? "GET", headers, body: init.body });
-  const sets: CookieWrite[] = [];
-  const deletes: string[] = [];
+  const sets: Array<CookieWrite> = [];
+  const deletes: Array<string> = [];
   const context: AstroContext = {
     request,
     url,
@@ -115,7 +115,7 @@ function makeContext(
 
 /** The `next` of an app that answers `200 app` and records the contexts it saw. */
 function appNext(context: AstroContext) {
-  const seen: AstroContext[] = [];
+  const seen: Array<AstroContext> = [];
   const next = async (): Promise<Response> => {
     seen.push(context);
     return new Response("app", { status: 200 });

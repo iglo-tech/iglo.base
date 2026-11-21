@@ -10,7 +10,7 @@ import {
 } from "@/tools/security/random";
 
 function testRandomStringWithAlphabet(randomFunc: (n: number, alphabet: string) => string): void {
-  const scenarios: [string, RegExp][] = [
+  const scenarios: Array<[string, RegExp]> = [
     ["0123456789_", /^[0-9_]+$/],
     ["abcdef123", /^[abcdef123]+$/],
     ["!@#$%^&*()", /^[!@#$%^&*()]+$/],

@@ -23,7 +23,7 @@ export interface NodeInit {
   dataAtom?: string;
   data?: string;
   namespace?: string;
-  attr?: Attribute[];
+  attr?: Array<Attribute>;
 }
 
 // A Node consists of a NodeType and some Data (tag name for element nodes,
@@ -46,7 +46,7 @@ export class Node {
   dataAtom: string;
   data: string;
   namespace: string;
-  attr: Attribute[];
+  attr: Array<Attribute>;
 
   constructor(init: NodeInit = {}) {
     this.type = init.type ?? ErrorNode;
@@ -153,12 +153,12 @@ export function reparentChildren(dst: Node, src: Node): void {
 }
 
 // stackTop returns the top element of a stack, or null if it is empty.
-export function stackTop<T>(s: readonly T[]): T | null {
+export function stackTop<T>(s: ReadonlyArray<T>): T | null {
   return s.length > 0 ? s[s.length - 1]! : null;
 }
 
 // stackIndex returns the index of the topmost occurrence of item in s, or -1.
-export function stackIndex<T>(s: readonly T[], item: T): number {
+export function stackIndex<T>(s: ReadonlyArray<T>, item: T): number {
   for (let i = s.length - 1; i >= 0; i--) {
     if (s[i] === item) {
       return i;
@@ -169,7 +169,7 @@ export function stackIndex<T>(s: readonly T[], item: T): number {
 
 // stackPop removes and returns the top element. Go's pop panics on an empty
 // stack, and the parser turns that panic into an error, so this throws too.
-export function stackPop<T>(s: T[]): T {
+export function stackPop<T>(s: Array<T>): T {
   if (s.length === 0) {
     throw new RangeError("index out of range [-1]");
   }
@@ -177,7 +177,7 @@ export function stackPop<T>(s: T[]): T {
 }
 
 // stackAt returns s[i]. Go panics when i is out of range, so this throws too.
-export function stackAt<T>(s: readonly T[], i: number): T {
+export function stackAt<T>(s: ReadonlyArray<T>, i: number): T {
   if (i < 0 || i >= s.length) {
     throw new RangeError(`index out of range [${i}] with length ${s.length}`);
   }
@@ -185,12 +185,12 @@ export function stackAt<T>(s: readonly T[], i: number): T {
 }
 
 // stackInsert inserts item at index i, shifting later elements up.
-export function stackInsert<T>(s: T[], i: number, item: T): void {
+export function stackInsert<T>(s: Array<T>, i: number, item: T): void {
   s.splice(i, 0, item);
 }
 
 // stackRemove removes the topmost occurrence of item from s, if present.
-export function stackRemove<T>(s: T[], item: T): void {
+export function stackRemove<T>(s: Array<T>, item: T): void {
   const i = stackIndex(s, item);
   if (i === -1) {
     return;
@@ -200,7 +200,7 @@ export function stackRemove<T>(s: T[], item: T): void {
 
 // nodeStackContains reports whether the stack has an HTML element (namespace
 // "") with the atom a.
-export function nodeStackContains(s: readonly Node[], a: string): boolean {
+export function nodeStackContains(s: ReadonlyArray<Node>, a: string): boolean {
   for (const n of s) {
     if (n.dataAtom === a && n.namespace === "") {
       return true;

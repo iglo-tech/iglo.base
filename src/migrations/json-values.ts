@@ -64,15 +64,15 @@ export class GoJSONArray {
     readonly elem: GoType = anyType,
   ) {}
 
-  static of(items: unknown[], elem: GoType = anyType): GoJSONArray {
+  static of(items: Array<unknown>, elem: GoType = anyType): GoJSONArray {
     return new GoJSONArray({ items }, "items", elem);
   }
 
-  get items(): unknown[] {
-    return (this.holder[this.key] ?? []) as unknown[];
+  get items(): Array<unknown> {
+    return (this.holder[this.key] ?? []) as Array<unknown>;
   }
 
-  set items(next: unknown[]) {
+  set items(next: Array<unknown>) {
     this.holder[this.key] = next;
   }
 

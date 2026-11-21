@@ -53,14 +53,14 @@ describe("TestImportCollections", () => {
   const totalSystemCollections = counts.system;
   const totalCollections = totalRegularCollections + totalSystemCollections;
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
-    data: Record<string, unknown>[];
+    data: Array<Record<string, unknown>>;
     deleteMissing: boolean;
     expectError: boolean;
     expectCollectionsCount: number;
     afterTestFunc?: (app: TestCollectionsApp) => void;
-  }[] = [
+  }> = [
     {
       name: "empty collections",
       data: [],
@@ -247,14 +247,14 @@ describe("TestImportCollectionsByMarshaledJSON", () => {
   const totalSystemCollections = counts.system;
   const totalCollections = totalRegularCollections + totalSystemCollections;
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: string;
     deleteMissing: boolean;
     expectError: boolean;
     expectCollectionsCount: number;
     afterTestFunc?: (app: TestCollectionsApp) => void;
-  }[] = [
+  }> = [
     {
       name: "invalid json array",
       data: `{"test":123}`,
@@ -325,11 +325,11 @@ describe("TestImportCollectionsByMarshaledJSON", () => {
 });
 
 describe("TestImportCollectionsUpdateRules", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: Record<string, unknown>;
     deleteMissing: boolean;
-  }[] = [
+  }> = [
     {
       name: "extend existing by name (without deleteMissing)",
       data: {

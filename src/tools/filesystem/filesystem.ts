@@ -247,8 +247,8 @@ export class System {
 
   // List returns a flat list with info for all files under the specified
   // prefix.
-  list(prefix: string): ListObject[] {
-    const files: ListObject[] = [];
+  list(prefix: string): Array<ListObject> {
+    const files: Array<ListObject> = [];
 
     const iter = this.#bucket.list({ prefix });
 
@@ -347,7 +347,7 @@ export class System {
   //
   // The prefix could be subpath (ex. "/a/b/") or filename prefix (ex.
   // "/a/b/file_").
-  deletePrefix(prefix: string): unknown[] {
+  deletePrefix(prefix: string): Array<unknown> {
     const steps = this.deletePrefixSteps(prefix);
     for (;;) {
       const r = steps.next();
@@ -359,8 +359,8 @@ export class System {
 
   // DeletePrefix as a generator: it yields after each page of deleted
   // files and returns the failures.
-  *deletePrefixSteps(prefix: string): Generator<void, unknown[], void> {
-    const failed: unknown[] = [];
+  *deletePrefixSteps(prefix: string): Generator<void, Array<unknown>, void> {
+    const failed: Array<unknown> = [];
 
     if (prefix === "") {
       failed.push(new Error("prefix mustn't be empty"));
@@ -493,7 +493,7 @@ export class System {
   // directory), reading the ranges in pieces of spoolChunk bytes.
   async #spool(
     fileKey: string,
-    parts: (Uint8Array | { start: number; length: number })[],
+    parts: Array<Uint8Array | { start: number; length: number }>,
   ): Promise<{ blob: Blob; remove: () => void }> {
     const tempDir = join(dirname(this.#localDir), localTempDirName);
     mkdirSync(tempDir, { recursive: true });

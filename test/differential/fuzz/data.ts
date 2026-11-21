@@ -50,7 +50,7 @@ export function fuzzItems(tagsId: string): object {
 
 const tagIds = Array.from({ length: 6 }, (_, i) => `fuzztag${String(i).padStart(8, "0")}`);
 
-export const tagRecords: string[] = [
+export const tagRecords: Array<string> = [
   ["alpha", 1],
   ["beta", 1.5],
   ["GAMMA", -1],
@@ -67,7 +67,7 @@ export const tagRecords: string[] = [
 );
 
 // after the fixture's last autodate and far from any run's clock
-export const fixedAutodates: string[] = [
+export const fixedAutodates: Array<string> = [
   `UPDATE fuzz_tags SET created = printf('2025-06-01 10:00:%02d.000Z', CAST(substr(id, -2) AS INTEGER))`,
   `UPDATE fuzz_items SET created = printf('2025-06-02 10:00:%02d.000Z', CAST(substr(id, -2) AS INTEGER))`,
 ];
@@ -151,7 +151,7 @@ const jsons = [
 const selects = [[], ["a"], ["b", "a"], ["%"], ["_"], ["a", "b", "c"], ["%", "_"]];
 
 // every value of each list appears; the rows are a fixed cycle of them
-export const itemRecords: string[] = texts.map((text, i) => {
+export const itemRecords: Array<string> = texts.map((text, i) => {
   const one = ["", "a", "b", "%", "_"][i % 5];
   const fields = [
     `"id":${JSON.stringify(`fuzzitem${String(i).padStart(7, "0")}`)}`,

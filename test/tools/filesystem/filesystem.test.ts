@@ -48,7 +48,7 @@ function attrsJSON(contentType: string): string {
   return `{"user.cache_control":"","user.content_disposition":"","user.content_encoding":"","user.content_language":"","user.content_type":"${contentType}","user.metadata":null}`;
 }
 
-const tempDirs: string[] = [];
+const tempDirs: Array<string> = [];
 
 afterAll(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -136,7 +136,7 @@ function thrownBy(fn: () => unknown): unknown {
 
 // io.ReadAll for a blob reader or an open file content
 function readAll(r: { read(p: Uint8Array): number }): string {
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   const buf = new Uint8Array(1024);
   for (;;) {
     const n = r.read(buf);
@@ -481,7 +481,7 @@ describe("TestFilesystemList", () => {
     },
     {
       prefix: "missing",
-      expected: [] as string[],
+      expected: [] as Array<string>,
     },
   ];
 

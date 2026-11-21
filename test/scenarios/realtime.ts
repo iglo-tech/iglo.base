@@ -162,7 +162,7 @@ async function authenticated(ctx: ScenarioContext, token: string): Promise<Realt
   return stream;
 }
 
-export const realtimeScenarios: RealtimeScenario[] = [
+export const realtimeScenarios: Array<RealtimeScenario> = [
   // ---------------------------------------------------------------
   // TestRealtimeConnect
   {
@@ -461,7 +461,7 @@ export const realtimeScenarios: RealtimeScenario[] = [
     check: (o) => {
       expect(o.update).toBe(200);
       expect(o.before).toEqual([]);
-      expect((o.after as unknown[]).length).toBe(1);
+      expect((o.after as Array<unknown>).length).toBe(1);
     },
   },
   {
@@ -509,8 +509,8 @@ export const realtimeScenarios: RealtimeScenario[] = [
     check: (o) => {
       expect(o.create).toBe(200);
       expect(o.guest).toEqual([]);
-      const regular = (o.regular as { data: string }[])[0]?.data ?? "";
-      const superuser = (o.superuser as { data: string }[])[0]?.data ?? "";
+      const regular = (o.regular as Array<{ data: string }>)[0]?.data ?? "";
+      const superuser = (o.superuser as Array<{ data: string }>)[0]?.data ?? "";
       // regular message public field should exist, hidden field should NOT exist
       expect(regular).toContain(`"public":`);
       expect(regular).not.toContain(`"hidden":`);

@@ -68,7 +68,7 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
 function testFilesCount(app: UpsertApp, record: Record, count: number): void {
   const storageDir = join(app.dataDir, "storage", record.collection().id, record.id);
 
-  let entries: string[] = [];
+  let entries: Array<string> = [];
   try {
     entries = readdirSync(storageDir);
   } catch {
@@ -78,16 +78,16 @@ function testFilesCount(app: UpsertApp, record: Record, count: number): void {
 }
 
 describe("TestRecordUpsertLoad", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: DataMap;
     record: (app: UpsertApp) => Record;
     managerAccessLevel?: boolean;
     superuserAccessLevel?: boolean;
-    expected: string[];
-    notExpected?: string[];
+    expected: Array<string>;
+    notExpected?: Array<string>;
     file?: boolean;
-  }[] = [
+  }> = [
     {
       name: "base collection record",
       data: {
@@ -225,13 +225,13 @@ const users = (app: UpsertApp): Record => newRecord(findCollectionByNameOrId(app
 const userExisting = (app: UpsertApp): Record => findRecordById(app, "users", "4q1xlclmfloku33");
 
 describe("TestRecordUpsertSubmitValidations", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     record: (app: UpsertApp) => Record;
     data: DataMap;
     managerAccess?: boolean;
-    expectedErrors: string[];
-  }[] = [
+    expectedErrors: Array<string>;
+  }> = [
     // base
     {
       name: "new base collection record with empty data",

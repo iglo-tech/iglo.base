@@ -164,7 +164,7 @@ const decoder = new TextDecoder();
 
 export interface BindConfig {
   clock: Clock;
-  argv: readonly string[];
+  argv: ReadonlyArray<string>;
   cwd: string;
   getenv(name: string): string;
   exit(code: number): never;
@@ -213,7 +213,7 @@ function recordClass(clock: Clock, blank: WeakSet<object>, models: QueryModels):
   };
 }
 
-function isFieldsListValue(v: unknown): v is FieldsList | unknown[] {
+function isFieldsListValue(v: unknown): v is FieldsList | Array<unknown> {
   return v instanceof FieldsList || Array.isArray(v);
 }
 
@@ -240,7 +240,7 @@ const collectionAdapter = classAdapter(collectionClass, {
       (target as Collection).fields = host;
     } else {
       const list = new FieldsList();
-      list.setItems(host as Field[]);
+      list.setItems(host as Array<Field>);
       (target as Collection).fields = list;
     }
     return true;
@@ -255,7 +255,7 @@ const fieldsListAdapter: Adapter = {
       {
         read: () => list.items(),
         write: (next) => {
-          list.setItems(next as Field[]);
+          list.setItems(next as Array<Field>);
         },
         accepts: (item) => isField(m.toHost(item)),
         methods: {
@@ -411,38 +411,39 @@ function adapters(
   const recordAdapter = classAdapter(recordClass(clock, blank, models));
   const settingsAdapter = newSettingsAdapter();
 
-  const singles: readonly (readonly [abstract new (...args: never[]) => object, Adapter])[] = [
-    [SelectQuery, selectAdapter],
-    [Query, queryAdapter],
-    [AppBinding, appBindingAdapter],
-    [FieldsList, fieldsListAdapter],
-    [GoJSONArray, jsonArrayAdapter],
-    [GoJSONMap, classAdapter(jsonMapClass)],
-    [Settings, settingsAdapter],
-    [Collection, collectionAdapter],
-    [RecordModel, recordAdapter],
-    [DateTime, classAdapter(dateTimeClass)],
-    [GeoPoint, classAdapter(geoPointClass)],
-    [TokenConfig, classAdapter(tokenConfig)],
-    [OTPConfig, classAdapter(otpConfig)],
-    [MFAConfig, classAdapter(mfaConfig)],
-    [AuthAlertConfig, classAdapter(authAlertConfig)],
-    [PasswordAuthConfig, classAdapter(passwordAuthConfig)],
-    [OAuth2Config, classAdapter(oauth2Config)],
-    [OAuth2KnownFields, classAdapter(oauth2KnownFields)],
-    [OAuth2ProviderConfig, classAdapter(oauth2ProviderConfig)],
-    [EmailTemplate, classAdapter(emailTemplateClass)],
-    [Tx, classAdapter({ methods: { ...builderMethods, ...txMethods } })],
-    [DB, classAdapter({ methods: dbMethods })],
-    [LikeExp, likeExpAdapter],
-    [GoPointer, pointerAdapter],
-    [GoDuration, durationAdapter],
-    [GoFileMode, fileModeAdapter],
-    [Date, timeAdapter],
-    [NullShape, nullShapeAdapter],
-    [RowsCursor, rowsAdapter],
-    [ErrorObject, errorObjectAdapter],
-  ];
+  const singles: ReadonlyArray<readonly [abstract new (...args: Array<never>) => object, Adapter]> =
+    [
+      [SelectQuery, selectAdapter],
+      [Query, queryAdapter],
+      [AppBinding, appBindingAdapter],
+      [FieldsList, fieldsListAdapter],
+      [GoJSONArray, jsonArrayAdapter],
+      [GoJSONMap, classAdapter(jsonMapClass)],
+      [Settings, settingsAdapter],
+      [Collection, collectionAdapter],
+      [RecordModel, recordAdapter],
+      [DateTime, classAdapter(dateTimeClass)],
+      [GeoPoint, classAdapter(geoPointClass)],
+      [TokenConfig, classAdapter(tokenConfig)],
+      [OTPConfig, classAdapter(otpConfig)],
+      [MFAConfig, classAdapter(mfaConfig)],
+      [AuthAlertConfig, classAdapter(authAlertConfig)],
+      [PasswordAuthConfig, classAdapter(passwordAuthConfig)],
+      [OAuth2Config, classAdapter(oauth2Config)],
+      [OAuth2KnownFields, classAdapter(oauth2KnownFields)],
+      [OAuth2ProviderConfig, classAdapter(oauth2ProviderConfig)],
+      [EmailTemplate, classAdapter(emailTemplateClass)],
+      [Tx, classAdapter({ methods: { ...builderMethods, ...txMethods } })],
+      [DB, classAdapter({ methods: dbMethods })],
+      [LikeExp, likeExpAdapter],
+      [GoPointer, pointerAdapter],
+      [GoDuration, durationAdapter],
+      [GoFileMode, fileModeAdapter],
+      [Date, timeAdapter],
+      [NullShape, nullShapeAdapter],
+      [RowsCursor, rowsAdapter],
+      [ErrorObject, errorObjectAdapter],
+    ];
 
   return (target) => {
     for (const [type, adapter] of singles) {
@@ -461,7 +462,7 @@ function adapters(
 }
 
 // The Settings keep the Go names: a view of a struct with the JS names.
-function structMembers(type: FieldType | undefined): { name: string; type: FieldType }[] {
+function structMembers(type: FieldType | undefined): Array<{ name: string; type: FieldType }> {
   if (typeof type !== "object" || type.kind !== "struct") {
     return [];
   }
@@ -470,7 +471,7 @@ function structMembers(type: FieldType | undefined): { name: string; type: Field
   );
 }
 
-type StructMethods = Readonly<Record<string, (data: never, args: unknown[]) => unknown>>;
+type StructMethods = Readonly<Record<string, (data: never, args: Array<unknown>) => unknown>>;
 
 const throwing =
   <T>(validate: (c: T) => Error | null) =>
@@ -493,7 +494,7 @@ const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
   RateLimits: {
     validate: throwing(validateRateLimits),
     findRateLimitRule: (data: RateLimitsConfig, args) =>
-      findRateLimitRule(data, args[0] as string[], ...(args.slice(1) as string[])),
+      findRateLimitRule(data, args[0] as Array<string>, ...(args.slice(1) as Array<string>)),
   },
   Rules: {
     validate: throwing(validateRateLimitRule),
@@ -525,7 +526,7 @@ function structView(
     }
     const method = Object.hasOwn(methods, key) ? methods[key] : undefined;
     if (method !== undefined) {
-      return (...args: unknown[]) =>
+      return (...args: Array<unknown>) =>
         m.guard(() =>
           m.toVm(
             method(
@@ -586,7 +587,7 @@ function memberView(
   if (Array.isArray(value) || (typeof type === "object" && type.kind === "slice")) {
     const element = elementType(type);
     return m.sliceView({
-      read: () => (fields[name] ?? []) as unknown[],
+      read: () => (fields[name] ?? []) as Array<unknown>,
       write: (next) => {
         fields[name] = next;
         settings.normalize();
@@ -709,9 +710,13 @@ function stringify(v: unknown): string | undefined {
 
 // goja gives only the objects `new` made the constructor's prototype: a field
 // a list holds is no `instanceof TextField`.
-function constructor(m: Membrane, name: string, build: (...args: unknown[]) => unknown): unknown {
+function constructor(
+  m: Membrane,
+  name: string,
+  build: (...args: Array<unknown>) => unknown,
+): unknown {
   const instances = new WeakSet();
-  const fn = function (...args: unknown[]): unknown {
+  const fn = function (...args: Array<unknown>): unknown {
     const instance = m.guard(() => build(...args));
     if (typeof instance === "object" && instance !== null) {
       instances.add(instance);
@@ -725,7 +730,7 @@ function constructor(m: Membrane, name: string, build: (...args: unknown[]) => u
   return fn;
 }
 
-const namedFields: readonly (readonly [string, string])[] = Object.freeze([
+const namedFields: ReadonlyArray<readonly [string, string]> = Object.freeze([
   ["NumberField", "number"],
   ["BoolField", "bool"],
   ["TextField", "text"],
@@ -933,7 +938,7 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
   if (models.isDynamicModel(dst)) {
     models.unmarshalModel(dst, decoded, "");
   } else if (models.isArrayOf(dst)) {
-    models.unmarshalArray(dst as unknown[], decoded, (data) => {
+    models.unmarshalArray(dst as Array<unknown>, decoded, (data) => {
       const model = models.modelOf(dst);
       const host = m.targetOf(model);
       if (host instanceof Collection) {
@@ -973,7 +978,7 @@ function toStringValue(m: Membrane, raw: unknown): string {
 }
 
 // cast.ToUint8SliceE of an array; undefined when an element does not cast
-function castBytes(items: readonly unknown[]): Uint8Array | undefined {
+function castBytes(items: ReadonlyArray<unknown>): Uint8Array | undefined {
   const bytes = new Uint8Array(items.length);
   for (const [i, item] of items.entries()) {
     const n =
@@ -1301,7 +1306,7 @@ function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
     fromSlash: (p: string) => p,
     toSlash: (p: string) => p,
     isAbs: (p: string) => path.posix.isAbsolute(p),
-    join: (...parts: string[]) => {
+    join: (...parts: Array<string>) => {
       const used = parts.filter((part) => part !== "");
       return used.length === 0 ? "" : clean(used.join("/"));
     },

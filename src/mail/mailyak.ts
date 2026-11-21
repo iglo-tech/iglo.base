@@ -24,29 +24,29 @@ export class MailYak {
   subject = "";
   html = "";
   plain = "";
-  toAddrs: string[] = [];
-  ccAddrs: string[] = [];
-  bccAddrs: string[] = [];
-  headers = new Map<string, string[]>();
-  attachments: YakAttachment[] = [];
+  toAddrs: Array<string> = [];
+  ccAddrs: Array<string> = [];
+  bccAddrs: Array<string> = [];
+  headers = new Map<string, Array<string>>();
+  attachments: Array<YakAttachment> = [];
   localName = "";
 
   // the Date header (time.RFC1123Z of New's time)
   constructor(readonly date: string) {}
 
   // To sets a list of recipient addresses (empty ones are ignored).
-  to(...addrs: string[]): void {
+  to(...addrs: Array<string>): void {
     this.toAddrs = trimAll(addrs);
   }
 
   // Bcc sets a list of blind carbon copy (BCC) addresses (not written as a
   // header).
-  bcc(...addrs: string[]): void {
+  bcc(...addrs: Array<string>): void {
     this.bccAddrs = trimAll(addrs);
   }
 
   // Cc sets a list of carbon copy (CC) addresses.
-  cc(...addrs: string[]): void {
+  cc(...addrs: Array<string>): void {
     this.ccAddrs = trimAll(addrs);
   }
 
@@ -85,7 +85,7 @@ export class MailYak {
 
   // getToAddrs returns the RCPT TO addresses: the email parts of the To,
   // Cc and Bcc addresses.
-  getToAddrs(): string[] {
+  getToAddrs(): Array<string> {
     return [...stripNames(this.toAddrs), ...stripNames(this.ccAddrs), ...stripNames(this.bccAddrs)];
   }
 
@@ -196,7 +196,7 @@ class MultipartWriter {
 
   constructor(private readonly boundary: string) {}
 
-  createPart(header: [string, string][]): string {
+  createPart(header: Array<[string, string]>): string {
     let b = this.hasPart ? `\r\n--${this.boundary}\r\n` : `--${this.boundary}\r\n`;
     this.hasPart = true;
     for (const [k, v] of header) {
@@ -220,8 +220,8 @@ function trim(s: string): string {
   return s.replace(/\r?\n/g, "");
 }
 
-function trimAll(addrs: string[]): string[] {
-  const out: string[] = [];
+function trimAll(addrs: Array<string>): Array<string> {
+  const out: Array<string> = [];
   for (const addr of addrs) {
     const trimmed = trim(addr);
     if (trimmed !== "") {
@@ -235,7 +235,7 @@ function trimAll(addrs: string[]): string[] {
 // <b@example.com>" is "b@example.com"); other values are kept as they are.
 // The addresses come from addressesToStrings, so the name form is the only
 // one with angle brackets.
-function stripNames(addresses: string[]): string[] {
+function stripNames(addresses: Array<string>): Array<string> {
   return addresses.map((original) => {
     const match = /<([^<>]*)>$/.exec(original);
     return match ? (match[1] as string) : original;

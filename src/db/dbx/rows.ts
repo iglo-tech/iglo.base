@@ -74,7 +74,7 @@ export function narrowInteger(value: unknown): unknown {
   return value;
 }
 
-function narrowRow(row: Row, keys: string[]): Row {
+function narrowRow(row: Row, keys: Array<string>): Row {
   for (const key of keys) {
     const value = row[key];
     if (typeof value === "bigint") {
@@ -84,7 +84,7 @@ function narrowRow(row: Row, keys: string[]): Row {
   return row;
 }
 
-function narrowValues(values: unknown[]): unknown[] {
+function narrowValues(values: Array<unknown>): Array<unknown> {
   for (let i = 0; i < values.length; i++) {
     const value = values[i];
     if (typeof value === "bigint") {
@@ -94,7 +94,7 @@ function narrowValues(values: unknown[]): unknown[] {
   return values;
 }
 
-function hasDuplicates(names: string[]): boolean {
+function hasDuplicates(names: Array<string>): boolean {
   if (names.length > 8) {
     return new Set(names).size !== names.length;
   }
@@ -126,14 +126,14 @@ export function readRows(rows: Rows, mode: ReadMode): unknown {
   }
 }
 
-export class Rows implements Iterable<unknown[]> {
-  private names: string[];
+export class Rows implements Iterable<Array<unknown>> {
+  private names: Array<string>;
   // the statement rows are stepped on: stmt, or stmt wrapped in a subquery
   // when column names repeat
   private reader: Statement | null;
   private wrapped: Statement | null = null;
   // reader's column names in column order; null to read arrays in one go
-  private keys: string[] | null;
+  private keys: Array<string> | null;
   private it: Iterator<unknown> | null = null;
   private ahead: IteratorResult<unknown> | null = null;
   private closed = false;
@@ -146,7 +146,7 @@ export class Rows implements Iterable<unknown[]> {
     conn: Database | null,
     private readonly stmt: Statement | null,
     sql: string,
-    private readonly args: SQLQueryBindings[],
+    private readonly args: Array<SQLQueryBindings>,
     private readonly owned: boolean,
   ) {
     this.names = stmt?.columnNames ?? [];
@@ -179,13 +179,13 @@ export class Rows implements Iterable<unknown[]> {
   }
 
   // Columns returns the column names.
-  columns(): string[] {
+  columns(): Array<string> {
     return this.names;
   }
 
   // the declared column types (sql.ColumnType.DatabaseTypeName); null for
   // expressions. Like Go's Rows.ColumnTypes, read it before the rows close.
-  declaredTypes(): (string | null)[] {
+  declaredTypes(): Array<string | null> {
     return this.stmt?.declaredTypes ?? [];
   }
 
@@ -201,7 +201,7 @@ export class Rows implements Iterable<unknown[]> {
     return this.ahead.done !== true;
   }
 
-  *[Symbol.iterator](): Iterator<unknown[]> {
+  *[Symbol.iterator](): Iterator<Array<unknown>> {
     try {
       for (let values = this.step(); values !== null; values = this.step()) {
         yield values;
@@ -229,7 +229,7 @@ export class Rows implements Iterable<unknown[]> {
   }
 
   // the values of the first row; throws NoRowsError when there is none
-  firstValues(): unknown[] {
+  firstValues(): Array<unknown> {
     try {
       const values = this.step();
       if (values === null) {
@@ -241,10 +241,10 @@ export class Rows implements Iterable<unknown[]> {
     }
   }
 
-  all(): Row[] {
+  all(): Array<Row> {
     if (this.fresh()) {
       try {
-        const rows = this.guard(() => this.reader!.all(...this.args) as Row[]);
+        const rows = this.guard(() => this.reader!.all(...this.args) as Array<Row>);
         this.names = this.reader!.columnNames;
         if (!this.exact) {
           for (const row of rows) {
@@ -256,7 +256,7 @@ export class Rows implements Iterable<unknown[]> {
         this.close();
       }
     }
-    const rows: Row[] = [];
+    const rows: Array<Row> = [];
     for (const values of this) {
       rows.push(this.toRow(values));
     }
@@ -266,10 +266,10 @@ export class Rows implements Iterable<unknown[]> {
   // the values of every row, in column order. A pool worker sends these with
   // the column names once, which costs the main thread less than a cloned
   // object per row (rowsFromValues rebuilds the objects).
-  allValues(): unknown[][] {
+  allValues(): Array<Array<unknown>> {
     if (this.fresh()) {
       try {
-        const rows = this.guard(() => this.reader!.values(...this.args) as unknown[][]);
+        const rows = this.guard(() => this.reader!.values(...this.args) as Array<Array<unknown>>);
         // a cached statement re-prepares after a schema change (an added
         // column): its names are current only once it has run
         this.names = this.reader!.columnNames;
@@ -287,8 +287,8 @@ export class Rows implements Iterable<unknown[]> {
   }
 
   // the first column of every row
-  column(): unknown[] {
-    const result: unknown[] = [];
+  column(): Array<unknown> {
+    const result: Array<unknown> = [];
     for (const values of this) {
       result.push(values[0]);
     }
@@ -330,7 +330,7 @@ export class Rows implements Iterable<unknown[]> {
   }
 
   // the next row's values; null (and the rows closed) when there are no more
-  private step(): unknown[] | null {
+  private step(): Array<unknown> | null {
     if (this.closed) {
       return null;
     }
@@ -348,7 +348,7 @@ export class Rows implements Iterable<unknown[]> {
     }
     const keys = this.keys;
     if (keys === null) {
-      const values = next.value as unknown[];
+      const values = next.value as Array<unknown>;
       return this.exact ? values : narrowValues(values);
     }
     const row = next.value as Row;
@@ -378,7 +378,7 @@ export class Rows implements Iterable<unknown[]> {
 
   // a row object; for a repeated column name the last column wins, as in
   // Go's NullStringMap
-  private toRow(values: unknown[]): Row {
+  private toRow(values: Array<unknown>): Row {
     const row: Row = {};
     for (let i = 0; i < this.names.length; i++) {
       setOwn(row, this.names[i]!, values[i]);
@@ -389,8 +389,8 @@ export class Rows implements Iterable<unknown[]> {
 
 // The row objects of allValues(): as toRow builds them, for a repeated column
 // name the last column wins and "__proto__" is an ordinary key.
-export function rowsFromValues(names: string[], rows: unknown[][]): Row[] {
-  const out: Row[] = Array.from({ length: rows.length });
+export function rowsFromValues(names: Array<string>, rows: Array<Array<unknown>>): Array<Row> {
+  const out: Array<Row> = Array.from({ length: rows.length });
   const plain = !names.includes("__proto__");
   const n = names.length;
   for (let r = 0; r < rows.length; r++) {

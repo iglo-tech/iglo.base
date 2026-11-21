@@ -74,11 +74,11 @@ export async function eventually(check: () => boolean | Promise<boolean>): Promi
   return check();
 }
 
-async function rowIds(url: string, collection: string): Promise<string[]> {
+async function rowIds(url: string, collection: string): Promise<Array<string>> {
   const res = await fetch(`${url}/api/collections/${collection}/records?fields=id&sort=id`, {
     headers: asSuperuser,
   });
-  const body = (await res.json()) as { items: { id: string }[] };
+  const body = (await res.json()) as { items: Array<{ id: string }> };
   return body.items.map((item) => item.id);
 }
 

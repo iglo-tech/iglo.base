@@ -25,18 +25,18 @@ const otherEmail = "test2@example.com";
 const resetLink = "/auth/confirm-password-reset/";
 const resendLimitMs = 2 * 60 * 1000;
 
-let opened: TestApp[] = [];
-let roots: string[] = [];
+let opened: Array<TestApp> = [];
+let roots: Array<string> = [];
 
 // The limit timers are held, and a test fires them by hand. A
 // test ends only once the timers of its sends are held, so that none of them
 // reaches the next test.
 const realSetTimeout = globalThis.setTimeout;
-let timers: (() => void)[] = [];
+let timers: Array<() => void> = [];
 
 beforeEach(() => {
   timers = [];
-  globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: unknown[]) => {
+  globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: Array<unknown>) => {
     if (ms !== resendLimitMs) {
       return realSetTimeout(fn, ms, ...args);
     }
@@ -96,7 +96,7 @@ async function until(check: () => boolean): Promise<void> {
   }
 }
 
-function mailsTo(since: number, to: string, text: string): SinkMessage[] {
+function mailsTo(since: number, to: string, text: string): Array<SinkMessage> {
   return sharedSmtpSink().messages.filter(
     (m) => m.received >= since && m.to.some((a) => a.includes(to)) && m.data.includes(text),
   );

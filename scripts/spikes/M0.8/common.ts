@@ -121,7 +121,7 @@ export interface Server {
 }
 
 async function spawnServer(
-  command: string[],
+  command: Array<string>,
   cwd: string,
   env: Record<string, string>,
   port: number,
@@ -291,7 +291,7 @@ export function apiClient(url: string) {
   };
 }
 
-export function percentile(sorted: number[], q: number): number {
+export function percentile(sorted: Array<number>, q: number): number {
   if (sorted.length === 0) {
     return Number.NaN;
   }

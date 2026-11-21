@@ -10,7 +10,7 @@
 
 export type FlagKind = "string" | "bool" | "int" | "stringSlice";
 
-export type FlagValue = string | boolean | number | string[];
+export type FlagValue = string | boolean | number | Array<string>;
 
 export interface FlagSpec {
   name: string;
@@ -27,7 +27,7 @@ export interface ParsedFlags {
   // Only flags that were set on the command line.
   values: Map<string, FlagValue>;
   // Positional arguments, in order.
-  args: string[];
+  args: Array<string>;
 }
 
 export interface ParseOptions {
@@ -93,7 +93,7 @@ function parseGoInt(value: string): number | "range" | undefined {
 // it: "\r\n" reads as "\n", a final "\r" is dropped, blank lines before the
 // record are skipped, the record ends at a newline outside quotes, and quoted
 // fields may span lines. Returns "EOF" when there is no record.
-function readAsCSV(value: string): string[] | "EOF" | undefined {
+function readAsCSV(value: string): Array<string> | "EOF" | undefined {
   if (value === "") {
     return [];
   }
@@ -108,7 +108,7 @@ function readAsCSV(value: string): string[] | "EOF" | undefined {
   if (i >= input.length) {
     return "EOF";
   }
-  const fields: string[] = [];
+  const fields: Array<string> = [];
   for (;;) {
     let field = "";
     let end: string | undefined;
@@ -199,7 +199,7 @@ function setValue(values: Map<string, FlagValue>, spec: FlagSpec, raw: string): 
 }
 
 // pflag stripUnknownFlagValue
-function stripUnknownFlagValue(args: string[]): string[] {
+function stripUnknownFlagValue(args: Array<string>): Array<string> {
   if (args.length === 0) {
     return args;
   }
@@ -210,13 +210,17 @@ function stripUnknownFlagValue(args: string[]): string[] {
 }
 
 // pflag FlagSet.parseArgs with interspersed positional arguments.
-export function parseFlags(argv: string[], specs: FlagSpec[], options: ParseOptions): ParsedFlags {
+export function parseFlags(
+  argv: Array<string>,
+  specs: Array<FlagSpec>,
+  options: ParseOptions,
+): ParsedFlags {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
   const byShorthand = new Map(
     specs.filter((spec) => spec.shorthand).map((spec) => [spec.shorthand, spec]),
   );
   const values = new Map<string, FlagValue>();
-  const positional: string[] = [];
+  const positional: Array<string> = [];
 
   let args = argv;
   while (args.length > 0) {
@@ -310,12 +314,12 @@ export function parseFlags(argv: string[], specs: FlagSpec[], options: ParseOpti
 // cobra stripFlags: the non-flag words of argv, used to find the command.
 // It looks only at whether a flag takes a value, the way cobra does, so a
 // value-taking flag followed by a word consumes that word.
-export function stripFlags(argv: string[], specs: FlagSpec[]): string[] {
+export function stripFlags(argv: Array<string>, specs: Array<FlagSpec>): Array<string> {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
   const byShorthand = new Map(
     specs.filter((spec) => spec.shorthand).map((spec) => [spec.shorthand, spec]),
   );
-  const commands: string[] = [];
+  const commands: Array<string> = [];
   let args = argv;
   while (args.length > 0) {
     const s = args[0] ?? "";
@@ -345,7 +349,11 @@ export function stripFlags(argv: string[], specs: FlagSpec[]): string[] {
 
 // cobra Command.argsMinusFirstX: argv without the first occurrence of the
 // command name, skipping flag values the same way stripFlags does.
-export function argsMinusFirst(argv: string[], name: string, specs: FlagSpec[]): string[] {
+export function argsMinusFirst(
+  argv: Array<string>,
+  name: string,
+  specs: Array<FlagSpec>,
+): Array<string> {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
   const byShorthand = new Map(
     specs.filter((spec) => spec.shorthand).map((spec) => [spec.shorthand, spec]),

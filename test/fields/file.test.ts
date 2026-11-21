@@ -40,7 +40,7 @@ describe("TestFileFieldBaseMethods", () => {
 describe("TestFileFieldColumnType", () => {
   const app = noDBApp();
 
-  const scenarios: { name: string; field: FileField; expected: string }[] = [
+  const scenarios: Array<{ name: string; field: FileField; expected: string }> = [
     { name: "single (zero)", field: new FileField(), expected: "TEXT DEFAULT '' NOT NULL" },
     {
       name: "single",
@@ -62,7 +62,7 @@ describe("TestFileFieldColumnType", () => {
 });
 
 describe("TestFileFieldIsMultiple", () => {
-  const scenarios: { name: string; field: FileField; expected: boolean }[] = [
+  const scenarios: Array<{ name: string; field: FileField; expected: boolean }> = [
     { name: "zero", field: new FileField(), expected: false },
     { name: "single", field: new FileField({ maxSelect: 1 }), expected: false },
     { name: "multiple", field: new FileField({ maxSelect: 2 }), expected: true },
@@ -86,7 +86,7 @@ describe("TestFileFieldPrepareValue", () => {
     f1Raw = marshal(f1);
   });
 
-  const scenarios: { raw: Lazy<unknown>; field: FileField; expected: Lazy<string> }[] = [
+  const scenarios: Array<{ raw: Lazy<unknown>; field: FileField; expected: Lazy<string> }> = [
     // single
     { raw: null, field: new FileField({ maxSelect: 1 }), expected: `""` },
     { raw: "", field: new FileField({ maxSelect: 1 }), expected: `""` },
@@ -134,7 +134,7 @@ describe("TestFileFieldDriverValue", () => {
     f1 = await NewFileFromBytes(bytes("test"), "test.txt");
   });
 
-  const scenarios: { raw: Lazy<unknown>; field: FileField; expected: Lazy<string> }[] = [
+  const scenarios: Array<{ raw: Lazy<unknown>; field: FileField; expected: Lazy<string> }> = [
     // single
     { raw: null, field: new FileField({ maxSelect: 1 }), expected: `""` },
     { raw: "", field: new FileField({ maxSelect: 1 }), expected: `""` },
@@ -203,12 +203,12 @@ describe("TestFileFieldValidateValue", () => {
     f5 = await NewFileFromBytes(new Uint8Array(DefaultFileFieldMaxSize), "test5.txt");
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: FileField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     // single
     {
       name: "zero field value (not required)",
@@ -406,11 +406,11 @@ describe("TestFileFieldValidateSettings", () => {
 
   const app = noDBApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: () => FileField;
-    expectErrors: string[];
-  }[] = [
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "zero minimal",
       field: () => new FileField({ id: "test", name: "test" }),
@@ -524,7 +524,7 @@ describe("TestFileFieldValidateSettings", () => {
 });
 
 describe("TestFileFieldCalculateMaxBodySize", () => {
-  const scenarios: { field: FileField; expected: number }[] = [
+  const scenarios: Array<{ field: FileField; expected: number }> = [
     { field: new FileField(), expected: DefaultFileFieldMaxSize },
     { field: new FileField({ maxSelect: 2 }), expected: 2 * DefaultFileFieldMaxSize },
     { field: new FileField({ maxSize: 10 }), expected: 10 },
@@ -563,12 +563,12 @@ describe("TestFileFieldFindGetter", () => {
     record.set("files-", "test_FLurQTgrY8.txt");
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     hasGetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",
@@ -608,14 +608,14 @@ describe("TestFileFieldFindGetter", () => {
 });
 
 describe("TestFileFieldFindSetter", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     value: unknown;
     field: FileField;
     hasSetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",

@@ -63,12 +63,12 @@ function digests(dataDir: string): Record<string, string> {
           .query(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
           )
-          .all() as { name: string }[]
+          .all() as Array<{ name: string }>
       ).map((row) => row.name);
       const content = Object.fromEntries(
         tables.map((table) => [
           table,
-          (db.query(`SELECT * FROM "${table}"`).all() as Record<string, unknown>[])
+          (db.query(`SELECT * FROM "${table}"`).all() as Array<Record<string, unknown>>)
             .map((row) => JSON.stringify(row))
             .toSorted(),
         ]),
@@ -82,12 +82,12 @@ function digests(dataDir: string): Record<string, string> {
 }
 
 // starts the server with the schema file; the start applies it
-function serveWith(site: Site, extra: string[] = []): Promise<RunningServer> {
+function serveWith(site: Site, extra: Array<string> = []): Promise<RunningServer> {
   return startServer(["--schema", site.schemaPath, ...extra], site.dataDir);
 }
 
 // the start fails: the error text of the failed start
-async function startFails(site: Site, extra: string[] = []): Promise<string> {
+async function startFails(site: Site, extra: Array<string> = []): Promise<string> {
   try {
     const server = await serveWith(site, extra);
     await server.stop();
@@ -98,11 +98,11 @@ async function startFails(site: Site, extra: string[] = []): Promise<string> {
 }
 
 // the rows of the migrations table, read from the file
-function migrationRows(dataDir: string): string[] {
+function migrationRows(dataDir: string): Array<string> {
   const db = new Database(join(dataDir, "data.db"), { readonly: true });
   try {
     return (
-      db.query("SELECT file FROM _migrations ORDER BY rowid").all() as { file: string }[]
+      db.query("SELECT file FROM _migrations ORDER BY rowid").all() as Array<{ file: string }>
     ).map((row) => row.file);
   } finally {
     db.close();
@@ -110,7 +110,7 @@ function migrationRows(dataDir: string): string[] {
 }
 
 // the rows the apply recorded (the TypeScript migrations' rows)
-function schemaRows(dataDir: string): string[] {
+function schemaRows(dataDir: string): Array<string> {
   return migrationRows(dataDir).filter((row) => row.startsWith("@schema/"));
 }
 
@@ -149,10 +149,10 @@ async function records(
   url: string,
   token: string,
   collection: string,
-): Promise<Record<string, unknown>[]> {
+): Promise<Array<Record<string, unknown>>> {
   const result = await api(url, token, "GET", `/api/collections/${collection}/records?perPage=500`);
   expect(result.status).toBe(200);
-  return result.json.items as Record<string, unknown>[];
+  return result.json.items as Array<Record<string, unknown>>;
 }
 
 // the fields of a collection as the API returns them
@@ -163,7 +163,7 @@ async function fieldsOf(
 ): Promise<Record<string, Record<string, unknown>>> {
   const result = await api(url, token, "GET", `/api/collections/${collection}`);
   expect(result.status).toBe(200);
-  const fields = result.json.fields as Record<string, unknown>[];
+  const fields = result.json.fields as Array<Record<string, unknown>>;
   return Object.fromEntries(fields.map((field) => [String(field.name), field]));
 }
 
@@ -408,7 +408,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
     (await serveWith(site)).stop();
 
-    const cases: [string, string, string[]][] = [
+    const cases: Array<[string, string, Array<string>]> = [
       [
         "20261113160000_missing.ts",
         `  renames: { posts: { nothere: "author" } },`,
@@ -841,7 +841,7 @@ async function renameScenario(
   before: Record<string, unknown>,
   seed: (url: string, token: string) => Promise<void>,
   after: Record<string, unknown>,
-  migrations: [file: string, source: string][],
+  migrations: Array<[file: string, source: string]>,
   check: (url: string, token: string) => Promise<void>,
 ): Promise<void> {
   const site = await newSite();
@@ -1187,7 +1187,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
         ],
       ],
       async (url, token) => {
-        const indexes = (await collectionOf(url, token, "posts")).indexes as string[];
+        const indexes = (await collectionOf(url, token, "posts")).indexes as Array<string>;
         expect(indexes.join("\n")).toContain("lower(author)");
         expect(indexes.join("\n")).toContain("WHERE author");
         expect(indexes.join("\n")).not.toContain("writer");
@@ -1352,7 +1352,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
       ],
       async (url, token) => {
         const [member] = (await api(url, token, "GET", "/api/collections/members/records")).json
-          .items as Record<string, unknown>[];
+          .items as Array<Record<string, unknown>>;
         expect(member?.note).toBe("ann@example.test|s3cr3t");
         expect(member?.secret).toBe("s3cr3t");
       },
@@ -1760,7 +1760,7 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
     writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
     (await serveWith(site)).stop();
 
-    const cases: [string, string, string[]][] = [
+    const cases: Array<[string, string, Array<string>]> = [
       [
         "20261114120300_case_field.ts",
         `  renames: { posts: { writer: "Title" } },`,

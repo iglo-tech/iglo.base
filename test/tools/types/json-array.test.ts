@@ -17,7 +17,7 @@ import { anyType, intType, marshal, stringType } from "@/tools/types/go-json";
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 
 describe("JSONArrayMarshalJSON", () => {
-  const scenarios: [unknown[] | undefined, string][] = [
+  const scenarios: Array<[Array<unknown> | undefined, string]> = [
     [undefined, "[]"], // new(types.JSONArray[any]): a nil slice
     [[], `[]`],
     [[1, 2, 3], `[1,2,3]`],
@@ -33,7 +33,7 @@ describe("JSONArrayMarshalJSON", () => {
 });
 
 describe("JSONArrayString", () => {
-  const scenarios: [unknown[] | undefined, string][] = [
+  const scenarios: Array<[Array<unknown> | undefined, string]> = [
     [undefined, "[]"],
     [[], `[]`],
     [[1, 2, 3], `[1,2,3]`],
@@ -57,7 +57,7 @@ describe("JSONArrayString", () => {
 });
 
 describe("JSONArrayValue", () => {
-  const scenarios: [unknown[] | undefined, string][] = [
+  const scenarios: Array<[Array<unknown> | undefined, string]> = [
     [undefined, `[]`],
     [[], `[]`],
     [[1, 2, 3], `[1,2,3]`],
@@ -73,7 +73,7 @@ describe("JSONArrayValue", () => {
 });
 
 describe("JSONArrayScan", () => {
-  const scenarios: [unknown, boolean, string][] = [
+  const scenarios: Array<[unknown, boolean, string]> = [
     [``, false, `[]`],
     [new Uint8Array(), false, `[]`],
     [null, false, `[]`],
@@ -91,7 +91,7 @@ describe("JSONArrayScan", () => {
 
   scenarios.forEach(([value, expectError, expectJSON], i) => {
     test(`${i}_${String(value)}`, () => {
-      let arr: unknown[] = [];
+      let arr: Array<unknown> = [];
       let hasErr = false;
       try {
         arr = scanJSONArray(value, anyType);
@@ -106,7 +106,7 @@ describe("JSONArrayScan", () => {
 
 // Not in upstream's tests: Go json v2 decoding into typed elements.
 describe("JSONArrayScan typed", () => {
-  const scenarios: [string, string, typeof anyType, boolean, unknown[]][] = [
+  const scenarios: Array<[string, string, typeof anyType, boolean, Array<unknown>]> = [
     ["string elements", `["a","b"]`, stringType, false, ["a", "b"]],
     ["null string element is the zero value", `["a",null]`, stringType, false, ["a", ""]],
     ["number into string fails", `["a",1]`, stringType, true, []],
@@ -130,7 +130,7 @@ describe("JSONArrayScan typed", () => {
 
   for (const [name, value, elem, expectError, expected] of scenarios) {
     test(name, () => {
-      let arr: unknown[] = [];
+      let arr: Array<unknown> = [];
       let hasErr = false;
       try {
         arr = scanJSONArray(value, elem);

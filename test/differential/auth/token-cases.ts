@@ -120,7 +120,7 @@ const emailChange = (newEmail: string, recordId = userId, collection = "users"):
 type Step = (ctx: PrepareContext) => void;
 
 // several prepare steps in order
-function all(...steps: Step[]): Step {
+function all(...steps: Array<Step>): Step {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -180,9 +180,9 @@ function fixtureColumn(table: string, id: string, column: string): unknown {
 // the token key is the fixture's, or another one
 function tokenKeyKept(table: string, id: string, kept: boolean) {
   return ({ dataDir }: AfterContext): Promise<void> => {
-    const [row] = queryRows(dataDir, `SELECT tokenKey FROM "${table}" WHERE id = ?`, id) as {
+    const [row] = queryRows(dataDir, `SELECT tokenKey FROM "${table}" WHERE id = ?`, id) as Array<{
       tokenKey: string;
-    }[];
+    }>;
     if ((row?.tokenKey === fixtureColumn(table, id, "tokenKey")) !== kept) {
       return Promise.reject(new Error(`expected the token key ${kept ? "kept" : "refreshed"}`));
     }
@@ -204,10 +204,10 @@ function setPasswordAuth(collection: string, enabled: boolean): Step {
     });
 }
 
-function setEmailDomains(collection: string, onlyDomains: string[]): Step {
+function setEmailDomains(collection: string, onlyDomains: Array<string>): Step {
   return ({ dataDir }) =>
     updateCollection(dataDir, collection, (c) => {
-      const field = c.fields.getByName("email") as unknown as { onlyDomains: string[] };
+      const field = c.fields.getByName("email") as unknown as { onlyDomains: Array<string> };
       field.onlyDomains = onlyDomains;
     });
 }
@@ -241,7 +241,7 @@ function verified({ dataDir }: PrepareContext): void {
 
 const longLocalPart = "a".repeat(250);
 
-export function tokenCases(): Scenario[] {
+export function tokenCases(): Array<Scenario> {
   return [
     // enumeration-safe answers
     // -----------------------------------------------------------

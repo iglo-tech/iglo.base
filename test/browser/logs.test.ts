@@ -27,7 +27,7 @@ test("a request shows up in the logs list and its entry opens", async () => {
   let id = "";
   for (let i = 0; i < 40 && id === ""; i++) {
     const res = await fx.api(`/api/logs?filter=${encodeURIComponent(`data.url="${path}"`)}`);
-    const items = ((await res.json()) as { items: { id: string }[] }).items;
+    const items = ((await res.json()) as { items: Array<{ id: string }> }).items;
     id = items[0]?.id ?? "";
     if (id === "") await Bun.sleep(250);
   }

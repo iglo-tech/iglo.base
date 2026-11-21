@@ -11,8 +11,8 @@ import { join } from "node:path";
 
 import { BackupWorker } from "@/backups/worker-client";
 
-const dirs: string[] = [];
-const workers: BackupWorker[] = [];
+const dirs: Array<string> = [];
+const workers: Array<BackupWorker> = [];
 
 afterEach(() => {
   for (const w of workers.splice(0)) {
@@ -30,8 +30,8 @@ function start(): BackupWorker {
 }
 
 // the paths the process holds open
-function openPaths(): string[] {
-  const paths: string[] = [];
+function openPaths(): Array<string> {
+  const paths: Array<string> = [];
   for (const fd of readdirSync("/proc/self/fd")) {
     try {
       paths.push(readlinkSync(join("/proc/self/fd", fd)));

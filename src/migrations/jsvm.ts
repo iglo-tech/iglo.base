@@ -41,10 +41,10 @@ export interface JsvmConfig extends BindConfig {
 
 // registerMigrations: the migrations of all files of the directory, sorted
 // by file name.
-export function registerMigrations(config: JsvmConfig): Migration[] {
-  const list: Migration[] = [];
+export function registerMigrations(config: JsvmConfig): Array<Migration> {
+  const list: Array<Migration> = [];
 
-  let files: [string, string][];
+  let files: Array<[string, string]>;
   try {
     files = filesContent(config.migrationsDir);
   } catch (err) {
@@ -66,7 +66,7 @@ export function registerMigrations(config: JsvmConfig): Migration[] {
 
 // filesContent: the direct files of the directory and their content, by
 // file name; none when the directory is missing.
-function filesContent(dirPath: string): [string, string][] {
+function filesContent(dirPath: string): Array<[string, string]> {
   let entries;
   try {
     entries = readdirSync(dirPath, { withFileTypes: true });
@@ -83,7 +83,7 @@ function filesContent(dirPath: string): [string, string][] {
     .toSorted(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 
-function runFile(config: JsvmConfig, file: string, content: string, list: Migration[]): void {
+function runFile(config: JsvmConfig, file: string, content: string, list: Array<Migration>): void {
   const sandbox: Record<string, unknown> = {};
   const context = vm.createContext(sandbox);
   const m = bindAll(sandbox, context, config);
@@ -223,13 +223,13 @@ function firstFrame(stack: string, file: string): string | undefined {
 
 // console (goja_nodejs util.Format); every method prints the same way
 function newConsole(config: JsvmConfig): Record<string, unknown> {
-  const write = (...args: unknown[]): void => {
+  const write = (...args: Array<unknown>): void => {
     config.log(formatLog(args));
   };
   return { log: write, error: write, warn: write, info: write, debug: write };
 }
 
-function formatLog(args: unknown[]): string {
+function formatLog(args: Array<unknown>): string {
   const rest = [...args];
 
   let text = "";
@@ -297,7 +297,7 @@ function newRequire(
       `(function (exports, require, module, __filename, __dirname) {${text}\n})`,
       context,
       { filename },
-    ) as (...args: unknown[]) => unknown;
+    ) as (...args: Array<unknown>) => unknown;
     wrapper(
       moduleObject.exports,
       requireFrom(path.dirname(filename)),

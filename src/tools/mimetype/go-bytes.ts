@@ -69,8 +69,8 @@ export function trim(s: Uint8Array, cutset: string): Uint8Array {
 // (unicode.IsSpace on the UTF-8 decoded runes; an invalid byte is
 // utf8.RuneError, which is not a space).
 export function trimSpace(s: Uint8Array): Uint8Array {
-  const starts: number[] = [];
-  const spaces: boolean[] = [];
+  const starts: Array<number> = [];
+  const spaces: Array<boolean> = [];
   for (let i = 0; i < s.length;) {
     const [r, size] = decodeRune(s, i);
     starts.push(i);

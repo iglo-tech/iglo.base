@@ -69,7 +69,7 @@ export function synthetic(width: number, height: number, seed: number, alpha = f
 // An APP1 Exif segment with one IFD0 entry: Orientation (0x0112) = value,
 // little-endian ("II") or big-endian ("MM")
 function exifSegment(value: number, bigEndian = false): Uint8Array {
-  const u16 = (n: number): number[] => (bigEndian ? [n >> 8, n & 0xff] : [n & 0xff, n >> 8]);
+  const u16 = (n: number): Array<number> => (bigEndian ? [n >> 8, n & 0xff] : [n & 0xff, n >> 8]);
   const tiff = [
     ...(bigEndian ? [0x4d, 0x4d] : [0x49, 0x49]),
     ...u16(42),
@@ -97,13 +97,13 @@ function xmpSegment(): Uint8Array {
   return segment(0xe1, [...new TextEncoder().encode(text)]);
 }
 
-function segment(marker: number, payload: number[]): Uint8Array {
+function segment(marker: number, payload: Array<number>): Uint8Array {
   const len = payload.length + 2;
   return new Uint8Array([0xff, marker, len >> 8, len & 0xff, ...payload]);
 }
 
 // the segments, right after SOI
-function withSegments(jpeg: Uint8Array, ...segments: Uint8Array[]): Uint8Array {
+function withSegments(jpeg: Uint8Array, ...segments: Array<Uint8Array>): Uint8Array {
   const parts = [jpeg.subarray(0, 2), ...segments, jpeg.subarray(2)];
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
@@ -179,13 +179,13 @@ export interface TestImage {
   // PB_THUMBS_MAX_SOURCE_PIXELS for this image, when not the default
   limit?: number;
   // the thumb sizes compared, when not all
-  sizes?: string[];
+  sizes?: Array<string>;
 }
 
 // An uncompressed little-endian RGB TIFF (not thumbed by the API)
 function encodeTiff(raw: Raw): Uint8Array {
   const n = raw.width * raw.height * 3;
-  const entries: [number, number, number, number][] = [
+  const entries: Array<[number, number, number, number]> = [
     [256, 3, 1, raw.width], // ImageWidth
     [257, 3, 1, raw.height], // ImageLength
     [258, 3, 1, 8], // BitsPerSample (one value for all samples, kept simple)
@@ -225,8 +225,8 @@ function encodeTiff(raw: Raw): Uint8Array {
 
 // One image per format the API stores, for the thumb size modes and the
 // content type rules (the M0.7 quality set without its sharp-made files)
-export async function writeBaseSet(dir: string): Promise<TestImage[]> {
-  const images: TestImage[] = [];
+export async function writeBaseSet(dir: string): Promise<Array<TestImage>> {
+  const images: Array<TestImage> = [];
   const put = (name: string, contentType: string, bytes: Uint8Array, note: string): void => {
     writeFileSync(join(dir, name), bytes);
     images.push({ name, contentType, width: 0, height: 0, note });
@@ -272,8 +272,8 @@ export async function writeBaseSet(dir: string): Promise<TestImage[]> {
 // GIF whose first frame is smaller than its logical screen, and originals
 // at PB_THUMBS_MAX_SOURCE_PIXELS = 1,000,000 in each format the API thumbs,
 // where the header Go reads decides
-export async function writeCompatSet(dir: string): Promise<TestImage[]> {
-  const images: TestImage[] = [];
+export async function writeCompatSet(dir: string): Promise<Array<TestImage>> {
+  const images: Array<TestImage> = [];
   const put = (
     name: string,
     contentType: string,
@@ -382,8 +382,8 @@ export async function writeEdgeSet(
   dir: string,
   photoJpeg: Uint8Array,
   photoPng: Uint8Array,
-): Promise<TestImage[]> {
-  const out: TestImage[] = [];
+): Promise<Array<TestImage>> {
+  const out: Array<TestImage> = [];
   const put = (name: string, contentType: string, bytes: Uint8Array, note: string): void => {
     writeFileSync(join(dir, name), bytes);
     out.push({ name, contentType, width: 0, height: 0, note });
@@ -459,8 +459,8 @@ export async function writeEdgeSet(
   return out;
 }
 
-const u24 = (n: number): number[] => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff];
-function riffChunk(id: string, data: number[]): number[] {
+const u24 = (n: number): Array<number> => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff];
+function riffChunk(id: string, data: Array<number>): Array<number> {
   const len = data.length;
   return [
     ...new TextEncoder().encode(id),

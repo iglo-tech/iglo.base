@@ -61,7 +61,7 @@ test("RecordTokenKey", () => {
 });
 
 describe("RecordPassword", () => {
-  const scenarios: [string, string, boolean][] = [
+  const scenarios: Array<[string, string, boolean]> = [
     ["empty password", "", false],
     ["non-empty password", "123456", true],
   ];

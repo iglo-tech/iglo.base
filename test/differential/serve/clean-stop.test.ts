@@ -22,7 +22,7 @@ afterAll(() => {
 });
 
 // the database files and their companions (upstream also writes types.d.ts)
-function databaseFiles(dataDir: string): string[] {
+function databaseFiles(dataDir: string): Array<string> {
   return readdirSync(dataDir)
     .filter((name) => /\.db($|-)/.test(name))
     .toSorted();

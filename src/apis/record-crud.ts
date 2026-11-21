@@ -82,8 +82,8 @@ export type HandlerStep = Generator<unknown, HandlerResult, unknown>;
 export interface RecordIO {
   requestInfo(e: RequestEvent): RequestInfo | Error | Promise<RequestInfo | Error>;
   // FindUploadedFiles: throws ErrMissingFile when the key has no files
-  uploadedFiles(e: RequestEvent, key: string): File[] | Promise<File[]>;
-  row(q: SelectQuery): unknown[] | Promise<unknown[]>;
+  uploadedFiles(e: RequestEvent, key: string): Array<File> | Promise<Array<File>>;
+  row(q: SelectQuery): Array<unknown> | Promise<Array<unknown>>;
   record(q: SelectQuery): Record | Promise<Record>;
   submit(form: RecordUpsert): void | Promise<void>;
   deleteRecord(e: RequestEvent, record: Record): void | Promise<void>;
@@ -106,7 +106,7 @@ const routeIO: RecordIO = {
 // opened
 export function txRecordIO(
   requestInfo: RequestInfo | Error,
-  uploadedFiles: ReadonlyMap<string, File[]>,
+  uploadedFiles: ReadonlyMap<string, Array<File>>,
 ): RecordIO {
   return {
     requestInfo: () => requestInfo,
@@ -490,7 +490,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
     }
 
     const dummyParams: Params = {};
-    const selects: string[] = [];
+    const selects: Array<string> = [];
     for (let [k, v] of Object.entries(dummyExport)) {
       // bound as Go's driver binds the typed values
       const value = driverValue(k, v);
@@ -555,7 +555,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
       let exists = 0;
       let ruleErr: unknown = null;
       try {
-        const row = (yield io.row(ruleQuery.limit(1))) as unknown[];
+        const row = (yield io.row(ruleQuery.limit(1))) as Array<unknown>;
         exists = Number(row[0] ?? 0);
       } catch (err) {
         ruleErr = err;
@@ -822,7 +822,7 @@ function* recordDataFromRequest(
     result ??= {};
 
     for (const [k, files] of uploadedFiles) {
-      const uploaded: unknown[] = [];
+      const uploaded: Array<unknown> = [];
 
       // if not remove/prepend/append -> merge with the submitted
       // info.Body values to prevent accidental old files deletion
@@ -874,13 +874,13 @@ function* extractUploadedFiles(
   collection: Collection,
   prefix: string,
   io: RecordIO,
-): Generator<unknown, Map<string, File[]> | null, unknown> {
+): Generator<unknown, Map<string, Array<File>> | null, unknown> {
   const contentType = re.request.headers.get("content-type") ?? "";
   if (!contentType.startsWith("multipart/form-data")) {
     return null; // not multipart/form-data request
   }
 
-  const result = new Map<string, File[]>();
+  const result = new Map<string, Array<File>>();
 
   for (const field of collection.fields) {
     if (field.type() !== FieldTypeFile) {
@@ -900,9 +900,9 @@ function* extractUploadedFiles(
       if (prefix !== "") {
         k = prefix + "." + k;
       }
-      let files: File[] = [];
+      let files: Array<File> = [];
       try {
-        files = (yield io.uploadedFiles(re, k)) as File[];
+        files = (yield io.uploadedFiles(re, k)) as Array<File>;
       } catch (err) {
         if (err !== ErrMissingFile) {
           throw err;
@@ -961,7 +961,7 @@ function* hasAuthManageAccess(
   }
 
   try {
-    const row = (yield io.row(query.limit(1))) as unknown[];
+    const row = (yield io.row(query.limit(1))) as Array<unknown>;
     return Number(row[0] ?? 0) > 0;
   } catch {
     return false;

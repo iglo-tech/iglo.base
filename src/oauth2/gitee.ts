@@ -86,7 +86,7 @@ export class Gitee extends BaseProvider {
     // ignore unmarshal error in case "Keep my email address private"
     // was set because response.Body will be something like:
     // {"email":"12285415+test@user.noreply.gitee.com"}
-    let emails: { email: string; state: string; scope: string[] }[];
+    let emails: Array<{ email: string; state: string; scope: Array<string> }>;
     try {
       emails = decodeNestedList<{ email: string; state: string; scope: unknown }>(
         unmarshal(content, anyType),
@@ -114,12 +114,12 @@ export class Gitee extends BaseProvider {
 }
 
 // a Go []string decoded from JSON: null is nil, every element a string
-function stringList(value: unknown): string[] {
+function stringList(value: unknown): Array<string> {
   if (value === null || value === undefined) {
     return [];
   }
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
     throw new Error("json: cannot unmarshal into Go []string");
   }
-  return value as string[];
+  return value as Array<string>;
 }

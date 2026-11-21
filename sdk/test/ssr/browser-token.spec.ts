@@ -35,7 +35,7 @@ function renewRequest(cookie?: string): Request {
   return new Request(`${APP}/api/session/renew`, { method: "POST", headers });
 }
 
-function setCookies(response: Response): string[] {
+function setCookies(response: Response): Array<string> {
   return response.headers.getSetCookie();
 }
 
@@ -371,7 +371,7 @@ describe("fallback cookie attributes", () => {
   test("a secure origin writes __Host-pb_auth without HttpOnly, and never a plain name", async () => {
     const clock = testClock(T0 * 1000);
     const session = authToken(T0 + 3600);
-    const written: string[] = [];
+    const written: Array<string> = [];
     const adapter: CookieAdapter = {
       getAll: () => [
         { name: "__Host-pb_auth", value: JSON.stringify({ token: session, record: record() }) },

@@ -18,7 +18,7 @@ const demo5 = "/api/collections/demo5/records";
 // after plain value parts
 const emptyFilenameBoundary = "4f6a0e9c2d7b1a5e8c3f6d9b2a7e1c4f8d3b6a9e2c5f8b1d4a7e0c3f6b9d";
 function emptyFilenameParts(
-  parts: [string, string][],
+  parts: Array<[string, string]>,
   values: Record<string, string> = {},
 ): {
   body: string;
@@ -51,11 +51,11 @@ const byteLength = (text: string) => new TextEncoder().encode(text).length;
 const partsBoundary = "9b3e7d1a5c8f2e6b0d4a7c1f5e8b2d6a";
 interface RawPart {
   name?: string;
-  headers?: string[];
+  headers?: Array<string>;
   content: string;
 }
 function rawParts(
-  parts: RawPart[],
+  parts: Array<RawPart>,
   { boundary = partsBoundary, end = `--${partsBoundary}--\r\n` } = {},
 ): string {
   let body = "";
@@ -72,7 +72,7 @@ const partsHeaders = { "Content-Type": `multipart/form-data; boundary=${partsBou
 
 // n parts: the id, the title and n - 2 unknown fields
 function manyParts(id: string, n: number): string {
-  const parts: RawPart[] = [
+  const parts: Array<RawPart> = [
     { name: "id", content: id },
     { name: "title", content: "parttest" },
   ];
@@ -85,7 +85,7 @@ function manyParts(id: string, n: number): string {
 // a title part with n header lines in all (its Content-Disposition and
 // n - 1 more)
 function manyHeaders(id: string, n: number): string {
-  const headers: string[] = [];
+  const headers: Array<string> = [];
   for (let i = 1; i < n; i++) {
     headers.push(`X-Extra-${i}: v`);
   }
@@ -109,7 +109,7 @@ function boundaryBody(at: number, id: string, token: string, cut: number, inTitl
   return body("p".repeat(at - cut - prefix));
 }
 
-export const fixtureCases: WriteCase[] = [
+export const fixtureCases: Array<WriteCase> = [
   // demo1: nil rules, every field type
   {
     name: "demo1: guest create (nil rule)",

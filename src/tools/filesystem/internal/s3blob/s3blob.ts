@@ -114,7 +114,7 @@ class driver implements AsyncDriver {
 
     const resp = await listObjects(this.#s3, listParams, signal);
 
-    const objects: ListObject[] = resp.contents.map((obj) => ({
+    const objects: Array<ListObject> = resp.contents.map((obj) => ({
       key: unescapeKey(obj.key),
       modTime: obj.lastModified,
       size: obj.size,

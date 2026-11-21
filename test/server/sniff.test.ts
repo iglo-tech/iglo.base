@@ -29,7 +29,7 @@ check("empty input is text/plain", "", TEXT);
 check("whitespace only is text/plain", "   \n\t", TEXT);
 
 // HTML: every tag variant, lower/mixed case, and a tag-terminating byte (' ' or '>').
-const htmlTags: [string, string][] = [
+const htmlTags: Array<[string, string]> = [
   ["<!DOCTYPE HTML>", "<!DOCTYPE HTML>"],
   ["<!DOCTYPE HTML with space", "<!DOCTYPE HTML "],
   ["<!doctype html> lower", "<!doctype html>"],

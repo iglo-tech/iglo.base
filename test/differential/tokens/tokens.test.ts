@@ -108,7 +108,7 @@ const upstreamTokens = new Map<string, string>();
 const issuedAt = new Map<string, [number, number]>();
 
 // every token type that upstream issued, with the record and type
-const tokenCases: { name: string; who: string; collection: string; type: string }[] = [
+const tokenCases: Array<{ name: string; who: string; collection: string; type: string }> = [
   { name: "alice:auth", who: "alice", collection: "members", type: TokenTypeAuth },
   { name: "alice:static", who: "alice", collection: "members", type: TokenTypeAuth },
   { name: "alice:file", who: "alice", collection: "members", type: TokenTypeFile },
@@ -232,7 +232,7 @@ async function tokenFromMail(to: string): Promise<string> {
   }
   for (let i = 0; i < 200; i++) {
     const list = (await fetch(`${mailpit.apiUrl}/api/v1/messages`).then((r) => r.json())) as {
-      messages: { ID: string; To: { Address: string }[] }[];
+      messages: Array<{ ID: string; To: Array<{ Address: string }> }>;
     };
     const summary = list.messages.find((m) => m.To.some((t) => t.Address === to));
     if (summary !== undefined) {
@@ -283,7 +283,7 @@ function atSecond<T>(unixSec: number | undefined, fn: () => T): T {
 }
 
 // FindAuthRecordByToken as "collectionName/id", or the error text
-function lookup(app: TestCollectionsApp, token: string, ...types: string[]): string {
+function lookup(app: TestCollectionsApp, token: string, ...types: Array<string>): string {
   try {
     const record = findAuthRecordByToken(app, token, ...types);
     return `${record.collection().name}/${record.id}`;
@@ -328,7 +328,7 @@ const tamper = (token: string, at: number): string => {
   return parts.join(".");
 };
 
-const guardCases: GuardCase[] = [
+const guardCases: Array<GuardCase> = [
   { name: "no header", header: () => undefined },
   { name: "empty", header: () => "" },
   { name: "alice auth", header: () => upstreamToken("alice:auth") },
@@ -367,7 +367,7 @@ const guardCases: GuardCase[] = [
   { name: "second superuser auth", header: () => upstreamToken("super2:auth") },
 ];
 
-const guardEndpoints: { method: string; path: string }[] = [
+const guardEndpoints: Array<{ method: string; path: string }> = [
   { method: "GET", path: "/api/collections" },
   { method: "POST", path: "/api/files/token" },
   { method: "POST", path: "/api/collections/members/auth-refresh" },
@@ -477,7 +477,7 @@ beforeAll(async () => {
   const superList = (await ok(
     "GET",
     `/api/collections/_superusers/records?filter=${encodeURIComponent(`email="${superEmail}"`)}`,
-  )) as { items: { id: string }[] };
+  )) as { items: Array<{ id: string }> };
   ids.set("super", superList.items[0]?.id ?? "");
 
   const form = new FormData();

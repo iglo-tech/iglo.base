@@ -20,7 +20,7 @@ import {
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 
 describe("JSONMapMarshalJSON", () => {
-  const scenarios: [JSONMap<unknown> | undefined, string][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string]> = [
     [undefined, "{}"],
     [{}, `{}`],
     [{ test: [1, 2, 3] }, `{"test":[1,2,3]}`],
@@ -38,7 +38,7 @@ describe("JSONMapMarshalJSON", () => {
 });
 
 describe("JSONMapMarshalString", () => {
-  const scenarios: [JSONMap<unknown> | undefined, string][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string]> = [
     [undefined, "{}"],
     [{}, `{}`],
     [{ test1: 123, test2: "lorem" }, `{"test1":123,"test2":"lorem"}`],
@@ -54,7 +54,7 @@ describe("JSONMapMarshalString", () => {
 
 describe("JSONMapGet", () => {
   // Go returns T's zero value (nil for any); here a missing key is undefined
-  const scenarios: [JSONMap<unknown> | undefined, string, unknown][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string, unknown]> = [
     [undefined, "test", undefined],
     [{ test: 123 }, "test", 123],
     [{ test: 123 }, "missing", undefined],
@@ -68,7 +68,7 @@ describe("JSONMapGet", () => {
 });
 
 describe("JSONMapSet", () => {
-  const scenarios: [string, unknown][] = [
+  const scenarios: Array<[string, unknown]> = [
     ["a", null],
     ["a", 123],
     ["b", "test"],
@@ -86,7 +86,7 @@ describe("JSONMapSet", () => {
 });
 
 describe("JSONMapValue", () => {
-  const scenarios: [JSONMap<unknown> | undefined, string][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string]> = [
     [undefined, `{}`],
     [{}, `{}`],
     [{ test1: 123, test2: "lorem" }, `{"test1":123,"test2":"lorem"}`],
@@ -101,7 +101,7 @@ describe("JSONMapValue", () => {
 });
 
 describe("JSONArrayMapScan", () => {
-  const scenarios: [unknown, boolean, string][] = [
+  const scenarios: Array<[unknown, boolean, string]> = [
     [``, false, `{}`],
     [null, false, `{}`],
     [new Uint8Array(), false, `{}`],
@@ -133,7 +133,7 @@ describe("JSONArrayMapScan", () => {
 
 // Not in upstream's tests: the bytes Go's json v2 (Deterministic) gives.
 describe("JSONMap Go bytes", () => {
-  const scenarios: [string, JSONMap<unknown>, string][] = [
+  const scenarios: Array<[string, JSONMap<unknown>, string]> = [
     [
       "keys sorted by UTF-8 bytes",
       { b: 1, a: 2, "10": 3, "9": 4, é: 5, "\u{1f600}": 6, "￿": 7 },
@@ -211,7 +211,7 @@ describe("JSONMapScan Go decoding", () => {
   });
 
   // upstream resets the map whenever decoding fails
-  const failing: [string, string][] = [
+  const failing: Array<[string, string]> = [
     ["a number out of range", `{"a":2,"b":1e400}`],
     ["malformed syntax", `{"a":2,`],
     ["an incomplete number", `{"a":2,"b":5.}`],

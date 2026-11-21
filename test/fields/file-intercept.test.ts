@@ -24,7 +24,7 @@ import { expectValidationErrors } from "@test/collections/validation";
 
 const content = new TextEncoder().encode("test");
 
-async function newFiles(): Promise<File[]> {
+async function newFiles(): Promise<Array<File>> {
   return Promise.all(
     ["new1.txt", "new2.txt", "new3.txt", "new4.txt"].map((n) => NewFileFromBytes(content, n)),
   );
@@ -56,7 +56,7 @@ async function errorOfAsync(p: Promise<void>): Promise<Error | null> {
 }
 
 // the record's stored files (without thumbs) are exactly expectedKeys
-function checkRecordFiles(app: RecordsApp, record: Record, expectedKeys: string[]): void {
+function checkRecordFiles(app: RecordsApp, record: Record, expectedKeys: Array<string>): void {
   const fsys = app.filesystem.newFilesystem();
   if (fsys.remote) {
     throw new Error("the test runs on the local storage");
@@ -94,7 +94,7 @@ describe("TestFileFieldIntercept", () => {
 
     expectValidationErrors(await errorOfAsync(saveRecord(app, record)), ["text"]);
 
-    const value = record.getRaw("file_many") as unknown[];
+    const value = record.getRaw("file_many") as Array<unknown>;
     expect(value.length).toBe(2);
   });
 

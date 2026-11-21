@@ -37,7 +37,7 @@ export interface RealtimeScenario {
 }
 
 export class ScenarioContext {
-  readonly #streams: RealtimeStream[] = [];
+  readonly #streams: Array<RealtimeStream> = [];
 
   constructor(readonly url: string) {}
 
@@ -51,7 +51,7 @@ export class ScenarioContext {
   // POST /api/realtime
   subscribe(
     clientId: string,
-    subscriptions: string[] | undefined,
+    subscriptions: Array<string> | undefined,
     token?: string,
     localAddress?: string,
   ): Promise<HttpResult> {
@@ -136,18 +136,18 @@ export function response(res: HttpResult): Observation {
 }
 
 // the events of a stream after PB_CONNECT, as observed
-export function events(list: SseEvent[]): Observation[] {
+export function events(list: Array<SseEvent>): Array<Observation> {
   return list.filter((e) => e.event !== "PB_CONNECT").map((e) => ({ ...e }));
 }
 
 // the events once the stream had none new for a while
-export async function settled(stream: RealtimeStream): Promise<Observation[]> {
+export async function settled(stream: RealtimeStream): Promise<Array<Observation>> {
   return events(await stream.settle());
 }
 
 // the action and record id of each event, for the checks
-export function actions(list: unknown): string[] {
-  return (list as SseEvent[]).map((e) => {
+export function actions(list: unknown): Array<string> {
+  return (list as Array<SseEvent>).map((e) => {
     const data = JSON.parse(e.data) as { action: string; record: { id: string } };
     return `${e.event} ${data.action} ${data.record.id}`;
   });

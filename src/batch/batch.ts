@@ -102,7 +102,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 const tags = (name: string): Record<string, string> => ({ form: name, json: name });
 
-const internalRequestFields: StructField[] = [
+const internalRequestFields: Array<StructField> = [
   // map[string]any and map[string]string, checked by internalRequestOf
   { name: "Body", type: "any", tags: tags("body") },
   { name: "Headers", type: "any", tags: tags("headers") },
@@ -121,7 +121,7 @@ const batchRequestsFormType = structOf([
 // core.InternalRequest
 export class InternalRequest {
   // the files uploaded for this item, by their key
-  readonly files = new Map<string, File[]>();
+  readonly files = new Map<string, Array<File>>();
 
   constructor(
     public body: Record<string, unknown>,
@@ -166,7 +166,7 @@ const fileKeyRegex = /^requests(?:\.(0|[1-9][0-9]*)|\[(0|[1-9][0-9]*)\])\.([^]*)
 
 async function loadUploadedFiles(
   e: RequestEvent,
-  requests: readonly (InternalRequest | null)[],
+  requests: ReadonlyArray<InternalRequest | null>,
 ): Promise<void> {
   for (const [key, headers] of e.request.multipartForm?.file ?? []) {
     const match = fileKeyRegex.exec(key);
@@ -229,9 +229,9 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     return e.badRequestError("Failed to read the submitted batch data.", bindErr);
   }
 
-  let requests: (InternalRequest | null)[];
+  let requests: Array<InternalRequest | null>;
   try {
-    requests = ((form["Requests"] ?? []) as (Record<string, unknown> | null)[]).map((raw) =>
+    requests = ((form["Requests"] ?? []) as Array<Record<string, unknown> | null>).map((raw) =>
       raw === null ? null : internalRequestOf(raw),
     );
   } catch (err) {
@@ -262,7 +262,7 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     return e.badRequestError("Invalid batch request data.", validationErr);
   }
 
-  const items: PreparedItem[] = [];
+  const items: Array<PreparedItem> = [];
   for (const ir of requests) {
     items.push(await prepareItem(e, ir as InternalRequest));
   }
@@ -273,7 +273,7 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
   }
 
   const uploads = await preUploadFiles(e.app, uploadTargets(e, items));
-  const afterTransaction: Promise<void>[] = [];
+  const afterTransaction: Array<Promise<void>> = [];
 
   let results: BatchResults;
   try {
@@ -298,8 +298,8 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
 }
 
 // the files a batch stores before its transaction opens
-function uploadTargets(e: RequestEvent, items: readonly PreparedItem[]): UploadTarget[] {
-  const targets: UploadTarget[] = [];
+function uploadTargets(e: RequestEvent, items: ReadonlyArray<PreparedItem>): Array<UploadTarget> {
+  const targets: Array<UploadTarget> = [];
 
   for (const item of items) {
     const { action, ir, request, requestInfo } = item;
@@ -333,7 +333,7 @@ function uploadTargets(e: RequestEvent, items: readonly PreparedItem[]): UploadT
       continue;
     }
 
-    const files: File[] = [];
+    const files: Array<File> = [];
     for (const field of collection.fields) {
       if (field.type() !== FieldTypeFile) {
         continue;
@@ -375,7 +375,7 @@ interface BatchAction {
 // ValidBatchActions: Go's `.` is every character but "\n"
 //
 // Note: when adding new routes make sure that their middlewares are inlined!
-const validBatchActions: readonly [RegExp, boolean, HandlerFactory][] = [
+const validBatchActions: ReadonlyArray<[RegExp, boolean, HandlerFactory]> = [
   // "upsert" handler
   [
     /^PUT \/api\/collections\/(?<collection>[^/?]+)\/records(?<query>\?[^\n]*)?$/,
@@ -592,7 +592,7 @@ interface BatchRequestResult {
 }
 
 class BatchResults implements JSONMarshaler {
-  constructor(readonly results: readonly BatchRequestResult[]) {}
+  constructor(readonly results: ReadonlyArray<BatchRequestResult>) {}
 
   marshalJSON(): string {
     const items = this.results.map(
@@ -610,10 +610,10 @@ const errBatchTimeout = new Error("batch transaction timeout");
 function processBatch(
   app: App,
   e: RequestEvent,
-  items: readonly PreparedItem[],
+  items: ReadonlyArray<PreparedItem>,
   timeoutSeconds: number,
 ): BatchResults {
-  const results: BatchRequestResult[] = [];
+  const results: Array<BatchRequestResult> = [];
 
   runInTransaction(app.databases, (txDatabases) => {
     const txApp: App = { ...app, databases: txDatabases };

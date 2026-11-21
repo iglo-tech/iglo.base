@@ -67,7 +67,7 @@ export const authURL = "/api/collections/users/auth-with-oauth2";
 export type PrepareStep = (ctx: PrepareContext) => void;
 
 // several prepare steps in order
-export function all(...steps: PrepareStep[]): PrepareStep {
+export function all(...steps: Array<PrepareStep>): PrepareStep {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -164,7 +164,7 @@ const createData = {
   rel: "0yxhwia2amd8gec",
 };
 
-const rateLimits = (name: string, rules: { maxRequests: number; label: string }[]): Scenario =>
+const rateLimits = (name: string, rules: Array<{ maxRequests: number; label: string }>): Scenario =>
   rateLimitScenario(name, "POST", authURL, rules);
 
 export const recordAuthWithOAuth2: Suite = {
@@ -629,9 +629,13 @@ export function passwordChanged(recordId: string) {
 // passwordIs for the record found by its username
 function passwordByUsername(username: string, password: string) {
   return async (ctx: AfterContext): Promise<void> => {
-    const [row] = queryRows(ctx.dataDir, "SELECT id FROM users WHERE username = ?", username) as {
+    const [row] = queryRows(
+      ctx.dataDir,
+      "SELECT id FROM users WHERE username = ?",
+      username,
+    ) as Array<{
       id: string;
-    }[];
+    }>;
     if (row === undefined) {
       throw new Error(`missing user ${username}`);
     }

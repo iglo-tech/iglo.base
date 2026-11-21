@@ -29,7 +29,10 @@ function copyOf(source: string): string {
 }
 
 // the pulled file, parsed, after validating it against the published schema
-async function pull(dataDir: string, ...extra: string[]): Promise<{ text: string; file: object }> {
+async function pull(
+  dataDir: string,
+  ...extra: Array<string>
+): Promise<{ text: string; file: object }> {
   const result = await run(["--dir", dataDir, "schema", "pull", ...extra]);
   // the only standard error a pull writes is the notes of the OAuth2 providers
   // (the variables to set; never a value, D40)
@@ -56,8 +59,8 @@ interface ApiCollection {
   name: string;
   type: string;
   system: boolean;
-  fields?: Record<string, unknown>[];
-  indexes?: string[];
+  fields?: Array<Record<string, unknown>>;
+  indexes?: Array<string>;
   viewQuery?: string;
   oauth2?: { providers?: unknown; [key: string]: unknown };
   [key: string]: unknown;
@@ -86,11 +89,11 @@ function impliedIndex(table: string, statement: string): boolean {
   );
 }
 
-function explicitIndexes(item: ApiCollection): string[] {
+function explicitIndexes(item: ApiCollection): Array<string> {
   return (item.indexes ?? []).filter((statement) => !impliedIndex(item.name, statement));
 }
 
-function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
+function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection> {
   const names = new Map(apiCollections.map((item) => [item.id, item.name]));
   return apiCollections
     .map((item): SchemaCollection => {
@@ -119,7 +122,7 @@ function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
         const { providers: _providers, ...rest } = options.oauth2 as Record<string, unknown>;
         options.oauth2 = rest;
       }
-      const fields: SchemaField[] =
+      const fields: Array<SchemaField> =
         item.type === "view"
           ? []
           : (item.fields ?? []).map((field) => {
@@ -169,7 +172,7 @@ function readBack(text: string): SchemaDescription {
 
 // the description's collections without the extra keys the file does not
 // hold (the pull writes none, so none is there)
-function comparable(collections: SchemaCollection[]): SchemaCollection[] {
+function comparable(collections: Array<SchemaCollection>): Array<SchemaCollection> {
   return collections.map((item) => {
     // the API's view has no providers (their secrets are redacted); the file's
     // providers are checked in test/cli/schema-providers.test.ts
@@ -328,7 +331,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      const items = (listed.json as { items: ApiCollection[] }).items;
+      const items = (listed.json as { items: Array<ApiCollection> }).items;
       expect(comparable(description.collections)).toEqual(normalize(items));
     });
   });
@@ -339,7 +342,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const list = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
-        items: ApiCollection[];
+        items: Array<ApiCollection>;
       };
       const users = list.items.find((item) => item.name === "users");
       expect(users).toBeDefined();
@@ -436,7 +439,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      const items = (listed.json as { items: ApiCollection[] }).items;
+      const items = (listed.json as { items: Array<ApiCollection> }).items;
       expect(comparable(readBack(first.text).collections)).toEqual(normalize(items));
       // the file holds no id: not of a collection, not of a field, not in an index name
       for (const item of items) {
@@ -452,7 +455,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
-        items: ApiCollection[];
+        items: Array<ApiCollection>;
       };
       const everything = listed.items.find((item) => item.name === "everything");
       const fields = everything?.fields ?? [];
@@ -534,7 +537,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const items = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
-        items: ApiCollection[];
+        items: Array<ApiCollection>;
       };
       const auths = items.items.filter((item) => item.type === "auth");
       expect(auths.length).toBeGreaterThan(0);
@@ -623,7 +626,7 @@ describe("schema command", () => {
 
     const { file, text } = await pull(dataDir);
     assertValid(file);
-    const collections = (file as { collections: Record<string, { indexes?: string[] }> })
+    const collections = (file as { collections: Record<string, { indexes?: Array<string> }> })
       .collections;
     expect(collections.plain_auth?.indexes).toBeUndefined();
     expect(collections.nocase_auth?.indexes).toEqual([
@@ -647,7 +650,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      const items = (listed.json as { items: ApiCollection[] }).items;
+      const items = (listed.json as { items: Array<ApiCollection> }).items;
       expect(comparable(readBack(text).collections)).toEqual(normalize(items));
     });
     // and the file pulled again is the same

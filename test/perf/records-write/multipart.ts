@@ -29,14 +29,14 @@ function file(size: number): Uint8Array {
   return out;
 }
 
-const bodies: [string, Uint8Array, number][] = [
+const bodies: Array<[string, Uint8Array, number]> = [
   ["20 values", values(20), 2000],
   ["1,000 values", values(1000), 100],
   ["10 MiB file", file(10 << 20), 20],
 ];
 
 for (const [name, body, iterations] of bodies) {
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < iterations + 5; i++) {
     const req = newTestRequest({
       method: "POST",

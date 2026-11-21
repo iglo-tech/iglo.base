@@ -29,7 +29,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 async function start(kind: Kind): Promise<Server> {
   const root = tempDir();
@@ -195,7 +195,7 @@ async function canBackup(server: Server): Promise<boolean> {
   return body.data.canBackup;
 }
 
-function tempFiles(server: Server): string[] {
+function tempFiles(server: Server): Array<string> {
   try {
     return readdirSync(join(server.dataDir, ".pb_temp_to_delete"));
   } catch {
@@ -217,7 +217,7 @@ async function rawHead(s3: Versitygw, key: string): Promise<Record<string, strin
   return out;
 }
 
-function bucketFiles(s3: Versitygw): string[] {
+function bucketFiles(s3: Versitygw): Array<string> {
   return readdirSync(join(s3.posixRoot, s3.bucket), { recursive: true, encoding: "utf8" })
     .filter((f) => !f.startsWith(".sgwtmp"))
     .toSorted();
@@ -259,7 +259,7 @@ async function bothServers(
 }
 
 function listBody(a: Answer): { status: number; body: unknown } {
-  const list = JSON.parse(a.body) as { key: string; size: number; modified: string }[];
+  const list = JSON.parse(a.body) as Array<{ key: string; size: number; modified: string }>;
   return {
     status: a.status,
     body: list.map((o) => ({
@@ -275,7 +275,7 @@ describe("the backup endpoints with backups.s3 enabled", () => {
     "list, create, upload, download, delete",
     async () => {
       await bothServers(async (server, s3) => {
-        const out: unknown[] = [];
+        const out: Array<unknown> = [];
         out.push(listBody(await call(server, "GET", "/api/backups")));
         out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })));
         out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })));
@@ -350,7 +350,7 @@ describe("the backup endpoints with backups.s3 enabled", () => {
         writeFileSync(join(dir, "manual.zip"), "x");
 
         const before = await call(server, "GET", "/api/backups");
-        const listed = (JSON.parse(before.body) as { key: string }[]).length;
+        const listed = (JSON.parse(before.body) as Array<{ key: string }>).length;
 
         const res = await call(server, "POST", "/api/crons/__pbAutoBackup__");
         const done = await eventually(() => bucketFiles(s3).length === 3);
@@ -366,7 +366,7 @@ describe("the backup endpoints with backups.s3 enabled", () => {
   );
 });
 
-function kept(logs: unknown[]): unknown[] {
+function kept(logs: Array<unknown>): Array<unknown> {
   return logs.filter((l) => (l as { id: string }).id === "backuplog000000");
 }
 
@@ -390,7 +390,7 @@ describe("a backup restored by the other server, through S3", () => {
           const expected = snapshot(source.dataDir);
 
           const list = await call(target, "GET", "/api/backups");
-          expect((JSON.parse(list.body) as { key: string }[]).map((b) => b.key)).toEqual([
+          expect((JSON.parse(list.body) as Array<{ key: string }>).map((b) => b.key)).toEqual([
             "cross.zip",
           ]);
           const zip = await downloadBytes(target, "cross.zip");
@@ -451,7 +451,7 @@ interface Seen {
 type Script = (req: Request, url: URL) => Response | null | Promise<Response | null>;
 
 class ScriptedS3 {
-  readonly seen: Seen[] = [];
+  readonly seen: Array<Seen> = [];
   script: Script = () => null;
   readonly #objects = new Map<string, { body: Uint8Array; headers: Headers }>();
   readonly #server = Bun.serve({
@@ -561,8 +561,8 @@ function largeZip(size: number): Uint8Array {
 const xmlDenied =
   "<?xml version='1.0' encoding='UTF-8'?>\n<Error><Code>AccessDenied</Code><Message>Denied &amp; logged</Message><RequestId>r1</RequestId></Error>";
 
-async function allEndpoints(server: Server, s3: ScriptedS3): Promise<unknown[]> {
-  const out: unknown[] = [];
+async function allEndpoints(server: Server, s3: ScriptedS3): Promise<Array<unknown>> {
+  const out: Array<unknown> = [];
   out.push(plain(await call(server, "GET", "/api/backups")));
   out.push(plain(await call(server, "POST", "/api/backups", { json: {} })));
   out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "n.zip" } })));
@@ -584,7 +584,7 @@ async function bothAgainst(
   script: Script,
   steps: (server: Server, s3: ScriptedS3) => Promise<unknown>,
 ): Promise<void> {
-  const results: unknown[] = [];
+  const results: Array<unknown> = [];
   for (const server of [upstream, iglo]) {
     const s3 = new ScriptedS3();
     s3.script = script;
@@ -650,7 +650,7 @@ async function slowDenial(): Promise<Response> {
 }
 
 describe("a refusing S3", () => {
-  const cases: [string, Script][] = [
+  const cases: Array<[string, Script]> = [
     ["403 with an XML error", () => new Response(xmlDenied, { status: 403 })],
     [
       "404 on everything",
@@ -688,7 +688,7 @@ describe("a refusing S3", () => {
     "nothing listening",
     async () => {
       const port = await freePort();
-      const results: unknown[] = [];
+      const results: Array<unknown> = [];
       for (const server of [upstream, iglo]) {
         await useBackupsS3(server, { endpoint: `http://127.0.0.1:${port}`, bucket: "b" });
         const seen = new ScriptedS3();
@@ -774,10 +774,10 @@ describe("POST /api/settings/test/s3", () => {
   test(
     "not enabled, an unknown filesystem, success and bad credentials on both filesystems",
     async () => {
-      const results: unknown[] = [];
+      const results: Array<unknown> = [];
       for (const server of [upstream, iglo]) {
         const s3 = await startVersitygw();
-        const out: unknown[] = [];
+        const out: Array<unknown> = [];
         try {
           out.push(await testS3(server, "storage"), await testS3(server, "backups"));
           out.push(await testS3(server, "other"), await testS3(server, ""));
@@ -811,7 +811,7 @@ describe("POST /api/settings/test/s3", () => {
   test(
     "a bad secret on the backup endpoints, as versitygw refuses it",
     async () => {
-      const results: unknown[] = [];
+      const results: Array<unknown> = [];
       for (const server of [upstream, iglo]) {
         const s3 = await startVersitygw();
         try {
@@ -840,7 +840,7 @@ describe("forcePathStyle false", () => {
       const realFetch = globalThis.fetch;
       // *.s3.test resolves nowhere: the connection goes to versitygw, the URL
       // and Host header stay the client's
-      const hosts: string[] = [];
+      const hosts: Array<string> = [];
       globalThis.fetch = ((input: string, init: RequestInit) => {
         const url = new URL(input);
         hosts.push(url.host);

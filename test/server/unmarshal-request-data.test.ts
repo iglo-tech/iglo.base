@@ -365,7 +365,7 @@ test("map destination infers values from the data", () => {
   const dst = ref.map as Record<string, unknown>;
 
   // -0 is checked separately: toEqual does not tell -0 and 0 apart
-  const number4 = dst.number4 as number[];
+  const number4 = dst.number4 as Array<number>;
   delete dst.number4;
 
   expect(dst).toEqual({

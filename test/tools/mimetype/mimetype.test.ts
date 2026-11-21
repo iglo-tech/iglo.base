@@ -26,7 +26,7 @@ const text = (b: Uint8Array) => bytesToText(b);
 // A Blob built from data in pieces of size(left) bytes, as Go's tests read
 // through one-byte and short readers; detectReader takes Blobs only.
 function chunks(data: Uint8Array, size: (left: number) => number): Blob {
-  const parts: Uint8Array[] = [];
+  const parts: Array<Uint8Array> = [];
   for (let off = 0; off < data.length;) {
     const n = size(data.length - off);
     parts.push(data.slice(off, off + n));
@@ -61,7 +61,7 @@ describe("TestDetectWonkyReaders", () => {
 
   // iotest.DataErrReader, HalfReader and OneByteReader: the data comes in
   // pieces of different sizes.
-  const wonkyReaders: [string, (left: number) => number][] = [
+  const wonkyReaders: Array<[string, (left: number) => number]> = [
     ["DataErrReader", (left) => left],
     ["HalfReader", (left) => Math.ceil(left / 2)],
     ["OneByteReader", () => 1],
@@ -98,7 +98,7 @@ Extension | MIME type <br> Aliases | Hierarchy
 });
 
 test("TestEqualsAny", () => {
-  const testCases: [m1: string, m2: string[], res: boolean][] = [
+  const testCases: Array<[m1: string, m2: Array<string>, res: boolean]> = [
     ["foo/bar", ["foo/bar"], true],
     ["  foo/bar", ["foo/bar\t"], true], // whitespace
     ["  foo/bar", ["foo/BAR\t"], true], // case
@@ -129,7 +129,7 @@ test("TestHierarchy", () => {
   const detectedMIME = detect(raw("<html></html>"));
   const expected = ["text/html; charset=utf-8", "text/plain", "application/octet-stream"];
 
-  const got: string[] = [];
+  const got: Array<string> = [];
   for (let mtype: MIME | null = detectedMIME; mtype !== null; mtype = mtype.parent()) {
     got.push(mtype.string());
   }
@@ -164,7 +164,7 @@ describe("TestIndexOutOfRangePanic", () => {
 // MIME type equality ignores any optional MIME parameters, so, in order to not
 // parse each alias when testing for equality, we must ensure they are
 // registered with no parameters.
-function testNormalised(ms: readonly string[]): void {
+function testNormalised(ms: ReadonlyArray<string>): void {
   for (const m of ms) {
     const [normalised, , err] = parseMediaType(m);
     expect([m, err]).toEqual([m, null]);
@@ -185,7 +185,7 @@ test("TestMIMEFormat", () => {
 });
 
 describe("TestLookup", () => {
-  const data: [string, MIME][] = [
+  const data: Array<[string, MIME]> = [
     [root.mime, root],
     [zip.mime, zip],
     [zip.aliases[0] as string, zip],
@@ -196,14 +196,14 @@ describe("TestLookup", () => {
   });
 });
 
-function xmlMIME(mime: string, aliases: string[]): MIME {
+function xmlMIME(mime: string, aliases: Array<string>): MIME {
   const m = new MIME(mime, ".xml", null);
   m.aliases = aliases;
   return m;
 }
 
 describe("TestIs", () => {
-  const tcases: [name: string, m: MIME, n: string, expected: boolean][] = [
+  const tcases: Array<[name: string, m: MIME, n: string, expected: boolean]> = [
     ["mime matches", xmlMIME("text/xml", ["application/xml"]), "text/xml", true],
     ["alias matches", xmlMIME("text/xml", ["application/xml"]), "application/xml", true],
     [

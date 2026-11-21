@@ -13,7 +13,7 @@ function file(collections: unknown): string {
   return JSON.stringify({ $schema: url, collections }, null, 2);
 }
 
-function errorsOf(text: string): SchemaIssue[] {
+function errorsOf(text: string): Array<SchemaIssue> {
   const result = readSchema(text);
   if (result.ok) {
     throw new Error("expected the file to be refused");
@@ -22,7 +22,7 @@ function errorsOf(text: string): SchemaIssue[] {
 }
 
 // the errors of a file with one collection and one field, as "path: message"
-function fieldErrors(field: unknown): string[] {
+function fieldErrors(field: unknown): Array<string> {
   return errorsOf(file({ posts: { type: "base", fields: { title: field } } })).map(
     (issue) => `${issue.path}: ${issue.message}`,
   );

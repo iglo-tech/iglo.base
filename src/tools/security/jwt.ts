@@ -180,7 +180,7 @@ export interface ValidateOptions {
 
 // MapClaims.parseClaimsString: a string or a list of them; any other type
 // is no value at all
-function parseClaimStrings(claims: MapClaims, key: string): string[] {
+function parseClaimStrings(claims: MapClaims, key: string): Array<string> {
   const v = Object.hasOwn(claims, key) ? claims[key] : undefined;
   if (typeof v === "string") {
     return [v];
@@ -198,7 +198,7 @@ function parseClaimStrings(claims: MapClaims, key: string): string[] {
 
 // Validator.verifyAudience with one expected value, which makes aud required
 function verifyAudience(claims: MapClaims, expected: string): string | undefined {
-  let aud: string[];
+  let aud: Array<string>;
   try {
     aud = parseClaimStrings(claims, "aud");
   } catch (err) {
@@ -217,7 +217,7 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
   const leeway = BigInt(opts.leewaySeconds ?? 0);
   const ms = clock.now().getTime();
   const now = internalSeconds(BigInt(Math.floor(ms / 1000)));
-  const errors: string[] = [];
+  const errors: Array<string> = [];
   const check = (key: string, ok: (t: bigint) => boolean, message: string) => {
     let t: bigint | undefined;
     try {

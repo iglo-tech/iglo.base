@@ -45,7 +45,7 @@ function recordId(tag: string, n: number): string {
 // a record's fields, the same in every run
 function recordBody(rng: Rng, tag: string, n: number): Record<string, unknown> {
   const owner = n > 0 && rng.chance(0.5) ? recordId(tag, rng.int(n)) : "";
-  const many: string[] = [];
+  const many: Array<string> = [];
   if (n > 0) {
     for (let i = rng.int(4); i > 0; i--) {
       many.push(recordId(tag, rng.int(n)));
@@ -110,7 +110,7 @@ async function writeRecords(c: Client, tag: string, count: number): Promise<void
   const name = `big${tag}_items`;
   const path = `/api/collections/${name}/records`;
   const rng = new Rng(seed, tags.indexOf(tag));
-  let pending: { method: string; url: string; body: unknown }[] = [];
+  let pending: Array<{ method: string; url: string; body: unknown }> = [];
   const flush = async (): Promise<void> => {
     if (pending.length > 0) {
       await c.post("/api/batch", { requests: pending });

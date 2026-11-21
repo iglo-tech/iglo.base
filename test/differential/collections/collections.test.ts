@@ -138,7 +138,7 @@ function readRows(file: string): Map<string, Record<string, unknown>> {
   // on macOS; this is a temporary copy that no server uses any more
   const db = new Database(file);
   try {
-    const rows = db.query("SELECT * FROM _collections").all() as Record<string, unknown>[];
+    const rows = db.query("SELECT * FROM _collections").all() as Array<Record<string, unknown>>;
     return new Map(rows.map((r) => [r.id as string, r]));
   } finally {
     db.close();
@@ -151,7 +151,7 @@ interface Created {
   getBody: string;
 }
 
-const created: Created[] = [];
+const created: Array<Created> = [];
 const minimal: Record<"base" | "auth" | "view", Created | undefined> = {
   base: undefined,
   auth: undefined,
@@ -190,10 +190,9 @@ describe("create through upstream", () => {
     });
   }
 
-  for (const [kind, c] of Object.entries(minimalCases) as [
-    keyof typeof minimalCases,
-    { name: string; body: string },
-  ][]) {
+  for (const [kind, c] of Object.entries(minimalCases) as Array<
+    [keyof typeof minimalCases, { name: string; body: string }]
+  >) {
     test(`minimal ${kind}`, async () => {
       const res = await request("POST", "/api/collections", c.body);
       expect({ status: res.status, text: res.status === 200 ? "" : res.text }).toEqual({
@@ -310,7 +309,7 @@ describe("OAuth2 provider updates through upstream", () => {
     patchBody: string;
     getBody: string;
   }
-  const updated: Updated[] = [];
+  const updated: Array<Updated> = [];
   let before: Map<string, Record<string, unknown>>;
   let after: Map<string, Record<string, unknown>>;
 
@@ -353,8 +352,9 @@ describe("OAuth2 provider updates through upstream", () => {
     expect(updated.length).toBe(oauth2UpdateCases.length);
     for (const [i, c] of oauth2UpdateCases.entries()) {
       const u = updated[i] as Updated;
-      const providers = (JSON.parse(u.getBody) as { oauth2: { providers: { pkce: unknown }[] } })
-        .oauth2.providers;
+      const providers = (
+        JSON.parse(u.getBody) as { oauth2: { providers: Array<{ pkce: unknown }> } }
+      ).oauth2.providers;
       expect({ name: c.name, status: u.status, pkce: providers.map((p) => p.pkce) }).toEqual({
         name: c.name,
         status: 200,
@@ -394,7 +394,7 @@ describe("upstream's test fixture", () => {
         headers: { Authorization: superuserToken },
       });
       expect(list.status).toBe(200);
-      const items = ((await list.json()) as { items: { id: string }[] }).items;
+      const items = ((await list.json()) as { items: Array<{ id: string }> }).items;
       for (const { id } of items) {
         const res = await fetch(`${server.url}/api/collections/${id}`, {
           headers: { Authorization: superuserToken },

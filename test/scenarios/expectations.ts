@@ -15,8 +15,8 @@ export function checkExpectations(
   expected: Expectations,
   status: number,
   body: Uint8Array,
-): string[] {
-  const failures: string[] = [];
+): Array<string> {
+  const failures: Array<string> = [];
   if (status !== expected.expectedStatus) {
     failures.push(`Expected status code ${expected.expectedStatus}, got ${status}`);
   }
@@ -52,7 +52,7 @@ export type Outcome = { ok: true; report?: string } | { ok: false; message: stri
 // A scenario passes when iglo.base had no failures. A pending scenario
 // passes while it still fails, with a report of why; once it has no
 // failures it fails, so that the task that fixed it removes the marker.
-export function outcome(scenario: Scenario, failures: string[]): Outcome {
+export function outcome(scenario: Scenario, failures: Array<string>): Outcome {
   const { pending } = scenario;
   if (!pending) {
     return failures.length === 0 ? { ok: true } : { ok: false, message: failures.join("\n") };

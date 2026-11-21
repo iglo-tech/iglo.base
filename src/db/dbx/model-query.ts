@@ -31,7 +31,7 @@ import { structColumns, structPK, type StructModel } from "@/db/dbx/struct";
 
 // ModelQuery represents a query associated with a struct model.
 export class ModelQuery {
-  private excluded: string[] = [];
+  private excluded: Array<string> = [];
 
   constructor(
     private readonly model: StructModel,
@@ -39,7 +39,7 @@ export class ModelQuery {
   ) {}
 
   // Exclude excludes the specified columns from being inserted/updated into the DB table.
-  exclude(...attrs: string[]): this {
+  exclude(...attrs: Array<string>): this {
     this.excluded = attrs;
     return this;
   }
@@ -52,7 +52,7 @@ export class ModelQuery {
   //
   // If a model has an empty primary key, it is considered auto-incremental and the model
   // is scanned with the generated primary key value after a successful insertion.
-  insert(...attrs: string[]): void {
+  insert(...attrs: Array<string>): void {
     const cols = structColumns(this.model, attrs, this.excluded);
     let pkName = "";
     for (const [name, value] of Object.entries(structPK(this.model) ?? {})) {
@@ -81,7 +81,7 @@ export class ModelQuery {
   // By default, it updates *all* columns in the table, including those nil or empty ones.
   // You may pass a list of the columns to this method to indicate that only those columns should be updated.
   // You may also call Exclude to exclude some columns from being updated.
-  update(...attrs: string[]): void {
+  update(...attrs: Array<string>): void {
     const pk = structPK(this.model);
     if (pk === null) {
       throw new MissingPKError();

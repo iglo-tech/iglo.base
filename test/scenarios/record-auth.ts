@@ -48,7 +48,7 @@ export function rateLimitScenario(
   name: string,
   method: string,
   url: string,
-  rules: RateLimitRuleData[],
+  rules: Array<RateLimitRuleData>,
   headers?: Record<string, string>,
   body?: string,
 ): Scenario {

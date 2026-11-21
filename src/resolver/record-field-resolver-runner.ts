@@ -68,7 +68,7 @@ class Runner {
 
   // shared processing state
   // ---------------------------------------------------------------
-  private activeProps: string[] = []; // holds the active props that remains to be processed
+  private activeProps: Array<string> = []; // holds the active props that remains to be processed
   private activeCollectionName = ""; // the last used collection name
   private activeTableAlias = ""; // the last used table alias
   private nullifyMisingField = false; // indicating whether to return null on missing field or return an error
@@ -392,7 +392,7 @@ class Runner {
       );
     }
 
-    let dataRelIds: string[] = [];
+    let dataRelIds: Array<string> = [];
     const body = this.resolver.requestInfo?.body;
     if (this.resolver.requestInfo !== null && body !== null && body !== undefined) {
       if (Object.keys(body).length !== 0) {
@@ -853,7 +853,7 @@ class Runner {
 const viaRegex = /^(\w+)_via_(\w+)$/;
 
 // note: nil value is returned as empty slice
-function toSlice(value: unknown): unknown[] {
+function toSlice(value: unknown): Array<unknown> {
   if (value === null || value === undefined) {
     return [];
   }
@@ -869,7 +869,7 @@ function toSlice(value: unknown): unknown[] {
 }
 
 // strings.SplitN(s, sep, n) for n > 0
-function splitN(s: string, sep: string, n: number): string[] {
+function splitN(s: string, sep: string, n: number): Array<string> {
   const parts = s.split(sep);
   if (parts.length <= n) {
     return parts;

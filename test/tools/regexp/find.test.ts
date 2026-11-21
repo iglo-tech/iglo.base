@@ -20,8 +20,8 @@ function slice(text: string, a: number, b: number): string {
 }
 
 // the string of each submatch pair, "" for an unmatched one
-function submatchStrings(text: string, submatches: readonly number[]): string[] {
-  const out: string[] = [];
+function submatchStrings(text: string, submatches: ReadonlyArray<number>): Array<string> {
+  const out: Array<string> = [];
   for (let k = 0; k < submatches.length; k += 2) {
     const a = submatches[k] as number;
     out.push(a === -1 ? "" : slice(text, a, submatches[k + 1] as number));
@@ -54,7 +54,7 @@ describe("find", () => {
       return;
     }
     const result = mustCompile(t.pat).findStringIndex(t.text);
-    expect(result).toEqual(t.matches ? (t.matches[0] as number[]).slice(0, 2) : null);
+    expect(result).toEqual(t.matches ? (t.matches[0] as Array<number>).slice(0, 2) : null);
   });
 
   test.each(cases)(`FindAllString ${name}`, (_, t) => {
@@ -74,7 +74,9 @@ describe("find", () => {
       return;
     }
     const result = mustCompile(t.pat).findStringSubmatch(t.text);
-    expect(result).toEqual(t.matches ? submatchStrings(t.text, t.matches[0] as number[]) : null);
+    expect(result).toEqual(
+      t.matches ? submatchStrings(t.text, t.matches[0] as Array<number>) : null,
+    );
   });
 
   test.each(cases)(`FindStringSubmatchIndex ${name}`, (_, t) => {
@@ -82,7 +84,7 @@ describe("find", () => {
       return;
     }
     const result = mustCompile(t.pat).findStringSubmatchIndex(t.text);
-    expect(result).toEqual(t.matches ? (t.matches[0] as number[]) : null);
+    expect(result).toEqual(t.matches ? (t.matches[0] as Array<number>) : null);
   });
 
   test.each(cases)(`FindAllStringSubmatch ${name}`, (_, t) => {

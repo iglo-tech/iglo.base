@@ -122,7 +122,7 @@ async function run(
   n: number,
   request: (item: number) => object,
 ): Promise<Stats> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   let next = from;
   const end = from + n;
   const started = performance.now();
@@ -158,7 +158,7 @@ try {
   const dataDir = join(root, "pb_data");
   await build(dataDir, root);
 
-  const lines: string[] = [];
+  const lines: Array<string> = [];
   for (const target of ["upstream", "iglo.base"] as const) {
     if (memAvailableMiB() < 1536) {
       throw new Error("MemAvailable below 1.5 GiB");
@@ -177,7 +177,7 @@ try {
           body: { id: id("n", i), title: `Note ${i}`, views: i, team: team(i) },
         });
         await run(server.url, batches + 1, 10, create);
-        const workloads: [string, (i: number) => object][] = [
+        const workloads: Array<[string, (i: number) => object]> = [
           ["create", create],
           [
             "update",

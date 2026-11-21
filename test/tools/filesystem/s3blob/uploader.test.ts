@@ -13,7 +13,7 @@ import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 import { Uploader } from "@/tools/filesystem/internal/s3blob/s3/uploader";
 import { type RecordedRequest, type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
 
-const recorders: S3Recorder[] = [];
+const recorders: Array<S3Recorder> = [];
 afterEach(() => {
   for (const r of recorders.splice(0)) {
     r.stop();
@@ -46,7 +46,7 @@ function expectSignedWithHeader(req: RecordedRequest): void {
 }
 
 // "METHOD /path?query" of each request, sorted
-function sortedTargets(requests: RecordedRequest[]): string[] {
+function sortedTargets(requests: Array<RecordedRequest>): Array<string> {
   return requests.map((r) => `${r.method} ${r.path}?${r.query}`).toSorted();
 }
 

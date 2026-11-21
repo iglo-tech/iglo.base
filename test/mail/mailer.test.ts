@@ -9,7 +9,7 @@ import { BEncoding, QEncoding, quotedPrintable, wordEncode } from "@/mail/go-mim
 import { addressesToStrings, detectReaderMimeType } from "@/mail/mailer";
 
 describe("addressesToStrings", () => {
-  const scenarios: [boolean, { name: string; address: string }[], string[]][] = [
+  const scenarios: Array<[boolean, Array<{ name: string; address: string }>, Array<string>]> = [
     [
       true,
       [
@@ -55,7 +55,7 @@ test("detectReaderMimeType", async () => {
 test("wordEncode (Go's TestEncodeWord)", () => {
   const utf8 = "utf-8";
   const iso88591 = "iso-8859-1";
-  const tests: [typeof QEncoding, string, string, string][] = [
+  const tests: Array<[typeof QEncoding, string, string, string]> = [
     [QEncoding, utf8, "François-Jérôme", "=?utf-8?q?Fran=C3=A7ois-J=C3=A9r=C3=B4me?="],
     [BEncoding, utf8, "Café", "=?utf-8?b?Q2Fmw6k=?="],
     [QEncoding, iso88591, "La Seleção", "=?iso-8859-1?q?La_Sele=C3=A7=C3=A3o?="],
@@ -91,7 +91,7 @@ test("wordEncode (Go's TestEncodeWord)", () => {
 });
 
 test("quotedPrintable (Go's TestWriter)", () => {
-  const tests: [string, string][] = [
+  const tests: Array<[string, string]> = [
     ["", ""],
     ["foo bar", "foo bar"],
     ["foo bar=", "foo bar=3D"],

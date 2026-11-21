@@ -66,7 +66,7 @@ interface SystemMigration {
 }
 
 // SystemMigrations, sorted by file name as MigrationsList.Register sorts them
-export const systemMigrations: readonly SystemMigration[] = Object.freeze([
+export const systemMigrations: ReadonlyArray<SystemMigration> = Object.freeze([
   { file: "1640988000_aux_init.go", up: createLogsTable },
   { file: "1640988000_init.go", up: createInitSchema },
   { file: "1717233556_v0.23_migrate.go" },
@@ -77,7 +77,7 @@ export const systemMigrations: readonly SystemMigration[] = Object.freeze([
   { file: "1778828400_normalize_indexes.go", up: resaveNonSystemCollections },
 ]);
 
-export const systemMigrationFiles: readonly string[] = Object.freeze(
+export const systemMigrationFiles: ReadonlyArray<string> = Object.freeze(
   systemMigrations.map((m) => m.file),
 );
 
@@ -96,7 +96,7 @@ const baselineTimestamp = 1_778_828_400;
 const auxInitFile = "1640988000_aux_init.go";
 
 // the data.db tables the baseline creates, besides `_migrations`
-const baselineTables: readonly string[] = Object.freeze([
+const baselineTables: ReadonlyArray<string> = Object.freeze([
   "_params",
   "_collections",
   CollectionNameMFAs,
@@ -108,7 +108,7 @@ const baselineTables: readonly string[] = Object.freeze([
 ]);
 
 // the system collections every v0.40.x/v0.41.0 pb_data has, with their type
-const systemCollections: readonly (readonly [string, string])[] = Object.freeze([
+const systemCollections: ReadonlyArray<readonly [string, string]> = Object.freeze([
   [CollectionNameMFAs, CollectionTypeBase],
   [CollectionNameOTPs, CollectionTypeBase],
   [CollectionNameExternalAuths, CollectionTypeBase],
@@ -132,7 +132,7 @@ export interface SystemMigrationsResult {
   // whether the baseline was created (a fresh install)
   readonly created: boolean;
   // the warnings to print once (newer migrations)
-  readonly warnings: readonly string[];
+  readonly warnings: ReadonlyArray<string>;
 }
 
 // RunSystemMigrations: creates the baseline on a fresh data.db, or checks
@@ -214,7 +214,7 @@ export function checkExistingDataDir(dataDir: string): void {
   }
 }
 
-const companionSuffixes: readonly string[] = Object.freeze(["-journal", "-wal", "-shm"]);
+const companionSuffixes: ReadonlyArray<string> = Object.freeze(["-journal", "-wal", "-shm"]);
 
 function checkDataDBFile(filename: string, flags: number): void {
   const conn = new Database(filename, flags);
@@ -227,7 +227,7 @@ function checkDataDBFile(filename: string, flags: number): void {
   }
 }
 
-type DataDBCheck = "fresh" | "older" | { readonly applied: readonly string[] };
+type DataDBCheck = "fresh" | "older" | { readonly applied: ReadonlyArray<string> };
 
 // the open steps 1 and 2 decision, read only: a fresh data.db (no system
 // migration recorded and none of the baseline tables), older data, or

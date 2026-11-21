@@ -21,7 +21,7 @@ if (!candidate || !jobsPath) {
 }
 const { concurrency, jobs } = JSON.parse(readFileSync(jobsPath, "utf8")) as {
   concurrency: number;
-  jobs: Job[];
+  jobs: Array<Job>;
 };
 
 const statusKiB = (key: string): number => {
@@ -59,7 +59,7 @@ Bun.gc(true);
 const rssBeforeMiB = statusKiB("VmRSS") / 1024;
 
 const queue = [...jobs];
-const results: JobResult[] = [];
+const results: Array<JobResult> = [];
 const started = performance.now();
 await Promise.all(
   workers.map(async (w) => {

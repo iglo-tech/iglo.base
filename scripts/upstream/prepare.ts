@@ -327,7 +327,7 @@ async function unpack(archive: string, destination: string): Promise<void> {
   await run(command, `unpacking ${archive}`);
 }
 
-async function git(args: string[], cwd: string): Promise<string> {
+async function git(args: Array<string>, cwd: string): Promise<string> {
   const proc = Bun.spawn(["git", ...args], {
     cwd,
     stdout: "pipe",
@@ -345,7 +345,7 @@ async function git(args: string[], cwd: string): Promise<string> {
   return stdout.trim();
 }
 
-async function run(command: string[], what: string): Promise<void> {
+async function run(command: Array<string>, what: string): Promise<void> {
   const proc = Bun.spawn(command, { stdout: "pipe", stderr: "pipe" });
   const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
   if (code !== 0) {

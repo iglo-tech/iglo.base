@@ -54,7 +54,7 @@ export function UniqueId(db: Builder, tableName: string): RuleFunc {
 export function NormalizeUniqueIndexError(
   err: Error | null,
   tableOrAlias: string,
-  fieldNames: readonly string[],
+  fieldNames: ReadonlyArray<string>,
 ): Error | null {
   if (err === null) {
     return err;

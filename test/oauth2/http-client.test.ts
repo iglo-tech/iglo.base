@@ -12,7 +12,7 @@ interface Seen {
   body: string;
 }
 
-const seen: Seen[] = [];
+const seen: Array<Seen> = [];
 
 const server = Bun.serve({
   hostname: "127.0.0.1",

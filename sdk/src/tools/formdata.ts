@@ -133,7 +133,7 @@ export function convertFormDataToObject(formData: FormData): Record<string, unkn
         if (!Array.isArray(result[k])) {
           result[k] = [result[k]];
         }
-        (result[k] as unknown[]).push(inferFormDataValue(v));
+        (result[k] as Array<unknown>).push(inferFormDataValue(v));
       } else {
         result[k] = inferFormDataValue(v);
       }

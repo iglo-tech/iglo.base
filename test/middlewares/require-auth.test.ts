@@ -66,7 +66,7 @@ const guestOnlyRoute = (router: Router<RequestEvent>) => {
 };
 
 const authRoute =
-  (...names: string[]) =>
+  (...names: Array<string>) =>
   (router: Router<RequestEvent>) => {
     router.GET("/my/test", handler).bind(requireAuth(...names));
   };
@@ -94,7 +94,7 @@ beforeAll(async () => {
 
 afterAll(() => testApp.cleanup());
 
-function run(scenarios: Scenario[]): void {
+function run(scenarios: Array<Scenario>): void {
   for (const s of scenarios) {
     test(s.name, async () => {
       const router = newRouter(testApp);

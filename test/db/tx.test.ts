@@ -21,7 +21,7 @@ function insertDemo(app: Databases, id: string): Demo {
   return m;
 }
 
-function demoIds(app: Databases): string[] {
+function demoIds(app: Databases): Array<string> {
   return app.concurrentDB().newQuery("SELECT id FROM demo ORDER BY id").column<string>();
 }
 
@@ -152,7 +152,7 @@ describe("transactions", () => {
 
   test("OnComplete callbacks run after the commit with a null error", () => {
     const { app } = openTempDatabases();
-    const calls: unknown[] = [];
+    const calls: Array<unknown> = [];
     runInTransaction(app, (txApp) => {
       txApp.txInfo()!.onComplete((txErr) => {
         calls.push(txErr);

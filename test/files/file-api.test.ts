@@ -33,8 +33,8 @@ import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { updateCollection } from "@test/scenarios/prepare";
 import { startServer, type RunningServer } from "@test/support/executable";
 
-const roots: string[] = [];
-const servers: RunningServer[] = [];
+const roots: Array<string> = [];
+const servers: Array<RunningServer> = [];
 
 afterEach(async () => {
   for (const server of servers.splice(0)) {
@@ -410,8 +410,8 @@ peakTest("only the first frame of an animated GIF original is read", async () =>
   ).toBe(true);
 });
 
-const u24 = (v: number): number[] => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff];
-const u32 = (v: number): number[] => [...u24(v), v >>> 24];
+const u24 = (v: number): Array<number> => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff];
+const u32 = (v: number): Array<number> => [...u24(v), v >>> 24];
 
 // a RIFF chunk with its padding byte
 function riffChunk(id: string, data: Uint8Array): Uint8Array {

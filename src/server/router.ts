@@ -38,11 +38,11 @@ export class ResponseWriter {
   #written = false;
   #status = 0;
   #sentHeader: Headers | undefined;
-  #chunks: Uint8Array[] = [];
+  #chunks: Array<Uint8Array> = [];
   // a body set by writeBody, sent as it is
   #body: Blob | ReadableStream<Uint8Array> | Promise<Blob> | null = null;
   // run once the response has been handed to the server
-  #afterResponse: (() => void)[] = [];
+  #afterResponse: Array<() => void> = [];
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
   #bodyFlushed = false;
@@ -448,7 +448,11 @@ export class Router<T extends Resolver> extends RouterGroup<T> {
     return new Mux(mux);
   }
 
-  #loadMux(mux: ServeMux<RouteHandler>, group: RouterGroup<T>, parents: RouterGroup<T>[]): void {
+  #loadMux(
+    mux: ServeMux<RouteHandler>,
+    group: RouterGroup<T>,
+    parents: Array<RouterGroup<T>>,
+  ): void {
     for (const child of group.children) {
       if (child instanceof RouterGroup) {
         this.#loadMux(mux, child, [...parents, group]);

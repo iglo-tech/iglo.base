@@ -93,7 +93,7 @@ export function compareJSON(
   ig: unknown,
   path: string,
   pairing: Pairing,
-  out: string[],
+  out: Array<string>,
 ): void {
   if (typeof up === "string" && typeof ig === "string") {
     if (up === ig) {
@@ -154,8 +154,8 @@ export function compareJSON(
   }
 }
 
-export function compareRes(up: Res, ig: Res, pairing: Pairing): string[] {
-  const out: string[] = [];
+export function compareRes(up: Res, ig: Res, pairing: Pairing): Array<string> {
+  const out: Array<string> = [];
   if (up.status !== ig.status) {
     out.push(`status ${up.status} != ${ig.status}: ${up.text} / ${ig.text}`);
     return out;
@@ -213,8 +213,8 @@ function escapeQuotes(s: string): string {
   return s.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
-export function multipartBody(parts: Part[], boundary: string, side: Side): Uint8Array {
-  const chunks: Uint8Array[] = [];
+export function multipartBody(parts: Array<Part>, boundary: string, side: Side): Uint8Array {
+  const chunks: Array<Uint8Array> = [];
   for (const p of parts) {
     if ("value" in p) {
       chunks.push(

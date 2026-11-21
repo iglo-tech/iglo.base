@@ -14,12 +14,12 @@ export interface RecordedRequest {
 export interface S3Recorder {
   // the endpoint for S3Config, with a trailing slash
   endpoint: string;
-  requests: RecordedRequest[];
+  requests: Array<RecordedRequest>;
   stop(): void;
 }
 
 export function startS3Recorder(respond: (req: RecordedRequest) => Response): S3Recorder {
-  const requests: RecordedRequest[] = [];
+  const requests: Array<RecordedRequest> = [];
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",

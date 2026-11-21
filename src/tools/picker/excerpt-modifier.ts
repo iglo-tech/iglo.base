@@ -162,7 +162,7 @@ export class ExcerptModifier implements Modifier {
 // initializes a new ExcerptModifier.
 //
 // This method is usually invoked in initModifer().
-export function newExcerptModifier(...args: string[]): ExcerptModifier {
+export function newExcerptModifier(...args: Array<string>): ExcerptModifier {
   const totalArgs = args.length;
 
   if (totalArgs === 0) {

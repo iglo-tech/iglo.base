@@ -9,7 +9,7 @@ export type LogRow = [id: string, created: string, level: number, message: strin
 
 export type LogWorkerRequest =
   | { type: "init"; done: SharedArrayBuffer; errors: MessagePort }
-  | { type: "write"; seq: number; path: string; rows: LogRow[] }
+  | { type: "write"; seq: number; path: string; rows: Array<LogRow> }
   | { type: "close"; seq: number };
 
 // on the worker's own port, so that a stopping app can read them without the event loop
@@ -41,7 +41,7 @@ export class LogWriter {
   readonly #onError: (text: string) => void;
   readonly #timeoutMs: number;
   #running: Running | null = null;
-  #waiters: { seq: number; resolve: () => void }[] = [];
+  #waiters: Array<{ seq: number; resolve: () => void }> = [];
 
   // timeoutMs bounds how long a stop waits for the thread
   constructor(path: string, onError: (text: string) => void, timeoutMs = flushTimeoutMs) {
@@ -51,7 +51,7 @@ export class LogWriter {
   }
 
   // posts one batch
-  write(rows: LogRow[]): number {
+  write(rows: Array<LogRow>): number {
     const running = this.#start();
     const seq = ++running.posted;
     running.worker.postMessage({ type: "write", seq, path: this.#path, rows });

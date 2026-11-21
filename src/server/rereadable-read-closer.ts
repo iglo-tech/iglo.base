@@ -20,7 +20,7 @@ export function isRereader(r: unknown): r is Rereader {
 export class RereadableReadCloser implements ReadCloser, Rereader {
   #reader: ReadCloser;
   #copy: BufferWithFile | undefined;
-  #closeErrors: unknown[] = [];
+  #closeErrors: Array<unknown> = [];
 
   // MaxMemory specifies the max size of the in memory copy buffer before
   // switching to read/write from temp disk file. If negative or zero,
@@ -100,7 +100,7 @@ export class RereadableReadCloser implements ReadCloser, Rereader {
 
 // Reads r until EOF (io.ReadAll).
 export async function readAll(r: ReadCloser): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   let total = 0;
   const p = new Uint8Array(32 * 1024);
   for (;;) {

@@ -37,7 +37,7 @@ const defaultQueryTimeout = 30;
 
 export interface CliContext {
   // os.Args[1:]
-  args: string[];
+  args: Array<string>;
   // os.Args[0], the path the executable was invoked as
   argv0: string;
   cwd: string;
@@ -91,7 +91,7 @@ const subcommands = [
   { name: "superuser", short: superuserShort },
 ];
 
-function rootFlags(defaults: AppConfig): FlagSpec[] {
+function rootFlags(defaults: AppConfig): Array<FlagSpec> {
   return [
     {
       name: "dir",
@@ -184,7 +184,11 @@ function withMigrationsDir(config: AppConfig): AppConfig {
 
 // the flags of the whole command line, as main.go's eager ParseFlags: what
 // it cannot parse is left to the command
-function eagerConfig(defaults: AppConfig, persistent: FlagSpec[], args: string[]): AppConfig {
+function eagerConfig(
+  defaults: AppConfig,
+  persistent: Array<FlagSpec>,
+  args: Array<string>,
+): AppConfig {
   try {
     return resolveConfig(defaults, parseFlags(args, persistent, { allowUnknown: true }).values);
   } catch {
@@ -193,8 +197,8 @@ function eagerConfig(defaults: AppConfig, persistent: FlagSpec[], args: string[]
 }
 
 // the system migrations (by name) and the app's, for the runner
-function allMigrations(appMigrations: readonly Migration[]): Migration[] {
-  const list: Migration[] = [];
+function allMigrations(appMigrations: ReadonlyArray<Migration>): Array<Migration> {
+  const list: Array<Migration> = [];
   for (const file of systemMigrationFiles) {
     addMigration(list, {
       file,
@@ -340,7 +344,7 @@ async function execute(ctx: CliContext): Promise<number> {
   }
 
   // the root command itself: only --help and --version do something
-  const local: FlagSpec[] = [
+  const local: Array<FlagSpec> = [
     ...persistent,
     { name: "help", kind: "bool", shorthand: "h", usage: `help for ${name}` },
     { name: "version", kind: "bool", shorthand: "v", usage: `version for ${name}` },

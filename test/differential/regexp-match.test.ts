@@ -25,7 +25,7 @@ const email = "regexp@example.com";
 const password = "1234567890";
 
 // pattern, then the values to create records with
-const cases: [string, string[]][] = [
+const cases: Array<[string, Array<string>]> = [
   // Unicode classes
   [String.raw`^\p{L}+$`, ["Zażółć", "abc1", "日本語"]],
   [String.raw`^\p{Greek}+$`, ["αβγ", "αβc"]],

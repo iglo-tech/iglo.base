@@ -1,6 +1,6 @@
 // Upstream: Go go1.27.2 src/regexp/syntax/simplify_test.go (simplifyTests), converted case for case.
 
-export const simplifyTests: { regexp: string; simple: string }[] = [
+export const simplifyTests: Array<{ regexp: string; simple: string }> = [
   // Already-simple constructs
   { regexp: "a", simple: "a" },
   { regexp: "ab", simple: "ab" },

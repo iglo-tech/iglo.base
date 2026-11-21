@@ -85,7 +85,7 @@ export class CustomerPtr implements StructModel {
     return "customer";
   }
 
-  dbPrimaryKey(): string[] {
+  dbPrimaryKey(): Array<string> {
     return ["id"];
   }
 

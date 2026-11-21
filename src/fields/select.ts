@@ -94,7 +94,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
   // Values specifies the list of accepted values.
   //
   // (Go's nil slice is an empty array: json v2 marshals both as [].)
-  values: string[] = [];
+  values: Array<string> = [];
 
   // MaxSelect specifies the max allowed selected values.
   //
@@ -174,7 +174,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
     return [this.normalizeValue(raw), null];
   }
 
-  private normalizeValue(raw: unknown): string | string[] {
+  private normalizeValue(raw: unknown): string | Array<string> {
     const val = toUniqueStringSlice(raw);
 
     if (!this.isMultiple()) {
@@ -319,7 +319,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
         hidden: (v) => (this.hidden = v as boolean),
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
-        values: (v) => (this.values = (v as string[] | undefined) ?? []),
+        values: (v) => (this.values = (v as Array<string> | undefined) ?? []),
         maxSelect: (v) => (this.maxSelect = v as GoInt),
         required: (v) => (this.required = v as boolean),
       },

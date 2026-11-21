@@ -34,7 +34,7 @@ afterAll(async () => {
 });
 
 // the objects of one record (the two servers share the bucket)
-function storedFiles(recordId: string): string[] {
+function storedFiles(recordId: string): Array<string> {
   return walk(join(gw.posixRoot, gw.bucket)).filter(
     (p) => p.split("/")[1] === recordId && p.split("/").length === 3,
   );

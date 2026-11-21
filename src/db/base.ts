@@ -75,7 +75,7 @@ interface Shared {
   readonly pool: ReadPool | null;
   poolClosed: Promise<void>;
   // the distinct connections, closed once
-  readonly dbs: DB[];
+  readonly dbs: Array<DB>;
   readonly dataPath: string;
   readonly logSQL: ((ms: number, sql: string) => void) | null;
   // the read-only data.db connection of committedReads(), once opened
@@ -310,7 +310,7 @@ export class Databases {
     if (this.shared.pool !== null) {
       this.shared.poolClosed = this.shared.pool.close();
     }
-    const errs: unknown[] = [];
+    const errs: Array<unknown> = [];
     for (const db of this.shared.dbs) {
       try {
         db.close();
@@ -349,7 +349,7 @@ export class Databases {
   }
 }
 
-const sqlLogReplacements: readonly { pattern: RegExp; replacement: string }[] = [
+const sqlLogReplacements: ReadonlyArray<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\[\[([^[\]{}.]+)\.([^[\]{}.]+)\]\]/g, replacement: "`$1`.`$2`" },
   { pattern: /\{\{([^[\]{}.]+)\.([^[\]{}.]+)\}\}/g, replacement: "`$1`.`$2`" },
   { pattern: /([^'"])?\{\{/g, replacement: "$1`" },

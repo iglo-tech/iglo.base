@@ -37,7 +37,7 @@ export const serveShort =
 
 export const serveUse = "[domain(s)]";
 
-export const serveFlags: FlagSpec[] = [
+export const serveFlags: Array<FlagSpec> = [
   {
     name: "origins",
     kind: "stringSlice",
@@ -131,14 +131,14 @@ function executablePath(ctx: CliContext): string {
 export async function runServeCommand(
   app: AppConfig,
   values: Map<string, FlagValue>,
-  domains: string[],
+  domains: Array<string>,
   ctx: CliContext,
-  migrations: readonly Migration[],
+  migrations: ReadonlyArray<Migration>,
   version: string,
 ): Promise<void> {
   let httpAddr = (values.get("http") as string | undefined) ?? "";
   const httpsAddr = (values.get("https") as string | undefined) ?? "";
-  const allowedOrigins = (values.get("origins") as string[] | undefined) ?? ["*"];
+  const allowedOrigins = (values.get("origins") as Array<string> | undefined) ?? ["*"];
 
   // no TLS in the app (D30): refuse before pb_data is opened or created
   if (domains.length > 0 || httpsAddr !== "") {
@@ -210,7 +210,7 @@ export async function runServeCommand(
     // every app.restart call of this app instance, oldest first: the ones
     // that join the first restart settle with it, and every one of them
     // reverts if the process does not execve
-    const restarts: { revert: () => void; failed: (err: unknown) => void }[] = [];
+    const restarts: Array<{ revert: () => void; failed: (err: unknown) => void }> = [];
 
     const appContext = await bootstrapApp(
       dbApp,

@@ -41,7 +41,7 @@ import { Errors } from "@/validation/error";
 
 import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(queryLog?: (line: string) => void, clock?: Clock): TestCollectionsApp {
   const app = openTestApp(clock, queryLog);
@@ -67,7 +67,7 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
 
 // tests.TestValidationErrors: the error is a validation Errors with exactly
 // the expected keys (or nil when none are expected)
-function expectValidationErrors(err: Error | null, expectedKeys: string[]): void {
+function expectValidationErrors(err: Error | null, expectedKeys: Array<string>): void {
   if (expectedKeys.length === 0) {
     expect(err).toBeNull();
     return;
@@ -115,11 +115,11 @@ describe("TestRecordValidate", () => {
 });
 
 describe("TestRecordSave", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     record: (app: TestCollectionsApp) => Record;
     expectError: boolean;
-  }[] = [
+  }> = [
     // trigger validators
     {
       name: "create - trigger validators",
@@ -275,7 +275,7 @@ describe("TestRecordSaveWithAutoTokenKeyRefresh", () => {
     };
   })();
 
-  const scenarios: [string, { [key: string]: unknown }, boolean][] = [
+  const scenarios: Array<[string, { [key: string]: unknown }, boolean]> = [
     ["no email or password change", { name: "example" }, false],
     ["password change", { password: "1234567890" }, true],
     ["email change", { email: "test_update@example.com" }, true],
@@ -303,7 +303,7 @@ describe("TestRecordSaveWithAutoTokenKeyRefresh", () => {
 
 describe("TestRecordDelete", () => {
   test("delete", async () => {
-    const queries: string[] = [];
+    const queries: Array<string> = [];
     let logging = false;
     const app = newTestApp((line) => {
       if (logging) {
@@ -383,7 +383,7 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
     saveCollection(app, collection);
 
     // create mock records
-    const relsData: [string, string[] | null][] = [
+    const relsData: Array<[string, Array<string> | null]> = [
       ["a", null],
       ["b", ["a"]],
       ["c", ["a", "b"]],
@@ -402,7 +402,7 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
     await deleteRecord(app, aRecord);
 
     // verify cascade delete
-    const expectedRels = new Map<string, string[]>([
+    const expectedRels = new Map<string, Array<string>>([
       ["d", []],
       ["e", ["d"]],
     ]);
@@ -412,7 +412,7 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
 
     for (const r of allRecords) {
       expect(expectedRels.has(r.id)).toBe(true);
-      expect(r.getStringSlice("rels")).toEqual(expectedRels.get(r.id) as string[]);
+      expect(r.getStringSlice("rels")).toEqual(expectedRels.get(r.id) as Array<string>);
     }
   });
 });

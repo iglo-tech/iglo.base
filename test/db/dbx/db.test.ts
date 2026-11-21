@@ -89,7 +89,7 @@ test("TestDB_QuoteColumnName", () => {
 });
 
 test("TestDB_ProcessSQL", () => {
-  const tests: { tag: string; sql: string; sqlite: string; params: string[] }[] = [
+  const tests: Array<{ tag: string; sql: string; sqlite: string; params: Array<string> }> = [
     {
       tag: "normal case",
       sql: "INSERT INTO employee (id, name, age) VALUES ({:id}, {:name}, {:age})",

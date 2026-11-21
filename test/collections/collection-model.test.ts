@@ -49,8 +49,8 @@ function findCollection(name: string): Collection {
 
 function expectParts(
   result: string,
-  expected: readonly string[],
-  notExpected: readonly string[] = [],
+  expected: ReadonlyArray<string>,
+  notExpected: ReadonlyArray<string> = [],
 ) {
   for (const part of expected) {
     expect({ part, found: result.includes(part) }).toEqual({ part, found: true });
@@ -60,7 +60,7 @@ function expectParts(
   }
 }
 
-const baseParts = (name: string): string[] => [
+const baseParts = (name: string): Array<string> => [
   `"id":"pbc_`,
   `"name":"${name}"`,
   `"type":"base"`,
@@ -76,7 +76,7 @@ const baseParts = (name: string): string[] => [
   `"deleteRule":null`,
 ];
 
-const viewParts = (name: string): string[] => [
+const viewParts = (name: string): Array<string> => [
   `"id":"pbc_`,
   `"name":"${name}"`,
   `"type":"view"`,
@@ -90,7 +90,7 @@ const viewParts = (name: string): string[] => [
   `"deleteRule":null`,
 ];
 
-const authParts = (name: string, id: string): string[] => [
+const authParts = (name: string, id: string): Array<string> => [
   id,
   `"name":"${name}"`,
   `"type":"auth"`,
@@ -115,7 +115,7 @@ const authParts = (name: string, id: string): string[] => [
 ];
 
 describe("NewCollection", () => {
-  const scenarios: { typ: string; name: string; expected: string[] }[] = [
+  const scenarios: Array<{ typ: string; name: string; expected: Array<string> }> = [
     { typ: "", name: "", expected: baseParts("") },
     { typ: "unknown", name: "test", expected: baseParts("test") },
     { typ: "base", name: "test", expected: baseParts("test") },
@@ -133,7 +133,7 @@ describe("NewCollection", () => {
 });
 
 describe("NewBaseCollection", () => {
-  const scenarios: { name: string; expected: string[] }[] = [
+  const scenarios: Array<{ name: string; expected: Array<string> }> = [
     { name: "", expected: baseParts("") },
     { name: "test", expected: baseParts("test") },
   ];
@@ -148,7 +148,7 @@ describe("NewBaseCollection", () => {
 });
 
 describe("NewViewCollection", () => {
-  const scenarios: { name: string; expected: string[] }[] = [
+  const scenarios: Array<{ name: string; expected: Array<string> }> = [
     { name: "", expected: viewParts("") },
     { name: "test", expected: viewParts("test") },
   ];
@@ -165,7 +165,7 @@ describe("NewViewCollection", () => {
 describe("NewAuthCollection", () => {
   // upstream expects `"id":""` for the empty name; it matches the OAuth2
   // mappedFields member, which every auth collection's JSON has
-  const scenarios: { name: string; expected: string[] }[] = [
+  const scenarios: Array<{ name: string; expected: Array<string> }> = [
     { name: "", expected: authParts("", `"id":""`) },
     { name: "test", expected: authParts("test", `"id":"pbc_`) },
   ];
@@ -195,7 +195,7 @@ test("CollectionBaseFilesPath", () => {
 });
 
 describe("CollectionIsBase", () => {
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["unknown", false],
     [CollectionTypeBase, true],
     [CollectionTypeView, false],
@@ -213,7 +213,7 @@ describe("CollectionIsBase", () => {
 });
 
 describe("CollectionIsView", () => {
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["unknown", false],
     [CollectionTypeBase, false],
     [CollectionTypeView, true],
@@ -231,7 +231,7 @@ describe("CollectionIsView", () => {
 });
 
 describe("CollectionIsAuth", () => {
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["unknown", false],
     [CollectionTypeBase, false],
     [CollectionTypeView, false],
@@ -256,12 +256,12 @@ describe("CollectionPostScan", () => {
 
   // upstream checks the %#v dump for lastSavedPK:"test", ViewQuery and
   // whether AuthRule is a nil pointer
-  const scenarios: {
+  const scenarios: Array<{
     typ: string;
     rawOptions: JSONRaw;
     viewQuery: string;
     authRule: string | null;
-  }[] = [
+  }> = [
     { typ: CollectionTypeBase, rawOptions, viewQuery: "", authRule: null },
     { typ: CollectionTypeView, rawOptions, viewQuery: "select 1", authRule: null },
     { typ: CollectionTypeAuth, rawOptions, viewQuery: "", authRule: "1=2" },
@@ -285,13 +285,13 @@ describe("CollectionPostScan", () => {
 });
 
 describe("CollectionUnmarshalJSON", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     raw: string;
     collection: () => Collection;
-    expected: string[];
-    notExpected: string[];
-  }[] = [
+    expected: Array<string>;
+    notExpected: Array<string>;
+  }> = [
     {
       name: "base new empty",
       raw: `{"type":"base","name":"test","listRule":"1=2","authRule":"1=3","viewQuery":"abc"}`,
@@ -396,12 +396,12 @@ function withOptions(typ: string): Collection {
 }
 
 describe("CollectionSerialize", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collection: () => Collection;
-    expected: string[];
-    notExpected: string[];
-  }[] = [
+    expected: Array<string>;
+    notExpected: Array<string>;
+  }> = [
     {
       name: "base",
       collection: () => withOptions(CollectionTypeBase),
@@ -490,7 +490,7 @@ test("CollectionSerializeNotModifyingCache", () => {
 describe("CollectionDBExport", () => {
   const date = parseDateTime("2024-07-01 01:02:03.456Z");
 
-  const scenarios: { typ: string; expected: string }[] = [
+  const scenarios: Array<{ typ: string; expected: string }> = [
     {
       typ: "unknown",
       expected: `{"createRule":"1=3","created":"2024-07-01 01:02:03.456Z","deleteRule":"1=5","fields":[{"help":"","hidden":false,"id":"f1_id","name":"f1","presentable":false,"required":false,"system":true,"type":"bool"},{"help":"","hidden":false,"id":"f2_id","name":"f2","presentable":false,"required":true,"system":false,"type":"bool"}],"id":"test_id","indexes":["CREATE INDEX idx1 on test_name(id)","CREATE INDEX idx2 on test_name(id)"],"listRule":"1=1","name":"test_name","options":"{}","system":true,"type":"unknown","updateRule":"1=4","updated":"2024-07-01 01:02:03.456Z","viewRule":"1=7"}`,
@@ -538,7 +538,10 @@ describe("CollectionDBExport", () => {
   }
 });
 
-function checkIndexes(indexes: readonly string[], expectedIndexes: readonly string[]): void {
+function checkIndexes(
+  indexes: ReadonlyArray<string>,
+  expectedIndexes: ReadonlyArray<string>,
+): void {
   expect(indexes.length).toBe(expectedIndexes.length);
 
   for (const idx of expectedIndexes) {

@@ -75,13 +75,13 @@ const deleteParent = (name: string): object => ({
   url: `/api/collections/rt_parents/records/${id(name)}`,
 });
 
-async function batch(ctx: ScenarioContext, requests: object[]): Promise<Observation> {
+async function batch(ctx: ScenarioContext, requests: Array<object>): Promise<Observation> {
   return response(await ctx.api("POST", "/api/batch", { requests }, ""));
 }
 
 function scenario(
   name: string,
-  topics: string[],
+  topics: Array<string>,
   run: (ctx: ScenarioContext) => Promise<Observation>,
 ): RealtimeScenario {
   return {
@@ -104,14 +104,14 @@ const allRecords = ["rt_parents/*", "rt_children/*"];
 
 // the events of an observation in a stable order
 function sorted(o: Observation): Observation {
-  const events = o["events"] as Observation[];
+  const events = o["events"] as Array<Observation>;
   return {
     ...o,
     events: events.toSorted((a, b) => (a["data"] as string).localeCompare(b["data"] as string)),
   };
 }
 
-const scenarios: (RealtimeScenario & { order?: string[] })[] = [
+const scenarios: Array<RealtimeScenario & { order?: Array<string> }> = [
   {
     ...scenario("create, update and delete in order", allRecords, (ctx) =>
       batch(ctx, [

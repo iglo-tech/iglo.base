@@ -19,7 +19,7 @@ export interface BrowserTokenRenewOptions
     Omit<CreateServerClientOptions, "cookies" | "request" | "origin">,
     MintBrowserTokenOptions {
   /** Origins besides the request's own that may call the route (see `checkOrigin`). */
-  allowedOrigins?: readonly string[];
+  allowedOrigins?: ReadonlyArray<string>;
   /** Mints with `impersonate`. Without it the server client must be in fallback mode. */
   superuser?: SuperuserClient;
 }

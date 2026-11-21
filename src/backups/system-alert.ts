@@ -84,7 +84,7 @@ export async function sendSystemAlertToAllSuperusers(
 ): Promise<void> {
   const superusers = findAllRecords(app, CollectionNameSuperusers);
 
-  const alertErrors: unknown[] = [];
+  const alertErrors: Array<unknown> = [];
   for (const superuser of superusers) {
     try {
       await sendSystemAlert(app, superuser, subject, details);

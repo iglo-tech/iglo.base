@@ -139,7 +139,7 @@ interface Stored {
   note: string;
   // the file's PB_THUMBS_MAX_SOURCE_PIXELS case
   limit?: number;
-  sizes?: string[];
+  sizes?: Array<string>;
 }
 
 async function send(
@@ -190,8 +190,8 @@ function normalized(res: Res): { headers: Map<string, string | null>; body: Buff
 }
 
 // the differences between the responses (originals and errors)
-function differences(up: Res, ig: Res): string[] {
-  const out: string[] = [];
+function differences(up: Res, ig: Res): Array<string> {
+  const out: Array<string> = [];
   if (up.status !== ig.status) {
     out.push(`status: upstream ${up.status}, iglo.base ${ig.status}`);
   }
@@ -225,7 +225,7 @@ async function pixels(bytes: Uint8Array): Promise<Raw> {
   return decodePng(await new Bun.Image(bytes).png({ compressionLevel: 0 }).bytes());
 }
 
-function mae(a: Raw, b: Raw): number[] {
+function mae(a: Raw, b: Raw): Array<number> {
   const sums = [0, 0, 0, 0];
   for (let i = 0; i < a.pix.length; i++) {
     sums[i % 4] = (sums[i % 4] as number) + Math.abs((a.pix[i] as number) - (b.pix[i] as number));
@@ -278,8 +278,8 @@ function copyPreserving(source: string, target: string): void {
 }
 
 export function serveSuite(storage: "local" | "s3"): void {
-  const roots: string[] = [];
-  const running: { stop(): Promise<unknown> }[] = [];
+  const roots: Array<string> = [];
+  const running: Array<{ stop(): Promise<unknown> }> = [];
 
   const baseBucket = "base";
   // the S3 server, on S3
@@ -291,9 +291,9 @@ export function serveSuite(storage: "local" | "s3"): void {
   const stored = new Map<string, Stored>();
   let protectedPng: Stored;
   let goneTxt: Stored;
-  let images: TestImage[] = [];
-  let compat: TestImage[] = [];
-  let edges: TestImage[] = [];
+  let images: Array<TestImage> = [];
+  let compat: Array<TestImage> = [];
+  let edges: Array<TestImage> = [];
 
   function newRoot(): string {
     const root = mkdtempSync(join(tmpdir(), "iglo-base-m52-"));
@@ -330,7 +330,7 @@ export function serveSuite(storage: "local" | "s3"): void {
     }
   }
 
-  const report: string[] = [];
+  const report: Array<string> = [];
 
   // requests a thumb from both servers and compares the outcome
   async function compareThumb(
@@ -448,7 +448,7 @@ export function serveSuite(storage: "local" | "s3"): void {
     const photoJpeg = readFileSync(join(imagesDir, "photo.jpg"));
     const photoPng = readFileSync(join(imagesDir, "photo.png"));
     edges = await writeEdgeSet(imagesDir, photoJpeg, photoPng);
-    const documents: [string, string | Uint8Array][] = [
+    const documents: Array<[string, string | Uint8Array]> = [
       ["drawing.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'],
       ["page.html", "<!DOCTYPE html><html><body><script>alert(1)</script></body></html>"],
       ["doc.pdf", "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"],
@@ -628,7 +628,7 @@ export function serveSuite(storage: "local" | "s3"): void {
   });
 
   describe("Range and conditional requests", () => {
-    const cases: [string, Record<string, string>][] = [
+    const cases: Array<[string, Record<string, string>]> = [
       ["single range", { Range: "bytes=0-99" }],
       ["suffix range", { Range: "bytes=-50" }],
       ["open range", { Range: "bytes=100-" }],
@@ -833,7 +833,7 @@ export function serveSuite(storage: "local" | "s3"): void {
 
   describe("the M0.7 compatibility set", () => {
     test("every image", async () => {
-      const rows: string[] = [];
+      const rows: Array<string> = [];
       for (const image of compat) {
         const s = file(image.name);
         const pair = s.limit !== undefined ? limited : main;

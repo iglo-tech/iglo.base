@@ -32,14 +32,14 @@ export class Rng {
     return this.next() < p;
   }
 
-  pick<T>(items: readonly T[]): T {
+  pick<T>(items: ReadonlyArray<T>): T {
     if (items.length === 0) {
       throw new Error("pick from an empty list");
     }
     return items[this.int(items.length)] as T;
   }
 
-  weighted<T>(items: readonly (readonly [T, number])[]): T {
+  weighted<T>(items: ReadonlyArray<readonly [T, number]>): T {
     let left = this.next() * items.reduce((sum, [, weight]) => sum + weight, 0);
     for (const [item, weight] of items) {
       left -= weight;

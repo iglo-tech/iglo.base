@@ -41,7 +41,7 @@ export interface Builder {
   // Select returns a new SelectQuery object that can be used to build a SELECT statement.
   // The parameters to this method should be the list column names to be selected.
   // A column name may have an optional alias name. For example, Select("id", "my_name AS name").
-  select(...cols: string[]): SelectQuery;
+  select(...cols: Array<string>): SelectQuery;
   // ModelQuery returns a new ModelQuery object that can be used to perform model insertion, update, and deletion.
   model(model: StructModel): ModelQuery;
 
@@ -65,7 +65,7 @@ export interface Builder {
   // values to be inserted.
   insert(table: string, cols: Params): Query;
   // Upsert creates a Query that represents an UPSERT SQL statement.
-  upsert(table: string, cols: Params, ...constraints: string[]): Query;
+  upsert(table: string, cols: Params, ...constraints: Array<string>): Query;
   // Update creates a Query that represents an UPDATE SQL statement.
   // If the "where" expression is nil, the UPDATE SQL statement will have no WHERE clause
   // (be careful in this case as the SQL statement will update ALL rows in the table).
@@ -78,7 +78,7 @@ export interface Builder {
   // CreateTable creates a Query that represents a CREATE TABLE SQL statement.
   // The keys of cols are the column names, while the values of cols are the corresponding column types.
   // The optional "options" parameters will be appended to the generated SQL statement.
-  createTable(table: string, cols: Record<string, string>, ...options: string[]): Query;
+  createTable(table: string, cols: Record<string, string>, ...options: Array<string>): Query;
   // RenameTable creates a Query that can be used to rename a table.
   renameTable(oldName: string, newName: string): Query;
   // DropTable creates a Query that can be used to drop a table.
@@ -97,7 +97,7 @@ export interface Builder {
 
   // AddPrimaryKey creates a Query that can be used to specify primary key(s) for a table.
   // The "name" parameter specifies the name of the primary key constraint.
-  addPrimaryKey(table: string, name: string, ...cols: string[]): Query;
+  addPrimaryKey(table: string, name: string, ...cols: Array<string>): Query;
   // DropPrimaryKey creates a Query that can be used to remove the named primary key constraint from a table.
   dropPrimaryKey(table: string, name: string): Query;
 
@@ -108,18 +108,18 @@ export interface Builder {
   addForeignKey(
     table: string,
     name: string,
-    cols: string[],
-    refCols: string[],
+    cols: Array<string>,
+    refCols: Array<string>,
     refTable: string,
-    ...options: string[]
+    ...options: Array<string>
   ): Query;
   // DropForeignKey creates a Query that can be used to remove the named foreign key constraint from a table.
   dropForeignKey(table: string, name: string): Query;
 
   // CreateIndex creates a Query that can be used to create an index for a table.
-  createIndex(table: string, name: string, ...cols: string[]): Query;
+  createIndex(table: string, name: string, ...cols: Array<string>): Query;
   // CreateUniqueIndex creates a Query that can be used to create a unique index for a table.
-  createUniqueIndex(table: string, name: string, ...cols: string[]): Query;
+  createUniqueIndex(table: string, name: string, ...cols: Array<string>): Query;
   // DropIndex creates a Query that can be used to remove the named index from a table.
   dropIndex(table: string, name: string): Query;
 }
@@ -131,7 +131,7 @@ export abstract class BaseBuilder implements Builder {
     protected readonly executorValue: Executor,
   ) {}
 
-  abstract select(...cols: string[]): SelectQuery;
+  abstract select(...cols: Array<string>): SelectQuery;
   abstract model(model: StructModel): ModelQuery;
   abstract queryBuilder(): QueryBuilder;
 
@@ -175,8 +175,8 @@ export abstract class BaseBuilder implements Builder {
     const names = sortStrings(Object.keys(cols));
 
     const params: Params = {};
-    const columns: string[] = [];
-    const values: string[] = [];
+    const columns: Array<string> = [];
+    const values: Array<string> = [];
     for (const name of names) {
       columns.push(this.database.quoteColumnName(name));
       const value = cols[name];
@@ -199,7 +199,7 @@ export abstract class BaseBuilder implements Builder {
     return this.newQuery(sql).bind(params);
   }
 
-  upsert(_table: string, _cols: Params, ..._constraints: string[]): Query {
+  upsert(_table: string, _cols: Params, ..._constraints: Array<string>): Query {
     const q = this.newQuery("");
     q.lastError = new Error("Upsert is not supported");
     return q;
@@ -209,7 +209,7 @@ export abstract class BaseBuilder implements Builder {
     const names = sortStrings(Object.keys(cols));
 
     const params: Params = {};
-    const lines: string[] = [];
+    const lines: Array<string> = [];
     for (const name of names) {
       const value = cols[name];
       const col = this.database.quoteColumnName(name);
@@ -245,7 +245,7 @@ export abstract class BaseBuilder implements Builder {
     return this.newQuery(sql).bind(params);
   }
 
-  createTable(table: string, cols: Record<string, string>, ...options: string[]): Query {
+  createTable(table: string, cols: Record<string, string>, ...options: Array<string>): Query {
     const names = sortStrings(Object.keys(cols));
     const columns = names.map((name) => this.database.quoteColumnName(name) + " " + cols[name]);
 
@@ -296,7 +296,7 @@ export abstract class BaseBuilder implements Builder {
     );
   }
 
-  addPrimaryKey(table: string, name: string, ...cols: string[]): Query {
+  addPrimaryKey(table: string, name: string, ...cols: Array<string>): Query {
     return this.newQuery(
       `ALTER TABLE ${this.database.quoteTableName(table)} ADD CONSTRAINT ${this.database.quoteColumnName(name)} PRIMARY KEY (${this.quoteColumns(cols)})`,
     );
@@ -311,10 +311,10 @@ export abstract class BaseBuilder implements Builder {
   addForeignKey(
     table: string,
     name: string,
-    cols: string[],
-    refCols: string[],
+    cols: Array<string>,
+    refCols: Array<string>,
     refTable: string,
-    ...options: string[]
+    ...options: Array<string>
   ): Query {
     let sql = `ALTER TABLE ${this.database.quoteTableName(table)} ADD CONSTRAINT ${this.database.quoteColumnName(name)} FOREIGN KEY (${this.quoteColumns(cols)}) REFERENCES ${this.database.quoteTableName(refTable)} (${this.quoteColumns(refCols)})`;
     for (const opt of options) {
@@ -329,13 +329,13 @@ export abstract class BaseBuilder implements Builder {
     );
   }
 
-  createIndex(table: string, name: string, ...cols: string[]): Query {
+  createIndex(table: string, name: string, ...cols: Array<string>): Query {
     return this.newQuery(
       `CREATE INDEX ${this.database.quoteColumnName(name)} ON ${this.database.quoteTableName(table)} (${this.quoteColumns(cols)})`,
     );
   }
 
-  createUniqueIndex(table: string, name: string, ...cols: string[]): Query {
+  createUniqueIndex(table: string, name: string, ...cols: Array<string>): Query {
     return this.newQuery(
       `CREATE UNIQUE INDEX ${this.database.quoteColumnName(name)} ON ${this.database.quoteTableName(table)} (${this.quoteColumns(cols)})`,
     );
@@ -348,7 +348,7 @@ export abstract class BaseBuilder implements Builder {
   }
 
   // quoteColumns quotes a list of columns and concatenates them with commas.
-  protected quoteColumns(cols: string[]): string {
+  protected quoteColumns(cols: Array<string>): string {
     return cols.map((col) => this.database.quoteColumnName(col)).join(", ");
   }
 }
@@ -361,7 +361,7 @@ export abstract class EmbeddedBuilder implements Builder {
   newQuery(sql: string): Query {
     return this.builder.newQuery(sql);
   }
-  select(...cols: string[]): SelectQuery {
+  select(...cols: Array<string>): SelectQuery {
     return this.builder.select(...cols);
   }
   model(model: StructModel): ModelQuery {
@@ -385,7 +385,7 @@ export abstract class EmbeddedBuilder implements Builder {
   insert(table: string, cols: Params): Query {
     return this.builder.insert(table, cols);
   }
-  upsert(table: string, cols: Params, ...constraints: string[]): Query {
+  upsert(table: string, cols: Params, ...constraints: Array<string>): Query {
     return this.builder.upsert(table, cols, ...constraints);
   }
   update(table: string, cols: Params, where: Expression | null): Query {
@@ -394,7 +394,7 @@ export abstract class EmbeddedBuilder implements Builder {
   delete(table: string, where: Expression | null): Query {
     return this.builder.delete(table, where);
   }
-  createTable(table: string, cols: Record<string, string>, ...options: string[]): Query {
+  createTable(table: string, cols: Record<string, string>, ...options: Array<string>): Query {
     return this.builder.createTable(table, cols, ...options);
   }
   renameTable(oldName: string, newName: string): Query {
@@ -418,7 +418,7 @@ export abstract class EmbeddedBuilder implements Builder {
   alterColumn(table: string, col: string, typ: string): Query {
     return this.builder.alterColumn(table, col, typ);
   }
-  addPrimaryKey(table: string, name: string, ...cols: string[]): Query {
+  addPrimaryKey(table: string, name: string, ...cols: Array<string>): Query {
     return this.builder.addPrimaryKey(table, name, ...cols);
   }
   dropPrimaryKey(table: string, name: string): Query {
@@ -427,20 +427,20 @@ export abstract class EmbeddedBuilder implements Builder {
   addForeignKey(
     table: string,
     name: string,
-    cols: string[],
-    refCols: string[],
+    cols: Array<string>,
+    refCols: Array<string>,
     refTable: string,
-    ...options: string[]
+    ...options: Array<string>
   ): Query {
     return this.builder.addForeignKey(table, name, cols, refCols, refTable, ...options);
   }
   dropForeignKey(table: string, name: string): Query {
     return this.builder.dropForeignKey(table, name);
   }
-  createIndex(table: string, name: string, ...cols: string[]): Query {
+  createIndex(table: string, name: string, ...cols: Array<string>): Query {
     return this.builder.createIndex(table, name, ...cols);
   }
-  createUniqueIndex(table: string, name: string, ...cols: string[]): Query {
+  createUniqueIndex(table: string, name: string, ...cols: Array<string>): Query {
     return this.builder.createUniqueIndex(table, name, ...cols);
   }
   dropIndex(table: string, name: string): Query {

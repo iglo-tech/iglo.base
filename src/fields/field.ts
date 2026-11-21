@@ -65,7 +65,7 @@ export const FieldNamePassword = "password";
 
 // SystemDynamicFieldNames returns special internal field names that are
 // usually readonly.
-export const SystemDynamicFieldNames: readonly string[] = Object.freeze([
+export const SystemDynamicFieldNames: ReadonlyArray<string> = Object.freeze([
   FieldNameCollectionId,
   FieldNameCollectionName,
   FieldNameExpand,
@@ -352,7 +352,7 @@ export function DefaultFieldHelpValidationRule(value: unknown): Error | null {
     return ErrUnsupportedValueType;
   }
 
-  const rules: Rule[] = [Length(1, 300)];
+  const rules: Array<Rule> = [Length(1, 300)];
 
   for (const r of rules) {
     const err = r.validate(value);
@@ -371,7 +371,7 @@ export function DefaultFieldIdValidationRule(value: unknown): Error | null {
     return ErrUnsupportedValueType;
   }
 
-  const rules: Rule[] = [Required, Length(1, 100)];
+  const rules: Array<Rule> = [Required, Length(1, 100)];
 
   for (const r of rules) {
     const err = r.validate(value);
@@ -384,7 +384,13 @@ export function DefaultFieldIdValidationRule(value: unknown): Error | null {
 }
 
 // exclude special filter and system literals
-const excludeNames: unknown[] = ["null", "true", "false", "_rowid_", ...SystemDynamicFieldNames];
+const excludeNames: Array<unknown> = [
+  "null",
+  "true",
+  "false",
+  "_rowid_",
+  ...SystemDynamicFieldNames,
+];
 
 // DefaultFieldNameValidationRule performs base validation on a field name
 // value.
@@ -393,7 +399,7 @@ export function DefaultFieldNameValidationRule(value: unknown): Error | null {
     return ErrUnsupportedValueType;
   }
 
-  const rules: Rule[] = [
+  const rules: Array<Rule> = [
     Required,
     Length(1, 100),
     Match(fieldNameRegex),
@@ -434,7 +440,7 @@ export function noopSetter(_record: FieldRecord, _raw: unknown): void {
 // json.Marshal of a Go struct (json v2 defaults): the members in the
 // struct field order, without HTML escaping. Values are marshaled as Go
 // marshals them (go-json's marshal; a JSON marshaler's own text).
-export function marshalStruct(members: readonly (readonly [string, unknown])[]): string {
+export function marshalStruct(members: ReadonlyArray<readonly [string, unknown]>): string {
   const flags = { escapeForHTML: false, escapeForJS: false, allowInvalidUTF8: false };
   let out = "{";
   for (const [i, [name, value]] of members.entries()) {

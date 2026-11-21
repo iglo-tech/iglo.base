@@ -199,7 +199,7 @@ export function expiredDate(): Date {
 export function insertOTPs(
   collection: string,
   email: string,
-  ...otps: OTPData[]
+  ...otps: Array<OTPData>
 ): (ctx: PrepareContext) => void {
   return ({ dataDir }) =>
     withApp(dataDir, (app) => {
@@ -232,12 +232,12 @@ export function setOTP(collection: string, enabled: boolean): (ctx: PrepareConte
 }
 
 // the `_otps` rows of the record, the newest first
-export function otpRows(dataDir: string, recordId: string): OTPRow[] {
+export function otpRows(dataDir: string, recordId: string): Array<OTPRow> {
   return queryRows(
     dataDir,
     "SELECT id, collectionRef, recordRef, password, sentTo, created, updated FROM _otps WHERE recordRef = ? ORDER BY created DESC",
     recordId,
-  ) as OTPRow[];
+  ) as Array<OTPRow>;
 }
 
 export interface OTPRow {
@@ -289,7 +289,7 @@ export function stubOTPRecords({ dataDir }: PrepareContext): void {
 
 // tests.StubMFARecords
 export function stubMFARecords({ dataDir }: PrepareContext): void {
-  const data: { [stubId: string]: [string, number][] } = {
+  const data: { [stubId: string]: Array<[string, number]> } = {
     superuser2: [
       [MFAMethodOTP, 0],
       [MFAMethodOTP, -msHour],

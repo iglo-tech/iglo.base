@@ -106,7 +106,7 @@ const mainScript = (html: string): string =>
 const mainStyle = (html: string): string =>
   `/_/${/href="\.\/(assets\/index-[\w-]+\.css)"/.exec(html)?.[1]}`;
 
-const cases: [string, Request][] = [
+const cases: Array<[string, Request]> = [
   ["GET /_", { path: "/_" }],
   ["GET /_/", { path: "/_/", body: false }],
   ["GET /_/ gzip", { path: "/_/", headers: gz, body: false }],

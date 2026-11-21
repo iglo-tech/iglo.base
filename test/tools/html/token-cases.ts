@@ -7,7 +7,7 @@ export interface TokenTestCase {
   golden: string;
 }
 
-export const tokenTests: readonly TokenTestCase[] = [
+export const tokenTests: ReadonlyArray<TokenTestCase> = [
   { desc: "empty", html: "", golden: "" },
   { desc: "text", html: "foo  bar", golden: "foo  bar" },
   { desc: "entity", html: "one &lt; two", golden: "one &lt; two" },

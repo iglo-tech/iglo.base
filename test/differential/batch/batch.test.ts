@@ -125,9 +125,9 @@ function readRequest(collection: string): Scenario {
   };
 }
 
-function storedFiles(dataDir: string): string[] {
+function storedFiles(dataDir: string): Array<string> {
   // file names without their random parts
-  const out: string[] = [];
+  const out: Array<string> = [];
   const storage = join(dataDir, "storage");
   for (const collection of readdirSync(storage)) {
     for (const record of readdirSync(join(storage, collection))) {

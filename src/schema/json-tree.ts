@@ -9,8 +9,8 @@
 // and checked for finiteness only; the reader checks their range.
 
 export type JSONNode =
-  | { kind: "object"; members: { key: string; value: JSONNode }[] }
-  | { kind: "array"; items: JSONNode[] }
+  | { kind: "object"; members: Array<{ key: string; value: JSONNode }> }
+  | { kind: "array"; items: Array<JSONNode> }
   | { kind: "string"; value: string }
   | { kind: "number"; value: number }
   | { kind: "boolean"; value: boolean }
@@ -189,7 +189,7 @@ class Parser {
 
   private parseObject(): JSONNode {
     this.pos++; // {
-    const members: { key: string; value: JSONNode }[] = [];
+    const members: Array<{ key: string; value: JSONNode }> = [];
     this.skipWhitespace();
     if (this.text[this.pos] === "}") {
       this.pos++;
@@ -224,7 +224,7 @@ class Parser {
 
   private parseArray(): JSONNode {
     this.pos++; // [
-    const items: JSONNode[] = [];
+    const items: Array<JSONNode> = [];
     this.skipWhitespace();
     if (this.text[this.pos] === "]") {
       this.pos++;

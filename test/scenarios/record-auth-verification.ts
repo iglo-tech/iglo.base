@@ -33,9 +33,9 @@ const email = "test@example.com";
 // (user.ValidatePassword returns false)
 function passwordWasReset(oldPassword: string): (ctx: AfterContext) => Promise<void> {
   return async ({ dataDir }) => {
-    const rows = queryRows(dataDir, `SELECT password FROM "users" WHERE id = ?`, userId) as {
+    const rows = queryRows(dataDir, `SELECT password FROM "users" WHERE id = ?`, userId) as Array<{
       password: string;
-    }[];
+    }>;
     const hash = rows[0]?.password ?? "";
     if (hash !== "" && (await Bun.password.verify(oldPassword, hash))) {
       throw new Error("expected the user password to be reset");

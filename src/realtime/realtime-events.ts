@@ -287,7 +287,7 @@ function realtimeBroadcastRecord(app: RecordsApp, action: string, record: Record
   const broadcast = new RecordBroadcast(app, app, action, record.fresh());
 
   // prepared now, against the database state this write left
-  const pending: [Client, Message[]][] = [];
+  const pending: Array<[Client, Array<Message>]> = [];
   for (const chunk of broker.chunkedClients(clientsChunkSize)) {
     for (const client of chunk) {
       const messages = broadcast.clientMessages(client);
@@ -301,7 +301,7 @@ function realtimeBroadcastRecord(app: RecordsApp, action: string, record: Record
 }
 
 // sends the prepared messages after the broadcasts before them
-function sendLater(app: RecordsApp, pending: [Client, Message[]][]): void {
+function sendLater(app: RecordsApp, pending: Array<[Client, Array<Message>]>): void {
   if (pending.length === 0) {
     return;
   }
@@ -321,7 +321,7 @@ function realtimeBroadcastDryCacheKey(app: RecordsApp, broker: Broker, key: stri
     return; // no subscribers
   }
 
-  const pending: [Client, Message[]][] = [];
+  const pending: Array<[Client, Array<Message>]> = [];
   for (const client of broker.clients().values()) {
     const messages = client.get(key);
     if (!Array.isArray(messages)) {
@@ -330,7 +330,7 @@ function realtimeBroadcastDryCacheKey(app: RecordsApp, broker: Broker, key: stri
 
     client.unset(key);
 
-    pending.push([client, messages as Message[]]);
+    pending.push([client, messages as Array<Message>]);
   }
 
   sendLater(app, pending);
@@ -353,7 +353,7 @@ function getDryCacheKey(action: string, record: Record): string {
 class RecordBroadcast {
   readonly #collection: Collection;
   // the subscription topic prefixes with the rule each is checked against
-  readonly #subscriptionRules: [string, string | null][];
+  readonly #subscriptionRules: Array<[string, string | null]>;
   // the encoded data shared by the subscribers that get the same bytes
   readonly #encoded = new Map<string, Uint8Array>();
   // the access checks made so far, by everything their result depends on
@@ -385,9 +385,9 @@ class RecordBroadcast {
   }
 
   // the messages of one client, in its subscriptions' order
-  clientMessages(client: Client): Message[] {
+  clientMessages(client: Client): Array<Message> {
     const collection = this.#collection;
-    const messages: Message[] = [];
+    const messages: Array<Message> = [];
 
     // note: not executed concurrently to avoid races and to ensure
     // that the access checks are applied for the current record db state

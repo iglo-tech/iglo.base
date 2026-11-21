@@ -37,7 +37,7 @@ describe("ParseDateTime", () => {
   const nowTime = clock.now();
   const nowDateTimeValue = parseDateTime(nowTime);
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     [null, ""],
     ["", ""],
     ["invalid", ""],
@@ -94,7 +94,7 @@ describe("DateTimeAddDate", () => {
   // Not in upstream's tests: time.Time.AddDate works on the calendar of the
   // parsed location, so a fixed offset that puts the value on another UTC
   // date changes the result.
-  const scenarios: [string, unknown, [number, number, number], string][] = [
+  const scenarios: Array<[string, unknown, [number, number, number], string]> = [
     [
       "negative offset, next UTC day",
       "2024-01-31T23:30:00-02:00",
@@ -164,7 +164,7 @@ const d2 = parseDateTime("2024-01-02 10:00:00.123Z");
 const d3 = parseDateTime("2024-01-03 10:00:00.123Z");
 
 describe("DateTimeAfter", () => {
-  const scenarios: [DateTime, DateTime, boolean][] = [
+  const scenarios: Array<[DateTime, DateTime, boolean]> = [
     // d1
     [d1, d1, false],
     [d1, d2, false],
@@ -187,7 +187,7 @@ describe("DateTimeAfter", () => {
 });
 
 describe("DateTimeBefore", () => {
-  const scenarios: [DateTime, DateTime, boolean][] = [
+  const scenarios: Array<[DateTime, DateTime, boolean]> = [
     // d1
     [d1, d1, false],
     [d1, d2, true],
@@ -210,7 +210,7 @@ describe("DateTimeBefore", () => {
 });
 
 describe("DateTimeCompare", () => {
-  const scenarios: [DateTime, DateTime, number][] = [
+  const scenarios: Array<[DateTime, DateTime, number]> = [
     // d1
     [d1, d1, 0],
     [d1, d2, -1],
@@ -237,7 +237,7 @@ describe("DateTimeEqual", () => {
   const e2 = parseDateTime("2024-01-01 10:00:00.123Z");
   const e3 = parseDateTime("2024-01-01 10:00:00.124Z");
 
-  const scenarios: [DateTime, DateTime, boolean][] = [
+  const scenarios: Array<[DateTime, DateTime, boolean]> = [
     [e1, e1, true],
     [e1, e2, true],
     [e1, e3, false],
@@ -251,7 +251,7 @@ describe("DateTimeEqual", () => {
 });
 
 describe("DateTimeUnix", () => {
-  const scenarios: [string, number][] = [
+  const scenarios: Array<[string, number]> = [
     ["", -62_135_596_800],
     ["2022-01-01 11:23:45.678Z", 1_641_036_225],
   ];
@@ -279,7 +279,7 @@ describe("DateTimeString", () => {
 });
 
 describe("DateTimeMarshalJSON", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", `""`],
     ["2022-01-01 11:23:45.678", `"2022-01-01 11:23:45.678Z"`],
   ];
@@ -292,7 +292,7 @@ describe("DateTimeMarshalJSON", () => {
 });
 
 describe("DateTimeUnmarshalJSON", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["invalid_json", ""],
     ["'123'", ""],
@@ -314,7 +314,7 @@ describe("DateTimeUnmarshalJSON", () => {
 });
 
 describe("DateTimeValue", () => {
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["invalid", ""],
     [1_641_024_040n, "2022-01-01 08:00:40.000Z"],
@@ -332,7 +332,7 @@ describe("DateTimeValue", () => {
 describe("DateTimeScan", () => {
   const now = "2024-05-06 07:08:09"; // without ms part, as upstream
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     [null, ""],
     ["", ""],
     ["invalid", ""],
@@ -363,7 +363,7 @@ describe("DateTimeScan", () => {
 // Not in upstream's tests: the cast.ToTime layouts Scan falls back to, with
 // the results Go's time.Parse and cast v1.10.0 give.
 describe("DateTimeScan cast layouts", () => {
-  const scenarios: [string, string, string][] = [
+  const scenarios: Array<[string, string, string]> = [
     ["default layout", "2022-01-01 11:23:45.678Z", "2022-01-01 11:23:45.678Z"],
     // the default layout needs exactly 3 fraction digits; cast's
     // "2006-01-02 15:04:05Z0700" then takes any fraction and the Z

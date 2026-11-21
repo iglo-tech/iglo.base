@@ -43,13 +43,13 @@ export function JoinValidationErrors(errA: Error | null, errB: Error | null): Er
 // errors.Join: null when every error is null, else an error whose message
 // joins the messages with newlines and whose `errors` are the non-null ones
 export class JoinError extends Error {
-  constructor(readonly errors: Error[]) {
+  constructor(readonly errors: Array<Error>) {
     super(errors.map((e) => e.message).join("\n"));
     this.name = "JoinError";
   }
 }
 
-function joinErrors(...errs: (Error | null)[]): Error | null {
+function joinErrors(...errs: Array<Error | null>): Error | null {
   const list = errs.filter((e): e is Error => e !== null);
   if (list.length === 0) {
     return null;

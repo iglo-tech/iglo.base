@@ -251,7 +251,10 @@ export function setAuthOptions(m: CollectionAuthOptions, src: CollectionAuthOpti
 // client secrets are left out (they are cleared on a copy and omitted by
 // omitempty) and nil providers are an empty array (as they are anyway in
 // json v2).
-export function authOptionsMembers(o: CollectionAuthOptions, redact = false): [string, unknown][] {
+export function authOptionsMembers(
+  o: CollectionAuthOptions,
+  redact = false,
+): Array<[string, unknown]> {
   const token = (t: TokenConfig): TokenConfig =>
     redact ? new TokenConfig({ duration: t.duration }) : t;
   return [
@@ -385,7 +388,7 @@ export function validateAuthOptions(
     }
 
     if (o.mfa.rule !== "") {
-      const mfaRuleValidators: RuleFunc[] = [
+      const mfaRuleValidators: Array<RuleFunc> = [
         cv.checkRule,
         cv.ensureNoSystemRuleChange(cv.original.mfa.rule),
       ];
@@ -584,7 +587,7 @@ export class TokenConfig {
   }
 
   marshalJSON(): string {
-    const members: [string, unknown][] = [];
+    const members: Array<[string, unknown]> = [];
     if (this.secret !== "") {
       members.push(["secret", this.secret]); // omitempty
     }
@@ -737,7 +740,7 @@ export class PasswordAuthConfig {
   // Usually only fields that has single column UNIQUE index are accepted
   // as values. A nil Go slice is an empty array (json v2 marshals both as
   // []).
-  identityFields: string[] = [];
+  identityFields: Array<string> = [];
 
   constructor(init: Partial<Pick<PasswordAuthConfig, "enabled" | "identityFields">> = {}) {
     Object.assign(this, init);
@@ -776,7 +779,7 @@ export class PasswordAuthConfig {
         enabled: (raw) => (this.enabled = decodeBool(raw)),
         identityFields: (raw) =>
           (this.identityFields =
-            (decodeAs(raw, sliceOf(stringType)) as string[] | undefined) ?? []),
+            (decodeAs(raw, sliceOf(stringType)) as Array<string> | undefined) ?? []),
       },
       () => Object.assign(this, new PasswordAuthConfig()),
     );
@@ -826,7 +829,7 @@ export class OAuth2KnownFields {
 
 export class OAuth2Config {
   // null is Go's nil slice (marshaled as [] by json v2)
-  providers: OAuth2ProviderConfig[] | null = null;
+  providers: Array<OAuth2ProviderConfig> | null = null;
 
   mappedFields = new OAuth2KnownFields();
 
@@ -920,14 +923,14 @@ export class OAuth2Config {
 
     // unmarshal again but this time into a plain array of objects
     // so that we have only the submitted fields and no zero defaults
-    let plainProviders: (Record<string, unknown> | undefined)[] = [];
+    let plainProviders: Array<Record<string, unknown> | undefined> = [];
     unmarshalGoStruct(
       data,
       {
         providers: (raw) =>
           (plainProviders =
             (decodeAs(raw, sliceOf(mapOf(anyType))) as
-              | (Record<string, unknown> | undefined)[]
+              | Array<Record<string, unknown> | undefined>
               | undefined) ?? []),
       },
       () => {},
@@ -979,7 +982,7 @@ export class OAuth2Config {
 }
 
 function checkForDuplicatedProviders(value: unknown): ValidationError | Errors | null {
-  const configs = Array.isArray(value) ? (value as OAuth2ProviderConfig[]) : [];
+  const configs = Array.isArray(value) ? (value as Array<OAuth2ProviderConfig>) : [];
 
   const existing = new Set<string>();
 
@@ -1055,7 +1058,7 @@ export class OAuth2ProviderConfig {
   }
 
   marshalJSON(): string {
-    const members: [string, unknown][] = [
+    const members: Array<[string, unknown]> = [
       ["pkce", this.pkce],
       ["name", this.name],
       ["clientId", this.clientId],

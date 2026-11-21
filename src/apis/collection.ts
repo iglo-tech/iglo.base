@@ -120,7 +120,7 @@ function collectionView(e: RequestEvent): HandlerResult {
 // (BaseModel.Id, baseCollection, collectionAuthOptions and
 // collectionViewOptions, in struct order), and the Collection properties
 // they are
-const collectionFormMembers: [goName: string, prop: keyof Collection][] = [
+const collectionFormMembers: Array<[goName: string, prop: keyof Collection]> = [
   ["Id", "id"],
   ["ListRule", "listRule"],
   ["ViewRule", "viewRule"],
@@ -384,7 +384,7 @@ interface ProviderListItem {
 }
 
 function collectionListOAuth2Providers(e: RequestEvent): HandlerResult {
-  const providers: ProviderListItem[] = [];
+  const providers: Array<ProviderListItem> = [];
 
   for (const [name, p] of providerMetadata) {
     providers.push({

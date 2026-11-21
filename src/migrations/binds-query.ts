@@ -58,8 +58,8 @@ export class RowsCursor {
   #closed = false;
 
   constructor(
-    private readonly rows: Row[],
-    private readonly names: string[],
+    private readonly rows: Array<Row>,
+    private readonly names: Array<string>,
     private readonly fill: (dst: unknown, row: Row) => void,
   ) {}
 
@@ -72,7 +72,7 @@ export class RowsCursor {
     return false;
   }
 
-  columns(): string[] {
+  columns(): Array<string> {
     return this.names;
   }
 
@@ -87,7 +87,7 @@ export class RowsCursor {
   // goja hands a JS object over as a copy
   scanMap(): void {}
 
-  scan(args: readonly unknown[]): void {
+  scan(args: ReadonlyArray<unknown>): void {
     scanDestinations(this.names, args);
   }
 
@@ -97,7 +97,7 @@ export class RowsCursor {
 }
 
 // Go's Scan needs pointers, which a migration file cannot make
-function scanDestinations(names: readonly string[], args: readonly unknown[]): void {
+function scanDestinations(names: ReadonlyArray<string>, args: ReadonlyArray<unknown>): void {
   if (args.length !== names.length) {
     throw new Error(
       `sql: expected ${names.length} destination arguments in Scan, not ${args.length}`,
@@ -190,7 +190,7 @@ export class QueryModels {
     return proxy;
   }
 
-  arrayOf(model: unknown): unknown[] {
+  arrayOf(model: unknown): Array<unknown> {
     const array = this.m.vm.array();
     this.#arrays.set(array, model);
     return array;
@@ -213,7 +213,7 @@ export class QueryModels {
 
   // json.Unmarshal into an arrayOf() of models or of a primitive; newItem
   // makes a model from an item's JSON
-  unmarshalArray(dst: unknown[], decoded: unknown, newItem: (raw: string) => unknown): void {
+  unmarshalArray(dst: Array<unknown>, decoded: unknown, newItem: (raw: string) => unknown): void {
     if (!Array.isArray(decoded)) {
       throw new Error(`json: cannot unmarshal JSON ${jsonKindOf(decoded)} into Go slice`);
     }
@@ -344,11 +344,11 @@ export class QueryModels {
       throw invalidVariable("must be a pointer");
     }
 
-    const array = dst as unknown[];
+    const array = dst as Array<unknown>;
     const model = this.modelOf(dst);
     const target = this.m.targetOf(model);
 
-    let items: unknown[];
+    let items: Array<unknown>;
     if (target instanceof RecordModel) {
       items = q.all<RecordModel>(recordsTarget).map((r) => this.m.toVm(r));
     } else if (target instanceof Collection) {
@@ -371,7 +371,7 @@ export class QueryModels {
       throw invalidVariable("must be a pointer to a slice");
     }
 
-    const array = dst as unknown[];
+    const array = dst as Array<unknown>;
     const model = this.modelOf(dst);
     const field = this.#scalarField(model) ?? { kind: kindOf(model), nullable: false, name: "" };
     const items = q
@@ -424,7 +424,7 @@ export class QueryModels {
   }
 }
 
-function replaceItems(array: unknown[], items: readonly unknown[]): void {
+function replaceItems(array: Array<unknown>, items: ReadonlyArray<unknown>): void {
   array.length = 0;
   for (const item of items) {
     array.push(item);

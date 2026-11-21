@@ -26,11 +26,11 @@ export const MaxLatin1 = 0xff; // maximum Latin-1 value.
 // code points within the set: Go's R16 followed by R32, as flat
 // lo, hi, stride triples in increasing order.
 export interface RangeTable {
-  readonly ranges: readonly number[];
+  readonly ranges: ReadonlyArray<number>;
 }
 
 function decodeTable(text: string): RangeTable {
-  const ranges: number[] = [];
+  const ranges: Array<number> = [];
   if (text !== "") {
     for (const item of text.split(",")) {
       const [bounds = "", stride = "1"] = item.split("/");
@@ -109,12 +109,12 @@ export function Is(rangeTab: RangeTable, r: number): boolean {
 }
 
 // In reports whether the rune is a member of one of the ranges.
-export function In(r: number, ...ranges: RangeTable[]): boolean {
+export function In(r: number, ...ranges: Array<RangeTable>): boolean {
   return ranges.some((inside) => Is(inside, r));
 }
 
 let printLatin1: RangeTable | undefined;
-let printRanges: RangeTable[] | undefined;
+let printRanges: Array<RangeTable> | undefined;
 
 // IsPrint reports whether the rune is defined as printable by Go. Such
 // characters include letters, marks, numbers, punctuation, symbols, and the
@@ -138,9 +138,9 @@ const UpperCase = 0;
 const LowerCase = 1;
 const UpperLower = MaxRune + 1;
 
-let caseRanges: CaseRange[] | undefined;
-let caseOrbit: [from: number, to: number][] | undefined;
-let asciiFold: number[] | undefined;
+let caseRanges: Array<CaseRange> | undefined;
+let caseOrbit: Array<[from: number, to: number]> | undefined;
+let asciiFold: Array<number> | undefined;
 
 function decodeCaseTables(): void {
   caseRanges = caseRangesText.split(",").map((item) => {
@@ -157,7 +157,7 @@ function decodeCaseTables(): void {
 
 // lookupCaseRange returns the CaseRange mapping for rune r or undefined if
 // no mapping exists for r.
-function lookupCaseRange(r: number, caseRange: CaseRange[]): CaseRange | undefined {
+function lookupCaseRange(r: number, caseRange: Array<CaseRange>): CaseRange | undefined {
   // binary search over ranges
   let lo = 0;
   let hi = caseRange.length;
@@ -200,13 +200,13 @@ export function SimpleFold(r: number): number {
   if (asciiFold === undefined) {
     decodeCaseTables();
   }
-  const fold = asciiFold as number[];
+  const fold = asciiFold as Array<number>;
   if (r < fold.length) {
     return fold[r] as number;
   }
 
   // Consult caseOrbit table for special cases.
-  const orbit = caseOrbit as [number, number][];
+  const orbit = caseOrbit as Array<[number, number]>;
   let lo = 0;
   let hi = orbit.length;
   while (lo < hi) {
@@ -224,7 +224,7 @@ export function SimpleFold(r: number): number {
   // No folding specified. This is a one- or two-element equivalence class
   // containing rune and ToLower(rune) and ToUpper(rune) if they are
   // different from rune.
-  const cr = lookupCaseRange(r, caseRanges as CaseRange[]);
+  const cr = lookupCaseRange(r, caseRanges as Array<CaseRange>);
   if (cr !== undefined) {
     const l = convertCase(LowerCase, r, cr);
     if (l !== r) {

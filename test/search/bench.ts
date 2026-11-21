@@ -23,7 +23,7 @@ import { parseSortFromString } from "@/search/sort";
 
 const clock: Clock = { now: () => new Date() };
 
-function median(xs: number[]): number {
+function median(xs: Array<number>): number {
   const sorted = xs.toSorted((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)] as number;
 }
@@ -33,7 +33,7 @@ async function time(runs: number, warmup: number, fn: () => unknown): Promise<nu
   for (let i = 0; i < warmup; i++) {
     await fn();
   }
-  const out: number[] = [];
+  const out: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
     await fn();
@@ -42,7 +42,7 @@ async function time(runs: number, warmup: number, fn: () => unknown): Promise<nu
   return median(out);
 }
 
-const filters: [string, FilterData][] = [
+const filters: Array<[string, FilterData]> = [
   ["simple", "title = 'abc'"],
   [
     "50 expressions",
@@ -101,7 +101,7 @@ try {
   })();
   const bench = newFromDB(conn, "sqlite");
 
-  const cases: [string, FilterData[], string, number, boolean][] = [
+  const cases: Array<[string, Array<FilterData>, string, number, boolean]> = [
     ["no filter, page 1 of 30", [], "", 30, false],
     [
       "filter + sort, page 1 of 30",

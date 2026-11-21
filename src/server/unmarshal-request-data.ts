@@ -45,7 +45,7 @@ export interface TextType {
 
 export interface StructType {
   kind: "struct";
-  fields: StructField[];
+  fields: Array<StructField>;
 }
 
 export interface SliceType {
@@ -70,7 +70,7 @@ export interface StructField {
   embedded?: boolean;
 }
 
-export const structOf = (fields: StructField[]): StructType => ({ kind: "struct", fields });
+export const structOf = (fields: Array<StructField>): StructType => ({ kind: "struct", fields });
 export const sliceOf = (elem: FieldType): SliceType => ({ kind: "slice", elem });
 export const pointerTo = (elem: FieldType): PointerType => ({ kind: "pointer", elem });
 export const textOf = (unmarshalText: (text: string) => unknown): TextType => ({
@@ -82,7 +82,7 @@ export const textOf = (unmarshalText: (text: string) => unknown): TextType => ({
 // used for reading serialized json payload without normalization.
 export const JSONPayloadKey = "@jsonPayload";
 
-export type RequestData = Map<string, string[]> | Record<string, string[]>;
+export type RequestData = Map<string, Array<string>> | Record<string, Array<string>>;
 
 // MapRef is a *map[string]any destination: unmarshaling a JSON null into it
 // sets the map to nil (null), as json/v2 does.
@@ -90,11 +90,11 @@ export interface MapRef {
   map: Record<string, unknown> | null;
 }
 
-function getValues(data: RequestData, key: string): string[] | undefined {
+function getValues(data: RequestData, key: string): Array<string> | undefined {
   return data instanceof Map ? data.get(key) : Object.hasOwn(data, key) ? data[key] : undefined;
 }
 
-function entries(data: RequestData): [string, string[]][] {
+function entries(data: RequestData): Array<[string, Array<string>]> {
   return data instanceof Map ? [...data] : Object.entries(data);
 }
 
@@ -637,8 +637,8 @@ interface JsonField {
 }
 
 // the JSON-visible fields of a struct, embedded structs inlined
-function jsonFields(type: StructType): JsonField[] {
-  const out: JsonField[] = [];
+function jsonFields(type: StructType): Array<JsonField> {
+  const out: Array<JsonField> = [];
   for (const field of type.fields) {
     const tag = field.tags?.json ?? "";
     const [tagName = "", ...options] = tag.split(",");

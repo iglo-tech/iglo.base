@@ -20,7 +20,7 @@ const timeout = 60_000;
 const userToken =
   "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo";
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -49,7 +49,7 @@ const json = { "content-type": "application/json" };
 const expiredToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.5Tm6_6amQqOlX3urAnXlEdmxwG5qQJfiTg6U0hHR1hk";
 
-const requests: Request[] = [
+const requests: Array<Request> = [
   // successes
   { path: "/api/health?a=1" },
   { path: "/api/health?a=%20b&c=d+e", headers: { Referer: "http://example.com/x" } },
@@ -169,19 +169,19 @@ async function send(url: string, r: Request): Promise<void> {
   await res.arrayBuffer();
 }
 
-function readRows(dataDir: string): Row[] {
+function readRows(dataDir: string): Array<Row> {
   const db = new Database(join(dataDir, "auxiliary.db"), { readonly: true });
   try {
     return db
       .query("SELECT level, message, data, created FROM _logs WHERE message != 'fixture'")
-      .all() as Row[];
+      .all() as Array<Row>;
   } finally {
     db.close();
   }
 }
 
 // the time and id of a row differ; everything else is compared as stored
-function normalized(rows: Row[]): string[] {
+function normalized(rows: Array<Row>): Array<string> {
   return rows
     .filter((row) => row.message !== "GET /api/health") // the harness's ready checks
     .map((row) => {
@@ -335,7 +335,7 @@ describe("request logs", () => {
         await startUpstream({ dataDir: fixtureCopy(logs) }),
         await startServer([], fixtureCopy(logs)),
       ];
-      const stats: string[] = [];
+      const stats: Array<string> = [];
       for (const server of servers) {
         await send(server.url, { path: "/api/logs/nope", token: superuserToken });
         expect(

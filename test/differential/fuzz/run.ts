@@ -38,7 +38,7 @@ export interface Report {
   invalid: number;
   clockRetries: number;
   clockFlips: number;
-  failures: Failure[];
+  failures: Array<Failure>;
   // failures past the bound of distinct ones
   unrecorded: number;
 }
@@ -175,7 +175,7 @@ export async function runFuzz(servers: FuzzServers, options: RunOptions): Promis
         report.invalid++;
       }
       if (result.up?.status === 200) {
-        if ((result.up.body as { items: unknown[] }).items.length === 0) {
+        if ((result.up.body as { items: Array<unknown> }).items.length === 0) {
           report.empty++;
         } else {
           report.nonEmpty++;

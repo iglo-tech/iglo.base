@@ -41,7 +41,7 @@ import { Store } from "@/tools/store/store";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
-function median(xs: number[]): number {
+function median(xs: Array<number>): number {
   const sorted = xs.toSorted((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)] as number;
 }
@@ -51,7 +51,7 @@ async function time(runs: number, warmup: number, fn: () => unknown): Promise<nu
   for (let i = 0; i < warmup; i++) {
     await fn();
   }
-  const out: number[] = [];
+  const out: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
     await fn();
@@ -95,7 +95,7 @@ try {
   const info = new RequestInfo();
   info.auth = user;
 
-  const rules: [string, string, string][] = [
+  const rules: Array<[string, string, string]> = [
     ["simple", "demo4", "title = 'test' && @request.auth.id != ''"],
     ["3-level relation", "demo4", "self_rel_one.self_rel_one.self_rel_one.title = 'test'"],
     ["back-relation", "demo3", "demo4_via_rel_one_cascade.title ?= 'test'"],

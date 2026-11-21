@@ -81,8 +81,8 @@ export function opString(op: Op): string {
 export class Regexp {
   op: Op; // operator
   flags = 0;
-  sub: Regexp[] = []; // subexpressions, if any
-  rune: number[] = []; // matched runes, for OpLiteral, OpCharClass
+  sub: Array<Regexp> = []; // subexpressions, if any
+  rune: Array<number> = []; // matched runes, for OpLiteral, OpCharClass
   min = 0; // min for OpRepeat
   max = 0; // max for OpRepeat
   cap = 0; // capturing index, for OpCapture
@@ -107,7 +107,7 @@ export class Regexp {
     if (must !== 0) {
       must |= flagOff;
     }
-    const b: string[] = [];
+    const b: Array<string> = [];
     writeRegexp(b, this, must, flags);
     return b.join("");
   }
@@ -128,13 +128,13 @@ export class Regexp {
   }
 
   // CapNames walks the regexp to find the names of capturing groups.
-  capNames(): string[] {
-    const names: string[] = Array.from({ length: this.maxCap() + 1 }, () => "");
+  capNames(): Array<string> {
+    const names: Array<string> = Array.from({ length: this.maxCap() + 1 }, () => "");
     this.collectCapNames(names);
     return names;
   }
 
-  private collectCapNames(names: string[]): void {
+  private collectCapNames(names: Array<string>): void {
     if (this.op === OpCapture) {
       names[this.cap] = this.name;
     }
@@ -204,7 +204,7 @@ function regexpEqual(x: Regexp | null, y: Regexp | null): boolean {
   return true;
 }
 
-function runesEqual(a: readonly number[], b: readonly number[]): boolean {
+function runesEqual(a: ReadonlyArray<number>, b: ReadonlyArray<number>): boolean {
   return a.length === b.length && a.every((r, i) => r === b[i]);
 }
 
@@ -333,7 +333,7 @@ function calcFlags(re: Regexp, flags: Map<Regexp, number>): [must: number, cant:
 }
 
 // writeRegexp writes the Perl syntax for the regular expression re to b.
-function writeRegexp(b: string[], re: Regexp, f: number, flags: Map<Regexp, number>): void {
+function writeRegexp(b: Array<string>, re: Regexp, f: number, flags: Map<Regexp, number>): void {
   f |= flags.get(re) ?? 0;
   if ((f & flagPrec) !== 0 && (f & ~(flagOff | flagPrec)) !== 0 && (f & flagOff) !== 0) {
     // flagPrec is redundant with other flags being added and terminated
@@ -362,7 +362,7 @@ function writeRegexp(b: string[], re: Regexp, f: number, flags: Map<Regexp, numb
     b.push(`:`);
   }
   // Go defers these closing parens; flagPrec's runs first
-  const closing: string[] = [];
+  const closing: Array<string> = [];
   if ((f & flagOff) !== 0) {
     closing.unshift(`)`);
   }
@@ -525,7 +525,7 @@ function writeRegexp(b: string[], re: Regexp, f: number, flags: Map<Regexp, numb
 
 const meta = String.raw`\.+*?()|[]{}^$`;
 
-function escape(b: string[], r: number, force: boolean): void {
+function escape(b: Array<string>, r: number, force: boolean): void {
   if (IsPrint(r)) {
     if (meta.includes(runeString(r)) || force) {
       b.push("\\");

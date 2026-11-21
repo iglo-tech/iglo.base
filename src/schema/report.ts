@@ -15,7 +15,7 @@ export interface Problem {
   where: string;
   message: string;
   // up to five record ids, for a problem about records
-  examples?: string[];
+  examples?: Array<string>;
   // the next step to take
   next?: string;
 }
@@ -39,7 +39,7 @@ export interface RenameItem {
   to: string;
   // the migration file that declares it
   file: string;
-  rateLimits: { from: string; to: string }[];
+  rateLimits: Array<{ from: string; to: string }>;
 }
 
 export interface ApplyReport {
@@ -48,11 +48,11 @@ export interface ApplyReport {
   changes: SchemaChanges;
   // the JavaScript and TypeScript migrations that ran (or would run) in the
   // transaction, in run order
-  migrations: string[];
+  migrations: Array<string>;
   // the declared renames that ran (or would run), before the changes
-  renames: RenameItem[];
-  lost: LostValues[];
-  problems: Problem[];
+  renames: Array<RenameItem>;
+  lost: Array<LostValues>;
+  problems: Array<Problem>;
   // the name of the backup made before the apply, when one was made
   backup?: string;
   // whether the change was committed
@@ -112,8 +112,8 @@ function indexLine(change: IndexChange): string {
   return `index ${change.kind}: ${change.statement}${rows}`;
 }
 
-function collectionLines(change: CollectionChange): string[] {
-  const lines: string[] = [];
+function collectionLines(change: CollectionChange): Array<string> {
+  const lines: Array<string> = [];
   const header =
     change.kind === "added"
       ? `+ ${change.name} (${change.type})`
@@ -147,7 +147,7 @@ function collectionLines(change: CollectionChange): string[] {
 
 // The report's text, one block after another; the last line says the result.
 export function formatReport(report: ApplyReport): string {
-  const lines: string[] = [];
+  const lines: Array<string> = [];
 
   if (report.changes.collections.length === 0) {
     lines.push("collections: no changes");

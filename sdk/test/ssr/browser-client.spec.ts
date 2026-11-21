@@ -100,7 +100,7 @@ function harness(
   return { clock, ft, api, pb, token };
 }
 
-function callsTo(calls: Call[], method: string, path: string): Call[] {
+function callsTo(calls: Array<Call>, method: string, path: string): Array<Call> {
   return calls.filter((c) => c.method === method && c.path === path);
 }
 
@@ -223,7 +223,7 @@ describe("createBrowserClient", () => {
   });
 
   test("successful renewals are at least 30 seconds apart, even for a token that lives under a minute", async () => {
-    const renewedAt: number[] = [];
+    const renewedAt: Array<number> = [];
     const { ft, api, clock, pb } = harness(
       (c) => ({
         [RENEW]: (call) => {
@@ -526,11 +526,11 @@ async function subscribed(user = "u1") {
   return { ...h, user };
 }
 
-function realtimePosts(api: Harness["api"]): Call[] {
+function realtimePosts(api: Harness["api"]): Array<Call> {
   return callsTo(api.calls, "POST", "/api/realtime");
 }
 
-function lastOf<T>(items: T[]): T | undefined {
+function lastOf<T>(items: Array<T>): T | undefined {
   return items[items.length - 1];
 }
 
@@ -697,7 +697,7 @@ describe("realtime recovers from an outage", () => {
 
   test("a sign-out during an outage: retried with the usual backoff, then restored as a guest", async () => {
     const { pb, api } = await subscribed("u1");
-    const hooks: string[][] = [];
+    const hooks: Array<Array<string>> = [];
     pb.realtime.onDisconnect = (subs) => {
       hooks.push(subs);
     };
@@ -752,7 +752,7 @@ describe("realtime recovers from an outage", () => {
 
   test("a dropped connection during an outage: retried with the usual backoff, with no auth change", async () => {
     const { pb, api, token } = await subscribed("u1");
-    const hooks: string[][] = [];
+    const hooks: Array<Array<string>> = [];
     pb.realtime.onDisconnect = (subs) => {
       hooks.push(subs);
     };
@@ -1061,7 +1061,7 @@ function cookieFor(token: string, name: string): string {
 }
 
 /** Every connection the tests opened, in order, and the client IDs they were given. */
-const fakeSources: FakeEventSource[] = [];
+const fakeSources: Array<FakeEventSource> = [];
 let fakeClientSeq = 0;
 
 function resetFakeEventSources(): void {

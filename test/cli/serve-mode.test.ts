@@ -38,7 +38,7 @@ async function newSite(): Promise<Site> {
 }
 
 // the schema file with posts holding the named text fields
-function postsFile(fields: string[], extra: Record<string, unknown> = {}): object {
+function postsFile(fields: Array<string>, extra: Record<string, unknown> = {}): object {
   return {
     collections: {
       posts: {
@@ -60,7 +60,7 @@ function seedMigration(title: string, fail = false): string {
 
 async function hasPost(url: string, token: string, title: string): Promise<boolean> {
   const list = await api(url, token, "GET", "/api/collections/posts/records");
-  return ((list.json.items as { title: string }[] | undefined) ?? []).some(
+  return ((list.json.items as Array<{ title: string }> | undefined) ?? []).some(
     (item) => item.title === title,
   );
 }
@@ -105,15 +105,15 @@ async function until(check: () => Promise<boolean> | boolean, ms = 10_000): Prom
   }
 }
 
-async function fieldNames(url: string, token: string, name: string): Promise<string[]> {
+async function fieldNames(url: string, token: string, name: string): Promise<Array<string>> {
   const res = await api(url, token, "GET", `/api/collections/${name}`);
-  const fields = (res.json.fields as { name: string }[] | undefined) ?? [];
+  const fields = (res.json.fields as Array<{ name: string }> | undefined) ?? [];
   return fields.map((field) => field.name);
 }
 
 async function startWith(
   site: Site,
-  args: string[],
+  args: Array<string>,
 ): Promise<{ server: RunningServer; url: string; token: string }> {
   const server = await startServer(args, site.dataDir);
   return { server, url: server.url, token: await login(server.url) };
@@ -164,7 +164,7 @@ describe("production mode", () => {
       });
       expect(record.status).toBe(200);
       const list = await api(url, token, "GET", "/api/collections/posts/records");
-      expect((list.json.items as unknown[]).length).toBe(1);
+      expect((list.json.items as Array<unknown>).length).toBe(1);
 
       // the health check tells the dashboard why the screens are read-only
       const health = await api(url, token, "GET", "/api/health");
@@ -478,7 +478,7 @@ describe("development mode", () => {
       );
       await until(async () => {
         const list = await api(url, token, "GET", "/api/collections/posts/records");
-        return ((list.json.items as { title: string }[] | undefined) ?? []).some(
+        return ((list.json.items as Array<{ title: string }> | undefined) ?? []).some(
           (item) => item.title === "from a migration",
         );
       });
@@ -579,13 +579,14 @@ describe("development mode", () => {
       });
       writeFileSync(site.schemaPath, JSON.stringify(indexed, null, 2));
       await Bun.sleep(800);
-      const indexesOf = async (): Promise<unknown[]> =>
-        ((await api(url, token, "GET", "/api/collections/posts")).json.indexes as unknown[]) ?? [];
+      const indexesOf = async (): Promise<Array<unknown>> =>
+        ((await api(url, token, "GET", "/api/collections/posts")).json.indexes as Array<unknown>) ??
+        [];
       expect(await indexesOf()).toEqual([]);
 
       // the duplicate is deleted through the API; a touch of the file retries the apply
       const listed = await api(url, token, "GET", "/api/collections/posts/records");
-      const [duplicate] = listed.json.items as { id: string }[];
+      const [duplicate] = listed.json.items as Array<{ id: string }>;
       expect(duplicate).toBeDefined();
       const deleted = await api(
         url,

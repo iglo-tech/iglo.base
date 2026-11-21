@@ -9,7 +9,7 @@ import { goQuote } from "@/fields/field";
 import { newExcerptModifier } from "@/tools/picker/excerpt-modifier";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 
-export type ModifierFactoryFunc = (...args: string[]) => Modifier;
+export type ModifierFactoryFunc = (...args: Array<string>) => Modifier;
 
 export interface Modifier {
   // Modify executes the modifier and returns a new modified value
@@ -18,7 +18,7 @@ export interface Modifier {
 }
 
 export const Modifiers: ReadonlyMap<string, ModifierFactoryFunc> = new Map([
-  ["excerpt", (...args: string[]) => newExcerptModifier(...args)],
+  ["excerpt", (...args: Array<string>) => newExcerptModifier(...args)],
 ]);
 
 // initModifer parses rawModifier ("name(arg1, arg2)") and creates the

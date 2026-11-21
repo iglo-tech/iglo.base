@@ -18,7 +18,7 @@ export class DualDBBuilder implements Builder {
     readonly nonconcurrentDB: Builder,
   ) {}
 
-  select(...cols: string[]): SelectQuery {
+  select(...cols: Array<string>): SelectQuery {
     return this.concurrentDB.select(...cols);
   }
 
@@ -50,7 +50,7 @@ export class DualDBBuilder implements Builder {
     return this.nonconcurrentDB.insert(table, cols);
   }
 
-  upsert(table: string, cols: Params, ...constraints: string[]): Query {
+  upsert(table: string, cols: Params, ...constraints: Array<string>): Query {
     return this.nonconcurrentDB.upsert(table, cols, ...constraints);
   }
 
@@ -62,7 +62,7 @@ export class DualDBBuilder implements Builder {
     return this.nonconcurrentDB.delete(table, where);
   }
 
-  createTable(table: string, cols: Record<string, string>, ...options: string[]): Query {
+  createTable(table: string, cols: Record<string, string>, ...options: Array<string>): Query {
     return this.nonconcurrentDB.createTable(table, cols, ...options);
   }
 
@@ -94,7 +94,7 @@ export class DualDBBuilder implements Builder {
     return this.nonconcurrentDB.alterColumn(table, col, typ);
   }
 
-  addPrimaryKey(table: string, name: string, ...cols: string[]): Query {
+  addPrimaryKey(table: string, name: string, ...cols: Array<string>): Query {
     return this.nonconcurrentDB.addPrimaryKey(table, name, ...cols);
   }
 
@@ -105,10 +105,10 @@ export class DualDBBuilder implements Builder {
   addForeignKey(
     table: string,
     name: string,
-    cols: string[],
-    refCols: string[],
+    cols: Array<string>,
+    refCols: Array<string>,
     refTable: string,
-    ...options: string[]
+    ...options: Array<string>
   ): Query {
     return this.nonconcurrentDB.addForeignKey(table, name, cols, refCols, refTable, ...options);
   }
@@ -117,11 +117,11 @@ export class DualDBBuilder implements Builder {
     return this.nonconcurrentDB.dropForeignKey(table, name);
   }
 
-  createIndex(table: string, name: string, ...cols: string[]): Query {
+  createIndex(table: string, name: string, ...cols: Array<string>): Query {
     return this.nonconcurrentDB.createIndex(table, name, ...cols);
   }
 
-  createUniqueIndex(table: string, name: string, ...cols: string[]): Query {
+  createUniqueIndex(table: string, name: string, ...cols: Array<string>): Query {
     return this.nonconcurrentDB.createUniqueIndex(table, name, ...cols);
   }
 

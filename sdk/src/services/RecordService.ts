@@ -526,7 +526,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
    */
   async authWithOAuth2<T = M>(options: OAuth2AuthConfig): Promise<RecordAuthResponse<T>>;
 
-  authWithOAuth2<T = M>(...args: unknown[]): Promise<RecordAuthResponse<T>> {
+  authWithOAuth2<T = M>(...args: Array<unknown>): Promise<RecordAuthResponse<T>> {
     // fallback to legacy format
     if (args.length > 1 || typeof args?.[0] === "string") {
       console.warn(

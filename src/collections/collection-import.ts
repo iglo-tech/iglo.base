@@ -41,7 +41,7 @@ export function importCollectionsByMarshaledJSON(
 ): void {
   const data =
     (unmarshal(rawSliceOfMaps, sliceOf(mapOf(anyType))) as
-      | (Record<string, unknown> | null)[]
+      | Array<Record<string, unknown> | null>
       | undefined) ?? [];
 
   importCollections(app, data, deleteMissing);
@@ -56,7 +56,7 @@ export function importCollectionsByMarshaledJSON(
 // (this includes their related records data).
 export function importCollections(
   app: CollectionsApp,
-  toImport: readonly (Record<string, unknown> | null)[],
+  toImport: ReadonlyArray<Record<string, unknown> | null>,
   deleteMissing: boolean,
 ): void {
   if (toImport.length === 0) {
@@ -64,7 +64,7 @@ export function importCollections(
     throw new Error("no collections to import");
   }
 
-  const importedCollections: Collection[] = [];
+  const importedCollections: Array<Collection> = [];
   const mappedImported = new Map<string, Collection>();
 
   // normalize imported collections data to ensure that all

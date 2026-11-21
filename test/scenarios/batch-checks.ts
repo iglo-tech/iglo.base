@@ -5,13 +5,17 @@ import { superuserGet } from "@test/scenarios/record-checks";
 
 type After = (ctx: AfterContext) => Promise<void>;
 
-async function list(ctx: AfterContext, collection: string, filter: string): Promise<unknown[]> {
+async function list(
+  ctx: AfterContext,
+  collection: string,
+  filter: string,
+): Promise<Array<unknown>> {
   const path = `/api/collections/${collection}/records?perPage=500&filter=${encodeURIComponent(filter)}`;
   const { status, json } = await superuserGet(ctx.url, path);
   if (status !== 200) {
     throw new Error(`list ${collection}: status ${status}`);
   }
-  return (json as { items: unknown[] }).items;
+  return (json as { items: Array<unknown> }).items;
 }
 
 export const after = {
@@ -27,7 +31,7 @@ export const after = {
   // the file count of the one record the filter finds
   filesCount(collection: string, filter: string, n: number): After {
     return async (ctx) => {
-      const [record] = (await list(ctx, collection, filter)) as { files: string[] }[];
+      const [record] = (await list(ctx, collection, filter)) as Array<{ files: Array<string> }>;
       if (record?.files.length !== n) {
         throw new Error(`expected ${n} files for ${filter}, got ${record?.files.length}`);
       }

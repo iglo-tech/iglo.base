@@ -220,7 +220,7 @@ async function goError(err: unknown, host: string, port: number): Promise<Error>
   const { code, response, errors } = e as {
     code?: string;
     response?: unknown;
-    errors?: unknown[];
+    errors?: Array<unknown>;
   };
   // Node's dial error is "connect ECONNREFUSED <ip>:<port>", or an
   // AggregateError of them when it tried several addresses; nodemailer

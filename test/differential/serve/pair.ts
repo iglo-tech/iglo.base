@@ -22,7 +22,7 @@ export interface Pair {
 }
 
 export async function startPair(
-  options: { args?: string[]; prepare?: (dataDir: string) => void } = {},
+  options: { args?: Array<string>; prepare?: (dataDir: string) => void } = {},
 ): Promise<Pair> {
   const root = tempDir();
   const prepared = join(root, "pb_data");
@@ -63,13 +63,13 @@ function normalize(text: string, boundary: string | undefined): string {
 
 export interface Shown {
   status: number;
-  headers: string[];
+  headers: Array<string>;
   body: string;
 }
 
-export function show(res: RawResponse, omit: string[] = []): Shown {
+export function show(res: RawResponse, omit: Array<string> = []): Shown {
   const boundary = /boundary=([0-9a-f]+)/.exec(res.headers.get("content-type") ?? "")?.[1];
-  const headers: string[] = [];
+  const headers: Array<string> = [];
   res.headers.forEach((value, name) => {
     if (!ignoredHeaders.has(name) && !omit.includes(name)) {
       headers.push(`${name}: ${normalize(value, boundary)}`);
@@ -85,7 +85,7 @@ export async function both(
   method: string,
   target: string,
   headers: Record<string, string> = {},
-  omit: string[] = [],
+  omit: Array<string> = [],
 ): Promise<{ upstream: Shown; igloBase: Shown }> {
   const [up, ig] = await Promise.all([
     rawRequest(pair.upstream.url, method, target, headers),

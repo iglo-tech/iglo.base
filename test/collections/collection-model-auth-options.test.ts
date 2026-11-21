@@ -36,13 +36,13 @@ describe("EmailTemplateResolve", () => {
     body: "test_body {PARAM3} {PARAM2}-{PARAM1} repeat-{PARAM2}",
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     placeholders: Record<string, unknown> | null;
     template: EmailTemplate;
     expectedSubject: string;
     expectedBody: string;
-  }[] = [
+  }> = [
     {
       name: "no placeholders",
       placeholders: null,
@@ -77,7 +77,7 @@ describe("EmailTemplateResolve", () => {
 });
 
 describe("TokenConfigDurationTime", () => {
-  const scenarios: { config: TokenConfig; expected: bigint }[] = [
+  const scenarios: Array<{ config: TokenConfig; expected: bigint }> = [
     { config: new TokenConfig(), expected: 0n * second },
     { config: new TokenConfig({ duration: 1234 }), expected: 1234n * second },
   ];
@@ -90,7 +90,7 @@ describe("TokenConfigDurationTime", () => {
 });
 
 describe("OTPConfigDurationTime", () => {
-  const scenarios: { config: OTPConfig; expected: bigint }[] = [
+  const scenarios: Array<{ config: OTPConfig; expected: bigint }> = [
     { config: new OTPConfig(), expected: 0n * second },
     { config: new OTPConfig({ duration: 1234 }), expected: 1234n * second },
   ];
@@ -103,7 +103,7 @@ describe("OTPConfigDurationTime", () => {
 });
 
 describe("MFAConfigDurationTime", () => {
-  const scenarios: { config: MFAConfig; expected: bigint }[] = [
+  const scenarios: Array<{ config: MFAConfig; expected: bigint }> = [
     { config: new MFAConfig(), expected: 0n * second },
     { config: new MFAConfig({ duration: 1234 }), expected: 1234n * second },
   ];
@@ -116,7 +116,7 @@ describe("MFAConfigDurationTime", () => {
 });
 
 describe("OAuth2ConfigUnmarshalJSON", () => {
-  const scenarios: { name: string; newJSON: string; expected: string }[] = [
+  const scenarios: Array<{ name: string; newJSON: string; expected: string }> = [
     {
       name: "missing",
       newJSON: `{
@@ -177,12 +177,12 @@ describe("OAuth2ConfigUnmarshalJSON", () => {
 });
 
 describe("OAuth2ConfigGetProviderConfig", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     providerName: string;
     config: OAuth2Config;
     expectedExists: boolean;
-  }[] = [
+  }> = [
     {
       name: "zero value",
       providerName: "gitlab",
@@ -238,11 +238,11 @@ describe("TestCollectionAuthOptionsValidate", () => {
   interface Scenario {
     name: string;
     collection: (app: TestCollectionsApp) => ReturnType<typeof newAuthCollection>;
-    expectedErrors: string[];
+    expectedErrors: Array<string>;
     pending?: Pending;
   }
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     // authRule
     {
       name: "nil authRule",
@@ -547,18 +547,19 @@ describe("TestCollectionAuthOptionsValidate", () => {
 });
 
 describe("TestEmailTemplateValidate", () => {
-  const scenarios: { name: string; template: EmailTemplate; expectedErrors: string[] }[] = [
-    {
-      name: "zero value",
-      template: new EmailTemplate(),
-      expectedErrors: ["subject", "body"],
-    },
-    {
-      name: "non-empty data",
-      template: new EmailTemplate({ subject: "a", body: "b" }),
-      expectedErrors: [],
-    },
-  ];
+  const scenarios: Array<{ name: string; template: EmailTemplate; expectedErrors: Array<string> }> =
+    [
+      {
+        name: "zero value",
+        template: new EmailTemplate(),
+        expectedErrors: ["subject", "body"],
+      },
+      {
+        name: "non-empty data",
+        template: new EmailTemplate({ subject: "a", body: "b" }),
+        expectedErrors: [],
+      },
+    ];
 
   for (const s of scenarios) {
     test(s.name, () => {
@@ -570,7 +571,7 @@ describe("TestEmailTemplateValidate", () => {
 });
 
 describe("TestTokenConfigValidate", () => {
-  const scenarios: { name: string; config: TokenConfig; expectedErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; config: TokenConfig; expectedErrors: Array<string> }> = [
     {
       name: "zero value",
       config: new TokenConfig(),
@@ -604,32 +605,33 @@ describe("TestTokenConfigValidate", () => {
 });
 
 describe("TestAuthAlertConfigValidate", () => {
-  const scenarios: { name: string; config: AuthAlertConfig; expectedErrors: string[] }[] = [
-    {
-      name: "zero value (disabled)",
-      config: new AuthAlertConfig(),
-      expectedErrors: ["emailTemplate"],
-    },
-    {
-      name: "zero value (enabled)",
-      config: new AuthAlertConfig({ enabled: true }),
-      expectedErrors: ["emailTemplate"],
-    },
-    {
-      name: "invalid template",
-      config: new AuthAlertConfig({
-        emailTemplate: new EmailTemplate({ body: "", subject: "b" }),
-      }),
-      expectedErrors: ["emailTemplate"],
-    },
-    {
-      name: "valid data",
-      config: new AuthAlertConfig({
-        emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
-      }),
-      expectedErrors: [],
-    },
-  ];
+  const scenarios: Array<{ name: string; config: AuthAlertConfig; expectedErrors: Array<string> }> =
+    [
+      {
+        name: "zero value (disabled)",
+        config: new AuthAlertConfig(),
+        expectedErrors: ["emailTemplate"],
+      },
+      {
+        name: "zero value (enabled)",
+        config: new AuthAlertConfig({ enabled: true }),
+        expectedErrors: ["emailTemplate"],
+      },
+      {
+        name: "invalid template",
+        config: new AuthAlertConfig({
+          emailTemplate: new EmailTemplate({ body: "", subject: "b" }),
+        }),
+        expectedErrors: ["emailTemplate"],
+      },
+      {
+        name: "valid data",
+        config: new AuthAlertConfig({
+          emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
+        }),
+        expectedErrors: [],
+      },
+    ];
 
   for (const s of scenarios) {
     test(s.name, () => {
@@ -641,7 +643,7 @@ describe("TestAuthAlertConfigValidate", () => {
 });
 
 describe("TestOTPConfigValidate", () => {
-  const scenarios: { name: string; config: OTPConfig; expectedErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; config: OTPConfig; expectedErrors: Array<string> }> = [
     {
       name: "zero value (disabled)",
       config: new OTPConfig(),
@@ -714,7 +716,7 @@ describe("TestOTPConfigValidate", () => {
 });
 
 describe("TestMFAConfigValidate", () => {
-  const scenarios: { name: string; config: MFAConfig; expectedErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; config: MFAConfig; expectedErrors: Array<string> }> = [
     {
       name: "zero value (disabled)",
       config: new MFAConfig(),
@@ -752,7 +754,11 @@ describe("TestMFAConfigValidate", () => {
 });
 
 describe("TestPasswordAuthConfigValidate", () => {
-  const scenarios: { name: string; config: PasswordAuthConfig; expectedErrors: string[] }[] = [
+  const scenarios: Array<{
+    name: string;
+    config: PasswordAuthConfig;
+    expectedErrors: Array<string>;
+  }> = [
     {
       name: "zero value (disabled)",
       config: new PasswordAuthConfig(),
@@ -785,7 +791,7 @@ describe("TestPasswordAuthConfigValidate", () => {
 });
 
 describe("TestOAuth2ConfigValidate", () => {
-  const scenarios: { name: string; config: OAuth2Config; expectedErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; config: OAuth2Config; expectedErrors: Array<string> }> = [
     {
       name: "zero value (disabled)",
       config: new OAuth2Config(),
@@ -870,11 +876,11 @@ describe("TestOAuth2ConfigValidate", () => {
 });
 
 describe("TestOAuth2ProviderConfigValidate", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     config: OAuth2ProviderConfig;
-    expectedErrors: string[];
-  }[] = [
+    expectedErrors: Array<string>;
+  }> = [
     {
       name: "zero value",
       config: new OAuth2ProviderConfig(),

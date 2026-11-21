@@ -30,7 +30,7 @@ import { detectContentType } from "@/server/sniff";
 import { httpError, type ResponseWriter } from "@/server/router";
 
 // mime's builtinTypesLower (Go 1.27.2 mime/type.go)
-const builtinTypes: readonly [string, string][] = [
+const builtinTypes: ReadonlyArray<[string, string]> = [
   [".ai", "application/postscript"],
   [".apk", "application/vnd.android.package-archive"],
   [".apng", "image/apng"],
@@ -117,7 +117,7 @@ const typeFiles = [
   "/etc/httpd/conf/mime.types",
 ];
 
-function readLines(path: string): string[] | undefined {
+function readLines(path: string): Array<string> | undefined {
   try {
     return readFileSync(path, "utf8").split("\n");
   } catch {
@@ -261,7 +261,7 @@ function parseInt64(s: string): number | undefined {
 
 // parseRange parses a Range header string as per RFC 7233.
 // errNoOverlap is thrown if none of the ranges overlap.
-function parseRange(s: string, size: number): HttpRange[] {
+function parseRange(s: string, size: number): Array<HttpRange> {
   if (s === "") {
     return []; // header not present
   }
@@ -269,7 +269,7 @@ function parseRange(s: string, size: number): HttpRange[] {
   if (!s.startsWith(b)) {
     throw new RangeError("invalid range");
   }
-  const ranges: HttpRange[] = [];
+  const ranges: Array<HttpRange> = [];
   let noOverlap = false;
   for (let ra of s.slice(b.length).split(",")) {
     ra = trimString(ra);
@@ -513,7 +513,7 @@ const shortMonths = [
 const fraction = String.raw`(?:[.,](\d+))?`;
 
 // http.ParseTime's layouts: TimeFormat, time.RFC850 and time.ANSIC
-const timeLayouts: { re: RegExp; parts: (m: RegExpExecArray) => TimeParts | undefined }[] = [
+const timeLayouts: Array<{ re: RegExp; parts: (m: RegExpExecArray) => TimeParts | undefined }> = [
   {
     // Mon, 02 Jan 2006 15:04:05 GMT
     re: new RegExp(
@@ -695,7 +695,7 @@ export interface ServedFile {
   // to a temporary file, in bounded pieces, and returns that file's Blob
   // and a remove function that deletes the file (on Linux the open file
   // stays readable).
-  spool(parts: (Uint8Array | HttpRange)[]): Promise<{ blob: Blob; remove: () => void }>;
+  spool(parts: Array<Uint8Array | HttpRange>): Promise<{ blob: Blob; remove: () => void }>;
 }
 
 // A stored file served from elsewhere (S3): only its size is known here, and
@@ -767,10 +767,10 @@ export function serveContent(
   // handle Content-Range header.
   let sendSize = size;
   // the parts of the body to spool, when it is spooled
-  let spoolParts: (Uint8Array | HttpRange)[] | null =
+  let spoolParts: Array<Uint8Array | HttpRange> | null =
     content === null && size > 0 ? [{ start: 0, length: size }] : null;
   let sendContent: Uint8Array | Blob | Promise<Blob> = content ?? new Blob();
-  let ranges: HttpRange[];
+  let ranges: Array<HttpRange>;
   try {
     ranges = parseRange(rangeReq, size);
   } catch (err) {
@@ -817,7 +817,7 @@ export function serveContent(
   } else if (ranges.length > 1) {
     const boundary = randomBoundary();
     const encoder = new TextEncoder();
-    const parts: (Uint8Array | HttpRange)[] = [];
+    const parts: Array<Uint8Array | HttpRange> = [];
     ranges.forEach((ra, i) => {
       parts.push(
         encoder.encode(

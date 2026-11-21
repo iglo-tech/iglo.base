@@ -56,7 +56,7 @@ export interface App {
   // log.Println: a line on stderr, where upstream writes one
   readonly stderrLog?: (line: string) => void;
   // see CollectionsApp.afterTransaction
-  readonly afterTransaction?: Promise<void>[];
+  readonly afterTransaction?: Array<Promise<void>>;
   // DB, ConcurrentDB, AuxDB, ... of the opened pb_data (ClearBootstrap
   // closes them)
   readonly databases: Databases;
@@ -97,7 +97,7 @@ export interface App {
   // development mode with a schema file (D40): called after a collection
   // create, update, delete or import through the API succeeds, so the file
   // follows the database (src/schema/sync.ts)
-  readonly collectionsChanged?: (names: readonly string[]) => void;
+  readonly collectionsChanged?: (names: ReadonlyArray<string>) => void;
   // Restart restarts (aka. replaces) the current running application
   // process (src/cli/serve.ts): it stops the server and the app, then
   // execve. It returns only if that fails: revert has then run, on closed
@@ -125,7 +125,7 @@ export interface AppConfig {
   automigrateDir?: string;
   // see App.schemaLocked and App.collectionsChanged
   schemaLocked?: boolean;
-  collectionsChanged?: (names: readonly string[]) => void;
+  collectionsChanged?: (names: ReadonlyArray<string>) => void;
   // Restart; outside `serve` it fails
   restart?: App["restart"];
 }

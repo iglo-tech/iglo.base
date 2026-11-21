@@ -27,20 +27,20 @@ export interface CORSConfig {
   // subdomain segments and are converted to regex fragments '.*' and '.'.
   //
   // Optional. Default value ["*"].
-  AllowOrigins?: string[];
+  AllowOrigins?: Array<string>;
   // AllowMethods determines the value of the Access-Control-Allow-Methods
   // response header of a preflight response.
   //
   // Optional. Default value DefaultCORSConfig.AllowMethods.
-  AllowMethods?: string[];
+  AllowMethods?: Array<string>;
   // AllowHeaders determines the value of the Access-Control-Allow-Headers
   // response header. When empty, the request's
   // Access-Control-Request-Headers are echoed.
-  AllowHeaders?: string[];
+  AllowHeaders?: Array<string>;
   // AllowCredentials sets Access-Control-Allow-Credentials: true.
   AllowCredentials?: boolean;
   // ExposeHeaders determines the value of Access-Control-Expose-Headers.
-  ExposeHeaders?: string[];
+  ExposeHeaders?: Array<string>;
   // MaxAge determines the value of the Access-Control-Max-Age response
   // header; the header is set only if MaxAge != 0, and a negative value
   // sends "0".
@@ -70,7 +70,7 @@ export function cors(
   const allowCredentials = config.AllowCredentials ?? false;
   const maxAgeConfig = config.MaxAge ?? 0;
 
-  const allowOriginPatterns: Regexp[] = [];
+  const allowOriginPatterns: Array<Regexp> = [];
   for (const origin of allowOrigins) {
     if (origin === "*") {
       continue; // "*" is handled differently and does not need regexp

@@ -98,7 +98,7 @@ const collectionIds = new Map<string, string>();
 // the rules as created (restored after each case)
 const originalRules = new Map<string, { listRule: string | null; viewRule: string | null }>();
 // the record ids of each rules matrix target
-const targetIds = new Map<string, string[]>();
+const targetIds = new Map<string, Array<string>>();
 
 interface Outcome {
   status: number;
@@ -210,7 +210,7 @@ function listQueryParams(rc: RuleCase): { [key: string]: string } {
 function listOutcome(status: number, json: unknown, asSet: boolean): Outcome {
   if (status === 200) {
     const list = json as {
-      items: { id: string }[];
+      items: Array<{ id: string }>;
       page: number;
       perPage: number;
       totalItems: number;
@@ -246,7 +246,7 @@ beforeAll(async () => {
 
   const readIds = async (): Promise<void> => {
     const list = (await ok("GET", "/api/collections?perPage=200")) as {
-      items: { id: string; name: string }[];
+      items: Array<{ id: string; name: string }>;
     };
     for (const item of list.items) {
       collectionIds.set(item.name, item.id);
@@ -259,7 +259,7 @@ beforeAll(async () => {
       await ok("POST", "/api/collections", step.create(ids));
     } else if (step.addFields !== undefined) {
       const current = (await ok("GET", `/api/collections/${step.addFields.collection}`)) as {
-        fields: object[];
+        fields: Array<object>;
       };
       await ok("PATCH", `/api/collections/${step.addFields.collection}`, {
         fields: [...current.fields, ...step.addFields.fields(ids)],
@@ -293,7 +293,7 @@ beforeAll(async () => {
   }
 
   const all = (await ok("GET", "/api/collections?perPage=200")) as {
-    items: { name: string; listRule: string | null; viewRule: string | null }[];
+    items: Array<{ name: string; listRule: string | null; viewRule: string | null }>;
   };
   for (const item of all.items) {
     originalRules.set(item.name, { listRule: item.listRule, viewRule: item.viewRule });
@@ -325,7 +325,7 @@ beforeAll(async () => {
   // (b) the rules matrix
   for (const target of new Set(ruleCases.map((rc) => rc.target))) {
     const list = (await ok("GET", `/api/collections/${target}/records?perPage=200&sort=id`)) as {
-      items: { id: string }[];
+      items: Array<{ id: string }>;
     };
     targetIds.set(
       target,
@@ -426,7 +426,7 @@ function queryEscape(s: string): string {
 // e.Request.URL.Query().Encode()
 function queryEncode(rawQuery: string): string {
   const { values } = parseQuery(rawQuery);
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   for (const key of [...values.keys()].toSorted()) {
     for (const v of values.get(key) ?? []) {
       parts.push(queryEscape(key) + "=" + queryEscape(v));
@@ -607,7 +607,7 @@ describe("filters as a superuser", () => {
     // the matches are not trivial
     const sizes = [...filterOutcomes.values()]
       .filter((o) => o.status === 200)
-      .map((o) => (o.body as { ids: string[] }).ids.length);
+      .map((o) => (o.body as { ids: Array<string> }).ids.length);
     expect(sizes.filter((n) => n === 0).length).toBeLessThan(sizes.length / 4);
   });
 
@@ -616,7 +616,7 @@ describe("filters as a superuser", () => {
     const cache = new ParsedFilterCache();
     try {
       const superuser = authRecord(app, "superuser");
-      const mismatches: unknown[] = [];
+      const mismatches: Array<unknown> = [];
       for (const fc of filterCases) {
         const expected = filterOutcomes.get(fc.name);
         const raw = sentFilterQueries.get(fc.name) ?? "";
@@ -630,12 +630,12 @@ describe("filters as a superuser", () => {
         const usesRequest = fc.filter.includes("@request") || fc.sort.includes("@request");
         if (!usesRequest && expected !== undefined) {
           const expectedIds =
-            expected.status === 200 ? (expected.body as { ids: string[] }).ids : null;
-          const asIds = (records: Record[]): string[] => {
+            expected.status === 200 ? (expected.body as { ids: Array<string> }).ids : null;
+          const asIds = (records: Array<Record>): Array<string> => {
             const list = records.map((record) => record.id);
             return fc.sort === "" ? list.toSorted() : list;
           };
-          let asyncIds: string[] | null = null;
+          let asyncIds: Array<string> | null = null;
           try {
             asyncIds = asIds(
               await findRecordsByFilterAsync(app, collection, fc.filter, fc.sort, 0, 0),
@@ -643,7 +643,7 @@ describe("filters as a superuser", () => {
           } catch {
             asyncIds = null;
           }
-          let syncIds: string[] | null = null;
+          let syncIds: Array<string> | null = null;
           const err = errorOf(() => {
             syncIds = asIds(findRecordsByFilter(app, collection, fc.filter, fc.sort, 0, 0));
           });
@@ -703,7 +703,7 @@ describe("rules matrix", () => {
     const cache = new ParsedFilterCache();
     try {
       const auths = new Map(identities.map((who) => [who, authRecord(app, who)] as const));
-      const mismatches: unknown[] = [];
+      const mismatches: Array<unknown> = [];
       for (const rc of ruleCases) {
         const rules = caseRules(rc);
         setStoredRules(app, rc.target, rules);

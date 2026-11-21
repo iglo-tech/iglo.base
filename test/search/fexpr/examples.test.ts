@@ -9,7 +9,7 @@ import { printGroups, printToken } from "@test/search/fexpr/go-print";
 
 test("Scanner.Scan example", () => {
   const s = newScanner("id > 123");
-  const out: string[] = [];
+  const out: Array<string> = [];
 
   for (;;) {
     const [t, err] = s.scan();

@@ -16,7 +16,7 @@ import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
 
 describe("TestCorsExactWildcardMatch", () => {
-  const scenarios: [domain: string, pattern: string, expected: boolean][] = [
+  const scenarios: Array<[domain: string, pattern: string, expected: boolean]> = [
     ["", "", false],
     ["http://example.com", "", false],
     ["", "http://example.com", false],
@@ -51,7 +51,7 @@ beforeAll(async () => {
 
 afterAll(() => app.cleanup());
 
-function mux(origins: string[]): Mux {
+function mux(origins: Array<string>): Mux {
   const key = origins.join(" ");
   let m = muxes.get(key);
   if (m === undefined) {
@@ -151,7 +151,7 @@ describe("CORS with the default origins (*)", () => {
 describe("CORS with --origins set", () => {
   const origins = ["https://example.com", "https://*.example.org", "http://localhost:*", "abc"];
 
-  const cases: [origin: string, allowed: string | null][] = [
+  const cases: Array<[origin: string, allowed: string | null]> = [
     ["https://example.com", "https://example.com"],
     ["http://example.com", null],
     ["https://a.example.org", "https://a.example.org"],

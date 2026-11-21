@@ -18,7 +18,7 @@ import { defaultLayout, requireTool } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
-const sequence: string[][] = [
+const sequence: Array<Array<string>> = [
   [],
   ["--help"],
   ["bogus"],
@@ -67,7 +67,7 @@ async function runAll(
   binary: string,
   bin: string,
   dataDir: string,
-): Promise<{ args: string[]; exitCode: number; stdout: string; stderr: string }[]> {
+): Promise<Array<{ args: Array<string>; exitCode: number; stdout: string; stderr: string }>> {
   const results = [];
   for (const args of sequence) {
     const proc = Bun.spawn([binary, "--dir", dataDir, "superuser", ...args], {
@@ -123,7 +123,7 @@ async function state(dataDir: string): Promise<unknown> {
     });
     return {
       logins,
-      superusers: ((await list.json()) as { items: unknown[] }).items,
+      superusers: ((await list.json()) as { items: Array<unknown> }).items,
       superuserIPs: ((await settings.json()) as { superuserIPs: unknown }).superuserIPs,
     };
   } finally {

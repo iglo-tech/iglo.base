@@ -140,7 +140,7 @@ export class ZipWriter {
   readonly #out = new Uint8Array(outBufferSize);
   #outLen = 0;
   #offset = 0;
-  readonly #dir: DirEntry[] = [];
+  readonly #dir: Array<DirEntry> = [];
   #closed = false;
   #dirty = 0;
 

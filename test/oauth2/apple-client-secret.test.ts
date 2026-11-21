@@ -26,7 +26,7 @@ const form = (privateKey: string, duration: number) => ({
 function parts(secret: string): {
   header: { [key: string]: unknown };
   claims: { [key: string]: unknown };
-  raw: string[];
+  raw: Array<string>;
   signature: Buffer;
 } {
   const [h = "", c = "", s = ""] = secret.split(".");

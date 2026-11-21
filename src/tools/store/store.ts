@@ -74,12 +74,12 @@ export class Store<K, T> {
   }
 
   // Keys returns all of the store keys.
-  keys(): K[] {
+  keys(): Array<K> {
     return [...this.data.keys()];
   }
 
   // Values returns all of the store values.
-  values(): T[] {
+  values(): Array<T> {
     return [...this.data.values()];
   }
 

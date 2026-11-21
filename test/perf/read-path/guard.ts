@@ -32,7 +32,7 @@ runInTransaction(app, (tx) => {
 });
 function run(name: string, f: () => unknown) {
   for (let i = 0; i < 5000; i++) f();
-  const res: number[] = [];
+  const res: Array<number> = [];
   for (let r = 0; r < 5; r++) {
     const n = 30_000;
     const t = performance.now();

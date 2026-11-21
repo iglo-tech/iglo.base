@@ -18,7 +18,7 @@ import {
 } from "@test/differential/crash/harness";
 
 const timeout = 120_000;
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -58,7 +58,7 @@ describe("crash: record writes", () => {
     async () => {
       const dataDir = fresh();
       const server = await launch("iglo", dataDir);
-      const acked: string[] = [];
+      const acked: Array<string> = [];
       let kill: Promise<void> | undefined;
       const sends = Array.from({ length: 400 }, async (_, i) => {
         try {

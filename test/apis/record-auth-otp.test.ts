@@ -20,7 +20,7 @@ const userId = "4q1xlclmfloku33";
 const otpAId = "a".repeat(15);
 const otpBId = "b".repeat(15);
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -68,7 +68,7 @@ describe("TestRecordAuthWithOTPManualRateLimiterCheck", () => {
     insertOTPs("users", email, { id: otpAId }, { id: otpBId })({ dataDir });
 
     await withServer(dataDir, async (url) => {
-      const attempts: [string, string, number][] = [
+      const attempts: Array<[string, string, number]> = [
         [otpAId, "12345", 400],
         [otpAId, "12345", 400],
         [otpBId, "12345", 400],

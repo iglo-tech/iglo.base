@@ -55,8 +55,8 @@ interface ZoneTrans {
 export class Location {
   constructor(
     readonly name: string,
-    readonly zone: Zone[],
-    readonly tx: ZoneTrans[],
+    readonly zone: Array<Zone>,
+    readonly tx: Array<ZoneTrans>,
     // the TZ string for times after the last transition
     readonly extend = "",
   ) {}
@@ -486,7 +486,7 @@ export function loadLocationFromTZData(name: string, data: Uint8Array): Location
 
   // the counts of UTC/local indicators, standard/wall indicators, leap
   // seconds, transition times, zones and abbreviation characters
-  const readCounts = (): number[] | undefined => {
+  const readCounts = (): Array<number> | undefined => {
     if (!need(24)) {
       return undefined;
     }
@@ -546,7 +546,7 @@ export function loadLocationFromTZData(name: string, data: Uint8Array): Location
   if (nZone === 0) {
     return undefined;
   }
-  const zones: Zone[] = [];
+  const zones: Array<Zone> = [];
   for (let i = 0; i < nZone; i++) {
     const at = zonedata + i * 6;
     const nameIndex = data[at + 5] as number;
@@ -564,7 +564,7 @@ export function loadLocationFromTZData(name: string, data: Uint8Array): Location
     });
   }
 
-  const tx: ZoneTrans[] = [];
+  const tx: Array<ZoneTrans> = [];
   for (let i = 0; i < nTime; i++) {
     const when =
       size === 4 ? view.getInt32(txtimes + i * 4) : Number(view.getBigInt64(txtimes + i * 8));
@@ -582,7 +582,7 @@ export function loadLocationFromTZData(name: string, data: Uint8Array): Location
 }
 
 // loadLocation: the TZif file name in the first source that has a valid one
-function loadLocation(name: string, sources: string[]): Location | undefined {
+function loadLocation(name: string, sources: Array<string>): Location | undefined {
   for (const source of sources) {
     let data: Uint8Array;
     try {

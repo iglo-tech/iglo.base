@@ -31,7 +31,11 @@ export const assert = {
   isNotNull(value: unknown, msg?: string): void {
     nodeAssert.notStrictEqual(value, null, msg as string);
   },
-  instanceOf(value: unknown, ctor: abstract new (...args: never[]) => unknown, msg?: string): void {
+  instanceOf(
+    value: unknown,
+    ctor: abstract new (...args: Array<never>) => unknown,
+    msg?: string,
+  ): void {
     nodeAssert(value instanceof ctor, msg ?? `expected value to be an instance of ${ctor.name}`);
   },
   isEmpty(value: unknown, msg?: string): void {
@@ -40,7 +44,7 @@ export const assert = {
   isNotEmpty(value: unknown, msg?: string): void {
     nodeAssert(sizeOf(value) !== 0, msg ?? "expected value not to be empty");
   },
-  include(haystack: string | readonly unknown[], needle: unknown, msg?: string): void {
+  include(haystack: string | ReadonlyArray<unknown>, needle: unknown, msg?: string): void {
     const ok =
       typeof haystack === "string" ? haystack.includes(String(needle)) : haystack.includes(needle);
     nodeAssert(ok, msg ?? `expected ${String(haystack)} to include ${String(needle)}`);

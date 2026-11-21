@@ -14,7 +14,7 @@ import { Errors } from "@/validation/error";
 
 export function expectValidationErrors(
   result: Error | null,
-  expectedErrors: readonly string[],
+  expectedErrors: ReadonlyArray<string>,
 ): void {
   // errors.As: a joined or wrapped validation.Errors counts
   const errs = result === null ? null : (errorsAs(result, Errors) ?? null);

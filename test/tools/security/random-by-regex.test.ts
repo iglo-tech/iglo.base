@@ -12,9 +12,11 @@ import { FoldCase, Literal, POSIX, RegexpSyntaxError } from "@/tools/regexp/synt
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
 
 describe("TestRandomStringByRegex", () => {
-  const generated: string[] = [];
+  const generated: Array<string> = [];
 
-  const scenarios: [pattern: string, flags: number[], expectError: boolean, match?: RegExp][] = [
+  const scenarios: Array<
+    [pattern: string, flags: Array<number>, expectError: boolean, match?: RegExp]
+  > = [
     ["", [], true],
     ["test", [], false, /^test$/u],
     ["\\d+", [POSIX], true],
@@ -88,7 +90,7 @@ describe("random_by_regex.go behavior", () => {
   });
 
   test("unsupported operators report Go's Op number", () => {
-    const cases: [pattern: string, op: number][] = [
+    const cases: Array<[pattern: string, op: number]> = [
       ["", 2], // OpEmptyMatch
       ["a(?:)b", 2],
       ["(?m)^a", 7], // OpBeginLine

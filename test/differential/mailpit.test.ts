@@ -9,7 +9,7 @@ import { startMailpit, sendMail, type Mailpit } from "@test/support/mailpit";
 interface MessageSummary {
   ID: string;
   Subject: string;
-  To: { Address: string }[];
+  To: Array<{ Address: string }>;
 }
 
 interface Message {
@@ -38,7 +38,7 @@ test("a message sent over SMTP is read back through the API", async () => {
   });
 
   const list = (await fetch(`${mailpit.apiUrl}/api/v1/messages`).then((res) => res.json())) as {
-    messages: MessageSummary[];
+    messages: Array<MessageSummary>;
   };
   const summary = list.messages.find((m) => m.Subject === subject);
   expect(summary?.To.map((to) => to.Address)).toEqual(["recipient@example.test"]);

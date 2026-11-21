@@ -55,7 +55,7 @@ const clock: Clock = { now: () => new Date() };
 
 // base, auth and view collections; the names exercise `~` escaping (a_b
 // against axb) and case-insensitive LIKE
-const collections: object[] = [
+const collections: Array<object> = [
   { name: "posts", type: "base" },
   { name: "posts_archive", type: "base" },
   { name: "a_b", type: "base" },
@@ -93,7 +93,7 @@ function exprs(n: number): string {
 }
 
 // [name, raw query string, compare ids as a set (random order)]
-const cases: [string, string, boolean?][] = [
+const cases: Array<[string, string, boolean?]> = [
   ["no params", ""],
   // operators
   ["eq", f("name = 'posts'")],
@@ -242,7 +242,7 @@ const textValues = ["1", "1.0", "5", "5.0", "5.5", "10", "-1", "-1.0", "0", "0.0
 const r = (filter: string): string => q({ filter, perPage: "100" });
 
 // [name, raw query string] against the texts records; ids compared as a set
-const recordCases: [string, string][] = [
+const recordCases: Array<[string, string]> = [
   ["eq 1", r("value = 1")],
   ["eq 1.0", r("value = 1.0")],
   ["eq 5.5", r("value = 5.5")],
@@ -278,7 +278,7 @@ interface Outcome {
 }
 
 function listBody(
-  ids: string[],
+  ids: Array<string>,
   page: unknown,
   perPage: unknown,
   totalItems: unknown,
@@ -297,8 +297,8 @@ function listBody(
 const upstreamOutcomes = new Map<string, Outcome>();
 
 // an upstream list body
-function upstreamList(name: string): { ids: string[] } {
-  return upstreamOutcomes.get(name)?.body as { ids: string[] };
+function upstreamList(name: string): { ids: Array<string> } {
+  return upstreamOutcomes.get(name)?.body as { ids: Array<string> };
 }
 // the raw query strings as fetch sent them
 const sentQueries = new Map<string, string>();
@@ -341,7 +341,7 @@ beforeAll(async () => {
     expect(res.status).toBe(200);
   }
 
-  const all: (readonly [string, string, boolean | undefined, string])[] = [
+  const all: Array<readonly [string, string, boolean | undefined, string]> = [
     ...cases.map(([name, raw, asSet]) => [name, raw, asSet, "collections"] as const),
     ...recordCases.map(
       ([name, raw]) => ["records " + name, raw, true, "collections/texts/records"] as const,
@@ -354,7 +354,7 @@ beforeAll(async () => {
     // the body is parsed with integers kept as text (page can be past 2^53)
     const text = await res.text();
     const json = JSON.parse(text.replace(/:(-?\d+)([,}])/g, ':"$1"$2')) as {
-      items?: { id: string }[];
+      items?: Array<{ id: string }>;
       page?: string;
       perPage?: string;
       totalItems?: string;
@@ -457,8 +457,8 @@ describe("collections list", () => {
         const app = openDataDir(copyDir, clock, () => {}, undefined, queryTimeout);
         const cache = new ParsedFilterCache();
         try {
-          const mismatches: unknown[] = [];
-          const all: (readonly [string, boolean, boolean])[] = [
+          const mismatches: Array<unknown> = [];
+          const all: Array<readonly [string, boolean, boolean]> = [
             ...cases.map(([name, , asSet]) => [name, asSet === true, false] as const),
             ...recordCases.map(([name]) => ["records " + name, true, true] as const),
           ];

@@ -100,11 +100,11 @@ const schemaMigrationsDirFlag: FlagSpec = {
 // JavaScript migrations of pb_migrations (plan runs them in its transaction).
 export async function runSchemaCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
   version: string,
-  migrations: readonly Migration[],
+  migrations: ReadonlyArray<Migration>,
 ): Promise<void> {
   const rest = argsMinusFirst(ctx.args, "schema", persistent);
   // cobra Command.Find: the first argument that is not a flag (or a flag's value)
@@ -295,11 +295,11 @@ async function pull(
 // standard output, and exits nonzero when the file would not apply.
 async function runPlan(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
-  migrations: readonly Migration[],
-  rest: string[],
+  migrations: ReadonlyArray<Migration>,
+  rest: Array<string>,
 ): Promise<void> {
   const local = [helpFlag("schema plan"), schemaFlag, allowDataLossFlag, schemaMigrationsDirFlag];
   let parsed;
@@ -376,7 +376,7 @@ async function migrationsOf(
   ctx: CliContext,
   schemaFile: string,
   values: Map<string, FlagValue>,
-): Promise<SchemaMigration[]> {
+): Promise<Array<SchemaMigration>> {
   const dir = values.get("schemaMigrationsDir") as string | undefined;
   try {
     return await loadSchemaMigrationsFor(
@@ -400,7 +400,7 @@ function readPlanFile(path: string, given: string): string {
 
 // the API's JSON of each collection, parsed (upstream's MarshalJSON, with the
 // fields a view has resolved)
-function collectionsJSON(collections: readonly Collection[]): SchemaObject[] {
+function collectionsJSON(collections: ReadonlyArray<Collection>): Array<SchemaObject> {
   return collections.map((collection) => JSON.parse(collection.marshalJSON()) as SchemaObject);
 }
 
@@ -411,11 +411,11 @@ function collectionsJSON(collections: readonly Collection[]): SchemaObject[] {
 // descriptions and tsType come from the file: the database does not hold them.
 async function runTypes(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
-  migrations: readonly Migration[],
-  rest: string[],
+  migrations: ReadonlyArray<Migration>,
+  rest: Array<string>,
 ): Promise<void> {
   const local = [
     helpFlag("schema types"),
@@ -470,7 +470,7 @@ async function runTypes(
 
   const app: App = await bootstrapApp(config, logsToStderr(ctx));
   try {
-    let collections: SchemaObject[];
+    let collections: Array<SchemaObject>;
     let schema: SchemaDescription | undefined;
     if (given === undefined) {
       collections = collectionsJSON(findAllCollections(app));
@@ -485,7 +485,7 @@ async function runTypes(
         }
         throw err;
       }
-      let applied: SchemaObject[] | undefined;
+      let applied: Array<SchemaObject> | undefined;
       const report = planSchema(app, schemaText, {
         allowDataLoss: false,
         migrations,

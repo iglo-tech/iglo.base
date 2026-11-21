@@ -63,7 +63,7 @@ const jsonTexts = [
   "",
 ];
 
-function pick<T>(r: () => number, items: T[]): T {
+function pick<T>(r: () => number, items: Array<T>): T {
   return items[Math.floor(r() * items.length)] as T;
 }
 
@@ -149,7 +149,7 @@ describe("Record.marshalJSON", () => {
         const inner = newRecord(buildCollection(r, false));
         fill(r, inner);
         expand["rel1"] = inner;
-        const items: Record[] = [];
+        const items: Array<Record> = [];
         for (let j = 0; j < Math.floor(r() * 3); j++) {
           const it = newRecord(buildCollection(r, false));
           fill(r, it);

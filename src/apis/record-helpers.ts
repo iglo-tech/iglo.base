@@ -377,7 +377,7 @@ async function checkMFA(
 export function enrichRecord(
   e: RequestEvent,
   record: Record,
-  ...defaultExpands: string[]
+  ...defaultExpands: Array<string>
 ): Promise<Error | undefined> {
   return enrichRecords(e, [record], ...defaultExpands);
 }
@@ -390,8 +390,8 @@ export function enrichRecord(
 // Note: Expects all records to be from the same collection!
 export async function enrichRecords(
   e: RequestEvent,
-  records: Record[],
-  ...defaultExpands: string[]
+  records: Array<Record>,
+  ...defaultExpands: Array<string>
 ): Promise<Error | undefined> {
   if (records.length === 0) {
     return undefined;
@@ -421,8 +421,8 @@ export async function enrichRecords(
 async function defaultEnrichRecords(
   app: App,
   requestInfo: RequestInfo,
-  records: Record[],
-  ...expands: string[]
+  records: Array<Record>,
+  ...expands: Array<string>
 ): Promise<void> {
   try {
     await autoResolveRecordsFlags(app, records, requestInfo);
@@ -499,7 +499,7 @@ function expandRequestInfo(originalRequestInfo: RequestInfo): RequestInfo {
 function expandFetchQuery(
   app: App,
   relCollection: Collection,
-  relIds: string[],
+  relIds: Array<string>,
   requestInfo: RequestInfo,
 ): SelectQuery {
   const q = recordQuery(app, relCollection).andWhere(inExp(relCollection.name + ".id", ...relIds));
@@ -543,7 +543,7 @@ function applyViewRule(
 // Note: Expects all records to be from the same collection!
 export async function autoResolveRecordsFlags(
   app: App,
-  records: Record[],
+  records: Array<Record>,
   requestInfo: RequestInfo,
 ): Promise<void> {
   const query = resolveRecordsFlags(app, records, requestInfo);
@@ -555,7 +555,7 @@ export async function autoResolveRecordsFlags(
 // autoResolveRecordsFlags with synchronous reads
 export function autoResolveRecordsFlagsSync(
   app: App,
-  records: Record[],
+  records: Array<Record>,
   requestInfo: RequestInfo,
 ): void {
   const query = resolveRecordsFlags(app, records, requestInfo);
@@ -567,7 +567,7 @@ export function autoResolveRecordsFlagsSync(
 // the flags that need no read; the query of the managed record ids, if any
 function resolveRecordsFlags(
   app: App,
-  records: Record[],
+  records: Array<Record>,
   requestInfo: RequestInfo,
 ): SelectQuery | null {
   if (records.length === 0) {
@@ -592,7 +592,7 @@ function resolveRecordsFlags(
 
   const collection = first.collection();
 
-  const recordIds: string[] = [];
+  const recordIds: Array<string> = [];
   for (const rec of records) {
     recordIds.push(rec.id);
   }
@@ -624,7 +624,7 @@ function resolveRecordsFlags(
 }
 
 // ignore the email visibility check for the managed records
-function ignoreManagedEmailVisibility(records: Record[], managedIds: unknown[]): void {
+function ignoreManagedEmailVisibility(records: Array<Record>, managedIds: Array<unknown>): void {
   const mappedRecords = new Map<string, Record>();
   for (const rec of records) {
     mappedRecords.set(rec.id, rec);
@@ -664,7 +664,7 @@ export function checkForSuperuserOnlyRuleFields(requestInfo: RequestInfo): ApiEr
 // (this is used usually to prevent unnecessary wraping and to allow bubling ApiError from nested hooks)
 //
 // If no ApiError is found, returns a default "Internal server" error.
-export function firstApiError(...errs: unknown[]): ApiError {
+export function firstApiError(...errs: Array<unknown>): ApiError {
   for (const err of errs) {
     if (err === null || err === undefined) {
       continue;

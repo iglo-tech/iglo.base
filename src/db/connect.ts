@@ -15,7 +15,7 @@ import { newFromDB, type DB } from "@/db/dbx/db";
 // Note: the busy_timeout pragma must be first because
 // the connection needs to be set to block on busy before WAL mode
 // is set in case it hasn't been already set by another connection.
-export const connectPragmas: readonly string[] = Object.freeze([
+export const connectPragmas: ReadonlyArray<string> = Object.freeze([
   "busy_timeout(10000)",
   "journal_mode(WAL)",
   "journal_size_limit(200000000)",

@@ -67,8 +67,8 @@ interface ServerPair {
   igloBase: RunningServer | null;
 }
 
-const roots: string[] = [];
-const servers: { stop(): Promise<unknown> }[] = [];
+const roots: Array<string> = [];
+const servers: Array<{ stop(): Promise<unknown> }> = [];
 
 async function startPair(sourceDir: string): Promise<ServerPair> {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-"));
@@ -124,7 +124,7 @@ async function runCase(
   pair: ServerPair,
   c: WriteCase,
   authorization: string,
-): Promise<{ status: number; differences: string[] }> {
+): Promise<{ status: number; differences: Array<string> }> {
   const headers: Record<string, string> = { ...c.headers };
   if (authorization !== "") {
     headers["Authorization"] = authorization;
@@ -149,7 +149,7 @@ async function runCase(
   const differences = compareResponses(up, ig, { start, request }, pairing);
 
   // the records to read back: [upstream's path, iglo.base's path]
-  const reads: [string, string][] = [];
+  const reads: Array<[string, string]> = [];
   if (c.method === "POST") {
     if (up.status === 200 && ig.status === 200) {
       const upId = (JSON.parse(responseText(up)) as { id?: string }).id;
@@ -203,7 +203,7 @@ let currentSuperuserToken = superuserToken;
 // Round trip: iglo.base stops, upstream starts on a copy of its pb_data,
 // and every collection's records listed from that copy must equal the ones
 // upstream lists from its own data.
-async function roundTrip(pair: ServerPair, token: string): Promise<string[]> {
+async function roundTrip(pair: ServerPair, token: string): Promise<Array<string>> {
   await (pair.igloBase as RunningServer).stop();
   pair.igloBase = null;
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-rt-"));
@@ -229,12 +229,14 @@ async function roundTrip(pair: ServerPair, token: string): Promise<string[]> {
 
   const collections = JSON.parse(
     responseText(await get(pair.upstream, "/api/collections?perPage=500&sort=name")),
-  ) as { items: { name: string; type: string; fields: { name: string; type: string }[] }[] };
+  ) as {
+    items: Array<{ name: string; type: string; fields: Array<{ name: string; type: string }> }>;
+  };
   const rtCollections = await get(rt, "/api/collections?perPage=500&sort=name");
 
   const start = readStartingData(pair.dataDir);
   const pairing = new Pairing();
-  const differences: string[] = [];
+  const differences: Array<string> = [];
   differences.push(
     ...compareResponses(
       await get(pair.upstream, "/api/collections?perPage=500&sort=name"),
@@ -302,8 +304,8 @@ const superEmail = "records-write@example.com";
 describe("fresh install", () => {
   let pair: ServerPair;
   const tokens = new Map<FreshIdentity, string>([["guest", ""]]);
-  let fileNames: string[] = [];
-  const statuses: { name: string; status: number }[] = [];
+  let fileNames: Array<string> = [];
+  const statuses: Array<{ name: string; status: number }> = [];
 
   beforeAll(async () => {
     const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-fresh-"));
@@ -354,7 +356,7 @@ describe("fresh install", () => {
       const collectionIds = new Map<string, string>();
       const readIds = async (): Promise<void> => {
         const list = (await api("GET", "/api/collections?perPage=500")) as {
-          items: { id: string; name: string }[];
+          items: Array<{ id: string; name: string }>;
         };
         for (const item of list.items) {
           collectionIds.set(item.name, item.id);
@@ -391,7 +393,7 @@ describe("fresh install", () => {
         "PATCH",
         `/api/collections/w_types/records/${rid("types1")}`,
         form,
-      )) as { fl: string[] };
+      )) as { fl: Array<string> };
       fileNames = types1.fl;
 
       for (const who of ["alice", "bob", "dave"] as const) {

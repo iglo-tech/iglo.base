@@ -78,7 +78,7 @@ test("TestReloadCachedCollections", () => {
 
   const cached = app.store.get(StoreKeyCachedCollections);
   expect(Array.isArray(cached)).toBe(true);
-  const cachedCollections = cached as { id: string }[];
+  const cachedCollections = cached as Array<{ id: string }>;
 
   const collections = findAllCollections(app);
 
@@ -93,7 +93,7 @@ test("TestReloadCachedCollections", () => {
 });
 
 describe("TestFindAllCollections", () => {
-  const scenarios: { collectionTypes: string[]; expectTotal: number }[] = [
+  const scenarios: Array<{ collectionTypes: Array<string>; expectTotal: number }> = [
     { collectionTypes: [], expectTotal: 16 }, // nil
     { collectionTypes: [], expectTotal: 16 },
     { collectionTypes: [""], expectTotal: 16 },
@@ -127,7 +127,7 @@ describe("TestFindAllCollections", () => {
   });
 });
 
-const nameOrIdScenarios: { nameOrId: string; expectError: boolean }[] = [
+const nameOrIdScenarios: Array<{ nameOrId: string; expectError: boolean }> = [
   { nameOrId: "", expectError: true },
   { nameOrId: "missing", expectError: true },
   { nameOrId: "wsmn24bux7wo113", expectError: false },
@@ -271,8 +271,8 @@ function runFindCachedCollectionReferences(withCache: boolean): void {
 
 // collection name → its referencing field names
 function referenceNames(
-  refs: Map<{ name: string }, { getName(): string }[]>,
-): (string | string[])[][] {
+  refs: Map<{ name: string }, Array<{ getName(): string }>>,
+): Array<Array<string | Array<string>>> {
   return [...refs].map(([col, fields]) => [col.name, fields.map((f) => f.getName())]);
 }
 
@@ -295,7 +295,7 @@ describe("TestFindCachedCollectionReferences", () => {
 });
 
 describe("TestIsCollectionNameUnique", () => {
-  const scenarios: { name: string; excludeId: string; expected: boolean }[] = [
+  const scenarios: Array<{ name: string; excludeId: string; expected: boolean }> = [
     { name: "", excludeId: "", expected: false },
     { name: "demo1", excludeId: "", expected: false },
     { name: "Demo1", excludeId: "", expected: false },

@@ -26,10 +26,10 @@ export type Ids = (collection: string) => string;
 export interface CollectionStep {
   // POST /api/collections, or a PATCH that adds fields (addFields)
   create?: (ids: Ids) => object;
-  addFields?: { collection: string; fields: (ids: Ids) => object[] };
+  addFields?: { collection: string; fields: (ids: Ids) => Array<object> };
 }
 
-export const collectionSteps: CollectionStep[] = [
+export const collectionSteps: Array<CollectionStep> = [
   {
     create: () => ({
       name: "teams",
@@ -200,7 +200,7 @@ export interface RecordStep {
 
 const m = (name: string): string => rid(name);
 
-export const recordSteps: RecordStep[] = [
+export const recordSteps: Array<RecordStep> = [
   // teams (leaders and crews are set once the members exist)
   {
     collection: "teams",

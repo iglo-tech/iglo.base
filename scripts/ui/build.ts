@@ -22,8 +22,8 @@ const uiDir = join(repoRoot, "ui");
 const distDir = join(uiDir, "dist");
 export const uiPackPath = join(repoRoot, "dist", "ui.pack");
 
-function listFiles(dir: string, skip: (path: string) => boolean): string[] {
-  const out: string[] = [];
+function listFiles(dir: string, skip: (path: string) => boolean): Array<string> {
+  const out: Array<string> = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (skip(path)) {
@@ -49,7 +49,7 @@ function sourceHash(): string {
   return hasher.digest("hex");
 }
 
-async function exec(cmd: string[], env: Record<string, string> = {}): Promise<void> {
+async function exec(cmd: Array<string>, env: Record<string, string> = {}): Promise<void> {
   const proc = Bun.spawn(cmd, {
     cwd: uiDir,
     env: { ...process.env, ...env },

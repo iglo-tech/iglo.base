@@ -27,7 +27,7 @@ test("TestNewMoment", () => {
   expect(m).toEqual({ minute: 20, hour: 15, day: 9, month: 5, dayOfWeek: 2 });
 });
 
-const newScheduleScenarios: [string, boolean, string][] = [
+const newScheduleScenarios: Array<[string, boolean, string]> = [
   ["invalid", true, ""],
   ["* * * *", true, ""],
   ["* * * * * *", true, ""],
@@ -183,7 +183,7 @@ describe("TestNewSchedule", () => {
   }
 });
 
-const isDueScenarios: [string, Moment, boolean][] = [
+const isDueScenarios: Array<[string, Moment, boolean]> = [
   ["* * * * *", { minute: 0, hour: 0, day: 0, month: 0, dayOfWeek: 0 }, false],
   ["* * * * *", { minute: 1, hour: 1, day: 1, month: 1, dayOfWeek: 1 }, true],
   ["5 * * * *", { minute: 1, hour: 1, day: 1, month: 1, dayOfWeek: 1 }, false],

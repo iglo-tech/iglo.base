@@ -45,7 +45,7 @@ function providerOf(env: SdkEnv): MockProvider {
 }
 
 // the set-cookie headers as shapes: the name and the attributes, not the value
-function cookieShapes(response: Response): string[] {
+function cookieShapes(response: Response): Array<string> {
   return response.headers
     .getSetCookie()
     .map((line) =>

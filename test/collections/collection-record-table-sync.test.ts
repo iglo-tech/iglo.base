@@ -62,13 +62,13 @@ describe("TestSyncRecordTableSchema", () => {
       authCol.fields.add(new TextField({ name: "test" }));
       authCol.addIndex("idx_auth_test", false, "email, id", "");
 
-      const scenarios: {
+      const scenarios: Array<{
         name: string;
         newCollection: Collection;
         oldCollection: Collection | null;
-        expectedColumns: string[];
+        expectedColumns: Array<string>;
         expectedIndexesCount: number;
-      }[] = [
+      }> = [
         {
           name: "new base collection",
           newCollection: baseCol,
@@ -220,7 +220,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
         "new_multiple",
       ];
 
-      const fieldsScenarios: { recordId: string; expected: Record<string, string> }[] = [
+      const fieldsScenarios: Array<{ recordId: string; expected: Record<string, string> }> = [
         {
           recordId: "imy661ixudk5izi",
           expected: {

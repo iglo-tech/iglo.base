@@ -86,7 +86,7 @@ async function readCtx(): Promise<Ctx> {
   expect(res.status).toBe(200);
   const items = (
     JSON.parse(res.text) as {
-      items: { id: string; name: string; fields: Record<string, unknown>[] }[];
+      items: Array<{ id: string; name: string; fields: Array<Record<string, unknown>> }>;
     }
   ).items;
   const byName = new Map(items.map((c) => [c.name, c]));

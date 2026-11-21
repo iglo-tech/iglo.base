@@ -22,7 +22,7 @@ import { runInTransaction } from "@/db/tx";
 import { Demo, Log } from "@test/db/models";
 import { tempDir } from "@test/db/support";
 
-const opened: Databases[] = [];
+const opened: Array<Databases> = [];
 
 afterEach(async () => {
   for (const app of opened.splice(0)) {
@@ -175,7 +175,7 @@ test("a read on the pool sees what the main thread committed before it", async (
 
 test("in a transaction the async resolvers read on its connection", async () => {
   const app = open({ readWorkers: 2 });
-  let inside: Promise<unknown[]> | null = null;
+  let inside: Promise<Array<unknown>> | null = null;
   expect(() =>
     runInTransaction(app, (txApp) => {
       txApp.db().insert("demo", { id: "uncommitted", title: "x" }).execute();

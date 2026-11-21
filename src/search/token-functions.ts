@@ -26,7 +26,7 @@ export type ArgTokenResolverFunc = (token: Token) => ResolverResult | null;
 
 export type TokenFunction = (
   argTokenResolverFunc: ArgTokenResolverFunc,
-  ...args: Token[]
+  ...args: Array<Token>
 ) => ResolverResult;
 
 // a resolver call whose error is wrapped with the given message prefix
@@ -69,7 +69,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
         throw new Error(`[geoDistance] expected 4 arguments, got ${args.length}`);
       }
 
-      const resolvedArgs: (ResolverResult | null)[] = [];
+      const resolvedArgs: Array<ResolverResult | null> = [];
       for (const [i, arg] of args.entries()) {
         if (arg.type !== TokenIdentifier && arg.type !== TokenNumber) {
           throw new Error(`[geoDistance] argument ${i} must be an identifier or number`);
@@ -155,7 +155,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
 
       // time-value arg
       // -----------------------------------------------------------
-      const allowedTimeValueTokens: TokenType[] = [TokenText, TokenIdentifier, TokenNumber];
+      const allowedTimeValueTokens: Array<TokenType> = [TokenText, TokenIdentifier, TokenNumber];
       const timeValueArg = args[1] as Token;
       if (!allowedTimeValueTokens.includes(timeValueArg.type)) {
         throw new Error("[strftime] expects the second argument to be of a valid time-value type");
@@ -169,7 +169,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
 
       // modifiers args
       // -----------------------------------------------------------
-      const resolvedModifierArgs: (ResolverResult | null)[] = [];
+      const resolvedModifierArgs: Array<ResolverResult | null> = [];
       for (const [i, arg] of args.slice(2).entries()) {
         if (arg.type !== TokenText) {
           throw new Error(`[strftime] invalid modifier argument ${i} - can be only string`);
@@ -193,7 +193,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
       };
       const resultParams = result.params as Params;
 
-      const identifiers: string[] = [];
+      const identifiers: Array<string> = [];
 
       identifiers.push(formatArgResult.identifier);
       concatUniqueParams(resultParams, formatArgResult.params);

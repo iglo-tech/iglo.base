@@ -57,7 +57,7 @@ const origins = [
 
 const fileURL = "/api/files/_pb_users_auth_/oap640cot4yru2s/test_kfd2wYLxkz.txt";
 
-const requests: Req[] = [
+const requests: Array<Req> = [
   // preflights
   ["OPTIONS", "/api/health"],
   ["OPTIONS", "/api/collections/users/records", { "Access-Control-Request-Method": "GET" }],

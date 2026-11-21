@@ -37,7 +37,7 @@ export const ids = {
   peopleView: "peopleviewcoll1",
 };
 
-export const collections: CollectionCase[] = [
+export const collections: Array<CollectionCase> = [
   {
     body: {
       id: ids.people,
@@ -269,8 +269,8 @@ export type Step =
   | { kind: "update"; collection: string; id: string; body: { [key: string]: unknown } }
   | { kind: "delete"; collection: string; id: string }
   | { kind: "truncate"; collection: string }
-  | { kind: "chain"; collection: string; field: string; ids: string[] }
-  | { kind: "batch"; creates: { collection: string; body: { [key: string]: unknown } }[] };
+  | { kind: "chain"; collection: string; field: string; ids: Array<string> }
+  | { kind: "batch"; creates: Array<{ collection: string; body: { [key: string]: unknown } }> };
 
 const pw = { password: "1234567890", passwordConfirm: "1234567890" };
 
@@ -311,7 +311,7 @@ const protoBody = (value: string): { [key: string]: unknown } => {
 // 1,000 records, record n references n-1 (upstream deletes them all)
 const chainIds = Array.from({ length: 1000 }, (_, i) => "cn" + String(i).padStart(13, "0"));
 
-export const steps: Step[] = [
+export const steps: Array<Step> = [
   // auth records
   create("people", { id: p1, email: "p1@example.com", ...pw, name: "Ann", age: 30 }),
   create("people", {

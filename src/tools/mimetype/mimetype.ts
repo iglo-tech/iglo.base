@@ -61,7 +61,7 @@ export async function detectReader(r: Blob): Promise<[MIME, Error | null]> {
 // MIME type equality test is done on the "type/subtype" section, ignores
 // any optional MIME parameters, ignores any leading and trailing whitespace,
 // and is case insensitive.
-export function equalsAny(s: string, ...mimes: string[]): boolean {
+export function equalsAny(s: string, ...mimes: Array<string>): boolean {
   [s] = parseMediaType(s);
   for (let m of mimes) {
     [m] = parseMediaType(m);

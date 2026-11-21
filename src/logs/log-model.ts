@@ -153,8 +153,8 @@ class TruncatedDecoder {
     }
   }
 
-  private array(): unknown[] {
-    const arr: unknown[] = [];
+  private array(): Array<unknown> {
+    const arr: Array<unknown> = [];
     this.i++; // [
     for (;;) {
       if (this.s[this.i] === ",") {

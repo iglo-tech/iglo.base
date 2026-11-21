@@ -195,7 +195,7 @@ export function call(step: Step): Call {
 // a step's state in run: the steps called and not yet returned (the
 // last one runs), and what the running one gets back next
 interface RunState {
-  readonly stack: Step[];
+  readonly stack: Array<Step>;
   input: unknown;
   failed: boolean;
 }
@@ -759,7 +759,7 @@ function* onRecordSaveExecute(app: RecordsApp, record: Record, next: Next): Step
 
     // loosely cross-check that the auth record id is unique across all auth collections
     // to minimize impact of mistakes in API rules when multiple auth collections are used
-    let authCollections: Collection[];
+    let authCollections: Array<Collection>;
     try {
       authCollections = withDriverErrors(() => findAllCollections(app, CollectionTypeAuth));
     } catch (err) {
@@ -863,7 +863,7 @@ function* onRecordDeleteExecute(app: RecordsApp, record: Record, next: Next): St
 function* cascadeRecordDelete(
   app: RecordsApp,
   mainRecord: Record,
-  refs: Map<Collection, Field[]>,
+  refs: Map<Collection, Array<Field>>,
 ): Step {
   // Sort the refs keys to ensure that the cascade events firing order is always the same.
   // This is not necessary for the operation to function correctly but it helps having deterministic output during testing.
@@ -934,7 +934,7 @@ function* deleteRefRecords(
   app: RecordsApp,
   mainRecord: Record,
   refCollection: Collection,
-  refIds: readonly string[],
+  refIds: ReadonlyArray<string>,
   field: Field,
 ): Step {
   if (!(field instanceof RelationField)) {
@@ -989,7 +989,7 @@ function* deleteRefRecords(
 // truncateCollection in src/collections inside its transaction
 
 // deletes the given records; a record that is already gone is skipped
-export function deleteTruncatedRecords(app: RecordsApp, records: readonly Record[]): void {
+export function deleteTruncatedRecords(app: RecordsApp, records: ReadonlyArray<Record>): void {
   for (const record of records) {
     try {
       deleteRecordSync(app, record);

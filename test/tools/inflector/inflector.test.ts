@@ -12,7 +12,7 @@ import {
 } from "@/tools/inflector/inflector";
 
 describe("UcFirst", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     [" ", " "],
     ["Test", "Test"],
@@ -28,7 +28,7 @@ describe("UcFirst", () => {
 });
 
 describe("Columnify", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["   ", ""],
     ["123", "123"],
@@ -49,7 +49,7 @@ describe("Columnify", () => {
 });
 
 describe("Sentenize", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["   ", ""],
     [".", "."],
@@ -73,7 +73,7 @@ describe("Sentenize", () => {
 describe("Sanitize", () => {
   // expectErr: sanitize throws on an invalid pattern (Go returns an error),
   // so the expected result is not checked then
-  const scenarios: [string, string, string, boolean][] = [
+  const scenarios: Array<[string, string, string, boolean]> = [
     ["", ``, "", false],
     [" ", ``, " ", false],
     [" ", ` `, "", false],
@@ -94,7 +94,7 @@ describe("Sanitize", () => {
 });
 
 describe("Snakecase", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["  ", ""],
     ["!@#$%^", ""],
@@ -117,7 +117,7 @@ describe("Snakecase", () => {
 });
 
 describe("Camelize", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     [" ", ""],
     ["Test", "Test"],
@@ -143,7 +143,7 @@ describe("Camelize", () => {
 // Not in upstream's tests: Go's unicode.ToUpper (simple case mapping),
 // unicode.IsLetter/IsNumber and strings.TrimSpace.
 describe("Unicode rules", () => {
-  const ucFirstScenarios: [string, string][] = [
+  const ucFirstScenarios: Array<[string, string]> = [
     ["ßa", "ßa"], // no simple uppercase mapping
     ["ﬀ", "ﬀ"],
     ["ǆ", "Ǆ"],

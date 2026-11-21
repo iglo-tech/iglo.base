@@ -24,7 +24,7 @@ const superuser =
 async function twice(
   request: Scenario,
   change: (body: string) => string,
-): Promise<{ first: string; same: string[]; changed: string[] }> {
+): Promise<{ first: string; same: Array<string>; changed: Array<string> }> {
   const fixture = await preparedFixture(request);
   try {
     const dirs = ["a", "b"].map((name) => join(fixture.root, name, "pb_data"));

@@ -134,10 +134,10 @@ function executableJar(b: Bytes): boolean {
   return ok2 && cafe === 0xca_fe;
 }
 
-export type zipEntries = {
+export type zipEntries = Array<{
   name: Uint8Array;
   dir: boolean; // dir means checking just the prefix of the entry, not the whole path
-}[];
+}>;
 
 function zipEntriesMatch(z: zipEntries, file: Uint8Array): boolean {
   for (const e of z) {

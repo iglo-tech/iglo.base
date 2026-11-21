@@ -189,7 +189,11 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
   return encodeObject(entries, flags, depth);
 }
 
-function encodeObject(entries: [string, unknown][], flags: EncodeFlags, depth: number): string {
+function encodeObject(
+  entries: Array<[string, unknown]>,
+  flags: EncodeFlags,
+  depth: number,
+): string {
   // names are compared as Go strings (UTF-8 bytes); invalid UTF-8 is
   // replaced first, which may make two names equal
   const members = entries.map(([name, value]): [string, string, unknown] => [
@@ -413,7 +417,7 @@ class Reformatter {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const items: string[] = [];
+    const items: Array<string> = [];
     this.skipWhitespace();
     if (this.s[this.i] === "]") {
       this.i++;
@@ -438,7 +442,7 @@ class Reformatter {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const members: string[] = [];
+    const members: Array<string> = [];
     const seen = new Set<string>();
     this.skipWhitespace();
     if (this.s[this.i] === "}") {
@@ -636,10 +640,10 @@ class NumberNode {
 }
 
 class ObjectNode {
-  constructor(readonly members: [string, Node][]) {}
+  constructor(readonly members: Array<[string, Node]>) {}
 }
 
-type Node = null | boolean | string | NumberNode | Node[] | ObjectNode;
+type Node = null | boolean | string | NumberNode | Array<Node> | ObjectNode;
 
 export interface UnmarshalOptions {
   // encoding/json (v1) semantics: duplicate names allowed (last wins),
@@ -690,7 +694,7 @@ export function bytesToText(data: string | Uint8Array): string {
 // lone surrogates, which bytesToText never yields, become U+FFFD).
 export function textToBytes(text: string): Uint8Array {
   const encoder = new TextEncoder();
-  const parts: Uint8Array[] = [];
+  const parts: Array<Uint8Array> = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
@@ -771,12 +775,12 @@ class Parser {
 
   // onElement is called for each element as soon as it is read (see
   // object)
-  array(depth: number, onElement?: (value: Node) => void): Node[] {
+  array(depth: number, onElement?: (value: Node) => void): Array<Node> {
     if (depth > maxNestingDepth) {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const items: Node[] = [];
+    const items: Array<Node> = [];
     this.skipWhitespace();
     if (this.s[this.i] === "]") {
       this.i++;
@@ -807,7 +811,7 @@ class Parser {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const members: [string, Node][] = [];
+    const members: Array<[string, Node]> = [];
     const seen = new Set<string>();
     this.skipWhitespace();
     if (this.s[this.i] === "}") {
@@ -958,9 +962,9 @@ export function unmarshalSlicePartial(
   data: string | Uint8Array,
   elem: GoType,
   opts: UnmarshalOptions = {},
-): [unknown[] | undefined, unknown] {
+): [Array<unknown> | undefined, unknown] {
   const p = new Parser(bytesToText(data), opts.legacy === true);
-  let result: unknown[] | undefined;
+  let result: Array<unknown> | undefined;
   let firstError: unknown;
   try {
     p.skipWhitespace();

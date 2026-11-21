@@ -20,8 +20,8 @@ interface Rec {
   updated: string;
 }
 
-const roots: string[] = [];
-const stops: (() => Promise<unknown>)[] = [];
+const roots: Array<string> = [];
+const stops: Array<() => Promise<unknown>> = [];
 
 afterAll(async () => {
   await Promise.allSettled(stops.map((stop) => stop()));

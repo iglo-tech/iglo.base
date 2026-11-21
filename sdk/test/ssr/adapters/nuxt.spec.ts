@@ -96,7 +96,7 @@ function makeEvent(
   if (cookieHeader) {
     headers["cookie"] = cookieHeader;
   }
-  const setCookies: SetCookie[] = [];
+  const setCookies: Array<SetCookie> = [];
   const setHeaders: Array<[string, string]> = [];
   const readBody = init.readBody ?? (init.body === undefined ? undefined : async () => init.body);
   const event: NuxtEvent = {

@@ -72,7 +72,7 @@ describe("ReplaceAllLiteral", () => {
 });
 
 describe("ReplaceAllFunc", () => {
-  const replaceFuncTests: [string, (s: string) => string, string, string][] = [
+  const replaceFuncTests: Array<[string, (s: string) => string, string, string]> = [
     ["[a-c]", (s) => "x" + s + "y", "defabcdef", "defxayxbyxcydef"],
     ["[a-c]+", (s) => "x" + s + "y", "defabcdef", "defxabcydef"],
     ["[a-c]*", (s) => "x" + s + "y", "defabcdef", "xydxyexyfxabcydxyexyfxy"],
@@ -144,7 +144,7 @@ describe("Split", () => {
 });
 
 // strings.SplitN for the inputs of splitTests
-function splitN(s: string, sep: string, n: number): string[] | null {
+function splitN(s: string, sep: string, n: number): Array<string> | null {
   if (n === 0) {
     return null;
   }

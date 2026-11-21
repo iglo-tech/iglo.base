@@ -37,7 +37,7 @@ test("a writeBody body is sent after a flush", async () => {
   });
   const mux = r.buildMux();
 
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["/a", "whole body"],
     ["/promised", "promised body"],
     ["/stream", "streamed body"],
@@ -84,7 +84,7 @@ test("gzip compresses a writeBody body and runs the cleanups after the response"
 });
 
 test("a write after a flushed writeBody is refused, not lost", () => {
-  const sent: Response[] = [];
+  const sent: Array<Response> = [];
   const rw = new ResponseWriter((res) => sent.push(res));
   expect(rw.writeBody(new Blob(["whole"]))).toBeUndefined();
   expect(rw.flush()).toBeUndefined();
@@ -95,7 +95,7 @@ test("a write after a flushed writeBody is refused, not lost", () => {
 });
 
 test("a write after a plain flush is streamed", async () => {
-  const sent: Response[] = [];
+  const sent: Array<Response> = [];
   const rw = new ResponseWriter((res) => sent.push(res));
   rw.write("one ");
   rw.flush();

@@ -706,7 +706,7 @@ function walkDirRec(path: string, d: dirEntry, fn: walkDirFunc): walkResult {
     return r;
   }
 
-  let entries: { name: string; isDir: boolean }[] = [];
+  let entries: Array<{ name: string; isDir: boolean }> = [];
   try {
     // os.ReadDir: the entries sorted by file name
     entries = readdirSync(path, { withFileTypes: true })

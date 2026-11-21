@@ -87,10 +87,10 @@ export class ThumbPool {
   readonly #pending = new Map<string, Promise<void>>();
   // thumbGenSem
   #free: number;
-  readonly #waiters: Waiter[] = [];
+  readonly #waiters: Array<Waiter> = [];
   // renders waiting for a worker (all maxWorkers are busy)
-  readonly #queue: Job[] = [];
-  readonly #slots: Slot[] = [];
+  readonly #queue: Array<Job> = [];
+  readonly #slots: Array<Slot> = [];
   #nextId = 1;
   #closed = false;
 

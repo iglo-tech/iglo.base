@@ -39,7 +39,7 @@ const newEmail = "change@example.com";
 const userId = "4q1xlclmfloku33";
 
 type Kind = "upstream" | "igloBase";
-const kinds: Kind[] = ["upstream", "igloBase"];
+const kinds: Array<Kind> = ["upstream", "igloBase"];
 
 interface Server {
   kind: Kind;
@@ -57,7 +57,7 @@ type Row = { [key: string]: unknown };
 
 type Confirm = (server: Server, token: string) => Promise<Reply>;
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 let mailpits: Record<Kind, Mailpit>;
 
@@ -160,9 +160,9 @@ async function clear(m: Mailpit): Promise<void> {
   await fetch(`${m.apiUrl}/api/v1/messages`, { method: "DELETE" });
 }
 
-async function allRaw(m: Mailpit): Promise<string[]> {
+async function allRaw(m: Mailpit): Promise<Array<string>> {
   const list = (await fetch(`${m.apiUrl}/api/v1/messages`).then((res) => res.json())) as {
-    messages: { ID: string }[];
+    messages: Array<{ ID: string }>;
   };
   return Promise.all(
     list.messages.map((msg) =>
@@ -176,7 +176,7 @@ function unfold(raw: string): string {
 }
 
 // waits for n messages with the confirm link, returned raw, the newest first
-async function rawMessages(m: Mailpit, link: string, n: number): Promise<string[]> {
+async function rawMessages(m: Mailpit, link: string, n: number): Promise<Array<string>> {
   const until = Date.now() + 10_000;
   for (;;) {
     const matching = (await allRaw(m)).filter((raw) => unfold(raw).includes(link));
@@ -253,7 +253,7 @@ function shape(reply: Reply): unknown {
 }
 
 function userRow(dataDir: string, id = userId): Row {
-  const [row] = queryRows(dataDir, "SELECT * FROM users WHERE id = ?", id) as Row[];
+  const [row] = queryRows(dataDir, "SELECT * FROM users WHERE id = ?", id) as Array<Row>;
   return row as Row;
 }
 
@@ -296,7 +296,7 @@ async function bothFlows(
   prepare: (dataDir: string) => void,
   flow: (f: Flow) => Promise<void>,
 ): Promise<void> {
-  const transcripts: unknown[][] = [];
+  const transcripts: Array<Array<unknown>> = [];
   for (const kind of kinds) {
     const mail = mailpits[kind];
     await clear(mail);
@@ -304,7 +304,7 @@ async function bothFlows(
     smtpTo(dataDir, mail.smtpPort);
     prepare(dataDir);
     const server = await start(kind, dataDir);
-    const transcript: unknown[] = [];
+    const transcript: Array<unknown> = [];
     try {
       await flow({
         server,
@@ -322,7 +322,7 @@ async function bothFlows(
     }
     transcripts.push(transcript);
   }
-  expect(transcripts[1]).toEqual(transcripts[0] as unknown[]);
+  expect(transcripts[1]).toEqual(transcripts[0] as Array<unknown>);
 }
 
 // no second factor, and a row of each kind that a confirm can remove
@@ -341,7 +341,7 @@ const changeLink = "/auth/confirm-email-change/";
 // -------------------------------------------------------------------
 
 describe("the three emails", () => {
-  const cases: [string, (server: Server) => Promise<Reply>, string][] = [
+  const cases: Array<[string, (server: Server) => Promise<Reply>, string]> = [
     ["verification", requestVerification, verificationLink],
     ["password reset", requestReset, resetLink],
     ["email change", requestChange, changeLink],
@@ -350,7 +350,7 @@ describe("the three emails", () => {
     test(
       `${name}: the message and its token claims are upstream's`,
       async () => {
-        const messages: string[] = [];
+        const messages: Array<string> = [];
         await bothFlows(withAuthRows, async ({ server, mail, step, note }) => {
           step(await send(server));
           const [raw = ""] = await rawMessages(mail, link, 1);
@@ -646,12 +646,12 @@ describe("a failed send", () => {
 });
 
 describe("tokens after the record changed", () => {
-  const sends: [string, (server: Server) => Promise<Reply>, string, Confirm][] = [
+  const sends: Array<[string, (server: Server) => Promise<Reply>, string, Confirm]> = [
     ["verification", requestVerification, verificationLink, confirmVerification],
     ["password reset", requestReset, resetLink, confirmReset],
     ["email change", requestChange, changeLink, confirmChange],
   ];
-  const changes: [string, unknown][] = [
+  const changes: Array<[string, unknown]> = [
     ["password", { password: newPassword, passwordConfirm: newPassword }],
     ["email", { email: "other@example.com" }],
   ];
@@ -674,7 +674,7 @@ describe("tokens after the record changed", () => {
 });
 
 describe("across the servers", () => {
-  const flows: [string, (s: Server) => Promise<Reply>, string, Confirm][] = [
+  const flows: Array<[string, (s: Server) => Promise<Reply>, string, Confirm]> = [
     ["verification", requestVerification, verificationLink, confirmVerification],
     ["password reset", requestReset, resetLink, confirmReset],
     ["email change", requestChange, changeLink, confirmChange],
@@ -684,7 +684,7 @@ describe("across the servers", () => {
     for (const [issuer, confirmer] of [
       ["upstream", "igloBase"],
       ["igloBase", "upstream"],
-    ] as [Kind, Kind][]) {
+    ] as Array<[Kind, Kind]>) {
       test(
         `${name}: a token mailed by ${issuer} confirms on ${confirmer}, and ${issuer} reads the row`,
         async () => {

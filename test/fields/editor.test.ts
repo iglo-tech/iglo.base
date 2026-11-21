@@ -32,7 +32,7 @@ describe("TestEditorFieldPrepareValue", () => {
   const f = new EditorField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["test", "test"],
     [false, "false"],
@@ -59,12 +59,12 @@ describe("TestEditorFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: EditorField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new EditorField({ name: "test" }),
@@ -127,28 +127,29 @@ describe("TestEditorFieldValidateSettings", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; field: () => EditorField; expectErrors: string[] }[] = [
-    {
-      name: "< 0 MaxSize",
-      field: () => new EditorField({ id: "test", name: "test", maxSize: -1 }),
-      expectErrors: ["maxSize"],
-    },
-    {
-      name: "= 0 MaxSize",
-      field: () => new EditorField({ id: "test", name: "test" }),
-      expectErrors: [],
-    },
-    {
-      name: "> 0 MaxSize",
-      field: () => new EditorField({ id: "test", name: "test", maxSize: 1 }),
-      expectErrors: [],
-    },
-    {
-      name: "MaxSize > safe json int",
-      field: () => new EditorField({ id: "test", name: "test", maxSize: 2 ** 53 }),
-      expectErrors: ["maxSize"],
-    },
-  ];
+  const scenarios: Array<{ name: string; field: () => EditorField; expectErrors: Array<string> }> =
+    [
+      {
+        name: "< 0 MaxSize",
+        field: () => new EditorField({ id: "test", name: "test", maxSize: -1 }),
+        expectErrors: ["maxSize"],
+      },
+      {
+        name: "= 0 MaxSize",
+        field: () => new EditorField({ id: "test", name: "test" }),
+        expectErrors: [],
+      },
+      {
+        name: "> 0 MaxSize",
+        field: () => new EditorField({ id: "test", name: "test", maxSize: 1 }),
+        expectErrors: [],
+      },
+      {
+        name: "MaxSize > safe json int",
+        field: () => new EditorField({ id: "test", name: "test", maxSize: 2 ** 53 }),
+        expectErrors: ["maxSize"],
+      },
+    ];
 
   for (const s of scenarios) {
     test(s.name, () => {
@@ -160,7 +161,7 @@ describe("TestEditorFieldValidateSettings", () => {
 });
 
 describe("TestEditorFieldCalculateMaxBodySize", () => {
-  const scenarios: { field: EditorField; expected: number }[] = [
+  const scenarios: Array<{ field: EditorField; expected: number }> = [
     { field: new EditorField(), expected: DefaultEditorFieldMaxSize },
     { field: new EditorField({ maxSize: 10 }), expected: 10 },
   ];

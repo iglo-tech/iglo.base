@@ -11,12 +11,15 @@ export interface MultipartBody {
   headers: { "Content-Type": string };
 }
 
-export function multipart(data: Record<string, string>, ...fileFields: string[]): MultipartBody {
+export function multipart(
+  data: Record<string, string>,
+  ...fileFields: Array<string>
+): MultipartBody {
   const bytes = new Uint8Array(30);
   crypto.getRandomValues(bytes);
   const boundary = Buffer.from(bytes).toString("hex");
 
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   // write data fields
   for (const [k, v] of Object.entries(data)) {
     parts.push(`Content-Disposition: form-data; name="${escapeQuotes(k)}"\r\n\r\n${v}`);

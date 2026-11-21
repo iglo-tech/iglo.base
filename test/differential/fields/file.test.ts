@@ -132,7 +132,7 @@ function modelField(text: string): Field {
   return field;
 }
 
-function modelCollection(name: string, defs: FieldDef[]): TestCollection {
+function modelCollection(name: string, defs: Array<FieldDef>): TestCollection {
   const collection = newBaseCollection(name);
   for (const def of defs) {
     collection.fields.add(modelField(JSON.stringify(def)));
@@ -169,7 +169,7 @@ function responseFields(body: string): string {
   return body.slice(start, body.indexOf(`,"indexes":`, start));
 }
 
-const createdCollections: TestCollection[] = [];
+const createdCollections: Array<TestCollection> = [];
 
 // compares upstream's answer to a collection request with the model's
 async function checkCollection(body: string, collection: TestCollection): Promise<number> {
@@ -253,7 +253,7 @@ function contentBytes(content: Content): Uint8Array {
 }
 
 // the multipart body of the parts (Bun's FormData encoding)
-async function multipart(parts: Part[]): Promise<{ contentType: string; body: Uint8Array }> {
+async function multipart(parts: Array<Part>): Promise<{ contentType: string; body: Uint8Array }> {
   const form = new FormData();
   for (const part of parts) {
     if (part.length === 2) {
@@ -271,7 +271,7 @@ async function multipart(parts: Part[]): Promise<{ contentType: string; body: Ui
 
 // unique 10-letter markers in place of the random name parts: uppercase,
 // which normalized names never contain outside their extension
-const markers: string[] = [];
+const markers: Array<string> = [];
 const markerRandom: RandomSource = (length) => {
   let n = markers.length;
   let marker = "";
@@ -369,8 +369,8 @@ async function modelSubmit(
   }).formData();
 
   // RequestInfo.Body (the text values) and the file parts per key
-  const values = new Map<string, string[]>();
-  const files = new Map<string, globalThis.File[]>();
+  const values = new Map<string, Array<string>>();
+  const files = new Map<string, Array<globalThis.File>>();
   for (const [key, value] of form.entries()) {
     if (typeof value === "string") {
       values.set(key, [...(values.get(key) ?? []), value]);
@@ -385,7 +385,7 @@ async function modelSubmit(
 
   // recordDataFromRequest
   let result = replaceModifiers(record, info);
-  const uploadedFiles = new Map<string, File[]>();
+  const uploadedFiles = new Map<string, Array<File>>();
   for (const field of record.collection.fields) {
     if (!(field instanceof FileField)) {
       continue;
@@ -394,7 +394,7 @@ async function modelSubmit(
     for (const k of [baseKey, "+" + baseKey, baseKey + "+"]) {
       const parts = files.get(k) ?? [];
       if (parts.length > 0) {
-        const list: File[] = [];
+        const list: Array<File> = [];
         for (const part of parts) {
           list.push(await NewFileFromMultipart(part, { random: markerRandom }));
         }
@@ -404,7 +404,7 @@ async function modelSubmit(
   }
   if (uploadedFiles.size > 0) {
     for (const [k, list] of uploadedFiles) {
-      const uploaded: unknown[] = [];
+      const uploaded: Array<unknown> = [];
       if (info.get(k) !== undefined && !k.startsWith("+") && !k.endsWith("+") && !k.endsWith("-")) {
         uploaded.push(...toUniqueStringSlice(info.get(k)));
       }
@@ -474,12 +474,12 @@ function storeModel(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): Record<string, [string, unknown]> {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: Record<string, [string, unknown]> = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];
@@ -510,16 +510,16 @@ interface StoredRecord {
   columns: Record<string, [string, unknown]>;
 }
 
-const storedRecords: StoredRecord[] = [];
+const storedRecords: Array<StoredRecord> = [];
 let requests = 0;
 let storageRejections = 0;
 
 // the new uploads of the record's file fields
-function uploads(record: TestRecord): File[] {
-  const out: File[] = [];
+function uploads(record: TestRecord): Array<File> {
+  const out: Array<File> = [];
   for (const field of record.collection.fields) {
     if (field instanceof FileField) {
-      out.push(...(field.findGetter(field.getName() + ":unsaved")?.(record) as File[]));
+      out.push(...(field.findGetter(field.getName() + ":unsaved")?.(record) as Array<File>));
     }
   }
   return out;
@@ -539,7 +539,7 @@ async function submit(
   label: string,
   collection: TestCollection,
   record: TestRecord,
-  parts: Part[],
+  parts: Array<Part>,
 ): Promise<Record<string, unknown> | null> {
   const { contentType, body } = await multipart(parts);
   const errs = await modelSubmit(record, contentType, body);
@@ -618,7 +618,7 @@ function savedRecord(collection: TestCollection, saved: Record<string, unknown>)
 }
 
 // "$i" -> the i-th stored name of the key's field
-function resolveParts(parts: Part[], saved: Record<string, unknown>): Part[] {
+function resolveParts(parts: Array<Part>, saved: Record<string, unknown>): Array<Part> {
   return parts.map((part) => {
     if (part.length !== 2 || !/^\$\d+$/.test(part[1])) {
       return part;
@@ -629,7 +629,7 @@ function resolveParts(parts: Part[], saved: Record<string, unknown>): Part[] {
   });
 }
 
-function partsLabel(parts: Part[]): string {
+function partsLabel(parts: Array<Part>): string {
   return parts
     .map((p) => (p.length === 2 ? `${p[0]}=${p[1]}` : `${p[0]}@${p[1]}`))
     .join(" ")

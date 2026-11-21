@@ -79,7 +79,7 @@ export async function recordRequestOTP(e: RequestEvent): Promise<HandlerResult> 
 
   // limit the new OTP creations for a single user
   if (!e.app.isDev) {
-    let otps: OTP[];
+    let otps: Array<OTP>;
     try {
       otps = findAllOTPsByRecord(e.app, record);
     } catch (err) {

@@ -17,7 +17,7 @@ import { startUpstream } from "@test/support/upstream";
 
 const timeout = 60_000;
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -113,10 +113,10 @@ async function list(
   };
 }
 
-async function expectSameList(servers: [Server, Server], ids: string[]): Promise<void> {
+async function expectSameList(servers: [Server, Server], ids: Array<string>): Promise<void> {
   const [upstream, igloBase] = await Promise.all(servers.map((s) => list(s)));
   expect(igloBase).toEqual(upstream!);
-  const jobs = JSON.parse(upstream!.bytes) as { id: string }[];
+  const jobs = JSON.parse(upstream!.bytes) as Array<{ id: string }>;
   expect(jobs.map((j) => j.id)).toEqual(ids);
 }
 
@@ -147,11 +147,11 @@ function writeLogs(server: Server, rows: Record<string, Date>): void {
   db.close();
 }
 
-function logIds(server: Server, ids: string[]): string[] {
+function logIds(server: Server, ids: Array<string>): Array<string> {
   const db = new Database(join(server.dataDir, "auxiliary.db"), { readonly: true });
   const rows = db
     .query(`SELECT id FROM _logs WHERE id IN (${ids.map(() => "?").join()}) ORDER BY id`)
-    .all(...ids) as { id: string }[];
+    .all(...ids) as Array<{ id: string }>;
   db.close();
   return rows.map((r) => r.id);
 }

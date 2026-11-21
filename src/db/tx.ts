@@ -78,7 +78,7 @@ function runInTx(
 
 // TxAppInfo represents an active transaction context associated to an existing app instance.
 export class TxAppInfo {
-  private afterFuncs: ((txErr: unknown) => void)[] = [];
+  private afterFuncs: Array<(txErr: unknown) => void> = [];
 
   constructor(
     readonly parent: Databases,
@@ -97,7 +97,7 @@ export class TxAppInfo {
 
   // note: can be called only once because TxAppInfo is cleared
   runAfterFuncs(txErr: unknown): Error | null {
-    const errs: unknown[] = [];
+    const errs: Array<unknown> = [];
 
     for (const call of this.afterFuncs) {
       try {

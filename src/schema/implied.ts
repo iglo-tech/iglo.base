@@ -31,7 +31,7 @@ import { parseIndex } from "@/tools/dbutils/index";
 
 // upstream's implied indexes: the column, and the WHERE clause without its
 // quotes and spaces (initTokenKeyField: none; initEmailField: email != '')
-const impliedIndexes: readonly { column: string; where: string }[] = [
+const impliedIndexes: ReadonlyArray<{ column: string; where: string }> = [
   { column: "tokenKey", where: "" },
   { column: "email", where: "email!=''" },
 ];
@@ -60,8 +60,8 @@ export function isImpliedIndex(
 // The statements of a collection that the description holds: all of them,
 // without the implied ones.
 export function explicitIndexes(
-  statements: readonly string[],
+  statements: ReadonlyArray<string>,
   collection: { name: string; type: string },
-): string[] {
+): Array<string> {
   return statements.filter((statement) => !isImpliedIndex(statement, collection));
 }

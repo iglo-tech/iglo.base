@@ -33,7 +33,7 @@ const email = "test@example.com";
 const otpId = "a".repeat(15);
 
 // several prepare steps in order
-function all(...steps: ((ctx: PrepareContext) => void)[]): (ctx: PrepareContext) => void {
+function all(...steps: Array<(ctx: PrepareContext) => void>): (ctx: PrepareContext) => void {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -60,9 +60,9 @@ const unverified = setAuthRecordField("users", email, "verified", false);
 const withoutMFA = setMFA("users", false, "");
 
 function userVerified({ dataDir }: AfterContext): boolean {
-  const [row] = queryRows(dataDir, "SELECT verified FROM users WHERE id = ?", userId) as {
+  const [row] = queryRows(dataDir, "SELECT verified FROM users WHERE id = ?", userId) as Array<{
     verified: number;
-  }[];
+  }>;
   return Boolean(row?.verified);
 }
 

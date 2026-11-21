@@ -44,7 +44,7 @@ test("IdentifierMacros", () => {
 
 test("IdentifierMacros month and year ends", () => {
   // leap years, December and the 31st, as Go's AddDate(0, 1, -1) gives them
-  const cases: [Date, string, string][] = [
+  const cases: Array<[Date, string, string]> = [
     [new Date(Date.UTC(2024, 1, 29, 12)), "2024-02-29 23:59:59.999Z", "2024-02-28 12:00:00.000Z"],
     [
       new Date(Date.UTC(2023, 11, 31, 23, 59, 59, 999)),

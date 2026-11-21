@@ -12,7 +12,7 @@ import { join } from "node:path";
 //
 // It is an alternative to os.Rename() for the cases where we can't
 // rename/delete the src dir (see https://ganigeorgiev.com/pocketbase/discussions/2519).
-export function moveDirContent(src: string, dest: string, ...rootExclude: string[]): void {
+export function moveDirContent(src: string, dest: string, ...rootExclude: Array<string>): void {
   const entries = readdirSync(src);
 
   // make sure that the dest dir exist
@@ -26,8 +26,8 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: string
 
   const moved = new Map<string, string>();
 
-  const tryRollback = (): unknown[] => {
-    const errs: unknown[] = [];
+  const tryRollback = (): Array<unknown> => {
+    const errs: Array<unknown> = [];
 
     for (const [oldPath, newPath] of moved) {
       try {

@@ -36,7 +36,7 @@ const OTHER_EMAIL = "test2@example.com";
 function appCookies(browser: Browser): CookieAdapter {
   return {
     getAll: () => [...browser.jar].map(([name, value]) => ({ name, value })),
-    setAll: (list: CookieToSet[]) => {
+    setAll: (list: Array<CookieToSet>) => {
       for (const c of list) {
         if (c.options?.maxAge === 0) {
           browser.jar.delete(c.name);
@@ -154,8 +154,8 @@ async function signInAs(backend: string, browser: Browser, email: string): Promi
 }
 
 interface PageStatuses {
-  renew: number[];
-  realtime: number[];
+  renew: Array<number>;
+  realtime: Array<number>;
 }
 
 /**
@@ -206,7 +206,12 @@ async function openPage(
 }
 
 /** Creates a marker in the public collection and waits until the page has received it. */
-async function sentinel(env: SdkEnv, open: string, id: string, received: string[]): Promise<void> {
+async function sentinel(
+  env: SdkEnv,
+  open: string,
+  id: string,
+  received: Array<string>,
+): Promise<void> {
   await env.step(`create sentinel ${id}`, () =>
     env.superuser().collection(open).create({ id, title: "sentinel" }),
   );
@@ -264,8 +269,8 @@ describe("browser client", () => {
 
       // the renew route, in process, with the browser's cookies and origin
       const sessionCache = createSessionCache();
-      const renewStatuses: number[] = [];
-      const realtimeStatuses: number[] = [];
+      const renewStatuses: Array<number> = [];
+      const realtimeStatuses: Array<number> = [];
       const clock = manualClock(Date.now());
       const pageFetch = async (
         input: string | URL | Request,
@@ -300,7 +305,7 @@ describe("browser client", () => {
       expect(pb.authStore.isValid).toBe(true);
       expect(clock.count).toBe(1);
 
-      const seen: SeenEvent[] = [];
+      const seen: Array<SeenEvent> = [];
       await pb.collection(collection).subscribe("*", (e) => {
         seen.push(e as unknown as SeenEvent);
       });
@@ -386,7 +391,7 @@ describe("browser client", () => {
         readableCookie: true,
         cookies: {
           getAll: () => [...jar].map(([name, value]) => ({ name, value })),
-          setAll: (list: CookieToSet[]) => {
+          setAll: (list: Array<CookieToSet>) => {
             for (const c of list) {
               flags.push({ name: c.name, httpOnly: c.options?.httpOnly !== false });
               if (c.options?.maxAge === 0) {
@@ -420,7 +425,7 @@ describe("browser client", () => {
         expect(pb.authStore.isValid).toBe(true);
         expect(pb.authStore.record?.email).toBe(USER_EMAIL);
 
-        const seen: SeenEvent[] = [];
+        const seen: Array<SeenEvent> = [];
         await pb.collection(collection).subscribe("*", (e) => {
           seen.push(e as unknown as SeenEvent);
         });
@@ -456,8 +461,8 @@ describe("browser client", () => {
       const statuses: PageStatuses = { renew: [], realtime: [] };
       const pb = await openPage(env, browser, app, statuses);
 
-      const seen: string[] = [];
-      const received: string[] = [];
+      const seen: Array<string> = [];
+      const received: Array<string> = [];
       await pb.collection(guarded).subscribe("*", (e) => {
         seen.push((e as unknown as SeenEvent).record.id);
       });
@@ -513,8 +518,8 @@ describe("browser client", () => {
       const statuses: PageStatuses = { renew: [], realtime: [] };
       const pb = await openPage(env, browser, app, statuses);
 
-      const seen: string[] = [];
-      const received: string[] = [];
+      const seen: Array<string> = [];
+      const received: Array<string> = [];
       await pb.collection(collection).subscribe("*", (e) => {
         seen.push((e as unknown as SeenEvent).record.id);
       });
@@ -602,8 +607,8 @@ describe("browser client", () => {
       });
       const working = await createSuperuserClient({ url: env.url, token: superuserToken });
 
-      const statuses: number[] = [];
-      const cookieClears: number[] = [];
+      const statuses: Array<number> = [];
+      const cookieClears: Array<number> = [];
       const renew = async (superuser: Awaited<ReturnType<typeof createSuperuserClient>>) => {
         const res = await handleBrowserTokenRenew(
           browser.request(RENEW_URL, { method: "POST", headers: { origin: APP } }),

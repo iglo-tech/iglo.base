@@ -10,7 +10,7 @@ test("SimpleFieldResolver.UpdateQuery", () => {
   const r = newSimpleFieldResolver("test");
 
   // [fieldName, expectQuery]
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     // missing field (the query shouldn't change)
     ["", `SELECT "id" FROM "test"`],
     // unknown field (the query shouldn't change)
@@ -39,7 +39,7 @@ test("SimpleFieldResolver.Resolve", () => {
   const r = newSimpleFieldResolver("test", "^test_regex\\d+$", "Test columnify!", "data.test");
 
   // [fieldName, expectError, expectName]
-  const scenarios: [string, boolean, string][] = [
+  const scenarios: Array<[string, boolean, string]> = [
     ["", true, ""],
     [" ", true, ""],
     ["unknown", true, ""],

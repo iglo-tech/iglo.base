@@ -51,7 +51,7 @@ function escape(s: string): string {
 }
 
 // the messages sent since the test started
-function sent(): SinkMessage[] {
+function sent(): Array<SinkMessage> {
   return sharedSmtpSink().messages.filter((m) => m.received >= since);
 }
 

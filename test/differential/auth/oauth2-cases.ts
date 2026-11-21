@@ -101,7 +101,7 @@ function extraOf(extra: { [key: string]: unknown }, p: MockProvider): { [key: st
 }
 
 // the requests a provider got from the server, of one endpoint
-const requestsTo = (provider: MockProvider, path: string): MockRequest[] =>
+const requestsTo = (provider: MockProvider, path: string): Array<MockRequest> =>
   provider.requests.filter((r) => r.path === path);
 
 const newUserContent = [`"record":{`, `"token":"`, `"meta":{`, `"isNew":true`];
@@ -179,7 +179,7 @@ function withConfig(collection: Collection, change: (config: OAuth2ProviderConfi
   }
 }
 
-export function oauth2Cases(): Scenario[] {
+export function oauth2Cases(): Array<Scenario> {
   let provider: MockProvider;
   const capture = (p: MockProvider): void => {
     provider = p;
@@ -199,7 +199,7 @@ export function oauth2Cases(): Scenario[] {
           dataDir,
           "SELECT verified, tokenKey FROM users WHERE email = ?",
           "new@example.com",
-        ) as { verified: number; tokenKey: string }[];
+        ) as Array<{ verified: number; tokenKey: string }>;
         if (row?.verified !== 1 || row.tokenKey === "") {
           throw new Error(`unexpected row ${JSON.stringify(row)}`);
         }
@@ -1053,7 +1053,7 @@ export function oauth2Cases(): Scenario[] {
           ctx.dataDir,
           "SELECT id FROM users WHERE email = ?",
           "origin@example.com",
-        ) as { id: string }[];
+        ) as Array<{ id: string }>;
         await authOriginsCount(usersId, row?.id ?? "", 1)(ctx);
       },
     }),

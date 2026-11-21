@@ -17,7 +17,7 @@ export class MultiMatchSubquery implements Expression {
   fromTableName = "";
   fromTableAlias = "";
   valueIdentifier = "";
-  joins: Join[] = [];
+  joins: Array<Join> = [];
   params: Params = {};
 
   constructor(init: Partial<MultiMatchSubquery> = {}) {

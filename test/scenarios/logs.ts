@@ -82,7 +82,7 @@ async function expectNoLogs({ url }: AfterContext): Promise<void> {
   }
 }
 
-function guarded(method: string, url: string): Scenario[] {
+function guarded(method: string, url: string): Array<Scenario> {
   return [
     {
       name: "unauthorized",

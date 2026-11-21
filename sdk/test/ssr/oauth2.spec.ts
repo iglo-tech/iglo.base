@@ -35,7 +35,7 @@ type Route = (seen: Seen) => Response | Promise<Response>;
 
 /** A fetch that answers by `METHOD /path` and records every call. */
 function fakeIglo(routes: Record<string, Route>) {
-  const calls: Seen[] = [];
+  const calls: Array<Seen> = [];
   const fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input));
     const method = (init?.method ?? "GET").toUpperCase();
@@ -62,7 +62,7 @@ function json(status: number, body: unknown, date = new Date()): Response {
   });
 }
 
-const authMethods = (overrides: { enabled?: boolean; providers?: unknown[] } = {}) => ({
+const authMethods = (overrides: { enabled?: boolean; providers?: Array<unknown> } = {}) => ({
   password: { enabled: false, identityFields: [] },
   otp: { enabled: false, duration: 0 },
   mfa: { enabled: false, duration: 0 },

@@ -50,7 +50,7 @@ export interface UploaderOptions {
   signal?: AbortSignal | undefined;
 }
 
-function encodeQuery(values: [string, string][]): string {
+function encodeQuery(values: Array<[string, string]>): string {
   return values
     .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([k, v]) => `${k}=${encodeURIComponent(v).replaceAll("%20", "+")}`)
@@ -68,7 +68,7 @@ export class Uploader {
   readonly #signal: AbortSignal | undefined;
 
   #uploadId = "";
-  readonly #uploadedParts: MpPart[] = [];
+  readonly #uploadedParts: Array<MpPart> = [];
   #lastPartNumber = 0;
   #offset = 0;
 

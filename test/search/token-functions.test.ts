@@ -23,7 +23,7 @@ import { compareResults, createTestDB, tok } from "@test/search/support";
 
 interface Scenario {
   name: string;
-  args: Token[];
+  args: Array<Token>;
   resolver: ArgTokenResolverFunc;
   result: ResolverResult | null;
   expectErr: boolean;
@@ -76,7 +76,7 @@ describe("TestTokenFunctionsGeoDistance", () => {
     expect(TokenFunctions.has("geoDistance")).toBe(true);
   });
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     {
       name: "no args",
       args: [],
@@ -168,7 +168,7 @@ describe("TestTokenFunctionsGeoDistance", () => {
 describe("TestTokenFunctionsGeoDistanceExec", () => {
   const fn = registered("geoDistance");
 
-  const scenarios: ExecScenario[] = [
+  const scenarios: Array<ExecScenario> = [
     {
       name: "distinct points",
       coords: ["23.23033854945808", "42.713146090563384", "23.44920680886216", "42.7078484153991"],
@@ -222,7 +222,7 @@ describe("TestTokenFunctionsStrftime", () => {
     expect(TokenFunctions.has("strftime")).toBe(true);
   });
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     {
       name: "no args",
       args: [],

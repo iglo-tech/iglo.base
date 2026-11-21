@@ -28,7 +28,7 @@ export const defaultAsyncSleep: AsyncSleepFunc = (ms) => Bun.sleep(ms);
 export const defaultNow: NowFunc = () => performance.now();
 
 // default retries intervals (in ms)
-export const defaultRetryIntervals: readonly number[] = Object.freeze([
+export const defaultRetryIntervals: ReadonlyArray<number> = Object.freeze([
   50, 100, 150, 200, 300, 400, 500, 700, 1000,
 ]);
 

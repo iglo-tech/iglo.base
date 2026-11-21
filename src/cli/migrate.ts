@@ -46,7 +46,7 @@ const migrateLong = `Supported arguments are:
 function migrateCreate(
   dir: string,
   template: string | null,
-  args: string[],
+  args: Array<string>,
   ctx: CliContext,
 ): void {
   const [name] = args;
@@ -83,8 +83,8 @@ function migrateCreate(
 }
 
 // migrateCollectionsHandler
-function migrateCollections(app: App, dir: string, args: string[], ctx: CliContext): void {
-  let collections: Collection[];
+function migrateCollections(app: App, dir: string, args: Array<string>, ctx: CliContext): void {
+  let collections: Array<Collection>;
   try {
     collections = collectionQuery(app)
       .orderBy("created ASC")
@@ -97,7 +97,7 @@ function migrateCollections(app: App, dir: string, args: string[], ctx: CliConte
 }
 
 // MigrationsRunner.Run
-function run(app: App, list: readonly Migration[], args: string[], ctx: CliContext): void {
+function run(app: App, list: ReadonlyArray<Migration>, args: Array<string>, ctx: CliContext): void {
   initMigrationsTable(app.databases);
 
   const [cmd = "up"] = args;
@@ -165,11 +165,11 @@ function run(app: App, list: readonly Migration[], args: string[], ctx: CliConte
 // "transaction afterFunc errors" does.
 async function runAndWaitForFileDeletes(
   app: App,
-  list: readonly Migration[],
-  args: string[],
+  list: ReadonlyArray<Migration>,
+  args: Array<string>,
   ctx: CliContext,
 ): Promise<void> {
-  const afterTransaction: Promise<void>[] = [];
+  const afterTransaction: Array<Promise<void>> = [];
   let runErr: unknown = null;
   try {
     run({ ...app, afterTransaction }, list, args, ctx);
@@ -189,8 +189,8 @@ async function runAndWaitForFileDeletes(
 
 export async function runMigrateCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
-  list: readonly Migration[],
+  persistent: Array<FlagSpec>,
+  list: ReadonlyArray<Migration>,
   migrationsDir: string,
   ctx: CliContext,
   name: string,

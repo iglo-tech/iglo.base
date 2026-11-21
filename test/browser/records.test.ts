@@ -34,10 +34,10 @@ afterAll(async () => {
   await fx?.stop();
 });
 
-async function listRecords(): Promise<Record[]> {
+async function listRecords(): Promise<Array<Record>> {
   const res = await fx.api("/api/collections/posts/records");
   expect(res.status).toBe(200);
-  return ((await res.json()) as { items: Record[] }).items;
+  return ((await res.json()) as { items: Array<Record> }).items;
 }
 
 test("create a collection and a record with a file, edit it, list it, delete it", async () => {
@@ -55,7 +55,7 @@ test("create a collection and a record with a file, edit it, list it, delete it"
 
   const col = await fx.api("/api/collections/posts");
   expect(col.status).toBe(200);
-  const fields = ((await col.json()) as { fields: { name: string; type: string }[] }).fields;
+  const fields = ((await col.json()) as { fields: Array<{ name: string; type: string }> }).fields;
   expect(
     fields
       .filter((f) => !["id", "created", "updated"].includes(f.name))

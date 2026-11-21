@@ -18,7 +18,7 @@ export interface CollectionViewOptions {
 }
 
 // The JSON members of collectionViewOptions in the Go struct order.
-export function viewOptionsMembers(o: CollectionViewOptions): [string, unknown][] {
+export function viewOptionsMembers(o: CollectionViewOptions): Array<[string, unknown]> {
   return [["viewQuery", o.viewQuery]];
 }
 

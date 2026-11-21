@@ -14,7 +14,7 @@ function flagMessage(name: string): string {
 // log.Fatal output: "2006/01/02 15:04:05 <message>"
 const logLine = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} (.*)$/;
 
-async function expectSingleError(args: string[], message: string): Promise<void> {
+async function expectSingleError(args: Array<string>, message: string): Promise<void> {
   const result = await run(args);
   expect(result.exitCode).not.toBe(0);
   expect(result.stdout).toBe("");

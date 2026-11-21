@@ -9,7 +9,7 @@ import { JSONRaw } from "@/tools/types/json-raw";
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 
 describe("GeoPointAsMap", () => {
-  const scenarios: [string, GeoPoint, { lon: number; lat: number }][] = [
+  const scenarios: Array<[string, GeoPoint, { lon: number; lat: number }]> = [
     ["zero", new GeoPoint(), { lon: 0.0, lat: 0.0 }],
     ["non-zero", new GeoPoint(-10, 20.123), { lon: -10.0, lat: 20.123 }],
   ];
@@ -22,7 +22,7 @@ describe("GeoPointAsMap", () => {
 });
 
 describe("GeoPointStringAndValue", () => {
-  const scenarios: [string, GeoPoint, string][] = [
+  const scenarios: Array<[string, GeoPoint, string]> = [
     ["zero", new GeoPoint(), `{"lon":0,"lat":0}`],
     ["non-zero", new GeoPoint(-10, 20.123), `{"lon":-10,"lat":20.123}`],
   ];
@@ -40,7 +40,7 @@ describe("GeoPointStringAndValue", () => {
 describe("GeoPoint with a non-finite coordinate", () => {
   // json.Marshal keeps the bytes written before the error, and String
   // returns them (checked against the upstream binary)
-  const scenarios: [string, GeoPoint, string][] = [
+  const scenarios: Array<[string, GeoPoint, string]> = [
     ["lon NaN", new GeoPoint(NaN, 1), `{"lon"`],
     ["lat NaN", new GeoPoint(1, NaN), `{"lon":1,"lat"`],
     ["lon +Inf", new GeoPoint(Infinity, 1), `{"lon"`],
@@ -59,7 +59,7 @@ describe("GeoPoint with a non-finite coordinate", () => {
 });
 
 describe("GeoPointScan", () => {
-  const scenarios: [unknown, boolean, string][] = [
+  const scenarios: Array<[unknown, boolean, string]> = [
     [null, false, `{"lon":1,"lat":2}`],
     ["", false, `{"lon":1,"lat":2}`],
     [new JSONRaw(), false, `{"lon":1,"lat":2}`],
@@ -94,7 +94,7 @@ describe("GeoPointScan", () => {
 
 // Not in upstream's tests: Go json v2 struct decoding and float text.
 describe("GeoPointScan Go decoding", () => {
-  const scenarios: [string, unknown, boolean, string][] = [
+  const scenarios: Array<[string, unknown, boolean, string]> = [
     ["partial object keeps the other field", `{"lat":5}`, false, `{"lon":1,"lat":5}`],
     ["null is the zero value", `null`, false, `{"lon":0,"lat":0}`],
     ["null field is zero", `{"lon":null}`, false, `{"lon":0,"lat":2}`],

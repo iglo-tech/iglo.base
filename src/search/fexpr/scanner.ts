@@ -96,7 +96,7 @@ export const TokenComment: TokenType = "comment";
 // meta is Go's `Meta interface{}`: the argument tokens of a function token
 // (an empty array for Go's nil []Token), null (a nil interface) otherwise.
 export interface Token {
-  meta: Token[] | null;
+  meta: Array<Token> | null;
   type: TokenType;
   literal: string;
 }
@@ -108,7 +108,7 @@ export type ScanResult = [token: Token, err: Error | undefined];
 // scanner does not import the parser.
 export const ErrInvalidComment = new Error("invalid comment");
 
-function token(type: TokenType, literal: string, meta: Token[] | null = null): Token {
+function token(type: TokenType, literal: string, meta: Array<Token> | null = null): Token {
   return { meta, type, literal };
 }
 
@@ -539,7 +539,7 @@ export class Scanner {
   // extract its arguments and returns a function token with the found
   // Token arguments loaded in Token.Meta.
   private scanFunctionArgs(funcName: string, funcDepth: number): ScanResult {
-    const args: Token[] = [];
+    const args: Array<Token> = [];
 
     let expectComma = false;
     let isComma = false;

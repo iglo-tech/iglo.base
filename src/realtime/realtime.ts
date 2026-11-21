@@ -305,7 +305,7 @@ const realtimeSubscribeFormType = structOf([
 
 interface RealtimeSubscribeForm {
   ClientId: string;
-  Subscriptions: string[] | null;
+  Subscriptions: Array<string> | null;
 }
 
 function validateRealtimeSubscribeForm(form: RealtimeSubscribeForm): Error | null {

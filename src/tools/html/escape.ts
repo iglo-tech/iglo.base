@@ -14,7 +14,7 @@ import { entity, entity2, longestEntityWithoutSemicolon } from "@/tools/html/ent
 // These replacements permit compatibility with old numeric entities that
 // assumed Windows-1252 encoding.
 // https://html.spec.whatwg.org/multipage/syntax.html#consume-a-character-reference
-const replacementTable: readonly number[] = [
+const replacementTable: ReadonlyArray<number> = [
   0x20_ac, // First entry is what 0x80 should be replaced with.
   0x00_81,
   0x20_1a,
@@ -67,7 +67,7 @@ function runeLen(r: number): number {
 }
 
 // appendRune is utf8.AppendRune for runes that runeLen accepts.
-function appendRune(out: number[], r: number): void {
+function appendRune(out: Array<number>, r: number): void {
   if (r < 0x80) {
     out.push(r);
   } else if (r < 0x8_00) {
@@ -264,7 +264,7 @@ export function unescape(b: Uint8Array, attribute: boolean): Uint8Array {
       out = out.slice(0, n);
       reusingB = false;
     }
-    const repl: number[] = [];
+    const repl: Array<number> = [];
     appendRune(repl, r1);
     if (r2 !== 0) {
       appendRune(repl, r2);

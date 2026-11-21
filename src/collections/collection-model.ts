@@ -109,7 +109,7 @@ export class Collection
   fields = new FieldsList();
   // types.JSONArray[string]; a nil slice is an empty array (both marshal
   // as [])
-  indexes: string[] = [];
+  indexes: Array<string> = [];
   created = new DateTime();
   updated = new DateTime();
 
@@ -241,7 +241,7 @@ export class Collection
       type: (raw) => (this.type = decodeString(raw)),
       fields: (raw) => this.fields.unmarshalJSON(raw),
       indexes: (raw) =>
-        (this.indexes = (decodeAs(raw, sliceOf(stringType)) as string[] | undefined) ?? []),
+        (this.indexes = (decodeAs(raw, sliceOf(stringType)) as Array<string> | undefined) ?? []),
       created: (raw) => {
         const d = new DateTime();
         d.unmarshalJSON(raw);
@@ -257,7 +257,7 @@ export class Collection
   }
 
   // the members of baseCollection in the Go struct order
-  private baseMembers(): [string, unknown][] {
+  private baseMembers(): Array<[string, unknown]> {
     return [
       ["id", this.id],
       ["listRule", this.listRule],

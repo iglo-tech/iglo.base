@@ -39,7 +39,7 @@ export interface ListObject {
 
 // ListPage represents a page of results return from ListPaged.
 export interface ListPage {
-  objects: ListObject[];
+  objects: Array<ListObject>;
   // the key to continue listing after, or null at the end
   nextPageToken: string | null;
 }

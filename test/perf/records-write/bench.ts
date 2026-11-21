@@ -141,7 +141,7 @@ async function run(
   request: (i: number) => { method: string; path: string; body?: unknown },
   expected: number,
 ): Promise<{ rps: number; p50: number; p99: number }> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   let next = from;
   const end = from + n;
   const started = performance.now();
@@ -175,7 +175,7 @@ try {
   const dataDir = join(root, "pb_data");
   await build(dataDir, root);
 
-  const results: string[] = [];
+  const results: Array<string> = [];
   for (const target of ["upstream", "iglo.base"] as const) {
     const copy = join(root, target, "pb_data");
     copyDataDir(dataDir, copy);

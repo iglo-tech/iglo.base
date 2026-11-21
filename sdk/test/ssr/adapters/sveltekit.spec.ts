@@ -101,7 +101,7 @@ function makeEvent(
     headers,
     body: init.body,
   });
-  const sets: CookieWrite[] = [];
+  const sets: Array<CookieWrite> = [];
   const event: SvelteKitEvent & { locals: Partial<SvelteKitLocals> } = {
     request,
     url,
@@ -118,7 +118,7 @@ function makeEvent(
 
 /** The `resolve` of an app that answers `200 app` and records the events it saw. */
 function appResolve() {
-  const seen: SvelteKitEvent[] = [];
+  const seen: Array<SvelteKitEvent> = [];
   const resolve = async (event: SvelteKitEvent): Promise<Response> => {
     seen.push(event);
     return new Response("app", { status: 200 });

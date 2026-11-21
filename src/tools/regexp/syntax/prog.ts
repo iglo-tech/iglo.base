@@ -102,7 +102,7 @@ export class Inst {
   op: InstOp;
   out = 0; // all but InstMatch, InstFail
   arg = 0; // InstAlt, InstAltMatch, InstCapture, InstEmptyWidth
-  rune: number[] = [];
+  rune: Array<number> = [];
 
   constructor(op: InstOp) {
     this.op = op;
@@ -213,7 +213,7 @@ export class Inst {
   }
 
   toString(): string {
-    const b: string[] = [];
+    const b: Array<string> = [];
     dumpInst(b, this);
     return b.join("");
   }
@@ -223,12 +223,12 @@ const noMatch = -1;
 
 // A Prog is a compiled regular expression program.
 export class Prog {
-  inst: Inst[] = [];
+  inst: Array<Inst> = [];
   start = 0; // index of start instruction
   numCap = 0; // number of InstCapture insts in re
 
   toString(): string {
-    const b: string[] = [];
+    const b: Array<string> = [];
     dumpProg(b, this);
     return b.join("");
   }
@@ -293,7 +293,7 @@ export class Prog {
   }
 }
 
-function dumpProg(b: string[], p: Prog): void {
+function dumpProg(b: Array<string>, p: Prog): void {
   p.inst.forEach((i, j) => {
     let pc = String(j);
     if (pc.length < 3) {
@@ -308,7 +308,7 @@ function dumpProg(b: string[], p: Prog): void {
   });
 }
 
-function dumpInst(b: string[], i: Inst): void {
+function dumpInst(b: Array<string>, i: Inst): void {
   switch (i.op) {
     case InstAlt:
       b.push("alt -> ", String(i.out), ", ", String(i.arg));
@@ -352,7 +352,7 @@ function dumpInst(b: string[], i: Inst): void {
 
 // strconv.QuoteToASCII(string(runes)): string(runes) turns an invalid
 // rune into U+FFFD, which QuoteToASCII prints as �.
-function quoteToASCII(runes: readonly number[]): string {
+function quoteToASCII(runes: ReadonlyArray<number>): string {
   let out = '"';
   for (let r of runes) {
     if (!ValidRune(r)) {

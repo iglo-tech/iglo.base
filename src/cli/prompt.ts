@@ -8,7 +8,7 @@ import { toLower, trimSpace } from "@/collections/go-strings";
 
 // a line of standard input, without waiting for more than the line
 function readLine(): string {
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   const buffer = new Uint8Array(1);
   for (;;) {
     let read = 0;

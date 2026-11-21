@@ -3,7 +3,7 @@
 import { equal, lit } from "@/tools/mimetype/go-bytes";
 import { ftyp } from "@/tools/mimetype/internal/magic/magic";
 
-const sigs = (...s: string[]) => s.map(lit);
+const sigs = (...s: Array<string>) => s.map(lit);
 
 const avifSigs = sigs("avif", "avis");
 // AVIF matches an AV1 Image File Format still or animated.

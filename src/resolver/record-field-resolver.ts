@@ -74,11 +74,11 @@ export class RecordFieldResolver implements FieldResolver {
   baseCollection: Collection;
   requestInfo: RequestInfo | null;
   staticRequestInfo: { [key: string]: unknown };
-  allowedFields: string[];
-  joins: Join[];
+  allowedFields: Array<string>;
+  joins: Array<Join>;
   allowHiddenFields: boolean;
   // ---
-  listRuleJoins: RuleJoin[] = [];
+  listRuleJoins: Array<RuleJoin> = [];
   joinAliasSuffix = ""; // used for uniqueness in the flatten collection list rule join
   baseCollectionAlias = "";
   // the optional parse cache of the filters the resolver builds itself
@@ -127,12 +127,12 @@ export class RecordFieldResolver implements FieldResolver {
   }
 
   // AllowedFields returns a copy of the resolver's allowed fields.
-  getAllowedFields(): string[] {
+  getAllowedFields(): Array<string> {
     return [...this.allowedFields];
   }
 
   // SetAllowedFields replaces the resolver's allowed fields with the new ones.
-  setAllowedFields(newAllowedFields: readonly string[]): void {
+  setAllowedFields(newAllowedFields: ReadonlyArray<string>): void {
     this.allowedFields = [...newAllowedFields];
   }
 
@@ -258,7 +258,7 @@ export class RecordFieldResolver implements FieldResolver {
     return parseAndRun(fieldName, this);
   }
 
-  resolveStaticRequestField(...path: string[]): ResolverResult {
+  resolveStaticRequestField(...path: Array<string>): ResolverResult {
     if (path.length === 0) {
       throw new Error("at least one path key should be provided");
     }
@@ -460,7 +460,7 @@ function isPlainMap(v: unknown): v is { [key: string]: unknown } {
   return proto === Object.prototype || proto === null;
 }
 
-export function extractNestedVal(rawData: unknown, ...keys: string[]): unknown {
+export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unknown {
   if (keys.length === 0) {
     throw new Error("at least one key should be provided");
   }
@@ -496,7 +496,7 @@ export function extractNestedVal(rawData: unknown, ...keys: string[]): unknown {
   throw new Error(`expected map or array, got ${String(rawData)}`);
 }
 
-function mapVal(m: { [key: string]: unknown }, keys: string[]): unknown {
+function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   const key = keys[0] as string;
   if (!Object.hasOwn(m, key)) {
     throw new Error(`invalid key path - missing key ${goQuote(key)}`);
@@ -514,7 +514,7 @@ function mapVal(m: { [key: string]: unknown }, keys: string[]): unknown {
   return extractNestedVal(result, ...keys.slice(1));
 }
 
-function arrVal(m: readonly unknown[], keys: string[]): unknown {
+function arrVal(m: ReadonlyArray<unknown>, keys: Array<string>): unknown {
   const key = keys[0] as string;
   const idx = goAtoi(key);
   if (idx === null || idx < 0 || idx >= m.length) {

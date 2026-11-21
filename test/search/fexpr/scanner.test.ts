@@ -7,7 +7,7 @@ import { newScanner, TokenEOF } from "@/search/fexpr/scanner";
 import { printToken } from "@test/search/fexpr/go-print";
 
 // [text, [[expect error, %v of the token], ...]]
-const testScenarios: [string, [boolean, string][]][] = [
+const testScenarios: Array<[string, Array<[boolean, string]>]> = [
   // whitespace
   ["   ", [[false, "{<nil> whitespace    }"]]],
   [

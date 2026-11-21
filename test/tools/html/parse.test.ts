@@ -457,8 +457,8 @@ function testParseCase(
 }
 
 // Load the cases of each directory once, in the order the Go test visits them.
-function loadCases(): { file: string; index: number; test: ParseTestCase }[] {
-  const cases: { file: string; index: number; test: ParseTestCase }[] = [];
+function loadCases(): Array<{ file: string; index: number; test: ParseTestCase }> {
+  const cases: Array<{ file: string; index: number; test: ParseTestCase }> = [];
   for (const dir of testDataDirs) {
     const files = [
       ...new Bun.Glob("*.dat").scanSync({ cwd: `${import.meta.dir}/${dir}` }),

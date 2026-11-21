@@ -30,7 +30,7 @@ export interface FieldChange {
   // the type after the change, or the type it had when removed
   type: string;
   // what differs: option names, or "type" and "system"
-  details: string[];
+  details: Array<string>;
 }
 
 export interface IndexChange {
@@ -48,21 +48,21 @@ export interface CollectionChange {
   name: string;
   kind: "added" | "removed" | "changed";
   type: string;
-  fields: FieldChange[];
+  fields: Array<FieldChange>;
   // the listed fields are in another order
   fieldOrder: boolean;
   // rule keys (list, view, ...) that differ
-  rules: string[];
+  rules: Array<string>;
   // option names that differ; "query" for a view, "system" and "type" too
-  options: string[];
+  options: Array<string>;
   // the providers that differ, as lines that name the provider and the key
   // (src/schema/providers.ts); never a value
-  providers: string[];
-  indexes: IndexChange[];
+  providers: Array<string>;
+  indexes: Array<IndexChange>;
 }
 
 export interface SchemaChanges {
-  collections: CollectionChange[];
+  collections: Array<CollectionChange>;
 }
 
 // The key of an index by its definition: uniqueness, columns with their
@@ -85,7 +85,7 @@ export function indexKey(statement: string): string {
 }
 
 // the statements without a repeated definition, the first one kept
-export function distinctIndexes(statements: readonly string[]): string[] {
+export function distinctIndexes(statements: ReadonlyArray<string>): Array<string> {
   const seen = new Set<string>();
   return statements.filter((statement) => {
     const key = indexKey(statement);
@@ -100,7 +100,10 @@ export function distinctIndexes(statements: readonly string[]): string[] {
 // The statement the database keeps for a desired index: the stored statement
 // with the same definition when there is one (so its name stays), else the
 // desired statement.
-export function keepStoredIndexes(desired: readonly string[], stored: readonly string[]): string[] {
+export function keepStoredIndexes(
+  desired: ReadonlyArray<string>,
+  stored: ReadonlyArray<string>,
+): Array<string> {
   const byKey = new Map(stored.map((statement) => [indexKey(statement), statement]));
   return desired.map((statement) => byKey.get(indexKey(statement)) ?? statement);
 }
@@ -112,15 +115,15 @@ function sameRule(a: string | null | undefined, b: string | null | undefined): b
 }
 
 // the option keys of a field that differ
-function fieldOptionDiff(current: SchemaObject, desired: SchemaObject): string[] {
+function fieldOptionDiff(current: SchemaObject, desired: SchemaObject): Array<string> {
   const keys = new Set([...Object.keys(current), ...Object.keys(desired)]);
   return [...keys].filter((key) => !jsonEqual(current[key], desired[key])).toSorted();
 }
 
-function fieldChanges(current: SchemaCollection, desired: SchemaCollection): FieldChange[] {
+function fieldChanges(current: SchemaCollection, desired: SchemaCollection): Array<FieldChange> {
   const currentByName = new Map(current.fields.map((field) => [field.name, field]));
   const desiredByName = new Map(desired.fields.map((field) => [field.name, field]));
-  const changes: FieldChange[] = [];
+  const changes: Array<FieldChange> = [];
 
   for (const field of desired.fields) {
     const before = currentByName.get(field.name);
@@ -183,12 +186,12 @@ function fieldsReordered(current: SchemaCollection, desired: SchemaCollection): 
 // implied index (upstream's own, on an auth collection) is not compared, whether
 // the file lists it or not: the save restores a missing one and keeps the stored
 // one (D40).
-function indexChanges(current: SchemaCollection, desired: SchemaCollection): IndexChange[] {
+function indexChanges(current: SchemaCollection, desired: SchemaCollection): Array<IndexChange> {
   const currentIndexes = explicitIndexes(current.indexes, current);
   const desiredIndexes = explicitIndexes(desired.indexes, desired);
   const currentKeys = new Set(currentIndexes.map(indexKey));
   const desiredKeys = new Set(desiredIndexes.map(indexKey));
-  const changes: IndexChange[] = [];
+  const changes: Array<IndexChange> = [];
   for (const statement of desiredIndexes) {
     if (!currentKeys.has(indexKey(statement))) {
       changes.push({ kind: "added", statement });
@@ -203,8 +206,8 @@ function indexChanges(current: SchemaCollection, desired: SchemaCollection): Ind
 }
 
 // the option names of a collection that differ, with type, system and query
-function optionDiff(current: SchemaCollection, desired: SchemaCollection): string[] {
-  const diff: string[] = [];
+function optionDiff(current: SchemaCollection, desired: SchemaCollection): Array<string> {
+  const diff: Array<string> = [];
   if (current.type !== desired.type) {
     diff.push("type");
   }
@@ -223,7 +226,7 @@ function optionDiff(current: SchemaCollection, desired: SchemaCollection): strin
   return diff;
 }
 
-function ruleDiff(current: SchemaCollection, desired: SchemaCollection): string[] {
+function ruleDiff(current: SchemaCollection, desired: SchemaCollection): Array<string> {
   const keys = new Set([...Object.keys(current.rules), ...Object.keys(desired.rules)]);
   return [...keys]
     .filter((key) => !sameRule(current.rules[key], desired.rules[key]))
@@ -236,7 +239,7 @@ function ruleDiff(current: SchemaCollection, desired: SchemaCollection): string[
 export function diffSchemas(current: SchemaDescription, desired: SchemaDescription): SchemaChanges {
   const currentByName = new Map(current.collections.map((c) => [c.name, c]));
   const desiredByName = new Map(desired.collections.map((c) => [c.name, c]));
-  const collections: CollectionChange[] = [];
+  const collections: Array<CollectionChange> = [];
 
   for (const collection of desired.collections) {
     const before = currentByName.get(collection.name);
@@ -317,12 +320,12 @@ export function diffSchemas(current: SchemaDescription, desired: SchemaDescripti
 
 // The field changes that lose the values of a field: a removal or a
 // replacement (the old column goes).
-export function lostFields(change: CollectionChange): FieldChange[] {
+export function lostFields(change: CollectionChange): Array<FieldChange> {
   return change.fields.filter((f) => f.kind === "removed" || f.kind === "replaced");
 }
 
 // the fields that are new or change, which the record check validates
-export function checkedFields(change: CollectionChange): string[] {
+export function checkedFields(change: CollectionChange): Array<string> {
   return change.fields
     .filter((f) => f.kind === "added" || f.kind === "changed" || f.kind === "replaced")
     .map((f) => f.name);
@@ -331,9 +334,9 @@ export function checkedFields(change: CollectionChange): string[] {
 // the indexes a collection keeps on its own (upstream's implied ones), as
 // the stored statements
 export function impliedStatements(
-  stored: readonly string[],
+  stored: ReadonlyArray<string>,
   collection: SchemaCollection,
-): string[] {
+): Array<string> {
   return stored.filter((statement) => isImpliedIndex(statement, collection));
 }
 

@@ -14,7 +14,7 @@ export const MaxSortFieldLength = 255;
 export interface TestDB {
   db: DB;
   // the SQL of every query that returned data (dbx's QueryLogFunc)
-  calledQueries: string[];
+  calledQueries: Array<string>;
   close(): void;
 }
 

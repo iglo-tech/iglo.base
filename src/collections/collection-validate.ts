@@ -319,8 +319,8 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
       return ErrUnsupportedValueType;
     }
 
-    const ids: string[] = [];
-    const names: string[] = [];
+    const ids: Array<string> = [];
+    const names: Array<string> = [];
 
     for (const [i, field] of value.toArray().entries()) {
       if (existInSlice(field.getId(), ids)) {
@@ -539,7 +539,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
     if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
       return ErrUnsupportedValueType;
     }
-    const names = value as string[];
+    const names = value as Array<string>;
 
     if (names.length === 0) {
       return null; // nothing to check
@@ -611,7 +611,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   }
 
   checkIndexes = (value: unknown): Error | null => {
-    const indexes = Array.isArray(value) ? (value as string[]) : [];
+    const indexes = Array.isArray(value) ? (value as Array<string>) : [];
 
     if (this.newC.isView() && indexes.length > 0) {
       return NewError(

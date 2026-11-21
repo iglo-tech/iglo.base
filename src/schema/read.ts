@@ -46,12 +46,12 @@ export interface SchemaIssue {
 
 export type SchemaReadResult =
   | { ok: true; schema: SchemaDescription }
-  | { ok: false; errors: SchemaIssue[] };
+  | { ok: false; errors: Array<SchemaIssue> };
 
 type Segment = string | number;
 
 // the JSON path of a segment list, as "$.collections.posts.fields[0]"
-export function jsonPath(segments: readonly Segment[]): string {
+export function jsonPath(segments: ReadonlyArray<Segment>): string {
   let out = "$";
   for (const segment of segments) {
     if (typeof segment === "number") {
@@ -95,13 +95,13 @@ export function readSchema(text: string): SchemaReadResult {
 
 interface DraftCollection {
   collection: SchemaCollection;
-  segments: Segment[];
+  segments: Array<Segment>;
 }
 
 class Reader {
-  readonly errors: SchemaIssue[] = [];
+  readonly errors: Array<SchemaIssue> = [];
 
-  private add(segments: readonly Segment[], message: string): void {
+  private add(segments: ReadonlyArray<Segment>, message: string): void {
     this.errors.push({ path: jsonPath(segments), message });
   }
 
@@ -109,7 +109,7 @@ class Reader {
   // is kept); `what` names the duplicated thing in the message
   private members(
     node: JSONNode,
-    segments: readonly Segment[],
+    segments: ReadonlyArray<Segment>,
     what: string,
   ): Map<string, JSONNode> {
     const map = new Map<string, JSONNode>();
@@ -155,9 +155,9 @@ class Reader {
       this.add(["collections"], "must be an object keyed by collection name");
       return undefined;
     }
-    const drafts: DraftCollection[] = [];
+    const drafts: Array<DraftCollection> = [];
     for (const [name, value] of this.members(node, ["collections"], "collection name")) {
-      const segments: Segment[] = ["collections", name];
+      const segments: Array<Segment> = ["collections", name];
       const problem = collectionNameProblem(name);
       if (problem !== undefined) {
         this.add(segments, problem);
@@ -203,7 +203,7 @@ class Reader {
   private collection(
     name: string,
     node: JSONNode,
-    segments: Segment[],
+    segments: Array<Segment>,
   ): SchemaCollection | undefined {
     if (node.kind !== "object") {
       this.add(segments, "must be an object");
@@ -304,7 +304,7 @@ class Reader {
   private oauth2(
     node: JSONNode,
     base: SchemaObject,
-    path: Segment[],
+    path: Array<Segment>,
     collection: SchemaCollection,
   ): SchemaValue | undefined {
     if (node.kind !== "object") {
@@ -328,12 +328,12 @@ class Reader {
 
   // the providers a file lists: each one's values, and a reference for every
   // secret (D40, src/schema/providers.ts)
-  private providers(node: JSONNode, path: Segment[]): SchemaObject[] {
+  private providers(node: JSONNode, path: Array<Segment>): Array<SchemaObject> {
     if (node.kind !== "array") {
       this.add(path, "must be an array of OAuth2 providers");
       return [];
     }
-    const providers: SchemaObject[] = [];
+    const providers: Array<SchemaObject> = [];
     const names = new Set<string>();
     for (const [i, item] of node.items.entries()) {
       const provider = this.provider(item, [...path, i]);
@@ -351,7 +351,7 @@ class Reader {
     return providers;
   }
 
-  private provider(node: JSONNode, path: Segment[]): SchemaObject | undefined {
+  private provider(node: JSONNode, path: Array<Segment>): SchemaObject | undefined {
     if (node.kind !== "object") {
       this.add(path, "must be an object");
       return undefined;
@@ -413,7 +413,7 @@ class Reader {
   }
 
   // a secret: an environment reference only (a plain value is refused)
-  private secretReference(node: JSONNode, path: Segment[]): SchemaObject | undefined {
+  private secretReference(node: JSONNode, path: Array<Segment>): SchemaObject | undefined {
     if (node.kind === "string") {
       this.add(
         path,
@@ -440,7 +440,7 @@ class Reader {
   // given kind
   private referenceOr(
     node: JSONNode,
-    path: Segment[],
+    path: Array<Segment>,
     kind: "string" | "boolean" | "object",
   ): SchemaValue | undefined {
     const variable = referenceName(node);
@@ -472,7 +472,7 @@ class Reader {
 
   private rules(
     node: JSONNode,
-    path: Segment[],
+    path: Array<Segment>,
     defaults: Record<string, string | null>,
   ): Record<string, string | null> {
     const rules = { ...defaults };
@@ -503,15 +503,15 @@ class Reader {
   // the fields a file lists, in the order it lists them
   private fields(
     node: JSONNode,
-    path: Segment[],
+    path: Array<Segment>,
     collectionName: string,
     defaults: SchemaCollection,
-  ): SchemaField[] {
+  ): Array<SchemaField> {
     if (node.kind !== "object") {
       this.add(path, "must be an object keyed by field name");
       return [];
     }
-    const fields: SchemaField[] = [];
+    const fields: Array<SchemaField> = [];
     for (const [name, value] of this.members(node, path, "field name")) {
       const fieldPath = [...path, name];
       const problem = fieldNameProblem(name);
@@ -529,7 +529,10 @@ class Reader {
 
   // the fields the file leaves out and the file lists, in stored order: the
   // missing leading system fields first, then the listed fields
-  private withImpliedFields(listed: SchemaField[], defaults: SchemaCollection): SchemaField[] {
+  private withImpliedFields(
+    listed: Array<SchemaField>,
+    defaults: SchemaCollection,
+  ): Array<SchemaField> {
     const listedNames = new Set(listed.map((field) => field.name));
     const implied = defaults.fields
       .slice(0, impliedFieldCount(defaults))
@@ -540,7 +543,7 @@ class Reader {
   private field(
     name: string,
     node: JSONNode,
-    path: Segment[],
+    path: Array<Segment>,
     collectionName: string,
     defaults: SchemaCollection,
   ): SchemaField | undefined {
@@ -616,7 +619,7 @@ class Reader {
   // the value of a JSON node, checked against the shape of its default and
   // merged onto it (an object keeps the default's members the file leaves
   // out)
-  private value(node: JSONNode, base: SchemaValue, path: Segment[]): SchemaValue | undefined {
+  private value(node: JSONNode, base: SchemaValue, path: Array<Segment>): SchemaValue | undefined {
     if (isPlainObject(base)) {
       if (node.kind !== "object") {
         this.add(path, "must be an object");
@@ -664,7 +667,7 @@ class Reader {
     return undefined;
   }
 
-  private string(node: JSONNode, path: Segment[]): string | undefined {
+  private string(node: JSONNode, path: Array<Segment>): string | undefined {
     if (node.kind === "string") {
       return node.value;
     }
@@ -672,12 +675,12 @@ class Reader {
     return undefined;
   }
 
-  private stringArray(node: JSONNode, path: Segment[]): string[] | undefined {
+  private stringArray(node: JSONNode, path: Array<Segment>): Array<string> | undefined {
     if (node.kind !== "array") {
       this.add(path, "must be an array of strings");
       return undefined;
     }
-    const out: string[] = [];
+    const out: Array<string> = [];
     for (const [i, item] of node.items.entries()) {
       if (item.kind === "string") {
         out.push(item.value);
@@ -690,7 +693,7 @@ class Reader {
 }
 
 function isCollectionType(value: string): value is CollectionType {
-  return (collectionTypes as readonly string[]).includes(value);
+  return (collectionTypes as ReadonlyArray<string>).includes(value);
 }
 
 function isAuthOption(key: string): boolean {

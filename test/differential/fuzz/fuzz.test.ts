@@ -40,7 +40,7 @@ afterAll(async () => {
 
 describe("fixed suite", () => {
   const statuses = new Map<string, number>();
-  for (const c of [...fixed, ...boundaries] as FixedCase[]) {
+  for (const c of [...fixed, ...boundaries] as Array<FixedCase>) {
     test(c.name, async () => {
       const result = await runCase(servers, toCase(c));
       statuses.set(c.name, result.up?.status ?? 0);
@@ -64,7 +64,7 @@ const classify = (collection: string, sort: string | null): SortClass =>
 const compare = (c: FuzzCase, up: Outcome, ig: Outcome, send?: Send): Promise<Comparison> =>
   compareOutcomes(servers.model, c, up, ig, send ?? sender(servers, c));
 
-function requests(model: Model): string[] {
+function requests(model: Model): Array<string> {
   return Array.from({ length: 1000 }, (_, n) => {
     const c = generateCase(model, 1001, n);
     return `${c.who} ${requestPath(c)}`;
@@ -134,7 +134,7 @@ describe("sort classification", () => {
   });
 });
 
-const list = (ids: string[], totalItems = ids.length, page = 1, perPage = 30): Outcome => ({
+const list = (ids: Array<string>, totalItems = ids.length, page = 1, perPage = 30): Outcome => ({
   status: 200,
   body: { page, perPage, totalItems, totalPages: 1, items: ids.map((id) => ({ id })) },
 });
@@ -142,7 +142,7 @@ const list = (ids: string[], totalItems = ids.length, page = 1, perPage = 30): O
 const errorOutcome = (message: string): Outcome => ({ status: 400, body: { message } });
 
 // the answer of a real server with one list replaced by another
-function replaced(body: unknown, ids: string[]): Outcome {
+function replaced(body: unknown, ids: Array<string>): Outcome {
   return { status: 200, body: { ...(body as object), items: ids.map((id) => ({ id })) } };
 }
 

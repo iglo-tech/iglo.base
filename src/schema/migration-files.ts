@@ -58,7 +58,7 @@ export function schemaMigrationsDir(schemaPath: string, given: string | undefine
 export async function loadSchemaMigrationsFor(
   schemaFile: string,
   given: string | undefined,
-): Promise<SchemaMigration[]> {
+): Promise<Array<SchemaMigration>> {
   return loadSchemaMigrations(schemaMigrationsDir(schemaFile, given), given !== undefined);
 }
 
@@ -75,7 +75,7 @@ export class MigrationFileError extends Error {
 export async function loadSchemaMigrations(
   dir: string,
   named: boolean,
-): Promise<SchemaMigration[]> {
+): Promise<Array<SchemaMigration>> {
   if (!existsSync(dir) || !statSync(dir).isDirectory()) {
     if (named) {
       throw new MigrationFileError(
@@ -87,7 +87,7 @@ export async function loadSchemaMigrations(
   const files = readdirSync(dir)
     .filter((name) => name.endsWith(".ts"))
     .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const migrations: SchemaMigration[] = [];
+  const migrations: Array<SchemaMigration> = [];
   for (const file of files) {
     if (!migrationFilePattern.test(file)) {
       throw new MigrationFileError(
@@ -147,7 +147,7 @@ function importMetaOf(path: string): Record<string, string> {
 
 // each message of a failed bundle, with its position: the file, line and column
 // (a message without one names the migration file)
-function buildFailure(logs: readonly (BuildMessage | ResolveMessage)[], path: string): string {
+function buildFailure(logs: ReadonlyArray<BuildMessage | ResolveMessage>, path: string): string {
   if (logs.length === 0) {
     return `the bundle of ${path} failed`;
   }

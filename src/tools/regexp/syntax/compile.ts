@@ -315,7 +315,7 @@ class compiler {
     return f;
   }
 
-  rune(r: number[], flags: Flags): frag {
+  rune(r: Array<number>, flags: Flags): frag {
     const f = this.inst(InstRune);
     f.nullable = false;
     const i = this.p.inst[f.i] as Inst;

@@ -87,12 +87,12 @@ function formatsAsItself(s: string): boolean {
 
 interface Field {
   name: string;
-  mimeTypes: string[];
+  mimeTypes: Array<string>;
 }
 
-function fieldsFor(m: MIME): Field[] {
+function fieldsFor(m: MIME): Array<Field> {
   const [base] = parseMediaType(m.string());
-  const ancestors: string[] = [];
+  const ancestors: Array<string> = [];
   for (let p = m.parent(); p !== null; p = p.parent()) {
     ancestors.push(p.string());
   }
@@ -131,8 +131,8 @@ function serialized<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function check(sample: Sample, i: number): Promise<string[]> {
-  const problems: string[] = [];
+async function check(sample: Sample, i: number): Promise<Array<string>> {
+  const problems: Array<string> = [];
   const m = detect(sample.data);
   const fields = fieldsFor(m);
   const name = `m${i}`;
@@ -211,7 +211,7 @@ async function check(sample: Sample, i: number): Promise<string[]> {
 
 test("uploads are accepted and rejected by mimeTypes as iglo.base's detection predicts", async () => {
   expect(corpus.length).toBeGreaterThanOrEqual(200);
-  const problems: string[] = [];
+  const problems: Array<string> = [];
   let next = 0;
   const worker = async () => {
     while (next < corpus.length) {

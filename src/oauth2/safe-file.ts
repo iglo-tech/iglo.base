@@ -38,13 +38,13 @@ export interface SafeFileOptions {
   // overrides isAllowedAddress
   isAllowedAddress?: (address: string) => boolean;
   // overrides the name resolution
-  lookupAddresses?: (host: string) => Promise<string[]>;
+  lookupAddresses?: (host: string) => Promise<Array<string>>;
   timeoutMs?: number;
   // a certificate authority to trust
   ca?: string;
 }
 
-function parseIPv4(address: string): number[] | null {
+function parseIPv4(address: string): Array<number> | null {
   const parts = address.split(".");
   if (parts.length !== 4 || !parts.every((p) => /^[0-9]{1,3}$/.test(p) && Number(p) <= 255)) {
     return null;
@@ -52,13 +52,13 @@ function parseIPv4(address: string): number[] | null {
   return parts.map(Number);
 }
 
-function groups(part: string): number[] {
+function groups(part: string): Array<number> {
   return part === "" ? [] : part.split(":").map((g) => parseInt(g, 16));
 }
 
 // the 16 bytes of an IPv6 address; null for anything else (a zone is not
 // part of net.ParseIP's input)
-function parseIPv6(address: string): number[] | null {
+function parseIPv6(address: string): Array<number> | null {
   if (isIP(address) !== 6 || address.includes("%")) {
     return null;
   }
@@ -120,7 +120,7 @@ export function isAllowedAddress(address: string): boolean {
   );
 }
 
-async function resolve(host: string, opts: SafeFileOptions): Promise<string[]> {
+async function resolve(host: string, opts: SafeFileOptions): Promise<Array<string>> {
   if (isIP(host) !== 0) {
     return [host];
   }
@@ -136,7 +136,7 @@ async function resolveUntilDeadline(
   host: string,
   signal: AbortSignal,
   opts: SafeFileOptions,
-): Promise<string[]> {
+): Promise<Array<string>> {
   signal.throwIfAborted();
   return Promise.race([
     resolve(host, opts),

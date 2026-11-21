@@ -27,11 +27,11 @@ import { type Pending, caseTest, expectValidationErrors } from "@test/collection
 interface Scenario {
   name: string;
   collection: (app: TestCollectionsApp) => Collection;
-  expectedErrors: string[];
+  expectedErrors: Array<string>;
   pending?: Pending;
 }
 
-const scenarios: Scenario[] = [
+const scenarios: Array<Scenario> = [
   {
     name: "empty collection",
     collection: () => new Collection(),

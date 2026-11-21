@@ -23,7 +23,7 @@ const modifiers = new Map<string, ModifierFactoryFunc>([
   ],
 ]);
 
-const searchItems = (): unknown[] => [
+const searchItems = (): Array<unknown> => [
   { a: 11, b: 11, c: "test1" },
   { a: 22, b: 22, c: "test2" },
 ];

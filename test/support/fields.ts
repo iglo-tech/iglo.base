@@ -45,9 +45,9 @@ export function crc32Checksum(str: string): string {
 
 // core/fields_list.go FieldsList: the methods the tests use
 export class TestFieldsList implements FieldsListReader {
-  private list: Field[] = [];
+  private list: Array<Field> = [];
 
-  constructor(...fields: Field[]) {
+  constructor(...fields: Array<Field>) {
     this.add(...fields);
   }
 
@@ -70,7 +70,7 @@ export class TestFieldsList implements FieldsListReader {
   // Add adds one or more fields to the list, replacing a field with the
   // same id (or, for a field without id, the same name) in place; a field
   // without id gets "<type><crc32 of name>".
-  add(...fields: Field[]): void {
+  add(...fields: Array<Field>): void {
     for (const f of fields) {
       this.addOne(f);
     }
@@ -331,7 +331,7 @@ export class TestApp implements FieldApp {
       .row();
     const [id, name, type, fieldsJSON] = row as [string, string, string, string];
     const fields = new TestFieldsList();
-    for (const data of unmarshal(fieldsJSON, sliceOf(anyType)) as Record<string, unknown>[]) {
+    for (const data of unmarshal(fieldsJSON, sliceOf(anyType)) as Array<Record<string, unknown>>) {
       const factory = fieldFactory(String(data.type));
       if (factory === undefined) {
         continue;
@@ -407,7 +407,10 @@ export function noDBApp(clock: Clock = { now: () => new Date() }): FieldApp {
 
 // tests.TestValidationErrors: err is validation.Errors with exactly the
 // expected keys (or null for none)
-export function expectValidationErrors(err: Error | null, expectedKeys: readonly string[]): void {
+export function expectValidationErrors(
+  err: Error | null,
+  expectedKeys: ReadonlyArray<string>,
+): void {
   if (err !== null && !(err instanceof Errors)) {
     throw new Error(`expected validation Errors, got ${err.name}: ${err.message}`);
   }
@@ -446,7 +449,7 @@ export function interceptorArgs(
         return () => target.collection.id + "/" + target.id;
       }
       const v: unknown = Reflect.get(target, prop, target);
-      return typeof v === "function" ? (v as (...args: unknown[]) => unknown).bind(target) : v;
+      return typeof v === "function" ? (v as (...args: Array<unknown>) => unknown).bind(target) : v;
     },
     set(target, prop, value) {
       return Reflect.set(target, prop, value, target);

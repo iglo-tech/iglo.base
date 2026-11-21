@@ -98,7 +98,7 @@ interface UpdateQueryScenario {
   expectQuery: string;
 }
 
-const updateQueryScenarios: UpdateQueryScenario[] = [
+const updateQueryScenarios: Array<UpdateQueryScenario> = [
   {
     name: "none relation field (with all default operators)",
     collectionIdOrName: "demo4",
@@ -697,7 +697,7 @@ describe("TestRecordFieldResolverResolveCollectionFields", () => {
   });
 
   // [fieldName, expectError, expectName]
-  const scenarios: [string, boolean, string][] = [
+  const scenarios: Array<[string, boolean, string]> = [
     ["", true, ""],
     [" ", true, ""],
     ["unknown", true, ""],
@@ -881,7 +881,7 @@ describe("TestRecordFieldResolverResolveStaticRequestInfoFields", () => {
   });
 
   // [fieldName, expectError, expectParamValue (encoded json)]
-  const scenarios: [string, boolean, string][] = [
+  const scenarios: Array<[string, boolean, string]> = [
     ["@request", true, ""],
     ["@request.invalid format", true, ""],
     ["@request.invalid_format2!", true, ""],

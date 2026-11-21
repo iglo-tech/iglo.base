@@ -8,7 +8,7 @@ import { raw } from "@test/tools/mimetype/go-literal";
 // len() of a Go string: its byte length.
 const goLen = (s: string): number => raw(s).length;
 
-const testcases: { name: string; in: string; limit: number; expected: boolean }[] = [
+const testcases: Array<{ name: string; in: string; limit: number; expected: boolean }> = [
   // Minimum valid CSV: 2 rows and 2 columns.
   { name: "two rows two cols", in: "a,b\nc,d", limit: 0, expected: true },
   { name: "two rows three cols", in: "a,b,c\n1,2,3", limit: 0, expected: true },

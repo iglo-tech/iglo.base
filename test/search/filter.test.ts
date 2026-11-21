@@ -24,7 +24,7 @@ function newDB(): DB {
 // the SQL dbx logs for `SELECT * WHERE expr` (with the params inlined)
 function loggedSelect(expr: Expression): string {
   const db = newDB();
-  const calledQueries: string[] = [];
+  const calledQueries: Array<string> = [];
   db.queryLogFunc = (_ms, sql) => calledQueries.push(sql);
   db.execLogFunc = (_ms, sql) => calledQueries.push(sql);
   try {
@@ -52,7 +52,7 @@ describe("FilterData.BuildExpr", () => {
   );
 
   // [name, filterData, expectError, expectPattern]
-  const scenarios: [string, FilterData, boolean, string][] = [
+  const scenarios: Array<[string, FilterData, boolean, string]> = [
     ["empty", "", true, ""],
     ["invalid format", "(test1 > 1", true, ""],
     ["invalid operator", "test1 + 123", true, ""],
@@ -176,7 +176,7 @@ test("FilterData.BuildExpr with params", () => {
 		test13 = {:test13}
 	`;
 
-  const replacements: Params[] = [
+  const replacements: Array<Params> = [
     { test1: true },
     { test2: false },
     { test3: 123.456 },
@@ -228,7 +228,7 @@ describe("FilterData.BuildExprWithLimit", () => {
   const resolver = newSimpleFieldResolver("^\\w+$");
 
   // [limit, filter, expectError]
-  const scenarios: [number, FilterData, boolean][] = [
+  const scenarios: Array<[number, FilterData, boolean]> = [
     [1, "1 = 1", false],
     [0, "1 = 1", true], // new cache entry should be created
     [2, "1 = 1 || 1 = 1", false],
@@ -276,7 +276,7 @@ test("Like params wrapping", () => {
 		test13 ~ {:p13}
 	`;
 
-  const replacements: Params[] = [
+  const replacements: Array<Params> = [
     { p1: String.raw`abc` },
     { p2: String.raw`ab%c` },
     { p3: String.raw`ab\%c` },
@@ -304,7 +304,7 @@ test("Like params wrapping", () => {
 describe("bound param types", () => {
   const resolver = newSimpleFieldResolver("test1");
 
-  function boundParams(filter: FilterData): unknown[] {
+  function boundParams(filter: FilterData): Array<unknown> {
     const params: Params = {};
     filterBuildExpr(filter, resolver, { clock }).build(newDB(), params);
     return Object.values(params);
@@ -346,7 +346,7 @@ describe("number tokens against a TEXT column", () => {
   const resolver = newSimpleFieldResolver("test1");
   const values = ["1", "1.0", "10", "5", "5.5", "a"];
 
-  function matching(filter: FilterData): string[] {
+  function matching(filter: FilterData): Array<string> {
     const db = newDB();
     db.newQuery("CREATE TABLE t (test1 TEXT)").execute();
     for (const v of values) {
@@ -356,7 +356,7 @@ describe("number tokens against a TEXT column", () => {
     return db.select("test1").from("t").where(expr).orderBy("test1").column<string>();
   }
 
-  const scenarios: [FilterData, string[]][] = [
+  const scenarios: Array<[FilterData, Array<string>]> = [
     ["test1 = 1", ["1.0"]],
     ["test1 = 1.0", ["1.0"]],
     ["test1 = 5.5", ["5.5"]],

@@ -68,8 +68,8 @@ interface ServerPair {
   igloBase: RunningServer;
 }
 
-const roots: string[] = [];
-const pairs: ServerPair[] = [];
+const roots: Array<string> = [];
+const pairs: Array<ServerPair> = [];
 
 async function startPair(sourceDir: string): Promise<ServerPair> {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-read-"));
@@ -92,7 +92,7 @@ async function compareCase(
   pair: ServerPair,
   c: ReadCase,
   authorization: string,
-): Promise<{ status: number; differences: string[] }> {
+): Promise<{ status: number; differences: Array<string> }> {
   const headers: Record<string, string> = { ...c.headers };
   if (authorization !== "") {
     headers["Authorization"] = authorization;
@@ -141,7 +141,7 @@ describe("fixture", () => {
   }, 60_000);
 
   for (const c of fixtureCases) {
-    for (const who of c.as ?? (Object.keys(fixtureTokens) as Identity[])) {
+    for (const who of c.as ?? (Object.keys(fixtureTokens) as Array<Identity>)) {
       test(`${c.name} (${who})`, async () => {
         const result = await compareCase(pair, c, fixtureTokens[who]);
         expect(result.differences).toEqual([]);
@@ -206,7 +206,7 @@ describe("fresh install", () => {
       const collectionIds = new Map<string, string>();
       const readIds = async (): Promise<void> => {
         const list = (await api("GET", "/api/collections?perPage=200")) as {
-          items: { id: string; name: string }[];
+          items: Array<{ id: string; name: string }>;
         };
         for (const item of list.items) {
           collectionIds.set(item.name, item.id);
@@ -226,7 +226,7 @@ describe("fresh install", () => {
           await api("POST", "/api/collections", step.create(ids));
         } else if (step.addFields !== undefined) {
           const current = (await api("GET", `/api/collections/${step.addFields.collection}`)) as {
-            fields: object[];
+            fields: Array<object>;
           };
           await api("PATCH", `/api/collections/${step.addFields.collection}`, {
             fields: [...current.fields, ...step.addFields.fields(ids)],
@@ -279,7 +279,7 @@ describe("fresh install", () => {
     pair = await startPair(dataDir);
   }, 300_000);
 
-  const identities: FreshIdentity[] = ["guest", "alice", "bob", "carol", "superuser"];
+  const identities: Array<FreshIdentity> = ["guest", "alice", "bob", "carol", "superuser"];
   for (const c of [...ruleCases(), ...freshCases]) {
     for (const who of c.as ?? identities) {
       test(`${c.name} (${who})`, async () => {

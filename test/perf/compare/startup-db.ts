@@ -26,14 +26,14 @@ if (!dataDir) {
 mkdirSync(dataDir, { recursive: true });
 await upsertSuperuser(dataDir, repoRoot, "bench@example.com", "1234567890");
 const server = await startUpstreamServer(dataDir, repoRoot);
-const names: string[] = [];
+const names: Array<string> = [];
 const ids: Record<string, string> = {};
 try {
   const api = apiClient(server.url);
   await api.loginSuperuser("bench@example.com", "1234567890");
   for (let i = 0; i < 20; i++) {
     const name = `coll${i}`;
-    const fields: Record<string, unknown>[] = [
+    const fields: Array<Record<string, unknown>> = [
       { name: "title", type: "text", required: true, max: 200 },
       { name: "body", type: "editor" },
       { name: "views", type: "number" },
@@ -81,7 +81,7 @@ db.transaction(() => {
   for (let i = 0; i < 20; i++) {
     const name = names[i]!;
     const cols = (
-      db.query(`PRAGMA table_info(${name})`).all() as { name: string; type: string }[]
+      db.query(`PRAGMA table_info(${name})`).all() as Array<{ name: string; type: string }>
     ).map((c) => c.name);
     const ph = cols.map(() => "?").join(",");
     const stmt = db.prepare(

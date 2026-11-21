@@ -133,7 +133,7 @@ export function errorsIs(err: unknown, target: unknown): boolean {
 // errors.As: the first error in err's `cause` chain that is an instance of type.
 export function errorsAs<E extends Error>(
   err: unknown,
-  type: abstract new (...args: never[]) => E,
+  type: abstract new (...args: Array<never>) => E,
 ): E | undefined {
   for (let current: unknown = err; current !== undefined && current !== null;) {
     if (current instanceof type) {

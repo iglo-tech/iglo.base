@@ -43,7 +43,7 @@ interface Subcommand {
   name: string;
   example: string;
   short: string;
-  run(app: App, args: string[], ctx: CliContext): Promise<void>;
+  run(app: App, args: Array<string>, ctx: CliContext): Promise<void>;
 }
 
 function errorMessage(err: unknown): string {
@@ -63,7 +63,7 @@ function colored(ctx: CliContext, codes: string, text: string): void {
 export const green = (ctx: CliContext, text: string): void => colored(ctx, "32", `${text}\n`);
 const yellow = (ctx: CliContext, text: string): void => colored(ctx, "33", `${text}\n`);
 
-const subcommands: Subcommand[] = [
+const subcommands: Array<Subcommand> = [
   {
     name: "upsert",
     example: "superuser upsert test@example.com 1234567890",
@@ -293,7 +293,7 @@ const bootstrapSkipFlags = new Set(["-h", "--help", "-v", "--version"]);
 // command line.
 export async function runSuperuserCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
 ): Promise<void> {

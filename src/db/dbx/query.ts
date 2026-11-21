@@ -136,11 +136,11 @@ export interface ExecResult {
 // (a DB connection or a transaction).
 export interface Executor {
   // Exec executes a SQL statement (or several, separated by semicolons)
-  exec(sql: string, args: SQLQueryBindings[]): ExecResult;
+  exec(sql: string, args: Array<SQLQueryBindings>): ExecResult;
   // Query executes a query that returns rows. With `own`, the rows get a
   // statement of their own, so other queries can run while they are read;
   // otherwise a single statement may be the connection's cached one.
-  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows;
+  query(sql: string, args: Array<SQLQueryBindings>, own: boolean): Rows;
   // Prepare creates a prepared statement that the caller closes
   prepare(sql: string): Stmt;
   // Reads the result of a query that returns rows on another connection
@@ -153,7 +153,7 @@ export interface Executor {
 export interface AsyncReader {
   read(
     sql: string,
-    args: SQLQueryBindings[],
+    args: Array<SQLQueryBindings>,
     mode: ReadMode,
     deadline: Deadline | null,
     exactIntegers?: boolean,
@@ -216,7 +216,7 @@ export class Deadline {
 // runs.
 export class Stmt {
   private closed = false;
-  private readonly parts: ScriptPart[];
+  private readonly parts: Array<ScriptPart>;
   private readonly single: Statement | null = null;
 
   // guard runs before each execution: a transaction's statement refuses to run
@@ -235,13 +235,13 @@ export class Stmt {
     }
   }
 
-  exec(args: SQLQueryBindings[]): ExecResult {
+  exec(args: Array<SQLQueryBindings>): ExecResult {
     this.checkClosed();
     this.guard?.();
     return execStatements(this.conn, this.parts, args, this.single);
   }
 
-  query(args: SQLQueryBindings[]): Rows {
+  query(args: Array<SQLQueryBindings>): Rows {
     this.checkClosed();
     this.guard?.();
     return queryStatements(this.conn, this.parts, args, this.single, false);
@@ -277,7 +277,7 @@ export type OneHookFunc = (q: Query, a: unknown, op: (b: unknown) => unknown) =>
 export type AllHookFunc = (
   q: Query,
   sliceA: unknown,
-  op: (sliceB: unknown) => unknown[],
+  op: (sliceB: unknown) => Array<unknown>,
 ) => unknown;
 
 // QueryLogFunc is called each time when performing a SQL query.
@@ -296,7 +296,7 @@ export type ExecLogFunc = (
 export class Query {
   private readonly sqlText: string;
   private rawSql: string;
-  private readonly placeholders: string[];
+  private readonly placeholders: Array<string>;
   private boundParams: Params = {};
   private stmt: Stmt | null = null;
 
@@ -551,27 +551,27 @@ export class Query {
   // All executes the SQL statement and returns all the resulting rows:
   // row objects, or models created by the given factory and populated with
   // the rows. If the query returns no row, the result is an empty array.
-  all<T = Row>(factory?: () => StructModel): T[] {
+  all<T = Row>(factory?: () => StructModel): Array<T> {
     let result: unknown = [];
     this.execWrap(() => {
-      const rows = this.read("all") as Row[];
+      const rows = this.read("all") as Array<Row>;
       result = this.populateAll(rows, factory);
     });
-    return result as T[];
+    return result as Array<T>;
   }
 
   // AllAsync is All, run on the executor's reader when it has one.
-  async allAsync<T = Row>(factory?: () => StructModel): Promise<T[]> {
+  async allAsync<T = Row>(factory?: () => StructModel): Promise<Array<T>> {
     let result: unknown = [];
     await this.execWrapAsync(async () => {
-      const rows = (await this.readAsync("all")) as Row[];
+      const rows = (await this.readAsync("all")) as Array<Row>;
       result = this.populateAll(rows, factory);
     });
-    return result as T[];
+    return result as Array<T>;
   }
 
-  private populateAll(rows: Row[], factory: (() => StructModel) | undefined): unknown {
-    const op = (b: unknown): unknown[] => {
+  private populateAll(rows: Array<Row>, factory: (() => StructModel) | undefined): unknown {
+    const op = (b: unknown): Array<unknown> => {
       if (typeof b === "function") {
         return rows.map((row) => {
           const model = (b as () => StructModel)();
@@ -586,39 +586,39 @@ export class Query {
 
   // Row executes the SQL statement and returns the values of the first row.
   // Note that when the query has no rows in the result set, a NoRowsError is thrown.
-  row(): unknown[] {
-    let result: unknown[] = [];
+  row(): Array<unknown> {
+    let result: Array<unknown> = [];
     this.execWrap(() => {
-      result = this.read("row") as unknown[];
+      result = this.read("row") as Array<unknown>;
     });
     return result;
   }
 
   // RowAsync is Row, run on the executor's reader when it has one.
-  async rowAsync(): Promise<unknown[]> {
-    let result: unknown[] = [];
+  async rowAsync(): Promise<Array<unknown>> {
+    let result: Array<unknown> = [];
     await this.execWrapAsync(async () => {
-      result = (await this.readAsync("row")) as unknown[];
+      result = (await this.readAsync("row")) as Array<unknown>;
     });
     return result;
   }
 
   // Column executes the SQL statement and returns the first column of the result.
-  column<T = unknown>(): T[] {
-    let result: unknown[] = [];
+  column<T = unknown>(): Array<T> {
+    let result: Array<unknown> = [];
     this.execWrap(() => {
-      result = this.read("column") as unknown[];
+      result = this.read("column") as Array<unknown>;
     });
-    return result as T[];
+    return result as Array<T>;
   }
 
   // ColumnAsync is Column, run on the executor's reader when it has one.
-  async columnAsync<T = unknown>(): Promise<T[]> {
-    let result: unknown[] = [];
+  async columnAsync<T = unknown>(): Promise<Array<T>> {
+    let result: Array<unknown> = [];
     await this.execWrapAsync(async () => {
-      result = (await this.readAsync("column")) as unknown[];
+      result = (await this.readAsync("column")) as Array<unknown>;
     });
-    return result as T[];
+    return result as Array<T>;
   }
 
   // Rows executes the SQL statement and returns a Rows object to allow retrieving data row by row.
@@ -728,8 +728,11 @@ export class Query {
 }
 
 // replacePlaceholders converts a list of named parameters into a list of anonymous parameters.
-export function replacePlaceholders(placeholders: string[], params: Params): SQLQueryBindings[] {
-  const result: SQLQueryBindings[] = [];
+export function replacePlaceholders(
+  placeholders: Array<string>,
+  params: Params,
+): Array<SQLQueryBindings> {
+  const result: Array<SQLQueryBindings> = [];
   for (const name of placeholders) {
     if (!Object.hasOwn(params, name)) {
       throw new Error("Named parameter not found: " + name);

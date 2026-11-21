@@ -15,7 +15,7 @@ export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
   // the stored fields of a collection, as upstream's GET returns them
-  fields(collection: string): Record<string, unknown>[];
+  fields(collection: string): Array<Record<string, unknown>>;
   // one stored field (by name)
   field(collection: string, field: string): Record<string, unknown>;
 }
@@ -34,7 +34,7 @@ export interface ValidateCase {
   pending?: Pending;
 }
 
-export const setupCollections: ((ctx: Ctx) => unknown)[] = [
+export const setupCollections: Array<(ctx: Ctx) => unknown> = [
   (ctx) => ({
     name: "posts",
     type: "base",
@@ -134,13 +134,16 @@ const withField = (
   collection: string,
   field: string,
   change: (f: Record<string, unknown>) => Record<string, unknown>,
-): Record<string, unknown>[] =>
+): Array<Record<string, unknown>> =>
   ctx.fields(collection).map((f) => (f.name === field ? change({ ...f }) : f));
 
-const withoutField = (ctx: Ctx, collection: string, field: string): Record<string, unknown>[] =>
-  ctx.fields(collection).filter((f) => f.name !== field);
+const withoutField = (
+  ctx: Ctx,
+  collection: string,
+  field: string,
+): Array<Record<string, unknown>> => ctx.fields(collection).filter((f) => f.name !== field);
 
-export const validateCases: ValidateCase[] = [
+export const validateCases: Array<ValidateCase> = [
   // -----------------------------------------------------------------
   // id
   //

@@ -42,7 +42,7 @@ export interface MigrationHelpers {
   create(collection: string, data: Record<string, unknown>): MigrationRow;
   update(collection: string, id: string, data: Record<string, unknown>): MigrationRow;
   delete(collection: string, id: string): void;
-  sql(query: string, params?: Record<string, unknown>): Record<string, unknown>[];
+  sql(query: string, params?: Record<string, unknown>): Array<Record<string, unknown>>;
 }
 
 // the type of the tx argument of up (the generated types declare it too)
@@ -77,7 +77,7 @@ const recordsPage = 500;
 // sort, the id comes last, so rows with equal sort values keep one order on
 // every run. A random sort gives a new order on each query, so it is used as
 // it is.
-function matchingIds(app: App, collection: Collection, query: MigrationQuery): string[] {
+function matchingIds(app: App, collection: Collection, query: MigrationQuery): Array<string> {
   const sort = query.sort ?? "";
   const order = sort === "" || sort.includes("@random") ? sort : `${sort},id`;
   return findRecordIdsByFilter(app, collection, query.filter ?? "", order, query.params ?? {});
@@ -87,7 +87,7 @@ function matchingIds(app: App, collection: Collection, query: MigrationQuery): s
 // read by json_each, and not a bound parameter each: binding 500 parameters
 // costs several times more than reading the records they name. The column is
 // named by the collection's table name, so the migration may give its id too.
-function recordsOfIds(app: App, collection: Collection, ids: string[]): RecordModel[] {
+function recordsOfIds(app: App, collection: Collection, ids: Array<string>): Array<RecordModel> {
   return recordQuery(app, collection)
     .andWhere(
       newExp(`[[${collection.name}.id]] IN (SELECT value FROM json_each({:ids}))`, {

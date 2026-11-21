@@ -11,9 +11,9 @@ import { detectReader } from "@/tools/mimetype/mimetype";
 // Message defines a generic email message struct.
 export interface Message {
   from: Address;
-  to: Address[];
-  bcc?: Address[];
-  cc?: Address[];
+  to: Array<Address>;
+  bcc?: Array<Address>;
+  cc?: Array<Address>;
   subject: string;
   html: string;
   text?: string;
@@ -33,7 +33,10 @@ export interface Mailer {
 //
 // To export only the email part of mail.Address, you can set withName to
 // false.
-export function addressesToStrings(addresses: readonly Address[], withName: boolean): string[] {
+export function addressesToStrings(
+  addresses: ReadonlyArray<Address>,
+  withName: boolean,
+): Array<string> {
   return addresses.map((addr) =>
     withName && addr.name !== ""
       ? addressString(addr)

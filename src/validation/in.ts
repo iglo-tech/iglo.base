@@ -17,7 +17,7 @@ export const ErrInInvalid = NewError("validation_in_invalid", "must be a valid v
 // two values are equal. For more details please refer to
 // https://golang.org/pkg/reflect/#DeepEqual An empty value is considered
 // valid. Use the Required rule to make sure a value is not empty.
-export function In(...values: unknown[]): InRule {
+export function In(...values: Array<unknown>): InRule {
   return new InRule(values, ErrInInvalid);
 }
 
@@ -25,7 +25,7 @@ export function In(...values: unknown[]): InRule {
 // given list of values.
 export class InRule implements Rule {
   constructor(
-    private readonly elements: readonly unknown[],
+    private readonly elements: ReadonlyArray<unknown>,
     private readonly err: ValidationError,
   ) {}
 

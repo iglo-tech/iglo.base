@@ -18,7 +18,7 @@ export interface ApiCase {
 
 export interface Session {
   name: string;
-  cases: ApiCase[];
+  cases: Array<ApiCase>;
   // whether pb_data written by iglo.base is read back by upstream after
   // the session (the cross-server round trip)
   roundTrip?: boolean;
@@ -46,7 +46,7 @@ const get = (name: string, url: string): ApiCase => su(name, "GET", url);
 const listAll = get("list all collections", "/api/collections?perPage=500");
 
 // every collections endpoint, for the access checks
-const endpoints: [ApiCase["method"], string, string][] = [
+const endpoints: Array<[ApiCase["method"], string, string]> = [
   ["GET", "/api/collections", ""],
   ["POST", "/api/collections", `{"name":"access_test","type":"base"}`],
   ["GET", "/api/collections/demo1", ""],
@@ -59,7 +59,7 @@ const endpoints: [ApiCase["method"], string, string][] = [
   ["POST", "/api/collections/meta/dry-run-view", `{"query":"select 1 as id"}`],
 ];
 
-export const sessions: Session[] = [
+export const sessions: Array<Session> = [
   {
     // registerSettingsHooks (core/settings_model.go): a collection rename
     // relabels the "<name>:" rate limit rules

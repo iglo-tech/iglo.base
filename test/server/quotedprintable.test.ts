@@ -124,11 +124,11 @@ function everySequence(base: string, alpha: string, length: number, fn: (s: stri
 const badSoftRx = /=([^\r\n]+?\n)|([^\r\n]+$)|(\r$)|(\r[^\n]+\n)|( \r\n)/;
 
 test("TestExhaustive", async () => {
-  const sequences: string[] = [];
+  const sequences: Array<string> = [];
   everySequence("", "0A \r\n=", 6, (s) => sequences.push(s));
 
   const res = new Map<string, number>();
-  const unexpected: string[] = [];
+  const unexpected: Array<string> = [];
   for (const s of sequences) {
     if (s.endsWith("=") || s.includes("==")) {
       continue;

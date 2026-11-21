@@ -40,9 +40,9 @@ export interface ServeConfig {
   // TCP address for the HTTPS server; empty means no TLS
   httpsAddr: string;
   // domains for the TLS certificate
-  certificateDomains: string[];
+  certificateDomains: Array<string>;
   // AllowedOrigins is an optional list of CORS origins (default to "*").
-  allowedOrigins: string[];
+  allowedOrigins: Array<string>;
   // the directory to serve static files from (--publicDir) and whether a
   // missing static path falls back to its index.html (--indexFallback)
   publicDir: string;
@@ -112,7 +112,7 @@ async function listenHost(host: string): Promise<string> {
   if (isIP(host) !== 0) {
     return host;
   }
-  let addresses: { address: string; family: number }[];
+  let addresses: Array<{ address: string; family: number }>;
   try {
     addresses = await lookup(host, { all: true, verbatim: true });
   } catch (err) {
@@ -352,7 +352,7 @@ export function newServeRouter(
   if (hostNames.length === 0) {
     hostNames.push(splitHost(mainAddr));
   }
-  const wwwRedirects: string[] = [];
+  const wwwRedirects: Array<string> = [];
   // the hosts given, not the www hosts added below
   const givenHosts = hostNames.slice();
   for (const host of givenHosts) {

@@ -30,7 +30,7 @@ describe("TestNumberFieldPrepareValue", () => {
   const f = new NumberField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, number][] = [
+  const scenarios: Array<[unknown, number]> = [
     ["", 0],
     ["test", 0],
     [false, 0],
@@ -58,12 +58,12 @@ describe("TestNumberFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: NumberField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new NumberField({ name: "test" }),
@@ -164,63 +164,64 @@ describe("TestNumberFieldValidateSettings", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; field: () => NumberField; expectErrors: string[] }[] = [
-    {
-      name: "zero",
-      field: () => new NumberField({ id: "test", name: "test" }),
-      expectErrors: [],
-    },
-    {
-      name: "decimal min",
-      field: () => new NumberField({ id: "test", name: "test", min: 1.2 }),
-      expectErrors: [],
-    },
-    {
-      name: "decimal min (onlyInt)",
-      field: () => new NumberField({ id: "test", name: "test", onlyInt: true, min: 1.2 }),
-      expectErrors: ["min"],
-    },
-    {
-      name: "int min (onlyInt)",
-      field: () => new NumberField({ id: "test", name: "test", onlyInt: true, min: 1.0 }),
-      expectErrors: [],
-    },
-    {
-      name: "decimal max",
-      field: () => new NumberField({ id: "test", name: "test", max: 1.2 }),
-      expectErrors: [],
-    },
-    {
-      name: "decimal max (onlyInt)",
-      field: () => new NumberField({ id: "test", name: "test", onlyInt: true, max: 1.2 }),
-      expectErrors: ["max"],
-    },
-    {
-      name: "int max (onlyInt)",
-      field: () => new NumberField({ id: "test", name: "test", onlyInt: true, max: 1.0 }),
-      expectErrors: [],
-    },
-    {
-      name: "min > max (0)",
-      field: () => new NumberField({ id: "test", name: "test", min: 2.0, max: 0.0 }),
-      expectErrors: ["max"],
-    },
-    {
-      name: "min (0) > max",
-      field: () => new NumberField({ id: "test", name: "test", min: 0.0, max: -1.0 }),
-      expectErrors: ["max"],
-    },
-    {
-      name: "min == max",
-      field: () => new NumberField({ id: "test", name: "test", min: 2.0, max: 2.0 }),
-      expectErrors: [],
-    },
-    {
-      name: "min < max",
-      field: () => new NumberField({ id: "test", name: "test", min: 2.0, max: 3.0 }),
-      expectErrors: [],
-    },
-  ];
+  const scenarios: Array<{ name: string; field: () => NumberField; expectErrors: Array<string> }> =
+    [
+      {
+        name: "zero",
+        field: () => new NumberField({ id: "test", name: "test" }),
+        expectErrors: [],
+      },
+      {
+        name: "decimal min",
+        field: () => new NumberField({ id: "test", name: "test", min: 1.2 }),
+        expectErrors: [],
+      },
+      {
+        name: "decimal min (onlyInt)",
+        field: () => new NumberField({ id: "test", name: "test", onlyInt: true, min: 1.2 }),
+        expectErrors: ["min"],
+      },
+      {
+        name: "int min (onlyInt)",
+        field: () => new NumberField({ id: "test", name: "test", onlyInt: true, min: 1.0 }),
+        expectErrors: [],
+      },
+      {
+        name: "decimal max",
+        field: () => new NumberField({ id: "test", name: "test", max: 1.2 }),
+        expectErrors: [],
+      },
+      {
+        name: "decimal max (onlyInt)",
+        field: () => new NumberField({ id: "test", name: "test", onlyInt: true, max: 1.2 }),
+        expectErrors: ["max"],
+      },
+      {
+        name: "int max (onlyInt)",
+        field: () => new NumberField({ id: "test", name: "test", onlyInt: true, max: 1.0 }),
+        expectErrors: [],
+      },
+      {
+        name: "min > max (0)",
+        field: () => new NumberField({ id: "test", name: "test", min: 2.0, max: 0.0 }),
+        expectErrors: ["max"],
+      },
+      {
+        name: "min (0) > max",
+        field: () => new NumberField({ id: "test", name: "test", min: 0.0, max: -1.0 }),
+        expectErrors: ["max"],
+      },
+      {
+        name: "min == max",
+        field: () => new NumberField({ id: "test", name: "test", min: 2.0, max: 2.0 }),
+        expectErrors: [],
+      },
+      {
+        name: "min < max",
+        field: () => new NumberField({ id: "test", name: "test", min: 2.0, max: 3.0 }),
+        expectErrors: [],
+      },
+    ];
 
   for (const s of scenarios) {
     test(s.name, () => {

@@ -18,7 +18,7 @@ export interface BatchCase {
   token?: string;
   headers?: Record<string, string>;
   // the items, a raw JSON body or a multipart body
-  items?: BatchItem[];
+  items?: Array<BatchItem>;
   raw?: string;
   multipart?: ReturnType<typeof multipart>;
   // the query of the batch URL
@@ -26,7 +26,7 @@ export interface BatchCase {
   // `batch` settings for this case only
   settings?: Record<string, unknown>;
   // the collections read back from both servers after the case
-  reads?: string[];
+  reads?: Array<string>;
 }
 
 const records = (collection: string, rest = ""): string =>
@@ -56,7 +56,7 @@ const id = (name: string): string => name.padEnd(15, "0");
 
 const authFields = "?fields=id,email,emailVisibility,verified,secret,name";
 
-export const batchCases: BatchCase[] = [
+export const batchCases: Array<BatchCase> = [
   // each action
   {
     name: "create",
@@ -250,7 +250,7 @@ export const batchCases: BatchCase[] = [
     reads: ["b_auth_only"],
   },
   // the generated Content-Type is the one rules see, whatever the item sends
-  ...["Content-Type", "content-type"].flatMap((header): BatchCase[] => {
+  ...["Content-Type", "content-type"].flatMap((header): Array<BatchCase> => {
     const json = { [header]: "application/json" };
     return [
       {
@@ -293,7 +293,7 @@ export const batchCases: BatchCase[] = [
       ["delete", remove("b_ctype_json", id("cj1"))],
       ["upsert as update", upsert("b_ctype_json", { id: id("cj1"), title: "changed" })],
       ["upsert as create", upsert("b_ctype_json", { id: id("cj2"), title: "created" })],
-    ] as [string, BatchItem][]
+    ] as Array<[string, BatchItem]>
   ).map(([name, item]): BatchCase => ({
     name: `an item's Content-Type does not pass a rule: ${name}`,
     items: [{ ...item, headers: { "Content-Type": "application/json" } }],
@@ -305,7 +305,7 @@ export const batchCases: BatchCase[] = [
       ["delete", remove("b_ctype_multipart", id("cm2"))],
       ["upsert as update", upsert("b_ctype_multipart", { id: id("cm1"), title: "upserted" })],
       ["upsert as create", upsert("b_ctype_multipart", { id: id("cm3"), title: "created" })],
-    ] as [string, BatchItem][]
+    ] as Array<[string, BatchItem]>
   ).map(([name, item]): BatchCase => ({
     name: `an item's Content-Type does not fail a rule: ${name}`,
     items: [{ ...item, headers: { "Content-Type": "application/json" } }],
@@ -316,7 +316,7 @@ export const batchCases: BatchCase[] = [
       ["verified", { verified: true }],
       ["email", { email: "ca1new@example.com" }],
       ["password", { password: "0987654321", passwordConfirm: "0987654321" }],
-    ] as [string, object][]
+    ] as Array<[string, object]>
   ).map(([name, body]): BatchCase => ({
     name: `an item's Content-Type does not give manage access: ${name}`,
     token: usersToken,

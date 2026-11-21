@@ -51,7 +51,7 @@ function parseError(pattern: string | Uint8Array, flags: number): RegexpSyntaxEr
   throw new Error(`${JSON.stringify(pattern)} parsed`);
 }
 
-const perlErrors: [pattern: string, message: string][] = [
+const perlErrors: Array<[pattern: string, message: string]> = [
   ["(abc", "error parsing regexp: missing closing ): `(abc`"],
   ["abc)", "error parsing regexp: unexpected ): `abc)`"],
   ["x[a-z", "error parsing regexp: missing closing ]: `[a-z`"],
@@ -77,7 +77,7 @@ const perlErrors: [pattern: string, message: string][] = [
   ["\\C", "error parsing regexp: invalid escape sequence: `\\C`"],
 ];
 
-const posixErrors: [pattern: string, message: string][] = [
+const posixErrors: Array<[pattern: string, message: string]> = [
   ["\\z", "error parsing regexp: invalid escape sequence: `\\z`"],
   ["[a-b-c]", "error parsing regexp: invalid character class range: `-c`"],
   ["\\Qabc\\E", "error parsing regexp: invalid escape sequence: `\\Q`"],
@@ -125,7 +125,7 @@ describe("Error() text", () => {
 describe("invalid UTF-8", () => {
   // Go's message holds the bytes from the invalid one on; here they are
   // lone surrogates (U+DC80+byte), which textToBytes turns back into bytes.
-  const cases: [bytes: number[], flags: number, message: string][] = [
+  const cases: Array<[bytes: Array<number>, flags: number, message: string]> = [
     [[0x61, 0xff, 0x62], Perl, "error parsing regexp: invalid UTF-8: `\xffb`"],
     [[0x5b, 0xc3, 0x5d], Perl, "error parsing regexp: invalid UTF-8: `\xc3]`"],
     [[0x5c, 0xff], Perl, "error parsing regexp: invalid UTF-8: `\xff`"],

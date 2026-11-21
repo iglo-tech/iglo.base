@@ -160,13 +160,13 @@ test("TestQuery_logSQL", () => {
 });
 
 test("TestReplacePlaceholders", () => {
-  const tests: {
+  const tests: Array<{
     id: string;
-    placeholders: string[];
+    placeholders: Array<string>;
     params: Record<string, unknown>;
-    expectedParams: (number | string)[] | null;
+    expectedParams: Array<number | string> | null;
     hasError: boolean;
-  }[] = [
+  }> = [
     { id: "t1", placeholders: [], params: {}, expectedParams: [], hasError: false },
     {
       id: "t2",
@@ -251,7 +251,7 @@ describe("TestQueryWithExecHook", () => {
   });
 
   test("Row(), One(), All(), Column(), Execute()", () => {
-    const resolvers: [string, (q: Query) => unknown][] = [
+    const resolvers: Array<[string, (q: Query) => unknown]> = [
       ["Row()", (q) => q.row()],
       ["One()", (q) => q.one()],
       ["All()", (q) => q.all()],
@@ -298,7 +298,7 @@ describe("TestQueryWithOneHook", () => {
   });
 
   test("hooks call order", () => {
-    const hookCalls: string[] = [];
+    const hookCalls: Array<string> = [];
     db.newQuery("select * from user")
       .withExecHook((_q, op) => {
         hookCalls.push("exec");
@@ -343,7 +343,7 @@ describe("TestQueryWithAllHook", () => {
   });
 
   test("hooks call order", () => {
-    const hookCalls: string[] = [];
+    const hookCalls: Array<string> = [];
     db.newQuery("select * from user")
       .withExecHook((_q, op) => {
         hookCalls.push("exec");
@@ -394,7 +394,7 @@ describe("rows are read incrementally", () => {
 
   test("an iteration that stops early", () => {
     const db = getDB();
-    const seen: unknown[][] = [];
+    const seen: Array<Array<unknown>> = [];
     for (const values of db.newQuery(sql).rows()) {
       seen.push(values);
       break;
@@ -535,7 +535,7 @@ describe("a Float64 param binds as REAL", () => {
 
   test("the logged SQL prints its number", () => {
     const db = getDB();
-    const logged: string[] = [];
+    const logged: Array<string> = [];
     db.queryLogFunc = (_ms, s) => logged.push(s);
     db.newQuery("SELECT {:f} AS v")
       .bind({ f: new Float64(5) })
@@ -678,7 +678,7 @@ describe("duplicate column names are read incrementally", () => {
   });
 
   test("an iteration that stops early", () => {
-    const seen: unknown[][] = [];
+    const seen: Array<Array<unknown>> = [];
     for (const values of getDB().newQuery(sql).rows()) {
       seen.push(values);
       break;
@@ -707,7 +707,7 @@ describe("rows() has a statement of its own", () => {
   test("the same SQL runs inside the loop", () => {
     const db = getPreparedDB();
     const sql = "SELECT id FROM customer ORDER BY id";
-    const seen: unknown[] = [];
+    const seen: Array<unknown> = [];
     for (const [id] of db.newQuery(sql).rows()) {
       seen.push([id, db.newQuery(sql).row()[0], db.newQuery(sql).column().length]);
     }

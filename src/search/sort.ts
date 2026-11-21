@@ -57,8 +57,8 @@ export function sortFieldBuildExpr(s: SortField, fieldResolver: FieldResolver): 
 // Example:
 //
 //	const fields = parseSortFromString("-name,+created")
-export function parseSortFromString(str: string): SortField[] {
-  const fields: SortField[] = [];
+export function parseSortFromString(str: string): Array<SortField> {
+  const fields: Array<SortField> = [];
 
   for (let field of str.split(",")) {
     // trim whitespaces

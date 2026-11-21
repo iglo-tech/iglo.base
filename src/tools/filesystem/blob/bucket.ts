@@ -49,7 +49,7 @@ export function joinNotFound(err: unknown): Error {
 }
 
 // errors.Join of the non-null errors, in that order
-export function joinErrors(...errs: unknown[]): Error {
+export function joinErrors(...errs: Array<unknown>): Error {
   const list = errs
     .filter((e) => e !== null)
     .map((e) => (e instanceof Error ? e : new Error(String(e))));
@@ -65,7 +65,7 @@ export function wrapf(prefix: string, err: unknown): Error {
 // errors.As(err, &target): err, its causes and joined errors
 export function errorsAs<T extends Error>(
   err: unknown,
-  type: abstract new (...args: never[]) => T,
+  type: abstract new (...args: Array<never>) => T,
 ): T | null {
   if (err instanceof type) {
     return err;

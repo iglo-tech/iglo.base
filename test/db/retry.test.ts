@@ -21,7 +21,11 @@ test("TestGetDefaultRetryInterval", () => {
 });
 
 describe("TestBaseLockRetry", () => {
-  const scenarios: { err: Error | null; failUntilAttempt: number; expectedAttempts: number }[] = [
+  const scenarios: Array<{
+    err: Error | null;
+    failUntilAttempt: number;
+    expectedAttempts: number;
+  }> = [
     { err: null, failUntilAttempt: 3, expectedAttempts: 1 },
     { err: new Error("test"), failUntilAttempt: 3, expectedAttempts: 1 },
     { err: new Error("database is locked"), failUntilAttempt: 3, expectedAttempts: 3 },
@@ -63,7 +67,7 @@ describe("TestBaseLockRetry", () => {
 });
 
 test("gives up after the max retries with upstream's waits", () => {
-  const sleeps: number[] = [];
+  const sleeps: Array<number> = [];
   let attempts = 0;
   expect(() =>
     baseLockRetry(

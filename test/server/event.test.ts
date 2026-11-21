@@ -54,7 +54,7 @@ test("IsTLS", () => {
 });
 
 describe("RemoteIP", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", "invalid IP"],
     ["1.2.3.4", "invalid IP"],
     ["1.2.3.4:8090", "1.2.3.4"],
@@ -94,7 +94,7 @@ function multipartRequest(file?: {
 }
 
 describe("FindUploadedFiles", () => {
-  const scenarios: [filename: string, expectedPattern: RegExp][] = [
+  const scenarios: Array<[filename: string, expectedPattern: RegExp]> = [
     ["ab.png", /^ab\w{10}_\w{10}\.png$/],
     ["test", /^test_\w{10}\.txt$/],
     ["a b c d!@$.j!@$pg", /^a_b_c_d_\w{10}\.jpg$/],
@@ -140,7 +140,7 @@ describe("Set and Get", () => {
   e.set("a", 123);
   e.set("b", 456);
 
-  const scenarios: [string, unknown][] = [
+  const scenarios: Array<[string, unknown]> = [
     ["", undefined],
     ["missing", undefined],
     ["a", 123],
@@ -392,7 +392,7 @@ describe("ApiError helpers", () => {
   }
   const errData = { a: new RequiredRule(), b: "test" };
   const invalid = { code: "validation_invalid_value", message: "Invalid value." };
-  const scenarios: [string, (e: Event) => Error, string][] = [
+  const scenarios: Array<[string, (e: Event) => Error, string]> = [
     [
       "Error",
       (e) => e.error(123, "message_test", errData),
@@ -437,7 +437,7 @@ describe("ApiError helpers", () => {
 });
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
-const concat = (...parts: Uint8Array[]): Uint8Array => {
+const concat = (...parts: Array<Uint8Array>): Uint8Array => {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let offset = 0;
   for (const p of parts) {
@@ -511,12 +511,12 @@ describe("BindBody", () => {
     "",
   ].join("\r\n");
 
-  const scenarios: {
+  const scenarios: Array<{
     contentType: string;
     body: string;
     expectDst: Record<string, unknown>;
     expectError?: boolean;
-  }[] = [
+  }> = [
     { contentType: "", body: jsonDst, expectDst: emptyDst, expectError: true },
     // unsupported
     { contentType: "application/rtf", body: jsonDst, expectDst: emptyDst, expectError: true },

@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { IPOrSubnet, IsRegex } from "@/validators/string";
 
 describe("TestIsRegex", () => {
-  const scenarios: [val: string, expectError: boolean][] = [
+  const scenarios: Array<[val: string, expectError: boolean]> = [
     ["", false],
     [String.raw`abc`, false],
     [String.raw`\w+`, false],
@@ -33,7 +33,7 @@ describe("TestIsRegex", () => {
 });
 
 describe("TestIPOrSubnet", () => {
-  const scenarios: [val: string, expectError: boolean][] = [
+  const scenarios: Array<[val: string, expectError: boolean]> = [
     ["", false],
     [String.raw`invalid`, true],
     [String.raw`127.0`, true], // incomplete

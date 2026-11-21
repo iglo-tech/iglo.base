@@ -189,7 +189,7 @@ export class NumberField implements Field, SetterFinder {
 
   // ValidateSettings implements [Field.ValidateSettings] interface method.
   validateSettings(_app: FieldApp, _collection: FieldCollection): Error | null {
-    const maxRules: Rule[] = [By((value) => this.checkOnlyInt(value))];
+    const maxRules: Array<Rule> = [By((value) => this.checkOnlyInt(value))];
     if (this.min !== null && this.max !== null) {
       maxRules.push(
         By((value) => {

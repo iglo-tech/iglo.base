@@ -51,7 +51,7 @@ describe("password auth", () => {
       env.record("authStore (user)", store(pb));
       await env.step("authRefresh", () => pb.collection("users").authRefresh());
       env.record("authStore (refreshed)", store(pb));
-      const changes: unknown[] = [];
+      const changes: Array<unknown> = [];
       const off = pb.authStore.onChange((token, record) =>
         changes.push([token !== "", record?.id]),
       );
@@ -407,7 +407,7 @@ describe("OAuth2", () => {
     { prepare: prepare({ sub: "sdk-2", ...verifiedEmail("oauth-url@example.com") }) },
     async (env) => {
       const pb = env.client();
-      const urls: string[] = [];
+      const urls: Array<string> = [];
       await env.step("authWithOAuth2", () =>
         pb.collection("users").authWithOAuth2({
           provider: "oidc",

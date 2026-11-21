@@ -193,7 +193,7 @@ describe("RouterGroup", () => {
 
     const testAction = () => testErr;
 
-    const scenarios: { route: Route<Event>; expectMethod: string; expectPath: string }[] = [
+    const scenarios: Array<{ route: Route<Event>; expectMethod: string; expectPath: string }> = [
       {
         route: group.any("/test", testAction),
         expectMethod: "",
@@ -272,7 +272,7 @@ describe("RouterGroup", () => {
     group.GET("/c/", noop); // the same as /c/{test...}
     group.GET("/d/{test...}", noop); // the same as /d/
 
-    const scenarios: { method: string; path: string; expected: boolean }[] = [
+    const scenarios: Array<{ method: string; path: string; expected: boolean }> = [
       {
         method: "GET",
         path: "",

@@ -46,7 +46,7 @@ function block(name: string): string {
 }
 
 // `"key": value,` entries of a map literal, in source order
-function mapEntries(name: string): [string, string][] {
+function mapEntries(name: string): Array<[string, string]> {
   return [...block(name).matchAll(/^\t"([^"]+)":\s*(.+),$/gm)].map((m) => [
     m[1] as string,
     (m[2] as string).replace(/^"|"$/g, ""),
@@ -64,7 +64,7 @@ for (const m of src.matchAll(/^\t(\w+)\s*= (_\w+)/gm)) {
 function rangeTable(ident: string): string {
   const name = aliases.get(ident) ?? ident;
   const body = block(name);
-  const out: string[] = [];
+  const out: Array<string> = [];
   for (const m of body.matchAll(/\{(0x[0-9a-f]+), (0x[0-9a-f]+), (\d+)\}/g)) {
     const lo = Number(m[1]);
     const hi = Number(m[2]);
@@ -110,7 +110,7 @@ if (asciiFold.split(",").length !== 128) {
 }
 
 // Latin-1 code points whose properties entry has the pp (printable) bit
-const printLatin1: number[] = [];
+const printLatin1: Array<number> = [];
 for (const m of block("properties").matchAll(/^\t0x([0-9A-F]{2}): ([^,]+),/gm)) {
   if (/\bpp\b|\bpg\b/.test(m[2] as string)) {
     printLatin1.push(Number.parseInt(m[1] as string, 16));
@@ -168,8 +168,8 @@ export const printLatin1 = ${JSON.stringify(rangesOf(printLatin1))};
 `;
 
 // consecutive code points as "lo-hi" hex ranges
-function rangesOf(points: number[]): string {
-  const ranges: string[] = [];
+function rangesOf(points: Array<number>): string {
+  const ranges: Array<string> = [];
   for (let i = 0; i < points.length;) {
     let j = i;
     while (j + 1 < points.length && points[j + 1] === (points[j] as number) + 1) {

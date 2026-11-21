@@ -46,7 +46,7 @@ export interface FuzzServers {
 }
 
 // one fixture record of each identity
-const identities: { who: Exclude<Who, "guest">; collection: string; id: string }[] = [
+const identities: Array<{ who: Exclude<Who, "guest">; collection: string; id: string }> = [
   { who: "users", collection: "users", id: "4q1xlclmfloku33" },
   { who: "clients", collection: "clients", id: "gk390qegs4y47wn" },
   { who: "nologin", collection: "nologin", id: "dc49k6jgejn40h3" },
@@ -118,14 +118,14 @@ async function mintTokens(url: string): Promise<TokenSet> {
 
 async function readModel(url: string, token: string): Promise<Model> {
   const list = (await getJson(`${url}/api/collections?perPage=500&sort=name`, token)) as {
-    items: ApiCollection[];
+    items: Array<ApiCollection>;
   };
-  const records = new Map<string, Record<string, unknown>[]>();
+  const records = new Map<string, Array<Record<string, unknown>>>();
   for (const c of list.items) {
     const page = (await getJson(
       `${url}/api/collections/${c.name}/records?perPage=500&sort=id`,
       token,
-    )) as { items: Record<string, unknown>[] };
+    )) as { items: Array<Record<string, unknown>> };
     records.set(c.name, page.items);
   }
   return buildModel(list.items, records);
@@ -136,7 +136,7 @@ export async function startFuzzServers(): Promise<FuzzServers> {
   const source = join(root, "pb_data");
   const upstreamDir = join(root, "upstream", "pb_data");
   const igloBaseDir = join(root, "iglo-base", "pb_data");
-  let started: PromiseSettledResult<UpstreamServer | RunningServer>[] = [];
+  let started: Array<PromiseSettledResult<UpstreamServer | RunningServer>> = [];
   const stop = async (): Promise<void> => {
     await Promise.allSettled(
       started.map((s) => (s.status === "fulfilled" ? s.value.stop() : undefined)),

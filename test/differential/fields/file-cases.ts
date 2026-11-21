@@ -15,7 +15,7 @@
 import type { FieldDef } from "@test/differential/fields/cases";
 
 // Settings upstream accepts: one collection per entry, one field each.
-export const validSettings: FieldDef[] = [
+export const validSettings: Array<FieldDef> = [
   { name: "f", type: "file" },
   { name: "f", type: "file", maxSelect: 1 },
   { name: "f", type: "file", maxSelect: 3, maxSize: 1000 },
@@ -42,7 +42,7 @@ export const validSettings: FieldDef[] = [
 ];
 
 // Settings upstream rejects.
-export const invalidSettings: FieldDef[] = [
+export const invalidSettings: Array<FieldDef> = [
   { name: "f", type: "file", thumbs: ["0x0"] },
   { name: "f", type: "file", thumbs: ["100x200", "0x0t"] },
   { name: "f", type: "file", thumbs: ["0x0b", "0x0f", "1x1"] },
@@ -59,7 +59,7 @@ export const invalidSettings: FieldDef[] = [
 ];
 
 // Field JSON texts sent unchanged (large or invalid int settings).
-export const rawSettings: string[] = [
+export const rawSettings: Array<string> = [
   `{"name":"f","type":"file","maxSize":9007199254740993}`,
   `{"name":"f","type":"file","maxSelect":9223372036854775807}`,
   `{"name":"f","type":"file","maxSize":-9223372036854775808}`,
@@ -71,11 +71,11 @@ export const rawSettings: string[] = [
 
 export interface ValueCollection {
   name: string;
-  fields: FieldDef[];
+  fields: Array<FieldDef>;
 }
 
 // The collections the uploads go to.
-export const valueCollections: ValueCollection[] = [
+export const valueCollections: Array<ValueCollection> = [
   { name: "fsingle", fields: [{ name: "f", type: "file" }] },
   { name: "fmulti", fields: [{ name: "files", type: "file", maxSelect: 3, maxSize: 1000 }] },
   { name: "fsmall", fields: [{ name: "doc", type: "file", maxSelect: 2, maxSize: 10 }] },
@@ -114,8 +114,8 @@ export type Part = [key: string, value: string] | [key: string, name: string, co
 
 export interface UploadCase {
   collection: string;
-  before?: Part[];
-  parts: Part[];
+  before?: Array<Part>;
+  parts: Array<Part>;
 }
 
 const t = (key: string, name: string, content: Content = "hello"): Part => [key, name, content];
@@ -123,7 +123,7 @@ const v = (key: string, value: string): Part => [key, value];
 
 const mb5 = 5 * 2 ** 20;
 
-export const uploadCases: UploadCase[] = [
+export const uploadCases: Array<UploadCase> = [
   // single, default settings
   { collection: "fsingle", parts: [t("f", "test.txt")] },
   { collection: "fsingle", parts: [t("f", "first.txt"), t("f", "second.txt")] },

@@ -22,7 +22,7 @@ class GzipResponseWriter extends ResponseWriter {
   code = 0;
   wroteHeader = false;
   wroteBody = false;
-  readonly chunks: Uint8Array[] = [];
+  readonly chunks: Array<Uint8Array> = [];
   // a body set by writeBody, compressed when the handler returns
   body: Blob | ReadableStream<Uint8Array> | Promise<Blob> | undefined;
 

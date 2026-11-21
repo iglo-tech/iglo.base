@@ -74,7 +74,7 @@ export abstract class BaseProvider implements TokenConfig {
   authURL = "";
   tokenURL = "";
   userInfoURL = "";
-  scopes: string[] = [];
+  scopes: Array<string> = [];
   order = 0;
   pkce = false;
 
@@ -90,7 +90,7 @@ export abstract class BaseProvider implements TokenConfig {
 
   // FetchToken converts an authorization code to token (opts are its
   // SetAuthURLParam options, in order).
-  fetchToken(code: string, opts: readonly (readonly [string, string])[] = []): Promise<Token> {
+  fetchToken(code: string, opts: ReadonlyArray<readonly [string, string]> = []): Promise<Token> {
     return exchangeToken(this, this.redirectURL, code, opts);
   }
 

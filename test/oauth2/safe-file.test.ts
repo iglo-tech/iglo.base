@@ -69,8 +69,8 @@ const pngPixel = Buffer.from(
   "base64",
 );
 
-let hits: string[] = [];
-let hosts: string[] = [];
+let hits: Array<string> = [];
+let hosts: Array<string> = [];
 
 function serve(fetch: (req: Request) => Response | Promise<Response>) {
   return Bun.serve({ hostname: "127.0.0.1", port: 0, fetch });
@@ -208,7 +208,7 @@ describe("safeFileFromURL", () => {
 
   test("connects to the checked address, with the name in the Host header", async () => {
     hosts = [];
-    const checked: string[] = [];
+    const checked: Array<string> = [];
     const file = await safeFileFromURL(`http://public.test:${server.port}/avatar.png`, {
       lookupAddresses: () => Promise.resolve(["127.0.0.1"]),
       isAllowedAddress: (address) => {
@@ -377,7 +377,7 @@ describe("safeFileFromURL", () => {
       safeFileFromURL("http://never.test/a.png", {
         ...anyAddress,
         timeoutMs: 20,
-        lookupAddresses: () => new Promise<string[]>(() => {}),
+        lookupAddresses: () => new Promise<Array<string>>(() => {}),
       }),
     ).rejects.toThrow();
   });
@@ -394,7 +394,7 @@ describe("safeFileFromURL", () => {
   });
 });
 
-const lookupAddresses = (): Promise<string[]> => Promise.resolve(["127.0.0.1"]);
+const lookupAddresses = (): Promise<Array<string>> => Promise.resolve(["127.0.0.1"]);
 
 describe("safeFileFromURL over TLS", () => {
   const tlsServer = Bun.serve({

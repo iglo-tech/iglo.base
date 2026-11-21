@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { equal, hs256, hs512, md5, s256Challenge, sha256, sha512 } from "@/tools/security/crypto";
 
 describe("S256Challenge", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", "47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU"],
     ["123", "pmWkWSBCL51Bfkhn79xPuKBKHz__H6B-mY6G9_eieuM"],
   ];
@@ -18,7 +18,7 @@ describe("S256Challenge", () => {
 });
 
 describe("MD5", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", "d41d8cd98f00b204e9800998ecf8427e"],
     ["123", "202cb962ac59075b964b07152d234b70"],
   ];
@@ -31,7 +31,7 @@ describe("MD5", () => {
 });
 
 describe("SHA256", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"],
     ["123", "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"],
   ];
@@ -44,7 +44,7 @@ describe("SHA256", () => {
 });
 
 describe("SHA512", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     [
       "",
       "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
@@ -63,7 +63,7 @@ describe("SHA512", () => {
 });
 
 describe("HS256", () => {
-  const scenarios: [string, string, string][] = [
+  const scenarios: Array<[string, string, string]> = [
     [" ", "test", "9fb4e4a12d50728683a222b4fc466a69ee977332cfcdd6b9ebb44c7121dbd99f"],
     [" ", "test2", "d792417a504716e22805d940125ec12e68e8cb18fc84674703bd96c59f1e1228"],
     ["hello", "test", "f151ea24bda91a18e89b8bb5793ef324b2a02133cce15a28a719acbd2e58a986"],
@@ -78,7 +78,7 @@ describe("HS256", () => {
 });
 
 describe("HS512", () => {
-  const scenarios: [string, string, string][] = [
+  const scenarios: Array<[string, string, string]> = [
     [
       " ",
       "test",
@@ -109,7 +109,7 @@ describe("HS512", () => {
 });
 
 describe("Equal", () => {
-  const scenarios: [string, string, boolean][] = [
+  const scenarios: Array<[string, string, boolean]> = [
     ["", "", true],
     ["abc", "abd", false],
     ["abc", "abc", true],

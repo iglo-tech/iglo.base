@@ -186,7 +186,7 @@ export class FileField
   // MimeTypes specifies an optional list of the allowed file mime types.
   //
   // Leave it empty to disable the validator.
-  mimeTypes: string[] = [];
+  mimeTypes: Array<string> = [];
 
   // Thumbs specifies an optional list of the supported thumbs for image
   // based files.
@@ -199,7 +199,7 @@ export class FileField
   //   - WxHf (eg. 100x300f) - fit inside a WxH viewbox (without cropping)
   //   - 0xH  (eg. 0x300)    - resize to H height preserving the aspect ratio
   //   - Wx0  (eg. 100x0)    - resize to W width preserving the aspect ratio
-  thumbs: string[] = [];
+  thumbs: Array<string> = [];
 
   // Protected will require the users to provide a special file token to
   // access the file.
@@ -331,7 +331,7 @@ export class FileField
     // (new files must be File)
     // ---
     const oldExistingStrings = this.toSliceValue(this.getLatestOldValue(app, record));
-    const existingStrings: unknown[] = this.extractPlainStrings(files);
+    const existingStrings: Array<unknown> = this.extractPlainStrings(files);
     const addedStrings = this.excludeFiles(existingStrings, oldExistingStrings);
 
     if (addedStrings.length > 0) {
@@ -630,8 +630,10 @@ export class FileField
       return;
     }
 
-    const old: unknown[] = markedForDelete;
-    const nw: unknown[] = this.extractPlainStrings(this.toSliceValue(record.getRaw(this.name)));
+    const old: Array<unknown> = markedForDelete;
+    const nw: Array<unknown> = this.extractPlainStrings(
+      this.toSliceValue(record.getRaw(this.name)),
+    );
     const diff = this.excludeFiles(old, nw);
 
     const toDelete = diff.map((del) => this.getFileName(del));
@@ -653,8 +655,10 @@ export class FileField
   }
 
   private rememberFilesToDelete(record: InterceptorRecord, oldValue: unknown): void {
-    const old: unknown[] = this.extractPlainStrings(this.toSliceValue(oldValue));
-    const nw: unknown[] = this.extractPlainStrings(this.toSliceValue(record.getRaw(this.name)));
+    const old: Array<unknown> = this.extractPlainStrings(this.toSliceValue(oldValue));
+    const nw: Array<unknown> = this.extractPlainStrings(
+      this.toSliceValue(record.getRaw(this.name)),
+    );
     const diff = this.excludeFiles(old, nw);
 
     const toDelete = stringsOf(record.getRaw(deletedFilesPrefix + this.name));
@@ -681,8 +685,8 @@ export class FileField
     }
 
     const fsys = app.newFilesystem();
-    const failed: unknown[] = []; // list of upload errors
-    const succeeded: string[] = []; // list of uploaded file names
+    const failed: Array<unknown> = []; // list of upload errors
+    const succeeded: Array<string> = []; // list of uploaded file names
     try {
       for (const upload of uploads) {
         const path = record.baseFilesPath() + "/" + upload.name;
@@ -717,7 +721,7 @@ export class FileField
   private *deleteNewlyUploadedFiles(
     app: InterceptorApp,
     record: InterceptorRecord,
-  ): StorageSteps<[string[], unknown]> {
+  ): StorageSteps<[Array<string>, unknown]> {
     const uploaded = filesOf(record.getRaw(uploadedFilesPrefix + this.name));
     if (uploaded.length === 0) {
       return [[], null];
@@ -748,8 +752,8 @@ export class FileField
   private *deleteFilesByNamesList(
     app: InterceptorApp,
     record: InterceptorRecord,
-    filenames: string[],
-  ): StorageSteps<[string[], Error | null]> {
+    filenames: Array<string>,
+  ): StorageSteps<[Array<string>, Error | null]> {
     if (filenames.length === 0) {
       return [[], null]; // nothing to delete
     }
@@ -773,7 +777,7 @@ export class FileField
     }
 
     filenames = [...filenames];
-    const failures: unknown[] = [];
+    const failures: Array<unknown> = [];
 
     try {
       for (let i = filenames.length - 1; i >= 0; i--) {
@@ -800,7 +804,7 @@ export class FileField
           // try to delete the related file thumbs (if any)
           const thumbsErr = (yield fsys.deletePrefix(
             record.baseFilesPath() + "/thumbs_" + filename + "/",
-          )) as unknown[];
+          )) as Array<unknown>;
           if (thumbsErr.length > 0) {
             app.logger.warn("Failed to delete file thumbs", { error: joinErrors(thumbsErr) });
           }
@@ -903,8 +907,8 @@ export class FileField
     return "";
   }
 
-  private toSliceValue(raw: unknown): unknown[] {
-    let result: unknown[] = [];
+  private toSliceValue(raw: unknown): Array<unknown> {
+    let result: Array<unknown> = [];
 
     if (raw === null || raw === undefined) {
       // nothing to cast
@@ -924,9 +928,9 @@ export class FileField
     return this.uniqueFiles(result);
   }
 
-  private uniqueFiles(files: unknown[]): unknown[] {
+  private uniqueFiles(files: Array<unknown>): Array<unknown> {
     const found = new Set<string>();
-    const result: unknown[] = [];
+    const result: Array<unknown> = [];
 
     for (const fv of files) {
       const name = this.getFileName(fv);
@@ -939,8 +943,8 @@ export class FileField
     return result;
   }
 
-  private extractPlainStrings(files: unknown[]): string[] {
-    const result: string[] = [];
+  private extractPlainStrings(files: Array<unknown>): Array<string> {
+    const result: Array<string> = [];
 
     for (const raw of files) {
       if (typeof raw === "string") {
@@ -951,8 +955,8 @@ export class FileField
     return result;
   }
 
-  private extractUploadableFiles(files: unknown[]): File[] {
-    const result: File[] = [];
+  private extractUploadableFiles(files: Array<unknown>): Array<File> {
+    const result: Array<File> = [];
 
     for (const raw of files) {
       if (raw instanceof File) {
@@ -963,8 +967,8 @@ export class FileField
     return result;
   }
 
-  private excludeFiles(base: unknown[], toExclude: unknown[]): unknown[] {
-    const result: unknown[] = [];
+  private excludeFiles(base: Array<unknown>, toExclude: Array<unknown>): Array<unknown> {
+    const result: Array<unknown> = [];
 
     for (const fv of base) {
       const name = this.getFileName(fv);
@@ -1019,8 +1023,8 @@ export class FileField
         help: (v) => (this.help = v as string),
         maxSize: (v) => (this.maxSize = v as GoInt),
         maxSelect: (v) => (this.maxSelect = v as GoInt),
-        mimeTypes: (v) => (this.mimeTypes = (v as string[] | undefined) ?? []),
-        thumbs: (v) => (this.thumbs = (v as string[] | undefined) ?? []),
+        mimeTypes: (v) => (this.mimeTypes = (v as Array<string> | undefined) ?? []),
+        thumbs: (v) => (this.thumbs = (v as Array<string> | undefined) ?? []),
         protected: (v) => (this.protected = v as boolean),
         required: (v) => (this.required = v as boolean),
       },
@@ -1113,12 +1117,12 @@ function checkPreUpload(file: File, key: string): void {
 }
 
 // the files of a record value ([]*filesystem.File type assertion)
-function filesOf(raw: unknown): File[] {
+function filesOf(raw: unknown): Array<File> {
   return Array.isArray(raw) ? raw.filter((v): v is File => v instanceof File) : [];
 }
 
 // the strings of a record value ([]string type assertion)
-function stringsOf(raw: unknown): string[] {
+function stringsOf(raw: unknown): Array<string> {
   return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : [];
 }
 

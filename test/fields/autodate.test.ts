@@ -35,7 +35,7 @@ describe("TestAutodateFieldPrepareValue", () => {
   const f = new AutodateField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["invalid", ""],
     ["2024-01-01 00:11:22.345Z", "2024-01-01 00:11:22.345Z"],
@@ -56,12 +56,12 @@ describe("TestAutodateFieldValidateValue", () => {
   const app = noDBApp(clock);
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: AutodateField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new AutodateField({ name: "test" }),
@@ -111,11 +111,11 @@ describe("TestAutodateFieldValidateSettings", () => {
 
   const superusers = app.findCollectionByNameOrId("_superusers");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: () => AutodateField;
-    expectErrors: string[];
-  }[] = [
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "empty onCreate and onUpdate",
       field: () => new AutodateField({ id: "test", name: "test" }),
@@ -190,13 +190,13 @@ describe("TestAutodateFieldIntercept", () => {
   const collection = newBaseCollection("test_collection");
   const initialDate = parseDateTime("2024-01-02 03:04:05.789Z");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     actionName: string;
     field: AutodateField;
     record: () => TestRecord;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "non-matching action",
       actionName: "test",

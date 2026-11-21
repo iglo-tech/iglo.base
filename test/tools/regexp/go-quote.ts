@@ -28,7 +28,7 @@ export function unquote(q: string): string {
     throw new Error(`invalid quoted string ${q}`);
   }
   const s = q.slice(1, -1);
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   const pushText = (t: string): void => {
     for (const b of encoder.encode(t)) {
       bytes.push(b);

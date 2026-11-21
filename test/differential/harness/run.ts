@@ -26,10 +26,10 @@ import { startUpstream } from "@test/support/upstream";
 export interface DifferentialResult {
   // upstream against the scenario's expectations; always expected empty,
   // pending or not: the ported expectations must describe upstream
-  upstreamFailures: string[];
+  upstreamFailures: Array<string>;
   // iglo.base against its expectations, then every difference from
   // upstream's response (not compared for a deliberate difference)
-  igloBaseFailures: string[];
+  igloBaseFailures: Array<string>;
 }
 
 // A raw error text may name a file in the server's own pb_data directory.

@@ -51,7 +51,7 @@ import { moveDirContent } from "@/tools/osutils/dir";
 
 export type RestorePhase = "moving-old" | "moving-new" | "swapped" | "reverted";
 
-const phases: readonly string[] = ["moving-old", "moving-new", "swapped", "reverted"];
+const phases: ReadonlyArray<string> = ["moving-old", "moving-new", "swapped", "reverted"];
 
 // default root dir entries to exclude from the backup restore
 export const restoreExclude = [
@@ -126,12 +126,12 @@ export function setRestorePhase(
 interface PhaseRecord {
   // undefined: no marker, or one this code does not know
   phase: RestorePhase | undefined;
-  unknown: string[];
+  unknown: Array<string>;
 }
 
 function readPhase(tempDir: string): PhaseRecord {
-  const found: RestorePhase[] = [];
-  const unknown: string[] = [];
+  const found: Array<RestorePhase> = [];
+  const unknown: Array<string> = [];
   for (const name of readdirSync(tempDir)) {
     if (name === restorePhaseFile) {
       // a plain file: not what this code writes
@@ -166,7 +166,7 @@ function nonEmpty(dir: string): boolean {
   }
 }
 
-function oldDirs(tempDir: string): string[] {
+function oldDirs(tempDir: string): Array<string> {
   return readdirSync(tempDir)
     .filter((n) => n.startsWith(oldDirPrefix))
     .map((n) => join(tempDir, n));

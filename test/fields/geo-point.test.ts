@@ -30,7 +30,7 @@ describe("TestGeoPointFieldPrepareValue", () => {
   const f = new GeoPointField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: { raw: unknown; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; expected: string }> = [
     { raw: null, expected: `{"lon":0,"lat":0}` },
     { raw: "", expected: `{"lon":0,"lat":0}` },
     { raw: new TextEncoder().encode(""), expected: `{"lon":0,"lat":0}` },
@@ -66,12 +66,12 @@ describe("TestGeoPointFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: GeoPointField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new GeoPointField({ name: "test" }),

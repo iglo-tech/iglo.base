@@ -34,7 +34,7 @@ import { describeCollectionModel, describeFieldJSON, type NameOf } from "@/schem
 import type { SchemaObject } from "@/schema/types";
 
 // the system collections a file may leave out (they are never dropped, D40)
-export const systemCollectionNames: readonly string[] = Object.freeze([
+export const systemCollectionNames: ReadonlyArray<string> = Object.freeze([
   CollectionNameSuperusers,
   CollectionNameExternalAuths,
   CollectionNameMFAs,

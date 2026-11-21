@@ -27,7 +27,7 @@ function errorOf(fn: () => unknown): Error | undefined {
 
 describe("fexpr errors", () => {
   // [filter, error text]
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["a = 1 \r", `unexpected character '\\r'`],
     ["a = 1 $", `unexpected character '$'`],
     ["a = 1 ä", `unexpected character 'ä'`],
@@ -101,7 +101,7 @@ describe("filter errors", () => {
   const resolver = newSimpleFieldResolver("a");
 
   // [filter, error text]
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["b = 1", `invalid left operand "b" - failed to resolve field "b"`],
     ["a = b", `invalid right operand "b" - failed to resolve field "b"`],
     ["foo() = 1", `invalid left operand "foo" - unknown function "foo"`],

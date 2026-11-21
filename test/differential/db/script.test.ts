@@ -19,8 +19,8 @@ import {
 
 interface SQLResult {
   affectedRows: number;
-  columns: string[];
-  rows: unknown[][];
+  columns: Array<string>;
+  rows: Array<Array<unknown>>;
 }
 
 const writePrefixes = [
@@ -62,8 +62,8 @@ async function upstreamSQL(server: UpstreamServer, query: string): Promise<SQLRe
   });
   const body = (await res.json()) as {
     affectedRows: number;
-    columns: { name: string }[];
-    rows: unknown[][];
+    columns: Array<{ name: string }>;
+    rows: Array<Array<unknown>>;
   };
   if (res.status !== 200) {
     throw new Error(`POST /api/sql ${query}: ${res.status} ${JSON.stringify(body)}`);
@@ -94,8 +94,8 @@ const queries = [
 
 let upstreamCopy: FixtureCopy;
 let igloCopy: FixtureCopy;
-const upstream: SQLResult[] = [];
-const iglo: SQLResult[] = [];
+const upstream: Array<SQLResult> = [];
+const iglo: Array<SQLResult> = [];
 
 beforeAll(async () => {
   upstreamCopy = copyFixture();

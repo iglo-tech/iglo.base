@@ -119,7 +119,7 @@ export class ZipReader {
   readonly #size: number;
   #closed = false;
   #baseOffset = 0;
-  readonly files: ZipEntry[] = [];
+  readonly files: Array<ZipEntry> = [];
 
   // zip.OpenReader. Throws ErrFormat when path is not a valid zip file.
   constructor(path: string) {

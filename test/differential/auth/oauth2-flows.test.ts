@@ -26,7 +26,7 @@ import { startUpstream } from "@test/support/upstream";
 const timeout = 120_000;
 
 type Kind = "upstream" | "igloBase";
-const kinds: Kind[] = ["upstream", "igloBase"];
+const kinds: Array<Kind> = ["upstream", "igloBase"];
 
 interface Server {
   url: string;
@@ -38,7 +38,7 @@ interface Reply {
   json: { [key: string]: unknown };
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -118,7 +118,7 @@ async function onBoth(
   flow: (server: Server, dataDir: string, kind: Kind) => Promise<unknown>,
   prepare: (ctx: { dataDir: string }) => void,
 ): Promise<void> {
-  const transcripts: string[] = [];
+  const transcripts: Array<string> = [];
   for (const kind of kinds) {
     const dataDir = fixtureCopy();
     prepare({ dataDir });
@@ -140,11 +140,11 @@ async function oauth2Client(ctx: ScenarioContext): Promise<RealtimeStream> {
   return stream;
 }
 
-function externalAuthRows(dataDir: string): { [key: string]: unknown }[] {
+function externalAuthRows(dataDir: string): Array<{ [key: string]: unknown }> {
   return queryRows(
     dataDir,
     "SELECT * FROM _externalAuths WHERE provider = 'oidc' ORDER BY providerId",
-  ) as { [key: string]: unknown }[];
+  ) as Array<{ [key: string]: unknown }>;
 }
 
 describe("the popup flow", () => {
@@ -168,7 +168,7 @@ describe("the popup flow", () => {
             const auth = await signIn(server, { code });
             return {
               providers: (
-                methods.json["oauth2"] as { providers: { name: string }[] }
+                methods.json["oauth2"] as { providers: Array<{ name: string }> }
               ).providers.map((p) => p.name),
               redirect: [redirect.status, redirect.headers.get("location")],
               message,
@@ -223,7 +223,7 @@ describe("_externalAuths across the servers", () => {
   for (const [writer, reader] of [
     ["igloBase", "upstream"],
     ["upstream", "igloBase"],
-  ] as [Kind, Kind][]) {
+  ] as Array<[Kind, Kind]>) {
     test(
       `rows written by ${writer} are used and deleted by ${reader}`,
       async () => {
@@ -309,8 +309,8 @@ describe("what a sign-in triggers", () => {
       await onBoth(
         async (server) => {
           const before = sink.messages.length;
-          const statuses: number[] = [];
-          const counts: number[] = [];
+          const statuses: Array<number> = [];
+          const counts: Array<number> = [];
           for (const agent of ["agent one", "agent two", "agent two"]) {
             statuses.push((await signIn(server, {}, { "User-Agent": agent })).status);
             await Bun.sleep(150);

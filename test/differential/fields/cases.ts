@@ -6,7 +6,7 @@ export type FieldDef = Record<string, unknown> & { name: string; type: string };
 
 // Field settings upstream accepts: one collection per field type, one
 // field per entry (named "<type>_<index>").
-export const validSettings: Record<string, Record<string, unknown>[]> = {
+export const validSettings: Record<string, Array<Record<string, unknown>>> = {
   text: [
     { min: 2, max: 10, pattern: "^[a-z]+$", help: "<b>Help</b> & more", presentable: true },
     { autogeneratePattern: "[a-z]{5}", required: true, hidden: true },
@@ -56,7 +56,7 @@ export const validSettings: Record<string, Record<string, unknown>[]> = {
 // Field settings upstream rejects: one collection each, with the field
 // after the default "id" field. Error messages here must not depend on
 // random values (autogenerate patterns are literals).
-export const invalidSettings: FieldDef[] = [
+export const invalidSettings: Array<FieldDef> = [
   { name: "f", type: "text", min: -1 },
   { name: "f", type: "text", max: -1 },
   { name: "f", type: "text", min: 5, max: 3 },
@@ -99,13 +99,13 @@ export const invalidSettings: FieldDef[] = [
 
 export interface ValueCollection {
   name: string;
-  fields: FieldDef[];
+  fields: Array<FieldDef>;
 }
 
 // The collections records are created in. Fields are not required, so
 // that each record only fails on the submitted value; the r_* collections
 // hold one required field each.
-export const valueCollections: ValueCollection[] = [
+export const valueCollections: Array<ValueCollection> = [
   {
     name: "v_text",
     fields: [
@@ -191,11 +191,11 @@ export type ValueCase = [string, string, string];
 
 const q = (s: string): string => JSON.stringify(s);
 
-function cases(collection: string, key: string, values: string[]): ValueCase[] {
+function cases(collection: string, key: string, values: Array<string>): Array<ValueCase> {
   return values.map((v) => [collection, key, v]);
 }
 
-export const valueCases: ValueCase[] = [
+export const valueCases: Array<ValueCase> = [
   // text
   ...cases("v_text", "t", [
     q("abc"),

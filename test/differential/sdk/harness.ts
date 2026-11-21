@@ -52,7 +52,7 @@ interface Step {
   label: string;
   // JSON text of the value (or of the error)
   value: string;
-  exchanges: Exchange[];
+  exchanges: Array<Exchange>;
 }
 
 export type SdkClient = PocketBase;
@@ -71,7 +71,7 @@ export interface SdkOptions {
   // each server gets its own S3 test server (env.s3)
   s3?: boolean;
   // `serve` arguments of both servers
-  args?: string[];
+  args?: Array<string>;
   timeout?: number;
 }
 
@@ -197,15 +197,15 @@ export function mailMatch(m: SinkMessage, pattern: RegExp): string {
 }
 
 class Recording implements SdkEnv {
-  readonly steps: Step[] = [];
-  #current: Exchange[] = [];
-  readonly clients: PocketBase[] = [];
+  readonly steps: Array<Step> = [];
+  #current: Array<Exchange> = [];
+  readonly clients: Array<PocketBase> = [];
   // requests made outside any step, `fails`, `derived` or `fetch`: never
   // compared, so the test must not leave any
-  leftover(): string[] {
+  leftover(): Array<string> {
     return this.#current.map((e) => `${e.method} ${e.url}`);
   }
-  readonly cleanup: (() => Promise<unknown>)[] = [];
+  readonly cleanup: Array<() => Promise<unknown>> = [];
 
   constructor(
     readonly name: SdkEnv["name"],
@@ -406,8 +406,8 @@ export function compareRecordings(
   upstream: Recording,
   igloBase: Recording,
   start: ReturnType<typeof readStartingData>,
-): string[] {
-  const out: string[] = [];
+): Array<string> {
+  const out: Array<string> = [];
   const pairing = new Pairing({ history: true });
   const count = Math.max(upstream.steps.length, igloBase.steps.length);
   for (let i = 0; i < count; i++) {
@@ -489,7 +489,7 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
         await options.prepare?.({ dataDir: dirs[kind], sink: sinks[kind] });
       }
       const start = readStartingData(dirs.upstream);
-      const gateways: Versitygw[] = [];
+      const gateways: Array<Versitygw> = [];
       const noS3 = {
         endpoint: "http://s3.invalid",
         bucket: "",

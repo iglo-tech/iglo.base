@@ -41,10 +41,10 @@ function writeMigrations(site: Site, files: Record<string, string>): void {
   }
 }
 
-function rows<T>(site: Site, sql: string): T[] {
+function rows<T>(site: Site, sql: string): Array<T> {
   const db = new Database(join(site.dataDir, "data.db"), { readonly: true });
   try {
-    return db.query(sql).all() as T[];
+    return db.query(sql).all() as Array<T>;
   } finally {
     db.close();
   }
@@ -56,20 +56,20 @@ function yesFile(site: Site): string {
   return path;
 }
 
-function userMigrations(site: Site): string[] {
+function userMigrations(site: Site): Array<string> {
   return rows<{ file: string }>(
     site,
     "SELECT file FROM _migrations WHERE file NOT LIKE '%.go' ORDER BY rowid",
   ).map((r) => r.file);
 }
 
-function migrate(site: Site, ...args: string[]) {
+function migrate(site: Site, ...args: Array<string>) {
   return run(["migrate", ...args, "--dir", site.dataDir], { cwd: site.root });
 }
 
 async function withServer(
   site: Site,
-  args: string[],
+  args: Array<string>,
   fn: (server: RunningServer, token: string) => Promise<void>,
 ): Promise<void> {
   const upsert = await run(
@@ -114,7 +114,7 @@ function matchesTemplate(actual: string, expected: string): boolean {
   return new RegExp(`^${pattern}$`).test(actual.trim());
 }
 
-function generated(site: Site): { name: string; text: string }[] {
+function generated(site: Site): Array<{ name: string; text: string }> {
   return readdirSync(site.migrationsDir)
     .toSorted()
     .map((name) => ({ name, text: readFileSync(join(site.migrationsDir, name), "utf8") }));
@@ -211,7 +211,7 @@ describe("TestAutomigrateCollectionUpdate", () => {
       await api(server, token, "POST", "/api/collections", { type: "auth", name: "test123" });
       const scaffold = (await (
         await api(server, token, "GET", "/api/collections/test123")
-      ).json()) as { fields: unknown[] };
+      ).json()) as { fields: Array<unknown> };
       const res = await api(server, token, "PATCH", "/api/collections/test123", {
         ...baseAuth,
         fields: [...scaffold.fields, ...baseFields],
@@ -223,7 +223,7 @@ describe("TestAutomigrateCollectionUpdate", () => {
       const current = (await (
         await api(server, token, "GET", "/api/collections/test123")
       ).json()) as {
-        fields: { id: string; name: string }[];
+        fields: Array<{ id: string; name: string }>;
       };
       const res = await api(server, token, "PATCH", "/api/collections/test123", {
         name: "test123_update",
@@ -531,7 +531,7 @@ migrate((app) => {
     writeMigrations(site, { "1_x.js": `migrate((app) => {}, null)` });
     await migrate(site, "up");
 
-    const schema = (s: Site): unknown[] =>
+    const schema = (s: Site): Array<unknown> =>
       rows(s, "SELECT type, name, sql FROM sqlite_schema ORDER BY name");
     expect(schema(site)).toEqual(schema(plain));
     expect(userMigrations(site)).toEqual(["1_x.js"]);

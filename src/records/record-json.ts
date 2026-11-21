@@ -32,13 +32,13 @@ export interface LayoutMember {
 
 export interface RecordJSONLayout {
   // all possible members in the order they are written
-  readonly members: readonly LayoutMember[];
+  readonly members: ReadonlyArray<LayoutMember>;
 }
 
 // what the layout was built from, to check it is still current
 interface Entry {
-  readonly fields: readonly Field[];
-  readonly names: readonly string[];
+  readonly fields: ReadonlyArray<Field>;
+  readonly names: ReadonlyArray<string>;
   readonly layout: RecordJSONLayout | null;
 }
 
@@ -72,9 +72,9 @@ function matches(entry: Entry, fields: Iterable<Field>): boolean {
 }
 
 function build(fields: Iterable<Field>): Entry {
-  const list: Field[] = [];
-  const names: string[] = [];
-  const members: LayoutMember[] = [];
+  const list: Array<Field> = [];
+  const names: Array<string> = [];
+  const members: Array<LayoutMember> = [];
   const seen = new Set<string>();
   let covered = true;
   for (const f of fields) {

@@ -13,7 +13,7 @@ export interface PopupHandOffOptions extends Omit<
   "cookies" | "request" | "origin"
 > {
   /** Origins besides the request's own that may post the token (see `checkOrigin`). */
-  allowedOrigins?: readonly string[];
+  allowedOrigins?: ReadonlyArray<string>;
 }
 
 function jsonResponse(status: number, body: unknown): Response {

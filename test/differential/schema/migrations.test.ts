@@ -28,7 +28,7 @@ let schemaFile = "";
 let upstream: UpstreamServer | undefined;
 let upstreamToken = "";
 let upstreamMigrate: { exitCode: number; output: string } | undefined;
-let igloRecords: Record<string, unknown>[] = [];
+let igloRecords: Array<Record<string, unknown>> = [];
 
 // the schema file of the test: posts with a renamed field and a new field
 // that the migration fills
@@ -51,12 +51,12 @@ async function superuserToken(url: string): Promise<string> {
   return ((await res.json()) as { token: string }).token;
 }
 
-async function records(url: string, token: string): Promise<Record<string, unknown>[]> {
+async function records(url: string, token: string): Promise<Array<Record<string, unknown>>> {
   const res = await fetch(`${url}/api/collections/posts/records?perPage=500&sort=id`, {
     headers: { authorization: token },
   });
   expect(res.status).toBe(200);
-  return ((await res.json()) as { items: Record<string, unknown>[] }).items;
+  return ((await res.json()) as { items: Array<Record<string, unknown>> }).items;
 }
 
 beforeAll(async () => {
@@ -123,9 +123,11 @@ describe("TypeScript migrations against upstream", () => {
     const { Database } = await import("bun:sqlite");
     const db = new Database(join(igloDir, "data.db"), { readonly: true });
     try {
-      const rows = db.query("SELECT file FROM _migrations WHERE file LIKE '@schema/%'").all() as {
+      const rows = db
+        .query("SELECT file FROM _migrations WHERE file LIKE '@schema/%'")
+        .all() as Array<{
         file: string;
-      }[];
+      }>;
       expect(rows.map((row) => row.file)).toEqual(["@schema/20261113250000_rename_and_fill.ts"]);
     } finally {
       db.close();
@@ -154,7 +156,7 @@ describe("TypeScript migrations against upstream", () => {
     const collection = await fetch(`${upstream.url}/api/collections/posts`, {
       headers: { authorization: upstreamToken },
     });
-    const fields = ((await collection.json()) as { fields: { name: string }[] }).fields.map(
+    const fields = ((await collection.json()) as { fields: Array<{ name: string }> }).fields.map(
       (field) => field.name,
     );
     expect(fields).toContain("author");

@@ -34,7 +34,7 @@ export function preSchemaBackupName(now: Date): string {
 
 // the names of the pre-schema backups in the backups storage, sorted by name
 // (which is the time, so the newest sorts last)
-async function listPreSchema(app: App): Promise<string[]> {
+async function listPreSchema(app: App): Promise<Array<string>> {
   const fsys = app.filesystem.newBackupsFilesystem();
   try {
     const files = await fsys.list(preSchemaPrefix);

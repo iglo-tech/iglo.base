@@ -294,7 +294,7 @@ function match(s1: string, s2: string): boolean {
   return true;
 }
 
-function lookup(tab: string[], val: string): [number, string] {
+function lookup(tab: Array<string>, val: string): [number, string] {
   for (let i = 0; i < tab.length; i++) {
     const v = tab[i] as string;
     if (val.length >= v.length && match(val.slice(0, v.length), v)) {

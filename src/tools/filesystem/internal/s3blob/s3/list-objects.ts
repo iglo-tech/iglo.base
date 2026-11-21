@@ -27,7 +27,7 @@ function queryEscape(s: string): string {
 // Encode encodes the parameters in a properly formatted query string
 // (url.Values.Encode: sorted by key).
 export function encodeListParams(l: ListParams): string {
-  const query: [string, string][] = [["list-type", "2"]];
+  const query: Array<[string, string]> = [["list-type", "2"]];
 
   if ((l.continuationToken ?? "") !== "") {
     query.push(["continuation-token", l.continuationToken as string]);
@@ -67,8 +67,8 @@ export interface ListObjectContent {
 
 export interface ListObjectsResponse {
   nextContinuationToken: string;
-  commonPrefixes: string[];
-  contents: ListObjectContent[];
+  commonPrefixes: Array<string>;
+  contents: Array<ListObjectContent>;
 }
 
 // an xsd:dateTime in Unix nanoseconds (time.Time.UnmarshalText)

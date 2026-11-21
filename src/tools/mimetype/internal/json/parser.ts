@@ -16,18 +16,18 @@ const maxRecursion = 4096;
 export interface query {
   // SearchPath represents the whole path to look for inside the JSON.
   // ex: [][]byte{[]byte("foo"), []byte("bar")} matches {"foo": {"bar": "baz"}}
-  SearchPath: Uint8Array[];
+  SearchPath: Array<Uint8Array>;
   // SearchVals represents values to look for when the SearchPath is found.
   // Each SearchVal element is tried until one of them matches (logical OR.)
-  SearchVals: Uint8Array[];
+  SearchVals: Array<Uint8Array>;
 }
 
-const newQuery = (path: string[], vals: string[] = []): query => ({
+const newQuery = (path: Array<string>, vals: Array<string> = []): query => ({
   SearchPath: path.map(lit),
   SearchVals: vals.map(lit),
 });
 
-export const queries: Record<string, query[]> = {
+export const queries: Record<string, Array<query>> = {
   [QueryNone]: [],
   [QueryGeo]: [
     newQuery(
@@ -67,7 +67,7 @@ export class parserState {
   // currPath keeps a track of the JSON keys parsed up.
   // It works only for JSON objects. JSON arrays are ignored
   // mainly because the functionality is not needed.
-  currPath: Uint8Array[] = [];
+  currPath: Array<Uint8Array> = [];
   // firstToken stores the first JSON token encountered in input.
   firstToken = TokInvalid;
   // querySatisfied is true if both path and value of any queries passed to
@@ -225,7 +225,7 @@ export class parserState {
     return 0;
   }
 
-  consumeArray(b: Uint8Array, qs: query[], lvl: number): number {
+  consumeArray(b: Uint8Array, qs: Array<query>, lvl: number): number {
     this.appendPath(openArray, qs);
     if (b.length === 0) {
       return 0;
@@ -268,18 +268,18 @@ export class parserState {
   // appendPath will append a path fragment if queries is not empty.
   // If we don't need query functionality (just checking if a JSON is valid),
   // then we can skip keeping track of the path we're currently in.
-  appendPath(path: Uint8Array, qs: query[]): void {
+  appendPath(path: Uint8Array, qs: Array<query>): void {
     if (qs.length !== 0) {
       this.currPath.push(path);
     }
   }
-  popLastPath(qs: query[]): void {
+  popLastPath(qs: Array<query>): void {
     if (qs.length !== 0) {
       this.currPath.pop();
     }
   }
 
-  consumeObject(b: Uint8Array, qs: query[], lvl: number): number {
+  consumeObject(b: Uint8Array, qs: Array<query>, lvl: number): number {
     let n = 0;
     while (n < b.length) {
       n += this.consumeSpace(b, n);
@@ -360,7 +360,7 @@ export class parserState {
     return 0;
   }
 
-  consumeAny(b: Uint8Array, qs: query[], lvl: number): number {
+  consumeAny(b: Uint8Array, qs: Array<query>, lvl: number): number {
     // Avoid too much recursion.
     if (this.maxRecursion !== 0 && lvl > this.maxRecursion) {
       return 0;
@@ -422,7 +422,7 @@ export class parserState {
   }
 }
 
-export function eq(path1: Uint8Array[], path2: Uint8Array[]): boolean {
+export function eq(path1: Array<Uint8Array>, path2: Array<Uint8Array>): boolean {
   if (path1.length !== path2.length) {
     return false;
   }
@@ -454,7 +454,7 @@ const constTrue = lit("true");
 const constFalse = lit("false");
 const constNull = lit("null");
 
-function queryPathMatch(qs: query[], path: Uint8Array[]): number {
+function queryPathMatch(qs: Array<query>, path: Array<Uint8Array>): number {
   for (let i = 0; i < qs.length; i++) {
     if (eq((qs[i] as query).SearchPath, path)) {
       return i;

@@ -25,7 +25,7 @@ export function bin(s: string): Uint8Array {
   return Uint8Array.from(s, (c) => c.charCodeAt(0));
 }
 
-export function concat(...parts: Uint8Array[]): Uint8Array {
+export function concat(...parts: Array<Uint8Array>): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let off = 0;
   for (const p of parts) {

@@ -16,7 +16,7 @@ function expr(e: Partial<Expr>): Expr {
 }
 
 test("Expr.IsZero", () => {
-  const scenarios: [Expr, boolean][] = [
+  const scenarios: Array<[Expr, boolean]> = [
     [expr({}), true],
     [expr({ op: SignAnyEq }), false],
     [expr({ left: tok({ literal: "123" }) }), false],
@@ -30,7 +30,7 @@ test("Expr.IsZero", () => {
 });
 
 // [input, expected error, %v of the result]
-const scenarios: [string, boolean, string][] = [
+const scenarios: Array<[string, boolean, string]> = [
   ["> 1", true, "[]"],
   ["a >", true, "[]"],
   ["a > >", true, "[]"],
@@ -199,7 +199,7 @@ const scenarios: [string, boolean, string][] = [
 describe("Parse", () => {
   for (const [i, [input, expectedError, expectedPrint]] of scenarios.entries()) {
     test(`s${i}:${input}`, () => {
-      let v: ExprGroup[] | null = null;
+      let v: Array<ExprGroup> | null = null;
       let err: unknown;
       try {
         v = parse(input);

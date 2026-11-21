@@ -25,9 +25,9 @@ const UpperLower = MaxRune + 1;
 // lo, hi and the UpperCase, LowerCase and TitleCase deltas
 type CaseRange = [lo: number, hi: number, upper: number, lower: number, title: number];
 
-let caseRanges: CaseRange[] | undefined;
+let caseRanges: Array<CaseRange> | undefined;
 
-function decodeCaseRanges(): CaseRange[] {
+function decodeCaseRanges(): Array<CaseRange> {
   return caseRangesText.split(",").map((item) => {
     const [lo = "", hi = "", ...deltas] = item.split(" ");
     const d = deltas.map((delta) => (delta === "UL" ? UpperLower : Number(delta)));

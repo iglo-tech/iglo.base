@@ -9,7 +9,7 @@ import { DefaultSeparators, Tokenizer } from "@/tools/tokenizer/tokenizer";
 describe("Factories", () => {
   const expectedContent = "test";
 
-  const scenarios: { name: string; create: (str: string) => Tokenizer }[] = [
+  const scenarios: Array<{ name: string; create: (str: string) => Tokenizer }> = [
     { name: "New()", create: (str) => new Tokenizer(str) },
     { name: "NewFromString()", create: (str) => Tokenizer.fromString(str) },
     // NewFromBytes maps to fromString (the bytes are the string here)
@@ -55,16 +55,16 @@ describe("Scan", () => {
 });
 
 describe("ScanAll", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     content: string;
-    separators: string[];
+    separators: Array<string>;
     keepSeparator: boolean;
     keepEmptyTokens: boolean;
     ignoreParenthesis: boolean;
     expectError: boolean;
-    expectTokens: string[];
-  }[] = [
+    expectTokens: Array<string>;
+  }> = [
     {
       name: "empty string",
       content: "",
@@ -180,7 +180,7 @@ describe("ScanAll", () => {
       tk.keepEmptyTokens(s.keepEmptyTokens);
       tk.ignoreParenthesis(s.ignoreParenthesis);
 
-      let tokens: string[] = [];
+      let tokens: Array<string> = [];
       let hasErr = false;
       try {
         tokens = tk.scanAll();

@@ -39,7 +39,7 @@ class ManualClock implements Clock {
 
 const startTime = new Date("2026-10-29T12:00:00.000Z");
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(clock: ManualClock = new ManualClock(startTime)): TestCollectionsApp {
   const app = openTestApp(clock);
@@ -77,7 +77,7 @@ async function stubOTPRecords(app: RecordsApp, now: Date): Promise<void> {
 
   const old = new Date(now.getTime() - 60 * msMinute);
 
-  const stubs: [string, Record, Date[]][] = [
+  const stubs: Array<[string, Record, Array<Date>]> = [
     ["superuser2", superuser2, [now, ago(now, 1), old, ago(now, 2), ago(old, 1)]],
     ["superuser3", superuser3, [ago(now, 3), ago(now, 2 * msMinute)]],
     ["user1", user1, [old]],
@@ -97,13 +97,13 @@ async function stubOTPRecords(app: RecordsApp, now: Date): Promise<void> {
 }
 
 // the ids of the OTPs of all auth collections
-function allOTPIds(app: RecordsApp): string[] {
+function allOTPIds(app: RecordsApp): Array<string> {
   return findAllCollections(app, CollectionTypeAuth).flatMap((c) =>
     findAllOTPsByCollection(app, c).map((m) => m.id),
   );
 }
 
-function otpIds(otps: OTP[]): string[] {
+function otpIds(otps: Array<OTP>): Array<string> {
   return otps.map((m) => m.id);
 }
 
@@ -216,7 +216,7 @@ describe("TestOTPHasExpired", () => {
     // clock moves on by one millisecond instead
     clock.current = new Date(startTime.getTime() + 1);
 
-    const scenarios: [string, bigint, boolean][] = [
+    const scenarios: Array<[string, bigint, boolean]> = [
       ["0m", 0n, true],
       ["3m", 3n * 60n * 1_000_000_000n, true],
       ["5m", 5n * 60n * 1_000_000_000n, true],
@@ -270,7 +270,7 @@ describe("TestOTPPreValidate", () => {
 });
 
 describe("TestOTPValidateHook", () => {
-  const scenarios: [string, (app: RecordsApp) => OTP, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => OTP, Array<string>]> = [
     ["empty", (app) => newOTP(app), ["collectionRef", "recordRef", "password"]],
     [
       "non-auth collection",
@@ -327,7 +327,7 @@ describe("TestOTPClearOnTokenKeyChange", () => {
     const user1 = findAuthRecordByEmail(app, "users", "test@example.com");
     const user2 = findAuthRecordByEmail(app, "users", "test2@example.com");
 
-    const otpsToCreate: [Record, number][] = [
+    const otpsToCreate: Array<[Record, number]> = [
       [user1, 3],
       [user2, 2],
     ];
@@ -355,7 +355,7 @@ describe("TestOTPClearOnTokenKeyChange", () => {
 // queries (core/otp_query_test.go)
 
 describe("TestFindAllOTPsByRecord", () => {
-  const scenarios: [string, (app: RecordsApp) => Record, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => Record, Array<string>]> = [
     ["demo1", (app) => findRecordById(app, "demo1", "84nmscqy84lsi1t"), []],
     [
       "superuser2",
@@ -383,7 +383,7 @@ describe("TestFindAllOTPsByRecord", () => {
 });
 
 describe("TestFindAllOTPsByCollection", () => {
-  const scenarios: [string, string[]][] = [
+  const scenarios: Array<[string, Array<string>]> = [
     ["demo1", []],
     [
       CollectionNameSuperusers,
@@ -415,7 +415,7 @@ describe("TestFindAllOTPsByCollection", () => {
 });
 
 describe("TestFindOTPById", () => {
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["", true],
     ["84nmscqy84lsi1t", true], // non-otp id
     ["superuser2_0", false],
@@ -439,7 +439,7 @@ describe("TestFindOTPById", () => {
 });
 
 describe("TestDeleteAllOTPsByRecord", () => {
-  const scenarios: [string, (app: RecordsApp) => Record, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => Record, Array<string>]> = [
     ["demo1", (app) => findRecordById(app, "demo1", "84nmscqy84lsi1t"), []], // non-auth record
     [
       "superuser2",
@@ -471,7 +471,7 @@ describe("TestDeleteAllOTPsByRecord", () => {
 });
 
 // stubs the OTPs, deletes the expired ones and compares the deleted ids
-async function checkDeletedIds(app: RecordsApp, expectedDeletedIds: string[]): Promise<void> {
+async function checkDeletedIds(app: RecordsApp, expectedDeletedIds: Array<string>): Promise<void> {
   await stubOTPRecords(app, startTime);
   const before = allOTPIds(app);
 

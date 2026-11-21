@@ -14,7 +14,7 @@ import { execSQL } from "@test/migrations/dump";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { tempDir } from "@test/support/executable";
 
-function walFiles(dataDir: string): string[] {
+function walFiles(dataDir: string): Array<string> {
   return ["data.db-wal", "auxiliary.db-wal"].filter((name) => existsSync(join(dataDir, name)));
 }
 

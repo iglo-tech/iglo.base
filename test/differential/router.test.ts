@@ -56,7 +56,7 @@ async function compare(method: string, target: string): Promise<void> {
   expect(normalize(got)).toEqual(normalize(want));
 }
 
-const cases: [string, string][] = [
+const cases: Array<[string, string]> = [
   ["GET", "/api/health"],
   ["HEAD", "/api/health"],
   ["GET", "/api/health?x=1"],
@@ -86,7 +86,7 @@ describe("router", () => {
   // resolved path directly where upstream redirects to the clean path (or,
   // for %2e%2e and "\\", does not match).
   // Each case checks both sides of the recorded difference.
-  const dotSegments: [string, string, string, number][] = [
+  const dotSegments: Array<[string, string, string, number]> = [
     ["GET", "/api/../api/health", "/api/health", 307],
     ["GET", "/api/health/.", "/api/health/", 307],
     ["GET", "/./api/health", "/api/health", 307],

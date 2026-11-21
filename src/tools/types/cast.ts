@@ -20,7 +20,7 @@ const numericAndNamedTimezone = 3;
 const timeOnly = 4;
 
 // internal.TimeFormats, in cast's order
-const timeFormats: [string, number][] = [
+const timeFormats: Array<[string, number]> = [
   ["2006-01-02", noTimezone],
   ["2006-01-02T15:04:05Z07:00", numericTimezone], // time.RFC3339
   ["2006-01-02T15:04:05", noTimezone], // iso8601 without timezone
@@ -204,7 +204,7 @@ export function toString(i: unknown): string {
 // ToStringSliceE: every element of an array cast with ToStringE (any
 // failure fails the whole cast), a string split on whitespace
 // (strings.Fields), any other non-nil value as a single element
-export function toStringSliceE(i: unknown): string[] {
+export function toStringSliceE(i: unknown): Array<string> {
   if (i === null || i === undefined) {
     throw new CastError("unable to cast <nil> to []string");
   }
@@ -222,7 +222,7 @@ export function toStringSliceE(i: unknown): string[] {
 }
 
 // ToStringSlice: ToStringSliceE without the error (an empty slice instead)
-export function toStringSlice(i: unknown): string[] {
+export function toStringSlice(i: unknown): Array<string> {
   try {
     return toStringSliceE(i);
   } catch {
@@ -234,7 +234,7 @@ export function toStringSlice(i: unknown): string[] {
 const goSpace = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/;
 
 // strings.Fields: s split around runs of unicode.IsSpace
-function fields(s: string): string[] {
+function fields(s: string): Array<string> {
   return s.split(new RegExp(goSpace.source + "+")).filter((f) => f !== "");
 }
 

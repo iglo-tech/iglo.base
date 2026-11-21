@@ -22,7 +22,7 @@ export const members = {
 export type Ids = (collection: string) => string;
 
 // the rule of create, update and delete of each w_<shape> collection
-export const ruleShapes: { shape: string; rule: string | null }[] = [
+export const ruleShapes: Array<{ shape: string; rule: string | null }> = [
   { shape: "null", rule: null },
   { shape: "empty", rule: "" },
   { shape: "auth", rule: `@request.auth.id != ""` },
@@ -41,7 +41,7 @@ export const ruleShapes: { shape: string; rule: string | null }[] = [
 ];
 
 // collections in creation order (each may refer to the ones before)
-export function freshCollections(ids: Ids): { [key: string]: unknown }[] {
+export function freshCollections(ids: Ids): Array<{ [key: string]: unknown }> {
   const shapeCollections = ruleShapes.map((s) => ({
     name: `w_${s.shape}`,
     type: "base",
@@ -132,7 +132,7 @@ export function freshCollections(ids: Ids): { [key: string]: unknown }[] {
 }
 
 // collections that refer to parents (created after it)
-export function freshCollections2(ids: Ids): { [key: string]: unknown }[] {
+export function freshCollections2(ids: Ids): Array<{ [key: string]: unknown }> {
   return [
     {
       name: "children",
@@ -200,8 +200,8 @@ export const membersCollection = {
 };
 
 // records the builder creates (collection, body)
-export function freshRecords(): { collection: string; body: { [key: string]: unknown } }[] {
-  const out: { collection: string; body: { [key: string]: unknown } }[] = [];
+export function freshRecords(): Array<{ collection: string; body: { [key: string]: unknown } }> {
+  const out: Array<{ collection: string; body: { [key: string]: unknown } }> = [];
   for (const [name, m] of Object.entries(members)) {
     out.push({
       collection: "members",
@@ -271,14 +271,14 @@ export function freshRecords(): { collection: string; body: { [key: string]: unk
 // the files the builder uploads to w_types/types1 (fl)
 export const typesFiles = ["a.txt", "b.txt", "c.txt"];
 
-const identities: FreshIdentity[] = ["guest", "alice", "bob", "superuser"];
+const identities: Array<FreshIdentity> = ["guest", "alice", "bob", "superuser"];
 
 const json = (v: unknown) => JSON.stringify(v);
 
 // the rules matrix: create, update and delete on every w_<shape> as each
 // identity
-function ruleCases(): WriteCase[] {
-  const cases: WriteCase[] = [];
+function ruleCases(): Array<WriteCase> {
+  const cases: Array<WriteCase> = [];
   const createBody = (shape: string, who: FreshIdentity) => ({
     id: rid(`${shape.slice(0, 6)}c${who}`),
     title: `t_${who}`,
@@ -346,7 +346,7 @@ const typesUpdate = (name: string, body: unknown, query = ""): WriteCase => ({
 
 // every simple field type's validation errors and normalization; files
 // are the stored names of w_types/types1's fl files
-function typeCases(files: string[]): WriteCase[] {
+function typeCases(files: Array<string>): Array<WriteCase> {
   const valid = {
     t: "abcd",
     ed: "<p>hi</p>",
@@ -449,10 +449,10 @@ function typeCases(files: string[]): WriteCase[] {
 }
 
 // the same create sent as JSON, urlencoded and multipart (@jsonPayload)
-function encodingCases(): WriteCase[] {
+function encodingCases(): Array<WriteCase> {
   const base = "/api/collections/w_empty/records";
   const boundary = "WriteCaseBoundary0123456789";
-  const multipart = (parts: [string, string][]) =>
+  const multipart = (parts: Array<[string, string]>) =>
     parts
       .map(
         ([name, value]) =>
@@ -554,7 +554,7 @@ function encodingCases(): WriteCase[] {
   ];
 }
 
-function otherCases(): WriteCase[] {
+function otherCases(): Array<WriteCase> {
   const membersUrl = "/api/collections/members/records";
   return [
     // unique index
@@ -821,13 +821,13 @@ function otherCases(): WriteCase[] {
   ];
 }
 
-export function freshCases(files: string[]): WriteCase[] {
+export function freshCases(files: Array<string>): Array<WriteCase> {
   return [...ruleCases(), ...typeCases(files), ...encodingCases(), ...otherCases()];
 }
 
 // passwords set by the cases, checked with auth-with-password on the data
 // written by iglo.base, read by upstream
-export const changedPasswords: { collection: string; email: string; password: string }[] = [
+export const changedPasswords: Array<{ collection: string; email: string; password: string }> = [
   { collection: "members", email: "erin3@example.com", password: "erinpass123" },
   { collection: "members", email: "new2@example.com", password: "pass12345" },
   { collection: "members", email: members.dave.email, password: "newpass123" },

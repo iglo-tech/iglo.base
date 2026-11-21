@@ -120,7 +120,7 @@ export function exchangeToken(
   c: TokenConfig,
   redirectURL: string,
   code: string,
-  opts: readonly (readonly [key: string, value: string])[],
+  opts: ReadonlyArray<readonly [key: string, value: string]>,
 ): Promise<Token> {
   const v: Values = new Map([
     ["grant_type", ["authorization_code"]],
@@ -349,7 +349,7 @@ export async function readLimited(res: Response, limit: number): Promise<Uint8Ar
     return new Uint8Array();
   }
 
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   let size = 0;
   while (size < limit) {
     const { done, value } = await reader.read();

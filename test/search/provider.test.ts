@@ -89,7 +89,7 @@ function filterOf(n: number): FilterData {
   return Array(n).fill("1=1").join(" && ");
 }
 
-function sortOf(n: number): SortField[] {
+function sortOf(n: number): Array<SortField> {
   return Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc }));
 }
 
@@ -267,7 +267,7 @@ test("Provider.Page and PerPage", async () => {
 test("Provider.Sort and AddSort", async () => {
   const testDB = createTestDB();
   try {
-    const initialSort: SortField[] = [
+    const initialSort: Array<SortField> = [
       { name: "test1", direction: SortAsc },
       { name: "test2", direction: SortAsc },
     ];
@@ -306,17 +306,17 @@ test("Provider.Filter and AddFilter", async () => {
 describe("Provider.Parse", () => {
   const initialPage = 2;
   const initialPerPage = 123;
-  const initialSort: SortField[] = [
+  const initialSort: Array<SortField> = [
     { name: "test1", direction: SortAsc },
     { name: "test2", direction: SortAsc },
   ];
   // upstream's initial filters ("test1", "test2") are not valid filters,
   // which Exec would reject; these are
-  const initialFilter: FilterData[] = ["test1 > 0", "test2 > 0"];
+  const initialFilter: Array<FilterData> = ["test1 > 0", "test2 > 0"];
   const initialWhere = "((NOT (`test1` IS NULL)) AND (test1 > 0)) AND (test2 > 0)";
 
   // [query, expectError, expectPage, expectPerPage, expect ORDER BY, expect WHERE]
-  const scenarios: [string, string | undefined, number, number, string, string][] = [
+  const scenarios: Array<[string, string | undefined, number, number, string, string]> = [
     // empty
     [
       "",
@@ -406,7 +406,7 @@ describe("Provider.Parse", () => {
   }
 
   test("parse errors", () => {
-    const cases: [string, string][] = [
+    const cases: Array<[string, string]> = [
       ["skipTotal=a", 'strconv.ParseBool: parsing "a": invalid syntax'],
       ["page=1.5", 'strconv.Atoi: parsing "1.5": invalid syntax'],
       ["page=%2B", 'strconv.Atoi: parsing "+": invalid syntax'],
@@ -436,17 +436,19 @@ test("Provider.Exec empty query", async () => {
 
 describe("Provider.Exec non-empty query", () => {
   // [name, page, perPage, sort, filter, skipTotal, expectError, expectResult, expectQueries]
-  const scenarios: [
-    string,
-    number,
-    number,
-    SortField[],
-    FilterData[],
-    boolean,
-    boolean,
-    string,
-    string[] | null,
-  ][] = [
+  const scenarios: Array<
+    [
+      string,
+      number,
+      number,
+      Array<SortField>,
+      Array<FilterData>,
+      boolean,
+      boolean,
+      string,
+      Array<string> | null,
+    ]
+  > = [
     [
       "page normalization",
       -1,
@@ -624,7 +626,9 @@ describe("Provider.Exec non-empty query", () => {
 
 describe("Provider filter and sort limits", () => {
   // [name, filter, sort, maxFilterExprLimit, maxSortExprLimit, expectError]
-  const scenarios: [string, FilterData[], SortField[], number, number, Error | undefined][] = [
+  const scenarios: Array<
+    [string, Array<FilterData>, Array<SortField>, number, number, Error | undefined]
+  > = [
     // filter
     [
       "<= max filter length",
@@ -752,7 +756,7 @@ describe("Provider filter and sort limits", () => {
 
 describe("Provider.ParseAndExec", () => {
   // [name, queryString, expectError, expectResult]
-  const scenarios: [string, string, boolean, string][] = [
+  const scenarios: Array<[string, string, boolean, string]> = [
     [
       "no extra query params (aka. use the provider presets)",
       "",

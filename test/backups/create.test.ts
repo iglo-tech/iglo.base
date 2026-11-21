@@ -34,8 +34,8 @@ import { serveTest } from "@test/support/router";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 import { centralEntries } from "@test/tools/archive/central-directory";
 
-let opened: TestApp[] = [];
-let dirs: string[] = [];
+let opened: Array<TestApp> = [];
+let dirs: Array<string> = [];
 
 afterEach(async () => {
   for (const app of opened) {
@@ -67,7 +67,7 @@ function backupsDir(app: TestApp): string {
   return join(app.dataDir, "backups");
 }
 
-function zipNames(app: TestApp, name: string): string[] {
+function zipNames(app: TestApp, name: string): Array<string> {
   return centralEntries(readFileSync(join(backupsDir(app), name))).map((e) => e.name);
 }
 
@@ -455,7 +455,7 @@ describe("TestRestoreBackup", () => {
 });
 
 describe("apis/backup_test.go scenarios with a preset active backup", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     method: string;
     url: string;
@@ -463,7 +463,7 @@ describe("apis/backup_test.go scenarios with a preset active backup", () => {
     status: number;
     message: string;
     backups: number;
-  }[] = [
+  }> = [
     {
       name: "TestBackupsCreate: authorized as superuser (pending backup)",
       method: "POST",
@@ -542,7 +542,7 @@ describe("backups.s3 enabled, S3 out of reach", () => {
     const app = await s3App();
     const before = readdirSync(backupsDir(app)).toSorted();
 
-    const expected: [string, string, string | undefined, number][] = [
+    const expected: Array<[string, string, string | undefined, number]> = [
       ["GET", "/api/backups", undefined, 400],
       ["POST", "/api/backups", "{}", 400],
       ["POST", "/api/backups", `{"name":"new.zip"}`, 400],
@@ -641,7 +641,7 @@ describe("__pbAutoBackup__", () => {
     // a backup of the user's stays
     await createBackup(app, "manual.zip");
 
-    const names: string[] = [];
+    const names: Array<string> = [];
     for (let i = 0; i < 3; i++) {
       await runJob(app);
       const name = generateBackupName(app, "@auto_pb_backup_");

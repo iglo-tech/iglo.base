@@ -37,7 +37,7 @@ class ManualClock implements Clock {
 
 const startTime = new Date("2026-10-29T12:00:00.000Z");
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(clock: ManualClock = new ManualClock(startTime)): TestCollectionsApp {
   const app = openTestApp(clock);
@@ -60,7 +60,7 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
   }
 }
 
-function idsOf(eas: ExternalAuth[]): string[] {
+function idsOf(eas: Array<ExternalAuth>): Array<string> {
   return eas.map((ea) => ea.id);
 }
 
@@ -216,7 +216,7 @@ describe("TestExternalAuthPreValidate", () => {
 });
 
 describe("TestExternalAuthValidateHook", () => {
-  const scenarios: [string, (app: RecordsApp) => ExternalAuth, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => ExternalAuth, Array<string>]> = [
     [
       "empty",
       (app) => newExternalAuth(app),
@@ -351,7 +351,7 @@ describe("TestExternalAuthClearOnVerfiedUpgrade", () => {
 // queries (core/external_auth_query_test.go)
 
 describe("TestFindAllExternalAuthsByRecord", () => {
-  const scenarios: [string, (app: RecordsApp) => Record, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => Record, Array<string>]> = [
     ["demo1_84nmscqy84lsi1t", (app) => findRecordById(app, "demo1", "84nmscqy84lsi1t"), []],
     [
       `${CollectionNameSuperusers}_test@example.com`,
@@ -392,7 +392,7 @@ describe("TestFindAllExternalAuthsByRecord", () => {
 });
 
 describe("TestFindAllExternalAuthsByCollection", () => {
-  const scenarios: [string, string[]][] = [
+  const scenarios: Array<[string, Array<string>]> = [
     ["demo1", []],
     [CollectionNameSuperusers, []],
     ["clients", ["f1z5b3843pzc964"]],
@@ -413,7 +413,7 @@ describe("TestFindAllExternalAuthsByCollection", () => {
 
 describe("TestFindFirstExternalAuthByExpr", () => {
   // [label, expression, expected id ("" when no row matches)]
-  const scenarios: [string, () => HashExp, string][] = [
+  const scenarios: Array<[string, () => HashExp, string]> = [
     ["0_collectionRef=invalid", () => new HashExp({ collectionRef: "invalid" }), ""],
     [
       "1_collectionRef=_pb_users_auth_",
@@ -446,7 +446,7 @@ describe("TestDeleteAllExternalAuthsByRecord", () => {
   // Upstream counts OnRecordDelete calls to learn the deleted ids. This port
   // has no hooks, so each case reads the rows back: the ids that exist before
   // the delete and not after it are the deleted ids.
-  const scenarios: [string, (app: RecordsApp) => Record, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => Record, Array<string>]> = [
     ["0_demo1", (app) => findRecordById(app, "demo1", "84nmscqy84lsi1t"), []], // non-auth record
     [
       "1_users_test@example.com",

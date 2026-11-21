@@ -31,7 +31,7 @@ export function jsBlankTemplate(): string {
   );
 }
 
-export function jsSnapshotTemplate(collections: readonly Collection[]): string {
+export function jsSnapshotTemplate(collections: ReadonlyArray<Collection>): string {
   // unset timestamp fields
   const collectionsData = collections.map((c) => templateData(c));
 
@@ -101,8 +101,8 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
     return jsCreateTemplate(newC);
   }
 
-  const upParts: string[] = [];
-  const downParts: string[] = [];
+  const upParts: Array<string> = [];
+  const downParts: Array<string> = [];
   const varName = "collection";
 
   const newMap = toMap(newC);
@@ -128,8 +128,8 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
   // fields
   // -----------------------------------------------------------------
 
-  const oldFieldsSlice = oldMap.fields as unknown[];
-  const newFieldsSlice = newMap.fields as unknown[];
+  const oldFieldsSlice = oldMap.fields as Array<unknown>;
+  const newFieldsSlice = newMap.fields as Array<unknown>;
   const oldFields = old.fields.toArray();
   const newFields = newC.fields.toArray();
 
@@ -229,7 +229,7 @@ function toMap(c: Collection): JSONObject {
   return JSON.parse(c.marshalJSON()) as JSONObject;
 }
 
-function diffMaps(old: JSONObject, newMap: JSONObject, ...excludeKeys: string[]): JSONObject {
+function diffMaps(old: JSONObject, newMap: JSONObject, ...excludeKeys: Array<string>): JSONObject {
   const diff: JSONObject = {};
 
   for (const [k, vNew] of Object.entries(newMap)) {

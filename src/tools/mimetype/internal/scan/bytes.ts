@@ -96,7 +96,7 @@ export class Bytes {
   //
   // Go searches with bytes.IndexAny(b, string(stopAt)); every caller passes
   // ASCII stop bytes, for which that is a plain byte search.
-  popUntil(...stopAt: number[]): Bytes {
+  popUntil(...stopAt: Array<number>): Bytes {
     if (this.b.length === 0) {
       return new Bytes();
     }
@@ -272,7 +272,7 @@ function matchAt(b: Uint8Array, start: number, p: Uint8Array, flags: number): nu
   return bi - start;
 }
 
-function indexAny(b: Uint8Array, chars: number[]): number {
+function indexAny(b: Uint8Array, chars: Array<number>): number {
   for (let i = 0; i < b.length; i++) {
     if (chars.includes(b[i] as number)) {
       return i;

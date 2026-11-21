@@ -168,8 +168,11 @@ function resolveRecordOneHook(collection: Collection, op: (dst: unknown) => unkn
   return newRecordFromRow(collection, data);
 }
 
-function resolveRecordAllHook(collection: Collection, op: (dst: unknown) => unknown[]): Record[] {
-  const data = op(undefined) as Row[];
+function resolveRecordAllHook(
+  collection: Collection,
+  op: (dst: unknown) => Array<unknown>,
+): Array<Record> {
+  const data = op(undefined) as Array<Row>;
   return newRecordsFromRows(collection, data);
 }
 
@@ -193,7 +196,7 @@ export function findRecordById(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   recordId: string,
-  ...optFilters: RecordQueryFilter[]
+  ...optFilters: Array<RecordQueryFilter>
 ): Record {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
 
@@ -217,9 +220,9 @@ export function findRecordById(
 export function findRecordsByIds(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
-  recordIds: readonly string[],
-  ...optFilters: RecordQueryFilter[]
-): Record[] {
+  recordIds: ReadonlyArray<string>,
+  ...optFilters: Array<RecordQueryFilter>
+): Array<Record> {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
 
   const query = recordQuery(app, collection).andWhere(
@@ -254,8 +257,8 @@ export function findRecordsByIds(
 export function findAllRecords(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
-  ...exprs: (Expression | null | undefined)[]
-): Record[] {
+  ...exprs: Array<Expression | null | undefined>
+): Array<Record> {
   const query = recordQuery(app, collectionModelOrIdentifier);
 
   for (const expr of exprs) {
@@ -293,7 +296,7 @@ export function findFirstRecordByData(
 export function countRecords(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
-  ...exprs: (Expression | null | undefined)[]
+  ...exprs: Array<Expression | null | undefined>
 ): number {
   const q = recordQuery(app, collectionModelOrIdentifier).select("count(*)");
 
@@ -318,7 +321,7 @@ export function countRecords(
 export function findAuthRecordByToken(
   app: RecordsApp,
   token: string,
-  ...validTypes: string[]
+  ...validTypes: Array<string>
 ): Record {
   if (token === "") {
     throw new Error("missing token");

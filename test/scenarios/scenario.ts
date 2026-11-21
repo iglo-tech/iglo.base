@@ -34,10 +34,10 @@ export interface Expectations {
   expectedStatus: number;
   // ExpectedContent: substrings that must be in the response body, after
   // the JSON normalization of tests/api.go
-  expectedContent?: string[];
+  expectedContent?: Array<string>;
   // NotExpectedContent: substrings that must not be in the response body.
   // With neither list set, the body must be empty.
-  notExpectedContent?: string[];
+  notExpectedContent?: Array<string>;
 }
 
 export interface PrepareContext {
@@ -96,5 +96,5 @@ export interface Suite {
   // the Go test file and function, e.g. apis/health_test.go, TestHealthAPI
   file: string;
   func: string;
-  scenarios: Scenario[];
+  scenarios: Array<Scenario>;
 }

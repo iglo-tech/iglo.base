@@ -8,7 +8,7 @@ import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { g, raw } from "@test/tools/mimetype/go-literal";
 
 // These samples come from https://github.com/nst/JSONTestSuite.
-const positives: { json: Uint8Array; stdlib: boolean }[] = [
+const positives: Array<{ json: Uint8Array; stdlib: boolean }> = [
   { json: raw("[[]   ]"), stdlib: true },
   { json: raw("[]"), stdlib: true },
   { json: raw('[""]'), stdlib: true },
@@ -145,7 +145,9 @@ const positives: { json: Uint8Array; stdlib: boolean }[] = [
 ];
 
 // Bug: following samples are invalid JSONs but they are parsed successfully.
-const negatives: [name: string, json: Uint8Array, expectParse: number, expectInspect: number][] = [
+const negatives: Array<
+  [name: string, json: Uint8Array, expectParse: number, expectInspect: number]
+> = [
   ["array_1_true_without_comma", raw("[1 true]"), 1, 3],
   ["array_a_invalid_utf8", raw("[a�]"), 1, 1],
   ["array_colon_instead_of_comma", raw('["": 1]'), 1, 3],
@@ -316,7 +318,7 @@ const negatives: [name: string, json: Uint8Array, expectParse: number, expectIns
 // library. indents is in the order of the Go indents table: {"", " "},
 // {" ", " "}, {" ", "\t"}, {"\t", "\t"}, {"\t", " \t"}, {"", "\r\n"},
 // {"", " \r\n"}.
-const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
+const stdlibGolden: Array<{ json: string; compact: string; indents: Array<string> }> = [
   {
     json: "[[]   ]",
     compact: "[[]]",
@@ -1482,7 +1484,7 @@ function testTruncating(jsonBytes: Uint8Array): void {
 }
 
 describe("TestConsumeString", () => {
-  const tCases: [name: string, data: Uint8Array, expected: number][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: number]> = [
     ["ascii string", raw(`foo"`), 4],
     ["utf-8 string one char", raw(`ß"`), 3],
     ["utf-8 string multiple chars", raw(`ßßßß"`), 9],
@@ -1502,7 +1504,7 @@ describe("TestConsumeString", () => {
 });
 
 describe("TestConsumeNumber", () => {
-  const tCases: [data: string, expected: number][] = [
+  const tCases: Array<[data: string, expected: number]> = [
     [`123`, 3],
     [`123.1`, 5],
     [`123.`, 4],
@@ -1593,7 +1595,7 @@ describe("TestConsumeNumber", () => {
 });
 
 describe("TestConsumeArray", () => {
-  const tCases: [name: string, data: Uint8Array, expected: number][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: number]> = [
     ["empty array", raw(`]`), 1],
     ["empty array spaces", raw(` ]`), 2],
     ["one int array", raw(`1]`), 2],
@@ -1616,7 +1618,7 @@ describe("TestConsumeArray", () => {
 });
 
 describe("TestQueryObject", () => {
-  const tCases: { name: string; json: Uint8Array; query: query; expectedFind: boolean }[] = [
+  const tCases: Array<{ name: string; json: Uint8Array; query: query; expectedFind: boolean }> = [
     {
       name: "empty path",
       json: raw(String.raw`{"foo": {"bar": "baz"}}`),
@@ -1689,7 +1691,7 @@ describe("TestQueryObject", () => {
 });
 
 describe("TestConsumeObject", () => {
-  const tCases: [name: string, data: Uint8Array, expected: number][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: number]> = [
     ["empty object", raw(`}`), 1],
     ["object", raw(`"a":"b"}`), 8],
     ["panic found with fuzz", g`\"\":0`, 0],
@@ -1704,7 +1706,7 @@ describe("TestConsumeObject", () => {
 });
 
 describe("TestConsumeConst", () => {
-  const tCases: [b: string, cnst: string, expect: number, inspect: number][] = [
+  const tCases: Array<[b: string, cnst: string, expect: number, inspect: number]> = [
     ["", "", 0, 0],
     ["", "true", 0, 0],
     ["true", "", 0, 0],
@@ -1759,13 +1761,15 @@ describe("TestNegatives", () => {
 
 describe("TestMaxRecursion", () => {
   // Go names subtests with the first 10 bytes of the input.
-  const tCases: [
-    name: string,
-    maxRecursion: number,
-    input: Uint8Array,
-    expectParsed: number,
-    expectInspected: number,
-  ][] = [
+  const tCases: Array<
+    [
+      name: string,
+      maxRecursion: number,
+      input: Uint8Array,
+      expectParsed: number,
+      expectInspected: number,
+    ]
+  > = [
     ["[]", 0, raw(`[]`), 2, 2],
     ["[[[]]]", 0, raw(`[[[]]]`), 6, 6],
     // Go's test nests 10000 levels. With no limit, JavaScript recurses once
@@ -1786,10 +1790,10 @@ describe("TestMaxRecursion", () => {
   }
 });
 
-const join = (bs: Uint8Array[]): string => bs.map((b) => bytesToText(b)).join("§");
+const join = (bs: Array<Uint8Array>): string => bs.map((b) => bytesToText(b)).join("§");
 
 describe("TestStack", () => {
-  const tCases: [name: string, data: Uint8Array, expected: string][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: string]> = [
     ["empty", raw(` `), ""],
     ["a string", raw(`"abc"`), ""],
     ["an int", raw(`123`), ""],

@@ -47,7 +47,7 @@ export class StandardBuilder extends BaseBuilder {
   // Select returns a new SelectQuery object that can be used to build a SELECT statement.
   // The parameters to this method should be the list column names to be selected.
   // A column name may have an optional alias name. For example, Select("id", "my_name AS name").
-  select(...cols: string[]): SelectQuery {
+  select(...cols: Array<string>): SelectQuery {
     return new SelectQuery(this).select(...cols);
   }
 

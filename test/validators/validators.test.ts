@@ -8,7 +8,7 @@ import { Errors } from "@/validation/error";
 import { JoinValidationErrors } from "@/validators/validators";
 
 describe("TestJoinValidationErrors", () => {
-  const scenarios: [errA: Error | null, errB: Error | null, expected: string][] = [
+  const scenarios: Array<[errA: Error | null, errB: Error | null, expected: string]> = [
     [null, null, "<nil>"],
     [new Error("abc"), null, "abc"],
     [null, new Error("abc"), "abc"],

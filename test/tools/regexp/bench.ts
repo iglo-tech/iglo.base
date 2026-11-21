@@ -38,7 +38,7 @@ interface benchCase {
   note: string;
 }
 
-const cases: benchCase[] = [
+const cases: Array<benchCase> = [
   {
     name: "email-like",
     pattern: String.raw`^[\w.+-]+@[\w-]+(\.[\w-]+)+$`,

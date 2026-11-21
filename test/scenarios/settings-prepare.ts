@@ -11,7 +11,7 @@ import type { AfterContext, PrepareContext } from "@test/scenarios/scenario";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 
 type SettingsJSON = { [key: string]: { [key: string]: unknown } } & {
-  superuserIPs?: string[];
+  superuserIPs?: Array<string>;
 };
 
 // the stored settings JSON of a pb_data
@@ -44,7 +44,7 @@ export function changeSettings(dataDir: string, change: (settings: SettingsJSON)
 
 // setupWhitelist of TestSuperuserIPsWhitelist: the trusted proxy header
 // x-test-ip and the superuser IPs
-export function setupWhitelist(...superuserIPs: string[]): (ctx: PrepareContext) => void {
+export function setupWhitelist(...superuserIPs: Array<string>): (ctx: PrepareContext) => void {
   return ({ dataDir }) => {
     changeSettings(dataDir, (settings) => {
       // allow loading a mock IP from the test scenario
@@ -114,7 +114,7 @@ export function mailSent(to: string, htmlContains: string): (ctx: AfterContext) 
 // secrets are persisted (upstream reads them from app.Settings())
 export function secretsPersisted(ctx: AfterContext): void {
   const settings = readStoredSettings(ctx.dataDir);
-  const secrets: [string, unknown, string][] = [
+  const secrets: Array<[string, unknown, string]> = [
     ["smtp.password", settings.smtp?.password, "new_smtp_password"],
     ["s3.secret", settings.s3?.secret, "new_s3_secret"],
     [

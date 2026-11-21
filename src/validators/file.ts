@@ -43,7 +43,7 @@ export function UploadedFileSize(maxBytes: GoInt): RuleFunc {
 //
 //	const validMimeTypes = ["test/plain", "image/jpeg"];
 //	StructField("file", form.file, By(UploadedFileMimeType(validMimeTypes)))
-export function UploadedFileMimeType(validTypes: readonly string[] | null): RuleFunc {
+export function UploadedFileMimeType(validTypes: ReadonlyArray<string> | null): RuleFunc {
   return (value) => {
     if (value === null) {
       return null; // nothing to validate (a nil *filesystem.File)

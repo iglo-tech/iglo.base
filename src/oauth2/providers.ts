@@ -144,9 +144,9 @@ export function initProvider(config: OAuth2ProviderConfig): BaseProvider {
 export function buildAuthURL(
   p: BaseProvider,
   state: string,
-  ...opts: [key: string, value: string][]
+  ...opts: Array<[key: string, value: string]>
 ): string {
-  const v = new Map<string, string[]>([
+  const v = new Map<string, Array<string>>([
     ["response_type", ["code"]],
     ["client_id", [p.clientId]],
   ]);

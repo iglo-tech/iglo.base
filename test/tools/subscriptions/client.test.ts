@@ -6,9 +6,9 @@ import { Client, type ClientReceiver } from "@/tools/subscriptions/client";
 import { Message } from "@/tools/subscriptions/message";
 
 // a receiver that records what it gets
-function recorder(): ClientReceiver & { names: string[]; discards: number } {
+function recorder(): ClientReceiver & { names: Array<string>; discards: number } {
   const r = {
-    names: [] as string[],
+    names: [] as Array<string>,
     discards: 0,
     message(m: Message) {
       r.names.push(m.name);
@@ -59,7 +59,7 @@ test("TestSubscriptions", () => {
 
   c.subscribe("sub1", "sub11", "sub2");
 
-  const scenarios: { prefixes: string[]; expected: string[] | null }[] = [
+  const scenarios: Array<{ prefixes: Array<string>; expected: Array<string> | null }> = [
     { prefixes: [], expected: ["sub1", "sub11", "sub2"] },
     { prefixes: ["missing"], expected: null },
     { prefixes: ["sub1"], expected: ["sub1", "sub11"] },

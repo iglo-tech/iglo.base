@@ -61,7 +61,7 @@ function confirmScenario(name: string, path: string, body: unknown): RealtimeSce
     },
     check: (o) => {
       expect((o.confirm as { status: number }).status).toBe(204);
-      expect((o.superuser as unknown[]).length).toBeGreaterThan(0);
+      expect((o.superuser as Array<unknown>).length).toBeGreaterThan(0);
     },
   };
 }

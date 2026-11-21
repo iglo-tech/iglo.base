@@ -249,7 +249,7 @@ test("a cancelled select query fails every resolver before its SQL runs", async 
   expect(canceled().clone().cancelCause()).toBe(cause);
   expect(db.select("*").from("customer").build().cancelCause()).toBe(null);
 
-  const sync: (() => unknown)[] = [
+  const sync: Array<() => unknown> = [
     () => canceled().one(),
     () => canceled().all(),
     () => canceled().row(),

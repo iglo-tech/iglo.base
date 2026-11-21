@@ -81,11 +81,11 @@ interface Defaults {
   authURL: string;
   tokenURL: string;
   userInfoURL?: string;
-  scopes: string[];
+  scopes: Array<string>;
   pkce: boolean;
 }
 
-const defaults: [string, new () => BaseProvider, Defaults][] = [
+const defaults: Array<[string, new () => BaseProvider, Defaults]> = [
   [
     "apple",
     Apple,
@@ -413,7 +413,7 @@ const defaults: [string, new () => BaseProvider, Defaults][] = [
   ],
 ];
 
-const classes: [string, new () => BaseProvider][] = defaults.map(([name, cls]) => [name, cls]);
+const classes: Array<[string, new () => BaseProvider]> = defaults.map(([name, cls]) => [name, cls]);
 
 describe("provider names", () => {
   test("upstream registers 32 providers", () => {

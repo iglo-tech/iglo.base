@@ -173,9 +173,9 @@ export interface Context {
 // where a value is in a body
 export interface Location {
   // e.g. ["items", 0, "id"]
-  path: (string | number)[];
+  path: Array<string | number>;
   // the objects that contain it, innermost last
-  parents: Extract<JsonNode, { kind: "object" }>[];
+  parents: Array<Extract<JsonNode, { kind: "object" }>>;
   context: Context;
   // upstream's status code
   status: number;
@@ -304,7 +304,7 @@ const scaffoldIndex: Rule = (upstream, at) => {
   return { name: "scaffold index", pattern: new RegExp(`^${source}$`) };
 };
 
-export const rules: Rule[] = [
+export const rules: Array<Rule> = [
   viewCloneId,
   tempViewName,
   tempViewId,
@@ -337,7 +337,7 @@ const batchItemFields: OrderRule = (_object, at) => {
   ) {
     return false;
   }
-  const item = (JSON.parse(body) as { requests?: { url?: string }[] }).requests?.[index];
+  const item = (JSON.parse(body) as { requests?: Array<{ url?: string }> }).requests?.[index];
   return !!item?.url && new URL(item.url, "http://example.com").searchParams.has("fields");
 };
 
@@ -358,7 +358,7 @@ const oauth2Meta: OrderRule = (_object, at) =>
   (requestUrl(at.context)?.pathname.endsWith("/auth-with-oauth2") ?? false) &&
   at.path[0] === "meta";
 
-export const unorderedObjects: OrderRule[] = [
+export const unorderedObjects: Array<OrderRule> = [
   pickedFields,
   batchItemFields,
   healthData,
@@ -391,7 +391,7 @@ export class Pairing {
   readonly clockOffset: number;
 
   // every `updated` pair seen so far, by slot, if the Pairing keeps them
-  private readonly history: Map<string, { up: string; ig: string }[]> | undefined;
+  private readonly history: Map<string, Array<{ up: string; ig: string }>> | undefined;
 
   // history: for the SDK suite, whose step values show records as they were
   // at an earlier moment (a realtime event, a batch's first item) after
@@ -484,8 +484,8 @@ export function compareResponses(
   igloBase: ScenarioResponse,
   context: Context,
   pairing = new Pairing(),
-): string[] {
-  const differences: string[] = [];
+): Array<string> {
+  const differences: Array<string> = [];
   pairing.beginResponse();
   if (upstream.status !== igloBase.status) {
     differences.push(`status: upstream ${upstream.status}, iglo.base ${igloBase.status}`);
@@ -542,7 +542,7 @@ function pairGenerated(
   ig: JsonNode,
   at: Location,
   pairing: Pairing,
-  differences: string[],
+  differences: Array<string>,
 ): void {
   if (up.kind === "string") {
     const format = rules.reduce<Format | undefined>(
@@ -863,8 +863,8 @@ function normalize(
   }
   // each member from just after the `{` or `,` before it to the end of its
   // value, and the separators between members
-  const members: { name: string; text: string }[] = [];
-  const separators: string[] = [];
+  const members: Array<{ name: string; text: string }> = [];
+  const separators: Array<string> = [];
   let pos = node.start + 1;
   for (const [name, value] of node.entries) {
     if (members.length > 0) {
@@ -892,8 +892,8 @@ function normalize(
 export function compareJson(
   up: JsonNode,
   ig: JsonNode,
-  path: (string | number)[],
-  differences: string[],
+  path: Array<string | number>,
+  differences: Array<string>,
 ): void {
   const differ = (detail: string) =>
     differences.push(`${where(path)}: ${detail}: upstream ${up.raw}, iglo.base ${ig.raw}`);
@@ -940,7 +940,7 @@ function formattingDifference(up: string, ig: string): string {
   );
 }
 
-function where(path: (string | number)[]): string {
+function where(path: Array<string | number>): string {
   return path.length === 0 ? "body" : `body ${path.join(".")}`;
 }
 

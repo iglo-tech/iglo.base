@@ -93,7 +93,7 @@ describe("map", () => {
   ]);
   const m0: Record<string, unknown> | null = null;
 
-  const rows: { tag: string; model: unknown; rules: KeyRules[]; err: string }[] = [
+  const rows: Array<{ tag: string; model: unknown; rules: Array<KeyRules>; err: string }> = [
     // empty rules
     { tag: "t1.1", model: m1, rules: [], err: "" },
     { tag: "t1.2", model: m1, rules: [Key("A"), Key("B")], err: "" },

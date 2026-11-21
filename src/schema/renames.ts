@@ -27,8 +27,8 @@ import type { SchemaMigration } from "@/schema/migration-files";
 
 // the problems of one pending file's renames, against the database as it is
 // when the file's turn comes (`stored`)
-export function fileProblems(stored: SchemaDescription, file: SchemaMigration): Problem[] {
-  const problems: Problem[] = [];
+export function fileProblems(stored: SchemaDescription, file: SchemaMigration): Array<Problem> {
+  const problems: Array<Problem> = [];
   const collections = new Map(
     stored.collections.map((collection) => [collection.name, collection]),
   );
@@ -36,7 +36,7 @@ export function fileProblems(stored: SchemaDescription, file: SchemaMigration): 
   // collections
   const seenFrom = new Map<string, string>();
   const seenTo = new Map<string, string>();
-  const collectionPairs: Pair[] = [];
+  const collectionPairs: Array<Pair> = [];
   for (const [from, to] of Object.entries(file.renameCollections)) {
     const where = from;
     const note = `(declared in ${file.file})`;
@@ -87,7 +87,7 @@ export function fileProblems(stored: SchemaDescription, file: SchemaMigration): 
   chainProblems(collectionPairs, problems);
 
   // fields, keyed by the collection's name before the file's renames
-  const fieldPairs = new Map<string, Pair[]>();
+  const fieldPairs = new Map<string, Array<Pair>>();
   for (const [collectionName, pairs] of Object.entries(file.renames)) {
     const scopedFrom = new Map<string, string>();
     const scopedTo = new Map<string, string>();
@@ -164,7 +164,7 @@ interface Pair {
 // is `to` in any case. The item `from` is renamed does not clash with itself
 // (a rename that only changes case).
 function clashing<T extends { name: string }>(
-  items: readonly T[],
+  items: ReadonlyArray<T>,
   from: string,
   to: string,
 ): T | undefined {
@@ -181,7 +181,7 @@ function collide(
   value: string,
   what: string,
   where: string,
-  problems: Problem[],
+  problems: Array<Problem>,
 ): void {
   const other = seen.get(key.toLowerCase());
   if (other !== undefined) {
@@ -199,7 +199,7 @@ function collide(
 // chain within one file): the apply does not guess the order, so it is refused.
 // A chain across files is fine: each file runs against the names the earlier
 // ones left. Names are compared without regard to case.
-function chainProblems(pairs: readonly Pair[], problems: Problem[]): void {
+function chainProblems(pairs: ReadonlyArray<Pair>, problems: Array<Problem>): void {
   for (const pair of pairs) {
     const next = pairs.find(
       (other) => other !== pair && other.from.toLowerCase() === pair.to.toLowerCase(),

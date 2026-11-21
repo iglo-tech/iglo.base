@@ -28,7 +28,7 @@ import { ZipWriter } from "@/tools/archive/zip-writer";
 import { tempDir } from "@test/support/executable";
 import { centralEntries } from "@test/tools/archive/central-directory";
 
-let dirs: string[] = [];
+let dirs: Array<string> = [];
 
 function newDir(): string {
   const dir = tempDir();
@@ -54,7 +54,7 @@ function createTestDir(): string {
   return dir;
 }
 
-function filesIn(dir: string): string[] {
+function filesIn(dir: string): Array<string> {
   return readdirSync(dir, { recursive: true, encoding: "utf8" })
     .filter((name) => statSync(join(dir, name)).isFile())
     .toSorted();
@@ -74,9 +74,9 @@ interface RawEntry {
 }
 
 // a zip from raw entries, with data and comment around it
-function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
-  const parts: Uint8Array[] = [prefix];
-  const directory: Uint8Array[] = [];
+function rawZip(entries: Array<RawEntry>, prefix = new Uint8Array(0)): Uint8Array {
+  const parts: Array<Uint8Array> = [prefix];
+  const directory: Array<Uint8Array> = [];
   let offset = 0;
   const push = (p: Uint8Array): void => {
     parts.push(p);
@@ -270,7 +270,7 @@ describe("extract", () => {
   });
 
   const content = new TextEncoder().encode("content");
-  const bad: [string, () => Uint8Array, string][] = [
+  const bad: Array<[string, () => Uint8Array, string]> = [
     ["not a zip", () => new Uint8Array(500), "zip: not a valid zip file"],
     ["empty file", () => new Uint8Array(0), "zip: not a valid zip file"],
     ["a wrong checksum", () => rawZip([{ name: "a", content, crc32: 1 }]), "zip: checksum error"],

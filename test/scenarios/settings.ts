@@ -273,7 +273,7 @@ export const settingsTestEmail: Suite = {
 
 // the TestEmailSendValidateAndSubmit table: [template, email, collection,
 // expected error keys (none: one email sent with the template's text)]
-const testEmailSendCases: [string, string, string, string[] | null][] = [
+const testEmailSendCases: Array<[string, string, string, Array<string> | null]> = [
   ["", "", "", ["template", "email"]],
   ["invalid", "test@example.com", "", ["template"]],
   ["verification", "invalid", "", ["email"]],

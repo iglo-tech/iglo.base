@@ -72,8 +72,8 @@ export class Parser {
   doc: Node = new Node({ type: DocumentNode });
   // The stack of open elements (section 12.2.4.2) and active formatting
   // elements (section 12.2.4.3).
-  oe: Node[] = [];
-  afe: Node[] = [];
+  oe: Array<Node> = [];
+  afe: Array<Node> = [];
   // Element pointers (section 12.2.4.4).
   head: Node | null = null;
   form: Node | null = null;
@@ -81,7 +81,7 @@ export class Parser {
   scripting = false;
   framesetOK = false;
   // The stack of template insertion modes
-  templateStack: InsertionMode[] = [];
+  templateStack: Array<InsertionMode> = [];
   // im is the current insertion mode.
   im: InsertionMode | null = null;
   // originalIM is the insertion mode to go back to after completing a text
@@ -127,7 +127,7 @@ export class Parser {
   // no higher element in the stack that was also in the stop tags). For example,
   // popUntil(tableScope, "table") returns true and leaves:
   // ["html", "body", "font"]
-  popUntil(s: Scope, ...matchTags: string[]): boolean {
+  popUntil(s: Scope, ...matchTags: Array<string>): boolean {
     const i = this.indexOfElementInScope(s, ...matchTags);
     if (i !== -1) {
       this.oe.splice(i);
@@ -139,7 +139,7 @@ export class Parser {
   // indexOfElementInScope returns the index in p.oe of the highest element whose
   // tag is in matchTags that is in scope. If no matching element is in scope, it
   // returns -1.
-  indexOfElementInScope(s: Scope, ...matchTags: string[]): number {
+  indexOfElementInScope(s: Scope, ...matchTags: Array<string>): number {
     for (let i = this.oe.length - 1; i >= 0; i--) {
       const n = stackAt(this.oe, i);
       const tagAtom = n.dataAtom;
@@ -189,7 +189,7 @@ export class Parser {
 
   // elementInScope is like popUntil, except that it doesn't modify the stack of
   // open elements.
-  elementInScope(s: Scope, ...matchTags: string[]): boolean {
+  elementInScope(s: Scope, ...matchTags: Array<string>): boolean {
     return this.indexOfElementInScope(s, ...matchTags) !== -1;
   }
 
@@ -243,7 +243,7 @@ export class Parser {
   // generateImpliedEndTags pops nodes off the stack of open elements as long as
   // the top node has a tag name of dd, dt, li, optgroup, option, p, rb, rp, rt or rtc.
   // If exceptions are specified, nodes with that name will not be popped off.
-  generateImpliedEndTags(...exceptions: string[]): void {
+  generateImpliedEndTags(...exceptions: Array<string>): void {
     let i: number;
     loop: for (i = this.oe.length - 1; i >= 0; i--) {
       const n = stackAt(this.oe, i);
@@ -868,7 +868,7 @@ export enum Scope {
 }
 
 // Stop tags for use in popUntil. These come from section 12.2.4.2.
-const defaultScopeStopTags = new Map<string, readonly string[]>([
+const defaultScopeStopTags = new Map<string, ReadonlyArray<string>>([
   [
     "",
     [
@@ -922,7 +922,7 @@ function compareStrings(a: string, b: string): number {
 }
 
 // attrsEqual is slices.Equal for attribute slices.
-function attrsEqual(a: Attribute[], b: Attribute[]): boolean {
+function attrsEqual(a: Array<Attribute>, b: Array<Attribute>): boolean {
   if (a.length !== b.length) {
     return false;
   }
@@ -2766,7 +2766,7 @@ export function parseOptionEnableScripting(enable: boolean): ParseOption {
 // for example when it is nested deeper than 512 elements.
 //
 // The input is assumed to be UTF-8 encoded.
-export function parseWithOptions(input: string, ...opts: ParseOption[]): Node {
+export function parseWithOptions(input: string, ...opts: Array<ParseOption>): Node {
   const p = new Parser(newTokenizer(encodeUTF8(input)));
   p.scripting = true;
   p.framesetOK = true;
@@ -2801,8 +2801,8 @@ export function parse(input: string): Node {
 export function parseFragmentWithOptions(
   input: string,
   context: Node | null,
-  ...opts: ParseOption[]
-): Node[] {
+  ...opts: Array<ParseOption>
+): Array<Node> {
   let contextTag = "";
   if (context !== null) {
     if (context.type !== ElementNode) {
@@ -2851,7 +2851,7 @@ export function parseFragmentWithOptions(
 
   const parent = context !== null ? root : p.doc;
 
-  const result: Node[] = [];
+  const result: Array<Node> = [];
   for (let c = parent.firstChild; c !== null;) {
     const next = c.nextSibling;
     parent.removeChild(c);
@@ -2866,7 +2866,11 @@ export function parseFragmentWithOptions(
 // element in context.
 //
 // It has the same intricacies as parse.
-export function parseFragment(input: string, context: Node | null, ...opts: ParseOption[]): Node[] {
+export function parseFragment(
+  input: string,
+  context: Node | null,
+  ...opts: Array<ParseOption>
+): Array<Node> {
   return parseFragmentWithOptions(input, context, ...opts);
 }
 

@@ -171,7 +171,7 @@ export async function recordAuthWithOAuth2(
   provider.clock = e.app.clock;
   provider.redirectURL = form.RedirectURL;
 
-  const opts: [string, string][] = [];
+  const opts: Array<[string, string]> = [];
 
   if (provider.pkce) {
     opts.push(["code_verifier", form.CodeVerifier]);
@@ -387,7 +387,7 @@ function oldCanAssignUsername(app: RecordsApp, collection: Collection, username:
         .select("(1)")
         .andWhere(expr)
         .limit(1)
-        .row() as number[];
+        .row() as Array<number>;
     } catch {
       // a failed read leaves it 0, as upstream ignores the error
     }
@@ -473,7 +473,7 @@ function oauth2CreatePayload(
 }
 
 // the avatar stored before the transaction of the record's create opens
-function avatarUploadTargets(app: RecordsApp, s: OAuth2Submit): UploadTarget[] {
+function avatarUploadTargets(app: RecordsApp, s: OAuth2Submit): Array<UploadTarget> {
   if (s.avatar === undefined) {
     return [];
   }

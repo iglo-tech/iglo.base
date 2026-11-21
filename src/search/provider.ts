@@ -70,7 +70,7 @@ export const SkipTotalQueryParam = "skipTotal";
 
 // Result defines the returned search result structure.
 export interface Result<T> {
-  items: T[];
+  items: Array<T>;
   page: GoInt;
   perPage: number;
   totalItems: number;
@@ -82,7 +82,7 @@ export interface Result<T> {
 // recognizes it as a search result (picker.Pick's search.Result case).
 export class SearchResult<T> implements Result<T>, JSONMarshaler {
   constructor(
-    public items: T[],
+    public items: Array<T>,
     public page: GoInt,
     public perPage: number,
     public totalItems: number,
@@ -123,8 +123,8 @@ export function newProvider(fieldResolver: FieldResolver, options: FilterBuildOp
 export class Provider {
   private queryValue: SelectQuery | null = null;
   private countColValue = "id";
-  private sortValue: SortField[] = [];
-  private filterValue: FilterData[] = [];
+  private sortValue: Array<SortField> = [];
+  private filterValue: Array<FilterData> = [];
   private pageValue: GoInt = 1;
   private perPageValue: GoInt = DefaultPerPage;
   private skipTotalValue = false;
@@ -189,7 +189,7 @@ export class Provider {
   }
 
   // Sort sets the `sort` field of the current search provider.
-  sort(sort: SortField[]): this {
+  sort(sort: Array<SortField>): this {
     this.sortValue = sort;
     return this;
   }
@@ -201,7 +201,7 @@ export class Provider {
   }
 
   // Filter sets the `filter` field of the current search provider.
-  filter(filter: FilterData[]): this {
+  filter(filter: Array<FilterData>): this {
     this.filterValue = filter;
     return this;
   }
@@ -350,7 +350,7 @@ export class Provider {
     };
 
     // apply pagination to the original query and fetch the models
-    let items: T[] = [];
+    let items: Array<T> = [];
     const modelsExec = async (): Promise<void> => {
       modelsQuery.limit(perPage);
       // int64(s.perPage * (s.page - 1)), with Go's int64 wrap-around (a

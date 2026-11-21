@@ -34,9 +34,9 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function body(files: Uint8Array[], extra = ""): Uint8Array {
+function body(files: Array<Uint8Array>, extra = ""): Uint8Array {
   const enc = new TextEncoder();
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   for (const [i, f] of files.entries()) {
     chunks.push(
       enc.encode(
@@ -64,7 +64,11 @@ test("a spilled file part is stored, and the temporary file removed", async () =
       `--${boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\nspill\r\n`,
     ),
   });
-  const record = (await res.json()) as { id: string; collectionId: string; file_many: string[] };
+  const record = (await res.json()) as {
+    id: string;
+    collectionId: string;
+    file_many: Array<string>;
+  };
   expect(res.status).toBe(200);
   expect(record.file_many.length).toBe(4);
   for (const [i, name] of record.file_many.entries()) {

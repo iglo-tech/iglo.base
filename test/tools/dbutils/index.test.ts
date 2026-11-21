@@ -9,7 +9,7 @@ import {
 } from "@/tools/dbutils/index";
 
 describe("ParseIndex", () => {
-  const scenarios: { name: string; index: string; expected: Index }[] = [
+  const scenarios: Array<{ name: string; index: string; expected: Index }> = [
     {
       name: "invalid",
       index: `invalid`,
@@ -73,7 +73,7 @@ describe("ParseIndex", () => {
 });
 
 describe("IndexIsValid", () => {
-  const scenarios: { name: string; index: Index; expected: boolean }[] = [
+  const scenarios: Array<{ name: string; index: Index; expected: boolean }> = [
     {
       name: "empty",
       index: new Index(),
@@ -135,7 +135,7 @@ describe("IndexIsValid", () => {
 });
 
 describe("IndexBuild", () => {
-  const scenarios: { name: string; index: Index; expected: string }[] = [
+  const scenarios: Array<{ name: string; index: Index; expected: string }> = [
     {
       name: "empty",
       index: new Index(),
@@ -202,12 +202,12 @@ describe("IndexBuild", () => {
 });
 
 describe("HasSingleColumnUniqueIndex", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     column: string;
-    indexes: string[];
+    indexes: Array<string>;
     expected: boolean;
-  }[] = [
+  }> = [
     {
       name: "empty indexes",
       column: "test",
@@ -269,12 +269,12 @@ describe("HasSingleColumnUniqueIndex", () => {
 });
 
 describe("FindSingleColumnUniqueIndex", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     column: string;
-    indexes: string[];
+    indexes: Array<string>;
     expected: boolean;
-  }[] = [
+  }> = [
     {
       name: "empty indexes",
       column: "test",

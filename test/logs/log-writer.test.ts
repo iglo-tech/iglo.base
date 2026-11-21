@@ -16,8 +16,8 @@ import { openFixtureApp, type TestApp } from "@test/app/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
 
-let dirs: string[] = [];
-let apps: TestApp[] = [];
+let dirs: Array<string> = [];
+let apps: Array<TestApp> = [];
 
 afterEach(async () => {
   for (const app of apps) {
@@ -36,14 +36,14 @@ function freshDir(): string {
   return root;
 }
 
-function logRows(auxPath: string): { message: string; level: number; data: string }[] {
+function logRows(auxPath: string): Array<{ message: string; level: number; data: string }> {
   const db = new Database(auxPath, { readonly: true });
   try {
-    return db.query("SELECT message, level, data FROM _logs ORDER BY rowid").all() as {
+    return db.query("SELECT message, level, data FROM _logs ORDER BY rowid").all() as Array<{
       message: string;
       level: number;
       data: string;
-    }[];
+    }>;
   } finally {
     db.close();
   }
@@ -61,7 +61,7 @@ describe("the log writer thread", () => {
     const writer = new LogWriter(auxPath, () => {});
     try {
       main.run("BEGIN IMMEDIATE");
-      const rows: LogRow[] = [
+      const rows: Array<LogRow> = [
         ["a".repeat(15), "2026-01-01 00:00:00.000Z", 0, "held back", "{}"],
         ["b".repeat(15), "2026-01-01 00:00:01.000Z", 4, "second", '{"x":1}'],
       ];
@@ -106,7 +106,7 @@ describe("the log writer thread", () => {
     const auxPath = join(dataDir, "auxiliary.db");
     const main = new Database(auxPath);
     main.run("PRAGMA journal_mode = WAL");
-    const reported: string[] = [];
+    const reported: Array<string> = [];
     const writer = new LogWriter(auxPath, (text) => reported.push(text), 200);
     try {
       // the thread waits for this lock and so never reaches the close

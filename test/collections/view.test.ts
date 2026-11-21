@@ -59,7 +59,7 @@ describe("TestDeleteView", () => {
   });
 
   test("delete view scenarios", () => {
-    const scenarios: { viewName: string; expectError: boolean }[] = [
+    const scenarios: Array<{ viewName: string; expectError: boolean }> = [
       { viewName: "", expectError: true },
       { viewName: "demo1", expectError: true }, // not a view table
       { viewName: "missing", expectError: false }, // missing or already deleted
@@ -96,13 +96,13 @@ describe("TestSaveView", () => {
     }
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     scenarioName: string;
     viewName: string;
     query: string;
     expectError: boolean;
-    expectColumns: string[] | null;
-  }[] = [
+    expectColumns: Array<string> | null;
+  }> = [
     {
       scenarioName: "empty name and query",
       viewName: "",
@@ -252,12 +252,12 @@ describe("TestCreateViewFields", () => {
     }
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     query: string;
     expectError: boolean;
     expectFields: Record<string, string> | null; // name-type pairs
-  }[] = [
+  }> = [
     {
       name: "empty query",
       query: "",
@@ -663,7 +663,7 @@ describe("TestCreateViewFieldsWithNumberOnlyInt", () => {
 describe("TestFindRecordByViewFile", () => {
   let app: TestCollectionsApp;
   const totalLevels = 6;
-  const mockCollections: Collection[] = [];
+  const mockCollections: Array<Collection> = [];
 
   beforeAll(() => {
     app = openTestApp();
@@ -695,7 +695,7 @@ describe("TestFindRecordByViewFile", () => {
   const fileManyName = "test_QZFjKjXchk.txt";
   const expectedRecordId = "84nmscqy84lsi1t";
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collectionNameOrId: () => string;
     fileFieldName: string;
@@ -704,7 +704,7 @@ describe("TestFindRecordByViewFile", () => {
     expectRecordId: string;
     // not upstream's: the error text
     expectErrorText?: string;
-  }[] = [
+  }> = [
     {
       name: "missing collection",
       collectionNameOrId: () => "missing",
@@ -828,14 +828,14 @@ describe("TestDryRunView", () => {
     }
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     query: string;
     sampleSize: number;
     expectError: boolean;
     expectFields: Record<string, string> | null; // name-type pairs
-    expectSampleIds: string[] | null; // record ids of the resulting sample
-  }[] = [
+    expectSampleIds: Array<string> | null; // record ids of the resulting sample
+  }> = [
     {
       name: "empty query",
       query: "",

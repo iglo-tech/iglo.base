@@ -44,14 +44,14 @@ export function requireGuestOnly(): Handler<RequestEvent> {
 //
 //	requireAuth()                       // any auth collection
 //	requireAuth("_superusers", "users") // only the listed auth collections
-export function requireAuth(...optCollectionNames: string[]): Handler<RequestEvent> {
+export function requireAuth(...optCollectionNames: Array<string>): Handler<RequestEvent> {
   return {
     id: DefaultRequireAuthMiddlewareId,
     func: requireAuthFunc(...optCollectionNames),
   };
 }
 
-function requireAuthFunc(...optCollectionNames: string[]): HandlerFunc<RequestEvent> {
+function requireAuthFunc(...optCollectionNames: Array<string>): HandlerFunc<RequestEvent> {
   return (e) => {
     if (e.auth === undefined) {
       return e.unauthorizedError("The request requires valid record authorization token.", null);

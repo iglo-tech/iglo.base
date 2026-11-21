@@ -18,7 +18,7 @@
 import { SQLiteError } from "bun:sqlite";
 
 // sqlite3ErrStr's aMsg, indexed by the primary result code
-const errStrings: readonly (string | null)[] = [
+const errStrings: ReadonlyArray<string | null> = [
   /* SQLITE_OK          */ "not an error",
   /* SQLITE_ERROR       */ "SQL logic error",
   /* SQLITE_INTERNAL    */ null,

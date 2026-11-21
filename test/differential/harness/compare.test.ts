@@ -37,7 +37,7 @@ function diff(
   upstream: ScenarioResponse,
   igloBase: ScenarioResponse,
   request: Context["request"] = { url: "/api/collections/demo2/records" },
-): string[] {
+): Array<string> {
   return compareResponses(upstream, igloBase, {
     start: { contains: (text) => [fixtureId, "achvryl401bhse3", fixtureTime].includes(text) },
     request,
@@ -50,7 +50,7 @@ const writeContext = (url = "/api/batch"): Context => ({
 });
 const updatedBody = (updated: string) => res(`{"id":"sdkbatchfile001","updated":"${updated}"}`);
 // a batch response with the create and the update of one record
-const batchBody = (...updated: string[]) =>
+const batchBody = (...updated: Array<string>) =>
   res(
     JSON.stringify(
       updated.map((value) => ({ status: 200, body: { id: "sdkbatchfile001", updated: value } })),
@@ -193,7 +193,7 @@ describe("generated values", () => {
   // seconds), iglo.base's may not be, or the other way round
   describe("tokens are decoded and their claims compared", () => {
     const start = { contains: (v: string) => ["ccccccccccccccc", "fixture0000000x"].includes(v) };
-    const checkWith = (pairing: Pairing, up: string, ig: string): string[] =>
+    const checkWith = (pairing: Pairing, up: string, ig: string): Array<string> =>
       compareResponses(
         res(`{"token":"${up}"}`),
         res(`{"token":"${ig}"}`),

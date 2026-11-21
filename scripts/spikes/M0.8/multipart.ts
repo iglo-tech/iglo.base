@@ -45,9 +45,9 @@ interface Part {
   data: Uint8Array;
 }
 
-function multipart(parts: Part[]): Uint8Array {
+function multipart(parts: Array<Part>): Uint8Array {
   const enc = new TextEncoder();
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   for (const p of parts) {
     const disp =
       p.filename === undefined
@@ -197,12 +197,12 @@ interface Case {
   chunked: boolean;
   // sequential requests at concurrency 1; rounds of n at concurrency n
   repeat: number;
-  concurrency?: number[];
+  concurrency?: Array<number>;
 }
 
-function cases(): Case[] {
+function cases(): Array<Case> {
   const title: Part = { name: "title", data: new TextEncoder().encode("spike") };
-  const small = (count: number, size: number): Part[] => [
+  const small = (count: number, size: number): Array<Part> => [
     title,
     ...Array.from({ length: count }, (_, i) => ({
       name: `x${i}`,
@@ -331,10 +331,10 @@ try {
   console.log(hostFacts());
   const dataDir = join(spike.root, "pb_data");
   await build(dataDir, spike.root);
-  const rows: string[] = [];
-  const details: string[] = [];
+  const rows: Array<string> = [];
+  const details: Array<string> = [];
 
-  const sizes: string[] = [];
+  const sizes: Array<string> = [];
   for (const c of cases()) {
     if (only && !only.has(c.name)) {
       continue;
@@ -363,7 +363,7 @@ try {
           // on low memory: kill the server, which ends the requests in flight,
           // and start no further round
           sample = sampler(server.pid, () => process.kill(server.pid, "SIGKILL"));
-          const results: RawResult[] = [];
+          const results: Array<RawResult> = [];
           const rounds = concurrency === 1 ? c.repeat : Math.max(1, c.repeat - 1);
           for (let r = 0; r < rounds && !sample.lowMem; r++) {
             const batch = await Promise.all(

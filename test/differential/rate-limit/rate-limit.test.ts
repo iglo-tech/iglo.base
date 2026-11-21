@@ -23,7 +23,7 @@ const timedAttempts = 5;
 // where in its second a timed case starts
 const startOffsetMs = 20;
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -57,9 +57,9 @@ async function send(baseURL: string, step: Step): Promise<Reply> {
   };
 }
 
-function failures(step: Step, index: number, upstream: Reply, igloBase: Reply): string[] {
+function failures(step: Step, index: number, upstream: Reply, igloBase: Reply): Array<string> {
   const at = `step ${index + 1} ${step.method ?? "GET"} ${step.url}`;
-  const out: string[] = [];
+  const out: Array<string> = [];
   if (upstream.status !== step.status) {
     out.push(`${at}: upstream answered ${upstream.status}, expected ${step.status}`);
   }
@@ -76,7 +76,7 @@ function failures(step: Step, index: number, upstream: Reply, igloBase: Reply): 
 }
 
 // the case on two fresh servers; null when a timed step missed its second
-async function runCase(c: Case): Promise<string[] | null> {
+async function runCase(c: Case): Promise<Array<string> | null> {
   const root = tempDir();
   roots.push(root);
   const prepared = join(root, "pb_data");
@@ -91,7 +91,7 @@ async function runCase(c: Case): Promise<string[] | null> {
   try {
     const igloBase = await startServer([], igloBaseDir);
     try {
-      const out: string[] = [];
+      const out: Array<string> = [];
       const startSecond = Math.floor(Date.now() / 1000) + 1;
       if (c.timed) {
         await Bun.sleep(startSecond * 1000 + startOffsetMs - Date.now());

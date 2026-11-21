@@ -11,7 +11,7 @@ export interface ProxiedRequest {
 
 export interface S3Proxy {
   endpoint: string;
-  requests: ProxiedRequest[];
+  requests: Array<ProxiedRequest>;
   // a request it returns true for gets an AccessDenied error
   refuse: ((req: ProxiedRequest) => boolean) | null;
   stop(): void;

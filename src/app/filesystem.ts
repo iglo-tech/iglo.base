@@ -124,7 +124,7 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
   const deletePrefix = async (prefix: string): Promise<void> => {
     const fs = newFilesystem();
     try {
-      let failures: unknown[];
+      let failures: Array<unknown>;
       if (fs.remote) {
         failures = await fs.deletePrefix(prefix);
       } else {
@@ -202,7 +202,7 @@ function supportFiles(model: FilesModel): boolean {
 // semaphore.Weighted with weight 1 per acquire
 class Semaphore {
   #free: number;
-  readonly #waiters: (() => void)[] = [];
+  readonly #waiters: Array<() => void> = [];
 
   constructor(size: number) {
     this.#free = size;

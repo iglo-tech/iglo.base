@@ -75,7 +75,7 @@ const refCollectionNames = [
 // provider check. Throws the validation Errors.
 export function validateRefs(app: RecordsApp, record: Record): void {
   const name = record.collection().name;
-  if (!(refCollectionNames as readonly string[]).includes(name)) {
+  if (!(refCollectionNames as ReadonlyArray<string>).includes(name)) {
     return;
   }
 
@@ -106,7 +106,7 @@ export function validateRefs(app: RecordsApp, record: Record): void {
 }
 
 // core/db.go validateCollectionId
-function validateCollectionId(app: RecordsApp, ...optTypes: string[]): RuleFunc {
+function validateCollectionId(app: RecordsApp, ...optTypes: Array<string>): RuleFunc {
   return (value) => {
     const id = typeof value === "string" ? value : "";
     if (id === "") {
@@ -379,7 +379,7 @@ export function findAllRefsByRecord(
   app: RecordsApp,
   collectionName: string,
   authRecord: Record,
-): Record[] {
+): Array<Record> {
   return recordQuery(app, collectionName)
     .andWhere(
       new HashExp({
@@ -403,7 +403,7 @@ export function* deleteAllRefsByRecord(
 ): Step {
   const models = findAllRefsByRecord(app, collectionName, authRecord);
 
-  const errs: unknown[] = [];
+  const errs: Array<unknown> = [];
   for (const m of models) {
     try {
       yield* deleteStep(app, m);

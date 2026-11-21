@@ -104,7 +104,7 @@ test("at most PB_THUMBS_MAX_WORKERS generations at once", async () => {
   const gates = [deferred(), deferred(), deferred()];
   let running = 0;
   let peak = 0;
-  const started: number[] = [];
+  const started: Array<number> = [];
   const runs = gates.map((gate, i) =>
     pool.generate(`k${i}`, async () => {
       started.push(i);

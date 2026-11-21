@@ -17,8 +17,8 @@ import type { Message } from "@/mail/mailer";
 interface Server {
   host: string;
   port: number;
-  commands: string[];
-  data: string[];
+  commands: Array<string>;
+  data: Array<string>;
   stop(): void;
 }
 
@@ -29,7 +29,7 @@ interface Session {
   login: number;
 }
 
-const servers: Server[] = [];
+const servers: Array<Server> = [];
 
 afterAll(() => {
   for (const s of servers) {
@@ -41,8 +41,8 @@ afterAll(() => {
 // (and never STARTTLS);
 // every AUTH succeeds; RCPT to "reject@..." fails with 550
 function startServer(host = "127.0.0.1", noAuth = false): Server {
-  const commands: string[] = [];
-  const data: string[] = [];
+  const commands: Array<string> = [];
+  const data: Array<string> = [];
   const listener = Bun.listen<Session>({
     hostname: host,
     port: 0,
@@ -143,7 +143,7 @@ const message: Message = {
 };
 
 // the AUTH commands, decoded
-function auths(server: Server): string[] {
+function auths(server: Server): Array<string> {
   return server.commands
     .filter((c) => /^(AUTH|LOGIN) /i.test(c))
     .map((c) => {

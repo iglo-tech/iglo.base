@@ -74,13 +74,13 @@ describe("SSR differential", () => {
         (res) => ({ email: res.record.email }),
       );
 
-      let cookieJarA: Cookie[] = [
+      let cookieJarA: Array<Cookie> = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: authA.token, record: authA.record }),
         },
       ];
-      let cookieJarB: Cookie[] = [
+      let cookieJarB: Array<Cookie> = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: authB.token, record: authB.record }),
@@ -89,13 +89,13 @@ describe("SSR differential", () => {
 
       const cookiesA: CookieAdapter = {
         getAll: () => cookieJarA,
-        setAll: (c: CookieToSet[]) => {
+        setAll: (c: Array<CookieToSet>) => {
           cookieJarA = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
         },
       };
       const cookiesB: CookieAdapter = {
         getAll: () => cookieJarB,
-        setAll: (c: CookieToSet[]) => {
+        setAll: (c: Array<CookieToSet>) => {
           cookieJarB = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
         },
       };
@@ -206,7 +206,7 @@ describe("SSR differential", () => {
 
       // The browser's cookie jar. The warm-up refresh issues a new token and its cookie write
       // must reach the next request, as it would in a browser; the next client reads the jar.
-      let cookieVal: Cookie[] = [
+      let cookieVal: Array<Cookie> = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: auth.token, record: auth.record }),
@@ -219,7 +219,7 @@ describe("SSR differential", () => {
         origin: "http://localhost:3000",
         cookies: {
           getAll: () => cookieVal,
-          setAll: (c: CookieToSet[]) => {
+          setAll: (c: Array<CookieToSet>) => {
             cookieVal = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
           },
         },
@@ -236,7 +236,7 @@ describe("SSR differential", () => {
       );
 
       // 1. Next data call: session is cached, but server rejects token on data call
-      const clearedCookiesDataCall: CookieToSet[] = [];
+      const clearedCookiesDataCall: Array<CookieToSet> = [];
       const pbData = await createServerClient({
         url: env.url,
         origin: "http://localhost:3000",
@@ -292,7 +292,7 @@ describe("SSR differential", () => {
       // Advance injected clock past cache TTL (default TTL is 5 minutes = 300_000 ms)
       mockClock += DEFAULT_TTL_MS + 10_000;
 
-      const clearedCookiesTTL: CookieToSet[] = [];
+      const clearedCookiesTTL: Array<CookieToSet> = [];
       const pbTTL = await createServerClient({
         url: env.url,
         origin: "http://localhost:3000",
@@ -351,7 +351,7 @@ describe("SSR differential", () => {
       const realtimeClient = env.client();
       realtimeClient.authStore.save(minted.token, minted.record);
 
-      const events: unknown[] = [];
+      const events: Array<unknown> = [];
       const unsub = await env.step("subscribe demo2 with impersonated token", () =>
         realtimeClient.collection("demo2").subscribe("*", (e) => events.push(e)),
       );

@@ -125,7 +125,7 @@ interface Failure {
   tail: string;
   next: string;
   count: number;
-  examples: string[];
+  examples: Array<string>;
 }
 
 // The problems of the records of one collection, for the given fields of its
@@ -133,8 +133,8 @@ interface Failure {
 export function recordProblems(
   app: CollectionsApp,
   collection: Collection,
-  fieldNames: readonly string[],
-): Problem[] {
+  fieldNames: ReadonlyArray<string>,
+): Array<Problem> {
   const fields = fieldNames
     .map((name) => collection.fields.getByName(name))
     .filter((field) => field !== null);
@@ -182,7 +182,7 @@ export function recordProblems(
     }
   }
 
-  const problems: Problem[] = [];
+  const problems: Array<Problem> = [];
   for (const [fieldName, byWhat] of failures) {
     for (const failure of byWhat.values()) {
       problems.push({

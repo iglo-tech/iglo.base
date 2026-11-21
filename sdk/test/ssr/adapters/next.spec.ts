@@ -96,7 +96,7 @@ function fakeIglo(): Fetch {
  * middleware passes on.
  */
 function setup(overrides: Partial<NextAuthOptions> = {}) {
-  const forwarded: Headers[] = [];
+  const forwarded: Array<Headers> = [];
   const auth = createNextAuth({
     url: API,
     origin: APP,

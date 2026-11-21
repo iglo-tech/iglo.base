@@ -59,7 +59,7 @@ const builderFuncMap: Readonly<Record<string, BuilderFunc>> = {
 
 // Errors represents a list of errors.
 export class Errors extends Error {
-  constructor(readonly errors: unknown[]) {
+  constructor(readonly errors: Array<unknown>) {
     super(errors.map((e) => (e instanceof Error ? e.message : String(e))).join("\n"));
     this.name = "Errors";
   }
@@ -77,11 +77,11 @@ class ConnExecutor implements Executor {
     }
   }
 
-  exec(sql: string, args: SQLQueryBindings[]): ExecResult {
+  exec(sql: string, args: Array<SQLQueryBindings>): ExecResult {
     return execStatements(this.conn, splitStatements(sql), args, null);
   }
 
-  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows {
+  query(sql: string, args: Array<SQLQueryBindings>, own: boolean): Rows {
     return queryStatements(this.conn, splitStatements(sql), args, null, own);
   }
 
@@ -233,8 +233,8 @@ export class DB extends EmbeddedBuilder {
   // Not in dbx: a placeholder named in `reals` is given as
   // `+CAST(placeholder AS REAL)`, a REAL value with no affinity, which is how
   // the Go SQLite driver binds a float64 (see Float64 in query.ts).
-  processSQL(s: string, reals?: ReadonlySet<string>): [string, string[]] {
-    const placeholders: string[] = [];
+  processSQL(s: string, reals?: ReadonlySet<string>): [string, Array<string>] {
+    const placeholders: Array<string> = [];
     let count = 0;
     s = s.replace(plRegex, (m) => {
       count++;

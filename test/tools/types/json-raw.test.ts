@@ -10,7 +10,7 @@ import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 
 describe("ParseJSONRaw", () => {
-  const scenarios: [unknown, boolean, string][] = [
+  const scenarios: Array<[unknown, boolean, string]> = [
     [null, false, `null`],
     [``, false, `null`],
     [new Uint8Array(), false, `null`],
@@ -43,7 +43,7 @@ describe("ParseJSONRaw", () => {
 });
 
 describe("JSONRawString", () => {
-  const scenarios: [JSONRaw, string][] = [
+  const scenarios: Array<[JSONRaw, string]> = [
     [new JSONRaw(), `null`],
     [new JSONRaw(""), `null`],
     [new JSONRaw(`123`), `123`],
@@ -58,7 +58,7 @@ describe("JSONRawString", () => {
 });
 
 describe("JSONRawMarshalJSON", () => {
-  const scenarios: [JSONRaw, string][] = [
+  const scenarios: Array<[JSONRaw, string]> = [
     [new JSONRaw(), `null`],
     [new JSONRaw(""), `null`],
     [new JSONRaw(`123`), `123`],
@@ -73,7 +73,7 @@ describe("JSONRawMarshalJSON", () => {
 });
 
 describe("JSONRawUnmarshalJSON", () => {
-  const scenarios: [Uint8Array | null, string][] = [
+  const scenarios: Array<[Uint8Array | null, string]> = [
     [null, `null`],
     [new Uint8Array([0, 1, 2]), "\x00\x01\x02"],
     [bytes("123"), "123"],
@@ -91,7 +91,7 @@ describe("JSONRawUnmarshalJSON", () => {
 });
 
 describe("JSONRawValue", () => {
-  const scenarios: [JSONRaw, string | null][] = [
+  const scenarios: Array<[JSONRaw, string | null]> = [
     [new JSONRaw(), null],
     [new JSONRaw(""), null],
     [new JSONRaw(``), null],
@@ -106,7 +106,7 @@ describe("JSONRawValue", () => {
 });
 
 describe("JSONRawScan", () => {
-  const scenarios: [unknown, boolean, string][] = [
+  const scenarios: Array<[unknown, boolean, string]> = [
     [null, false, `null`],
     [``, false, `null`],
     [new Uint8Array(), false, `null`],
@@ -156,7 +156,7 @@ const store = (value: unknown): { h: string; t: string } => {
 
 // Not in upstream's tests: the raw text survives byte for byte.
 describe("JSONRaw round trip", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["integer-like keys out of order", `{"2":"b","1":"a","10":"c"}`],
     ["integers above 2^53", `{"big":9007199254740993,"bigger":123456789012345678901234567890}`],
     ["unusual whitespace", ` {\t"a" :\r\n [ 1 , 2 ]\n} `],
@@ -179,7 +179,7 @@ describe("JSONRaw round trip", () => {
     expect(raw.bytes()).toBe('"\udcff"');
   });
 
-  const invalid: [string, number[]][] = [
+  const invalid: Array<[string, Array<number>]> = [
     ["lone 0xff", [0x7b, 0x22, 0x61, 0x22, 0x3a, 0x22, 0xff, 0x22, 0x7d]],
     ["truncated sequence", [0x22, 0xe2, 0x82, 0x22]],
     ["surrogate half encoded", [0x22, 0xed, 0xa0, 0x80, 0x22]],

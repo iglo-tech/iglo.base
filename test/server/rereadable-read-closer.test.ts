@@ -13,7 +13,7 @@ test("RereadableReadCloser", async () => {
 
   const totalRereads = 5;
 
-  const tempFilenames: string[] = [];
+  const tempFilenames: Array<string> = [];
 
   // reread multiple times
   for (let i = 0; i < totalRereads; i++) {

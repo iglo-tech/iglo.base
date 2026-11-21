@@ -37,9 +37,9 @@ time("random id", n, () => {
     generateDefaultRandomId();
   }
 });
-const rows: { [key: string]: unknown }[] = [];
+const rows: Array<{ [key: string]: unknown }> = [];
 time("export", n, () => {
-  for (const log of h.logs as Log[]) {
+  for (const log of h.logs as Array<Log>) {
     rows.push(logDBExport("id", log, 0));
   }
 });
@@ -76,7 +76,7 @@ time("insert, one statement per batch", m, () => {
   for (let batch = 0; batch < m / 200; batch++) {
     auxRunInTransaction(app.databases, (tx) => {
       const params: { [key: string]: unknown } = {};
-      const values: string[] = [];
+      const values: Array<string> = [];
       for (let i = 0; i < 200; i++) {
         const row = rows[i]!;
         values.push(`({:i${i}},{:c${i}},{:l${i}},{:m${i}},{:d${i}})`);

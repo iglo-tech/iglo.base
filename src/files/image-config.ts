@@ -240,8 +240,8 @@ function processSOF(t: Uint8Array): Size {
     throw new Error("invalid JPEG format: SOF has wrong length");
   }
   const subsampling = "unsupported JPEG feature: luma/chroma subsampling ratio";
-  const ids: number[] = [];
-  const hvs: { h: number; v: number }[] = [];
+  const ids: Array<number> = [];
+  const hvs: Array<{ h: number; v: number }> = [];
   for (let i = 0; i < nComp; i++) {
     const c = t[6 + 3 * i] as number;
     if (ids.includes(c)) {
@@ -334,7 +334,7 @@ function pngConfig(r: ByteSource): Size {
       }
       depth = t[8] as number;
       const colorType = t[9] as number;
-      const valid: Record<number, number[]> = {
+      const valid: Record<number, Array<number>> = {
         1: [0, 3],
         2: [0, 3],
         4: [0, 3],

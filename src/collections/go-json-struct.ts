@@ -64,7 +64,7 @@ export function unmarshalGoStruct(
 // json.Unmarshal into a slice whose elements decode themselves: the raw
 // text of each element of a JSON array, or null for JSON null (a nil
 // slice). Any other value is an error.
-export function arrayElements(data: string | Uint8Array): string[] | null {
+export function arrayElements(data: string | Uint8Array): Array<string> | null {
   const text = bytesToText(data);
   checkSyntax(text);
 
@@ -77,7 +77,7 @@ export function arrayElements(data: string | Uint8Array): string[] | null {
     throw new JSONSemanticError(`cannot unmarshal JSON ${kindOf(c)} into Go slice`);
   }
 
-  const items: string[] = [];
+  const items: Array<string> = [];
   i = skipWhitespace(text, i + 1);
   if (text[i] === "]") {
     return items;
@@ -163,13 +163,13 @@ function kindOf(c: string | undefined): string {
 
 // the members of a valid JSON object as [name, raw value] pairs, or null
 // for JSON null
-function objectMembers(text: string): [string, string][] | null {
+function objectMembers(text: string): Array<[string, string]> | null {
   let i = skipWhitespace(text, 0);
   if (text[i] === "n") {
     return null;
   }
 
-  const members: [string, string][] = [];
+  const members: Array<[string, string]> = [];
   i = skipWhitespace(text, i + 1); // "{"
   if (text[i] === "}") {
     return members;

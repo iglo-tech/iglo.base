@@ -68,7 +68,7 @@ describe("RemoveAll", () => {
 describe("Remove", () => {
   const s = new Store(new Map(Object.entries({ test: true })));
 
-  const scenarios: string[] = ["test", "missing"];
+  const scenarios: Array<string> = ["test", "missing"];
 
   for (const [i, key] of scenarios.entries()) {
     test(`${i}_${JSON.stringify(key)}`, () => {
@@ -81,7 +81,7 @@ describe("Remove", () => {
 describe("Has", () => {
   const s = new Store(new Map(Object.entries({ test1: 0, test2: 1 })));
 
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["test1", true],
     ["test2", true],
     ["missing", false],
@@ -97,7 +97,7 @@ describe("Has", () => {
 describe("Get", () => {
   const s = new Store(new Map(Object.entries({ test1: 0, test2: 1 })));
 
-  const scenarios: [string, number | undefined][] = [
+  const scenarios: Array<[string, number | undefined]> = [
     ["test1", 0],
     ["test2", 1],
     // Go returns the zero value (0) for a missing key; here it is undefined
@@ -114,7 +114,7 @@ describe("Get", () => {
 describe("GetOk", () => {
   const s = new Store(new Map(Object.entries({ test1: 0, test2: 1 })));
 
-  const scenarios: [string, number | undefined, boolean][] = [
+  const scenarios: Array<[string, number | undefined, boolean]> = [
     ["test1", 0, true],
     ["test2", 1, true],
     // Go returns the zero value (0) for a missing key; here it is undefined
@@ -236,7 +236,7 @@ describe("GetOrSet", () => {
     ),
   );
 
-  const scenarios: [string, number, number][] = [
+  const scenarios: Array<[string, number, number]> = [
     ["test2", 20, 1],
     ["test3", 2, 3],
     ["test_new", 20, 20],
@@ -257,7 +257,7 @@ describe("SetIfLessThanLimit", () => {
 
   const limit = 2;
 
-  const scenarios: [string, number, boolean][] = [
+  const scenarios: Array<[string, number, boolean]> = [
     ["test1", 1, true],
     ["test2", 2, true],
     ["test3", 3, false],

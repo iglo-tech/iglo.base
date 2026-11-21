@@ -194,7 +194,7 @@ function diskFile(path: string, size: number, tempRoot: string): ServedFile {
 async function spool(
   path: string,
   tempRoot: string,
-  parts: (Uint8Array | HttpRange)[],
+  parts: Array<Uint8Array | HttpRange>,
 ): Promise<{ blob: Blob; remove: () => void }> {
   const tempDir = join(tempRoot, localTempDirName);
   mkdirSync(tempDir, { recursive: true });

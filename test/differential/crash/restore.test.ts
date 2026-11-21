@@ -36,7 +36,7 @@ import { tempDir } from "@test/support/executable";
 import { startVersitygw, type Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
-const roots: string[] = [];
+const roots: Array<string> = [];
 let gw: Versitygw;
 
 beforeAll(async () => {
@@ -78,7 +78,7 @@ async function withBackup(kind: Kind, storage: Storage) {
   return { server, dataDir };
 }
 
-function tempEntries(dataDir: string): string[] {
+function tempEntries(dataDir: string): Array<string> {
   return walk(join(dataDir, ".pb_temp_to_delete"));
 }
 
@@ -258,7 +258,7 @@ describe("crash: restore directory states", () => {
   }
 });
 
-function oldDirsLeft(dataDir: string): string[] {
+function oldDirsLeft(dataDir: string): Array<string> {
   const temp = join(dataDir, ".pb_temp_to_delete");
   return existsSync(temp) ? readdirSync(temp).filter((n) => n.startsWith("old_pb_data_")) : [];
 }
@@ -321,7 +321,7 @@ describe("restore after a rollback that failed", () => {
         const filter = encodeURIComponent('level=8 && message="Failed to restore backup"');
         const failure = await waitFor("the logged restore failure", async () => {
           const logs = await api(server, "GET", `/api/logs?filter=${filter}`);
-          const { items } = (await logs.json()) as { items?: { data: { error?: string } }[] };
+          const { items } = (await logs.json()) as { items?: Array<{ data: { error?: string } }> };
           return items?.[0];
         });
         expect(failure.data.error).toContain("earlier restore did not finish");

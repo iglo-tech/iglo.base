@@ -108,7 +108,7 @@ test("a batch past its deadline after the last item does not commit", async () =
 });
 
 // a multipart batch with one file of the given size for the first item
-function multipartBatch(requests: object[], size: number): { body: Uint8Array; type: string } {
+function multipartBatch(requests: Array<object>, size: number): { body: Uint8Array; type: string } {
   const boundary = "batchboundary0123456789";
   const head =
     `--${boundary}\r\nContent-Disposition: form-data; name="@jsonPayload"\r\n\r\n` +
@@ -126,7 +126,7 @@ function multipartBatch(requests: object[], size: number): { body: Uint8Array; t
 }
 
 // what the body and the multipart form spilled in the temp directory
-const spilled = (): string[] =>
+const spilled = (): Array<string> =>
   readdirSync(tmpdir()).filter(
     (n) => n.startsWith("multipart-") || n.startsWith("pb_buffer_file_"),
   );
@@ -147,7 +147,7 @@ test("uploads spill to temporary files that are gone after the request", async (
   );
   const res = await postBatch(body, { "content-type": type, Authorization: superuserToken });
   expect(res.status).toBe(200);
-  const [item] = (await res.json()) as { body: { id: string; files: string[] } }[];
+  const [item] = (await res.json()) as Array<{ body: { id: string; files: Array<string> } }>;
   const collection = findCollectionByNameOrId(app, "demo3");
   const stored = join(app.dataDir, "storage", collection.id, item?.body.id ?? "");
   expect(item?.body.files).toHaveLength(1);
@@ -201,7 +201,7 @@ test("a removed file stays until the batch commits", async () => {
   expect(failed.status).toBe(400);
   expect(existsSync(path)).toBe(true);
   const stored = await getRecords(`/api/collections/demo3/records/${record.id}`);
-  expect(((await stored.json()) as { files: string[] }).files).toContain(name);
+  expect(((await stored.json()) as { files: Array<string> }).files).toContain(name);
 
   const committed = await postBatch(JSON.stringify({ requests: [removal] }), {
     Authorization: superuserToken,

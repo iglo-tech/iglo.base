@@ -19,7 +19,10 @@ import { run, runSync } from "@/records/record-save";
 
 // FindAllExternalAuthsByRecord returns all ExternalAuth models
 // linked to the provided auth record.
-export function findAllExternalAuthsByRecord(app: RecordsApp, authRecord: Record): ExternalAuth[] {
+export function findAllExternalAuthsByRecord(
+  app: RecordsApp,
+  authRecord: Record,
+): Array<ExternalAuth> {
   return findAllRefsByRecord(app, CollectionNameExternalAuths, authRecord).map(
     (r) => new ExternalAuth(r),
   );
@@ -30,7 +33,7 @@ export function findAllExternalAuthsByRecord(app: RecordsApp, authRecord: Record
 export function findAllExternalAuthsByCollection(
   app: RecordsApp,
   collection: Collection,
-): ExternalAuth[] {
+): Array<ExternalAuth> {
   return recordQuery(app, CollectionNameExternalAuths)
     .andWhere(new HashExp({ collectionRef: collection.id }))
     .orderBy("created DESC")

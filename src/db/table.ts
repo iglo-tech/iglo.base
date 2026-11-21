@@ -6,7 +6,7 @@ import { HashExp, newExp } from "@/db/dbx/expression";
 import { setOwn } from "@/db/dbx/query";
 
 // TableColumns returns all column names of a single table by its name.
-export function tableColumns(app: Databases, tableName: string): string[] {
+export function tableColumns(app: Databases, tableName: string): Array<string> {
   return app
     .concurrentDB()
     .newQuery("SELECT name FROM PRAGMA_TABLE_INFO({:tableName})")
@@ -24,7 +24,7 @@ export interface TableInfoRow {
 }
 
 // TableInfo returns the "table_info" pragma result for the specified table.
-export function tableInfo(app: Databases, tableName: string): TableInfoRow[] {
+export function tableInfo(app: Databases, tableName: string): Array<TableInfoRow> {
   const rows = app
     .concurrentDB()
     .newQuery("SELECT * FROM PRAGMA_TABLE_INFO({:tableName})")

@@ -41,7 +41,7 @@ function expectSecurityHeaders(res: Response): void {
 
 test("the default middlewares run in upstream's priority order", async () => {
   const router = newRouter(app);
-  const order: string[] = [];
+  const order: Array<string> = [];
   // wrap each default middleware to record the order it runs in
   for (const m of router.middlewares) {
     const inner = m.func;
@@ -163,7 +163,7 @@ describe("routing", () => {
     expect(await res.text()).toBe(`{"message":"API is healthy.","code":200,"data":{}}`);
   });
 
-  const notFound: [string, string, string][] = [
+  const notFound: Array<[string, string, string]> = [
     ["GET", "/missing", "File not found."],
     ["HEAD", "/missing", "File not found."],
     ["GET", "/api/health/", "File not found."],
@@ -186,7 +186,7 @@ describe("routing", () => {
   }
 
   // Go's ServeMux redirects unclean paths before any middleware runs
-  const redirects: [string, string, string][] = [
+  const redirects: Array<[string, string, string]> = [
     ["GET", "/api/../api/health", "/api/health"],
     ["GET", "//api/health", "/api/health"],
     ["GET", "/api/health/.", "/api/health"],
@@ -212,7 +212,7 @@ describe("routing", () => {
 });
 
 describe("safeRedirectPath", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["/", "/"],
     ["////", "/"],

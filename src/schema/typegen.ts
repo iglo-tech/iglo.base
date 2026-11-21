@@ -48,13 +48,13 @@ export function typeBase(name: string): string {
 
 // A member of a union: a type as written, or an array of a union of types
 // (`(a | b)[]`; an array of one type is written `a[]`)
-type Member = string | { of: string[] };
+type Member = string | { of: Array<string> };
 
 // A type: the members of a union (none is `never`). A json field's tsType is
 // verbatim: it is written as the schema file has it, behind a formatter-ignore
 // comment, because only the user knows where its line breaks belong.
 interface TypeOf {
-  members: Member[];
+  members: Array<Member>;
   verbatim?: boolean;
 }
 
@@ -67,7 +67,7 @@ interface Prop {
 }
 
 // the type of one plain member
-function plain(...members: string[]): TypeOf {
+function plain(...members: Array<string>): TypeOf {
   return { members };
 }
 
@@ -81,7 +81,7 @@ function memberText(member: Member): string {
 }
 
 // the members of a union, with `never` for a union with none
-function membersOf(members: readonly string[]): string[] {
+function membersOf(members: ReadonlyArray<string>): Array<string> {
   return members.length === 0 ? ["never"] : [...members];
 }
 
@@ -101,7 +101,7 @@ function keyText(key: string): string {
 }
 
 // the JSDoc lines of a description, at an indent
-function docLines(doc: string, indent: string): string[] {
+function docLines(doc: string, indent: string): Array<string> {
   const text = doc.replace(/\*\//g, "*\\/");
   const lines = text.split(/\r?\n/);
   if (lines.length === 1) {
@@ -114,7 +114,7 @@ function docLines(doc: string, indent: string): string[] {
 // array of a union that does not fit breaks inside its parentheses, with its
 // members four columns in and the closing parenthesis two columns in, as oxfmt
 // lays it out.
-function memberLines(member: Member, indent: string, suffix: string): string[] {
+function memberLines(member: Member, indent: string, suffix: string): Array<string> {
   const inline = `${indent}| ${memberText(member)}${suffix}`;
   if (
     typeof member === "string" ||
@@ -133,7 +133,7 @@ function memberLines(member: Member, indent: string, suffix: string): string[] {
 // the lines of one property. A type too long for a line breaks the way oxfmt
 // breaks it: a union with a leading "| " on each member, and an array of a
 // union with its members in parentheses.
-function propLines(prop: Prop, indent: string): string[] {
+function propLines(prop: Prop, indent: string): Array<string> {
   const doc = prop.doc === undefined ? [] : docLines(prop.doc, indent);
   const head = `${indent}${keyText(prop.key)}${prop.optional ? "?" : ""}`;
   const line = `${head}: ${typeText(prop.type)};`;
@@ -182,7 +182,7 @@ function stringLiteral(value: string): string {
 }
 
 // the members of a select's values
-function valueMembers(values: unknown): string[] {
+function valueMembers(values: unknown): Array<string> {
   if (!Array.isArray(values)) {
     return [];
   }
@@ -268,7 +268,7 @@ function storedType(field: Json, file: FileField | undefined, collection: string
 // modifiers, core/field_file.go): a file, or for a multi-file field an array
 // of them. An update also takes the name of a file the record has (a string
 // keeps it, "" clears the field), and null clears a field that is not required.
-function fileValue(field: Json, forUpdate: boolean): Member[] {
+function fileValue(field: Json, forUpdate: boolean): Array<Member> {
   const upload = forUpdate ? ["File", "Blob", "string"] : ["File", "Blob"];
   return isMultiple(field) ? [...upload, { of: upload }] : upload;
 }
@@ -320,14 +320,14 @@ function isOptionalOnCreate(field: Json): boolean {
 }
 
 // an optional property of a type, for an update's modifier
-function modifierProp(key: string, members: Member[]): Prop {
+function modifierProp(key: string, members: Array<Member>): Prop {
   return { key, optional: true, doc: undefined, type: { members } };
 }
 
 // the modifiers an update takes for a field (upstream's FindSetter): the
 // number increments and decrements, the select, relation and file values are
 // added, prepended or removed
-function modifiersOf(field: Json): Prop[] {
+function modifiersOf(field: Json): Array<Prop> {
   const name = fieldName(field);
   switch (field.type) {
     case "number":
@@ -336,7 +336,7 @@ function modifiersOf(field: Json): Prop[] {
     case "relation": {
       // a value, or an array of values, the way the field takes it
       const values = field.type === "select" ? valueMembers(field.values) : ["string"];
-      const value: Member[] = [...membersOf(values), { of: values }];
+      const value: Array<Member> = [...membersOf(values), { of: values }];
       return [
         modifierProp(`+${name}`, value),
         modifierProp(`${name}+`, value),
@@ -358,13 +358,13 @@ function modifiersOf(field: Json): Prop[] {
 
 // the lines of a declaration: its JSDoc, its head, its properties and its tail
 function declaration(
-  heads: readonly string[],
-  props: readonly Prop[],
+  heads: ReadonlyArray<string>,
+  props: ReadonlyArray<Prop>,
   doc: string | undefined,
   tail: string,
   indent: string,
-): string[] {
-  const lines: string[] = doc === undefined ? [] : docLines(doc, "");
+): Array<string> {
+  const lines: Array<string> = doc === undefined ? [] : docLines(doc, "");
   lines.push(...heads);
   for (const prop of props) {
     lines.push(...propLines(prop, indent));
@@ -375,7 +375,11 @@ function declaration(
 
 // an object type alias (`export type XCreate = {`): when that head is too
 // long for a line, oxfmt breaks after the `=` and indents the object
-function objectAlias(name: string, props: readonly Prop[], doc: string | undefined): string[] {
+function objectAlias(
+  name: string,
+  props: ReadonlyArray<Prop>,
+  doc: string | undefined,
+): Array<string> {
   const head = `export type ${name} = {`;
   if (head.length <= printWidth) {
     return declaration([head], props, doc, "};", "  ");
@@ -388,16 +392,16 @@ function collectionDeclarations(
   api: Json,
   base: string,
   file: SchemaCollection | undefined,
-): string[] {
+): Array<string> {
   const name = String(api.name);
   const type = String(api.type);
-  const fields = Array.isArray(api.fields) ? (api.fields as Json[]) : [];
+  const fields = Array.isArray(api.fields) ? (api.fields as Array<Json>) : [];
   const fileFields = new Map((file?.fields ?? []).map((field) => [field.name, field]));
   const fileOf = (field: Json): FileField | undefined => fileFields.get(fieldName(field));
   const docOf = (field: Json): string | undefined => fileOf(field)?.description;
 
   // the record: every stored field
-  const record: Prop[] = fields.map((field) => ({
+  const record: Array<Prop> = fields.map((field) => ({
     key: fieldName(field),
     optional: false,
     doc: docOf(field),
@@ -406,7 +410,7 @@ function collectionDeclarations(
 
   // the response: the id, the collection and the fields the API returns (not
   // the hidden ones), and the expanded relations
-  const response: Prop[] = [
+  const response: Array<Prop> = [
     { key: "id", optional: false, doc: undefined, type: plain("string") },
     { key: "collectionId", optional: false, doc: undefined, type: plain("string") },
     {
@@ -437,8 +441,8 @@ function collectionDeclarations(
   });
 
   // the create and the update: the fields the request sets
-  const create: Prop[] = [];
-  const update: Prop[] = [];
+  const create: Array<Prop> = [];
+  const update: Array<Prop> = [];
   for (const field of fields) {
     if (!isWritable(field, type)) {
       continue;
@@ -502,7 +506,7 @@ function collectionDeclarations(
 }
 
 // the Collections enum: each collection's name, by its type name
-function enumLines(names: readonly { base: string; name: string }[]): string[] {
+function enumLines(names: ReadonlyArray<{ base: string; name: string }>): Array<string> {
   return [
     "export enum Collections {",
     ...names.map(({ base, name }) => `  ${base} = ${JSON.stringify(name)},`),
@@ -514,7 +518,7 @@ function enumLines(names: readonly { base: string; name: string }[]): string[] {
 // name, so a name that is not in the schema is a type error. It is generic
 // over the client, so a browser or server client keeps its own methods
 // (`TypedPocketBase<BrowserClient>`); the default is the plain client.
-function typedClientLines(names: readonly { base: string; name: string }[]): string[] {
+function typedClientLines(names: ReadonlyArray<{ base: string; name: string }>): Array<string> {
   const overloads = names.flatMap(({ base, name }) => {
     const value = `${JSON.stringify(name)} | Collections.${base}`;
     const line = `  collection(idOrName: ${value}): RecordService<${base}Response>;`;
@@ -540,7 +544,7 @@ function typedClientLines(names: readonly { base: string; name: string }[]): str
 
 // a method of the migration helpers, generic over the collection name C; a
 // signature too long for a line is broken one parameter a line, as oxfmt does
-function methodLines(name: string, params: readonly string[], returns: string): string[] {
+function methodLines(name: string, params: ReadonlyArray<string>, returns: string): Array<string> {
   const head = `  ${name}<C extends keyof MigrationRecords>(`;
   const line = `${head}${params.join(", ")}): ${returns};`;
   if (line.length <= printWidth) {
@@ -558,8 +562,8 @@ function methodLines(name: string, params: readonly string[], returns: string): 
 // loosely typed: the old names are not in the generated schema, so the apply
 // checks them against the database and the file, with clear errors. The
 // helpers match src/schema/migration-tx.ts.
-function migrationLines(names: readonly { base: string; name: string }[]): string[] {
-  const map = (title: string, value: (base: string) => string): string[] =>
+function migrationLines(names: ReadonlyArray<{ base: string; name: string }>): Array<string> {
+  const map = (title: string, value: (base: string) => string): Array<string> =>
     names.length === 0
       ? [`export interface ${title} {}`]
       : [
@@ -614,7 +618,10 @@ function migrationLines(names: readonly { base: string; name: string }[]): strin
 // The generated file: the types of every collection, the Collections enum and
 // TypedPocketBase. `collections` are the API's collection objects; `schema`,
 // when given, is the file the types come from, for its descriptions and tsType.
-export function generateTypes(collections: readonly Json[], schema?: SchemaDescription): string {
+export function generateTypes(
+  collections: ReadonlyArray<Json>,
+  schema?: SchemaDescription,
+): string {
   const fileCollections = new Map(
     (schema?.collections ?? []).map((collection) => [collection.name, collection]),
   );
@@ -626,8 +633,8 @@ export function generateTypes(collections: readonly Json[], schema?: SchemaDescr
 
   // two names with one type name cannot both be generated: an error names both
   const bases = new Map<string, string>();
-  const names: { base: string; name: string }[] = [];
-  const parts: string[][] = [
+  const names: Array<{ base: string; name: string }> = [];
+  const parts: Array<Array<string>> = [
     [
       "// Generated by `iglo-base schema types` (D40). Do not edit: change the schema and run the command again.",
       `import type PocketBase from "${sdkPackage}";`,

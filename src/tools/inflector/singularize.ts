@@ -15,7 +15,7 @@
 // matches next to a previous match never differs here.
 
 // note: the patterns are extracted from popular Ruby/PHP/Node.js inflector packages
-const singularRules: [string, string][] = [
+const singularRules: Array<[string, string]> = [
   ["([nrlm]ese|deer|fish|sheep|measles|ois|pox|media|ss)$", "$1"],
   ["^(sea[- ]bass)$", "$1"],
   ["(s)tatuses$", "$1tatus"],

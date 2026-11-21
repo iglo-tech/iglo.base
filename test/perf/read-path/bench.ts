@@ -40,8 +40,8 @@ const seconds = Number(values.seconds);
 const scratch = values.scratch!;
 const concurrency = 8;
 
-async function latency(target: Target, run: () => unknown, ms: number): Promise<number[]> {
-  const samples: number[] = [];
+async function latency(target: Target, run: () => unknown, ms: number): Promise<Array<number>> {
+  const samples: Array<number> = [];
   const end = performance.now() + ms;
   while (performance.now() < end) {
     const t = performance.now();
@@ -56,7 +56,7 @@ async function throughput(
   ms: number,
 ): Promise<{ qps: number; lag: ReturnType<typeof summarize> }> {
   let done = 0;
-  const lags: number[] = [];
+  const lags: Array<number> = [];
   let expected = performance.now() + 5;
   const timer = setInterval(() => {
     const now = performance.now();
@@ -80,8 +80,8 @@ async function throughput(
   return { qps: (done / elapsed) * 1000, lag: summarize(lags) };
 }
 
-const results: unknown[] = [];
-const datasets: [Dataset, string | undefined][] = [
+const results: Array<unknown> = [];
+const datasets: Array<[Dataset, string | undefined]> = [
   ["fixture", values.fixture],
   ["1m", values.big],
 ];

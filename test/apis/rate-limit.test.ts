@@ -31,7 +31,7 @@ import { serveTest } from "@test/support/router";
 // a whole second near the real time, as the fixture's OTP rows are written then
 const start = new Date(Math.floor(Date.now() / 1000) * 1000);
 
-let opened: { app: TestApp; root: string }[] = [];
+let opened: Array<{ app: TestApp; root: string }> = [];
 
 afterEach(async () => {
   for (const { app, root } of opened) {

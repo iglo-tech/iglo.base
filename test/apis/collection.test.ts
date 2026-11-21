@@ -19,8 +19,8 @@ import { superuserToken } from "@test/scenarios/record-crud";
 import { serveTest } from "@test/support/router";
 
 const key = "abcdabcdabcdabcdabcdabcdabcdabcd";
-const apps: TestApp[] = [];
-const roots: string[] = [];
+const apps: Array<TestApp> = [];
+const roots: Array<string> = [];
 
 afterEach(async () => {
   for (const app of apps.splice(0)) {
@@ -66,8 +66,8 @@ async function call(
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
 }
 
-function labels(settings: { [key: string]: unknown }): string[] {
-  const rateLimits = settings["rateLimits"] as { rules: { label: string }[] };
+function labels(settings: { [key: string]: unknown }): Array<string> {
+  const rateLimits = settings["rateLimits"] as { rules: Array<{ label: string }> };
   return rateLimits.rules.map((r) => r.label);
 }
 
@@ -153,5 +153,5 @@ test("form-encoded bodies bind the top-level members, then @jsonPayload", async 
   );
   expect(mp.status).toBe(200);
   expect(mp.json).toMatchObject({ name: "mp_created", listRule: "id='x'", viewRule: null });
-  expect((mp.json["fields"] as { name: string }[]).map((f) => f.name)).toContain("t");
+  expect((mp.json["fields"] as Array<{ name: string }>).map((f) => f.name)).toContain("t");
 });

@@ -19,7 +19,7 @@ import { goQuote } from "@/fields/field";
 const eof = 0;
 
 // DefaultSeparators is a list with the default token separator characters.
-export const DefaultSeparators: readonly string[] = Object.freeze([","]);
+export const DefaultSeparators: ReadonlyArray<string> = Object.freeze([","]);
 
 const whitespaceChars = ["\t", "\n", "\v", "\f", "\r", " ", "\u0085", " "];
 
@@ -30,7 +30,7 @@ export class Tokenizer {
   private lastSize = -1;
 
   private trimCutset = "";
-  private separators: string[] = [];
+  private separators: Array<string> = [];
   private keepSeparatorState = false;
   private keepEmptyTokensState = false;
   private ignoreParenthesisState = false;
@@ -47,7 +47,7 @@ export class Tokenizer {
   }
 
   // Separators defines the provided separatos of the current Tokenizer.
-  setSeparators(...separators: string[]): void {
+  setSeparators(...separators: Array<string>): void {
     this.separators = separators;
 
     this.rebuildTrimCutset();
@@ -95,8 +95,8 @@ export class Tokenizer {
   }
 
   // ScanAll reads the entire Tokenizer's buffer and return all found tokens.
-  scanAll(): string[] {
-    const tokens: string[] = [];
+  scanAll(): Array<string> {
+    const tokens: Array<string> = [];
 
     for (;;) {
       const token = this.scan();

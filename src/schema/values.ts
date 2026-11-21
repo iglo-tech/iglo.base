@@ -39,7 +39,7 @@ export function isArrayIndexName(name: string): boolean {
 
 // A copy of the object whose keys come first in the given order, then the
 // others in code unit order. Only the keys that exist are written.
-export function withKeyOrder(value: SchemaObject, preferred: readonly string[]): SchemaObject {
+export function withKeyOrder(value: SchemaObject, preferred: ReadonlyArray<string>): SchemaObject {
   const out: SchemaObject = {};
   for (const key of preferred) {
     if (Object.hasOwn(value, key)) {

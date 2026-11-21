@@ -83,8 +83,8 @@ export class S3System {
 
   // List returns a flat list with info for all files under the specified
   // prefix.
-  async list(prefix: string): Promise<ListObject[]> {
-    const files: ListObject[] = [];
+  async list(prefix: string): Promise<Array<ListObject>> {
+    const files: Array<ListObject> = [];
 
     const iter = this.#bucket.list({ prefix });
 
@@ -137,8 +137,8 @@ export class S3System {
   //
   // The prefix could be subpath (ex. "/a/b/") or filename prefix (ex.
   // "/a/b/file_").
-  async deletePrefix(prefix: string): Promise<unknown[]> {
-    const failed: unknown[] = [];
+  async deletePrefix(prefix: string): Promise<Array<unknown>> {
+    const failed: Array<unknown> = [];
 
     if (prefix === "") {
       failed.push(new Error("prefix mustn't be empty"));
@@ -320,7 +320,7 @@ export class S3System {
   // start.
   async #spool(
     fileKey: string,
-    parts: (Uint8Array | HttpRange)[],
+    parts: Array<Uint8Array | HttpRange>,
   ): Promise<{ blob: Blob; remove: () => void }> {
     const path = this.#tempPath("ranges_");
     const remove = (): void => rmSync(path, { force: true });

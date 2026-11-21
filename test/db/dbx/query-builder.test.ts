@@ -114,7 +114,7 @@ describe("query builder", () => {
   });
 
   test("TestQB_BuildWhere", () => {
-    const tests: { exp: Expression | null; expected: string; count: number; tag: string }[] = [
+    const tests: Array<{ exp: Expression | null; expected: string; count: number; tag: string }> = [
       {
         exp: new HashExp({ age: 30, dept: "marketing" }),
         expected: "WHERE `age`={:p0} AND `dept`={:p1}",
@@ -135,7 +135,7 @@ describe("query builder", () => {
   });
 
   test("TestQB_BuildHaving", () => {
-    const tests: { exp: Expression | null; expected: string; count: number; tag: string }[] = [
+    const tests: Array<{ exp: Expression | null; expected: string; count: number; tag: string }> = [
       {
         exp: new HashExp({ age: 30, dept: "marketing" }),
         expected: "HAVING `age`={:p0} AND `dept`={:p1}",

@@ -14,7 +14,7 @@ import {
 } from "@/tools/list/list";
 
 describe("SubtractSliceString", () => {
-  const scenarios: [string[], string[], string][] = [
+  const scenarios: Array<[Array<string>, Array<string>, string]> = [
     [[], [], `[]`],
     [[], ["1", "2", "3", "4"], `[]`],
     [["1", "2", "3", "4"], [], `["1","2","3","4"]`],
@@ -32,7 +32,7 @@ describe("SubtractSliceString", () => {
 });
 
 describe("SubtractSliceInt", () => {
-  const scenarios: [number[], number[], string][] = [
+  const scenarios: Array<[Array<number>, Array<number>, string]> = [
     [[], [], `[]`],
     [[], [1, 2, 3, 4], `[]`],
     [[1, 2, 3, 4], [], `[1,2,3,4]`],
@@ -50,7 +50,7 @@ describe("SubtractSliceInt", () => {
 });
 
 describe("ExistInSliceString", () => {
-  const scenarios: [string, string[], boolean][] = [
+  const scenarios: Array<[string, Array<string>, boolean]> = [
     ["", [""], true],
     ["", ["1", "2", "test 123"], false],
     ["test", [], false],
@@ -67,7 +67,7 @@ describe("ExistInSliceString", () => {
 });
 
 describe("ExistInSliceInt", () => {
-  const scenarios: [number, number[], boolean][] = [
+  const scenarios: Array<[number, Array<number>, boolean]> = [
     [0, [], false],
     [0, [0], true],
     [4, [1, 2, 3], false],
@@ -84,7 +84,7 @@ describe("ExistInSliceInt", () => {
 });
 
 describe("ExistInSliceWithRegex", () => {
-  const scenarios: [string, string[], boolean][] = [
+  const scenarios: Array<[string, Array<string>, boolean]> = [
     ["", [``], true],
     ["", [String.raw`^\W+$`], false],
     [" ", [String.raw`^\W+$`], true],
@@ -106,7 +106,12 @@ describe("ExistInSliceWithRegex", () => {
 });
 
 describe("ToInterfaceSlice", () => {
-  const scenarios: string[][] = [[], [""], ["1", "test"], ["test1", "test1", "test2", "test3"]];
+  const scenarios: Array<Array<string>> = [
+    [],
+    [""],
+    ["1", "test"],
+    ["test1", "test1", "test2", "test3"],
+  ];
 
   for (const [i, items] of scenarios.entries()) {
     test(`${i}_${JSON.stringify(items)}`, () => {
@@ -122,7 +127,7 @@ describe("ToInterfaceSlice", () => {
 });
 
 describe("NonzeroUniquesString", () => {
-  const scenarios: [string[], string[]][] = [
+  const scenarios: Array<[Array<string>, Array<string>]> = [
     [[], []],
     [[""], []],
     [
@@ -148,7 +153,7 @@ describe("NonzeroUniquesString", () => {
 
 describe("ToUniqueStringSlice", () => {
   // A Go JSONArray is a plain array in iglo.base
-  const scenarios: [unknown, string[]][] = [
+  const scenarios: Array<[unknown, Array<string>]> = [
     [null, []], // Go nil
     ["", []],
     [[], []],
@@ -185,7 +190,7 @@ describe("ToUniqueStringSlice", () => {
 });
 
 describe("ToChunks", () => {
-  const scenarios: [number[], number, string][] = [
+  const scenarios: Array<[Array<number>, number, string]> = [
     [[], 2, "[]"], // Go nil
     [[], 2, "[]"],
     [[1, 2, 3, 4], -1, "[[1],[2],[3],[4]]"],
@@ -208,7 +213,7 @@ describe("ToChunks", () => {
 // array (decoding stops at the first error and keeps what came before; the
 // string itself is added on any error).
 describe("ToUniqueStringSlice JSON strings", () => {
-  const scenarios: [string, string, string[]][] = [
+  const scenarios: Array<[string, string, Array<string>]> = [
     ["non-string element stops decoding", `["a", 1, "b"]`, ["a", `["a", 1, "b"]`]],
     ["null element is dropped", `["a", null]`, ["a"]],
     ["syntax error keeps earlier elements", `["a", "b"`, ["a", "b", `["a", "b"`]],

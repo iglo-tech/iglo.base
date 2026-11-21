@@ -85,7 +85,7 @@ function maxHeldDescriptors(): number {
 }
 
 // the order of two walk positions: by path segment, as the walk goes
-function comparePaths(a: string[], b: string[]): number {
+function comparePaths(a: Array<string>, b: Array<string>): number {
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n; i++) {
     const x = a[i] as string;
@@ -109,11 +109,11 @@ class BackupTracker implements FilesystemWatcher {
   readonly held = new Map<string, string | number>();
   #heldDescriptors = 0;
   readonly #maxDescriptors = maxHeldDescriptors();
-  #position: string[] = [];
+  #position: Array<string> = [];
   #nextHeld = 0;
   #trackNewFiles = false;
 
-  constructor(app: App, logPrefix: string, heldDir: string, exclude: string[]) {
+  constructor(app: App, logPrefix: string, heldDir: string, exclude: Array<string>) {
     this.#app = app;
     this.#logPrefix = logPrefix;
     this.#heldDir = heldDir;

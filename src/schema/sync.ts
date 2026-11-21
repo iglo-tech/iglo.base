@@ -56,7 +56,7 @@ export interface SyncOptions {
   // the value of "$schema" in the written file
   schemaURL: string;
   // the JavaScript migrations of pb_migrations, as serve loaded them
-  migrations: readonly Migration[];
+  migrations: ReadonlyArray<Migration>;
   allowDataLoss: boolean;
   // a line on the terminal (standard error), with its time
   log: (line: string) => void;
@@ -100,7 +100,7 @@ export class SchemaSync {
   // Called after a collection change through the API. Writes the file and the
   // types of the database; never throws (the change itself is done). `changed`
   // names the collections the change is to.
-  writeBack(changed: readonly string[]): void {
+  writeBack(changed: ReadonlyArray<string>): void {
     const { schemaPath, schemaURL, log } = this.options;
     try {
       const app = this.options.app();
@@ -353,7 +353,7 @@ function isDirectory(path: string): boolean {
 
 // the names of the TypeScript files of a directory, in name order; a directory
 // that goes away meanwhile has none
-function listTypeScript(dir: string): string[] {
+function listTypeScript(dir: string): Array<string> {
   try {
     return readdirSync(dir)
       .filter((file) => file.endsWith(".ts"))
@@ -372,7 +372,7 @@ function inodeOf(path: string): number | undefined {
 }
 
 // the collections a change is to, for the terminal
-function namesOf(names: readonly string[]): string {
+function namesOf(names: ReadonlyArray<string>): string {
   return names.length > 0 ? names.join(", ") : "collections";
 }
 

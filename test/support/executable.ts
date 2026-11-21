@@ -71,7 +71,7 @@ export interface RunResult {
 }
 
 // Runs the executable to completion.
-export async function run(args: string[], options: { cwd?: string } = {}): Promise<RunResult> {
+export async function run(args: Array<string>, options: { cwd?: string } = {}): Promise<RunResult> {
   const proc = Bun.spawn([await executable(), ...args], {
     cwd: options.cwd ?? tempDir(),
     stdout: "pipe",
@@ -210,7 +210,7 @@ export interface RunningServer {
 // --automigrate is off unless args turn it on: a test's collection changes
 // write no pb_migrations next to its pb_data.
 export async function startServer(
-  args: string[],
+  args: Array<string>,
   dataDir: string,
   host = "127.0.0.1",
   listenPort?: { name: string; urlPort: number },

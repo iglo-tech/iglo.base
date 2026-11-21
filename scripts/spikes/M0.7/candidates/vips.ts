@@ -28,7 +28,7 @@ const vips = (): ReturnType<typeof Vips> =>
 export const createThumb: CreateThumb = async (input, contentType, size, maxPixels) => {
   const v = await vips();
   const thumbSize = parseThumbSize(size);
-  const owned: VipsImage[] = [];
+  const owned: Array<VipsImage> = [];
   const keep = (img: VipsImage): VipsImage => {
     owned.push(img);
     return img;

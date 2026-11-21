@@ -225,7 +225,7 @@ const textSig: SniffSig = {
 };
 
 // Data matching the table in section 6.
-const sniffSignatures: readonly SniffSig[] = [
+const sniffSignatures: ReadonlyArray<SniffSig> = [
   htmlSig("<!DOCTYPE HTML"),
   htmlSig("<HTML"),
   htmlSig("<HEAD"),

@@ -20,7 +20,7 @@ export async function checkResponse(
   expected: Expectations,
   server: { url: string; dataDir: string },
   res: ScenarioResponse,
-): Promise<string[]> {
+): Promise<Array<string>> {
   if (scenario.delayMs) {
     await Bun.sleep(scenario.delayMs);
   }
@@ -47,7 +47,7 @@ export async function send(
 }
 
 // iglo.base's failures for the scenario
-export async function runAgainstIgloBase(scenario: Scenario): Promise<string[]> {
+export async function runAgainstIgloBase(scenario: Scenario): Promise<Array<string>> {
   const fixture = await preparedFixture(scenario);
   try {
     const server = await startServer([], fixture.dataDir);

@@ -385,8 +385,8 @@ function stickyErrorReader(r: IoReader): IoReader {
 // the part's FileName(); its Value parts are stored as strings. Both are
 // keyed by field name.
 export class Form {
-  value = new Map<string, string[]>();
-  file = new Map<string, FileHeader[]>();
+  value = new Map<string, Array<string>>();
+  file = new Map<string, Array<FileHeader>>();
 
   // RemoveAll removes any temporary files associated with a Form. Errors
   // other than a missing file are thrown (the first one).
@@ -776,7 +776,7 @@ export class Reader {
   }
 }
 
-function appendValue(values: Map<string, string[]>, key: string, value: string): void {
+function appendValue(values: Map<string, Array<string>>, key: string, value: string): void {
   const list = values.get(key);
   if (list) {
     list.push(value);

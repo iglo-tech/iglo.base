@@ -34,7 +34,7 @@ export interface FileCase {
   collection: string;
   // the record a PATCH, DELETE or GET addresses, or the one a POST stores
   ref?: string;
-  parts?: Part[];
+  parts?: Array<Part>;
   // a JSON body instead of parts
   json?: Record<string, unknown>;
   // the multipart Content-Type's boundary parameter, as written (quoted)
@@ -63,7 +63,7 @@ const file = (name: string, filename: string, content: Uint8Array | string): Fil
 const value = (name: string, v: string): TextPart => ({ name, value: v });
 
 // The collections, all rules "" (guests may write).
-export const collections: Record<string, unknown>[] = [
+export const collections: Array<Record<string, unknown>> = [
   {
     name: "fsingle",
     type: "base",
@@ -140,7 +140,7 @@ const longCutWhole = "é".repeat(127) + "x" + "é".repeat(10) + ".txt";
 // two "x" and two-byte characters: byte 255 is the first half of one
 const longCutInside = "xx" + "é".repeat(140) + ".txt";
 
-export const cases: FileCase[] = [
+export const cases: Array<FileCase> = [
   // single file field
   {
     name: "single: create with a file",

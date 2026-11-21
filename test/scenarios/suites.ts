@@ -100,7 +100,7 @@ import {
   testEmailSendValidateAndSubmit,
 } from "@test/scenarios/settings";
 
-export const suites: Suite[] = [
+export const suites: Array<Suite> = [
   backupsList,
   backupsCreate,
   backupUpload,

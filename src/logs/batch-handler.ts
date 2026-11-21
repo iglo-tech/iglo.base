@@ -43,7 +43,7 @@ export interface Log {
 export interface BatchOptions {
   // WriteFunc processes the batched logs. `block` is true when the write
   // must finish before the call returns.
-  writeFunc: (logs: Log[], block: boolean) => void;
+  writeFunc: (logs: Array<Log>, block: boolean) => void;
   // BeforeAddFunc is optional function that is invoked every time
   // before a new log is added to the batch queue.
   //
@@ -73,7 +73,7 @@ export class BatchHandler {
   readonly parent: BatchHandler | undefined;
   readonly group: string;
   readonly attrs: LogAttrs;
-  logs: Log[] = [];
+  logs: Array<Log> = [];
 
   constructor(
     options: BatchOptions | ResolvedOptions,

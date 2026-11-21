@@ -47,7 +47,7 @@ function post(
 }
 
 // a client subscribed to the topics
-async function subscribed(ctx: ScenarioContext, ...topics: string[]): Promise<RealtimeStream> {
+async function subscribed(ctx: ScenarioContext, ...topics: Array<string>): Promise<RealtimeStream> {
   const stream = await ctx.open();
   const res = await ctx.subscribe(stream.clientId, topics);
   if (res.status !== 204) {
@@ -68,7 +68,7 @@ function expectRedirect(o: Observation, status: number, location: string): void 
 // the subscription is gone
 function clientScenario(
   name: string,
-  topics: string[],
+  topics: Array<string>,
   send: (ctx: ScenarioContext, id: string) => Promise<HttpResult>,
   status: number,
   location: string,
@@ -87,7 +87,7 @@ function clientScenario(
     check(o) {
       expectRedirect(o["first"] as Observation, status, location);
       expectRedirect(o["second"] as Observation, 307, failure);
-      const messages = o["messages"] as { event: string; data: string }[];
+      const messages = o["messages"] as Array<{ event: string; data: string }>;
       expect(messages.map((m) => m.event)).toEqual(message ? ["@oauth2"] : []);
       if (message) {
         expect(messages[0]?.data).toBe(message(o["id"] as string));
@@ -98,7 +98,7 @@ function clientScenario(
 
 const appleUser = `{"name":{"firstName":"aaa","lastName":"${"b".repeat(200)}"}}`;
 
-export const oauth2RedirectScenarios: RealtimeScenario[] = [
+export const oauth2RedirectScenarios: Array<RealtimeScenario> = [
   {
     func: "TestRecordAuthWithOAuth2Redirect",
     name: "no state query param",
@@ -225,7 +225,7 @@ export const oauth2RedirectScenarios: RealtimeScenario[] = [
     check(o) {
       expectRedirect(o["result"] as Observation, 307, success);
       expectRedirect(o["again"] as Observation, 307, failure);
-      const messages = o["messages"] as { event: string; data: string }[];
+      const messages = o["messages"] as Array<{ event: string; data: string }>;
       expect(messages.map((m) => m.event)).toEqual(["@oauth2"]);
       expect(messages[0]?.data).toBe(`{"state":"${o["id"] as string}","code":"123"}`);
     },

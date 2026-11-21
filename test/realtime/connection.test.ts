@@ -66,7 +66,7 @@ class FakeTimers implements RealtimeTimers {
 
 // an SSE stream read from an in-process response
 class Stream {
-  readonly events: { event: string; data: string }[] = [];
+  readonly events: Array<{ event: string; data: string }> = [];
   done = false;
   #text = "";
 
@@ -132,7 +132,11 @@ beforeAll(async () => {
 
 afterAll(() => app.cleanup());
 
-async function subscribe(mux: Mux, clientId: string, subscriptions: string[]): Promise<number> {
+async function subscribe(
+  mux: Mux,
+  clientId: string,
+  subscriptions: Array<string>,
+): Promise<number> {
   const res = await serveTest(mux, {
     method: "POST",
     target: "/api/realtime",

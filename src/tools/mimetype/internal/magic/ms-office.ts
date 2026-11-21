@@ -235,7 +235,7 @@ export function One(raw: Uint8Array, _limit: number): boolean {
 
 // cdfOrClsid checks if the raw input is detected as the given CDF type, and if
 // the CDF parser returns a generic result, falls back to matching root storage CLSIDs.
-function cdfOrClsid(raw: Uint8Array, want: CDFType, ...clsids: Uint8Array[]): boolean {
+function cdfOrClsid(raw: Uint8Array, want: CDFType, ...clsids: Array<Uint8Array>): boolean {
   const fromParsing = cdfDetect(raw);
   if (fromParsing === want) {
     return true;

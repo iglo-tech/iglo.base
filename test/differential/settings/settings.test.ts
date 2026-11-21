@@ -59,7 +59,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 
 afterAll(async () => {
@@ -181,7 +181,11 @@ const dateFormat = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z$/;
 
 // the differences between two stored rows: type and value exactly (plain
 // values), the formats of the timestamps
-function rowDifferences(up: StoredRow | null, ig: StoredRow | null, encrypted: boolean): string[] {
+function rowDifferences(
+  up: StoredRow | null,
+  ig: StoredRow | null,
+  encrypted: boolean,
+): Array<string> {
   if (up === null || ig === null) {
     return up === ig
       ? []
@@ -189,7 +193,7 @@ function rowDifferences(up: StoredRow | null, ig: StoredRow | null, encrypted: b
           `stored row: upstream ${up === null ? "none" : "one"}, iglo.base ${ig === null ? "none" : "one"}`,
         ];
   }
-  const differences: string[] = [];
+  const differences: Array<string> = [];
   if (up.type !== ig.type) {
     differences.push(`stored type: upstream ${up.type}, iglo.base ${ig.type}`);
   }
@@ -222,9 +226,13 @@ async function startPair(sourceDir: string, key?: string): Promise<Pair> {
 }
 
 // Runs the cases in order on a pair; returns every difference.
-async function runCases(pair: Pair, cases: SettingsCase[], encrypted = false): Promise<string[]> {
+async function runCases(
+  pair: Pair,
+  cases: Array<SettingsCase>,
+  encrypted = false,
+): Promise<Array<string>> {
   const start = readStartingData(fixtureDir);
-  const differences: string[] = [];
+  const differences: Array<string> = [];
   let lastGet = "";
   for (const c of cases) {
     const req = request(c, c.body === "@GET" ? lastGet : undefined);
@@ -305,7 +313,7 @@ describe("cases", () => {
 });
 
 // the settings writes of the round trips
-const roundTripWrites: string[] = [
+const roundTripWrites: Array<string> = [
   `{"meta":{"appName":"round_trip","appURL":"https://example.com","senderName":"RT","senderAddress":"rt@example.com","accentColor":"#123abc","hideControls":true}}`,
   `{"smtp":{"enabled":true,"host":"smtp.example.com","port":2525,"username":"user","password":"smtp_pw","authMethod":"LOGIN","tls":true,"localName":"example.com"}}`,
   `{"s3":{"enabled":false,"bucket":"b","region":"r","endpoint":"https://s3.example.com","accessKey":"ak","secret":"s3_pw","forcePathStyle":true}}`,
@@ -320,7 +328,7 @@ const roundTripWrites: string[] = [
 
 const blockingWrite = `{"superuserIPs":["10.0.0.0/8"]}`;
 
-async function writeAll(server: Server, writes: string[]): Promise<void> {
+async function writeAll(server: Server, writes: Array<string>): Promise<void> {
   for (const body of writes) {
     const res = await sendTo(
       server.url,
@@ -337,11 +345,11 @@ async function writeAll(server: Server, writes: string[]): Promise<void> {
 // writer writes the settings; the reader starts on a copy of the writer's
 // pb_data and must answer GET /api/settings as the writer does, keep the
 // stored row as it is, and apply the whitelist
-async function roundTrip(writer: "upstream" | "iglo.base", key?: string): Promise<string[]> {
+async function roundTrip(writer: "upstream" | "iglo.base", key?: string): Promise<Array<string>> {
   const writerDir = fixtureCopy();
   const startWriter = writer === "upstream" ? startUp : startIglo;
   const startReader = writer === "upstream" ? startIglo : startUp;
-  const differences: string[] = [];
+  const differences: Array<string> = [];
 
   const w = await startWriter(writerDir, key);
   let writerGet: ScenarioResponse;
@@ -451,7 +459,7 @@ describe("round trip", () => {
 // `serve` on dataDir until it exits or 5 s pass; the first output line
 // without its timestamp, and the exit code (null when still running)
 async function startupResult(
-  binary: string[],
+  binary: Array<string>,
   dataDir: string,
   env: Record<string, string>,
 ): Promise<{ exitCode: number | null; line: string }> {
@@ -487,10 +495,10 @@ async function startupResult(
   };
 }
 
-function upstreamBinary(): string[] {
+function upstreamBinary(): Array<string> {
   return [requireTool("pocketbase", defaultLayout)];
 }
-async function igloBinary(): Promise<string[]> {
+async function igloBinary(): Promise<Array<string>> {
   return [await executable()];
 }
 
@@ -517,7 +525,7 @@ describe("startup", () => {
         {},
         { [encryptionEnv]: randomString(32) },
         { [encryptionEnv]: "short" },
-      ] as Record<string, string>[]) {
+      ] as Array<Record<string, string>>) {
         const [up, ig] = await Promise.all([
           startupResult(upstreamBinary(), copyOf(dataDir), env),
           startupResult(await igloBinary(), copyOf(dataDir), env),

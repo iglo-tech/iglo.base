@@ -52,7 +52,7 @@ export function runeString(r: number): string {
 }
 
 // string([]rune): each rune as runeString.
-export function runesString(runes: readonly number[]): string {
+export function runesString(runes: ReadonlyArray<number>): string {
   let out = "";
   for (const r of runes) {
     out += runeString(r);

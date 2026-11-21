@@ -16,7 +16,7 @@ function c(name: string, collection: string, filter: string, sort = "id"): Filte
   return { name, collection, filter, sort };
 }
 
-export const filterCases: FilterCase[] = [
+export const filterCases: Array<FilterCase> = [
   // plain fields
   c("text eq", "posts", "title = 'Hello World'"),
   c("text neq", "posts", "title != 'Hello World'"),

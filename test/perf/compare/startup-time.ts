@@ -20,8 +20,8 @@ const { values, positionals } = parseArgs({
 });
 const src = positionals[0]!;
 const exe = values.upstream ? upstreamBinary() : values.exe!;
-const times: number[] = [];
-const cpus: number[] = [];
+const times: Array<number> = [];
+const cpus: Array<number> = [];
 const root = mkdtempSync(join(repoRoot, "dist", "startup-"));
 try {
   for (let i = 0; i < Number(values.repeat); i++) {

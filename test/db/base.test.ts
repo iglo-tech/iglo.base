@@ -79,7 +79,7 @@ describe("routing", () => {
     const nonconcurrent = getDB();
     const dual = new DualDBBuilder(concurrent, nonconcurrent);
     const route = (sql: string) => {
-      const used: string[] = [];
+      const used: Array<string> = [];
       concurrent.execLogFunc = () => used.push("concurrent");
       concurrent.queryLogFunc = () => used.push("concurrent");
       nonconcurrent.execLogFunc = () => used.push("nonconcurrent");
@@ -117,7 +117,7 @@ describe("close", () => {
 describe("--dev SQL log", () => {
   test("logs data.db statements as upstream prints them", () => {
     const dataDir = tempDir();
-    const lines: string[] = [];
+    const lines: Array<string> = [];
     const app = Databases.open({ dataDir, devSQLLog: (line) => lines.push(line) });
 
     app.nonconcurrentDB().newQuery("CREATE TABLE {{demo}} ([[id]] TEXT)").execute();
@@ -142,7 +142,7 @@ describe("--dev SQL log", () => {
   });
 });
 
-function titles(dbs: Databases): string[] {
+function titles(dbs: Databases): Array<string> {
   return dbs.concurrentDB().newQuery("SELECT title FROM demo ORDER BY id").column<string>();
 }
 

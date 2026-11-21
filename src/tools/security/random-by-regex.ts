@@ -38,7 +38,7 @@ const anyCharNotNLPairs = [0x41, 0x5a, 0x61, 0x7a, 0x30, 0x39]; // 'A', 'Z', 'a'
 //
 // Throws the parser's RegexpSyntaxError for an invalid pattern, and an Error
 // with upstream's text for a tree it cannot generate from.
-export function randomStringByRegex(pattern: string, ...optFlags: Flags[]): string {
+export function randomStringByRegex(pattern: string, ...optFlags: Array<Flags>): string {
   let flags = 0;
   if (optFlags.length === 0) {
     flags = Perl;
@@ -50,12 +50,12 @@ export function randomStringByRegex(pattern: string, ...optFlags: Flags[]): stri
 
   const r = Parse(pattern, flags);
 
-  const sb: string[] = [];
+  const sb: Array<string> = [];
   writeRandomStringByRegex(r, sb);
   return sb.join("");
 }
 
-function writeRandomStringByRegex(r: Regexp, sb: string[]): void {
+function writeRandomStringByRegex(r: Regexp, sb: Array<string>): void {
   // https://pkg.go.dev/regexp/syntax#Op
   switch (r.op) {
     case OpCharClass:
@@ -96,7 +96,7 @@ function writeRandomStringByRegex(r: Regexp, sb: string[]): void {
   }
 }
 
-function repeatRandomStringByRegex(r: Regexp, sb: string[], min: number, max: number): void {
+function repeatRandomStringByRegex(r: Regexp, sb: Array<string>, min: number, max: number): void {
   if (max < 0) {
     max = defaultMaxRepeat;
   }
@@ -115,13 +115,13 @@ function repeatRandomStringByRegex(r: Regexp, sb: string[], min: number, max: nu
   }
 }
 
-function randomRuneFromPairs(pairs: readonly number[]): number {
+function randomRuneFromPairs(pairs: ReadonlyArray<number>): number {
   if (pairs.length % 2 !== 0) {
     throw new Error("invalid pairs slice: odd number of elements");
   }
 
   // Pre-calculate the cumulative size of all ranges to make the selection process more efficient.
-  const cumulativeSizes: number[] = [];
+  const cumulativeSizes: Array<number> = [];
   let totalRunes = 0;
   for (let i = 0; i < pairs.length; i += 2) {
     const start = pairs[i] as number;

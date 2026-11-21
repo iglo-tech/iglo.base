@@ -261,7 +261,7 @@ export class ServerClient extends Client {
       return undefined;
     }
     const matched = findCookie(
-      normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
+      normalizeCookies(rawCookies as Array<Cookie> | CookieValueMap),
       OAUTH2_COOKIE_KEY,
       isSecureSession(this._cookieSettings()),
     );
@@ -339,7 +339,7 @@ export class ServerClient extends Client {
     }
 
     const matched = findCookie(
-      normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
+      normalizeCookies(rawCookies as Array<Cookie> | CookieValueMap),
       this._cookieName,
       isSecureSession(this._cookieSettings()),
     );
@@ -516,7 +516,7 @@ export class ServerClient extends Client {
     ]);
   }
 
-  private _writeCookies(cookies: CookieToSet[]): void {
+  private _writeCookies(cookies: Array<CookieToSet>): void {
     if (!this.cookies.setAll) {
       return;
     }

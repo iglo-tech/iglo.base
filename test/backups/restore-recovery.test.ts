@@ -25,7 +25,7 @@ import { moveDirContent } from "@/tools/osutils/dir";
 
 import { tempDir } from "@test/support/executable";
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 afterAll(() => {
   for (const root of roots) {
     rmSync(root, { recursive: true, force: true });
@@ -70,7 +70,7 @@ function read(dir: string): Record<string, string> {
 }
 
 // the top-level entries are what a restore moves
-function top(files: Record<string, string>): string[] {
+function top(files: Record<string, string>): Array<string> {
   return [...new Set(Object.keys(files).map((p) => p.split("/")[0] as string))].toSorted();
 }
 

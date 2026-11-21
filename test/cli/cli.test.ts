@@ -9,7 +9,7 @@ import { freePort, run, startServer, tempDir } from "@test/support/executable";
 
 const logLine = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /;
 
-async function expectError(args: string[], message: string): Promise<void> {
+async function expectError(args: Array<string>, message: string): Promise<void> {
   const result = await run(args);
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe("");
@@ -269,7 +269,7 @@ describe("serve command", () => {
 });
 
 describe("pb_hooks warning", () => {
-  const cases: [string, string[]][] = [
+  const cases: Array<[string, Array<string>]> = [
     ["neither exists", []],
     ["pb_hooks exists", ["pb_hooks"]],
     ["pb_migrations exists", ["pb_migrations"]],

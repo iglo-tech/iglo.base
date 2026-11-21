@@ -97,8 +97,8 @@ interface RunSQLResultColumn {
 interface RunSQLResult {
   execTime: number;
   affectedRows: number;
-  columns: RunSQLResultColumn[];
-  rows: (string | null)[][];
+  columns: Array<RunSQLResultColumn>;
+  rows: Array<Array<string | null>>;
 }
 
 const knownWriteQueryPrefixes = [
@@ -285,8 +285,8 @@ type Token =
 
 const lit = (s: string): Token => ({ lit: s });
 
-const date: Token[] = ["year", lit("-"), "month", lit("-"), "day"];
-const clock = (sep: string, seconds: boolean): Token[] => [
+const date: Array<Token> = ["year", lit("-"), "month", lit("-"), "day"];
+const clock = (sep: string, seconds: boolean): Array<Token> => [
   ...date,
   lit(sep),
   "hour",
@@ -295,9 +295,9 @@ const clock = (sep: string, seconds: boolean): Token[] => [
   ...(seconds ? [lit(":"), "second" as Token, "frac" as Token] : []),
 ];
 
-const timeStringLayout: Token[] = [...clock(" ", true), lit(" "), "numTZ", lit(" "), "tzName"];
+const timeStringLayout: Array<Token> = [...clock(" ", true), lit(" "), "numTZ", lit(" "), "tzName"];
 
-const parseTimeLayouts: Token[][] = [
+const parseTimeLayouts: Array<Array<Token>> = [
   [...clock(" ", true), "numColonTZ"],
   [...clock("T", true), "numColonTZ"],
   clock(" ", true),
@@ -387,7 +387,7 @@ function daysIn(month: number, year: number): number {
 }
 
 // time.Parse with a layout of the tokens above, formatted as RFC3339Nano.
-function goParseTime(layout: Token[], value: string): string | undefined {
+function goParseTime(layout: Array<Token>, value: string): string | undefined {
   let year = 0;
   let month = 1;
   let day = 1;

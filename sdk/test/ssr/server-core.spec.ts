@@ -31,7 +31,7 @@ function serverToken(opts: { exp: number; id?: string; collectionId?: string }):
 
 /** A cookie adapter that keeps what the SDK writes. */
 function jar(initial: Array<{ name: string; value: string }>) {
-  const written: CookieToSet[][] = [];
+  const written: Array<Array<CookieToSet>> = [];
   let cookies = initial;
   const adapter: CookieAdapter = {
     getAll: () => cookies,
@@ -440,7 +440,7 @@ describe("SSR server core: round-1 regressions", () => {
     test("on https a session cookie under the plain name is ignored: anonymous, and no request is made", async () => {
       // a sibling subdomain can set the plain name for the parent domain; the SDK must not sign in with it
       const token = serverToken({ exp: NOW + 86_400, id: "u_plain" });
-      const requests: string[] = [];
+      const requests: Array<string> = [];
       const { adapter } = jar([{ name: "pb_auth", value: sessionValue(token, { id: "u_plain" }) }]);
       const pb = await createServerClient({
         url: API,

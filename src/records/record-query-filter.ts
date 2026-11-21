@@ -63,8 +63,8 @@ export function findRecordsByFilter(
   sort: string,
   limit: number,
   offset: number,
-  ...params: Params[]
-): Record[] {
+  ...params: Array<Params>
+): Array<Record> {
   return recordsByFilterQuery(
     app,
     collectionModelOrIdentifier,
@@ -84,8 +84,8 @@ export function findRecordsByFilterAsync(
   sort: string,
   limit: number,
   offset: number,
-  ...params: Params[]
-): Promise<Record[]> {
+  ...params: Array<Params>
+): Promise<Array<Record>> {
   let q: SelectQuery;
   try {
     q = recordsByFilterQuery(app, collectionModelOrIdentifier, filter, sort, limit, offset, params);
@@ -104,8 +104,8 @@ export function findRecordIdsByFilter(
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   filter: string,
   sort: string,
-  ...params: Params[]
-): string[] {
+  ...params: Array<Params>
+): Array<string> {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
   const db = app.databases.concurrentDB();
   return recordsByFilterQuery(app, collection, filter, sort, 0, 0, params)
@@ -121,7 +121,7 @@ function recordsByFilterQuery(
   sort: string,
   limit: number,
   offset: number,
-  params: Params[],
+  params: Array<Params>,
 ): SelectQuery {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
 
@@ -183,7 +183,7 @@ export function findFirstRecordByFilter(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   filter: string,
-  ...params: Params[]
+  ...params: Array<Params>
 ): Record {
   const result = findRecordsByFilter(app, collectionModelOrIdentifier, filter, "", 1, 0, ...params);
 
@@ -195,7 +195,7 @@ export async function findFirstRecordByFilterAsync(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   filter: string,
-  ...params: Params[]
+  ...params: Array<Params>
 ): Promise<Record> {
   const result = await findRecordsByFilterAsync(
     app,
@@ -210,7 +210,7 @@ export async function findFirstRecordByFilterAsync(
   return firstRecord(result);
 }
 
-function firstRecord(result: Record[]): Record {
+function firstRecord(result: Array<Record>): Record {
   if (result.length === 0) {
     throw new NoRowsError();
   }

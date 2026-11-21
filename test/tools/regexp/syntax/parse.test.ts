@@ -84,7 +84,7 @@ function isUpper(r: number): boolean {
 const testFlags = MatchNL | PerlX | UnicodeGroups;
 
 // Test Parse -> Dump.
-function testParseDump(tests: parseTest[], flags: Flags): void {
+function testParseDump(tests: Array<parseTest>, flags: Flags): void {
   tests.forEach(([regexp, want], i) => {
     test(`${i}_${JSON.stringify(regexp.slice(0, 60))}`, () => {
       const re = Parse(regexp, flags);
@@ -100,7 +100,7 @@ function testParseDump(tests: parseTest[], flags: Flags): void {
 // dump prints a string representation of the regexp showing
 // the structure explicitly.
 function dump(re: Regexp): string {
-  const b: string[] = [];
+  const b: Array<string> = [];
   dumpRegexp(b, re);
   return b.join("");
 }
@@ -135,7 +135,7 @@ function hex(r: number): string {
 // dumpRegexp writes an encoding of the syntax tree for the regexp re to b.
 // It is used during testing to distinguish between parses that might print
 // the same using re's String method.
-function dumpRegexp(b: string[], re: Regexp): void {
+function dumpRegexp(b: Array<string>, re: Regexp): void {
   const name = opNames[re.op];
   if (name === undefined) {
     b.push(`op${re.op}`);
@@ -252,7 +252,7 @@ function isUpperFold(r: number): boolean {
   return false;
 }
 
-const parseTests: parseTest[] = [
+const parseTests: Array<parseTest> = [
   // Base cases
   ["a", "lit{a}"],
   ["a.", "cat{lit{a}dot{}}"],
@@ -462,7 +462,7 @@ const parseTests: parseTest[] = [
   ["(" + "|".repeat(12_345) + ")", ""], // not nested at all
 ];
 
-const foldcaseTests: parseTest[] = [
+const foldcaseTests: Array<parseTest> = [
   ["AbCdE", "strfold{ABCDE}"],
   ["[Aa]", "litfold{A}"],
   ["a", "litfold{A}"],
@@ -474,23 +474,23 @@ const foldcaseTests: parseTest[] = [
   ["[[:lower:]]", "cc{0x41-0x5a 0x61-0x7a 0x17f 0x212a}"],
 ];
 
-const literalTests: parseTest[] = [["(|)^$.[*+?]{5,10},\\", "str{(|)^$.[*+?]{5,10},\\}"]];
+const literalTests: Array<parseTest> = [["(|)^$.[*+?]{5,10},\\", "str{(|)^$.[*+?]{5,10},\\}"]];
 
-const matchnlTests: parseTest[] = [
+const matchnlTests: Array<parseTest> = [
   [".", "dot{}"],
   ["\n", "lit{\n}"],
   ["[^a]", "cc{0x0-0x60 0x62-0x10ffff}"],
   ["[a\\n]", "cc{0xa 0x61}"],
 ];
 
-const nomatchnlTests: parseTest[] = [
+const nomatchnlTests: Array<parseTest> = [
   [".", "dnl{}"],
   ["\n", "lit{\n}"],
   ["[^a]", "cc{0x0-0x9 0xb-0x60 0x62-0x10ffff}"],
   ["[a\\n]", "cc{0xa 0x61}"],
 ];
 
-const invalidRegexps: (string | Uint8Array)[] = [
+const invalidRegexps: Array<string | Uint8Array> = [
   "(",
   ")",
   "(a",
@@ -537,7 +537,7 @@ const invalidRegexps: (string | Uint8Array)[] = [
   "\\pL".repeat(27_000), // too many runes
 ];
 
-const onlyPerl: (string | Uint8Array)[] = [
+const onlyPerl: Array<string | Uint8Array> = [
   "[a-b-c]",
   "\\Qabc\\E",
   "\\Q*+?{[\\E",
@@ -549,9 +549,9 @@ const onlyPerl: (string | Uint8Array)[] = [
   "(?P<name>a)",
 ];
 
-const onlyPOSIX: (string | Uint8Array)[] = ["a++", "a**", "a?*", "a+*", "a{1}*", ".{1}{2}.{3}"];
+const onlyPOSIX: Array<string | Uint8Array> = ["a++", "a**", "a?*", "a+*", "a{1}*", ".{1}{2}.{3}"];
 
-const stringTests: [re: string, out: string][] = [
+const stringTests: Array<[re: string, out: string]> = [
   ["x(?i:ab*c|d?e)1", "x(?i:AB*C|D?E)1"],
   ["x(?i:ab*cd?e)1", "x(?i:AB*CD?E)1"],
   ["0(?i:ab*c|d?e)1", "(?i:0(?:AB*C|D?E)1)"],
@@ -572,7 +572,7 @@ const stringTests: [re: string, out: string][] = [
 
 // TestBadCompile in src/regexp/all_test.go: regexp.Compile parses with
 // Perl flags; the expected text is contained in the error.
-const badRe: [re: string, err: string][] = [
+const badRe: Array<[re: string, err: string]> = [
   ["*", "missing argument to repetition operator: `*`"],
   ["+", "missing argument to repetition operator: `+`"],
   ["?", "missing argument to repetition operator: `?`"],
@@ -628,7 +628,7 @@ test("TestAppendRangeCollapse", () => {
   // into the earlier ones (it looks back two ranges), so that
   // the slice never grows very large.
   // Note that we are not calling cleanClass.
-  let r: number[] = [];
+  let r: Array<number> = [];
   for (let i = 0x41; i <= 0x5a; i++) {
     r = appendRange(r, i, i);
     r = appendRange(r, i + 0x20, i + 0x20);

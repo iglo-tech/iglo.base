@@ -18,7 +18,7 @@ import { decodeUTF8Bytes, setOwn } from "@/server/json-decode";
 
 interface XmlElement {
   name: string;
-  children: XmlElement[];
+  children: Array<XmlElement>;
   text: string;
 }
 
@@ -43,7 +43,7 @@ function isNameChar(c: string): boolean {
 }
 
 // unicode.Is for the [lo, hi, stride] triples below
-function inTable(table: readonly number[], r: number): boolean {
+function inTable(table: ReadonlyArray<number>, r: number): boolean {
   for (let k = 0; k < table.length; k += 3) {
     const lo = table[k] as number;
     const hi = table[k + 1] as number;
@@ -453,7 +453,7 @@ function parseDocument(src: string): XmlElement {
 }
 
 // xml first: [lo, hi, stride] triples
-const first: readonly number[] = [
+const first: ReadonlyArray<number> = [
   0x00_3a, 0x00_3a, 1, 0x00_41, 0x00_5a, 1, 0x00_5f, 0x00_5f, 1, 0x00_61, 0x00_7a, 1, 0x00_c0,
   0x00_d6, 1, 0x00_d8, 0x00_f6, 1, 0x00_f8, 0x00_ff, 1, 0x01_00, 0x01_31, 1, 0x01_34, 0x01_3e, 1,
   0x01_41, 0x01_48, 1, 0x01_4a, 0x01_7e, 1, 0x01_80, 0x01_c3, 1, 0x01_cd, 0x01_f0, 1, 0x01_f4,
@@ -499,7 +499,7 @@ const first: readonly number[] = [
   0xac_00, 0xd7_a3, 1,
 ];
 // xml second: [lo, hi, stride] triples
-const second: readonly number[] = [
+const second: ReadonlyArray<number> = [
   0x00_2d, 0x00_2e, 1, 0x00_30, 0x00_39, 1, 0x00_b7, 0x00_b7, 1, 0x02_d0, 0x02_d1, 1, 0x03_00,
   0x03_45, 1, 0x03_60, 0x03_61, 1, 0x03_87, 0x03_87, 1, 0x04_83, 0x04_86, 1, 0x05_91, 0x05_a1, 1,
   0x05_a3, 0x05_b9, 1, 0x05_bb, 0x05_bd, 1, 0x05_bf, 0x05_bf, 1, 0x05_c1, 0x05_c2, 1, 0x05_c4,
@@ -546,8 +546,8 @@ interface XmlField {
   holder: (dst: Record<string, unknown>) => Record<string, unknown>;
 }
 
-function xmlFields(type: StructType): XmlField[] {
-  const out: XmlField[] = [];
+function xmlFields(type: StructType): Array<XmlField> {
+  const out: Array<XmlField> = [];
   for (const field of type.fields) {
     const tag = field.tags?.xml ?? "";
     if (tag === "-") {
@@ -582,7 +582,7 @@ function fillStruct(el: XmlElement, root: Record<string, unknown>, type: StructT
       t = t.elem;
     }
     if (typeof t === "object" && t.kind === "slice") {
-      const list = Array.isArray(dst[field.name]) ? (dst[field.name] as unknown[]) : [];
+      const list = Array.isArray(dst[field.name]) ? (dst[field.name] as Array<unknown>) : [];
       list.push(elementValue(child, t.elem));
       setOwn(dst, field.name, list);
     } else {

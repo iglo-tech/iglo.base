@@ -14,7 +14,7 @@ import { type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
 
 const emptyList = `<?xml version="1.0" encoding="UTF-8"?><ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"></ListBucketResult>`;
 
-const recorders: S3Recorder[] = [];
+const recorders: Array<S3Recorder> = [];
 afterEach(() => {
   for (const r of recorders.splice(0)) {
     r.stop();
@@ -54,7 +54,7 @@ describe("list request query", () => {
       },
       "continuation-token=test_ct&delimiter=test_delimiter&encoding-type=test_et&fetch-owner=true&list-type=2&max-keys=1&prefix=test_prefix&start-after=test_sa",
     ],
-  ] as [string, ListParams, string][])("%s", async (_name, params, expectedQuery) => {
+  ] as Array<[string, ListParams, string]>)("%s", async (_name, params, expectedQuery) => {
     const recorder = startRecorder(emptyList);
     await listObjects(s3For(recorder), params);
 
