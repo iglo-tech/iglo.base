@@ -48,7 +48,6 @@ function call<T>(w: Worker, message: unknown): Promise<T> {
     w.addEventListener("message", onMessage, { once: true });
     w.addEventListener("error", onError, { once: true });
     // a Worker's postMessage has no target origin (that is window.postMessage)
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     w.postMessage(message);
   });
 }

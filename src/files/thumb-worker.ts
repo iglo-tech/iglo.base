@@ -20,6 +20,5 @@ self.addEventListener("message", async (event: MessageEvent<ThumbRequestMessage>
     res = { id, ok: false, error: err instanceof Error ? err.message : String(err) };
   }
   // a Worker's postMessage has no target origin (that is window.postMessage)
-  // oxlint-disable-next-line unicorn/require-post-message-target-origin
   self.postMessage(res, res.ok ? [res.bytes.buffer as ArrayBuffer] : []);
 });

@@ -105,6 +105,5 @@ self.addEventListener("message", async (event: MessageEvent<BackupRequest>) => {
     };
   }
   // a Worker's postMessage has no target origin (that is window.postMessage)
-  // oxlint-disable-next-line unicorn/require-post-message-target-origin
   self.postMessage(res);
 });

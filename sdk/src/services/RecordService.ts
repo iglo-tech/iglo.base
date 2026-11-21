@@ -595,7 +595,6 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
             ? this.client["cancelControllers"]?.[requestKey]
             : undefined;
           if (cancelController) {
-            // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
             cancelController.signal.onabort = () => {
               cleanup();
               reject(
@@ -637,7 +636,6 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
                 // reset the cancelController listener as it will be triggered by the next api call
                 if (cancelController?.signal?.onabort) {
-                  // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
                   cancelController.signal.onabort = null;
                 }
 
@@ -669,7 +667,6 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
             let urlCallback =
               config.urlCallback ||
-              // oxlint-disable-next-line no-shadow -- upstream callback parameter name matches URL
               function (url: string) {
                 if (eagerDefaultPopup) {
                   eagerDefaultPopup.location.href = url;
@@ -684,7 +681,6 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
           } catch (err) {
             // reset the cancelController listener in case the request key is reused
             if (cancelController?.signal?.onabort) {
-              // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
               cancelController.signal.onabort = null;
             }
 

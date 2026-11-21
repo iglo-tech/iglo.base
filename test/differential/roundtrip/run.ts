@@ -42,7 +42,6 @@ export const encryptionKey = "roundtrip0encryption0key00000032";
 
 // A parsed response. Scenario code reads what the request it just sent must
 // have returned, and a missing member shows as a failed step.
-// oxlint-disable-next-line typescript/no-explicit-any
 type Json = any;
 
 export interface Recorded {

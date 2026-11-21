@@ -462,7 +462,6 @@ export class RealtimeService extends BaseService {
 
     this.eventSource = new EventSource(this.client.buildURL("/api/realtime"));
 
-    // oxlint-disable-next-line unicorn/prefer-add-event-listener -- EventSource.onerror matches upstream assignment
     this.eventSource.onerror = () => {
       if (isCurrent()) {
         this.connectErrorHandler(new Error("Failed to establish realtime connection."));

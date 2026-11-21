@@ -5,7 +5,6 @@
 // Exec: the returned page fields and the SQL of the queries it runs.
 
 // Provider.sort is upstream's setter, not Array#sort
-/* oxlint-disable unicorn/no-array-sort */
 
 import { describe, expect, test } from "bun:test";
 

@@ -5,14 +5,12 @@ import nodeAssert from "node:assert";
 export const assert = {
   equal(actual: unknown, expected: unknown, msg?: string): void {
     // chai's assert.equal is non-strict (==)
-    // oxlint-disable-next-line eqeqeq
     nodeAssert(
       actual == expected,
       msg ?? `expected ${String(actual)} to equal ${String(expected)}`,
     );
   },
   notEqual(actual: unknown, expected: unknown, msg?: string): void {
-    // oxlint-disable-next-line eqeqeq
     nodeAssert(
       actual != expected,
       msg ?? `expected ${String(actual)} to not equal ${String(expected)}`,

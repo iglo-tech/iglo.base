@@ -187,7 +187,6 @@ export class ThumbPool {
       slot.job = job;
       slot.worker.ref();
       // a Worker's postMessage has no target origin (that is window.postMessage)
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       slot.worker.postMessage(job.message, [job.message.input]);
     }
   }

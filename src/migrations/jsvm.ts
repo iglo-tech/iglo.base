@@ -92,7 +92,6 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Migrat
   sandbox.process = { env: { ...config.environ } };
   sandbox.Buffer = Buffer;
   sandbox.require = newRequire(config, context, sandbox, m);
-  // oxlint-disable-next-line no-underscore-dangle
   sandbox.__hooks = path.resolve(config.cwd, config.hooksDir);
 
   const filename = path.join(config.cwd, scriptName);

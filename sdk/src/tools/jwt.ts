@@ -42,7 +42,6 @@ if (typeof atob === "function" && !isReactNative) {
       buffer = chars.indexOf(buffer);
     }
 
-    // oxlint-disable-next-line block-scoped-var -- upstream atob polyfill loop variable
     return output;
   };
 }

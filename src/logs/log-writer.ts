@@ -54,7 +54,6 @@ export class LogWriter {
   write(rows: LogRow[]): number {
     const running = this.#start();
     const seq = ++running.posted;
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "write", seq, path: this.#path, rows });
     return seq;
   }
@@ -90,7 +89,6 @@ export class LogWriter {
       return;
     }
     const seq = ++running.posted;
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "close", seq });
     // as stopSync, the wait is bounded: a hung thread must not stall the
     // suspend of a backup or a restore
@@ -118,7 +116,6 @@ export class LogWriter {
       return;
     }
     const seq = ++running.posted;
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "close", seq });
     this.#waitSync(running, seq);
     this.#drainErrors(running);
@@ -196,7 +193,6 @@ export class LogWriter {
       this.#release(Number.MAX_SAFE_INTEGER);
     });
     worker.unref();
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     worker.postMessage({ type: "init", done: buffer, errors: channel.port2 }, [channel.port2]);
     this.#running = running;
     return running;

@@ -179,7 +179,6 @@ export class ReadPool {
           // that SQLite checkpoints and removes the -wal and -shm files
           // once the last connection of a database is gone
           slot.worker.ref();
-          // oxlint-disable-next-line unicorn/require-post-message-target-origin
           slot.worker.postMessage("close");
         } else {
           slot.worker.terminate();
@@ -291,7 +290,6 @@ export class ReadPool {
       request.slot = slot;
       slot.worker.ref();
       // a Worker's postMessage has no target origin (that is window.postMessage)
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       slot.worker.postMessage(request.message);
     }
   }
