@@ -1156,7 +1156,7 @@ function toMap(
   if (data === null || data === undefined) {
     return new Map();
   }
-  return new Map(isInstance(Map, data) ? data : Object.entries(data));
+  return new Map<string, unknown>(isInstance(Map, data) ? data : Object.entries(data));
 }
 
 function toDataMap(m: ReadonlyMap<string, unknown>): DataMap {

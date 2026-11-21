@@ -444,7 +444,7 @@ describe("Client", () => {
         method: "GET",
         fetch: async (): Promise<Response> => {
           called++;
-          return {} as any;
+          return {} as Response;
         },
       });
 

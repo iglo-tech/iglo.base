@@ -544,7 +544,7 @@ function structView(
   };
 
   const proxy = new Proxy(data, {
-    get: (t, key) => {
+    get: (t, key): unknown => {
       if (typeof key !== "string") {
         // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(t, key, t);

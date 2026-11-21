@@ -369,9 +369,12 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       }
     }
 
-    let authData = await this.client.send(this.baseCollectionPath + "/auth-with-password", options);
+    const rawAuthData = await this.client.send<LooseObject>(
+      this.baseCollectionPath + "/auth-with-password",
+      options,
+    );
 
-    authData = this.authResponse<T>(authData);
+    const authData = this.authResponse<T>(rawAuthData);
 
     if (autoRefreshThreshold && this.isSuperusers) {
       registerAutoRefresh(

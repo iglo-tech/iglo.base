@@ -90,7 +90,7 @@ export class FetchMock {
           status: mock.replyCode,
           statusText: "test",
           headers,
-          json: async () => {
+          json: async (): Promise<unknown> => {
             if (typeof mock.replyBody == "function") {
               return mock.replyBody();
             }

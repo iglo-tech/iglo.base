@@ -218,7 +218,7 @@ describe("SSR server core: round-1 regressions", () => {
         clock: () => base * 1000,
       });
       // The app replaces the hook before the sign-in; the SDK must still learn from the response
-      pb.afterSend = (_response, data) => data;
+      pb.afterSend = (_response, data): unknown => data;
       await pb.collection("col_as").authWithPassword("a@x.y", "pass");
 
       expect(cache.getCollectionLifetime("col_as")).toBe(600);

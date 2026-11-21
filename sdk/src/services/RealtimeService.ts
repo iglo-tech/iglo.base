@@ -389,7 +389,7 @@ export class RealtimeService extends BaseService {
 
     return (
       this.client
-        .send("/api/realtime", {
+        .send<void>("/api/realtime", {
           method: "POST",
           body: {
             clientId: this.clientId,
