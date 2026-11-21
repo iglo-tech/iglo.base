@@ -291,7 +291,7 @@ describe("TestDetectFromAppName", () => {
     { app: "Windows Installer XML Toolset", want: CDFTypeInstaller },
     { app: "MICROSOFT WORD", want: CDFTypeDoc }, // matching is case-insensitive
   ];
-  const summaryNames = ["\u0005SummaryInformation", "\u0005DocumentSummaryInformation"];
+  const summaryNames = ["\x05SummaryInformation", "\x05DocumentSummaryInformation"];
   for (const secSize of testSecSizes) {
     for (const summaryName of summaryNames) {
       for (const wide of [false, true]) {
@@ -315,7 +315,7 @@ describe("TestDetectFromSiblingNames", () => {
     { sibling: "Workbook", want: CDFTypeXls },
     { sibling: "WordDocument", want: CDFTypeDoc },
     { sibling: "PowerPoint Document", want: CDFTypePpt },
-    { sibling: "\u0005DigitalSignature", want: CDFTypeInstaller },
+    { sibling: "\x05DigitalSignature", want: CDFTypeInstaller },
     // A non-distinctive sibling name yields no match, so detection
     // falls back to the generic OLE storage type.
     { sibling: "Contents", want: CDFTypeGeneric },
@@ -324,7 +324,7 @@ describe("TestDetectFromSiblingNames", () => {
     for (const tt of tests) {
       test(tt.sibling, () => {
         const summary = summaryStream("Unknown Application", false);
-        const data = makeCDF(secSize, null, "\u0005SummaryInformation", summary, {
+        const data = makeCDF(secSize, null, "\x05SummaryInformation", summary, {
           name: tt.sibling,
           typ: dirTypeUserStream,
         });
@@ -411,7 +411,7 @@ test("TestDetectMasterSATExtension", () => {
   let dir = dirEntryBytes("Root Entry", dirTypeRootStorage, rootSec, testSecSize, null);
   dir = concat(
     dir,
-    dirEntryBytes("\u0005SummaryInformation", dirTypeUserStream, summarySec, summary.length, null),
+    dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, summarySec, summary.length, null),
   );
   copyInto(sector(dirSec), dir);
   copyInto(sector(summarySec), summary);
@@ -429,7 +429,7 @@ test("TestDetectShortStreamSummary", () => {
   // streamFirst is a short-sector id because size < minStdStream.
   dir = concat(
     dir,
-    dirEntryBytes("\u0005SummaryInformation", dirTypeUserStream, 0, summary.length, null),
+    dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, 0, summary.length, null),
   );
 
   // sector 0: SAT, sector 1: dir, sector 2: short-sector pool, sector 3: SSAT
@@ -479,7 +479,7 @@ test("TestDetectShortStreamMultiSectorSSAT", () => {
   );
   dir = concat(
     dir,
-    dirEntryBytes("\u0005SummaryInformation", dirTypeUserStream, sidB0, summary.length, null),
+    dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, sidB0, summary.length, null),
   );
 
   // SAT layout: SAT itself, dir, chained SST sectors, two SSAT sectors.
@@ -652,7 +652,7 @@ describe("TestSummaryAppNameNoPanic", () => {
         put32(sec, 12, 16); // off -> value at section[16:]
         put32(sec, 16, typeStringASCII); // step = 1
         put32(sec, 20, 5); // slen ("Word\0")
-        sec.set(raw("Word\u0000"), 24);
+        sec.set(raw("Word\x00"), 24);
         return stream;
       },
       want: "Word",
@@ -728,12 +728,12 @@ test("TestDetectEmbeddedObjectSummary", () => {
     let dir = dirEntryBytes("Root Entry", dirTypeRootStorage, 2, secSize, null);
     dir = concat(
       dir,
-      dirEntryBytes("\u0005SummaryInformation", dirTypeUserStream, 3, excel.length, null),
+      dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, 3, excel.length, null),
     );
     dir = concat(dir, dirEntryBytes("ObjectPool", dirTypeUserStorage, -2, 0, null));
     dir = concat(
       dir,
-      dirEntryBytes("\u0005SummaryInformation", dirTypeUserStream, 4, word.length, null),
+      dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, 4, word.length, null),
     );
     put32(dir, 76, 2); // root child = ObjectPool
     put32(dir, 2 * dirEntrySize + 76, 1); // ObjectPool child = embedded summary
@@ -798,7 +798,7 @@ function buildQuadraticCDF(n: number): Uint8Array {
   // Directory entry 1: a user stream whose short-sector chain starts at x.
   copyInto(
     data.subarray(off(5)),
-    dirEntryBytes("\u0005SummaryInformation", dirTypeUserStream, x, 1, null),
+    dirEntryBytes("\x05SummaryInformation", dirTypeUserStream, x, 1, null),
   );
 
   // Sector 6: every SSAT slot points at short-sector id x.

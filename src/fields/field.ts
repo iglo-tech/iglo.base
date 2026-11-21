@@ -481,7 +481,7 @@ export function goQuote(s: string): string {
       continue;
     }
     switch (ch) {
-      case "\u0007":
+      case "\x07":
         out += String.raw`\a`;
         break;
       case "\b":

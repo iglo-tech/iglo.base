@@ -32,10 +32,10 @@ export function decodeConfig(src: Uint8Array | ByteSource): Size {
   const match = (pattern: string): boolean =>
     head.length >= pattern.length &&
     Array.from(pattern).every((c, i) => c === "?" || head[i] === c.charCodeAt(0));
-  if (match("\u00ff\u00d8")) {
+  if (match("\xff\xd8")) {
     return jpegConfig(r);
   }
-  if (match("\u0089PNG\r\n\u001a\n")) {
+  if (match("\x89PNG\r\n\x1a\n")) {
     return pngConfig(r);
   }
   if (match("GIF8?a")) {

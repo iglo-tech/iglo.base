@@ -233,7 +233,7 @@ export interface MetaTest {
 export const metaTests: Array<MetaTest> = [
   { pattern: "", output: "", literal: "", isLiteral: true },
   { pattern: "foo", output: "foo", literal: "foo", isLiteral: true },
-  { pattern: "日本語+", output: String.raw`日本語\+`, literal: "日本語", isLiteral: false },
+  { pattern: "日本語+", output: "日本語\\+", literal: "日本語", isLiteral: false },
   // has meta but no operator
   {
     pattern: String.raw`foo\.\$`,

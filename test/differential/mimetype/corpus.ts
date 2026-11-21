@@ -49,34 +49,34 @@ for (const b of [0x00, 0x09, 0x0a, 0x1b, 0x20, 0x41, 0x7f, 0x80, 0xc3, 0xff]) {
   add(`one byte ${b.toString(16)}`, Uint8Array.of(b));
 }
 const boms: Array<[string, Uint8Array]> = [
-  ["utf8", g`\u00ef\u00bb\u00bf`],
-  ["utf-16be", g`\u00fe\u00ff`],
-  ["utf-16le", g`\u00ff\u00fe`],
-  ["utf-32be", g`\u0000\u0000\u00fe\u00ff`],
-  ["utf-32le", g`\u00ff\u00fe\u0000\u0000`],
+  ["utf-8", g`\xef\xbb\xbf`],
+  ["utf-16be", g`\xfe\xff`],
+  ["utf-16le", g`\xff\xfe`],
+  ["utf-32be", g`\x00\x00\xfe\xff`],
+  ["utf-32le", g`\xff\xfe\x00\x00`],
 ];
 for (const [name, bom] of boms) {
   add(`bom ${name} alone`, bom);
   add(`bom ${name} text`, concat(bom, raw("hello")));
-  add(`bom ${name} binary`, concat(bom, g`\u0000\u0001\u0002\u0003`));
+  add(`bom ${name} binary`, concat(bom, g`\x00\x01\x02\x03`));
   add(`bom ${name} html`, concat(bom, raw("<html><body>x</body></html>")));
   add(`bom ${name} xml`, concat(bom, raw(`<?xml version="1.0"?><a/>`)));
 }
-add("utf-16le text with bom", g`\u00ff\u00feh\u0000e\u0000l\u0000l\u0000o\u0000`);
-add("utf-16be text with bom", g`\u00fe\u00ff\u0000h\u0000e\u0000l\u0000l\u0000o`);
-add("utf-16le text without bom", g`h\u0000e\u0000l\u0000l\u0000o\u0000`);
+add("utf-16le text with bom", g`\xff\xfeh\x00e\x00l\x00l\x00o\x00`);
+add("utf-16be text with bom", g`\xfe\xff\x00h\x00e\x00l\x00l\x00o`);
+add("utf-16le text without bom", g`h\x00e\x00l\x00l\x00o\x00`);
 
 // plain text: UTF-8, invalid UTF-8, Latin-1, Windows-1252, control bytes
 add("ascii", raw("just some text\n"));
 add("utf-8 multibyte", raw("zażółć gęślą jaźń ☃ 𝄞\n"));
-add("utf-8 rune cut at the end", g`abc\u00e2\u0098`);
-add("invalid utf-8 in the middle", g`abc\u00c3\u0028def`);
-add("latin-1", g`caf\u00e9 cr\u00e8me`);
-add("windows-1252", g`\u0093quoted\u0094 \u0085`);
-add("latin-1 with del", g`caf\u00e9\u007f`);
+add("utf-8 rune cut at the end", g`abc\xe2\x98`);
+add("invalid utf-8 in the middle", g`abc\xc3\x28def`);
+add("latin-1", g`caf\xe9 cr\xe8me`);
+add("windows-1252", g`\x93quoted\x94 \x85`);
+add("latin-1 with del", g`caf\xe9\x7f`);
 add("utf-8 cut at the limit", fill(new Uint8Array(0), raw("żółw "), defaultLimit + 3));
-add("latin-1 past 1024 bytes", concat(fill(new Uint8Array(0), raw("a"), 1100), g`\u00e9`));
-add("latin-1 within 1024 bytes", concat(fill(new Uint8Array(0), raw("a"), 1000), g`\u00e9`));
+add("latin-1 past 1024 bytes", concat(fill(new Uint8Array(0), raw("a"), 1100), g`\xe9`));
+add("latin-1 within 1024 bytes", concat(fill(new Uint8Array(0), raw("a"), 1000), g`\xe9`));
 for (let b = 0; b < 0x20; b++) {
   add(`control byte ${b.toString(16)}`, concat(raw("hello "), Uint8Array.of(b), raw(" world")));
 }
@@ -103,7 +103,7 @@ add("json string only", raw(`"just a string"`));
 add("json number only", raw("12345"));
 add("json trailing comma", raw(`{"a": 1,}`));
 add("json unicode escape cut", raw(`{"a": "\\u00`));
-add("json with bom", concat(g`\u00ef\u00bb\u00bf`, raw(`{"a": 1}`)));
+add("json with bom", concat(g`\xef\xbb\xbf`, raw(`{"a": 1}`)));
 add("geojson", raw(`{"type": "Feature", "geometry": null}`));
 add("har", raw(`{"log": {"version": "1.2", "entries": []}}`));
 add("gltf", raw(`{"asset": {"version": "2.0"}}`));
@@ -150,12 +150,9 @@ const htmls = [
 for (const h of htmls) {
   add(`html ${h}`, raw(h));
 }
-add("html with latin-1 body", concat(raw("<p>caf"), g`\u00e9</p>`));
-add("html charset with invalid byte", concat(raw(`<meta charset="a`), g`\u00ff`, raw(`b">`)));
-add(
-  "html charset with nbsp",
-  concat(raw(`<meta charset="`), g`\u00c2\u00a0utf-8\u00c2\u00a0`, raw(`">`)),
-);
+add("html with latin-1 body", concat(raw("<p>caf"), g`\xe9</p>`));
+add("html charset with invalid byte", concat(raw(`<meta charset="a`), g`\xff`, raw(`b">`)));
+add("html charset with nbsp", concat(raw(`<meta charset="`), g`\xc2\xa0utf-8\xc2\xa0`, raw(`">`)));
 add(
   "html meta after 1024 bytes",
   concat(raw("<p>"), fill(new Uint8Array(0), raw("x"), 1100), raw(`<meta charset="late">`)),
@@ -184,10 +181,7 @@ const xmls = [
 for (const x of xmls) {
   add(`xml ${x}`, raw(x));
 }
-add(
-  "xml with latin-1 and no declaration",
-  concat(raw(`<?xml version="1.0"?><a>caf`), g`\u00e9</a>`),
-);
+add("xml with latin-1 and no declaration", concat(raw(`<?xml version="1.0"?><a>caf`), g`\xe9</a>`));
 add(
   "xml cut at the limit",
   fill(raw(`<?xml version="1.0"?><root>`), raw("<item>value</item>\n"), defaultLimit + 9),
@@ -327,37 +321,34 @@ const brands = [
   "????",
 ];
 for (const brand of brands) {
-  add(
-    `ftyp ${brand}`,
-    concat(g`\u0000\u0000\u0000\u0018ftyp`, raw(brand), g`\u0000\u0000\u0000\u0000`),
-  );
+  add(`ftyp ${brand}`, concat(g`\x00\x00\x00\x18ftyp`, raw(brand), g`\x00\x00\x00\x00`));
 }
-add("ftyp with nonzero size byte", concat(raw("Xxxxftypisom"), g`\u0000\u0000`));
-add("quicktime moov atom", g`\u0000\u0000\u0000\u0008moov\u0000\u0000\u0000\u0000`);
-add("quicktime wide atom", g`\u0000\u0000\u0000\u0008wide\u0000\u0000\u0000\u0000`);
-add("ftyp short", g`\u0000\u0000\u0000\u0018ftypis`);
+add("ftyp with nonzero size byte", concat(raw("Xxxxftypisom"), g`\x00\x00`));
+add("quicktime moov atom", g`\x00\x00\x00\x08moov\x00\x00\x00\x00`);
+add("quicktime wide atom", g`\x00\x00\x00\x08wide\x00\x00\x00\x00`);
+add("ftyp short", g`\x00\x00\x00\x18ftypis`);
 
 // binary signatures cut short and mp3 frames
-add("png cut", g`\u0089PNG\r\n\u001a`);
-add("png", g`\u0089PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR`);
-add("jpeg", g`\u00ff\u00d8\u00ff\u00e0`);
-add("gzip", g`\u001f\u008b\u0008\u0000`);
+add("png cut", g`\x89PNG\r\n\x1a`);
+add("png", g`\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR`);
+add("jpeg", g`\xff\xd8\xff\xe0`);
+add("gzip", g`\x1f\x8b\x08\x00`);
 add("pdf after garbage", concat(fill(new Uint8Array(0), raw("x"), 500), raw("%PDF-1.7")));
 add("pdf after 1024 bytes", concat(fill(new Uint8Array(0), raw("x"), 1030), raw("%PDF-1.7")));
-add("ole cut", g`\u00d0\u00cf\u0011\u00e0\u00a1\u00b1\u001a\u00e1`);
+add("ole cut", g`\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1`);
 add("tar header only", disk("tar.tar").subarray(0, 512));
 add("tar cut", disk("tar.tar").subarray(0, 511));
 add("zlib text-like", raw("x^ hello"));
-add("zlib", g`x\u009c\u00cbH\u00cd\u00c9\u00c9\u0007\u0000\u0006,\u0002\u0015`);
-add("id3", g`ID3\u0004\u0000\u0000\u0000\u0000\u0000\u0010`);
+add("zlib", g`x\x9c\xcbH\xcd\xc9\xc9\x07\x00\x06,\x02\x15`);
+add("id3", g`ID3\x04\x00\x00\x00\x00\x00\x10`);
 const frame = new Uint8Array(417);
-frame.set(g`\u00ff\u00fb\u0090\u0000`);
+frame.set(g`\xff\xfb\x90\x00`);
 add("mp3 frames", concat(frame, frame, frame, frame));
 add("mp3 frame after garbage", concat(raw("garbage!"), frame, frame, frame));
 add("mp3 single frame", frame);
 add(
   "mp4 with mp3 inside",
-  concat(g`\u0000\u0000\u0000\u0018ftypisom\u0000\u0000\u0000\u0000`, frame, frame, frame),
+  concat(g`\x00\x00\x00\x18ftypisom\x00\x00\x00\x00`, frame, frame, frame),
 );
 
 // An OLE2 file of 512-byte sectors (3 KiB, inside the read limit) whose root
@@ -448,9 +439,9 @@ function cdfEmbedded(rootApp: string, embeddedApp: string, pool = new Uint8Array
   const root = oleSummary(rootApp);
   const dir = concat(
     oleEntry("Root Entry", 5, 2, -1, 2, 0), // child: ObjectPool
-    oleEntry("\u0005SummaryInformation", 2, -1, -1, 3, embedded.length), // embedded summary
+    oleEntry("\x05SummaryInformation", 2, -1, -1, 3, embedded.length), // embedded summary
     oleEntry("ObjectPool", 1, 1, 3, -2, 0), // child: entry 1; right: entry 3
-    oleEntry("\u0005SummaryInformation", 2, -1, -1, 4, root.length), // the root's summary
+    oleEntry("\x05SummaryInformation", 2, -1, -1, 4, root.length), // the root's summary
   );
   const rootPool = new Uint8Array(512);
   rootPool.set(pool.subarray(0, 512 - 200), 200);

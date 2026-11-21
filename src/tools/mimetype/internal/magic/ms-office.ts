@@ -105,7 +105,7 @@ const pptSubHeaders = [
   Uint8Array.of(0x0f, 0x00, 0xe8, 0x03),
 ];
 const pptName = lit(
-  "P\u0000o\u0000w\u0000e\u0000r\u0000P\u0000o\u0000i\u0000n\u0000t\u0000 D\u0000o\u0000c\u0000u\u0000m\u0000e\u0000n\u0000t",
+  "P\x00o\x00w\x00e\x00r\x00P\x00o\x00i\x00n\x00t\x00 D\x00o\x00c\x00u\x00m\x00e\x00n\x00t",
 );
 
 // Ppt matches a Microsoft PowerPoint 97-2003 file or a PowerPoint 95 presentation.
@@ -284,7 +284,7 @@ function matchOleClsid(input: Uint8Array, clsid: Uint8Array): boolean {
   return hasPrefix(input.subarray(clsidOffset), clsid);
 }
 
-const wpcSig = lit("\u00ffWPC");
+const wpcSig = lit("\xffWPC");
 // WPD matches a WordPerfect document.
 export function WPD(raw: Uint8Array, _limit: number): boolean {
   if (raw.length < 10) {

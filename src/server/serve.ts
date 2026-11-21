@@ -306,8 +306,8 @@ export async function handleRequest(
 }
 
 function startBanner(out: Output, baseURL: string, hasDashboard: boolean): void {
-  const bold = (text: string): string => (out.color ? `\u001b[1;32m${text}\u001b[0m` : text);
-  const cyan = (text: string): string => (out.color ? `\u001b[36m${text}\u001b[0m` : text);
+  const bold = (text: string): string => (out.color ? `\x1b[1;32m${text}\x1b[0m` : text);
+  const cyan = (text: string): string => (out.color ? `\x1b[36m${text}\x1b[0m` : text);
   out.stdout(bold(`${logTime(out.now())} Server started at ${cyan(baseURL)}\n`));
   if (hasDashboard) {
     out.stdout(`> Dashboard: ${cyan(`${baseURL}/_/`)}\n`);

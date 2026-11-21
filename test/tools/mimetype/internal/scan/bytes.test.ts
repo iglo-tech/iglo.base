@@ -75,15 +75,15 @@ describe("scan.Bytes", () => {
       { name: "one space", in: raw(" "), left: raw(""), right: raw("") },
       {
         name: "all spaces",
-        in: g` \r\n\t\u000c`,
+        in: g` \r\n\t\x0c`,
         left: raw(""),
         right: raw(""),
       },
       {
         name: "one char and spaces",
-        in: g` \r\n\t\u000ca \r\n\t\u000c`,
-        left: g`a \r\n\t\u000c`,
-        right: g` \r\n\t\u000ca`,
+        in: g` \r\n\t\x0ca \r\n\t\x0c`,
+        left: g`a \r\n\t\x0c`,
+        right: g` \r\n\t\x0ca`,
       },
       { name: "one char", in: raw("a"), left: raw("a"), right: raw("a") },
       // Unicode Ogham space mark
@@ -121,7 +121,7 @@ describe("scan.Bytes", () => {
       { name: "all ws", in: raw("   "), c: 0x00 },
       { name: "first char", in: raw("a"), c: ch("a") },
       { name: "second char", in: raw(" a"), c: ch("a") },
-      { name: "space then nil", in: g` \u0000`, c: 0x00 },
+      { name: "space then nil", in: g` \x00`, c: 0x00 },
     ];
 
     for (const tc of tcases) {

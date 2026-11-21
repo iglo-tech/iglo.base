@@ -508,10 +508,10 @@ const invalidRegexps: Array<string | Uint8Array> = [
   "x{9876543210}",
   "x{2,1}",
   "x{1,9876543210}",
-  goBytes("\u00ff"), // Invalid UTF-8
-  goBytes("[\u00ff]"),
-  goBytes("[\\\u00ff]"),
-  goBytes("\\\u00ff"),
+  goBytes("\xff"), // Invalid UTF-8
+  goBytes("[\xff]"),
+  goBytes("[\\\xff]"),
+  goBytes("\\\xff"),
   "(?P<name>a",
   "(?P<name>",
   "(?P<name",

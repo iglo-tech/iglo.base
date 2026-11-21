@@ -19,7 +19,7 @@ import { hasPrefix, lit } from "@/tools/mimetype/go-bytes";
  https://github.com/file/file/blob/master/magic/Magdir/vorbis
 */
 
-const oggSig = lit("\u004F\u0067\u0067\u0053\u0000");
+const oggSig = lit("\x4F\x67\x67\x53\x00");
 // Ogg matches an Ogg file.
 export function Ogg(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, oggSig);
@@ -36,7 +36,7 @@ export function OggAudio(raw: Uint8Array, _limit: number): boolean {
   return raw.length >= 37 && audioSigs.some((s) => hasPrefix(raw.subarray(28), s));
 }
 
-const videoSigs = [lit("\u0080theora"), lit("fishead\u0000"), lit("\u0001video\u0000\u0000\u0000")];
+const videoSigs = [lit("\x80theora"), lit("fishead\x00"), lit("\x01video\x00\x00\x00")];
 // OggVideo matches a video ogg file.
 export function OggVideo(raw: Uint8Array, _limit: number): boolean {
   return raw.length >= 37 && videoSigs.some((s) => hasPrefix(raw.subarray(28), s)); // OGM video

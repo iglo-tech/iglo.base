@@ -3,13 +3,13 @@
 import { beUint16, equal, hasPrefix, lit } from "@/tools/mimetype/go-bytes";
 import { extractFrame } from "@/tools/mimetype/internal/mp3/frame";
 
-const flacSig = lit("\u0066\u004C\u0061\u0043\u0000\u0000\u0000\u0022");
+const flacSig = lit("\x66\x4C\x61\x43\x00\x00\x00\x22");
 // Flac matches a Free Lossless Audio Codec file.
 export function Flac(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, flacSig);
 }
 
-const midiSig = lit("\u004D\u0054\u0068\u0064");
+const midiSig = lit("\x4D\x54\x68\x64");
 // Midi matches a Musical Instrument Digital Interface file.
 export function Midi(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, midiSig);
@@ -29,13 +29,13 @@ export function MusePack(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, mpckSig);
 }
 
-const auSig = lit("\u002E\u0073\u006E\u0064");
+const auSig = lit("\x2E\x73\x6E\x64");
 // Au matches a Sun Microsystems au file.
 export function Au(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, auSig);
 }
 
-const amrSig = lit("\u0023\u0021\u0041\u004D\u0052");
+const amrSig = lit("\x23\x21\x41\x4D\x52");
 // Amr matches an Adaptive Multi-Rate file.
 export function Amr(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, amrSig);

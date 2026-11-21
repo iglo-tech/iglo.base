@@ -244,7 +244,7 @@ const sniffSignatures: ReadonlyArray<SniffSig> = [
   htmlSig("<P"),
   htmlSig("<!--"),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u00FF\u00FF"),
+    mask: bytes("\xFF\xFF\xFF\xFF\xFF"),
     pat: bytes("<?xml"),
     skipWS: true,
     ct: "text/xml; charset=utf-8",
@@ -254,18 +254,18 @@ const sniffSignatures: ReadonlyArray<SniffSig> = [
 
   // UTF BOMs.
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u0000\u0000"),
-    pat: bytes("\u00FE\u00FF\u0000\u0000"),
+    mask: bytes("\xFF\xFF\x00\x00"),
+    pat: bytes("\xFE\xFF\x00\x00"),
     ct: "text/plain; charset=utf-16be",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u0000\u0000"),
-    pat: bytes("\u00FF\u00FE\u0000\u0000"),
+    mask: bytes("\xFF\xFF\x00\x00"),
+    pat: bytes("\xFF\xFE\x00\x00"),
     ct: "text/plain; charset=utf-16le",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u0000"),
-    pat: bytes("\u00EF\u00BB\u00BF\u0000"),
+    mask: bytes("\xFF\xFF\xFF\x00"),
+    pat: bytes("\xEF\xBB\xBF\x00"),
     ct: "text/plain; charset=utf-8",
   }),
 
@@ -275,8 +275,8 @@ const sniffSignatures: ReadonlyArray<SniffSig> = [
   // https://codereview.appspot.com/4746042
   // but that has since been replaced with "image/x-icon" in Section 6.2
   // of https://mimesniff.spec.whatwg.org/#matching-an-image-type-pattern
-  exactSig(bytes("\u0000\u0000\u0001\u0000"), "image/x-icon"),
-  exactSig(bytes("\u0000\u0000\u0002\u0000"), "image/x-icon"),
+  exactSig(bytes("\x00\x00\x01\x00"), "image/x-icon"),
+  exactSig(bytes("\x00\x00\x02\x00"), "image/x-icon"),
   exactSig(bytes("BM"), "image/bmp"),
   exactSig(bytes("GIF87a"), "image/gif"),
   exactSig(bytes("GIF89a"), "image/gif"),
@@ -287,74 +287,74 @@ const sniffSignatures: ReadonlyArray<SniffSig> = [
     pat: bytes("RIFF\u0000\u0000\u0000\u0000WEBPVP"),
     ct: "image/webp",
   }),
-  exactSig(bytes("\u0089PNG\u000D\u000A\u001A\u000A"), "image/png"),
-  exactSig(bytes("\u00FF\u00D8\u00FF"), "image/jpeg"),
+  exactSig(bytes("\x89PNG\x0D\x0A\x1A\x0A"), "image/png"),
+  exactSig(bytes("\xFF\xD8\xFF"), "image/jpeg"),
 
   // Audio and Video types
   // Enforce the pattern match ordering as prescribed in
   // https://mimesniff.spec.whatwg.org/#matching-an-audio-or-video-type-pattern
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u00FF\u0000\u0000\u0000\u0000\u00FF\u00FF\u00FF\u00FF"),
-    pat: bytes("FORM\u0000\u0000\u0000\u0000AIFF"),
+    mask: bytes("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF"),
+    pat: bytes("FORM\x00\x00\x00\x00AIFF"),
     ct: "audio/aiff",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF"),
+    mask: bytes("\xFF\xFF\xFF"),
     pat: bytes("ID3"),
     ct: "audio/mpeg",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u00FF\u00FF"),
-    pat: bytes("OggS\u0000"),
+    mask: bytes("\xFF\xFF\xFF\xFF\xFF"),
+    pat: bytes("OggS\x00"),
     ct: "application/ogg",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF"),
-    pat: bytes("MThd\u0000\u0000\u0000\u0006"),
+    mask: bytes("\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"),
+    pat: bytes("MThd\x00\x00\x00\x06"),
     ct: "audio/midi",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u00FF\u0000\u0000\u0000\u0000\u00FF\u00FF\u00FF\u00FF"),
-    pat: bytes("RIFF\u0000\u0000\u0000\u0000AVI "),
+    mask: bytes("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF"),
+    pat: bytes("RIFF\x00\x00\x00\x00AVI "),
     ct: "video/avi",
   }),
   maskedSig({
-    mask: bytes("\u00FF\u00FF\u00FF\u00FF\u0000\u0000\u0000\u0000\u00FF\u00FF\u00FF\u00FF"),
-    pat: bytes("RIFF\u0000\u0000\u0000\u0000WAVE"),
+    mask: bytes("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF"),
+    pat: bytes("RIFF\x00\x00\x00\x00WAVE"),
     ct: "audio/wave",
   }),
   // 6.2.0.2. video/mp4
   mp4Sig,
   // 6.2.0.3. video/webm
-  exactSig(bytes("\u001A\u0045\u00DF\u00A3"), "video/webm"),
+  exactSig(bytes("\x1A\x45\xDF\xA3"), "video/webm"),
 
   // Font types
   maskedSig({
     // 34 NULL bytes followed by the string "LP"
-    pat: bytes("\u0000".repeat(34) + "LP"),
+    pat: bytes("\x00".repeat(34) + "LP"),
     // 34 NULL bytes followed by \xF\xF
-    mask: bytes("\u0000".repeat(34) + "\u00FF\u00FF"),
+    mask: bytes("\x00".repeat(34) + "\xFF\xFF"),
     ct: "application/vnd.ms-fontobject",
   }),
-  exactSig(bytes("\u0000\u0001\u0000\u0000"), "font/ttf"),
+  exactSig(bytes("\x00\x01\x00\x00"), "font/ttf"),
   exactSig(bytes("OTTO"), "font/otf"),
   exactSig(bytes("ttcf"), "font/collection"),
   exactSig(bytes("wOFF"), "font/woff"),
   exactSig(bytes("wOF2"), "font/woff2"),
 
   // Archive types
-  exactSig(bytes("\u001F\u008B\u0008"), "application/x-gzip"),
-  exactSig(bytes("PK\u0003\u0004"), "application/zip"),
+  exactSig(bytes("\x1F\x8B\x08"), "application/x-gzip"),
+  exactSig(bytes("PK\x03\x04"), "application/zip"),
   // RAR's signatures are incorrectly defined by the MIME spec as per
   //    https://github.com/whatwg/mimesniff/issues/63
   // However, RAR Labs correctly defines it at:
   //    https://www.rarlab.com/technote.htm#rarsign
   // so we use the definition from RAR Labs.
   // TODO: do whatever the spec ends up doing.
-  exactSig(bytes("Rar!\u001A\u0007\u0000"), "application/x-rar-compressed"), // RAR v1.5-v4.0
-  exactSig(bytes("Rar!\u001A\u0007\u0001\u0000"), "application/x-rar-compressed"), // RAR v5+
+  exactSig(bytes("Rar!\x1A\x07\x00"), "application/x-rar-compressed"), // RAR v1.5-v4.0
+  exactSig(bytes("Rar!\x1A\x07\x01\x00"), "application/x-rar-compressed"), // RAR v5+
 
-  exactSig(bytes("\u0000\u0061\u0073\u006D"), "application/wasm"),
+  exactSig(bytes("\x00\x61\x73\x6D"), "application/wasm"),
 
   textSig, // should be last
 ];

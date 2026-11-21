@@ -282,7 +282,7 @@ function tokenizer(src: string): () => Token | undefined {
             );
           }
           const enc = procInst("encoding", content);
-          if (enc !== "" && enc.toLowerCase() !== "utf8") {
+          if (enc !== "" && enc.toLowerCase() !== "utf-8") {
             throw new Error(
               `xml: encoding ${JSON.stringify(enc)} declared but Decoder.CharsetReader is nil`,
             );

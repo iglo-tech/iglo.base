@@ -601,7 +601,7 @@ export const fixtureCases: Array<WriteCase> = [
       {
         name: "title",
         headers: ["Content-Transfer-Encoding: quoted-printable"],
-        content: "bad=\u0001byte",
+        content: "bad=\x01byte",
       },
     ]),
     headers: partsHeaders,

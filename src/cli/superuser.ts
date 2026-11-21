@@ -51,7 +51,7 @@ function invalidEmail(email: string | undefined): boolean {
 
 // fatih/color output: the color codes wrap the whole text, newline included
 function colored(ctx: CliContext, codes: string, text: string): void {
-  ctx.out.stdout(ctx.out.color ? `\u001b[${codes}m${text}\u001b[0m` : text);
+  ctx.out.stdout(ctx.out.color ? `\x1b[${codes}m${text}\x1b[0m` : text);
 }
 
 // color.Green / color.Yellow append a newline to the format
@@ -262,7 +262,7 @@ const subcommands: Array<Subcommand> = [
       } else {
         // Println: the text is colored, the newline is not
         ctx.out.stdout(
-          `${ctx.out.color ? "\u001b[42;30mSuccessfully updated SuperuserIPs setting:\u001b[0m" : "Successfully updated SuperuserIPs setting:"}\n`,
+          `${ctx.out.color ? "\x1b[42;30mSuccessfully updated SuperuserIPs setting:\x1b[0m" : "Successfully updated SuperuserIPs setting:"}\n`,
         );
         const superuserIPs = app.settings.settings.SuperuserIPs ?? [];
         superuserIPs.forEach((ip, i) => {

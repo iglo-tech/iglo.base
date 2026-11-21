@@ -53,7 +53,7 @@ test("detectReaderMimeType", async () => {
 });
 
 test("wordEncode (Go's TestEncodeWord)", () => {
-  const utf8 = "utf8";
+  const utf8 = "utf-8";
   const iso88591 = "iso-8859-1";
   const tests: Array<[typeof QEncoding, string, string, string]> = [
     [QEncoding, utf8, "François-Jérôme", "=?utf-8?q?Fran=C3=A7ois-J=C3=A9r=C3=B4me?="],
@@ -84,7 +84,7 @@ test("wordEncode (Go's TestEncodeWord)", () => {
     [BEncoding, "ô".repeat(37)],
     [QEncoding, "{$firstname} Bienvendio a Apostolica, aquà inicia el camino de tu"],
   ] as const) {
-    for (const word of wordEncode(enc, "utf8", src).split(" ")) {
+    for (const word of wordEncode(enc, "utf-8", src).split(" ")) {
       expect(word.length).toBeLessThanOrEqual(75);
     }
   }

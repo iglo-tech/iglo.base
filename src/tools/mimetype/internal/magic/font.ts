@@ -14,7 +14,7 @@ export function Woff2(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, woff2Sig);
 }
 
-const ottoSig = lit("OTTO\u0000");
+const ottoSig = lit("OTTO\x00");
 const cffTable = lit("CFF ");
 // Otf matches an OpenType font file.
 export function Otf(raw: Uint8Array, _limit: number): boolean {

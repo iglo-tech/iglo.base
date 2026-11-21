@@ -983,7 +983,7 @@ function inBodyIM(p: Parser): boolean {
           }
           break;
       }
-      d = d.replaceAll("\u0000", "");
+      d = d.replaceAll("\x00", "");
       if (d === "") {
         return true;
       }
@@ -1592,7 +1592,7 @@ function textIM(p: Parser): boolean {
 function inTableIM(p: Parser): boolean {
   switch (p.tok.type) {
     case TextToken:
-      p.tok.data = p.tok.data.replaceAll("\u0000", "");
+      p.tok.data = p.tok.data.replaceAll("\x00", "");
       switch (stackTop(p.oe)!.dataAtom) {
         case atom.Table:
         case atom.Tbody:
@@ -2670,7 +2670,7 @@ function parseForeignContent(p: Parser): boolean {
       if (p.framesetOK) {
         p.framesetOK = trimLeft(p.tok.data, whitespaceOrNUL) === "";
       }
-      p.tok.data = p.tok.data.replaceAll("\u0000", "�");
+      p.tok.data = p.tok.data.replaceAll("\x00", "�");
       p.addText(p.tok.data);
       break;
     case CommentToken:

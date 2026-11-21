@@ -70,7 +70,7 @@ describe("HexEscape", () => {
 describe("escapeKey", () => {
   const cases: Array<[string, string]> = [
     ["a/b/c.txt", "a/b/c.txt"],
-    ["a\u0001b", "a__0x1__b"],
+    ["a\x01b", "a__0x1__b"],
     ["../a", "..__0x2f__a"],
     ["a//b", "a/__0x2f__b"],
     ["a/", "a__0x2f__"],
@@ -142,7 +142,7 @@ describe(".attrs", () => {
   test("json/v2 string escaping", () => {
     expect(quote(String.raw`a"b\c`)).toBe(String.raw`"a\"b\\c"`);
     expect(quote("\b\t\n\f\r\u0001\u001f")).toBe(String.raw`"\b\t\n\f\r\u0001\u001f"`);
-    expect(quote("<>&  \u007f é😀")).toBe('"<>&  \u007f é😀"');
+    expect(quote("<>&  \x7f é😀")).toBe('"<>&  \x7f é😀"');
     expect(() => quote("a\udcc3")).toThrow("invalid UTF-8");
   });
 
@@ -153,7 +153,7 @@ describe(".attrs", () => {
       const file = await NewFileFromBytes(encoder.encode("hello"), 'q"<>& é😀.txt');
       fs.uploadFile(file, "c/r/" + file.name);
       expect(readFileSync(join(dir, "c", "r", file.name + ".attrs"), "utf8")).toBe(
-        String.raw`{"user.cache_control":"","user.content_disposition":"","user.content_encoding":"","user.content_language":"","user.content_type":"text/plain; charset=utf-8","user.metadata":{"original-filename":"q\"<>& é😀.txt"},"md5":"XUFAKrxLKna5cZ2REBfFkg=="}`,
+        '{"user.cache_control":"","user.content_disposition":"","user.content_encoding":"","user.content_language":"","user.content_type":"text/plain; charset=utf-8","user.metadata":{"original-filename":"q\\"<>& é😀.txt"},"md5":"XUFAKrxLKna5cZ2REBfFkg=="}',
       );
       const attrs = fs.attributes("c/r/" + file.name);
       expect(attrs.contentType).toBe("text/plain; charset=utf-8");
@@ -273,7 +273,7 @@ describe("List and DeletePrefix over several pages", () => {
 
 describe("formatMediaType", () => {
   const cases: Array<[string, Map<string, string>, string]> = [
-    ["text/plain", new Map([["charset", "utf8"]]), "text/plain; charset=utf-8"],
+    ["text/plain", new Map([["charset", "utf-8"]]), "text/plain; charset=utf-8"],
     ["Image/PNG", new Map(), "image/png"],
     [
       "text/plain",

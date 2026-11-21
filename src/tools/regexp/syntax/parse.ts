@@ -1952,7 +1952,7 @@ function unicodeTable(
       const cn = Categories().get("Cn") as RangeTable;
       return [cn, cn, -1]; // invert Cn (unassigned)
     }
-    case "ascii":
+    case "Ascii":
       return [asciiTable, asciiFoldTable, +1];
     case "Lc":
       return [Categories().get("LC") ?? null, FoldCategory().get("LC") ?? null, +1];

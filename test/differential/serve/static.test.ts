@@ -80,7 +80,7 @@ beforeAll(async () => {
     ["l.wasm", "x"],
     ["m.xml", "<a/>"],
     ["n.svg", "<svg/>"],
-    ["o.zip", "PK\u0003\u0004"],
+    ["o.zip", "PK\x03\x04"],
     ["p.pdf", "%PDF"],
     ["q.unknownext", "text"],
     ["r.tar.gz", "x"],

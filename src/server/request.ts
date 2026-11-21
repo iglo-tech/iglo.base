@@ -486,7 +486,7 @@ function decode2231Enc(v: string): string | undefined {
   if (second < 0) {
     return undefined;
   }
-  if (charset !== "us-ascii" && charset !== "utf8") {
+  if (charset !== "us-ascii" && charset !== "utf-8") {
     return undefined; // empty or unsupported encoding
   }
   return percentHexUnescape(rest.slice(second + 1));

@@ -33,7 +33,7 @@ export interface InstallerOptions {
 const installerTokenDuration = 30n * 60n * 1_000_000_000n;
 
 function paint(color: boolean, codes: string, text: string): string {
-  return color ? `\u001b[${codes}m${text}\u001b[0m` : text;
+  return color ? `\x1b[${codes}m${text}\x1b[0m` : text;
 }
 
 // DefaultInstallerFunc is the default PocketBase installer function.

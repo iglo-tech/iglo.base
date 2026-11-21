@@ -16,7 +16,7 @@ export function isFile(val: unknown): boolean {
       typeof val === "object" &&
       (val as { uri?: unknown }).uri &&
       ((typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
-        (global !== undefined && global.HermesInternal))),
+        (typeof global !== "undefined" && global.HermesInternal))),
   );
 }
 

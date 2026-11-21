@@ -424,7 +424,7 @@ const invalidEscapeRegex = /%(?![0-9a-fA-F]{2})/;
 // control characters and for bad escapes outside of the query
 function parseItemURL(url: string): { escapedPath: string; rawQuery: string } | Error {
   // oxlint-disable-next-line no-control-regex
-  if (/[\u0000-\u001f\u007f]/.test(url)) {
+  if (/[\x00-\x1f\x7f]/.test(url)) {
     return new Error("net/url: invalid control character in URL");
   }
 

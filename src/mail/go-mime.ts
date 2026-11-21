@@ -152,7 +152,7 @@ function splitWord(e: WordEncoder, charset: string): string {
 }
 
 function isUTF8(charset: string): boolean {
-  return charset.toLowerCase() === "utf8";
+  return charset.toLowerCase() === "utf-8";
 }
 
 // -------------------------------------------------------------------
@@ -326,9 +326,9 @@ export function addressString(a: Address): string {
   // characters like quotes or parentheses (see RFC 2047 section 5.3).
   // When this is the case encode the name using base64 encoding.
   if (/["#$%&'(),.:;<>@[\]^`{|}~]/.test(a.name)) {
-    return wordEncode(BEncoding, "utf8", a.name) + " " + s;
+    return wordEncode(BEncoding, "utf-8", a.name) + " " + s;
   }
-  return wordEncode(QEncoding, "utf8", a.name) + " " + s;
+  return wordEncode(QEncoding, "utf-8", a.name) + " " + s;
 }
 
 // isAtext reports whether r is an RFC 5322 atext character.

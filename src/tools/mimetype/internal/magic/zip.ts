@@ -205,7 +205,7 @@ export function msoxml(raw: Uint8Array, searchFor: zipEntries, stopAfter: number
   return false;
 }
 
-const zipLocalFileHeader = lit("PK\u0003\u0004");
+const zipLocalFileHeader = lit("PK\x03\x04");
 
 // zipIterator iterates over a zip file returning the name of the zip entries
 // in that file.

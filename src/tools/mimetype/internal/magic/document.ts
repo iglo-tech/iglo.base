@@ -5,8 +5,8 @@ import { offset } from "@/tools/mimetype/internal/magic/magic";
 import { Bytes, IgnoreCase } from "@/tools/mimetype/internal/scan/bytes";
 
 const pdfSig = lit("%PDF-");
-const pdfNLSig = lit("\u000A%PDF-");
-const pdfBOMSig = lit("\u00ef\u00bb\u00bf%PDF-");
+const pdfNLSig = lit("\x0A%PDF-");
+const pdfBOMSig = lit("\xef\xbb\xbf%PDF-");
 // Pdf matches a Portable Document Format file.
 // https://github.com/file/file/blob/11010cc805546a3e35597e67e1129a481aed40e8/magic/Magdir/pdf
 export function Pdf(raw: Uint8Array, _limit: number): boolean {
@@ -108,19 +108,19 @@ export function Lotus123(raw: Uint8Array, _limit: number): boolean {
   return version === 0x00_00_1a_00 && (raw[20] as number) > 0 && (raw[20] as number) < 32;
 }
 
-const chmSig = lit("ITSF\u0003\u0000\u0000\u0000\u0060\u0000\u0000\u0000");
+const chmSig = lit("ITSF\x03\x00\x00\x00\x60\x00\x00\x00");
 // CHM matches a Microsoft Compiled HTML Help file.
 export function CHM(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, chmSig);
 }
 
-const infSig = lit("HSP\u0001\u009b\u0000");
+const infSig = lit("HSP\x01\x9b\x00");
 // Inf matches an OS/2 .inf file.
 export function Inf(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, infSig);
 }
 
-const hlpSig = lit("HSP\u0010\u009b\u0000");
+const hlpSig = lit("HSP\x10\x9b\x00");
 // Hlp matches an OS/2 .hlp file.
 export function Hlp(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, hlpSig);

@@ -102,7 +102,7 @@ export const png = new Uint8Array([
   0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89,
 ]);
 export const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0]);
-export const gif = new TextEncoder().encode("GIF89a\u0001\u0000\u0001\u0000");
+export const gif = new TextEncoder().encode("GIF89a\x01\x00\x01\x00");
 export const pdf = new TextEncoder().encode("%PDF-1.7\n%test\n");
 export const html = new TextEncoder().encode("<!DOCTYPE html><html><body>x</body></html>");
 export const json = new TextEncoder().encode(`{"a":1}`);

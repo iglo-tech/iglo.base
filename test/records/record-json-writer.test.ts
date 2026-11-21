@@ -59,7 +59,7 @@ const jsonTexts = [
   String.raw`"\u0041"`,
   "1.50",
   '{"a":1,"a":2}',
-  String.raw`{"k":"ünï","e":"\n\u0001"}`,
+  '{"k":"ünï","e":"\\n\\u0001"}',
   "true",
   "",
 ];

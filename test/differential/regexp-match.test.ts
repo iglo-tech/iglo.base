@@ -44,7 +44,7 @@ const cases: Array<[string, Array<string>]> = [
   ["(?i)^[a-z]+$", ["ABCſ", "ABC1"]],
   // word boundaries (ASCII only)
   [String.raw`\bfoo\b`, ["a foo b", "afoob", "é foo"]],
-  [String.raw`\bé`, ["é", "a é"]],
+  ["\\bé", ["é", "a é"]],
   [String.raw`\Bfoo`, ["afoo", "a foo"]],
   // anchors and multiline flags
   ["^abc$", ["abc", "abc\n", "xabc"]],

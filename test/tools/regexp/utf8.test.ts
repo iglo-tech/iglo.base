@@ -8,7 +8,7 @@ import { describe, expect, test } from "bun:test";
 
 import { compile } from "@/tools/regexp/regexp";
 
-describe("utf8", () => {
+describe("UTF-8", () => {
   test("indexes are byte offsets", () => {
     expect(compile("b").findStringIndex("ąb")).toEqual([2, 3]);
     expect(compile("b").findStringIndex("日b")).toEqual([3, 4]);

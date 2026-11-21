@@ -250,17 +250,17 @@ export function Dwg(raw: Uint8Array, _limit: number): boolean {
 }
 
 const jxlCodestream = Uint8Array.of(0xff, 0x0a);
-const jxlContainer = lit("\u0000\u0000\u0000\u000cJXL\u0020\u000d\u000a\u0087\u000a");
+const jxlContainer = lit("\x00\x00\x00\x0cJXL\x20\x0d\x0a\x87\x0a");
 // Jxl matches JPEG XL image file.
 export function Jxl(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, jxlCodestream) || hasPrefix(raw, jxlContainer);
 }
 
 const dxfSigs = [
-  lit("  0\u000ASECTION\u000A"),
-  lit("  0\u000D\u000ASECTION\u000D\u000A"),
-  lit("0\u000ASECTION\u000A"),
-  lit("0\u000D\u000ASECTION\u000D\u000A"),
+  lit("  0\x0ASECTION\x0A"),
+  lit("  0\x0D\x0ASECTION\x0D\x0A"),
+  lit("0\x0ASECTION\x0A"),
+  lit("0\x0D\x0ASECTION\x0D\x0A"),
 ];
 // DXF matches Drawing Exchange Format AutoCAD file.
 // There does not seem to be a clear specification and the files in the wild

@@ -64,7 +64,7 @@ const fromXMLTestCases = [
 const fromPlainTestCases = [
   { raw: Uint8Array.of(0xe6, 0xf8, 0xe5, 0x85, 0x85), charset: "windows-1252" },
   { raw: Uint8Array.of(0xe6, 0xf8, 0xe5), charset: "iso-8859-1" },
-  { raw: raw("æøå"), charset: "utf8" },
+  { raw: raw("æøå"), charset: "utf-8" },
   { raw: Uint8Array.of(), charset: "" },
 ];
 

@@ -126,12 +126,12 @@ describe("invalid UTF-8", () => {
   // Go's message holds the bytes from the invalid one on; here they are
   // lone surrogates (U+DC80+byte), which textToBytes turns back into bytes.
   const cases: Array<[bytes: Array<number>, flags: number, message: string]> = [
-    [[0x61, 0xff, 0x62], Perl, "error parsing regexp: invalid UTF-8: `\u00ffb`"],
-    [[0x5b, 0xc3, 0x5d], Perl, "error parsing regexp: invalid UTF-8: `\u00c3]`"],
-    [[0x5c, 0xff], Perl, "error parsing regexp: invalid UTF-8: `\u00ff`"],
-    [[0x28, 0x3f, 0x69, 0xff, 0x29], Perl, "error parsing regexp: invalid UTF-8: `\u00ff)`"],
-    [[0x61, 0xed, 0xa0, 0x80], Perl, "error parsing regexp: invalid UTF-8: `\u00ed\u00a0\u0080`"],
-    [[0x61, 0xff], Literal, "error parsing regexp: invalid UTF-8: `\u00ff`"],
+    [[0x61, 0xff, 0x62], Perl, "error parsing regexp: invalid UTF-8: `\xffb`"],
+    [[0x5b, 0xc3, 0x5d], Perl, "error parsing regexp: invalid UTF-8: `\xc3]`"],
+    [[0x5c, 0xff], Perl, "error parsing regexp: invalid UTF-8: `\xff`"],
+    [[0x28, 0x3f, 0x69, 0xff, 0x29], Perl, "error parsing regexp: invalid UTF-8: `\xff)`"],
+    [[0x61, 0xed, 0xa0, 0x80], Perl, "error parsing regexp: invalid UTF-8: `\xed\xa0\x80`"],
+    [[0x61, 0xff], Literal, "error parsing regexp: invalid UTF-8: `\xff`"],
   ];
   cases.forEach(([bytes, flags, message], i) => {
     test(`${i}_${JSON.stringify(bytes)}`, () => {

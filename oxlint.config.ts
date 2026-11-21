@@ -44,6 +44,14 @@ export default defineConfig({
         "no-underscore-dangle": "off",
       },
     },
+    // Go-port code writes bytes as \xNN (Go semantics): in a Go literal g`...` \xNN is
+    // one byte and \u00NN is a rune, so the rewrite changes data. Off for the repo (L.1, D44).
+    {
+      files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
+      rules: {
+        "unicorn/no-hex-escape": "off",
+      },
+    },
     // Console output is allowed where it is the product: CLI tools, benchmarks,
     // probes and crash or fuzz reports (L.1). The SDK keeps upstream's
     // console.warn deprecation messages (behavior parity, D36). The counting proxy

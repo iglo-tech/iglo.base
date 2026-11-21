@@ -177,7 +177,7 @@ function decode2231Enc(v: string): string | null {
   const extOtherVals = v.slice(q2 + 1);
   switch (toLower(charset)) {
     case "us-ascii":
-    case "utf8":
+    case "utf-8":
       break;
     default:
       // Empty or unsupported encoding.
