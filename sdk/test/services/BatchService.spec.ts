@@ -4,7 +4,6 @@ import { assert } from "@sdk-test/assert";
 import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { BatchService } from "@sdk/services/BatchService";
-import { isInstance } from "@sdk/tools/is-instance";
 
 describe("BatchService", () => {
   const client = new Client("test_base_url");
@@ -36,7 +35,7 @@ describe("BatchService", () => {
             // multipart/form-data requests shouldn't have explicitly set Content-Type
             config?.headers?.["Content-Type"] ||
             // the body should have been converted to FormData
-            !isInstance(FormData, config.body)
+            !(config.body instanceof FormData)
           ) {
             return false;
           }
@@ -149,7 +148,7 @@ describe("BatchService", () => {
             // multipart/form-data requests shouldn't have explicitly set Content-Type
             config?.headers?.["Content-Type"] ||
             // the body should have been converted to FormData
-            !isInstance(FormData, config.body)
+            !(config.body instanceof FormData)
           ) {
             return false;
           }
@@ -214,7 +213,7 @@ describe("BatchService", () => {
             // multipart/form-data requests shouldn't have explicitly set Content-Type
             config?.headers?.["Content-Type"] ||
             // the body should have been converted to FormData
-            !isInstance(FormData, config.body)
+            !(config.body instanceof FormData)
           ) {
             return false;
           }

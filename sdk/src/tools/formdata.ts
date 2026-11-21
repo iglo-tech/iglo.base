@@ -1,5 +1,4 @@
 // js-sdk v0.28.1 src/tools/formdata.ts
-import { isInstance } from "@sdk/tools/is-instance";
 
 // `global` is provided by React Native (Hermes) and Node; it is not part of the DOM typings.
 declare const global: { HermesInternal?: unknown } | undefined;
@@ -8,8 +7,8 @@ declare const global: { HermesInternal?: unknown } | undefined;
  */
 export function isFile(val: unknown): boolean {
   return Boolean(
-    (typeof Blob !== "undefined" && isInstance(Blob, val)) ||
-    (typeof File !== "undefined" && isInstance(File, val)) ||
+    (typeof Blob !== "undefined" && val instanceof Blob) ||
+    (typeof File !== "undefined" && val instanceof File) ||
     // check for React Native file object format
     // (see https://ganigeorgiev.com/pocketbase/discussions/2002#comment-mruqg2o3j3vujsi)
     (val !== null &&
@@ -35,7 +34,7 @@ export function isFormData(body: unknown): boolean {
       // fallback to global FormData instance check
       // note: this is needed because the constructor.name could be different in case of
       //       custom global FormData implementation, eg. React Native on Android/iOS
-      (typeof FormData !== "undefined" && isInstance(FormData, body)))
+      (typeof FormData !== "undefined" && body instanceof FormData))
   );
 }
 

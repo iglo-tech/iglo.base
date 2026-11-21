@@ -1,7 +1,6 @@
 // Replaces vitest's chai `assert` (bun:test has none) with the subset the upstream tests use.
 // js-sdk v0.28.1 tests use only these methods; their semantics follow chai's.
 import nodeAssert from "node:assert";
-import { isInstance } from "@sdk/tools/is-instance";
 
 export const assert = {
   equal(actual: unknown, expected: unknown, msg?: string): void {
@@ -37,7 +36,7 @@ export const assert = {
     ctor: (abstract new (...args: Array<never>) => unknown) & { readonly prototype: unknown },
     msg?: string,
   ): void {
-    nodeAssert(isInstance(ctor, value), msg ?? `expected value to be an instance of ${ctor.name}`);
+    nodeAssert(value instanceof ctor, msg ?? `expected value to be an instance of ${ctor.name}`);
   },
   isEmpty(value: unknown, msg?: string): void {
     nodeAssert(sizeOf(value) === 0, msg ?? "expected value to be empty");
@@ -56,7 +55,7 @@ function sizeOf(value: unknown): number {
   if (typeof value === "string" || Array.isArray(value)) {
     return value.length;
   }
-  if (isInstance<Map<unknown, unknown>>(Map, value) || isInstance<Set<unknown>>(Set, value)) {
+  if (value instanceof Map || value instanceof Set) {
     return value.size;
   }
   if (value !== null && typeof value === "object") {

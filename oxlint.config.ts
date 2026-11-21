@@ -116,6 +116,16 @@ export default defineConfig({
         "unicorn/prefer-at": "off",
       },
     },
+    // SDK parity (D36): the SDK and its tests keep the instanceof operator as upstream
+    // writes it. The isInstance helper walked the prototype chain itself and ignored
+    // Symbol.hasInstance, which fetch-blob's Blob and File (the SDK README's polyfills for
+    // Node < 17) use, so polyfilled values were detected differently (L.1).
+    {
+      files: ["sdk/src/**", "sdk/test/**"],
+      rules: {
+        "@nkzw/no-instanceof": "off",
+      },
+    },
     {
       files: ["sdk/test/**"],
       rules: {
