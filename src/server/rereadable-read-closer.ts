@@ -111,6 +111,7 @@ export async function readAll(r: ReadCloser): Promise<Uint8Array> {
       total += n;
     }
     if (err !== undefined) {
+      // oxlint-disable-next-line typescript/only-throw-error -- readAll's callers (request.ts:132, event.ts:391) surface the read error as the request error
       throw err;
     }
     if (eof) {

@@ -283,6 +283,7 @@ export class FieldsList implements FieldsListReader {
   marshalJSON(): string {
     const [v, err] = this.marshalJSONWithPartial();
     if (err !== null) {
+      // oxlint-disable-next-line typescript/only-throw-error -- the JSON response path (event.ts:219 marshalJSON caller) passes it on as the error response
       throw err;
     }
     return v;

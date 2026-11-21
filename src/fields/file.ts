@@ -1116,6 +1116,7 @@ function checkPreUpload(file: File, key: string): void {
     );
   }
   if (preUpload.error !== null) {
+    // oxlint-disable-next-line typescript/only-throw-error -- the file save path reports this upload failure as the record save's error response
     throw preUpload.error;
   }
 }

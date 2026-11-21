@@ -701,6 +701,7 @@ export class Query {
     const err = this.lastError;
     this.lastError = null;
     if (err !== null) {
+      // oxlint-disable-next-line typescript/only-throw-error -- the query callers (rowsOp, exec) hand it to the database error mapping, which reads it
       throw err;
     }
   }

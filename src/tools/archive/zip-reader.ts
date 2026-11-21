@@ -492,6 +492,7 @@ export class ZipReader {
       throw sinkErr ?? error;
     }
     if (sinkErr !== undefined) {
+      // oxlint-disable-next-line typescript/only-throw-error -- extract() passes it to its caller in src/backups/backup-worker.ts, which reports the restore failure
       throw sinkErr;
     }
   }

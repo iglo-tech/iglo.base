@@ -480,6 +480,7 @@ function resolveToken(
           }
         }
         if (err !== undefined) {
+          // oxlint-disable-next-line typescript/only-throw-error -- tryResolveToken reads it (isInstance NilPointerPanic) and returns it to the filter builder
           throw err;
         }
         return null;
