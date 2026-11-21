@@ -568,6 +568,7 @@ export function splitModifier(combined: string): [string, string] {
     case lowerModifier:
     case changedModifier:
       return [parts[0] as string, parts[1]];
+    case undefined:
   }
 
   throw new Error(`unknown modifier in ${goQuote(combined)}`);

@@ -40,6 +40,7 @@ export async function recordRequestPasswordReset(e: RequestEvent): Promise<Handl
 
   const form: RecordRequestPasswordResetForm = { Email: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordRequestPasswordResetType,
   );
@@ -89,7 +90,7 @@ async function sendPasswordResetInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
-  token: object,
+  token: { [key: string]: unknown },
 ): Promise<void> {
   const app = e.app;
   try {

@@ -296,7 +296,7 @@ const jsonArrayAdapter: Adapter = {
 const expressionMethods: GoClass["methods"] = {
   build: (target: Expression, args, m) => {
     const builder = m.toHost(args[0]) as Builder | null | undefined;
-    const db = (builder?.queryBuilder() as unknown as { db(): DB } | undefined)?.db() ?? null;
+    const db = (builder?.queryBuilder() as { db(): DB } | undefined)?.db() ?? null;
     return target.build(db as DB, (m.toHost(args[1]) ?? {}) as Params);
   },
 };
@@ -307,7 +307,7 @@ const likeExpAdapter = classAdapter(
   { fields: { like: "any" }, methods: { ...expressionMethods, escape: "...s", match: "b,b" } },
   {
     get(target, key) {
-      return key === "like" ? (target as unknown as { likeOp: string }).likeOp : undefined;
+      return key === "like" ? (target as { likeOp: string }).likeOp : undefined;
     },
   },
 );
@@ -403,6 +403,7 @@ function adapters(
   models: QueryModels,
   clock: Clock,
   blank: WeakSet<object>,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
 ): (target: object) => Adapter | undefined {
   const fieldAdapter = fieldAdapters();
   const queryAdapter = classAdapter({ methods: { ...queryMethods, ...models.queryMethods() } }, {});
@@ -509,6 +510,7 @@ const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
 function structView(
   m: Membrane,
   settings: Settings,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   data: object,
   type: FieldType | undefined,
   methods: StructMethods = {},
@@ -544,11 +546,13 @@ function structView(
   const proxy = new Proxy(data, {
     get: (t, key) => {
       if (typeof key !== "string") {
+        // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(t, key, t);
       }
       if (key === "toJSON") {
         return undefined;
       }
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       return keys.includes(key) ? read(key) : Reflect.get(m.vm.objectPrototype, key);
     },
     set: (t, key, value) => {
@@ -579,6 +583,7 @@ function structView(
 function memberView(
   m: Membrane,
   settings: Settings,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   holder: object,
   name: string,
   type: FieldType,
@@ -685,6 +690,7 @@ function newSettingsAdapter(): Adapter {
       if (found === undefined) {
         return pass;
       }
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       const holder = settings.settings as unknown as Record<string, unknown>;
       holder[found.name] = convertValue(value, found.type, holder[found.name]);
       settings.normalize();
@@ -902,6 +908,11 @@ function unmarshalIgnoringErrors(data: unknown, decode: (raw: string) => void): 
   }
 }
 
+// whether a value has the json.Unmarshaler method (a property read, as the Go check does)
+function hasUnmarshalJSON(value: unknown): value is { unmarshalJSON(b: string): void } {
+  return typeof (value as { unmarshalJSON?: unknown } | undefined)?.unmarshalJSON === "function";
+}
+
 // What json.Unmarshal(raw, &dst) reaches. goja hands a JS object or array
 // over as a copy, so the file's own values never change: only a Go value
 // behind the binding (a model, or what arrayOf made) takes the data.
@@ -927,8 +938,8 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
     return;
   }
 
-  if (typeof (target as { unmarshalJSON?: unknown } | undefined)?.unmarshalJSON === "function") {
-    (target as unknown as { unmarshalJSON(b: string): void }).unmarshalJSON(raw);
+  if (hasUnmarshalJSON(target)) {
+    target.unmarshalJSON(raw);
     return;
   }
 

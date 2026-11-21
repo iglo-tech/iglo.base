@@ -1733,7 +1733,7 @@ test("TestPositives", () => {
 });
 
 test("TestPositivesCompacted", () => {
-  const stdlib = positives.filter((tt) => tt.stdlib).map((tt) => bytesToText(tt.json));
+  const stdlib = positives.flatMap((tt) => (tt.stdlib ? [bytesToText(tt.json)] : []));
   expect(stdlib).toEqual(stdlibGolden.map((gd) => gd.json));
   for (const gd of stdlibGolden) {
     testTruncating(textToBytes(gd.compact));

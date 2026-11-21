@@ -314,13 +314,13 @@ describe("mail flows", () => {
       const m2 = await env.mail("otp mail (again)", "test2@example.com", since);
       const code2 = /\b(\d{8})\b/.exec(messageBody(m2))?.[1] ?? "";
       await env.step("authWithOTP (mfaId option)", () =>
-        pb.collection("users").authWithOTP(otp2.otpId, code2, { mfaId: mfaId2 } as never),
+        pb.collection("users").authWithOTP(otp2.otpId, code2, { mfaId: mfaId2 }),
       );
     },
   );
 });
 
-const prepare = (user: object) => (env: { dataDir: string }) =>
+const prepare = (user: Record<string, unknown>) => (env: { dataDir: string }) =>
   all(
     noMFA,
     useProvider({ user }, (collection, provider) => {

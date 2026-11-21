@@ -328,13 +328,19 @@ function ruleCases(): Array<WriteCase> {
 const types = "/api/collections/w_types/records";
 const typesRecord = `${types}/${rid("types1")}`;
 
-const typesCreate = (name: string, body: { [key: string]: unknown }, id?: string): WriteCase => ({
-  name: `types: ${name}`,
-  as: "guest",
-  method: "POST",
-  url: types,
-  body: json({ ...(id === undefined ? {} : { id: rid(id) }), ...body }),
-});
+const typesCreate = (name: string, body: { [key: string]: unknown }, id?: string): WriteCase => {
+  const idField: { [key: string]: unknown } = {};
+  if (id !== undefined) {
+    idField.id = rid(id);
+  }
+  return {
+    name: `types: ${name}`,
+    as: "guest",
+    method: "POST",
+    url: types,
+    body: json({ ...idField, ...body }),
+  };
+};
 
 const typesUpdate = (name: string, body: unknown, query = ""): WriteCase => ({
   name: `types: ${name}`,

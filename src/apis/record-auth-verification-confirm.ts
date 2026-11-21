@@ -41,6 +41,7 @@ export async function recordConfirmVerification(e: RequestEvent): Promise<Handle
 
   const form: RecordConfirmVerificationForm = { Token: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordConfirmVerificationType,
   );

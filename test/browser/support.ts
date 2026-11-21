@@ -126,6 +126,7 @@ export async function startFixture(): Promise<Fixture> {
       }
       return fetch(`${server.url}${path}`, {
         ...init,
+        // oxlint-disable-next-line typescript/no-misused-spread -- the spread copies the own properties of a plain record or spec object, as the test expects
         headers: { Authorization: token, ...init.headers },
       });
     },

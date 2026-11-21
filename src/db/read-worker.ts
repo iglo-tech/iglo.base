@@ -64,6 +64,7 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage | "clos
     }
     conns.clear();
     // WorkerGlobalScope.close(), ending this thread
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     (self as unknown as { close(): void }).close();
     return;
   }

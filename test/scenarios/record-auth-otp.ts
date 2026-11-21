@@ -158,10 +158,13 @@ export const recordRequestOTP: Suite = {
         insertOTPs(
           "users",
           email,
-          ...Array.from({ length: 10 }, (_, i) => ({
-            id: `otp_${i}`,
-            ...(i >= 8 ? { date: expiredDate() } : {}),
-          })),
+          ...Array.from({ length: 10 }, (_, i) => {
+            const otp: Parameters<typeof insertOTPs>[2] = { id: `otp_${i}` };
+            if (i >= 8) {
+              otp.date = expiredDate();
+            }
+            return otp;
+          }),
         ),
       ),
       expectedStatus: 200,

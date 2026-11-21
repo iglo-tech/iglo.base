@@ -362,6 +362,7 @@ test("timed-out statements never leave the pool without a live worker", async ()
     modelQuery(app, new Demo())
       .where(slowWhere)
       .allAsync()
+      // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
       .catch((error: Error) => error.message);
   const cheap = () =>
     modelQuery(app, new Demo())

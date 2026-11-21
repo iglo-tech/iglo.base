@@ -16,6 +16,7 @@
 
 import { FieldNameCollectionId, FieldNameCollectionName, FieldNameExpand } from "@/fields/field";
 import type { Field } from "@/fields/field";
+import type { FieldsList } from "@/collections/fields-list";
 
 // a member of the record's JSON object
 export interface LayoutMember {
@@ -46,7 +47,10 @@ const entries = new WeakMap<object, Entry>();
 const plainName = /^[^\u0000-\u001f"\\\ud800-\udfff]*$/;
 
 // the layout for the field list `owner` holds, or null when there is none
-export function recordJSONLayout(owner: object, fields: Iterable<Field>): RecordJSONLayout | null {
+export function recordJSONLayout(
+  owner: FieldsList,
+  fields: Iterable<Field>,
+): RecordJSONLayout | null {
   const cached = entries.get(owner);
   if (cached !== undefined && matches(cached, fields)) {
     return cached.layout;

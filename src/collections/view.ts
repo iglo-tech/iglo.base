@@ -410,6 +410,7 @@ export function parseQueryToFields(
         case "bool":
           field = new BoolField({ name: col.alias });
           break;
+        case undefined:
       }
       if (field !== null) {
         set(col.alias, field);

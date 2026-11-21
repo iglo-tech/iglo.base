@@ -324,7 +324,7 @@ class Reader {
       kind: "object",
       members: node.members.filter((member) => member.key !== "providers"),
     };
-    return this.value(rest, base as SchemaValue, path);
+    return this.value(rest, base, path);
   }
 
   // the providers a file lists: each one's values, and a reference for every
@@ -462,7 +462,7 @@ class Reader {
       return node.value;
     }
     if (kind === "object" && node.kind === "object") {
-      return plainValue(node) as SchemaObject;
+      return plainValue(node);
     }
     this.add(
       path,

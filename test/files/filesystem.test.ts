@@ -235,10 +235,14 @@ describe("TestFilesystemServe", () => {
         let res: Response | undefined;
         let err: unknown;
         try {
-          res = serve(fsys, s.path, s.name, {
-            ...(s.query ? { query: s.query } : {}),
-            ...(s.headers ? { preset: s.headers } : {}),
-          });
+          const options: NonNullable<Parameters<typeof serve>[3]> = {};
+          if (s.query) {
+            options.query = s.query;
+          }
+          if (s.headers) {
+            options.preset = s.headers;
+          }
+          res = serve(fsys, s.path, s.name, options);
         } catch (error) {
           err = error;
         }

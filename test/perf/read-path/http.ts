@@ -55,7 +55,7 @@ if (positionals[0] === "serve") {
 }
 
 async function client(): Promise<void> {
-  const modes = values.modes!.split(",").map(Number);
+  const modes = values.modes.split(",").map(Number);
   const seconds = Number(values.seconds);
   const results: Array<unknown> = [];
   const datasets: Array<[Dataset, string | undefined]> = [

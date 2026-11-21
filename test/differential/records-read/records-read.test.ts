@@ -55,7 +55,6 @@ import {
 } from "@test/scenarios/record-crud";
 import { send } from "@test/scenarios/runner";
 import type { Scenario } from "@test/scenarios/scenario";
-import type { ScenarioResponse } from "@test/scenarios/request";
 import { startServer } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
@@ -107,7 +106,7 @@ async function compareCase(
     );
   }
   return {
-    status: (up as ScenarioResponse).status,
+    status: up.status,
     differences: compareResponses(up, ig, {
       start: readStartingData(pair.dataDir),
       request,
@@ -176,12 +175,16 @@ describe("fresh install", () => {
         body?: unknown,
         auth = tokens.get("superuser") ?? "",
       ) => {
+        const headers: Record<string, string> = {};
+        if (auth !== "") {
+          headers.authorization = auth;
+        }
+        if (body !== undefined) {
+          headers["content-type"] = "application/json";
+        }
         const res = await fetch(`${builder.url}${path}`, {
           method,
-          headers: {
-            ...(auth === "" ? {} : { authorization: auth }),
-            ...(body === undefined ? {} : { "content-type": "application/json" }),
-          },
+          headers,
           body: body === undefined ? undefined : JSON.stringify(body),
         });
         const text = await res.text();
@@ -293,9 +296,9 @@ describe("fresh install", () => {
   // lets someone view a record and refuses someone
   test("every rule shape has allowed and refused identities", () => {
     for (const s of ruleShapes) {
-      const views = [...statuses]
-        .filter(([name]) => name.startsWith(`${s.shape}: view own`))
-        .map(([, status]) => status);
+      const views = [...statuses].flatMap(([name, status]) =>
+        name.startsWith(`${s.shape}: view own`) ? [status] : [],
+      );
       expect(views).toContain(200);
       if (s.shape !== "empty") {
         expect(views.some((status) => status !== 200)).toBe(true);

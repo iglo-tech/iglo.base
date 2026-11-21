@@ -428,6 +428,7 @@ function parseDocument(src: string): XmlElement {
         case "text":
           el.text += tok.text;
           break;
+        case "other":
       }
     }
   };

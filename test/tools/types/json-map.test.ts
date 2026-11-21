@@ -206,8 +206,8 @@ describe("JSONMapScan Go decoding", () => {
   });
 
   test("an existing value keeps its Go type", () => {
-    expect(() => scanJSONMap(`{"a":"x"}`, anyType, { a: 1 } as JSONMap<unknown>)).toThrow();
-    expect(scanJSONMap(`{"a":null}`, anyType, { a: 1 } as JSONMap<unknown>)).toEqual({ a: null });
+    expect(() => scanJSONMap<unknown>(`{"a":"x"}`, anyType, { a: 1 })).toThrow();
+    expect(scanJSONMap<unknown>(`{"a":null}`, anyType, { a: 1 })).toEqual({ a: null });
   });
 
   // upstream resets the map whenever decoding fails

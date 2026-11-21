@@ -103,6 +103,11 @@ export function toTimeE(i: unknown): Instant {
       return { sec: Number(BigInt.asIntN(64, i)), nsec: 0 };
     case "undefined":
       return { ...zeroInstant };
+    case "boolean":
+    case "function":
+    case "number":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return { ...zeroInstant };
@@ -179,6 +184,9 @@ export function toStringE(i: unknown): string {
       return i.toString();
     case "undefined":
       return "";
+    case "function":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return "";
@@ -265,6 +273,9 @@ export function toFloat64E(i: unknown): number {
           `unable to cast ${JSON.stringify(i)} of type string to float64: ${(error as Error).message}`,
         );
       }
+    case "function":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return 0;
@@ -295,6 +306,9 @@ export function toBoolE(i: unknown): boolean {
       return i !== 0n;
     case "string":
       return parseBool(i);
+    case "function":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return false;

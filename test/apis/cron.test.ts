@@ -36,11 +36,14 @@ async function open(prepare?: (dataDir: string) => void, now?: Date): Promise<Te
   const dataDir = join(tempDir(), "pb_data");
   copyDataDir(fixtureDir, dataDir);
   prepare?.(dataDir);
-  const app = await openFixtureApp({
+  const options: NonNullable<Parameters<typeof openFixtureApp>[0]> = {
     dataDir,
     stderrLog: (line) => stderrLines.push(line),
-    ...(now === undefined ? {} : { clock: { now: () => now } }),
-  });
+  };
+  if (now !== undefined) {
+    options.clock = { now: () => now };
+  }
+  const app = await openFixtureApp(options);
   opened.push(app);
   return app;
 }

@@ -37,7 +37,7 @@ export async function backupUpload(e: RequestEvent): Promise<Error | undefined> 
     const validateErr = await validateBackupUploadForm(fsys, file);
     if (validateErr !== null || file === null) {
       return firstApiError(
-        validateErr as Error,
+        validateErr,
         e.badRequestError("An error occurred while validating the submitted data.", validateErr),
       );
     }

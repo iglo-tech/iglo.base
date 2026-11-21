@@ -328,14 +328,16 @@ describe("fresh install", () => {
         body?: unknown,
         auth = tokens.get("superuser") ?? "",
       ) => {
+        const headers: Record<string, string> = {};
+        if (auth !== "") {
+          headers.authorization = auth;
+        }
+        if (body !== undefined && !isInstance(FormData, body)) {
+          headers["content-type"] = "application/json";
+        }
         const res = await fetch(`${builder.url}${path}`, {
           method,
-          headers: {
-            ...(auth === "" ? {} : { authorization: auth }),
-            ...(body === undefined || isInstance(FormData, body)
-              ? {}
-              : { "content-type": "application/json" }),
-          },
+          headers,
           body:
             body === undefined
               ? undefined
@@ -433,9 +435,9 @@ describe("fresh install", () => {
   // and, but for the public one, refuses some
   test("every rule shape has allowed and refused writes", () => {
     for (const s of ruleShapes) {
-      const shapeStatuses = statuses
-        .filter((x) => x.name.startsWith(`${s.shape}: `))
-        .map((x) => x.status);
+      const shapeStatuses = statuses.flatMap((x) =>
+        x.name.startsWith(`${s.shape}: `) ? [x.status] : [],
+      );
       expect(shapeStatuses.some((status) => status === 200 || status === 204)).toBe(true);
       if (s.shape !== "empty") {
         expect(shapeStatuses.some((status) => status >= 400)).toBe(true);

@@ -414,7 +414,7 @@ export class ServerClient extends Client {
       return {
         kind: "ok",
         token: res?.token || token,
-        record: (res?.record as AuthRecord) ?? this.authStore.record,
+        record: res?.record ?? this.authStore.record,
       };
     } catch (error: unknown) {
       if (

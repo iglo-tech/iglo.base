@@ -61,9 +61,13 @@ async function getJson(
   authorization: string,
   init: RequestInit = {},
 ): Promise<unknown> {
+  const headers: Record<string, string> = { authorization };
+  if (init.body !== undefined) {
+    Object.assign(headers, jsonHeader);
+  }
   const res = await fetch(url, {
     ...init,
-    headers: { authorization, ...(init.body === undefined ? {} : jsonHeader) },
+    headers,
   });
   if (res.status !== 200) {
     throw new Error(`${init.method ?? "GET"} ${url}: ${res.status} ${await res.text()}`);

@@ -54,7 +54,7 @@ function greekIotaUpper(cp: number): number | undefined {
 // above.
 export function toUpperRune(ch: string): string {
   const upper = ch.toUpperCase();
-  if ([...upper].length === 1) {
+  if (Array.from(upper).length === 1) {
     return upper;
   }
   const greek = greekIotaUpper(ch.codePointAt(0) as number);

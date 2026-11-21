@@ -293,7 +293,7 @@ describe("RecordService", () => {
         headers: { "x-test": "456" },
       });
 
-      assert.deepEqual(result, "test123" as any);
+      assert.deepEqual(result, "test123");
     });
   });
 

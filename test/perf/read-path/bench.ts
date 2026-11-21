@@ -22,7 +22,7 @@ import {
   summarize,
   workloadNames,
 } from "@test/perf/read-path/workloads";
-import type { Dataset, Target, WorkloadName } from "@test/perf/read-path/workloads";
+import type { Dataset, Target } from "@test/perf/read-path/workloads";
 
 const { values } = parseArgs({
   options: {
@@ -33,7 +33,7 @@ const { values } = parseArgs({
     seconds: { type: "string", default: "2" },
   },
 });
-const modes = values.modes!.split(",").map(Number);
+const modes = values.modes.split(",").map(Number);
 const seconds = Number(values.seconds);
 const scratch = values.scratch!;
 const concurrency = 8;
@@ -113,7 +113,7 @@ for (const [dataset, source] of datasets) {
         for (const name of workloadNames) {
           guard();
           const ms = (name === "slow" ? 1.5 : 1) * seconds * 1000;
-          const run = () => target.run(name as WorkloadName);
+          const run = () => target.run(name);
           const lat = summarize(await latency(target, run, ms));
           const tp = await throughput(run, ms);
           cells[name] = { latency: lat, qps: tp.qps, lag: tp.lag };

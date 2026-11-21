@@ -54,7 +54,7 @@ beforeEach(() => {
       },
     };
     return handle;
-  }) as unknown as typeof setTimeout;
+  }) as typeof setTimeout;
 });
 
 afterEach(async () => {

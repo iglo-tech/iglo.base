@@ -175,10 +175,14 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
       signal,
     };
     if (url.protocol === "https:") {
-      init.tls = {
-        ...(isIP(host) === 0 ? { serverName: host } : {}),
-        ...(opts.ca === undefined ? {} : { ca: opts.ca }),
-      };
+      const tls: NonNullable<BunFetchRequestInit["tls"]> = {};
+      if (isIP(host) === 0) {
+        tls.serverName = host;
+      }
+      if (opts.ca !== undefined) {
+        tls.ca = opts.ca;
+      }
+      init.tls = tls;
     }
 
     try {

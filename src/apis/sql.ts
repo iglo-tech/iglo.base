@@ -59,6 +59,7 @@ async function runSQL(e: RequestEvent): Promise<HandlerResult> {
 
   const form: RunSQLForm = { Query: "" };
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, runSQLFormType);
   if (bindErr) {
     return firstApiError(
@@ -259,7 +260,7 @@ function goToUpper(s: string): string {
   let out = "";
   for (const ch of s) {
     const up = ch.toUpperCase();
-    out += [...up].length === 1 ? up : ch;
+    out += Array.from(up).length === 1 ? up : ch;
   }
   return out;
 }

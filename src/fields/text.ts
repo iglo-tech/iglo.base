@@ -582,8 +582,8 @@ export type TextFieldSettings = Pick<
 
 // strings.EqualFold: equal under Unicode simple case folding
 function equalFold(s: string, t: string): boolean {
-  const a = [...s];
-  const b = [...t];
+  const a = Array.from(s);
+  const b = Array.from(t);
   if (a.length !== b.length) {
     return false;
   }

@@ -121,7 +121,7 @@ afterAll(() => {
 });
 
 test.each(queries.map((query, i) => [query, i] as const))("%s", (_query, i) => {
-  expect(iglo[i]).toEqual(upstream[i]!);
+  expect(iglo[i]).toEqual(upstream[i]);
 });
 
 test("the reference results are the last statement's", () => {

@@ -56,12 +56,15 @@ async function open(options: Parameters<typeof openFixtureApp>[0] = {}): Promise
 }
 
 function send(app: TestApp, method: string, target: string, body?: string): Promise<Response> {
-  return serveTest(newRouter(app).buildMux(), {
+  const init: Parameters<typeof serveTest>[1] = {
     method,
     target,
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  return serveTest(newRouter(app).buildMux(), init);
 }
 
 function backupsDir(app: TestApp): string {

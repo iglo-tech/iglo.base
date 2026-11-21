@@ -48,7 +48,7 @@ describe("BackupService", () => {
     const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
     await env.step("upload", () =>
       pb.backups.upload({
-        file: new File([bytes as Uint8Array<ArrayBuffer>], "uploaded.zip", {
+        file: new File([bytes], "uploaded.zip", {
           type: "application/zip",
         }),
       }),

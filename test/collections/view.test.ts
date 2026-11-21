@@ -808,6 +808,7 @@ describe("TestFindRecordByViewFile", () => {
         return;
       }
 
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       const found = record as unknown as ReturnType<typeof findRecordByViewFile>;
       expect(found.id).toBe(s.expectRecordId);
       expect(found.collection().name).toBe("demo1");

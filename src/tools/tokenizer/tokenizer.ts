@@ -230,7 +230,7 @@ export class Tokenizer {
 // strings.Trim: s without the leading and trailing runes in cutset
 function trim(s: string, cutset: string): string {
   const set = new Set(cutset);
-  const chars = [...s];
+  const chars = Array.from(s);
   let start = 0;
   let end = chars.length;
   while (start < end && set.has(chars[start] as string)) {

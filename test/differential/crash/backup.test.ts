@@ -114,9 +114,14 @@ async function crashedBackup(kind: Kind, storage: Storage, point: Point): Promis
 // the leftovers with what is random in a name replaced
 function normalized(paths: Array<string>): Array<string> {
   return paths
-    .filter((p) => p !== "bulk.bin")
-    .map((p) =>
-      p.replaceAll(/[0-9a-f]{16}\.tmp/g, "X.tmp").replaceAll(/pb_backup_\w{6}/g, "pb_backup_X"),
+    .flatMap((p) =>
+      p !== "bulk.bin"
+        ? [
+            p
+              .replaceAll(/[0-9a-f]{16}\.tmp/g, "X.tmp")
+              .replaceAll(/pb_backup_\w{6}/g, "pb_backup_X"),
+          ]
+        : [],
     )
     .toSorted();
 }

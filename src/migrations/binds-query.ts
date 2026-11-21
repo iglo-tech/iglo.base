@@ -159,7 +159,11 @@ export class QueryModels {
       }
       if (target !== undefined && !Array.isArray(value) && !isInstance(GoJSONMap, target)) {
         const zero = isInstance(DateTime, target) ? () => this.m.toVm(new DateTime()) : undefined;
-        fields.set(key, { kind: "go", nullable: false, name, ...(zero ? { zero } : {}) });
+        const goField: ShapeField = { kind: "go", nullable: false, name };
+        if (zero) {
+          goField.zero = zero;
+        }
+        fields.set(key, goField);
         model[name] = value;
         continue;
       }
@@ -310,6 +314,7 @@ export class QueryModels {
 
   // A record query assigns its Record over the destination. Any other
   // query scans the columns of the struct: a Record has only its id.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #hydrate(q: SelectQuery | Query, dst: object, slot: RecordSlot): void {
     let record: RecordModel;
     try {
@@ -401,6 +406,7 @@ export class QueryModels {
 
   // A slice's new element: the Go zero value of the model's type, not a
   // copy of the shape's values.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #newElement(model: object): DynamicModel {
     const fields = this.#shapeOf(model) as Map<string, ShapeField>;
     const element = this.m.vm.object();
@@ -464,7 +470,7 @@ function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
         return ignored;
       }
       const host = m.toHost(value) as Record<string, unknown>;
-      return m.toVm(new GoJSONMap(Array.isArray(host) ? { ...host } : host));
+      return m.toVm(new GoJSONMap(Array.isArray(host) ? Object.assign({}, host) : host));
     }
     default:
       return value;

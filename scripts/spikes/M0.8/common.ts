@@ -261,9 +261,13 @@ export function apiClient(url: string) {
     path: string,
     body?: unknown,
   ): Promise<{ status: number; json: unknown }> => {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (token) {
+      headers.authorization = token;
+    }
     const res = await fetch(url + path, {
       method,
-      headers: { "content-type": "application/json", ...(token ? { authorization: token } : {}) },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();

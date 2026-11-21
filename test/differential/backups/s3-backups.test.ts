@@ -182,7 +182,7 @@ async function downloadBytes(server: Server, key: string): Promise<Uint8Array> {
 
 function uploadForm(name: string, zip: Uint8Array): FormData {
   const form = new FormData();
-  form.set("file", new File([zip as Uint8Array<ArrayBuffer>], name, { type: "application/zip" }));
+  form.set("file", new File([zip], name, { type: "application/zip" }));
   return form;
 }
 
@@ -546,14 +546,17 @@ class ScriptedS3 {
     const range = /bytes=(\d+)-(\d*)/.exec(req.headers.get("Range") ?? "");
     const first = Number(range?.[1] ?? 0);
     const end = range?.[2] ? Number(range[2]) + 1 : object.body.length;
+    const headers: Record<string, string> = {
+      "Content-Type": object.headers.get("Content-Type") ?? "",
+      "Content-Length": String(end - first),
+      "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+    };
+    if (range) {
+      headers["Content-Range"] = `bytes ${first}-${end - 1}/${object.body.length}`;
+    }
     return new Response(req.method === "HEAD" ? null : object.body.slice(first, end), {
       status: range ? 206 : 200,
-      headers: {
-        "Content-Type": object.headers.get("Content-Type") ?? "",
-        "Content-Length": String(end - first),
-        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
-        ...(range ? { "Content-Range": `bytes ${first}-${end - 1}/${object.body.length}` } : {}),
-      },
+      headers,
     });
   }
 }
@@ -837,7 +840,7 @@ describe("POST /api/settings/test/s3", () => {
             bucket: s3.bucket,
             secret: "wrong-secret",
           });
-          results.push(await allEndpoints(server, { seen: [{}] } as unknown as ScriptedS3));
+          results.push(await allEndpoints(server, { seen: [{}] } as ScriptedS3));
         } finally {
           await useBackupsS3(server, null);
           await s3.stop();

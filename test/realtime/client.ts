@@ -70,7 +70,7 @@ export function request(
           body: parsed.body.toString("utf8"),
         });
       } catch (error) {
-        reject(error as Error);
+        reject(error);
       }
     });
   });

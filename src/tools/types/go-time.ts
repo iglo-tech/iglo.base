@@ -241,6 +241,7 @@ function nextStdChunk(layout: string): Chunk {
         }
         break;
       }
+      case undefined:
     }
   }
   return { prefix: layout, std: 0, digits: 0, suffix: "" };

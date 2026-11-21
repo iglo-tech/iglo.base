@@ -515,7 +515,7 @@ function genSample(ctx: Ctx, leaf: FieldModel): string {
   }
   // a stored array or object: its text, or one of its values
   if (typeof sample === "object" && r.chance(0.6)) {
-    const [value] = Object.values(sample as object) as Array<unknown>;
+    const [value] = Object.values(sample) as Array<unknown>;
     if (typeof value === "number" || typeof value === "boolean") {
       return String(value);
     }
@@ -956,10 +956,13 @@ function genInvalid(ctx: Ctx, base: FilterNode): { filter: FilterNode | null; so
       };
     case "over-limit": {
       const limit = overLimit(ctx);
-      return {
+      const result: { filter: FilterNode | null; sort?: string } = {
         filter: limit.filter === undefined ? base : { k: "raw", text: limit.filter },
-        ...(limit.sort === undefined ? {} : { sort: limit.sort }),
       };
+      if (limit.sort !== undefined) {
+        result.sort = limit.sort;
+      }
+      return result;
     }
   }
 }

@@ -113,12 +113,13 @@ async function api(method: string, path: string, body: string | FormData) {
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
+  const headers: Record<string, string> = { authorization: token };
+  if (typeof body === "string") {
+    headers["content-type"] = "application/json";
+  }
   const res = await fetch(`${upstream.url}${path}`, {
     method,
-    headers: {
-      authorization: token,
-      ...(typeof body === "string" ? { "content-type": "application/json" } : {}),
-    },
+    headers,
     body,
   });
   return { status: res.status, text: await res.text() };

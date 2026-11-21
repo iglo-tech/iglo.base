@@ -45,12 +45,15 @@ async function send(baseURL: string, step: Step): Promise<Reply> {
     headers["Content-Type"] ??= "application/json";
     body = typeof step.body === "string" ? step.body : JSON.stringify(step.body);
   }
-  const res = await fetch(baseURL + step.url, {
+  const init: RequestInit = {
     method: step.method ?? "GET",
     headers,
     redirect: "manual",
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(baseURL + step.url, init);
   return {
     status: res.status,
     contentType: res.headers.get("Content-Type"),

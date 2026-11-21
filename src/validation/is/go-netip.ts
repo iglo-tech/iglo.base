@@ -44,6 +44,7 @@ export function ParseAddr(s: string): Addr {
         // Assume that this was trying to be an IPv6 address with
         // a zone specifier, but the address is missing.
         throw new ParseAddrError(s, "missing IPv6 address");
+      case undefined:
     }
   }
   throw new ParseAddrError(s, "unable to parse IP");

@@ -170,6 +170,10 @@ function placeholderReplacement(key: string, value: unknown): string {
     case "number":
     case "bigint":
       return toString(value);
+    case "function":
+    case "object":
+    case "string":
+    case "symbol":
   }
   if (value === null) {
     return "null";

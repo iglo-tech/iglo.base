@@ -149,8 +149,8 @@ function lzwBlocks(out: ByteSink, data: Uint8Array, litWidth: number): void {
   const block = new Uint8Array(256);
   const blockByte = (c: number): void => {
     block[0] = (block[0] as number) + 1;
-    block[block[0] as number] = c;
-    if ((block[0] as number) === 255) {
+    block[block[0]] = c;
+    if (block[0] === 255) {
       out.pushAll(block);
       block[0] = 0;
     }

@@ -170,7 +170,7 @@ export function decodePng(bytes: Uint8Array): Raw {
         pix[o + 2] = plte?.[idx * 3 + 2] ?? 0;
         pix[o + 3] = trns?.[idx] ?? 255;
       } else if (colorType === 0 || colorType === 4) {
-        const g = sample(y, x * (channels as number));
+        const g = sample(y, x * channels);
         pix[o] = g;
         pix[o + 1] = g;
         pix[o + 2] = g;

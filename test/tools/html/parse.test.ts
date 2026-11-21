@@ -178,8 +178,8 @@ function readParseTest(r: LineReader): ParseTestCase | null {
 }
 
 function compareCodePoints(a: string, b: string): number {
-  const x = [...a];
-  const y = [...b];
+  const x = Array.from(a);
+  const y = Array.from(b);
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
     const cx = x[i]!.codePointAt(0)!;
     const cy = y[i]!.codePointAt(0)!;
@@ -465,7 +465,7 @@ function loadCases(): Array<{ file: string; index: number; test: ParseTestCase }
       ...new Bun.Glob("*.dat").scanSync({ cwd: `${import.meta.dir}/${dir}` }),
     ].toSorted();
     for (const file of files) {
-      const text = readFileSync(`${import.meta.dir}/${dir}${file}`, "utf8") as string;
+      const text = readFileSync(`${import.meta.dir}/${dir}${file}`, "utf8");
       const r = new LineReader(text);
       for (let i = 0; ; i++) {
         const ta = readParseTest(r);

@@ -43,6 +43,7 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
 
   const form: AuthWithPasswordForm = { Identity: "", Password: "", IdentityField: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     authWithPasswordType,
   );
@@ -113,7 +114,7 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
   }
 
   // the OnRecordAuthWithPasswordRequest default action
-  const record = foundRecord as Record | undefined;
+  const record = foundRecord;
   if (record === undefined || !(await record.validatePasswordAsync(form.Password))) {
     // dummy password check to minimize enumeration side-channel attacks
     if (record === undefined) {

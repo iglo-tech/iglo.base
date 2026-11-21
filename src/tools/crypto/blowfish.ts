@@ -160,8 +160,8 @@ function expandKeyWithSalt(key: Uint8Array, salt: Uint8Array, c: Cipher): void {
       lr[0] = (lr[0] as number) ^ getNextWord(salt, pos);
       lr[1] = (lr[1] as number) ^ getNextWord(salt, pos);
       encryptBlock(lr, c);
-      t[i] = lr[0] as number;
-      t[i + 1] = lr[1] as number;
+      t[i] = lr[0];
+      t[i + 1] = lr[1];
     }
   }
 }

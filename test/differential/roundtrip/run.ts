@@ -153,22 +153,26 @@ export class Client {
       headers["Content-Type"] = "application/json";
       body = options.raw ?? JSON.stringify(options.json);
     }
-    const res = await fetch(this.url + path, {
-      method,
-      headers,
-      ...(body === undefined ? {} : { body }),
-    });
+    const init: RequestInit = { method, headers };
+    if (body !== undefined) {
+      init.body = body;
+    }
+    const res = await fetch(this.url + path, init);
     const response: ScenarioResponse = {
       status: res.status,
       headers: res.headers,
       body: new Uint8Array(await res.arrayBuffer()),
     };
+    const bodyField: Pick<Scenario, "body"> = {};
+    if (body !== undefined) {
+      bodyField.body = body;
+    }
     const request: Scenario = {
       name: path,
       method,
       url: path,
       headers,
-      ...(body === undefined ? {} : { body }),
+      ...bodyField,
       expectedStatus: 0,
     };
     this.recorded.push({ label: `${method} ${path}`, request, response, at: Date.now() });
@@ -454,6 +458,10 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
     logsPerLeg.push(logs);
   }
 
+  const encryptedField: { encryptionKey?: typeof encryptionKey } = {};
+  if (options.encrypted?.at(-1)) {
+    encryptedField.encryptionKey = encryptionKey;
+  }
   return {
     root,
     dataDir,
@@ -461,7 +469,7 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
     state,
     recorded,
     igloThumbs,
-    ...(options.encrypted?.at(-1) ? { encryptionKey } : {}),
+    ...encryptedField,
     remove: () => rmSync(root, { recursive: true, force: true }),
   };
 }
@@ -532,13 +540,16 @@ export interface Start {
 }
 
 export function snapshotOf(run: RunResult, start: StartingData): Snapshot {
-  return takeSnapshot(run.dataDir, {
+  const options: Parameters<typeof takeSnapshot>[1] = {
     start,
     startedAt: run.startedAt,
     generatedIds: run.state.generatedIds,
     igloThumbs: run.igloThumbs,
-    ...(run.encryptionKey === undefined ? {} : { encryptionKey: run.encryptionKey }),
-  });
+  };
+  if (run.encryptionKey !== undefined) {
+    options.encryptionKey = run.encryptionKey;
+  }
+  return takeSnapshot(run.dataDir, options);
 }
 
 export interface Outcome {

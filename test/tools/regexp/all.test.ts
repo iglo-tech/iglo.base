@@ -149,7 +149,7 @@ function splitN(s: string, sep: string, n: number): Array<string> | null {
     return null;
   }
   if (sep === "") {
-    const chars = [...s];
+    const chars = Array.from(s);
     if (n < 0 || n > chars.length) {
       return chars;
     }

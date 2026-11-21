@@ -335,15 +335,15 @@ class parser {
         rs[0] === rs[1] &&
         rs[2] === rs[3] &&
         SimpleFold(rs[0] as number) === rs[2] &&
-        SimpleFold(rs[2] as number) === rs[0]) ||
+        SimpleFold(rs[2]) === rs[0]) ||
       (re.op === OpCharClass &&
         rs.length === 2 &&
         (rs[0] as number) + 1 === rs[1] &&
         SimpleFold(rs[0] as number) === rs[1] &&
-        SimpleFold(rs[1] as number) === rs[0])
+        SimpleFold(rs[1]) === rs[0])
     ) {
       // Case-insensitive rune like [Aa] or [Δδ].
-      if (this.maybeConcat(rs[0] as number, this.flags | FoldCase)) {
+      if (this.maybeConcat(rs[0], this.flags | FoldCase)) {
         return null;
       }
 
@@ -1739,6 +1739,7 @@ function parse(s: string, flags: Flags): Regexp {
               p.op(OpEndText);
               t = t.slice(2);
               break bigSwitch;
+            case undefined:
           }
         }
 

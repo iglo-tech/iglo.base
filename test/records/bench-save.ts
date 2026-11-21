@@ -135,11 +135,14 @@ try {
   try {
     let token = "";
     const call = async (method: string, path: string, body?: unknown): Promise<string> => {
-      const res = await fetch(`${upstream.url}${path}`, {
+      const init: RequestInit = {
         method,
         headers: { "content-type": "application/json", authorization: token },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      };
+      if (body !== undefined) {
+        init.body = JSON.stringify(body);
+      }
+      const res = await fetch(`${upstream.url}${path}`, init);
       const text = await res.text();
       if (res.status !== 200 && res.status !== 204) {
         throw new Error(`${method} ${path}: ${res.status} ${text}`);

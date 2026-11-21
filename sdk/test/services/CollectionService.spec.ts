@@ -94,7 +94,7 @@ describe("CollectionService", () => {
         headers: { "x-test": "123" },
       });
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
   });
 

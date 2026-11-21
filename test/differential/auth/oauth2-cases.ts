@@ -78,7 +78,8 @@ function idTokenProvider(
     (p) => {
       const base = spec(p as MockProvider);
       return {
-        ...(base as object),
+        // oxlint-disable-next-line typescript/no-misused-spread -- the spread copies the own properties of a plain record or spec object, as the test expects
+        ...base,
         token: { access_token: "abc", id_token: idToken() },
       };
     },
@@ -94,7 +95,11 @@ function idTokenProvider(
 }
 
 function extraOf(extra: { [key: string]: unknown }, p: MockProvider): { [key: string]: unknown } {
-  return { ...extra, ...(extra["jwksURL"] === "mock" ? { jwksURL: p.jwksURL } : {}) };
+  const merged: { [key: string]: unknown } = { ...extra };
+  if (extra["jwksURL"] === "mock") {
+    merged.jwksURL = p.jwksURL;
+  }
+  return merged;
 }
 
 // the requests a provider got from the server, of one endpoint

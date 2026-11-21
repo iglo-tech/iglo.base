@@ -110,13 +110,17 @@ export const verifiedEmail = (email: string): { email: string; email_verified: b
   email_verified: true,
 });
 
-const body = (createData?: unknown): string =>
-  JSON.stringify({
+const body = (createData?: unknown): string => {
+  const data: { [key: string]: unknown } = {
     provider: "oidc",
     code: "123",
     redirectURL: "https://example.com",
-    ...(createData === undefined ? {} : { createData }),
-  });
+  };
+  if (createData !== undefined) {
+    data.createData = createData;
+  }
+  return JSON.stringify(data);
+};
 
 export function authScenario(
   scenario: Omit<Scenario, "method" | "url" | "body"> & { body?: string },

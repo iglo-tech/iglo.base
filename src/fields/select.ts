@@ -197,7 +197,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return [val.at(-1) as string, null]; // the last selected
+        return [val.at(-1), null]; // the last selected
       }
       return ["", null];
     }

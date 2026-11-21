@@ -496,7 +496,15 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     server = await serveWith(site);
     token = await superuser(server.url);
     const rows = await records(server.url, token, "posts");
-    expect(rows.map((row) => row.title).toSorted()).toEqual(["one!", "two!"]);
+    expect(
+      rows
+        .map((row) => row.title)
+        .toSorted((a, b) => {
+          const x = String(a);
+          const y = String(b);
+          return x < y ? -1 : x > y ? 1 : 0;
+        }),
+    ).toEqual(["one!", "two!"]);
     expect(rows.every((row) => String(row.slug).startsWith("s-"))).toBe(true);
     expect((await fieldsOf(server.url, token, "posts")).slug?.required).toBe(true);
     await server.stop();
@@ -1711,7 +1719,15 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
       ],
       async (url, token) => {
         const rows = await records(url, token, "posts");
-        expect(rows.map((row) => row.title).toSorted()).toEqual(["a", "seen 1"]);
+        expect(
+          rows
+            .map((row) => row.title)
+            .toSorted((a, b) => {
+              const x = String(a);
+              const y = String(b);
+              return x < y ? -1 : x > y ? 1 : 0;
+            }),
+        ).toEqual(["a", "seen 1"]);
         expect(rows.find((row) => row.title === "seen 1")).toEqual(
           expect.objectContaining({ author: "Ann" }),
         );
@@ -1751,7 +1767,15 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
       ],
       async (url, token) => {
         const rows = await records(url, token, "posts");
-        expect(rows.map((row) => row.title).toSorted()).toEqual(["a", "seen a"]);
+        expect(
+          rows
+            .map((row) => row.title)
+            .toSorted((a, b) => {
+              const x = String(a);
+              const y = String(b);
+              return x < y ? -1 : x > y ? 1 : 0;
+            }),
+        ).toEqual(["a", "seen a"]);
       },
     );
   });

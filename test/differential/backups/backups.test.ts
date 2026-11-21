@@ -101,7 +101,7 @@ async function download(server: Server, name: string): Promise<Uint8Array> {
 
 async function upload(server: Server, name: string, zip: Uint8Array): Promise<void> {
   const body = new FormData();
-  body.set("file", new File([zip as Uint8Array<ArrayBuffer>], name, { type: "application/zip" }));
+  body.set("file", new File([zip], name, { type: "application/zip" }));
   const res = await fetch(`${server.url}/api/backups/upload`, {
     method: "POST",
     headers: asSuperuser,

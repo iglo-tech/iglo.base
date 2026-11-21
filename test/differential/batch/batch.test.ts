@@ -67,12 +67,16 @@ async function sendOk(url: string, request: Scenario): Promise<ScenarioResponse>
 
 function batchRequest(c: BatchCase): Scenario {
   const multipartHeaders = c.multipart?.headers ?? {};
+  const authHeaders: Record<string, string> = {};
+  if (c.token !== undefined) {
+    authHeaders.Authorization = c.token;
+  }
   return {
     name: c.name,
     method: "POST",
     url: `/api/batch${c.query ?? ""}`,
     headers: {
-      ...(c.token === undefined ? {} : { Authorization: c.token }),
+      ...authHeaders,
       ...c.headers,
       ...multipartHeaders,
     },

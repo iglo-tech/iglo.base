@@ -74,14 +74,15 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const res = await fetch(`${upstream.url}${path}`, {
-    method,
-    headers: {
-      "content-type": contentType,
-      ...(auth ? { authorization: token } : {}),
-    },
-    ...(body === undefined ? {} : { body }),
-  });
+  const headers: Record<string, string> = { "content-type": contentType };
+  if (auth) {
+    headers.authorization = token;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 

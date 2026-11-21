@@ -738,6 +738,7 @@ describe("errors", () => {
     if (err === null) {
       return null;
     }
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     const v = err as unknown as { code(): string; message: string; params(): unknown };
     return { code: v.code(), message: v.message, params: marshal(v.params()) };
   }

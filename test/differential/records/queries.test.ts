@@ -117,11 +117,11 @@ async function request(
   if (auth) {
     headers.authorization = token;
   }
-  const res = await fetch(`${upstream.url}${path}`, {
-    method,
-    headers,
-    ...(body === undefined ? {} : { body }),
-  });
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -134,7 +134,7 @@ async function ok(res: Promise<Response>): Promise<string> {
   return r.text;
 }
 
-async function createCollection(body: object): Promise<string> {
+async function createCollection(body: Record<string, unknown>): Promise<string> {
   const text = await ok(request("POST", "/api/collections", JSON.stringify(body)));
   return (JSON.parse(text) as { id: string }).id;
 }
@@ -260,18 +260,17 @@ describe("upstream", () => {
     for (const collection of [users, members]) {
       const created: Array<string> = [];
       for (const [i, email] of emails.entries()) {
+        const record: { [key: string]: unknown } = {
+          email,
+          emailVisibility: i % 2 === 0,
+          password: userPassword,
+          passwordConfirm: userPassword,
+        };
+        if (collection === users) {
+          record.name = `user ${i}`;
+        }
         const text = await ok(
-          request(
-            "POST",
-            `/api/collections/${collection}/records`,
-            JSON.stringify({
-              email,
-              emailVisibility: i % 2 === 0,
-              password: userPassword,
-              passwordConfirm: userPassword,
-              ...(collection === users ? { name: `user ${i}` } : {}),
-            }),
-          ),
+          request("POST", `/api/collections/${collection}/records`, JSON.stringify(record)),
         );
         created.push((JSON.parse(text) as { id: string }).id);
       }

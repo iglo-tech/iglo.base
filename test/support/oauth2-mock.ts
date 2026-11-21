@@ -156,9 +156,9 @@ export class OAuth2Mock {
       authorization: req.headers.get("Authorization") ?? "",
       contentType: req.headers.get("Content-Type") ?? "",
       headers: Object.fromEntries(
-        recordedHeaders
-          .filter((name) => req.headers.has(name))
-          .map((name) => [name, req.headers.get(name) ?? ""]),
+        recordedHeaders.flatMap((name) =>
+          req.headers.has(name) ? [[name, req.headers.get(name) ?? ""]] : [],
+        ),
       ),
       body,
     });

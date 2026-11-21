@@ -188,6 +188,7 @@ async function bindCollectionBody(
     }
     unmarshalRequestData(data, holder, collectionForm);
     for (const [goName, prop] of collectionFormMembers) {
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       (collection as unknown as Record<string, unknown>)[prop] = holder[goName];
     }
 
@@ -446,6 +447,7 @@ async function collectionDryRunView(e: RequestEvent): Promise<Error | undefined>
 
   const form: DryRunViewForm = { Query: "" };
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, dryRunViewFormType);
   if (bindErr) {
     return firstApiError(

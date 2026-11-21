@@ -167,7 +167,7 @@ export class RequestEvent extends Event {
     for (const [k, v] of this.request.query()) {
       if (v.length > 0) {
         // own property, so keys like "__proto__" are kept as submitted
-        setOwn(info.query, k, v[0] as string);
+        setOwn(info.query, k, v[0]);
       }
     }
 

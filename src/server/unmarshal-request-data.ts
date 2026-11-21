@@ -616,7 +616,7 @@ function foldRune(c: string): string {
   const pending = [c];
   for (let x = pending.pop(); x !== undefined; x = pending.pop()) {
     for (const variant of [x.toLowerCase(), x.toUpperCase()]) {
-      if ([...variant].length === 1 && !orbit.has(variant)) {
+      if (Array.from(variant).length === 1 && !orbit.has(variant)) {
         orbit.add(variant);
         pending.push(variant);
       }

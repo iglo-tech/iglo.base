@@ -114,11 +114,11 @@ async function request(
   if (auth) {
     headers.authorization = token;
   }
-  const res = await fetch(`${upstream.url}${path}`, {
-    method,
-    headers,
-    ...(body === undefined ? {} : { body }),
-  });
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -151,7 +151,7 @@ async function saveRecord(collection: string, p: Payload, id?: string): Promise<
   return (JSON.parse(res.text) as { id: string }).id;
 }
 
-async function createCollection(body: object): Promise<string> {
+async function createCollection(body: Record<string, unknown>): Promise<string> {
   const res = await request("POST", "/api/collections", JSON.stringify(body));
   expect({ status: res.status, body: res.status === 200 ? "" : res.text }).toEqual({
     status: 200,

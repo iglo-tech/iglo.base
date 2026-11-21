@@ -22,6 +22,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
   }
   const form: CollectionsImportForm = { Collections: [], DeleteMissing: false };
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   let err = await e.bindBody(form as unknown as Record<string, unknown>, collectionsImportFormType);
   err ??= checkMaps(form.Collections);
   if (err) {

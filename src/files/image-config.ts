@@ -31,7 +31,7 @@ export function decodeConfig(src: Uint8Array | ByteSource): Size {
   const head = r.peek(15);
   const match = (pattern: string): boolean =>
     head.length >= pattern.length &&
-    [...pattern].every((c, i) => c === "?" || head[i] === c.charCodeAt(0));
+    Array.from(pattern).every((c, i) => c === "?" || head[i] === c.charCodeAt(0));
   if (match("\u00ff\u00d8")) {
     return jpegConfig(r);
   }

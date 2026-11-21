@@ -133,7 +133,7 @@ describe("BatchService", () => {
         },
       });
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
 
     test("Should successfully detect ReactNative file object format", async () => {
@@ -198,7 +198,7 @@ describe("BatchService", () => {
       // restore
       (globalThis.global as any).HermesInternal = false;
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
 
     test("Should convert FormData to object on individual batch request level", async () => {
@@ -282,7 +282,7 @@ describe("BatchService", () => {
         },
       });
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
   });
 });

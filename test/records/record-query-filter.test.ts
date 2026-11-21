@@ -403,7 +403,14 @@ describe("TestCanAccessRecord", () => {
         const user = findAuthRecordByEmail(a, "users", "test@example.com");
         const record = findRecordById(a, "demo1", "imy661ixudk5izi");
         const auth = authName === "superuser" ? superuser : authName === "user" ? user : undefined;
-        const info = requestInfo({ ...(auth ? { auth } : {}), ...(body ? { body } : {}) });
+        const requestFields: Parameters<typeof requestInfo>[0] = {};
+        if (auth) {
+          requestFields.auth = auth;
+        }
+        if (body) {
+          requestFields.body = body;
+        }
+        const info = requestInfo(requestFields);
 
         // Go returns (false, err): the result of a thrown error is false
         let result = false;

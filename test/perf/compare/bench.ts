@@ -52,8 +52,8 @@ const { values } = parseArgs({
     "no-logs": { type: "boolean", default: false },
   },
 });
-const targets = values.target!.split(",");
-const clientCounts = values.clients!.split(",").map(Number);
+const targets = values.target.split(",");
+const clientCounts = values.clients.split(",").map(Number);
 const seconds = Number(values.seconds);
 const warmup = Number(values.warmup);
 const repeat = Number(values.repeat);
@@ -257,7 +257,7 @@ async function startIglo(
   const profDir = values["cpu-prof"];
   const cmd = profDir
     ? [process.execPath, "--cpu-prof", "--cpu-prof-dir", profDir, join(repoRoot, "src/main.ts")]
-    : [values.exe!];
+    : [values.exe];
   const t0 = performance.now();
   const proc = Bun.spawn(
     [

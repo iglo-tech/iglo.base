@@ -118,14 +118,15 @@ async function request(
   body: unknown,
   token?: string,
 ): Promise<Reply> {
-  const res = await fetch(server.url + path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token === undefined ? {} : { Authorization: token }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token !== undefined) {
+    headers.Authorization = token;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(server.url + path, init);
   const text = await res.text();
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
 }

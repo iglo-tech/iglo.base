@@ -154,7 +154,7 @@ const authWithOTP = async (
   server: Server,
   otpId: unknown,
   password: string,
-  extra: object = {},
+  extra: Record<string, unknown> = {},
   collection = "users",
 ): Promise<Reply> => {
   await awaitSentTo(server, otpId);
@@ -165,7 +165,11 @@ const authWithOTP = async (
   });
 };
 
-const login = (server: Server, extra: object = {}, collection = "users"): Promise<Reply> =>
+const login = (
+  server: Server,
+  extra: Record<string, unknown> = {},
+  collection = "users",
+): Promise<Reply> =>
   post(server, `/api/collections/${collection}/auth-with-password`, {
     identity: email,
     password: pw,

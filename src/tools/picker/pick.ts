@@ -179,6 +179,11 @@ function goTypeName(v: unknown): string {
       return "float64";
     case "boolean":
       return "bool";
+    case "bigint":
+    case "function":
+    case "object":
+    case "symbol":
+    case "undefined":
   }
   return Array.isArray(v) ? "[]interface {}" : "map[string]interface {}";
 }

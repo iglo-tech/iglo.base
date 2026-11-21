@@ -469,7 +469,7 @@ async function bindPadded(
   });
   const dst: MapRef = { map: {} };
   const err = await e.bindBody(dst);
-  return { err, v: (dst.map as Record<string, unknown> | null)?.v };
+  return { err, v: dst.map?.v };
 }
 
 describe("BindBody", () => {

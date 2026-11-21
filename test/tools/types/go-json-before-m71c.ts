@@ -153,6 +153,7 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
     case "function":
     case "symbol":
       throw new JSONSemanticError(`cannot marshal ${typeof value}`);
+    case "object":
   }
   if (value === null) {
     return "null";
@@ -181,11 +182,8 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
     return quote(formatRFC3339Nano(value), flags);
   }
   const entries = isInstance<Map<unknown, unknown>>(Map, value)
-    ? [...(value as Map<unknown, unknown>).entries()].map(([k, v]): [string, unknown] => [
-        String(k),
-        v,
-      ])
-    : Object.entries(value as object);
+    ? [...value.entries()].map(([k, v]): [string, unknown] => [String(k), v])
+    : Object.entries(value);
   return encodeObject(entries, flags, depth);
 }
 
@@ -753,6 +751,7 @@ class Parser {
         return this.literal("true", true);
       case "f":
         return this.literal("false", false);
+      case undefined:
     }
     const n = consumeNumber(this.s, this.i);
     this.i += n;
@@ -1130,6 +1129,11 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
         return convert(node, stringType, undefined, legacy);
       case "boolean":
         return convert(node, boolType, undefined, legacy);
+      case "bigint":
+      case "function":
+      case "object":
+      case "symbol":
+      case "undefined":
     }
     if (Array.isArray(existing)) {
       return convert(node, sliceOf(anyType), undefined, legacy);

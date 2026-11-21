@@ -23,7 +23,7 @@ import {
   setCookieLine,
   startApp,
 } from "@test/examples/support";
-import type { ExampleApp, RunningApp } from "@test/examples/support";
+import type { RunningApp } from "@test/examples/support";
 
 const SUPERUSER = { email: "test@example.com", password: "1234567890" };
 const USER = { email: "test@example.com", password: "1234567890" };
@@ -365,7 +365,7 @@ async function realtimeInBrowser(app: RunningApp, pb: PocketBase): Promise<void>
   }
 }
 
-for (const app of EXAMPLE_APPS as ReadonlyArray<ExampleApp>) {
+for (const app of EXAMPLE_APPS) {
   describe(`example ${app.name}`, () => {
     beforeAll(() => installAndBuild(app), TIMEOUT);
 

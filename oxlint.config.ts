@@ -32,7 +32,6 @@ export default defineConfig({
       files: testSupportFiles,
       rules: {
         "typescript/no-explicit-any": "off",
-        "typescript/no-non-null-assertion": "off",
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-member-access": "off",
@@ -111,15 +110,10 @@ export default defineConfig({
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
-        "quality/no-chained-type-assertions": "off",
-        "quality/no-conditional-empty-object-spread": "off",
         "quality/no-known-value-widening": "off",
-        "quality/no-object-parameters": "off",
         "quality/no-unknown-returns": "off",
         "quality/no-unsafe-dictionary-type": "off",
-        "typescript/no-misused-spread": "off",
         "typescript/no-non-null-assertion": "off",
-        "typescript/no-unnecessary-type-assertion": "off",
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-call": "off",
@@ -127,8 +121,6 @@ export default defineConfig({
         "typescript/no-unsafe-return": "off",
         "typescript/no-unsafe-type-assertion": "off",
         "typescript/only-throw-error": "off",
-        "typescript/require-array-sort-compare": "off",
-        "typescript/switch-exhaustiveness-check": "off",
         "typescript/unbound-method": "off",
       },
     },

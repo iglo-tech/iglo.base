@@ -180,6 +180,9 @@ export class Parser {
             }
           }
           break;
+        case Scope.tableScope:
+        case Scope.tableRowScope:
+        case Scope.tableBodyScope:
       }
     }
     return -1;

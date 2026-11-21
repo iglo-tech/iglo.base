@@ -193,6 +193,7 @@ describe("SettingsService", () => {
   sdkTest("generateAppleClientSecret", {}, async (env) => {
     const pb = env.superuser();
     const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- Node types KeyObject.export(pem) as string or Buffer; the assertion names the pem string
     const pem = privateKey.export({ type: "pkcs8", format: "pem" }) as string;
     await env.step("generateAppleClientSecret", () =>
       pb.settings.generateAppleClientSecret(

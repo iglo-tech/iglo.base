@@ -65,11 +65,14 @@ async function api(
   body?: unknown,
   headers: Record<string, string> = {},
 ): Promise<Reply> {
-  const res = await fetch(server.url + path, {
+  const init: RequestInit = {
     method,
     headers: { "Content-Type": "application/json", ...headers },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(server.url + path, init);
   const text = await res.text();
   return { status: res.status, json: text === "" ? {} : (JSON.parse(text) as Reply["json"]) };
 }
@@ -339,12 +342,16 @@ describe("what a sign-in triggers", () => {
     async () => {
       await onBoth(
         async (server) => {
-          const password = (mfaId?: string): Promise<Reply> =>
-            api(server, "POST", "/api/collections/users/auth-with-password", {
+          const password = (mfaId?: string): Promise<Reply> => {
+            const body: { [key: string]: unknown } = {
               identity: "test2@example.com",
               password: "1234567890",
-              ...(mfaId === undefined ? {} : { mfaId }),
-            });
+            };
+            if (mfaId !== undefined) {
+              body.mfaId = mfaId;
+            }
+            return api(server, "POST", "/api/collections/users/auth-with-password", body);
+          };
 
           const first = await signIn(server);
           const mfaId = first.json["mfaId"] as string;

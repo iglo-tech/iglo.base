@@ -217,7 +217,7 @@ function goToLower(s: string): string {
   let out = "";
   for (const c of s) {
     const l = c.toLowerCase();
-    out += [...l].length === 1 ? l : c;
+    out += Array.from(l).length === 1 ? l : c;
   }
   return out;
 }

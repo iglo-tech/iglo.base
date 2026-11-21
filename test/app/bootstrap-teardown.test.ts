@@ -37,6 +37,7 @@ test("clearBootstrap closes everything even if a step fails, and reports the err
   // a connection is open: the WAL files exist
   expect(walFiles(dataDir).length).toBeGreaterThan(0);
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   (app.cron as unknown as { waitForRunning: () => Promise<void> }).waitForRunning = () =>
     Promise.reject(new Error("cron did not stop"));
 
@@ -58,8 +59,10 @@ test("clearBootstrap names every failing step in its error message", async () =>
   const dataDir = join(tempDir(), "pb_data");
   copyDataDir(fixtureDir, dataDir);
   const app = await bootstrap(config(dataDir));
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const cron = app.cron as unknown as { waitForRunning: () => Promise<void> };
   cron.waitForRunning = () => Promise.reject(new Error("cron did not stop"));
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const thumbs = app.thumbs as unknown as { close: () => Promise<void> };
   thumbs.close = () => Promise.reject(new Error("thumbs did not close"));
 

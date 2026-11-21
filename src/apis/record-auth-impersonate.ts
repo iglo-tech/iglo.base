@@ -32,6 +32,7 @@ export async function recordAuthImpersonate(e: RequestEvent): Promise<HandlerRes
   }
 
   const form: ImpersonateForm = { Duration: 0 };
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as { [key: string]: unknown }, impersonateType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);

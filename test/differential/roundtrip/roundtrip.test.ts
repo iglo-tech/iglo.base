@@ -70,12 +70,14 @@ function alteredDiff(
   const dataDir = join(tempRoot(), "pb_data");
   cpSync(control.dataDir, dataDir, { recursive: true });
   change(dataDir);
-  const options = {
+  const options: Parameters<typeof takeSnapshot>[1] = {
     start,
     startedAt: control.startedAt,
     generatedIds: control.state.generatedIds,
-    ...(control.encryptionKey === undefined ? {} : { encryptionKey: control.encryptionKey }),
   };
+  if (control.encryptionKey !== undefined) {
+    options.encryptionKey = control.encryptionKey;
+  }
   return diffSnapshots(
     takeSnapshot(control.dataDir, options),
     takeSnapshot(dataDir, igloThumbs ? { ...options, igloThumbs: thumbPaths(dataDir) } : options),

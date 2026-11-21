@@ -131,12 +131,15 @@ function all(...steps: Array<Step>): Step {
 type Target = Pick<Scenario, "method" | "url" | "body" | "headers">;
 
 function post(collection: string, path: string, body: unknown, token?: string): Target {
-  return {
+  const target: Target = {
     method: "POST",
     url: `/api/collections/${collection}/${path}`,
     body: typeof body === "string" ? body : JSON.stringify(body),
-    ...(token === undefined ? {} : { headers: { Authorization: token } }),
   };
+  if (token !== undefined) {
+    target.headers = { Authorization: token };
+  }
+  return target;
 }
 
 const requestVerification = (collection: string, body: unknown): Target =>
@@ -207,6 +210,7 @@ function setPasswordAuth(collection: string, enabled: boolean): Step {
 function setEmailDomains(collection: string, onlyDomains: Array<string>): Step {
   return ({ dataDir }) =>
     updateCollection(dataDir, collection, (c) => {
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       const field = c.fields.getByName("email") as unknown as { onlyDomains: Array<string> };
       field.onlyDomains = onlyDomains;
     });
@@ -558,6 +562,7 @@ export function tokenCases(): Array<Scenario> {
       ...confirmReset(mint("passwordReset", "users", userId)),
       prepare: ({ dataDir }) =>
         updateCollection(dataDir, "users", (c) => {
+          // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
           (c.fields.getByName("password") as unknown as { pattern: string }).pattern = "^x+$";
         }),
       expectedStatus: 400,
@@ -575,6 +580,7 @@ export function tokenCases(): Array<Scenario> {
           db.close();
         }
         updateCollection(dataDir, "users", (c) => {
+          // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
           (c.fields.getByName("name") as unknown as { required: boolean }).required = true;
         });
       },

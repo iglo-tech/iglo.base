@@ -104,7 +104,7 @@ export class BytesReader implements FileReader {
   }
 
   blob(): Blob {
-    this.#blob ??= new Blob([this.bytes as Uint8Array<ArrayBuffer>]);
+    this.#blob ??= new Blob([this.bytes]);
     return this.#blob;
   }
 }

@@ -157,6 +157,7 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
     case "function":
     case "symbol":
       throw new JSONSemanticError(`cannot marshal ${typeof value}`);
+    case "object":
   }
   if (value === null) {
     return "null";
@@ -193,7 +194,7 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
   if (isInstance<Map<unknown, unknown>>(Map, value)) {
     const names: Array<string> = [];
     const values: Array<unknown> = [];
-    for (const [k, v] of value as Map<unknown, unknown>) {
+    for (const [k, v] of value) {
       names.push(typeof k === "string" ? k : String(k));
       values.push(v);
     }
@@ -984,6 +985,7 @@ class Parser {
         return this.literal("true", true);
       case "f":
         return this.literal("false", false);
+      case undefined:
     }
     const n = consumeNumber(this.s, this.i);
     this.i += n;
@@ -1361,6 +1363,11 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
         return convert(node, stringType, undefined, legacy);
       case "boolean":
         return convert(node, boolType, undefined, legacy);
+      case "bigint":
+      case "function":
+      case "object":
+      case "symbol":
+      case "undefined":
     }
     if (Array.isArray(existing)) {
       return convert(node, sliceOf(anyType), undefined, legacy);

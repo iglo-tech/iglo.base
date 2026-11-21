@@ -88,10 +88,10 @@ export interface StartingData {
 // Reads the starting data from a pb_data directory that no server uses.
 export function readStartingData(dataDir: string): StartingData {
   const bytes = Buffer.concat(
-    ["data.db", "data.db-wal", "auxiliary.db", "auxiliary.db-wal"]
-      .map((name) => join(dataDir, name))
-      .filter((path) => existsSync(path))
-      .map((path) => readFileSync(path)),
+    ["data.db", "data.db-wal", "auxiliary.db", "auxiliary.db-wal"].flatMap((name) => {
+      const path = join(dataDir, name);
+      return existsSync(path) ? [readFileSync(path)] : [];
+    }),
   );
   return { contains: (value) => bytes.indexOf(value) !== -1 };
 }

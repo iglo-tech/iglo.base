@@ -427,7 +427,7 @@ export default class Client {
         options = result.options || options;
       } else if (Object.keys(result).length) {
         // legacy behavior
-        options = result as SendOptions;
+        options = result;
         // oxlint-disable-next-line no-unused-expressions -- upstream short-circuit logging
         console?.warn &&
           console.warn(
@@ -458,50 +458,53 @@ export default class Client {
     const fetchFunc = options.fetch || fetch;
 
     // send the request
-    return fetchFunc(url, options)
-      .then(async (response) => {
-        let data: unknown = {};
+    return (
+      fetchFunc(url, options)
+        .then(async (response) => {
+          let data: unknown = {};
 
-        try {
-          data = await response.json();
-        } catch (error) {
-          // @todo map against the response content type
-          // all api responses are expected to return json
-          // with exception of the realtime events and 204
-          if (
-            options.signal?.aborted ||
-            (error as ErrorLike | undefined)?.name == "AbortError" ||
-            (error as ErrorLike | undefined)?.message == "Aborted"
-          ) {
-            throw error;
+          try {
+            data = await response.json();
+          } catch (error) {
+            // @todo map against the response content type
+            // all api responses are expected to return json
+            // with exception of the realtime events and 204
+            if (
+              options.signal?.aborted ||
+              (error as ErrorLike | undefined)?.name == "AbortError" ||
+              (error as ErrorLike | undefined)?.message == "Aborted"
+            ) {
+              throw error;
+            }
           }
-        }
 
-        if (this.afterSend) {
-          data = await this.afterSend(response, data, options);
-        }
+          if (this.afterSend) {
+            data = await this.afterSend(response, data, options);
+          }
 
-        if (response.status >= 400) {
-          throw new ClientResponseError({
-            url: response.url,
-            status: response.status,
-            data,
-          });
-        }
+          if (response.status >= 400) {
+            throw new ClientResponseError({
+              url: response.url,
+              status: response.status,
+              data,
+            });
+          }
 
-        return data as T;
-      })
-      .catch((error: unknown) => {
-        // wrap to normalize all errors
-        throw new ClientResponseError(error);
-      })
-      .catch((error: ClientResponseError) => {
-        if (this.enableAutoClearAuthStore && error.status == 401) {
-          this.authStore.clear();
-        }
+          return data as T;
+        })
+        .catch((error: unknown) => {
+          // wrap to normalize all errors
+          throw new ClientResponseError(error);
+        })
+        // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
+        .catch((error: ClientResponseError) => {
+          if (this.enableAutoClearAuthStore && error.status == 401) {
+            this.authStore.clear();
+          }
 
-        throw error;
-      });
+          throw error;
+        })
+    );
   }
 
   /**

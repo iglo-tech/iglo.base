@@ -40,9 +40,9 @@ export class ClientResponseError extends Error {
       this.isAbort = !!err.isAbort || err.name === "AbortError" || err.message === "Aborted";
 
       if (err.response !== null && typeof err.response === "object") {
-        this.response = err.response as LooseObject;
+        this.response = err.response;
       } else if (err.data !== null && typeof err.data === "object") {
-        this.response = err.data as LooseObject;
+        this.response = err.data;
       } else {
         this.response = {};
       }
@@ -83,6 +83,6 @@ export class ClientResponseError extends Error {
    * @see https://github.com/vuex-orm/vuex-orm/issues/255
    */
   toJSON() {
-    return { ...this };
+    return Object.assign({}, this);
   }
 }

@@ -78,11 +78,14 @@ async function request(
   path: string,
   body?: string,
 ): Promise<{ status: number; text: string }> {
-  const res = await fetch(`${target.url}${path}`, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json", authorization: token },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${target.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 

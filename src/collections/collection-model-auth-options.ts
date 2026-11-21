@@ -634,7 +634,7 @@ export class OTPConfig {
   }
 
   clone(): OTPConfig {
-    return new OTPConfig({ ...this, emailTemplate: this.emailTemplate.clone() });
+    return new OTPConfig(Object.assign({}, this, { emailTemplate: this.emailTemplate.clone() }));
   }
 
   // DurationTime returns the current Duration as Go's time.Duration

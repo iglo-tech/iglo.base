@@ -135,9 +135,10 @@ export function recordProblems(
   collection: Collection,
   fieldNames: ReadonlyArray<string>,
 ): Array<Problem> {
-  const fields = fieldNames
-    .map((name) => collection.fields.getByName(name))
-    .filter((field) => field !== null);
+  const fields = fieldNames.flatMap((name) => {
+    const field = collection.fields.getByName(name);
+    return field !== null ? [field] : [];
+  });
   if (fields.length === 0) {
     return [];
   }

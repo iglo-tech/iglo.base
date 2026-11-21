@@ -119,9 +119,12 @@ export async function api(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  return fetch(`${server.url}${path}`, {
+  const init: RequestInit = {
     method,
     headers: { authorization: server.token, "content-type": "application/json" },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+  return fetch(`${server.url}${path}`, init);
 }

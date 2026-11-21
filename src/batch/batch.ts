@@ -544,7 +544,7 @@ export function setItemBody(item: PreparedItem, body: Record<string, unknown>): 
   try {
     (request.form as Values).set(JSONPayloadKey, [marshal(body)]);
     const data: MapRef = { map: {} };
-    unmarshalRequestData(request.form as Values, data);
+    unmarshalRequestData(request.form, data);
     requestInfo.body = data.map;
   } catch (error) {
     item.requestErr = error instanceof Error ? error : new Error(String(error));

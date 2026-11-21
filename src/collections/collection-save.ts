@@ -69,6 +69,7 @@ import {
   realtimeCollectionUpdate,
 } from "@/realtime/realtime-events";
 import { relabelRateLimitRules } from "@/settings/settings-query";
+import type { SettingsSaveApp } from "@/settings/settings-query";
 import type { Params } from "@/db/dbx/query";
 import type { Model } from "@/db/model";
 import { deleteTable, deleteView } from "@/db/table";
@@ -199,20 +200,20 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
 
     // update existing rate limit rules on collection rename
     if (oldName !== null && app.settings !== undefined) {
-      relabelRateLimitRules(
-        {
-          databases: app.databases,
-          clock: app.clock,
-          encryptionEnv: app.encryptionEnv ?? "",
-          getenv: (name) => app.getenv?.(name) ?? "",
-          store: app.store,
-          ...(app.notify === undefined ? {} : { notify: app.notify }),
-          ...(app.cron === undefined ? {} : { cron: app.cron }),
-        },
-        app.settings,
-        oldName,
-        collection.name,
-      );
+      const relabelApp: { -readonly [K in keyof SettingsSaveApp]: SettingsSaveApp[K] } = {
+        databases: app.databases,
+        clock: app.clock,
+        encryptionEnv: app.encryptionEnv ?? "",
+        getenv: (name) => app.getenv?.(name) ?? "",
+        store: app.store,
+      };
+      if (app.notify !== undefined) {
+        relabelApp.notify = app.notify;
+      }
+      if (app.cron !== undefined) {
+        relabelApp.cron = app.cron;
+      }
+      relabelRateLimitRules(relabelApp, app.settings, oldName, collection.name);
     }
 
     realtimeCollectionUpdate(app, collection, cachedAuth);

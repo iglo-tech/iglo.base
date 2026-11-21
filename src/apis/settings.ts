@@ -85,6 +85,7 @@ async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
   }
 
   const data = newSettings.settings;
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(newSettings as unknown as Record<string, unknown>, settingsType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
@@ -197,6 +198,7 @@ async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
 
   // load request
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as Record<string, unknown>,
     testS3FilesystemType,
   );
@@ -344,6 +346,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
   const form: TestEmailSend = { Email: "", Template: "", Collection: "" };
 
   // load request
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, testEmailSendType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
@@ -444,6 +447,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
 
   // load request
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as Record<string, unknown>,
     appleClientSecretCreateType,
   );

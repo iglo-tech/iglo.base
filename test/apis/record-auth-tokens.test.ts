@@ -49,12 +49,13 @@ async function withServer(dataDir: string, fn: (url: string) => Promise<void>): 
 }
 
 function post(url: string, path: string, body: unknown, token?: string): Promise<Response> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token !== undefined) {
+    headers.Authorization = token;
+  }
   return fetch(`${url}/api/collections/users/${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token === undefined ? {} : { Authorization: token }),
-    },
+    headers,
     body: JSON.stringify(body),
   });
 }
@@ -170,7 +171,7 @@ describe("the mailed tokens", () => {
       const request = await post(url, "request-email-change", { newEmail }, usersToken);
       expect(request.status).toBe(204);
       // sent before the response
-      const message = (messagesSince(since, link)[0] as SinkMessage | undefined) ?? null;
+      const message = messagesSince(since, link)[0] ?? null;
       expect(message?.to).toEqual([newEmail]);
       const token = mailedToken(message as SinkMessage, link);
 

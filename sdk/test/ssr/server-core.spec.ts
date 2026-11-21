@@ -533,7 +533,7 @@ describe("SSR server core: round-1 regressions", () => {
         method: "GET",
         url: `${API}/api/collections/users/records/u_bs`,
         additionalMatcher: (_url, config) => {
-          seen.push(config as RequestInit);
+          seen.push(config);
           return true;
         },
         replyCode: 200,

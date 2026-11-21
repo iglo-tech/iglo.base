@@ -236,11 +236,12 @@ function distance(a: string, b: string): number {
 }
 
 function suggestionsFor(typed: string): string {
-  const matches = subcommands
-    .map((cmd) => cmd.name)
-    .filter(
-      (name) => distance(typed, name) <= 2 || name.toLowerCase().startsWith(typed.toLowerCase()),
-    );
+  const matches = subcommands.flatMap((cmd) => {
+    const name = cmd.name;
+    return distance(typed, name) <= 2 || name.toLowerCase().startsWith(typed.toLowerCase())
+      ? [name]
+      : [];
+  });
   return matches.length > 0
     ? `\n\nDid you mean this?\n${matches.map((name) => `\t${name}\n`).join("")}`
     : "";

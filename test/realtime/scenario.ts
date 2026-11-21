@@ -138,7 +138,7 @@ export function response(res: HttpResult): Observation {
 
 // the events of a stream after PB_CONNECT, as observed
 export function events(list: Array<SseEvent>): Array<Observation> {
-  return list.filter((e) => e.event !== "PB_CONNECT").map((e) => ({ ...e }));
+  return list.flatMap((e) => (e.event !== "PB_CONNECT" ? [{ ...e }] : []));
 }
 
 // the events once the stream had none new for a while

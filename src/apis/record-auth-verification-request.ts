@@ -37,6 +37,7 @@ export async function recordRequestVerification(e: RequestEvent): Promise<Handle
 
   const form: RecordRequestVerificationForm = { Email: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordRequestVerificationType,
   );
@@ -91,7 +92,7 @@ async function sendVerificationInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
-  token: object,
+  token: { [key: string]: unknown },
 ): Promise<void> {
   const app = e.app;
   try {

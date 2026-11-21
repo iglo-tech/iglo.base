@@ -98,8 +98,12 @@ async function request(
   headers: { [name: string]: string },
 ): Promise<Outcome | { error: string }> {
   try {
+    const requestHeaders: { [name: string]: string } = { ...headers };
+    if (tokens[who] !== "") {
+      requestHeaders.authorization = tokens[who];
+    }
     const res = await fetch(base + path, {
-      headers: { ...headers, ...(tokens[who] === "" ? {} : { authorization: tokens[who] }) },
+      headers: requestHeaders,
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
     const text = await res.text();

@@ -14,13 +14,7 @@ import { storedProviders } from "@/schema/providers";
 import { isPlainObject } from "@/schema/values";
 import type { SchemaDescription } from "@/schema/types";
 import { ruleKeys } from "@/schema/types";
-import type {
-  CollectionType,
-  SchemaCollection,
-  SchemaField,
-  SchemaObject,
-  SchemaValue,
-} from "@/schema/types";
+import type { CollectionType, SchemaCollection, SchemaField, SchemaObject } from "@/schema/types";
 
 // the name of a collection by its id ("" for no collection)
 export type NameOf = (collectionId: string) => string;
@@ -98,7 +92,7 @@ export function describeFieldJSON(api: SchemaObject, nameOf: NameOf): SchemaFiel
       options.collection = nameOf(value as string);
       continue;
     }
-    options[key] = value as SchemaValue;
+    options[key] = value;
   }
   return {
     name: api.name as string,

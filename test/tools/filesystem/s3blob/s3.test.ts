@@ -87,7 +87,7 @@ async function withStubbedFetch<T>(
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init: init ?? {} });
     return new Response("test_response");
-  }) as unknown as typeof fetch;
+  }) as typeof fetch;
   try {
     return { result: await run(), calls };
   } finally {

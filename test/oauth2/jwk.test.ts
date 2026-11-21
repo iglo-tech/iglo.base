@@ -19,7 +19,7 @@ const edPair = generateKeyPairSync("ed25519");
 const edJWK = edPair.publicKey.export({ format: "jwk" });
 
 // a compact JWT: header and payload are signed as base64url text
-function signJWT(header: object, key: KeyObject, alg: "EdDSA" | "RS256"): string {
+function signJWT(header: Record<string, unknown>, key: KeyObject, alg: "EdDSA" | "RS256"): string {
   const signingInput = b64url(JSON.stringify(header)) + "." + b64url("{}");
   const data = Buffer.from(signingInput);
   const signature = alg === "EdDSA" ? sign(null, data, key) : sign("sha256", data, key);

@@ -115,6 +115,9 @@ export function toInt64(i: unknown): GoInt {
       const v = parseInt64(trimDecimal(i));
       return v === null ? 0 : goInt(v);
     }
+    case "function":
+    case "object":
+    case "symbol":
   }
   return 0;
 }

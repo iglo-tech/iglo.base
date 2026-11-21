@@ -25,7 +25,10 @@ function topic(name: string, options: { query?: object; headers?: object }): str
 }
 
 // rt_posts: public list and view rules, a hidden field and an owner relation
-async function createPosts(ctx: ScenarioContext, rules: object = {}): Promise<string> {
+async function createPosts(
+  ctx: ScenarioContext,
+  rules: Record<string, unknown> = {},
+): Promise<string> {
   return ctx.createCollection({
     name: "rt_posts",
     type: "base",
@@ -45,7 +48,7 @@ async function createPosts(ctx: ScenarioContext, rules: object = {}): Promise<st
 async function post(
   ctx: ScenarioContext,
   id: string,
-  data: object = {},
+  data: Record<string, unknown> = {},
   collection = "rt_posts",
 ): Promise<Observation> {
   return response(
@@ -115,7 +118,7 @@ function sortKeysDeep(v: unknown): unknown {
 }
 
 // rt_review: title and text, with the given rules
-async function createReview(ctx: ScenarioContext, rules: object): Promise<string> {
+async function createReview(ctx: ScenarioContext, rules: Record<string, unknown>): Promise<string> {
   return ctx.createCollection({
     name: "rt_review",
     type: "base",

@@ -468,7 +468,7 @@ describe("schema apply and schema plan", () => {
       const options = JSON.parse(String(row.options)) as Json;
       return {
         secret: ((options.authToken as Json).secret as string) ?? "",
-        providers: JSON.stringify(((options.oauth2 as Json).providers as unknown) ?? null),
+        providers: JSON.stringify((options.oauth2 as Json).providers ?? null),
       };
     };
     const secrets = stored();

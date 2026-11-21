@@ -470,7 +470,7 @@ describe("Client", () => {
         replyCode: 200,
         replyBody: "123",
         additionalMatcher(url, config) {
-          return url == newUrl && (config?.headers as any)?.["X-Custom-Header"] == "456";
+          return url == newUrl && config?.headers?.["X-Custom-Header"] == "456";
         },
       });
 
@@ -498,7 +498,7 @@ describe("Client", () => {
         replyCode: 200,
         replyBody: "123",
         additionalMatcher(url, config) {
-          return url == newUrl && (config?.headers as any)?.["X-Custom-Header"] == "456";
+          return url == newUrl && config?.headers?.["X-Custom-Header"] == "456";
         },
       });
 

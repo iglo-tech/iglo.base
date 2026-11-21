@@ -41,6 +41,7 @@ export async function recordConfirmEmailChange(e: RequestEvent): Promise<Handler
 
   const form: EmailChangeConfirmForm = { Token: "", Password: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     emailChangeConfirmType,
   );
@@ -54,7 +55,7 @@ export async function recordConfirmEmailChange(e: RequestEvent): Promise<Handler
   // same order, with this result computed first
   let passwordValid: boolean | undefined;
   const pw = form.Password;
-  if (typeof pw === "string" && pw !== "" && [...pw].length <= 100) {
+  if (typeof pw === "string" && pw !== "" && Array.from(pw).length <= 100) {
     const pre = parseToken(form, e.app, collection);
     if (!("err" in pre)) {
       passwordValid = await recordValidatePasswordAsync(pre.authRecord, pw);

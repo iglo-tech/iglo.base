@@ -758,13 +758,17 @@ async function quality(
         "worst size (largest channel)",
       ],
       names.map((n) => {
-        const list = mine
-          .filter((r) => r[1] === n)
-          .map((r) => ({
-            size: r[2] as string,
-            e: String(r[3]).split(" / ").map(Number),
-            b: String(r[4]).split(" / ").map(Number),
-          }));
+        const list = mine.flatMap((r) =>
+          r[1] === n
+            ? [
+                {
+                  size: r[2] as string,
+                  e: String(r[3]).split(" / ").map(Number),
+                  b: String(r[4]).split(" / ").map(Number),
+                },
+              ]
+            : [],
+        );
         const mean = (key: "e" | "b"): string =>
           [0, 1, 2, 3]
             .map((ch) =>

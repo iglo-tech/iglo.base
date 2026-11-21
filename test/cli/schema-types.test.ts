@@ -288,7 +288,7 @@ describe("schema types", () => {
     const site = await createSite();
     const broken = structuredClone(typesSchema);
     // more selected values than the field has values: the apply refuses it
-    broken.collections.posts.fields.tags = { type: "select", values: ["a"], maxSelect: 3 } as never;
+    broken.collections.posts.fields.tags = { type: "select", values: ["a"], maxSelect: 3 };
     const schema = writeSchema(site.root, "broken.json", broken);
     const out = join(site.root, "broken.ts");
     const result = await run([

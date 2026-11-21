@@ -208,7 +208,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return [val.at(-1) as string, null]; // the last selected
+        return [val.at(-1), null]; // the last selected
       }
       return ["", null];
     }

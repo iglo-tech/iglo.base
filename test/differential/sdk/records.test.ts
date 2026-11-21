@@ -197,7 +197,7 @@ describe("Client", () => {
         method: "POST",
         body: { title: "from send" },
         fields: "title",
-      } as never),
+      }),
     );
     await env.fails("send 404", () => pb.send("/api/nope", {}));
     env.record("filter", {

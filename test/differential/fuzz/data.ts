@@ -57,14 +57,13 @@ export const tagRecords: Array<string> = [
   ["hidden", 0],
   ["50%", 100],
   ["", 0],
-].map(([name, weight], i) =>
-  JSON.stringify({
-    id: tagIds[i],
-    name,
-    weight,
-    ...(i % 2 === 0 ? { owner: "4q1xlclmfloku33" } : {}),
-  }),
-);
+].map(([name, weight], i) => {
+  const row: Record<string, unknown> = { id: tagIds[i], name, weight };
+  if (i % 2 === 0) {
+    row.owner = "4q1xlclmfloku33";
+  }
+  return JSON.stringify(row);
+});
 
 // after the fixture's last autodate and far from any run's clock
 export const fixedAutodates: Array<string> = [

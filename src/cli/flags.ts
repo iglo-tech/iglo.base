@@ -217,7 +217,9 @@ export function parseFlags(
 ): ParsedFlags {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
   const byShorthand = new Map(
-    specs.filter((spec) => spec.shorthand).map((spec) => [spec.shorthand, spec]),
+    specs.flatMap((spec): Array<[string, FlagSpec]> =>
+      spec.shorthand ? [[spec.shorthand, spec]] : [],
+    ),
   );
   const values = new Map<string, FlagValue>();
   const positional: Array<string> = [];
@@ -317,7 +319,9 @@ export function parseFlags(
 export function stripFlags(argv: Array<string>, specs: Array<FlagSpec>): Array<string> {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
   const byShorthand = new Map(
-    specs.filter((spec) => spec.shorthand).map((spec) => [spec.shorthand, spec]),
+    specs.flatMap((spec): Array<[string, FlagSpec]> =>
+      spec.shorthand ? [[spec.shorthand, spec]] : [],
+    ),
   );
   const commands: Array<string> = [];
   let args = argv;
@@ -356,7 +360,9 @@ export function argsMinusFirst(
 ): Array<string> {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
   const byShorthand = new Map(
-    specs.filter((spec) => spec.shorthand).map((spec) => [spec.shorthand, spec]),
+    specs.flatMap((spec): Array<[string, FlagSpec]> =>
+      spec.shorthand ? [[spec.shorthand, spec]] : [],
+    ),
   );
   for (let i = 0; i < argv.length; i++) {
     const s = argv[i] ?? "";

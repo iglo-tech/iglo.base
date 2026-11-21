@@ -160,10 +160,14 @@ const requests: Array<Request> = [
 ];
 
 async function send(url: string, r: Request): Promise<void> {
+  const headers: Record<string, string> = { ...r.headers };
+  if (r.token) {
+    headers.Authorization = r.token;
+  }
   const res = await fetch(url + r.path, {
     method: r.method ?? "GET",
     redirect: "manual",
-    headers: { ...r.headers, ...(r.token ? { Authorization: r.token } : {}) },
+    headers,
     body: r.body,
   });
   await res.arrayBuffer();
@@ -183,8 +187,11 @@ function readRows(dataDir: string): Array<Row> {
 // the time and id of a row differ; everything else is compared as stored
 function normalized(rows: Array<Row>): Array<string> {
   return rows
-    .filter((row) => row.message !== "GET /api/health") // the harness's ready checks
-    .map((row) => {
+    .flatMap((row) => {
+      if (row.message === "GET /api/health") {
+        // the harness's ready checks
+        return [];
+      }
       expect(row.created).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);
       // a request row has its time; a debug row (realtime) has none
       if (row.data.includes('"type":"request"')) {
@@ -195,7 +202,7 @@ function normalized(rows: Array<Row>): Array<string> {
         .replace(/"clientId":"[^"]*"/, '"clientId":""');
       // a batch failure's details are a Go map marshaled without an order
       const data = row.message === "POST /api/batch" ? sortedKeys(raw) : raw;
-      return `${row.level} ${row.message} ${data}`;
+      return [`${row.level} ${row.message} ${data}`];
     })
     .toSorted();
 }
@@ -352,7 +359,7 @@ describe("request logs", () => {
         stats.push((await res.text()).replaceAll(/"date":"[^"]+"/g, '"date":""'));
         await server.stop();
       }
-      expect(stats[1]).toBe(stats[0]!);
+      expect(stats[1]).toBe(stats[0]);
     },
     timeout,
   );

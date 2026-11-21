@@ -78,14 +78,20 @@ export function buildModel(
     model.collections.set(name, {
       name,
       type: c.type,
-      fields: c.fields.map((f) => ({
-        name: f.name,
-        type: f.type,
-        hidden: f.hidden === true,
-        multiple: (f.maxSelect ?? 1) > 1,
-        ...(f.type === "relation" ? { target: namesById.get(f.collectionId ?? "") ?? "" } : {}),
-        samples: samplesOf(f, rows),
-      })),
+      fields: c.fields.map((f) => {
+        const relation: Pick<FieldModel, "target"> = {};
+        if (f.type === "relation") {
+          relation.target = namesById.get(f.collectionId ?? "") ?? "";
+        }
+        return {
+          name: f.name,
+          type: f.type,
+          hidden: f.hidden === true,
+          multiple: (f.maxSelect ?? 1) > 1,
+          ...relation,
+          samples: samplesOf(f, rows),
+        };
+      }),
       backRelations: [],
       ids: rows.map((row) => String(row.id)).toSorted(),
     });

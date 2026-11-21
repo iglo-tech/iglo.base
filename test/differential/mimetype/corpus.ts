@@ -470,7 +470,7 @@ add(
   cdfEmbedded(
     "Microsoft Office Word",
     "Microsoft Office Word",
-    Uint8Array.from([..."Workbook"].flatMap((c) => [c.charCodeAt(0), 0])),
+    Uint8Array.from(Array.from("Workbook").flatMap((c) => [c.charCodeAt(0), 0])),
   ),
 );
 

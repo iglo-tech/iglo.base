@@ -59,7 +59,13 @@ test("many vs one", () => {
     `((([[a.x]] = {:p0}) AND (NOT EXISTS (SELECT 1 FROM (${subA}) {{__sm1}} WHERE NOT ([[__sm1.multiMatchValue]] = {:p0})))))`,
   );
   // the subquery params are merged into the root params
-  expect(Object.values(params).toSorted()).toEqual(["a", "v"]);
+  expect(
+    Object.values(params).toSorted((a, b) => {
+      const x = String(a);
+      const y = String(b);
+      return x < y ? -1 : x > y ? 1 : 0;
+    }),
+  ).toEqual(["a", "v"]);
 });
 
 test("one vs many (inverse)", () => {

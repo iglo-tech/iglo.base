@@ -36,6 +36,7 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
   }
 
   const form: AuthWithOTPForm = { OTPId: "", Password: "" };
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as { [key: string]: unknown }, authWithOTPType);
   if (bindErr) {
     return firstApiError(

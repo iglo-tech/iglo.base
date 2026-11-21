@@ -24,7 +24,7 @@ import type { Raw } from "@/../scripts/spikes/M0.7/png";
 export function decodeConfig(b: Uint8Array): Size {
   const match = (pattern: string): boolean =>
     b.length >= pattern.length &&
-    [...pattern].every((c, i) => c === "?" || b[i] === c.charCodeAt(0));
+    Array.from(pattern).every((c, i) => c === "?" || b[i] === c.charCodeAt(0));
   if (match("\u00ff\u00d8")) {
     return jpegConfig(b);
   }

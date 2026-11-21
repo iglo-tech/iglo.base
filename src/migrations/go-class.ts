@@ -169,7 +169,7 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
       return host;
     }
     case "P":
-      return (v === undefined || v === null ? {} : m.toHost(v)) as object;
+      return v === undefined || v === null ? {} : m.toHost(v);
     case "S":
       return toSql(m, v);
     case "H":
@@ -242,6 +242,7 @@ function goResult(m: Membrane, signature: string, value: unknown): unknown {
 
 export function goMethod(
   m: Membrane,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   target: object,
   key: string,
   method: Method,
@@ -592,6 +593,7 @@ function assignStruct(
   return target;
 }
 
+// oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
 function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknown {
   const fields = holder as Record<string, unknown>;
   const value = fields[name];
@@ -647,6 +649,7 @@ export function classAdapter(cls: GoClass, overrides: Partial<Adapter> = {}): Ad
         return () => String(target);
       }
       if (key in m.vm.objectPrototype) {
+        // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(m.vm.objectPrototype, key) as unknown;
       }
       return undefined;
@@ -944,24 +947,29 @@ const fieldClass = (
   own: Readonly<Record<string, GoType>>,
   methods: Readonly<Record<string, Method>> = {},
   help = true,
-): GoClass => ({
-  fields: {
+): GoClass => {
+  const fields: Record<string, GoType> = {
     name: "string",
     id: "string",
     system: "bool",
     hidden: "bool",
     presentable: "bool",
-    ...(help ? { help: "string" } : {}),
-    ...own,
-  },
-  methods: {
-    ...fieldMethods,
-    prepareValue: tuple("prepareValue", 2),
-    validateValue: errorResult("validateValue"),
-    validateSettings: errorResult("validateSettings"),
-    ...methods,
-  },
-});
+  };
+  if (help) {
+    fields.help = "string";
+  }
+  Object.assign(fields, own);
+  return {
+    fields,
+    methods: {
+      ...fieldMethods,
+      prepareValue: tuple("prepareValue", 2),
+      validateValue: errorResult("validateValue"),
+      validateSettings: errorResult("validateSettings"),
+      ...methods,
+    },
+  };
+};
 
 const setter = { findSetter: "s" };
 const multiple = { isMultiple: "" };

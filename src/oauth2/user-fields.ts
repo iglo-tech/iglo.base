@@ -10,7 +10,7 @@
 // values, marshaled back in upstream's form (AuthUser.toMeta).
 
 import { anyType, mapOf, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
-import type { GoInt, GoType } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 
 type Fields<T> = { [K in keyof T]-?: GoType };
 
@@ -52,7 +52,7 @@ export function decodeFields<T>(data: Uint8Array, fields: Fields<T>): T {
       out[name] = value;
     };
   }
-  unmarshalStruct(data, setters, fields as Record<string, GoType>, () => {});
+  unmarshalStruct(data, setters, fields, () => {});
   return out as T;
 }
 
@@ -87,7 +87,7 @@ function valueOf(value: unknown, t: GoType): unknown {
       if (typeof value !== "number") {
         throw new Error("json: cannot unmarshal into Go struct field of a number type");
       }
-      return value as GoInt;
+      return value;
     default:
       throw new Error("json: unsupported nested member type");
   }

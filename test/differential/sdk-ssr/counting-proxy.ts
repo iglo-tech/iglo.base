@@ -28,12 +28,15 @@ const server = Bun.serve({
     const headers = new Headers(req.headers);
     headers.set("host", target.host);
     const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== null;
-    return fetch(new URL(url.pathname + url.search, target), {
+    const init = {
       method: req.method,
       headers,
       body: hasBody ? req.body : undefined,
-      ...(hasBody ? { duplex: "half" } : {}),
-    });
+    };
+    if (hasBody) {
+      Object.assign(init, { duplex: "half" });
+    }
+    return fetch(new URL(url.pathname + url.search, target), init);
   },
 });
 

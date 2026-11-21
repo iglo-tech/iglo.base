@@ -381,7 +381,7 @@ export function base64Decode(src: Uint8Array): Uint8Array {
 }
 
 const decodeMap = new Int8Array(256).fill(-1);
-for (const [i, ch] of [...alphabet].entries()) {
+for (const [i, ch] of Array.from(alphabet).entries()) {
   decodeMap[ch.charCodeAt(0)] = i;
 }
 

@@ -20,14 +20,15 @@ export async function req(
   body?: Uint8Array | string,
   contentType?: string,
 ): Promise<Res> {
-  const res = await fetch(url + path, {
-    method,
-    headers: {
-      authorization: superuserToken,
-      ...(contentType ? { "content-type": contentType } : {}),
-    },
-    ...(body === undefined ? {} : { body }),
-  });
+  const headers: Record<string, string> = { authorization: superuserToken };
+  if (contentType) {
+    headers["content-type"] = contentType;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(url + path, init);
   const bytes = new Uint8Array(await res.arrayBuffer());
   return {
     status: res.status,

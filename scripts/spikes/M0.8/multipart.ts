@@ -106,7 +106,7 @@ function rawRequest(
       const text = response.toString("latin1");
       const status = Number(/^HTTP\/1\.1 (\d{3})/.exec(text)?.[1] ?? 0);
       const at = text.indexOf("\r\n\r\n");
-      resolveResult({
+      const result: RawResult = {
         status,
         body: at >= 0 ? text.slice(at + 4, at + 4 + 300) : "",
         ms: performance.now() - started,
@@ -114,8 +114,11 @@ function rawRequest(
         bodyBytes: body.length,
         sent,
         received: response.length,
-        ...(error === undefined ? {} : { error }),
-      });
+      };
+      if (error !== undefined) {
+        result.error = error;
+      }
+      resolveResult(result);
     };
     const timer = setTimeout(() => finish("timeout"), 120_000);
     socket.on("data", (d: Buffer) => {

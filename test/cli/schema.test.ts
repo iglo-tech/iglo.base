@@ -32,7 +32,7 @@ function copyOf(source: string): string {
 async function pull(
   dataDir: string,
   ...extra: Array<string>
-): Promise<{ text: string; file: object }> {
+): Promise<{ text: string; file: Record<string, unknown> }> {
   const result = await run(["--dir", dataDir, "schema", "pull", ...extra]);
   // the only standard error a pull writes is the notes of the OAuth2 providers
   // (the variables to set; never a value, D40)
@@ -43,10 +43,10 @@ async function pull(
       .join("\n"),
   ).toBe("");
   expect(result.exitCode).toBe(0);
-  return { text: result.stdout, file: JSON.parse(result.stdout) as object };
+  return { text: result.stdout, file: JSON.parse(result.stdout) as Record<string, unknown> };
 }
 
-function assertValid(file: object): void {
+function assertValid(file: Record<string, unknown>): void {
   const ok = validate(file);
   expect(validate.errors ?? []).toEqual([]);
   expect(ok).toBe(true);
@@ -119,26 +119,19 @@ function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection
         }
       }
       if (isObject(options.oauth2)) {
-        const { providers: _providers, ...rest } = options.oauth2 as Record<string, unknown>;
+        const { providers: _providers, ...rest } = options.oauth2;
         options.oauth2 = rest;
       }
       const fields: Array<SchemaField> =
         item.type === "view"
           ? []
           : (item.fields ?? []).map((field) => {
-              const {
-                id: _id,
-                name,
-                type,
-                system,
-                collectionId,
-                ...rest
-              } = field as Record<string, unknown>;
+              const { id: _id, name, type, system, collectionId, ...rest } = field;
               const fieldOptions: Record<string, unknown> = { ...rest };
               if (collectionId !== undefined) {
                 fieldOptions.collection = names.get(collectionId as string) ?? "";
               }
-              return { name, type, system, options: fieldOptions } as unknown as SchemaField;
+              return { name, type, system, options: fieldOptions } as SchemaField;
             });
       const collection = {
         name: item.name,
@@ -148,7 +141,7 @@ function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection
         indexes: explicitIndexes(item),
         fields,
         options,
-      } as unknown as SchemaCollection;
+      } as SchemaCollection;
       if (item.type === "view") {
         collection.query = item.viewQuery;
       }
@@ -181,7 +174,7 @@ function comparable(collections: Array<SchemaCollection>): Array<SchemaCollectio
       ...rest,
       fields: rest.fields.map((field) => {
         const { description: _d, tsType: _t, ...fieldRest } = field;
-        return fieldRest as SchemaField;
+        return fieldRest;
       }),
     };
   });
@@ -483,7 +476,7 @@ describe("schema command", () => {
     const result = await run(["--dir", dataDir, "schema", "pull", "--dev"]);
     expect(result.exitCode).toBe(0);
     // stdout parses as the file: no log line or SQL statement is in it
-    const file = JSON.parse(result.stdout) as object;
+    const file = JSON.parse(result.stdout) as Record<string, unknown>;
     assertValid(file);
     expect(result.stderr).toContain("SELECT");
     expect(result.stderr).not.toContain("$schema");
@@ -505,7 +498,7 @@ describe("schema command", () => {
 
     const pulled = await run(["--dir", dataDir, "--migrationsDir", migrations, "schema", "pull"]);
     expect(pulled.exitCode).toBe(0);
-    assertValid(JSON.parse(pulled.stdout) as object);
+    assertValid(JSON.parse(pulled.stdout) as Record<string, unknown>);
     expect(pulled.stderr).toContain("migration output");
   });
 

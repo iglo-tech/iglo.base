@@ -308,6 +308,7 @@ describe("browser client", () => {
 
       const seen: Array<SeenEvent> = [];
       await pb.collection(collection).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         seen.push(e as unknown as SeenEvent);
       });
       await env.step("create (before renewal)", () =>
@@ -414,7 +415,7 @@ describe("browser client", () => {
       expect(flags.every((f) => !f.httpOnly)).toBe(true);
 
       // the page has no token: the browser client reads document.cookie
-      const scope = globalThis as unknown as Record<string, unknown>;
+      const scope = globalThis as Record<string, unknown>;
       const savedDocument = scope["document"];
       const savedLocation = scope["location"];
       const cookie = [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
@@ -428,6 +429,7 @@ describe("browser client", () => {
 
         const seen: Array<SeenEvent> = [];
         await pb.collection(collection).subscribe("*", (e) => {
+          // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
           seen.push(e as unknown as SeenEvent);
         });
         await env.step("create (fallback)", () =>
@@ -465,9 +467,11 @@ describe("browser client", () => {
       const seen: Array<string> = [];
       const received: Array<string> = [];
       await pb.collection(guarded).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         seen.push((e as unknown as SeenEvent).record.id);
       });
       await pb.collection(open).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         received.push((e as unknown as SeenEvent).record.id);
       });
 
@@ -522,9 +526,11 @@ describe("browser client", () => {
       const seen: Array<string> = [];
       const received: Array<string> = [];
       await pb.collection(collection).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         seen.push((e as unknown as SeenEvent).record.id);
       });
       await pb.collection(open).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         received.push((e as unknown as SeenEvent).record.id);
       });
 

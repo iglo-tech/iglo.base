@@ -387,21 +387,24 @@ export class RealtimeService extends BaseService {
     this.addAllSubscriptionListeners();
     this.lastSentSubscriptions = this.getNonEmptySubscriptionKeys();
 
-    return this.client
-      .send("/api/realtime", {
-        method: "POST",
-        body: {
-          clientId: this.clientId,
-          subscriptions: this.lastSentSubscriptions,
-        },
-        requestKey: this.getSubscriptionsCancelKey(),
-      })
-      .catch((error) => {
-        if (error?.isAbort) {
-          return; // silently ignore aborted pending requests
-        }
-        throw error;
-      });
+    return (
+      this.client
+        .send("/api/realtime", {
+          method: "POST",
+          body: {
+            clientId: this.clientId,
+            subscriptions: this.lastSentSubscriptions,
+          },
+          requestKey: this.getSubscriptionsCancelKey(),
+        })
+        // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
+        .catch((error) => {
+          if (error?.isAbort) {
+            return; // silently ignore aborted pending requests
+          }
+          throw error;
+        })
+    );
   }
 
   private addAllSubscriptionListeners(): void {
@@ -476,7 +479,7 @@ export class RealtimeService extends BaseService {
       if (!isCurrent()) {
         return;
       }
-      const msgEvent = e as MessageEvent;
+      const msgEvent = e;
       this.clientId = msgEvent?.lastEventId;
       this.lastSentSubscriptions = [];
 

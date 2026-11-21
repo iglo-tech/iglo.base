@@ -215,7 +215,7 @@ export class DateTime {
 
   // UnmarshalJSON: b must be a JSON string (null is ""), which is scanned.
   unmarshalJSON(b: string | Uint8Array): void {
-    this.scan(unmarshal(b, stringType) as string);
+    this.scan(unmarshal(b, stringType));
   }
 
   // Value implements the db driver Valuer: the String form.

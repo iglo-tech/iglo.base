@@ -1,6 +1,5 @@
 // What one log costs on the main thread, part by part (docs/perf/M5.5-logs.md).
 import { BatchHandler } from "@/logs/batch-handler";
-import type { Log } from "@/logs/batch-handler";
 import { logDBExport } from "@/logs/log-model";
 import { generateDefaultRandomId } from "@/db/db";
 import { auxRunInTransaction } from "@/db/tx";
@@ -40,7 +39,7 @@ time("random id", n, () => {
 });
 const rows: Array<{ [key: string]: unknown }> = [];
 time("export", n, () => {
-  for (const log of h.logs as Array<Log>) {
+  for (const log of h.logs) {
     rows.push(logDBExport("id", log, 0));
   }
 });
@@ -52,7 +51,7 @@ time("insert, one statement per log", m, () => {
     auxRunInTransaction(app.databases, (tx) => {
       const db = tx.auxNonconcurrentDB();
       for (let i = 0; i < 200; i++) {
-        db.insert("_logs", { ...rows[i], id: generateDefaultRandomId() } as never).execute();
+        db.insert("_logs", { ...rows[i], id: generateDefaultRandomId() }).execute();
       }
     });
   }
@@ -67,7 +66,7 @@ time("insert, one prepared statement", m, () => {
         )
         .prepare();
       for (let i = 0; i < 200; i++) {
-        q.bind({ ...rows[i], id: generateDefaultRandomId() } as never).execute();
+        q.bind({ ...rows[i], id: generateDefaultRandomId() }).execute();
       }
       q.close();
     });
@@ -89,7 +88,7 @@ time("insert, one statement per batch", m, () => {
       }
       tx.auxNonconcurrentDB()
         .newQuery(`INSERT INTO _logs (id, created, level, message, data) VALUES ${values.join()}`)
-        .bind(params as never)
+        .bind(params)
         .execute();
     });
   }

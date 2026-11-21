@@ -115,7 +115,7 @@ async function list(
 
 async function expectSameList(servers: [Server, Server], ids: Array<string>): Promise<void> {
   const [upstream, igloBase] = await Promise.all(servers.map((s) => list(s)));
-  expect(igloBase).toEqual(upstream!);
+  expect(igloBase).toEqual(upstream);
   const jobs = JSON.parse(upstream!.bytes) as Array<{ id: string }>;
   expect(jobs.map((j) => j.id)).toEqual(ids);
 }

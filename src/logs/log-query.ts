@@ -35,7 +35,7 @@ export function countLogs(
 
   const [total] = q.row();
 
-  return Number(total as bigint);
+  return Number(total);
 }
 
 // LogsStatsItem defines the total number of logs for a specific time period.

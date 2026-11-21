@@ -41,7 +41,7 @@ describe("AsyncAuthStore", () => {
       );
 
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
     });
 
     test("load initial from Promise<string>", async () => {
@@ -62,7 +62,7 @@ describe("AsyncAuthStore", () => {
       );
 
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
     });
 
     test("load initial from Promise<object>", async () => {
@@ -83,7 +83,7 @@ describe("AsyncAuthStore", () => {
       );
 
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
     });
 
     test("load initial from unexpected value (number/boolean) saves nothing", async () => {
@@ -118,12 +118,12 @@ describe("AsyncAuthStore", () => {
 
       store.save("test1", { id: "id1" } as any);
       assert.equal(store.token, "test1");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       // update
       store.save("test2", { id: "id2" } as any);
       assert.equal(store.token, "test2");
-      assert.deepEqual(store.record, { id: "id2" } as any);
+      assert.deepEqual(store.record, { id: "id2" });
 
       const callsPromise = new Promise((resolve) => {
         setTimeout(() => resolve(calls), 0);
@@ -149,7 +149,7 @@ describe("AsyncAuthStore", () => {
 
       store.save("test", { id: "id1" } as any);
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       store.clear();
       assert.equal(store.token, "");
@@ -178,7 +178,7 @@ describe("AsyncAuthStore", () => {
 
       store.save("test", { id: "id1" } as any);
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       store.clear();
       assert.equal(store.token, "");

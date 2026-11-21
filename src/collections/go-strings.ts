@@ -104,8 +104,8 @@ export function toLower(s: string): string {
 // strings.EqualFold reports whether s and t are equal under simple Unicode
 // case-folding.
 export function equalFold(s: string, t: string): boolean {
-  const a = [...s];
-  const b = [...t];
+  const a = Array.from(s);
+  const b = Array.from(t);
   if (a.length !== b.length) {
     return false;
   }
@@ -169,7 +169,7 @@ export function trimSpace(s: string): string {
 // contained in cutset removed.
 export function trim(s: string, cutset: string): string {
   const cut = new Set(cutset);
-  const chars = [...s];
+  const chars = Array.from(s);
   let start = 0;
   let end = chars.length;
   while (start < end && cut.has(chars[start] as string)) {

@@ -310,7 +310,7 @@ export function countRecords(
 
   const [total] = q.row();
 
-  return Number(total as bigint);
+  return Number(total);
 }
 
 // FindAuthRecordByToken finds the auth record associated with the provided JWT

@@ -253,10 +253,11 @@ describe("TestDB_Transactional", () => {
   test("a function returning a promise is rolled back", () => {
     const db = getPreparedDB();
     expect(() =>
-      db.transactional(((tx: Parameters<Parameters<DB["transactional"]>[0]>[0]) => {
+      // oxlint-disable-next-line typescript/no-misused-promises -- the transactional callback ignores its result; the test returns a resolved promise like the async callers
+      db.transactional((tx: Parameters<Parameters<DB["transactional"]>[0]>[0]) => {
         tx.newQuery("DELETE FROM item WHERE id=2").execute();
         return Promise.resolve();
-      }) as never),
+      }),
     ).toThrow("transaction function must be synchronous");
     expect(db.newQuery("SELECT name FROM item WHERE id=2").row()).toEqual(["Go in Action"]);
   });

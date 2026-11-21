@@ -80,7 +80,12 @@ async function post(
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
 }
 
-function login(server: Server, collection: string, identity: string, extra: object = {}) {
+function login(
+  server: Server,
+  collection: string,
+  identity: string,
+  extra: Record<string, unknown> = {},
+) {
   return post(server, `/api/collections/${collection}/auth-with-password`, {
     identity,
     password: pw,

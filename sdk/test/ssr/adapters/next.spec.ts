@@ -390,8 +390,8 @@ describe("createNextAuth: middleware", () => {
       ),
     ]);
 
-    expect(sessionTokenOf(cookieLine(responses[0]!, "__Host-pb_auth"))).toBe(token("u1", 2));
-    expect(sessionTokenOf(cookieLine(responses[1]!, "__Host-pb_auth"))).toBe(token("u2", 2));
+    expect(sessionTokenOf(cookieLine(responses[0], "__Host-pb_auth"))).toBe(token("u1", 2));
+    expect(sessionTokenOf(cookieLine(responses[1], "__Host-pb_auth"))).toBe(token("u2", 2));
     const users = forwarded
       .map(forwardedUser)
       .map((user) => `${String(user.tokenId)}/${String(user.recordId)}`);

@@ -1116,7 +1116,7 @@ class FakeEventSource {
 }
 
 function setGlobal(name: string, value: unknown): void {
-  const scope = globalThis as unknown as Record<string, unknown>;
+  const scope = globalThis as Record<string, unknown>;
   if (value === undefined) {
     delete scope[name];
   } else {

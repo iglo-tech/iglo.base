@@ -269,7 +269,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         this.client.authStore.save(this.client.authStore.token, authRecord);
       }
 
-      return item as unknown as T;
+      return item as T;
     });
   }
 
@@ -310,6 +310,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     return Object.assign({}, responseData, {
       // normalize common fields
       token: responseData?.token || "",
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       record: record as unknown as T,
     });
   }

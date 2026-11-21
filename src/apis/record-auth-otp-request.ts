@@ -39,6 +39,7 @@ export async function recordRequestOTP(e: RequestEvent): Promise<HandlerResult> 
   }
 
   const form: CreateOTPForm = { Email: "" };
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as { [key: string]: unknown }, createOTPType);
   if (bindErr) {
     return firstApiError(

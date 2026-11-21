@@ -444,6 +444,7 @@ export function interceptorArgs(
   };
   // the record itself, with collection() and baseFilesPath(): every other
   // read and write goes to it
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const irecord = new Proxy(record, {
     get(target, prop) {
       if (prop === "collection") {
@@ -452,6 +453,7 @@ export function interceptorArgs(
       if (prop === "baseFilesPath") {
         return () => target.collection.id + "/" + target.id;
       }
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       const v: unknown = Reflect.get(target, prop, target);
       return typeof v === "function" ? (v as (...args: Array<unknown>) => unknown).bind(target) : v;
     },

@@ -535,7 +535,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
     if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
       return ErrUnsupportedValueType;
     }
-    const names = value as Array<string>;
+    const names = value;
 
     if (names.length === 0) {
       return null; // nothing to check

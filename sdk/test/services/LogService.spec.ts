@@ -68,7 +68,7 @@ describe("LogService", () => {
         headers: { "x-test": "456" },
       });
 
-      assert.deepEqual(result, { id: "test123" } as any);
+      assert.deepEqual(result, { id: "test123" });
     });
 
     test("Should return a 404 error if id is empty", async () => {

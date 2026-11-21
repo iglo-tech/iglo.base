@@ -149,7 +149,11 @@ async function subscribe(
 
 let created = 0;
 
-async function create(mux: Mux, collection: string, data: object): Promise<void> {
+async function create(
+  mux: Mux,
+  collection: string,
+  data: { [key: string]: unknown },
+): Promise<void> {
   const res = await serveTest(mux, {
     method: "POST",
     target: `/api/collections/${collection}/records`,

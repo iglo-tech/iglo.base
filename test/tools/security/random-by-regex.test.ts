@@ -73,7 +73,7 @@ describe("TestRandomStringByRegex", () => {
 function lengths(pattern: string, runs = 500): Set<number> {
   const seen = new Set<number>();
   for (let i = 0; i < runs; i++) {
-    seen.add([...randomStringByRegex(pattern)].length);
+    seen.add(Array.from(randomStringByRegex(pattern)).length);
   }
   return seen;
 }

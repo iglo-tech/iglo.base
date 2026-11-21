@@ -53,9 +53,13 @@ async function build(dataDir: string, root: string): Promise<void> {
   try {
     let token = "";
     const api = async (method: string, path: string, body?: unknown): Promise<unknown> => {
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (token) {
+        headers.authorization = token;
+      }
       const res = await fetch(`${server.url}${path}`, {
         method,
-        headers: { "content-type": "application/json", ...(token ? { authorization: token } : {}) },
+        headers,
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       const text = await res.text();

@@ -105,7 +105,7 @@ export class S3System {
 
   // Upload writes content into the fileKey location.
   upload(content: Uint8Array, fileKey: string): Promise<void> {
-    return this.#upload(new Blob([content as Uint8Array<ArrayBuffer>]), fileKey, {
+    return this.#upload(new Blob([content]), fileKey, {
       contentType: detect(content).string(),
     });
   }
@@ -314,7 +314,7 @@ export class S3System {
 
     const thumb = await render.render(original, attrs.contentType, size);
 
-    await this.#upload(new Blob([thumb.bytes as Uint8Array<ArrayBuffer>]), thumbKey, {
+    await this.#upload(new Blob([thumb.bytes]), thumbKey, {
       contentType: thumb.contentType,
     });
   }

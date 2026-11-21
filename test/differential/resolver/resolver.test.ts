@@ -343,7 +343,7 @@ beforeAll(async () => {
     const listUrl = new URL(`${upstream.url}/api/collections/${rc.target}/records?${raw}`);
     sentRuleQueries.set(rc.name, listUrl.search.slice(1));
     for (const who of identities) {
-      const token = tokens.get(who as Identity) ?? "";
+      const token = tokens.get(who) ?? "";
       const res = await api(
         "GET",
         `/api/collections/${rc.target}/records?${raw}`,
@@ -611,9 +611,9 @@ describe("filters as a superuser", () => {
     expect(statuses.filter((s) => s === 200).length).toBeGreaterThan(110);
     expect(statuses.filter((s) => s === 400).length).toBeGreaterThan(15);
     // the matches are not trivial
-    const sizes = [...filterOutcomes.values()]
-      .filter((o) => o.status === 200)
-      .map((o) => (o.body as { ids: Array<string> }).ids.length);
+    const sizes = [...filterOutcomes.values()].flatMap((o) =>
+      o.status === 200 ? [(o.body as { ids: Array<string> }).ids.length] : [],
+    );
     expect(sizes.filter((n) => n === 0).length).toBeLessThan(sizes.length / 4);
   });
 

@@ -211,7 +211,7 @@ function resolveAttr(data: JSONMap<unknown>, key: string, value: unknown): void 
   data[key] = normalizeLogAttrValue(value);
 }
 
-function isPlainMap(value: object): value is { [key: string]: unknown } {
+function isPlainMap(value: unknown): value is { [key: string]: unknown } {
   const proto: unknown = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }

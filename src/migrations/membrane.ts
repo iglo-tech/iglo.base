@@ -35,11 +35,15 @@ import { isInstance } from "@/tools/types/is-instance";
 export const pass = Symbol("pass");
 
 export interface Adapter {
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   get?(target: object, key: string, m: Membrane): unknown;
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   set?(target: object, key: string, value: unknown, m: Membrane): boolean | typeof pass;
   // what Object.keys and `in` see, for a struct that is not a JS object
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   keys?(target: object, m: Membrane): ReadonlyArray<string>;
   // the migration file's object, when it is not a Proxy of the target
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   create?(target: object, m: Membrane): object;
 }
 
@@ -87,8 +91,11 @@ export class Membrane {
   readonly #bytes = new WeakMap<object, "bytes" | "raw">();
   readonly #slices = new WeakMap<object, SliceSource>();
   // set once, before the first value crosses
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   adapterFor: (target: object) => Adapter | undefined = () => undefined;
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   readonly #unbox: (target: object) => object;
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   readonly #box: (target: object) => object;
   readonly vm: VmIntrinsics;
 
@@ -96,7 +103,9 @@ export class Membrane {
   // Go assignment (*v = *record) replaces; unbox is its way back.
   constructor(
     context: vm.Context,
+    // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
     unbox: (target: object) => object,
+    // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
     box: (target: object) => object = (target) => target,
   ) {
     this.vm = vm.runInContext(intrinsicsSource, context) as VmIntrinsics;
@@ -119,6 +128,7 @@ export class Membrane {
   }
 
   // Marks proxy as the migration file's view of target.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   register(target: object, proxy: object, box: object = target): object {
     this.#proxies.set(target, proxy);
     this.#targets.set(proxy, box);
@@ -280,6 +290,7 @@ export class Membrane {
   // The array a migration file sees for a slice a struct holds. Its target
   // is a VM array, so it is an array to the file and the Array methods run
   // on this Proxy, through the traps below; callbacks get the fromGo view.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   sliceView(source: SliceSource, host?: object): Array<unknown> {
     const fromGo = source.fromGo ?? ((item: unknown) => this.toVm(item));
     const toGo = source.toGo ?? ((item: unknown) => this.toHost(item));
@@ -299,6 +310,7 @@ export class Membrane {
         if ((key as unknown) === "toString" && source.methods?.keys.includes("string") === true) {
           return source.methods.get("string");
         }
+        // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(t, key, receiver) as unknown;
       },
       set: (_t, key, value) =>
@@ -369,7 +381,9 @@ export class Membrane {
   }
 
   // The named member of an internal object, as a migration file sees it.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   member(target: object, key: string | symbol): unknown {
+    // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
     const value: unknown = Reflect.get(target, key, target);
 
     if (typeof key === "string" && key === "toJSON" && value === undefined) {
@@ -450,6 +464,7 @@ export class Membrane {
     return object;
   }
 
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #newProxy(target: object): object {
     const adapter = this.adapterFor(target);
 
@@ -459,7 +474,7 @@ export class Membrane {
 
     const box = this.#box(target);
 
-    const proxy = new Proxy(box, {
+    const handler: ProxyHandler<object> = {
       get: (t, key) =>
         this.guard(() => {
           const host = this.#unbox(t);
@@ -482,8 +497,11 @@ export class Membrane {
           }
           return Reflect.set(host, key, this.toHost(value), host);
         }),
-      ...(adapter?.keys === undefined ? {} : this.#keyTraps(adapter)),
-    });
+    };
+    if (adapter?.keys !== undefined) {
+      Object.assign(handler, this.#keyTraps(adapter));
+    }
+    const proxy = new Proxy(box, handler);
 
     if (box !== target) {
       this.#proxies.set(box, proxy);
@@ -512,6 +530,7 @@ export class Membrane {
     };
   }
 
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #wrapFunction(fn: AnyFunction, self: object | undefined): AnyFunction {
     return (...args) =>
       this.guard(() =>

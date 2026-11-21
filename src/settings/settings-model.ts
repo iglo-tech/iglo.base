@@ -366,12 +366,16 @@ function fillZero(target: Record<string, unknown>, zero: Record<string, unknown>
 
 function normalize(data: SettingsData): void {
   fillZero(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     data as unknown as Record<string, unknown>,
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     zeroSettingsData() as unknown as Record<string, unknown>,
   );
   for (const rule of data.RateLimits.Rules ?? []) {
     fillZero(
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       rule as unknown as Record<string, unknown>,
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       zeroRateLimitRule() as unknown as Record<string, unknown>,
     );
   }
@@ -462,6 +466,7 @@ export function unmarshalSettings(data: string | Uint8Array, s: Settings): void 
     throw new JsonSyntaxError("invalid UTF-8 within string");
   }
   try {
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     unmarshalJSON(value, s as unknown as Record<string, unknown>, settingsType, false);
   } finally {
     s.normalize();
@@ -886,7 +891,7 @@ function checkUniqueRuleLabel(value: unknown): Error | null {
   ) {
     return ErrUnsupportedValueType;
   }
-  const rules = ((value ?? []) as Array<ValidatableRule>).map((v) => v.rule);
+  const rules = (value ?? []).map((v) => v.rule);
 
   const existing: Array<string> = [];
 

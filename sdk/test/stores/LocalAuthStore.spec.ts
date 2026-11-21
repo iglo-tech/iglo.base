@@ -10,12 +10,12 @@ describe("LocalAuthStore", () => {
 
       store.save("test1", { id: "id1" } as any);
       assert.equal(store.token, "test1");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       // update
       store.save("test2", { id: "id2" } as any);
       assert.equal(store.token, "test2");
-      assert.deepEqual(store.record, { id: "id2" } as any);
+      assert.deepEqual(store.record, { id: "id2" });
     });
   });
 
@@ -25,7 +25,7 @@ describe("LocalAuthStore", () => {
 
       store.save("test", { id: "id1" } as any);
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       store.clear();
       assert.equal(store.token, "");
@@ -49,7 +49,7 @@ describe("LocalAuthStore", () => {
 
       assert.deepEqual(store.record, null);
       store.save("test", { id: "1" } as any);
-      assert.deepEqual(store.record, { id: "1" } as any);
+      assert.deepEqual(store.record, { id: "1" });
     });
   });
 

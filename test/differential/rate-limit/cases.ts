@@ -87,7 +87,11 @@ function rule(label: string, maxRequests: number, audience = ""): RateLimitRuleD
 }
 
 function get(url: string, status: number, headers?: Record<string, string>): Step {
-  return { url, status, ...(headers ? { headers } : {}) };
+  const step: Step = { url, status };
+  if (headers) {
+    step.headers = headers;
+  }
+  return step;
 }
 
 function times(n: number, step: Step): Array<Step> {
@@ -105,7 +109,11 @@ const createItem = (title: string, url = "/api/collections/demo2/records"): unkn
 });
 
 function post(url: string, body: unknown, status: number, headers?: Record<string, string>): Step {
-  return { method: "POST", url, body, status, ...(headers ? { headers } : {}) };
+  const step: Step = { method: "POST", url, body, status };
+  if (headers) {
+    step.headers = headers;
+  }
+  return step;
 }
 
 const passwordAuth = post(

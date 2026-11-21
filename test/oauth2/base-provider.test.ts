@@ -110,10 +110,12 @@ describe("BaseProvider fields", () => {
     test(name, () => {
       const provider = new TestProvider();
 
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       expect(Reflect.get(provider, field)).toEqual(zero);
 
       Reflect.set(provider, field, value);
 
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       expect(Reflect.get(provider, field)).toEqual(value);
     });
   }

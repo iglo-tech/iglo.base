@@ -209,8 +209,8 @@ function unescapeUnicodeBytes(s: string): Uint8Array {
 }
 
 function compareCodePoints(a: string, b: string): number {
-  const x = [...a];
-  const y = [...b];
+  const x = Array.from(a);
+  const y = Array.from(b);
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
     const cx = x[i]!.codePointAt(0)!;
     const cy = y[i]!.codePointAt(0)!;

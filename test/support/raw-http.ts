@@ -40,7 +40,7 @@ export function rawRequest(
       try {
         resolve(parseResponse(Buffer.concat(chunks).toString("latin1"), method));
       } catch (error) {
-        reject(error as Error);
+        reject(error);
       }
     });
   });
