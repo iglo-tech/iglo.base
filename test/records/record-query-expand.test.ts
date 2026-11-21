@@ -17,12 +17,15 @@ import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { FieldNameExpand } from "@/fields/field";
 import { Record } from "@/records/record-model";
-import { findRecordById, findRecordsByIds, type RecordsApp } from "@/records/record-query";
-import { type ExpandFetchFunc, expandRecord, expandRecords } from "@/records/record-query-expand";
+import { findRecordById, findRecordsByIds } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
+import { expandRecord, expandRecords } from "@/records/record-query-expand";
+import type { ExpandFetchFunc } from "@/records/record-query-expand";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { marshal } from "@/tools/types/go-json";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the fetchFunc of a scenario, built on the app the scenario runs on
 // (null: the default fetch, all relation records)

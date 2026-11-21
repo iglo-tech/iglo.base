@@ -2,12 +2,8 @@
 import type { Loose, LooseObject } from "@sdk/tools/loose";
 import { BaseService } from "@sdk/services/BaseService";
 import { isFile, isFormData, convertFormDataToObject } from "@sdk/tools/formdata";
-import {
-  type SendOptions,
-  type RecordOptions,
-  normalizeUnknownQueryParams,
-  serializeQueryParams,
-} from "@sdk/tools/options";
+import { normalizeUnknownQueryParams, serializeQueryParams } from "@sdk/tools/options";
+import type { SendOptions, RecordOptions } from "@sdk/tools/options";
 
 export interface BatchRequest {
   method: string;

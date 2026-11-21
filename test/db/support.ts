@@ -30,7 +30,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Databases } from "@/db/base";
-import { newFromDB, type DB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 
 // dbx testdata/mysql.sql in SQLite syntax: same tables, columns and rows
 export const fixtureSQL = `

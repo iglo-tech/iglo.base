@@ -8,7 +8,8 @@ import { join } from "node:path";
 import type { Mux } from "@/server/router";
 import { newServeRouter } from "@/server/serve";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
 

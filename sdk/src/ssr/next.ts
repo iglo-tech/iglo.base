@@ -13,12 +13,11 @@ import {
   resolveAdapterOptions,
   resumeSession,
   withMutableHeaders,
-  type AdapterOptions,
-  type RequestSession,
-  type ResolvedAdapterOptions,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, RequestSession, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 import { isHttpLocalUrl } from "@sdk/ssr/cookies";
-import { createRequestCookieAdapter, type CookieAdapter, type CookieToSet } from "@sdk/ssr/index";
+import { createRequestCookieAdapter } from "@sdk/ssr/index";
+import type { CookieAdapter, CookieToSet } from "@sdk/ssr/index";
 import type { SerializeOptions } from "@sdk/tools/cookie";
 
 /** The cookie security the middleware resolved, passed on to the page as `"1"` or `"0"`. */

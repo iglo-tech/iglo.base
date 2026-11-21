@@ -6,7 +6,8 @@
 
 import { describe, expect } from "bun:test";
 
-import { sdkTest, sortedKeys, type SdkEnv } from "@test/differential/sdk/harness";
+import { sdkTest, sortedKeys } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 
 // waits until the list has n entries
 async function waitFor(env: SdkEnv, list: Array<unknown>, n: number): Promise<void> {

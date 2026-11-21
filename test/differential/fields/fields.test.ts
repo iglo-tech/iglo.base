@@ -35,12 +35,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  InterceptorActionValidate,
-  isDriverValuer,
-  isRecordInterceptor,
-  type Field,
-} from "@/fields/field";
+import { InterceptorActionValidate, isDriverValuer, isRecordInterceptor } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { fieldFactory } from "@/fields/fields";
 import { newBadRequestError } from "@/server/error";
 import { anyType, bytesToText, mapOf, marshal, unmarshal } from "@/tools/types/go-json";
@@ -53,16 +49,12 @@ import {
   validSettings,
   valueCases,
   valueCollections,
-  type FieldDef,
 } from "@test/differential/fields/cases";
-import {
-  TestRecord,
-  TestCollection,
-  newBaseCollection,
-  noDBApp,
-  interceptorArgs,
-} from "@test/support/fields";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { FieldDef } from "@test/differential/fields/cases";
+import type { TestCollection } from "@test/support/fields";
+import { TestRecord, newBaseCollection, noDBApp, interceptorArgs } from "@test/support/fields";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "fields@example.com";
 const password = "1234567890";

@@ -11,7 +11,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 import { Uploader } from "@/tools/filesystem/internal/s3blob/s3/uploader";
-import { type RecordedRequest, type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
+import { startS3Recorder } from "@test/support/s3-recorder";
+import type { RecordedRequest, S3Recorder } from "@test/support/s3-recorder";
 
 const recorders: Array<S3Recorder> = [];
 afterEach(() => {

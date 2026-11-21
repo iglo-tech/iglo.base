@@ -1,6 +1,7 @@
 // Upstream: Go go1.27.2 src/regexp/syntax/compile.go.
 
-import { FoldCase, NonGreedy, type Flags } from "@/tools/regexp/syntax/parse";
+import { FoldCase, NonGreedy } from "@/tools/regexp/syntax/parse";
+import type { Flags } from "@/tools/regexp/syntax/parse";
 import {
   EmptyBeginLine,
   EmptyBeginText,
@@ -20,9 +21,8 @@ import {
   InstRuneAny,
   InstRuneAnyNotNL,
   Prog,
-  type EmptyOp,
-  type InstOp,
 } from "@/tools/regexp/syntax/prog";
+import type { EmptyOp, InstOp } from "@/tools/regexp/syntax/prog";
 import {
   OpAlternate,
   OpAnyChar,
@@ -42,8 +42,8 @@ import {
   OpQuest,
   OpStar,
   OpWordBoundary,
-  type Regexp,
 } from "@/tools/regexp/syntax/regexp";
+import type { Regexp } from "@/tools/regexp/syntax/regexp";
 import { MaxRune, SimpleFold } from "@/tools/unicode/letter";
 
 // A patchList is a list of instruction pointers that need to be filled in (patched).

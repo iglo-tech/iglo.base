@@ -1,7 +1,8 @@
 // Upstream: tools/auth/internal/jwk/jwk_test.go
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { type KeyObject, generateKeyPairSync, sign } from "node:crypto";
+import { generateKeyPairSync, sign } from "node:crypto";
+import type { KeyObject } from "node:crypto";
 
 import { JWK, fetchJWK, validateTokenSignature } from "@/oauth2/jwk";
 

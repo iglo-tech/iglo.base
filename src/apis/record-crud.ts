@@ -25,7 +25,8 @@
 // unless a test replaces it); its limiter windows read the app clock.
 
 import type { App } from "@/app/app";
-import { type RequestEvent, RequestInfoContextOAuth2, type RequestInfo } from "@/app/event-request";
+import { RequestInfoContextOAuth2 } from "@/app/event-request";
+import type { RequestEvent, RequestInfo } from "@/app/event-request";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import type { Collection } from "@/collections/collection-model";
 import type { Params } from "@/db/dbx/query";
@@ -38,7 +39,8 @@ import { dynamicCollectionBodyLimit } from "@/middlewares/body-limit";
 import { DefaultRateLimitMiddlewareId } from "@/middlewares/middlewares";
 import { checkCollectionRateLimit, checkRateLimit } from "@/middlewares/rate-limit";
 import type { RateLimitRule } from "@/settings/settings-model";
-import { type DataMap, newRecord, type Record } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { DataMap, Record } from "@/records/record-model";
 import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
 import { joinErrors, wrapError } from "@/collections/view";
 import { expandRecordSync } from "@/records/record-query-expand";
@@ -48,8 +50,8 @@ import {
   driverValue,
   run,
   settlePasswordHashes,
-  type Step,
 } from "@/records/record-save";
+import type { Step } from "@/records/record-save";
 import { RecordUpsert } from "@/records/record-upsert";
 import {
   autoResolveRecordsFlagsSync,
@@ -62,7 +64,8 @@ import {
   newRequestFieldResolver,
 } from "@/apis/record-helpers";
 import { filterBuildExpr } from "@/search/filter";
-import { newProvider, type SearchResult } from "@/search/provider";
+import { newProvider } from "@/search/provider";
+import type { SearchResult } from "@/search/provider";
 import { ErrMissingFile } from "@/server/event";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";

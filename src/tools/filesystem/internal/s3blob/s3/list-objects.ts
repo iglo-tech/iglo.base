@@ -3,7 +3,8 @@
 // The response keeps the members the driver reads.
 
 import { parseRoot } from "@/tools/filesystem/internal/s3blob/s3/xml";
-import { childText, type XmlElement } from "@/tools/filesystem/internal/s3blob/s3/xml";
+import { childText } from "@/tools/filesystem/internal/s3blob/s3/xml";
+import type { XmlElement } from "@/tools/filesystem/internal/s3blob/s3/xml";
 import type { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 
 // ListParams defines optional parameters for the ListObject request.

@@ -11,7 +11,8 @@
 // These belong next to ToFloat64E in src/tools/types/cast.ts; they are
 // kept here because that module belongs to another task.
 
-import { type GoInt, anyType, goInt, mapOf, unmarshal } from "@/tools/types/go-json";
+import { anyType, goInt, mapOf, unmarshal } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 
 const two63 = 2 ** 63;
 

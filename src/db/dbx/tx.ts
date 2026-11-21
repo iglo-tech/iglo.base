@@ -27,9 +27,11 @@
 
 import type { Database, SQLQueryBindings } from "bun:sqlite";
 
-import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
+import { EmbeddedBuilder } from "@/db/dbx/builder";
+import type { Builder } from "@/db/dbx/builder";
 import { execStatements, queryStatements, splitStatements } from "@/db/dbx/driver";
-import { Stmt, type ExecResult, type Executor } from "@/db/dbx/query";
+import { Stmt } from "@/db/dbx/query";
+import type { ExecResult, Executor } from "@/db/dbx/query";
 import type { Rows } from "@/db/dbx/rows";
 
 // sql.ErrTxDone

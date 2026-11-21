@@ -8,12 +8,14 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Embedded, Field, ValidateStruct, type FieldRules } from "@/validation/struct";
+import { Embedded, Field, ValidateStruct } from "@/validation/struct";
+import type { FieldRules } from "@/validation/struct";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Each } from "@/validation/each";
 import { NewInternalError } from "@/validation/error";
-import { Skip, Validate, type Rule, type Validatable } from "@/validation/validation";
+import { Skip, Validate } from "@/validation/validation";
+import type { Rule, Validatable } from "@/validation/validation";
 
 // a Go string type with a Validate method
 class String123 implements Validatable {

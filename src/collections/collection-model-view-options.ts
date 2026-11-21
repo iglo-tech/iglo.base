@@ -7,10 +7,12 @@
 // (collection-validate.ts implements it).
 
 import { marshalStruct } from "@/fields/field";
-import { type MemberDecoders, decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
+import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
+import type { MemberDecoders } from "@/collections/go-json-struct";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 // collectionViewOptions defines the options for the "view" type collection.
 export interface CollectionViewOptions {

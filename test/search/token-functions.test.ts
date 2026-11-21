@@ -3,19 +3,19 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  type Token,
   TokenFunction,
   TokenIdentifier,
   TokenNumber,
   TokenText,
   TokenWS,
 } from "@/search/fexpr/scanner";
+import type { Token } from "@/search/fexpr/scanner";
 import type { ResolverResult } from "@/search/simple-field-resolver";
 import { NullFallbackDisabled, NullFallbackEnforced } from "@/search/simple-field-resolver";
-import {
-  type ArgTokenResolverFunc,
-  TokenFunctions,
-  type TokenFunction as TokenFunctionResolver,
+import { TokenFunctions } from "@/search/token-functions";
+import type {
+  ArgTokenResolverFunc,
+  TokenFunction as TokenFunctionResolver,
 } from "@/search/token-functions";
 import { pseudorandomString } from "@/tools/security/random";
 

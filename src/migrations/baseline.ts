@@ -20,12 +20,10 @@
 //
 // Upstream's down migrations are not ported (no `migrate down`, M3.7).
 
-import {
-  type Collection,
-  newAuthCollection,
-  newBaseCollection,
-} from "@/collections/collection-model";
-import { type CollectionsApp, findAllCollections } from "@/collections/collection-query";
+import { newAuthCollection, newBaseCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { findAllCollections } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { wrapError } from "@/collections/view";
 import { AutodateField } from "@/fields/autodate";

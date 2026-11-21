@@ -9,14 +9,8 @@
 // rawUser keeps the document as upstream decodes it: go-json's `any`
 // values, marshaled back in upstream's form (AuthUser.toMeta).
 
-import {
-  type GoInt,
-  type GoType,
-  anyType,
-  mapOf,
-  unmarshal,
-  unmarshalStruct,
-} from "@/tools/types/go-json";
+import { anyType, mapOf, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt, GoType } from "@/tools/types/go-json";
 
 type Fields<T> = { [K in keyof T]-?: GoType };
 

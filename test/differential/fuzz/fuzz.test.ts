@@ -7,22 +7,27 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
   classifySort,
   compareOutcomes,
-  type Comparison,
-  type ListBody,
-  type Outcome,
   requestPath,
   runCase,
-  type Send,
   sender,
-  type SortClass,
   sortText,
 } from "@test/differential/fuzz/compare";
+import type {
+  Comparison,
+  ListBody,
+  Outcome,
+  Send,
+  SortClass,
+} from "@test/differential/fuzz/compare";
 import { printFilter } from "@test/differential/fuzz/filter-ast";
-import { type FuzzCase, generateCase } from "@test/differential/fuzz/generate";
+import { generateCase } from "@test/differential/fuzz/generate";
+import type { FuzzCase } from "@test/differential/fuzz/generate";
 import type { Model } from "@test/differential/fuzz/model";
-import { boundaries, type FixedCase, fixed, toCase } from "@test/differential/fuzz/regressions";
+import { boundaries, fixed, toCase } from "@test/differential/fuzz/regressions";
+import type { FixedCase } from "@test/differential/fuzz/regressions";
 import { formatFailure, runFuzz } from "@test/differential/fuzz/run";
-import { type FuzzServers, startFuzzServers } from "@test/differential/fuzz/servers";
+import { startFuzzServers } from "@test/differential/fuzz/servers";
+import type { FuzzServers } from "@test/differential/fuzz/servers";
 import { shrinkCase } from "@test/differential/fuzz/shrink";
 
 const shortRunSeed = 20_261_030;

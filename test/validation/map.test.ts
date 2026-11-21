@@ -12,10 +12,12 @@ import { describe, expect, test } from "bun:test";
 import { Each } from "@/validation/each";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
-import { Map, Key, type KeyRules } from "@/validation/map";
+import { Map, Key } from "@/validation/map";
+import type { KeyRules } from "@/validation/map";
 import { NewInternalError } from "@/validation/error";
 import { ValidateStruct, Field } from "@/validation/struct";
-import { Skip, Validate, type Rule, type Validatable } from "@/validation/validation";
+import { Skip, Validate } from "@/validation/validation";
+import type { Rule, Validatable } from "@/validation/validation";
 
 // a Go string type with a Validate method
 class String123 implements Validatable {

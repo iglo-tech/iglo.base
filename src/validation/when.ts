@@ -1,6 +1,7 @@
 // Upstream: ozzo-validation v4.4.1 when.go
 
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 // When returns a validation rule that executes the given list of rules when
 // the condition is true.

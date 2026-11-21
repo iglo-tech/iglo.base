@@ -22,9 +22,8 @@ import {
   sameOrigin,
   setCookieLine,
   startApp,
-  type ExampleApp,
-  type RunningApp,
 } from "@test/examples/support";
+import type { ExampleApp, RunningApp } from "@test/examples/support";
 
 const SUPERUSER = { email: "test@example.com", password: "1234567890" };
 const USER = { email: "test@example.com", password: "1234567890" };

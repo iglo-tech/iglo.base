@@ -22,7 +22,8 @@ import { deflateRawSync } from "node:zlib";
 
 import { create } from "@/tools/archive/create";
 import { extract } from "@/tools/archive/extract";
-import { ZipReader, type ZipEntry } from "@/tools/archive/zip-reader";
+import { ZipReader } from "@/tools/archive/zip-reader";
+import type { ZipEntry } from "@/tools/archive/zip-reader";
 import { ZipWriter } from "@/tools/archive/zip-writer";
 
 import { tempDir } from "@test/support/executable";

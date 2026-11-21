@@ -16,14 +16,8 @@ import { parseArgs } from "node:util";
 
 import { Rng } from "@test/differential/fuzz/rng";
 import { rid } from "@test/differential/resolver/schema";
-import {
-  type Client,
-  freshStart,
-  freshSuperuser,
-  roundTrip,
-  type RoundTripScenario,
-  signedIn,
-} from "@test/differential/roundtrip/run";
+import { freshStart, freshSuperuser, roundTrip, signedIn } from "@test/differential/roundtrip/run";
+import type { Client, RoundTripScenario } from "@test/differential/roundtrip/run";
 import { file, picture, tags, writeScenario } from "@test/differential/roundtrip/scenario";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 

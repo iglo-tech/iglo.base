@@ -3,7 +3,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { DateTime } from "@/tools/types/datetime";
-import { type Error as ValidationError, NewError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Empty, Nil } from "@/validation/absent";
 import { Validate } from "@/validation/validation";
 

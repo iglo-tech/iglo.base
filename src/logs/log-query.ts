@@ -6,7 +6,8 @@ import type { Expression } from "@/db/dbx/expression";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import { Log, LogsTableName } from "@/logs/log-model";
-import { parseDateTime, type DateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 
 // LogQuery returns a new Log select query.
 export function logQuery(app: Pick<App, "databases">): SelectQuery {

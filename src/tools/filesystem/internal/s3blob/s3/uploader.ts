@@ -21,7 +21,8 @@ import {
   parseRoot,
   parseXml,
 } from "@/tools/filesystem/internal/s3blob/s3/xml";
-import { metadataPrefix, type S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
+import { metadataPrefix } from "@/tools/filesystem/internal/s3blob/s3/s3";
+import type { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 
 const defaultMaxConcurrency = 5;
 const defaultMinPartSize = 6 << 20;

@@ -1,7 +1,8 @@
 // js-sdk v0.28.1 src/services/FileService.ts
 import type { LooseObject } from "@sdk/tools/loose";
 import { BaseService } from "@sdk/services/BaseService";
-import { type CommonOptions, type FileOptions, serializeQueryParams } from "@sdk/tools/options";
+import { serializeQueryParams } from "@sdk/tools/options";
+import type { CommonOptions, FileOptions } from "@sdk/tools/options";
 
 export class FileService extends BaseService {
   /**

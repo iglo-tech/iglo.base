@@ -14,7 +14,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { RequestInfo } from "@/app/event-request";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
-import { Float64, type Params } from "@/db/dbx/query";
+import { Float64 } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { FieldNameEmail } from "@/fields/field";
 import type { Record } from "@/records/record-model";
 import { findRecordById, recordQuery } from "@/records/record-query";
@@ -23,7 +24,8 @@ import { filterBuildExpr } from "@/search/filter";
 import { marshal } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // regexp.QuoteMeta, then TEST as \w+
 function expectPatternRegex(expectPattern: string): RegExp {

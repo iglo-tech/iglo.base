@@ -16,8 +16,8 @@ import {
   JsonSyntaxError,
   setOwn,
   toAny,
-  type JsonValue,
 } from "@/server/json-decode";
+import type { JsonValue } from "@/server/json-decode";
 import { goInt } from "@/tools/types/go-json";
 
 export type Kind =

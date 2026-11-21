@@ -2,7 +2,8 @@
 // quoted-printable decoder (RFC 2045) that mime/multipart's NextPart puts
 // in front of a part with "Content-Transfer-Encoding: quoted-printable".
 
-import { ErrUnexpectedEOF, EOF, type Reader as IoReader } from "@/server/io";
+import { ErrUnexpectedEOF, EOF } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 import { Reader as BufReader } from "@/server/bufio";
 import { goQuote } from "@/server/textproto";
 

@@ -1,6 +1,6 @@
 // The AfterTestFunc checks of apis/batch_test.go, through the records API.
 
-import { type AfterContext } from "@test/scenarios/scenario";
+import type { AfterContext } from "@test/scenarios/scenario";
 import { superuserGet } from "@test/scenarios/record-checks";
 
 type After = (ctx: AfterContext) => Promise<void>;

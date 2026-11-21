@@ -9,7 +9,8 @@ import { rmSync } from "node:fs";
 
 import { checkExpectations, igloBaseExpectations } from "@test/scenarios/expectations";
 import { preparedFixture } from "@test/scenarios/fixture";
-import { sendScenarioRequest, type ScenarioResponse } from "@test/scenarios/request";
+import { sendScenarioRequest } from "@test/scenarios/request";
+import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Expectations, Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
 

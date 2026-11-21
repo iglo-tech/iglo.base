@@ -22,7 +22,8 @@ import { snapshot } from "@test/differential/backups/snapshot";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
-import { centralEntries, type CentralEntry } from "@test/tools/archive/central-directory";
+import { centralEntries } from "@test/tools/archive/central-directory";
+import type { CentralEntry } from "@test/tools/archive/central-directory";
 
 const timeout = 60_000;
 

@@ -34,7 +34,8 @@ import { join } from "node:path";
 
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
 import { dryRunView, findRecordByViewFile } from "@/collections/view";
-import { type Expression, HashExp, like, newExp, not } from "@/db/dbx/expression";
+import { HashExp, like, newExp, not } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { Record as RecordModel } from "@/records/record-model";
 import {
@@ -46,10 +47,12 @@ import {
   findRecordsByIds,
 } from "@/records/record-query";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const superEmail = "queries@example.com";
 const superPassword = "1234567890";

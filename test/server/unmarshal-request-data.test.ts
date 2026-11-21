@@ -20,10 +20,8 @@ import {
   structOf,
   textOf,
   unmarshalRequestData,
-  type MapRef,
-  type RequestData,
-  type StructType,
 } from "@/server/unmarshal-request-data";
+import type { MapRef, RequestData, StructType } from "@/server/unmarshal-request-data";
 
 const timeType = textOf((text) => {
   const d = new Date(text);

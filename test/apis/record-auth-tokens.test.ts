@@ -16,7 +16,8 @@ import { usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext } from "@test/scenarios/scenario";
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
-import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
+import { sharedSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage } from "@test/support/smtp-sink";
 
 const email = "test@example.com";
 const userId = "4q1xlclmfloku33";

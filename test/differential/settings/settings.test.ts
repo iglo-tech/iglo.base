@@ -31,13 +31,12 @@ import { join } from "node:path";
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
 import {
   accessCases,
-  type Identity,
   mergeCases,
   secretCases,
-  type SettingsCase,
   validationCases,
   whitelistCases,
 } from "@test/differential/settings/cases";
+import type { Identity, SettingsCase } from "@test/differential/settings/cases";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { send } from "@test/scenarios/runner";

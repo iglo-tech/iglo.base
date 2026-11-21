@@ -6,14 +6,8 @@
 // values are dropped: namespaces and the ",attr"/",chardata" tag options are
 // not supported. No upstream endpoint binds XML.
 
-import {
-  NumError,
-  parseGoFloat,
-  structValue,
-  type FieldType,
-  type StructField,
-  type StructType,
-} from "@/server/unmarshal-request-data";
+import { NumError, parseGoFloat, structValue } from "@/server/unmarshal-request-data";
+import type { FieldType, StructField, StructType } from "@/server/unmarshal-request-data";
 import { decodeUTF8Bytes, setOwn } from "@/server/json-decode";
 
 interface XmlElement {

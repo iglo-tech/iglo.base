@@ -13,7 +13,8 @@ import { clearBootstrap } from "@/app/bootstrap";
 import { Collection } from "@/collections/collection-model";
 import { collectionQuery } from "@/collections/collection-query";
 import { joinErrors, wrapError } from "@/collections/view";
-import { argsMinusFirst, FlagError, parseFlags, type FlagSpec, type FlagValue } from "@/cli/flags";
+import { argsMinusFirst, FlagError, parseFlags } from "@/cli/flags";
+import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { helpText } from "@/cli/help";
 import { yesNoPrompt } from "@/cli/prompt";
 import type { AppConfig, CliContext } from "@/cli/root";
@@ -24,11 +25,11 @@ import {
   down,
   initMigrationsTable,
   lastAppliedMigrations,
-  type Migration,
   removeMissingAppliedMigrations,
   up,
   DefaultMigrationsTable,
 } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
 import { jsBlankTemplate, jsSnapshotTemplate } from "@/migrations/templates";
 import { toInt } from "@/records/cast";
 import { snakecase } from "@/tools/inflector/inflector";

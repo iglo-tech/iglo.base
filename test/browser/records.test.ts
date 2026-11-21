@@ -4,13 +4,8 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
-import {
-  Browser,
-  installAndLogin,
-  startFixture,
-  writeTempFile,
-  type Fixture,
-} from "@test/browser/support";
+import { Browser, installAndLogin, startFixture, writeTempFile } from "@test/browser/support";
+import type { Fixture } from "@test/browser/support";
 
 interface Record {
   id: string;

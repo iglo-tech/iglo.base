@@ -10,9 +10,12 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
-import { rawRequest, type RawResponse } from "@test/support/raw-http";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { rawRequest } from "@test/support/raw-http";
+import type { RawResponse } from "@test/support/raw-http";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 export interface Pair {
   upstream: UpstreamServer;

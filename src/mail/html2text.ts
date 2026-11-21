@@ -4,7 +4,8 @@
 
 import { trimSpace } from "@/collections/go-strings";
 import { parse } from "@/tools/html/parse";
-import { ElementNode, type Node, TextNode } from "@/tools/html/node";
+import { ElementNode, TextNode } from "@/tools/html/node";
+import type { Node } from "@/tools/html/node";
 
 // Go's regexp `\s+` (RE2's \s is [\t\n\f\r ])
 const whitespaceRegex = /[\t\n\f\r ]+/g;

@@ -9,7 +9,8 @@ import { newViewCollection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { validateCollection } from "@/collections/collection-validate";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 
 interface Scenario {

@@ -21,12 +21,8 @@ import { mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  type ApiCase,
-  type Identity,
-  type Session,
-  sessions,
-} from "@test/differential/collections/api-cases";
+import { sessions } from "@test/differential/collections/api-cases";
+import type { ApiCase, Identity, Session } from "@test/differential/collections/api-cases";
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";

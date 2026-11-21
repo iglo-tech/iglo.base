@@ -9,10 +9,10 @@ import {
   CDFTypeMsg,
   CDFTypePpt,
   CDFTypeXls,
-  type CDFType,
   detect,
   summaryAppName,
 } from "@/tools/mimetype/internal/cdf/cdf";
+import type { CDFType } from "@/tools/mimetype/internal/cdf/cdf";
 import { bytesToText } from "@/tools/types/go-json";
 import { raw } from "@test/tools/mimetype/go-literal";
 

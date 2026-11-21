@@ -8,10 +8,12 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { type CliContext, runCli } from "@/cli/root";
+import { runCli } from "@/cli/root";
+import type { CliContext } from "@/cli/root";
 import { readSchema } from "@/schema/read";
 import type { SchemaDescription } from "@/schema/types";
-import { freePort, run, startServer, tempDir, type RunResult } from "@test/support/executable";
+import { freePort, run, startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 
 const superuser = { email: "admin@apply.test", password: "1234567890" };
 

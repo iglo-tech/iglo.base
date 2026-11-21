@@ -11,7 +11,8 @@ import { join } from "node:path";
 
 import Ajv2020 from "ajv/dist/2020";
 
-import { executable, run, startServer, tempDir, type RunResult } from "@test/support/executable";
+import { executable, run, startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
 
 const schemaJSON = JSON.parse(

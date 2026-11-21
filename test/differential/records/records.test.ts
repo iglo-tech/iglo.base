@@ -35,14 +35,12 @@ import { join } from "node:path";
 import type { Collection } from "@/collections/collection-model";
 import { fieldApp, findCollectionByNameOrId } from "@/collections/collection-query";
 import { HashExp } from "@/db/dbx/expression";
-import {
-  type Record as RecordModel,
-  newRecordFromNullStringMap,
-  nullStringMapFromRow,
-} from "@/records/record-model";
+import { newRecordFromNullStringMap, nullStringMapFromRow } from "@/records/record-model";
+import type { Record as RecordModel } from "@/records/record-model";
 import { jsonArrayValue } from "@/tools/types/json-array";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import {
   allCollection,
@@ -59,9 +57,10 @@ import {
   usersFields,
   userPayloads,
   userUpdates,
-  type Payload,
 } from "@test/differential/records/cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { Payload } from "@test/differential/records/cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "records@example.com";
 const password = "1234567890";

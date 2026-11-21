@@ -11,7 +11,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { encodeGif } from "@/../scripts/spikes/M0.7/gif";
-import { encodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
+import { encodePng } from "@/../scripts/spikes/M0.7/png";
+import type { Raw } from "@/../scripts/spikes/M0.7/png";
 
 function prng(seed: number): () => number {
   let s = seed >>> 0;

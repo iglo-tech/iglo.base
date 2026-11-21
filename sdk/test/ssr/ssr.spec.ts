@@ -9,9 +9,8 @@ import {
   createSessionCache,
   createRequestCookieAdapter,
   SSR_NO_CACHE_HEADERS,
-  type CookieToSet,
-  type CookieAdapter,
 } from "@sdk/ssr/index";
+import type { CookieToSet, CookieAdapter } from "@sdk/ssr/index";
 
 /** The posts list answers 401 while the token stays valid. */
 function denyPostsList(fetchMock: FetchMock): void {

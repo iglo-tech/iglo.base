@@ -16,7 +16,8 @@
 
 import type { Clock } from "@/app/clock";
 import { fetchFollowingRedirects } from "@/oauth2/http-client";
-import { parseQuery, encodeValues, queryEscape, type Values } from "@/server/request";
+import { parseQuery, encodeValues, queryEscape } from "@/server/request";
+import type { Values } from "@/server/request";
 import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { anyType, mapOf, stringType, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
 

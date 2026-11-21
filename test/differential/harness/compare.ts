@@ -65,7 +65,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { parseJson, type JsonNode } from "@test/scenarios/json";
+import { parseJson } from "@test/scenarios/json";
+import type { JsonNode } from "@test/scenarios/json";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 

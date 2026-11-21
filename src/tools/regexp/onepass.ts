@@ -27,8 +27,8 @@ import {
   InstRune1,
   InstRuneAny,
   InstRuneAnyNotNL,
-  type Prog,
 } from "@/tools/regexp/syntax/prog";
+import type { Prog } from "@/tools/regexp/syntax/prog";
 import { MaxRune, SimpleFold } from "@/tools/unicode/letter";
 import { RuneError, runeString } from "@/tools/unicode/utf8";
 

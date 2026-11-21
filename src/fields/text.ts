@@ -17,27 +17,32 @@ import {
   idColumn,
   marshalStruct,
   maxSafeJSONInt,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
 } from "@/fields/field";
-import { boolType, intType, stringType, unmarshalStruct, type GoInt } from "@/tools/types/go-json";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
+} from "@/fields/field";
+import { boolType, intType, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { matchString } from "@/tools/regexp/regexp";
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
 import { toString as castToString } from "@/tools/types/cast";
 import { SimpleFold } from "@/tools/unicode/letter";
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { In } from "@/validation/in";
 import { Max, Min } from "@/validation/minmax";
 import { Empty } from "@/validation/absent";
 import { Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { runeCount } from "@/validation/util";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { IsRegex } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";

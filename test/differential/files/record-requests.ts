@@ -2,7 +2,8 @@
 // s3-files.test.ts): the requests of a case, the pairing of generated values
 // and the comparison of the responses.
 
-import { type FileCase, type Part, text } from "@test/differential/files/cases";
+import { text } from "@test/differential/files/cases";
+import type { FileCase, Part } from "@test/differential/files/cases";
 import { superuserToken } from "@test/scenarios/record-crud";
 
 export interface Res {

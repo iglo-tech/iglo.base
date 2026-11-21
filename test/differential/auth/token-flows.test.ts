@@ -26,7 +26,8 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { freePort, startServer } from "@test/support/executable";
-import { type Mailpit, startMailpit } from "@test/support/mailpit";
+import { startMailpit } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners

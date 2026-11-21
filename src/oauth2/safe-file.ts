@@ -27,7 +27,8 @@ import { isIP } from "node:net";
 
 import { DefaultMaxBodySize } from "@/middlewares/middlewares";
 import { readLimited } from "@/oauth2/token";
-import { type File, goBase, NewFileFromBytes } from "@/tools/filesystem/file";
+import { goBase, NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 
 const safeFileTimeoutMs = 10_000;
 

@@ -9,7 +9,8 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { startPair, type Pair } from "@test/differential/serve/pair";
+import { startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 
 let pair: Pair;
 

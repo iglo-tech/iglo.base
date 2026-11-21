@@ -5,7 +5,7 @@ import { FetchMock } from "@sdk-test/mocks";
 import { crudServiceTestsSuite } from "@sdk-test/suites";
 import Client from "@sdk/Client";
 import { CollectionService } from "@sdk/services/CollectionService";
-import { type CollectionModel } from "@sdk/tools/dtos";
+import type { CollectionModel } from "@sdk/tools/dtos";
 
 describe("CollectionService", function () {
   const client = new Client("test_base_url");

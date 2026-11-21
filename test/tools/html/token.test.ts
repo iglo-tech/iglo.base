@@ -19,13 +19,11 @@ import {
   SelfClosingTagToken,
   StartTagToken,
   TextToken,
-  type Attribute,
-  type Token,
-  type TokenType,
   Tokenizer,
   ErrBufferExceeded,
   tokenString,
 } from "@/tools/html/token";
+import type { Attribute, Token, TokenType } from "@/tools/html/token";
 import { tokenTests } from "@test/tools/html/token-cases";
 
 // newTokenizer returns a tokenizer over the UTF-8 bytes of s.

@@ -13,7 +13,8 @@ import { join } from "node:path";
 
 import { newRouter } from "@/apis/base";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { serveTest } from "@test/support/router";

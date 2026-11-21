@@ -16,8 +16,8 @@ import {
   serveUpstream,
   superuserToken,
   upstreamSQL,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
+import type { FixtureCopy } from "@test/differential/db/fixture";
 
 const recordId = "84nmscqy84lsi1t";
 

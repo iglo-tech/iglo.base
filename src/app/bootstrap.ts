@@ -19,14 +19,16 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { type App, type AppConfig, type AppLogger, newApp } from "@/app/app";
+import { newApp } from "@/app/app";
+import type { App, AppConfig, AppLogger } from "@/app/app";
 import { registerCrons } from "@/app/crons";
 import { LocalTempDirName } from "@/app/filesystem";
 import { loadAutobackupJob } from "@/backups/autobackup";
 import { recoverInterruptedRestore, removeRestoreTemp } from "@/backups/restore-phase";
 import { reloadCachedCollections } from "@/collections/collection-query";
 import { loadCollectionsCache } from "@/collections/collection-save";
-import { Logger, type LogTickerFunc } from "@/logs/logger";
+import { Logger } from "@/logs/logger";
+import type { LogTickerFunc } from "@/logs/logger";
 import { newDefaultSettings } from "@/settings/settings-model";
 import { reloadSettings } from "@/settings/settings-query";
 import { auxDBFilename, Databases, defaultReadWorkers } from "@/db/base";

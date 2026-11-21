@@ -24,7 +24,8 @@
 
 import type { DB } from "@/db/dbx/db";
 import type { Expression } from "@/db/dbx/expression";
-import { assignOwn, type Params, type Query } from "@/db/dbx/query";
+import { assignOwn } from "@/db/dbx/query";
+import type { Params, Query } from "@/db/dbx/query";
 
 // JoinInfo contains the specification for a JOIN clause.
 export interface JoinInfo {

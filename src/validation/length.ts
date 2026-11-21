@@ -3,7 +3,8 @@
 // Length counts what Go's len counts: the UTF-8 bytes of a string, the
 // elements of a slice or map. RuneLength counts a string's runes.
 
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty, LengthOfValue, runeCount } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 

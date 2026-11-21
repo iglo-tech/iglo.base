@@ -37,13 +37,14 @@ import {
   multipartBody,
   Pairing,
   req,
-  type Res,
   sendCase,
-  type Side,
 } from "@test/differential/files/record-requests";
+import type { Res, Side } from "@test/differential/files/record-requests";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // -------------------------------------------------------------------
 // storage trees

@@ -7,7 +7,8 @@
 import { trimSpace } from "@/collections/go-strings";
 import { toInt } from "@/records/cast";
 import { parse } from "@/tools/html/parse";
-import { ElementNode, type Node, TextNode } from "@/tools/html/node";
+import { ElementNode, TextNode } from "@/tools/html/node";
+import type { Node } from "@/tools/html/node";
 import type { Modifier } from "@/tools/picker/modifiers";
 import { toBool } from "@/tools/types/cast";
 

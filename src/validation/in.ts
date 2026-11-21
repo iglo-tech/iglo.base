@@ -5,7 +5,8 @@
 // and plain objects (Go maps) element by element, other objects by
 // identity.
 
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty, isMap } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 

@@ -48,7 +48,8 @@
 
 import type { Database, SQLQueryBindings, Statement } from "bun:sqlite";
 
-import { DeadlineExceededError, setOwn, type Deadline, type Row } from "@/db/dbx/query";
+import { DeadlineExceededError, setOwn } from "@/db/dbx/query";
+import type { Deadline, Row } from "@/db/dbx/query";
 
 // sql.ErrNoRows
 export class NoRowsError extends Error {

@@ -50,16 +50,17 @@ import {
   spikeRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 import {
   synthetic,
   writeCompatSet,
   writeEdgeSet,
   writeQualitySet,
-  type TestImage,
 } from "@/../scripts/spikes/M0.7/images";
-import { decodePng, encodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
+import type { TestImage } from "@/../scripts/spikes/M0.7/images";
+import { decodePng, encodePng } from "@/../scripts/spikes/M0.7/png";
+import type { Raw } from "@/../scripts/spikes/M0.7/png";
 import type { Job, JobResult } from "@/../scripts/spikes/M0.7/workers/serve";
 
 const spikeDir = join(repoRoot, "scripts/spikes/M0.7");

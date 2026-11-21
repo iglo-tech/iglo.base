@@ -13,7 +13,8 @@ import { countRecords, findAuthRecordByEmail, findRecordById } from "@/records/r
 import { deleteRecord, saveRecord, saveRecordSync } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 describe("RecordIsSuperUser", () => {
   let app: TestCollectionsApp;

@@ -7,7 +7,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { By, Skip, Validate, type Rule, type Validatable } from "@/validation/validation";
+import { By, Skip, Validate } from "@/validation/validation";
+import type { Rule, Validatable } from "@/validation/validation";
 
 // a Go string type with a Validate method
 class String123 implements Validatable {

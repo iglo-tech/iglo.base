@@ -2,7 +2,8 @@
 //
 // Go compares with == on interface values: === here.
 
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 

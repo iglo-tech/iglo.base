@@ -6,7 +6,8 @@
 //
 // Close it after done working with the reader.
 
-import { BufferWithFile, type ReadCloser, type ReadResult } from "@/server/buffer-with-file";
+import { BufferWithFile } from "@/server/buffer-with-file";
+import type { ReadCloser, ReadResult } from "@/server/buffer-with-file";
 
 // Rereader defines an interface for rewindable readers.
 export interface Rereader {

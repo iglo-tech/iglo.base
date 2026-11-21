@@ -10,7 +10,8 @@
 
 import { fromDate } from "@/tools/types/cast";
 import { DateTime } from "@/tools/types/datetime";
-import { date, fieldsOf, type Instant } from "@/tools/types/go-time";
+import { date, fieldsOf } from "@/tools/types/go-time";
+import type { Instant } from "@/tools/types/go-time";
 
 function dateTimeString(t: Instant): string {
   return DateTime.fromInstant(t).string();

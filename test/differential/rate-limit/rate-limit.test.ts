@@ -13,7 +13,8 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { type Case, cases, prepareCase, type Step } from "@test/differential/rate-limit/cases";
+import { cases, prepareCase } from "@test/differential/rate-limit/cases";
+import type { Case, Step } from "@test/differential/rate-limit/cases";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";

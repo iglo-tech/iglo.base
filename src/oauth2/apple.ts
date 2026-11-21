@@ -12,7 +12,8 @@ import { validateTokenSignature } from "@/oauth2/jwk";
 import { idTokenLeewaySeconds } from "@/oauth2/oidc";
 import { decodeFields, decodeRawUser } from "@/oauth2/user-fields";
 import type { Token } from "@/oauth2/token";
-import { type MapClaims, parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import { parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { toBool } from "@/tools/types/cast";
 import { anyType, marshal, stringType } from "@/tools/types/go-json";
 

@@ -6,7 +6,8 @@
 // one of these classes in a DynamicModel, so its methods and its SQL value
 // stay with it; an internal module gets its plain data (Membrane.toHost).
 
-import { type GoType, anyType } from "@/tools/types/go-json";
+import { anyType } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 import {
   jsonArrayMarshalJSON,
   jsonArrayString,
@@ -14,7 +15,6 @@ import {
   scanJSONArray,
 } from "@/tools/types/json-array";
 import {
-  type JSONMap,
   jsonMapGet,
   jsonMapMarshalJSON,
   jsonMapSet,
@@ -22,6 +22,7 @@ import {
   jsonMapValue,
   scanJSONMap,
 } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 export class GoJSONMap {
   constructor(public data: JSONMap<unknown> = {}) {}

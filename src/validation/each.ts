@@ -6,7 +6,8 @@
 
 import { Errors } from "@/validation/error";
 import { isMap } from "@/validation/util";
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 // Each returns a validation rule that loops through an iterable (map, slice
 // or array) and validates each value inside with the provided rules. An

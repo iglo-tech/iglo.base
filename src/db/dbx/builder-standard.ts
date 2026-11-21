@@ -26,7 +26,8 @@ import { BaseBuilder } from "@/db/dbx/builder";
 import type { DB } from "@/db/dbx/db";
 import { ModelQuery } from "@/db/dbx/model-query";
 import type { Executor } from "@/db/dbx/query";
-import { BaseQueryBuilder, type QueryBuilder } from "@/db/dbx/query-builder";
+import { BaseQueryBuilder } from "@/db/dbx/query-builder";
+import type { QueryBuilder } from "@/db/dbx/query-builder";
 import { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 

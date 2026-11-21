@@ -21,8 +21,10 @@ import { EmailField } from "@/fields/email";
 import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import { type Pending, caseTest, expectValidationErrors } from "@test/collections/validation";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
+import { caseTest, expectValidationErrors } from "@test/collections/validation";
+import type { Pending } from "@test/collections/validation";
 
 interface Scenario {
   name: string;

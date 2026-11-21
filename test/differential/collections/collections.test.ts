@@ -52,9 +52,10 @@ import {
   runUpstream,
   serveUpstream,
   superuserToken,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { FixtureCopy } from "@test/differential/db/fixture";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 60_000;

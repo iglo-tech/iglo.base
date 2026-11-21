@@ -11,7 +11,8 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { run, startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { run, startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const sdkSource = join(repoRoot, "sdk/src");

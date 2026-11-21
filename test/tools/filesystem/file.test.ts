@@ -17,8 +17,8 @@ import {
   NewFileFromPath,
   extractExtension,
   normalizeName,
-  type RandomSource,
 } from "@/tools/filesystem/file";
+import type { RandomSource } from "@/tools/filesystem/file";
 import { ThumbSizeRegex } from "@/tools/filesystem/filesystem";
 import { textToBytes } from "@/tools/types/go-json";
 

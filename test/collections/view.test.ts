@@ -7,7 +7,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { findCollectionByNameOrId, runInAppTransaction } from "@/collections/collection-query";
-import { type Collection, newViewCollection } from "@/collections/collection-model";
+import { newViewCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { saveCollection } from "@/collections/collection-save";
 import { createViewFields, dryRunView, findRecordByViewFile, saveView } from "@/collections/view";
 import { NoRowsError } from "@/db/dbx/rows";
@@ -15,7 +16,8 @@ import { HashExp, newExp } from "@/db/dbx/expression";
 import { deleteView, tableInfo } from "@/db/table";
 import { NumberField } from "@/fields/number";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {

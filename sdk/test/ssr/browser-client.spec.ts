@@ -4,7 +4,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { createBrowserClient, type CreateBrowserClientOptions } from "@sdk/ssr/browser-client";
+import { createBrowserClient } from "@sdk/ssr/browser-client";
+import type { CreateBrowserClientOptions } from "@sdk/ssr/browser-client";
 import type { FetchFunction } from "@sdk/ssr/no-store-fetch";
 import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
 import type { Loose } from "@sdk/tools/loose";
@@ -19,10 +20,8 @@ import {
   settle,
   stubApi,
   testClock,
-  type Call,
-  type Handler,
-  type TestClock,
 } from "@sdk-test/ssr/browser-support";
+import type { Call, Handler, TestClock } from "@sdk-test/ssr/browser-support";
 
 const T0 = Math.floor(Date.now() / 1000);
 const START = T0 * 1000;

@@ -17,12 +17,14 @@ import {
   mintBrowserToken,
   OAuth2Error,
   SSR_NO_CACHE_HEADERS,
-  type BrowserToken,
-  type CookieAdapter,
-  type CreateServerClientOptions,
-  type ServerClient,
-  type SessionCache,
-  type SuperuserClient,
+} from "@sdk/ssr/index";
+import type {
+  BrowserToken,
+  CookieAdapter,
+  CreateServerClientOptions,
+  ServerClient,
+  SessionCache,
+  SuperuserClient,
 } from "@sdk/ssr/index";
 
 /** The paths the adapter answers. A route set to `false` is not mounted. */

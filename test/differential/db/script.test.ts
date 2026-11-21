@@ -9,13 +9,8 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { Databases } from "@/db/base";
 import { runInTransaction } from "@/db/tx";
-import {
-  copyFixture,
-  serveUpstream,
-  superuserToken,
-  type FixtureCopy,
-  type UpstreamServer,
-} from "@test/differential/db/fixture";
+import { copyFixture, serveUpstream, superuserToken } from "@test/differential/db/fixture";
+import type { FixtureCopy, UpstreamServer } from "@test/differential/db/fixture";
 
 interface SQLResult {
   affectedRows: number;

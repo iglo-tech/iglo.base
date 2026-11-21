@@ -9,7 +9,8 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { both, startPair, type Pair } from "@test/differential/serve/pair";
+import { both, startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 import { usersToken } from "@test/scenarios/record-crud";
 
 const timeout = 60_000;

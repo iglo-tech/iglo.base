@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Event } from "@/server/event";
+import type { Event } from "@/server/event";
 import { Route } from "@/server/route";
 
 // the handlers under test ignore their event argument, as the Go tests pass nil

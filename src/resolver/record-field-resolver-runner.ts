@@ -3,10 +3,10 @@
 // Go's (result, error) returns are the result, and the error is thrown.
 
 import type { Collection } from "@/collections/collection-model";
-import { and, enclose, type Expression, HashExp, inExp, newExp } from "@/db/dbx/expression";
+import { and, enclose, HashExp, inExp, newExp } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import { setOwn } from "@/db/dbx/query";
 import {
-  type Field,
   FieldNameCollectionId,
   FieldNameCollectionName,
   FieldNameEmail,
@@ -16,6 +16,7 @@ import {
   goQuote,
   isMultiValuer,
 } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { FieldTypeGeoPoint } from "@/fields/geo-point";
 import { FieldTypeJSON } from "@/fields/json";
 import { FieldTypeRelation, RelationField } from "@/fields/relation";
@@ -27,13 +28,14 @@ import {
   lengthModifier,
   lowerModifier,
   ownValue,
-  type RecordFieldResolver,
   requestAuthRecord,
   splitModifier,
 } from "@/resolver/record-field-resolver";
+import type { RecordFieldResolver } from "@/resolver/record-field-resolver";
 import { filterBuildExpr } from "@/search/filter";
 import { MultiMatchSubquery } from "@/search/multi-match-subquery";
-import { NullFallbackDisabled, type ResolverResult } from "@/search/simple-field-resolver";
+import { NullFallbackDisabled } from "@/search/simple-field-resolver";
+import type { ResolverResult } from "@/search/simple-field-resolver";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { jsonArrayLength, jsonEach, jsonExtract } from "@/tools/dbutils/json";
 import { columnify } from "@/tools/inflector/inflector";

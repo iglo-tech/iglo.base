@@ -10,7 +10,8 @@ import { OAuth2ProviderConfig } from "@/collections/collection-model-auth-option
 import { Microsoft } from "@/oauth2/microsoft";
 import { initProvider } from "@/oauth2/providers";
 import { Token } from "@/oauth2/token";
-import { json, type StubbedFetch, stubFetch } from "@test/support/fetch-stub";
+import { json, stubFetch } from "@test/support/fetch-stub";
+import type { StubbedFetch } from "@test/support/fetch-stub";
 
 const graphURL = "https://graph.microsoft.com/v1.0/me";
 

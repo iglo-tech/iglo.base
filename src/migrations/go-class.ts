@@ -39,13 +39,15 @@ import type { Field } from "@/fields/field";
 import { isExpression } from "@/db/dbx/expression";
 import { BoundValue, Float64 } from "@/db/dbx/query";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
-import { type Adapter, type Membrane, toInteger } from "@/migrations/membrane";
+import { toInteger } from "@/migrations/membrane";
+import type { Adapter, Membrane } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { Settings } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
 import type { GoType as JSONElemType } from "@/tools/types/go-json";
 import { stringType } from "@/tools/types/go-json";
-import { localLocation, lookup, type Location, UTC } from "@/tools/types/go-zoneinfo";
+import { localLocation, lookup, UTC } from "@/tools/types/go-zoneinfo";
+import type { Location } from "@/tools/types/go-zoneinfo";
 
 export type GoType =
   | "string"

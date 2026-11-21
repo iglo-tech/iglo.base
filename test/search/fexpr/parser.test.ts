@@ -2,8 +2,10 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type Expr, exprIsZero, type ExprGroup, parse } from "@/search/fexpr/parser";
-import { SignAnyEq, type Token, TokenWS } from "@/search/fexpr/scanner";
+import { exprIsZero, parse } from "@/search/fexpr/parser";
+import type { Expr, ExprGroup } from "@/search/fexpr/parser";
+import { SignAnyEq, TokenWS } from "@/search/fexpr/scanner";
+import type { Token } from "@/search/fexpr/scanner";
 
 import { printGroups } from "@test/search/fexpr/go-print";
 

@@ -27,7 +27,8 @@
 // the read workers run SQL on their own connections and keep no copy, so
 // nothing else needs the reload.
 
-import { type FSWatcher, mkdirSync, rmSync, watch, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, watch, writeFileSync } from "node:fs";
+import type { FSWatcher } from "node:fs";
 import { join } from "node:path";
 
 import type { ErrorLogger } from "@/app/app";

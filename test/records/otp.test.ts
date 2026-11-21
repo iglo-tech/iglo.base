@@ -16,12 +16,15 @@ import {
 } from "@/records/otp-query";
 import { CollectionNameOTPs } from "@/records/record-auth-refs";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import { newRecord, type Record } from "@/records/record-model";
-import { findAuthRecordByEmail, findRecordById, type RecordsApp } from "@/records/record-query";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
+import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { saveRecord, saveRecordNoValidate } from "@/records/record-save";
 import { DateTime } from "@/tools/types/datetime";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 
 // a clock the test moves by hand (tests never sleep)

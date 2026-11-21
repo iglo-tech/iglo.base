@@ -10,11 +10,11 @@
 
 import { Collection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   collectionQuery,
   findCollectionByNameOrId,
   runInAppTransaction,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { deleteCollection, saveCollectionNoValidate } from "@/collections/collection-save";
 import { newCollectionValidator } from "@/collections/collection-validate";
 import { withDriverErrors } from "@/collections/driver-error";

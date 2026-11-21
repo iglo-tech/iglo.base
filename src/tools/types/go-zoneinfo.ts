@@ -21,8 +21,6 @@
 import { readFileSync } from "node:fs";
 
 import {
-  type Instant,
-  type ParsedTime,
   atoi,
   civilFromDays,
   date,
@@ -31,6 +29,7 @@ import {
   daysIn,
   isLeap,
 } from "@/tools/types/go-time";
+import type { Instant, ParsedTime } from "@/tools/types/go-time";
 
 const secondsPerHour = 3600;
 const secondsPerDay = 86_400;

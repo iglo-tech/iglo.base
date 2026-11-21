@@ -19,7 +19,8 @@ import { join } from "node:path";
 
 import { run as runIglo, startServer } from "@test/support/executable";
 import { runUpstream } from "@test/differential/db/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const hookTimeout = 180_000;
 const email = "apply@example.com";

@@ -29,7 +29,8 @@ import {
 } from "@/../scripts/spikes/M0.7/imaging";
 import { fixOrientation, readOrientation } from "@/../scripts/spikes/M0.7/orient";
 import type { Raw } from "@/../scripts/spikes/M0.7/png";
-import { thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { thumbContentType } from "@/../scripts/spikes/M0.7/thumb";
+import type { CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 // the emscripten modules build ImageData results; Bun has no ImageData
 class ImageDataShim {

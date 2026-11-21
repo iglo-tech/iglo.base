@@ -31,7 +31,8 @@ import { isNoRowsError } from "@/db/dbx/rows";
 import { countRecords } from "@/records/record-query";
 import { nonzeroUniques } from "@/tools/list/list";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 let totalQueries = 0;
 let app: TestCollectionsApp;

@@ -12,7 +12,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Clock } from "@/app/clock";
-import { type CollectionsApp, reloadCachedCollections } from "@/collections/collection-query";
+import { reloadCachedCollections } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { Databases } from "@/db/base";
 import { Store } from "@/tools/store/store";
 

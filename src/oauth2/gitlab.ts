@@ -4,7 +4,8 @@ import { AuthUser, BaseProvider, expiryOf } from "@/oauth2/base-provider";
 import { decodeFields, decodeRawUser } from "@/oauth2/user-fields";
 import type { Token } from "@/oauth2/token";
 import { int64Type, stringType } from "@/tools/types/go-json";
-import { parse, type ParsedTime } from "@/tools/types/go-time";
+import { parse } from "@/tools/types/go-time";
+import type { ParsedTime } from "@/tools/types/go-time";
 
 // Gitlab allows authentication via Gitlab OAuth2.
 export class Gitlab extends BaseProvider {

@@ -10,7 +10,8 @@ import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
-import { startServer, type RunningServer } from "@test/support/executable";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const MiB = 1 << 20;
 const boundary = "spillboundary";

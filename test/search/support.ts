@@ -4,7 +4,8 @@
 import { Database } from "bun:sqlite";
 import { expect } from "bun:test";
 
-import { type DB, newFromDB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 import { newExp } from "@/db/dbx/expression";
 import type { Token, TokenType } from "@/search/fexpr/scanner";
 import type { ResolverResult } from "@/search/simple-field-resolver";

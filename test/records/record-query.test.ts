@@ -19,15 +19,16 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
-import { type Expression, HashExp, like, not } from "@/db/dbx/expression";
-import { ContextCanceledError, type Params, type Row } from "@/db/dbx/query";
+import { HashExp, like, not } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
+import { ContextCanceledError } from "@/db/dbx/query";
+import type { Params, Row } from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { FieldNameEmail } from "@/fields/field";
 import type { Record } from "@/records/record-model";
 import {
-  type RecordQueryFilter,
   countRecords,
   findAllRecords,
   findAuthRecordByEmail,
@@ -39,11 +40,13 @@ import {
   recordsTarget,
   recordTarget,
 } from "@/records/record-query";
+import type { RecordQueryFilter } from "@/records/record-query";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { newJWT } from "@/tools/security/jwt";
 import { equalFold } from "@/collections/go-strings";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {

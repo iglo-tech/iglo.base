@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 src/stores/AsyncAuthStore.ts
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 
 export type AsyncSaveFunc = (serializedPayload: string) => Promise<void>;
 

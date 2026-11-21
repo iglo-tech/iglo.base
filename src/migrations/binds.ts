@@ -7,9 +7,9 @@
 // in docs/design/01-scope.md. A missing global exists and fails with an
 // error that names it.
 
-import { createDecipheriv, type DecipherGCM } from "node:crypto";
+import { createDecipheriv } from "node:crypto";
+import type { DecipherGCM } from "node:crypto";
 import {
-  type Dirent,
   lstatSync,
   mkdirSync,
   readdirSync,
@@ -17,13 +17,14 @@ import {
   renameSync,
   rmSync,
   rmdirSync,
-  type Stats,
   statSync,
   truncateSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import type { Dirent, Stats } from "node:fs";
 import { tmpdir } from "node:os";
+import type { Context } from "node:vm";
 import path from "node:path";
 
 import type { Clock } from "@/app/clock";
@@ -46,7 +47,6 @@ import {
   and,
   between,
   exists,
-  type Expression,
   HashExp,
   inExp,
   isExpression,
@@ -62,7 +62,9 @@ import {
   orLike,
   orNotLike,
 } from "@/db/dbx/expression";
-import { type Params, Query } from "@/db/dbx/query";
+import type { Expression } from "@/db/dbx/expression";
+import { Query } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { SelectQuery } from "@/db/dbx/select";
 import { Tx } from "@/db/dbx/tx";
 import type { Field } from "@/fields/field";
@@ -82,7 +84,6 @@ import {
   fieldsListMethods,
   fileModeAdapter,
   geoPointClass,
-  type GoClass,
   GoDuration,
   GoFileMode,
   goArgs,
@@ -91,7 +92,6 @@ import {
   isField,
   jsonArrayMethods,
   jsonMapClass,
-  type Method,
   mfaConfig,
   oauth2Config,
   oauth2KnownFields,
@@ -108,9 +108,11 @@ import {
   tokenConfig,
   txMethods,
 } from "@/migrations/go-class";
+import type { GoClass, Method } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
-import { type Adapter, Membrane, pass, toInteger } from "@/migrations/membrane";
+import { Membrane, pass, toInteger } from "@/migrations/membrane";
+import type { Adapter } from "@/migrations/membrane";
 import { newRecord, Record as RecordModel } from "@/records/record-model";
 import {
   newAuthToken,
@@ -122,10 +124,8 @@ import {
 } from "@/records/record-tokens";
 import {
   findRateLimitRule,
-  type RateLimitRule,
   rateLimitRuleDurationTime,
   rateLimitRuleString,
-  type RateLimitsConfig,
   Settings,
   settingsType,
   unmarshalSettings,
@@ -139,6 +139,7 @@ import {
   validateSMTP,
   validateTrustedProxy,
 } from "@/settings/settings-model";
+import type { RateLimitRule, RateLimitsConfig } from "@/settings/settings-model";
 import { equal, hs256, hs512, md5, sha256, sha512 } from "@/tools/security/crypto";
 import { encryptSync } from "@/tools/security/encrypt";
 import { StdEncoding } from "@/tools/security/base64";
@@ -155,7 +156,8 @@ import { DateTime, nowDateTime, parseDateTime } from "@/tools/types/datetime";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { bytesToText, stringType, textToBytes } from "@/tools/types/go-json";
 import { decodeValue } from "@/server/json-decode";
-import { type FieldType, structOf, unmarshalJSON } from "@/server/unmarshal-request-data";
+import { structOf, unmarshalJSON } from "@/server/unmarshal-request-data";
+import type { FieldType } from "@/server/unmarshal-request-data";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { ErrorObject, NewError } from "@/validation/error";
 
@@ -1369,7 +1371,7 @@ function bindMissing(scope: Record<string, unknown>, m: Membrane): void {
 // of that context.
 export function bindAll(
   sandbox: Record<string, unknown>,
-  context: import("node:vm").Context,
+  context: Context,
   c: BindConfig,
 ): Membrane {
   const m = new Membrane(

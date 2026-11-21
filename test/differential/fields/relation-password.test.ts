@@ -31,12 +31,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  InterceptorActionValidate,
-  isDriverValuer,
-  isRecordInterceptor,
-  type Field,
-} from "@/fields/field";
+import { InterceptorActionValidate, isDriverValuer, isRecordInterceptor } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { fieldFactory } from "@/fields/fields";
 import { PasswordField, PasswordFieldValue } from "@/fields/password";
 import { newBadRequestError } from "@/server/error";
@@ -70,7 +66,8 @@ import {
   newBaseCollection,
   interceptorArgs,
 } from "@test/support/fields";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks create collections and records through upstream and start and
 // stop it, which is slow on the macOS runners

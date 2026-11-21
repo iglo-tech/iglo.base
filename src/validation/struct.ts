@@ -12,7 +12,8 @@
 // here.
 
 import { Errors, InternalError } from "@/validation/error";
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 // FieldRules represents a rule set associated with a struct field.
 export class FieldRules {

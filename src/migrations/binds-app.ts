@@ -46,11 +46,13 @@ import {
   vacuum,
 } from "@/db/table";
 import { auxRunInTransaction } from "@/db/tx";
-import { goArgs, goMethod, type Method } from "@/migrations/go-class";
+import { goArgs, goMethod } from "@/migrations/go-class";
+import type { Method } from "@/migrations/go-class";
 import type { Adapter, Membrane } from "@/migrations/membrane";
 import { pass } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
-import { expandRecordsSync, type ExpandFetchSyncFunc } from "@/records/record-query-expand";
+import { expandRecordsSync } from "@/records/record-query-expand";
+import type { ExpandFetchSyncFunc } from "@/records/record-query-expand";
 import {
   canAccessRecord,
   findFirstRecordByFilter,

@@ -1,5 +1,5 @@
 // js-sdk v0.28.1 src/services/BaseService.ts
-import Client from "@sdk/Client";
+import type Client from "@sdk/Client";
 
 /**
  * BaseService class that should be inherited from all API services.

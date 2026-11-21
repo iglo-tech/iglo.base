@@ -18,7 +18,8 @@
 
 import { fieldFactory } from "@/fields/fields";
 import { SystemDynamicFieldNames } from "@/fields/field";
-import { JSONSyntaxError, parseJSONTree, type JSONNode } from "@/schema/json-tree";
+import { JSONSyntaxError, parseJSONTree } from "@/schema/json-tree";
+import type { JSONNode } from "@/schema/json-tree";
 import {
   builtinCollectionType,
   defaultCollectionDescription,
@@ -26,14 +27,14 @@ import {
   impliedFieldCount,
   systemCollectionNames,
 } from "@/schema/defaults";
-import {
-  collectionTypes,
-  type CollectionType,
-  type SchemaCollection,
-  type SchemaDescription,
-  type SchemaField,
-  type SchemaObject,
-  type SchemaValue,
+import { collectionTypes } from "@/schema/types";
+import type {
+  CollectionType,
+  SchemaCollection,
+  SchemaDescription,
+  SchemaField,
+  SchemaObject,
+  SchemaValue,
 } from "@/schema/types";
 import { envNamePattern, secretProviderKeys } from "@/schema/providers";
 import { isArrayIndexName, isPlainObject } from "@/schema/values";

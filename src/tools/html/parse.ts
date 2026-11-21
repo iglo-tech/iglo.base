@@ -52,10 +52,8 @@ import {
   TextToken,
   Tokenizer,
   newTokenizer,
-  type Attribute,
-  type Token,
-  type TokenType,
 } from "@/tools/html/token";
+import type { Attribute, Token, TokenType } from "@/tools/html/token";
 
 export type InsertionMode = (p: Parser) => boolean;
 

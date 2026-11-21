@@ -1,5 +1,5 @@
 // js-sdk v0.28.1 src/tools/refresh.ts
-import Client from "@sdk/Client";
+import type Client from "@sdk/Client";
 import { isTokenExpired } from "@sdk/tools/jwt";
 
 // the reset function that registerAutoRefresh attaches to the client dynamically

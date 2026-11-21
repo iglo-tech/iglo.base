@@ -15,7 +15,8 @@
 // node recycling must match Go's for the limits to fire on the same
 // patterns.
 
-import { perlGroup, posixGroup, type charGroup } from "@/tools/regexp/syntax/perl-groups";
+import { perlGroup, posixGroup } from "@/tools/regexp/syntax/perl-groups";
+import type { charGroup } from "@/tools/regexp/syntax/perl-groups";
 import {
   OpAlternate,
   OpAnyChar,
@@ -38,8 +39,8 @@ import {
   OpWordBoundary,
   Regexp,
   opPseudo,
-  type Op,
 } from "@/tools/regexp/syntax/regexp";
+import type { Op } from "@/tools/regexp/syntax/regexp";
 import {
   Categories,
   FoldCategory,
@@ -47,8 +48,8 @@ import {
   MaxRune,
   Scripts,
   SimpleFold,
-  type RangeTable,
 } from "@/tools/unicode/letter";
+import type { RangeTable } from "@/tools/unicode/letter";
 import { CategoryAliases } from "@/tools/unicode/tables";
 import { DecodeRuneInString, RuneError, RuneSelf, goString } from "@/tools/unicode/utf8";
 

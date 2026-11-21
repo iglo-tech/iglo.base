@@ -2,12 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  compareResponses,
-  Pairing,
-  tokenExpSlack,
-  type Context,
-} from "@test/differential/harness/compare";
+import { compareResponses, Pairing, tokenExpSlack } from "@test/differential/harness/compare";
+import type { Context } from "@test/differential/harness/compare";
 import type { ScenarioResponse } from "@test/scenarios/request";
 
 const fixtureId = "wsmn24bux7wo113";

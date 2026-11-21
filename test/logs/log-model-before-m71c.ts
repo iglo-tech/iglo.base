@@ -8,7 +8,8 @@ import type { Log as BatchLog } from "@/logs/batch-handler";
 import { parseDateTime, DateTime } from "@/tools/types/datetime";
 import { setOwn } from "@/tools/types/go-json";
 import { marshal } from "@test/tools/types/go-json-before-m71c";
-import { type JSONMap, scanJSONMap } from "@/tools/types/json-map";
+import { scanJSONMap } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 function jsonMapMarshalJSON(m: JSONMap<unknown> | undefined): string {
   return marshal(m ?? {}, { allowInvalidUTF8: true });

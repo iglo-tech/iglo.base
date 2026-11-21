@@ -22,9 +22,8 @@ import {
   sentenize,
   toApiError,
   ValidationErrors,
-  type SafeErrorItem,
-  type SafeErrorResolver,
 } from "@/server/error";
+import type { SafeErrorItem, SafeErrorResolver } from "@/server/error";
 
 class RequiredError extends Error {
   constructor() {

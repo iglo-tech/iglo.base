@@ -11,7 +11,8 @@ import { S3Client } from "bun";
 
 import { spawnChild, waitUntilReady } from "@test/support/child";
 import { freePort, releasePort } from "@test/support/executable";
-import { defaultLayout, requireTool, type Layout } from "@test/support/reference-tools";
+import { defaultLayout, requireTool } from "@test/support/reference-tools";
+import type { Layout } from "@test/support/reference-tools";
 
 export const testS3Credentials = {
   accessKeyId: "iglo-test-access-key",

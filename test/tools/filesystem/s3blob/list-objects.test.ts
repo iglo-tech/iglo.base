@@ -8,9 +8,11 @@
 
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { listObjects, type ListParams } from "@/tools/filesystem/internal/s3blob/s3/list-objects";
+import { listObjects } from "@/tools/filesystem/internal/s3blob/s3/list-objects";
+import type { ListParams } from "@/tools/filesystem/internal/s3blob/s3/list-objects";
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
-import { type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
+import { startS3Recorder } from "@test/support/s3-recorder";
+import type { S3Recorder } from "@test/support/s3-recorder";
 
 const emptyList = `<?xml version="1.0" encoding="UTF-8"?><ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"></ListBucketResult>`;
 

@@ -14,12 +14,8 @@
 // field named like one of the helper members) has no layout and the record
 // is written through the generic path.
 
-import {
-  FieldNameCollectionId,
-  FieldNameCollectionName,
-  FieldNameExpand,
-  type Field,
-} from "@/fields/field";
+import { FieldNameCollectionId, FieldNameCollectionName, FieldNameExpand } from "@/fields/field";
+import type { Field } from "@/fields/field";
 
 // a member of the record's JSON object
 export interface LayoutMember {

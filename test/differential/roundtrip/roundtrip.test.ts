@@ -18,25 +18,16 @@ import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import {
-  freshStart,
-  freshSuperuser,
-  type Outcome,
-  roundTrip,
-  signedIn,
-} from "@test/differential/roundtrip/run";
+import { freshStart, freshSuperuser, roundTrip, signedIn } from "@test/differential/roundtrip/run";
+import type { Outcome } from "@test/differential/roundtrip/run";
 import {
   fixtureWrites,
   password,
   settingsScenario,
   writeScenario,
 } from "@test/differential/roundtrip/scenario";
-import {
-  diffSnapshots,
-  takeSnapshot,
-  thumbPaths,
-  type Snapshot,
-} from "@test/differential/roundtrip/snapshot";
+import { diffSnapshots, takeSnapshot, thumbPaths } from "@test/differential/roundtrip/snapshot";
+import type { Snapshot } from "@test/differential/roundtrip/snapshot";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { sharedSmtpSink } from "@test/support/smtp-sink";

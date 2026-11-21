@@ -12,7 +12,8 @@
 
 import { DateTime } from "@/tools/types/datetime";
 import { appendInt, fieldsOf } from "@/tools/types/go-time";
-import { Float64, NewError, type Error as ValidationError } from "@/validation/error";
+import { Float64, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty, ToFloat, ToInt, kindOf } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 

@@ -22,13 +22,10 @@ import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { BytesBuffer, copy, EOF, ErrUnexpectedEOF, type Reader as IoReader } from "@/server/io";
-import {
-  ErrMessageTooLarge,
-  type FileHeader,
-  Part,
-  Reader as MultipartReader,
-} from "@/server/multipart";
+import { BytesBuffer, copy, EOF, ErrUnexpectedEOF } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
+import { ErrMessageTooLarge, Part, Reader as MultipartReader } from "@/server/multipart";
+import type { FileHeader } from "@/server/multipart";
 import { MultipartReader as MultipartFileReader } from "@/tools/filesystem/file";
 import type { MIMEHeader } from "@/server/textproto";
 

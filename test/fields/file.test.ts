@@ -3,7 +3,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { DefaultFileFieldMaxSize, FieldTypeFile, FileField } from "@/fields/file";
-import { File, NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
+import { NewFileFromBytes } from "@/tools/filesystem/file";
 import { marshal } from "@/tools/types/go-json";
 
 import {

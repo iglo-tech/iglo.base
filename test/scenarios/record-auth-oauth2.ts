@@ -45,12 +45,8 @@ import {
 } from "@test/scenarios/record-checks";
 import { usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext, PrepareContext, Scenario, Suite } from "@test/scenarios/scenario";
-import {
-  type MockEndpoints,
-  type MockProvider,
-  type MockProviderSpec,
-  sharedOAuth2Mock,
-} from "@test/support/oauth2-mock";
+import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
+import type { MockEndpoints, MockProvider, MockProviderSpec } from "@test/support/oauth2-mock";
 
 export const usersId = "_pb_users_auth_";
 export const user1Id = "4q1xlclmfloku33"; // test@example.com, unverified

@@ -18,7 +18,8 @@
 // dropped: iglo.base has no hooks.
 
 import { superuserToken } from "@test/scenarios/record-crud";
-import { type HttpResult, jsonRequest, RealtimeStream, type SseEvent } from "@test/realtime/client";
+import { jsonRequest, RealtimeStream } from "@test/realtime/client";
+import type { HttpResult, SseEvent } from "@test/realtime/client";
 
 export type Observation = { [key: string]: unknown };
 

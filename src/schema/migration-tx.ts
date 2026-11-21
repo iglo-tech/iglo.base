@@ -20,7 +20,8 @@ import { isNoRowsError } from "@/db/dbx/rows";
 import { deleteRecordSync, saveRecordSync } from "@/records/record-save";
 import { findRecordById, recordQuery, recordsTarget } from "@/records/record-query";
 import { findRecordIdsByFilter, findRecordsByFilter } from "@/records/record-query-filter";
-import { newRecord, type Record as RecordModel } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record as RecordModel } from "@/records/record-model";
 
 // the record of a helper: the record as a superuser's API read returns it, so
 // the hidden fields and the email are in it whatever emailVisibility says (the

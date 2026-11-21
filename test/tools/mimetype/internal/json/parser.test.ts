@@ -2,7 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type query, parserState } from "@/tools/mimetype/internal/json/parser";
+import { parserState } from "@/tools/mimetype/internal/json/parser";
+import type { query } from "@/tools/mimetype/internal/json/parser";
 import { Bytes } from "@/tools/mimetype/internal/scan/bytes";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { g, raw } from "@test/tools/mimetype/go-literal";

@@ -14,25 +14,22 @@ import { join, resolve } from "node:path";
 
 import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
-import {
-  argsMinusFirst,
-  FlagError,
-  parseFlags,
-  stripFlags,
-  type FlagSpec,
-  type FlagValue,
-} from "@/cli/flags";
-import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { argsMinusFirst, FlagError, parseFlags, stripFlags } from "@/cli/flags";
+import type { FlagSpec, FlagValue } from "@/cli/flags";
+import { helpText, usageText } from "@/cli/help";
+import type { CommandHelp } from "@/cli/help";
 import type { AppConfig, CliContext } from "@/cli/root";
 import { bootstrapApp } from "@/cli/serve";
 import { CommandError } from "@/cli/superuser";
 import { findAllCollections } from "@/collections/collection-query";
 import { dataDBFilename } from "@/db/base";
 import { parseSchemaFile, planSchema, SchemaFileError } from "@/schema/apply";
-import { loadSchemaMigrationsFor, type SchemaMigration } from "@/schema/migration-files";
+import { loadSchemaMigrationsFor } from "@/schema/migration-files";
+import type { SchemaMigration } from "@/schema/migration-files";
 import { JSONSyntaxError } from "@/schema/json-tree";
 import type { Collection } from "@/collections/collection-model";
-import { schemaFileText, type SchemaFileText } from "@/schema/file-text";
+import { schemaFileText } from "@/schema/file-text";
+import type { SchemaFileText } from "@/schema/file-text";
 import { schemaJSONText } from "@/schema/json-schema";
 import { formatReport, reportIsOK } from "@/schema/report";
 import { schemaURL } from "@/schema/url";

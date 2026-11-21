@@ -12,8 +12,10 @@ import { describe, expect, test } from "bun:test";
 
 import { ErrInvalidRedirectStatusCode, ErrMissingFile, Event } from "@/server/event";
 import { ResponseWriter } from "@/server/router";
-import { pointerTo, structOf, type MapRef, type StructType } from "@/server/unmarshal-request-data";
-import { newTestRequest, type TestRequest } from "@test/support/router";
+import { pointerTo, structOf } from "@/server/unmarshal-request-data";
+import type { MapRef, StructType } from "@/server/unmarshal-request-data";
+import { newTestRequest } from "@test/support/router";
+import type { TestRequest } from "@test/support/router";
 
 function newEvent(init: TestRequest = { target: "/" }, onCommit?: (r: Response) => void): Event {
   return new Event(new ResponseWriter(onCommit), newTestRequest(init));

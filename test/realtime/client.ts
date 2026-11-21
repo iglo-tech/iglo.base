@@ -4,7 +4,8 @@
 // use another loopback source address (127.0.0.2), which is how the
 // "different IP" scenario reaches the server without trusted proxy headers.
 
-import { connect, type Socket } from "node:net";
+import { connect } from "node:net";
+import type { Socket } from "node:net";
 
 export interface SseEvent {
   id: string;

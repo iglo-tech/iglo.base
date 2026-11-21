@@ -13,17 +13,21 @@
 
 import { basename, dirname, join } from "node:path";
 
-import { argsMinusFirst, FlagError, parseFlags, stripFlags, type FlagSpec } from "@/cli/flags";
-import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { argsMinusFirst, FlagError, parseFlags, stripFlags } from "@/cli/flags";
+import type { FlagSpec } from "@/cli/flags";
+import { helpText, usageText } from "@/cli/help";
+import type { CommandHelp } from "@/cli/help";
 import { migrateShort, runMigrateCommand } from "@/cli/migrate";
 import { findRemovedFlag, removedCommandMessage, removedFlagMessage } from "@/cli/removed";
 import { runSchemaCommand, schemaShort } from "@/cli/schema";
 import { runServeCommand, serveFlags, serveShort, serveUse } from "@/cli/serve";
 import { CommandError, runSuperuserCommand, superuserShort } from "@/cli/superuser";
 import { PanicError, registerMigrations } from "@/migrations/jsvm";
-import { addMigration, type Migration } from "@/migrations/migrations-runner";
+import { addMigration } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
 import { systemMigrationFiles, systemMigrationHasDown } from "@/migrations/system-migrations";
-import { logTime, type Output } from "@/server/serve";
+import { logTime } from "@/server/serve";
+import type { Output } from "@/server/serve";
 import type { StaticFS } from "@/apis/ui-pack";
 
 // Version of iglo.base. The release build (scripts/build.ts, M7.3) replaces

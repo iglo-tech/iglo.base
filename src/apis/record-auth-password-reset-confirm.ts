@@ -25,7 +25,8 @@ import { NewError } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { Equal } from "@/validators/equal";
 
 export async function recordConfirmPasswordReset(e: RequestEvent): Promise<HandlerResult> {

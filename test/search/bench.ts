@@ -14,7 +14,8 @@ import { join } from "node:path";
 
 import type { Clock } from "@/app/clock";
 import { newFromDB } from "@/db/dbx/db";
-import { type FilterData, filterBuildExpr, ParsedFilterCache } from "@/search/filter";
+import { filterBuildExpr, ParsedFilterCache } from "@/search/filter";
+import type { FilterData } from "@/search/filter";
 import { newProvider } from "@/search/provider";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 import { parseSortFromString } from "@/search/sort";

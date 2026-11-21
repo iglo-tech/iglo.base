@@ -31,8 +31,8 @@ import {
   fixtureChecksums,
   serveUpstream,
   upstreamSQL,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
+import type { FixtureCopy } from "@test/differential/db/fixture";
 
 const collectionNameSuperusers = "_superusers";
 

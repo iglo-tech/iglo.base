@@ -23,9 +23,11 @@
 // Upstream: pocketbase/dbx v1.13.0 builder.go
 
 import type { DB } from "@/db/dbx/db";
-import { isExpression, sortStrings, type Expression } from "@/db/dbx/expression";
+import { isExpression, sortStrings } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import type { ModelQuery } from "@/db/dbx/model-query";
-import { Query, type Executor, type Params } from "@/db/dbx/query";
+import { Query } from "@/db/dbx/query";
+import type { Executor, Params } from "@/db/dbx/query";
 import type { QueryBuilder } from "@/db/dbx/query-builder";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";

@@ -11,7 +11,8 @@
 // a BoringSSL error queued, and the next Bun.CryptoHasher throws it, which
 // fails the token check of an unrelated request.
 
-import { type KeyObject, createPrivateKey, createSign } from "node:crypto";
+import { createPrivateKey, createSign } from "node:crypto";
+import type { KeyObject } from "node:crypto";
 
 import type { Clock } from "@/app/clock";
 import { StdEncoding, RawURLEncoding } from "@/tools/security/base64";

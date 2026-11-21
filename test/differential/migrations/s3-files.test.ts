@@ -18,7 +18,8 @@ import {
   serveSite,
   writeMigrations,
 } from "@test/differential/migrations/support";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 const root = mkdtempSync(join(tmpdir(), "iglo-base-migration-s3-"));

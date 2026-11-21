@@ -32,7 +32,8 @@ import { join } from "node:path";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { freePort, startServer } from "@test/support/executable";
-import { type Mailpit, startMailpit } from "@test/support/mailpit";
+import { startMailpit } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners

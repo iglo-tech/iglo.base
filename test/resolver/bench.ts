@@ -21,10 +21,10 @@ import { join } from "node:path";
 import { RequestInfo } from "@/app/event-request";
 import { newBaseCollection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   findCachedCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { Databases } from "@/db/base";
 import { runInTransaction } from "@/db/tx";

@@ -18,7 +18,8 @@
 // (src/tools/crypto/blowfish.ts), and compared in constant time.
 
 import { goQuote } from "@/fields/field";
-import { ExpandKey, NewSaltedCipher, type Cipher } from "@/tools/crypto/blowfish";
+import { ExpandKey, NewSaltedCipher } from "@/tools/crypto/blowfish";
+import type { Cipher } from "@/tools/crypto/blowfish";
 import { Encoding } from "@/tools/security/base64";
 import { constantTimeCompare } from "@/tools/security/crypto";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";

@@ -7,7 +7,8 @@
 
 import type { Clock } from "@/app/clock";
 import type { Record } from "@/records/record-model";
-import { JWTError, type MapClaims, newJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { JWTError, newJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 
 // Supported record token types
 export const TokenTypeAuth = "auth";

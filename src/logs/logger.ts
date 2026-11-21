@@ -20,17 +20,11 @@ import { generateDefaultRandomId } from "@/db/db";
 import { newExp } from "@/db/dbx/expression";
 import { auxVacuum } from "@/db/table";
 import { auxRunInTransaction } from "@/db/tx";
-import {
-  BatchHandler,
-  LevelDebug,
-  LevelError,
-  LevelInfo,
-  LevelWarn,
-  type Log,
-  type LogAttrs,
-} from "@/logs/batch-handler";
+import { BatchHandler, LevelDebug, LevelError, LevelInfo, LevelWarn } from "@/logs/batch-handler";
+import type { Log, LogAttrs } from "@/logs/batch-handler";
 import { logDBExport, LogsTableName } from "@/logs/log-model";
-import { LogWriter, type LogRow } from "@/logs/log-writer";
+import { LogWriter } from "@/logs/log-writer";
+import type { LogRow } from "@/logs/log-writer";
 import { formatLog } from "@/logs/log-printer";
 import type { LogsConfig } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";

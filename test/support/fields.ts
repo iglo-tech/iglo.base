@@ -21,18 +21,21 @@ import {
   defaultLowercaseRecordIdPattern,
   isGetterFinder,
   isSetterFinder,
-  type Field,
-  type FieldApp,
-  type InterceptorApp,
-  type InterceptorRecord,
-  type FieldCollection,
-  type FieldRecord,
-  type FieldsListReader,
+} from "@/fields/field";
+import type {
+  Field,
+  FieldApp,
+  InterceptorApp,
+  InterceptorRecord,
+  FieldCollection,
+  FieldRecord,
+  FieldsListReader,
 } from "@/fields/field";
 import { fieldFactory } from "@/fields/fields";
 import { TextField } from "@/fields/text";
 import { toString as castToString } from "@/tools/types/cast";
-import { type DateTime, parseDateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 import { anyType, marshal, sliceOf, unmarshal } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 

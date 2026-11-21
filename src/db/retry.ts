@@ -9,7 +9,8 @@
 // As upstream, a query without a deadline gets one from the query timeout
 // (--queryTimeout) for all of its attempts, and loses it afterwards.
 
-import { Deadline, type AsyncExecHookFunc, type ExecHookFunc, type Query } from "@/db/dbx/query";
+import { Deadline } from "@/db/dbx/query";
+import type { AsyncExecHookFunc, ExecHookFunc, Query } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 
 // blocks for the given milliseconds

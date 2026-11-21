@@ -13,12 +13,8 @@
 
 import { trimSpace } from "@/collections/go-strings";
 import { SearchResult } from "@/search/provider";
-import {
-  initModifer,
-  type Modifier,
-  type ModifierFactoryFunc,
-  Modifiers,
-} from "@/tools/picker/modifiers";
+import { initModifer, Modifiers } from "@/tools/picker/modifiers";
+import type { Modifier, ModifierFactoryFunc } from "@/tools/picker/modifiers";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import { anyType, marshal, setOwn, unmarshal } from "@/tools/types/go-json";
 

@@ -27,8 +27,8 @@ import {
   appendRange,
   maxFold,
   minFold,
-  type Flags,
 } from "@/tools/regexp/syntax/parse";
+import type { Flags } from "@/tools/regexp/syntax/parse";
 import {
   OpAlternate,
   OpAnyChar,
@@ -51,15 +51,8 @@ import {
   OpWordBoundary,
   Regexp,
 } from "@/tools/regexp/syntax/regexp";
-import {
-  Categories,
-  In,
-  Is,
-  MaxRune,
-  Scripts,
-  SimpleFold,
-  type RangeTable,
-} from "@/tools/unicode/letter";
+import { Categories, In, Is, MaxRune, Scripts, SimpleFold } from "@/tools/unicode/letter";
+import type { RangeTable } from "@/tools/unicode/letter";
 import { runeString } from "@/tools/unicode/utf8";
 
 type parseTest = [regexp: string, dump: string];

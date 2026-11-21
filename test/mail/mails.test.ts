@@ -16,8 +16,10 @@ import {
 import type { Record } from "@/records/record-model";
 import { findFirstRecordByData } from "@/records/record-query";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
-import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
+import { sharedSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage } from "@test/support/smtp-sink";
 
 let app: TestApp;
 let user: Record;

@@ -19,8 +19,8 @@ import {
   repoRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 import { freePort } from "@test/support/executable";
 

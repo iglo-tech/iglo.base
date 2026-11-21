@@ -6,7 +6,8 @@
 
 import { describe, expect } from "bun:test";
 
-import { sdkTest, type SdkEnv } from "@test/differential/sdk/harness";
+import { sdkTest } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 
 const keys = (list: Array<{ key: string }>): Array<string> => list.map((b) => b.key).toSorted();
 

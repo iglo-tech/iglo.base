@@ -4,7 +4,8 @@
 // the mux's own redirect, 404 and 405 responses.
 
 import { newNotFoundError, statusText, toApiError } from "@/server/error";
-import { Chain, type HandlerFunc, type Resolver } from "@/server/handler";
+import { Chain } from "@/server/handler";
+import type { HandlerFunc, Resolver } from "@/server/handler";
 import { RouterGroup } from "@/server/group";
 import { ServeMux, cleanSlashPath } from "@/server/mux";
 import type { HttpRequest } from "@/server/request";

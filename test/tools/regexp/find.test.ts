@@ -12,7 +12,8 @@ import { describe, expect, test } from "bun:test";
 import { matchString, mustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 
-import { findTests, type FindTest } from "@test/tools/regexp/find-tests";
+import { findTests } from "@test/tools/regexp/find-tests";
+import type { FindTest } from "@test/tools/regexp/find-tests";
 
 // text[a:b] in Go's byte terms
 function slice(text: string, a: number, b: number): string {

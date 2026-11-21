@@ -15,7 +15,8 @@ import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { freePort, startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 

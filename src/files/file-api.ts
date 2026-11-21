@@ -14,11 +14,8 @@
 // goes to the app logs as a warning.
 
 import type { App } from "@/app/app";
-import {
-  type RequestEvent,
-  RequestInfo,
-  RequestInfoContextProtectedFile,
-} from "@/app/event-request";
+import { RequestInfo, RequestInfoContextProtectedFile } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import { findRecordByViewFile } from "@/collections/view";

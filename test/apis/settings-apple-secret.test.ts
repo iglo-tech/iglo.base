@@ -7,7 +7,8 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 
 import { newRouter } from "@/apis/base";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { serveTest } from "@test/support/router";
 

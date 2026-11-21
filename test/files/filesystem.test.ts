@@ -17,7 +17,8 @@ import { join } from "node:path";
 import { ThumbPool } from "@/files/thumb-pool";
 import { encodePng } from "@/files/png-raw";
 import { ResponseWriter } from "@/server/router";
-import { NewLocal, type System } from "@/tools/filesystem/filesystem";
+import { NewLocal } from "@/tools/filesystem/filesystem";
+import type { System } from "@/tools/filesystem/filesystem";
 import { detect } from "@/tools/mimetype/mimetype";
 
 import { newTestRequest } from "@test/support/router";

@@ -1,6 +1,6 @@
 // js-sdk v0.28.1 src/services/SQLService.ts
 import { BaseService } from "@sdk/services/BaseService";
-import { type CommonOptions } from "@sdk/tools/options";
+import type { CommonOptions } from "@sdk/tools/options";
 
 export interface SQLResult {
   execTime: number;

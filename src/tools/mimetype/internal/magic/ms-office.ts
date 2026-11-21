@@ -2,7 +2,6 @@
 
 import { contains, hasPrefix, leUint32, lit } from "@/tools/mimetype/go-bytes";
 import {
-  type CDFType,
   CDFTypeDoc,
   CDFTypeGeneric,
   CDFTypeInstaller,
@@ -11,7 +10,9 @@ import {
   CDFTypeXls,
   detect as cdfDetect,
 } from "@/tools/mimetype/internal/cdf/cdf";
-import { msoxml, type zipEntries } from "@/tools/mimetype/internal/magic/zip";
+import type { CDFType } from "@/tools/mimetype/internal/cdf/cdf";
+import { msoxml } from "@/tools/mimetype/internal/magic/zip";
+import type { zipEntries } from "@/tools/mimetype/internal/magic/zip";
 
 const dirEntry = (name: string): zipEntries => [{ name: lit(name), dir: true }];
 

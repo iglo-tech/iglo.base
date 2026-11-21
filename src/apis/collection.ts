@@ -60,7 +60,8 @@ import {
   unmarshalRequestData,
 } from "@/server/unmarshal-request-data";
 import { randomStringWithAlphabet } from "@/tools/security/random";
-import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
+import { marshal } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";

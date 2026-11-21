@@ -12,7 +12,8 @@ import { firstApiError } from "@/apis/record-helpers";
 import { sendRecordChangeEmail } from "@/mail/mails/record";
 import type { Record } from "@/records/record-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import { findAuthRecordByEmail, type RecordsApp } from "@/records/record-query";
+import { findAuthRecordByEmail } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
@@ -22,7 +23,8 @@ import { Length } from "@/validation/length";
 import { NotIn } from "@/validation/not-in";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 export async function recordRequestEmailChange(e: RequestEvent): Promise<HandlerResult> {
   const collection = findAuthCollection(e);

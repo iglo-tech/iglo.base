@@ -15,7 +15,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { isNotFound } from "@/tools/filesystem/blob/bucket";
-import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
+import { NewS3 } from "@/tools/filesystem/s3-system";
+import type { S3System } from "@/tools/filesystem/s3-system";
 import { cases, collections, png } from "@test/differential/files/cases";
 import {
   compareJSON,
@@ -23,18 +24,19 @@ import {
   multipartBody,
   Pairing,
   req,
-  type Res,
   sendCase,
-  type Side,
 } from "@test/differential/files/record-requests";
+import type { Res, Side } from "@test/differential/files/record-requests";
 import { ScenarioContext } from "@test/realtime/scenario";
 import { eventually } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
-import { type S3Proxy, startS3Proxy } from "@test/support/s3-proxy";
+import { startS3Proxy } from "@test/support/s3-proxy";
+import type { S3Proxy } from "@test/support/s3-proxy";
 import { startUpstream } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 

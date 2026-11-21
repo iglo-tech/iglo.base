@@ -16,13 +16,10 @@
 
 import { expect } from "bun:test";
 
-import { type HttpResult, request } from "@test/realtime/client";
-import {
-  events,
-  type Observation,
-  type RealtimeScenario,
-  type ScenarioContext,
-} from "@test/realtime/scenario";
+import { request } from "@test/realtime/client";
+import type { HttpResult } from "@test/realtime/client";
+import { events } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
 import type { RealtimeStream } from "@test/realtime/client";
 
 const failure = "../_/#/auth/oauth2-redirect-failure";

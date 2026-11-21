@@ -34,7 +34,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Collection, newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { onCollectionSave } from "@/collections/collection-save";
 import { validateCollection } from "@/collections/collection-validate";
@@ -42,15 +43,13 @@ import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
 import { newBadRequestError } from "@/server/error";
 import { Errors } from "@/validation/error";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
-import {
-  type Ctx,
-  type ValidateCase,
-  setupCollections,
-  validateCases,
-} from "@test/differential/collections/validate-cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { setupCollections, validateCases } from "@test/differential/collections/validate-cases";
+import type { Ctx, ValidateCase } from "@test/differential/collections/validate-cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 60_000;

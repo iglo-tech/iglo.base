@@ -26,9 +26,11 @@ import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
-import { startSmtpSink, type SinkMessage, type SmtpSink } from "@test/support/smtp-sink";
+import { startSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage, SmtpSink } from "@test/support/smtp-sink";
 import { startUpstream } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 installEventSource();
 

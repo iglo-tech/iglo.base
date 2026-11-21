@@ -14,7 +14,8 @@ import {
   findAllRefsByRecord,
 } from "@/records/record-auth-refs";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget, recordTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { run } from "@/records/record-save";
 
 // FindAllAuthOriginsByRecord returns all AuthOrigin models linked to the provided auth record (in DESC order).

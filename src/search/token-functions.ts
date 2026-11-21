@@ -3,22 +3,18 @@
 // Upstream's TokenFunctions is an exported, writable map; here it is a
 // read-only map (no extension surface, AGENTS.md).
 
-import { Float64, type Params, setOwn } from "@/db/dbx/query";
-import {
-  type Token,
-  TokenIdentifier,
-  TokenNumber,
-  TokenText,
-  type TokenType,
-} from "@/search/fexpr/scanner";
+import { Float64, setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
+import { TokenIdentifier, TokenNumber, TokenText } from "@/search/fexpr/scanner";
+import type { Token, TokenType } from "@/search/fexpr/scanner";
 import { mergeParams } from "@/search/filter";
 import {
   derefResult,
   NilPointerPanic,
   NullFallbackDisabled,
   NullFallbackEnforced,
-  type ResolverResult,
 } from "@/search/simple-field-resolver";
+import type { ResolverResult } from "@/search/simple-field-resolver";
 
 // the resolver of a function argument token; null is Go's nil result with
 // a nil error

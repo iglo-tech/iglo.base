@@ -7,7 +7,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { DateTime } from "@/tools/types/datetime";
-import { Float64, type Error as ValidationError, NewError } from "@/validation/error";
+import { Float64, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 
 function assertError(expected: string, err: globalThis.Error | null): void {

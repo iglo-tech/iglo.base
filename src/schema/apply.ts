@@ -55,7 +55,8 @@
 // `plan` runs the same transaction and rolls it back, with no backup.
 
 import type { App } from "@/app/app";
-import { Collection, newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
 import type { Field } from "@/fields/field";
 import {
   findAllCollections,
@@ -69,7 +70,8 @@ import type { Databases } from "@/db/base";
 import { deleteView } from "@/db/table";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";
 import { parseIndex } from "@/tools/dbutils";
-import { collectionJSON, fieldJSON, settingsJSON, type CollectionIdOf } from "@/schema/apply-json";
+import { collectionJSON, fieldJSON, settingsJSON } from "@/schema/apply-json";
+import type { CollectionIdOf } from "@/schema/apply-json";
 import { makePreSchemaBackup, prunePreSchemaBackups } from "@/schema/backup";
 import {
   countBeyondMax,
@@ -88,33 +90,25 @@ import {
   impliedStatements,
   keepStoredIndexes,
   lostFields,
-  type CollectionChange,
-  type SchemaChanges,
 } from "@/schema/diff";
+import type { CollectionChange, SchemaChanges } from "@/schema/diff";
 import { explicitIndexes, isImpliedIndex } from "@/schema/implied";
-import {
-  formatReport,
-  newReport,
-  reportIsOK,
-  type ApplyReport,
-  type Problem,
-} from "@/schema/report";
-import { readSchema, type SchemaIssue } from "@/schema/read";
-import {
-  ruleKeys,
-  type SchemaCollection,
-  type SchemaDescription,
-  type SchemaField,
-  type SchemaObject,
+import { formatReport, newReport, reportIsOK } from "@/schema/report";
+import type { ApplyReport, Problem } from "@/schema/report";
+import { readSchema } from "@/schema/read";
+import type { SchemaIssue } from "@/schema/read";
+import { ruleKeys } from "@/schema/types";
+import type {
+  SchemaCollection,
+  SchemaDescription,
+  SchemaField,
+  SchemaObject,
 } from "@/schema/types";
 import { reloadSettings } from "@/settings/settings-query";
-import {
-  isMigrationApplied,
-  saveAppliedMigration,
-  up,
-  type Migration,
-} from "@/migrations/migrations-runner";
-import { schemaMigrationRecord, type SchemaMigration } from "@/schema/migration-files";
+import { isMigrationApplied, saveAppliedMigration, up } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
+import { schemaMigrationRecord } from "@/schema/migration-files";
+import type { SchemaMigration } from "@/schema/migration-files";
 import { newMigrationHelpers } from "@/schema/migration-tx";
 import { fileProblems } from "@/schema/renames";
 import { resolveProviders } from "@/schema/providers";

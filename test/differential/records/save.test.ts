@@ -47,22 +47,20 @@ import {
 } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { FieldNameExpand } from "@/fields/field";
-import { type DataMap, type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { DataMap, Record } from "@/records/record-model";
 import { findRecordById } from "@/records/record-query";
 import { deleteRecord, saveRecord, saveRecordSync } from "@/records/record-save";
 import { ApiError, newBadRequestError, newNotFoundError } from "@/server/error";
 import { decodeValue, toAny } from "@/server/json-decode";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
-import {
-  type Step,
-  collections,
-  steps,
-  tables,
-  volatileColumns,
-} from "@test/differential/records/save-cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { collections, steps, tables, volatileColumns } from "@test/differential/records/save-cases";
+import type { Step } from "@test/differential/records/save-cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream
 const hookTimeout = 120_000;

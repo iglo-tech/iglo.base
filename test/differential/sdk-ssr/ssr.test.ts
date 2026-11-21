@@ -8,10 +8,8 @@ import {
   createSuperuserClient,
   createSessionCache,
   DEFAULT_TTL_MS,
-  type Cookie,
-  type CookieAdapter,
-  type CookieToSet,
 } from "@iglo.tech/iglo.base/ssr";
+import type { Cookie, CookieAdapter, CookieToSet } from "@iglo.tech/iglo.base/ssr";
 import { password, sdkTest, superuserToken } from "@test/differential/sdk/harness";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
 import { ClientResponseError } from "@iglo.tech/iglo.base";

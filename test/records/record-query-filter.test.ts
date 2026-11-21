@@ -21,7 +21,8 @@ import { Databases } from "@/db/base";
 import type { Params } from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { Record } from "@/records/record-model";
-import { findAuthRecordByEmail, findRecordById, type RecordsApp } from "@/records/record-query";
+import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import {
   canAccessRecord,
   canAccessRecordAsync,
@@ -32,7 +33,8 @@ import {
 } from "@/records/record-query-filter";
 import { Store } from "@/tools/store/store";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
 // a copy of the vendored fixture with a read worker pool

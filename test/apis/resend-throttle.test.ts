@@ -12,12 +12,14 @@ import { rmSync } from "node:fs";
 
 import { newRouter } from "@/apis/base";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
-import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
+import { sharedSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage } from "@test/support/smtp-sink";
 
 const email = "test@example.com";
 // a verified user: a request for it sends the barrier mail below

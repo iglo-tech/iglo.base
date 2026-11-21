@@ -17,9 +17,11 @@ import { newRouter, staticHandler, StaticWildcardParam } from "@/apis/base";
 import { dirFS } from "@/apis/static-fs";
 import { RequestEvent } from "@/app/event-request";
 import { ApiError } from "@/server/error";
-import { ResponseWriter, type Mux } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux } from "@/server/router";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { tempDir } from "@test/support/executable";
 import { newTestRequest, serveTest } from "@test/support/router";
 

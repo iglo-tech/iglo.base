@@ -27,7 +27,8 @@ import { readFileSync } from "node:fs";
 
 import type { HttpRequest } from "@/server/request";
 import { detectContentType } from "@/server/sniff";
-import { httpError, type ResponseWriter } from "@/server/router";
+import { httpError } from "@/server/router";
+import type { ResponseWriter } from "@/server/router";
 
 // mime's builtinTypesLower (Go 1.27.2 mime/type.go)
 const builtinTypes: ReadonlyArray<[string, string]> = [

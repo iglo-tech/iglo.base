@@ -31,7 +31,8 @@ import { encodePng } from "@/files/png-raw";
 import { writeLargePng, writeNoise } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { updateCollection } from "@test/scenarios/prepare";
-import { startServer, type RunningServer } from "@test/support/executable";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const roots: Array<string> = [];
 const servers: Array<RunningServer> = [];

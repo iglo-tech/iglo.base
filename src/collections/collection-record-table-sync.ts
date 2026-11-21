@@ -9,7 +9,8 @@
 // in insertion order.
 
 import type { Collection } from "@/collections/collection-model";
-import { type CollectionsApp, fieldApp, runInAppTransaction } from "@/collections/collection-query";
+import { fieldApp, runInAppTransaction } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { equalFold } from "@/collections/go-strings";
 import { HashExp, newExp } from "@/db/dbx/expression";

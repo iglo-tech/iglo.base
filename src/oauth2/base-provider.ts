@@ -7,9 +7,11 @@
 // extends the class, sets its defaults in its constructor and implements
 // fetchAuthUser; providers.ts lists it.
 
-import { type Clock, systemClock } from "@/app/clock";
+import { systemClock } from "@/app/clock";
+import type { Clock } from "@/app/clock";
 import { fetchFollowingRedirects } from "@/oauth2/http-client";
-import { exchangeToken, type Token, type TokenConfig, validToken } from "@/oauth2/token";
+import { exchangeToken, validToken } from "@/oauth2/token";
+import type { Token, TokenConfig } from "@/oauth2/token";
 import { DateTime } from "@/tools/types/datetime";
 import { anyType, mapOf, marshal, unmarshal } from "@/tools/types/go-json";
 

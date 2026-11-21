@@ -4,7 +4,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { readSchema, type SchemaIssue } from "@/schema/read";
+import { readSchema } from "@/schema/read";
+import type { SchemaIssue } from "@/schema/read";
 import type { SchemaCollection, SchemaDescription } from "@/schema/types";
 
 const url = "https://github.com/iglo-tech/iglo.base/releases/latest/download/iglo.schema.json";

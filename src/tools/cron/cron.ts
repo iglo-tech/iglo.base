@@ -11,8 +11,10 @@
 // them before the databases close (upstream's process just exits); the
 // locks have no counterpart, JS runs each of these calls to its end.
 
-import { type Clock, systemClock } from "@/app/clock";
-import { newMoment, newSchedule, type Schedule } from "@/tools/cron/schedule";
+import { systemClock } from "@/app/clock";
+import type { Clock } from "@/app/clock";
+import { newMoment, newSchedule } from "@/tools/cron/schedule";
+import type { Schedule } from "@/tools/cron/schedule";
 
 export type JobFunc = () => void | Promise<void>;
 

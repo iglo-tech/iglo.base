@@ -12,15 +12,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { observe } from "@test/realtime/run";
-import {
-  actions,
-  normalize,
-  type Observation,
-  type RealtimeScenario,
-  response,
-  type ScenarioContext,
-  settled,
-} from "@test/realtime/scenario";
+import { actions, normalize, response, settled } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 

@@ -11,12 +11,14 @@
 import type { Clock } from "@/app/clock";
 import { NotifyWatcher } from "@/app/notify-watcher";
 import { ThumbPool } from "@/files/thumb-pool";
-import { type AppFilesystem, newAppFilesystem } from "@/app/filesystem";
+import { newAppFilesystem } from "@/app/filesystem";
+import type { AppFilesystem } from "@/app/filesystem";
 import type { Databases } from "@/db/base";
 import type { LogAttrs } from "@/logs/batch-handler";
 import type { Mailer } from "@/mail/mailer";
 import { newMailClient } from "@/mail/mail-client";
-import { type LogsConfig, newDefaultSettings, type Settings } from "@/settings/settings-model";
+import { newDefaultSettings } from "@/settings/settings-model";
+import type { LogsConfig, Settings } from "@/settings/settings-model";
 import { Cron } from "@/tools/cron/cron";
 import type { Store } from "@/tools/store/store";
 import { Broker } from "@/tools/subscriptions/broker";

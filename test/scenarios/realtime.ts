@@ -36,15 +36,8 @@
 import { expect } from "bun:test";
 
 import { clientsToken, superuserToken, usersToken } from "@test/scenarios/record-crud";
-import {
-  actions,
-  events,
-  type Observation,
-  type RealtimeScenario,
-  response,
-  type ScenarioContext,
-  settled,
-} from "@test/realtime/scenario";
+import { actions, events, response, settled } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
 import type { RealtimeStream } from "@test/realtime/client";
 
 // the fixture's users: test@example.com and test2@example.com

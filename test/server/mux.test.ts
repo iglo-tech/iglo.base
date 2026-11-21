@@ -1,6 +1,5 @@
 // Upstream: Go 1.27.2 net/http pattern_test.go and routing_tree_test.go (the tables for parsing, precedence, conflicts and tree matching).
 import {
-  type Relationship,
   ServeMux,
   commonPath,
   comparePaths,
@@ -14,6 +13,7 @@ import {
   parsePattern,
   RoutingNode,
 } from "@/server/mux";
+import type { Relationship } from "@/server/mux";
 import { describe, expect, test } from "bun:test";
 
 interface Seg {

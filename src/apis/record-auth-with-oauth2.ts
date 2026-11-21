@@ -15,34 +15,29 @@
 // missing name and a failed avatar download, as upstream.
 
 import type { App } from "@/app/app";
-import {
-  type RequestEvent,
-  RequestEventKeyInfoContext,
-  RequestInfoContextOAuth2,
-} from "@/app/event-request";
+import { RequestEventKeyInfoContext, RequestInfoContextOAuth2 } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
 import { oauth2RedirectAppleNameStoreKeyPrefix } from "@/apis/record-auth-with-oauth2-redirect";
 import { firstApiError, recordAuthResponseWithNewToken } from "@/apis/record-helpers";
-import {
-  InternalRequest,
-  type PreparedItem,
-  prepareItem,
-  processInternalRequest,
-  setItemBody,
-} from "@/batch/batch";
+import { InternalRequest, prepareItem, processInternalRequest, setItemBody } from "@/batch/batch";
+import type { PreparedItem } from "@/batch/batch";
 import type { Collection } from "@/collections/collection-model";
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { runInTransaction } from "@/db/tx";
 import { FieldNameEmail, FieldNameId } from "@/fields/field";
-import { preUploadFiles, type UploadTarget } from "@/files/pre-upload";
+import { preUploadFiles } from "@/files/pre-upload";
+import type { UploadTarget } from "@/files/pre-upload";
 import { FieldTypeFile } from "@/fields/file";
 import { TextField } from "@/fields/text";
 import type { AuthUser, BaseProvider } from "@/oauth2/base-provider";
 import { initProvider } from "@/oauth2/providers";
-import { safeFileFromURL, type SafeFileOptions } from "@/oauth2/safe-file";
+import { safeFileFromURL } from "@/oauth2/safe-file";
+import type { SafeFileOptions } from "@/oauth2/safe-file";
 import type { Token } from "@/oauth2/token";
-import { ExternalAuth, newExternalAuth, saveExternalAuthSync } from "@/records/external-auth-model";
+import type { ExternalAuth } from "@/records/external-auth-model";
+import { newExternalAuth, saveExternalAuthSync } from "@/records/external-auth-model";
 import {
   deleteAllExternalAuthsByRecordSync,
   findFirstExternalAuthByExpr,
@@ -50,12 +45,8 @@ import {
 import { MFAMethodOAuth2 } from "@/records/mfa-model";
 import type { Record } from "@/records/record-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import {
-  findAuthRecordByEmail,
-  findRecordById,
-  recordQuery,
-  type RecordsApp,
-} from "@/records/record-query";
+import { findAuthRecordByEmail, findRecordById, recordQuery } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { isNoRows, saveRecordSync } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
@@ -63,13 +54,15 @@ import { setOwn } from "@/server/json-decode";
 import { toString } from "@/tools/types/cast";
 import { structOf } from "@/server/unmarshal-request-data";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
-import { type File, NewFileFromBytes } from "@/tools/filesystem/file";
+import { NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import { columnify } from "@/tools/inflector/inflector";
 import { Length } from "@/validation/length";
 import { NewError } from "@/validation/error";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 // auth.NameApple
 const NameApple = "apple";

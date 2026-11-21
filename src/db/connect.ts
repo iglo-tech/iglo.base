@@ -10,7 +10,8 @@
 
 import { Database } from "bun:sqlite";
 
-import { newFromDB, type DB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 
 // Note: the busy_timeout pragma must be first because
 // the connection needs to be set to block on busy before WAL mode

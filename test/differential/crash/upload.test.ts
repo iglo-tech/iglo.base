@@ -19,11 +19,11 @@ import {
   verifyAfterKill,
   waitFor,
   walk,
-  type Kind,
-  type Target,
 } from "@test/differential/crash/harness";
+import type { Kind, Target } from "@test/differential/crash/harness";
 import { superuserToken } from "@test/scenarios/cron";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 const roots: Array<string> = [];

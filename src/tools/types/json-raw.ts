@@ -13,7 +13,8 @@
 // does for a []byte stored in a TEXT column) is the record write path's job.
 
 import { hasInvalidUTF8 } from "@/server/json-decode";
-import { type JSONMarshaler, bytesToText, marshal, textToBytes } from "@/tools/types/go-json";
+import { bytesToText, marshal, textToBytes } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 
 // ParseJSONRaw (parseJSONRaw) creates a new JSONRaw from the provided
 // value (a JSONRaw, number, string, Uint8Array, etc.).

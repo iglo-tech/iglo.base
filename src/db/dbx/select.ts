@@ -27,11 +27,14 @@
 // query from it (tools/search/provider.go); clone() does that here.
 
 import type { Builder } from "@/db/dbx/builder";
-import { and, HashExp, or, type Expression } from "@/db/dbx/expression";
-import { assignOwn, type Params, type Query, type Row } from "@/db/dbx/query";
+import { and, HashExp, or } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
+import { assignOwn } from "@/db/dbx/query";
+import type { Params, Query, Row } from "@/db/dbx/query";
 import type { JoinInfo, UnionInfo } from "@/db/dbx/query-builder";
 import type { Rows } from "@/db/dbx/rows";
-import { primaryKeyNames, type StructModel } from "@/db/dbx/struct";
+import { primaryKeyNames } from "@/db/dbx/struct";
+import type { StructModel } from "@/db/dbx/struct";
 
 // BuildHookFunc defines a callback function that is executed on Query creation.
 export type BuildHookFunc = (q: Query) => void;

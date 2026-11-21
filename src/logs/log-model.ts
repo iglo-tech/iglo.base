@@ -5,7 +5,8 @@ import type { Params, Row } from "@/db/dbx/query";
 import type { Log as BatchLog } from "@/logs/batch-handler";
 import { parseDateTime, DateTime } from "@/tools/types/datetime";
 import { marshal, setOwn } from "@/tools/types/go-json";
-import { type JSONMap, jsonMapMarshalJSON, scanJSONMap } from "@/tools/types/json-map";
+import { jsonMapMarshalJSON, scanJSONMap } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 export const LogsTableName = "_logs";
 

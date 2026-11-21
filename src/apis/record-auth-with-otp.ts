@@ -3,11 +3,8 @@
 // The OnRecordAuthWithOTPRequest hook is not ported (no extension
 // surface): its default action runs directly.
 
-import {
-  type RequestEvent,
-  RequestEventKeyInfoContext,
-  RequestInfoContextOTP,
-} from "@/app/event-request";
+import { RequestEventKeyInfoContext, RequestInfoContextOTP } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
 import {
   consumeOTPSync,

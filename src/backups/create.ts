@@ -43,7 +43,8 @@ import {
 } from "@/app/filesystem";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
-import { type File, NewFileFromPath } from "@/tools/filesystem/file";
+import { NewFileFromPath } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import type { FilesystemWatcher, System } from "@/tools/filesystem/filesystem";
 import { S3System } from "@/tools/filesystem/s3-system";
 import { snakecase } from "@/tools/inflector/inflector";

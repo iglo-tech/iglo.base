@@ -6,15 +6,10 @@
 import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
-import {
-  argsMinusFirst,
-  FlagError,
-  parseFlags,
-  stripFlags,
-  type FlagSpec,
-  type FlagValue,
-} from "@/cli/flags";
-import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { argsMinusFirst, FlagError, parseFlags, stripFlags } from "@/cli/flags";
+import type { FlagSpec, FlagValue } from "@/cli/flags";
+import { helpText, usageText } from "@/cli/help";
+import type { CommandHelp } from "@/cli/help";
 import type { AppConfig, CliContext } from "@/cli/root";
 import { bootstrapApp } from "@/cli/serve";
 import { newOTP, saveOTP } from "@/records/otp-model";

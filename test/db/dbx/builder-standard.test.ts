@@ -26,7 +26,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { Builder } from "@/db/dbx/builder";
-import { SqliteBuilder } from "@/db/dbx/builder-sqlite";
+import type { SqliteBuilder } from "@/db/dbx/builder-sqlite";
 import { StandardBuilder } from "@/db/dbx/builder-standard";
 import { newExp } from "@/db/dbx/expression";
 import { getDB } from "@test/db/support";

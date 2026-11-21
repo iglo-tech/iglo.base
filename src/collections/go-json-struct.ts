@@ -24,7 +24,6 @@
 // *string and *bool do (null gives the zero value, a pointer becomes nil).
 
 import {
-  type GoType,
   JSONSemanticError,
   boolType,
   bytesToText,
@@ -33,8 +32,8 @@ import {
   stringType,
   unmarshal,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoType, GoInt } from "@/tools/types/go-json";
 
 export type MemberDecoders = Record<string, (raw: string) => void>;
 

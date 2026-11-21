@@ -11,10 +11,8 @@
 // A view's fields are generated from its query (createViewFields) and the
 // query is run (dryRunView) with view.ts.
 
-import {
-  type AuthOptionsValidator,
-  validateAuthOptions,
-} from "@/collections/collection-model-auth-options";
+import { validateAuthOptions } from "@/collections/collection-model-auth-options";
+import type { AuthOptionsValidator } from "@/collections/collection-model-auth-options";
 import {
   Collection,
   CollectionTypeAuth,
@@ -22,15 +20,10 @@ import {
   CollectionTypeView,
   newCollection,
 } from "@/collections/collection-model";
-import {
-  type ViewOptionsValidator,
-  validateViewOptions,
-} from "@/collections/collection-model-view-options";
-import {
-  type CollectionsApp,
-  fieldApp,
-  isCollectionNameUnique,
-} from "@/collections/collection-query";
+import { validateViewOptions } from "@/collections/collection-model-view-options";
+import type { ViewOptionsValidator } from "@/collections/collection-model-view-options";
+import { fieldApp, isCollectionNameUnique } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { FieldsList } from "@/collections/fields-list";
 import { RequestInfo } from "@/app/event-request";
 import { createViewFields, dryRunView } from "@/collections/view";
@@ -59,14 +52,16 @@ import { findSingleColumnUniqueIndex, parseIndex } from "@/tools/dbutils/index";
 import { existInSlice } from "@/tools/list/list";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
-import { Errors, NewError, type Error as ValidationError } from "@/validation/error";
+import { Errors, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { In } from "@/validation/in";
 import { Length } from "@/validation/length";
 import { Match } from "@/validation/match";
 import { Nil } from "@/validation/absent";
 import { ErrRequired, Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { Equal } from "@/validators/equal";
 import { UniqueId } from "@/validators/db";

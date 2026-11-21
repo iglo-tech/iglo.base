@@ -47,8 +47,8 @@ import {
   errAttrsExt,
   getAttrs,
   setAttrs,
-  type xattrs,
 } from "@/tools/filesystem/internal/fileblob/attrs";
+import type { xattrs } from "@/tools/filesystem/internal/fileblob/attrs";
 import { goBase } from "@/tools/filesystem/file";
 import { cleanSlashPath } from "@/server/mux";
 import { compareUTF8 } from "@/tools/types/go-json";

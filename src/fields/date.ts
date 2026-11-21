@@ -5,18 +5,16 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldApp, FieldCollection, FieldRecord } from "@/fields/field";
 import { DateTime, DefaultDateLayout, parseDateTime } from "@/tools/types/datetime";
 import { boolType, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { Date as DateRule } from "@/validation/date";
 import { Max, Min } from "@/validation/minmax";
 import { ErrRequired } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
 
 export const FieldTypeDate = "date";

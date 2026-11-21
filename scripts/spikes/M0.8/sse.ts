@@ -19,7 +19,8 @@
 // POST /broadcast; upstream broadcasts a record create in `notes` (list
 // rule ""). Server RSS and open file descriptors come from /proc.
 
-import { connect, type Socket } from "node:net";
+import { connect } from "node:net";
+import type { Socket } from "node:net";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -35,8 +36,8 @@ import {
   spikeRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 const { values } = parseArgs({
   options: {

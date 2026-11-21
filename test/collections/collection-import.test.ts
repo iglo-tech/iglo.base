@@ -14,7 +14,8 @@ import {
 } from "@/collections/collection-import";
 import { HashExp } from "@/db/dbx/expression";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {

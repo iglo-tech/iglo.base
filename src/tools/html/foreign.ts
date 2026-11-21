@@ -1,7 +1,8 @@
 // Upstream: golang.org/x/net v0.62.0 html/foreign.go
 
 import { equalFold } from "@/collections/go-strings";
-import { ElementNode, type Node } from "@/tools/html/node";
+import { ElementNode } from "@/tools/html/node";
+import type { Node } from "@/tools/html/node";
 import type { Attribute } from "@/tools/html/token";
 
 // adjustAttributeNames renames attributes in aa in place, using nameMap.

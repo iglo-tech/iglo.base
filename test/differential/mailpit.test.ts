@@ -3,7 +3,8 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
-import { startMailpit, sendMail, type Mailpit } from "@test/support/mailpit";
+import { startMailpit, sendMail } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 
 // the fields of Mailpit's API (v1) that the smoke test reads
 interface MessageSummary {

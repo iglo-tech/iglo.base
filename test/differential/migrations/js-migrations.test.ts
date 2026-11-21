@@ -20,15 +20,14 @@ import { join } from "node:path";
 import {
   api,
   kinds,
-  type Kind,
   newSite,
   normalizeOutput,
   readMigrations,
   runIn,
   serveSite,
-  type Site,
   writeMigrations,
 } from "@test/differential/migrations/support";
+import type { Kind, Site } from "@test/differential/migrations/support";
 import { bindingFiles } from "@test/differential/migrations/bindings";
 import { patternFiles } from "@test/differential/migrations/patterns";
 import { diffSnapshots, takeSnapshot } from "@test/differential/roundtrip/snapshot";

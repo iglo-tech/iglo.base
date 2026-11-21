@@ -22,36 +22,29 @@ import {
   newNotFoundError,
   newTooManyRequestsError,
   newUnauthorizedError,
-  type ApiError,
 } from "@/server/error";
-import { DefaultMaxMemory, type ReadCloser } from "@/server/buffer-with-file";
+import type { ApiError } from "@/server/error";
+import { DefaultMaxMemory } from "@/server/buffer-with-file";
+import type { ReadCloser } from "@/server/buffer-with-file";
 import {
   decodeFirstValue,
   decodeUTF8Bytes,
   hasInvalidUTF8,
   JsonEOFError,
   JsonSyntaxError,
-  type JsonValue,
 } from "@/server/json-decode";
+import type { JsonValue } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
 import { isRereader, readAll } from "@/server/rereadable-read-closer";
 import type { ResponseWriter } from "@/server/router";
-import {
-  unmarshalJSON,
-  unmarshalRequestData,
-  type MapRef,
-  type RequestData,
-  type StructType,
-} from "@/server/unmarshal-request-data";
+import { unmarshalJSON, unmarshalRequestData } from "@/server/unmarshal-request-data";
+import type { MapRef, RequestData, StructType } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
-import { File, NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
+import { NewFileFromMultipart } from "@/tools/filesystem/file";
 import { InvalidModifierDataError, PickPanic, pick } from "@/tools/picker/pick";
-import {
-  isJSONMarshaler,
-  isJSONUnmarshaler,
-  type JSONUnmarshaler,
-  marshal,
-} from "@/tools/types/go-json";
+import { isJSONMarshaler, isJSONUnmarshaler, marshal } from "@/tools/types/go-json";
+import type { JSONUnmarshaler } from "@/tools/types/go-json";
 
 export const ErrUnsupportedContentType = newBadRequestError("Unsupported Content-Type", undefined);
 export const ErrInvalidRedirectStatusCode = newInternalServerError(

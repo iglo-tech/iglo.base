@@ -7,7 +7,8 @@ import { closeSync, openSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 
 import { encodeGif } from "@/files/gif-encode";
-import { encodePng, type Raw } from "@/files/png-raw";
+import { encodePng } from "@/files/png-raw";
+import type { Raw } from "@/files/png-raw";
 
 function prng(seed: number): () => number {
   let s = seed >>> 0;

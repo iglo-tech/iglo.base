@@ -7,8 +7,8 @@ import {
   createSuperuserClient,
   handleBrowserTokenRenew,
   mintBrowserToken,
-  type CookieAdapter,
 } from "@sdk/ssr/index";
+import type { CookieAdapter } from "@sdk/ssr/index";
 import {
   API,
   APP,

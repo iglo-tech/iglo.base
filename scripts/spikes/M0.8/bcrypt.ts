@@ -31,8 +31,8 @@ import {
   startIgloServer,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 const enc = new TextEncoder();
 const bytes = (s: string): number => enc.encode(s).length;

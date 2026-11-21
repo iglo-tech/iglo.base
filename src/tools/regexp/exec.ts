@@ -12,7 +12,8 @@
 // per Regexp: a machine is in use only during one find, and a callback such
 // as replaceAllStringFunc's can run the same Regexp again.
 
-import { onePassNext, type onePassProg } from "@/tools/regexp/onepass";
+import { onePassNext } from "@/tools/regexp/onepass";
+import type { onePassProg } from "@/tools/regexp/onepass";
 import {
   EmptyBeginLine,
   EmptyBeginText,
@@ -21,7 +22,6 @@ import {
   EmptyImpossible,
   EmptyNoWordBoundary,
   EmptyWordBoundary,
-  Inst,
   InstAlt,
   InstAltMatch,
   InstCapture,
@@ -34,9 +34,8 @@ import {
   InstRuneAny,
   InstRuneAnyNotNL,
   IsWordChar,
-  type EmptyOp,
-  type Prog,
 } from "@/tools/regexp/syntax/prog";
+import type { EmptyOp, Prog, Inst } from "@/tools/regexp/syntax/prog";
 
 const RuneError = 0xff_fd;
 export const endOfText = -1;

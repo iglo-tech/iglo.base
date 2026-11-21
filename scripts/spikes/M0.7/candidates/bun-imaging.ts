@@ -16,8 +16,10 @@ import {
   orientImage,
   readOrientation,
 } from "@/../scripts/spikes/M0.7/orient";
-import { decodePng, encodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
-import { checkPixels, thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { decodePng, encodePng } from "@/../scripts/spikes/M0.7/png";
+import type { Raw } from "@/../scripts/spikes/M0.7/png";
+import { checkPixels, thumbContentType } from "@/../scripts/spikes/M0.7/thumb";
+import type { CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 export interface Header {
   // the size of the image imaging.Decode returns, which the geometry plans on

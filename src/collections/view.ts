@@ -14,21 +14,24 @@
 // SQLite errors are converted to the Go driver's text (driver-error.ts).
 
 import {
-  type CollectionsApp,
   collectionQuery,
   fieldApp,
   findCollectionByNameOrId,
   normalizeViewQueryId,
   runInAppTransaction,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { Collection, newViewCollection } from "@/collections/collection-model";
-import { FieldsList, newFieldsList } from "@/collections/fields-list";
+import type { FieldsList } from "@/collections/fields-list";
+import { newFieldsList } from "@/collections/fields-list";
 import { equalFold, toLower, trim, trimSpace } from "@/collections/go-strings";
 import { withDriverErrors } from "@/collections/driver-error";
 import { HashExp, inExp } from "@/db/dbx/expression";
-import { deleteView, tableInfo, type TableInfoRow } from "@/db/table";
+import { deleteView, tableInfo } from "@/db/table";
+import type { TableInfoRow } from "@/db/table";
 import { BoolField } from "@/fields/bool";
-import { type Field, FieldNameId, goQuote, isMultiValuer } from "@/fields/field";
+import { FieldNameId, goQuote, isMultiValuer } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { JSONField } from "@/fields/json";
 import { NumberField } from "@/fields/number";
 import { RelationField } from "@/fields/relation";

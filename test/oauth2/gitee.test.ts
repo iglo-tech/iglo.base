@@ -7,7 +7,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { Gitee } from "@/oauth2/gitee";
 import { Token } from "@/oauth2/token";
-import { json, type StubbedFetch, stubFetch } from "@test/support/fetch-stub";
+import { json, stubFetch } from "@test/support/fetch-stub";
+import type { StubbedFetch } from "@test/support/fetch-stub";
 
 const userURL = "https://gitee.com/api/v5/user";
 const emailsURL = "https://gitee.com/api/v5/emails";

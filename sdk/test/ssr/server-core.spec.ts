@@ -3,13 +3,8 @@
 import { describe, expect, test, beforeAll, afterAll, afterEach } from "bun:test";
 import { FetchMock, dummyJWT } from "@sdk-test/mocks";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import {
-  createServerClient,
-  createSuperuserClient,
-  createSessionCache,
-  type CookieAdapter,
-  type CookieToSet,
-} from "@sdk/ssr/index";
+import { createServerClient, createSuperuserClient, createSessionCache } from "@sdk/ssr/index";
+import type { CookieAdapter, CookieToSet } from "@sdk/ssr/index";
 
 const API = "http://localhost:8090";
 // authStore.isValid checks expiry against the real clock, so token times are relative to now.

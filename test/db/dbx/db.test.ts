@@ -31,7 +31,8 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 
-import { DB, Errors, newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
+import { Errors, newFromDB } from "@/db/dbx/db";
 import { TxDoneError } from "@/db/dbx/tx";
 import { getDB, getPreparedDB } from "@test/db/support";
 

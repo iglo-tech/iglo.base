@@ -35,7 +35,8 @@ import { describe, expect, test } from "bun:test";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { NoRowsError } from "@/db/dbx/rows";
 import { CompositePKError, MissingPKError } from "@/db/dbx/select";
-import { ContextCanceledError, type Params, type Row } from "@/db/dbx/query";
+import { ContextCanceledError } from "@/db/dbx/query";
+import type { Params, Row } from "@/db/dbx/query";
 import { Customer, CustomerPtr } from "@test/db/dbx/models";
 import { getDB, getPreparedDB } from "@test/db/support";
 

@@ -16,10 +16,12 @@ import { bodyLimit } from "@/middlewares/body-limit";
 import { DefaultMaxBodySize } from "@/middlewares/middlewares";
 import { bytesReader, readAll, RereadableReadCloser } from "@/server/rereadable-read-closer";
 import { HttpRequest } from "@/server/request";
-import { ResponseWriter, type Mux } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux } from "@/server/router";
 import type { MapRef } from "@/server/unmarshal-request-data";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 
 let testApp: TestApp;
 let mux: Mux;

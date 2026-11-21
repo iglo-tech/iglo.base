@@ -5,11 +5,8 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldApp, FieldCollection, FieldRecord } from "@/fields/field";
 import { toString as castToString } from "@/tools/types/cast";
 import { boolType, bytesToText, sliceOf, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { Parse as parseURL } from "@/validation/is/go-url";

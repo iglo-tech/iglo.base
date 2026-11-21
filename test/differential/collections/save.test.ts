@@ -32,7 +32,8 @@ import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Collection, newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
 import { importCollections } from "@/collections/collection-import";
 import {
   findCachedCollectionByNameOrId,
@@ -46,10 +47,13 @@ import { newBadRequestError, newNotFoundError } from "@/server/error";
 import { anyType, mapOf, sliceOf, unmarshal } from "@/tools/types/go-json";
 import { Errors, NewError } from "@/validation/error";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
-import { type Ctx, type Step, steps } from "@test/differential/collections/save-cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { steps } from "@test/differential/collections/save-cases";
+import type { Ctx, Step } from "@test/differential/collections/save-cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 120_000;

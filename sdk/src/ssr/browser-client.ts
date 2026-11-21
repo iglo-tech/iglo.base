@@ -5,7 +5,8 @@
 // and the realtime and collection services are the main entry's own.
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { cookieParse } from "@sdk/tools/cookie";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { Loose } from "@sdk/tools/loose";

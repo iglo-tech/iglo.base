@@ -8,7 +8,8 @@
 // Returned slices point into the buffer, as Go's, and stop being valid at
 // the next read.
 
-import { ErrNoProgress, type Reader as IoReader } from "@/server/io";
+import { ErrNoProgress } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 
 const defaultBufSize = 4096;
 const minReadBufferSize = 16;

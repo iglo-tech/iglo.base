@@ -1,6 +1,8 @@
 // docs/design/13-ssr.md ("Session cookie", "Clients")
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
-import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
+import type { SerializeOptions } from "@sdk/tools/cookie";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { Cookie, CookieToSet, CookieValueMap, RequestCookieAdapter } from "@sdk/ssr/types";
 

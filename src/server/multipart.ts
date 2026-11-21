@@ -19,15 +19,8 @@
 // request ends, as net/http does after the handler (D27). A failed
 // ReadForm removes it at once.
 
-import {
-  copyBufferSize,
-  ErrUnexpectedEOF,
-  EOF,
-  BytesBuffer,
-  copy,
-  copyN,
-  type Reader as IoReader,
-} from "@/server/io";
+import { copyBufferSize, ErrUnexpectedEOF, EOF, BytesBuffer, copy, copyN } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 import { Reader as BufReader } from "@/server/bufio";
 import { Reader as QPReader } from "@/server/quotedprintable";
 import { parseMediaType } from "@/server/request";
@@ -42,7 +35,8 @@ import { closeSync, openSync, rmSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { goBase, type MultipartFileHeader } from "@/tools/filesystem/file";
+import { goBase } from "@/tools/filesystem/file";
+import type { MultipartFileHeader } from "@/tools/filesystem/file";
 
 // ErrMessageTooLarge is returned by ReadForm if the message form data is
 // too large to be processed.

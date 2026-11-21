@@ -6,7 +6,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Cron, type CronConfig } from "@/tools/cron/cron";
+import { Cron } from "@/tools/cron/cron";
+import type { CronConfig } from "@/tools/cron/cron";
 
 const minute = 60_000;
 

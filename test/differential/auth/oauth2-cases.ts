@@ -12,24 +12,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Collection } from "@/collections/collection-model";
-import {
-  OAuth2KnownFields,
-  type OAuth2ProviderConfig,
-} from "@/collections/collection-model-auth-options";
+import { OAuth2KnownFields } from "@/collections/collection-model-auth-options";
+import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 
 import { insertExternalAuth } from "@test/scenarios/record-auth-prepare";
 import {
   all,
   authScenario,
-  type PrepareStep,
   passwordChanged,
-  type ProviderSpec,
   useProvider,
   user1Id,
   user2Id,
   usersId,
   verifiedEmail,
 } from "@test/scenarios/record-auth-oauth2";
+import type { PrepareStep, ProviderSpec } from "@test/scenarios/record-auth-oauth2";
 import {
   authOriginsCount,
   checks,

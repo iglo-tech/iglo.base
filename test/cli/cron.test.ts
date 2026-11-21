@@ -6,7 +6,8 @@ import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { type CliContext, runCli } from "@/cli/root";
+import { runCli } from "@/cli/root";
+import type { CliContext } from "@/cli/root";
 
 import { eventually, expiredRow, writeMFAs, writeOTPs } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";

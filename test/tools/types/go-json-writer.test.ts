@@ -6,12 +6,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  isCanonicalCompactJSON,
-  marshal,
-  marshalPartial,
-  type MarshalOptions,
-} from "@/tools/types/go-json";
+import { isCanonicalCompactJSON, marshal, marshalPartial } from "@/tools/types/go-json";
+import type { MarshalOptions } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import {
   marshal as marshalBefore,

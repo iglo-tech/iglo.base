@@ -1,5 +1,6 @@
 // What one log costs on the main thread, part by part (docs/perf/M5.5-logs.md).
-import { BatchHandler, type Log } from "@/logs/batch-handler";
+import { BatchHandler } from "@/logs/batch-handler";
+import type { Log } from "@/logs/batch-handler";
 import { logDBExport } from "@/logs/log-model";
 import { generateDefaultRandomId } from "@/db/db";
 import { auxRunInTransaction } from "@/db/tx";

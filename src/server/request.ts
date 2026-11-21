@@ -10,7 +10,8 @@
 
 import type { ReadCloser } from "@/server/buffer-with-file";
 import { bodyReader } from "@/server/io";
-import { type Form, Reader as MultipartReader } from "@/server/multipart";
+import { Reader as MultipartReader } from "@/server/multipart";
+import type { Form } from "@/server/multipart";
 import { readAll } from "@/server/rereadable-read-closer";
 import { unescapeBytes } from "@/server/mux";
 

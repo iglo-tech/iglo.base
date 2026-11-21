@@ -21,7 +21,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { both, startPair, type Pair } from "@test/differential/serve/pair";
+import { both, startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 import { tempDir } from "@test/support/executable";
 import { rawRequest } from "@test/support/raw-http";
 

@@ -25,8 +25,10 @@ import {
 import { TextField } from "@/fields/text";
 import { marshal } from "@/tools/types/go-json";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import { type Pending, caseTest, expectValidationErrors } from "@test/collections/validation";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
+import { caseTest, expectValidationErrors } from "@test/collections/validation";
+import type { Pending } from "@test/collections/validation";
 
 const second = 1_000_000_000n;
 

@@ -27,19 +27,16 @@ import { join } from "node:path";
 import { runUpstream } from "@test/differential/db/fixture";
 import { compareResponses, readStartingData } from "@test/differential/harness/compare";
 import { runDifferential } from "@test/differential/harness/run";
-import {
-  fixtureCases,
-  type Identity,
-  type ReadCase,
-} from "@test/differential/records-read/fixture-cases";
+import { fixtureCases } from "@test/differential/records-read/fixture-cases";
+import type { Identity, ReadCase } from "@test/differential/records-read/fixture-cases";
 import {
   freshCases,
-  type FreshIdentity,
   notes,
   notesCollection,
   ruleCases,
   ruleShapes,
 } from "@test/differential/records-read/fresh-cases";
+import type { FreshIdentity } from "@test/differential/records-read/fresh-cases";
 import {
   authUsers,
   collectionSteps,
@@ -59,8 +56,10 @@ import {
 import { send } from "@test/scenarios/runner";
 import type { Scenario } from "@test/scenarios/scenario";
 import type { ScenarioResponse } from "@test/scenarios/request";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 interface ServerPair {
   dataDir: string;

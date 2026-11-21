@@ -20,10 +20,10 @@ import {
   verifyAfterKill,
   waitFor,
   walk,
-  type Kind,
-  type Target,
 } from "@test/differential/crash/harness";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import type { Kind, Target } from "@test/differential/crash/harness";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 import { centralEntries } from "@test/tools/archive/central-directory";
 
 const timeout = 120_000;

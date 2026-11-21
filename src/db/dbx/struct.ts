@@ -30,7 +30,8 @@
 // are used everywhere dbx uses struct field names (Insert/Update attrs,
 // Exclude).
 
-import { setOwn, type Params, type Row } from "@/db/dbx/query";
+import { setOwn } from "@/db/dbx/query";
+import type { Params, Row } from "@/db/dbx/query";
 
 // TableModel is the interface that should be implemented by models which have unconventional table names.
 export interface TableModel {

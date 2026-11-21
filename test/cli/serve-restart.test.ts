@@ -7,7 +7,8 @@ import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { type CliContext, runCli } from "@/cli/root";
+import { runCli } from "@/cli/root";
+import type { CliContext } from "@/cli/root";
 
 import { appName, fixtureCopy, login, patchSettings, waitFor } from "@test/notify/support";
 import { freePort, tempDir } from "@test/support/executable";

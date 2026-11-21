@@ -26,7 +26,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { BaseQueryBuilder, type JoinInfo, type UnionInfo } from "@/db/dbx/query-builder";
+import { BaseQueryBuilder } from "@/db/dbx/query-builder";
+import type { JoinInfo, UnionInfo } from "@/db/dbx/query-builder";
 import type { Expression } from "@/db/dbx/expression";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { getDB } from "@test/db/support";

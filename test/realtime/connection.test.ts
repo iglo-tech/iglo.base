@@ -18,13 +18,14 @@ import {
   findOAuth2RedirectClient,
   realtimeIdleTimeoutMs,
   realtimeMaxTimeoutMs,
-  type RealtimeTimers,
   sendOAuth2Redirect,
 } from "@/realtime/realtime";
+import type { RealtimeTimers } from "@/realtime/realtime";
 import { handleRequest } from "@/server/serve";
 import type { Mux } from "@/server/router";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { serveTest } from "@test/support/router";
 

@@ -23,15 +23,8 @@
 //
 // The server never watches anything in production (--mode prod).
 
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  watch,
-  writeFileSync,
-  type FSWatcher,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, watch, writeFileSync } from "node:fs";
+import type { FSWatcher } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import type { App } from "@/app/app";

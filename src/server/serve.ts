@@ -12,7 +12,8 @@ import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 
-import { newRouter, type RouterOptions } from "@/apis/base";
+import { newRouter } from "@/apis/base";
+import type { RouterOptions } from "@/apis/base";
 import { loadInstaller } from "@/apis/installer";
 import { bindDashboard } from "@/apis/serve-ui";
 import { closeRealtimeConnections } from "@/realtime/realtime";
@@ -24,7 +25,8 @@ import type { RequestEvent } from "@/app/event-request";
 import { unescapeBytes } from "@/server/mux";
 import { HttpRequest } from "@/server/request";
 import { RereadableReadCloser, streamReader } from "@/server/rereadable-read-closer";
-import { ResponseWriter, type Mux, type Router } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux, Router } from "@/server/router";
 
 export interface Output {
   stdout(text: string): void;

@@ -2,9 +2,9 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Event } from "@/server/event";
+import type { Event } from "@/server/event";
 import { RouterGroup } from "@/server/group";
-import { Route } from "@/server/route";
+import type { Route } from "@/server/route";
 
 // the handlers under test ignore their event argument, as the Go tests pass nil
 const nilEvent = undefined as unknown as Event;

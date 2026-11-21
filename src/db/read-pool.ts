@@ -24,8 +24,10 @@
 
 import type { SQLQueryBindings } from "bun:sqlite";
 
-import { DeadlineExceededError, type AsyncReader, type Deadline } from "@/db/dbx/query";
-import { NoRowsError, rowsFromValues, type ReadMode } from "@/db/dbx/rows";
+import { DeadlineExceededError } from "@/db/dbx/query";
+import type { AsyncReader, Deadline } from "@/db/dbx/query";
+import { NoRowsError, rowsFromValues } from "@/db/dbx/rows";
+import type { ReadMode } from "@/db/dbx/rows";
 
 export interface ReadRequestMessage {
   id: number;

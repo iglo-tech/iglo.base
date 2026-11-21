@@ -18,8 +18,8 @@ import {
   runUpstream,
   serveUpstream,
   superuserToken,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
+import type { FixtureCopy } from "@test/differential/db/fixture";
 
 const recordId = "iglobasedemo201";
 const logId = "iglobaselog0001";

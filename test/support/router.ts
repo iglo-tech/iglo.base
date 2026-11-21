@@ -4,7 +4,8 @@
 
 import { bytesReader, RereadableReadCloser } from "@/server/rereadable-read-closer";
 import { HttpRequest } from "@/server/request";
-import { ResponseWriter, type Mux } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux } from "@/server/router";
 
 export interface TestRequest {
   method?: string;

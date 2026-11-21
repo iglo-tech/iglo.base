@@ -3,7 +3,8 @@
 // The pattern is a Go regexp (src/tools/regexp).
 
 import type { Regexp } from "@/tools/regexp/regexp";
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, StringOrBytes } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 

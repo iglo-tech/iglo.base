@@ -16,7 +16,8 @@ import { formatLog } from "@/logs/log-printer";
 import { ResponseWriter } from "@/server/router";
 import { reloadSettings } from "@/settings/settings-query";
 
-import { openFixtureApp, type TestApp, type TestAppOptions } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp, TestAppOptions } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/cron";
 import { newTestRequest, serveTest } from "@test/support/router";
 

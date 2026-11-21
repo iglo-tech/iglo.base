@@ -17,14 +17,15 @@ import { OAuth2ProviderConfig } from "@/collections/collection-model-auth-option
 import {
   appleSecretPrivateKey,
   authMethodsProviders,
-  type ProviderCase,
   providerCases,
 } from "@test/differential/auth/oauth2-provider-cases";
+import type { ProviderCase } from "@test/differential/auth/oauth2-provider-cases";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { updateCollection } from "@test/scenarios/prepare";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
-import { type MockRequest, sharedOAuth2Mock } from "@test/support/oauth2-mock";
+import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
+import type { MockRequest } from "@test/support/oauth2-mock";
 import { startUpstream } from "@test/support/upstream";
 
 const timeout = 120_000;

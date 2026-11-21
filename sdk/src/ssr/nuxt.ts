@@ -27,20 +27,16 @@
 // request that carries user data: its session cookie, a cookie it writes, or a browser token it
 // mints (`setHeader` is called as soon as one of them happens).
 import type { SerializeOptions } from "@sdk/tools/cookie";
-import {
-  createRequestCookieAdapter,
-  SSR_NO_CACHE_HEADERS,
-  type CookieAdapter,
-} from "@sdk/ssr/index";
+import { createRequestCookieAdapter, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
+import type { CookieAdapter } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
   noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
-  type AdapterOptions,
-  type ResolvedAdapterOptions,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 
 /** The options of a cookie write, in the shape h3's `setCookie` takes. */
 export interface NuxtCookieOptions {

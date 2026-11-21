@@ -9,7 +9,8 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { startPair, type Pair } from "@test/differential/serve/pair";
+import { startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 

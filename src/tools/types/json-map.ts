@@ -7,7 +7,6 @@
 // integration; they are kept for the ported tests and callers.
 
 import {
-  type GoType,
   anyType,
   bytesToText,
   marshal,
@@ -15,6 +14,7 @@ import {
   setOwn,
   unmarshalMapInto,
 } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 
 export type JSONMap<T> = Record<string, T>;
 

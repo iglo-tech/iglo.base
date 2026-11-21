@@ -1,7 +1,7 @@
 // js-sdk v0.28.1 tests/suites.ts
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { assert } from "@sdk-test/assert";
-import { CrudService } from "@sdk/services/CrudService";
+import type { CrudService } from "@sdk/services/CrudService";
 import { FetchMock } from "@sdk-test/mocks";
 
 export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePath: string) {

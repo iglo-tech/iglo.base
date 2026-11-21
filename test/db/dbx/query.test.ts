@@ -38,9 +38,8 @@ import {
   Float64,
   Query,
   replacePlaceholders,
-  type Params,
-  type Row,
 } from "@/db/dbx/query";
+import type { Params, Row } from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { StructModel } from "@/db/dbx/struct";
 import { Customer, User } from "@test/db/dbx/models";

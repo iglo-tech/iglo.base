@@ -5,7 +5,7 @@ import { crudServiceTestsSuite } from "@sdk-test/suites";
 import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { RecordService } from "@sdk/services/RecordService";
-import { type RecordModel } from "@sdk/tools/dtos";
+import type { RecordModel } from "@sdk/tools/dtos";
 
 describe("RecordService", function () {
   const client = new Client("test_base_url/");

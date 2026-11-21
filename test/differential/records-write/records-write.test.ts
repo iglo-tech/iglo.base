@@ -29,13 +29,13 @@ import { join } from "node:path";
 import { runUpstream } from "@test/differential/db/fixture";
 import { sendChunked } from "@test/differential/records-write/chunked";
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
-import { type FixtureIdentity, fixtureCases } from "@test/differential/records-write/fixture-cases";
+import { fixtureCases } from "@test/differential/records-write/fixture-cases";
+import type { FixtureIdentity } from "@test/differential/records-write/fixture-cases";
 import {
   changedPasswords,
   freshCases,
   freshCollections,
   freshCollections2,
-  type FreshIdentity,
   freshPassword,
   freshRecords,
   members,
@@ -43,6 +43,7 @@ import {
   ruleShapes,
   typesFiles,
 } from "@test/differential/records-write/fresh-cases";
+import type { FreshIdentity } from "@test/differential/records-write/fresh-cases";
 import type { WriteCase } from "@test/differential/records-write/write-case";
 import { rid } from "@test/differential/resolver/schema";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -55,8 +56,10 @@ import {
 import { send } from "@test/scenarios/runner";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 interface ServerPair {
   // the starting pb_data (only read)

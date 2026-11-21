@@ -5,14 +5,16 @@
 // another loopback address.
 
 import { mkdtempSync, rmSync } from "node:fs";
-import { createConnection, type Socket } from "node:net";
+import { createConnection } from "node:net";
+import type { Socket } from "node:net";
 import { createInterface } from "node:readline";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { spawnChild, waitUntilReady } from "@test/support/child";
 import { freePort, releasePort } from "@test/support/executable";
-import { defaultLayout, requireTool, type Layout } from "@test/support/reference-tools";
+import { defaultLayout, requireTool } from "@test/support/reference-tools";
+import type { Layout } from "@test/support/reference-tools";
 
 export interface Mailpit {
   smtpPort: number;

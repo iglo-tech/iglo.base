@@ -23,7 +23,8 @@
 // needed (one event loop). String() is toString(); DurationTime returns
 // milliseconds.
 
-import { structOf, sliceOf, type StructType, unmarshalJSON } from "@/server/unmarshal-request-data";
+import { structOf, sliceOf, unmarshalJSON } from "@/server/unmarshal-request-data";
+import type { StructType } from "@/server/unmarshal-request-data";
 import {
   decodeUTF8Bytes,
   decodeValue,
@@ -34,7 +35,8 @@ import { nowDateTime } from "@/tools/types/datetime";
 import type { Clock } from "@/app/clock";
 import { newSchedule } from "@/tools/cron/schedule";
 import { encrypt, encryptSync } from "@/tools/security/encrypt";
-import { type GoInt, quote } from "@/tools/types/go-json";
+import { quote } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { Errors, NewError } from "@/validation/error";
 import { Each } from "@/validation/each";
 import { In } from "@/validation/in";
@@ -44,7 +46,8 @@ import { Match } from "@/validation/match";
 import { Max, Min } from "@/validation/minmax";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type Validatable } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { Validatable } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { IPOrSubnet } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";

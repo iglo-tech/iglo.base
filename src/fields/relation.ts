@@ -6,30 +6,27 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MultiValuer,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MultiValuer,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { subtractSlice, toInterfaceSlice, toUniqueStringSlice } from "@/tools/list/list";
-import {
-  boolType,
-  intType,
-  maxGoInt,
-  stringType,
-  unmarshalStruct,
-  type GoInt,
-} from "@/tools/types/go-json";
+import { boolType, intType, maxGoInt, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { NewError } from "@/validation/error";
 import { Min } from "@/validation/minmax";
 import { ErrRequired, Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 
 export const FieldTypeRelation = "relation";

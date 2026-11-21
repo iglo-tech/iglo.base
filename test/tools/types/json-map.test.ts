@@ -8,7 +8,6 @@ import { describe, expect, test } from "bun:test";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { anyType, marshal } from "@/tools/types/go-json";
 import {
-  type JSONMap,
   jsonMapGet,
   jsonMapMarshalJSON,
   jsonMapSet,
@@ -16,6 +15,7 @@ import {
   jsonMapValue,
   scanJSONMap,
 } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 

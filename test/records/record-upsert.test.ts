@@ -19,13 +19,15 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
-import { type DataMap, type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { DataMap, Record } from "@/records/record-model";
 import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
 import { RecordUpsert } from "@/records/record-upsert";
 import { NewFileFromBytes } from "@/tools/filesystem/file";
 import { marshal } from "@/tools/types/go-json";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 

@@ -27,7 +27,8 @@
 import type { Builder } from "@/db/dbx/builder";
 import { HashExp } from "@/db/dbx/expression";
 import { MissingPKError } from "@/db/dbx/select";
-import { structColumns, structPK, type StructModel } from "@/db/dbx/struct";
+import { structColumns, structPK } from "@/db/dbx/struct";
+import type { StructModel } from "@/db/dbx/struct";
 
 // ModelQuery represents a query associated with a struct model.
 export class ModelQuery {

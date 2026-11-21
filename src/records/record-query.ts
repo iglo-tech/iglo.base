@@ -29,21 +29,21 @@
 // branches of the One/All hooks (custom Go structs that embed a Record; a
 // library API) and the non-pointer *[]Record slice (Go only).
 
-import {
-  type CollectionsApp,
-  findCachedCollectionByNameOrId,
-} from "@/collections/collection-query";
+import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { Collection } from "@/collections/collection-model";
 import { equalFold } from "@/collections/go-strings";
 import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { wrapError } from "@/collections/view";
-import { type Expression, HashExp, inExp, newExp } from "@/db/dbx/expression";
+import { HashExp, inExp, newExp } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import type { Row } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { defaultMaxLockRetries, execLockRetry, execLockRetryAsync } from "@/db/retry";
 import { FieldNameEmail, goQuote } from "@/fields/field";
-import { type Record, newRecordFromRow, newRecordsFromRows } from "@/records/record-model";
+import { newRecordFromRow, newRecordsFromRows } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import {
   TokenClaimCollectionId,
   TokenClaimId,

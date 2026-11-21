@@ -40,10 +40,8 @@ import {
   hostPlatform,
   layoutFor,
   readLock,
-  type Layout,
-  type PlatformEntry,
-  type Tool,
 } from "@test/support/reference-tools";
+import type { Layout, PlatformEntry, Tool } from "@test/support/reference-tools";
 
 const { values } = parseArgs({
   options: {

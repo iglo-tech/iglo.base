@@ -1,8 +1,10 @@
 // Upstream: none (moves pixels in and out of Bun.Image, D10)
 
+import type * as NodeZlib from "node:zlib";
+
 // node:zlib is loaded on first use: it was about 10 ms of the start-up (P.3)
-let zlibModule: typeof import("node:zlib") | undefined;
-function zlib(): typeof import("node:zlib") {
+let zlibModule: typeof NodeZlib | undefined;
+function zlib(): typeof NodeZlib {
   return (zlibModule ??= process.getBuiltinModule("node:zlib"));
 }
 //

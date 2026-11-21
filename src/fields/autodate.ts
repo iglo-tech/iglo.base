@@ -10,15 +10,18 @@ import {
   internalCustomFieldKeyPrefix,
   marshalStruct,
   noopSetter,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
 } from "@/fields/field";
-import { type DateTime, nowDateTime, parseDateTime } from "@/tools/types/datetime";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
+} from "@/fields/field";
+import { nowDateTime, parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 import { boolType, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";

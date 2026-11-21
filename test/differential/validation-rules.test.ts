@@ -24,7 +24,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 import { sentenize } from "@/server/error";
 import type { Error as ValidationError } from "@/validation/error";

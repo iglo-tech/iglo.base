@@ -6,7 +6,8 @@
 // ported, so the decoder-only checks run.
 
 import { expect, test } from "bun:test";
-import { BytesBuffer, copy, EOF, type Reader as IoReader } from "@/server/io";
+import { BytesBuffer, copy, EOF } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 import { Reader as QPReader } from "@/server/quotedprintable";
 
 // The byte string of a Go string literal (one character per byte).

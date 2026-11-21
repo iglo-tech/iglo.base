@@ -27,15 +27,10 @@ import {
   zeroInstant,
 } from "@/tools/types/cast";
 import { stringType, unmarshal } from "@/tools/types/go-json";
-import { type Instant, appendInt, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
-import {
-  type Location,
-  UTC,
-  dateIn,
-  localLocation,
-  lookup,
-  parsedTime,
-} from "@/tools/types/go-zoneinfo";
+import { appendInt, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
+import type { Instant } from "@/tools/types/go-time";
+import { UTC, dateIn, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
+import type { Location } from "@/tools/types/go-zoneinfo";
 
 // DefaultDateLayout specifies the default app date strings layout.
 export const DefaultDateLayout = "2006-01-02 15:04:05.000Z";

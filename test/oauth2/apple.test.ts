@@ -10,7 +10,8 @@ import { generateKeyPairSync, sign } from "node:crypto";
 
 import { Apple } from "@/oauth2/apple";
 import { Token } from "@/oauth2/token";
-import { json, type StubbedFetch, stubFetch } from "@test/support/fetch-stub";
+import { json, stubFetch } from "@test/support/fetch-stub";
+import type { StubbedFetch } from "@test/support/fetch-stub";
 
 const jwksURL = "https://appleid.apple.com/auth/keys";
 const clientId = "com.example.app";

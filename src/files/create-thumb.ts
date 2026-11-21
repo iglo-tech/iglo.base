@@ -25,23 +25,17 @@
 
 import { encodeGif } from "@/files/gif-encode";
 import {
-  type ByteSource,
   checkJpegComplete,
   decodeConfig,
   gifFirstFrame,
   orientImage,
   readOrientation,
-  type Size,
 } from "@/files/image-config";
-import {
-  cropRect,
-  resize,
-  thumbFormat,
-  thumbGeometry,
-  thumbPlan,
-  type ThumbSize,
-} from "@/files/imaging";
-import { decodePng, encodePng, type Raw } from "@/files/png-raw";
+import type { ByteSource, Size } from "@/files/image-config";
+import { cropRect, resize, thumbFormat, thumbGeometry, thumbPlan } from "@/files/imaging";
+import type { ThumbSize } from "@/files/imaging";
+import { decodePng, encodePng } from "@/files/png-raw";
+import type { Raw } from "@/files/png-raw";
 
 export interface Thumb {
   bytes: Uint8Array;

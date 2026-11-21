@@ -13,13 +13,13 @@ import { explicitIndexes } from "@/schema/implied";
 import { storedProviders } from "@/schema/providers";
 import { isPlainObject } from "@/schema/values";
 import type { SchemaDescription } from "@/schema/types";
-import {
-  type CollectionType,
-  type SchemaCollection,
-  type SchemaField,
-  type SchemaObject,
-  type SchemaValue,
-  ruleKeys,
+import { ruleKeys } from "@/schema/types";
+import type {
+  CollectionType,
+  SchemaCollection,
+  SchemaField,
+  SchemaObject,
+  SchemaValue,
 } from "@/schema/types";
 
 // the name of a collection by its id ("" for no collection)

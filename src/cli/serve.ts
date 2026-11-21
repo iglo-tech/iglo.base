@@ -28,7 +28,8 @@ import { applySchema } from "@/schema/apply";
 import { loadSchemaMigrationsFor, schemaMigrationsDir } from "@/schema/migration-files";
 import { SchemaSync } from "@/schema/sync";
 import { schemaURL } from "@/schema/url";
-import { type Migration, up } from "@/migrations/migrations-runner";
+import { up } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
 import { logTime, serve } from "@/server/serve";
 import { reloadSettings } from "@/settings/settings-query";
 

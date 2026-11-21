@@ -11,15 +11,18 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { findCollectionByNameOrId, runInAppTransaction } from "@/collections/collection-query";
 import type { Collection } from "@/collections/collection-model";
-import { TextField } from "@/fields/text";
-import { newRecord, type Record } from "@/records/record-model";
+import type { TextField } from "@/fields/text";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import type { RecordsApp } from "@/records/record-query";
 import { saveRecord, saveRecordSync } from "@/records/record-save";
-import { type File, NewFileFromBytes } from "@/tools/filesystem/file";
+import { NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { marshal } from "@/tools/types/go-json";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 
 const content = new TextEncoder().encode("test");

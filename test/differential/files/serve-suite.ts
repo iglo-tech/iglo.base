@@ -49,22 +49,26 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Database } from "bun:sqlite";
 
-import { decodePng, type Raw } from "@/files/png-raw";
+import { decodePng } from "@/files/png-raw";
+import type { Raw } from "@/files/png-raw";
 import { NewS3 } from "@/tools/filesystem/s3-system";
 
 import {
-  type TestImage,
   writeBaseSet,
   writeCompatSet,
   writeEdgeSet,
   writeLargePng,
   writeNoise,
 } from "@test/differential/files/images";
+import type { TestImage } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const comparedHeaders = [
   "content-type",

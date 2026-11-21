@@ -16,7 +16,8 @@ import { recordRequestPasswordReset } from "@/apis/record-auth-password-reset-re
 import { recordAuthRefresh } from "@/apis/record-auth-refresh";
 import { recordConfirmVerification } from "@/apis/record-auth-verification-confirm";
 import { recordRequestVerification } from "@/apis/record-auth-verification-request";
-import { recordAuthWithOAuth2, type RecordAuthOptions } from "@/apis/record-auth-with-oauth2";
+import { recordAuthWithOAuth2 } from "@/apis/record-auth-with-oauth2";
+import type { RecordAuthOptions } from "@/apis/record-auth-with-oauth2";
 import { oauth2SubscriptionRedirect } from "@/apis/record-auth-with-oauth2-redirect";
 import { recordAuthWithOTP } from "@/apis/record-auth-with-otp";
 import { recordAuthWithPassword } from "@/apis/record-auth-with-password";

@@ -5,7 +5,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 export const password = "1234567890";
 

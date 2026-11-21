@@ -21,14 +21,15 @@ import { NumberField } from "@/fields/number";
 import { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
 import { CollectionNameExternalAuths, findAllRefsByRecord } from "@/records/record-auth-refs";
-import { type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import {
   findAllRecords,
   findAuthRecordByEmail,
   findFirstRecordByData,
   findRecordById,
-  type RecordsApp,
 } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { findFirstRecordByFilter } from "@/records/record-query-filter";
 import {
   deleteRecord,
@@ -39,7 +40,8 @@ import {
 import type { JSONRaw } from "@/tools/types/json-raw";
 import { Errors } from "@/validation/error";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 const apps: Array<TestCollectionsApp> = [];
 

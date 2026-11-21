@@ -21,10 +21,8 @@ import {
   openTarget,
   summarize,
   workloadNames,
-  type Dataset,
-  type Target,
-  type WorkloadName,
 } from "@test/perf/read-path/workloads";
+import type { Dataset, Target, WorkloadName } from "@test/perf/read-path/workloads";
 
 const { values } = parseArgs({
   options: {

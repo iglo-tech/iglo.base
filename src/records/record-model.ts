@@ -42,9 +42,8 @@ import {
   isDriverValuer,
   isGetterFinder,
   isSetterFinder,
-  type Field,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldRecord } from "@/fields/field";
 import { FieldTypeFile, FileField } from "@/fields/file";
 import { toInt, toInt64, toStringMap } from "@/records/cast";
 import {
@@ -65,15 +64,14 @@ import {
 import { recordIsSuperuser } from "@/records/record-model-superusers";
 import { File } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
-import { recordJSONLayout, type RecordJSONLayout } from "@/records/record-json";
+import { recordJSONLayout } from "@/records/record-json";
+import type { RecordJSONLayout } from "@/records/record-json";
 import { Store } from "@/tools/store/store";
 import { toBool, toFloat64, toString as castToString } from "@/tools/types/cast";
-import { type DateTime, parseDateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 import { GeoPoint } from "@/tools/types/geo-point";
 import {
-  type GoInt,
-  type GoType,
-  type JSONMarshaler,
   anyType,
   bytesToText,
   encodeFlags,
@@ -84,6 +82,7 @@ import {
   unmarshal,
   withPartial,
 } from "@/tools/types/go-json";
+import type { GoInt, GoType, JSONMarshaler } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { formatFloatV } from "@/validation/error";
 

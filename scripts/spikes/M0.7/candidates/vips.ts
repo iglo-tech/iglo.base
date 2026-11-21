@@ -6,12 +6,14 @@
 // encode. wasm-vips runs libvips' threads as Workers of its own script; the
 // script and vips.wasm are embedded so that works in a compiled executable.
 
-import Vips, { type VipsImage } from "wasm-vips";
+import Vips from "wasm-vips";
+import type { VipsImage } from "wasm-vips";
 import vipsScript from "@/../scripts/spikes/M0.7/node_modules/wasm-vips/lib/vips-node.mjs" with { type: "file" };
 import vipsWasm from "wasm-vips/vips.wasm" with { type: "file" };
 
 import { parseThumbSize, thumbFormat, thumbPlan } from "@/../scripts/spikes/M0.7/imaging";
-import { checkPixels, thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { checkPixels, thumbContentType } from "@/../scripts/spikes/M0.7/thumb";
+import type { CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 let ready: ReturnType<typeof Vips> | undefined;
 const vips = (): ReturnType<typeof Vips> =>

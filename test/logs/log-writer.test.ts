@@ -10,9 +10,11 @@ import { join } from "node:path";
 import { createBackup } from "@/backups/create";
 import { extract } from "@/tools/archive/extract";
 import type { Logger } from "@/logs/logger";
-import { LogWriter, type LogRow } from "@/logs/log-writer";
+import { LogWriter } from "@/logs/log-writer";
+import type { LogRow } from "@/logs/log-writer";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
 

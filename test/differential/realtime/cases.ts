@@ -13,14 +13,8 @@ import { expect } from "bun:test";
 
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import type { RealtimeStream } from "@test/realtime/client";
-import {
-  events,
-  type Observation,
-  type RealtimeScenario,
-  response,
-  type ScenarioContext,
-  settled,
-} from "@test/realtime/scenario";
+import { events, response, settled } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
 
 const user1Id = "4q1xlclmfloku33";
 const user2Id = "oap640cot4yru2s";

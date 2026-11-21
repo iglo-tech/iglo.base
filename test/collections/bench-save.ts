@@ -28,7 +28,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
-import { newCollection, type Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";

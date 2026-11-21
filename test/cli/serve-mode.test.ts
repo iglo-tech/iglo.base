@@ -11,7 +11,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { run, startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { run, startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const email = "modes@example.test";
 const password = "1234567890";

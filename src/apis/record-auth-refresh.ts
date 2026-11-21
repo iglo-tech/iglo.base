@@ -8,7 +8,8 @@ import { recordAuthResponse } from "@/apis/record-helpers";
 import { getAuthTokenFromRequest } from "@/middlewares/load-auth-token";
 import { newAuthToken, TokenClaimRefreshable } from "@/records/record-tokens";
 import type { HandlerResult } from "@/server/handler";
-import { JWTError, type MapClaims, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { JWTError, parseUnverifiedJWT } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { toBool } from "@/tools/types/cast";
 
 export async function recordAuthRefresh(e: RequestEvent): Promise<HandlerResult> {

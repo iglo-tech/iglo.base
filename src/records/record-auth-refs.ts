@@ -35,24 +35,15 @@ import { HashExp } from "@/db/dbx/expression";
 import { FieldNamePassword, goQuote } from "@/fields/field";
 import { isProviderName } from "@/oauth2/provider-names";
 import type { Record } from "@/records/record-model";
-import {
-  findAllRecords,
-  recordQuery,
-  recordsTarget,
-  type RecordsApp,
-} from "@/records/record-query";
-import {
-  call,
-  deleteStep,
-  inTransaction,
-  type Next,
-  runSync,
-  type Step,
-} from "@/records/record-save";
+import { findAllRecords, recordQuery, recordsTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
+import { call, deleteStep, inTransaction, runSync } from "@/records/record-save";
+import type { Next, Step } from "@/records/record-save";
 import { Errors, NewError } from "@/validation/error";
 import { ErrInInvalid } from "@/validation/in";
 import { Required } from "@/validation/required";
-import { By, type RuleFunc, Validate } from "@/validation/validation";
+import { By, Validate } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 export const CollectionNameExternalAuths = "_externalAuths";
 export const CollectionNameMFAs = "_mfas";

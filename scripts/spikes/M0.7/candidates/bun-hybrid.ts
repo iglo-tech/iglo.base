@@ -21,8 +21,10 @@ import {
   thumbGeometry,
   thumbPlan,
 } from "@/../scripts/spikes/M0.7/imaging";
-import { decodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
-import { thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { decodePng } from "@/../scripts/spikes/M0.7/png";
+import type { Raw } from "@/../scripts/spikes/M0.7/png";
+import { thumbContentType } from "@/../scripts/spikes/M0.7/thumb";
+import type { CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 export const createThumbWithMargin =
   (margin: number): CreateThumb =>

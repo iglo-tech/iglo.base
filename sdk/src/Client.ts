@@ -14,13 +14,9 @@ import { BackupService } from "@sdk/services/BackupService";
 import { CronService } from "@sdk/services/CronService";
 import { SQLService } from "@sdk/services/SQLService";
 import { BatchService } from "@sdk/services/BatchService";
-import { type RecordModel } from "@sdk/tools/dtos";
-import {
-  type SendOptions,
-  type FileOptions,
-  normalizeUnknownQueryParams,
-  serializeQueryParams,
-} from "@sdk/tools/options";
+import type { RecordModel } from "@sdk/tools/dtos";
+import { normalizeUnknownQueryParams, serializeQueryParams } from "@sdk/tools/options";
+import type { SendOptions, FileOptions } from "@sdk/tools/options";
 import { isFormData, convertToFormDataIfNeeded } from "@sdk/tools/formdata";
 
 // @todo remove after upgrading the Node.js dev setup

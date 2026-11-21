@@ -18,7 +18,8 @@ import { isIP } from "node:net";
 
 import type { Clock } from "@/app/clock";
 import { quote } from "@/mail/go-mime";
-import { addressesToStrings, detectReaderMimeType, type Mailer, type Message } from "@/mail/mailer";
+import { addressesToStrings, detectReaderMimeType } from "@/mail/mailer";
+import type { Mailer, Message } from "@/mail/mailer";
 import { MailYak } from "@/mail/mailyak";
 import { html2Text } from "@/mail/html2text";
 import { pseudorandomString } from "@/tools/security/random";

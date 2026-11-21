@@ -1,8 +1,8 @@
 // js-sdk v0.28.1 src/services/CollectionService.ts
 import type { LooseObject } from "@sdk/tools/loose";
 import { CrudService } from "@sdk/services/CrudService";
-import { type CommonOptions } from "@sdk/tools/options";
-import { type CollectionModel, type ConfigurableOAuth2Provider } from "@sdk/tools/dtos";
+import type { CommonOptions } from "@sdk/tools/options";
+import type { CollectionModel, ConfigurableOAuth2Provider } from "@sdk/tools/dtos";
 
 export class CollectionService extends CrudService<CollectionModel> {
   /**

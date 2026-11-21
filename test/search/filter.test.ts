@@ -3,15 +3,13 @@
 import { describe, expect, test } from "bun:test";
 
 import type { Clock } from "@/app/clock";
-import { type DB, newFromDB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 import type { Expression } from "@/db/dbx/expression";
-import { Float64, type Params } from "@/db/dbx/query";
-import {
-  type FilterData,
-  filterBuildExpr,
-  filterBuildExprWithLimit,
-  ParsedFilterCache,
-} from "@/search/filter";
+import { Float64 } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
+import { filterBuildExpr, filterBuildExprWithLimit, ParsedFilterCache } from "@/search/filter";
+import type { FilterData } from "@/search/filter";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 import { Database } from "bun:sqlite";
 

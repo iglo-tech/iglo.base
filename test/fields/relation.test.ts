@@ -14,8 +14,8 @@ import {
   expectValidationErrors,
   newBaseCollection,
   noDBApp,
-  type TestCollection,
 } from "@test/support/fields";
+import type { TestCollection } from "@test/support/fields";
 import {
   testDefaultFieldHelpValidation,
   testDefaultFieldIdValidation,

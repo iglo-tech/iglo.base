@@ -35,10 +35,7 @@
 import {
   JoinAnd,
   JoinOr,
-  type JoinOp,
   newScanner,
-  type SignOp,
-  type Token,
   TokenComment,
   TokenEOF,
   TokenFunction,
@@ -50,6 +47,7 @@ import {
   TokenText,
   TokenWS,
 } from "@/search/fexpr/scanner";
+import type { JoinOp, SignOp, Token } from "@/search/fexpr/scanner";
 import { goQuote } from "@/fields/field";
 
 export const ErrEmpty = new Error("empty filter expression");

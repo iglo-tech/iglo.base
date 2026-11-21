@@ -17,11 +17,14 @@ import {
   tagRecords,
 } from "@test/differential/fuzz/data";
 import type { Who } from "@test/differential/fuzz/generate";
-import { type ApiCollection, buildModel, type Model } from "@test/differential/fuzz/model";
+import { buildModel } from "@test/differential/fuzz/model";
+import type { ApiCollection, Model } from "@test/differential/fuzz/model";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 export const listRules: { [collection: string]: string } = {
   // a relation in a rule (the fixture's demo1 has a null rule, which users

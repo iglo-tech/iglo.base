@@ -6,8 +6,10 @@ import { describe, expect, test } from "bun:test";
 
 import { Required } from "@/validation/required";
 import { NewStringRule } from "@/validation/string";
-import { When, type WhenRule } from "@/validation/when";
-import { Validate, type Rule } from "@/validation/validation";
+import { When } from "@/validation/when";
+import type { WhenRule } from "@/validation/when";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 function abcValidation(val: string): boolean {
   return val === "abc";

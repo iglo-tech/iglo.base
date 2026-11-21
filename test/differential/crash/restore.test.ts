@@ -29,11 +29,11 @@ import {
   verifyAfterKill,
   waitFor,
   walk,
-  type Kind,
-  type Outcome,
 } from "@test/differential/crash/harness";
+import type { Kind, Outcome } from "@test/differential/crash/harness";
 import { tempDir } from "@test/support/executable";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 const roots: Array<string> = [];

@@ -7,7 +7,8 @@ import { join } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { Browser, password } from "@test/browser/support";
-import { run, startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { run, startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const email = "admin@example.com";
 

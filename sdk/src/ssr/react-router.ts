@@ -12,9 +12,8 @@ import {
   resolveAdapterOptions,
   resumeSession,
   setNoStoreHeaders,
-  type AdapterOptions,
-  type RequestSession,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, RequestSession } from "@sdk/ssr/adapter";
 import { createRequestCookieAdapter } from "@sdk/ssr/index";
 
 export interface ReactRouterAuth {

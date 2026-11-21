@@ -43,11 +43,11 @@ import type { Clock } from "@/app/clock";
 import { RequestInfo, snakecase } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   findCachedCollectionByNameOrId,
   findCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { validateCollection } from "@/collections/collection-validate";
 import { Databases } from "@/db/base";
 import type { Record } from "@/records/record-model";
@@ -72,8 +72,10 @@ import { Store } from "@/tools/store/store";
 import { Errors } from "@/validation/error";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import { type FilterCase, filterCases } from "@test/differential/resolver/filter-cases";
-import { type RuleCase, ruleCases } from "@test/differential/resolver/rule-cases";
+import { filterCases } from "@test/differential/resolver/filter-cases";
+import type { FilterCase } from "@test/differential/resolver/filter-cases";
+import { ruleCases } from "@test/differential/resolver/rule-cases";
+import type { RuleCase } from "@test/differential/resolver/rule-cases";
 import {
   authUsers,
   collectionSteps,
@@ -82,7 +84,8 @@ import {
   rid,
 } from "@test/differential/resolver/schema";
 import { copyDataDir } from "@test/scenarios/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const superEmail = "resolver@example.com";
 const clock: Clock = { now: () => new Date() };

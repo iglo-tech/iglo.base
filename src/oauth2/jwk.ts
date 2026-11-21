@@ -5,24 +5,15 @@
 // node:crypto verifies, not Web Crypto: the RSA-PSS salt length is
 // PSSSaltLengthAuto in golang-jwt, which Web Crypto has no form of.
 
-import {
-  constants,
-  createPublicKey,
-  type KeyObject,
-  verify,
-  type VerifyKeyObjectInput,
-} from "node:crypto";
+import { constants, createPublicKey, verify } from "node:crypto";
+import type { KeyObject, VerifyKeyObjectInput } from "node:crypto";
 
 import type { Clock } from "@/app/clock";
 import { goQuote } from "@/fields/field";
 import { fetchFollowingRedirects } from "@/oauth2/http-client";
 import { RawURLEncoding } from "@/tools/security/base64";
-import {
-  JWTError,
-  parseUnverifiedToken,
-  type MapClaims,
-  validateClaims,
-} from "@/tools/security/jwt";
+import { JWTError, parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { anyType, mapOf, unmarshal } from "@/tools/types/go-json";
 
 const ed25519PublicKeySize = 32;

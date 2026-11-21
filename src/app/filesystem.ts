@@ -24,8 +24,10 @@
 import type { ErrorLogger } from "@/app/app";
 import { toInt64 } from "@/records/cast";
 import type { Settings } from "@/settings/settings-model";
-import { type FilesystemWatcher, NewLocal, type System } from "@/tools/filesystem/filesystem";
-import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
+import { NewLocal } from "@/tools/filesystem/filesystem";
+import type { FilesystemWatcher, System } from "@/tools/filesystem/filesystem";
+import { NewS3 } from "@/tools/filesystem/s3-system";
+import type { S3System } from "@/tools/filesystem/s3-system";
 
 export const LocalStorageDirName = "storage";
 export const LocalBackupsDirName = "backups";

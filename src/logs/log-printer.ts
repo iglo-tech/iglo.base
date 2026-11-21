@@ -2,7 +2,8 @@
 //
 // The colors are fatih/color's: a bold attribute ends with its own reset.
 
-import { LevelDebug, LevelError, LevelInfo, LevelWarn, type Log } from "@/logs/batch-handler";
+import { LevelDebug, LevelError, LevelInfo, LevelWarn } from "@/logs/batch-handler";
+import type { Log } from "@/logs/batch-handler";
 import { isJSONMarshaler } from "@/tools/types/go-json";
 import { jsonMapString } from "@/tools/types/json-map";
 

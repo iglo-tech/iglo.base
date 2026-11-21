@@ -6,8 +6,8 @@ import {
   InterceptorActionAfterCreate,
   InterceptorActionAfterUpdate,
   InterceptorActionCreate,
-  type Field,
 } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { FieldTypePassword, PasswordField, PasswordFieldValue } from "@/fields/password";
 import { newBadRequestError } from "@/server/error";
 import { Cost, DefaultCost, ErrPasswordTooLong, MaxCost, MinCost } from "@/tools/crypto/bcrypt";

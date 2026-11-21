@@ -22,7 +22,8 @@ import {
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { BoolField } from "@/fields/bool";
 import { anyType, marshal, unmarshal } from "@/tools/types/go-json";
-import { DateTime, parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
 import { JSONRaw } from "@/tools/types/json-raw";
 
 import {
@@ -30,7 +31,8 @@ import {
   oauth2UpdateCreateBody,
   oauth2UpdatePatchBody,
 } from "@test/differential/collections/cases";
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 let app: TestCollectionsApp;
 

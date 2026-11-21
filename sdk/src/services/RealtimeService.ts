@@ -2,7 +2,8 @@
 import type { Loose } from "@sdk/tools/loose";
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import { BaseService } from "@sdk/services/BaseService";
-import { type SendOptions, normalizeUnknownQueryParams } from "@sdk/tools/options";
+import { normalizeUnknownQueryParams } from "@sdk/tools/options";
+import type { SendOptions } from "@sdk/tools/options";
 
 interface promiseCallbacks {
   resolve: Function;

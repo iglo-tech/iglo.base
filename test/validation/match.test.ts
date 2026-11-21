@@ -3,7 +3,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { mustCompile } from "@/tools/regexp/regexp";
-import { type Error as ValidationError, NewError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Match } from "@/validation/match";
 
 function assertError(expected: string, err: globalThis.Error | null): void {

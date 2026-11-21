@@ -44,9 +44,9 @@
 
 import { notifyAfterSave } from "@/app/notify-watcher";
 import { unsetMissingOAuth2MappedFields } from "@/collections/collection-model-auth-options";
-import { type Collection, CollectionTypeBase } from "@/collections/collection-model";
+import { CollectionTypeBase } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   findCachedCollectionByNameOrId,
   findCollectionReferences,
   normalizeViewQueryId,
@@ -54,12 +54,14 @@ import {
   resaveViewsWithChangedFields,
   runInAppTransaction,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { syncRecordTableSchema } from "@/collections/collection-record-table-sync";
 import { validateCollection } from "@/collections/collection-validate";
 import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { newFieldsList } from "@/collections/fields-list";
 import { createViewFields, saveView, wrapError } from "@/collections/view";
-import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
+import { deleteModel, saveNoValidate } from "@/db/db";
+import type { DBExporter } from "@/db/db";
 import { refsOnCollectionDeleteExecute } from "@/records/record-auth-refs";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import {

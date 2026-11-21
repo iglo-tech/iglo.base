@@ -2,7 +2,8 @@
 
 import { goQuote } from "@/fields/field";
 import { File } from "@/tools/filesystem/file";
-import { bytesToText, textToBytes, type GoInt } from "@/tools/types/go-json";
+import { bytesToText, textToBytes } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import type { RuleFunc } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";

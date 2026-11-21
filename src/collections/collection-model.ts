@@ -18,7 +18,6 @@
 // upstream and left out, as src/db's DBExporter has none.
 
 import {
-  type CollectionAuthOptions,
   AuthAlertConfig,
   EmailTemplate,
   MFAConfig,
@@ -32,23 +31,24 @@ import {
   setDefaultAuthOptions,
   unmarshalAuthOptions,
 } from "@/collections/collection-model-auth-options";
+import type { CollectionAuthOptions } from "@/collections/collection-model-auth-options";
 import {
-  type CollectionViewOptions,
   marshalViewOptions,
   unmarshalViewOptions,
   viewOptionsDecoders,
   viewOptionsMembers,
 } from "@/collections/collection-model-view-options";
+import type { CollectionViewOptions } from "@/collections/collection-model-view-options";
 import { FieldsList, newFieldsList } from "@/collections/fields-list";
 import { equalFold } from "@/collections/go-strings";
 import {
-  type MemberDecoders,
   decodeAs,
   decodeBool,
   decodeNullableString,
   decodeString,
   unmarshalGoStruct,
 } from "@/collections/go-json-struct";
+import type { MemberDecoders } from "@/collections/go-json-struct";
 import { crc32Checksum, defaultIdAlphabet, modelQuery } from "@/db/db";
 import { HashExp } from "@/db/dbx/expression";
 import type { CollectionsApp } from "@/collections/collection-query";
@@ -66,8 +66,8 @@ import {
   defaultLowercaseRecordIdPattern,
   goQuote,
   marshalStruct,
-  type FieldCollection,
 } from "@/fields/field";
+import type { FieldCollection } from "@/fields/field";
 import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
 import { findSingleColumnUniqueIndex, parseIndex } from "@/tools/dbutils/index";

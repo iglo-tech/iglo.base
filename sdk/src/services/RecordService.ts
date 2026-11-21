@@ -2,18 +2,20 @@
 import type { Loose, LooseObject } from "@sdk/tools/loose";
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { RealtimeService, type UnsubscribeFunc } from "@sdk/services/RealtimeService";
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { RealtimeService } from "@sdk/services/RealtimeService";
+import type { UnsubscribeFunc } from "@sdk/services/RealtimeService";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { CrudService } from "@sdk/services/CrudService";
-import { type ListResult, type RecordModel } from "@sdk/tools/dtos";
+import type { ListResult, RecordModel } from "@sdk/tools/dtos";
 import { normalizeLegacyOptionsArgs } from "@sdk/tools/legacy";
-import {
-  type CommonOptions,
-  type RecordFullListOptions,
-  type RecordListOptions,
-  type RecordOptions,
-  type SendOptions,
-  type RecordSubscribeOptions,
+import type {
+  CommonOptions,
+  RecordFullListOptions,
+  RecordListOptions,
+  RecordOptions,
+  SendOptions,
+  RecordSubscribeOptions,
 } from "@sdk/tools/options";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import { registerAutoRefresh, resetAutoRefresh } from "@sdk/tools/refresh";

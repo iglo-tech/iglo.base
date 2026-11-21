@@ -7,7 +7,8 @@
 
 import { Errors, InternalError, NewError } from "@/validation/error";
 import { isMap } from "@/validation/util";
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 // ErrNotMap is the error that the value being validated is not a map.
 export const ErrNotMap = new Error("only a map can be validated");

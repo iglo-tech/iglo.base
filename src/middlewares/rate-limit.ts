@@ -26,11 +26,11 @@ import { isIPInList } from "@/middlewares/superuser-ips-whitelist";
 import {
   findRateLimitRule,
   marshalRateLimitRule,
-  type RateLimitRule,
   RateLimitRuleAudienceAll,
   RateLimitRuleAudienceAuth,
   RateLimitRuleAudienceGuest,
 } from "@/settings/settings-model";
+import type { RateLimitRule } from "@/settings/settings-model";
 import type { Cron } from "@/tools/cron/cron";
 import { Store } from "@/tools/store/store";
 

@@ -5,11 +5,8 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldApp, FieldCollection, FieldRecord } from "@/fields/field";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { boolType, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";

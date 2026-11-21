@@ -108,20 +108,21 @@ import {
   findCachedCollectionReferences,
   runInAppTransaction,
 } from "@/collections/collection-query";
-import { type Collection, CollectionTypeAuth } from "@/collections/collection-model";
+import { CollectionTypeAuth } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { withDriverErrors } from "@/collections/driver-error";
 import { joinErrors, wrapError } from "@/collections/view";
 import type { Databases } from "@/db/base";
-import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
+import { deleteModel, saveNoValidate } from "@/db/db";
+import type { DBExporter } from "@/db/db";
 import { Errors as JoinedErrors } from "@/db/dbx/db";
 import { exists, HashExp, newExp, not } from "@/db/dbx/expression";
-import { type Params, setOwn } from "@/db/dbx/query";
+import { setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 import type { Model } from "@/db/model";
 import {
-  type Field,
   FieldNamePassword,
-  type InterceptorApp,
   InterceptorActionAfterCreate,
   InterceptorActionAfterCreateError,
   InterceptorActionAfterDelete,
@@ -138,6 +139,7 @@ import {
   isMultiValuer,
   isRecordInterceptor,
 } from "@/fields/field";
+import type { Field, InterceptorApp } from "@/fields/field";
 import { FileField } from "@/fields/file";
 import { RelationField } from "@/fields/relation";
 import { Tx } from "@/db/dbx/tx";
@@ -155,7 +157,8 @@ import {
   superusersOnDelete,
   superusersOnUpdateExecute,
 } from "@/records/record-model-superusers";
-import { findRecordById, type RecordsApp } from "@/records/record-query";
+import { findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import {
   realtimeRecordAfterCreate,
   realtimeRecordAfterDelete,

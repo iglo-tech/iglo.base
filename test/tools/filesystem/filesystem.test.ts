@@ -18,8 +18,10 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { isNotFound, type Reader } from "@/tools/filesystem/blob/bucket";
-import { NewLocal, type System } from "@/tools/filesystem/filesystem";
+import { isNotFound } from "@/tools/filesystem/blob/bucket";
+import type { Reader } from "@/tools/filesystem/blob/bucket";
+import { NewLocal } from "@/tools/filesystem/filesystem";
+import type { System } from "@/tools/filesystem/filesystem";
 import { NewFileFromPath } from "@/tools/filesystem/file";
 import { detect } from "@/tools/mimetype/mimetype";
 

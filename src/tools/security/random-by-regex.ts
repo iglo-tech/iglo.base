@@ -6,7 +6,8 @@
 // tree. Runes are written as Go's string(rune) does: a surrogate or an out of
 // range rune becomes U+FFFD.
 
-import { Parse, Perl, type Flags } from "@/tools/regexp/syntax/parse";
+import { Parse, Perl } from "@/tools/regexp/syntax/parse";
+import type { Flags } from "@/tools/regexp/syntax/parse";
 import {
   OpAlternate,
   OpAnyChar,
@@ -19,8 +20,8 @@ import {
   OpQuest,
   OpRepeat,
   OpStar,
-  type Regexp,
 } from "@/tools/regexp/syntax/regexp";
+import type { Regexp } from "@/tools/regexp/syntax/regexp";
 import { secureIntN } from "@/tools/security/random";
 import { runeString, runesString } from "@/tools/unicode/utf8";
 

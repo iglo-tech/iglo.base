@@ -23,7 +23,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { copyDataDir } from "@test/scenarios/fixture";
-import { dumpPbData, type PbDataDump, withoutStat4 } from "@test/migrations/dump";
+import { dumpPbData, withoutStat4 } from "@test/migrations/dump";
+import type { PbDataDump } from "@test/migrations/dump";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 

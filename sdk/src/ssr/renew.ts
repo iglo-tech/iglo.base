@@ -5,7 +5,8 @@ import { ClientResponseError } from "@sdk/ClientResponseError";
 import { SSR_NO_CACHE_HEADERS, createRequestCookieAdapter } from "@sdk/ssr/cookies";
 import { checkOrigin } from "@sdk/ssr/csrf";
 import { mintBrowserToken } from "@sdk/ssr/browser-token";
-import { createServerClient, type ServerClient } from "@sdk/ssr/server-client";
+import { createServerClient } from "@sdk/ssr/server-client";
+import type { ServerClient } from "@sdk/ssr/server-client";
 import type { SuperuserClient } from "@sdk/ssr/superuser-client";
 import type {
   BrowserToken,

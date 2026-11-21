@@ -15,9 +15,11 @@ import {
   snakecase,
 } from "@/app/event-request";
 import { newAuthCollection } from "@/collections/collection-model";
-import { newRecord, type Record } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import { ResponseWriter } from "@/server/router";
-import { newTestRequest, type TestRequest } from "@test/support/router";
+import { newTestRequest } from "@test/support/router";
+import type { TestRequest } from "@test/support/router";
 import { openFixtureApp } from "@test/app/app";
 
 // an auth record of a new auth collection with the given name

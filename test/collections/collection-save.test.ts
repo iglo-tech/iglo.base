@@ -14,23 +14,24 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  type Collection,
   newAuthCollection,
   newBaseCollection,
   newViewCollection,
 } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import {
   findCachedCollectionByNameOrId,
   findCollectionByNameOrId,
 } from "@/collections/collection-query";
 import { deleteCollection, saveCollection } from "@/collections/collection-save";
-import { FileField } from "@/fields/file";
-import { RelationField } from "@/fields/relation";
+import type { FileField } from "@/fields/file";
+import type { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
 import { hasTable, tableColumns, tableIndexes } from "@/db/table";
 import { parseIndex } from "@/tools/dbutils/index";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 function withApp(fn: (app: TestCollectionsApp) => void): void {
   const app = openTestApp();

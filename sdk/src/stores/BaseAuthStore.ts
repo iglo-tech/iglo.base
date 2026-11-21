@@ -1,7 +1,8 @@
 // js-sdk v0.28.1 src/stores/BaseAuthStore.ts
-import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
+import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
+import type { SerializeOptions } from "@sdk/tools/cookie";
 import { isTokenExpired, getTokenPayload } from "@sdk/tools/jwt";
-import { type RecordModel } from "@sdk/tools/dtos";
+import type { RecordModel } from "@sdk/tools/dtos";
 
 export type AuthRecord = RecordModel | null;
 

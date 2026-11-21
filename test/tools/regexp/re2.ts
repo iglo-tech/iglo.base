@@ -27,7 +27,8 @@
 // regexp that fails to compile.
 
 import { RegexpSyntaxError } from "@/tools/regexp/syntax/parse";
-import { compile, type Regexp } from "@/tools/regexp/regexp";
+import { compile } from "@/tools/regexp/regexp";
+import type { Regexp } from "@/tools/regexp/regexp";
 
 import { unquote } from "@test/tools/regexp/go-quote";
 

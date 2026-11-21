@@ -4,7 +4,8 @@ import { afterEach, expect, test } from "bun:test";
 
 import { copyObject } from "@/tools/filesystem/internal/s3blob/s3/copy-object";
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
-import { type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
+import { startS3Recorder } from "@test/support/s3-recorder";
+import type { S3Recorder } from "@test/support/s3-recorder";
 
 let recorder: S3Recorder | undefined;
 

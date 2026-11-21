@@ -23,15 +23,14 @@
 import type { Field } from "@/fields/field";
 import { FieldNameEmail, marshalStruct } from "@/fields/field";
 import {
-  type EmailTemplateData,
   defaultAuthAlertTemplate,
   defaultConfirmEmailChangeTemplate,
   defaultOTPTemplate,
   defaultResetPasswordTemplate,
   defaultVerificationTemplate,
 } from "@/collections/collection-model-auth-templates";
+import type { EmailTemplateData } from "@/collections/collection-model-auth-templates";
 import {
-  type MemberDecoders,
   arrayElements,
   decodeAs,
   decodeBool,
@@ -42,12 +41,12 @@ import {
   decodeString,
   unmarshalGoStruct,
 } from "@/collections/go-json-struct";
+import type { MemberDecoders } from "@/collections/go-json-struct";
 import { isProviderName } from "@/oauth2/provider-names";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { randomString } from "@/tools/security/random";
 import { toString as castToString } from "@/tools/types/cast";
 import {
-  type GoInt,
   anyType,
   mapOf,
   marshal,
@@ -55,13 +54,16 @@ import {
   stringType,
   unmarshalMapInto,
 } from "@/tools/types/go-json";
-import { Errors, NewError, type Error as ValidationError } from "@/validation/error";
+import type { GoInt } from "@/tools/types/go-json";
+import { Errors, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { URL } from "@/validation/is/rules";
 import { Length } from "@/validation/length";
 import { Max, Min } from "@/validation/minmax";
 import { NilOrNotEmpty, Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
-import { By, Validate, type RuleFunc } from "@/validation/validation";
+import { By, Validate } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 
 // the collection members the two helpers below read

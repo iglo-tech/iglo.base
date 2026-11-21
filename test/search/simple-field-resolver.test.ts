@@ -4,7 +4,8 @@ import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 
 import { newFromDB } from "@/db/dbx/db";
-import { type ResolverResult, newSimpleFieldResolver } from "@/search/simple-field-resolver";
+import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
+import type { ResolverResult } from "@/search/simple-field-resolver";
 
 test("SimpleFieldResolver.UpdateQuery", () => {
   const r = newSimpleFieldResolver("test");

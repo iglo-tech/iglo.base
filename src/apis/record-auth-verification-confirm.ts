@@ -26,7 +26,8 @@ import { toString } from "@/tools/types/cast";
 import { NewError } from "@/validation/error";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 export async function recordConfirmVerification(e: RequestEvent): Promise<HandlerResult> {
   const collection = findAuthCollection(e);

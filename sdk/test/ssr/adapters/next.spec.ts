@@ -6,7 +6,8 @@ import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
 import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import { createSessionCache, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
-import { createNextAuth, type NextAuthOptions, type NextCookieStore } from "@sdk/ssr/next";
+import { createNextAuth } from "@sdk/ssr/next";
+import type { NextAuthOptions, NextCookieStore } from "@sdk/ssr/next";
 import { getTokenPayload } from "@sdk/tools/jwt";
 
 const API = "http://127.0.0.1:8090";

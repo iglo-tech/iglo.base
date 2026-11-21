@@ -30,8 +30,8 @@ import {
   startIgloServer,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 const { values } = parseArgs({ options: { only: { type: "string", default: "" } } });
 const only = values.only === "" ? undefined : new Set(values.only.split(","));

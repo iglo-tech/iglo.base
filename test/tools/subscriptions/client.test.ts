@@ -2,7 +2,8 @@
 
 import { expect, test } from "bun:test";
 
-import { Client, type ClientReceiver } from "@/tools/subscriptions/client";
+import { Client } from "@/tools/subscriptions/client";
+import type { ClientReceiver } from "@/tools/subscriptions/client";
 import { Message } from "@/tools/subscriptions/message";
 
 // a receiver that records what it gets

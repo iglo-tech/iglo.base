@@ -5,11 +5,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  newAuthCollection,
-  newBaseCollection,
-  type Collection,
-} from "@/collections/collection-model";
+import { newAuthCollection, newBaseCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { syncRecordTableSchema } from "@/collections/collection-record-table-sync";
@@ -17,11 +14,12 @@ import { HashExp, newExp } from "@/db/dbx/expression";
 import { hasTable, tableColumns, tableIndexes, tableInfo } from "@/db/table";
 import { EmailField } from "@/fields/email";
 import { SelectField } from "@/fields/select";
-import { FileField } from "@/fields/file";
-import { RelationField } from "@/fields/relation";
+import type { FileField } from "@/fields/file";
+import type { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {

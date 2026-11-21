@@ -7,7 +7,8 @@ import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
 import type { RequestSession } from "@sdk/ssr/adapter";
 import { createSessionCache, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
-import { createReactRouterAuth, sessionHeaders, type ReactRouterAuth } from "@sdk/ssr/react-router";
+import { createReactRouterAuth, sessionHeaders } from "@sdk/ssr/react-router";
+import type { ReactRouterAuth } from "@sdk/ssr/react-router";
 import { getTokenPayload } from "@sdk/tools/jwt";
 
 const API = "http://127.0.0.1:8090";

@@ -9,16 +9,18 @@ import {
   InterceptorActionAfterCreate,
   InterceptorActionAfterUpdate,
   marshalStruct,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type GetterFinder,
-  type GetterFunc,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  GetterFinder,
+  GetterFunc,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import {
   DefaultCost,
@@ -32,14 +34,8 @@ import {
 } from "@/tools/crypto/bcrypt";
 import { matchString } from "@/tools/regexp/regexp";
 import { toString as castToString } from "@/tools/types/cast";
-import {
-  boolType,
-  intType,
-  stringType,
-  textToBytes,
-  unmarshalStruct,
-  type GoInt,
-} from "@/tools/types/go-json";
+import { boolType, intType, stringType, textToBytes, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 import { Required } from "@/validation/required";

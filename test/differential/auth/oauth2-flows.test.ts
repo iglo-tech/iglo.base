@@ -11,7 +11,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { request, type RealtimeStream } from "@test/realtime/client";
+import { request } from "@test/realtime/client";
+import type { RealtimeStream } from "@test/realtime/client";
 import { actions, ScenarioContext, settled } from "@test/realtime/scenario";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { all, useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";

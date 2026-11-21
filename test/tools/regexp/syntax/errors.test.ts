@@ -38,8 +38,8 @@ import {
   OpRepeat,
   OpStar,
   opString,
-  type Regexp,
 } from "@/tools/regexp/syntax/regexp";
+import type { Regexp } from "@/tools/regexp/syntax/regexp";
 
 function parseError(pattern: string | Uint8Array, flags: number): RegexpSyntaxError {
   try {

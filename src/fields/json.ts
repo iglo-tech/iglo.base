@@ -9,11 +9,13 @@ import {
   goQuote,
   marshalStruct,
   maxSafeJSONInt,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MaxBodySizeCalculator,
+} from "@/fields/field";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MaxBodySizeCalculator,
 } from "@/fields/field";
 import {
   anyType,
@@ -22,8 +24,8 @@ import {
   stringType,
   unmarshal,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
 import { NewError } from "@/validation/error";
 import { JSON as JSONRule } from "@/validation/is/rules";

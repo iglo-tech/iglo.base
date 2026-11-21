@@ -2,15 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  BatchHandler,
-  LevelDebug,
-  LevelError,
-  LevelInfo,
-  LevelWarn,
-  type Log,
-  type LogRecord,
-} from "@/logs/batch-handler";
+import { BatchHandler, LevelDebug, LevelError, LevelInfo, LevelWarn } from "@/logs/batch-handler";
+import type { Log, LogRecord } from "@/logs/batch-handler";
 import { marshal } from "@/tools/types/go-json";
 import { Errors, NewError } from "@/validation/error";
 

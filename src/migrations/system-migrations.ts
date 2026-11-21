@@ -32,7 +32,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CollectionTypeAuth, CollectionTypeBase } from "@/collections/collection-model";
-import { type CollectionsApp, runInAppTransaction } from "@/collections/collection-query";
+import { runInAppTransaction } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import type { Builder } from "@/db/dbx/builder";
 import { newFromDB } from "@/db/dbx/db";
 import { HashExp } from "@/db/dbx/expression";

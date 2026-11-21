@@ -17,11 +17,14 @@ import path from "node:path";
 import vm from "node:vm";
 
 import type { App } from "@/app/app";
-import { bindAll, type BindConfig } from "@/migrations/binds";
-import { AppBinding, type RunTxFunc } from "@/migrations/binds-app";
+import { bindAll } from "@/migrations/binds";
+import type { BindConfig } from "@/migrations/binds";
+import { AppBinding } from "@/migrations/binds-app";
+import type { RunTxFunc } from "@/migrations/binds-app";
 import { throwResult } from "@/migrations/go-class";
 import type { Membrane } from "@/migrations/membrane";
-import { addMigration, type Migration, type MigrationFunc } from "@/migrations/migrations-runner";
+import { addMigration } from "@/migrations/migrations-runner";
+import type { Migration, MigrationFunc } from "@/migrations/migrations-runner";
 
 // defaultScriptPath
 const scriptName = "pb.js";

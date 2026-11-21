@@ -7,7 +7,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { Yandex } from "@/oauth2/yandex";
 import { Token } from "@/oauth2/token";
-import { json, type StubbedFetch, stubFetch } from "@test/support/fetch-stub";
+import { json, stubFetch } from "@test/support/fetch-stub";
+import type { StubbedFetch } from "@test/support/fetch-stub";
 
 const infoURL = "https://login.yandex.ru/info";
 

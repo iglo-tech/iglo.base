@@ -19,9 +19,8 @@ import {
   openTarget,
   summarize,
   workloadNames,
-  type Dataset,
-  type WorkloadName,
 } from "@test/perf/read-path/workloads";
+import type { Dataset, WorkloadName } from "@test/perf/read-path/workloads";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,

@@ -39,29 +39,32 @@ import {
   internalCustomFieldKeyPrefix,
   marshalStruct,
   maxSafeJSONInt,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type GetterFinder,
-  type GetterFunc,
   InterceptorActionAfterCreate,
   InterceptorActionAfterCreateError,
   InterceptorActionAfterUpdate,
   InterceptorActionAfterUpdateError,
-  type InterceptorApp,
-  type InterceptorRecord,
-  type MaxBodySizeCalculator,
-  type MultiValuer,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  GetterFinder,
+  GetterFunc,
+  InterceptorApp,
+  InterceptorRecord,
+  MaxBodySizeCalculator,
+  MultiValuer,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { joinErrors, wrapError } from "@/collections/view";
 import { isNotFound } from "@/tools/filesystem/blob/bucket";
 import { File } from "@/tools/filesystem/file";
-import { type System, ThumbSizeRegex } from "@/tools/filesystem/filesystem";
+import { ThumbSizeRegex } from "@/tools/filesystem/filesystem";
+import type { System } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
@@ -75,8 +78,8 @@ import {
   stringType,
   textToBytes,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { Each } from "@/validation/each";
 import { NewError } from "@/validation/error";

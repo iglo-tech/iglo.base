@@ -3,7 +3,8 @@
 // on a connection of their own. The thread starts with the first batch and
 // stops with `stop`, so an app that logs nothing holds no thread.
 
-import { MessageChannel, receiveMessageOnPort, type MessagePort } from "node:worker_threads";
+import { MessageChannel, receiveMessageOnPort } from "node:worker_threads";
+import type { MessagePort } from "node:worker_threads";
 
 export type LogRow = [id: string, created: string, level: number, message: string, data: string];
 

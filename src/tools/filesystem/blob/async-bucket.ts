@@ -10,15 +10,14 @@
 
 import {
   ErrClosed,
-  type Reader as _Reader,
   checkKey,
   checkWriterOptions,
   errEOF,
   errorsIs,
   isNotFound,
-  type WriterOptions,
   wrapError,
 } from "@/tools/filesystem/blob/bucket";
+import type { Reader as _Reader, WriterOptions } from "@/tools/filesystem/blob/bucket";
 import type {
   AsyncDriver,
   Attributes,

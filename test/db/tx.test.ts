@@ -6,7 +6,8 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { dataDBFilename, type Databases } from "@/db/base";
+import { dataDBFilename } from "@/db/base";
+import type { Databases } from "@/db/base";
 import { Errors } from "@/db/dbx/db";
 import { auxSaveNoValidate, deleteModel, modelQuery, saveNoValidate } from "@/db/db";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";

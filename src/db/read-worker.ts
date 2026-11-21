@@ -11,7 +11,8 @@ import type { Database } from "bun:sqlite";
 
 import { openReadOnly } from "@/db/connect";
 import { queryStatements, splitStatements } from "@/db/dbx/driver";
-import { readRows, type Rows } from "@/db/dbx/rows";
+import { readRows } from "@/db/dbx/rows";
+import type { Rows } from "@/db/dbx/rows";
 import type {
   ReadRequestMessage,
   ReadResponseMessage,

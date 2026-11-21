@@ -8,14 +8,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from "node:path";
 
 import { expectedTemplates } from "@test/migrations/automigrate-templates";
-import {
-  executable,
-  freePort,
-  run,
-  startServer,
-  tempDir,
-  type RunningServer,
-} from "@test/support/executable";
+import { executable, freePort, run, startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const superuser = { identity: "admin@example.com", password: "1234567890" };
 

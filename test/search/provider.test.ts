@@ -27,16 +27,17 @@ import {
   MaxPerPage,
   MaxSortFieldLength,
   newProvider,
-  type Provider,
-  type Result,
   SearchResult,
 } from "@/search/provider";
+import type { Provider, Result } from "@/search/provider";
 import type { FieldResolver, ResolverResult } from "@/search/simple-field-resolver";
-import { type SortField, SortAsc, SortDesc } from "@/search/sort";
+import { SortAsc, SortDesc } from "@/search/sort";
+import type { SortField } from "@/search/sort";
 import { existInSliceWithRegex } from "@/tools/list/list";
 import { marshal } from "@/tools/types/go-json";
 
-import { createTestDB, type TestDB } from "@test/search/support";
+import { createTestDB } from "@test/search/support";
+import type { TestDB } from "@test/search/support";
 
 const clock: Clock = { now: () => new Date(Date.UTC(2023, 1, 3, 4, 5, 6)) };
 

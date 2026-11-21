@@ -2,8 +2,8 @@
 import type { LooseObject } from "@sdk/tools/loose";
 import { BaseService } from "@sdk/services/BaseService";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { type ListResult } from "@sdk/tools/dtos";
-import { type CommonOptions, type ListOptions, type FullListOptions } from "@sdk/tools/options";
+import type { ListResult } from "@sdk/tools/dtos";
+import type { CommonOptions, ListOptions, FullListOptions } from "@sdk/tools/options";
 
 export abstract class CrudService<M> extends BaseService {
   /**

@@ -21,7 +21,7 @@
 
 import { insertOTPs, setMFA } from "@test/scenarios/record-auth-prepare";
 import { clientsToken, superuserToken, usersToken } from "@test/scenarios/record-crud";
-import { type RateLimitRuleData } from "@test/scenarios/prepare";
+import type { RateLimitRuleData } from "@test/scenarios/prepare";
 import type { PrepareContext } from "@test/scenarios/scenario";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 

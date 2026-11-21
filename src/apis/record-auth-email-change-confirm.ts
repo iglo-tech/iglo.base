@@ -21,7 +21,8 @@ import {
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
-import { type Error as ValidationError, NewError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { recordValidatePasswordAsync } from "@/records/record-model-auth";
 import { Required } from "@/validation/required";

@@ -42,49 +42,53 @@ import {
   RequestEvent,
   RequestEventKeyInfoContext,
   RequestInfoContextBatch,
-  type RequestInfo,
   snakecase,
 } from "@/app/event-request";
+import type { RequestInfo } from "@/app/event-request";
 import {
   collectResult,
-  type HandlerStep,
   recordCreate,
   recordDelete,
-  type RecordIO,
   recordUpdate,
   txRecordIO,
 } from "@/apis/record-crud";
+import type { HandlerStep, RecordIO } from "@/apis/record-crud";
 import { firstApiError } from "@/apis/record-helpers";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import { joinErrors } from "@/collections/view";
 import { runInTransaction } from "@/db/tx";
-import { FileField, FieldTypeFile } from "@/fields/file";
-import { preUploadFiles, type UploadTarget } from "@/files/pre-upload";
+import type { FileField } from "@/fields/file";
+import { FieldTypeFile } from "@/fields/file";
+import { preUploadFiles } from "@/files/pre-upload";
+import type { UploadTarget } from "@/files/pre-upload";
 import { applyBodyLimit } from "@/middlewares/body-limit";
 import { DefaultBodyLimitMiddlewareId } from "@/middlewares/middlewares";
 import { findRecordById } from "@/records/record-query";
 import { runSync } from "@/records/record-save";
-import { type ApiError, newInternalServerError, toApiError } from "@/server/error";
+import { newInternalServerError, toApiError } from "@/server/error";
+import type { ApiError } from "@/server/error";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { setOwn } from "@/server/json-decode";
 import { Form } from "@/server/multipart";
-import { HttpRequest, type Values } from "@/server/request";
+import { HttpRequest } from "@/server/request";
+import type { Values } from "@/server/request";
 import { bytesReader, RereadableReadCloser } from "@/server/rereadable-read-closer";
 import { ResponseWriter } from "@/server/router";
 import {
   JSONPayloadKey,
-  type MapRef,
   pointerTo,
   sliceOf,
   structOf,
-  type StructField,
   unmarshalRequestData,
 } from "@/server/unmarshal-request-data";
-import { type File, NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { MapRef, StructField } from "@/server/unmarshal-request-data";
+import { NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import { pseudorandomString } from "@/tools/security/random";
 import { toString } from "@/tools/types/cast";
-import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
+import { marshal } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 import { In } from "@/validation/in";
 import { Length } from "@/validation/length";

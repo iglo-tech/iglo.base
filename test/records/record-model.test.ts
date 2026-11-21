@@ -18,7 +18,8 @@ import { SelectField } from "@/fields/select";
 import { TextField } from "@/fields/text";
 import { BoolField } from "@/fields/bool";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
-import { type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import { NewFileFromBytes } from "@/tools/filesystem/file";
 import { toString as castToString } from "@/tools/types/cast";
 import { DateTime } from "@/tools/types/datetime";
@@ -31,11 +32,12 @@ import {
   marshal,
   sliceOf,
   stringType,
-  type GoType,
 } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
 
 // mockField (core/record_model_test.go): a text field with a custom

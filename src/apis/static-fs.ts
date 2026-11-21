@@ -30,12 +30,8 @@ import { open } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { StaticFS as EmbeddedFS } from "@/apis/ui-pack";
-import {
-  type HttpRange,
-  maxBufferedRangesSize,
-  type ServedFile,
-  typeByExtension,
-} from "@/server/serve-content";
+import { maxBufferedRangesSize, typeByExtension } from "@/server/serve-content";
+import type { HttpRange, ServedFile } from "@/server/serve-content";
 import { detectContentType } from "@/server/sniff";
 
 // core.LocalTempDirName

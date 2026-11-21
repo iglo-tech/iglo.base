@@ -14,33 +14,29 @@
 // The auth alert email is mails.SendRecordAuthAlert (src/mail/mails).
 
 import type { App } from "@/app/app";
-import { type RequestEvent, RequestInfo, RequestInfoContextExpand } from "@/app/event-request";
+import { RequestInfo, RequestInfoContextExpand } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
 import { joinErrors, wrapError } from "@/collections/view";
 import { HashExp, inExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import { sendRecordAuthAlert } from "@/mail/mails/record";
 import { isIPInList } from "@/middlewares/superuser-ips-whitelist";
-import {
-  type AuthOrigin,
-  deleteAuthOrigin,
-  newAuthOrigin,
-  saveAuthOrigin,
-} from "@/records/auth-origin-model";
+import { deleteAuthOrigin, newAuthOrigin, saveAuthOrigin } from "@/records/auth-origin-model";
+import type { AuthOrigin } from "@/records/auth-origin-model";
 import { findAllAuthOriginsByRecord } from "@/records/auth-origin-query";
-import { deleteMFA, type MFA, newMFA, saveMFA } from "@/records/mfa-model";
+import { deleteMFA, newMFA, saveMFA } from "@/records/mfa-model";
+import type { MFA } from "@/records/mfa-model";
 import type { OTP } from "@/records/otp-model";
 import { findOTPById } from "@/records/otp-query";
 import { deleteRecordSync } from "@/records/record-save";
 import { findMFAById } from "@/records/mfa-query";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordsTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { canAccessRecordAsync } from "@/records/record-query-filter";
-import {
-  type ExpandFetchFunc,
-  type ExpandFetchSyncFunc,
-  expandRecords,
-} from "@/records/record-query-expand";
+import { expandRecords } from "@/records/record-query-expand";
+import type { ExpandFetchFunc, ExpandFetchSyncFunc } from "@/records/record-query-expand";
 import { isNoRows } from "@/records/record-save";
 import { newAuthToken } from "@/records/record-tokens";
 import { newRecordFieldResolver } from "@/resolver/record-field-resolver";
@@ -50,7 +46,8 @@ import { structOf } from "@/server/unmarshal-request-data";
 import { filterBuildExpr, ParsedFilterCache } from "@/search/filter";
 import { FilterQueryParam, SortQueryParam } from "@/search/provider";
 import { nowDateTime } from "@/tools/types/datetime";
-import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
+import { marshal } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 
 export const expandQueryParam = "expand";
 export const fieldsQueryParam = "fields";

@@ -13,7 +13,8 @@
 import type { RequestEvent } from "@/app/event-request";
 import type { Handler } from "@/server/handler";
 import { DefaultActivityLoggerMiddlewarePriority } from "@/middlewares/middlewares";
-import { compile, quoteMeta, type Regexp } from "@/tools/regexp/regexp";
+import { compile, quoteMeta } from "@/tools/regexp/regexp";
+import type { Regexp } from "@/tools/regexp/regexp";
 
 export const DefaultCorsMiddlewareId = "pbCors";
 // before the activity logger and rate limit so that OPTIONS preflight

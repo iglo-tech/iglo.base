@@ -8,9 +8,12 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
-import { rawRequest, type RawResponse } from "@test/support/raw-http";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { rawRequest } from "@test/support/raw-http";
+import type { RawResponse } from "@test/support/raw-http";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 let upstream: UpstreamServer;
 let iglo: RunningServer;

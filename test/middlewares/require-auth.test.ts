@@ -25,7 +25,8 @@ import {
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { Router } from "@/server/router";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { serveTest } from "@test/support/router";
 
 const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };

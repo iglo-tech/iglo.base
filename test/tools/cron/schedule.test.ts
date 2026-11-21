@@ -2,7 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type Moment, newMoment, newSchedule, type Schedule } from "@/tools/cron/schedule";
+import { newMoment, newSchedule } from "@/tools/cron/schedule";
+import type { Moment, Schedule } from "@/tools/cron/schedule";
 
 // the Go JSON of a map[int]struct{}: keys sorted as strings
 function slots(set: Set<number>): string {

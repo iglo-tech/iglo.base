@@ -9,8 +9,10 @@
 
 import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { bytesToText } from "@/tools/types/go-json";
-import { type Instant, date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
-import { type Location, UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
+import { date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
+import type { Instant } from "@/tools/types/go-time";
+import { UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
+import type { Location } from "@/tools/types/go-zoneinfo";
 
 // how the time zone of a layout is applied (internal.TimeFormatType)
 const noTimezone = 0;

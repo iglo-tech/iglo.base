@@ -16,18 +16,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import {
-  compareResponses,
-  Pairing,
-  readStartingData,
-  type StartingData,
-} from "@test/differential/harness/compare";
-import {
-  diffSnapshots,
-  takeSnapshot,
-  thumbPaths,
-  type Snapshot,
-} from "@test/differential/roundtrip/snapshot";
+import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
+import type { StartingData } from "@test/differential/harness/compare";
+import { diffSnapshots, takeSnapshot, thumbPaths } from "@test/differential/roundtrip/snapshot";
+import type { Snapshot } from "@test/differential/roundtrip/snapshot";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";

@@ -4,7 +4,8 @@
 // regexp.ts keeps the parser's shape. As in Go, the result may share nodes
 // with the input, and nodes are compared by identity.
 
-import { NonGreedy, type Flags } from "@/tools/regexp/syntax/parse";
+import { NonGreedy } from "@/tools/regexp/syntax/parse";
+import type { Flags } from "@/tools/regexp/syntax/parse";
 import {
   OpAlternate,
   OpCapture,
@@ -16,8 +17,8 @@ import {
   OpRepeat,
   OpStar,
   Regexp,
-  type Op,
 } from "@/tools/regexp/syntax/regexp";
+import type { Op } from "@/tools/regexp/syntax/regexp";
 
 // Simplify returns a regexp equivalent to re but without counted repetitions
 // and with various other simplifications, such as rewriting /(?:a+)+/ to /a+/.

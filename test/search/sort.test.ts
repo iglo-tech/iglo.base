@@ -3,13 +3,8 @@
 import { expect, test } from "bun:test";
 
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
-import {
-  parseSortFromString,
-  type SortField,
-  SortAsc,
-  SortDesc,
-  sortFieldBuildExpr,
-} from "@/search/sort";
+import { parseSortFromString, SortAsc, SortDesc, sortFieldBuildExpr } from "@/search/sort";
+import type { SortField } from "@/search/sort";
 import { marshalStruct } from "@/fields/field";
 
 test("SortField.BuildExpr", () => {

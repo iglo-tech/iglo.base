@@ -6,13 +6,13 @@
 
 import { JSONRaw } from "@/tools/types/json-raw";
 import {
-  type JSONMarshaler,
   float64Type,
   formatFloat,
   marshal,
   marshalPartial,
   unmarshalStruct,
 } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 
 export class GeoPoint implements JSONMarshaler {
   constructor(

@@ -5,14 +5,16 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MultiValuer,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MultiValuer,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { subtractSlice, toUniqueStringSlice } from "@/tools/list/list";
 import {
@@ -22,8 +24,8 @@ import {
   sliceOf,
   stringType,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";

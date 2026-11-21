@@ -7,7 +7,8 @@ import { expect, test } from "bun:test";
 
 import { SearchResult } from "@/search/provider";
 import { InvalidModifierDataError, pick } from "@/tools/picker/pick";
-import { type ModifierFactoryFunc, Modifiers } from "@/tools/picker/modifiers";
+import { Modifiers } from "@/tools/picker/modifiers";
+import type { ModifierFactoryFunc } from "@/tools/picker/modifiers";
 import { marshal } from "@/tools/types/go-json";
 
 // brokenModifier always fails (upstream registers it in init())

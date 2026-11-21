@@ -1,5 +1,5 @@
 // js-sdk v0.28.1 src/tools/legacy.ts
-import { type SendOptions } from "@sdk/tools/options";
+import type { SendOptions } from "@sdk/tools/options";
 
 export function normalizeLegacyOptionsArgs(
   legacyWarn: string,

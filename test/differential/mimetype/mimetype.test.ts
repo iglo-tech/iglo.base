@@ -35,8 +35,10 @@ import { parseMediaType } from "@/tools/mimetype/mediatype";
 import { detect } from "@/tools/mimetype/mimetype";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import { corpus, type Sample } from "@test/differential/mimetype/corpus";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { corpus } from "@test/differential/mimetype/corpus";
+import type { Sample } from "@test/differential/mimetype/corpus";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "mimetype@example.com";
 const password = "1234567890";

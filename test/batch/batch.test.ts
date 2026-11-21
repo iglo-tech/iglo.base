@@ -14,7 +14,8 @@ import { saveCollection } from "@/collections/collection-save";
 import type { FileField } from "@/fields/file";
 import { findRecordById } from "@/records/record-query";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { serveTest } from "@test/support/router";
 

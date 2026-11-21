@@ -12,14 +12,8 @@ import {
   TokObject,
   parse as jsonParse,
 } from "@/tools/mimetype/internal/json/parser";
-import {
-  ciPrefix,
-  markup,
-  shebang,
-  xml,
-  type shebangSig,
-  type xmlSig,
-} from "@/tools/mimetype/internal/magic/magic";
+import { ciPrefix, markup, shebang, xml } from "@/tools/mimetype/internal/magic/magic";
+import type { shebangSig, xmlSig } from "@/tools/mimetype/internal/magic/magic";
 import { getAnAttribute, skipAComment } from "@/tools/mimetype/internal/markup/markup";
 import {
   Bytes,
@@ -28,7 +22,8 @@ import {
   IgnoreCase,
   byteIsWS,
 } from "@/tools/mimetype/internal/scan/bytes";
-import { parse as timeParse, type ParsedTime } from "@/tools/types/go-time";
+import { parse as timeParse } from "@/tools/types/go-time";
+import type { ParsedTime } from "@/tools/types/go-time";
 import { bytesToText } from "@/tools/types/go-json";
 
 const sigs = (...s: Array<string>) => s.map(lit);

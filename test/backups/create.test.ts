@@ -26,7 +26,8 @@ import { createBackup, generateBackupName } from "@/backups/create";
 import { restoreBackup } from "@/backups/restore";
 import { extract } from "@/tools/archive/extract";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { createTestBackups } from "@test/scenarios/backup";
 import { superuserToken } from "@test/scenarios/cron";
 import { tempDir } from "@test/support/executable";

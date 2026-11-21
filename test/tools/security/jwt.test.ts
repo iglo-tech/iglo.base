@@ -8,7 +8,8 @@ import { describe, expect, test } from "bun:test";
 
 import type { Clock } from "@/app/clock";
 import { RawURLEncoding } from "@/tools/security/base64";
-import { type MapClaims, newJWT, parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { newJWT, parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { Second } from "@/tools/types/datetime";
 
 const clockAt = (ms: number): Clock => ({ now: () => new Date(ms) });

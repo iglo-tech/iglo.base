@@ -22,20 +22,16 @@
 
 import { join } from "node:path";
 
-import { defaultDBConnect, type DBConnectFunc, openReadOnly } from "@/db/connect";
+import { defaultDBConnect, openReadOnly } from "@/db/connect";
+import type { DBConnectFunc } from "@/db/connect";
 import type { Builder } from "@/db/dbx/builder";
-import { Errors, newFromDB, type DB } from "@/db/dbx/db";
+import { Errors, newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 import type { Tx } from "@/db/dbx/tx";
 import { DualDBBuilder } from "@/db/dual-builder";
 import { ReadPool } from "@/db/read-pool";
-import {
-  defaultAsyncSleep,
-  defaultNow,
-  defaultSleep,
-  type AsyncSleepFunc,
-  type NowFunc,
-  type SleepFunc,
-} from "@/db/retry";
+import { defaultAsyncSleep, defaultNow, defaultSleep } from "@/db/retry";
+import type { AsyncSleepFunc, NowFunc, SleepFunc } from "@/db/retry";
 import { TxAppInfo } from "@/db/tx";
 
 export const dataDBFilename = "data.db";

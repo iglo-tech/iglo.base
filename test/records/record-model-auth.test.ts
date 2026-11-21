@@ -9,7 +9,8 @@ import { newRecord } from "@/records/record-model";
 import { pseudorandomString } from "@/tools/security/random";
 import { fieldApp } from "@/collections/collection-query";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 test("RecordEmail", () => {
   const record = newRecord(newAuthCollection("test"));

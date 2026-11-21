@@ -16,10 +16,12 @@
 // The io.RuneReader methods, Copy, Expand, ExpandString, the iterator
 // methods and the text marshaling methods are left out.
 
-import { find, input, type program } from "@/tools/regexp/exec";
+import { find, input } from "@/tools/regexp/exec";
+import type { program } from "@/tools/regexp/exec";
 import { compileOnePass, onePassPrefix } from "@/tools/regexp/onepass";
 import { Compile } from "@/tools/regexp/syntax/compile";
-import { POSIX, Parse, Perl, type Flags } from "@/tools/regexp/syntax/parse";
+import { POSIX, Parse, Perl } from "@/tools/regexp/syntax/parse";
+import type { Flags } from "@/tools/regexp/syntax/parse";
 import {
   OpAlternate,
   OpAnyChar,
@@ -30,11 +32,12 @@ import {
   OpLiteral,
   OpPlus,
   OpRepeat,
-  type Regexp as syntaxRegexp,
 } from "@/tools/regexp/syntax/regexp";
+import type { Regexp as syntaxRegexp } from "@/tools/regexp/syntax/regexp";
 import { Simplify } from "@/tools/regexp/syntax/simplify";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
-import { Categories, Is, IsPrint, type RangeTable } from "@/tools/unicode/letter";
+import { Categories, Is, IsPrint } from "@/tools/unicode/letter";
+import type { RangeTable } from "@/tools/unicode/letter";
 import { DecodeRuneInString, RuneError, goString } from "@/tools/unicode/utf8";
 
 const encoder = new TextEncoder();

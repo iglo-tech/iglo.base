@@ -15,7 +15,8 @@ import { superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
-import { testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 export type Kind = "upstream" | "iglo";
 

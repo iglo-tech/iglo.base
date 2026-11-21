@@ -21,13 +21,8 @@ import { NewLocal } from "@/tools/filesystem/filesystem";
 
 import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import {
-  executable,
-  freePort,
-  startServer,
-  tempDir,
-  type RunningServer,
-} from "@test/support/executable";
+import { executable, freePort, startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const asSuperuser = { Authorization: superuserToken };
 

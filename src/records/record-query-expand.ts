@@ -21,10 +21,10 @@ import { RelationField } from "@/fields/relation";
 import type { Record } from "@/records/record-model";
 import {
   getCollectionByModelOrIdentifier,
-  type RecordsApp,
   recordQuery,
   recordsTarget,
 } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { jsonEach } from "@/tools/dbutils/json";
 import { toUniqueStringSlice } from "@/tools/list/list";

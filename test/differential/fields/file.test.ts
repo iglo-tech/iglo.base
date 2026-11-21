@@ -25,11 +25,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { FieldNameId, isDriverValuer, isSetterFinder, type Field } from "@/fields/field";
+import { FieldNameId, isDriverValuer, isSetterFinder } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { FileField } from "@/fields/file";
 import { fieldFactory } from "@/fields/fields";
 import { newBadRequestError } from "@/server/error";
-import { NewFileFromMultipart, type File, type RandomSource } from "@/tools/filesystem/file";
+import { NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { File, RandomSource } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { anyType, mapOf, marshal, textToBytes, unmarshal } from "@/tools/types/go-json";
 import { jsonArrayValue } from "@/tools/types/json-array";
@@ -43,12 +45,12 @@ import {
   uploadCases,
   validSettings,
   valueCollections,
-  type Content,
-  type Part,
-  type UploadCase,
 } from "@test/differential/fields/file-cases";
-import { TestCollection, TestRecord, newBaseCollection, noDBApp } from "@test/support/fields";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { Content, Part, UploadCase } from "@test/differential/fields/file-cases";
+import type { TestCollection } from "@test/support/fields";
+import { TestRecord, newBaseCollection, noDBApp } from "@test/support/fields";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "fields@example.com";
 const password = "1234567890";

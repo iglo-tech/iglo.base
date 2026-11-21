@@ -6,7 +6,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
 import { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
-import { type AuthUser, BaseProvider } from "@/oauth2/base-provider";
+import { BaseProvider } from "@/oauth2/base-provider";
+import type { AuthUser } from "@/oauth2/base-provider";
 import { OIDC } from "@/oauth2/oidc";
 import { isProviderName } from "@/oauth2/provider-names";
 import { buildAuthURL, initProvider } from "@/oauth2/providers";

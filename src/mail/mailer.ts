@@ -5,7 +5,8 @@
 // MIME type reads the first bytes through a slice, so no combined reader
 // is needed.
 
-import { type Address, addressString } from "@/mail/go-mime";
+import { addressString } from "@/mail/go-mime";
+import type { Address } from "@/mail/go-mime";
 import { detectReader } from "@/tools/mimetype/mimetype";
 
 // Message defines a generic email message struct.

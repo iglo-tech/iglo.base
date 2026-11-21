@@ -9,20 +9,12 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  type BackupsConfig,
-  type BatchConfig,
   findRateLimitRule,
-  type LogsConfig,
-  type MetaConfig,
   RateLimitRuleAudienceAuth,
   RateLimitRuleAudienceGuest,
   rateLimitRuleDurationTime,
   rateLimitRuleString,
-  type RateLimitRule,
-  type RateLimitsConfig,
-  type S3Config,
   Settings,
-  type SMTPConfig,
   SMTPAuthLogin,
   validateBackups,
   validateBatch,
@@ -33,6 +25,16 @@ import {
   validateS3,
   validateSMTP,
   zeroSettingsData,
+} from "@/settings/settings-model";
+import type {
+  BackupsConfig,
+  BatchConfig,
+  LogsConfig,
+  MetaConfig,
+  RateLimitRule,
+  RateLimitsConfig,
+  S3Config,
+  SMTPConfig,
 } from "@/settings/settings-model";
 import { decrypt } from "@/tools/security/encrypt";
 import { randomString } from "@/tools/security/random";

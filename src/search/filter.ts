@@ -12,13 +12,15 @@
 import type { Clock } from "@/app/clock";
 import { equalFold, toLower } from "@/collections/go-strings";
 import type { DB } from "@/db/dbx/db";
-import { and, enclose, type Expression, newExp, not } from "@/db/dbx/expression";
-import { assignOwn, Float64, type Params, setOwn } from "@/db/dbx/query";
+import { and, enclose, newExp, not } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
+import { assignOwn, Float64, setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { goQuote } from "@/fields/field";
-import { type Expr, type ExprGroup, ErrEmpty, parse } from "@/search/fexpr/parser";
+import { ErrEmpty, parse } from "@/search/fexpr/parser";
+import type { Expr, ExprGroup } from "@/search/fexpr/parser";
 import {
   JoinOr,
-  type SignOp,
   SignAnyEq,
   SignAnyGt,
   SignAnyGte,
@@ -35,24 +37,26 @@ import {
   SignLte,
   SignNeq,
   SignNlike,
-  type Token,
   TokenFunction,
   TokenIdentifier,
   TokenNumber,
   TokenText,
 } from "@/search/fexpr/scanner";
+import type { SignOp, Token } from "@/search/fexpr/scanner";
 import { identifierMacros } from "@/search/identifier-macros";
 import type { MultiMatchSubquery } from "@/search/multi-match-subquery";
 import { DefaultFilterExprLimit, ErrFilterExprLimit } from "@/search/provider";
 import {
   derefResult,
-  type FieldResolver,
   NilPointerPanic,
   NullFallbackAuto,
   NullFallbackDisabled,
   NullFallbackEnforced,
-  type NullFallbackPreference,
-  type ResolverResult,
+} from "@/search/simple-field-resolver";
+import type {
+  FieldResolver,
+  NullFallbackPreference,
+  ResolverResult,
 } from "@/search/simple-field-resolver";
 import { TokenFunctions } from "@/search/token-functions";
 import { pseudorandomString } from "@/tools/security/random";

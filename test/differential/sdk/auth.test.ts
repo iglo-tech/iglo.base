@@ -5,15 +5,10 @@
 // own SMTP sink). Not part of `bun test`: run `bun run test:reference`.
 
 import { describe, expect } from "bun:test";
-import PocketBase from "@iglo.tech/iglo.base";
+import type PocketBase from "@iglo.tech/iglo.base";
 
-import {
-  mailMatch,
-  messageBody,
-  password,
-  sdkTest,
-  type SdkEnv,
-} from "@test/differential/sdk/harness";
+import { mailMatch, messageBody, password, sdkTest } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 import { updateCollection } from "@test/scenarios/prepare";
 import { all, useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import { setMFA } from "@test/scenarios/record-auth-prepare";

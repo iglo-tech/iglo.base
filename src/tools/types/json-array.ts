@@ -6,7 +6,6 @@
 // nil slice is undefined.
 
 import {
-  type GoType,
   anyType,
   bytesToText,
   marshal,
@@ -14,6 +13,7 @@ import {
   sliceOf,
   unmarshal,
 } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 
 export type JSONArray<T> = Array<T>;
 

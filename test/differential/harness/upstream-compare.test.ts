@@ -11,7 +11,8 @@ import { join } from "node:path";
 
 import { compareResponses, readStartingData } from "@test/differential/harness/compare";
 import { copyDataDir, preparedFixture } from "@test/scenarios/fixture";
-import { sendScenarioRequest, type ScenarioResponse } from "@test/scenarios/request";
+import { sendScenarioRequest } from "@test/scenarios/request";
+import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startUpstream } from "@test/support/upstream";
 

@@ -20,8 +20,10 @@
 
 import { wrapError } from "@/collections/view";
 import type { Record } from "@/records/record-model";
-import { countRecords, findAuthRecordByEmail, type RecordsApp } from "@/records/record-query";
-import { deleteStep, inTransaction, isNoRows, type Next, type Step } from "@/records/record-save";
+import { countRecords, findAuthRecordByEmail } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
+import { deleteStep, inTransaction, isNoRows } from "@/records/record-save";
+import type { Next, Step } from "@/records/record-save";
 import { newBadRequestError } from "@/server/error";
 
 export const CollectionNameSuperusers = "_superusers";
