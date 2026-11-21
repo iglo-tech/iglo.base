@@ -17,11 +17,10 @@ function dateTimeString(t: Instant): string {
   return DateTime.fromInstant(t).string();
 }
 
-// oxlint-disable-next-line quality/no-unknown-returns -- a macro's value is a date string or a number, bound as it is; typed unknown for callers that bind any value
-export const identifierMacros: ReadonlyMap<string, (now: Date) => unknown> = new Map<
+// A macro's value is a date string or a number (the field values of fieldsOf).
+export const identifierMacros: ReadonlyMap<string, (now: Date) => string | number> = new Map<
   string,
-  // oxlint-disable-next-line quality/no-unknown-returns -- a macro's value is a date string or a number, bound as it is; typed unknown for callers that bind any value
-  (now: Date) => unknown
+  (now: Date) => string | number
 >([
   ["@now", (now) => dateTimeString(fromDate(now))],
   ["@yesterday", (now) => DateTime.fromInstant(fromDate(now)).addDate(0, 0, -1).string()],
