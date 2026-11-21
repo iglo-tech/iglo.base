@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| U.2 | review | [#110](https://github.com/iglo-tech/iglo.base/pull/110) | 1 | Dashboard from v0.42.3, SDK 1.1.0 (0.29.0), v1.3.0 prep |
+| U.2 | fix | [#110](https://github.com/iglo-tech/iglo.base/pull/110) | 1 (changes: docs/ssr.md 401 note wrong for superuser client, README SDK base; fixer adds keep-token test) | Dashboard from v0.42.3, SDK 1.1.0 (0.29.0), v1.3.0 prep |
 
 
 
