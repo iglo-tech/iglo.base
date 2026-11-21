@@ -187,7 +187,7 @@ export class Errors extends ValidationErrors {
   // MarshalJSON converts the Errors into a valid JSON.
   marshalJSON(): string {
     // a null-prototype object, so that a "__proto__" key stays a member
-    const errs: Record<string, unknown> = Object.create(null);
+    const errs = Object.create(null) as Record<string, unknown>;
     for (const [key, err] of Object.entries(this.errors)) {
       if (isJSONMarshaler(err)) {
         errs[key] = err;

@@ -312,7 +312,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     return Object.assign({}, responseData, {
       // normalize common fields
-      token: responseData?.token || "",
+      token: (responseData?.token || "") as string,
       // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       record: record as unknown as T,
     });
@@ -365,7 +365,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     // note: consider to deprecate
     let autoRefreshThreshold: number | undefined;
     if (this.isSuperusers) {
-      autoRefreshThreshold = options.autoRefreshThreshold;
+      autoRefreshThreshold = options.autoRefreshThreshold as number | undefined;
       delete options.autoRefreshThreshold;
       if (!options.autoRefresh) {
         resetAutoRefresh(this.client);

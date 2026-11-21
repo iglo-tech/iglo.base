@@ -402,12 +402,12 @@ export class ServerClient extends Client {
     const collection =
       this.authStore.record?.collectionName ||
       this.authStore.record?.collectionId ||
-      payload.collectionId ||
+      (payload.collectionId as string | undefined) ||
       (this.authStore.isSuperuser ? "_superusers" : "users");
 
     try {
       const res = await this.send<{ token: string; record: RecordModel }>(
-        `/api/collections/${encodeURIComponent(collection as string)}/auth-refresh`,
+        `/api/collections/${encodeURIComponent(collection)}/auth-refresh`,
         { method: "POST", headers: { Authorization: token } },
       );
       return {
@@ -512,7 +512,7 @@ export class ServerClient extends Client {
       buildSessionCookieToSet(token, record, {
         ...this._cookieSettings(),
         nowSeconds: nowSec,
-        exp: payload.exp,
+        exp: payload.exp as number | undefined,
       }),
     ]);
   }

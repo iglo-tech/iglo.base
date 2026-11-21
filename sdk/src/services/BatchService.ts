@@ -55,7 +55,7 @@ export class BatchService extends BaseService {
 
       if (req.files) {
         for (const key in req.files) {
-          const files: Array<Blob> = req.files[key] || [];
+          const files = (req.files[key] || []) as Array<Blob>;
           for (const file of files) {
             formData.append("requests." + i + "." + key, file);
           }
@@ -193,13 +193,13 @@ export class SubBatchService {
 
     // extract json and files body data
     // -----------------------------------------------------------
-    let body = options.body;
+    let body = options.body as LooseObject;
     if (isFormData(body)) {
       body = convertFormDataToObject(body as FormData);
     }
 
     for (const key in body) {
-      const val = body[key];
+      const val: unknown = body[key];
 
       if (isFile(val)) {
         request.files[key] = request.files[key] || [];

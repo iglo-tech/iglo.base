@@ -253,7 +253,9 @@ export async function sendCase(c: FileCase, side: Side): Promise<Res> {
     );
   } else if (c.parts !== undefined) {
     const boundary: string =
-      c.quotedBoundary === undefined ? "filesdifferentialboundary" : JSON.parse(c.quotedBoundary);
+      c.quotedBoundary === undefined
+        ? "filesdifferentialboundary"
+        : (JSON.parse(c.quotedBoundary) as string);
     const ct = `multipart/form-data; boundary=${c.quotedBoundary ?? boundary}`;
     res = await req(side.url, c.method, path, multipartBody(c.parts, boundary, side), ct);
   } else {

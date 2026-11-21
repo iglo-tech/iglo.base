@@ -231,7 +231,11 @@ export function execStatements(
   prepared: Statement | null,
 ): ExecResult {
   if (isSingle(parts)) {
-    const stmt: Statement<unknown, Array<SQLQueryBindings>> = prepared ?? conn.query(parts[0].sql);
+    const stmt = (prepared ??
+      conn.query<unknown, Array<SQLQueryBindings>>(parts[0].sql)) as Statement<
+      unknown,
+      Array<SQLQueryBindings>
+    >;
     stmt.run(...bindArgs(stmt, args));
     return lastResult(conn);
   }

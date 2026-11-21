@@ -87,7 +87,7 @@ export class RealtimeService extends BaseService {
     const listener = function (e: Event) {
       const msgEvent = e as MessageEvent;
 
-      let data;
+      let data: unknown;
       try {
         data = JSON.parse(msgEvent?.data as string);
       } catch {

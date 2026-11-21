@@ -54,7 +54,7 @@ export class ClientResponseError extends Error {
     }
 
     this.name = "ClientResponseError " + this.status;
-    this.message = this.response?.message;
+    this.message = this.response?.message as string;
     if (!this.message) {
       if (this.isAbort) {
         this.message =

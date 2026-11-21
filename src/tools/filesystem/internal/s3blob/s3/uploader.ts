@@ -77,7 +77,7 @@ export class Uploader {
     this.#s3 = opts.s3;
     this.#payload = opts.payload;
     this.#key = opts.key;
-    this.#metadata = opts.metadata ?? new Map();
+    this.#metadata = opts.metadata ?? new Map<string, string>();
     this.#maxConcurrency = Math.max(opts.maxConcurrency ?? 0, 0) || defaultMaxConcurrency;
     this.#minPartSize = Math.max(opts.minPartSize ?? 0, 0) || defaultMinPartSize;
     this.#headers = opts.headers ?? new Headers();

@@ -54,6 +54,7 @@ export async function collectionGenerics(): Promise<void> {
   // without a generic the model is a RecordModel, whose fields stay readable and assignable
   const record = await pb.collection("posts").getOne("id");
   type _Record = Expect<Equal<typeof record, RecordModel>>;
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
   const title: string = record.title;
   const asRecord: RecordModel = { id: "1", collectionId: "c", collectionName: "posts", extra: 1 };
   void [title, asRecord];
@@ -90,7 +91,9 @@ export async function authGenerics(): Promise<void> {
 
 export async function sendGenerics(): Promise<void> {
   // the default response type stays readable without a cast
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
   const untyped = await pb.send("/hello", {});
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
   const anything: string = untyped.message;
   void anything;
 
@@ -118,6 +121,7 @@ export async function realtimeGenerics(): Promise<void> {
 
   // the realtime service takes untyped data
   await pb.realtime.subscribe("topic", (data) => {
+    // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
     const anything: string = data.whatever;
     void anything;
   });
@@ -160,6 +164,7 @@ export function authStoreModels(): void {
   }, true);
   type _Off = Expect<Equal<typeof off, () => void>>;
 
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
   const email: string | undefined = pb.authStore.record?.email;
   void email;
 
@@ -182,7 +187,9 @@ export function clientResponseErrorTypes(): void {
       type _Abort = Expect<Equal<typeof error.isAbort, boolean>>;
       type _Data = Expect<Equal<typeof error.data, typeof error.response>>;
       // the response bag stays readable without casts
+      // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
       const message: string = error.response.message;
+      // oxlint-disable-next-line typescript/no-unsafe-assignment -- type test: the loose SDK shape must read and assign without a cast
       const field: string = error.data.data.email.message;
       void [message, field];
     }

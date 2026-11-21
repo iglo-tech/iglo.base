@@ -117,7 +117,7 @@ function readSessionCookie(baseName: string): { token: string; record: AuthRecor
     return undefined;
   }
   const wireName = cookieWireName(baseName, scope.location?.protocol === "https:");
-  const value = cookieParse(raw)[wireName];
+  const value: unknown = cookieParse(raw)[wireName];
   if (typeof value !== "string" || value === "") {
     return undefined;
   }
@@ -267,7 +267,7 @@ export class BrowserClient extends Client {
 
   /** The current token's expiry in the server's clock, in milliseconds. */
   private _expiresAt(): number | undefined {
-    const exp = getTokenPayload(this.authStore.token).exp;
+    const exp: unknown = getTokenPayload(this.authStore.token).exp;
     return typeof exp === "number" && Number.isFinite(exp) && exp > 0 ? exp * 1000 : undefined;
   }
 

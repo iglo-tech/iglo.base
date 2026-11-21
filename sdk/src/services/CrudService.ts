@@ -45,7 +45,7 @@ export abstract class CrudService<M> extends BaseService {
 
     let batch = 1000;
     if (options.batch) {
-      batch = options.batch;
+      batch = options.batch as number;
       delete options.batch;
     }
 

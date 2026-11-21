@@ -339,7 +339,10 @@ class Recording implements SdkEnv {
     if (!(error instanceof ClientResponseError)) {
       throw new Error(`${label}: expected a ClientResponseError, got ${String(error)}`);
     }
-    this.record(label, pick?.(error) ?? { status: error.status, data: error.response["data"] });
+    this.record(
+      label,
+      pick?.(error) ?? { status: error.status, data: error.response["data"] as unknown },
+    );
     return error;
   }
 

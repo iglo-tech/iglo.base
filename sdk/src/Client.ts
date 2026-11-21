@@ -529,7 +529,7 @@ export default class Client {
       if (options.$autoCancel === false || options.query.$autoCancel === false) {
         options.requestKey = null;
       } else if (options.$cancelKey || options.query.$cancelKey) {
-        options.requestKey = options.$cancelKey || options.query.$cancelKey;
+        options.requestKey = options.$cancelKey || (options.query.$cancelKey as string | undefined);
       }
     }
     // remove the deprecated special cancellation params from the other query params

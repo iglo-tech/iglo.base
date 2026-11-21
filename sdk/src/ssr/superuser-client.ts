@@ -55,8 +55,8 @@ export class SuperuserClient extends Client {
     if (this._options.token) {
       const payload = getTokenPayload(this._options.token);
       const initialRecord: RecordModel = {
-        id: payload.id || "",
-        collectionId: payload.collectionId || "_superusers",
+        id: (payload.id as string | undefined) || "",
+        collectionId: (payload.collectionId as string | undefined) || "_superusers",
         collectionName: "_superusers",
       };
       this.authStore.save(this._options.token, initialRecord);
