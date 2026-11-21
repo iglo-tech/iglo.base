@@ -12,7 +12,7 @@ export type RequestMock = {
   delay?: number;
   replyCode?: number;
   replyHeaders?: Record<string, string> | Headers | (() => Record<string, string> | Headers);
-  replyBody?: any;
+  replyBody?: unknown;
 };
 
 export function dummyJWT(payload = {}) {
@@ -92,7 +92,7 @@ export class FetchMock {
           headers,
           json: async (): Promise<unknown> => {
             if (typeof mock.replyBody == "function") {
-              return mock.replyBody();
+              return (mock.replyBody as () => unknown)();
             }
 
             return mock.replyBody || {};

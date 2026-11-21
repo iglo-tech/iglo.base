@@ -346,12 +346,12 @@ async function writeRecords(
     "rm+": people[2],
   });
   await c.patch(records(all, target), { "n-": 1.5, "sm-": ["a"], "rm-": people[0] });
-  const stored = await c.get(records(all, target));
+  const stored: { fm?: Array<string> } | undefined = await c.get(records(all, target));
   await c.request("PATCH", records(all, target), {
     form: form({
       "fm+": file("appended.txt", "appended"),
       "+fm": picture("prepended.png"),
-      "fm-": (stored?.fm ?? []).slice(1, 2) as Array<string>,
+      "fm-": (stored?.fm ?? []).slice(1, 2),
     }),
   });
   await c.request("PATCH", records(all, rid(`${tag}form2`)), {

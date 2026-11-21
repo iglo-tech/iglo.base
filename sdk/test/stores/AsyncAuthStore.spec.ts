@@ -6,7 +6,7 @@ import { AsyncAuthStore } from "@sdk/stores/AsyncAuthStore";
 describe("AsyncAuthStore", () => {
   describe("construct()", () => {
     test("load empty initial", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -24,7 +24,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from string", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -45,7 +45,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from Promise<string>", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -66,7 +66,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from Promise<object>", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -87,7 +87,7 @@ describe("AsyncAuthStore", () => {
     });
 
     test("load initial from unexpected value (number/boolean) saves nothing", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -108,7 +108,7 @@ describe("AsyncAuthStore", () => {
 
   describe("save()", () => {
     test("trigger saveFunc", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -139,7 +139,7 @@ describe("AsyncAuthStore", () => {
 
   describe("clear()", () => {
     test("no explicit clearFunc", async () => {
-      const calls: any = [];
+      const calls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
@@ -164,8 +164,8 @@ describe("AsyncAuthStore", () => {
     });
 
     test("with explicit clearFunc", async () => {
-      const saveCalls: any = [];
-      const clearCalls: any = [];
+      const saveCalls: Array<unknown> = [];
+      const clearCalls: Array<unknown> = [];
 
       const store = new AsyncAuthStore({
         save: async (payload) => {
