@@ -44,13 +44,11 @@ export default defineConfig({
         "no-underscore-dangle": "off",
       },
     },
-    // Encoding names are data here: MIME charsets ("utf-8", "UTF-8") and the
-    // charset switch in mediatype.ts; the rule rewrites them to "utf8" and changes
-    // what the mail, MIME and request code sends and compares (L.1, D44).
-    // String.raw is off: Bun 1.4.5 lowers a raw template with non-ASCII text to
-    // \\u escapes, so the two spellings are not equal for such text.
-    // Go-port code writes bytes as \xNN (Go semantics): in a Go literal g`...` \xNN is
-    // one byte and \u00NN is a rune, so the rewrite changes data. Off for the repo (L.1, D44).
+    // Off for the repo, each for a reason that the rewrite would break (L.1, D44):
+    // - encoding names are data: MIME charsets ("utf-8", "UTF-8") and the charset switch
+    //   in mediatype.ts; the rule rewrites them to "utf8", changing what is sent and compared;
+    // - String.raw: Bun 1.4.5 lowers a raw template with non-ASCII text to \u escapes;
+    // - \xNN is one byte in a Go literal g`...`, while \u00NN is a rune.
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
