@@ -105,8 +105,9 @@ export default defineConfig({
         "typescript/no-explicit-any": "off",
       },
     },
-    // L.1 migration: rules that still report issues. Each rule is removed from
-    // this list by its own commit when its issues are fixed.
+    // L.1 open items: these rules still report issues and stay off until the
+    // owner decides (PR body, "Open"). Each one is removed from this list when its
+    // issues are fixed.
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
