@@ -6,6 +6,7 @@ declare const global: { HermesInternal?: unknown } | undefined;
 // @todo remove after https://github.com/reactwg/react-native-releases/issues/287
 const isReactNative =
   (typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
+  // oxlint-disable-next-line unicorn/no-typeof-undefined -- global is undeclared outside Hermes: typeof must not throw
   (typeof global !== "undefined" && global.HermesInternal);
 
 let atobPolyfill: (input: string) => string;

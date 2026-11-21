@@ -16,6 +16,7 @@ export function isFile(val: unknown): boolean {
       typeof val === "object" &&
       (val as { uri?: unknown }).uri &&
       ((typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
+        // oxlint-disable-next-line unicorn/no-typeof-undefined -- global is undeclared outside Hermes: typeof must not throw
         (typeof global !== "undefined" && global.HermesInternal))),
   );
 }
