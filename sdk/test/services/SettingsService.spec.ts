@@ -5,25 +5,25 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { SettingsService } from "@sdk/services/SettingsService";
 
-describe("SettingsService", function () {
+describe("SettingsService", () => {
   const client = new Client("test_base_url");
   const service = new SettingsService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("getAll()", function () {
-    test("Should fetch all app settings", async function () {
+  describe("getAll()", () => {
+    test("Should fetch all app settings", async () => {
       fetchMock.on({
         method: "GET",
         url: service.client.buildURL("/api/settings") + "?q1=123",
@@ -43,8 +43,8 @@ describe("SettingsService", function () {
     });
   });
 
-  describe("update()", function () {
-    test("Should send bulk app settings update", async function () {
+  describe("update()", () => {
+    test("Should send bulk app settings update", async () => {
       fetchMock.on({
         method: "PATCH",
         url: service.client.buildURL("/api/settings"),
@@ -62,8 +62,8 @@ describe("SettingsService", function () {
     });
   });
 
-  describe("testS3()", function () {
-    test("Should send S3 connection test request", async function () {
+  describe("testS3()", () => {
+    test("Should send S3 connection test request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/settings/test/s3") + "?q1=123",
@@ -84,8 +84,8 @@ describe("SettingsService", function () {
     });
   });
 
-  describe("testEmail()", function () {
-    test("Should send a test email request", async function () {
+  describe("testEmail()", () => {
+    test("Should send a test email request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/settings/test/email") + "?q1=123",
@@ -110,8 +110,8 @@ describe("SettingsService", function () {
     });
   });
 
-  describe("generateAppleClientSecret()", function () {
-    test("Should send an Apple OAuth2 client secret request", async function () {
+  describe("generateAppleClientSecret()", () => {
+    test("Should send an Apple OAuth2 client secret request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/settings/apple/generate-client-secret") + "?q1=123",

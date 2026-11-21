@@ -3,9 +3,9 @@ import { describe, expect, test } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import { AsyncAuthStore } from "@sdk/stores/AsyncAuthStore";
 
-describe("AsyncAuthStore", function () {
-  describe("construct()", function () {
-    test("load empty initial", async function () {
+describe("AsyncAuthStore", () => {
+  describe("construct()", () => {
+    test("load empty initial", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -23,7 +23,7 @@ describe("AsyncAuthStore", function () {
       await expect(callsPromise).resolves.toStrictEqual([]);
     });
 
-    test("load initial from string", async function () {
+    test("load initial from string", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -42,7 +42,7 @@ describe("AsyncAuthStore", function () {
       assert.deepEqual(store.record, { id: "id1" } as any);
     });
 
-    test("load initial from Promise<string>", async function () {
+    test("load initial from Promise<string>", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -61,7 +61,7 @@ describe("AsyncAuthStore", function () {
       assert.deepEqual(store.record, { id: "id1" } as any);
     });
 
-    test("load initial from Promise<object>", async function () {
+    test("load initial from Promise<object>", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -80,7 +80,7 @@ describe("AsyncAuthStore", function () {
       assert.deepEqual(store.record, { id: "id1" } as any);
     });
 
-    test("load initial from unexpected value (number/boolean) saves nothing", async function () {
+    test("load initial from unexpected value (number/boolean) saves nothing", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -100,8 +100,8 @@ describe("AsyncAuthStore", function () {
     });
   });
 
-  describe("save()", function () {
-    test("trigger saveFunc", async function () {
+  describe("save()", () => {
+    test("trigger saveFunc", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -129,8 +129,8 @@ describe("AsyncAuthStore", function () {
     });
   });
 
-  describe("clear()", function () {
-    test("no explicit clearFunc", async function () {
+  describe("clear()", () => {
+    test("no explicit clearFunc", async () => {
       let calls: any = [];
 
       const store = new AsyncAuthStore({
@@ -156,7 +156,7 @@ describe("AsyncAuthStore", function () {
       ]);
     });
 
-    test("with explicit clearFunc", async function () {
+    test("with explicit clearFunc", async () => {
       let saveCalls: any = [];
       let clearCalls: any = [];
 

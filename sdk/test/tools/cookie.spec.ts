@@ -3,31 +3,31 @@ import { describe, test } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
 
-describe("cookie", function () {
-  describe("cookieParse()", function () {
-    test("Should return an empty object if no cookie string", function () {
+describe("cookie", () => {
+  describe("cookieParse()", () => {
+    test("Should return an empty object if no cookie string", () => {
       const cookies = cookieParse("");
       assert.deepEqual(cookies, {});
     });
 
-    test("Should successfully parse a valid cookie string", function () {
+    test("Should successfully parse a valid cookie string", () => {
       const cookies = cookieParse("foo=bar; abc=12@3");
       assert.deepEqual(cookies, { foo: "bar", abc: "12@3" });
     });
   });
 
-  describe("cookieSerialize()", function () {
-    test("Should serialize an empty value", function () {
+  describe("cookieSerialize()", () => {
+    test("Should serialize an empty value", () => {
       const result = cookieSerialize("test_cookie", "");
       assert.equal(result, "test_cookie=");
     });
 
-    test("Should serialize a non empty value", function () {
+    test("Should serialize a non empty value", () => {
       const result = cookieSerialize("test_cookie", "abc");
       assert.equal(result, "test_cookie=abc");
     });
 
-    test("Should generate a cookie with all available options", function () {
+    test("Should generate a cookie with all available options", () => {
       const result = cookieSerialize("test_cookie", "abc", {
         maxAge: 123,
         domain: "test.com",

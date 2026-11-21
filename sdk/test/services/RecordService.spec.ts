@@ -7,7 +7,7 @@ import Client from "@sdk/Client";
 import { RecordService } from "@sdk/services/RecordService";
 import type { RecordModel } from "@sdk/tools/dtos";
 
-describe("RecordService", function () {
+describe("RecordService", () => {
   const client = new Client("test_base_url/");
   const service = new RecordService(client, "sub=");
 
@@ -15,24 +15,24 @@ describe("RecordService", function () {
 
   const fetchMock = new FetchMock();
 
-  beforeEach(function () {
+  beforeEach(() => {
     service.client.authStore.clear(); // reset
   });
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("AuthStore sync", function () {
-    test("Should update the AuthStore record model on matching update id and collection", async function () {
+  describe("AuthStore sync", () => {
+    test("Should update the AuthStore record model on matching update id and collection", async () => {
       fetchMock.on({
         method: "PATCH",
         url: service.client.buildURL("/api/collections/sub%3D/records/test123"),
@@ -62,7 +62,7 @@ describe("RecordService", function () {
       assert.equal(service.client.authStore.record?.expand?.b, 3);
     });
 
-    test("Should not update the AuthStore record model on matching id but mismatched collection", async function () {
+    test("Should not update the AuthStore record model on matching id but mismatched collection", async () => {
       fetchMock.on({
         method: "PATCH",
         url: service.client.buildURL("/api/collections/sub%3D/records/test123"),
@@ -84,7 +84,7 @@ describe("RecordService", function () {
       assert.equal(service.client.authStore.record?.email, "old@example.com");
     });
 
-    test("Should not update the AuthStore record model on mismatched update id", async function () {
+    test("Should not update the AuthStore record model on mismatched update id", async () => {
       fetchMock.on({
         method: "PATCH",
         url: service.client.buildURL("/api/collections/sub%3D/records/test123"),
@@ -106,7 +106,7 @@ describe("RecordService", function () {
       assert.equal(service.client.authStore.record?.email, "old@example.com");
     });
 
-    test("Should delete the AuthStore record model on matching delete id and collection", async function () {
+    test("Should delete the AuthStore record model on matching delete id and collection", async () => {
       fetchMock.on({
         method: "DELETE",
         url: service.client.buildURL("/api/collections/sub%3D/records/test123"),
@@ -123,7 +123,7 @@ describe("RecordService", function () {
       assert.isNull(service.client.authStore.model);
     });
 
-    test("Should not delete the AuthStore record model on matching delete id but mismatched collection", async function () {
+    test("Should not delete the AuthStore record model on matching delete id but mismatched collection", async () => {
       fetchMock.on({
         method: "DELETE",
         url: service.client.buildURL("/api/collections/sub%3D/records/test123"),
@@ -140,7 +140,7 @@ describe("RecordService", function () {
       assert.isNotNull(service.client.authStore.model);
     });
 
-    test("Should not delete the AuthStore record model on mismatched delete id", async function () {
+    test("Should not delete the AuthStore record model on mismatched delete id", async () => {
       fetchMock.on({
         method: "DELETE",
         url: service.client.buildURL("/api/collections/sub%3D/records/test123"),
@@ -157,7 +157,7 @@ describe("RecordService", function () {
       assert.isNotNull(service.client.authStore.model);
     });
 
-    test("Should update the AuthStore record model verified state on matching token data", async function () {
+    test("Should update the AuthStore record model verified state on matching token data", async () => {
       const token =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
 
@@ -181,7 +181,7 @@ describe("RecordService", function () {
       assert.isTrue(service.client.authStore.record?.verified);
     });
 
-    test("Should not update the AuthStore record model verified state on mismatched token data", async function () {
+    test("Should not update the AuthStore record model verified state on mismatched token data", async () => {
       const token =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
 
@@ -205,7 +205,7 @@ describe("RecordService", function () {
       assert.isFalse(service.client.authStore.record?.verified);
     });
 
-    test("Should delete the AuthStore record model matching the token data", async function () {
+    test("Should delete the AuthStore record model matching the token data", async () => {
       const token =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
 
@@ -231,7 +231,7 @@ describe("RecordService", function () {
       assert.isEmpty(service.client.authStore.token);
     });
 
-    test("Should not delete the AuthStore record model on mismatched token data", async function () {
+    test("Should not delete the AuthStore record model on mismatched token data", async () => {
       const token =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
 
@@ -274,8 +274,8 @@ describe("RecordService", function () {
     assert.deepEqual(service.client.authStore.model, expectedRecord);
   }
 
-  describe("listAuthMethods()", function () {
-    test("Should fetch all available authorization methods", async function () {
+  describe("listAuthMethods()", () => {
+    test("Should fetch all available authorization methods", async () => {
       fetchMock.on({
         method: "GET",
         url:
@@ -297,8 +297,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("authWithPassword()", function () {
-    test("Should authenticate a record by its username/email and password", async function () {
+  describe("authWithPassword()", () => {
+    test("Should authenticate a record by its username/email and password", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-with-password?q1=456",
@@ -325,8 +325,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("authWithOAuth2Code()", function () {
-    test("(legacy) Should authenticate with OAuth2 a record by an OAuth2 code", async function () {
+  describe("authWithOAuth2Code()", () => {
+    test("(legacy) Should authenticate with OAuth2 a record by an OAuth2 code", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-with-oauth2?q1=456",
@@ -358,7 +358,7 @@ describe("RecordService", function () {
       authResponseCheck(result, "token_auth", { id: "id_auth" } as any);
     });
 
-    test("Should authenticate with OAuth2 a record by an OAuth2 code", async function () {
+    test("Should authenticate with OAuth2 a record by an OAuth2 code", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-with-oauth2?q1=456",
@@ -395,8 +395,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("authWithOAuth2()", function () {
-    test("(legacy) Should authenticate with OAuth2 a record using the legacy function overload", async function () {
+  describe("authWithOAuth2()", () => {
+    test("(legacy) Should authenticate with OAuth2 a record using the legacy function overload", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-with-oauth2?q1=456",
@@ -431,8 +431,8 @@ describe("RecordService", function () {
     // @todo consider adding a test for the realtime version when refactoring the realtime service
   });
 
-  describe("authRefresh()", function () {
-    test("(legacy) Should refresh an authorized record instance", async function () {
+  describe("authRefresh()", () => {
+    test("(legacy) Should refresh an authorized record instance", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-refresh?q1=456",
@@ -449,7 +449,7 @@ describe("RecordService", function () {
       authResponseCheck(result, "token_refresh", { id: "id_refresh" } as any);
     });
 
-    test("Should refresh an authorized record instance", async function () {
+    test("Should refresh an authorized record instance", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-refresh?q1=456",
@@ -472,8 +472,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("requestPasswordReset()", function () {
-    test("(legacy) Should send a password reset request", async function () {
+  describe("requestPasswordReset()", () => {
+    test("(legacy) Should send a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-password-reset?q1=456",
@@ -494,7 +494,7 @@ describe("RecordService", function () {
       assert.isTrue(result);
     });
 
-    test("Should send a password reset request", async function () {
+    test("Should send a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-password-reset?q1=456",
@@ -517,8 +517,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("confirmPasswordReset()", function () {
-    test("(legacy) Should confirm a password reset request", async function () {
+  describe("confirmPasswordReset()", () => {
+    test("(legacy) Should confirm a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-password-reset?q1=456",
@@ -543,7 +543,7 @@ describe("RecordService", function () {
       assert.isTrue(result);
     });
 
-    test("Should confirm a password reset request", async function () {
+    test("Should confirm a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-password-reset?q1=456",
@@ -568,8 +568,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("requestVerification()", function () {
-    test("(legacy) Should send a password reset request", async function () {
+  describe("requestVerification()", () => {
+    test("(legacy) Should send a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-verification?q1=456",
@@ -590,7 +590,7 @@ describe("RecordService", function () {
       assert.isTrue(result);
     });
 
-    test("Should send a password reset request", async function () {
+    test("Should send a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-verification?q1=456",
@@ -613,8 +613,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("confirmVerification()", function () {
-    test("(legacy) Should confirm a password reset request", async function () {
+  describe("confirmVerification()", () => {
+    test("(legacy) Should confirm a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-verification?q1=456",
@@ -631,7 +631,7 @@ describe("RecordService", function () {
       assert.isTrue(result);
     });
 
-    test("Should confirm a password reset request", async function () {
+    test("Should confirm a password reset request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-verification?q1=456",
@@ -654,8 +654,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("requestEmailChange()", function () {
-    test("(legacy) Should send an email change request", async function () {
+  describe("requestEmailChange()", () => {
+    test("(legacy) Should send an email change request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-email-change?q1=456",
@@ -672,7 +672,7 @@ describe("RecordService", function () {
       assert.isTrue(result);
     });
 
-    test("Should send an email change request", async function () {
+    test("Should send an email change request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-email-change?q1=456",
@@ -695,8 +695,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("confirmEmailChange()", function () {
-    test("(legacy) Should confirm an email change request", async function () {
+  describe("confirmEmailChange()", () => {
+    test("(legacy) Should confirm an email change request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-email-change?q1=456",
@@ -714,7 +714,7 @@ describe("RecordService", function () {
       assert.isTrue(result);
     });
 
-    test("Should confirm an email change request", async function () {
+    test("Should confirm an email change request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-email-change?q1=456",
@@ -738,8 +738,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("requestOTP()", function () {
-    test("Should send OTP request", async function () {
+  describe("requestOTP()", () => {
+    test("Should send OTP request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/request-otp?q1=456",
@@ -762,8 +762,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("authWithOTP()", function () {
-    test("Should authenticate a record using the OTP id and password", async function () {
+  describe("authWithOTP()", () => {
+    test("Should authenticate a record using the OTP id and password", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/auth-with-otp?q1=456",
@@ -790,8 +790,8 @@ describe("RecordService", function () {
     });
   });
 
-  describe("impersonate()", function () {
-    test("Should create a new impersonate client", async function () {
+  describe("impersonate()", () => {
+    test("Should create a new impersonate client", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/impersonate/%40test?q1=456",

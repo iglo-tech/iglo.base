@@ -7,7 +7,7 @@ import Client from "@sdk/Client";
 import { CollectionService } from "@sdk/services/CollectionService";
 import type { CollectionModel } from "@sdk/tools/dtos";
 
-describe("CollectionService", function () {
+describe("CollectionService", () => {
   const client = new Client("test_base_url");
   const service = new CollectionService(client);
 
@@ -15,20 +15,20 @@ describe("CollectionService", function () {
 
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("import()", function () {
-    test("Should send a bulk import collections request", async function () {
+  describe("import()", () => {
+    test("Should send a bulk import collections request", async () => {
       fetchMock.on({
         method: "PUT",
         url: service.client.buildURL("/api/collections/import?q1=456"),
@@ -56,8 +56,8 @@ describe("CollectionService", function () {
     });
   });
 
-  describe("truncate()", function () {
-    test("Should send truncate collection request", async function () {
+  describe("truncate()", () => {
+    test("Should send truncate collection request", async () => {
       fetchMock.on({
         method: "DELETE",
         url: service.client.buildURL("/api/collections/test%3D/truncate?q1=456"),
@@ -77,8 +77,8 @@ describe("CollectionService", function () {
     });
   });
 
-  describe("getScaffolds()", function () {
-    test("Should send collection scaffolds request", async function () {
+  describe("getScaffolds()", () => {
+    test("Should send collection scaffolds request", async () => {
       fetchMock.on({
         method: "GET",
         url: service.client.buildURL("/api/collections/meta/scaffolds?q1=456"),
@@ -98,8 +98,8 @@ describe("CollectionService", function () {
     });
   });
 
-  describe("getAllOAuth2Providers()", function () {
-    test("Should send OAuth2 providers list request", async function () {
+  describe("getAllOAuth2Providers()", () => {
+    test("Should send OAuth2 providers list request", async () => {
       const mockReply = [{ name: "test_name", displayName: "", logo: "" }];
 
       fetchMock.on({
@@ -121,8 +121,8 @@ describe("CollectionService", function () {
     });
   });
 
-  describe("dryRunViewQuery()", function () {
-    test("Should send a dry run view query request", async function () {
+  describe("dryRunViewQuery()", () => {
+    test("Should send a dry run view query request", async () => {
       const mockReply = [{ id: 1 }];
 
       fetchMock.on({

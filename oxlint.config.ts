@@ -71,7 +71,6 @@ export default defineConfig({
         "no-var": "off",
         "object-shorthand": "off",
         "oxc/bad-bitwise-operator": "off",
-        "prefer-arrow-callback": "off",
         "prefer-const": "off",
         "prefer-promise-reject-errors": "off",
         "promise/no-multiple-resolved": "off",

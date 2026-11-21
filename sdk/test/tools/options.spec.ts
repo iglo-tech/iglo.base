@@ -3,13 +3,13 @@ import { describe, test } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import { serializeQueryParams } from "@sdk/tools/options";
 
-describe("serializeQueryParams()", function () {
-  test("Should return an empty string if no serializable parameters are found", function () {
+describe("serializeQueryParams()", () => {
+  test("Should return an empty string if no serializable parameters are found", () => {
     assert.equal(serializeQueryParams({}), "");
     assert.equal(serializeQueryParams({ a: null, b: undefined }), "");
   });
 
-  test("Should properly serialize different type of parameter values", function () {
+  test("Should properly serialize different type of parameter values", () => {
     const testParams: any = {};
 
     testParams["@test_null"] = null;

@@ -5,25 +5,25 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { LogService } from "@sdk/services/LogService";
 
-describe("LogService", function () {
+describe("LogService", () => {
   const client = new Client("test_base_url");
   const service = new LogService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("getList()", function () {
-    test("Should correctly return paginated list result", async function () {
+  describe("getList()", () => {
+    test("Should correctly return paginated list result", async () => {
       const replyBody = {
         page: 2,
         perPage: 1,
@@ -51,8 +51,8 @@ describe("LogService", function () {
     });
   });
 
-  describe("getOne()", function () {
-    test("Should return single log", async function () {
+  describe("getOne()", () => {
+    test("Should return single log", async () => {
       fetchMock.on({
         method: "GET",
         url: "test_base_url/api/logs/" + encodeURIComponent("test?123") + "?q1=abc",
@@ -71,15 +71,15 @@ describe("LogService", function () {
       assert.deepEqual(result, { id: "test123" } as any);
     });
 
-    test("Should return a 404 error if id is empty", async function () {
+    test("Should return a 404 error if id is empty", async () => {
       expect(service.getOne("")).rejects.toThrow("Missing required log id.");
       expect(service.getOne(null as any)).rejects.toThrow("Missing required log id.");
       expect(service.getOne(undefined as any)).rejects.toThrow("Missing required log id.");
     });
   });
 
-  describe("getStats()", function () {
-    test("Should return array with date grouped logs", async function () {
+  describe("getStats()", () => {
+    test("Should return array with date grouped logs", async () => {
       fetchMock.on({
         method: "GET",
         url: "test_base_url/api/logs/stats?q1=abc",
@@ -100,8 +100,8 @@ describe("LogService", function () {
     });
   });
 
-  describe("truncate()", function () {
-    test("Should send truncate logs request", async function () {
+  describe("truncate()", () => {
+    test("Should send truncate logs request", async () => {
       fetchMock.on({
         method: "DELETE",
         url: service.client.buildURL("/api/logs?q1=456"),

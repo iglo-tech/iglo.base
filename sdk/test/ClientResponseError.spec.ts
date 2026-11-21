@@ -3,9 +3,9 @@ import { describe, test } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import { ClientResponseError } from "@sdk/ClientResponseError";
 
-describe("ClientResponseError", function () {
-  describe("constructor()", function () {
-    test("with object-like value", function () {
+describe("ClientResponseError", () => {
+  describe("constructor()", () => {
+    test("with object-like value", () => {
       const err = new ClientResponseError({
         url: "http://example.com",
         status: 400,
@@ -22,7 +22,7 @@ describe("ClientResponseError", function () {
       assert.equal(err.message, "test message");
     });
 
-    test("with non-object value", function () {
+    test("with non-object value", () => {
       const err = new ClientResponseError("test");
 
       assert.equal(err.url, "");
@@ -33,7 +33,7 @@ describe("ClientResponseError", function () {
       assert.equal(err.message, "Something went wrong.");
     });
 
-    test("with plain error", function () {
+    test("with plain error", () => {
       const plainErr = new Error("test");
       const err = new ClientResponseError(plainErr);
 
@@ -45,7 +45,7 @@ describe("ClientResponseError", function () {
       assert.equal(err.message, "Something went wrong.");
     });
 
-    test("with ClientResponseError error", function () {
+    test("with ClientResponseError error", () => {
       const err0 = new ClientResponseError({
         url: "http://example.com",
         status: 400,
@@ -64,7 +64,7 @@ describe("ClientResponseError", function () {
     });
 
     // Safari may throw this on response.json() failure
-    test("with DOMException.SyntaxError", function () {
+    test("with DOMException.SyntaxError", () => {
       const err0 = new DOMException("test_err", "SyntaxError");
       const err = new ClientResponseError(err0);
 
@@ -76,7 +76,7 @@ describe("ClientResponseError", function () {
       assert.include(err.message, "Something went wrong.");
     });
 
-    test("with DOMException.AbortError", function () {
+    test("with DOMException.AbortError", () => {
       const err0 = new DOMException("test_err", "AbortError");
       const err = new ClientResponseError(err0);
 
@@ -89,7 +89,7 @@ describe("ClientResponseError", function () {
     });
 
     // React Native throws a plain Error with message "Aborted" instead of DOMException
-    test("with React Native abort error", function () {
+    test("with React Native abort error", () => {
       const err0 = new Error("Aborted");
       const err = new ClientResponseError(err0);
 

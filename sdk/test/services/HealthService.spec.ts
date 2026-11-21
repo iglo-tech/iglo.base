@@ -5,25 +5,25 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { HealthService } from "@sdk/services/HealthService";
 
-describe("HealthService", function () {
+describe("HealthService", () => {
   const client = new Client("test_base_url");
   const service = new HealthService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("check()", function () {
-    test("Should send a health check request", async function () {
+  describe("check()", () => {
+    test("Should send a health check request", async () => {
       fetchMock.on({
         method: "GET",
         url: service.client.buildURL("/api/health") + "?q1=123",

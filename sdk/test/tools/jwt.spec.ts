@@ -3,9 +3,9 @@ import { describe, test } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import { getTokenPayload, isTokenExpired } from "@sdk/tools/jwt";
 
-describe("jwt", function () {
-  describe("getTokenPayload()", function () {
-    test("Should extract JWT payload without validation", function () {
+describe("jwt", () => {
+  describe("getTokenPayload()", () => {
+    test("Should extract JWT payload without validation", () => {
       const token =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjN9.da77dJt5jjPU43vaaCr6WeHEXrxzB37b0edfjwyD-2M";
 
@@ -14,7 +14,7 @@ describe("jwt", function () {
       assert.deepEqual(payload, { test: 123 });
     });
 
-    test("Should fallback to empty object on invalid JWT string", function () {
+    test("Should fallback to empty object on invalid JWT string", () => {
       const testCases = ["", "abc", "a.b.c"];
       for (let i in testCases) {
         const tc = testCases[i]!;
@@ -24,8 +24,8 @@ describe("jwt", function () {
     });
   });
 
-  describe("isTokenExpired()", function () {
-    test("Should successfully verify that a JWT token is expired or not", function () {
+  describe("isTokenExpired()", () => {
+    test("Should successfully verify that a JWT token is expired or not", () => {
       const testCases = [
         // invalid JWT string
         [true, ""],

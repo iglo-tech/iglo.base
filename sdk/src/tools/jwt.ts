@@ -55,7 +55,7 @@ export function getTokenPayload(token: string): LooseObject {
       const encodedPayload = decodeURIComponent(
         atobPolyfill(token.split(".")[1] as string)
           .split("")
-          .map(function (c: string) {
+          .map((c: string) => {
             return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
           })
           .join(""),

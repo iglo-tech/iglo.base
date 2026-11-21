@@ -5,25 +5,25 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { CronService } from "@sdk/services/CronService";
 
-describe("CronService", function () {
+describe("CronService", () => {
   const client = new Client("test_base_url");
   const service = new CronService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("getFullList()", function () {
-    test("Should fetch all cron jobs", async function () {
+  describe("getFullList()", () => {
+    test("Should fetch all cron jobs", async () => {
       const replyBody = [
         { id: "test1", expression: "* * * * *" },
         { id: "test2", expression: "* * * * *" },
@@ -48,8 +48,8 @@ describe("CronService", function () {
     });
   });
 
-  describe("run()", function () {
-    test("Should trigger the specified cron job", async function () {
+  describe("run()", () => {
+    test("Should trigger the specified cron job", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/crons") + "/%40test?q1=123",
