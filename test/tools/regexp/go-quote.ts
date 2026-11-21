@@ -24,7 +24,7 @@ const simpleEscapes: Record<string, number> = {
 // unquote parses a Go double-quoted string literal; it throws on a
 // malformed one.
 export function unquote(q: string): string {
-  if (q.length < 2 || q[0] !== '"' || q[q.length - 1] !== '"') {
+  if (q.length < 2 || q[0] !== '"' || q.at(-1) !== '"') {
     throw new Error(`invalid quoted string ${q}`);
   }
   const s = q.slice(1, -1);

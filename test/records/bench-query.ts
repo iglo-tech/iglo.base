@@ -104,29 +104,34 @@ try {
     await call("POST", "/api/sql", { query: insertRows });
 
     const id = "r00000000005000";
-    results.push([
-      "view one record",
-      "GET /records/{id}",
-      await timeAsync(200, async () => {
-        await call("GET", `/api/collections/bench/records/${id}`);
-      }),
-    ]);
-    results.push([
-      "all 10,000 records",
-      "GET /records, 10 pages of 1,000 (skipTotal)",
-      await timeAsync(10, async () => {
-        for (let page = 1; page <= 10; page++) {
-          await call("GET", `/api/collections/bench/records?perPage=1000&page=${page}&skipTotal=1`);
-        }
-      }),
-    ]);
-    results.push([
-      "count with active = true",
-      "GET /records?filter=active=true&perPage=1 (totalItems)",
-      await timeAsync(50, async () => {
-        await call("GET", "/api/collections/bench/records?filter=active%3Dtrue&perPage=1");
-      }),
-    ]);
+    results.push(
+      [
+        "view one record",
+        "GET /records/{id}",
+        await timeAsync(200, async () => {
+          await call("GET", `/api/collections/bench/records/${id}`);
+        }),
+      ],
+      [
+        "all 10,000 records",
+        "GET /records, 10 pages of 1,000 (skipTotal)",
+        await timeAsync(10, async () => {
+          for (let page = 1; page <= 10; page++) {
+            await call(
+              "GET",
+              `/api/collections/bench/records?perPage=1000&page=${page}&skipTotal=1`,
+            );
+          }
+        }),
+      ],
+      [
+        "count with active = true",
+        "GET /records?filter=active=true&perPage=1 (totalItems)",
+        await timeAsync(50, async () => {
+          await call("GET", "/api/collections/bench/records?filter=active%3Dtrue&perPage=1");
+        }),
+      ],
+    );
   } finally {
     await upstream.stop();
   }

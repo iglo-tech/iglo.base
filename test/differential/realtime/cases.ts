@@ -143,8 +143,6 @@ async function draftThenPublish(ctx: ScenarioContext): Promise<Array<Observation
           text: "PRIVATE DRAFT",
         }),
       ),
-    );
-    steps.push(
       response(
         await ctx.api("PATCH", `/api/collections/rt_review/records/${id}`, {
           title: "visible",
@@ -162,8 +160,6 @@ async function draftThenPublish(ctx: ScenarioContext): Promise<Array<Observation
           text: "PUBLISHED",
         }),
       ),
-    );
-    steps.push(
       response(
         await ctx.api("PATCH", `/api/collections/rt_review/records/${id}`, {
           title: "hidden",
@@ -225,15 +221,19 @@ export const realtimeCases: Array<RealtimeScenario> = [
       steps.push(await post(ctx, "rtreplace000001"));
       await stream.waitFor((e) => e.length >= 2);
       // replace with another topic
-      steps.push(response(await ctx.subscribe(stream.clientId, ["demo2/*"])));
-      steps.push(await post(ctx, "rtreplace000002"));
-      steps.push(await post(ctx, "rtreplace000003", {}, "demo2"));
+      steps.push(
+        response(await ctx.subscribe(stream.clientId, ["demo2/*"])),
+        await post(ctx, "rtreplace000002"),
+        await post(ctx, "rtreplace000003", {}, "demo2"),
+      );
       await stream.waitFor((e) => e.length >= 3);
       // unsubscribe all
-      steps.push(response(await ctx.subscribe(stream.clientId, [])));
-      steps.push(await post(ctx, "rtreplace000004", {}, "demo2"));
       // no subscriptions key at all
-      steps.push(response(await ctx.subscribeRaw(`{"clientId":"${stream.clientId}"}`)));
+      steps.push(
+        response(await ctx.subscribe(stream.clientId, [])),
+        await post(ctx, "rtreplace000004", {}, "demo2"),
+        response(await ctx.subscribeRaw(`{"clientId":"${stream.clientId}"}`)),
+      );
       return { steps, events: await settled(stream) };
     },
     check: (o) => expect((o.events as Array<unknown>).length).toBe(2),
@@ -871,8 +871,6 @@ export const realtimeCases: Array<RealtimeScenario> = [
               managed: false,
             }),
           ),
-        );
-        steps.push(
           response(
             await ctx.api("PATCH", `/api/collections/rt_members/records/${id}`, {
               managed: true,
@@ -931,8 +929,6 @@ export const realtimeCases: Array<RealtimeScenario> = [
               title: "visible",
             }),
           ),
-        );
-        steps.push(
           response(
             await ctx.api("POST", "/api/collections/rt_review/records", {
               id,
@@ -940,9 +936,7 @@ export const realtimeCases: Array<RealtimeScenario> = [
               tag,
             }),
           ),
-        );
-        // the tag is hidden from the expand after the create
-        steps.push(
+          // the tag is hidden from the expand after the create
           response(
             await ctx.api("PATCH", `/api/collections/rt_tags/records/${tag}`, {
               title: "hidden",

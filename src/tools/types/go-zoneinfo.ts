@@ -537,7 +537,7 @@ export function loadLocationFromTZData(name: string, data: Uint8Array): Location
 
   let extend = "";
   const rest = data.subarray(pos);
-  if (rest.length > 2 && rest[0] === 0x0a && rest[rest.length - 1] === 0x0a) {
+  if (rest.length > 2 && rest[0] === 0x0a && rest.at(-1) === 0x0a) {
     extend = new TextDecoder().decode(rest.subarray(1, rest.length - 1));
   }
 

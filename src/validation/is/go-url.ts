@@ -48,7 +48,7 @@ function ishex(c: string | undefined): boolean {
 
 // Precondition: ishex(c) is true.
 function unhex(c: string): number {
-  return parseInt(c, 16);
+  return Number.parseInt(c, 16);
 }
 
 // shouldEscape for the host and zone modes, the only ones unescape asks

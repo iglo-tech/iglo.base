@@ -266,7 +266,7 @@ export class RecordFieldResolver implements FieldResolver {
       throw new Error("at least one path key should be provided");
     }
 
-    const [lastProp, modifier] = splitModifier(path[path.length - 1] as string);
+    const [lastProp, modifier] = splitModifier(path.at(-1) as string);
 
     path[path.length - 1] = lastProp;
 
@@ -298,7 +298,7 @@ export class RecordFieldResolver implements FieldResolver {
       // check if it is a number field and explicitly try to cast to
       // float in case of a numeric string value was used
       // (this usually the case when the data is from a multipart/form-data request)
-      const field = this.baseCollection.fields.getByName(path[path.length - 1] as string);
+      const field = this.baseCollection.fields.getByName(path.at(-1) as string);
       if (field !== null && field.type() === FieldTypeNumber) {
         try {
           resultVal = parseGoFloat(resultVal, 64);

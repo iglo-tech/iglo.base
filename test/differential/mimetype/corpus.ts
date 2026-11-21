@@ -49,7 +49,7 @@ for (const b of [0x00, 0x09, 0x0a, 0x1b, 0x20, 0x41, 0x7f, 0x80, 0xc3, 0xff]) {
   add(`one byte ${b.toString(16)}`, Uint8Array.of(b));
 }
 const boms: Array<[string, Uint8Array]> = [
-  ["utf-8", g`\u00ef\u00bb\u00bf`],
+  ["utf8", g`\u00ef\u00bb\u00bf`],
   ["utf-16be", g`\u00fe\u00ff`],
   ["utf-16le", g`\u00ff\u00fe`],
   ["utf-32be", g`\u0000\u0000\u00fe\u00ff`],

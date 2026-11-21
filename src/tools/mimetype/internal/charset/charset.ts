@@ -24,7 +24,7 @@ const I = 2; /* character appears in ISO-8859 text */
 const X = 3; /* character appears in non-ISO extended ASCII (Mac, IBM PC) */
 
 const boms: Array<{ bom: Uint8Array; enc: string }> = [
-  { bom: Uint8Array.of(0xef, 0xbb, 0xbf), enc: "utf-8" },
+  { bom: Uint8Array.of(0xef, 0xbb, 0xbf), enc: "utf8" },
   { bom: Uint8Array.of(0x00, 0x00, 0xfe, 0xff), enc: "utf-32be" },
   { bom: Uint8Array.of(0xff, 0xfe, 0x00, 0x00), enc: "utf-32le" },
   { bom: Uint8Array.of(0xfe, 0xff), enc: "utf-16be" },
@@ -90,7 +90,7 @@ export function fromPlain(content: Uint8Array): string {
   }
   // ASCII is a subset of UTF8. Follow W3C recommendation and replace with UTF8.
   if (valid(content)) {
-    return "utf-8";
+    return "utf8";
   }
 
   return latin(origContent);

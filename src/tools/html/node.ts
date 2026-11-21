@@ -154,7 +154,7 @@ export function reparentChildren(dst: Node, src: Node): void {
 
 // stackTop returns the top element of a stack, or null if it is empty.
 export function stackTop<T>(s: ReadonlyArray<T>): T | null {
-  return s.length > 0 ? s[s.length - 1]! : null;
+  return s.length > 0 ? s.at(-1)! : null;
 }
 
 // stackIndex returns the index of the topmost occurrence of item in s, or -1.

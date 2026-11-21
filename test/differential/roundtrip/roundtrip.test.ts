@@ -342,7 +342,7 @@ describe("a fresh install", () => {
       const out = altered((dataDir) => {
         const path = storedPaths(dataDir, ".png").find((p) => /\/thumbs_original_[^/]*$/.test(p));
         const bytes = readFileSync(path as string);
-        bytes[bytes.length - 1] = (bytes[bytes.length - 1] as number) ^ 1;
+        bytes[bytes.length - 1] = (bytes.at(-1) as number) ^ 1;
         writeFileSync(path as string, bytes);
       }, true);
       expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);

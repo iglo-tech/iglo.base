@@ -245,7 +245,7 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
 // first step's error.
 function advance(state: RunState): Promise<unknown> | null | undefined {
   const stack = state.stack;
-  const step = stack[stack.length - 1] as Step;
+  const step = stack.at(-1) as Step;
   let res: IteratorResult<unknown, void>;
   try {
     res = state.failed ? step.throw(state.input) : step.next(state.input);

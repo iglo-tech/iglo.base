@@ -35,7 +35,7 @@ export class Pattern {
   }
 
   lastSegment(): Segment {
-    return this.segments[this.segments.length - 1] as Segment;
+    return this.segments.at(-1) as Segment;
   }
 
   // wildcard names, in the order their matches are recorded
@@ -125,7 +125,7 @@ export function parsePattern(s: string): Pattern {
     if (brace !== 0) {
       throw fail("bad wildcard segment (must start with '{')");
     }
-    if (seg[seg.length - 1] !== "}") {
+    if (seg.at(-1) !== "}") {
       throw fail("bad wildcard segment (must end with '}')");
     }
     let name = seg.slice(1, -1);
@@ -735,7 +735,7 @@ export function cleanSlashPath(p: string): string {
       continue;
     }
     if (part === "..") {
-      if (out.length > 0 && out[out.length - 1] !== "..") {
+      if (out.length > 0 && out.at(-1) !== "..") {
         out.pop();
       } else if (!rooted) {
         out.push("..");
@@ -762,7 +762,7 @@ export function cleanPath(p: string): string {
   let np = cleanSlashPath(p);
   // path.Clean removes trailing slash except for root;
   // put the trailing slash back if necessary.
-  if (p[p.length - 1] === "/" && np !== "/") {
+  if (p.at(-1) === "/" && np !== "/") {
     np += "/";
   }
   return np;
@@ -807,7 +807,7 @@ function exactMatch<H>(n: RoutingNode<H> | undefined, path: string): boolean {
   }
   // If the path doesn't end in a trailing slash, then the multi match
   // is non-empty.
-  if (path.length > 0 && path[path.length - 1] !== "/") {
+  if (path.length > 0 && path.at(-1) !== "/") {
     return false;
   }
   // Only patterns ending in {$} or a multi wildcard can

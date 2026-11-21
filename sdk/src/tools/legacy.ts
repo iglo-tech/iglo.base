@@ -7,8 +7,8 @@ export function normalizeLegacyOptionsArgs(
   bodyOrOptions?: unknown,
   query?: unknown,
 ): SendOptions {
-  const hasBodyOrOptions = typeof bodyOrOptions !== "undefined";
-  const hasQuery = typeof query !== "undefined";
+  const hasBodyOrOptions = bodyOrOptions !== undefined;
+  const hasQuery = query !== undefined;
 
   if (!hasQuery && !hasBodyOrOptions) {
     return baseOptions;

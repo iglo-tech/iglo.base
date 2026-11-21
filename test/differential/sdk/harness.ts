@@ -181,7 +181,9 @@ function decodeMessage(m: SinkMessage): string {
   return m.data
     .replaceAll("\r\n", "\n")
     .replaceAll("=\n", "")
-    .replaceAll(/=([0-9A-F]{2})/g, (_s, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+    .replaceAll(/=([0-9A-F]{2})/g, (_s, hex: string) =>
+      String.fromCharCode(Number.parseInt(hex, 16)),
+    );
 }
 
 export function messageBody(m: SinkMessage): string {

@@ -47,6 +47,22 @@ export default defineConfig({
         "no-underscore-dangle": "off",
       },
     },
+    // src/tools/html is a port of the x/net/html tree with its own Node class
+    // (appendChild, no append): the DOM rule does not apply to it.
+    {
+      files: ["src/tools/html/**", "test/tools/html/**"],
+      rules: {
+        "unicorn/prefer-dom-node-append": "off",
+      },
+    },
+    // The SDK targets ES2021 (sdk/tsconfig.json): Array#at is not in its lib or in
+    // older browsers, so the SDK keeps the index form (D36, L.1).
+    {
+      files: ["sdk/**"],
+      rules: {
+        "unicorn/prefer-at": "off",
+      },
+    },
     {
       files: ["sdk/test/**"],
       rules: {
@@ -97,17 +113,8 @@ export default defineConfig({
         "typescript/switch-exhaustiveness-check": "off",
         "typescript/unbound-method": "off",
         "typescript/use-unknown-in-catch-callback-variable": "off",
-        "unicorn/no-typeof-undefined": "off",
-        "unicorn/prefer-at": "off",
-        "unicorn/prefer-dom-node-append": "off",
-        "unicorn/prefer-native-coercion-functions": "off",
-        "unicorn/prefer-number-properties": "off",
         "unicorn/prefer-set-has": "off",
-        "unicorn/prefer-single-call": "off",
-        "unicorn/prefer-string-slice": "off",
-        "unicorn/prefer-structured-clone": "off",
         "unicorn/prefer-top-level-await": "off",
-        "unicorn/text-encoding-identifier-case": "off",
       },
     },
   ],

@@ -164,7 +164,7 @@ function readParseTest(r: LineReader): ParseTestCase | null {
       if (line[0] === "|" && trimmed[0] === '"') {
         inQuote = true;
       }
-      if (trimmed[trimmed.length - 1] === '"' && !(line[0] === "|" && trimmed.length === 1)) {
+      if (trimmed.at(-1) === '"' && !(line[0] === "|" && trimmed.length === 1)) {
         inQuote = false;
       }
     }

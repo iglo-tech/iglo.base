@@ -171,7 +171,7 @@ export function serializeQueryParams(params: LooseObject): string {
 
 // encodes and normalizes the provided query param value.
 function prepareQueryParamValue(value: unknown): null | string {
-  if (value === null || typeof value === "undefined") {
+  if (value === null || value === undefined) {
     return null;
   }
 

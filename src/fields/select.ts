@@ -181,7 +181,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return val[val.length - 1] as string; // the last selected
+        return val.at(-1) as string; // the last selected
       }
       return "";
     }
@@ -197,7 +197,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return [val[val.length - 1] as string, null]; // the last selected
+        return [val.at(-1) as string, null]; // the last selected
       }
       return ["", null];
     }

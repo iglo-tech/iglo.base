@@ -215,7 +215,7 @@ export function toStringSliceE(i: unknown): Array<string> {
   }
   if (i instanceof Uint8Array) {
     // []byte is a slice of uint8 values
-    return Array.from(i, (b) => String(b));
+    return Array.from(i, String);
   }
   if (typeof i === "string") {
     return fields(i);

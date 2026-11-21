@@ -103,7 +103,7 @@ export class MapRule implements Rule {
         if (err instanceof InternalError) {
           return err;
         }
-        errs.errors[getErrorKeyName(kr.key)] = err;
+        errs.errors[String(kr.key)] = err;
       }
       if (!this.extraKeysAllowed) {
         extraKeys.delete(kr.key);
@@ -112,7 +112,7 @@ export class MapRule implements Rule {
 
     if (!this.extraKeysAllowed) {
       for (const key of extraKeys) {
-        errs.errors[getErrorKeyName(key)] = ErrKeyUnexpected;
+        errs.errors[String(key)] = ErrKeyUnexpected;
       }
     }
 
@@ -126,8 +126,4 @@ export class MapRule implements Rule {
 // Key specifies a map key and the corresponding validation rules.
 export function Key(key: unknown, ...rules: Array<Rule>): KeyRules {
   return new KeyRules(key, rules);
-}
-
-function getErrorKeyName(key: unknown): string {
-  return String(key);
 }

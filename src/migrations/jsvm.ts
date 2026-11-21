@@ -262,7 +262,7 @@ function formatLog(args: Array<unknown>): string {
     text += " ";
   }
 
-  return text + rest.map((arg) => String(arg)).join(" ");
+  return text + rest.map(String).join(" ");
 }
 
 // goja_nodejs require: a relative name is relative to the requiring module,

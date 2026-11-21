@@ -472,7 +472,7 @@ describe("schema command", () => {
       (after.file as { collections: Record<string, { fields: object }> }).collections.everything!
         .fields,
     );
-    expect(names[names.length - 1]).toBe("title");
+    expect(names.at(-1)).toBe("title");
     expect(names.indexOf("body")).toBeLessThan(names.indexOf("title"));
     expect(after.text).not.toBe(first.text);
     expect((await pull(dataDir)).text).toBe(after.text);

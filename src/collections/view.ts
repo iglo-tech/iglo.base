@@ -688,7 +688,7 @@ function identifierFromParts(parts: ReadonlyArray<string>): Identifier {
     case 1: {
       const subParts = (parts[0] as string).split(".");
       result.original = parts[0] as string;
-      result.alias = subParts[subParts.length - 1] as string;
+      result.alias = subParts.at(-1) as string;
       break;
     }
     default:

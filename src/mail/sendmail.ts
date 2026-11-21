@@ -36,7 +36,7 @@ export class Sendmail implements Mailer {
     const toAddresses = addressesToStrings(m.to, false);
 
     const headers: Header = new Map();
-    setHeader(headers, "Subject", wordEncode(QEncoding, "utf-8", m.subject));
+    setHeader(headers, "Subject", wordEncode(QEncoding, "utf8", m.subject));
     setHeader(headers, "From", addressString(m.from));
     setHeader(headers, "To", toAddresses.join(","));
 

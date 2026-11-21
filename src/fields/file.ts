@@ -301,7 +301,7 @@ export class FileField
       return ["", null];
     }
 
-    return [this.getFileName(files[files.length - 1]), null];
+    return [this.getFileName(files.at(-1)), null];
   }
 
   // ValidateSettings implements [Field.ValidateSettings] interface method.
@@ -904,7 +904,7 @@ export class FileField
     }
 
     if (files.length > 0) {
-      return files[files.length - 1]; // the last selected
+      return files.at(-1); // the last selected
     }
 
     return "";

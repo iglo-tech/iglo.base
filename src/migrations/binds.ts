@@ -653,6 +653,7 @@ function newSettingsAdapter(): Adapter {
     stringer: true,
     methods: {
       ...settingsMethods,
+      // oxlint-disable-next-line unicorn/prefer-native-coercion-functions -- the arrow keeps fn.name and fn.length, which the migration VM can see
       string: (settings: Settings) => String(settings),
       postValidate: (settings: Settings) => {
         const err = settings.validate();

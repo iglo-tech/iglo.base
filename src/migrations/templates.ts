@@ -118,11 +118,9 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
     const rawUpDiff = marshalWithoutEscape(upDiff, "  ", "  ");
     const rawDownDiff = marshalWithoutEscape(downDiff, "  ", "  ");
 
-    upParts.push("// update collection data");
-    upParts.push(`unmarshal(${rawUpDiff}, ${varName})\n`);
+    upParts.push("// update collection data", `unmarshal(${rawUpDiff}, ${varName})\n`);
     // ---
-    downParts.push("// update collection data");
-    downParts.push(`unmarshal(${rawDownDiff}, ${varName})\n`);
+    downParts.push("// update collection data", `unmarshal(${rawDownDiff}, ${varName})\n`);
   }
 
   // fields
@@ -141,11 +139,9 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
 
     const rawOldField = marshalWithoutEscape(oldFieldsSlice[i], "  ", "  ");
 
-    upParts.push("// remove field");
-    upParts.push(`${varName}.fields.removeById(${goQuote(oldField.getId())})\n`);
+    upParts.push("// remove field", `${varName}.fields.removeById(${goQuote(oldField.getId())})\n`);
 
-    downParts.push("// add field");
-    downParts.push(`${varName}.fields.addAt(${i}, new Field(${rawOldField}))\n`);
+    downParts.push("// add field", `${varName}.fields.addAt(${i}, new Field(${rawOldField}))\n`);
   }
 
   // created fields
@@ -156,11 +152,12 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
 
     const rawNewField = marshalWithoutEscape(newFieldsSlice[i], "  ", "  ");
 
-    upParts.push("// add field");
-    upParts.push(`${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
+    upParts.push("// add field", `${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
 
-    downParts.push("// remove field");
-    downParts.push(`${varName}.fields.removeById(${goQuote(newField.getId())})\n`);
+    downParts.push(
+      "// remove field",
+      `${varName}.fields.removeById(${goQuote(newField.getId())})\n`,
+    );
   }
 
   // modified fields
@@ -178,11 +175,12 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
       continue; // no change
     }
 
-    upParts.push("// update field");
-    upParts.push(`${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
+    upParts.push("// update field", `${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
 
-    downParts.push("// update field");
-    downParts.push(`${varName}.fields.addAt(${oldFieldIndex}, new Field(${rawOldField}))\n`);
+    downParts.push(
+      "// update field",
+      `${varName}.fields.addAt(${oldFieldIndex}, new Field(${rawOldField}))\n`,
+    );
   }
 
   // -----------------------------------------------------------------

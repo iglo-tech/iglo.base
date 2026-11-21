@@ -47,6 +47,6 @@ export class Rng {
         return item;
       }
     }
-    return (items[items.length - 1] as readonly [T, number])[0];
+    return (items.at(-1) as readonly [T, number])[0];
   }
 }

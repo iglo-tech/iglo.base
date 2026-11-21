@@ -277,18 +277,22 @@ describe("the backup endpoints with backups.s3 enabled", () => {
     async () => {
       await bothServers(async (server, s3) => {
         const out: Array<unknown> = [];
-        out.push(listBody(await call(server, "GET", "/api/backups")));
-        out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })));
-        out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })));
-        out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "A b.zip" } })));
-        out.push(await rawHead(s3, "a.zip"));
+        out.push(
+          listBody(await call(server, "GET", "/api/backups")),
+          plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })),
+          plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })),
+          plain(await call(server, "POST", "/api/backups", { json: { name: "A b.zip" } })),
+          await rawHead(s3, "a.zip"),
+        );
 
         const name = "kopia zapasowa żółć+1.zip";
-        out.push(plain(await upload(server, name, emptyZip)));
-        out.push(plain(await upload(server, name, emptyZip)));
-        out.push(await rawHead(s3, name));
-        out.push(bucketFiles(s3));
-        out.push(listBody(await call(server, "GET", "/api/backups")));
+        out.push(
+          plain(await upload(server, name, emptyZip)),
+          plain(await upload(server, name, emptyZip)),
+          await rawHead(s3, name),
+          bucketFiles(s3),
+          listBody(await call(server, "GET", "/api/backups")),
+        );
 
         const whole = await download(server, name);
         delete whole.headers?.["Last-Modified"];
@@ -305,12 +309,14 @@ describe("the backup endpoints with backups.s3 enabled", () => {
         out.push(notModified.status);
 
         const key = encodeURIComponent(name);
-        out.push(plain(await download(server, "missing.zip")));
-        out.push(plain(await call(server, "DELETE", "/api/backups/missing.zip")));
-        out.push(plain(await call(server, "POST", "/api/backups/missing.zip/restore")));
-        out.push(plain(await call(server, "DELETE", `/api/backups/${key}`)));
-        out.push(bucketFiles(s3));
-        out.push(tempFiles(server));
+        out.push(
+          plain(await download(server, "missing.zip")),
+          plain(await call(server, "DELETE", "/api/backups/missing.zip")),
+          plain(await call(server, "POST", "/api/backups/missing.zip/restore")),
+          plain(await call(server, "DELETE", `/api/backups/${key}`)),
+          bucketFiles(s3),
+          tempFiles(server),
+        );
         return out;
       });
     },
@@ -564,19 +570,19 @@ const xmlDenied =
 
 async function allEndpoints(server: Server, s3: ScriptedS3): Promise<Array<unknown>> {
   const out: Array<unknown> = [];
-  out.push(plain(await call(server, "GET", "/api/backups")));
-  out.push(plain(await call(server, "POST", "/api/backups", { json: {} })));
-  out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "n.zip" } })));
-  out.push(plain(await upload(server, "u.zip", emptyZip)));
-  out.push(plain(await download(server, "d.zip")));
-  out.push(plain(await call(server, "DELETE", "/api/backups/d.zip")));
-  out.push(plain(await call(server, "POST", "/api/backups/d.zip/restore")));
   out.push(
+    plain(await call(server, "GET", "/api/backups")),
+    plain(await call(server, "POST", "/api/backups", { json: {} })),
+    plain(await call(server, "POST", "/api/backups", { json: { name: "n.zip" } })),
+    plain(await upload(server, "u.zip", emptyZip)),
+    plain(await download(server, "d.zip")),
+    plain(await call(server, "DELETE", "/api/backups/d.zip")),
+    plain(await call(server, "POST", "/api/backups/d.zip/restore")),
     plain(await call(server, "POST", "/api/settings/test/s3", { json: { filesystem: "backups" } })),
+    await canBackup(server),
+    tempFiles(server),
+    s3.seen.length > 0,
   );
-  out.push(await canBackup(server));
-  out.push(tempFiles(server));
-  out.push(s3.seen.length > 0);
   s3.seen.length = 0;
   return out;
 }
@@ -780,20 +786,30 @@ describe("POST /api/settings/test/s3", () => {
         const s3 = await startVersitygw();
         const out: Array<unknown> = [];
         try {
-          out.push(await testS3(server, "storage"), await testS3(server, "backups"));
-          out.push(await testS3(server, "other"), await testS3(server, ""));
+          out.push(
+            await testS3(server, "storage"),
+            await testS3(server, "backups"),
+            await testS3(server, "other"),
+            await testS3(server, ""),
+          );
 
           await patchSettings(server, {
             backups: { s3: s3Settings(s3) },
             s3: s3Settings(s3),
           });
-          out.push(await testS3(server, "storage"), await testS3(server, "backups"));
-          out.push(bucketFiles(s3));
+          out.push(
+            await testS3(server, "storage"),
+            await testS3(server, "backups"),
+            bucketFiles(s3),
+          );
 
           const bad = { endpoint: s3.endpoint, bucket: s3.bucket, secret: "wrong-secret" };
           await patchSettings(server, { backups: { s3: s3Settings(bad) }, s3: s3Settings(bad) });
-          out.push(await testS3(server, "storage"), await testS3(server, "backups"));
-          out.push(bucketFiles(s3));
+          out.push(
+            await testS3(server, "storage"),
+            await testS3(server, "backups"),
+            bucketFiles(s3),
+          );
 
           const missing = { endpoint: s3.endpoint, bucket: "no-such-bucket" };
           await patchSettings(server, { backups: { s3: s3Settings(missing) } });

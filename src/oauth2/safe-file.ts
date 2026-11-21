@@ -54,7 +54,7 @@ function parseIPv4(address: string): Array<number> | null {
 }
 
 function groups(part: string): Array<number> {
-  return part === "" ? [] : part.split(":").map((g) => parseInt(g, 16));
+  return part === "" ? [] : part.split(":").map((g) => Number.parseInt(g, 16));
 }
 
 // the 16 bytes of an IPv6 address; null for anything else (a zone is not

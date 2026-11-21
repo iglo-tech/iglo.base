@@ -49,10 +49,10 @@ describe("JSONArrayString", () => {
 
   test("keeps the bytes json.Marshal wrote before an error", () => {
     // checked against the upstream binary
-    expect(jsonArrayString([1, NaN])).toBe(`[1`);
-    expect(jsonArrayString([NaN])).toBe(`[`);
-    expect(jsonArrayString([1, [2, NaN]])).toBe(`[1,[2`);
-    expect(jsonArrayString([1, { a: NaN }])).toBe(`[1,{"a"`);
+    expect(jsonArrayString([1, Number.NaN])).toBe(`[1`);
+    expect(jsonArrayString([Number.NaN])).toBe(`[`);
+    expect(jsonArrayString([1, [2, Number.NaN]])).toBe(`[1,[2`);
+    expect(jsonArrayString([1, { a: Number.NaN }])).toBe(`[1,{"a"`);
   });
 });
 

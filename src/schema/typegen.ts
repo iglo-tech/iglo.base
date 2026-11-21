@@ -474,18 +474,20 @@ function collectionDeclarations(
         doc: undefined,
         type: plain("string"),
       });
-      update.push({
-        key: "passwordConfirm",
-        optional: true,
-        doc: undefined,
-        type: plain("string"),
-      });
-      update.push({
-        key: "oldPassword",
-        optional: true,
-        doc: undefined,
-        type: plain("string"),
-      });
+      update.push(
+        {
+          key: "passwordConfirm",
+          optional: true,
+          doc: undefined,
+          type: plain("string"),
+        },
+        {
+          key: "oldPassword",
+          optional: true,
+          doc: undefined,
+          type: plain("string"),
+        },
+      );
     }
     update.push(...modifiersOf(field));
   }

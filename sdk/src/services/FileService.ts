@@ -22,11 +22,13 @@ export class FileService extends BaseService {
     }
 
     const parts = [];
-    parts.push("api");
-    parts.push("files");
-    parts.push(encodeURIComponent(record.collectionId || record.collectionName));
-    parts.push(encodeURIComponent(record.id));
-    parts.push(encodeURIComponent(filename));
+    parts.push(
+      "api",
+      "files",
+      encodeURIComponent(record.collectionId || record.collectionName),
+      encodeURIComponent(record.id),
+      encodeURIComponent(filename),
+    );
 
     let result = this.client.buildURL(parts.join("/"));
 

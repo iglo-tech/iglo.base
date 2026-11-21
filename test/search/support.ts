@@ -49,9 +49,7 @@ export function tok(literal: string, type: TokenType): Token {
 }
 
 // fmt's %v of a param value
-function printValue(v: unknown): string {
-  return String(v);
-}
+const printValue: (v: unknown) => string = String;
 
 // testCompareResults: a is the expected result, b the actual one (null
 // for Go's nil)

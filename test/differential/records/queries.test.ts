@@ -430,7 +430,7 @@ describe("record queries on a copy of upstream's data.db", () => {
     expect(ids.get(posts)?.length).toBe(24);
     expect(viewFiles.length).toBeGreaterThan(40);
     expect(viewFiles.every((f) => f.status === 200)).toBe(true);
-    expect([...authFound.values()].filter((v) => v).length).toBeGreaterThan(8);
+    expect([...authFound.values()].filter(Boolean).length).toBeGreaterThan(8);
     expect([...authFound.values()].filter((v) => !v).length).toBeGreaterThan(4);
   });
 

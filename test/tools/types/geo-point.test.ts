@@ -41,8 +41,8 @@ describe("GeoPoint with a non-finite coordinate", () => {
   // json.Marshal keeps the bytes written before the error, and String
   // returns them (checked against the upstream binary)
   const scenarios: Array<[string, GeoPoint, string]> = [
-    ["lon NaN", new GeoPoint(NaN, 1), `{"lon"`],
-    ["lat NaN", new GeoPoint(1, NaN), `{"lon":1,"lat"`],
+    ["lon NaN", new GeoPoint(Number.NaN, 1), `{"lon"`],
+    ["lat NaN", new GeoPoint(1, Number.NaN), `{"lon":1,"lat"`],
     ["lon +Inf", new GeoPoint(Infinity, 1), `{"lon"`],
     ["lat -Inf", new GeoPoint(1, -Infinity), `{"lon":1,"lat"`],
   ];

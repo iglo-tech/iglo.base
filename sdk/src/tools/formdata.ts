@@ -15,7 +15,7 @@ export function isFile(val: unknown): boolean {
       typeof val === "object" &&
       (val as { uri?: unknown }).uri &&
       ((typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
-        (typeof global !== "undefined" && global.HermesInternal))),
+        (global !== undefined && global.HermesInternal))),
   );
 }
 
@@ -65,7 +65,7 @@ export function hasFileField(body: unknown): boolean {
 export function convertToFormDataIfNeeded(body: unknown): unknown {
   if (
     typeof FormData === "undefined" ||
-    typeof body === "undefined" ||
+    body === undefined ||
     typeof body !== "object" ||
     body === null ||
     isFormData(body) ||
@@ -82,7 +82,7 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
 
     // skip undefined values for consistency with JSON.stringify
     // (see https://ganigeorgiev.com/pocketbase/discussions/6731#comment-5v564g1mzopqmot)
-    if (typeof val === "undefined") {
+    if (val === undefined) {
       continue;
     }
 
@@ -129,7 +129,7 @@ export function convertFormDataToObject(formData: FormData): Record<string, unkn
         console.warn("@jsonPayload error:", error);
       }
     } else {
-      if (typeof result[k] !== "undefined") {
+      if (result[k] !== undefined) {
         if (!Array.isArray(result[k])) {
           result[k] = [result[k]];
         }

@@ -119,7 +119,7 @@ export function cookieSerialize(name: string, val: string, options?: SerializeOp
   if (opt.maxAge != null) {
     const maxAge = opt.maxAge - 0;
 
-    if (isNaN(maxAge) || !isFinite(maxAge)) {
+    if (Number.isNaN(maxAge) || !Number.isFinite(maxAge)) {
       throw new TypeError("option maxAge is invalid");
     }
 
@@ -143,7 +143,7 @@ export function cookieSerialize(name: string, val: string, options?: SerializeOp
   }
 
   if (opt.expires) {
-    if (!isDate(opt.expires) || isNaN(opt.expires.valueOf())) {
+    if (!isDate(opt.expires) || Number.isNaN(opt.expires.valueOf())) {
       throw new TypeError("option expires is invalid");
     }
 

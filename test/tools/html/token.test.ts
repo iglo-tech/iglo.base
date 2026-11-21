@@ -201,8 +201,7 @@ function unescapeUnicodeBytes(s: string): Uint8Array {
   const out: Array<number> = [];
   let last = 0;
   for (const m of s.matchAll(unicodeRegexp)) {
-    out.push(...encodeUTF8(s.slice(last, m.index)));
-    out.push(...encodeRawRune(parseInt(m[1]!, 16)));
+    out.push(...encodeUTF8(s.slice(last, m.index)), ...encodeRawRune(Number.parseInt(m[1]!, 16)));
     last = m.index + m[0].length;
   }
   out.push(...encodeUTF8(s.slice(last)));

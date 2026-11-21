@@ -84,7 +84,7 @@ export function sentenize(str: string): string {
   str = ucFirst(str);
   // Go compares the last byte; '.', '?' and '!' are ASCII, so the last
   // UTF-16 unit gives the same answer
-  const lastChar = str[str.length - 1];
+  const lastChar = str.at(-1);
   if (lastChar !== "." && lastChar !== "?" && lastChar !== "!") {
     return str + ".";
   }

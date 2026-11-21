@@ -184,7 +184,7 @@ export class SubBatchService {
 
     // serialize query parameters
     // -----------------------------------------------------------
-    if (typeof options.query !== "undefined") {
+    if (options.query !== undefined) {
       const query = serializeQueryParams(options.query);
       if (query) {
         request.url += (request.url.includes("?") ? "&" : "?") + query;

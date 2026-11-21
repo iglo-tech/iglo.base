@@ -396,7 +396,7 @@ function writeRegexp(b: Array<string>, re: Regexp, f: number, flags: Map<Regexp,
       const rs = re.rune;
       if (rs.length === 0) {
         b.push(String.raw`^\x00-\x{10FFFF}`);
-      } else if (rs[0] === 0 && rs[rs.length - 1] === MaxRune && rs.length > 2) {
+      } else if (rs[0] === 0 && rs.at(-1) === MaxRune && rs.length > 2) {
         // Contains 0 and MaxRune. Probably a negated class.
         // Print the gaps.
         b.push("^");

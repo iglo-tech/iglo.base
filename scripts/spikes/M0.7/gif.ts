@@ -116,13 +116,15 @@ export function quantizePlan9(pix: Uint8Array, width: number, height: number): U
 class ByteSink {
   private buf = new Uint8Array(4096);
   length = 0;
-  push(b: number): void {
-    if (this.length === this.buf.length) {
-      const grown = new Uint8Array(this.buf.length * 2);
-      grown.set(this.buf);
-      this.buf = grown;
+  push(...bytes: Array<number>): void {
+    for (const b of bytes) {
+      if (this.length === this.buf.length) {
+        const grown = new Uint8Array(this.buf.length * 2);
+        grown.set(this.buf);
+        this.buf = grown;
+      }
+      this.buf[this.length++] = b;
     }
-    this.buf[this.length++] = b;
   }
   pushAll(bytes: ArrayLike<number>): void {
     for (let i = 0; i < bytes.length; i++) {
@@ -243,9 +245,7 @@ export function encodeGif(pix: Uint8Array, width: number, height: number): Uint8
   out.u16(width);
   out.u16(height);
   // global color table of 2^(1+7) entries, background 0, aspect 0
-  out.push(0x80 | 7);
-  out.push(0);
-  out.push(0);
+  out.push(0x80 | 7, 0, 0);
   out.pushAll(plan9);
   // image descriptor, no local color table (the palette is the global one)
   out.push(0x2c);
@@ -253,8 +253,7 @@ export function encodeGif(pix: Uint8Array, width: number, height: number): Uint8
   out.u16(0);
   out.u16(width);
   out.u16(height);
-  out.push(0);
-  out.push(8);
+  out.push(0, 8);
   lzwBlocks(out, indexes, 8);
   out.push(0x3b);
   return out.bytes();

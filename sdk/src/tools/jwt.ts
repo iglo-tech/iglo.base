@@ -6,7 +6,7 @@ declare const global: { HermesInternal?: unknown } | undefined;
 // @todo remove after https://github.com/reactwg/react-native-releases/issues/287
 const isReactNative =
   (typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
-  (typeof global !== "undefined" && global.HermesInternal);
+  (global !== undefined && global.HermesInternal);
 
 let atobPolyfill: (input: string) => string;
 if (typeof atob === "function" && !isReactNative) {

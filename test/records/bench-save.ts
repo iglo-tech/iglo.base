@@ -199,61 +199,63 @@ try {
       fields: [{ name: "title", type: "text" }],
     });
 
-    results.push([
-      "create, 20 fields",
-      "POST /records",
-      await time(200, async (i) => {
-        const res = await call("POST", "/api/collections/wide/records", wideCreate(i));
-        wideIds.push((JSON.parse(res) as { id: string }).id);
-      }),
-    ]);
-    results.push([
-      "update, 20 fields (5 changed)",
-      "PATCH /records/{id}",
-      await time(200, async (i) => {
-        await call("PATCH", `/api/collections/wide/records/${wideIds[i + 1]}`, wideUpdate(i));
-      }),
-    ]);
-    results.push([
-      `delete with a cascade over ${cascadeChildren.toLocaleString("en")} records`,
-      "DELETE /records/{id}",
-      await time(
-        5,
-        async () => {
-          await call("DELETE", "/api/collections/cparents/records/p00000000000001");
-        },
-        async () => {
-          await call("POST", "/api/sql", { query: insertParent });
-          await call("POST", "/api/sql", { query: insertChildren });
-        },
-      ),
-    ]);
-    results.push([
-      `delete with a cascade down a chain of ${chainDepth.toLocaleString("en")} records`,
-      "DELETE /records/{id}",
-      await time(
-        5,
-        async () => {
-          await call("DELETE", "/api/collections/cchain/records/n00000000000001");
-        },
-        async () => {
-          await call("POST", "/api/sql", { query: insertChain });
-        },
-      ),
-    ]);
-    results.push([
-      `TruncateCollection, ${truncateRows.toLocaleString("en")} records`,
-      "DELETE /collections/{c}/truncate",
-      await time(
-        3,
-        async () => {
-          await call("DELETE", "/api/collections/trunc/truncate");
-        },
-        async () => {
-          await call("POST", "/api/sql", { query: insertTruncate });
-        },
-      ),
-    ]);
+    results.push(
+      [
+        "create, 20 fields",
+        "POST /records",
+        await time(200, async (i) => {
+          const res = await call("POST", "/api/collections/wide/records", wideCreate(i));
+          wideIds.push((JSON.parse(res) as { id: string }).id);
+        }),
+      ],
+      [
+        "update, 20 fields (5 changed)",
+        "PATCH /records/{id}",
+        await time(200, async (i) => {
+          await call("PATCH", `/api/collections/wide/records/${wideIds[i + 1]}`, wideUpdate(i));
+        }),
+      ],
+      [
+        `delete with a cascade over ${cascadeChildren.toLocaleString("en")} records`,
+        "DELETE /records/{id}",
+        await time(
+          5,
+          async () => {
+            await call("DELETE", "/api/collections/cparents/records/p00000000000001");
+          },
+          async () => {
+            await call("POST", "/api/sql", { query: insertParent });
+            await call("POST", "/api/sql", { query: insertChildren });
+          },
+        ),
+      ],
+      [
+        `delete with a cascade down a chain of ${chainDepth.toLocaleString("en")} records`,
+        "DELETE /records/{id}",
+        await time(
+          5,
+          async () => {
+            await call("DELETE", "/api/collections/cchain/records/n00000000000001");
+          },
+          async () => {
+            await call("POST", "/api/sql", { query: insertChain });
+          },
+        ),
+      ],
+      [
+        `TruncateCollection, ${truncateRows.toLocaleString("en")} records`,
+        "DELETE /collections/{c}/truncate",
+        await time(
+          3,
+          async () => {
+            await call("DELETE", "/api/collections/trunc/truncate");
+          },
+          async () => {
+            await call("POST", "/api/sql", { query: insertTruncate });
+          },
+        ),
+      ],
+    );
   } finally {
     await upstream.stop();
   }

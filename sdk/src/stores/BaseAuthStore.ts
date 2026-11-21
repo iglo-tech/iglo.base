@@ -186,6 +186,7 @@ export class BaseAuthStore {
 
     const rawData = {
       token: this.token,
+      // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
       record: this.record ? JSON.parse(JSON.stringify(this.record)) : null,
     };
 

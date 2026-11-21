@@ -61,7 +61,7 @@ export class FetchMock {
           let hasMissingBodyParam = false;
           for (const key in mock.body) {
             if (
-              typeof configBody[key] === "undefined" ||
+              configBody[key] === undefined ||
               JSON.stringify(configBody[key]) != JSON.stringify(mock.body[key])
             ) {
               hasMissingBodyParam = true;

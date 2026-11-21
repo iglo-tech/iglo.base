@@ -387,7 +387,7 @@ export default class Client {
       !url.startsWith("http://")
     ) {
       url = window.location.origin?.endsWith("/")
-        ? window.location.origin.substring(0, window.location.origin.length - 1)
+        ? window.location.origin.slice(0, -1)
         : window.location.origin || "";
 
       if (!this.baseURL.startsWith("/")) {
@@ -401,7 +401,7 @@ export default class Client {
     // concatenate the path
     if (path) {
       url += url.endsWith("/") ? "" : "/"; // append trailing slash if missing
-      url += path.startsWith("/") ? path.substring(1) : path;
+      url += path.startsWith("/") ? path.slice(1) : path;
     }
 
     return url;
@@ -420,7 +420,7 @@ export default class Client {
 
     if (this.beforeSend) {
       const result = Object.assign({}, await this.beforeSend(url, options));
-      if (typeof result.url !== "undefined" || typeof result.options !== "undefined") {
+      if (result.url !== undefined || result.options !== undefined) {
         url = result.url || url;
         options = result.options || options;
       } else if (Object.keys(result).length) {
@@ -435,7 +435,7 @@ export default class Client {
     }
 
     // serialize the query parameters
-    if (typeof options.query !== "undefined") {
+    if (options.query !== undefined) {
       const query = serializeQueryParams(options.query);
       if (query) {
         url += (url.includes("?") ? "&" : "?") + query;
@@ -521,7 +521,7 @@ export default class Client {
     // requestKey normalizations for backward-compatibility
     // ---
     options.query = Object.assign({}, options.params, options.query);
-    if (typeof options.requestKey === "undefined") {
+    if (options.requestKey === undefined) {
       if (options.$autoCancel === false || options.query.$autoCancel === false) {
         options.requestKey = null;
       } else if (options.$cancelKey || options.query.$cancelKey) {

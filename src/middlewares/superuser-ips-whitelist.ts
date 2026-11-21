@@ -178,5 +178,5 @@ function prefixContains(p: IPPrefix, ip: IP): boolean {
 
 // the 16-bit groups of a colon-separated IPv6 part
 function groups(part: string): Array<number> {
-  return part === "" ? [] : part.split(":").map((g) => parseInt(g, 16));
+  return part === "" ? [] : part.split(":").map((g) => Number.parseInt(g, 16));
 }

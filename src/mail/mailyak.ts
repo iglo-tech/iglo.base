@@ -57,19 +57,19 @@ export class MailYak {
 
   // FromName sets the sender name.
   setFromName(name: string): void {
-    this.fromName = wordEncode(QEncoding, "UTF-8", trim(name));
+    this.fromName = wordEncode(QEncoding, "utf8", trim(name));
   }
 
   // Subject sets the email subject line.
   setSubject(sub: string): void {
-    this.subject = wordEncode(QEncoding, "UTF-8", trim(sub));
+    this.subject = wordEncode(QEncoding, "utf8", trim(sub));
   }
 
   // AddHeader adds an arbitrary email header.
   addHeader(name: string, value: string): void {
     const key = trim(name);
     const values = this.headers.get(key) ?? [];
-    values.push(wordEncode(QEncoding, "UTF-8", trim(value)));
+    values.push(wordEncode(QEncoding, "utf8", trim(value)));
     this.headers.set(key, values);
   }
 

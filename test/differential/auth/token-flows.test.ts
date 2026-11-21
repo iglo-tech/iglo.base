@@ -241,6 +241,7 @@ function normalizeMail(raw: string): string {
 
 // generated values replaced, for comparing two servers' replies
 function shape(reply: Reply): unknown {
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const json = JSON.parse(JSON.stringify(reply.json)) as { [key: string]: unknown };
   if (typeof json["token"] === "string") {
     json["token"] = "<token>";

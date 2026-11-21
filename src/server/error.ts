@@ -240,7 +240,7 @@ export function sentenize(str: string): string {
     return "";
   }
   str = ucFirst(str);
-  const lastChar = str[str.length - 1];
+  const lastChar = str.at(-1);
   if (lastChar !== "." && lastChar !== "?" && lastChar !== "!") {
     return `${str}.`;
   }

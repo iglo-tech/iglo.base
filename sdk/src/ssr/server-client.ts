@@ -534,7 +534,7 @@ export class ServerClient extends Client {
    * a session response (see `SESSION_RESPONSE_PATH`).
    */
   private _observeResponse(path: string, dateHeader: string | null | undefined, data: Loose): void {
-    const serverMs = dateHeader ? Date.parse(dateHeader) : NaN;
+    const serverMs = dateHeader ? Date.parse(dateHeader) : Number.NaN;
     if (Number.isNaN(serverMs)) {
       return;
     }

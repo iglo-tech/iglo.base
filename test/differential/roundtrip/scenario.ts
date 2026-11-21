@@ -756,9 +756,11 @@ export function writeScenario(options: ScenarioOptions): RoundTripScenario {
         const people = `rt${tag}_people`;
         const token = `${people} alice`;
         // a list only an auth record may read, and a rule on a relation
-        out.push({ path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token });
-        out.push({ path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token: "" });
-        out.push({ path: `${records(people)}?sort=@rowid&expand=avatar`, token: "" });
+        out.push(
+          { path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token },
+          { path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token: "" },
+          { path: `${records(people)}?sort=@rowid&expand=avatar`, token: "" },
+        );
       }
       return out;
     },

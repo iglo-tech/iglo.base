@@ -515,7 +515,7 @@ class parser {
     // Make sure top class is clean.
     // All the others already are (see swapVerticalBar).
     if (subs.length > 0) {
-      cleanAlt(subs[subs.length - 1] as Regexp);
+      cleanAlt(subs.at(-1) as Regexp);
     }
 
     // Empty alternate is special case
@@ -1950,7 +1950,7 @@ function unicodeTable(
       const cn = Categories().get("Cn") as RangeTable;
       return [cn, cn, -1]; // invert Cn (unassigned)
     }
-    case "Ascii":
+    case "ascii":
       return [asciiTable, asciiFoldTable, +1];
     case "Lc":
       return [Categories().get("LC") ?? null, FoldCategory().get("LC") ?? null, +1];

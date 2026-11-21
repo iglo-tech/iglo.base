@@ -288,7 +288,7 @@ class ResponseParser {
       if (lineEnd === -1) {
         return;
       }
-      const size = parseInt(this.#buf.subarray(0, lineEnd).toString("latin1"), 16);
+      const size = Number.parseInt(this.#buf.subarray(0, lineEnd).toString("latin1"), 16);
       if (Number.isNaN(size) || this.#buf.length < lineEnd + 2 + size + 2) {
         return;
       }

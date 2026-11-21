@@ -177,7 +177,7 @@ function decode2231Enc(v: string): string | null {
   const extOtherVals = v.slice(q2 + 1);
   switch (toLower(charset)) {
     case "us-ascii":
-    case "utf-8":
+    case "utf8":
       break;
     default:
       // Empty or unsupported encoding.
@@ -295,7 +295,7 @@ function percentHexUnescape(s: string): string | null {
   let t = "";
   for (let i = 0; i < s.length;) {
     if (s[i] === "%") {
-      t += String.fromCharCode(parseInt(s.slice(i + 1, i + 3), 16));
+      t += String.fromCharCode(Number.parseInt(s.slice(i + 1, i + 3), 16));
       i += 3;
     } else {
       t += s[i];

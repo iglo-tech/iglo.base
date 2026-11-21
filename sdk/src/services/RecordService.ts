@@ -1146,8 +1146,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     const queryIndex = url.indexOf("?");
     if (queryIndex >= 0) {
-      urlPath = url.substring(0, url.indexOf("?"));
-      query = url.substring(url.indexOf("?") + 1);
+      urlPath = url.slice(0, url.indexOf("?"));
+      query = url.slice(url.indexOf("?") + 1);
     }
 
     const parsedParams: { [key: string]: string } = {};

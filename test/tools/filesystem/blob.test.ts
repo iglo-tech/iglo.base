@@ -273,7 +273,7 @@ describe("List and DeletePrefix over several pages", () => {
 
 describe("formatMediaType", () => {
   const cases: Array<[string, Map<string, string>, string]> = [
-    ["text/plain", new Map([["charset", "utf-8"]]), "text/plain; charset=utf-8"],
+    ["text/plain", new Map([["charset", "utf8"]]), "text/plain; charset=utf-8"],
     ["Image/PNG", new Map(), "image/png"],
     [
       "text/plain",

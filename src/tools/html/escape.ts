@@ -195,12 +195,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
   const entityName = decodeUTF8(s.subarray(1, i));
   if (entityName === "") {
     // No-op.
-  } else if (
-    attribute &&
-    entityName[entityName.length - 1] !== ";" &&
-    s.length > i &&
-    s[i] === 0x3d /* = */
-  ) {
+  } else if (attribute && entityName.at(-1) !== ";" && s.length > i && s[i] === 0x3d /* = */) {
     // No-op.
   } else {
     const x = entity.get(entityName) ?? 0;

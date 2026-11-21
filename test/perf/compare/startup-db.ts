@@ -46,13 +46,15 @@ try {
       { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ];
     if (i > 0) {
-      fields.push({
-        name: "parent",
-        type: "relation",
-        collectionId: ids[names[i - 1]!],
-        maxSelect: 1,
-      });
-      fields.push({ name: "refs", type: "relation", collectionId: ids[names[0]!], maxSelect: 10 });
+      fields.push(
+        {
+          name: "parent",
+          type: "relation",
+          collectionId: ids[names[i - 1]!],
+          maxSelect: 1,
+        },
+        { name: "refs", type: "relation", collectionId: ids[names[0]!], maxSelect: 10 },
+      );
     }
     const col = (await api.must("POST", "/api/collections", {
       name,

@@ -454,6 +454,7 @@ function apiErrorOutcome(err: unknown): Outcome {
     err instanceof Error && "status" in err && "toJSON" in err
       ? (err as ReturnType<typeof newBadRequestError>)
       : newBadRequestError("", err);
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const body = JSON.parse(JSON.stringify(apiErr.toJSON())) as {
     status: number;
     message: string;
@@ -569,6 +570,7 @@ function igloRuleError(app: CollectionsApp, collectionName: string, rule: string
   }
   expect(result).toBeInstanceOf(Errors);
   // the error data as upstream's API body has it
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const body = JSON.parse(
     JSON.stringify(newBadRequestError("Failed to update collection.", result).toJSON()),
   ) as { data: { listRule?: unknown } };

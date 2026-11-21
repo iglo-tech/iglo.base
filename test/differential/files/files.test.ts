@@ -160,6 +160,7 @@ describe("record files", () => {
     running.push(setup);
     try {
       for (const def of collections) {
+        // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
         const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Record<string, unknown>> };
         for (const f of body.fields) {
           if (typeof f.collectionId === "string") {
