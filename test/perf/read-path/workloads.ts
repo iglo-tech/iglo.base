@@ -125,12 +125,7 @@ export function percentile(sorted: Array<number>, p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)] as number;
 }
 
-export function summarize(samples: Array<number>): {
-  n: number;
-  p50: number;
-  p95: number;
-  p99: number;
-} {
+export function summarize(samples: Array<number>) {
   const sorted = samples.toSorted((a, b) => a - b);
   return {
     n: sorted.length,

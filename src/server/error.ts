@@ -99,7 +99,7 @@ export class ApiError extends Error {
 
   // the JSON body, with upstream's field order and json.Deterministic
   // (sorted map keys)
-  toJSON(): { data: unknown; message: string; status: number } {
+  toJSON() {
     return { data: sortKeys(this.data), message: this.message, status: this.status };
   }
 }
@@ -422,5 +422,6 @@ function resolveSafeErrorItem(err: unknown): unknown {
     return resolve.call(err, data);
   }
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- the function returns the resolver's result (SafeErrorResolver.resolve returns unknown) or the data object; the caller stores either unchanged
   return data;
 }

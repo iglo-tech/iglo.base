@@ -249,7 +249,7 @@ function normalizeMail(raw: string): string {
 // transcripts
 
 // generated values replaced, for comparing two servers' replies
-function shape(reply: Reply): unknown {
+function shape(reply: Reply) {
   // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const json = JSON.parse(JSON.stringify(reply.json)) as JsonObject;
   for (const key of ["otpId", "mfaId", "token"]) {

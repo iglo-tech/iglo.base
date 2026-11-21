@@ -302,12 +302,7 @@ function storeModel(
   }
 }
 
-function readColumns(
-  db: Database,
-  table: string,
-  names: Array<string>,
-  id: string | null,
-): Record<string, [string, unknown]> {
+function readColumns(db: Database, table: string, names: Array<string>, id: string | null) {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
   const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
@@ -344,7 +339,7 @@ function modelRecordBody(
   columns: Record<string, [string, unknown]>,
 ): string {
   const read = new TestRecord(collection);
-  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the prepared values of the fields are the Go values prepareValue returns (unknown), marshaled unchanged
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type, quality/no-known-value-widening -- the prepared values of the fields are the Go values prepareValue returns (unknown), marshaled unchanged; the fields are added to out after construction, under names the literal does not have
   const out: Record<string, unknown> = {
     collectionId,
     collectionName: collection.name,

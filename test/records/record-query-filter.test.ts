@@ -73,7 +73,7 @@ async function onPool<T>(app: RecordsApp, read: () => Promise<T>): Promise<T> {
 }
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): unknown {
+function errorOf(fn: () => unknown) {
   try {
     fn();
     return null;

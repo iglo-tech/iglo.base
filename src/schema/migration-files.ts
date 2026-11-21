@@ -132,7 +132,7 @@ async function importMigration(path: string): Promise<{ default?: unknown }> {
 // build, so a migration reads the files next to it with import.meta.dir. A
 // module that the migration imports from elsewhere is bundled with the same
 // values, so inside it they are still the migration's.
-function importMetaOf(path: string): Record<string, string> {
+function importMetaOf(path: string) {
   const absolute = resolve(path);
   const dir = dirname(absolute);
   return {

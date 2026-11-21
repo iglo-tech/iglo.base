@@ -199,13 +199,13 @@ async function same(
   return [upRes, igRes];
 }
 
-function jsonBody(value: unknown): { body: string; contentType: string } {
+function jsonBody(value: unknown) {
   return { body: JSON.stringify(value), contentType: "application/json" };
 }
 
 type BodyPart = Parameters<typeof multipartBody>[0][number];
 
-function formBody(parts: Array<BodyPart>, side: Side): { body: Uint8Array; contentType: string } {
+function formBody(parts: Array<BodyPart>, side: Side) {
   const boundary = "s3filesboundary";
   return {
     body: multipartBody(parts, boundary, side),
@@ -303,7 +303,7 @@ const batch = (
   return (side) =>
     formBody([{ name: "@jsonPayload", value: JSON.stringify({ requests }) }, ...files(side)], side);
 };
-const post = (collection: string, body: unknown = {}): unknown => ({
+const post = (collection: string, body: unknown = {}) => ({
   method: "POST",
   url: `/api/collections/${collection}/records`,
   body,

@@ -29,7 +29,7 @@ afterAll(async () => {
   await Promise.all([upstream?.stop(), iglo?.stop()]);
 });
 
-function normalize(res: RawResponse): unknown {
+function normalize(res: RawResponse) {
   return { status: res.status, type: res.headers.get("content-type"), body: JSON.parse(res.body) };
 }
 

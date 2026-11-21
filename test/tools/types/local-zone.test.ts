@@ -11,6 +11,7 @@ import { join } from "node:path";
 const probe = join(import.meta.dir, "local-zone-probe.ts");
 
 function run(tz: string | undefined): Record<string, string | number> {
+  // oxlint-disable-next-line quality/no-known-value-widening -- a child-process environment copied from process.env, with TZ deleted by name
   const env: Record<string, string | undefined> = { ...process.env, TZ: tz };
   if (tz === undefined) {
     delete env["TZ"];
@@ -24,7 +25,7 @@ function run(tz: string | undefined): Record<string, string | number> {
 
 // what every zone without DST changes on these dates gives (UTC, fixed
 // offsets and the wall clock read as UTC)
-const base: Record<string, string | number> = {
+const base = {
   "parsed +01:00, +1 day over the spring change": "2024-03-31 11:00:00.000Z",
   "parsed +02:00, +1 day over the autumn change": "2024-10-27 10:00:00.000Z",
   "parsed -04:00, +1 day over the autumn change": "2024-11-03 16:00:00.000Z",

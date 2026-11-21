@@ -37,7 +37,7 @@ export class Job {
   }
 
   // MarshalJSON: exports the current jobs data into valid JSON.
-  toJSON(): { id: string; expression: string } {
+  toJSON() {
     return { id: this.id, expression: this.expression };
   }
 }

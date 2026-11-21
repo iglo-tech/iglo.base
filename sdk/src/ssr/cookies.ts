@@ -302,7 +302,7 @@ export function createRequestCookieAdapter(
     get queuedCookies(): Array<CookieToSet> {
       return queuedCookies;
     },
-    get queuedHeaders(): Record<string, string> {
+    get queuedHeaders() {
       return queuedHeaders;
     },
   };

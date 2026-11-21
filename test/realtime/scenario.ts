@@ -136,7 +136,7 @@ export class ScenarioContext {
 }
 
 // a response as observed: status and body (JSON parsed when possible)
-export function response(res: HttpResult): Observation {
+export function response(res: HttpResult) {
   let body: Json = res.body;
   try {
     body = res.body === "" ? "" : (JSON.parse(res.body) as Json);

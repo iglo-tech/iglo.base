@@ -68,7 +68,7 @@ interface Latency {
 
 // requests one after the other, and the event loop of the server shows in
 // their latency
-function sampleLatency(url: string): { stop: () => Promise<Latency> } {
+function sampleLatency(url: string) {
   const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {

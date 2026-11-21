@@ -55,6 +55,7 @@ async function build(dataDir: string, root: string): Promise<void> {
   try {
     let token = "";
     const api = async (method: string, path: string, body?: unknown): Promise<unknown> => {
+      // oxlint-disable-next-line quality/no-known-value-widening -- a fetch header map that gains authorization after creation
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (token) {
         headers.authorization = token;
@@ -175,7 +176,7 @@ try {
       for (const collection of ["notes", "notes_rel"]) {
         const base = `/api/collections/${collection}/records`;
         const team = (i: number): string => id("t", i % 10 === 3 ? 4 : i % 10);
-        const create = (i: number): object => ({
+        const create = (i: number) => ({
           method: "POST",
           url: base,
           body: { id: id("n", i), title: `Note ${i}`, views: i, team: team(i) },

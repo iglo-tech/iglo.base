@@ -106,7 +106,7 @@ export function useProvider(
 }
 
 // the claims of a provider-verified email
-export const verifiedEmail = (email: string): { email: string; email_verified: boolean } => ({
+export const verifiedEmail = (email: string) => ({
   email,
   email_verified: true,
 });

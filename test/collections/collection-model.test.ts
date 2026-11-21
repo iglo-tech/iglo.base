@@ -573,12 +573,12 @@ test("CollectionIndexHelpers", () => {
 
   checkIndexes(c.indexes, [idx1, idx3]);
 
-  const expectedIndexes: Record<string, string> = {
+  const expectedIndexes = {
     missing: "",
     idx1,
     // the name is case insensitive
     iDX3: idx3,
-  };
+  } satisfies Record<string, string>;
   for (const [key, expectedIdx] of Object.entries(expectedIndexes)) {
     expect({ key, idx: c.getIndex(key) }).toEqual({ key, idx: expectedIdx });
   }

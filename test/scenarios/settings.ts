@@ -286,6 +286,7 @@ const testEmailSendCases: Array<[string, string, string, Array<string> | null]> 
   ["login-alert", "test@example.com", "", null],
 ];
 
+// oxlint-disable-next-line quality/no-known-value-widening -- looked up by a template name taken from the case list, so the key type stays string
 const testEmailSendContent: Record<string, string> = {
   "password-reset": "Reset password",
   "email-change": "Confirm new email",

@@ -23,6 +23,7 @@ const recordId = "84nmscqy84lsi1t";
 
 class Demo1 extends BaseModel {
   text = "";
+  // oxlint-disable-next-line quality/no-known-value-widening -- the raw SQLite value of the json column: Row is Record<string, unknown>, and dbColumns writes it back unchanged
   json: unknown = null;
 
   tableName(): string {

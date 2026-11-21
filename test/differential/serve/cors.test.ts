@@ -34,7 +34,7 @@ afterAll(async () => {
   await Promise.allSettled([defaults?.stop(), restricted?.stop()]);
 });
 
-const preflight = (origin: string): Record<string, string> => ({
+const preflight = (origin: string) => ({
   Origin: origin,
   "Access-Control-Request-Method": "PATCH",
   "Access-Control-Request-Headers": "authorization,content-type",

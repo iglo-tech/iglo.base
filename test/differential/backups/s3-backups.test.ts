@@ -128,7 +128,7 @@ async function call(
     auth?: boolean;
   } = {},
 ): Promise<Answer> {
-  const headers: Record<string, string> = { ...init.headers };
+  const headers = { ...init.headers };
   if (init.auth !== false) {
     Object.assign(headers, asSuperuser);
   }
@@ -260,7 +260,7 @@ async function bothServers(
   }
 }
 
-function listBody(a: Answer): { status: number; body: unknown } {
+function listBody(a: Answer) {
   const list = JSON.parse(a.body) as Array<{ key: string; size: number; modified: string }>;
   return {
     status: a.status,
@@ -547,6 +547,7 @@ class ScriptedS3 {
     const range = /bytes=(\d+)-(\d*)/.exec(req.headers.get("Range") ?? "");
     const first = Number(range?.[1] ?? 0);
     const end = range?.[2] ? Number(range[2]) + 1 : object.body.length;
+    // oxlint-disable-next-line quality/no-known-value-widening -- Content-Range is added after construction only for a range request under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
     const headers: Record<string, string> = {
       "Content-Type": object.headers.get("Content-Type") ?? "",
       "Content-Length": String(end - first),

@@ -37,7 +37,7 @@ export interface DBExporter {
   dbExport(): Params;
 }
 
-function isDBExporter(model: unknown): model is DBExporter {
+function isDBExporter<T>(model: T): model is T & DBExporter {
   return typeof (model as Partial<DBExporter>).dbExport === "function";
 }
 

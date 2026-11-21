@@ -163,7 +163,7 @@ async function changeUpstream(): Promise<void> {
 
 // the stored schema of a data directory, as its rows: `_collections` (without
 // the times; token secrets as present or absent) and `sqlite_schema`
-function storedSchema(dataDir: string): { collections: Array<unknown>; schema: Array<unknown> } {
+function storedSchema(dataDir: string) {
   const db = new Database(join(dataDir, "data.db"), { readonly: true });
   try {
     const collections = db

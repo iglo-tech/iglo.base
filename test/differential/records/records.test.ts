@@ -418,12 +418,7 @@ function storeExported(
   }
 }
 
-function readColumns(
-  db: Database,
-  table: string,
-  names: Array<string>,
-  id: string | null,
-): { [name: string]: [string, unknown] } {
+function readColumns(db: Database, table: string, names: Array<string>, id: string | null) {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM ${table}${id === null ? "" : ` WHERE id = ?`}`);
   const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;

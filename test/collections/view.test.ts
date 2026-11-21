@@ -634,6 +634,7 @@ describe("TestCreateViewFieldsWithNumberOnlyInt", () => {
       throw err;
     }
 
+    // oxlint-disable-next-line quality/no-known-value-widening -- looked up by a field name that may be absent (Go map lookup), so the key type stays string
     const onlyInts: Record<string, boolean> = {
       count: true,
       total: false,

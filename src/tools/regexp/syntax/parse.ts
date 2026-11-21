@@ -1900,7 +1900,7 @@ const asciiFoldTable: RangeTable = {
 let aliases: { categories: Map<string, string>; scripts: Map<string, string> } | undefined;
 
 // initAliases initializes categoryAliases by canonicalizing unicode.CategoryAliases.
-function initAliases(): { categories: Map<string, string>; scripts: Map<string, string> } {
+function initAliases() {
   const categories = new Map<string, string>();
   const scripts = new Map<string, string>();
   for (const [name, actual] of Object.entries(CategoryAliases)) {

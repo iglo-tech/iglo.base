@@ -18,7 +18,7 @@ import { ErrUnsupportedValueType } from "@/validators/validators";
 const encoder = new TextEncoder();
 
 // code, message and params of a validation error
-function errorParts(err: Error | null): unknown {
+function errorParts(err: Error | null) {
   if (err === null) {
     return null;
   }

@@ -467,7 +467,7 @@ describe("schema apply and schema plan", () => {
       });
       expect(patched.status).toBe(200);
     });
-    const stored = (): { secret: string; providers: string } => {
+    const stored = () => {
       const row = storedCollection(site, "users");
       const options = JSON.parse(String(row.options)) as JsonObject;
       return {

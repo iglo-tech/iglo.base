@@ -8,6 +8,7 @@ export type FieldDef = JsonObject & { name: string; type: string };
 
 // Field settings upstream accepts: one collection per field type, one
 // field per entry (named "<type>_<index>").
+// oxlint-disable-next-line quality/no-known-value-widening -- JsonObject is the contract (the test sends these as JSON); an inferred literal union adds optional undefined members that JsonObject rejects, and each entry is typed FieldDef below
 export const validSettings: Record<string, Array<JsonObject>> = {
   text: [
     { min: 2, max: 10, pattern: "^[a-z]+$", help: "<b>Help</b> & more", presentable: true },

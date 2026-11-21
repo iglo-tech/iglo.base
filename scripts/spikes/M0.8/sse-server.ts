@@ -52,7 +52,8 @@ function send(client: Client, chunk: Uint8Array): void {
   }
 }
 
-const idleOptions: { idleTimeout?: number } = {};
+type IdleOptions = { idleTimeout?: number };
+const idleOptions: IdleOptions = {};
 if (idleArg !== undefined && idleArg !== "default" && idleArg !== "per-request") {
   idleOptions.idleTimeout = Number(idleArg);
 }

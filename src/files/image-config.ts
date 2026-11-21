@@ -336,6 +336,7 @@ function pngConfig(r: ByteSource): Size {
       }
       depth = t[8] as number;
       const colorType = t[9] as number;
+      // oxlint-disable-next-line quality/no-known-value-widening -- a lookup by the bit depth read from the file, which need not be one of the table's keys (the lookup is optional-chained); the literal keys stay the table's contract
       const valid: Record<number, Array<number>> = {
         1: [0, 3],
         2: [0, 3],

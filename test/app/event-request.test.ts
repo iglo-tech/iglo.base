@@ -44,7 +44,7 @@ const testRequest: TestRequest = {
   body: `{"a":123,"b":"test"}`,
 };
 
-function plain(info: RequestInfo): unknown {
+function plain(info: RequestInfo) {
   return {
     query: info.query,
     headers: info.headers,

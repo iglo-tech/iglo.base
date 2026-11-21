@@ -77,7 +77,7 @@ export interface ZipEntry {
 }
 
 // what FileInfo().IsDir(), Mode().IsRegular() and Mode().Perm() report
-export function entryMode(f: ZipEntry): { isDir: boolean; isRegular: boolean; perm: number } {
+export function entryMode(f: ZipEntry) {
   let type = 0;
   let perm = 0;
   switch (f.creatorVersion >> 8) {
@@ -285,11 +285,7 @@ export class ZipReader {
 
   // findDirectoryEnd, with the Zip64 records and the offset of the archive
   // in the file
-  #readDirectoryEnd(): {
-    directoryRecords: number;
-    directorySize: number;
-    directoryOffset: number;
-  } {
+  #readDirectoryEnd() {
     const tail = new Uint8Array(Math.min(this.#size, directoryEndLen + uint16max));
     const tailOffset = this.#size - tail.length;
     this.#readAt(tail, tailOffset);

@@ -88,6 +88,7 @@ function makeEvent(
   const cookieHeader = Object.entries(init.cookies ?? {})
     .map(([name, value]) => `${name}=${encodeURIComponent(value)}`)
     .join("; ");
+  // oxlint-disable-next-line quality/no-known-value-widening -- a string-keyed header bag: the spread of the optional user headers drops their index signature in inference, and `cookie` is added by key below, so the Record type is the real shape
   const headers: Record<string, string> = { host: "localhost:3000", ...init.headers };
   if (cookieHeader) {
     headers["cookie"] = cookieHeader;

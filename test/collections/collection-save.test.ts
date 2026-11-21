@@ -42,7 +42,7 @@ function withApp(fn: (app: TestCollectionsApp) => void): void {
   }
 }
 
-function errorOf(fn: () => void): unknown {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;

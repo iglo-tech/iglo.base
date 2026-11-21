@@ -130,6 +130,7 @@ export async function fetchJWK(
   return key;
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- the table is read with the JWT's alg header, an arbitrary string, behind Object.hasOwn; a string key needs the index signature
 const rsaHashes: { [alg: string]: string } = {
   RS256: "sha256",
   RS384: "sha384",

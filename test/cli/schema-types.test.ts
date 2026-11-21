@@ -61,7 +61,7 @@ function declarationOf(text: string, head: string): string {
 }
 
 // the SHA-256 of the database files: they must not change under the command
-function digests(dataDir: string): Record<string, string> {
+function digests(dataDir: string) {
   const result: Record<string, string> = {};
   for (const name of ["data.db", "auxiliary.db"]) {
     const path = join(dataDir, name);

@@ -161,7 +161,7 @@ class driver implements Driver {
   }
 
   // forKey returns the full path, the stat result and attributes for key.
-  forKey(key: string): { path: string; size: number; modTime: bigint; xa: xattrs } {
+  forKey(key: string) {
     const path = this.path(key);
 
     const info = statSync(path, { bigint: true });
@@ -506,7 +506,7 @@ export function goRemove(path: string): void {
 }
 
 // the temporary file of a blob being written
-function createTemp(path: string, noTempDir: boolean): { fd: number; name: string } {
+function createTemp(path: string, noTempDir: boolean) {
   // Use a custom createTemp function rather than os.CreateTemp() as
   // os.CreateTemp() sets the permissions of the tempfile to 0600, rather
   // than 0666, making it inconsistent with the directories and attribute

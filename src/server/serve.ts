@@ -130,7 +130,7 @@ async function listenHost(host: string): Promise<string> {
 }
 
 // Go's net.SplitHostPort plus the port lookup net.Listen does.
-function parseListenAddr(addr: string): { hostname: string; port: number } {
+function parseListenAddr(addr: string) {
   const fail = (reason: string): Error => new Error(`listen tcp: address ${addr}: ${reason}`);
   let host: string;
   let port: string;

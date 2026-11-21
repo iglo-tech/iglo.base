@@ -133,6 +133,7 @@ class Parser {
       if (e === undefined) {
         throw new JsonEOFError(true);
       }
+      // oxlint-disable-next-line quality/no-known-value-widening -- the lookup takes the escape character as a runtime string, guarded by the `in` check below; the open Record lets it index by string without an assertion
       const simple: Record<string, string> = {
         '"': '"',
         "\\": "\\",
@@ -419,6 +420,7 @@ export function toAny(value: JsonValue): unknown {
     for (const [name, member] of value.members) {
       setOwn(out, name, toAny(member));
     }
+    // oxlint-disable-next-line quality/no-known-value-widening -- toAny returns a Go any: null, bool, string, float64, []any or map[string]any; a union of these would contain GoMap, whose unknown values the dictionary rule rejects in an alias
     return out;
   }
   return value;

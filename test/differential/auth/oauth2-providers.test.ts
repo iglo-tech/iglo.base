@@ -105,7 +105,7 @@ interface Transcript {
 }
 
 // the users and the external auth links of a stopped server's pb_data
-function rowsOf(dataDir: string): { links: unknown; users: unknown } {
+function rowsOf(dataDir: string) {
   const db = new Database(join(dataDir, "data.db"), { readonly: true });
   try {
     return {
@@ -255,13 +255,15 @@ describe("auth methods defaults", () => {
 // Apple's client secret: upstream and iglo.base sign with the same key, the
 // secrets verify with its public key, and the header and claims agree with
 // upstream (the times aside)
-function decodeJWT(token: string): {
+interface DecodedJwt {
   header: JsonObject;
   claims: JsonObject;
   signingInput: string;
   signature: Buffer;
   raw: { header: string; claims: string };
-} {
+}
+
+function decodeJWT(token: string): DecodedJwt {
   const [h = "", c = "", s = ""] = token.split(".");
   return {
     header: JSON.parse(Buffer.from(h, "base64url").toString()),

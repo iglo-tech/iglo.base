@@ -57,7 +57,7 @@ function postBatch(body: string | Uint8Array, headers: Record<string, string> = 
   });
 }
 
-const create = (title: string): object => ({
+const create = (title: string) => ({
   method: "POST",
   url: "/api/collections/demo2/records",
   body: { title },
@@ -109,7 +109,7 @@ test("a batch past its deadline after the last item does not commit", async () =
 });
 
 // a multipart batch with one file of the given size for the first item
-function multipartBatch(requests: Array<object>, size: number): { body: Uint8Array; type: string } {
+function multipartBatch(requests: Array<object>, size: number) {
   const boundary = "batchboundary0123456789";
   const head =
     `--${boundary}\r\nContent-Disposition: form-data; name="@jsonPayload"\r\n\r\n` +

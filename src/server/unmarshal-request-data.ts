@@ -185,7 +185,7 @@ function stripPointers(t: FieldType): FieldType {
 }
 
 // the Go zero value of t, as allocated by reflect.New
-function zeroValue(t: FieldType): unknown {
+function zeroValue(t: FieldType): string | number | boolean | null | StructDst {
   if (typeof t === "string") {
     switch (t) {
       case "string":
@@ -309,7 +309,7 @@ function unmarshalInStructValue(
 }
 
 // the (embedded or nested) struct object stored in dst[name], allocated if missing
-export function structValue(dst: StructDst, name: string): StructDst {
+export function structValue(dst: StructDst, name: string) {
   const current = dst[name];
   if (typeof current === "object" && current !== null) {
     return current as StructDst;
@@ -498,7 +498,7 @@ const inferNumberCharsRegex = /^[-.\d]+$/;
 //     minimal number string representation is the same as the provided raw string
 //     (aka. scientific notations, "Infinity", "0.0", "0001", etc. are kept as string)
 //   - any other string (empty string too) is left as it is
-export function inferValue(raw: string): unknown {
+export function inferValue(raw: string): string | number | boolean {
   switch (raw) {
     case "":
       return raw;
@@ -789,6 +789,7 @@ function unmarshalMap(value: JsonValue, current: GoMap | null): GoMap | null {
 // are replaced. An empty `any` gets a fresh value.
 function unmarshalAny(value: JsonValue, current: unknown): unknown {
   if (value === null) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the result is a Go any: null, or a value toAny unmarshals (unknown), so no narrower return type holds for every branch
     return null;
   }
   if (current === null || current === undefined) {
@@ -824,7 +825,7 @@ function unmarshalAny(value: JsonValue, current: unknown): unknown {
   return toAny(value);
 }
 
-const intRanges: Record<string, [bigint, bigint]> = {
+const intRanges = {
   int: [-(2n ** 63n), 2n ** 63n - 1n],
   int8: [-128n, 127n],
   int16: [-32_768n, 32_767n],
@@ -835,7 +836,7 @@ const intRanges: Record<string, [bigint, bigint]> = {
   uint16: [0n, 65_535n],
   uint32: [0n, 2n ** 32n - 1n],
   uint64: [0n, 2n ** 64n - 1n],
-};
+} satisfies Record<string, [bigint, bigint]>;
 
 function jsonFieldValue(
   value: JsonValue,
@@ -877,7 +878,7 @@ function jsonFieldValue(
           throw cannot(value, type);
         }
         const n = BigInt(value.literal);
-        const [min, max] = intRanges[type] as [bigint, bigint];
+        const [min, max] = intRanges[type];
         if (n < min || n > max) {
           throw cannot(value, type);
         }

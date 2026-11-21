@@ -115,10 +115,7 @@ function formField(name: string, value: string): WrittenPart {
 }
 
 // the MIME header of a Writer.CreatePart call (Set canonicalizes the keys)
-function formData(
-  key: string,
-  value: string,
-): { header: Record<string, Array<string>>; body: string } {
+function formData(key: string, value: string) {
   return {
     header: {
       "Content-Type": ["text/plain; charset=ISO-8859-1"],
@@ -1192,6 +1189,7 @@ test.each([
       parts.push(formField(`field${i}`, `value ${i}`));
     }
     for (let i = 0; i < files; i++) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- gets one key per part (K0, K1, ...), so the key type stays string
       const header: Record<string, Array<string>> = {
         "Content-Disposition": [`form-data; name="file${i}"; filename="file${i}"`],
         "Content-Type": ["application/octet-stream"],

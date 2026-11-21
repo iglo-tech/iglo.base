@@ -209,6 +209,7 @@ function goQuote(value: string): string {
   return `${out}"`;
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- looked up by an arbitrary character of the input, so the key type stays string
 const shortEscapes: Record<string, string> = {
   "\b": String.raw`\b`,
   "\f": String.raw`\f`,

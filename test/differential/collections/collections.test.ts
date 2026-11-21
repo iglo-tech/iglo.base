@@ -116,7 +116,7 @@ async function request(
 
 // the column values the db driver writes for dbExport's values
 // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- dbExport's Params (src/db/dbx/query.ts) holds unknown values: each one is passed through unchanged, or as the driver writes it
-function driverValues(exported: Record<string, unknown>): Record<string, unknown> {
+function driverValues(exported: Record<string, unknown>) {
   // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the same passthrough as the exported Params: a value the db driver writes, kept unknown
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(exported)) {

@@ -289,6 +289,7 @@ export function stubOTPRecords({ dataDir }: PrepareContext): void {
 
 // tests.StubMFARecords
 export function stubMFARecords({ dataDir }: PrepareContext): void {
+  // oxlint-disable-next-line quality/no-known-value-widening -- looked up by a stub id from the fixture, so the key type stays string
   const data: { [stubId: string]: Array<[string, number]> } = {
     superuser2: [
       [MFAMethodOTP, 0],

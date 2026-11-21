@@ -1029,6 +1029,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return convertAny(node, existing, legacy);
     case "string":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return "";
       }
       if (typeof node !== "string") {
@@ -1037,6 +1038,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return node;
     case "bool":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return false;
       }
       if (typeof node !== "boolean") {
@@ -1045,6 +1047,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return node;
     case "float64":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return 0;
       }
       if (!isInstance(NumberNode, node)) {
@@ -1054,6 +1057,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
     case "int":
     case "int64":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return 0;
       }
       if (!isInstance(NumberNode, node)) {
@@ -1122,6 +1126,7 @@ function convertObject(
 // replaced); a nil one gets the natural type of the JSON value
 function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
   if (node === null) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the value is a Go interface value (unknown by design); null clears it
     return null;
   }
   if (existing !== undefined && existing !== null) {

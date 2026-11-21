@@ -91,7 +91,7 @@ async function compareCase(
   c: ReadCase,
   authorization: string,
 ): Promise<{ status: number; differences: Array<string> }> {
-  const headers: Record<string, string> = { ...c.headers };
+  const headers = { ...c.headers };
   if (authorization !== "") {
     headers["Authorization"] = authorization;
   }
@@ -124,7 +124,7 @@ afterAll(async () => {
 // (a) upstream's fixture
 // -------------------------------------------------------------------
 
-const fixtureTokens: { [K in Identity]: string } = {
+const fixtureTokens = {
   guest: "",
   users: usersToken,
   clients: clientsToken,

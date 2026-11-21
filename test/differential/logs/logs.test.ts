@@ -161,7 +161,7 @@ const requests: Array<Request> = [
 ];
 
 async function send(url: string, r: Request): Promise<void> {
-  const headers: Record<string, string> = { ...r.headers };
+  const headers = { ...r.headers };
   if (r.token) {
     headers.Authorization = r.token;
   }

@@ -189,7 +189,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
       // ---------------------------------------------------------------
       const info = tableInfo(app.databases, collection.name);
 
-      const tableInfoExpectations: Record<string, string> = {
+      const tableInfoExpectations = {
         select_one: `'[]'`,
         select_many: `''`,
         file_one: `'[]'`,
@@ -197,7 +197,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
         rel_one: `'[]'`,
         rel_many: `''`,
         new_multiple: `'[]'`,
-      };
+      } satisfies Record<string, string>;
       for (const [col, dflt] of Object.entries(tableInfoExpectations)) {
         const row = info.find((r) => r.name === col);
         if (row === undefined) {

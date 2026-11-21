@@ -96,6 +96,11 @@ interface Field {
   mimeTypes: Array<string>;
 }
 
+type ApiHeaders = {
+  authorization: string;
+  "content-type"?: string;
+};
+
 function fieldsFor(m: MIME): Array<Field> {
   const [base] = parseMediaType(m.string());
   const ancestors: Array<string> = [];
@@ -114,7 +119,7 @@ async function api(method: string, path: string, body: string | FormData) {
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const headers: Record<string, string> = { authorization: token };
+  const headers: ApiHeaders = { authorization: token };
   if (typeof body === "string") {
     headers["content-type"] = "application/json";
   }

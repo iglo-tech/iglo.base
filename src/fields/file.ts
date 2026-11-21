@@ -450,6 +450,7 @@ export class FileField
     try {
       yield actionFunc();
     } catch (error) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type from the cleanup, joined unchanged into the error
       let cleanupErr: unknown = null;
       try {
         yield* this.afterRecordExecuteFailure(app, record);
@@ -792,6 +793,7 @@ export class FileField
 
         const path = record.baseFilesPath() + "/" + filename;
 
+        // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type from fsys.delete, tested against null and passed to wrapError unchanged
         let deleteErr: unknown = null;
         try {
           yield fsys.delete(path);
@@ -897,7 +899,7 @@ export class FileField
     this.setValue(record, files);
   }
 
-  private normalizeValue(raw: unknown): unknown {
+  private normalizeValue(raw: unknown) {
     const files = this.toSliceValue(raw);
 
     if (this.isMultiple()) {

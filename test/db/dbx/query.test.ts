@@ -787,6 +787,7 @@ describe("a cancelled query", () => {
   test("passes the error to the log functions, as QueryContext's caller logs it", () => {
     const db = getPreparedDB();
     const q = db.newQuery("SELECT * FROM item").withCancelCause(cause);
+    // oxlint-disable-next-line quality/no-known-value-widening -- the query log callback receives an unknown error (QueryLogFunc)
     let logged: unknown = null;
     q.queryLogFunc = (_ms, _sql, err) => {
       logged = err;

@@ -253,7 +253,7 @@ function queryUnescape(s: string): string | undefined {
 }
 
 // url.ParseQuery: the values that parsed, and the first error.
-export function parseQuery(query: string): { values: Values; err: Error | undefined } {
+export function parseQuery(query: string) {
   const values: Values = new Map();
   let err: Error | undefined;
   while (query !== "") {

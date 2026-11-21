@@ -17,7 +17,7 @@ import type { JsonObject } from "@test/support/json";
 const noMFA = ({ dataDir }: { dataDir: string }) => setMFA("users", false, "")({ dataDir });
 
 // the client's auth store as comparable data
-function store(pb: PocketBase): unknown {
+function store(pb: PocketBase) {
   return {
     token: pb.authStore.token,
     record: pb.authStore.record,

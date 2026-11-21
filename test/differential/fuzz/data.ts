@@ -24,7 +24,7 @@ export const fuzzTags = {
   ],
 };
 
-export function fuzzItems(tagsId: string): object {
+export function fuzzItems(tagsId: string) {
   return {
     name: "fuzz_items",
     type: "base",

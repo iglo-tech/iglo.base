@@ -119,7 +119,7 @@ export interface SdkEnv {
 
 const sdkUserAgent = "iglo-base-sdk-suite";
 
-function replacer(_key: string, v: unknown): unknown {
+function replacer(_key: string, v: unknown) {
   if (v instanceof ClientResponseError) {
     return {
       clientResponseError: true,
@@ -162,7 +162,7 @@ function pseudoResponse(text: string): ScenarioResponse {
 
 // a mail as comparable data: the headers that carry no random part and the
 // text part, tokens and one-time passwords replaced
-function describeMail(m: SinkMessage): unknown {
+function describeMail(m: SinkMessage) {
   const decoded = decodeMessage(m);
   const header = (name: string): string =>
     new RegExp(`^${name}: (.*)$`, "im").exec(decoded)?.[1]?.trim() ?? "";

@@ -117,6 +117,7 @@ export class ThresholdRule implements Rule {
       if (v.isZero() || this.compareTime(t, v)) {
         return null;
       }
+      // oxlint-disable-next-line quality/no-known-value-widening -- param is the threshold itself, of any type (Max and Min take unknown), or its GoTime form for a time threshold
       param = new GoTime(t);
     } else {
       return new Error(`type not supported: ${goTypeName(t)}`);

@@ -30,7 +30,7 @@ function errorOf(fn: () => unknown): Error | null {
 
 // the collections of the fixture, split by the system flag (upstream's
 // regularCollections / systemCollections)
-function countCollections(app: TestCollectionsApp): { regular: number; system: number } {
+function countCollections(app: TestCollectionsApp) {
   const regular = collectionQuery(app)
     .andWhere(new HashExp({ system: false }))
     .all<Collection>(() => new Collection());
@@ -187,7 +187,7 @@ describe("TestImportCollections", () => {
       expectError: false,
       expectCollectionsCount: totalCollections + 1,
       afterTestFunc: (app) => {
-        const expectedCollectionFields: Record<string, number> = {
+        const expectedCollectionFields = {
           _authOrigins: 6,
           nologin: 10,
           demo1: 19,
@@ -196,7 +196,7 @@ describe("TestImportCollections", () => {
           demo4: 16,
           demo5: 9,
           new_import: 2,
-        };
+        } satisfies Record<string, number>;
         for (const [name, expectedCount] of Object.entries(expectedCollectionFields)) {
           const collection = findCollectionByNameOrId(app, name);
 

@@ -52,7 +52,7 @@ function round(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-function sampleLatency(url: string): { stop: () => Promise<Record<string, number>> } {
+function sampleLatency(url: string) {
   const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {

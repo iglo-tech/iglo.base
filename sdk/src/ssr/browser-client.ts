@@ -82,6 +82,7 @@ function networkError(url: string, err: unknown): ClientResponseError {
 
 /** The error for an answer that is not a success. */
 async function responseError(url: string, res: Response): Promise<ClientResponseError> {
+  // oxlint-disable-next-line quality/no-known-value-widening -- the response body is arbitrary JSON (any shape, or the {} placeholder when it is not JSON) and is passed through unchanged; unknown is the true type
   let data: unknown = {};
   try {
     data = await res.json();

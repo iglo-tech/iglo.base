@@ -135,6 +135,7 @@ function isExecutable(file: string): boolean {
 
 // os.Signal's String for the signals a killed sendmail reports
 function signalName(signal: string): string {
+  // oxlint-disable-next-line quality/no-known-value-widening -- a lookup by any signal name, with the name itself as the fallback (names[signal] ?? signal): an open table, not the literal key union
   const names: Record<string, string> = {
     SIGKILL: "killed",
     SIGTERM: "terminated",

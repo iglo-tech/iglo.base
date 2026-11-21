@@ -75,6 +75,7 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
+  // oxlint-disable-next-line quality/no-known-value-widening -- the authorization header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
   const headers: Record<string, string> = { "content-type": contentType };
   if (auth) {
     headers.authorization = token;
@@ -476,12 +477,7 @@ function storeModel(
   }
 }
 
-function readColumns(
-  db: Database,
-  table: string,
-  names: Array<string>,
-  id: string | null,
-): Record<string, [string, unknown]> {
+function readColumns(db: Database, table: string, names: Array<string>, id: string | null) {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
   const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;

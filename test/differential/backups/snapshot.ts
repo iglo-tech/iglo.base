@@ -6,9 +6,10 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-function tableRows(path: string): Record<string, Array<unknown>> {
+function tableRows(path: string) {
   const db = new Database(path, { readonly: true });
   try {
+    // oxlint-disable-next-line quality/no-known-value-widening -- one entry per table is added in a loop after this literal, under names known only at runtime; a literal type rejects those assignments and a typed builder would change the statements
     const result: Record<string, Array<unknown>> = {
       sqlite_schema: db
         .query("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name")
@@ -26,7 +27,7 @@ function tableRows(path: string): Record<string, Array<unknown>> {
   }
 }
 
-function fileHashes(dir: string): Record<string, string> {
+function fileHashes(dir: string) {
   const hashes: Record<string, string> = {};
   for (const entry of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
     const path = join(dir, entry);
@@ -37,11 +38,7 @@ function fileHashes(dir: string): Record<string, string> {
   return hashes;
 }
 
-export function snapshot(dataDir: string): {
-  data: Record<string, Array<unknown>>;
-  logs: Array<unknown>;
-  storage: Record<string, string>;
-} {
+export function snapshot(dataDir: string) {
   return {
     data: tableRows(join(dataDir, "data.db")),
     logs: tableRows(join(dataDir, "auxiliary.db"))["_logs"] ?? [],

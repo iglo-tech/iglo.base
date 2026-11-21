@@ -226,6 +226,7 @@ export function escapeString(s: string): string {
   return s.replaceAll(/[<>&'"]/g, (c) => htmlEscapes[c] as string);
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- a string-keyed lookup by a character the regex matched: an open table, not a literal key union (the lookup casts the result)
 const htmlEscapes: { [c: string]: string } = {
   "<": "&lt;",
   ">": "&gt;",

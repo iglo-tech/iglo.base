@@ -59,8 +59,13 @@ function cookieShapes(response: Response): Array<string> {
     .toSorted();
 }
 
+type PostHeaders = {
+  "Content-Type": string;
+  Origin?: string;
+};
+
 const post = (body: unknown, origin: string | null = APP): Request => {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: PostHeaders = { "Content-Type": "application/json" };
   if (origin !== null) {
     headers["Origin"] = origin;
   }

@@ -257,7 +257,7 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
 // ParseUnverifiedJWT parses a JWT and returns its claims but DOES NOT
 // verify the signature. It verifies only the exp, iat and nbf claims. On a
 // failure the JWTError carries the claims parsed so far.
-export function parseUnverifiedJWT(token: string, clock: Clock): MapClaims {
+export function parseUnverifiedJWT(token: string, clock: Clock) {
   const claims: MapClaims = {};
   parseUnverifiedToken(token, claims);
   validateClaims(claims, clock, { verifyIat: true, parserPrefix: false });
@@ -267,7 +267,7 @@ export function parseUnverifiedJWT(token: string, clock: Clock): MapClaims {
 // ParseJWT verifies (HS256 only) and parses a JWT and returns its claims.
 // exp and nbf are validated; iat is not (upstream's parser does not enable
 // WithIssuedAt).
-export function parseJWT(token: string, verificationKey: string, clock: Clock): MapClaims {
+export function parseJWT(token: string, verificationKey: string, clock: Clock) {
   const claims: MapClaims = {};
   const u = parseUnverifiedToken(token, claims);
   if (u.header?.["alg"] !== "HS256") {
@@ -299,7 +299,7 @@ export function newJWT(
   if (expNs % 1_000_000_000n < 0n) {
     exp -= 1n;
   }
-  const claims: MapClaims = { exp };
+  const claims = { exp } satisfies MapClaims;
   for (const [k, v] of Object.entries(payload)) {
     setOwn(claims, k, v);
   }

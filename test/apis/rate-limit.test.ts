@@ -62,12 +62,14 @@ async function openCase(c: Case): Promise<{
   return { app, mux: router.buildMux(), clock };
 }
 
-function requestOf(step: Step): {
+interface RequestSpec {
   method: string;
   target: string;
   headers: Record<string, string>;
   body?: string;
-} {
+}
+
+function requestOf(step: Step): RequestSpec {
   const headers = { ...step.headers };
   if (step.body === undefined) {
     return { method: step.method ?? "GET", target: step.url, headers };

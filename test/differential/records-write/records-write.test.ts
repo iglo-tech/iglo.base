@@ -129,7 +129,7 @@ async function runCase(
   c: WriteCase,
   authorization: string,
 ): Promise<{ status: number; differences: Array<string> }> {
-  const headers: Record<string, string> = { ...c.headers };
+  const headers = { ...c.headers };
   if (authorization !== "") {
     headers["Authorization"] = authorization;
   }
@@ -273,13 +273,13 @@ async function roundTrip(pair: ServerPair, token: string): Promise<Array<string>
 // (a) upstream's fixture
 // -------------------------------------------------------------------
 
-const fixtureTokens: { [K in FixtureIdentity]: string } = {
+const fixtureTokens = {
   guest: "",
   users: usersToken,
   clients: clientsToken,
   nologin: nologinToken,
   superuser: superuserToken,
-};
+} satisfies { [K in FixtureIdentity]: string };
 
 describe("fixture", () => {
   let pair: ServerPair;

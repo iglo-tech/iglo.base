@@ -139,7 +139,7 @@ const nameOrIdScenarios: Array<{ nameOrId: string; expectError: boolean }> = [
 describe("TestFindCollectionByNameOrId", () => {
   for (const [i, s] of nameOrIdScenarios.entries()) {
     test(`${i}_${s.nameOrId}`, () => {
-      let err: unknown = null;
+      let err = null;
       let model = null;
       try {
         model = findCollectionByNameOrId(app, s.nameOrId);
@@ -175,7 +175,7 @@ function runFindCachedCollectionByNameOrId(withCache: boolean): void {
   totalQueries = 0;
 
   for (const s of nameOrIdScenarios) {
-    let err: unknown = null;
+    let err = null;
     let model = null;
     try {
       model = findCachedCollectionByNameOrId(app, s.nameOrId);

@@ -325,7 +325,7 @@ export class RealtimeService extends BaseService {
     return "realtime_" + this.clientId;
   }
 
-  private getSubscriptionsByTopic(topic: string): Subscriptions {
+  private getSubscriptionsByTopic(topic: string) {
     const result: Subscriptions = {};
 
     // "?" so that it can be used as end delimiter for the topic

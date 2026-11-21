@@ -41,7 +41,7 @@ export function writeUiPack(source: string, files: Map<string, Uint8Array>): Uin
   return out;
 }
 
-function readIndex(pack: Uint8Array): { index: PackIndex; dataStart: number } {
+function readIndex(pack: Uint8Array) {
   const length = new DataView(pack.buffer, pack.byteOffset, pack.byteLength).getUint32(0, true);
   const index = JSON.parse(new TextDecoder().decode(pack.subarray(4, 4 + length))) as PackIndex;
   return { index, dataStart: 4 + length };

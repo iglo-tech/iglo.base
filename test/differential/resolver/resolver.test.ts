@@ -180,6 +180,7 @@ function qs(params: { [key: string]: string }): string {
 }
 
 function filterQuery(fc: FilterCase): string {
+  // oxlint-disable-next-line quality/no-known-value-widening -- filter and sort are added after construction under names the literal does not have; qs takes a string dictionary, so a literal type would not fit
   const params: { [key: string]: string } = { perPage: "200" };
   if (fc.filter !== "") {
     params.filter = fc.filter;
@@ -197,13 +198,14 @@ function ruleText(rule: string | null | undefined): string | null {
   return rule.replaceAll(/\{id:(\w+)\}/g, (_m, name: string) => ids(name));
 }
 
-function caseRules(rc: RuleCase): { listRule: string | null; viewRule: string | null } {
+function caseRules(rc: RuleCase) {
   const listRule = ruleText(rc.listRule);
   const viewRule = rc.viewRule === undefined ? listRule : ruleText(rc.viewRule);
   return { listRule, viewRule };
 }
 
-function listQueryParams(rc: RuleCase): { [key: string]: string } {
+function listQueryParams(rc: RuleCase) {
+  // oxlint-disable-next-line quality/no-known-value-widening -- filter is added after construction under a name the literal does not have; the spread of an optional query drops the index signature a literal type would need
   const params: { [key: string]: string } = { perPage: "200", sort: "id", ...rc.query };
   if (rc.filter !== undefined) {
     params.filter = rc.filter;
@@ -440,7 +442,7 @@ function queryEncode(rawQuery: string): string {
 }
 
 // the first value of each query param (RequestInfo.query)
-function firstValues(rawQuery: string): { [key: string]: string } {
+function firstValues(rawQuery: string) {
   const result: { [key: string]: string } = {};
   for (const [k, v] of parseQuery(rawQuery).values) {
     if (v.length > 0) {
@@ -562,7 +564,7 @@ async function igloList(
 }
 
 // the listRule error of validateCollection for the filter as the rule
-function igloRuleError(app: CollectionsApp, collectionName: string, rule: string): unknown {
+function igloRuleError(app: CollectionsApp, collectionName: string, rule: string) {
   const collection = findCollectionByNameOrId(app, collectionName);
   collection.listRule = rule;
   const result = validateCollection(app, collection);
@@ -594,7 +596,7 @@ function setStoredRules(
   reloadCachedCollections(app);
 }
 
-function errorOf(fn: () => unknown): unknown {
+function errorOf(fn: () => unknown) {
   try {
     fn();
     return null;
@@ -743,6 +745,7 @@ describe("rules matrix", () => {
               syncResult = canAccessRecord(app, record, viewInfo, rules.viewRule);
             });
             let asyncResult = false;
+            // oxlint-disable-next-line quality/no-known-value-widening -- asyncErr holds a caught value, which is unknown; the null start value is the sentinel the !== null check reads, and a named type would not be true of a thrown value
             let asyncErr: unknown = null;
             try {
               asyncResult = await canAccessRecordAsync(app, record, viewInfo, rules.viewRule);

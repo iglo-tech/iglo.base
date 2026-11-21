@@ -15,7 +15,7 @@ export interface StartedServer {
 }
 
 // A new directory with a fresh copy of the fixture as <root>/pb_data.
-export function freshFixture(): { root: string; dataDir: string } {
+export function freshFixture() {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-realtime-"));
   const dataDir = join(root, "pb_data");
   copyDataDir(fixtureDir, dataDir);

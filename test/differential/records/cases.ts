@@ -85,6 +85,7 @@ const userNames = [
 
 export function userPayloads(): Array<Payload> {
   return userNames.map((name, i): Payload => {
+    // oxlint-disable-next-line quality/no-known-value-widening -- fields are added to json after construction (json.secret = ...), under names the literal does not have; a literal type rejects those assignments and a typed builder would change the statements
     const json: Record<string, string> = {
       email: q(`user${i}@example.com`),
       password: q("1234567890"),
@@ -221,6 +222,7 @@ function pick<T>(list: ReadonlyArray<T>, i: number, step = 1): T {
 export function allPayloads(userIds: ReadonlyArray<string>): Array<Payload> {
   const out: Array<Payload> = [];
   for (let i = 0; i < 50; i++) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- fields are added to json after construction (json.note = ...), under names the literal does not have; a literal type rejects those assignments and a typed builder would change the statements
     const json: Record<string, string> = {
       title: q(pick(titles, i)),
       num: pick(nums, i),

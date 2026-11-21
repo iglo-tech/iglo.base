@@ -129,7 +129,7 @@ function requiresUTF8Flag(name: string): boolean {
 }
 
 // timeToMsDosTime: the local date and time fields
-function msDosTime(t: Date): { date: number; time: number } {
+function msDosTime(t: Date) {
   return {
     date: t.getDate() + ((t.getMonth() + 1) << 5) + (Math.max(t.getFullYear() - 1980, 0) << 9),
     time: Math.trunc(t.getSeconds() / 2) + (t.getMinutes() << 5) + (t.getHours() << 11),

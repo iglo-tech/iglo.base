@@ -80,6 +80,7 @@ export interface QueryInfo {
 export class SelectQuery {
   private buildHook: BuildHookFunc | null = null;
   private ctxCanceled = false;
+  // oxlint-disable-next-line quality/no-known-value-widening -- the cancel cause is the caller's value as given to withCancelCause (unknown), passed on unchanged
   private ctxCause: unknown = null;
 
   private preFragmentSQL = "";

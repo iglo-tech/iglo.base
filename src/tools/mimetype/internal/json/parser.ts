@@ -27,6 +27,7 @@ const newQuery = (path: Array<string>, vals: Array<string> = []): query => ({
   SearchVals: vals.map(lit),
 });
 
+// oxlint-disable-next-line quality/no-known-value-widening -- queries is read with the caller's queryType, an arbitrary name (`?? []` for a name with no entry), so its key type is string
 export const queries: Record<string, Array<query>> = {
   [QueryNone]: [],
   [QueryGeo]: [

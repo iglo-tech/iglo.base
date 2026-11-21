@@ -37,7 +37,7 @@ const comparedHeaders = [
   "cross-origin-opener-policy",
 ];
 
-function normalize(res: RawResponse): unknown {
+function normalize(res: RawResponse) {
   let body: unknown = res.body;
   try {
     body = JSON.parse(res.body);

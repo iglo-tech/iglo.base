@@ -140,7 +140,7 @@ function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
 }
 
 // the Go signatures of core.App, with the names of go-class.ts
-const appMethods: Readonly<Record<string, Method>> = {
+const appMethods = {
   dataDir: "",
   encryptionEnv: "",
   isDev: "",
@@ -209,7 +209,7 @@ const appMethods: Readonly<Record<string, Method>> = {
       ),
     );
   },
-};
+} satisfies Readonly<Record<string, Method>>;
 
 type AppMethods = AppBinding["methods"];
 
@@ -235,7 +235,7 @@ export const appBindingAdapter: Adapter = {
       throw new Error(`app.${key} is not available in iglo.base migrations`);
     }
 
-    return goMethod(m, binding.methods, key, appMethods[key] as Method);
+    return goMethod(m, binding.methods, key, appMethods[key as keyof typeof appMethods]);
   },
   set() {
     return pass;

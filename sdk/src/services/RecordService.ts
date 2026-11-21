@@ -668,7 +668,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
                 })();
               });
 
-              const replacements: Record<string, string> = {
+              const replacements: Partial<Record<"state" | "scope", string>> = {
                 state: realtime.clientId,
               };
               if (config.scopes?.length) {

@@ -322,7 +322,7 @@ export async function readMIMEHeader(
 
 // mustHaveFieldNameColon ensures that, per RFC 7230, the field-name is on
 // a single line, so the first line must contain a colon.
-function mustHaveFieldNameColon(line: Uint8Array): unknown {
+function mustHaveFieldNameColon(line: Uint8Array): ProtocolError | undefined {
   if (line.indexOf(0x3a) < 0) {
     return new ProtocolError(`malformed MIME header: missing colon: ${goQuote(line)}`);
   }

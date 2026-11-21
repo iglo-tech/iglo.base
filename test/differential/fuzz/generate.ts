@@ -887,7 +887,12 @@ function overLimit(ctx: Ctx): { filter?: string; sort?: string } {
   ])();
 }
 
-function genInvalid(ctx: Ctx, base: FilterNode): { filter: FilterNode | null; sort?: string } {
+interface InvalidFilter {
+  filter: FilterNode | null;
+  sort?: string;
+}
+
+function genInvalid(ctx: Ctx, base: FilterNode): InvalidFilter {
   const r = ctx.r;
   const kind = r.weighted([
     ["unknown-field", 3],
@@ -956,7 +961,7 @@ function genInvalid(ctx: Ctx, base: FilterNode): { filter: FilterNode | null; so
       };
     case "over-limit": {
       const limit = overLimit(ctx);
-      const result: { filter: FilterNode | null; sort?: string } = {
+      const result: InvalidFilter = {
         filter: limit.filter === undefined ? base : { k: "raw", text: limit.filter },
       };
       if (limit.sort !== undefined) {

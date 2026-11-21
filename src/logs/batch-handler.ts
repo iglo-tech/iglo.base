@@ -229,6 +229,7 @@ function serializeMap(errors: LogAttrs): LogAttrs {
 
 function normalizeLogAttrValue(value: unknown): unknown {
   if (value === undefined) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- an attribute value is any value the caller logged (unknown), and the function returns non-plain values unchanged
     return null;
   }
 
@@ -240,6 +241,7 @@ function normalizeLogAttrValue(value: unknown): unknown {
     // check for wrapped validation.Errors
     const ve = errorsAs(value, ValidationErrors);
     if (ve) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- an attribute value is any value the caller logged (unknown); this result is one of several shapes the log stores as-is
       return { data: serializeMap(ve.errors), raw: serializeLogError(value) };
     }
     return serializeLogError(value);
@@ -259,6 +261,7 @@ function normalizeLogAttrValue(value: unknown): unknown {
 
 function serializeLogError(err: unknown): unknown {
   if (err === null || err === undefined) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the error is any value the caller logged (unknown), and a non-Error value is returned unchanged
     return null;
   }
 

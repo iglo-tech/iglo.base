@@ -274,12 +274,14 @@ export class RecordFieldResolver implements FieldResolver {
 
     // extract value
     let resultVal: unknown;
+    // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type, tested against null only
     let extractErr: unknown = null;
     try {
       resultVal = extractNestedVal(this.staticRequestInfo, ...path);
     } catch (error) {
       extractErr = error;
       this.app.logger.debug("resolveStaticRequestField graceful fallback", { error });
+      // oxlint-disable-next-line quality/no-known-value-widening -- resultVal holds an extracted value of any kind (unknown); null is its fallback
       resultVal = null;
     }
 
@@ -295,6 +297,7 @@ export class RecordFieldResolver implements FieldResolver {
 
     if (resultVal === null || resultVal === undefined) {
       // no further processing is needed...
+      // oxlint-disable-next-line quality/no-known-value-widening -- resultVal holds an extracted value of any kind (unknown); null is its fallback
       resultVal = null;
     } else if (typeof resultVal === "string") {
       // check if it is a number field and explicitly try to cast to
@@ -431,7 +434,7 @@ export function paramValue(v: unknown): unknown {
 
 // the own member of a map (Go's m[key], with the zero value nil)
 // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any (the request body or a decoded object): its own member, whose value is a JSON value of any kind
-export function ownValue(m: { [key: string]: unknown } | null | undefined, key: string): unknown {
+export function ownValue(m: { [key: string]: unknown } | null | undefined, key: string) {
   if (m === null || m === undefined || !Object.hasOwn(m, key)) {
     return null;
   }

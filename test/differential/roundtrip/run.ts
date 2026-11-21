@@ -464,7 +464,10 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
     logsPerLeg.push(logs);
   }
 
-  const encryptedField: { encryptionKey?: typeof encryptionKey } = {};
+  interface EncryptedField {
+    encryptionKey?: typeof encryptionKey;
+  }
+  const encryptedField: EncryptedField = {};
   if (options.encrypted?.at(-1)) {
     encryptedField.encryptionKey = encryptionKey;
   }

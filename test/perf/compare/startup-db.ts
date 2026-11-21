@@ -91,6 +91,7 @@ db.transaction(() => {
     );
     const n = i === 0 ? 1000 : 500; // 1000 + 19 * 500 = 10,500
     for (let r = 0; r < n; r++) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- indexed by a column name from the table list, so the key type stays string
       const row: Record<string, string | number | undefined> = {
         id: `r${String(i).padStart(2, "0")}${String(r).padStart(12, "0")}`,
         title: `Record ${i}/${r}`,

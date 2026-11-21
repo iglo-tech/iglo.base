@@ -130,6 +130,7 @@ export async function preUploadFiles(
     return new PreUploads(app, stored);
   }
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type (newFilesystem), kept on each pre-upload as the error it was thrown as
   let failure: unknown = null;
   let fsys;
   try {

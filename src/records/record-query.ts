@@ -103,6 +103,7 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   let tableName = "";
 
   let collection: Collection | null = null;
+  // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type (getCollectionByModelOrIdentifier), passed to withCancelCause unchanged
   let collectionErr: unknown = null;
   try {
     collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);

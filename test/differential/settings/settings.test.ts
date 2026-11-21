@@ -128,7 +128,7 @@ const tokens: Record<Identity, string> = {
 };
 
 function request(c: SettingsCase, body?: string): Scenario {
-  const headers: Record<string, string> = { ...c.headers };
+  const headers = { ...c.headers };
   if (tokens[c.as] !== "") {
     headers["Authorization"] = tokens[c.as];
   }

@@ -60,10 +60,12 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
   e.set(RequestEventKeyInfoContext, RequestInfoContextPasswordAuth);
 
   let foundRecord: Record | undefined;
+  // oxlint-disable-next-line quality/no-known-value-widening -- foundErr holds the value a catch clause received, and a thrown value can be any JS value
   let foundErr: unknown = null;
 
   const find = (field: string): void => {
     foundRecord = undefined;
+    // oxlint-disable-next-line quality/no-known-value-widening -- foundErr holds the value a catch clause received, and a thrown value can be any JS value
     foundErr = null;
     try {
       foundRecord = findRecordByIdentityField(e.app, collection, field, form.Identity);

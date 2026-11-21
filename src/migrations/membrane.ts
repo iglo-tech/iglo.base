@@ -198,6 +198,7 @@ export class Membrane {
     if (target !== undefined) {
       const host = this.#unbox(target);
       if (isInstance(GoJSONArray, host)) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
         return [...host.items];
       }
       return isInstance(GoJSONMap, host) ? host.data : host;
@@ -211,6 +212,7 @@ export class Membrane {
 
     const slice = this.#slices.get(v);
     if (slice !== undefined) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
       return [...slice.read()];
     }
 
@@ -225,14 +227,18 @@ export class Membrane {
 
     switch (Object.prototype.toString.call(v)) {
       case "[object Date]":
+        // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
         return new Date((v as Date).getTime());
       case "[object Uint8Array]":
+        // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
         return new Uint8Array(v as Uint8Array);
       case "[object Map]":
+        // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
         return new Map(
           [...(v as Map<unknown, unknown>)].map(([k, item]) => [this.toHost(k), this.toHost(item)]),
         );
       case "[object Set]":
+        // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
         return new Set([...(v as Set<unknown>)].map((item) => this.toHost(item)));
       case "[object Error]":
       case "[object Promise]":
@@ -248,6 +254,7 @@ export class Membrane {
         configurable: true,
       });
     }
+    // oxlint-disable-next-line quality/no-known-value-widening -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
     return copy;
   }
 
@@ -431,7 +438,7 @@ export class Membrane {
         array.push(byte);
       }
     };
-    const methods: Record<string, (...args: Array<unknown>) => unknown> = {
+    const methods = {
       string: () => current().string(),
       toString: () => current().string(),
       marshalJSON: () => this.toVm(textToBytes(current().marshalJSON())),
@@ -446,7 +453,7 @@ export class Membrane {
         next.scan(this.toHost(value));
         replace(next);
       },
-    };
+    } satisfies Record<string, (...args: Array<unknown>) => unknown>;
     for (const [name, value] of Object.entries(methods)) {
       Object.defineProperty(array, name, { value, enumerable: false });
     }

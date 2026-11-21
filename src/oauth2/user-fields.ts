@@ -15,7 +15,7 @@ import type { GoType } from "@/tools/types/go-json";
 type Fields<T> = { [K in keyof T]-?: GoType };
 
 // the zero value of a Go type, as the struct starts with
-function zeroOf(t: GoType): unknown {
+function zeroOf(t: GoType) {
   switch (t.kind) {
     case "string":
       return "";
@@ -30,8 +30,7 @@ function zeroOf(t: GoType): unknown {
   }
 }
 
-// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go struct value: each field holds a value of its own Go type (its zero value, then the decoded one)
-function zeros<T>(fields: Fields<T>): Record<string, unknown> {
+function zeros<T>(fields: Fields<T>) {
   // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go struct value: each field holds a value of its own Go type (its zero value, then the decoded one)
   const out: Record<string, unknown> = {};
   for (const name of Object.keys(fields)) {
@@ -62,7 +61,7 @@ export function decodeFields<T>(data: Uint8Array, fields: Fields<T>): T {
 
 // one JSON value of a Go type, as a member of a nested struct already
 // decoded as `any`
-function valueOf(value: unknown, t: GoType): unknown {
+function valueOf(value: unknown, t: GoType) {
   switch (t.kind) {
     case "any":
       return value;

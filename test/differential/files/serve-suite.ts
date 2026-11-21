@@ -177,7 +177,7 @@ function boundaryOf(res: Res): string | undefined {
   return /^multipart\/byteranges; boundary=(.+)$/.exec(res.headers.get("content-type") ?? "")?.[1];
 }
 
-function normalized(res: Res): { headers: Map<string, string | null>; body: Buffer } {
+function normalized(res: Res) {
   const boundary = boundaryOf(res);
   const headers = new Map<string, string | null>();
   for (const name of comparedHeaders) {

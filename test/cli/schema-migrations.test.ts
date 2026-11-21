@@ -54,7 +54,7 @@ function writeMigration(site: Site, file: string, source: string): void {
 // a row of a table: SQLite returns these column values
 type SqlRow = { [column: string]: string | number | bigint | Uint8Array | null };
 
-function digests(dataDir: string): Record<string, string> {
+function digests(dataDir: string) {
   const result: Record<string, string> = {};
   for (const name of ["data.db", "auxiliary.db"]) {
     const path = join(dataDir, name);

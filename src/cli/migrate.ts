@@ -171,6 +171,7 @@ async function runAndWaitForFileDeletes(
   ctx: CliContext,
 ): Promise<void> {
   const afterTransaction: Array<Promise<void>> = [];
+  // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type, rethrown unchanged (runCli's catch reads it)
   let runErr: unknown = null;
   try {
     run({ ...app, afterTransaction }, list, args, ctx);

@@ -355,10 +355,7 @@ function hmacSHA256(key: Uint8Array, content: string): Uint8Array {
   return new Bun.CryptoHasher("sha256", key).update(textToBytes(content)).digest();
 }
 
-function canonicalAndSignedHeaders(headers: Headers): {
-  canonicalHeaders: string;
-  signedHeaders: string;
-} {
+function canonicalAndSignedHeaders(headers: Headers) {
   const signed: Array<string> = [];
   const canonical = new Map<string, string>();
 

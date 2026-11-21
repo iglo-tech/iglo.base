@@ -65,7 +65,7 @@ export function hasFileField(body: unknown): boolean {
  * Converts analyzes the provided body and converts it to FormData
  * in case a plain object with File/Blob values is used.
  */
-export function convertToFormDataIfNeeded(body: unknown): unknown {
+export function convertToFormDataIfNeeded(body: unknown) {
   if (
     typeof FormData === "undefined" ||
     body === undefined ||
@@ -123,7 +123,7 @@ type FormDataValue = Json | File | Array<FormDataValue>;
  *     (aka. scientific notations, "Infinity", "0.0", "0001", etc. are kept as string)
  *   - any other string (empty string too) is left as it is
  */
-export function convertFormDataToObject(formData: FormData): { [key: string]: FormDataValue } {
+export function convertFormDataToObject(formData: FormData) {
   const result: { [key: string]: FormDataValue } = {};
 
   formData.forEach((v, k) => {

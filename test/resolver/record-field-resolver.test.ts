@@ -652,7 +652,7 @@ describe("TestRecordFieldResolverUpdateQuery", () => {
       const r = newRecordFieldResolver(app, collection, requestInfo, s.allowHiddenFields);
 
       let expr;
-      let buildErr: unknown = null;
+      let buildErr = null;
       try {
         expr = filterBuildExpr(s.rule, r, { clock: app.clock });
       } catch (error) {
@@ -660,7 +660,7 @@ describe("TestRecordFieldResolverUpdateQuery", () => {
       }
       expect({ hasErr: buildErr !== null, buildErr }).toMatchObject({ hasErr: expectError });
 
-      let updateErr: unknown = null;
+      let updateErr = null;
       try {
         r.updateQuery(query);
       } catch (error) {
@@ -807,7 +807,7 @@ describe("TestRecordFieldResolverResolveCollectionFields", () => {
       const r = sharedResolver(app, collection, requestInfo);
 
       let result;
-      let err: unknown = null;
+      let err = null;
       try {
         result = r.resolve(fieldName);
       } catch (error) {
@@ -932,7 +932,7 @@ describe("TestRecordFieldResolverResolveStaticRequestInfoFields", () => {
       }
 
       let result;
-      let err: unknown = null;
+      let err = null;
       try {
         result = r.resolve(fieldName);
       } catch (error) {

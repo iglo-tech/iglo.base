@@ -24,12 +24,14 @@ const form = (privateKey: string, duration: number) => ({
   duration,
 });
 
-function parts(secret: string): {
+interface TokenParts {
   header: JsonObject;
   claims: JsonObject;
   raw: Array<string>;
   signature: Buffer;
-} {
+}
+
+function parts(secret: string): TokenParts {
   const [h = "", c = "", s = ""] = secret.split(".");
   return {
     header: JSON.parse(Buffer.from(h, "base64url").toString()),

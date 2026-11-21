@@ -166,7 +166,7 @@ export class ServerClient extends Client {
    * and the server's clock and the collection lifetime are read from each response.
    */
   override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
-    const seen: { date?: string | null } = {};
+    const seen: Partial<Record<"date", string | null>> = {};
     options.fetch = noStoreFetch(options.fetch ?? this._options.fetch, (response) => {
       seen.date = response.headers.get("date");
     });

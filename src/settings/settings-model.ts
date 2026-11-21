@@ -203,7 +203,7 @@ export interface SettingsData {
 // -------------------------------------------------------------------
 // Go struct types (field order, Go types and the form/json tags)
 
-const tags = (name: string, jsonOpts = ""): Record<string, string> => ({
+const tags = (name: string, jsonOpts = "") => ({
   form: name,
   json: name + jsonOpts,
 });

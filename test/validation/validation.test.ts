@@ -84,16 +84,16 @@ function assertError(expected: string, err: globalThis.Error | null, tag: string
 
 describe("validation", () => {
   test.each([
-    { tag: "t1", value: 123 as unknown, err: "" },
-    { tag: "t2", value: new String123("123") as unknown, err: "" },
-    { tag: "t3", value: new String123("abc") as unknown, err: "error 123" },
-    { tag: "t4", value: [] as unknown, err: "" },
+    { tag: "t1", value: 123, err: "" },
+    { tag: "t2", value: new String123("123"), err: "" },
+    { tag: "t3", value: new String123("abc"), err: "error 123" },
+    { tag: "t4", value: [], err: "" },
     {
       tag: "t5",
-      value: [new String123("abc"), new String123("123"), new String123("xyz")] as unknown,
+      value: [new String123("abc"), new String123("123"), new String123("xyz")],
       err: "0: error 123; 2: error 123.",
     },
-    { tag: "t7", value: [new Model4("abc"), new Model4("def")] as unknown, err: "" },
+    { tag: "t7", value: [new Model4("abc"), new Model4("def")], err: "" },
     {
       tag: "t8",
       // map[string]String123: a Map (a plain object is a map[string]any)
@@ -101,7 +101,7 @@ describe("validation", () => {
         ["c", new String123("abc")],
         ["b", new String123("123")],
         ["a", new String123("xyz")],
-      ]) as unknown,
+      ]),
       err: "a: error 123; c: error 123.",
     },
     {
@@ -111,13 +111,13 @@ describe("validation", () => {
         ["c", new StringValidateContext("abc")],
         ["b", new StringValidateContext("123")],
         ["a", new StringValidateContext("xyz")],
-      ]) as unknown,
+      ]),
       err: "a: must be abc; b: must be abc.",
     },
-    { tag: "t10", value: new Map() as unknown, err: "" },
-    { tag: "t11", value: null as unknown, err: "" },
-    { tag: "t12", value: new StringValidate() as unknown, err: "called validate" },
-    { tag: "t13", value: new StringValidateContext("xyz") as unknown, err: "must be abc" },
+    { tag: "t10", value: new Map(), err: "" },
+    { tag: "t11", value: null, err: "" },
+    { tag: "t12", value: new StringValidate(), err: "called validate" },
+    { tag: "t13", value: new StringValidateContext("xyz"), err: "must be abc" },
   ])("TestValidate $tag", ({ value, err }) => {
     assertError(err, Validate(value), "Validate");
   });

@@ -132,7 +132,7 @@ function parseResponse(
   };
 }
 
-function decodeChunked(raw: Buffer): { body: Uint8Array; complete: boolean } {
+function decodeChunked(raw: Buffer) {
   const parts: Array<Buffer> = [];
   let pos = 0;
   for (;;) {

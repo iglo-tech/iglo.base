@@ -111,7 +111,7 @@ function isPlainObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const tags = (name: string): Record<string, string> => ({ form: name, json: name });
+const tags = (name: string) => ({ form: name, json: name });
 
 const internalRequestFields: Array<StructField> = [
   // map[string]any and map[string]string, checked by internalRequestOf
@@ -604,6 +604,11 @@ interface BatchRequestResult {
   status: number;
 }
 
+// the value a handler's result is collected into (collectResult sets it)
+interface ItemOutcome {
+  value?: HandlerResult;
+}
+
 class BatchResults implements JSONMarshaler {
   constructor(readonly results: ReadonlyArray<BatchRequestResult>) {}
 
@@ -691,7 +696,7 @@ export function processInternalRequest(
 
   const event = newItemEvent(txApp, base, request, infoContext);
 
-  const out: { value?: HandlerResult } = {};
+  const out: ItemOutcome = {};
   runSync(collectResult(handler(event, wrapIO(txRecordIO(requestInfo, ir.files))), out));
   if (out.value instanceof Error) {
     return out.value;

@@ -116,7 +116,7 @@ test("TestBufAPI", () => {
 test("TestConvertNewlines", () => {
   // The tokenizer normalizes CR and CRLF in text to LF. Each input is plain
   // text, so the text tokens are the converted input.
-  const testCases: Record<string, string> = {
+  const testCases = {
     "Mac\rDOS\r\nUnix\n": "Mac\nDOS\nUnix\n",
     "Unix\nMac\rDOS\r\n": "Unix\nMac\nDOS\n",
     "DOS\r\nDOS\r\nDOS\r\n": "DOS\nDOS\nDOS\n",
@@ -134,7 +134,7 @@ test("TestConvertNewlines", () => {
     "\r\r\r\n": "\n\n\n",
     "\r \n": "\n \n",
     xyz: "xyz",
-  };
+  } satisfies Record<string, string>;
   for (const [input, want] of Object.entries(testCases)) {
     const z = tokenizerFor(input);
     let got = "";

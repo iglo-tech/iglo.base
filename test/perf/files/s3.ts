@@ -40,7 +40,7 @@ function round(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-function sampleHealth(url: string): { stop: () => Promise<Record<string, number>> } {
+function sampleHealth(url: string) {
   const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {

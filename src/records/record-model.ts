@@ -108,7 +108,7 @@ export type NullStringMap = { readonly [column: string]: string | null };
 // The row must be read withExactIntegers (src/db/dbx/query.ts), so that
 // every INTEGER value is a bigint and every number a REAL value: a narrowed
 // integer from 1e6 on would be formatted as a float ("1.234567e+06").
-export function nullStringMapFromRow(row: Row): NullStringMap {
+export function nullStringMapFromRow(row: Row) {
   const out: { [column: string]: string | null } = {};
   for (const [column, v] of Object.entries(row)) {
     setOwn(out, column, nullStringText(v));
@@ -461,7 +461,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // FieldsData returns a shallow copy ONLY of the collection's fields record's data.
-  fieldsData(): DataMap {
+  fieldsData() {
     const result: DataMap = {};
 
     for (const field of this.#collection.fields) {
@@ -476,7 +476,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // aka. fields that are neither defined by the collection, nor special system ones.
   //
   // Note that custom fields prefixed with "@pbInternal" are always skipped.
-  customData(): DataMap {
+  customData() {
     const knownFields = new Set<string>();
 
     for (const f of this.#collection.fields) {
@@ -1160,7 +1160,7 @@ function toMap(
   return new Map<string, unknown>(isInstance(Map, data) ? data : Object.entries(data));
 }
 
-function toDataMap(m: ReadonlyMap<string, unknown>): DataMap {
+function toDataMap(m: ReadonlyMap<string, unknown>) {
   const out: DataMap = {};
   for (const [k, v] of m) {
     setOwn(out, k, v);

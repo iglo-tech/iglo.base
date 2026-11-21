@@ -338,10 +338,7 @@ function exactCell(cell: string, hex: string | null): string {
 }
 
 // the rows of a table, each cell as exactCell gives it
-function tableRows(
-  db: Database,
-  table: string,
-): { columns: Array<string>; rows: Array<Array<string>> } {
+function tableRows(db: Database, table: string) {
   const columns = (
     db.query(`SELECT name FROM pragma_table_info(${quoted(table)})`).all() as Array<{
       name: string;

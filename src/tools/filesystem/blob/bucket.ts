@@ -420,11 +420,7 @@ export function checkKey(call: string, key: string): void {
 
 // NewWriter's checks of the key, metadata and content type; checkOpen runs
 // between them, as upstream's order has it
-export function checkWriterOptions(
-  key: string,
-  opts: WriterOptions,
-  checkOpen: () => void,
-): { contentType: string; metadata: Map<string, string> | null } {
+export function checkWriterOptions(key: string, opts: WriterOptions, checkOpen: () => void) {
   checkKey("NewWriter", key);
 
   let md: Map<string, string> | null = null;

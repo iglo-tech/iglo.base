@@ -93,7 +93,7 @@ export function withoutStat4(rows: Array<SchemaRow>): Array<SchemaRow> {
 // every entry of a directory, recursively and sorted, with the SHA-256 of
 // each file's bytes ("dir" for a directory): what a refused open must
 // leave unchanged
-export function fileState(dir: string): Record<string, string> {
+export function fileState(dir: string) {
   const state: Record<string, string> = {};
   const entries = readdirSync(dir, { recursive: true, withFileTypes: true }).map((e) => ({
     path: join(e.parentPath, e.name),

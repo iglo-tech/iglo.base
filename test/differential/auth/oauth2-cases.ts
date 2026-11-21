@@ -43,7 +43,7 @@ import type { JsonObject } from "@test/support/json";
 const body = (extra: JsonObject = {}): string =>
   JSON.stringify({ provider: "oidc", code: "123", redirectURL: "https://example.com", ...extra });
 
-const verified = (email: string, sub = "test_id"): { user: unknown } => ({
+const verified = (email: string, sub = "test_id") => ({
   user: { sub, ...verifiedEmail(email) },
 });
 

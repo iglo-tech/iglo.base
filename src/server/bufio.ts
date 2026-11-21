@@ -100,6 +100,7 @@ export class Reader implements IoReader {
       n = avail;
       err = this.#readErr();
       if (err === undefined) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- err also holds the reader's error, which is any value the reader threw (unknown)
         err = ErrBufferFull;
       }
     }
@@ -166,7 +167,7 @@ export class Reader implements IoReader {
 
   // UnreadByte unreads the last byte. Only the most recently read byte can
   // be unread.
-  unreadByte(): unknown {
+  unreadByte(): Error | undefined {
     if (this.#lastByte < 0 || (this.#r === 0 && this.#w > 0)) {
       return ErrInvalidUnreadByte;
     }
@@ -221,6 +222,7 @@ export class Reader implements IoReader {
       if (this.buffered() >= this.#buf.length) {
         this.#r = this.#w;
         line = this.#buf;
+        // oxlint-disable-next-line quality/no-known-value-widening -- err also holds the reader's error, which is any value the reader threw (unknown)
         err = ErrBufferFull;
         break;
       }

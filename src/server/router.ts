@@ -312,6 +312,7 @@ export function errorHandler(resp: ResponseWriter, req: HttpRequest, err: Error 
   }
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- the lookup takes each matched character as a runtime string (the regex only matches these keys, and the cast is kept); the open Record lets it index by string without an assertion
 const htmlReplacements: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",

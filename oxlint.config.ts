@@ -126,13 +126,12 @@ export default defineConfig({
       },
     },
     // L.1 open items (D44): these rules still report issues and stay off until
-    // their task fixes them. L.3 owns the two quality/* rules still listed here;
-    // L.4 owns no-unsafe-type-assertion. Each one is removed from this list when
-    // its issues are fixed; the list is empty when L.3 and L.4 are done.
+    // their task fixes them. L.3 owns quality/no-unknown-returns; L.4 owns
+    // no-unsafe-type-assertion. Each one is removed from this list when its
+    // issues are fixed; the list is empty when L.3 and L.4 are done.
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
-        "quality/no-known-value-widening": "off",
         "quality/no-unknown-returns": "off",
         "typescript/no-unsafe-type-assertion": "off",
       },

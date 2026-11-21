@@ -281,7 +281,8 @@ test("RecordExpand", () => {
   expect(expand).toEqual({});
 
   const data1 = { a: 123n, b: 456n };
-  const data2: { [key: string]: bigint } = { c: 123n };
+  type ExpandData = { c: bigint; d?: bigint };
+  const data2: ExpandData = { c: 123n };
   record.setExpand(data1);
   record.setExpand(data2); // should overwrite the previous call
 

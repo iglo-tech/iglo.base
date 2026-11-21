@@ -167,7 +167,7 @@ function readOnlyStore(cookieHeader: string): NextCookieStore {
 }
 
 /** The user a forwarded Cookie header carries, read as the request adapter reads it. */
-function forwardedUser(headers: Headers): { tokenId: unknown; recordId: unknown } {
+function forwardedUser(headers: Headers) {
   const pair = (headers.get("cookie") ?? "").split(";").map((part) => part.trim())[0] ?? "";
   const raw = pair.slice(pair.indexOf("=") + 1);
   const session = JSON.parse(decodeURIComponent(raw)) as { token: string; record: { id: string } };

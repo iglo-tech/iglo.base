@@ -44,6 +44,7 @@
 //       valid on both.
 import { isInstance } from "@/tools/types/is-instance";
 
+import type { Json } from "@test/support/json";
 import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -185,9 +186,9 @@ async function api(
   }
   const res = await fetch(`${upstream.url}${path}`, init);
   const text = await res.text();
-  let json: unknown;
+  let json: Json;
   try {
-    json = text === "" ? null : (JSON.parse(text) as unknown);
+    json = text === "" ? null : (JSON.parse(text) as Json);
   } catch {
     json = null;
   }

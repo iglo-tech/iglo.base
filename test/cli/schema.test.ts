@@ -73,6 +73,7 @@ type ApiCollection = JsonObject & {
   oauth2?: JsonObject & { providers?: Json };
 };
 
+// oxlint-disable-next-line quality/no-known-value-widening -- looked up by an arbitrary key (`key in ruleNames`), so the key type stays string
 const ruleNames: Record<string, string> = {
   listRule: "list",
   viewRule: "view",

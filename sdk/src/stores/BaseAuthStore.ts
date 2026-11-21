@@ -13,6 +13,9 @@ export type OnStoreChangeFunc = (token: string, record: AuthRecord) => void;
 
 const defaultCookieKey = "pb_auth";
 
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the stored record is the wire JSON of the auth record; its fields are copied in and out with their values unchanged (RecordModel fields are loose)
+type RawAuthData = { token: string; record: Record<string, unknown> | null };
+
 /**
  * Base AuthStore class that stores the auth state in runtime memory (aka. only for the duration of the store instane).
  *
@@ -187,8 +190,7 @@ export class BaseAuthStore {
     // merge with the user defined options
     options = Object.assign({}, defaultOptions, options);
 
-    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the stored record is the wire JSON of the auth record; its fields are copied in and out with their values unchanged (RecordModel fields are loose)
-    const rawData: { token: string; record: Record<string, unknown> | null } = {
+    const rawData: RawAuthData = {
       token: this.token,
       record: this.record
         ? // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates

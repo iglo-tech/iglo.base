@@ -305,6 +305,7 @@ export class Query {
 
   private ctxDeadline: Deadline | null = null;
   private ctxCanceled = false;
+  // oxlint-disable-next-line quality/no-known-value-widening -- the cancel cause is the caller's value as given to withCancelCause (unknown), passed on unchanged
   private ctxCause: unknown = null;
   private exactIntegers = false;
   private execHook: ExecHookFunc | null = null;
@@ -314,6 +315,7 @@ export class Query {
 
   // LastError contains the last error (if any) of the query.
   // LastError is cleared by Execute(), Row(), Rows(), One(), and All().
+  // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; it is returned unchanged
   lastError: unknown = null;
   // QueryLogFunc is called each time when performing a SQL query that returns data.
   queryLogFunc: QueryLogFunc | null;
@@ -499,6 +501,7 @@ export class Query {
 
     const start = performance.now();
     let result: ExecResult | null = null;
+    // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; the query log hook receives it unchanged
     let err: unknown = null;
     try {
       const realSql = this.realSql();
@@ -555,6 +558,7 @@ export class Query {
   // row objects, or models created by the given factory and populated with
   // the rows. If the query returns no row, the result is an empty array.
   all<T = Row>(factory?: () => StructModel): Array<T> {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the All hook may return any value (AllHookFunc returns unknown) and All returns it unchanged
     let result: unknown = [];
     this.execWrap(() => {
       const rows = this.read("all") as Array<Row>;
@@ -565,6 +569,7 @@ export class Query {
 
   // AllAsync is All, run on the executor's reader when it has one.
   async allAsync<T = Row>(factory?: () => StructModel): Promise<Array<T>> {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the All hook may return any value (AllHookFunc returns unknown) and All returns it unchanged
     let result: unknown = [];
     await this.execWrapAsync(async () => {
       const rows = (await this.readAsync("all")) as Array<Row>;
@@ -652,6 +657,7 @@ export class Query {
     this.checkContext();
 
     const start = performance.now();
+    // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; the query log hook receives it unchanged
     let err: unknown = null;
     try {
       const sql = this.realSql() ?? this.rawSql;
@@ -670,6 +676,7 @@ export class Query {
     const deadline = this.ctxDeadline;
 
     const start = performance.now();
+    // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; the query log hook receives it unchanged
     let err: unknown = null;
     try {
       this.checkContext();

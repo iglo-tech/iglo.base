@@ -255,6 +255,7 @@ async function wantsMFA(e: RequestEvent, record: Record): Promise<boolean> {
 
   resolver.updateQuery(query);
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- exists holds a database cell (rowAsync returns unknown cells) until Number() reads it
   let exists: unknown = 0;
   try {
     [exists] = await query.andWhere(expr).limit(1).rowAsync();

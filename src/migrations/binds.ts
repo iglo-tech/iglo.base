@@ -108,7 +108,7 @@ import {
   tokenConfig,
   txMethods,
 } from "@/migrations/go-class";
-import type { GoClass, Method } from "@/migrations/go-class";
+import type { GoClass } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import type { StructFields } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
@@ -265,7 +265,8 @@ const fieldsListAdapter: Adapter = {
         accepts: (item) => isField(m.toHost(item)),
         methods: {
           keys: Object.keys(fieldsListMethods).toSorted(),
-          get: (key) => goMethod(m, list, key, fieldsListMethods[key] as Method),
+          get: (key) =>
+            goMethod(m, list, key, fieldsListMethods[key as keyof typeof fieldsListMethods]),
         },
       },
       list,
@@ -287,7 +288,8 @@ const jsonArrayAdapter: Adapter = {
           array.elem === stringType ? toGo(m, item, "string", null) : m.toHost(item),
         methods: {
           keys: Object.keys(jsonArrayMethods).toSorted(),
-          get: (key) => goMethod(m, array, key, jsonArrayMethods[key] as Method),
+          get: (key) =>
+            goMethod(m, array, key, jsonArrayMethods[key as keyof typeof jsonArrayMethods]),
         },
       },
       array,
@@ -392,7 +394,7 @@ function fieldAdapters(): (field: Field) => Adapter | undefined {
   return (field) => {
     const type = field.type();
     let adapter = byType.get(type);
-    const cls = fieldClasses[type];
+    const cls = fieldClasses[type as keyof typeof fieldClasses];
     if (adapter === undefined && cls !== undefined) {
       adapter = classAdapter(cls);
       byType.set(type, adapter);
@@ -489,7 +491,7 @@ const throwing =
   };
 
 // the Go methods of the settings structs, by the Go name of the member
-const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
+const settingsStructMethods = {
   SMTP: { validate: throwing(validateSMTP) },
   S3: { validate: throwing(validateS3) },
   Backups: { validate: throwing(validateBackups) },
@@ -508,7 +510,7 @@ const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
       new GoDuration(BigInt(rateLimitRuleDurationTime(data)) * 1_000_000n),
     string: (data: RateLimitRule) => rateLimitRuleString(data),
   },
-};
+} satisfies Readonly<Record<string, StructMethods>>;
 
 function structView(
   m: Membrane,
@@ -526,7 +528,7 @@ function structView(
   const member = (key: string): { name: string; type: FieldType } | undefined =>
     members.find(({ name }) => convertGoToJSName(name) === key);
 
-  const read = (key: string): unknown => {
+  const read = (key: string) => {
     const found = member(key);
     if (found !== undefined) {
       return memberView(m, settings, data, found.name, found.type);
@@ -604,14 +606,26 @@ function memberView(
       },
       fromGo: (item) =>
         typeof item === "object" && item !== null
-          ? structView(m, settings, item, element, settingsStructMethods[name])
+          ? structView(
+              m,
+              settings,
+              item,
+              element,
+              settingsStructMethods[name as keyof typeof settingsStructMethods],
+            )
           : item,
       toGo: (item) => convertValue(item, element, undefined),
     });
   }
 
   return typeof value === "object" && value !== null
-    ? structView(m, settings, value, type, settingsStructMethods[name])
+    ? structView(
+        m,
+        settings,
+        value,
+        type,
+        settingsStructMethods[name as keyof typeof settingsStructMethods],
+      )
     : value;
 }
 
@@ -708,7 +722,7 @@ function newSettingsAdapter(): Adapter {
 
 // A global upstream has that iglo.base does not: it exists, and using it
 // fails with an error that names it.
-function missing(m: Membrane, name: string, reason: string, callable: boolean): object {
+function missing(m: Membrane, name: string, reason: string, callable: boolean) {
   const fail = (): never => {
     throw new m.vm.GoError(`${name} is not available in iglo.base migrations: ${reason}`);
   };
@@ -722,11 +736,7 @@ function stringify(v: unknown): string | undefined {
 
 // goja gives only the objects `new` made the constructor's prototype: a field
 // a list holds is no `instanceof TextField`.
-function constructor(
-  m: Membrane,
-  name: string,
-  build: (...args: Array<unknown>) => unknown,
-): unknown {
+function constructor(m: Membrane, name: string, build: (...args: Array<unknown>) => unknown) {
   const instances = new WeakSet();
   const fn = function (...args: Array<unknown>): unknown {
     const instance = m.guard(() => build(...args));
@@ -1164,7 +1174,7 @@ function bindSecurity(scope: MigrationObject, m: Membrane, c: BindConfig): void 
   );
 }
 
-const goErrnoTexts: Readonly<Record<string, string>> = {
+const goErrnoTexts = {
   EACCES: "permission denied",
   EEXIST: "file exists",
   EISDIR: "is a directory",
@@ -1172,7 +1182,7 @@ const goErrnoTexts: Readonly<Record<string, string>> = {
   ENOTDIR: "not a directory",
   ENOTEMPTY: "directory not empty",
   EPERM: "operation not permitted",
-};
+} satisfies Readonly<Record<string, string>>;
 
 // Runs a file operation: its error is os.PathError's text.
 function osCall<T>(op: string, name: string, fn: () => T): T {
@@ -1180,9 +1190,12 @@ function osCall<T>(op: string, name: string, fn: () => T): T {
     return fn();
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code ?? "";
-    throw new Error(`${op} ${name}: ${goErrnoTexts[code] ?? (error as Error).message}`, {
-      cause: error,
-    });
+    throw new Error(
+      `${op} ${name}: ${goErrnoTexts[code as keyof typeof goErrnoTexts] ?? (error as Error).message}`,
+      {
+        cause: error,
+      },
+    );
   }
 }
 

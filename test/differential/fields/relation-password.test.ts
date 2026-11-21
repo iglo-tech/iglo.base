@@ -103,6 +103,7 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
+  // oxlint-disable-next-line quality/no-known-value-widening -- the authorization header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (auth) {
     headers.authorization = token;
@@ -446,12 +447,7 @@ function storeModel(
   }
 }
 
-function readColumns(
-  db: Database,
-  table: string,
-  names: Array<string>,
-  id: string | null,
-): Record<string, [string, unknown]> {
+function readColumns(db: Database, table: string, names: Array<string>, id: string | null) {
   if (names.length === 0) {
     return {};
   }
@@ -475,7 +471,7 @@ function modelRecordBody(
   stored: Record<string, string>,
 ): string {
   const read = new TestRecord(collection);
-  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the prepared values of the fields are the Go values prepareValue returns (unknown), marshaled unchanged
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type, quality/no-known-value-widening -- the prepared values of the fields are the Go values prepareValue returns (unknown), marshaled unchanged; the fields are added to out after construction, under names the literal does not have
   const out: Record<string, unknown> = {
     collectionId,
     collectionName: collection.name,

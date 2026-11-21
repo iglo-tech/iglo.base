@@ -68,12 +68,12 @@ async function addRef(
   return ref;
 }
 
-const refExtras: { [name: string]: { [key: string]: string } } = {
+const refExtras = {
   [CollectionNameExternalAuths]: { provider: "github", providerId: "p1" },
   [CollectionNameMFAs]: { method: "password" },
   [CollectionNameOTPs]: { password: "1234567890", sentTo: "a@example.com" },
   [CollectionNameAuthOrigins]: { fingerprint: "abc" },
-};
+} satisfies { [name: string]: { [key: string]: string } };
 
 async function addAllRefs(app: RecordsApp, authRecord: Record): Promise<void> {
   for (const [name, extra] of Object.entries(refExtras)) {
@@ -81,7 +81,7 @@ async function addAllRefs(app: RecordsApp, authRecord: Record): Promise<void> {
   }
 }
 
-function refCounts(app: RecordsApp, authRecord: Record): { [name: string]: number } {
+function refCounts(app: RecordsApp, authRecord: Record) {
   const result: { [name: string]: number } = {};
   for (const name of Object.keys(refExtras)) {
     result[name] = findAllRefsByRecord(app, name, authRecord).length;

@@ -292,7 +292,7 @@ export async function recordAuthWithOAuth2(
 
 // -------------------------------------------------------------------
 
-const tags = (name: string): { form: string; json: string } => ({ form: name, json: name });
+const tags = (name: string) => ({ form: name, json: name });
 
 const recordOAuth2LoginFormType = structOf([
   // map[string]any, checked after the bind
@@ -409,11 +409,7 @@ interface OAuth2Submit {
 
 // the create payload of a new record; avatarField is the mapped file field
 // when the avatar should be downloaded into it
-function oauth2CreatePayload(
-  app: RecordsApp,
-  s: OAuth2Submit,
-  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the create payload: a JSON object of the record's field values, kept raw until the record validates them
-): { payload: { [key: string]: unknown }; avatarField: string } {
+function oauth2CreatePayload(app: RecordsApp, s: OAuth2Submit) {
   // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the create payload: a JSON object of the record's field values, kept raw until the record validates them
   const payload: { [key: string]: unknown } = {};
   for (const [k, v] of Object.entries(s.createData ?? {})) {

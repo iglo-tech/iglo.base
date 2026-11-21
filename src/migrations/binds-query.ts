@@ -245,23 +245,23 @@ export class QueryModels {
   }
 
   // the methods of a Query that fill the model they are given
-  queryMethods(): Record<string, CustomMethod> {
+  queryMethods() {
     return {
       ...this.#executors(),
       execute: (q: Query) => this.m.toVm(sqlResult(q.execute())),
-    };
+    } satisfies Record<string, CustomMethod>;
   }
 
-  selectMethods(): Record<string, CustomMethod> {
+  selectMethods() {
     return {
       ...this.#executors(),
       model: (q: SelectQuery, args) => {
         this.#model(q, args[0], args[1]);
       },
-    };
+    } satisfies Record<string, CustomMethod>;
   }
 
-  #executors(): Record<string, CustomMethod> {
+  #executors() {
     return {
       one: (q: SelectQuery | Query, args) => {
         this.#one(q, args[0]);
@@ -289,7 +289,7 @@ export class QueryModels {
           }),
         );
       },
-    };
+    } satisfies Record<string, CustomMethod>;
   }
 
   #one(q: SelectQuery | Query, dst: unknown): void {
@@ -477,7 +477,7 @@ function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
   }
 }
 
-function zeroOf(m: Membrane, field: ShapeField): unknown {
+function zeroOf(m: Membrane, field: ShapeField) {
   if (field.nullable) {
     return null;
   }
@@ -590,7 +590,7 @@ function scanValue(
   index: number,
   m: Membrane,
   current: unknown,
-): unknown {
+) {
   const scanError = (reason: string): Error =>
     new Error(`sql: Scan error on column index ${index}, name ${goQuote(column)}: ${reason}`);
   const fail = (from: string, to: string): Error => scanError(`converting ${from} to ${to}`);
@@ -659,10 +659,7 @@ function scanValue(
 }
 
 // sql.Result
-function sqlResult(result: { rowsAffected: number; lastInsertId: number | bigint }): {
-  rowsAffected(): number;
-  lastInsertId(): number;
-} {
+function sqlResult(result: { rowsAffected: number; lastInsertId: number | bigint }) {
   return {
     rowsAffected: () => result.rowsAffected,
     lastInsertId: () => Number(result.lastInsertId),

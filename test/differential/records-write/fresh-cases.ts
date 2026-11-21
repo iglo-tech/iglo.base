@@ -288,7 +288,14 @@ function ruleCases(): Array<WriteCase> {
     count: who === "guest" ? 3 : 7,
     secret: "from " + who,
   });
-  const updateBody: { [K in FreshIdentity]?: JsonObject } = {
+  interface UpdateBodies {
+    guest?: JsonObject;
+    alice?: JsonObject;
+    bob?: JsonObject;
+    dave?: JsonObject;
+    superuser?: JsonObject;
+  }
+  const updateBody: UpdateBodies = {
     guest: { title: "u_guest", count: 9 },
     alice: { "tags+": "c", "count+": 2 },
     bob: { title: "u_bob", tags: ["a", "b"], owner: members.bob.id },

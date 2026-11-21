@@ -37,7 +37,7 @@ export interface Target {
 export const demo1 = "demo1";
 
 // A copy of the fixture, as <root>/pb_data.
-export function freshDataDir(): { root: string; dataDir: string } {
+export function freshDataDir() {
   const root = tempDir();
   const dataDir = join(root, "pb_data");
   copyDataDir(fixtureDir, dataDir);
@@ -174,7 +174,7 @@ function schemaNames(path: string): Array<string> {
 }
 
 // the `_params` ids and `_migrations` files of a data.db
-const keys = (path: string): unknown => {
+const keys = (path: string) => {
   const db = new Database(path, { readonly: true });
   try {
     return [

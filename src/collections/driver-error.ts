@@ -69,7 +69,7 @@ function errStr(rc: number): string {
 
 // the driver's error for a bun:sqlite SQLiteError; other values are
 // returned as they are
-export function driverError(err: unknown): unknown {
+export function driverError(err: unknown) {
   if (!(err instanceof SQLiteError)) {
     return err;
   }

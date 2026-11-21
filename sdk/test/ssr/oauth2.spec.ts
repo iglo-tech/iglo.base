@@ -187,7 +187,9 @@ const popupRequest = (
   token: unknown,
   init: { origin?: string | null; method?: string; cookie?: string } = {},
 ) => {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Partial<Record<"Content-Type" | "Origin" | "Cookie", string>> = {
+    "Content-Type": "application/json",
+  };
   if (init.origin !== null) {
     headers["Origin"] = init.origin ?? APP;
   }

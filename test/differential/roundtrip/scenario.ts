@@ -99,7 +99,7 @@ export function settingsBody(tag: string, smtpPort: number) {
 // JSON.stringify would change
 function edgeBodies(tag: string, people: Array<string>): Array<{ id: string; raw: string }> {
   const [alice, bob, carol] = people as [string, string, string];
-  const raw = (name: string, members: string): { id: string; raw: string } => {
+  const raw = (name: string, members: string) => {
     const id = rid(`${tag}${name}`);
     return { id, raw: `{"id":"${id}",${members}}` };
   };

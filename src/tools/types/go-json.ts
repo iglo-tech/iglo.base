@@ -1268,6 +1268,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return convertAny(node, existing, legacy);
     case "string":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convert returns a decoded Go value of any kind (its result is unknown, see convertAny); the zero value of this kind is a string
         return "";
       }
       if (typeof node !== "string") {
@@ -1276,6 +1277,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return node;
     case "bool":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convert returns a decoded Go value of any kind (its result is unknown, see convertAny); the zero value of this kind is a boolean
         return false;
       }
       if (typeof node !== "boolean") {
@@ -1284,6 +1286,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return node;
     case "float64":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convert returns a decoded Go value of any kind (its result is unknown, see convertAny); the zero value of this kind is a number
         return 0;
       }
       if (!isInstance(NumberNode, node)) {
@@ -1293,6 +1296,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
     case "int":
     case "int64":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convert returns a decoded Go value of any kind (its result is unknown, see convertAny); the zero value of this kind is a number
         return 0;
       }
       if (!isInstance(NumberNode, node)) {
@@ -1361,6 +1365,7 @@ function convertObject(
 // replaced); a nil one gets the natural type of the JSON value
 function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
   if (node === null) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- an interface value is unknown: null, or a dynamic value of the type the existing value had (convert's result)
     return null;
   }
   if (existing !== undefined && existing !== null) {

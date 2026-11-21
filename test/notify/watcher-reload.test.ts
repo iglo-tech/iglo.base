@@ -12,7 +12,7 @@ import { tempDir } from "@test/support/executable";
 
 const logger = { debug() {}, warn() {}, error() {}, info() {} } as never;
 
-function deferred(): { promise: Promise<void>; resolve: () => void } {
+function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((r) => {
     resolve = r;

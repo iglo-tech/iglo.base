@@ -469,11 +469,7 @@ function snapshot(db: Database): Snapshot {
 
 // the snapshot with generated ids aliased and the volatile columns as
 // new/same/changed against the previous snapshot
-function normalize(
-  current: Snapshot,
-  previous: Snapshot | null,
-  aliases: Map<string, string>,
-): { [table: string]: Array<Row> } {
+function normalize(current: Snapshot, previous: Snapshot | null, aliases: Map<string, string>) {
   const alias = (v: unknown): unknown => {
     if (typeof v !== "string") {
       return v;

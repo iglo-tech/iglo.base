@@ -119,6 +119,7 @@ async function request(
   body: unknown,
   token?: string,
 ): Promise<Reply> {
+  // oxlint-disable-next-line quality/no-known-value-widening -- the Authorization header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token !== undefined) {
     headers.Authorization = token;
@@ -240,7 +241,7 @@ function normalizeMail(raw: string): string {
 // transcripts
 
 // generated values replaced, for comparing two servers' replies
-function shape(reply: Reply): unknown {
+function shape(reply: Reply) {
   // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const json = JSON.parse(JSON.stringify(reply.json)) as JsonObject;
   if (typeof json["token"] === "string") {
@@ -261,7 +262,7 @@ function userRow(dataDir: string, id = userId): Row {
 
 // the row as it is now, with the secret and generated columns as whether
 // they changed since `before`, and the system rows that point to the record
-function stateSince(dataDir: string, before: Row): unknown {
+function stateSince(dataDir: string, before: Row) {
   const row = userRow(dataDir, before["id"] as string);
   const changed = (key: string): string => (row[key] === before[key] ? "same" : "changed");
   const refs = (table: string, columns: string): unknown =>

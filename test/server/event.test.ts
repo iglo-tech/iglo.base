@@ -157,6 +157,7 @@ describe("Set and Get", () => {
 });
 
 test("SetAll and GetAll", () => {
+  // oxlint-disable-next-line quality/no-known-value-widening -- setAll takes a map of any keys, and the test adds a key after the call
   const data: Record<string, number> = { a: 123, b: 456 };
 
   const e = newEvent();

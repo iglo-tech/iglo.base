@@ -65,7 +65,7 @@ export function writeMigrations(site: Site, files: Record<string, string>): void
   }
 }
 
-export function readMigrations(site: Site): Record<string, string> {
+export function readMigrations(site: Site) {
   const files: Record<string, string> = {};
   for (const name of readdirSync(site.migrationsDir).toSorted()) {
     files[name] = readFileSync(join(site.migrationsDir, name), "utf8");

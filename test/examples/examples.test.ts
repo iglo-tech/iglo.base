@@ -378,6 +378,7 @@ for (const app of EXAMPLE_APPS) {
             const pb = await startPocketBase(server, dataDir);
             try {
               await createLiveCollection(pb);
+              // oxlint-disable-next-line quality/no-known-value-widening -- a child-process environment whose keys depend on the mode; startApp takes Record<string, string>
               const env: Record<string, string> = { PB_URL: pb.url, PB_PUBLIC_URL: pb.url };
               if (mode.readable) {
                 env["PB_READABLE_COOKIE"] = "1";

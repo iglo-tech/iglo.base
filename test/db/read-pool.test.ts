@@ -142,6 +142,7 @@ test("the pool's connections are read-only and use upstream's pragmas", async ()
   const pragma = async (name: string) => (await db.newQuery(`PRAGMA ${name}`).rowAsync())[0];
   for (const p of connectPragmas) {
     const [, name, value] = /^(\w+)\((.*)\)$/.exec(p)!;
+    // oxlint-disable-next-line quality/no-known-value-widening -- looked up by a pragma name taken from the list, so the key type stays string
     const expected: Record<string, string | number> = {
       busy_timeout: 10_000,
       journal_mode: "wal",
@@ -425,6 +426,7 @@ test("rows() and reading them honor the query's deadline", () => {
   const db = app.concurrentDB();
 
   // an expired deadline fails before the query runs (QueryContext)
+  // oxlint-disable-next-line quality/no-known-value-widening -- the query log callback receives an unknown error (QueryLogFunc)
   let logged: unknown = null;
   const expired = db.newQuery("SELECT 1").withDeadline(new Deadline(-1, now));
   expired.queryLogFunc = (_ms, _sql, err) => {

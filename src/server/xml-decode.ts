@@ -9,6 +9,7 @@
 import { NumError, parseGoFloat, structValue } from "@/server/unmarshal-request-data";
 import type {
   FieldType,
+  Kind,
   StructDst,
   StructField,
   StructType,
@@ -29,6 +30,7 @@ export class XmlSyntaxError extends Error {
 }
 
 // the predefined entities; strict mode knows no others
+// oxlint-disable-next-line quality/no-known-value-widening -- the lookup takes the entity name as a runtime string, guarded by Object.hasOwn below; the open Record lets it index by string without an assertion
 const entity: Record<string, string> = { lt: "<", gt: ">", amp: "&", apos: "'", quot: '"' };
 
 // xml isNameByte
@@ -587,7 +589,8 @@ function fillStruct(el: XmlElement, root: StructDst, type: StructType): void {
   }
 }
 
-const bits: Record<string, number> = {
+// the bit sizes of the sized integer kinds; the other kinds have no entry (64 bits)
+const bits: Partial<Record<Kind, number>> = {
   int8: 8,
   int16: 16,
   int32: 32,
@@ -621,12 +624,15 @@ function elementValue(el: XmlElement, t: FieldType, current?: unknown): unknown 
       return text;
     case "bool":
       if (text === "") {
+        // oxlint-disable-next-line quality/no-known-value-widening -- elementValue returns the field's Go value, which is unknown in general (a text field's unmarshaler result); this is one of its literal results
         return false;
       }
       if (["1", "t", "T", "true", "TRUE", "True"].includes(trimmed)) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- elementValue returns the field's Go value, which is unknown in general (a text field's unmarshaler result); this is one of its literal results
         return true;
       }
       if (["0", "f", "F", "false", "FALSE", "False"].includes(trimmed)) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- elementValue returns the field's Go value, which is unknown in general (a text field's unmarshaler result); this is one of its literal results
         return false;
       }
       throw new NumError("ParseBool", trimmed, "invalid syntax");
@@ -636,6 +642,7 @@ function elementValue(el: XmlElement, t: FieldType, current?: unknown): unknown 
       return text === "" ? 0 : parseGoFloat(trimmed, 64);
     default: {
       if (text === "") {
+        // oxlint-disable-next-line quality/no-known-value-widening -- elementValue returns the field's Go value, which is unknown in general (a text field's unmarshaler result); this is one of its literal results
         return 0;
       }
       // strconv.ParseInt / ParseUint with base 10

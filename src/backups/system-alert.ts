@@ -61,6 +61,7 @@ function systemAlertHTML(appName: string, alertDetails: string): string {
 </html>`;
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- a string-keyed lookup by a character the regex matched: an open table, not a literal key union (the lookup casts the result)
 const templateEscapes: { [c: string]: string } = {
   "\0": "\uFFFD",
   '"': "&#34;",

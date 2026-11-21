@@ -48,22 +48,22 @@ async function createCollections(ctx: ScenarioContext): Promise<void> {
   });
 }
 
-const parent = (name: string, title = name): object => ({
+const parent = (name: string, title = name) => ({
   method: "POST",
   url: "/api/collections/rt_parents/records",
   body: { id: id(name), title },
 });
-const child = (name: string, parentName: string): object => ({
+const child = (name: string, parentName: string) => ({
   method: "POST",
   url: "/api/collections/rt_children/records",
   body: { id: id(name), title: name, parent: id(parentName) },
 });
-const patchParent = (name: string, title: string): object => ({
+const patchParent = (name: string, title: string) => ({
   method: "PATCH",
   url: `/api/collections/rt_parents/records/${id(name)}`,
   body: { title },
 });
-const deleteParent = (name: string): object => ({
+const deleteParent = (name: string) => ({
   method: "DELETE",
   url: `/api/collections/rt_parents/records/${id(name)}`,
 });

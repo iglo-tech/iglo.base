@@ -158,9 +158,11 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
   const host = url.hostname.replaceAll(/^\[|\]$/g, "");
   const isAllowed = opts.isAllowedAddress ?? isAllowedAddress;
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- lastErr also holds the value a catch clause received (fetch's rejection), and a thrown value can be any JS value
   let lastErr: unknown = new Error(`no addresses for ${host}`);
   for (const address of await resolveUntilDeadline(host, signal, opts)) {
     if (!isAllowed(address)) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- lastErr also holds the value a catch clause received (fetch's rejection), and a thrown value can be any JS value
       lastErr = new Error(`address ${address} is invalid or resolve to disallowed IP`);
       continue;
     }

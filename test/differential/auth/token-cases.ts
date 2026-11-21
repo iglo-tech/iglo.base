@@ -60,12 +60,12 @@ function fixtureDB(): Database {
 
 type TokenType = "auth" | "verification" | "passwordReset" | "emailChange";
 
-const secretNames: { [type in TokenType]: string } = {
+const secretNames = {
   auth: "authToken",
   verification: "verificationToken",
   passwordReset: "passwordResetToken",
   emailChange: "emailChangeToken",
-};
+} satisfies { [type in TokenType]: string };
 
 interface MintOptions {
   // the claims that replace the defaults (undefined removes one)

@@ -724,7 +724,7 @@ const random = (n: number): string => "r".repeat(n);
 describe("errors", () => {
   const app = noDBApp();
 
-  function validate(field: FileField, value: unknown, old?: unknown): unknown {
+  function validate(field: FileField, value: unknown, old?: unknown) {
     const collection = newBaseCollection("test_collection");
     collection.fields.add(field);
     const record = new TestRecord(collection);

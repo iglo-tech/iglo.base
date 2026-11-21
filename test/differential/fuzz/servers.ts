@@ -27,7 +27,7 @@ import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 import type { JsonObject } from "@test/support/json";
 
-export const listRules: { [collection: string]: string } = {
+export const listRules = {
   // a relation in a rule (the fixture's demo1 has a null rule, which users
   // and clients keep)
   demo1: `rel_many.verified ?= true || rel_one.text != "" || text = "lorem ipsum"`,
@@ -37,7 +37,7 @@ export const listRules: { [collection: string]: string } = {
   numeric_id_view: `@request.headers.x_token = "test" || email:lower ~ "test2"`,
   // a relation of the auth record in a rule
   demo2: `@request.auth.rel.active = true || @request.auth.id = id || active = true`,
-};
+} satisfies { [collection: string]: string };
 
 export type TokenSet = { [K in Who]: string };
 
@@ -62,7 +62,7 @@ async function getJson(
   authorization: string,
   init: RequestInit = {},
 ): Promise<unknown> {
-  const headers: Record<string, string> = { authorization };
+  const headers = { authorization };
   if (init.body !== undefined) {
     Object.assign(headers, jsonHeader);
   }

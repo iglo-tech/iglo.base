@@ -286,7 +286,7 @@ function listBody(
   totalItems: unknown,
   totalPages: unknown,
   asSet: boolean,
-): unknown {
+) {
   return {
     ids: asSet ? ids.toSorted() : ids,
     page: String(page),

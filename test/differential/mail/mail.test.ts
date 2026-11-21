@@ -165,11 +165,7 @@ async function patchSettings(url: string, settings: unknown): Promise<void> {
   }
 }
 
-function smtpTo(
-  m: Mailpit | { smtpPort: number },
-  extra: JsonObject = {},
-  host = "127.0.0.1",
-): unknown {
+function smtpTo(m: Mailpit | { smtpPort: number }, extra: JsonObject = {}, host = "127.0.0.1") {
   return {
     smtp: {
       enabled: true,

@@ -40,7 +40,7 @@ async function newSite(): Promise<Site> {
 }
 
 // the schema file with posts holding the named text fields
-function postsFile(fields: Array<string>, extra: JsonObject = {}): object {
+function postsFile(fields: Array<string>, extra: JsonObject = {}) {
   return {
     collections: {
       posts: {
