@@ -165,7 +165,7 @@ function parseListenAddr(addr: string): { hostname: string; port: number } {
     if (port.startsWith("-") && portNumber !== 0) {
       portNumber = -portNumber;
     }
-    if (portNumber < 0 || portNumber > 65535) {
+    if (portNumber < 0 || portNumber > 65_535) {
       throw new Error(`listen tcp: address ${port}: invalid port`);
     }
   } else {

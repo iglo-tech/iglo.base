@@ -497,8 +497,8 @@ describe("RelationField large integers", () => {
 
   test("minSelect above 2^53 is compared exactly", () => {
     const field = load(`"minSelect":9007199254740993,"maxSelect":9007199254740992`);
-    expect(field.minSelect).toBe(9007199254740993n);
-    expect(field.maxSelect).toBe(9007199254740992n);
+    expect(field.minSelect).toBe(9_007_199_254_740_993n);
+    expect(field.maxSelect).toBe(9_007_199_254_740_992n);
     expect(field.marshalJSON()).toContain(
       `"minSelect":9007199254740993,"maxSelect":9007199254740992,`,
     );

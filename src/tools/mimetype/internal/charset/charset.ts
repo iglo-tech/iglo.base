@@ -273,9 +273,9 @@ function toLower(b: Uint8Array): string {
       out += "�";
     } else if (r >= 0x41 && r <= 0x5a) {
       out += String.fromCharCode(r + 0x20);
-    } else if (r === 0x130) {
+    } else if (r === 0x1_30) {
       out += "i";
-    } else if (r === 0x212a) {
+    } else if (r === 0x21_2a) {
       out += "k";
     } else {
       out += String.fromCodePoint(r);

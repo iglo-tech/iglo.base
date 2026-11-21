@@ -450,7 +450,7 @@ beforeAll(async () => {
     type: "auth",
     listRule: authRule,
     viewRule: authRule,
-    fields: [{ name: "doc", type: "file", protected: true, maxSelect: 1, maxSize: 1048576 }],
+    fields: [{ name: "doc", type: "file", protected: true, maxSelect: 1, maxSize: 1_048_576 }],
   });
   await ok("POST", "/api/collections", { name: "staff", type: "auth" });
 

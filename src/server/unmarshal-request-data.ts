@@ -825,12 +825,12 @@ function unmarshalAny(value: JsonValue, current: unknown): unknown {
 const intRanges: Record<string, [bigint, bigint]> = {
   int: [-(2n ** 63n), 2n ** 63n - 1n],
   int8: [-128n, 127n],
-  int16: [-32768n, 32767n],
+  int16: [-32_768n, 32_767n],
   int32: [-(2n ** 31n), 2n ** 31n - 1n],
   int64: [-(2n ** 63n), 2n ** 63n - 1n],
   uint: [0n, 2n ** 64n - 1n],
   uint8: [0n, 255n],
-  uint16: [0n, 65535n],
+  uint16: [0n, 65_535n],
   uint32: [0n, 2n ** 32n - 1n],
   uint64: [0n, 2n ** 64n - 1n],
 };

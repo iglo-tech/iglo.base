@@ -253,7 +253,7 @@ function parseInt64(s: string): number | undefined {
     return undefined;
   }
   const n = BigInt(s);
-  if (n > 9223372036854775807n || n < -9223372036854775808n) {
+  if (n > 9_223_372_036_854_775_807n || n < -9_223_372_036_854_775_808n) {
     return undefined;
   }
   return Number(n);

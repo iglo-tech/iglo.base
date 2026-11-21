@@ -627,7 +627,7 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: manyHeaders("wfixdemo2000039", 10000),
+    body: manyHeaders("wfixdemo2000039", 10_000),
     headers: partsHeaders,
   },
   {
@@ -635,7 +635,7 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: manyHeaders("wfixdemo2000040", 10001),
+    body: manyHeaders("wfixdemo2000040", 10_001),
     headers: partsHeaders,
   },
   {

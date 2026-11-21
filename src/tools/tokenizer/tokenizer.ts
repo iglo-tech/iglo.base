@@ -173,9 +173,9 @@ export class Tokenizer {
     }
 
     let ch = this.r.codePointAt(this.pos) as number;
-    const size = ch > 0xffff ? 2 : 1;
-    if (ch >= 0xd800 && ch <= 0xdfff) {
-      ch = 0xfffd; // an invalid UTF-8 byte
+    const size = ch > 0xff_ff ? 2 : 1;
+    if (ch >= 0xd8_00 && ch <= 0xdf_ff) {
+      ch = 0xff_fd; // an invalid UTF-8 byte
     }
     this.pos += size;
     this.lastSize = size;

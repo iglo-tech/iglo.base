@@ -419,7 +419,7 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
 
 // not in upstream's tests: a cascade as deep as Go's growing stack allows
 describe("deep relation cascade", () => {
-  for (const depth of [1_000, 10_000]) {
+  for (const depth of [1000, 10_000]) {
     test(`a self-relation chain of ${depth} records`, async () => {
       const app = newTestApp();
 

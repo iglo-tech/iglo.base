@@ -12,11 +12,11 @@ import { encodePng, type Raw } from "@/files/png-raw";
 function prng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
+    s = (s + 0x6d_2b_79_f5) >>> 0;
     let t = s;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -75,7 +75,7 @@ function exifSegment(value: number, bigEndian = false): Uint8Array {
     ...u16(42),
     ...(bigEndian ? [0, 0, 0, 8] : [8, 0, 0, 0]), // IFD0 at 8
     ...u16(1), // one entry
-    ...u16(0x0112),
+    ...u16(0x01_12),
     ...u16(3), // SHORT
     ...(bigEndian ? [0, 0, 0, 1] : [1, 0, 0, 0]), // count 1
     ...u16(value),
@@ -417,8 +417,8 @@ export async function writeEdgeSet(
   // a valid PNG header claiming 11000x10000 = 110,000,000 px > 104,857,600
   const bomb = encodePng({ width: 1, height: 1, pix: new Uint8Array([0, 0, 0, 255]) });
   const view = new DataView(bomb.buffer);
-  view.setUint32(16, 11000);
-  view.setUint32(20, 10000);
+  view.setUint32(16, 11_000);
+  view.setUint32(20, 10_000);
   view.setUint32(29, Bun.hash.crc32(bomb.subarray(12, 29)) >>> 0);
   put("bomb.png", "image/png", bomb, "PNG header claiming 11000x10000 (110 MP) with 1 px of data");
   // Go's image/jpeg decodes SOF0-2 only; libjpeg-turbo also has arithmetic
@@ -538,7 +538,7 @@ export function writeLargePng(path: string, width: number, height: number, seed:
     ihdr.set([8, 2, 0, 0, 0], 8);
     chunk("IHDR", ihdr);
     const rowLen = 1 + width * 3; // the filter byte (none) and the pixels
-    if (rowLen > 0xffff) {
+    if (rowLen > 0xff_ff) {
       throw new Error("a row must fit in one stored deflate block");
     }
     let a = 1;
@@ -553,18 +553,18 @@ export function writeLargePng(path: string, width: number, height: number, seed:
       const view = new DataView(data.buffer);
       data[head] = y === height - 1 ? 1 : 0; // BFINAL, BTYPE stored
       view.setUint16(head + 1, rowLen, true);
-      view.setUint16(head + 3, ~rowLen & 0xffff, true);
+      view.setUint16(head + 3, ~rowLen & 0xff_ff, true);
       const row = data.subarray(head + 5, head + 5 + rowLen);
       for (let i = 1; i < rowLen; i += 4) {
-        const v = (rand() * 4294967296) >>> 0;
+        const v = (rand() * 4_294_967_296) >>> 0;
         row[i] = v;
         row[i + 1] = v >>> 8;
         row[i + 2] = v >>> 16;
         row[i + 3] = v >>> 24;
       }
       for (const byte of row) {
-        a = (a + byte) % 65521;
-        b = (b + a) % 65521;
+        a = (a + byte) % 65_521;
+        b = (b + a) % 65_521;
       }
       if (tail) {
         view.setUint32(data.length - 4, ((b << 16) | a) >>> 0);
@@ -586,7 +586,7 @@ export function writeNoise(path: string, size: number, seed: number): void {
     for (let left = size; left > 0;) {
       const n = Math.min(left, piece.length);
       for (let i = 0; i < n; i += 4) {
-        const v = (rand() * 4294967296) >>> 0;
+        const v = (rand() * 4_294_967_296) >>> 0;
         piece[i] = v;
         piece[i + 1] = v >>> 8;
         piece[i + 2] = v >>> 16;

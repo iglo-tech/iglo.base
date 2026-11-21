@@ -12,7 +12,7 @@ test("IdentifierMacros", () => {
   // time.Date(2023, 2, 3, 4, 5, 6, 7, time.UTC): a Date holds milliseconds,
   // which the macros read as whole milliseconds as well
   const now = new Date(Date.UTC(2023, 1, 3, 4, 5, 6, 0));
-  expect(fromDate(now)).toEqual({ sec: 1675397106, nsec: 0 });
+  expect(fromDate(now)).toEqual({ sec: 1_675_397_106, nsec: 0 });
 
   const testMacros = new Map<string, unknown>([
     ["@now", "2023-02-03 04:05:06.000Z"],

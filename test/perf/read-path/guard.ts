@@ -34,7 +34,7 @@ function run(name: string, f: () => unknown) {
   for (let i = 0; i < 5000; i++) f();
   const res: number[] = [];
   for (let r = 0; r < 5; r++) {
-    const n = 30000;
+    const n = 30_000;
     const t = performance.now();
     for (let i = 0; i < n; i++) f();
     res.push(((performance.now() - t) * 1000) / n);

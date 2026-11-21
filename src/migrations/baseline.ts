@@ -201,7 +201,7 @@ function superusersCollection(): Collection {
   superusers.system = true;
   superusers.fields.add(new EmailField({ name: "email", system: true, required: true }));
   addAutodateFields(superusers, true);
-  superusers.authToken.duration = 86400; // 1 day
+  superusers.authToken.duration = 86_400; // 1 day
 
   return superusers;
 }

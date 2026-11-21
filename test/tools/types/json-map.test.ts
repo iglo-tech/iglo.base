@@ -156,7 +156,7 @@ describe("JSONMap Go bytes", () => {
     ],
     [
       "number text",
-      { a: 1e21, b: 1e20, c: 1e-7, d: 0.000001, e: 1.5, f: -0, g: 123456789.123 },
+      { a: 1e21, b: 1e20, c: 1e-7, d: 0.000001, e: 1.5, f: -0, g: 123_456_789.123 },
       `{"a":1e+21,"b":100000000000000000000,"c":1e-7,"d":0.000001,"e":1.5,"f":-0,"g":123456789.123}`,
     ],
     ["null and bool", { a: null, b: true, c: false }, `{"a":null,"b":true,"c":false}`],
@@ -196,7 +196,7 @@ describe("JSONMapScan Go decoding", () => {
   test("numbers are float64 and keys keep their own properties", () => {
     const m = scanJSONMap(`{"__proto__":{"a":1},"n":9007199254740993}`);
     expect(Object.hasOwn(m, "__proto__")).toBe(true);
-    expect(m["n"]).toBe(9007199254740992);
+    expect(m["n"]).toBe(9_007_199_254_740_992);
   });
 
   test("merges into an existing map", () => {

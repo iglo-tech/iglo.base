@@ -46,7 +46,7 @@ describe("mintBrowserToken", () => {
     const minted = authToken(T0 + 900, "u1");
     const { fetch, calls } = stubApi(clock, {
       [`POST /api/collections/users/impersonate/u1`]: (call) => {
-        expect(call.headers.get("authorization")).toBe(superuserToken(T0 + 99999));
+        expect(call.headers.get("authorization")).toBe(superuserToken(T0 + 99_999));
         expect(call.body).toEqual({ duration: 900 });
         return json(clock, 200, { token: minted, record: record("forged") });
       },
@@ -65,7 +65,7 @@ describe("mintBrowserToken", () => {
     });
     const su = await createSuperuserClient({
       url: API,
-      token: superuserToken(T0 + 99999),
+      token: superuserToken(T0 + 99_999),
       fetch,
       clock,
     });
@@ -103,7 +103,7 @@ describe("mintBrowserToken", () => {
       fetch,
       origin: APP,
     });
-    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99999), fetch });
+    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99_999), fetch });
     await mintBrowserToken(server, su, { duration: 120 });
     expect(calls.filter((c) => c.path.includes("/impersonate/"))).toHaveLength(1);
   });
@@ -118,7 +118,7 @@ describe("mintBrowserToken", () => {
       fetch,
       origin: APP,
     });
-    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99999), fetch });
+    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99_999), fetch });
     expect(await mintBrowserToken(server, su)).toBeNull();
     expect(calls).toHaveLength(0);
   });
@@ -188,7 +188,7 @@ describe("handleBrowserTokenRenew", () => {
     // the same clock as the response's serverTime, so a millisecond tick cannot move it
     const su = await createSuperuserClient({
       url: API,
-      token: superuserToken(T0 + 99999),
+      token: superuserToken(T0 + 99_999),
       fetch,
       clock,
     });
@@ -259,7 +259,7 @@ describe("handleBrowserTokenRenew", () => {
     const { fetch, calls } = stubApi(clock, {});
     const superuser = await createSuperuserClient({
       url: API,
-      token: superuserToken(T0 + 99999),
+      token: superuserToken(T0 + 99_999),
       fetch,
       clock,
     });
@@ -281,7 +281,7 @@ describe("handleBrowserTokenRenew", () => {
       "POST /api/collections/users/auth-refresh": () =>
         json(clock, 401, { status: 401, message: "revoked", data: {} }),
     });
-    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99999), fetch });
+    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99_999), fetch });
     const res = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), {
       url: API,
       clock,
@@ -306,7 +306,7 @@ describe("handleBrowserTokenRenew", () => {
       "POST /api/collections/users/impersonate/u1": () =>
         json(clock, 200, { token: authToken(T0 + 900), record: record() }),
     });
-    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99999), fetch });
+    const su = await createSuperuserClient({ url: API, token: superuserToken(T0 + 99_999), fetch });
     const options = { url: API, clock, fetch, superuser: su, sessionCache: cache };
 
     const first = await handleBrowserTokenRenew(renewRequest(cookieHeader(session)), options);
@@ -330,7 +330,7 @@ describe("handleBrowserTokenRenew", () => {
       fetch,
       superuser: await createSuperuserClient({
         url: API,
-        token: superuserToken(T0 + 99999),
+        token: superuserToken(T0 + 99_999),
         fetch,
       }),
     });
@@ -423,7 +423,7 @@ describe("handleBrowserTokenRenew: configuration and mint failures", () => {
     });
     const su = await createSuperuserClient({
       url: API,
-      token: superuserToken(T0 + 99999),
+      token: superuserToken(T0 + 99_999),
       fetch,
       clock,
     });
@@ -457,7 +457,7 @@ describe("handleBrowserTokenRenew: configuration and mint failures", () => {
     });
     const su = await createSuperuserClient({
       url: API,
-      token: superuserToken(T0 + 99999),
+      token: superuserToken(T0 + 99_999),
       fetch,
       clock,
     });
@@ -496,7 +496,7 @@ describe("handleBrowserTokenRenew: configuration and mint failures", () => {
     });
     const su = await createSuperuserClient({
       url: API,
-      token: superuserToken(T0 + 99999),
+      token: superuserToken(T0 + 99_999),
       fetch,
       clock,
     });
@@ -527,7 +527,7 @@ async function renewWhenImpersonateAnswers(status: number, session = authToken(T
   });
   const su = await createSuperuserClient({
     url: API,
-    token: superuserToken(T0 + 99999),
+    token: superuserToken(T0 + 99_999),
     fetch,
     clock,
   });

@@ -196,7 +196,7 @@ describe("EditorField large integers", () => {
     expect(settingsErrors(loadLargeInt(`"maxSize":9007199254740991`))).toBeNull();
     const field = loadLargeInt(`"maxSize":9007199254740993`);
     expect(field.marshalJSON()).toContain(`"maxSize":9007199254740993`);
-    expect(field.calculateMaxBodySize()).toBe(9007199254740993n);
+    expect(field.calculateMaxBodySize()).toBe(9_007_199_254_740_993n);
     expect(settingsErrors(field)).toBe(
       `{"maxSize":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 9007199254740991.","params":{"threshold":9007199254740991}}}`,
     );

@@ -107,7 +107,7 @@ export const MatchNL: Flags = ClassNL | DotNL;
 export const Perl: Flags = ClassNL | OneLine | PerlX | UnicodeGroups; // as close to Perl as possible
 export const POSIX: Flags = 0; // POSIX syntax
 
-const flagsMask = 0xffff;
+const flagsMask = 0xff_ff;
 
 // Pseudo-ops for parsing stack (opPseudo + iota; literals here because
 // regexp.ts imports this module).
@@ -1870,7 +1870,7 @@ function mergeCharClass(dst: Regexp, src: Regexp): void {
   }
 }
 
-const anyTable: RangeTable = { ranges: [0, 0xffff, 1, 0x10000, MaxRune, 1] };
+const anyTable: RangeTable = { ranges: [0, 0xff_ff, 1, 0x1_00_00, MaxRune, 1] };
 
 const asciiTable: RangeTable = { ranges: [0, 0x7f, 1] };
 
@@ -1879,11 +1879,11 @@ const asciiFoldTable: RangeTable = {
     0,
     0x7f,
     1,
-    0x017f, // Old English long s (ſ), folds to S/s.
-    0x017f,
+    0x01_7f, // Old English long s (ſ), folds to S/s.
+    0x01_7f,
     1,
-    0x212a, // Kelvin K, folds to K/k.
-    0x212a,
+    0x21_2a, // Kelvin K, folds to K/k.
+    0x21_2a,
     1,
   ],
 };
@@ -2078,8 +2078,8 @@ export function appendRange(r: number[], lo: number, hi: number): number[] {
 
 // minimum and maximum runes involved in folding.
 // checked during test.
-export const minFold = 0x0041;
-export const maxFold = 0x1e943;
+export const minFold = 0x00_41;
+export const maxFold = 0x1_e9_43;
 
 // appendFoldedRange returns the result of appending the range lo-hi
 // and its case folding-equivalent runes to the class r.

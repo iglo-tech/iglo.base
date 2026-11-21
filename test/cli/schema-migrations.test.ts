@@ -239,7 +239,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
         {
           title: { type: "text" },
           author: { type: "relation", collection: "authors", maxSelect: 1 },
-          cover: { type: "file", maxSelect: 1, maxSize: 100000 },
+          cover: { type: "file", maxSelect: 1, maxSize: 100_000 },
         },
         { list: '@collection.authors.id != ""', view: "" },
       ),
@@ -273,7 +273,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
         {
           title: { type: "text" },
           author: { type: "relation", collection: "writers", maxSelect: 1 },
-          cover: { type: "file", maxSelect: 1, maxSize: 100000 },
+          cover: { type: "file", maxSelect: 1, maxSize: 100_000 },
         },
         { list: '@collection.writers.id != ""', view: "" },
       ),

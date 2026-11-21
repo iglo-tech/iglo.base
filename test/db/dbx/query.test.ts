@@ -423,10 +423,10 @@ describe("rows are read incrementally", () => {
 // Go reads INTEGER columns as int64; safe integers come back as numbers
 // and the others as exact bigints.
 describe("integers are read losslessly", () => {
-  const big = 9007199254740993n;
+  const big = 9_007_199_254_740_993n;
   const sql =
     "SELECT 9007199254740993 AS big, -9223372036854775808 AS min, 42 AS small, 1.5 AS real";
-  const expected = { big, min: -9223372036854775808n, small: 42, real: 1.5 };
+  const expected = { big, min: -9_223_372_036_854_775_808n, small: 42, real: 1.5 };
 
   test("every reader", () => {
     const db = getDB();
@@ -436,7 +436,7 @@ describe("integers are read losslessly", () => {
     expect([...db.newQuery(sql).rows()]).toEqual([Object.values(expected)]);
     expect(db.newQuery(sql).column()).toEqual([big]);
     expect(db.newQuery(sql).prepare().row()).toEqual(Object.values(expected));
-    expect(db.newQuery("SELECT 9007199254740991 AS n").row()).toEqual([9007199254740991]);
+    expect(db.newQuery("SELECT 9007199254740991 AS n").row()).toEqual([9_007_199_254_740_991]);
   });
 
   test("a bigint is written back exactly", () => {
@@ -452,21 +452,21 @@ describe("integers are read losslessly", () => {
   test("withExactIntegers keeps the storage class", () => {
     const db = getDB();
     const classes = "SELECT 1234567 AS i, 1234567.0 AS r, -0.0 AS z, 5 AS s, 'x' AS t, NULL AS n";
-    const exact = { i: 1234567n, r: 1234567, z: -0, s: 5n, t: "x", n: null };
+    const exact = { i: 1_234_567n, r: 1_234_567, z: -0, s: 5n, t: "x", n: null };
     const q = () => db.newQuery(classes).withExactIntegers();
     expect(q().one()).toEqual(exact);
     expect(q().all()).toEqual([exact]);
     expect(q().row()).toEqual(Object.values(exact));
     expect([...q().rows()]).toEqual([Object.values(exact)]);
-    expect(q().column()).toEqual([1234567n]);
+    expect(q().column()).toEqual([1_234_567n]);
     expect(q().prepare().row()).toEqual(Object.values(exact));
     // duplicate column names read through a subquery
     expect(db.newQuery("SELECT 1 AS a, 2.0 AS a").withExactIntegers().row()).toEqual([1n, 2]);
     // multiple statements: the rows of the last one
     expect(db.newQuery("SELECT 1; SELECT 3 AS v").withExactIntegers().row()).toEqual([3n]);
     // off by default, and when turned off again
-    expect(db.newQuery(classes).one()).toEqual({ ...exact, i: 1234567, s: 5 });
-    expect(q().withExactIntegers(false).row()).toEqual([1234567, 1234567, -0, 5, "x", null]);
+    expect(db.newQuery(classes).one()).toEqual({ ...exact, i: 1_234_567, s: 5 });
+    expect(q().withExactIntegers(false).row()).toEqual([1_234_567, 1_234_567, -0, 5, "x", null]);
   });
 });
 
@@ -569,10 +569,12 @@ describe("generated rowids are kept exactly", () => {
 
   test("lastInsertId", () => {
     const db = bigDB();
-    expect(db.insert("big", { v: "a" }).execute().lastInsertId).toBe(9007199254740993n);
-    expect(db.insert("big", { v: "b" }).prepare().execute().lastInsertId).toBe(9007199254740994n);
+    expect(db.insert("big", { v: "a" }).execute().lastInsertId).toBe(9_007_199_254_740_993n);
+    expect(db.insert("big", { v: "b" }).prepare().execute().lastInsertId).toBe(
+      9_007_199_254_740_994n,
+    );
     db.transactional((tx) => {
-      expect(tx.insert("big", { v: "c" }).execute().lastInsertId).toBe(9007199254740995n);
+      expect(tx.insert("big", { v: "c" }).execute().lastInsertId).toBe(9_007_199_254_740_995n);
     });
     expect(getPreparedDB().insert("item", { name: "x" }).execute().lastInsertId).toBe(6);
   });
@@ -582,12 +584,12 @@ describe("generated rowids are kept exactly", () => {
     const m = new Big();
     m.v = "inserted";
     db.model(m).insert();
-    expect(m.id).toBe(9007199254740993n);
+    expect(m.id).toBe(9_007_199_254_740_993n);
     m.v = "updated";
     db.model(m).update();
     expect(db.newQuery("SELECT id, v FROM big ORDER BY id").all()).toEqual([
-      { id: 9007199254740992n, v: "seed" },
-      { id: 9007199254740993n, v: "updated" },
+      { id: 9_007_199_254_740_992n, v: "seed" },
+      { id: 9_007_199_254_740_993n, v: "updated" },
     ]);
   });
 });
@@ -599,7 +601,7 @@ describe("SQL texts with several statements", () => {
   test("rows come from the last statement", () => {
     const db = getDB();
     expect(db.newQuery("SELECT 1 AS a; SELECT 2 AS b").all()).toEqual([{ b: 2 }]);
-    expect(db.newQuery("PRAGMA cache_size(-12345); PRAGMA cache_size").row()).toEqual([-12345]);
+    expect(db.newQuery("PRAGMA cache_size(-12345); PRAGMA cache_size").row()).toEqual([-12_345]);
     expect(db.newQuery("SELECT 1 AS a; SELECT 2 AS b WHERE 0").rows().columns()).toEqual(["b"]);
     expect(db.newQuery("SELECT 1 AS a; -- comment").row()).toEqual([1]);
     expect(db.newQuery("SELECT 1 AS a; SELECT 2 AS b").prepare().row()).toEqual([2]);

@@ -94,7 +94,7 @@ export function withPartial(err: unknown, prefix: string, delim: string): unknow
 }
 
 // jsontext's maxNestingDepth
-const maxNestingDepth = 10000;
+const maxNestingDepth = 10_000;
 
 export interface MarshalOptions {
   // encoding/json (v1) defaults: EscapeForHTML, EscapeForJS,
@@ -272,7 +272,7 @@ export function compareUTF8(a: string, b: string): number {
     if (ca !== cb) {
       return ca < cb ? -1 : 1;
     }
-    if (ca > 0xffff) {
+    if (ca > 0xff_ff) {
       i++;
     }
   }
@@ -315,7 +315,7 @@ export function quote(
       esc = escapeASCII(c);
     } else if ((c === 0x3c || c === 0x3e || c === 0x26) && flags.escapeForHTML) {
       esc = escapeUTF16(c);
-    } else if ((c === 0x2028 || c === 0x2029) && flags.escapeForJS) {
+    } else if ((c === 0x20_28 || c === 0x20_29) && flags.escapeForJS) {
       esc = escapeUTF16(c);
     }
     if (esc !== undefined) {
@@ -553,9 +553,9 @@ function scanCanonicalString(s: string, i: number): number {
       }
       return -1;
     }
-    if (c >= 0xd800 && c <= 0xdfff) {
+    if (c >= 0xd8_00 && c <= 0xdf_ff) {
       const next = s.charCodeAt(i + 1);
-      if (c <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      if (c <= 0xdb_ff && next >= 0xdc_00 && next <= 0xdf_ff) {
         i++;
         continue;
       }
@@ -631,7 +631,7 @@ class Reformatter {
         const c = ch.charCodeAt(0);
         if ((c === 0x3c || c === 0x3e || c === 0x26) && this.flags.escapeForHTML) {
           out += escapeUTF16(c);
-        } else if ((c === 0x2028 || c === 0x2029) && this.flags.escapeForJS) {
+        } else if ((c === 0x20_28 || c === 0x20_29) && this.flags.escapeForJS) {
           out += escapeUTF16(c);
         } else {
           out += ch;
@@ -755,12 +755,12 @@ function scanString(s: string, start: number, validateUTF8: boolean): [string, n
     if (c < 0x20) {
       throw new JSONSyntaxError(`invalid character in string at offset ${i}`);
     }
-    if (c >= 0xd800 && c <= 0xdfff) {
+    if (c >= 0xd8_00 && c <= 0xdf_ff) {
       const pair =
-        c <= 0xdbff &&
+        c <= 0xdb_ff &&
         i + 1 < s.length &&
-        s.charCodeAt(i + 1) >= 0xdc00 &&
-        s.charCodeAt(i + 1) <= 0xdfff;
+        s.charCodeAt(i + 1) >= 0xdc_00 &&
+        s.charCodeAt(i + 1) <= 0xdf_ff;
       if (pair) {
         i += 2;
         continue;
@@ -833,7 +833,7 @@ function scanString(s: string, start: number, validateUTF8: boolean): [string, n
           canonical = false;
         }
         i += 6;
-        if (v1 < 0xd800 || v1 > 0xdfff) {
+        if (v1 < 0xd8_00 || v1 > 0xdf_ff) {
           out += String.fromCharCode(v1);
           break;
         }
@@ -843,7 +843,7 @@ function scanString(s: string, start: number, validateUTF8: boolean): [string, n
           s[i] === "\\" && s[i + 1] === "u" && /^[0-9a-fA-F]{4}$/.test(hex2)
             ? Number.parseInt(hex2, 16)
             : -1;
-        if (v1 <= 0xdbff && v2 >= 0xdc00 && v2 <= 0xdfff) {
+        if (v1 <= 0xdb_ff && v2 >= 0xdc_00 && v2 <= 0xdf_ff) {
           out += String.fromCharCode(v1, v2);
           i += 6;
           break;
@@ -928,15 +928,15 @@ export function textToBytes(text: string): Uint8Array {
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
-    if (c >= 0xd800 && c <= 0xdbff) {
+    if (c >= 0xd8_00 && c <= 0xdb_ff) {
       const next = text.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
+      if (next >= 0xdc_00 && next <= 0xdf_ff) {
         i++;
       }
       continue;
     }
-    if (c >= 0xdc80 && c <= 0xdcff) {
-      parts.push(encoder.encode(text.slice(start, i)), Uint8Array.of(c - 0xdc00));
+    if (c >= 0xdc_80 && c <= 0xdc_ff) {
+      parts.push(encoder.encode(text.slice(start, i)), Uint8Array.of(c - 0xdc_00));
       start = i + 1;
     }
   }

@@ -76,7 +76,7 @@ const newYork = {
   "parsed -04:00, +1 day over the autumn change": "2024-11-03 17:00:00.000Z",
   "now, +1 day over the spring change (US)": "2024-03-10 16:00:00.000Z",
   "now, -30 days over the autumn change (log retention)": "2024-10-16 11:00:00.000Z",
-  "now, zone offset": -14400,
+  "now, zone offset": -14_400,
   // 02:30 on March 10 does not exist: Go gives 01:30 EST (west of UTC)
   "now, +1 day into the US spring gap": "2024-03-10 06:30:00.000Z",
   // 01:30 on November 3 exists twice: Go picks EDT (west of UTC)
@@ -85,11 +85,11 @@ const newYork = {
   "EST in July": "2024-07-15 13:00:00.000Z",
 };
 
-const kolkata = { ...base, "now, zone offset": 19800 };
+const kolkata = { ...base, "now, zone offset": 19_800 };
 
 const sydney = {
   ...base,
-  "now, zone offset": 36000,
+  "now, zone offset": 36_000,
   "now, +1 day over the 2040 Sydney spring change": "2040-10-07 01:00:00.000Z",
 };
 
@@ -100,10 +100,10 @@ function ruleOnlyTZif(): string {
   counts.writeUInt32BE(2, 16); // zones
   counts.writeUInt32BE(abbrev.length, 20); // abbreviation characters
   const zones = Buffer.alloc(12);
-  zones.writeInt32BE(-18000, 0);
+  zones.writeInt32BE(-18_000, 0);
   zones.writeUInt8(0, 4);
   zones.writeUInt8(0, 5);
-  zones.writeInt32BE(-14400, 6);
+  zones.writeInt32BE(-14_400, 6);
   zones.writeUInt8(1, 10);
   zones.writeUInt8(4, 11);
   const header = Buffer.concat([Buffer.from("TZif2"), Buffer.alloc(15)]);

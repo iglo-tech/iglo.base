@@ -132,7 +132,7 @@ export function parseUnverifiedToken(token: string, claims: MapClaims): Unverifi
 
 // Unix seconds as Go's internal time seconds (since year 1), wrapped to
 // int64 like time.Unix's addition
-const unixToInternal = 62135596800n;
+const unixToInternal = 62_135_596_800n;
 
 function internalSeconds(unixSec: bigint): bigint {
   return BigInt.asIntN(64, unixSec + unixToInternal);

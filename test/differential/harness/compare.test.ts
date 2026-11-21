@@ -21,7 +21,7 @@ const authClaims = (over: Record<string, unknown> = {}) => ({
   type: "auth",
   collectionId: "ccccccccccccccc",
   refreshable: true,
-  exp: 2000000000,
+  exp: 2_000_000_000,
   ...over,
 });
 
@@ -205,14 +205,14 @@ describe("generated values", () => {
     test("the same claims pass whatever the signature and a whole-second exp variation", () => {
       const pairing = new Pairing();
       const up = jwt(authClaims(user("a")));
-      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2000000001 })))).toEqual(
+      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2_000_000_001 })))).toEqual(
         [],
       );
       // the same-second sign-in: upstream's equal tokens against two of ours
-      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2000000002 })))).toEqual(
+      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2_000_000_002 })))).toEqual(
         [],
       );
-      expect(check(jwt(authClaims({ exp: 2000000003 })), jwt(authClaims()))).toEqual([]);
+      expect(check(jwt(authClaims({ exp: 2_000_000_003 })), jwt(authClaims()))).toEqual([]);
     });
 
     test("a different type, collectionId, refreshable, header or id is a difference", () => {
@@ -227,15 +227,19 @@ describe("generated values", () => {
 
     test("an exp beyond the bound is a difference", () => {
       const up = jwt(authClaims());
-      expect(check(up, jwt(authClaims({ exp: 2000000000 + tokenExpSlack + 1 })))).not.toEqual([]);
-      expect(check(up, jwt(authClaims({ exp: 2000000000 - tokenExpSlack - 1 })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ exp: 2_000_000_000 + tokenExpSlack + 1 })))).not.toEqual(
+        [],
+      );
+      expect(check(up, jwt(authClaims({ exp: 2_000_000_000 - tokenExpSlack - 1 })))).not.toEqual(
+        [],
+      );
       expect(check(up, jwt(authClaims({ exp: "2000000000" })))).not.toEqual([]);
     });
 
     test("exp follows the clock offset of legs that run one after the other", () => {
       const offset = new Pairing({ clockOffset: 13 });
       const up = jwt(authClaims());
-      expect(checkWith(offset, up, jwt(authClaims({ exp: 2000000013 })))).toEqual([]);
+      expect(checkWith(offset, up, jwt(authClaims({ exp: 2_000_000_013 })))).toEqual([]);
       expect(checkWith(new Pairing({ clockOffset: 13 }), up, jwt(authClaims()))).not.toEqual([]);
     });
 
@@ -618,7 +622,7 @@ describe("council round 3", () => {
     expect(
       diff(
         res(`{"token":"${jwt(authClaims({ type: "file" }))}"}`),
-        res(`{"token":"${jwt(authClaims({ type: "file", exp: 2000000001 }))}"}`),
+        res(`{"token":"${jwt(authClaims({ type: "file", exp: 2_000_000_001 }))}"}`),
         { url: "/api/files/token" },
       ),
     ).toEqual([]);

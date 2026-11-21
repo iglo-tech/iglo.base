@@ -20,7 +20,7 @@ export class RealtimeService extends BaseService {
   private subscriptions: Subscriptions = {};
   private lastSentSubscriptions: Array<string> = [];
   private connectTimeoutId?: ReturnType<typeof setTimeout>;
-  private maxConnectTimeout: number = 15000;
+  private maxConnectTimeout: number = 15_000;
   private reconnectTimeoutId?: ReturnType<typeof setTimeout>;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = Infinity;

@@ -190,10 +190,10 @@ function encodeRawRune(n: number): number[] {
   if (n <= 0x7f) {
     return [n];
   }
-  if (n <= 0x7ff) {
+  if (n <= 0x7_ff) {
     return [0xc0 | (n >> 6), 0x80 | (n & 0x3f)];
   }
-  if (n <= 0xffff) {
+  if (n <= 0xff_ff) {
     return [0xe0 | (n >> 12), 0x80 | ((n >> 6) & 0x3f), 0x80 | (n & 0x3f)];
   }
   return [0xf0 | (n >> 18), 0x80 | ((n >> 12) & 0x3f), 0x80 | ((n >> 6) & 0x3f), 0x80 | (n & 0x3f)];

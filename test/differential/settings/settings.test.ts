@@ -473,7 +473,7 @@ async function startupResult(
       env: { ...process.env, NO_COLOR: "1", ...env },
     },
   );
-  const timer = setTimeout(() => proc.kill("SIGKILL"), 5_000);
+  const timer = setTimeout(() => proc.kill("SIGKILL"), 5000);
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),

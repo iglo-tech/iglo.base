@@ -830,7 +830,7 @@ describe("Provider page arithmetic", () => {
       const p = newProvider(new TestFieldResolver(), { clock }).query(baseQuery(testDB));
       p.parse("page=9223372036854775807&perPage=1");
       let result = await p.exec();
-      expect(result.page).toBe(9223372036854775807n);
+      expect(result.page).toBe(9_223_372_036_854_775_807n);
       expect(result.items.length).toBe(0);
       // (an offset past 2^53 rows is given as 2^53 - 1: no table is near either)
       expect(modelsQuery(testDB)).toEndWith(" LIMIT 1 OFFSET 9007199254740991");
@@ -839,7 +839,7 @@ describe("Provider page arithmetic", () => {
       testDB.calledQueries = [];
       p.parse("page=4611686018427387904&perPage=1000");
       result = await p.exec();
-      expect(result.page).toBe(4611686018427387904n);
+      expect(result.page).toBe(4_611_686_018_427_387_904n);
       expect(result.items.length).toBe(2);
       expect(modelsQuery(testDB)).toEndWith(" LIMIT 1000");
 

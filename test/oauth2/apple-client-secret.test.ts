@@ -53,8 +53,8 @@ describe("Apple client secret", () => {
       iss: "ABCDE12345",
       sub: "com.example.app",
       aud: ["https://appleid.apple.com"],
-      exp: 1700003723,
-      iat: 1700000123,
+      exp: 1_700_003_723,
+      iat: 1_700_000_123,
     });
     // raw r||s, 32 bytes each
     expect(signature.length).toBe(64);

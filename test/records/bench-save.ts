@@ -82,8 +82,8 @@ const wideUpdate = (i: number) => ({
   j: { a: i },
 });
 
-const cascadeChildren = 1_000;
-const chainDepth = 1_000;
+const cascadeChildren = 1000;
+const chainDepth = 1000;
 const truncateRows = 10_000;
 
 const insertParent = `INSERT INTO cparents (id, name) VALUES ('p00000000000001', 'parent')`;

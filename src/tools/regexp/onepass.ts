@@ -170,7 +170,7 @@ class queueOnePass {
 // i, NextIp[i/2] is the target. If the input sets intersect, an empty runeset and a
 // NextIp array with the single element mergeFailed is returned.
 // The code assumes that both inputs contain ordered and non-intersecting rune pairs.
-const mergeFailed = 0xffffffff;
+const mergeFailed = 0xff_ff_ff_ff;
 
 function mergeRuneSets(
   leftRunes: readonly number[],

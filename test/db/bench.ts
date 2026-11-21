@@ -77,7 +77,7 @@ withCopy((dataDir) => {
       .execute();
 
     // single-row inserts, each its own implicit transaction
-    const autocommitN = 2_000;
+    const autocommitN = 2000;
     let ms = time(() => {
       for (let i = 0; i < autocommitN; i++) {
         app

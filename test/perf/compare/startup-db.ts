@@ -41,7 +41,7 @@ try {
       { name: "kind", type: "select", values: ["a", "b", "c"], maxSelect: 1 },
       { name: "meta", type: "json" },
       { name: "due", type: "date" },
-      { name: "files", type: "file", maxSelect: 5, maxSize: 5242880 },
+      { name: "files", type: "file", maxSelect: 5, maxSize: 5_242_880 },
       { name: "created", type: "autodate", onCreate: true },
       { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ];

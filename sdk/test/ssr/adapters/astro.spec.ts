@@ -59,7 +59,7 @@ async function adapter(
 ): Promise<AstroAuth> {
   const superuser = await createSuperuserClient({
     url: API,
-    token: superuserToken(T0 + 99999),
+    token: superuserToken(T0 + 99_999),
     fetch: api.fetch,
     clock,
   });

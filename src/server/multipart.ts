@@ -60,7 +60,7 @@ const maxMIMEHeaderSize = 10 << 20;
 // the GODEBUG multipartmaxheaders default: the maximum number of header
 // entries NextPart will return, as well as the maximum combined total of
 // header entries Reader.ReadForm will return in FileHeaders
-const maxMIMEHeaders = 10000;
+const maxMIMEHeaders = 10_000;
 
 // the GODEBUG multipartmaxparts default: the maximum number of parts in a
 // form
@@ -436,7 +436,7 @@ function createTemp(): { fd: number; name: string } {
     try {
       return { fd: openSync(name, "wx+", 0o600), name };
     } catch (err) {
-      if ((err as { code?: string }).code === "EEXIST" && tries < 10000) {
+      if ((err as { code?: string }).code === "EEXIST" && tries < 10_000) {
         continue;
       }
       throw err;

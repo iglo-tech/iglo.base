@@ -620,7 +620,7 @@ getterTable<number>(
       ["test", zeroTime],
       [["true"], zeroTime],
       [{ test: 1n }, zeroTime],
-      [1641024040n, DateTime.fromDate(testTime)],
+      [1_641_024_040n, DateTime.fromDate(testTime)],
       ["2022-01-01 08:00:40.000", DateTime.fromDate(testTime)],
       [nowTime, DateTime.fromDate(nowTime)],
     ],

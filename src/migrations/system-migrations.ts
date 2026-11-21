@@ -91,7 +91,7 @@ export function systemMigrationHasDown(file: string): boolean {
 }
 
 // the timestamp of the newest system migration (03-data-compatibility.md)
-const baselineTimestamp = 1778828400;
+const baselineTimestamp = 1_778_828_400;
 
 const auxInitFile = "1640988000_aux_init.go";
 

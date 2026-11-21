@@ -11,7 +11,7 @@ export interface CentralEntry {
   modTime: number;
 }
 
-const endSignature = 0x06054b50;
+const endSignature = 0x06_05_4b_50;
 
 export function centralEntries(zip: Uint8Array): CentralEntry[] {
   const view = new DataView(zip.buffer, zip.byteOffset, zip.length);
@@ -34,7 +34,7 @@ export function centralEntries(zip: Uint8Array): CentralEntry[] {
     let modTime = 0;
     for (let q = p + 46 + nameLen; q + 4 <= p + 46 + nameLen + extraLen;) {
       const size = view.getUint16(q + 2, true);
-      if (view.getUint16(q, true) === 0x5455) {
+      if (view.getUint16(q, true) === 0x54_55) {
         modTime = view.getUint32(q + 5, true);
       }
       q += 4 + size;

@@ -131,7 +131,7 @@ function executableJar(b: Bytes): boolean {
   b.advance(off + 2);
 
   const [cafe, ok2] = b.uint16();
-  return ok2 && cafe === 0xcafe;
+  return ok2 && cafe === 0xca_fe;
 }
 
 export type zipEntries = {

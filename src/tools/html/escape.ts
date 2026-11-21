@@ -15,54 +15,54 @@ import { entity, entity2, longestEntityWithoutSemicolon } from "@/tools/html/ent
 // assumed Windows-1252 encoding.
 // https://html.spec.whatwg.org/multipage/syntax.html#consume-a-character-reference
 const replacementTable: readonly number[] = [
-  0x20ac, // First entry is what 0x80 should be replaced with.
-  0x0081,
-  0x201a,
-  0x0192,
-  0x201e,
-  0x2026,
-  0x2020,
-  0x2021,
-  0x02c6,
-  0x2030,
-  0x0160,
-  0x2039,
-  0x0152,
-  0x008d,
-  0x017d,
-  0x008f,
-  0x0090,
-  0x2018,
-  0x2019,
-  0x201c,
-  0x201d,
-  0x2022,
-  0x2013,
-  0x2014,
-  0x02dc,
-  0x2122,
-  0x0161,
-  0x203a,
-  0x0153,
-  0x009d,
-  0x017e,
-  0x0178, // Last entry is 0x9F.
+  0x20_ac, // First entry is what 0x80 should be replaced with.
+  0x00_81,
+  0x20_1a,
+  0x01_92,
+  0x20_1e,
+  0x20_26,
+  0x20_20,
+  0x20_21,
+  0x02_c6,
+  0x20_30,
+  0x01_60,
+  0x20_39,
+  0x01_52,
+  0x00_8d,
+  0x01_7d,
+  0x00_8f,
+  0x00_90,
+  0x20_18,
+  0x20_19,
+  0x20_1c,
+  0x20_1d,
+  0x20_22,
+  0x20_13,
+  0x20_14,
+  0x02_dc,
+  0x21_22,
+  0x01_61,
+  0x20_3a,
+  0x01_53,
+  0x00_9d,
+  0x01_7e,
+  0x01_78, // Last entry is 0x9F.
   // 0x00->'�' is handled programmatically.
   // 0x0D->'\u000D' is a no-op.
 ];
 
 const ampersand = 0x26;
-const replacementChar = 0xfffd;
+const replacementChar = 0xff_fd;
 
 // runeLen is utf8.RuneLen: the number of bytes needed to encode r, or -1 if r
 // is not a valid rune.
 function runeLen(r: number): number {
   if (r < 0) return -1;
   if (r < 0x80) return 1;
-  if (r < 0x800) return 2;
-  if (0xd800 <= r && r <= 0xdfff) return -1;
-  if (r < 0x10000) return 3;
-  if (r <= 0x10ffff) return 4;
+  if (r < 0x8_00) return 2;
+  if (0xd8_00 <= r && r <= 0xdf_ff) return -1;
+  if (r < 0x1_00_00) return 3;
+  if (r <= 0x10_ff_ff) return 4;
   return -1;
 }
 
@@ -70,9 +70,9 @@ function runeLen(r: number): number {
 function appendRune(out: number[], r: number): void {
   if (r < 0x80) {
     out.push(r);
-  } else if (r < 0x800) {
+  } else if (r < 0x8_00) {
     out.push(0xc0 | (r >> 6), 0x80 | (r & 0x3f));
-  } else if (r < 0x10000) {
+  } else if (r < 0x1_00_00) {
     out.push(0xe0 | (r >> 12), 0x80 | ((r >> 6) & 0x3f), 0x80 | (r & 0x3f));
   } else {
     out.push(
@@ -137,7 +137,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
           break;
         }
       }
-      if (x <= 0x10ffff) {
+      if (x <= 0x10_ff_ff) {
         x = mult * x + d;
       }
       i++;
@@ -155,7 +155,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
     if (0x80 <= x && x <= 0x9f) {
       // Replace characters from Windows-1252 with UTF-8 equivalents.
       x = replacementTable[x - 0x80]!;
-    } else if (x === 0 || (0xd800 <= x && x <= 0xdfff) || x > 0x10ffff) {
+    } else if (x === 0 || (0xd8_00 <= x && x <= 0xdf_ff) || x > 0x10_ff_ff) {
       // Replace invalid characters with the replacement character.
       x = replacementChar;
     }

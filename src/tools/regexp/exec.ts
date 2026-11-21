@@ -38,7 +38,7 @@ import {
   type Prog,
 } from "@/tools/regexp/syntax/prog";
 
-const RuneError = 0xfffd;
+const RuneError = 0xff_fd;
 export const endOfText = -1;
 
 // The compiled state of a Regexp that find uses (the unexported fields of

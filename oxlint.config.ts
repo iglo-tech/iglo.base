@@ -94,7 +94,6 @@ export default defineConfig({
         "unicorn/catch-error-name": "off",
         "unicorn/no-hex-escape": "off",
         "unicorn/no-typeof-undefined": "off",
-        "unicorn/numeric-separators-style": "off",
         "unicorn/prefer-at": "off",
         "unicorn/prefer-dom-node-append": "off",
         "unicorn/prefer-native-coercion-functions": "off",

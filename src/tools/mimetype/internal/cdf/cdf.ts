@@ -618,8 +618,8 @@ function concat(parts: Uint8Array[], length: number): Uint8Array {
 
 const propIDNameOfApplication = 0x12;
 
-const typeMask = 0x0fff;
-const typeVector = 0x1000;
+const typeMask = 0x0f_ff;
+const typeVector = 0x10_00;
 const typeStringASCII = 0x1e;
 const typeStringWide = 0x1f;
 

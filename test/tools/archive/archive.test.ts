@@ -92,7 +92,7 @@ function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
 
     const local = new Uint8Array(30 + name.length);
     const lv = new DataView(local.buffer);
-    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint32(0, 0x04_03_4b_50, true);
     lv.setUint16(4, 20, true);
     lv.setUint16(8, method, true);
     lv.setUint32(14, crc32, true);
@@ -103,15 +103,15 @@ function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
 
     const central = new Uint8Array(46 + name.length);
     const cv = new DataView(central.buffer);
-    cv.setUint32(0, 0x02014b50, true);
-    cv.setUint16(4, e.creator ?? 0x0314, true);
+    cv.setUint32(0, 0x02_01_4b_50, true);
+    cv.setUint16(4, e.creator ?? 0x03_14, true);
     cv.setUint16(6, 20, true);
     cv.setUint16(10, method, true);
     cv.setUint32(16, crc32, true);
     cv.setUint32(20, stored.length, true);
     cv.setUint32(24, size, true);
     cv.setUint16(28, name.length, true);
-    cv.setUint32(38, e.attrs ?? 0o100644 * 65536, true);
+    cv.setUint32(38, e.attrs ?? 0o10_0644 * 65_536, true);
     cv.setUint32(42, offset, true);
     central.set(name, 46);
 
@@ -125,7 +125,7 @@ function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
   }
   const end = new Uint8Array(22);
   const ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint32(0, 0x06_05_4b_50, true);
   ev.setUint16(8, entries.length, true);
   ev.setUint16(10, entries.length, true);
   ev.setUint32(12, offset - start, true);
@@ -203,7 +203,7 @@ describe("extract", () => {
     const content = new TextEncoder().encode("hello hello hello");
     const zip = rawZip(
       [
-        { name: "dir/", attrs: 0o040755 * 65536 },
+        { name: "dir/", attrs: 0o04_0755 * 65_536 },
         { name: "dir/stored.txt", content },
         { name: "deflated.txt", content, stored: deflateRawSync(content), method: 8 },
       ],
@@ -243,10 +243,10 @@ describe("extract", () => {
     await extract(
       writeZip(
         rawZip([
-          { name: "link", content: target, attrs: 0o120777 * 65536 },
-          { name: "fifo", attrs: 0o010644 * 65536 },
-          { name: "socket", attrs: 0o140644 * 65536 },
-          { name: "device", attrs: 0o020644 * 65536 },
+          { name: "link", content: target, attrs: 0o12_0777 * 65_536 },
+          { name: "fifo", attrs: 0o01_0644 * 65_536 },
+          { name: "socket", attrs: 0o14_0644 * 65_536 },
+          { name: "device", attrs: 0o02_0644 * 65_536 },
           { name: "regular", content: target },
         ]),
       ),
@@ -260,8 +260,8 @@ describe("extract", () => {
     await extract(
       writeZip(
         rawZip([
-          { name: "folder", creator: 0x0014, attrs: 0x10 },
-          { name: "read-only", creator: 0x0a14, attrs: 0x01, content: new Uint8Array(1) },
+          { name: "folder", creator: 0x00_14, attrs: 0x10 },
+          { name: "read-only", creator: 0x0a_14, attrs: 0x01, content: new Uint8Array(1) },
         ]),
       ),
       out,
@@ -320,8 +320,8 @@ describe("zip format", () => {
     expect(entry).toEqual({
       name: "sub/ż.txt",
       method: 8,
-      flags: 0x808,
-      mode: 0o100640,
+      flags: 0x8_08,
+      mode: 0o10_0640,
       modTime: Math.trunc(statSync(join(dir, "sub/ż.txt")).mtimeMs / 1000),
     });
   });
@@ -346,8 +346,8 @@ describe("zip format", () => {
     // the regular end record only points to the Zip64 one
     const bytes = readFileSync(zipPath);
     const end = new DataView(bytes.buffer, bytes.byteOffset + bytes.length - 22);
-    expect(end.getUint16(10, true)).toBe(0xffff);
-    expect(end.getUint32(16, true)).toBe(0xffffffff);
+    expect(end.getUint16(10, true)).toBe(0xff_ff);
+    expect(end.getUint32(16, true)).toBe(0xff_ff_ff_ff);
     expect(bytes.includes(Buffer.from([0x50, 0x4b, 0x06, 0x06]))).toBe(true);
   }, 30_000);
 
@@ -399,7 +399,7 @@ describe("zip format", () => {
     create(dir, zipPath);
     const [link] = centralEntries(readFileSync(zipPath));
     expect(link?.name).toBe("link");
-    expect((link?.mode ?? 0) & 0o170000).toBe(0o120000);
+    expect((link?.mode ?? 0) & 0o17_0000).toBe(0o12_0000);
   });
 
   test("a symlink to a directory fails, as Go's read does", () => {

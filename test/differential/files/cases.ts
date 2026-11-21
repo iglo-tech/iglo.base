@@ -77,7 +77,7 @@ export const collections: Record<string, unknown>[] = [
     type: "base",
     fields: [
       { name: "title", type: "text" },
-      { name: "docs", type: "file", maxSelect: 3, maxSize: 100000 },
+      { name: "docs", type: "file", maxSelect: 3, maxSize: 100_000 },
       { name: "img", type: "file", maxSelect: 1, mimeTypes: ["image/png"] },
       { name: "prot", type: "file", maxSelect: 2, protected: true },
     ],
@@ -245,7 +245,7 @@ export const cases: FileCase[] = [
     status: 400,
     method: "POST",
     collection: "fmulti",
-    parts: [file("docs", "ok.txt", "ok"), file("docs", "huge.txt", "y".repeat(100001))],
+    parts: [file("docs", "ok.txt", "ok"), file("docs", "huge.txt", "y".repeat(100_001))],
   },
   {
     name: "multi: docs+ appends",

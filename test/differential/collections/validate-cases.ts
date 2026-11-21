@@ -932,7 +932,7 @@ export const validateCases: ValidateCase[] = [
   {
     name: "update: OTP duration too large",
     target: "members",
-    body: () => ({ otp: { enabled: true, duration: 86401, length: 4 } }),
+    body: () => ({ otp: { enabled: true, duration: 86_401, length: 4 } }),
     valid: false,
   },
   {
@@ -967,7 +967,7 @@ export const validateCases: ValidateCase[] = [
   {
     name: "update: MFA duration too large",
     target: "members",
-    body: () => ({ mfa: { enabled: true, duration: 86401 } }),
+    body: () => ({ mfa: { enabled: true, duration: 86_401 } }),
     valid: false,
   },
   {
@@ -990,7 +990,7 @@ export const validateCases: ValidateCase[] = [
     target: "members",
     body: () => ({
       passwordResetToken: { duration: 5 },
-      emailChangeToken: { duration: 94670857 },
+      emailChangeToken: { duration: 94_670_857 },
       verificationToken: { duration: 0 },
       fileToken: { secret: "x".repeat(256) },
     }),

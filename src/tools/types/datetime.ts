@@ -69,8 +69,8 @@ export function parseDateTime(value: unknown): DateTime {
 // DateTime represents an instant in UTC that is serialized using the app
 // default date layout.
 // 1000-01-01T00:00:00Z and 9999-12-31T23:59:59Z as Unix seconds
-const minISOSec = -30610224000;
-const maxISOSec = 253402300799;
+const minISOSec = -30_610_224_000;
+const maxISOSec = 253_402_300_799;
 
 export class DateTime {
   // Unix seconds and nanoseconds in [0, 1e9); Go's zero time by default
@@ -310,9 +310,9 @@ export function parseDefaultLayoutFast(v: string): Instant | null {
   // days since 1970-01-01 (proleptic Gregorian, any year >= 0)
   const y = year - 1;
   const daysToYear =
-    y * 365 + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 719162;
+    y * 365 + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 719_162;
   const yday = (daysBeforeMonth[month - 1] as number) + (leap && month > 2 ? 1 : 0) + day - 1;
-  return { sec: (daysToYear + yday) * 86400 + hour * 3600 + min * 60 + sec, nsec: ms * 1e6 };
+  return { sec: (daysToYear + yday) * 86_400 + hour * 3600 + min * 60 + sec, nsec: ms * 1e6 };
 }
 
 // DefaultDateLayout ends in a literal "Z", so it parses in UTC

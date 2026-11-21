@@ -79,7 +79,7 @@ export function logDBExport(id: string, log: BatchLog, maxDataSize: number): Par
 // text where that has the same four-digit year
 function formatLogTime(t: Date): string {
   const ms = t.getTime();
-  if (ms >= -30610224000000 && ms < 253402300800000) {
+  if (ms >= -30_610_224_000_000 && ms < 253_402_300_800_000) {
     // years 1000 to 9999
     const iso = t.toISOString();
     return iso.slice(0, 10) + " " + iso.slice(11);

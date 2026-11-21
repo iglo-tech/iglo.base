@@ -26,7 +26,7 @@ const defaultExpiryDeltaMs = 10_000;
 // doTokenRoundTrip's io.LimitReader
 const maxTokenResponseBytes = 1 << 20;
 
-const maxInt32 = 2147483647n;
+const maxInt32 = 2_147_483_647n;
 
 // the endpoint and credentials of a token request (the parts of
 // oauth2.Config that RetrieveToken reads)

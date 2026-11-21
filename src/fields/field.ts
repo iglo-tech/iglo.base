@@ -450,10 +450,10 @@ export function goQuote(s: string): string {
   let out = '"';
   for (const ch of s) {
     const r = ch.codePointAt(0) as number;
-    if (r >= 0xd800 && r <= 0xdfff) {
+    if (r >= 0xd8_00 && r <= 0xdf_ff) {
       // an invalid byte (U+DC80+n stands for the byte 0x80+n)
-      if (r >= 0xdc80 && r <= 0xdcff) {
-        out += "\\x" + (r - 0xdc00).toString(16);
+      if (r >= 0xdc_80 && r <= 0xdc_ff) {
+        out += "\\x" + (r - 0xdc_00).toString(16);
       } else {
         out += "\ufffd";
       }
@@ -496,7 +496,7 @@ export function goQuote(s: string): string {
       default:
         if (r < 0x20 || r === 0x7f) {
           out += "\\x" + r.toString(16).padStart(2, "0");
-        } else if (r < 0x10000) {
+        } else if (r < 0x1_00_00) {
           out += "\\u" + r.toString(16).padStart(4, "0");
         } else {
           out += "\\U" + r.toString(16).padStart(8, "0");

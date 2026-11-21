@@ -45,7 +45,7 @@ describe("addressesToStrings", () => {
 
 test("detectReaderMimeType", async () => {
   // ensure that it is large enough to remain after the signature sniffing
-  const str = "#!/bin/node\n" + "a".repeat(10000);
+  const str = "#!/bin/node\n" + "a".repeat(10_000);
   const blob = new Blob([str]);
 
   expect(await detectReaderMimeType(blob)).toBe("text/javascript");

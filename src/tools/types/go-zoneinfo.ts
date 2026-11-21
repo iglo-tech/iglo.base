@@ -33,7 +33,7 @@ import {
 } from "@/tools/types/go-time";
 
 const secondsPerHour = 3600;
-const secondsPerDay = 86400;
+const secondsPerDay = 86_400;
 
 // the bounds of time (Go's alpha and omega)
 const alpha = -Infinity;

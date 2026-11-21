@@ -70,7 +70,7 @@ afterAll(() => {
 });
 
 test("the loaded value is the exact integer", () => {
-  expect(loaded).toBe(9007199254740993n);
+  expect(loaded).toBe(9_007_199_254_740_993n);
 });
 
 test("the reference binary reads the exact value back", async () => {

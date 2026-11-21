@@ -130,7 +130,7 @@ function edgeBodies(tag: string, people: string[]): { id: string; raw: string }[
     raw("e18", `"g":{"lon":180,"lat":90},"r1":"${carol}"`),
     raw("e19", `"g":{"lon":0.1234567890123456,"lat":-0.000001},"pw":"pässwörd-1234"`),
     raw("e20", `"g":{"lon":0,"lat":0},"pw":"${"x".repeat(71)}"`),
-    raw("e21", `"t":"${"long ".repeat(1000)}","ed":"<div>${"x".repeat(10000)}</div>"`),
+    raw("e21", `"t":"${"long ".repeat(1000)}","ed":"<div>${"x".repeat(10_000)}</div>"`),
     raw("e22", `"t":"line\\nbreak\\ttab","secret":"hidden value","rm":[]`),
     raw("e23", `"j" : { "spaced" : [ 1 , 2 ] ,\n "2":1 , "1":2.0 }`),
     raw("e24", `"t":"prefix\\u0000one","ed":"<p>a\\u0000b</p>"`),
@@ -154,15 +154,15 @@ function allFields(people: string): Record<string, unknown>[] {
     { name: "rm", type: "relation", collectionId: people, maxSelect: 5 },
     { name: "pw", type: "password", cost: 4, hidden: true },
     { name: "secret", type: "text", hidden: true },
-    { name: "f1", type: "file", maxSelect: 1, maxSize: 1048576 },
+    { name: "f1", type: "file", maxSelect: 1, maxSize: 1_048_576 },
     {
       name: "fm",
       type: "file",
       maxSelect: 6,
-      maxSize: 1048576,
+      maxSize: 1_048_576,
       thumbs: ["50x50", "50x50t", "0x30", "30x0", "40x40f", "40x40b"],
     },
-    { name: "fp", type: "file", maxSelect: 1, maxSize: 1048576, protected: true },
+    { name: "fp", type: "file", maxSelect: 1, maxSize: 1_048_576, protected: true },
     { name: "created", type: "autodate", onCreate: true },
     { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
   ];
@@ -192,7 +192,7 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
       authAlert: { enabled: true },
       fields: [
         { name: "nick", type: "text", max: 40 },
-        { name: "avatar", type: "file", maxSelect: 1, maxSize: 1048576 },
+        { name: "avatar", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
       indexes: [`CREATE INDEX idx_${tag}_people_nick ON ${people} (nick)`],
     })
@@ -229,7 +229,7 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
           required: true,
           cascadeDelete: true,
         },
-        { name: "doc", type: "file", maxSelect: 1, maxSize: 1048576 },
+        { name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
     })
   ).id as string;
@@ -541,7 +541,7 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   const tmp = await c.post("/api/collections", {
     name: `rt${tag}_tmp`,
     type: "base",
-    fields: [{ name: "doc", type: "file", maxSelect: 1, maxSize: 1048576 }],
+    fields: [{ name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 }],
   });
   await c.request("POST", records(`rt${tag}_tmp`), {
     form: form({ id: rid(`${tag}tmp1`), doc: file("tmp.txt", "gone with the truncate") }),

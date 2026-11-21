@@ -677,7 +677,7 @@ describe("TestOTPConfigValidate", () => {
       config: new OTPConfig({
         enabled: true,
         emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
-        duration: 86401,
+        duration: 86_401,
         length: 100,
       }),
       expectedErrors: ["duration"],
@@ -687,7 +687,7 @@ describe("TestOTPConfigValidate", () => {
       config: new OTPConfig({
         enabled: true,
         emailTemplate: new EmailTemplate({ body: "", subject: "b" }),
-        duration: 86400,
+        duration: 86_400,
         length: 4,
       }),
       expectedErrors: ["emailTemplate"],
@@ -697,7 +697,7 @@ describe("TestOTPConfigValidate", () => {
       config: new OTPConfig({
         enabled: true,
         emailTemplate: new EmailTemplate({ body: "a", subject: "b" }),
-        duration: 86400,
+        duration: 86_400,
         length: 4,
       }),
       expectedErrors: [],
@@ -732,12 +732,12 @@ describe("TestMFAConfigValidate", () => {
     },
     {
       name: "invalid duration (> 86400)",
-      config: new MFAConfig({ enabled: true, duration: 86401 }),
+      config: new MFAConfig({ enabled: true, duration: 86_401 }),
       expectedErrors: ["duration"],
     },
     {
       name: "valid data",
-      config: new MFAConfig({ enabled: true, duration: 86400 }),
+      config: new MFAConfig({ enabled: true, duration: 86_400 }),
       expectedErrors: [],
     },
   ];

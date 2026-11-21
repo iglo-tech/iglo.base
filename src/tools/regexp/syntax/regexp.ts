@@ -554,7 +554,7 @@ function escape(b: string[], r: number, force: boolean): void {
       b.push(String.raw`\v`);
       break;
     default:
-      if (r < 0x100) {
+      if (r < 0x1_00) {
         b.push(String.raw`\x`, r.toString(16).padStart(2, "0"));
         break;
       }

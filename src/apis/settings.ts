@@ -399,7 +399,7 @@ function validateAppleClientSecretCreate(form: AppleClientSecretCreate): Error |
     Field("teamId", form.TeamId, Required, Length(10, 10)),
     Field("keyId", form.KeyId, Required, Length(10, 10)),
     Field("privateKey", form.PrivateKey, Required, Match(privateKeyRegex)),
-    Field("duration", form.Duration, Required, Min(1), Max(15777000)),
+    Field("duration", form.Duration, Required, Min(1), Max(15_777_000)),
   );
 }
 

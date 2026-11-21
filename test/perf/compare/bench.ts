@@ -303,7 +303,7 @@ async function startIglo(
       output: () => "",
       async stop() {
         proc.kill("SIGTERM");
-        const timer = setTimeout(() => proc.kill("SIGKILL"), 8_000);
+        const timer = setTimeout(() => proc.kill("SIGKILL"), 8000);
         await proc.exited;
         clearTimeout(timer);
       },

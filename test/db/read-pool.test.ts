@@ -143,14 +143,14 @@ test("the pool's connections are read-only and use upstream's pragmas", async ()
   for (const p of connectPragmas) {
     const [, name, value] = /^(\w+)\((.*)\)$/.exec(p)!;
     const expected: Record<string, unknown> = {
-      busy_timeout: 10000,
+      busy_timeout: 10_000,
       journal_mode: "wal",
-      journal_size_limit: 200000000,
+      journal_size_limit: 200_000_000,
       synchronous: 1,
       foreign_keys: 1,
       legacy_alter_table: 0,
       temp_store: 2,
-      cache_size: -32000,
+      cache_size: -32_000,
     };
     expect([name, await pragma(name!)]).toEqual([name, expected[name!] ?? value]);
   }

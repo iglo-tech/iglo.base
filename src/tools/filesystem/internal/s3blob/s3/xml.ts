@@ -39,7 +39,7 @@ function decodeEntities(text: string, lineAt: () => number): string {
     const code = /^#x([0-9a-fA-F]+)$/.exec(name)?.[1] ?? /^#([0-9]+)$/.exec(name)?.[1];
     if (code !== undefined) {
       const n = Number.parseInt(code, name[1] === "x" ? 16 : 10);
-      if (n > 0x10ffff) {
+      if (n > 0x10_ff_ff) {
         throw syntaxError(lineAt(), `invalid character entity ${whole}`);
       }
       return String.fromCodePoint(n);

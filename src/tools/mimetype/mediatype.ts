@@ -331,9 +331,9 @@ function toLower(s: string): string {
     const c = ch.codePointAt(0) as number;
     if (c >= 0x41 && c <= 0x5a) {
       out += String.fromCharCode(c + 0x20);
-    } else if (c === 0x130) {
+    } else if (c === 0x1_30) {
       out += "i";
-    } else if (c === 0x212a) {
+    } else if (c === 0x21_2a) {
       out += "k";
     } else {
       out += ch;

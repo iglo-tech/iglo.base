@@ -32,7 +32,7 @@ export const badRe: { re: string; err: string }[] = [
   { re: "a**", err: "invalid nested repetition operator: `**`" },
   { re: "a*+", err: "invalid nested repetition operator: `*+`" },
   { re: "\\x", err: "invalid escape sequence: `\\x`" },
-  { re: "\\pL".repeat(27000), err: "expression too large" },
+  { re: "\\pL".repeat(27_000), err: "expression too large" },
 ];
 
 export interface ReplaceTest {

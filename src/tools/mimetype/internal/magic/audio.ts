@@ -87,13 +87,13 @@ export function MP3(raw: Uint8Array, _limit: number): boolean {
   // - initially tries to match by first two bytes in header
   // - checks for .mo3 and .swa and disqualifies them
   // - does linear search for Layer III
-  switch (beUint16(raw, 0) & 0xfffe) {
-    case 0xfffa:
-    case 0xfff2:
-    case 0xffe2: // layer III: v1, v2, v2.5
-    case 0xfffc:
-    case 0xfff4: // layer II: v1, v2
-    case 0xfff5: // layer I: v2
+  switch (beUint16(raw, 0) & 0xff_fe) {
+    case 0xff_fa:
+    case 0xff_f2:
+    case 0xff_e2: // layer III: v1, v2, v2.5
+    case 0xff_fc:
+    case 0xff_f4: // layer II: v1, v2
+    case 0xff_f5: // layer I: v2
       return true;
   }
   // http://lclevy.free.fr/mo3/

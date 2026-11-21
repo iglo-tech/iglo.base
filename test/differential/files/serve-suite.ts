@@ -741,21 +741,36 @@ export function serveSuite(storage: "local" | "s3"): void {
     });
     test("expired user file token", async () => {
       const expired = signToken(
-        { id: "4q1xlclmfloku33", type: "file", collectionId: "_pb_users_auth_", exp: 1640991661 },
+        {
+          id: "4q1xlclmfloku33",
+          type: "file",
+          collectionId: "_pb_users_auth_",
+          exp: 1_640_991_661,
+        },
         key,
       );
       expect((await same(main, `${prot()}?token=${expired}`)).status).toBe(404);
     });
     test("file token of the wrong collection", async () => {
       const wrong = signToken(
-        { id: "4q1xlclmfloku33", type: "file", collectionId: "v851q4r790rhknl", exp: 2524604461 },
+        {
+          id: "4q1xlclmfloku33",
+          type: "file",
+          collectionId: "v851q4r790rhknl",
+          exp: 2_524_604_461,
+        },
         key,
       );
       expect((await same(main, `${prot()}?token=${wrong}`)).status).toBe(404);
     });
     test("file token with a wrong signature", async () => {
       const forged = signToken(
-        { id: "4q1xlclmfloku33", type: "file", collectionId: "_pb_users_auth_", exp: 2524604461 },
+        {
+          id: "4q1xlclmfloku33",
+          type: "file",
+          collectionId: "_pb_users_auth_",
+          exp: 2_524_604_461,
+        },
         key + "x",
       );
       expect((await same(main, `${prot()}?token=${forged}`)).status).toBe(404);

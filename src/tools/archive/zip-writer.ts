@@ -28,12 +28,12 @@ function zlib(): typeof import("node:zlib") {
   return (zlibModule ??= process.getBuiltinModule("node:zlib"));
 }
 
-const fileHeaderSignature = 0x04034b50;
-const directoryHeaderSignature = 0x02014b50;
-const directoryEndSignature = 0x06054b50;
-const directory64LocSignature = 0x07064b50;
-const directory64EndSignature = 0x06064b50;
-const dataDescriptorSignature = 0x08074b50;
+const fileHeaderSignature = 0x04_03_4b_50;
+const directoryHeaderSignature = 0x02_01_4b_50;
+const directoryEndSignature = 0x06_05_4b_50;
+const directory64LocSignature = 0x07_06_4b_50;
+const directory64EndSignature = 0x06_06_4b_50;
+const dataDescriptorSignature = 0x08_07_4b_50;
 
 const zipVersion20 = 20;
 const zipVersion45 = 45;
@@ -44,13 +44,13 @@ const methodDeflate = 8;
 // is synced as it goes. Measured in docs/perf/M5.3-backups.md.
 const syncEvery = 32 * 1024 * 1024;
 const flagDataDescriptor = 0x8;
-const flagUTF8 = 0x800;
+const flagUTF8 = 0x8_00;
 
-const zip64ExtraID = 0x0001;
-const extTimeExtraID = 0x5455;
+const zip64ExtraID = 0x00_01;
+const extTimeExtraID = 0x54_55;
 
-const uint16max = 0xffff;
-const uint32max = 0xffffffff;
+const uint16max = 0xff_ff;
+const uint32max = 0xff_ff_ff_ff;
 
 const msdosReadOnly = 0x01;
 
@@ -215,7 +215,7 @@ export class ZipWriter {
       offset: this.#offset,
       extra,
       // FileHeader.SetMode: the Unix mode, and the MS-DOS read-only attribute
-      externalAttrs: (mode * 65536 + ((mode & 0o200) === 0 ? msdosReadOnly : 0)) >>> 0,
+      externalAttrs: (mode * 65_536 + ((mode & 0o200) === 0 ? msdosReadOnly : 0)) >>> 0,
     };
 
     this.#write(

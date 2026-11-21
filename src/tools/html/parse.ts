@@ -909,8 +909,8 @@ function compareStrings(a: string, b: string): number {
     if (ca !== cb) {
       return ca < cb ? -1 : 1;
     }
-    i += ca > 0xffff ? 2 : 1;
-    j += cb > 0xffff ? 2 : 1;
+    i += ca > 0xff_ff ? 2 : 1;
+    j += cb > 0xff_ff ? 2 : 1;
   }
   if (i < a.length) {
     return 1;

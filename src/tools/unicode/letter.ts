@@ -17,8 +17,8 @@ import {
   Scripts as scriptsText,
 } from "@/tools/unicode/tables";
 
-export const MaxRune = 0x10ffff; // Maximum valid Unicode code point.
-export const ReplacementChar = 0xfffd; // Represents invalid code points.
+export const MaxRune = 0x10_ff_ff; // Maximum valid Unicode code point.
+export const ReplacementChar = 0xff_fd; // Represents invalid code points.
 export const MaxASCII = 0x7f; // maximum ASCII value.
 export const MaxLatin1 = 0xff; // maximum Latin-1 value.
 

@@ -222,17 +222,17 @@ export function byteLength(s: string): number {
     const c = s.charCodeAt(i);
     if (c < 0x80) {
       n += 1;
-    } else if (c < 0x800) {
+    } else if (c < 0x8_00) {
       n += 2;
-    } else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+    } else if (c >= 0xd8_00 && c <= 0xdb_ff && i + 1 < s.length) {
       const d = s.charCodeAt(i + 1);
-      if (d >= 0xdc00 && d <= 0xdfff) {
+      if (d >= 0xdc_00 && d <= 0xdf_ff) {
         n += 4;
         i++;
       } else {
         n += 3;
       }
-    } else if (c >= 0xdc80 && c <= 0xdcff) {
+    } else if (c >= 0xdc_80 && c <= 0xdc_ff) {
       n += 1;
     } else {
       n += 3;
@@ -247,9 +247,9 @@ export function runeCount(s: string): number {
   let n = 0;
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
-    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+    if (c >= 0xd8_00 && c <= 0xdb_ff && i + 1 < s.length) {
       const d = s.charCodeAt(i + 1);
-      if (d >= 0xdc00 && d <= 0xdfff) {
+      if (d >= 0xdc_00 && d <= 0xdf_ff) {
         i++;
       }
     }

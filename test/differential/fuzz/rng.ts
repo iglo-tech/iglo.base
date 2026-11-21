@@ -3,8 +3,8 @@
 
 function mix(h: number): number {
   let x = h;
-  x = Math.imul(x ^ (x >>> 16), 0x85ebca6b);
-  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35);
+  x = Math.imul(x ^ (x >>> 16), 0x85_eb_ca_6b);
+  x = Math.imul(x ^ (x >>> 13), 0xc2_b2_ae_35);
   return (x ^ (x >>> 16)) >>> 0;
 }
 
@@ -12,16 +12,16 @@ export class Rng {
   private state: number;
 
   constructor(seed: number, stream: number) {
-    this.state = mix(mix(seed | 0) ^ mix((stream * 0x9e3779b1) | 0));
+    this.state = mix(mix(seed | 0) ^ mix((stream * 0x9e_37_79_b1) | 0));
   }
 
   // mulberry32
   next(): number {
-    this.state = (this.state + 0x6d2b79f5) | 0;
+    this.state = (this.state + 0x6d_2b_79_f5) | 0;
     let t = this.state;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   }
 
   int(max: number): number {

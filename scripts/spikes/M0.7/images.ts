@@ -16,11 +16,11 @@ import { encodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
 function prng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
+    s = (s + 0x6d_2b_79_f5) >>> 0;
     let t = s;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -79,7 +79,7 @@ function exifSegment(value: number, bigEndian = false): Uint8Array {
     ...u16(42),
     ...(bigEndian ? [0, 0, 0, 8] : [8, 0, 0, 0]), // IFD0 at 8
     ...u16(1), // one entry
-    ...u16(0x0112),
+    ...u16(0x01_12),
     ...u16(3), // SHORT
     ...(bigEndian ? [0, 0, 0, 1] : [1, 0, 0, 0]), // count 1
     ...u16(value),
@@ -472,8 +472,8 @@ export async function writeEdgeSet(
   // a valid PNG header claiming 11000x10000 = 110,000,000 px > 104,857,600
   const bomb = encodePng({ width: 1, height: 1, pix: new Uint8Array([0, 0, 0, 255]) });
   const view = new DataView(bomb.buffer);
-  view.setUint32(16, 11000);
-  view.setUint32(20, 10000);
+  view.setUint32(16, 11_000);
+  view.setUint32(20, 10_000);
   view.setUint32(29, Bun.hash.crc32(bomb.subarray(12, 29)) >>> 0);
   put("bomb.png", "image/png", bomb, "PNG header claiming 11000x10000 (110 MP) with 1 px of data");
   // Go's image/jpeg decodes SOF0-2 only; libjpeg-turbo also has arithmetic

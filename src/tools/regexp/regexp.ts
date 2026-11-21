@@ -630,16 +630,16 @@ function runeLen(r: number): number {
   if (r < 0x80) {
     return 1;
   }
-  if (r < 0x800) {
+  if (r < 0x8_00) {
     return 2;
   }
-  if (0xd800 <= r && r <= 0xdfff) {
+  if (0xd8_00 <= r && r <= 0xdf_ff) {
     return -1;
   }
-  if (r < 0x10000) {
+  if (r < 0x1_00_00) {
     return 3;
   }
-  if (r <= 0x10ffff) {
+  if (r <= 0x10_ff_ff) {
     return 4;
   }
   return -1;
@@ -788,7 +788,7 @@ function quote(s: string): string {
   for (let i = 0; i < s.length;) {
     const [r, width] = DecodeRuneInString(s.slice(i));
     if (isInvalidByte(s, i)) {
-      out += "\\x" + (s.charCodeAt(i) - 0xdc00).toString(16).padStart(2, "0");
+      out += "\\x" + (s.charCodeAt(i) - 0xdc_00).toString(16).padStart(2, "0");
     } else if (r === 0x22 || r === 0x5c) {
       out += "\\" + String.fromCharCode(r);
     } else if (IsPrint(r)) {
@@ -805,7 +805,7 @@ function quote(s: string): string {
 // form)
 function isInvalidByte(s: string, i: number): boolean {
   const c = s.charCodeAt(i);
-  return c >= 0xdc80 && c <= 0xdcff;
+  return c >= 0xdc_80 && c <= 0xdc_ff;
 }
 
 function escapeRune(r: number): string {
@@ -828,7 +828,7 @@ function escapeRune(r: number): string {
   if (r < 0x20 || r === 0x7f) {
     return "\\x" + r.toString(16).padStart(2, "0");
   }
-  if (r < 0x10000) {
+  if (r < 0x1_00_00) {
     return "\\u" + r.toString(16).padStart(4, "0");
   }
   return "\\U" + r.toString(16).padStart(8, "0");
@@ -842,7 +842,7 @@ function canBackquote(s: string): boolean {
     const [r, width] = DecodeRuneInString(s.slice(i));
     i += width;
     if (r > 0x7f) {
-      if (r === 0xfeff) {
+      if (r === 0xfe_ff) {
         return false;
       }
       continue;

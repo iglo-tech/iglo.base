@@ -51,7 +51,7 @@ describe("RE2", () => {
     const every = process.env["RE2_EXHAUSTIVE"] === "1" ? 1 : 10;
     const res = testRE2("re2-exhaustive.txt", lines(bz.stdout), every);
     expect(res.failures).toEqual([]);
-    expect(res.ncase).toBe(5716884);
+    expect(res.ncase).toBe(5_716_884);
   }, 600_000);
 });
 

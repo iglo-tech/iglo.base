@@ -299,9 +299,9 @@ describe("createBrowserClient", () => {
 
     await ft.advance(450_000);
     expect(pb.authStore.token).toBe(token);
-    expect(ft.delays()).toEqual([1_000]);
+    expect(ft.delays()).toEqual([1000]);
 
-    await ft.advance(1_000);
+    await ft.advance(1000);
     expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(2);
     expect(pb.authStore.token).not.toBe(token);
   });

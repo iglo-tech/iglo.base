@@ -78,7 +78,7 @@ export const steps: Step[] = [
       viewRule: "",
       fields: [
         { name: "title", type: "text", required: true, max: 200 },
-        { name: "body", type: "editor", maxSize: 100000 },
+        { name: "body", type: "editor", maxSize: 100_000 },
         { name: "views", type: "number", onlyInt: true },
         { name: "published", type: "bool" },
         { name: "contact", type: "email" },

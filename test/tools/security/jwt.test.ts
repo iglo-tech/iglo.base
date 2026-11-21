@@ -101,7 +101,7 @@ describe("ParseJWT", () => {
       "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MjUyNDYwNDQ2MX0.VIEO73GP5QRQOSfHgQhaqeuYqcx59vL3xlxmFP-fytQ",
       "test",
       false,
-      { name: "test", exp: 2524604461.0 },
+      { name: "test", exp: 2_524_604_461.0 },
     ],
     [
       "properly formatted JWT with VALID claims (without exp) and VALID secret",
@@ -170,9 +170,9 @@ describe("NewJWT matches golang-jwt byte for byte", () => {
   test("auth token", () => {
     const expected =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyIsImV4cCI6MTc5MzI0MDE3NCwiaWQiOiI2cnB1NXBuZXE5NXhzNXYiLCJyZWZyZXNoYWJsZSI6dHJ1ZSwidHlwZSI6ImF1dGgifQ.TrR7hWJki1rt1i4r2vI_1GkxLKKb_8ZEzo1bM8CS28k";
-    const duration = 86400 * Second;
+    const duration = 86_400 * Second;
     // exp 1793240174 = now + duration, now with a sub-second part
-    const issuedAt = clockAt((1793240174 - 86400) * 1000 + 999);
+    const issuedAt = clockAt((1_793_240_174 - 86_400) * 1000 + 999);
     const token = newJWT(
       { id: "6rpu5pneq95xs5v", type: "auth", collectionId: "pbc_3142635823", refreshable: true },
       tokenKey + "u5B2BTLuo2n4LMKBV4kweuPLNe0PtqOtX2S5lbQmQ6kcCAh1jR",
@@ -189,7 +189,7 @@ describe("NewJWT matches golang-jwt byte for byte", () => {
       { id: "6rpu5pneq95xs5v", type: "file", collectionId: "pbc_3142635823" },
       tokenKey + "ZEUIDzrv3aXMwu3X6LnXamcSi81kfvo9ilgHe8GJoAEE1WFubO",
       180 * Second,
-      clockAt((1793153954 - 180) * 1000),
+      clockAt((1_793_153_954 - 180) * 1000),
     );
     expect(token).toBe(expected);
   });
@@ -199,7 +199,7 @@ describe("NewJWT matches golang-jwt byte for byte", () => {
       { b: "<a>&\u2028", a: 1.5, c: [true, null], é: -0 },
       "k",
       0,
-      clockAt(1000_500),
+      clockAt(1_000_500),
     );
     const [header, claims] = token.split(".") as [string, string];
     expect(segmentText(header)).toBe(`{"alg":"HS256","typ":"JWT"}`);

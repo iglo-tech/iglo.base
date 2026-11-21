@@ -22,11 +22,11 @@ import {
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -243,11 +243,11 @@ function randomValue(r: () => number, depth = 0): unknown {
     case 2:
       return r() < 0.5;
     case 3:
-      return [0, -0, 1, -1, 1.5, 1e21, 1e-7, 123456789012345680000, 2 ** 53, -(2 ** 53)][
+      return [0, -0, 1, -1, 1.5, 1e21, 1e-7, 123_456_789_012_345_680_000, 2 ** 53, -(2 ** 53)][
         Math.floor(r() * 10)
       ];
     case 4:
-      return [0n, 12345678901234567890n, -9223372036854775808n][Math.floor(r() * 3)];
+      return [0n, 12_345_678_901_234_567_890n, -9_223_372_036_854_775_808n][Math.floor(r() * 3)];
     case 5:
     case 6:
       return randomString(r);

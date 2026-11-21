@@ -54,7 +54,7 @@ describe("migration file clear on S3", () => {
           const made = await api(server, "POST", "/api/collections", {
             name: "docs",
             type: "base",
-            fields: [{ name: "file", type: "file", maxSelect: 1, maxSize: 1000000 }],
+            fields: [{ name: "file", type: "file", maxSelect: 1, maxSize: 1_000_000 }],
           });
           expect(made.status).toBe(200);
           const form = new FormData();

@@ -36,12 +36,12 @@ const palette16 = (() => {
       const v = plan9[i * 3 + c] as number;
       out[i * 4 + c] = v | (v << 8);
     }
-    out[i * 4 + 3] = 0xffff;
+    out[i * 4 + 3] = 0xff_ff;
   }
   return out;
 })();
 
-const clamp16 = (i: number): number => (i < 0 ? 0 : i > 0xffff ? 0xffff : i);
+const clamp16 = (i: number): number => (i < 0 ? 0 : i > 0xff_ff ? 0xff_ff : i);
 
 // uint32 (d*d) >> 2 with d = x - y in [-0xffff, 0xffff]
 const sqDiff = (x: number, y: number): number => {
@@ -72,7 +72,7 @@ export function quantizePlan9(pix: Uint8Array, width: number, height: number): U
       ea = clamp16(ea + Math.trunc((curr[q + 3] as number) / 16));
 
       let best = 0;
-      let bestSum = 0xffffffff;
+      let bestSum = 0xff_ff_ff_ff;
       for (let i = 0; i < 256; i++) {
         const p = i * 4;
         const sum =

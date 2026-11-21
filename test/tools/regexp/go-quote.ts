@@ -64,7 +64,7 @@ export function unquote(q: string): string {
       case "U": {
         const n = e === "u" ? 4 : 8;
         const r = hex(s.slice(i, i + n), q);
-        if (r > 0x10ffff || (r >= 0xd800 && r <= 0xdfff)) {
+        if (r > 0x10_ff_ff || (r >= 0xd8_00 && r <= 0xdf_ff)) {
           throw new Error(`invalid quoted string ${q}`);
         }
         pushText(String.fromCodePoint(r));

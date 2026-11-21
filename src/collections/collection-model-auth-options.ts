@@ -132,7 +132,7 @@ export function setDefaultAuthOptions(m: CollectionAuthOptions): void {
     }),
     authToken: new TokenConfig({
       secret: randomString(50),
-      duration: 432000, // 5days
+      duration: 432_000, // 5days
     }),
     passwordResetToken: new TokenConfig({
       secret: randomString(50),
@@ -144,7 +144,7 @@ export function setDefaultAuthOptions(m: CollectionAuthOptions): void {
     }),
     verificationToken: new TokenConfig({
       secret: randomString(50),
-      duration: 86400, // 1day
+      duration: 86_400, // 1day
     }),
     fileToken: new TokenConfig({
       secret: randomString(50),
@@ -579,7 +579,7 @@ export class TokenConfig {
   validate(): Error | null {
     return ValidateStruct(
       StructField("secret", this.secret, Required, Length(30, 255)),
-      StructField("duration", this.duration, Required, Min(10), Max(94670856)), // ~3y max
+      StructField("duration", this.duration, Required, Min(10), Max(94_670_856)), // ~3y max
     );
   }
 
@@ -640,7 +640,7 @@ export class OTPConfig {
   // Validate makes OTPConfig validatable (validation.Validatable).
   validate(): Error | null {
     return ValidateStruct(
-      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86400))),
+      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86_400))),
       StructField("length", this.length, When(this.enabled, Required, Min(4))),
       // note: for now always run the email template validations even
       // if not enabled since it could be used separately
@@ -701,7 +701,7 @@ export class MFAConfig {
   // Validate makes MFAConfig validatable (validation.Validatable).
   validate(): Error | null {
     return ValidateStruct(
-      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86400))),
+      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86_400))),
     );
   }
 

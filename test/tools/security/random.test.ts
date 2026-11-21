@@ -75,7 +75,7 @@ describe("PseudorandomStringWithAlphabet", () => {
 // Not in upstream's tests: every alphabet character is reachable.
 describe("RandomStringWithAlphabet coverage", () => {
   test("uses the whole default alphabet", () => {
-    const seen = new Set(randomString(20000));
+    const seen = new Set(randomString(20_000));
     expect(seen.size).toBe(62);
   });
 });

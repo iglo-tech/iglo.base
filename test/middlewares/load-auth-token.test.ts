@@ -41,7 +41,7 @@ async function authOf(
   if (options.preset !== undefined) {
     const preset = options.preset;
     // runs before loadAuthToken
-    router.bind({ priority: -99999, func: (e) => (preset(e), e.next()) });
+    router.bind({ priority: -99_999, func: (e) => (preset(e), e.next()) });
   }
   let seen = "";
   router.bind({

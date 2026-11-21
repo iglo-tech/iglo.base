@@ -133,7 +133,7 @@ export class header {
 
   // sampleRateHz returns the sampling rate of the frame in Hz.
   sampleRateHz(): number {
-    let base = [44100, 48000, 32000][this.rawSampleRate()] as number;
+    let base = [44_100, 48_000, 32_000][this.rawSampleRate()] as number;
     if (!this.isMPEG1()) {
       base >>= 1;
     }

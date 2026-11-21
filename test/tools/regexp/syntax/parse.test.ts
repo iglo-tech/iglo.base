@@ -459,7 +459,7 @@ const parseTests: parseTest[] = [
   // Valid nesting.
   ["(".repeat(999) + ")".repeat(999), ""],
   ["(?:".repeat(999) + ")*".repeat(999), ""],
-  ["(" + "|".repeat(12345) + ")", ""], // not nested at all
+  ["(" + "|".repeat(12_345) + ")", ""], // not nested at all
 ];
 
 const foldcaseTests: parseTest[] = [
@@ -534,7 +534,7 @@ const invalidRegexps: (string | Uint8Array)[] = [
   "(?:".repeat(1000) + ")*".repeat(1000), // too deep
   "(" + "(xx?)".repeat(1000) + "){1000}", // too long
   "(xx?){1000}".repeat(1000), // too long
-  "\\pL".repeat(27000), // too many runes
+  "\\pL".repeat(27_000), // too many runes
 ];
 
 const onlyPerl: (string | Uint8Array)[] = [
@@ -584,7 +584,7 @@ const badRe: [re: string, err: string][] = [
   ["a**", "invalid nested repetition operator: `**`"],
   ["a*+", "invalid nested repetition operator: `*+`"],
   ["\\x", "invalid escape sequence: `\\x`"],
-  ["\\pL".repeat(27000), "expression too large"],
+  ["\\pL".repeat(27_000), "expression too large"],
 ];
 
 describe("TestParseSimple", () => {

@@ -86,7 +86,7 @@ async function createCollection(c: Client, tag: string): Promise<string> {
       { name: "picks", type: "select", values: ["a", "b", "c", "d"], maxSelect: 4 },
       { name: "data", type: "json" },
       { name: "point", type: "geoPoint" },
-      { name: "doc", type: "file", maxSelect: 2, maxSize: 1048576 },
+      { name: "doc", type: "file", maxSelect: 2, maxSize: 1_048_576 },
       { name: "created", type: "autodate", onCreate: true },
       { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],

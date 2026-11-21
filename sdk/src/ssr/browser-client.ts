@@ -25,7 +25,7 @@ const RENEW_BEFORE_EXPIRY_MS = 60_000;
 /** Successful renewals are at least this far apart, whatever the token's lifetime or the clocks say. */
 const MIN_RENEW_INTERVAL_MS = 30_000;
 /** Retry backoff after a network error or a 5xx: doubles from the base, capped. */
-const RETRY_BASE_MS = 1_000;
+const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30_000;
 /** Retries in a row before the client stops trying; the store is then cleared at the token's expiry. */
 const MAX_RETRIES = 10;

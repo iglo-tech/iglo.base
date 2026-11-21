@@ -388,7 +388,7 @@ function quoteToASCII(runes: readonly number[]): string {
         default:
           if (r < 0x20 || r === 0x7f) {
             out += "\\x" + r.toString(16).padStart(2, "0");
-          } else if (r < 0x10000) {
+          } else if (r < 0x1_00_00) {
             out += "\\u" + r.toString(16).padStart(4, "0");
           } else {
             out += "\\U" + r.toString(16).padStart(8, "0");

@@ -41,7 +41,7 @@ export const identifierMacros: ReadonlyMap<string, (now: Date) => unknown> = new
     "@todayEnd",
     (now) => {
       const today = fieldsOf(fromDate(now));
-      return dateTimeString(date(today.year, today.month, today.day, 23, 59, 59, 999999999));
+      return dateTimeString(date(today.year, today.month, today.day, 23, 59, 59, 999_999_999));
     },
   ],
   [
@@ -55,7 +55,7 @@ export const identifierMacros: ReadonlyMap<string, (now: Date) => unknown> = new
     "@monthEnd",
     (now) => {
       const today = fieldsOf(fromDate(now));
-      const start = date(today.year, today.month, 1, 23, 59, 59, 999999999);
+      const start = date(today.year, today.month, 1, 23, 59, 59, 999_999_999);
       return DateTime.fromInstant(start).addDate(0, 1, -1).string();
     },
   ],
@@ -70,13 +70,13 @@ export const identifierMacros: ReadonlyMap<string, (now: Date) => unknown> = new
     "@yearEnd",
     (now) => {
       const today = fieldsOf(fromDate(now));
-      return dateTimeString(date(today.year, 12, 31, 23, 59, 59, 999999999));
+      return dateTimeString(date(today.year, 12, 31, 23, 59, 59, 999_999_999));
     },
   ],
 ]);
 
 // time.Weekday: 0 is Sunday (January 1, 1970 was a Thursday)
 function weekday(t: Instant): number {
-  const days = Math.floor(t.sec / 86400);
+  const days = Math.floor(t.sec / 86_400);
   return (((days + 4) % 7) + 7) % 7;
 }

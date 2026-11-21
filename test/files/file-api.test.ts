@@ -100,7 +100,7 @@ function prepareDemo1Thumbs(dataDir: string): void {
     const fileField = collection.fields.getByName("file_one") as FileField;
     fileField.protected = false;
     fileField.maxSelect = 1;
-    fileField.maxSize = 999999;
+    fileField.maxSize = 999_999;
     // new thumbs
     fileField.thumbs = ["111x111", "111x222", "111x333"];
   });
@@ -296,8 +296,8 @@ peakTest("a multipart/byteranges body over 16 MiB has its Content-Length", async
   expect(
     body.equals(
       Buffer.concat([
-        part(0, 0, 9437183),
-        part(1, 10485760, 19922943),
+        part(0, 0, 9_437_183),
+        part(1, 10_485_760, 19_922_943),
         Buffer.from(`\r\n--${boundary}--\r\n`),
       ]),
     ),
@@ -355,7 +355,7 @@ function writeAnimatedGif(path: string, frames: number): void {
   const pix = new Uint8Array(512 * 512 * 4);
   let x = 1;
   for (let i = 0; i < pix.length; i++) {
-    x = (x * 1103515245 + 12345) >>> 0;
+    x = (x * 1_103_515_245 + 12_345) >>> 0;
     pix[i] = i % 4 === 3 ? 255 : x >>> 24;
   }
   const one = encodeGif(pix, 512, 512);
@@ -429,7 +429,7 @@ async function writeAnimatedWebp(path: string, frames: number): Promise<number> 
   const pix = new Uint8Array(512 * 512 * 4);
   let x = 7;
   for (let i = 0; i < pix.length; i++) {
-    x = (x * 1103515245 + 12345) >>> 0;
+    x = (x * 1_103_515_245 + 12_345) >>> 0;
     pix[i] = i % 4 === 3 ? 255 : x >>> 24;
   }
   const still = await new Bun.Image(encodePng({ pix, width: 512, height: 512 }))

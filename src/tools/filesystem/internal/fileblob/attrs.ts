@@ -124,16 +124,16 @@ export function quote(s: string): string {
   let out = '"';
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
-    if (c >= 0xd800 && c <= 0xdbff) {
+    if (c >= 0xd8_00 && c <= 0xdb_ff) {
       const next = s.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
+      if (next >= 0xdc_00 && next <= 0xdf_ff) {
         out += s.slice(i, i + 2);
         i++;
         continue;
       }
       throw invalidUTF8();
     }
-    if (c >= 0xdc00 && c <= 0xdfff) {
+    if (c >= 0xdc_00 && c <= 0xdf_ff) {
       throw invalidUTF8();
     }
     switch (c) {

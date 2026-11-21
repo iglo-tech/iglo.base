@@ -36,7 +36,7 @@ function pseudoRandom(n: number, seed: number): Uint8Array {
   const out = new Uint8Array(n);
   let x = seed;
   for (let i = 0; i < n; i++) {
-    x = (Math.imul(x, 1103515245) + 12345) >>> 0;
+    x = (Math.imul(x, 1_103_515_245) + 12_345) >>> 0;
     out[i] = x >>> 24;
   }
   return out;

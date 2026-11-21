@@ -385,7 +385,7 @@ describe("schema command", () => {
             mimeTypes: ["image/png"],
             thumbs: ["100x100"],
             protected: true,
-            maxSize: 1000000,
+            maxSize: 1_000_000,
           },
           { name: "secret_code", type: "password", min: 8, cost: 10 },
         ],

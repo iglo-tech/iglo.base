@@ -14,7 +14,7 @@ export const usersCollection = "ref_users";
 export const usersFields: FieldDef[] = [
   { name: "name", type: "text", max: 40 },
   { name: "secret", type: "text", hidden: true },
-  { name: "avatar", type: "file", maxSelect: 1, maxSize: 1048576 },
+  { name: "avatar", type: "file", maxSelect: 1, maxSize: 1_048_576 },
   { name: "created", type: "autodate", onCreate: true },
   { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
 ];
@@ -36,8 +36,8 @@ export function allFields(usersId: string): FieldDef[] {
     { name: "one", type: "select", maxSelect: 1, values: ["a", "b", "ü", "漢字"] },
     { name: "many", type: "select", maxSelect: 4, values: ["a", "b", "ü", "漢字"] },
     { name: "data", type: "json" },
-    { name: "doc", type: "file", maxSelect: 1, maxSize: 1048576 },
-    { name: "docs", type: "file", maxSelect: 5, maxSize: 1048576 },
+    { name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 },
+    { name: "docs", type: "file", maxSelect: 5, maxSize: 1_048_576 },
     { name: "owner", type: "relation", maxSelect: 1, collectionId: usersId },
     { name: "team", type: "relation", maxSelect: 5, collectionId: usersId },
     { name: "loc", type: "geoPoint" },

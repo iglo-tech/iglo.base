@@ -111,9 +111,9 @@ async function prepare(): Promise<{ dataDir: string; jpegPath: string; bigPath: 
   const fd = openSync(bigPath, "w");
   const block = new Uint8Array(mib);
   for (let i = 0; i < 160; i++) {
-    crypto.getRandomValues(block.subarray(0, 65536));
-    for (let o = 65536; o < mib; o += 65536) {
-      block.copyWithin(o, 0, 65536);
+    crypto.getRandomValues(block.subarray(0, 65_536));
+    for (let o = 65_536; o < mib; o += 65_536) {
+      block.copyWithin(o, 0, 65_536);
     }
     writeSync(fd, block);
   }

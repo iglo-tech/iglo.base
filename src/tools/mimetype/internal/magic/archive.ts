@@ -123,7 +123,9 @@ export function Zstd(raw: Uint8Array, _limit: number): boolean {
   }
   const sig = leUint32(raw, 0);
   // Check for Zstandard frames and skippable frames.
-  return (sig >= 0xfd2fb522 && sig <= 0xfd2fb528) || (sig >= 0x184d2a50 && sig <= 0x184d2a5f);
+  return (
+    (sig >= 0xfd_2f_b5_22 && sig <= 0xfd_2f_b5_28) || (sig >= 0x18_4d_2a_50 && sig <= 0x18_4d_2a_5f)
+  );
 }
 
 const crxSig = lit("Cr24");
@@ -151,7 +153,7 @@ export function Cpio(raw: Uint8Array, _limit: number): boolean {
     return false;
   }
   return (
-    leUint16(raw, 0) === 0o70707 || // binary cpio
+    leUint16(raw, 0) === 0o7_0707 || // binary cpio
     hasPrefix(raw, cpioPortable) || // portable ASCII cpios
     hasPrefix(raw, cpioNew) ||
     hasPrefix(raw, cpioCRC)

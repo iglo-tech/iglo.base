@@ -147,11 +147,11 @@ describe("invalid UTF-8", () => {
     // U+DCFF stands for the byte 0xff; another lone surrogate cannot be in a
     // Go string and becomes U+FFFD
     expect(parseError("a\udcff", Perl).code).toBe("invalid UTF-8");
-    expect(Parse("\ud800", Perl).rune).toEqual([0xfffd]);
+    expect(Parse("\ud800", Perl).rune).toEqual([0xff_fd]);
   });
 
   test("U+FFFD itself is valid", () => {
-    expect(Parse("�", Perl).rune).toEqual([0xfffd]);
+    expect(Parse("�", Perl).rune).toEqual([0xff_fd]);
   });
 });
 
@@ -217,9 +217,9 @@ describe("tree", () => {
   });
 
   test("negated classes run up to unicode.MaxRune", () => {
-    expect(Parse("[^a]", Perl).rune).toEqual([0, 0x60, 0x62, 0x10ffff]);
+    expect(Parse("[^a]", Perl).rune).toEqual([0, 0x60, 0x62, 0x10_ff_ff]);
     // without ClassNL, \n is excluded
-    expect(Parse("[^a]", POSIX).rune).toEqual([0, 9, 0xb, 0x60, 0x62, 0x10ffff]);
+    expect(Parse("[^a]", POSIX).rune).toEqual([0, 9, 0xb, 0x60, 0x62, 0x10_ff_ff]);
     const none = Parse("\\p{^Any}", Perl);
     expect([none.op, none.rune]).toEqual([OpCharClass, []]);
   });
@@ -233,7 +233,7 @@ describe("tree", () => {
 
   test("runes beyond the valid range stay as Go keeps them", () => {
     // \x{D800} is a surrogate rune in the tree, as in Go
-    expect(Parse("\\x{D800}", Perl).rune).toEqual([0xd800]);
+    expect(Parse("\\x{D800}", Perl).rune).toEqual([0xd8_00]);
   });
 
   test("the empty pattern and empty alternation", () => {

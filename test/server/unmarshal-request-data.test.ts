@@ -621,7 +621,7 @@ test("integers beyond 2^53 stay exact", () => {
     dst,
     type,
   );
-  expect(dst).toEqual({ I: -9223372036854775808n, U: 18446744073709551615n, S: 123 });
+  expect(dst).toEqual({ I: -9_223_372_036_854_775_808n, U: 18_446_744_073_709_551_615n, S: 123 });
 
   const fromJSON: Record<string, unknown> = {};
   unmarshalRequestData(
@@ -629,5 +629,5 @@ test("integers beyond 2^53 stay exact", () => {
     fromJSON,
     type,
   );
-  expect(fromJSON).toEqual({ I: 9007199254740993n, U: 9007199254740991, S: -1 });
+  expect(fromJSON).toEqual({ I: 9_007_199_254_740_993n, U: 9_007_199_254_740_991, S: -1 });
 });

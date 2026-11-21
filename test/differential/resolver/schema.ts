@@ -141,7 +141,7 @@ export const collectionSteps: CollectionStep[] = [
         { name: "publishedAt", type: "date" },
         { name: "website", type: "url" },
         { name: "contactEmail", type: "email" },
-        { name: "attachments", type: "file", maxSelect: 3, maxSize: 1000000 },
+        { name: "attachments", type: "file", maxSelect: 3, maxSize: 1_000_000 },
         { name: "hiddenScore", type: "number", hidden: true },
         { name: "slug", type: "text" },
         { name: "created", type: "autodate", onCreate: true },
@@ -424,7 +424,7 @@ export const recordSteps: RecordStep[] = [
     body: {
       id: rid("p6"),
       title: "UPPER case",
-      views: 1000000,
+      views: 1_000_000,
       published: false,
       status: "review",
       categories: ["news"],

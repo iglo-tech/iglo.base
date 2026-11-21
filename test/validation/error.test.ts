@@ -180,7 +180,7 @@ describe("template subset and API error data", () => {
     expect(
       err.setParams({
         s: "x",
-        i: 9007199254740991,
+        i: 9_007_199_254_740_991,
         f: new Float64(1e6),
         small: 0.5,
         list: ["a", "b"],

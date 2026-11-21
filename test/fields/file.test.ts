@@ -847,8 +847,8 @@ describe("settings JSON", () => {
     const text = `{"name":"f","id":"file1","system":true,"hidden":true,"presentable":true,"help":"h","maxSize":9007199254740993,"maxSelect":-9223372036854775808,"mimeTypes":["image/png"],"thumbs":["10x10"],"protected":true,"required":true}`;
     const field = new FileField();
     field.unmarshalJSON(text);
-    expect(field.maxSize).toBe(9007199254740993n);
-    expect(field.maxSelect).toBe(-9223372036854775808n);
+    expect(field.maxSize).toBe(9_007_199_254_740_993n);
+    expect(field.maxSelect).toBe(-9_223_372_036_854_775_808n);
     expect(field.marshalJSON()).toBe(text);
 
     // json.Unmarshal into an existing struct keeps the members that are
@@ -865,7 +865,7 @@ describe("settings JSON", () => {
 
 test("CalculateMaxBodySize wraps around as Go's int64", () => {
   expect(new FileField({ maxSize: 2 ** 52, maxSelect: 2 ** 11 }).calculateMaxBodySize()).toBe(
-    -9223372036854775808n,
+    -9_223_372_036_854_775_808n,
   );
   expect(new FileField({ maxSize: 2 ** 40, maxSelect: 2 ** 12 }).calculateMaxBodySize()).toBe(
     2 ** 52,

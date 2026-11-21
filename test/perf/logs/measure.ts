@@ -108,7 +108,7 @@ async function measure(name: string, binary: string, port: number): Promise<void
   rmSync(root, { recursive: true, force: true });
 }
 
-let port = 18790;
+let port = 18_790;
 for (const arg of process.argv.slice(2)) {
   const [name, binary] = arg.split("=");
   await measure(name!, binary!, port++);

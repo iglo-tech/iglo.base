@@ -374,7 +374,7 @@ function pngConfig(r: ByteSource): Size {
     } else if (type === "IEND") {
       throw order;
     } else {
-      if (length > 0x7fffffff) {
+      if (length > 0x7f_ff_ff_ff) {
         throw new Error(`invalid PNG format: Bad chunk length: ${length}`);
       }
       for (let left = length; left > 0;) {
@@ -547,7 +547,7 @@ function webpConfig(r: ByteSource): Size {
       }
       wantAlpha = false;
     } else if (id === "VP8 ") {
-      if (wantAlpha || len > 0x7fffffff) {
+      if (wantAlpha || len > 0x7f_ff_ff_ff) {
         throw invalid;
       }
       if (len < 3) {
@@ -580,7 +580,7 @@ function webpConfig(r: ByteSource): Size {
       if (bits >>> 29 !== 0) {
         throw new Error("vp8l: invalid version");
       }
-      return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+      return { width: (bits & 0x3f_ff) + 1, height: ((bits >>> 14) & 0x3f_ff) + 1 };
     } else if (id === "VP8X") {
       if (len !== 10) {
         throw invalid;
@@ -615,7 +615,7 @@ export function readOrientation(b: Uint8Array): number {
   const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
   let o = 0;
   const ok = (n: number): boolean => o + n <= b.length;
-  if (!ok(2) || v.getUint16(0) !== 0xffd8) {
+  if (!ok(2) || v.getUint16(0) !== 0xff_d8) {
     return 0;
   }
   o = 2;
@@ -629,7 +629,7 @@ export function readOrientation(b: Uint8Array): number {
     if (marker >> 8 !== 0xff) {
       return 0;
     }
-    if (marker === 0xffe1) {
+    if (marker === 0xff_e1) {
       break;
     }
     if (size < 2) {
@@ -637,7 +637,7 @@ export function readOrientation(b: Uint8Array): number {
     }
     o += size - 2;
   }
-  if (!ok(6) || v.getUint32(o) !== 0x45786966) {
+  if (!ok(6) || v.getUint32(o) !== 0x45_78_69_66) {
     return 0;
   }
   o += 6;
@@ -645,8 +645,8 @@ export function readOrientation(b: Uint8Array): number {
     return 0;
   }
   const tag = v.getUint16(o);
-  const le = tag === 0x4949;
-  if (!le && tag !== 0x4d4d) {
+  const le = tag === 0x49_49;
+  if (!le && tag !== 0x4d_4d) {
     return 0;
   }
   o += 4;
@@ -670,7 +670,7 @@ export function readOrientation(b: Uint8Array): number {
     }
     const t = v.getUint16(o, le);
     o += 2;
-    if (t !== 0x0112) {
+    if (t !== 0x01_12) {
       o += 10;
       continue;
     }

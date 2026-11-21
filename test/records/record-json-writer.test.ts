@@ -28,11 +28,11 @@ import { marshal as marshalBefore } from "@test/tools/types/go-json-before-m71c"
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -91,7 +91,7 @@ function fill(r: () => number, rec: Record): void {
   rec.id = "rec" + Math.floor(r() * 1e6);
   rec.set("title", pick(r, strings));
   rec.set("secret", pick(r, strings));
-  rec.set("n", pick(r, [0, -1, 1.5, 1e21, 1e-7, -0, 2 ** 53, 123456789.123]));
+  rec.set("n", pick(r, [0, -1, 1.5, 1e21, 1e-7, -0, 2 ** 53, 123_456_789.123]));
   rec.set("flag", r() < 0.5);
   rec.set("meta", pick(r, jsonTexts));
   rec.set("tags", r() < 0.5 ? [] : ["a", "c"]);

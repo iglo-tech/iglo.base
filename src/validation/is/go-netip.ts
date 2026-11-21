@@ -156,7 +156,7 @@ function parseIPv6(input: string): Addr {
         // more than 4 digits in group, fail.
         throw new ParseAddrError(input, "each group must have 4 or less digits", s);
       }
-      if (acc > 0xffff) {
+      if (acc > 0xff_ff) {
         // Overflow, fail.
         throw new ParseAddrError(input, "IPv6 field has value >=2^16", s);
       }

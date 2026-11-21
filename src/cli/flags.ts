@@ -83,7 +83,7 @@ function parseGoInt(value: string): number | "range" | undefined {
   if (match[1] === "-") {
     parsed = -parsed;
   }
-  if (parsed > 9223372036854775807n || parsed < -9223372036854775808n) {
+  if (parsed > 9_223_372_036_854_775_807n || parsed < -9_223_372_036_854_775_808n) {
     return "range";
   }
   return Number(parsed);

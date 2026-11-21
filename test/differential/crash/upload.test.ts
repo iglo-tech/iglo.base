@@ -47,7 +47,7 @@ const boundary = "----crashtestboundary";
 function uploadRequest(): { head: string; body: Buffer } {
   const file = Buffer.alloc(bodySize);
   for (let i = 0; i < file.length; i += 4) {
-    file.writeUInt32LE((i * 2654435761) >>> 0, i);
+    file.writeUInt32LE((i * 2_654_435_761) >>> 0, i);
   }
   const body = Buffer.concat([
     Buffer.from(
@@ -95,9 +95,9 @@ function startUpload(url: string, bytes: number): Upload {
       void (async () => {
         const all = Buffer.concat([Buffer.from(head), body]);
         const limit = Math.min(all.length, head.length + bytes);
-        for (let at = 0; at < limit; at += 65536) {
+        for (let at = 0; at < limit; at += 65_536) {
           await new Promise<void>((done) =>
-            socket.write(all.subarray(at, Math.min(at + 65536, limit)), () => done()),
+            socket.write(all.subarray(at, Math.min(at + 65_536, limit)), () => done()),
           );
         }
         resolve();

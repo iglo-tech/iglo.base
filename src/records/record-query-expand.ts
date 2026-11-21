@@ -269,7 +269,7 @@ function* expandRecordsPath(
     // indirect/back relation
     relField = new RelationField();
     relField.name = part0;
-    relField.maxSelect = 2147483647;
+    relField.maxSelect = 2_147_483_647;
     relField.collectionId = indirectRel.id;
     const [, ok] = findSingleColumnUniqueIndex(indirectRel.indexes, indirectRelField.name);
     if (ok) {

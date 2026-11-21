@@ -34,7 +34,7 @@ describe("ToFloat64E", () => {
     ["10...17", 0, true],
     ["10.foobar", 0, true],
     ["10.0i", 0, true],
-    ["10.0E9", 10000000000, false],
+    ["10.0E9", 10_000_000_000, false],
     // strconv.ParseFloat forms (not in cast's table)
     ["0x10", 0, true], // a hex mantissa needs a p exponent
     ["0x1p-2", 0.25, false],

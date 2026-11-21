@@ -33,5 +33,5 @@ export const DefaultBodyLimitMiddlewarePriority = DefaultRateLimitMiddlewarePrio
 // DefaultMaxBodySize: 32mb
 export const DefaultMaxBodySize = 32 << 20;
 
-export const DefaultWWWRedirectMiddlewarePriority = -99999;
+export const DefaultWWWRedirectMiddlewarePriority = -99_999;
 export const DefaultWWWRedirectMiddlewareId = "pbWWWRedirect";

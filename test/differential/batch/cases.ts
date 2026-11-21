@@ -84,7 +84,7 @@ export const batchCases: BatchCase[] = [
   },
   {
     name: "upsert of a numeric id",
-    items: [upsert("b_parents", { id: 12345, title: "numeric" })],
+    items: [upsert("b_parents", { id: 12_345, title: "numeric" })],
   },
   {
     name: "upsert of a missing collection",

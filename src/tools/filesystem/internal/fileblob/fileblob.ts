@@ -522,7 +522,7 @@ function createTemp(path: string, noTempDir: boolean): { fd: number; name: strin
       return { fd: openSync(name, "wx+", 0o666), name };
     } catch (err) {
       if ((err as { code?: string }).code === "EEXIST") {
-        if (++tries < 10000) {
+        if (++tries < 10_000) {
           continue;
         }
         throw new Error(`createtemp ${path}.*.tmp: file already exists`, { cause: err });

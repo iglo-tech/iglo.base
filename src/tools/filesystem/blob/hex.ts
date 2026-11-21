@@ -145,7 +145,7 @@ function toRunes(s: string): number[] {
   const runes: number[] = [];
   for (const ch of s) {
     const c = ch.codePointAt(0) as number;
-    runes.push(c >= 0xd800 && c <= 0xdfff ? 0xfffd : c);
+    runes.push(c >= 0xd8_00 && c <= 0xdf_ff ? 0xff_fd : c);
   }
   return runes;
 }
@@ -155,7 +155,9 @@ function toRunes(s: string): number[] {
 function runesToString(runes: number[]): string {
   let out = "";
   for (const r of runes) {
-    out += String.fromCodePoint(r < 0 || r > 0x10ffff || (r >= 0xd800 && r <= 0xdfff) ? 0xfffd : r);
+    out += String.fromCodePoint(
+      r < 0 || r > 0x10_ff_ff || (r >= 0xd8_00 && r <= 0xdf_ff) ? 0xff_fd : r,
+    );
   }
   return out;
 }

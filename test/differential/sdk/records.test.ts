@@ -145,11 +145,11 @@ describe("RecordService CRUD", () => {
         text: 'zażółć gęślą jaźń 🚀 \u0000-free "quotes" <tag> &amp;',
         url: "https://example.com/a?b=c&d=é",
         email: "values@example.com",
-        number: 12345.678,
+        number: 12_345.678,
         bool: true,
         datetime: "2030-02-03 04:05:06.789Z",
         select_many: ["optionA", "optionC"],
-        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 1234567890123456 },
+        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 1_234_567_890_123_456 },
         point: { lon: 12.5, lat: -45.25 },
       }),
     );

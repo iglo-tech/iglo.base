@@ -94,7 +94,7 @@ function testHeader(
   put32(h, 48, firstDirSec);
   put32(h, 56, minStdStream);
   put32(h, 60, firstSSAT);
-  put32(h, 68, 0xfffffffe); // no extra master SAT sectors
+  put32(h, 68, 0xff_ff_ff_fe); // no extra master SAT sectors
   put32(h, 72, 0);
   for (let i = 0; i < masterSATSize; i++) {
     const v = masterSAT !== null && i < masterSAT.length ? (masterSAT[i] ?? -1) : -1;
@@ -369,9 +369,9 @@ describe("TestDetectFromSectionNames", () => {
 test("TestDetectMasterSATExtension", () => {
   const msatSec = 109; // master SAT extension sector
   const extSATSec = 110; // SAT sector referenced from the extension
-  const dirSec = 13952; // first sector mapped by extSATSec (109*128)
-  const rootSec = 13953;
-  const summarySec = 13954;
+  const dirSec = 13_952; // first sector mapped by extSATSec (109*128)
+  const rootSec = 13_953;
+  const summarySec = 13_954;
   const nSectors = summarySec + 1;
   const summary = summaryStream("Microsoft Excel", false);
 
@@ -580,9 +580,9 @@ describe("TestBuildSATTruncatedMSATNoPanic", () => {
       data.set(cdfMagic, 0);
       put16(data, 30, tc.secP2);
       put16(data, 32, 6); // shortP2
-      put32(data, 48, 0xffffffff); // firstDirSec = -1
+      put32(data, 48, 0xff_ff_ff_ff); // firstDirSec = -1
       put32(data, 56, 4096); // minStdStream
-      put32(data, 60, 0xffffffff); // firstSSAT = -1
+      put32(data, 60, 0xff_ff_ff_ff); // firstSSAT = -1
       put32(data, 68, 0); // firstMSAT = sector 0
       put32(data, 72, 1); // nMSAT = 1
       // masterSAT[0] points past EOF so the header loop breaks
@@ -590,7 +590,7 @@ describe("TestBuildSATTruncatedMSATNoPanic", () => {
       // extension loop.
       put32(data, 76, 100);
       for (let i = 1; i < masterSATSize; i++) {
-        put32(data, 76 + 4 * i, 0xffffffff);
+        put32(data, 76 + 4 * i, 0xff_ff_ff_ff);
       }
       // data[secSize:secSize+4] = 0 -> msa = [0], a non-negative secid so
       // the loop keeps going and then dereferences msa[1].
@@ -617,13 +617,13 @@ test("TestCyclicChainBounded", () => {
   put16(data, 32, 6); // shortP2
   put32(data, 48, 1); // firstDirSec = sector 1
   put32(data, 56, 4096); // minStdStream
-  put32(data, 60, 0xffffffff); // firstSSAT = -1
-  put32(data, 68, 0xffffffff); // firstMSAT = -1
+  put32(data, 60, 0xff_ff_ff_ff); // firstSSAT = -1
+  put32(data, 68, 0xff_ff_ff_ff); // firstMSAT = -1
   put32(data, 72, 0); // nMSAT = 0
   // masterSAT[0] = sector 0 holds the SAT; the rest are unused (-1).
   put32(data, 76, 0);
   for (let i = 1; i < masterSATSize; i++) {
-    put32(data, 76 + 4 * i, 0xffffffff);
+    put32(data, 76 + 4 * i, 0xff_ff_ff_ff);
   }
   // SAT lives in sector 0 (file offset secSize). Make sat[1] = 1 so the
   // directory chain starting at sector 1 loops forever.
@@ -668,7 +668,7 @@ describe("TestSummaryAppNameNoPanic", () => {
         put32(sec, 0, 16); // shLen
         put32(sec, 4, 1); // nProps
         put32(sec, 8, propIDNameOfApplication);
-        put32(sec, 12, 0xffffffff); // off; off+8 wraps to 7
+        put32(sec, 12, 0xff_ff_ff_ff); // off; off+8 wraps to 7
         return stream;
       },
       want: "",
@@ -686,7 +686,7 @@ describe("TestSummaryAppNameNoPanic", () => {
         put32(sec, 8, propIDNameOfApplication);
         put32(sec, 12, 16); // off -> value at section[16:]
         put32(sec, 16, typeStringWide); // step = 2
-        put32(sec, 20, 0xffffffff); // slen; slen*2 overflows uint32
+        put32(sec, 20, 0xff_ff_ff_ff); // slen; slen*2 overflows uint32
         return stream;
       },
       want: "",
@@ -697,7 +697,7 @@ describe("TestSummaryAppNameNoPanic", () => {
       name: "sdOff negative on 386",
       stream: () => {
         const stream = new Uint8Array(64);
-        put32(stream, sectionDeclOffset + 16, 0x80000000); // sdOff > MaxInt32
+        put32(stream, sectionDeclOffset + 16, 0x80_00_00_00); // sdOff > MaxInt32
         return stream;
       },
       want: "",
@@ -772,7 +772,7 @@ function buildQuadraticCDF(n: number): Uint8Array {
   put32(data, 48, 4); // firstDirSec
   put32(data, 56, 4096); // minStdStream
   put32(data, 60, 6); // firstSSAT
-  put32(data, 68, 0xfffffffe); // firstMSAT: none
+  put32(data, 68, 0xff_ff_ff_fe); // firstMSAT: none
   put32(data, 72, 0); // nMSAT
   for (let i = 0; i < masterSATSize; i++) {
     put32(data, 76 + 4 * i, -1);
@@ -787,7 +787,7 @@ function buildQuadraticCDF(n: number): Uint8Array {
     put32(data, sat + 4 * i, -1);
   }
   put32(data, sat + 4 * 4, 5); // SAT[4] = 5
-  put32(data, sat + 4 * 5, 0xfffffffe); // SAT[5] = ENDOFCHAIN
+  put32(data, sat + 4 * 5, 0xff_ff_ff_fe); // SAT[5] = ENDOFCHAIN
   put32(data, sat + 4 * 6, 6); // SAT[6] = 6 (self-loop)
 
   // Directory entry 0: Root Entry, short-stream pool at sector 6, child = 1.

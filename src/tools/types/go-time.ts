@@ -19,7 +19,7 @@ export interface Instant {
 }
 
 // seconds from 0001-01-01 00:00:00 UTC (Go's zero Time) to the Unix epoch
-export const unixToInternal = 62135596800;
+export const unixToInternal = 62_135_596_800;
 
 export interface ParsedTime {
   year: number;
@@ -830,15 +830,15 @@ export function daysFromCivil(y: number, m: number, d: number): number {
   const mp = (m + 9) % 12;
   const doy = Math.floor((153 * mp + 2) / 5);
   const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
-  return era * 146097 + doe - 719468 + (d - 1);
+  return era * 146_097 + doe - 719_468 + (d - 1);
 }
 
 export function civilFromDays(z: number): [number, number, number] {
-  z += 719468;
-  const era = Math.floor(z / 146097);
-  const doe = z - era * 146097;
+  z += 719_468;
+  const era = Math.floor(z / 146_097);
+  const doe = z - era * 146_097;
   const yoe = Math.floor(
-    (doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365,
+    (doe - Math.floor(doe / 1460) + Math.floor(doe / 36_524) - Math.floor(doe / 146_096)) / 365,
   );
   const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
   const mp = Math.floor((5 * doy + 2) / 153);
@@ -866,7 +866,7 @@ export function date(
   sec += Math.floor(nsec / 1e9);
   nsec = ((nsec % 1e9) + 1e9) % 1e9;
   const days = daysFromCivil(year, month, day);
-  return { sec: days * 86400 + hour * 3600 + min * 60 + sec, nsec };
+  return { sec: days * 86_400 + hour * 3600 + min * 60 + sec, nsec };
 }
 
 // the UTC calendar fields of an instant
@@ -878,8 +878,8 @@ export function fieldsOf(t: Instant): {
   min: number;
   sec: number;
 } {
-  const days = Math.floor(t.sec / 86400);
-  const secOfDay = t.sec - days * 86400;
+  const days = Math.floor(t.sec / 86_400);
+  const secOfDay = t.sec - days * 86_400;
   const [year, month, day] = civilFromDays(days);
   return {
     year,

@@ -70,7 +70,7 @@ export async function killTree(proc: Bun.Subprocess): Promise<void> {
       // already gone
     }
   }
-  await Promise.race([proc.exited, Bun.sleep(5_000)]);
+  await Promise.race([proc.exited, Bun.sleep(5000)]);
   for (const pid of pids) {
     try {
       process.kill(pid, "SIGKILL");
@@ -127,7 +127,7 @@ export async function startApp(app: ExampleApp, env: Record<string, string>): Pr
       throw new Error(`${app.name} exited while starting:\n${log}`);
     }
     try {
-      await fetch(`${url}/`, { redirect: "manual", signal: AbortSignal.timeout(2_000) });
+      await fetch(`${url}/`, { redirect: "manual", signal: AbortSignal.timeout(2000) });
       break;
     } catch {
       if (Date.now() > deadline) {

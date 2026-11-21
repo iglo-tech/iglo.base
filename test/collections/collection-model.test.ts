@@ -638,7 +638,7 @@ describe("CollectionUnmarshalJSON json v2 rules", () => {
     expect(marshal(c.mfa)).toBe(`{"enabled":false,"duration":600,"rule":"x"}`);
     expect(marshal(c.authAlert)).toBe(`{"enabled":false,"emailTemplate":{"subject":"","body":""}}`);
     expect(c.name).toBe("test");
-    expect(c.otp.length).toBe(9007199254740993n);
+    expect(c.otp.length).toBe(9_007_199_254_740_993n);
     expect(c.otp.duration).toBe(180);
   });
 

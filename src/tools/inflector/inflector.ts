@@ -32,19 +32,19 @@ function trimSpace(s: string): string {
 // mapping expands them to two characters
 function greekIotaUpper(cp: number): number | undefined {
   if (
-    (cp >= 0x1f80 && cp <= 0x1f87) ||
-    (cp >= 0x1f90 && cp <= 0x1f97) ||
-    (cp >= 0x1fa0 && cp <= 0x1fa7)
+    (cp >= 0x1f_80 && cp <= 0x1f_87) ||
+    (cp >= 0x1f_90 && cp <= 0x1f_97) ||
+    (cp >= 0x1f_a0 && cp <= 0x1f_a7)
   ) {
     return cp + 8;
   }
   switch (cp) {
-    case 0x1fb3:
-      return 0x1fbc;
-    case 0x1fc3:
-      return 0x1fcc;
-    case 0x1ff3:
-      return 0x1ffc;
+    case 0x1f_b3:
+      return 0x1f_bc;
+    case 0x1f_c3:
+      return 0x1f_cc;
+    case 0x1f_f3:
+      return 0x1f_fc;
   }
   return undefined;
 }

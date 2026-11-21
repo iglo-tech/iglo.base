@@ -14,13 +14,13 @@ import { getDB, openTempDatabases, tempDir } from "@test/db/support";
 
 // the values upstream's DSN pragmas leave on a connection
 const expectedPragmas: Record<string, unknown> = {
-  busy_timeout: 10000,
+  busy_timeout: 10_000,
   journal_mode: "wal",
-  journal_size_limit: 200000000,
+  journal_size_limit: 200_000_000,
   synchronous: 1, // NORMAL
   foreign_keys: 1,
   temp_store: 2, // MEMORY
-  cache_size: -32000,
+  cache_size: -32_000,
 };
 
 describe("open", () => {

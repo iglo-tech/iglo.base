@@ -804,5 +804,5 @@ function parseBool(str: string): boolean {
 // clamped to the int64 range, as Atoi returns it with its (ignored) error
 function goAtoi(digits: string): number {
   const n = BigInt(digits);
-  return n > 9223372036854775807n ? Number(9223372036854775807n) : Number(n);
+  return n > 9_223_372_036_854_775_807n ? Number(9_223_372_036_854_775_807n) : Number(n);
 }

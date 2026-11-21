@@ -25,7 +25,7 @@ import { formatFailure, runFuzz } from "@test/differential/fuzz/run";
 import { type FuzzServers, startFuzzServers } from "@test/differential/fuzz/servers";
 import { shrinkCase } from "@test/differential/fuzz/shrink";
 
-const shortRunSeed = 20261030;
+const shortRunSeed = 20_261_030;
 const shortRunCases = 500;
 
 let servers: FuzzServers;

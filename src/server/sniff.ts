@@ -190,7 +190,7 @@ const mp4Sig: SniffSig = {
     }
     // binary.BigEndian.Uint32(data[:4])
     const boxSize =
-      byteAt(data, 0) * 0x1000000 +
+      byteAt(data, 0) * 0x1_00_00_00 +
       ((byteAt(data, 1) << 16) | (byteAt(data, 2) << 8) | byteAt(data, 3));
     if (data.length < boxSize || boxSize % 4 !== 0) {
       return "";

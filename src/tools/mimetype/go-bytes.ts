@@ -132,7 +132,7 @@ export function lit(s: string): Uint8Array {
   return out;
 }
 
-export const RuneError = 0xfffd;
+export const RuneError = 0xff_fd;
 
 // utf8.DecodeRune of p[i:]: the rune and its width, (RuneError, 1) for an
 // invalid encoding and (RuneError, 0) at the end.
@@ -227,12 +227,12 @@ export function isSpace(r: number): boolean {
     return false;
   }
   return (
-    r === 0x1680 ||
-    (r >= 0x2000 && r <= 0x200a) ||
-    r === 0x2028 ||
-    r === 0x2029 ||
-    r === 0x202f ||
-    r === 0x205f ||
-    r === 0x3000
+    r === 0x16_80 ||
+    (r >= 0x20_00 && r <= 0x20_0a) ||
+    r === 0x20_28 ||
+    r === 0x20_29 ||
+    r === 0x20_2f ||
+    r === 0x20_5f ||
+    r === 0x30_00
   );
 }

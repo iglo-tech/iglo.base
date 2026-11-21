@@ -152,7 +152,7 @@ class Parser {
       }
       const code = this.hex4(this.i + 2);
       this.i += 6;
-      if (code >= 0xd800 && code <= 0xdbff) {
+      if (code >= 0xd8_00 && code <= 0xdb_ff) {
         // a high surrogate must be followed by an escaped low surrogate;
         // an input that ends within a possible one is truncated
         // (jsonwire's hasEscapedUTF16Prefix)
@@ -167,7 +167,7 @@ class Parser {
         }
         throw new JsonSyntaxError(`invalid surrogate pair in string at offset ${start}`);
       }
-      if (code >= 0xdc00 && code <= 0xdfff) {
+      if (code >= 0xdc_00 && code <= 0xdf_ff) {
         // a low surrogate cannot start a pair, but an input that ends
         // within a possible escape after it is truncated all the same
         const next = this.s.slice(this.i, this.i + 6);
@@ -317,7 +317,7 @@ function decodeRune(bytes: Uint8Array, i: number): [number, number] {
   if (b0 < 0x80) {
     return [b0, 1];
   }
-  const invalid: [number, number] = [0xdc00 + b0, 1];
+  const invalid: [number, number] = [0xdc_00 + b0, 1];
   // utf8 first and acceptRanges: sequence size and the second byte's range
   let size: number;
   let lo = 0x80;

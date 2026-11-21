@@ -248,7 +248,7 @@ add("netpbm signed size", raw("P3\n+5 -6\n"));
 function zipEntry(name: string, data: Uint8Array = new Uint8Array(0), extra = new Uint8Array(0)) {
   const header = new Uint8Array(30);
   const view = new DataView(header.buffer);
-  view.setUint32(0, 0x04034b50, true);
+  view.setUint32(0, 0x04_03_4b_50, true);
   view.setUint16(4, 20, true);
   view.setUint32(18, data.length, true);
   view.setUint32(22, data.length, true);
@@ -392,7 +392,7 @@ function oleEntry(
   }
   v.setUint16(64, 2 * (name.length + 1), true);
   e[66] = typ;
-  v.setUint32(68, 0xffffffff, true); // left sibling
+  v.setUint32(68, 0xff_ff_ff_ff, true); // left sibling
   v.setUint32(72, right >>> 0, true);
   v.setUint32(76, child >>> 0, true);
   v.setUint32(116, first >>> 0, true);
@@ -415,11 +415,11 @@ function cdfEmbedded(rootApp: string, embeddedApp: string, pool = new Uint8Array
   hv.setUint16(32, 6, true); // 64-byte short sectors
   hv.setUint32(48, 1, true); // first directory sector
   hv.setUint32(56, 0, true); // minStdStream: every stream in long sectors
-  hv.setUint32(60, 0xfffffffe, true); // no SSAT
-  hv.setUint32(68, 0xfffffffe, true); // no extra master SAT sectors
+  hv.setUint32(60, 0xff_ff_ff_fe, true); // no SSAT
+  hv.setUint32(68, 0xff_ff_ff_fe, true); // no extra master SAT sectors
   hv.setUint32(72, 0, true);
   for (let i = 0; i < 109; i++) {
-    hv.setUint32(76 + 4 * i, 0xffffffff, true);
+    hv.setUint32(76 + 4 * i, 0xff_ff_ff_ff, true);
   }
   hv.setUint32(76, 0, true); // master SAT: sector 0
 
@@ -428,11 +428,11 @@ function cdfEmbedded(rootApp: string, embeddedApp: string, pool = new Uint8Array
   const sat = new Uint8Array(512);
   const sv = new DataView(sat.buffer);
   for (let i = 0; i < 128; i++) {
-    sv.setUint32(4 * i, 0xffffffff, true);
+    sv.setUint32(4 * i, 0xff_ff_ff_ff, true);
   }
-  sv.setUint32(0, 0xfffffffd, true); // the SAT itself
+  sv.setUint32(0, 0xff_ff_ff_fd, true); // the SAT itself
   for (let i = 1; i <= 4; i++) {
-    sv.setUint32(4 * i, 0xfffffffe, true); // single-sector chains
+    sv.setUint32(4 * i, 0xff_ff_ff_fe, true); // single-sector chains
   }
 
   const embedded = oleSummary(embeddedApp);
@@ -466,9 +466,9 @@ add(
 );
 
 // random bytes from a fixed seed
-let seed = 0x5eed;
+let seed = 0x5e_ed;
 const rnd = () => {
-  seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+  seed = (Math.imul(seed, 1_103_515_245) + 12_345) >>> 0;
   return seed >>> 24;
 };
 for (const n of [1, 3, 16, 100, 1000, defaultLimit + 100]) {

@@ -29,7 +29,7 @@ function generate(dataDir: string): void {
   db.run("BEGIN");
   for (let i = 0; i < rows; i++) {
     insert.run(Buffer.from(crypto.getRandomValues(new Uint8Array(750))).toString("base64"));
-    if (i % 10_000 === 9_999) {
+    if (i % 10_000 === 9999) {
       db.run("COMMIT");
       db.run("BEGIN");
     }
@@ -265,8 +265,8 @@ generate(source);
 console.log(`generated: data.db ${statSync(join(source, "data.db")).size >> 20} MiB`);
 
 for (const [name, command, port] of [
-  ["iglo.base", [join(repo, "dist/iglo-base")], 48231],
-  ["upstream", [join(repo, ".upstream/bin/pocketbase")], 48232],
+  ["iglo.base", [join(repo, "dist/iglo-base")], 48_231],
+  ["upstream", [join(repo, ".upstream/bin/pocketbase")], 48_232],
 ] as const) {
   const dataDir = join(workDir, name, "pb_data");
   cpSync(source, dataDir, { recursive: true });

@@ -166,7 +166,7 @@ async function spawnServer(
     async stop() {
       if (proc.exitCode === null) {
         proc.kill("SIGTERM");
-        const timer = setTimeout(() => proc.kill("SIGKILL"), 5_000);
+        const timer = setTimeout(() => proc.kill("SIGKILL"), 5000);
         await proc.exited;
         clearTimeout(timer);
       }

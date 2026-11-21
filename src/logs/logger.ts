@@ -86,7 +86,7 @@ export interface LoggerConfig {
 // In this case DB logs are still filtered but the checks for the min level are done
 // in the BatchOptions.BeforeAddFunc instead of the slog.Handler.Enabled() method.
 function getLoggerMinLevel(isDev: boolean, logs: LogsConfig): number {
-  return isDev ? -99999 : Number(logs.MinLevel);
+  return isDev ? -99_999 : Number(logs.MinLevel);
 }
 
 export class Logger implements AppLogger {

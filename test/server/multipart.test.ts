@@ -1157,7 +1157,7 @@ test.each([
     body: () =>
       writeMultipart(
         boundary,
-        Array.from({ length: 110000 }, () => formField("f", "v")),
+        Array.from({ length: 110_000 }, () => formField("f", "v")),
       ),
   },
 ])(
@@ -1183,7 +1183,7 @@ test.each([
   { values: 0, files: 1001, extraKeysPerFile: 0, wantErr: ErrMessageTooLarge },
   // plus Content-Disposition and Content-Type
   { values: 0, files: 1, extraKeysPerFile: 9998, wantErr: undefined },
-  { values: 0, files: 1, extraKeysPerFile: 10000, wantErr: ErrMessageTooLarge },
+  { values: 0, files: 1, extraKeysPerFile: 10_000, wantErr: ErrMessageTooLarge },
 ])(
   "TestReadFormLimits: values=$values/files=$files/extraKeysPerFile=$extraKeysPerFile",
   async ({ values, files, extraKeysPerFile, wantErr }) => {

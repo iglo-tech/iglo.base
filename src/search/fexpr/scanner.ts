@@ -816,7 +816,7 @@ function isValidIdentifier(literal: string): boolean {
 // strconv.QuoteRune (fmt's %q for a rune): a single-quoted Go character
 // literal; non-printable runes (unicode.IsPrint) are escaped.
 function quoteRune(r: number): string {
-  if (r > 0x10ffff || (r >= 0xd800 && r <= 0xdfff)) {
+  if (r > 0x10_ff_ff || (r >= 0xd8_00 && r <= 0xdf_ff)) {
     r = RuneError;
   }
   switch (r) {
@@ -847,7 +847,7 @@ function quoteRune(r: number): string {
   if (r < 0x20 || r === 0x7f) {
     return "'\\x" + r.toString(16).padStart(2, "0") + "'";
   }
-  if (r < 0x10000) {
+  if (r < 0x1_00_00) {
     return "'\\u" + r.toString(16).padStart(4, "0") + "'";
   }
   return "'\\U" + r.toString(16).padStart(8, "0") + "'";

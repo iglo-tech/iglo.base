@@ -114,7 +114,7 @@ describe("reading a valid file", () => {
       enabled: true,
       identityFields: ["email", "members_name"],
     });
-    expect(members.options.authToken).toEqual({ duration: 432000 });
+    expect(members.options.authToken).toEqual({ duration: 432_000 });
     // the email template keeps the default body it does not change
     expect(members.options.otp).toMatchObject({ enabled: false, duration: 180, length: 8 });
   });
@@ -189,7 +189,7 @@ describe("reading a valid file", () => {
     const superusers = collection(schema, "_superusers");
     expect(superusers.system).toBe(true);
     expect(superusers.type).toBe("auth");
-    expect(superusers.options.authToken).toEqual({ duration: 86400 });
+    expect(superusers.options.authToken).toEqual({ duration: 86_400 });
   });
 });
 
