@@ -49,7 +49,7 @@ import { bytesToText, textToBytes } from "@/tools/types/go-json";
 
 export const ThumbSizeRegex = lazyMustCompile(String.raw`^(\d+)x(\d+)(t|b|f)?$`);
 
-const inlineServeContentTypes = [
+const inlineServeContentTypes = new Set([
   // image
   "image/png",
   "image/jpg",
@@ -80,7 +80,7 @@ const inlineServeContentTypes = [
   // document
   "application/pdf",
   "application/x-pdf",
-];
+]);
 
 // manualExtensionContentTypes is a map of file extensions to content types.
 const manualExtensionContentTypes = new Map([
@@ -706,7 +706,7 @@ export function setServeHeaders(
   }
 
   let disposition = "attachment";
-  if (!forceAttachment && inlineServeContentTypes.includes(realContentType)) {
+  if (!forceAttachment && inlineServeContentTypes.has(realContentType)) {
     disposition = "inline";
   }
 

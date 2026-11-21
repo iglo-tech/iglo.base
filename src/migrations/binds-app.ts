@@ -78,9 +78,7 @@ import { Settings } from "@/settings/settings-model";
 import { saveSettingsSync } from "@/settings/settings-query";
 
 // A function of the migration file with the (txApp) => error signature.
-type TxFunc = unknown;
-
-export type RunTxFunc = (fn: TxFunc, txApp: App) => void;
+export type RunTxFunc = (fn: unknown, txApp: App) => void;
 
 export class AppBinding {
   closed = false;
@@ -263,10 +261,10 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
     auxConcurrentDB: () => db.auxConcurrentDB(),
     auxNonconcurrentDB: () => db.auxNonconcurrentDB(),
 
-    runInTransaction: (fn: TxFunc) => {
+    runInTransaction: (fn: unknown) => {
       runInAppTransaction(app, (txApp) => runTxFunc(fn, txApp as App));
     },
-    auxRunInTransaction: (fn: TxFunc) => {
+    auxRunInTransaction: (fn: unknown) => {
       auxRunInTransaction(db, (txDatabases) => {
         runTxFunc(fn, txDatabases === db ? app : { ...app, databases: txDatabases });
       });

@@ -93,7 +93,7 @@ export function readStartingData(dataDir: string): StartingData {
       .filter((path) => existsSync(path))
       .map((path) => readFileSync(path)),
   );
-  return { contains: (value) => bytes.includes(value) };
+  return { contains: (value) => bytes.indexOf(value) !== -1 };
 }
 
 export interface Format {

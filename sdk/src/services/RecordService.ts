@@ -1167,7 +1167,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     // apply the replacements
     for (const key in replacements) {
-      if (!replacements.hasOwnProperty(key)) {
+      if (!Object.prototype.hasOwnProperty.call(replacements, key)) {
         continue;
       }
 
@@ -1181,7 +1181,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     // construct back the full query string
     query = "";
     for (const key in parsedParams) {
-      if (!parsedParams.hasOwnProperty(key)) {
+      if (!Object.prototype.hasOwnProperty.call(parsedParams, key)) {
         continue;
       }
 

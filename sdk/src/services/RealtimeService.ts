@@ -6,8 +6,8 @@ import { normalizeUnknownQueryParams } from "@sdk/tools/options";
 import type { SendOptions } from "@sdk/tools/options";
 
 interface promiseCallbacks {
-  resolve: Function;
-  reject: Function;
+  resolve: (value?: void) => void;
+  reject: (reason?: unknown) => void;
 }
 
 type Subscriptions = { [key: string]: Array<EventListener> };
@@ -90,7 +90,9 @@ export class RealtimeService extends BaseService {
       let data;
       try {
         data = JSON.parse(msgEvent?.data);
-      } catch {}
+      } catch {
+        // not JSON: the callback gets an empty object
+      }
 
       callback(data || {});
     };
@@ -241,8 +243,7 @@ export class RealtimeService extends BaseService {
         }
 
         exist = true; // has at least one matching listener
-        delete this.subscriptions[key][i]; // removes the function reference
-        this.subscriptions[key].splice(i, 1); // reindex the array
+        this.subscriptions[key].splice(i, 1); // removes the function reference and reindexes the array
         this.eventSource?.removeEventListener(key, listener);
       }
       if (!exist) {

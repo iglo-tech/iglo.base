@@ -493,8 +493,16 @@ function compareTime(a: bigint, b: bigint): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-const shortDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-const longDays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const shortDays = new Set(["sun", "mon", "tue", "wed", "thu", "fri", "sat"]);
+const longDays = new Set([
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+]);
 const shortMonths = [
   "jan",
   "feb",
@@ -521,7 +529,7 @@ const timeLayouts: Array<{ re: RegExp; parts: (m: RegExpExecArray) => TimeParts 
       String.raw`^([A-Za-z]{3}), (\d{2}) ([A-Za-z]{3}) (\d{4}) (\d{1,2}):(\d{2}):(\d{2})${fraction} GMT$`,
     ),
     parts: (m) =>
-      shortDays.includes((m[1] as string).toLowerCase())
+      shortDays.has((m[1] as string).toLowerCase())
         ? timeParts(m[4], m[3], m[2], m[5], m[6], m[7], m[8])
         : undefined,
   },
@@ -531,7 +539,7 @@ const timeLayouts: Array<{ re: RegExp; parts: (m: RegExpExecArray) => TimeParts 
       String.raw`^([A-Za-z]+), (\d{2})-([A-Za-z]{3})-(\d{2}) (\d{1,2}):(\d{2}):(\d{2})${fraction} ([A-Z]{3,5}|[+-]\d+)$`,
     ),
     parts: (m) => {
-      if (!longDays.includes((m[1] as string).toLowerCase())) {
+      if (!longDays.has((m[1] as string).toLowerCase())) {
         return undefined;
       }
       const yy = Number(m[4]);
@@ -545,7 +553,7 @@ const timeLayouts: Array<{ re: RegExp; parts: (m: RegExpExecArray) => TimeParts 
       String.raw`^([A-Za-z]{3}) ([A-Za-z]{3}) ( ?\d{1,2}) (\d{1,2}):(\d{2}):(\d{2})${fraction} (\d{4})$`,
     ),
     parts: (m) =>
-      shortDays.includes((m[1] as string).toLowerCase())
+      shortDays.has((m[1] as string).toLowerCase())
         ? timeParts(m[8], m[2], (m[3] as string).trim(), m[4], m[5], m[6], m[7])
         : undefined,
   },

@@ -180,7 +180,7 @@ function newMessage(app: App, to: string, subject: string, body: string): Messag
   };
 }
 
-const nonescapeTypes = [FieldTypeAutodate, FieldTypeDate, FieldTypeBool, FieldTypeNumber];
+const nonescapeTypes = new Set([FieldTypeAutodate, FieldTypeDate, FieldTypeBool, FieldTypeNumber]);
 
 function resolveEmailTemplate(
   app: App,
@@ -208,7 +208,7 @@ function resolveEmailTemplate(
 
       // note: the escaping is not strictly necessary but for just in case
       // the user decide to store and render the email as plain html
-      if (!nonescapeTypes.includes(field.type())) {
+      if (!nonescapeTypes.has(field.type())) {
         val = escapeString(val);
       }
 

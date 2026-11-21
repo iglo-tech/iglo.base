@@ -208,7 +208,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
 
     const rawStr = trimSpace(raw.string());
 
-    if (this.required && emptyJSONValues.includes(rawStr)) {
+    if (this.required && emptyJSONValues.has(rawStr)) {
       return ErrRequired;
     }
 
@@ -282,7 +282,7 @@ export type JSONFieldSettings = Pick<
   "name" | "id" | "system" | "hidden" | "presentable" | "help" | "maxSize" | "required"
 >;
 
-const emptyJSONValues = ["null", `""`, "[]", "{}", ""];
+const emptyJSONValues = new Set(["null", `""`, "[]", "{}", ""]);
 
 // unicode.IsSpace
 const spaceChars =

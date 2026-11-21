@@ -335,7 +335,7 @@ function calcFlags(re: Regexp, flags: Map<Regexp, number>): [must: number, cant:
 
 // writeRegexp writes the Perl syntax for the regular expression re to b.
 function writeRegexp(b: Array<string>, re: Regexp, f: number, flags: Map<Regexp, number>): void {
-  f |= flags.get(re) ?? 0;
+  f = f | (flags.get(re) ?? 0);
   if ((f & flagPrec) !== 0 && (f & ~(flagOff | flagPrec)) !== 0 && (f & flagOff) !== 0) {
     // flagPrec is redundant with other flags being added and terminated
     f &= ~flagPrec;

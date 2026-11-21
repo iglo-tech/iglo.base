@@ -107,7 +107,9 @@ export class AsyncAuthStore extends BaseAuthStore {
         const recordOrModel = (parsed!.record || parsed!.model || null) as AuthRecord;
         this.save(token, recordOrModel);
       }
-    } catch {}
+    } catch {
+      // unparsable stored auth data: the store stays as it is
+    }
   }
 
   /**

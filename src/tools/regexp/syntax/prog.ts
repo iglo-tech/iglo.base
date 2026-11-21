@@ -275,9 +275,11 @@ export class Prog {
     let i = this.inst[pc] as Inst;
     for (;;) {
       switch (i.op) {
-        case InstEmptyWidth:
-          flag |= i.arg;
+        case InstEmptyWidth: {
+          const arg: number = i.arg;
+          flag = flag | arg;
           break;
+        }
         case InstFail:
           return EmptyImpossible;
         case InstCapture:

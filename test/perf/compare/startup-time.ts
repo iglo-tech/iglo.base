@@ -46,7 +46,9 @@ try {
         if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) {
           break;
         }
-      } catch {}
+      } catch {
+        // the server is not listening yet: retry after a short sleep
+      }
       await Bun.sleep(2);
     }
     times.push(performance.now() - t0);

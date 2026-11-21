@@ -22,7 +22,7 @@ import {
   writeSync,
 } from "node:fs";
 
-import type * as NodeZlib from "node:zlib";
+import type NodeZlib from "node:zlib";
 
 // node:zlib is loaded on first use: it was about 10 ms of the start-up (P.3)
 let zlibModule: typeof NodeZlib | undefined;

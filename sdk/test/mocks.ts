@@ -21,7 +21,7 @@ export function dummyJWT(payload = {}) {
 }
 
 export class FetchMock {
-  private originalFetch?: Function;
+  private originalFetch?: typeof fetch;
   private mocks: Array<RequestMock> = [];
 
   on(request: RequestMock) {
@@ -103,6 +103,7 @@ export class FetchMock {
           setTimeout(() => {
             if (config?.signal?.aborted) {
               reject(new ClientResponseError());
+              return;
             }
             resolve(response);
           }, mock.delay || 0);

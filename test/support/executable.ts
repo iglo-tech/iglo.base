@@ -133,7 +133,9 @@ export function releasePort(port: number): void {
   }
   try {
     unlinkSync(markerPath(port));
-  } catch {}
+  } catch {
+    // the marker may already be gone; releasing a claim is best effort
+  }
 }
 
 process.on("exit", () => {
@@ -153,7 +155,9 @@ function takeOver(port: number): boolean {
   } catch {
     try {
       unlinkSync(own);
-    } catch {}
+    } catch {
+      // the file may already be renamed into place: nothing to clean up
+    }
     return false;
   }
   return markerOwner(port) === process.pid;

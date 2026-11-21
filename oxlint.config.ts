@@ -78,6 +78,22 @@ export default defineConfig({
         "unicorn/prefer-dom-node-append": "off",
       },
     },
+    // The SDK targets ES2021 (sdk/tsconfig.json), which has no Object.hasOwn:
+    // it keeps Object.prototype.hasOwnProperty.call (same result, L.1).
+    // scripts/spikes/M0.8/bcrypt.ts runs a health probe next to a sign-in batch;
+    // top-level await would serialize them, so its async IIFE stays.
+    {
+      files: ["sdk/**"],
+      rules: {
+        "prefer-object-has-own": "off",
+      },
+    },
+    {
+      files: ["scripts/spikes/M0.8/bcrypt.ts"],
+      rules: {
+        "unicorn/prefer-top-level-await": "off",
+      },
+    },
     // The SDK targets ES2021 (sdk/tsconfig.json): Array#at is not in its lib or in
     // older browsers, so the SDK keeps the index form (D36, L.1).
     {
@@ -98,27 +114,15 @@ export default defineConfig({
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
         "@nkzw/no-instanceof": "off",
-        "import/no-namespace": "off",
-        "no-case-declarations": "off",
-        "no-empty": "off",
         "no-promise-executor-return": "off",
-        "no-prototype-builtins": "off",
-        "oxc/bad-bitwise-operator": "off",
-        "prefer-promise-reject-errors": "off",
-        "promise/no-multiple-resolved": "off",
-        "quality/no-array-filter-map": "off",
         "quality/no-chained-type-assertions": "off",
         "quality/no-conditional-empty-object-spread": "off",
         "quality/no-known-value-widening": "off",
         "quality/no-object-parameters": "off",
-        "quality/no-reflect-get": "off",
         "quality/no-unknown-returns": "off",
-        "quality/no-unknown-type-aliases": "off",
         "quality/no-unsafe-dictionary-type": "off",
         "typescript/await-thenable": "off",
-        "typescript/no-array-delete": "off",
         "typescript/no-floating-promises": "off",
-        "typescript/no-for-in-array": "off",
         "typescript/no-misused-promises": "off",
         "typescript/no-misused-spread": "off",
         "typescript/no-non-null-assertion": "off",
@@ -126,7 +130,6 @@ export default defineConfig({
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-call": "off",
-        "typescript/no-unsafe-function-type": "off",
         "typescript/no-unsafe-member-access": "off",
         "typescript/no-unsafe-return": "off",
         "typescript/no-unsafe-type-assertion": "off",
@@ -135,8 +138,6 @@ export default defineConfig({
         "typescript/switch-exhaustiveness-check": "off",
         "typescript/unbound-method": "off",
         "typescript/use-unknown-in-catch-callback-variable": "off",
-        "unicorn/prefer-set-has": "off",
-        "unicorn/prefer-top-level-await": "off",
       },
     },
   ],

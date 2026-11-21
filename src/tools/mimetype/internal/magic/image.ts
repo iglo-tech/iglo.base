@@ -77,7 +77,7 @@ export function Gif(raw: Uint8Array, _limit: number): boolean {
 }
 
 // sourced from libmagic Magdir/images
-const possibleFormats = [
+const possibleFormats = new Set([
   48, // PC bitmap, OS/2 2.x format (DIB header size=48)
   24, // PC bitmap, OS/2 2.x format (DIB header size=24)
   16, // PC bitmap, OS/2 2.x format (DIB header size=16)
@@ -87,7 +87,7 @@ const possibleFormats = [
   40, // PC bitmap, Windows 3.x format
   124, // PC bitmap, Windows 98/2000 and newer format
   108, // PC bitmap, Windows 95/NT4 and newer format
-];
+]);
 
 // Bmp matches a bitmap image file.
 export function Bmp(raw: Uint8Array, _limit: number): boolean {
@@ -99,7 +99,7 @@ export function Bmp(raw: Uint8Array, _limit: number): boolean {
   }
 
   const bmpFormat = leUint32(raw, 14);
-  return possibleFormats.includes(bmpFormat);
+  return possibleFormats.has(bmpFormat);
 }
 
 const psSig = lit("%!PS-Adobe-");

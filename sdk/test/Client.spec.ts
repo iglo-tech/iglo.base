@@ -544,7 +544,10 @@ describe("Client", () => {
       client.afterSend = async function () {
         await new Promise((_, reject) => {
           // use reject to test whether the timeout is awaited
-          setTimeout(() => reject({ data: { message: "after_err" } }), 10);
+          setTimeout(
+            () => reject(Object.assign(new Error("after_err"), { data: { message: "after_err" } })),
+            10,
+          );
         });
 
         return "123";

@@ -15,7 +15,7 @@ import { toBool } from "@/tools/types/cast";
 // Go's regexp `\s+` (RE2's \s is [\t\n\f\r ])
 const whitespaceRegex = /[\t\n\f\r ]+/g;
 
-const excludeTags = [
+const excludeTags = new Set([
   "head",
   "style",
   "script",
@@ -34,9 +34,9 @@ const excludeTags = [
   "input",
   "select",
   "option",
-];
+]);
 
-const inlineTags = [
+const inlineTags = new Set([
   "a",
   "abbr",
   "acronym",
@@ -58,7 +58,7 @@ const inlineTags = [
   "sub",
   "sup",
   "time",
-];
+]);
 
 const encoder = new TextEncoder();
 
@@ -122,8 +122,8 @@ export class ExcerptModifier implements Modifier {
       }
 
       for (let c = n.firstChild; c !== null; c = c.nextSibling) {
-        if (c.type !== ElementNode || !excludeTags.includes(c.data)) {
-          const isBlock = c.type === ElementNode && !inlineTags.includes(c.data);
+        if (c.type !== ElementNode || !excludeTags.has(c.data)) {
+          const isBlock = c.type === ElementNode && !inlineTags.has(c.data);
 
           if (isBlock && !hasPrevSpace) {
             write(" ");

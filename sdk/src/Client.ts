@@ -332,7 +332,7 @@ export default class Client {
           return "" + val;
         case "string":
           return JSON.stringify(val);
-        default:
+        default: {
           if (val == null) {
             return "null";
           }
@@ -349,6 +349,7 @@ export default class Client {
           }
 
           return stringified;
+        }
       }
     }
 

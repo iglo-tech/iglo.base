@@ -51,7 +51,7 @@ import { moveDirContent } from "@/tools/osutils/dir";
 
 export type RestorePhase = "moving-old" | "moving-new" | "swapped" | "reverted";
 
-const phases: ReadonlyArray<string> = ["moving-old", "moving-new", "swapped", "reverted"];
+const phases: ReadonlySet<string> = new Set(["moving-old", "moving-new", "swapped", "reverted"]);
 
 // default root dir entries to exclude from the backup restore
 export const restoreExclude = [
@@ -138,7 +138,7 @@ function readPhase(tempDir: string): PhaseRecord {
       unknown.push(name);
     } else if (name.startsWith(restorePhaseFile + ".")) {
       const value = name.slice(restorePhaseFile.length + 1);
-      if (phases.includes(value)) {
+      if (phases.has(value)) {
         found.push(value as RestorePhase);
       } else {
         unknown.push(name);

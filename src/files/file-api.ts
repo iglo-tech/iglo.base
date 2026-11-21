@@ -32,8 +32,14 @@ import type { HandlerResult } from "@/server/handler";
 import type { System } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
 
-const imageContentTypes = ["image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp"];
-const defaultThumbSizes = ["100x100"];
+const imageContentTypes = new Set([
+  "image/png",
+  "image/jpg",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+]);
+const defaultThumbSizes = new Set(["100x100"]);
 
 // bindFileApi registers the file api endpoints and the corresponding handlers.
 export function bindFileApi(_app: App, rg: RouterGroup<RequestEvent>): void {
@@ -172,7 +178,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     const thumbSize = e.request.query().get("thumb")?.[0] ?? "";
     if (
       thumbSize !== "" &&
-      (defaultThumbSizes.includes(thumbSize) || fileField.thumbs.includes(thumbSize))
+      (defaultThumbSizes.has(thumbSize) || fileField.thumbs.includes(thumbSize))
     ) {
       // extract the original file meta attributes and check it existence
       let originalContentType: string;
@@ -184,7 +190,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
       }
 
       // check if it is an image
-      if (imageContentTypes.includes(originalContentType)) {
+      if (imageContentTypes.has(originalContentType)) {
         // add thumb size as file suffix
         servedName = thumbSize + "_" + filename;
         servedPath = baseFilesPath + "/thumbs_" + filename + "/" + servedName;

@@ -144,7 +144,9 @@ export class BaseAuthStore {
       } else {
         data = parsed as Record<string, unknown>;
       }
-    } catch {}
+    } catch {
+      // not valid JSON: keep the empty data
+    }
 
     const token = typeof data["token"] === "string" ? data["token"] : "";
     const recordOrModel = (data["record"] || data["model"] || null) as AuthRecord;
@@ -197,9 +199,9 @@ export class BaseAuthStore {
     // strip down the model data to the bare minimum
     if (rawData.record && resultLength > 4096) {
       rawData.record = { id: rawData.record?.id, email: rawData.record?.email };
-      const extraProps = ["collectionId", "collectionName", "verified"];
+      const extraProps = new Set(["collectionId", "collectionName", "verified"]);
       for (const prop in this.record) {
-        if (extraProps.includes(prop)) {
+        if (extraProps.has(prop)) {
           rawData.record[prop] = this.record[prop];
         }
       }
@@ -227,8 +229,7 @@ export class BaseAuthStore {
     return () => {
       for (let i = this._onChangeCallbacks.length - 1; i >= 0; i--) {
         if (this._onChangeCallbacks[i] == callback) {
-          delete this._onChangeCallbacks[i]; // removes the function reference
-          this._onChangeCallbacks.splice(i, 1); // reindex the array
+          this._onChangeCallbacks.splice(i, 1); // removes the function reference and reindexes the array
           return;
         }
       }

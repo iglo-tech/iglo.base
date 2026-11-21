@@ -43,7 +43,7 @@ export function Ttf(raw: Uint8Array, _limit: number): boolean {
 // 2. https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6.html
 // Page 1. has 48 tables. Page 2. has 49 tables. The diff is the gcid table.
 // Take a permissive approach.
-const possibleTables = [
+const possibleTables = new Set([
   0x61_63_6e_74, // "acnt"
   0x61_6e_6b_72, // "ankr"
   0x61_76_61_72, // "avar"
@@ -120,7 +120,7 @@ const possibleTables = [
   0x76_6d_74_78, // "vmtx"
   0x56_4f_52_47, // "VORG"
   0x56_56_41_52, // "VVAR"
-];
+]);
 
 function hasSFNTTable(raw: Uint8Array): boolean {
   if (raw.length < 16) {
@@ -128,7 +128,7 @@ function hasSFNTTable(raw: Uint8Array): boolean {
   }
 
   const ourTable = beUint32(raw, 12);
-  return possibleTables.includes(ourTable);
+  return possibleTables.has(ourTable);
 }
 
 const eotLP = Uint8Array.of(0x4c, 0x50);

@@ -105,10 +105,10 @@ export function MachO(raw: Uint8Array, _limit: number): boolean {
 
 // dbf type is dictated by the first byte.
 // prettier-ignore
-const dbfTypes = [
+const dbfTypes = new Set([
   0x02, 0x03, 0x04, 0x05, 0x30, 0x31, 0x32, 0x42, 0x62, 0x7B, 0x82,
   0x83, 0x87, 0x8A, 0x8B, 0x8E, 0xB3, 0xCB, 0xE5, 0xF5, 0xF4, 0xFB,
-];
+]);
 // Dbf matches a dBase file.
 // https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
 export function Dbf(raw: Uint8Array, _limit: number): boolean {
@@ -134,7 +134,7 @@ export function Dbf(raw: Uint8Array, _limit: number): boolean {
     return false;
   }
 
-  return dbfTypes.includes(raw[0] as number);
+  return dbfTypes.has(raw[0] as number);
 }
 
 function elfType(raw: Uint8Array, t: number): boolean {
@@ -253,7 +253,7 @@ export function TzIf(raw: Uint8Array, _limit: number): boolean {
 
 // python 1.0 through 3.7 signatures, magic/Magdir/python:13:190
 // prettier-ignore
-const pycMagic = [
+const pycMagic = new Set([
   0x02_09_99_00, 0x03_09_99_00, 0x89_2e_0d_0a, 0x04_17_0d_0a, 0x99_4e_0d_0a, 0xfc_c4_0d_0a,
   0xfd_c4_0d_0a, 0x87_c6_0d_0a, 0x88_c6_0d_0a, 0x2a_eb_0d_0a, 0x2b_eb_0d_0a, 0x2d_ed_0d_0a,
   0x2e_ed_0d_0a, 0x3b_f2_0d_0a, 0x3c_f2_0d_0a, 0x45_f2_0d_0a, 0x59_f2_0d_0a, 0x63_f2_0d_0a,
@@ -269,7 +269,7 @@ const pycMagic = [
   0x02_0d_0d_0a, 0x0c_0d_0d_0a, 0x16_0d_0d_0a, 0x17_0d_0d_0a, 0x20_0d_0d_0a, 0x21_0d_0d_0a,
   0x2a_0d_0d_0a, 0x2b_0d_0d_0a, 0x2c_0d_0d_0a, 0x2d_0d_0d_0a, 0x2f_0d_0d_0a, 0x30_0d_0d_0a,
   0x31_0d_0d_0a, 0x32_0d_0d_0a, 0x33_0d_0d_0a, 0x3e_0d_0d_0a, 0x3f_0d_0d_0a,
-];
+]);
 
 // Pyc matches a Python compiled file.
 // The signatures are sourced from libmagic v5.47
@@ -280,7 +280,7 @@ export function Pyc(raw: Uint8Array, _limit: number): boolean {
 
   const n = beUint32(raw, 0);
 
-  if (pycMagic.includes(n)) {
+  if (pycMagic.has(n)) {
     return true;
   }
 

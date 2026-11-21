@@ -391,7 +391,7 @@ class Reader {
         if (extra !== undefined) {
           provider[key] = extra;
         }
-      } else if (providerStringKeys.includes(key)) {
+      } else if (providerStringKeys.has(key)) {
         const text = this.referenceOr(value, keyPath, "string");
         if (text !== undefined) {
           provider[key] = text;
@@ -751,7 +751,13 @@ function plainValue(node: JSONNode): SchemaValue {
 }
 
 // the string keys of a provider that a reference may stand for
-const providerStringKeys = ["clientId", "authURL", "tokenURL", "userInfoURL", "displayName"];
+const providerStringKeys = new Set([
+  "clientId",
+  "authURL",
+  "tokenURL",
+  "userInfoURL",
+  "displayName",
+]);
 
 // a collection name: word characters, and not an array index (a JSON object
 // orders those names first, so a file could not keep their order)
