@@ -57,7 +57,8 @@ export class FetchEventSource {
       let buffer = "";
       let event = { type: "message", data: "", lastEventId: "" };
       let lastId = "";
-      for await (const chunk of res.body) {
+      const body: ReadableStream<Uint8Array> = res.body;
+      for await (const chunk of body) {
         buffer += decoder.decode(chunk, { stream: true });
         for (;;) {
           const match = /\r\n|\n|\r/.exec(buffer);

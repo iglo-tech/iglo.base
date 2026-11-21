@@ -315,15 +315,13 @@ describe("Client", () => {
           }
 
           // check FormData transformation
-          assert.deepEqual(config.body.getAll("title"), ["test"]);
-          assert.deepEqual(config.body.getAll("@jsonPayload"), [
-            '{"roles":["a","b"]}',
-            '{"json":null}',
-          ]);
-          assert.equal(config.body.getAll("files").length, 2);
-          assert.equal(config.body.getAll("files")[0].size, 2);
-          assert.equal(config.body.getAll("files")[1].size, 1);
-          assert.equal(config.body.has("skip"), false);
+          const body: FormData = config.body;
+          assert.deepEqual(body.getAll("title"), ["test"]);
+          assert.deepEqual(body.getAll("@jsonPayload"), ['{"roles":["a","b"]}', '{"json":null}']);
+          assert.equal(body.getAll("files").length, 2);
+          assert.equal((body.getAll("files")[0] as Blob).size, 2);
+          assert.equal((body.getAll("files")[1] as Blob).size, 1);
+          assert.equal(body.has("skip"), false);
 
           return true;
         },
@@ -444,7 +442,7 @@ describe("Client", () => {
         method: "GET",
         fetch: async (): Promise<Response> => {
           called++;
-          return {} as any;
+          return {} as Response;
         },
       });
 

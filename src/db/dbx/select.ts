@@ -394,7 +394,7 @@ export class SelectQuery {
   model(pk: unknown, model: StructModel): void {
     const pkNames = primaryKeyNames(model);
     if (pkNames.length === 1) {
-      this.andWhere(new HashExp({ [pkNames[0]!]: pk })).one(model);
+      this.andWhere(new HashExp({ [pkNames[0] as string]: pk })).one(model);
       return;
     }
     if (pkNames.length === 0) {

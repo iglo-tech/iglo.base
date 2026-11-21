@@ -87,9 +87,9 @@ export class RealtimeService extends BaseService {
     const listener = function (e: Event) {
       const msgEvent = e as MessageEvent;
 
-      let data;
+      let data: unknown;
       try {
-        data = JSON.parse(msgEvent?.data);
+        data = JSON.parse(msgEvent?.data as string);
       } catch {
         // not JSON: the callback gets an empty object
       }
@@ -101,12 +101,12 @@ export class RealtimeService extends BaseService {
     if (!this.subscriptions[key]) {
       this.subscriptions[key] = [];
     }
-    this.subscriptions[key]!.push(listener);
+    (this.subscriptions[key] as Array<EventListener>).push(listener);
 
     if (!this.isConnected) {
       // initialize sse connection
       await this.connect();
-    } else if (this.subscriptions[key]!.length === 1) {
+    } else if ((this.subscriptions[key] as Array<EventListener>).length === 1) {
       // send the updated subscriptions (if it is the first for the key)
       await this.submitSubscriptions();
     } else {
@@ -180,7 +180,7 @@ export class RealtimeService extends BaseService {
           continue; // already unsubscribed
         }
 
-        for (const listener of this.subscriptions[key]!) {
+        for (const listener of this.subscriptions[key] as Array<EventListener>) {
           this.eventSource?.removeEventListener(key, listener);
         }
         delete this.subscriptions[key];
@@ -207,7 +207,7 @@ export class RealtimeService extends BaseService {
       }
 
       hasAtleastOneTopic = true;
-      for (const listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key] as Array<EventListener>) {
         this.eventSource?.removeEventListener(key, listener);
       }
       delete this.subscriptions[key];
@@ -333,7 +333,7 @@ export class RealtimeService extends BaseService {
 
     for (const key in this.subscriptions) {
       if ((key + "?").startsWith(topic)) {
-        result[key] = this.subscriptions[key]!;
+        result[key] = this.subscriptions[key] as Array<EventListener>;
       }
     }
 
@@ -344,7 +344,7 @@ export class RealtimeService extends BaseService {
     const result: Array<string> = [];
 
     for (const key in this.subscriptions) {
-      if (this.subscriptions[key]!.length) {
+      if ((this.subscriptions[key] as Array<EventListener>).length) {
         result.push(key);
       }
     }
@@ -389,7 +389,7 @@ export class RealtimeService extends BaseService {
 
     return (
       this.client
-        .send("/api/realtime", {
+        .send<void>("/api/realtime", {
           method: "POST",
           body: {
             clientId: this.clientId,
@@ -399,7 +399,7 @@ export class RealtimeService extends BaseService {
         })
         // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
         .catch((error) => {
-          if (error?.isAbort) {
+          if ((error as { isAbort?: boolean } | null | undefined)?.isAbort) {
             return; // silently ignore aborted pending requests
           }
           throw error;
@@ -415,7 +415,7 @@ export class RealtimeService extends BaseService {
     this.removeAllSubscriptionListeners();
 
     for (const key in this.subscriptions) {
-      for (const listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key] as Array<EventListener>) {
         this.eventSource.addEventListener(key, listener);
       }
     }
@@ -427,7 +427,7 @@ export class RealtimeService extends BaseService {
     }
 
     for (const key in this.subscriptions) {
-      for (const listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key] as Array<EventListener>) {
         this.eventSource.removeEventListener(key, listener);
       }
     }
@@ -526,7 +526,7 @@ export class RealtimeService extends BaseService {
           // propagate the PB_CONNECT event
           const connectSubs = this.getSubscriptionsByTopic("PB_CONNECT");
           for (const key in connectSubs) {
-            for (const listener of connectSubs[key]!) {
+            for (const listener of connectSubs[key] as Array<EventListener>) {
               listener(e);
             }
           }

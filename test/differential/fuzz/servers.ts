@@ -162,7 +162,7 @@ export async function startFuzzServers(): Promise<FuzzServers> {
     const [upStart, igStart] = started;
     if (upStart?.status !== "fulfilled" || igStart?.status !== "fulfilled") {
       throw new Error("a server failed to start", {
-        cause: started.map((s) => (s.status === "rejected" ? s.reason : "started")),
+        cause: started.map((s): unknown => (s.status === "rejected" ? s.reason : "started")),
       });
     }
     const upstream = upStart.value as UpstreamServer;

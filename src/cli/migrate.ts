@@ -181,6 +181,7 @@ async function runAndWaitForFileDeletes(
     r.status === "rejected" ? [r.reason as unknown] : [],
   );
   if (runErr !== null) {
+    // oxlint-disable-next-line typescript/only-throw-error -- runCli's top-level catch in src/cli/root.ts reads it (instanceof, then its message for stderr)
     throw runErr;
   }
   if (failures.length > 0) {

@@ -64,7 +64,7 @@ export async function mintBrowserToken(
     );
   }
 
-  const exp = getTokenPayload(token).exp;
+  const exp = getTokenPayload(token).exp as number | undefined;
   if (!exp) {
     throw new Error("the token has no expiry");
   }

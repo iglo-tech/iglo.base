@@ -111,5 +111,5 @@ async function measure(name: string, binary: string, port: number): Promise<void
 let port = 18_790;
 for (const arg of process.argv.slice(2)) {
   const [name, binary] = arg.split("=");
-  await measure(name!, binary!, port++);
+  await measure(name as string, binary as string, port++);
 }

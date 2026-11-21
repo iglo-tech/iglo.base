@@ -162,7 +162,9 @@ try {
   await upsertSuperuser(base, root, "bench@example.com", password);
 
   const targets: Array<{ label: string; exe?: string }> = values.exe
-    ? values.exe.split(",").map((e) => ({ label: e.split("=")[0]!, exe: e.split("=")[1]! }))
+    ? values.exe
+        .split(",")
+        .map((e) => ({ label: e.split("=")[0] as string, exe: e.split("=")[1] as string }))
     : [];
   if (values.upstream) {
     targets.push({ label: "upstream" });

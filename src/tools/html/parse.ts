@@ -272,7 +272,7 @@ export class Parser {
       break;
     }
 
-    this.oe.splice(i! + 1);
+    this.oe.splice(i + 1);
   }
 
   // addChild adds a child node n to the top element, and pushes n onto the stack
@@ -572,7 +572,7 @@ export class Parser {
   // refactor this code to be more idiomatic.
   inBodyEndTagFormatting(tagAtom: string, tagName: string): void {
     // Steps 1-2
-    const current = stackTop(this.oe)!;
+    const current = stackTop(this.oe) as Node;
     if (current.data === tagName && stackIndex(this.afe, current) === -1) {
       stackPop(this.oe);
       return;
@@ -754,7 +754,7 @@ export class Parser {
     if (this.oe.length === 1 && this.fragment && this.context !== null) {
       return this.context;
     }
-    return stackTop(this.oe)!;
+    return stackTop(this.oe) as Node;
   }
 
   // Section 12.2.6.
@@ -823,7 +823,7 @@ export class Parser {
       if (this.inForeignContent()) {
         consumed = parseForeignContent(this);
       } else {
-        consumed = this.im!(this);
+        consumed = (this.im as InsertionMode)(this);
       }
     }
 
@@ -905,8 +905,8 @@ function compareStrings(a: string, b: string): number {
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
-    const ca = a.codePointAt(i)!;
-    const cb = b.codePointAt(j)!;
+    const ca = a.codePointAt(i) as number;
+    const cb = b.codePointAt(j) as number;
     if (ca !== cb) {
       return ca < cb ? -1 : 1;
     }
@@ -928,8 +928,8 @@ function attrsEqual(a: Array<Attribute>, b: Array<Attribute>): boolean {
     return false;
   }
   for (let i = 0; i < a.length; i++) {
-    const x = a[i]!;
-    const y = b[i]!;
+    const x = a[i] as Attribute;
+    const y = b[i] as Attribute;
     if (x.namespace !== y.namespace || x.key !== y.key || x.val !== y.val) {
       return false;
     }
@@ -940,7 +940,7 @@ function attrsEqual(a: Array<Attribute>, b: Array<Attribute>): boolean {
 // trimLeft is strings.TrimLeft with an ASCII cutset.
 function trimLeft(s: string, cutset: string): string {
   let i = 0;
-  while (i < s.length && cutset.includes(s[i]!)) {
+  while (i < s.length && cutset.includes(s[i] as string)) {
     i++;
   }
   return s.slice(i);
@@ -968,7 +968,7 @@ function inBodyIM(p: Parser): boolean {
   switch (p.tok.type) {
     case TextToken: {
       let d = p.tok.data;
-      const n = stackTop(p.oe)!;
+      const n = stackTop(p.oe) as Node;
       switch (n.dataAtom) {
         case atom.Pre:
         case atom.Listing:
@@ -1236,7 +1236,7 @@ function inBodyIM(p: Parser): boolean {
           p.framesetOK = false;
           break;
         case atom.Input:
-          if (p.fragment && p.context!.dataAtom === atom.Select) {
+          if (p.fragment && (p.context as Node).dataAtom === atom.Select) {
             // Ignore the token.
             return true;
           }
@@ -1311,7 +1311,7 @@ function inBodyIM(p: Parser): boolean {
           p.tokenizer.nextIsNotRawText();
           break;
         case atom.Select:
-          if (p.fragment && p.context!.dataAtom === atom.Select) {
+          if (p.fragment && (p.context as Node).dataAtom === atom.Select) {
             // Ignore the token.
             return true;
           } else if (p.popUntil(Scope.defaultScope, atom.Select)) {
@@ -1563,7 +1563,7 @@ function textIM(p: Parser): boolean {
       break;
     case TextToken: {
       let d = p.tok.data;
-      const n = stackTop(p.oe)!;
+      const n = stackTop(p.oe) as Node;
       if (n.dataAtom === atom.Textarea && n.firstChild === null) {
         // Ignore a newline at the start of a <textarea> block.
         if (d !== "" && d[0] === "\r") {
@@ -1593,7 +1593,7 @@ function inTableIM(p: Parser): boolean {
   switch (p.tok.type) {
     case TextToken:
       p.tok.data = p.tok.data.replaceAll("\x00", "");
-      switch (stackTop(p.oe)!.dataAtom) {
+      switch ((stackTop(p.oe) as Node).dataAtom) {
         case atom.Table:
         case atom.Tbody:
         case atom.Tfoot:
@@ -1802,7 +1802,7 @@ function inColumnGroupIM(p: Parser): boolean {
     case EndTagToken:
       switch (p.tok.dataAtom) {
         case atom.Colgroup:
-          if (stackTop(p.oe)!.dataAtom === atom.Colgroup) {
+          if ((stackTop(p.oe) as Node).dataAtom === atom.Colgroup) {
             stackPop(p.oe);
             p.im = inTableIM;
           }
@@ -1817,7 +1817,7 @@ function inColumnGroupIM(p: Parser): boolean {
     case ErrorToken:
       return inBodyIM(p);
   }
-  if (stackTop(p.oe)!.dataAtom !== atom.Colgroup) {
+  if ((stackTop(p.oe) as Node).dataAtom !== atom.Colgroup) {
     return true;
   }
   stackPop(p.oe);
@@ -2196,9 +2196,9 @@ function inFramesetIM(p: Parser): boolean {
     case EndTagToken:
       switch (p.tok.dataAtom) {
         case atom.Frameset:
-          if (stackTop(p.oe)!.dataAtom !== atom.Html) {
+          if ((stackTop(p.oe) as Node).dataAtom !== atom.Html) {
             stackPop(p.oe);
-            if (stackTop(p.oe)!.dataAtom !== atom.Frameset) {
+            if ((stackTop(p.oe) as Node).dataAtom !== atom.Frameset) {
               p.im = afterFramesetIM;
               return true;
             }
@@ -2573,7 +2573,7 @@ function inHeadNoscriptIM(p: Parser): boolean {
       return inHeadIM(p);
   }
   stackPop(p.oe);
-  if (stackTop(p.oe)!.dataAtom !== atom.Head) {
+  if ((stackTop(p.oe) as Node).dataAtom !== atom.Head) {
     throw new Error("html: the new current node will be a head element.");
   }
   p.im = inHeadIM;
@@ -2621,11 +2621,11 @@ function afterHeadIM(p: Parser): boolean {
         case atom.Style:
         case atom.Template:
         case atom.Title:
-          p.insertOpenElement(p.head!);
+          p.insertOpenElement(p.head as Node);
           try {
             return inHeadIM(p);
           } finally {
-            stackRemove(p.oe, p.head!);
+            stackRemove(p.oe, p.head as Node);
           }
         case atom.Head:
           // Ignore the token.
@@ -2694,7 +2694,7 @@ function parseForeignContent(p: Parser): boolean {
             break;
           }
         }
-        return p.im!(p);
+        return (p.im as InsertionMode)(p);
       }
       const current = p.adjustedCurrentNode();
       const namespace = current.namespace;
@@ -2731,7 +2731,7 @@ function parseForeignContent(p: Parser): boolean {
       break;
     }
     case EndTagToken: {
-      if (equalFold(stackTop(p.oe)!.data, p.tok.data)) {
+      if (equalFold((stackTop(p.oe) as Node).data, p.tok.data)) {
         stackPop(p.oe);
         return true;
       }
@@ -2744,7 +2744,7 @@ function parseForeignContent(p: Parser): boolean {
           break;
         }
       }
-      return p.im!(p);
+      return (p.im as InsertionMode)(p);
     }
   }
   return true;

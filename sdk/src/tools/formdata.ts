@@ -160,10 +160,8 @@ function inferFormDataValue(value: unknown): unknown {
   }
 
   // note: expects the provided raw string to match exactly with the minimal string representation of the parsed number
-  if (
-    (value[0] === "-" || (value[0]! >= "0" && value[0]! <= "9")) &&
-    inferNumberCharsRegex.test(value)
-  ) {
+  const first = value.charAt(0);
+  if ((first === "-" || (first >= "0" && first <= "9")) && inferNumberCharsRegex.test(value)) {
     const num = +value;
     if ("" + num === value) {
       return num;

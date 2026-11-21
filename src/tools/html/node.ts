@@ -154,7 +154,7 @@ export function reparentChildren(dst: Node, src: Node): void {
 
 // stackTop returns the top element of a stack, or null if it is empty.
 export function stackTop<T>(s: ReadonlyArray<T>): T | null {
-  return s.length > 0 ? s.at(-1)! : null;
+  return s.length > 0 ? (s.at(-1) as T) : null;
 }
 
 // stackIndex returns the index of the topmost occurrence of item in s, or -1.
@@ -173,7 +173,7 @@ export function stackPop<T>(s: Array<T>): T {
   if (s.length === 0) {
     throw new RangeError("index out of range [-1]");
   }
-  return s.pop()!;
+  return s.pop() as T;
 }
 
 // stackAt returns s[i]. Go panics when i is out of range, so this throws too.
@@ -181,7 +181,7 @@ export function stackAt<T>(s: ReadonlyArray<T>, i: number): T {
   if (i < 0 || i >= s.length) {
     throw new RangeError(`index out of range [${i}] with length ${s.length}`);
   }
-  return s[i]!;
+  return s[i] as T;
 }
 
 // stackInsert inserts item at index i, shifting later elements up.

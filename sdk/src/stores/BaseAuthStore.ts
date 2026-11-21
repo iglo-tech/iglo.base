@@ -133,11 +133,11 @@ export class BaseAuthStore {
    * ```
    */
   loadFromCookie(cookie: string, key = defaultCookieKey): void {
-    const rawData = cookieParse(cookie || "")[key] || "";
+    const rawData: unknown = cookieParse(cookie || "")[key] || "";
 
     let data: Record<string, unknown> = {};
     try {
-      const parsed: unknown = JSON.parse(rawData);
+      const parsed: unknown = JSON.parse(rawData as string);
       // normalize
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
         data = {};
@@ -186,10 +186,12 @@ export class BaseAuthStore {
     // merge with the user defined options
     options = Object.assign({}, defaultOptions, options);
 
-    const rawData = {
+    const rawData: { token: string; record: Record<string, unknown> | null } = {
       token: this.token,
-      // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-      record: this.record ? JSON.parse(JSON.stringify(this.record)) : null,
+      record: this.record
+        ? // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
+          (JSON.parse(JSON.stringify(this.record)) as Record<string, unknown>)
+        : null,
     };
 
     let result = cookieSerialize(key, JSON.stringify(rawData), options);

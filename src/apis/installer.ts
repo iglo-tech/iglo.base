@@ -24,8 +24,8 @@ export interface InstallerOptions {
   // os.Args[0], or how the program runs from source
   executablePath: string;
   // osutils.LaunchURL: opens the url in a browser when possible
-  launchURL(url: string): void;
-  stdout(text: string): void;
+  launchURL: (url: string) => void;
+  stdout: (text: string) => void;
   color: boolean;
 }
 

@@ -20,6 +20,9 @@ import type {
 import { getTokenPayload } from "@sdk/tools/jwt";
 import { registerAutoRefresh, resetAutoRefresh } from "@sdk/tools/refresh";
 
+// the "@oauth2" realtime message: the redirect state, then either a code or an error
+type OAuth2RedirectData = { state?: string; code?: string; error?: string };
+
 export interface RecordAuthResponse<T = RecordModel> {
   /**
    * The signed PocketBase auth record.
@@ -303,13 +306,13 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
    * Prepare successful collection authorization response.
    */
   protected authResponse<T = M>(responseData: LooseObject): RecordAuthResponse<T> {
-    const record = this.decode(responseData?.record || {});
+    const record = this.decode((responseData?.record || {}) as Record<string, unknown>);
 
-    this.client.authStore.save(responseData?.token, record as AuthRecord);
+    this.client.authStore.save(responseData?.token as string, record as AuthRecord);
 
     return Object.assign({}, responseData, {
       // normalize common fields
-      token: responseData?.token || "",
+      token: (responseData?.token || "") as string,
       // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       record: record as unknown as T,
     });
@@ -360,18 +363,21 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     );
 
     // note: consider to deprecate
-    let autoRefreshThreshold;
+    let autoRefreshThreshold: number | undefined;
     if (this.isSuperusers) {
-      autoRefreshThreshold = options.autoRefreshThreshold;
+      autoRefreshThreshold = options.autoRefreshThreshold as number | undefined;
       delete options.autoRefreshThreshold;
       if (!options.autoRefresh) {
         resetAutoRefresh(this.client);
       }
     }
 
-    let authData = await this.client.send(this.baseCollectionPath + "/auth-with-password", options);
+    const rawAuthData = await this.client.send<LooseObject>(
+      this.baseCollectionPath + "/auth-with-password",
+      options,
+    );
 
-    authData = this.authResponse<T>(authData);
+    const authData = this.authResponse<T>(rawAuthData);
 
     if (autoRefreshThreshold && this.isSuperusers) {
       registerAutoRefresh(
@@ -454,7 +460,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     );
 
     return this.client
-      .send(this.baseCollectionPath + "/auth-with-oauth2", options)
+      .send<LooseObject>(this.baseCollectionPath + "/auth-with-oauth2", options)
       .then((data) => this.authResponse<T>(data));
   }
 
@@ -618,7 +624,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
             };
 
             try {
-              await realtime.subscribe("@oauth2", (e) => {
+              await realtime.subscribe("@oauth2", (e: OAuth2RedirectData) => {
                 void (async () => {
                   const oldState = realtime.clientId;
 
@@ -733,7 +739,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     );
 
     return this.client
-      .send(this.baseCollectionPath + "/auth-refresh", options)
+      .send<LooseObject>(this.baseCollectionPath + "/auth-refresh", options)
       .then((data) => this.authResponse<T>(data));
   }
 
@@ -1095,7 +1101,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     );
 
     return this.client
-      .send(this.baseCollectionPath + "/auth-with-otp", options)
+      .send<LooseObject>(this.baseCollectionPath + "/auth-with-otp", options)
       .then((data) => this.authResponse<T>(data));
   }
 
@@ -1127,12 +1133,15 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     // ---
     const client = new Client(this.client.baseURL, new BaseAuthStore(), this.client.lang);
 
-    const authData = await client.send(
+    const authData = await client.send<LooseObject>(
       this.baseCollectionPath + "/impersonate/" + encodeURIComponent(recordId),
       options,
     );
 
-    client.authStore.save(authData?.token, this.decode(authData?.record || {}));
+    client.authStore.save(
+      authData?.token as string,
+      this.decode((authData?.record || {}) as Record<string, unknown>),
+    );
     // ---
 
     return client;
@@ -1164,9 +1173,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       }
 
       const pair = param.split("=");
-      parsedParams[decodeURIComponent(pair[0]!.replaceAll("+", " "))] = decodeURIComponent(
-        (pair[1] || "").replaceAll("+", " "),
-      );
+      parsedParams[decodeURIComponent((pair[0] as string).replaceAll("+", " "))] =
+        decodeURIComponent((pair[1] || "").replaceAll("+", " "));
     }
 
     // apply the replacements
@@ -1196,7 +1204,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       query +=
         encodeURIComponent(key.replaceAll("%20", "+")) +
         "=" +
-        encodeURIComponent(parsedParams[key]!.replaceAll("%20", "+"));
+        encodeURIComponent((parsedParams[key] as string).replaceAll("%20", "+"));
     }
 
     return query != "" ? urlPath + "?" + query : urlPath;

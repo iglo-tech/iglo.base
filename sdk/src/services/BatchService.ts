@@ -44,7 +44,7 @@ export class BatchService extends BaseService {
     const jsonData = [];
 
     for (let i = 0; i < this.requests.length; i++) {
-      const req = this.requests[i]!;
+      const req = this.requests[i] as BatchRequest;
 
       jsonData.push({
         method: req.method,
@@ -55,7 +55,7 @@ export class BatchService extends BaseService {
 
       if (req.files) {
         for (const key in req.files) {
-          const files = req.files[key] || [];
+          const files = (req.files[key] || []) as Array<Blob>;
           for (const file of files) {
             formData.append("requests." + i + "." + key, file);
           }
@@ -193,13 +193,13 @@ export class SubBatchService {
 
     // extract json and files body data
     // -----------------------------------------------------------
-    let body = options.body;
+    let body = options.body as LooseObject;
     if (isFormData(body)) {
-      body = convertFormDataToObject(body);
+      body = convertFormDataToObject(body as FormData);
     }
 
     for (const key in body) {
-      const val = body[key];
+      const val: unknown = body[key];
 
       if (isFile(val)) {
         request.files[key] = request.files[key] || [];
@@ -236,9 +236,10 @@ export class SubBatchService {
               fileKey += "+";
             }
 
-            request.files[fileKey] = request.files[fileKey] || [];
+            const fileList = request.files[fileKey] || [];
+            request.files[fileKey] = fileList;
             for (const file of foundFiles) {
-              request.files[fileKey]!.push(file);
+              fileList.push(file);
             }
           }
         }

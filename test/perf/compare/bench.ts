@@ -194,8 +194,9 @@ const workloads: Array<Workload> = [
   },
   { key: "health", name: "/api/health", path: "/api/health" },
 ];
-const selected = values.workloads
-  ? workloads.filter((w) => values.workloads!.split(",").includes(w.key))
+const workloadArg = values.workloads;
+const selected = workloadArg
+  ? workloads.filter((w) => workloadArg.split(",").includes(w.key))
   : workloads;
 
 interface Result {
@@ -325,7 +326,7 @@ const fmt = (n: number | null, d = 2): string => (n === null ? "-" : n.toFixed(d
 
 const median = (xs: Array<number>): number => {
   const s = xs.toSorted((a, b) => a - b);
-  return s[Math.floor(s.length / 2)]!;
+  return s[Math.floor(s.length / 2)] as number;
 };
 
 mkdirSync(join(repoRoot, "dist"), { recursive: true });
@@ -402,7 +403,7 @@ try {
   console.log(table.join("\n"));
   for (const t of targets) {
     console.log(
-      `\n${t}: startup ${startup[t]!.map((x) => x.toFixed(0)).join("/")} ms (median ${median(startup[t]!).toFixed(0)}), idle RSS ${idle[t]!.map((x) => x.toFixed(1)).join("/")} MiB (median ${median(idle[t]!).toFixed(1)}), RSS after the run ${idle[`${t}-after`]!.map((x) => x.toFixed(0)).join("/")} MiB`,
+      `\n${t}: startup ${(startup[t] as Array<number>).map((x) => x.toFixed(0)).join("/")} ms (median ${median(startup[t] as Array<number>).toFixed(0)}), idle RSS ${(idle[t] as Array<number>).map((x) => x.toFixed(1)).join("/")} MiB (median ${median(idle[t] as Array<number>).toFixed(1)}), RSS after the run ${(idle[`${t}-after`] as Array<number>).map((x) => x.toFixed(0)).join("/")} MiB`,
     );
   }
   out.runs = runs;

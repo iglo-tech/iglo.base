@@ -50,10 +50,10 @@ try {
         {
           name: "parent",
           type: "relation",
-          collectionId: ids[names[i - 1]!],
+          collectionId: ids[names[i - 1] as string],
           maxSelect: 1,
         },
-        { name: "refs", type: "relation", collectionId: ids[names[0]!], maxSelect: 10 },
+        { name: "refs", type: "relation", collectionId: ids[names[0] as string], maxSelect: 10 },
       );
     }
     const col = (await api.must("POST", "/api/collections", {
@@ -81,7 +81,7 @@ const now = "2026-11-01 12:00:00.000Z";
 let total = 0;
 db.transaction(() => {
   for (let i = 0; i < 20; i++) {
-    const name = names[i]!;
+    const name = names[i] as string;
     const cols = (
       db.query(`PRAGMA table_info(${name})`).all() as Array<{ name: string; type: string }>
     ).map((c) => c.name);

@@ -243,8 +243,13 @@ function encodeObject(
   if (n > 1) {
     order.sort(
       plain
-        ? (a, b) => (names[a]! < names[b]! ? -1 : names[a]! > names[b]! ? 1 : a - b)
-        : (a, b) => compareUTF8(names[a]!, names[b]!) || a - b,
+        ? (a, b) =>
+            (names[a] as string) < (names[b] as string)
+              ? -1
+              : (names[a] as string) > (names[b] as string)
+                ? 1
+                : a - b
+        : (a, b) => compareUTF8(names[a] as string, names[b] as string) || a - b,
     );
   }
   let out = "{";
@@ -1181,6 +1186,7 @@ export function unmarshalStruct(
     onNull();
   }
   if (firstError !== undefined) {
+    // oxlint-disable-next-line typescript/only-throw-error -- the callers of unmarshalStruct (unmarshal-request-data.ts, date.ts, geo-point.ts) report this decode error to the client
     throw firstError;
   }
 }
@@ -1343,6 +1349,7 @@ function convertObject(
     setOwn(target, name, convert(value, elem, old, legacy));
   }
   if (firstError !== undefined) {
+    // oxlint-disable-next-line typescript/only-throw-error -- the decode callers (unmarshal, unmarshalStruct) report this member error to the client
     throw firstError;
   }
   return target;

@@ -253,6 +253,7 @@ async function scenario(name: string): Promise<void> {
             name === "bun-idle0" ? "0" : name === "bun-timeout0" ? "per-request" : "default",
           );
     const pid = t.server.pid;
+    const target: Target = t;
     // warm-up: one connection and one broadcast
     const warm = new Conn(t.server.port);
     await warm.connected();
@@ -267,7 +268,10 @@ async function scenario(name: string): Promise<void> {
 
     const started = performance.now();
     for (let i = 0; i < total; i += 50) {
-      const batch = Array.from({ length: Math.min(50, total - i) }, () => new Conn(t!.server.port));
+      const batch = Array.from(
+        { length: Math.min(50, total - i) },
+        () => new Conn(target.server.port),
+      );
       conns.push(...batch);
       await Promise.all(batch.map((c) => c.connected()));
     }

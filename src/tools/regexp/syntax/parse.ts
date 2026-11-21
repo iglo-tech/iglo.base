@@ -176,6 +176,7 @@ class parser {
 
   checkLimits(re: Regexp): void {
     if (this.numRunes > maxRunes) {
+      // oxlint-disable-next-line typescript/only-throw-error -- limitPanic is not an Error; the parse recover at parse.ts:1584 reads it with isInstance
       throw new limitPanic(ErrLarge);
     }
     this.checkSize(re);
@@ -220,6 +221,7 @@ class parser {
     }
 
     if (this.calcSize(re, true) > maxSize) {
+      // oxlint-disable-next-line typescript/only-throw-error -- limitPanic is not an Error; the parse recover at parse.ts:1584 reads it with isInstance
       throw new limitPanic(ErrLarge);
     }
   }
@@ -292,6 +294,7 @@ class parser {
       }
     }
     if (this.calcHeight(re, true) > maxHeight) {
+      // oxlint-disable-next-line typescript/only-throw-error -- limitPanic is not an Error; the parse recover at parse.ts:1584 reads it with isInstance
       throw new limitPanic(ErrNestingDepth);
     }
   }

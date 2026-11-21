@@ -66,7 +66,7 @@ function recordBody(rng: Rng, tag: string, n: number): Record<string, unknown> {
 
 async function createCollection(c: Client, tag: string): Promise<string> {
   const name = `big${tag}_items`;
-  const created = await c.post("/api/collections", {
+  const created = (await c.post("/api/collections", {
     name,
     type: "base",
     listRule: "",
@@ -88,11 +88,12 @@ async function createCollection(c: Client, tag: string): Promise<string> {
       `CREATE INDEX idx_big${tag}_n ON ${name} (n)`,
       `CREATE INDEX idx_big${tag}_at ON ${name} (at, flag)`,
     ],
-  });
-  const id = created.id as string;
+  })) as { id: string };
+  const id = created.id;
   await c.patch(`/api/collections/${name}`, {
     fields: [
-      ...(await c.get(`/api/collections/${name}`)).fields,
+      ...((await c.get(`/api/collections/${name}`)) as { fields: Array<Record<string, unknown>> })
+        .fields,
       { name: "owner", type: "relation", collectionId: id, maxSelect: 1 },
       { name: "many", type: "relation", collectionId: id, maxSelect: 3 },
     ],

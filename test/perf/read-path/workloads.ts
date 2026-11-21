@@ -28,7 +28,7 @@ export interface Target {
 }
 
 function pick<T>(items: Array<T>): T {
-  return items[Math.floor(Math.random() * items.length)]!;
+  return items[Math.floor(Math.random() * items.length)] as T;
 }
 
 function workloadsFor(dataset: Dataset, app: Databases): Record<WorkloadName, Workload> {
@@ -122,7 +122,7 @@ export function percentile(sorted: Array<number>, p: number): number {
   if (sorted.length === 0) {
     return Number.NaN;
   }
-  return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]!;
+  return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)] as number;
 }
 
 export function summarize(samples: Array<number>): {

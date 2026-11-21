@@ -947,6 +947,7 @@ export function unmarshalStruct(
     onNull();
   }
   if (firstError !== undefined) {
+    // oxlint-disable-next-line typescript/only-throw-error -- the decode callers and the go-json tests that import this module read the decode error
     throw firstError;
   }
 }
@@ -1109,6 +1110,7 @@ function convertObject(
     setOwn(target, name, convert(value, elem, old, legacy));
   }
   if (firstError !== undefined) {
+    // oxlint-disable-next-line typescript/only-throw-error -- the decode callers and the go-json tests that import this module read the decode error
     throw firstError;
   }
   return target;

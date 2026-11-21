@@ -111,7 +111,7 @@ export class BaseQueryBuilder implements QueryBuilder {
         s += this.database.quoteColumnName(col);
       } else {
         const name = col.slice(0, col.length - matches[0].length);
-        const alias = matches[1]!;
+        const alias = matches[1] as string;
         s +=
           this.database.quoteColumnName(name) + " AS " + this.database.quoteSimpleColumnName(alias);
       }
@@ -220,7 +220,7 @@ export class BaseQueryBuilder implements QueryBuilder {
         s += this.database.quoteColumnName(col);
       } else {
         const name = col.slice(0, col.length - matches[0].length);
-        s += this.database.quoteColumnName(name) + " " + matches[1]!;
+        s += this.database.quoteColumnName(name) + " " + (matches[1] as string);
       }
     });
     return "ORDER BY " + s;
@@ -255,7 +255,9 @@ export class BaseQueryBuilder implements QueryBuilder {
     }
     const name = table.slice(0, table.length - matches[0].length);
     return (
-      this.database.quoteTableName(name) + " " + this.database.quoteSimpleTableName(matches[1]!)
+      this.database.quoteTableName(name) +
+      " " +
+      this.database.quoteSimpleTableName(matches[1] as string)
     );
   }
 }

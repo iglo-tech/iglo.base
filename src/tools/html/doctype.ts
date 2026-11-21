@@ -9,6 +9,7 @@ import { equalFold, toLower } from "@/collections/go-strings";
 import { whitespace } from "@/tools/html/const";
 import { decodeUTF8, encodeUTF8 } from "@/tools/html/escape";
 import { DoctypeNode, Node } from "@/tools/html/node";
+import type { Attribute } from "@/tools/html/token";
 
 // whitespaceBytes is whitespace as ASCII byte values.
 const whitespaceBytes = encodeUTF8(whitespace);
@@ -16,7 +17,10 @@ const whitespaceBytes = encodeUTF8(whitespace);
 // trimLeft is bytes.TrimLeft / strings.TrimLeft with an ASCII cutset.
 function trimLeft(s: Uint8Array, cutset: Uint8Array): Uint8Array {
   let i = 0;
-  while (i < s.length && cutset.includes(s[i]!)) {
+  for (const c of s) {
+    if (!cutset.includes(c)) {
+      break;
+    }
     i++;
   }
   return s.subarray(i);
@@ -25,10 +29,12 @@ function trimLeft(s: Uint8Array, cutset: Uint8Array): Uint8Array {
 // indexAny is strings.IndexAny for an ASCII cutset: the index of the first
 // byte of s that is in cutset, or -1.
 function indexAny(s: Uint8Array, cutset: Uint8Array): number {
-  for (let i = 0; i < s.length; i++) {
-    if (cutset.includes(s[i]!)) {
+  let i = 0;
+  for (const c of s) {
+    if (cutset.includes(c)) {
       return i;
     }
+    i++;
   }
   return -1;
 }
@@ -60,7 +66,7 @@ export function parseDoctype(input: string): [Node, boolean] {
     if (s.length === 0) {
       break;
     }
-    const quote = s[0]!;
+    const quote = s[0] as number;
     if (quote !== 0x22 /* " */ && quote !== 0x27 /* ' */) {
       break;
     }
@@ -85,8 +91,8 @@ export function parseDoctype(input: string): [Node, boolean] {
   if (key !== "" || s.length !== 0) {
     quirks = true;
   } else if (n.attr.length > 0) {
-    if (n.attr[0]!.key === "public") {
-      const pub = toLower(n.attr[0]!.val);
+    if ((n.attr[0] as Attribute).key === "public") {
+      const pub = toLower((n.attr[0] as Attribute).val);
       switch (pub) {
         case "-//w3o//dtd w3 html strict 3.0//en//":
         case "-/w3d/dtd html 4.0 transitional/en":
@@ -109,7 +115,7 @@ export function parseDoctype(input: string): [Node, boolean] {
         quirks = true;
       }
     }
-    const lastAttr = n.attr.at(-1)!;
+    const lastAttr = n.attr.at(-1) as Attribute;
     if (
       lastAttr.key === "system" &&
       equalFold(lastAttr.val, "http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd")

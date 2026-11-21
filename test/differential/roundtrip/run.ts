@@ -229,10 +229,15 @@ async function sweep(
   };
 
   await read("settings", "/api/settings");
-  const collections = parse(await read("collections", "/api/collections?perPage=500&sort=name"));
-  const fileToken = parse(await client.send("POST", "/api/files/token")).token as string;
+  const collections = parse(
+    await read("collections", "/api/collections?perPage=500&sort=name"),
+  ) as {
+    items: Array<Listed>;
+  };
+  const fileToken = (parse(await client.send("POST", "/api/files/token")) as { token: string })
+    .token;
 
-  for (const collection of collections.items as Array<Listed>) {
+  for (const collection of collections.items) {
     const sort = collection.type === "view" ? "id" : "@rowid";
     const relations = collection.fields.filter((f) => f.type === "relation").map((f) => f.name);
     const files = collection.fields.filter((f) => f.type === "file").map((f) => f.name);
@@ -618,12 +623,12 @@ export function signedIn(scenario: RoundTripScenario): RoundTripScenario {
     ...scenario,
     async leg(client, leg) {
       if (client.state.superuserToken === "") {
-        const res = await client.post(
+        const res = (await client.post(
           "/api/collections/_superusers/auth-with-password",
           { identity: freshSuperuser.email, password: freshSuperuser.password },
           { token: "", userAgent: "roundtrip" },
-        );
-        client.state.superuserToken = res.token as string;
+        )) as { token: string };
+        client.state.superuserToken = res.token;
       }
       await scenario.leg(client, leg);
     },

@@ -77,7 +77,7 @@ export class AsyncAuthStore extends BaseAuthStore {
     super.clear();
 
     if (this.clearFunc) {
-      this._enqueue(() => this.clearFunc!());
+      this._enqueue(() => (this.clearFunc as AsyncClearFunc)());
     } else {
       this._enqueue(() => this.saveFunc(""));
     }
@@ -103,8 +103,9 @@ export class AsyncAuthStore extends BaseAuthStore {
           parsed = resolved as Record<string, unknown>;
         }
 
-        const token = typeof parsed!.token === "string" ? parsed!.token : "";
-        const recordOrModel = (parsed!.record || parsed!.model || null) as AuthRecord;
+        const fields = parsed as Record<string, unknown>;
+        const token = typeof fields.token === "string" ? fields.token : "";
+        const recordOrModel = (fields.record || fields.model || null) as AuthRecord;
         this.save(token, recordOrModel);
       }
     } catch {
@@ -131,7 +132,7 @@ export class AsyncAuthStore extends BaseAuthStore {
       return;
     }
 
-    void this.queue[0]!().finally(() => {
+    void (this.queue[0] as queueFunc)().finally(() => {
       this.queue.shift();
 
       if (!this.queue.length) {

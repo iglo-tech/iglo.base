@@ -386,7 +386,7 @@ export class Form {
   // RemoveAll removes any temporary files associated with a Form. Errors
   // other than a missing file are thrown (the first one).
   removeAll(): void {
-    let first: unknown;
+    let first: Error | undefined;
     for (const fhs of this.file.values()) {
       for (const fh of fhs) {
         if (fh.tmpfile !== "") {
@@ -394,7 +394,7 @@ export class Form {
             rmSync(fh.tmpfile);
           } catch (error) {
             if ((error as { code?: string }).code !== "ENOENT" && first === undefined) {
-              first = error;
+              first = error as Error;
             }
           }
         }

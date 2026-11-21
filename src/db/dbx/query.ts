@@ -229,7 +229,7 @@ export class Stmt {
     if (isSingle(parts)) {
       this.single = conn.prepare(parts[0].sql).safeIntegers(true);
     } else if (parts.length > 0) {
-      conn.prepare(parts[0]!.sql).finalize();
+      conn.prepare((parts[0] as ScriptPart).sql).finalize();
     }
   }
 
@@ -701,6 +701,7 @@ export class Query {
     const err = this.lastError;
     this.lastError = null;
     if (err !== null) {
+      // oxlint-disable-next-line typescript/only-throw-error -- the query callers (rowsOp, exec) hand it to the database error mapping, which reads it
       throw err;
     }
   }

@@ -862,7 +862,8 @@ function toSlice(value: unknown): Array<unknown> {
   }
 
   if (Array.isArray(value)) {
-    return [...value];
+    const items: Array<unknown> = value;
+    return [...items];
   }
   if (isInstance(Uint8Array, value)) {
     return Array.from(value);

@@ -128,6 +128,7 @@ class MaxBytesReader implements ReadCloser, Rereader {
 
   async read(b: Uint8Array): Promise<ReadResult> {
     if (this.#stickyErr !== undefined) {
+      // oxlint-disable-next-line typescript/only-throw-error -- the request body readers surface it as the request error; ErrRequestEntityTooLarge is read for its status
       throw this.#stickyErr;
     }
 

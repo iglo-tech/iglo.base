@@ -145,7 +145,8 @@ export function normalizeUnknownQueryParams(options?: SendOptions): void {
       continue;
     }
 
-    options.query[key] = options[key];
+    const value: unknown = options[key];
+    options.query[key] = value;
     delete options[key];
   }
 }

@@ -117,7 +117,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
       return [ampersand, 0, 1];
     }
     i++;
-    let c = s[i]!;
+    let c = s[i] as number;
     let hex = false;
     if (c === 0x78 /* x */ || c === 0x58 /* X */) {
       hex = true;
@@ -127,7 +127,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
     const i0 = i;
     let x = 0;
     while (i < s.length) {
-      c = s[i]!;
+      c = s[i] as number;
       let d: number;
       let mult: number;
       if (hex) {
@@ -166,7 +166,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
 
     if (0x80 <= x && x <= 0x9f) {
       // Replace characters from Windows-1252 with UTF-8 equivalents.
-      x = replacementTable[x - 0x80]!;
+      x = replacementTable[x - 0x80] as number;
     } else if (x === 0 || (0xd8_00 <= x && x <= 0xdf_ff) || x > 0x10_ff_ff) {
       // Replace invalid characters with the replacement character.
       x = replacementChar;
@@ -179,7 +179,7 @@ export function unescapeEntity(s: Uint8Array, attribute: boolean): [number, numb
   // consumed characters matching one of the named references.
 
   while (i < s.length) {
-    const c = s[i]!;
+    const c = s[i] as number;
     i++;
     // Lower-cased characters are more common in entities, so we check for them first.
     if ((0x61 <= c && c <= 0x7a) || (0x41 <= c && c <= 0x5a) || (0x30 <= c && c <= 0x39)) {
@@ -245,7 +245,7 @@ export function unescape(b: Uint8Array, attribute: boolean): Uint8Array {
   let src = firstAmp;
   while (src < b.length) {
     if (b[src] !== ampersand) {
-      put(b[src]!);
+      put(b[src] as number);
       src++;
       continue;
     }
@@ -289,7 +289,7 @@ export function unescape(b: Uint8Array, attribute: boolean): Uint8Array {
 // lower lower-cases the A-Z bytes in b in-place, so that "aBc" becomes "abc".
 export function lower(b: Uint8Array): Uint8Array {
   for (let i = 0; i < b.length; i++) {
-    const c = b[i]!;
+    const c = b[i] as number;
     if (0x41 <= c && c <= 0x5a) {
       b[i] = c + 0x20;
     }

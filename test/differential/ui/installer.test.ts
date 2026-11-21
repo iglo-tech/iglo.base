@@ -22,7 +22,10 @@ function normalize(output: string, url: string): string {
 
 function claims(output: string): Record<string, unknown> {
   const token = /pbinstall\/([\w-]+\.[\w-]+\.[\w-]+)/.exec(output)?.[1] ?? "";
-  return JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8"));
+  return JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as Record<
+    string,
+    unknown
+  >;
 }
 
 async function install(url: string, output: string): Promise<unknown> {

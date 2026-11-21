@@ -790,6 +790,7 @@ function* onRecordSaveExecute(app: RecordsApp, record: Record, next: Next): Step
   try {
     yield* next(app);
   } catch (error) {
+    // oxlint-disable-next-line typescript/only-throw-error -- the record save's error response reads the normalized error (field errors or its message)
     throw NormalizeUniqueIndexError(
       toError(error),
       collection.name,

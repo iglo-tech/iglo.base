@@ -73,7 +73,7 @@ const fieldTypes = [
 function fields50Body(i: number): Record<string, unknown> {
   const fields = [];
   for (let f = 0; f < 50; f++) {
-    const type = fieldTypes[f % fieldTypes.length]!;
+    const type = fieldTypes[f % fieldTypes.length] as string;
     const field: Record<string, unknown> = { name: `f${f}_${type}`, type };
     if (type === "select") {
       field.values = ["a", "b"];
@@ -95,7 +95,7 @@ function viewQuery(i: number): string {
 
 function median(xs: Array<number>): number {
   const sorted = xs.toSorted((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)]!;
+  return sorted[Math.floor(sorted.length / 2)] as number;
 }
 
 interface Result {
@@ -170,7 +170,7 @@ function igloScenario(dataDir: string, scenario: Scenario): Result {
               name: string;
               maxSelect?: number;
             }>;
-            fields.find((f) => f.name === "tag")!.maxSelect = maxSelect;
+            (fields.find((f) => f.name === "tag") as (typeof fields)[number]).maxSelect = maxSelect;
             const c = update("big", { fields });
             list.push(timed(() => saveCollection(app, c)));
           }
@@ -275,7 +275,7 @@ async function upstreamScenario(dataDir: string, scenario: Scenario): Promise<Re
             [1, toSingle],
           ] as const) {
             const fields = await fieldsOf("big");
-            fields.find((f) => f.name === "tag")!.maxSelect = maxSelect;
+            (fields.find((f) => f.name === "tag") as (typeof fields)[number]).maxSelect = maxSelect;
             list.push(await call("PATCH", "/api/collections/big", { fields }));
           }
         }
@@ -309,7 +309,7 @@ async function upstreamScenario(dataDir: string, scenario: Scenario): Promise<Re
 // ---------------------------------------------------------------------
 
 if (values.side === "iglo") {
-  const result = igloScenario(values.data!, values.scenario as Scenario);
+  const result = igloScenario(values.data as string, values.scenario as Scenario);
   console.log(JSON.stringify(result));
 } else {
   const scratch = values.dir ?? tmpdir();

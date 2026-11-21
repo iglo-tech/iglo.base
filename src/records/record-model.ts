@@ -206,7 +206,7 @@ export function newRecordsFromRows(
 ): Array<Record> {
   const records: Array<Record> = Array.from({ length: rows.length });
   for (let i = 0; i < rows.length; i++) {
-    records[i] = newRecordFromRow(collection, rows[i]!);
+    records[i] = newRecordFromRow(collection, rows[i] as Row);
   }
   return records;
 }
@@ -1156,7 +1156,7 @@ function toMap(
   if (data === null || data === undefined) {
     return new Map();
   }
-  return new Map(isInstance(Map, data) ? data : Object.entries(data));
+  return new Map<string, unknown>(isInstance(Map, data) ? data : Object.entries(data));
 }
 
 function toDataMap(m: ReadonlyMap<string, unknown>): DataMap {

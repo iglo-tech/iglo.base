@@ -346,7 +346,7 @@ function mediaType(value: string): string {
 // io.ReadAll(io.LimitReader(res.Body, limit)): what is past the limit is
 // dropped, not an error
 export async function readLimited(res: Response, limit: number): Promise<Uint8Array> {
-  const reader = res.body?.getReader();
+  const reader = res.body?.getReader() as ReadableStreamDefaultReader<Uint8Array> | undefined;
   if (reader === undefined) {
     return new Uint8Array();
   }

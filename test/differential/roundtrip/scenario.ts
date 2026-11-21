@@ -41,7 +41,7 @@ function collectionPath(name: string): string {
 }
 
 async function collectionId(c: Client, name: string): Promise<string> {
-  return (await c.get(collectionPath(name))).id as string;
+  return ((await c.get(collectionPath(name))) as { id: string }).id;
 }
 
 interface SignIn {
@@ -55,13 +55,13 @@ interface SignIn {
 }
 
 async function signIn(c: Client, s: SignIn): Promise<void> {
-  const res = await c.post(
+  const res = (await c.post(
     `/api/collections/${s.collection}/auth-with-password`,
     { identity: s.email, password: s.password },
     { token: "", userAgent: s.userAgent ?? "roundtrip" },
-  );
+  )) as { token?: string } | null;
   if (s.keep !== undefined && res?.token !== undefined) {
-    c.state.tokens.set(`${s.collection} ${s.keep}`, res.token as string);
+    c.state.tokens.set(`${s.collection} ${s.keep}`, res.token);
   }
 }
 
@@ -179,7 +179,7 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
   const people = `rt${tag}_people`;
   const all = `rt${tag}_all`;
   const peopleId = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: people,
       type: "auth",
       listRule: "",
@@ -195,10 +195,10 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         { name: "avatar", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
       indexes: [`CREATE INDEX idx_${tag}_people_nick ON ${people} (nick)`],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   const allId = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: all,
       type: "base",
       listRule: "",
@@ -211,10 +211,10 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         `CREATE INDEX idx_${tag}_all_n ON ${all} (n)`,
         `CREATE UNIQUE INDEX idx_${tag}_all_em ON ${all} (em) WHERE em != ''`,
       ],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   const kids = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: `rt${tag}_kids`,
       type: "base",
       listRule: "",
@@ -231,10 +231,10 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         },
         { name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   const refs = (
-    await c.post("/api/collections", {
+    (await c.post("/api/collections", {
       name: `rt${tag}_refs`,
       type: "base",
       listRule: `@request.auth.id != ""`,
@@ -243,8 +243,8 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
         { name: "one", type: "relation", collectionId: allId, maxSelect: 1 },
         { name: "many", type: "relation", collectionId: allId, maxSelect: 4 },
       ],
-    })
-  ).id as string;
+    })) as { id: string }
+  ).id;
   await c.post("/api/collections", {
     name: `rt${tag}_view`,
     type: "view",
@@ -297,13 +297,16 @@ async function writeRecords(
   }
 
   // a record id the server generates
-  const generated = await c.post(records(all), { t: "generated id", n: 1 });
+  const generated = (await c.post(records(all), { t: "generated id", n: 1 })) as {
+    id?: string;
+  } | null;
   if (generated?.id !== undefined) {
-    c.state.generatedIds.add(generated.id as string);
+    c.state.generatedIds.add(generated.id);
     await c.post(records(`rt${tag}_refs`), { one: generated.id, many: [generated.id] });
-    c.state.generatedIds.add(
-      (await c.get(`${records(`rt${tag}_refs`)}?sort=-@rowid&perPage=1`)).items[0].id,
-    );
+    const listed = (await c.get(`${records(`rt${tag}_refs`)}?sort=-@rowid&perPage=1`)) as {
+      items: Array<{ id: string }>;
+    };
+    c.state.generatedIds.add((listed.items[0] as { id: string }).id);
   }
 
   // multipart: every value arrives as text
@@ -345,12 +348,12 @@ async function writeRecords(
     "rm+": people[2],
   });
   await c.patch(records(all, target), { "n-": 1.5, "sm-": ["a"], "rm-": people[0] });
-  const stored = await c.get(records(all, target));
+  const stored = (await c.get(records(all, target))) as { fm?: Array<string> } | undefined;
   await c.request("PATCH", records(all, target), {
     form: form({
       "fm+": file("appended.txt", "appended"),
       "+fm": picture("prepended.png"),
-      "fm-": (stored?.fm ?? []).slice(1, 2) as Array<string>,
+      "fm-": (stored?.fm ?? []).slice(1, 2),
     }),
   });
   await c.request("PATCH", records(all, rid(`${tag}form2`)), {
@@ -367,8 +370,8 @@ async function writeRecords(
   });
 
   // thumbs of every declared size
-  const pictured = await c.get(records(all, target));
-  for (const name of (pictured?.fm ?? []) as Array<string>) {
+  const pictured = (await c.get(records(all, target))) as { fm?: Array<string> } | undefined;
+  for (const name of pictured?.fm ?? []) {
     if (name.endsWith(".png")) {
       for (const size of ["50x50", "50x50t", "0x30", "30x0", "40x40f", "40x40b"]) {
         await c.get(`/api/files/${ids.all}/${target}/${name}?thumb=${size}`, { token: "" });
@@ -461,7 +464,9 @@ async function changeFields(
   name: string,
   change: (fields: Array<Record<string, unknown>>) => Array<Record<string, unknown>>,
 ): Promise<void> {
-  const current = await c.get(collectionPath(name));
+  const current = (await c.get(collectionPath(name))) as {
+    fields: Array<Record<string, unknown>>;
+  };
   await c.patch(collectionPath(name), { fields: change(current.fields) });
 }
 
@@ -505,14 +510,13 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   await changeFields(c, sch, (fields) => [...fields, { name: "added", type: "bool" }]);
   await c.patch(records(sch, rid(`${tag}sch1`)), { added: true });
   // rename, with an index on the field
-  const beforeRename = await c.get(collectionPath(sch));
+  const beforeRename = (await c.get(collectionPath(sch))) as {
+    fields: Array<Record<string, unknown>>;
+    indexes: Array<string>;
+  };
   await c.patch(collectionPath(sch), {
-    fields: (beforeRename.fields as Array<Record<string, unknown>>).map((f) =>
-      f["name"] === "b" ? { ...f, name: "b_renamed" } : f,
-    ),
-    indexes: (beforeRename.indexes as Array<string>).map((s) =>
-      s.replace(/\(`?b`?\)/, "(`b_renamed`)"),
-    ),
+    fields: beforeRename.fields.map((f) => (f["name"] === "b" ? { ...f, name: "b_renamed" } : f)),
+    indexes: beforeRename.indexes.map((s) => s.replace(/\(`?b`?\)/, "(`b_renamed`)")),
   });
   // drop
   await changeFields(c, sch, (fields) => fields.filter((f) => f["name"] !== "drop_me"));
@@ -524,10 +528,10 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   const renamed = `rt${tag}_renamed`;
   await c.patch(collectionPath(sch), { name: renamed });
   // indexes
-  const current = await c.get(collectionPath(renamed));
+  const current = (await c.get(collectionPath(renamed))) as { indexes: Array<string> };
   await c.patch(collectionPath(renamed), {
     indexes: [
-      ...(current.indexes as Array<string>).filter((s) => !s.includes(`idx_${tag}_sch_a`)),
+      ...current.indexes.filter((s) => !s.includes(`idx_${tag}_sch_a`)),
       `CREATE INDEX idx_${tag}_sch_added ON ${renamed} (added, c DESC)`,
     ],
   });
@@ -545,16 +549,16 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   });
 
   // emptied, imported and deleted collections
-  const tmp = await c.post("/api/collections", {
+  const tmp = (await c.post("/api/collections", {
     name: `rt${tag}_tmp`,
     type: "base",
     fields: [{ name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 }],
-  });
+  })) as { id: string };
   await c.request("POST", records(`rt${tag}_tmp`), {
     form: form({ id: rid(`${tag}tmp1`), doc: file("tmp.txt", "gone with the truncate") }),
   });
   await c.delete(`${collectionPath(`rt${tag}_tmp`)}/truncate`);
-  c.deletedWith(tmp.id as string, rid(`${tag}tmp1`));
+  c.deletedWith(tmp.id, rid(`${tag}tmp1`));
   await c.delete(collectionPath(`rt${tag}_tmp`));
   await c.request("PUT", "/api/collections/import", {
     json: {
@@ -637,8 +641,8 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   });
   // files: add, replace and remove, and new thumbs of the old files
   const form1 = rid(`${p}form1`);
-  const stored = await c.get(records(all, form1));
-  const names = (stored?.fm ?? []) as Array<string>;
+  const stored = (await c.get(records(all, form1))) as { fm?: Array<string> } | undefined;
+  const names = stored?.fm ?? [];
   await c.request("PATCH", records(all, form1), {
     form: form({
       "fm+": picture(`added-${tag}.png`),
@@ -648,7 +652,8 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   await c.request("PATCH", records(all, rid(`${p}form2`)), {
     form: form({ f1: file(`replaced-${tag}.txt`, "replaced") }),
   });
-  const picturedNames = (await c.get(records(all, form1)))?.fm as Array<string> | undefined;
+  const picturedNames = ((await c.get(records(all, form1))) as { fm?: Array<string> } | undefined)
+    ?.fm;
   for (const name of picturedNames ?? []) {
     if (name.endsWith(".png")) {
       await c.get(`/api/files/${allId}/${form1}/${name}?thumb=30x0`, { token: "" });
@@ -672,24 +677,28 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
 
   // schema of the other server's collections
   const renamed = `rt${p}_renamed`;
-  const before = await c.get(collectionPath(renamed));
+  const before = (await c.get(collectionPath(renamed))) as {
+    fields: Array<Record<string, unknown>>;
+    indexes: Array<string>;
+  };
   await c.patch(collectionPath(renamed), {
     fields: [
-      ...(before.fields as Array<Record<string, unknown>>).filter((f) => f["name"] !== "c"),
+      ...before.fields.filter((f) => f["name"] !== "c"),
       { name: `added_${tag}`, type: "number" },
     ],
-    indexes: (before.indexes as Array<string>).filter(
+    indexes: before.indexes.filter(
       (s) => !s.includes(`idx_${p}_sch_c`) && !s.includes(`idx_${p}_sch_added`),
     ),
   });
-  const beforeRename = await c.get(collectionPath(renamed));
+  const beforeRename = (await c.get(collectionPath(renamed))) as {
+    fields: Array<Record<string, unknown>>;
+    indexes: Array<string>;
+  };
   await c.patch(collectionPath(renamed), {
-    fields: (beforeRename.fields as Array<Record<string, unknown>>).map((f) =>
+    fields: beforeRename.fields.map((f) =>
       f["name"] === "b_renamed" ? { ...f, name: `b_${tag}` } : f,
     ),
-    indexes: (beforeRename.indexes as Array<string>).map((s) =>
-      s.replace(/\(`?b_renamed`?\)/, `(\`b_${tag}\`)`),
-    ),
+    indexes: beforeRename.indexes.map((s) => s.replace(/\(`?b_renamed`?\)/, `(\`b_${tag}\`)`)),
   });
   await c.patch(collectionPath(renamed), {
     name: `rt${p}_again`,
@@ -784,9 +793,11 @@ export async function fixtureWrites(c: Client, tag: string): Promise<void> {
   await c.request("PATCH", records("demo1", "imy661ixudk5izi"), {
     form: form({ "file_many+": file(`fixture-${tag}.txt`, tag) }),
   });
-  const demo1 = await c.get(records("demo1", "84nmscqy84lsi1t"));
+  const demo1 = (await c.get(records("demo1", "84nmscqy84lsi1t"))) as
+    | { file_many?: Array<string> }
+    | undefined;
   await c.request("PATCH", records("demo1", "84nmscqy84lsi1t"), {
-    form: form({ "file_many-": ((demo1?.file_many ?? []) as Array<string>).slice(0, 1) }),
+    form: form({ "file_many-": (demo1?.file_many ?? []).slice(0, 1) }),
   });
   await signIn(c, {
     collection: "clients",
@@ -796,10 +807,10 @@ export async function fixtureWrites(c: Client, tag: string): Promise<void> {
     userAgent: `fixture ${tag}`,
   });
   await changeFields(c, "demo3", (fields) => [...fields, { name: `added_${tag}`, type: "text" }]);
-  const demo2Index = await c.get(collectionPath("demo2"));
+  const demo2Index = (await c.get(collectionPath("demo2"))) as { indexes: Array<string> };
   await c.patch(collectionPath("demo2"), {
     indexes: [
-      ...(demo2Index.indexes as Array<string>),
+      ...demo2Index.indexes,
       `CREATE INDEX idx_fixture_${tag} ON demo2 (${["title, active", "active, title", "active DESC, title"][leg]})`,
     ],
   });
@@ -809,7 +820,7 @@ export async function fixtureWrites(c: Client, tag: string): Promise<void> {
 export function settingsScenario(smtpPort: number): RoundTripScenario {
   return {
     async leg(c, leg) {
-      const stored = await c.get("/api/settings");
+      const stored = (await c.get("/api/settings")) as { meta?: { appName?: string } } | undefined;
       if (leg > 0 && stored?.meta?.appName !== `Round trip ${tags[leg - 1]}`) {
         c.state.failures.push(`leg ${leg + 1}: settings: ${JSON.stringify(stored?.meta)}`);
       }

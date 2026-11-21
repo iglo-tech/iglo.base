@@ -23,9 +23,10 @@ const preset = {
   })),
 };
 
-// Test support files (harnesses, fixtures, scenario data) get the same
-// relaxations the preset gives *.test.ts files. The list is a copy of the
-// preset's test override (typeScriptTests in @cloudflare/oxlint-config): change both.
+// Test support files (harnesses, fixtures, scenario data) get the no-explicit-any
+// relaxation the preset gives *.test.ts files. The preset's other test relaxations
+// (non-null, unsafe flows, unbound methods, throws) stay on *.test.ts only: L.2 (D44)
+// fixed their findings in these files, so they are not relaxed here.
 const testSupportFiles = ["test/**/*.ts", "sdk/test/**/*.ts"];
 
 export default defineConfig({
@@ -37,12 +38,6 @@ export default defineConfig({
       files: testSupportFiles,
       rules: {
         "typescript/no-explicit-any": "off",
-        "typescript/no-non-null-assertion": "off",
-        "typescript/no-unsafe-argument": "off",
-        "typescript/no-unsafe-assignment": "off",
-        "typescript/no-unsafe-member-access": "off",
-        "typescript/only-throw-error": "off",
-        "typescript/unbound-method": "off",
       },
     },
     {
@@ -130,24 +125,17 @@ export default defineConfig({
         "@nkzw/no-instanceof": "off",
       },
     },
-    // L.1 open items: these rules still report issues and stay off until the
-    // owner decides (PR body, "Open"). Each one is removed from this list when its
-    // issues are fixed.
+    // L.1 open items (D44): these rules still report issues and stay off until
+    // their task fixes them. L.3 owns the three quality/* rules; L.4 owns
+    // no-unsafe-type-assertion. Each one is removed from this list when its
+    // issues are fixed; the list is empty when L.3 and L.4 are done.
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
         "quality/no-known-value-widening": "off",
         "quality/no-unknown-returns": "off",
         "quality/no-unsafe-dictionary-type": "off",
-        "typescript/no-non-null-assertion": "off",
-        "typescript/no-unsafe-argument": "off",
-        "typescript/no-unsafe-assignment": "off",
-        "typescript/no-unsafe-call": "off",
-        "typescript/no-unsafe-member-access": "off",
-        "typescript/no-unsafe-return": "off",
         "typescript/no-unsafe-type-assertion": "off",
-        "typescript/only-throw-error": "off",
-        "typescript/unbound-method": "off",
       },
     },
   ],

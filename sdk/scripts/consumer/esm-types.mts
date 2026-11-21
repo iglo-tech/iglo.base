@@ -9,6 +9,7 @@ type Post = { id: string; title: string };
 const pb = new PocketBase("http://127.0.0.1:1");
 const a: Promise<ListResult<Post>> = pb.collection<Post>("posts").getList(1, 2);
 const b: Promise<RecordModel> = pb.collection("posts").getOne("x");
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- consumer check: the loose SDK shape must assign without a cast
 const s: string = pb.authStore.record?.email;
 const e = new ClientResponseError({});
 const n: number = e.status;

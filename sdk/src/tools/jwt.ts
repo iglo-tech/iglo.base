@@ -67,7 +67,7 @@ export function getTokenPayload(token: string): LooseObject {
           .join(""),
       );
 
-      return JSON.parse(encodedPayload) || {};
+      return (JSON.parse(encodedPayload) as LooseObject) || {};
     } catch {
       // not a decodable payload: fall through to the empty object
     }

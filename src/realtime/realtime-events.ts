@@ -156,7 +156,10 @@ function dryCacheRecordDelete(app: RecordsApp, record: Record): void {
         continue;
       }
       const cached = client.get(dryCacheKey);
-      client.set(dryCacheKey, Array.isArray(cached) ? [...cached, ...messages] : messages);
+      client.set(
+        dryCacheKey,
+        Array.isArray(cached) ? [...(cached as Array<Message>), ...messages] : messages,
+      );
     }
   }
 }

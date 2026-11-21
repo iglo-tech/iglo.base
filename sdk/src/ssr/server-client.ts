@@ -73,7 +73,7 @@ function unauthorized(message: string): ClientResponseError {
 
 /** The key that ties a token to its collection's learned lifetime. */
 function collectionKey(payload: LooseObject, record: AuthRecord | undefined | null): string {
-  return payload.collectionId || record?.collectionId || record?.collectionName || "";
+  return (payload.collectionId || record?.collectionId || record?.collectionName || "") as string;
 }
 
 function resolveSecure(options: CreateServerClientOptions): boolean {
@@ -402,7 +402,7 @@ export class ServerClient extends Client {
     const collection =
       this.authStore.record?.collectionName ||
       this.authStore.record?.collectionId ||
-      payload.collectionId ||
+      (payload.collectionId as string | undefined) ||
       (this.authStore.isSuperuser ? "_superusers" : "users");
 
     try {
@@ -512,7 +512,7 @@ export class ServerClient extends Client {
       buildSessionCookieToSet(token, record, {
         ...this._cookieSettings(),
         nowSeconds: nowSec,
-        exp: payload.exp,
+        exp: payload.exp as number | undefined,
       }),
     ]);
   }

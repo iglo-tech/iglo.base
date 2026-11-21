@@ -25,8 +25,8 @@ export class FileService extends BaseService {
     parts.push(
       "api",
       "files",
-      encodeURIComponent(record.collectionId || record.collectionName),
-      encodeURIComponent(record.id),
+      encodeURIComponent((record.collectionId || record.collectionName) as string),
+      encodeURIComponent(record.id as string),
       encodeURIComponent(filename),
     );
 
@@ -58,6 +58,8 @@ export class FileService extends BaseService {
       options,
     );
 
-    return this.client.send("/api/files/token", options).then((data) => data?.token || "");
+    return this.client
+      .send<{ token?: string }>("/api/files/token", options)
+      .then((data) => data?.token || "");
   }
 }

@@ -74,7 +74,7 @@ function expectSingleBackup(
     if (keys.length !== 1) {
       throw new Error(`Expected 1 backup file, got ${keys.length}`);
     }
-    if (!matches(keys[0]!)) {
+    if (!matches(keys[0] as string)) {
       throw new Error(`Expected backup file ${expected}, got ${keys[0]}`);
     }
   });

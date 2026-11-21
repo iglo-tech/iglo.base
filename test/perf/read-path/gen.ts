@@ -71,7 +71,7 @@ for (let done = 0; done < total; done += batch) {
         created,
         created,
         `Post ${i}`,
-        statuses[Math.floor(rand() * statuses.length)]!,
+        statuses[Math.floor(rand() * statuses.length)] as string,
         `author${Math.floor(rand() * 1000)}`,
         Math.floor(rand() * 10_000) / 100,
         body,

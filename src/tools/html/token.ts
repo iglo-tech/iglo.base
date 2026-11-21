@@ -262,7 +262,7 @@ export class Tokenizer {
       this.lastErr = EOF;
       return 0;
     }
-    const x = this.buf[this.raw.end]!;
+    const x = this.buf[this.raw.end] as number;
     this.raw.end++;
     if (this.maxBuf > 0 && this.raw.end - this.raw.start >= this.maxBuf) {
       this.lastErr = ErrBufferExceeded;
@@ -844,7 +844,7 @@ export class Tokenizer {
         continue loop;
       }
       for (let i = 0; i < s.length; i++) {
-        let c = this.buf[this.data.start + i]!;
+        let c = this.buf[this.data.start + i] as number;
         if (0x41 <= c && c <= 0x5a) {
           c += 0x20;
         }
@@ -865,7 +865,7 @@ export class Tokenizer {
       return ErrorToken;
     }
     // Several tags flag the tokenizer's next token as raw.
-    let c = this.buf[this.data.start]!;
+    let c = this.buf[this.data.start] as number;
     let raw = false;
     if (0x41 <= c && c <= 0x5a) {
       c += 0x20;
@@ -911,7 +911,7 @@ export class Tokenizer {
     if (
       this.lastErr === null &&
       this.buf[this.raw.end - 2] === 0x2f /* / */ &&
-      (nAttrs === 0 || this.raw.end - 2 !== this.attr[nAttrs - 1]![1].end - 1)
+      (nAttrs === 0 || this.raw.end - 2 !== (this.attr[nAttrs - 1] as [span, span])[1].end - 1)
     ) {
       return SelfClosingTagToken;
     }
@@ -1270,7 +1270,7 @@ export class Tokenizer {
       switch (this.tt) {
         case StartTagToken:
         case SelfClosingTagToken: {
-          const x = this.attr[this.nAttrReturned]!;
+          const x = this.attr[this.nAttrReturned] as [span, span];
           this.nAttrReturned++;
           const key = replaceNUL(this.buf.slice(x[0].start, x[0].end));
           const val = replaceNUL(this.buf.slice(x[1].start, x[1].end));
@@ -1351,7 +1351,7 @@ function convertNewlines(s: Uint8Array): Uint8Array {
         }
         s[dst] = 0x0a;
       } else {
-        s[dst] = s[src]!;
+        s[dst] = s[src] as number;
       }
       src++;
       dst++;
