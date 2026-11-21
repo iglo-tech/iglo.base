@@ -42,7 +42,6 @@ export default defineConfig({
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-member-access": "off",
         "typescript/only-throw-error": "off",
-        "typescript/unbound-method": "off",
       },
     },
     {
@@ -147,7 +146,6 @@ export default defineConfig({
         "typescript/no-unsafe-return": "off",
         "typescript/no-unsafe-type-assertion": "off",
         "typescript/only-throw-error": "off",
-        "typescript/unbound-method": "off",
       },
     },
   ],

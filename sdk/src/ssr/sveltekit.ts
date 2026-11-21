@@ -54,7 +54,7 @@ export interface SvelteKitAuth {
    */
   handle(input: {
     event: SvelteKitEvent;
-    resolve(event: SvelteKitEvent): Promise<Response>;
+    resolve: (event: SvelteKitEvent) => Promise<Response>;
   }): Promise<Response>;
 }
 

@@ -25,7 +25,7 @@ export const repoRoot = resolve(import.meta.dir, "../../..");
 // A temporary root under the ignored dist/spike-tmp directory.
 // TMPDIR points into it for this process and the servers it starts, so
 // spilled request bodies and builds land on disk and are removed with it.
-export function spikeRoot(name: string): { root: string; tmp: string; cleanup(): void } {
+export function spikeRoot(name: string): { root: string; tmp: string; cleanup: () => void } {
   const base = join(repoRoot, "dist", "spike-tmp");
   mkdirSync(base, { recursive: true });
   const root = mkdtempSync(join(base, `${name}-`));

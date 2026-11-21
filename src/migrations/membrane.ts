@@ -41,7 +41,7 @@ export interface Adapter {
   set?(target: object, key: string, value: unknown, m: Membrane): boolean | typeof pass;
   // what Object.keys and `in` see, for a struct that is not a JS object
   // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
-  keys?(target: object, m: Membrane): ReadonlyArray<string>;
+  keys?: (target: object, m: Membrane) => ReadonlyArray<string>;
   // the migration file's object, when it is not a Proxy of the target
   // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   create?(target: object, m: Membrane): object;
@@ -51,8 +51,8 @@ export interface Adapter {
 export interface SliceSource {
   read(): ReadonlyArray<unknown>;
   write(next: Array<unknown>): void;
-  fromGo?(item: unknown): unknown;
-  toGo?(item: unknown): unknown;
+  fromGo?: (item: unknown) => unknown;
+  toGo?: (item: unknown) => unknown;
   // goja refuses an item of another Go type: a sloppy `list[0] = v` is
   // ignored and a push throws, as for a refused Proxy set
   accepts?(item: unknown): boolean;

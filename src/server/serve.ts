@@ -29,10 +29,11 @@ import { ResponseWriter } from "@/server/router";
 import type { Mux, Router } from "@/server/router";
 import { isInstance } from "@/tools/types/is-instance";
 
+// Function properties, not methods: the CLI passes these functions on unbound (L.2).
 export interface Output {
-  stdout(text: string): void;
-  stderr(text: string): void;
-  now(): Date;
+  stdout: (text: string) => void;
+  stderr: (text: string) => void;
+  now: () => Date;
   // whether the start banner may use ANSI colors
   color: boolean;
 }
@@ -57,7 +58,7 @@ export interface ServeConfig {
   // the installer's "superuser upsert" hint command (os.Args[0])
   executablePath: string;
   // opens the installer URL in a browser when possible
-  launchURL(url: string): void;
+  launchURL: (url: string) => void;
 }
 
 function pad(n: number): string {
