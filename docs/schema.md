@@ -474,7 +474,7 @@ The settings (SMTP, S3, backups, rate limits and the rest) are locked as well, a
 
 #### Invalidating the tokens
 
-"Invalidate all previously issued tokens" in the dashboard is a collection update, so in production it is a JavaScript migration in `pb_migrations`, which runs once at the next start. It gives the collection a new token secret, and the tokens issued before it stop working: since iglo.base v1.3.0 a request with one gets `401` instead of guest access, and the SDK clears its auth store on that `401`. Name the file with a timestamp and a name, for example `pb_migrations/1700000000_invalidate_user_tokens.js`:
+"Invalidate all previously issued tokens" in the dashboard is a collection update, so in production it is a JavaScript migration in `pb_migrations`, which runs once at the next start. It gives the collection a new token secret, and the tokens issued before it stop working: since iglo.base v1.3.0 a request with one gets `401` instead of guest access. The SDK clears its auth store on that `401`, except in the SSR server and superuser clients, which keep it (see the [SSR guide](ssr.md)). Name the file with a timestamp and a name, for example `pb_migrations/1700000000_invalidate_user_tokens.js`:
 
 ```js
 migrate((app) => {

@@ -3,7 +3,7 @@ iglo.base JavaScript SDK
 
 JavaScript SDK (browser, Node, Deno, Bun and React Native) for the [iglo.base](https://github.com/iglo-tech/iglo.base) API.
 
-This is a fork of the [PocketBase JavaScript SDK](https://github.com/pocketbase/js-sdk) v0.29.0 (MIT), maintained with iglo.base. It keeps the `pocketbase` package's API (same default export and named exports) and works with PocketBase v0.42.3 too, but ships ES modules only (no `./cjs`, `./umd` or script-tag build).
+This is a fork of the [PocketBase JavaScript SDK](https://ganigeorgiev.com/pocketbase/js-sdk) v0.29.0 (MIT), maintained with iglo.base. It keeps the `pocketbase` package's API (same default export and named exports) and works with PocketBase v0.42.3 too, but ships ES modules only (no `./cjs`, `./umd` or script-tag build).
 
 - [Installation](#installation)
 - [Usage](#usage)
@@ -265,6 +265,8 @@ removeListener2();
 
 By default the store is automatically cleared when a request returns a `401` response, for example for an expired or externally invalidated token. This keeps the stored token in step with the server.
 You can disable this behavior with `pb.autoClearAuthStore(false)`.
+
+The server-side clients of `@iglo.tech/iglo.base/ssr`, `createServerClient` and `createSuperuserClient`, are the exception: they keep their store on a `401`, because a `401` from one data call does not end the user's session or the superuser's API key. The browser client, `createBrowserClient` (`@iglo.tech/iglo.base/ssr/browser`), clears its store as described above. The [SSR guide](https://github.com/iglo-tech/iglo.base/blob/main/docs/ssr.md) explains how to replace an expired API key.
 
 ### Auto cancellation
 

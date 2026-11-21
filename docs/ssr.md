@@ -68,7 +68,7 @@ Then choose one of these:
    const sessionCache = createSessionCache();
    ```
 
-2. **An API key.** Sign in once as the superuser, mint a token with `impersonate` for the duration you choose, and store it as a secret. The client uses the token as it is. It cannot refresh it, so when it expires its requests fail until you replace it. Changing the superuser's password or `tokenKey` revokes it. Since iglo.base v1.3.0 a request with an unknown, invalid or expired token gets `401` instead of running as a guest, and the SDK clears its auth store on that `401`, so replace the token in the store with a new one. The server client of this guide's helpers is the exception: a `401` from a data call keeps its session, as described in the [design](design/13-ssr.md).
+2. **An API key.** Sign in once as the superuser, mint a token with `impersonate` for the duration you choose, and store it as a secret. The client uses the token as it is. It cannot refresh it, so when it expires its requests fail until you replace it. Changing the superuser's password or `tokenKey` revokes it. Since iglo.base v1.3.0 a request with an unknown, invalid or expired token gets `401` instead of running as a guest. `createSuperuserClient` keeps its token on that `401`: the SDK's clear of the auth store is off for it, as it is for the server client (the browser client, `createBrowserClient`, still clears its store). So the store still holds the expired token after the `401`. Catch the error and create a new client with the new token: `createSuperuserClient({ url, token })`. A `401` from a data call through the server client keeps its session, as described in the [design](design/13-ssr.md).
 
    ```js
    import PocketBase from "@iglo.tech/iglo.base";
