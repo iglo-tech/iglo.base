@@ -65,6 +65,8 @@ let token: string;
 // the file field needs no database
 const app = noDBApp();
 
+type FileRequestHeaders = { "content-type": string; authorization?: string };
+
 async function request(
   method: string,
   path: string,
@@ -75,8 +77,7 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  // oxlint-disable-next-line quality/no-known-value-widening -- the authorization header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
-  const headers: Record<string, string> = { "content-type": contentType };
+  const headers: FileRequestHeaders = { "content-type": contentType };
   if (auth) {
     headers.authorization = token;
   }

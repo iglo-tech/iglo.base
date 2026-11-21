@@ -94,6 +94,8 @@ function model(): TestApp {
   return app;
 }
 
+type PasswordRequestHeaders = { "content-type": string; authorization?: string };
+
 async function request(
   method: string,
   path: string,
@@ -103,8 +105,7 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  // oxlint-disable-next-line quality/no-known-value-widening -- the authorization header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  const headers: PasswordRequestHeaders = { "content-type": "application/json" };
   if (auth) {
     headers.authorization = token;
   }

@@ -54,8 +54,7 @@ async function build(dataDir: string, root: string): Promise<void> {
   try {
     let token = "";
     const api = async (method: string, path: string, body?: unknown): Promise<Json> => {
-      // oxlint-disable-next-line quality/no-known-value-widening -- a fetch header map that gains authorization after creation
-      const headers: Record<string, string> = { "content-type": "application/json" };
+      const headers: ApiHeaders = { "content-type": "application/json" };
       if (token) {
         headers.authorization = token;
       }
@@ -135,6 +134,8 @@ async function build(dataDir: string, root: string): Promise<void> {
 }
 
 // the author of note n: never in Team 3, so the relation rule passes
+type ApiHeaders = { "content-type": string; authorization?: string };
+
 function author(n: number): string {
   const m = n % 50;
   return id("m", m % 10 === 3 ? m + 1 : m);

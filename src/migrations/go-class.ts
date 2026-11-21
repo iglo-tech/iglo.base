@@ -952,7 +952,7 @@ const fieldClass = (
   methods: Readonly<Record<string, Method>> = {},
   help = true,
 ): GoClass => {
-  // oxlint-disable-next-line quality/no-known-value-widening -- the field table gets help and the own fields after it is created (fields.help, Object.assign), so a literal type would reject those keys; its values are Go type names
+  // oxlint-disable-next-line quality/no-known-value-widening -- the own fields are added by Object.assign under names known only at runtime, so the table is an open map of Go type names (help is set by its fixed name above)
   const fields: Record<string, GoType> = {
     name: "string",
     id: "string",

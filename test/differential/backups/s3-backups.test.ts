@@ -457,6 +457,13 @@ interface Seen {
 
 type Script = (req: Request, url: URL) => Response | null | Promise<Response | null>;
 
+type RangeResponseHeaders = {
+  "Content-Type": string;
+  "Content-Length": string;
+  "Last-Modified": string;
+  "Content-Range"?: string;
+};
+
 class ScriptedS3 {
   readonly seen: Array<Seen> = [];
   script: Script = () => null;
@@ -546,8 +553,7 @@ class ScriptedS3 {
     const range = /bytes=(\d+)-(\d*)/.exec(req.headers.get("Range") ?? "");
     const first = Number(range?.[1] ?? 0);
     const end = range?.[2] ? Number(range[2]) + 1 : object.body.length;
-    // oxlint-disable-next-line quality/no-known-value-widening -- Content-Range is added after construction only for a range request under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
-    const headers: Record<string, string> = {
+    const headers: RangeResponseHeaders = {
       "Content-Type": object.headers.get("Content-Type") ?? "",
       "Content-Length": String(end - first),
       "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",

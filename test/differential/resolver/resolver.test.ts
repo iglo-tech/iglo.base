@@ -180,9 +180,10 @@ function qs(params: { [key: string]: string }): string {
     .join("&");
 }
 
+type FilterQueryParams = { perPage: string; filter?: string; sort?: string };
+
 function filterQuery(fc: FilterCase): string {
-  // oxlint-disable-next-line quality/no-known-value-widening -- filter and sort are added after construction under names the literal does not have; qs takes a string dictionary, so a literal type would not fit
-  const params: { [key: string]: string } = { perPage: "200" };
+  const params: FilterQueryParams = { perPage: "200" };
   if (fc.filter !== "") {
     params.filter = fc.filter;
   }
@@ -205,9 +206,10 @@ function caseRules(rc: RuleCase) {
   return { listRule, viewRule };
 }
 
+type ListQueryParams = { perPage: string; sort: string; filter?: string };
+
 function listQueryParams(rc: RuleCase) {
-  // oxlint-disable-next-line quality/no-known-value-widening -- filter is added after construction under a name the literal does not have; the spread of an optional query drops the index signature a literal type would need
-  const params: { [key: string]: string } = { perPage: "200", sort: "id", ...rc.query };
+  const params: ListQueryParams = { perPage: "200", sort: "id", ...rc.query };
   if (rc.filter !== undefined) {
     params.filter = rc.filter;
   }

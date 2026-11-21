@@ -114,6 +114,8 @@ async function stop(server: Server): Promise<void> {
   await server.stop();
 }
 
+type JsonRequestHeaders = { "Content-Type": string; Authorization?: string };
+
 async function request(
   server: Server,
   method: string,
@@ -121,8 +123,7 @@ async function request(
   body: unknown,
   token?: string,
 ): Promise<Reply> {
-  // oxlint-disable-next-line quality/no-known-value-widening -- the Authorization header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: JsonRequestHeaders = { "Content-Type": "application/json" };
   if (token !== undefined) {
     headers.Authorization = token;
   }

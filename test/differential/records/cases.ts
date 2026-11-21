@@ -83,10 +83,19 @@ const userNames = [
   "ŁÓDŹ",
 ];
 
+type UserPayloadJson = {
+  email: string;
+  password: string;
+  passwordConfirm: string;
+  emailVisibility: string;
+  verified: string;
+  name: string;
+  secret?: string;
+};
+
 export function userPayloads(): Array<Payload> {
   return userNames.map((name, i): Payload => {
-    // oxlint-disable-next-line quality/no-known-value-widening -- fields are added to json after construction (json.secret = ...), under names the literal does not have; a literal type rejects those assignments and a typed builder would change the statements
-    const json: Record<string, string> = {
+    const json: UserPayloadJson = {
       email: q(`user${i}@example.com`),
       password: q("1234567890"),
       passwordConfirm: q("1234567890"),
@@ -219,11 +228,29 @@ function pick<T>(list: ReadonlyArray<T>, i: number, step = 1): T {
 
 // the base records: field values cycle through the edge value lists, with
 // different strides, so that the 50 records combine them differently
+type BasePayloadJson = {
+  title: string;
+  num: string;
+  int: string;
+  flag: string;
+  mail: string;
+  link: string;
+  body: string;
+  when: string;
+  one: string;
+  many: string;
+  data: string;
+  loc: string;
+  note?: string;
+  secretLoc?: string;
+  owner?: string;
+  team?: string;
+};
+
 export function allPayloads(userIds: ReadonlyArray<string>): Array<Payload> {
   const out: Array<Payload> = [];
   for (let i = 0; i < 50; i++) {
-    // oxlint-disable-next-line quality/no-known-value-widening -- fields are added to json after construction (json.note = ...), under names the literal does not have; a literal type rejects those assignments and a typed builder would change the statements
-    const json: Record<string, string> = {
+    const json: BasePayloadJson = {
       title: q(pick(titles, i)),
       num: pick(nums, i),
       int: pick(ints, i, 3),

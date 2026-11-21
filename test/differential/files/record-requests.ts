@@ -14,6 +14,8 @@ export interface Res {
   body: Uint8Array;
 }
 
+type RecordRequestHeaders = { authorization: string; "content-type"?: string };
+
 export async function req(
   url: string,
   method: string,
@@ -21,8 +23,7 @@ export async function req(
   body?: Uint8Array | string,
   contentType?: string,
 ): Promise<Res> {
-  // oxlint-disable-next-line quality/no-known-value-widening -- the content-type header is added after construction under a name the literal does not have; a literal type rejects that assignment and a typed builder would change the statements
-  const headers: Record<string, string> = { authorization: superuserToken };
+  const headers: RecordRequestHeaders = { authorization: superuserToken };
   if (contentType) {
     headers["content-type"] = contentType;
   }

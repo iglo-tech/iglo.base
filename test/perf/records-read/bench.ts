@@ -54,8 +54,7 @@ async function build(dataDir: string, root: string): Promise<void> {
   try {
     let token = "";
     const api = async (method: string, path: string, body?: unknown): Promise<Json> => {
-      // oxlint-disable-next-line quality/no-known-value-widening -- a fetch header map that gains authorization after creation
-      const headers: Record<string, string> = { "content-type": "application/json" };
+      const headers: ApiHeaders = { "content-type": "application/json" };
       if (token) {
         headers.authorization = token;
       }
@@ -142,6 +141,8 @@ async function build(dataDir: string, root: string): Promise<void> {
     await server.stop();
   }
 }
+
+type ApiHeaders = { "content-type": string; authorization?: string };
 
 interface Workload {
   name: string;
