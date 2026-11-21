@@ -16,6 +16,10 @@
 
 import type { JsonObject } from "@test/support/json";
 
+// a request body: JSON.stringify sends it, and drops the properties that are
+// undefined (the case literals have optional undefined members)
+type Body = string | number | boolean | null | Array<Body> | { [key: string]: Body | undefined };
+
 export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
@@ -28,8 +32,8 @@ export interface Ctx {
 }
 
 export type Step = { name: string; ok: boolean } & (
-  | { kind: "create"; body: (ctx: Ctx) => unknown }
-  | { kind: "update"; target: string; body: (ctx: Ctx) => unknown }
+  | { kind: "create"; body: (ctx: Ctx) => Body }
+  | { kind: "update"; target: string; body: (ctx: Ctx) => Body }
   | { kind: "delete"; target: string }
   | { kind: "import"; body: (ctx: Ctx) => { collections: Array<unknown>; deleteMissing: boolean } }
   | { kind: "sql"; sql: Array<string> }

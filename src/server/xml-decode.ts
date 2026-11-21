@@ -599,6 +599,7 @@ const bits: Partial<Record<Kind, number>> = {
   uint32: 32,
 };
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the element's value as the Go type t: any value of that type
 function elementValue(el: XmlElement, t: FieldType, current?: unknown): unknown {
   while (typeof t === "object" && t.kind === "pointer") {
     t = t.elem;

@@ -292,7 +292,7 @@ export interface VerifyOptions {
   // files are in S3: the files of the fixture's records are not
   skipFixtureFiles?: boolean;
   // more reads on each running server; the two answers must be equal
-  inspect?: (target: Target) => Promise<unknown>;
+  inspect?: (target: Target) => Promise<Json>;
   // The kill may have left a directory only iglo.base's start repairs (a
   // restore killed between its two moves; upstream has no recovery): iglo.base
   // starts first and upstream reads the directory iglo.base left. The bar is

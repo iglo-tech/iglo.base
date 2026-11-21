@@ -14,6 +14,7 @@ import { snapshot } from "@test/differential/backups/snapshot";
 import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { freePort, startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
@@ -28,7 +29,7 @@ type Kind = "upstream" | "iglo";
 interface Server {
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 const roots: Array<string> = [];
@@ -244,9 +245,7 @@ afterAll(async () => {
 });
 
 // the same steps on both servers, each with its own bucket
-async function bothServers(
-  steps: (server: Server, s3: Versitygw) => Promise<unknown>,
-): Promise<void> {
+async function bothServers<T>(steps: (server: Server, s3: Versitygw) => Promise<T>): Promise<void> {
   const [gwUp, gwIg] = await Promise.all([startVersitygw(), startVersitygw()]);
   try {
     await useBackupsS3(upstream, gwUp);
@@ -592,11 +591,11 @@ async function allEndpoints(server: Server, s3: ScriptedS3): Promise<Array<unkno
   return out;
 }
 
-async function bothAgainst(
+async function bothAgainst<T>(
   script: Script,
-  steps: (server: Server, s3: ScriptedS3) => Promise<unknown>,
+  steps: (server: Server, s3: ScriptedS3) => Promise<T>,
 ): Promise<void> {
-  const results: Array<unknown> = [];
+  const results: Array<T> = [];
   for (const server of [upstream, iglo]) {
     const s3 = new ScriptedS3();
     s3.script = script;

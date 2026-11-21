@@ -60,6 +60,7 @@ const encoder = new TextEncoder();
 
 // The timers of the realtime connections.
 export interface RealtimeTimers {
+  // oxlint-disable-next-line quality/no-unknown-returns -- the timer handle of the host's timers is any value; the clearTimeout of the same timers takes it back
   setTimeout(fn: () => void, ms: number): unknown;
   clearTimeout(handle: unknown): void;
 }

@@ -63,6 +63,7 @@ export class Reader implements IoReader {
     this.#err = ErrNoProgress;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the reader's stored Go error: an error result is the thrown value, which is unknown in this port
   #readErr(): unknown {
     const err = this.#err;
     this.#err = undefined;

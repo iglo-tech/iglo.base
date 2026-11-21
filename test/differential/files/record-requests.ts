@@ -5,7 +5,7 @@
 import { text } from "@test/differential/files/cases";
 import type { FileCase, Part } from "@test/differential/files/cases";
 import { superuserToken } from "@test/scenarios/record-crud";
-import type { JsonObject } from "@test/support/json";
+import type { Json, JsonObject } from "@test/support/json";
 
 export interface Res {
   status: number;
@@ -194,7 +194,7 @@ function resolveValue(v: string, side: Side): string {
   );
 }
 
-export function resolveJSON(v: unknown, side: Side): unknown {
+export function resolveJSON(v: Json, side: Side): Json {
   if (typeof v === "string") {
     return resolveValue(v, side);
   }

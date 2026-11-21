@@ -479,6 +479,7 @@ function structMembers(type: FieldType | undefined): Array<{ name: string; type:
   );
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a struct's Go methods return Go values of many types, which a migration file receives through toVm
 type StructMethods = Readonly<Record<string, (data: never, args: Array<unknown>) => unknown>>;
 
 const throwing =
@@ -549,6 +550,7 @@ function structView(
   };
 
   const proxy = new Proxy(data, {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a Proxy get returns a membrane value of any JS type (a field, a method or a prototype member)
     get: (t, key): unknown => {
       if (typeof key !== "string") {
         // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
@@ -592,6 +594,7 @@ function memberView(
   holder: object,
   name: string,
   type: FieldType,
+  // oxlint-disable-next-line quality/no-unknown-returns -- a struct member is a membrane value of any JS type: a slice view, a struct view or the stored value
 ): unknown {
   const fields = holder as StructFields;
   const value = fields[name];
@@ -631,6 +634,7 @@ function memberView(
 
 // a migration file's value as the Go type of the settings member: a struct
 // keeps the members the value does not have, as goja's ExportTo does
+// oxlint-disable-next-line quality/no-unknown-returns -- the converted value is a Go field value of the settings type, made from a migration file's value of any JS type
 function convertValue(value: unknown, type: FieldType | undefined, current: unknown): unknown {
   if (typeof value !== "object" || value === null) {
     switch (typeof current) {
@@ -736,8 +740,10 @@ function stringify(v: unknown): string | undefined {
 
 // goja gives only the objects `new` made the constructor's prototype: a field
 // a list holds is no `instanceof TextField`.
+// oxlint-disable-next-line quality/no-unknown-returns -- the built value is a membrane value of any JS type (toVm)
 function constructor(m: Membrane, name: string, build: (...args: Array<unknown>) => unknown) {
   const instances = new WeakSet();
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns what build returns: a membrane value of any JS type
   const fn = function (...args: Array<unknown>): unknown {
     const instance = m.guard(() => build(...args));
     if (typeof instance === "object" && instance !== null) {

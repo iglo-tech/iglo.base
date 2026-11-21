@@ -85,6 +85,7 @@ import {
   rid,
 } from "@test/differential/resolver/schema";
 import { copyDataDir } from "@test/scenarios/fixture";
+import type { Json } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -135,7 +136,7 @@ async function api(
   body?: unknown,
   auth: string = tokens.get("superuser") ?? "",
   headers: { [key: string]: string } = {},
-): Promise<{ status: number; json: unknown }> {
+): Promise<{ status: number; json: Json }> {
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
@@ -151,10 +152,10 @@ async function api(
   }
   const res = await fetch(`${upstream.url}${path}`, init);
   const text = await res.text();
-  return { status: res.status, json: text === "" ? null : (JSON.parse(text) as unknown) };
+  return { status: res.status, json: text === "" ? null : (JSON.parse(text) as Json) };
 }
 
-async function ok(method: string, path: string, body?: unknown): Promise<unknown> {
+async function ok(method: string, path: string, body?: unknown): Promise<Json> {
   const res = await api(method, path, body);
   if (res.status !== 200 && res.status !== 204) {
     throw new Error(`${method} ${path}: ${res.status} ${JSON.stringify(res.json)}`);
@@ -596,7 +597,7 @@ function setStoredRules(
   reloadCachedCollections(app);
 }
 
-function errorOf(fn: () => unknown) {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;

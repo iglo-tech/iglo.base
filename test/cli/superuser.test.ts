@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { run, startServer, tempDir } from "@test/support/executable";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { queryRows } from "@test/scenarios/record-checks";
+import type { Json } from "@test/support/json";
 
 const logLine = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /;
 
@@ -339,11 +340,11 @@ describe("superuser otp", () => {
 describe("superuser ips", () => {
   const dataDir = fixtureCopy();
 
-  async function superuserIPs(): Promise<unknown> {
+  async function superuserIPs(): Promise<Json> {
     return withServer(dataDir, async (url) => {
       const token = (await login(url, "test@example.com", "1234567890")) ?? "";
       const res = await fetch(`${url}/api/settings`, { headers: { Authorization: token } });
-      return ((await res.json()) as { superuserIPs: unknown }).superuserIPs;
+      return ((await res.json()) as { superuserIPs: Json }).superuserIPs;
     });
   }
 

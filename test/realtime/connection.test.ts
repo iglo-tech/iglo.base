@@ -36,7 +36,7 @@ class FakeTimers implements RealtimeTimers {
   #next = 1;
   readonly #timers = new Map<number, { at: number; fn: () => void }>();
 
-  setTimeout(fn: () => void, ms: number): unknown {
+  setTimeout(fn: () => void, ms: number): number {
     const id = this.#next++;
     this.#timers.set(id, { at: this.now + ms, fn });
     return id;

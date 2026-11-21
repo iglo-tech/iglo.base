@@ -275,6 +275,7 @@ class Runner {
   }
 
   // the body value of a field (Go's Body[name], nil when missing)
+  // oxlint-disable-next-line quality/no-unknown-returns -- the request body's value of the field (Go's Body[name]): a JSON value of any kind
   private bodyValue(name: string): unknown {
     return ownValue(this.resolver.requestInfo?.body, name);
   }

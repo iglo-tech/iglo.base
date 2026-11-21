@@ -50,7 +50,7 @@ import type { TestCollectionsApp } from "@test/collections/app";
 import type { JsonObject } from "@test/support/json";
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): Error | null {
+function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
@@ -113,7 +113,7 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
 
   const scenarios: Array<{
     name: string;
-    collection: (app: TestCollectionsApp) => unknown;
+    collection: (app: TestCollectionsApp) => Collection | string | null;
     expectedTotal: number;
     expectError: boolean;
   }> = [

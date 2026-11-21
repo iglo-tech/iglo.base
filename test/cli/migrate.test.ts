@@ -394,7 +394,7 @@ describe("startup", () => {
   test("down keeps a system migration without a down, and refuses one with a down", async () => {
     const site = newSite();
     await migrate(site, "up");
-    const count = (): unknown => rows(site, "SELECT count(*) AS n FROM _migrations");
+    const count = () => rows<{ n: number }>(site, "SELECT count(*) AS n FROM _migrations");
     const before = count();
 
     const one =

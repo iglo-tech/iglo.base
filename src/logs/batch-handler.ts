@@ -227,6 +227,7 @@ function serializeMap(errors: LogAttrs): LogAttrs {
   return out;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- an attribute value is any value the caller logged; it is returned as it is unless it is a plain map or an error
 function normalizeLogAttrValue(value: unknown): unknown {
   if (value === undefined) {
     // oxlint-disable-next-line quality/no-known-value-widening -- an attribute value is any value the caller logged (unknown), and the function returns non-plain values unchanged
@@ -259,6 +260,7 @@ function normalizeLogAttrValue(value: unknown): unknown {
   return value;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the logged error is any value the caller logged; a non-Error value is returned unchanged
 function serializeLogError(err: unknown): unknown {
   if (err === null || err === undefined) {
     // oxlint-disable-next-line quality/no-known-value-widening -- the error is any value the caller logged (unknown), and a non-Error value is returned unchanged

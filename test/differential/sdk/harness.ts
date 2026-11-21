@@ -95,16 +95,18 @@ export interface SdkEnv {
   // made, and returns the value; an error is recorded, then the step throws
   step<T>(label: string, fn: () => Promise<T>): Promise<T>;
   // like step, for a call that must fail: returns the ClientResponseError
-  fails(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError>;
+  fails<T>(label: string, fn: () => Promise<T>): Promise<ClientResponseError>;
   // runs fn without recording its requests, and records the value it
   // returns: for calls whose responses differ in ways the suite cannot
   // normalize (a backup's size and modification time)
+  // oxlint-disable-next-line quality/no-unknown-returns -- the value is recorded through toText (JSON.stringify of any JS value, undefined members dropped), so no narrower type holds for the test's mixed results
   derived<T>(label: string, fn: () => Promise<T>, value: (result: T) => unknown): Promise<T>;
   // like fails, for an error whose text carries run-specific data (an S3
   // gateway's signature error): records the status and `data` only
-  failsStatus(
+  failsStatus<T>(
     label: string,
-    fn: () => Promise<unknown>,
+    fn: () => Promise<T>,
+    // oxlint-disable-next-line quality/no-unknown-returns -- the picked value is recorded through toText (JSON.stringify of any JS value, undefined members dropped), so no narrower type holds
     pick?: (error: ClientResponseError) => unknown,
   ): Promise<ClientResponseError>;
   // records a value that is not an SDK call's result
@@ -210,7 +212,7 @@ class Recording implements SdkEnv {
   leftover(): Array<string> {
     return this.#current.map((e) => `${e.method} ${e.url}`);
   }
-  readonly cleanup: Array<() => Promise<unknown>> = [];
+  readonly cleanup: Array<() => Promise<void>> = [];
 
   constructor(
     readonly name: SdkEnv["name"],
@@ -296,7 +298,7 @@ class Recording implements SdkEnv {
     return value as T;
   }
 
-  async fails(label: string, fn: () => Promise<unknown>): Promise<ClientResponseError> {
+  async fails<T>(label: string, fn: () => Promise<T>): Promise<ClientResponseError> {
     const before = this.#current.length;
     let error: unknown;
     try {
@@ -315,6 +317,7 @@ class Recording implements SdkEnv {
     return error;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the value is recorded through toText (JSON.stringify of any JS value, undefined members dropped), so no narrower type holds for the test's mixed results
   async derived<T>(label: string, fn: () => Promise<T>, value: (result: T) => unknown): Promise<T> {
     const before = this.#current.length;
     const result = await fn();
@@ -323,9 +326,10 @@ class Recording implements SdkEnv {
     return result;
   }
 
-  async failsStatus(
+  async failsStatus<T>(
     label: string,
-    fn: () => Promise<unknown>,
+    fn: () => Promise<T>,
+    // oxlint-disable-next-line quality/no-unknown-returns -- the picked value is recorded through toText (JSON.stringify of any JS value, undefined members dropped), so no narrower type holds
     pick?: (error: ClientResponseError) => unknown,
   ): Promise<ClientResponseError> {
     const before = this.#current.length;
@@ -578,6 +582,7 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
 
 // The value with its object members sorted by name: upstream writes the
 // members of a `fields`-picked message in random order.
+// oxlint-disable-next-line quality/no-unknown-returns -- the input is an arbitrary SDK event (Array<unknown>) and the sorted copy keeps its shape; no narrower type holds for it
 export function sortedKeys(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortedKeys);

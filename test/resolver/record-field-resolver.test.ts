@@ -35,6 +35,7 @@ function expectPatternRegex(expectPattern: string): RegExp {
 }
 
 // a bound value as Go would hold it (Float64 is a Go float64)
+// oxlint-disable-next-line quality/no-unknown-returns -- a parameter value of any Go kind: a float64 is unwrapped, every other value passes through unchanged
 function goValue(v: unknown): unknown {
   return isInstance(Float64, v) ? v.value : v;
 }

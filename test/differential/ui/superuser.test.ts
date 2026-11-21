@@ -92,7 +92,7 @@ async function runAll(
 }
 
 // the superusers and the superuser IPs of a pb_data, read by upstream
-async function state(dataDir: string): Promise<unknown> {
+async function state(dataDir: string) {
   const server = await startUpstream({ dataDir });
   try {
     const logins: Record<string, boolean> = {};

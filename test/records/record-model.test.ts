@@ -499,7 +499,7 @@ test("RecordLoad", () => {
 function getterTable<T>(
   name: string,
   scenarios: Array<[unknown, T]>,
-  getter: (record: Record) => unknown,
+  getter: (record: Record) => T,
   check: (result: unknown, expected: T) => void = (result, expected) =>
     expect(result).toEqual(expected),
 ): void {

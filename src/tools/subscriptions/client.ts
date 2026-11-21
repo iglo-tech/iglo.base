@@ -169,6 +169,7 @@ export class Client {
   }
 
   // Get retrieves the key value from the client's context.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the value is whatever the caller stored with set (any type)
   get(key: string): unknown {
     return this.#store.get(key);
   }

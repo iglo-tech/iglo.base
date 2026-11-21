@@ -72,7 +72,7 @@ interface ServerPair {
 }
 
 const roots: Array<string> = [];
-const servers: Array<{ stop(): Promise<unknown> }> = [];
+const servers: Array<UpstreamServer | RunningServer> = [];
 
 async function startPair(sourceDir: string): Promise<ServerPair> {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-"));

@@ -49,6 +49,7 @@ async function open(dataDir: string): Promise<Array<string>> {
   return app.warnings;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- resolves with the caught value of any thrown type (undefined when bootstrap succeeds); the tests check it with toBeInstanceOf and as Error
 async function openError(dataDir: string): Promise<unknown> {
   try {
     await bootstrap({

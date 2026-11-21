@@ -37,7 +37,7 @@ import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { wrapError } from "@/collections/view";
 import { HashExp, inExp, newExp } from "@/db/dbx/expression";
 import type { Expression } from "@/db/dbx/expression";
-import type { Row } from "@/db/dbx/query";
+import type { OneHookOp, Row } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { defaultMaxLockRetries, execLockRetry, execLockRetryAsync } from "@/db/retry";
@@ -165,7 +165,7 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   });
 }
 
-function resolveRecordOneHook(collection: Collection, op: (dst: unknown) => unknown): Record {
+function resolveRecordOneHook(collection: Collection, op: OneHookOp): Record {
   const data = op(undefined) as Row;
   return newRecordFromRow(collection, data);
 }

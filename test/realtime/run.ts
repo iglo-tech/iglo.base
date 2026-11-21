@@ -8,10 +8,11 @@ import { join } from "node:path";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { ScenarioContext } from "@test/realtime/scenario";
 import type { Observation, RealtimeScenario } from "@test/realtime/scenario";
+import type { RunResult } from "@test/support/executable";
 
 export interface StartedServer {
   url: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 // A new directory with a fresh copy of the fixture as <root>/pb_data.

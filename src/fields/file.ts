@@ -540,6 +540,7 @@ export class FileField
   // record's original value. The record save chain (src/records) passes
   // ValidateValue the interceptor app and a Record, which can look the
   // record up; other callers get the original value.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the field's stored value (getRaw: any value of any kind)
   private getLatestOldValue(app: FieldApp, record: FieldRecord): unknown {
     if (!record.isNew() && isInterceptorApp(app) && isInterceptorRecord(record)) {
       try {

@@ -505,6 +505,7 @@ function driverValues(data: Params): Params {
   return result;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound SQL parameter is the dbExport value as it is (only driver.Valuer types are converted), so its type is any value
 function driverValue(key: string, value: unknown): unknown {
   if (isInstance(FieldsList, value) || isInstance(DateTime, value)) {
     return value.value();

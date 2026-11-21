@@ -32,6 +32,7 @@ import { eventually } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startS3Proxy } from "@test/support/s3-proxy";
 import type { S3Proxy } from "@test/support/s3-proxy";
 import { startUpstream } from "@test/support/upstream";
@@ -45,7 +46,7 @@ setDefaultTimeout(30_000);
 
 interface Server {
   url: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 interface Target {

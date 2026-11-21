@@ -123,6 +123,7 @@ export class Reader {
   // bytes of data (or unlimited if lim is less than 0).
   async readContinuedLineSlice(
     lim: number,
+    // oxlint-disable-next-line quality/no-unknown-returns -- the Go error result of the validation: an error result is the thrown value, which is unknown in this port
     validateFirstLine: (line: Uint8Array) => unknown,
   ): Promise<[Uint8Array | undefined, unknown]> {
     // Read the first line.

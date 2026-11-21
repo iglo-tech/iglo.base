@@ -32,7 +32,7 @@ const ADAPTER_HEADER_PREFIX = "x-iglo-base-";
  */
 export interface NextCookieStore {
   getAll(): Array<{ name: string; value: string }>;
-  set?(name: string, value: string, options?: SerializeOptions): unknown;
+  set?(name: string, value: string, options?: SerializeOptions): void;
 }
 
 export interface NextAuthOptions extends AdapterOptions {

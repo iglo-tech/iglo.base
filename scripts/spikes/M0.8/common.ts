@@ -18,6 +18,7 @@ import {
 import { join, resolve } from "node:path";
 
 import { freePort } from "@test/support/executable";
+import type { Json } from "@test/support/json";
 import { defaultLayout, requireTool } from "@test/support/reference-tools";
 
 export const repoRoot = resolve(import.meta.dir, "../../..");
@@ -267,7 +268,7 @@ export function apiClient(url: string) {
     method: string,
     path: string,
     body?: unknown,
-  ): Promise<{ status: number; json: unknown }> => {
+  ): Promise<{ status: number; json: Json }> => {
     const headers: Partial<Record<"content-type" | "authorization", string>> = {
       "content-type": "application/json",
     };
@@ -280,11 +281,11 @@ export function apiClient(url: string) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
-    return { status: res.status, json: text === "" ? null : JSON.parse(text) };
+    return { status: res.status, json: text === "" ? null : (JSON.parse(text) as Json) };
   };
   return {
     call,
-    async must(method: string, path: string, body?: unknown): Promise<unknown> {
+    async must(method: string, path: string, body?: unknown): Promise<Json> {
       const r = await call(method, path, body);
       if (r.status >= 300) {
         throw new Error(`${method} ${path}: ${r.status} ${JSON.stringify(r.json)}`);

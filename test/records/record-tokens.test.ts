@@ -47,7 +47,7 @@ const nowMs = Date.UTC(2026, 9, 29, 10, 11, 12, 345);
 const nowUnix = Math.floor(nowMs / 1000);
 const clock: Clock = { now: () => new Date(nowMs) };
 
-function errorOf(fn: () => unknown) {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;

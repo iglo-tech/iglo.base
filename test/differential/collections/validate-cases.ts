@@ -13,6 +13,10 @@
 
 import type { JsonObject } from "@test/support/json";
 
+// a request body: JSON.stringify sends it, and drops the properties that are
+// undefined (the case literals have optional undefined members)
+type Body = string | number | boolean | null | Array<Body> | { [key: string]: Body | undefined };
+
 export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
@@ -31,12 +35,12 @@ export interface ValidateCase {
   name: string;
   // PATCH /api/collections/{target}; POST /api/collections when unset
   target?: string;
-  body: (ctx: Ctx) => unknown;
+  body: (ctx: Ctx) => Body;
   valid: boolean;
   pending?: Pending;
 }
 
-export const setupCollections: Array<(ctx: Ctx) => unknown> = [
+export const setupCollections: Array<(ctx: Ctx) => Body> = [
   (ctx) => ({
     name: "posts",
     type: "base",

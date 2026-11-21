@@ -87,6 +87,7 @@ export function marshalPartial(err: unknown): string {
   return err instanceof Error ? ((err as { partial?: string }).partial ?? "") : "";
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a thrown value of any type; only an Error gets the partial text, others are returned unchanged
 export function withPartial(err: unknown, prefix: string, delim: string): unknown {
   if (err instanceof Error) {
     const child = (err as { partial?: string }).partial ?? "";
@@ -1123,6 +1124,7 @@ export function unmarshal(
   data: string | Uint8Array,
   t: GoType,
   opts: UnmarshalOptions = {},
+  // oxlint-disable-next-line quality/no-unknown-returns -- a Go value of the type t, whose kind t decides at runtime (see convert)
 ): unknown {
   return convert(parse(data, opts), t, undefined, opts.legacy === true);
 }
@@ -1262,6 +1264,7 @@ function mismatch(node: Node, goType: string): JSONSemanticError {
 // (whose dynamic type is kept when set) and maps (merged into); v1 map
 // entries are always decoded from zero. legacy: v1 semantics, where a
 // member of the wrong type does not stop decoding.
+// oxlint-disable-next-line quality/no-unknown-returns -- a decoded Go value of any kind, decided by t at runtime (see convertAny)
 function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unknown {
   switch (t.kind) {
     case "any":
@@ -1363,6 +1366,7 @@ function convertObject(
 // an interface value: a null clears it; a non-nil value keeps its dynamic
 // type (a float64 stays a float64, a map is merged into, a slice is
 // replaced); a nil one gets the natural type of the JSON value
+// oxlint-disable-next-line quality/no-unknown-returns -- an interface value of a dynamic type, decided by the JSON node and the existing value
 function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
   if (node === null) {
     // oxlint-disable-next-line quality/no-known-value-widening -- an interface value is unknown: null, or a dynamic value of the type the existing value had (convert's result)

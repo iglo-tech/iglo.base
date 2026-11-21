@@ -124,6 +124,7 @@ export function decodeNullableBool(raw: string): boolean | null {
 }
 
 // a member of any other GoType
+// oxlint-disable-next-line quality/no-unknown-returns -- the Go value of a member of GoType t: unmarshal's result has the Go type t, which is not known statically
 export function decodeAs(raw: string, t: GoType): unknown {
   return unmarshal(raw, t);
 }

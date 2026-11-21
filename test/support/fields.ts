@@ -231,6 +231,7 @@ export class TestRecord implements FieldRecord {
     this.data.set(key, value);
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- a stored field value of any type: set takes any value (the tests store raw values of every kind, including wrong ones) and returns it unchanged
   getRaw(key: string): unknown {
     if (key === FieldNameId) {
       return this.id;
@@ -263,6 +264,7 @@ export class TestRecord implements FieldRecord {
     this.setRaw(key, value);
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- a field value of any type: a getter's result or getRaw's stored value, which is unknown by design (see getRaw)
   get(key: string): unknown {
     for (const field of this.collection.fields) {
       if (isGetterFinder(field)) {
@@ -456,6 +458,7 @@ export function interceptorArgs(
       }
       // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       const v: unknown = Reflect.get(target, prop, target);
+      // oxlint-disable-next-line quality/no-unknown-returns -- a proxied property's function is an arbitrary JS value; the get trap passes its bound result through unchanged
       return typeof v === "function" ? (v as (...args: Array<unknown>) => unknown).bind(target) : v;
     },
     set(target, prop, value) {

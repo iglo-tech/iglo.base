@@ -69,6 +69,7 @@ export function pick(
   data: unknown,
   rawFields: string,
   modifiers: ReadonlyMap<string, ModifierFactoryFunc> = Modifiers,
+  // oxlint-disable-next-line quality/no-unknown-returns -- the decoded JSON value of data (go-json's unmarshal into the any type returns unknown)
 ): unknown {
   const parsedFields = parseFields(rawFields, modifiers);
 

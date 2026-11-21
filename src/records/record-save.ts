@@ -244,6 +244,7 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
 // advance resumes the running step once. Returns null when the first step
 // returned, a promise the step yielded, or undefined to go on. Throws the
 // first step's error.
+// oxlint-disable-next-line quality/no-unknown-returns -- a step yields any value, and a yielded promise resolves to the value the step receives back (Generator<unknown>)
 function advance(state: RunState): Promise<unknown> | null | undefined {
   const stack = state.stack;
   const step = stack.at(-1) as Step;
@@ -1056,6 +1057,7 @@ function driverValues(data: Params): Params {
 // the driver.Valuer of upstream's typed values; anything else is bound as
 // it is. Exported for the record create rule check (src/apis/record-crud.ts),
 // which binds a record's dbExport() as query parameters.
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound SQL parameter is the dbExport value as it is (only driver.Valuer types are converted), so its type is any value
 export function driverValue(key: string, value: unknown): unknown {
   if (isInstance(DateTime, value) || isInstance(GeoPoint, value)) {
     return value.value();

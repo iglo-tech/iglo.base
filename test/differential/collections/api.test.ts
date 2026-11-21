@@ -31,6 +31,7 @@ import type { Json, JsonObject } from "@test/support/json";
 import { send } from "@test/scenarios/runner";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners
@@ -38,7 +39,7 @@ const timeout = 180_000;
 
 interface Server {
   url: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 const roots: Array<string> = [];

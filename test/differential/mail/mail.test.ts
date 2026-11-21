@@ -31,19 +31,18 @@ import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { RunningServer } from "@test/support/executable";
 import { freePort, startServer } from "@test/support/executable";
 import type { JsonObject } from "@test/support/json";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners
 const timeout = 120_000;
 
-interface Server {
-  url: string;
-  stop(): Promise<unknown>;
-}
+type Server = UpstreamServer | RunningServer;
 
 const roots: Array<string> = [];
 const running: Array<Server> = [];

@@ -586,6 +586,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
     }
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- a record value: the value a key holds, of any kind (custom keys are set as they are)
   getRaw(key: string): unknown {
     if (key === FieldNameId) {
       return this.id;
@@ -602,6 +603,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // Get returns a normalized single record model data value for "key".
+  // oxlint-disable-next-line quality/no-unknown-returns -- a record value: a getter's result or the stored value, of any kind
   get(key: string): unknown {
     switch (key) {
       case FieldNameExpand: // for backward-compatibility with earlier versions
@@ -698,6 +700,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
   // Retrieves the "key" json field value and unmarshals it into a value of
   // the Go type t (json.Unmarshal; any by default). Throws Go's error.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the Go value decoded into t: unmarshal's result has the Go type t, which is not known statically
   unmarshalJSONField(key: string, t: GoType = anyType): unknown {
     return unmarshal(this.getString(key), t);
   }

@@ -26,6 +26,7 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { freePort, startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
@@ -47,7 +48,8 @@ interface Server {
   kind: Kind;
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  // the iglo.base process's RunResult, or nothing for upstream
+  stop(): Promise<RunResult | void>;
 }
 
 interface Reply {
@@ -265,7 +267,7 @@ function userRow(dataDir: string, id = userId): Row {
 function stateSince(dataDir: string, before: Row) {
   const row = userRow(dataDir, before["id"] as string);
   const changed = (key: string): string => (row[key] === before[key] ? "same" : "changed");
-  const refs = (table: string, columns: string): unknown =>
+  const refs = (table: string, columns: string) =>
     queryRows(
       dataDir,
       `SELECT ${columns} FROM ${table} WHERE recordRef = ? ORDER BY ${columns}`,

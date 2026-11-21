@@ -66,7 +66,7 @@ import { DefaultBodyLimitMiddlewareId } from "@/middlewares/middlewares";
 import { findRecordById } from "@/records/record-query";
 import { runSync } from "@/records/record-save";
 import { newInternalServerError, toApiError } from "@/server/error";
-import type { ApiError } from "@/server/error";
+import type { ApiError, SafeErrorData } from "@/server/error";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { setOwn } from "@/server/json-decode";
@@ -754,8 +754,7 @@ export class BatchResponseError extends Error {
     return "batch_request_failed";
   }
 
-  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the SafeErrorResolver contract (server/error.ts, SafeErrorData: Go map[string]any sent as JSON unchanged)
-  resolve(errData: Record<string, unknown>): unknown {
+  resolve(errData: SafeErrorData): SafeErrorData {
     errData["response"] = this.err;
     return errData;
   }

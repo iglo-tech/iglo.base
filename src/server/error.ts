@@ -32,6 +32,7 @@ export interface SafeErrorParamsResolver {
 
 // SafeErrorResolver defines an error interface for resolving the public safe error fields.
 export interface SafeErrorResolver {
+  // oxlint-disable-next-line quality/no-unknown-returns -- the resolver's output is Go's any: a map (batch) or any value, sent as JSON unchanged
   resolve(errData: SafeErrorData): unknown;
 }
 
@@ -85,6 +86,7 @@ export class ApiError extends Error {
   }
 
   // RawData returns the unformatted error data (could be an internal error, text, etc.)
+  // oxlint-disable-next-line quality/no-unknown-returns -- the unformatted error data (an error, text or any value), kept as the error was created with it
   rawData(): unknown {
     return this.#rawData;
   }
@@ -104,6 +106,7 @@ export class ApiError extends Error {
   }
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a JSON-like value of any kind: object keys are sorted and any other value is returned as it is
 function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
@@ -396,6 +399,7 @@ function isSafeErrorItem(err: unknown): err is SafeErrorItem {
 
 // resolveSafeErrorItem extracts from each validation error its
 // public safe error code and message.
+// oxlint-disable-next-line quality/no-unknown-returns -- the resolver's output (any value, sent as JSON unchanged) or the data object
 function resolveSafeErrorItem(err: unknown): unknown {
   const data: SafeErrorData = {};
 

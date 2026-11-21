@@ -72,6 +72,7 @@ export class Token {
 
   // Extra returns an extra field: a key-value pair returned by the server
   // as part of the token retrieval response.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the server's response value for key: a JSON value of any kind
   extra(key: string): unknown {
     const raw = this.raw;
     if (raw === null) {

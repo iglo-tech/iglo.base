@@ -135,6 +135,7 @@ export class Event extends Resolver {
   // -------------------------------------------------------------------
 
   // Get retrieves single value from the current event data store.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the event's data value for key: any value the caller set
   get(key: string): unknown {
     return this.#data.get(key);
   }

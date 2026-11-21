@@ -31,6 +31,7 @@ import type { Kind, Site } from "@test/differential/migrations/support";
 import { bindingFiles } from "@test/differential/migrations/bindings";
 import { patternFiles } from "@test/differential/migrations/patterns";
 import { diffSnapshots, takeSnapshot } from "@test/differential/roundtrip/snapshot";
+import type { Json } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -120,13 +121,13 @@ describe("patterns", () => {
       };
       compareTables();
 
-      const params = (s: Site): unknown =>
+      const params = (s: Site): Json =>
         JSON.parse(
           new TextDecoder().decode(
             query<{ value: Uint8Array }>(s, "SELECT value FROM _params WHERE id = 'settings'")[0]
               ?.value,
           ),
-        );
+        ) as Json;
       expect(params(sites[1] as Site)).toEqual(params(sites[0] as Site));
 
       const downs = [];

@@ -142,6 +142,7 @@ export class SelectQuery {
   }
 
   // the cause of the query's cancellation, null when it is not cancelled
+  // oxlint-disable-next-line quality/no-unknown-returns -- the cause is the caller's value as given to withCancelCause (unknown), returned unchanged
   cancelCause(): unknown {
     return this.ctxCanceled ? this.ctxCause : null;
   }

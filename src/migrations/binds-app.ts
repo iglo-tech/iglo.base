@@ -74,6 +74,7 @@ import {
   saveRecordSync,
   validateRecordSync,
 } from "@/records/record-save";
+import type { SettingsExport } from "@/settings/settings-model";
 import { Settings } from "@/settings/settings-model";
 import { saveSettingsSync } from "@/settings/settings-query";
 import { isInstance } from "@/tools/types/is-instance";
@@ -83,6 +84,7 @@ export type RunTxFunc = (fn: unknown, txApp: App) => void;
 
 export class AppBinding {
   closed = false;
+  // oxlint-disable-next-line quality/no-unknown-returns -- the app methods return Go values of many types, which a migration file receives through toVm unchanged
   readonly methods: Record<string, (...args: Array<never>) => unknown>;
 
   constructor(
@@ -97,12 +99,13 @@ export class AppBinding {
   }
 
   // Settings.DBExport(app)
-  exportSettings(settings: Settings): unknown {
+  exportSettings(settings: Settings): SettingsExport {
     return settings.dbExportSync(this.app.clock, this.app.getenv(this.app.encryptionEnv));
   }
 }
 
 // func(txApp core.App) error
+// oxlint-disable-next-line quality/no-unknown-returns -- returns the migration file's own function, passed through unchanged: its signature is not known here
 function txFunc(m: Membrane, fn: unknown): unknown {
   if (typeof fn !== "function") {
     throw new m.vm.TypeError(
@@ -124,6 +127,7 @@ function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
     );
   }
   return (relCollection, relIds) => {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a migration file's function returns a value of any JS type, which is converted by toHost
     const result = (fn as (...args: Array<unknown>) => unknown)(
       m.toVm(relCollection),
       m.toVm(relIds),

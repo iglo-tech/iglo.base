@@ -380,6 +380,7 @@ function classes(db: Database, sql: string): Array<string> {
 
 // the driver value a DBExport value is bound with: the value's own
 // driver.Valuer (DateTime, JSONRaw, GeoPoint; JSONArray for arrays)
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound value is an arbitrary driver value (Go's driver.Value, and the exported value), passed through unchanged to SQLite, which checks its type on bind
 function driverValue(v: unknown): unknown {
   if (Array.isArray(v)) {
     return jsonArrayValue(v);
@@ -389,6 +390,7 @@ function driverValue(v: unknown): unknown {
     v !== null &&
     typeof (v as { value?: unknown }).value === "function"
   ) {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a Valuer's value() returns Go's driver.Value, an arbitrary value passed through unchanged to SQLite
     return (v as { value(): unknown }).value();
   }
   return v;

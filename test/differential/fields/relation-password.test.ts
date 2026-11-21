@@ -184,9 +184,9 @@ afterAll(async () => {
 
 function resolve(def: FieldDef): FieldDef {
   const collectionId = def.collectionId;
-  const placeholder = typeof collectionId === "string" ? placeholders.get(collectionId) : undefined;
-  if (placeholder !== undefined) {
-    return { ...def, collectionId: placeholder };
+  if (typeof collectionId === "string" && placeholders.has(collectionId)) {
+    // has() checked the entry; the ids set above are typed as strings, and get() returns the entry
+    return { ...def, collectionId: placeholders.get(collectionId) as string };
   }
   return def;
 }
@@ -407,6 +407,7 @@ const storedRecords: Array<StoredRecord> = [];
 
 // the value a record field is bound with: DriverValue (JSONArray for
 // arrays)
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound value is an arbitrary driver value (Go's driver.Value, and the record's raw field value), passed through unchanged to SQLite, which checks its type on bind
 function bindValue(field: Field, record: TestRecord): unknown {
   let v: unknown = record.getRaw(field.getName());
   if (isDriverValuer(field)) {

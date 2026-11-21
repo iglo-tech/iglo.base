@@ -64,7 +64,7 @@ import type { DB } from "@/db/dbx/db";
 import { execStatements, isSingle, queryStatements, splitStatements } from "@/db/dbx/driver";
 import type { ScriptPart } from "@/db/dbx/driver";
 import { readRows } from "@/db/dbx/rows";
-import type { ReadMode, Rows } from "@/db/dbx/rows";
+import type { ReadMode, ReadValue, Rows } from "@/db/dbx/rows";
 import { isStructModel, scanStruct } from "@/db/dbx/struct";
 import type { StructModel } from "@/db/dbx/struct";
 import { isInstance } from "@/tools/types/is-instance";
@@ -160,7 +160,7 @@ export interface AsyncReader {
     mode: ReadMode,
     deadline: Deadline | null,
     exactIntegers?: boolean,
-  ): Promise<unknown>;
+  ): Promise<ReadValue>;
 }
 
 // context.DeadlineExceeded
@@ -271,9 +271,15 @@ export type ExecHookFunc = (q: Query, op: () => void) => void;
 // AsyncExecHookFunc is ExecHookFunc for the async resolvers.
 export type AsyncExecHookFunc = (q: Query, op: () => Promise<void>) => Promise<void>;
 
+// OneHookOp runs the One() row populate: it returns the scanned model or the row.
+export interface OneHookOp {
+  (b: unknown): StructModel | Row;
+}
+
 // OneHookFunc executes right before the query populate the row result from One() call (aka. op).
 // Its return value is what One() returns.
-export type OneHookFunc = (q: Query, a: unknown, op: (b: unknown) => unknown) => unknown;
+// oxlint-disable-next-line quality/no-unknown-returns -- the hook decides the value One() returns (any value; the caller's T casts it), and One() returns it unchanged
+export type OneHookFunc = (q: Query, a: unknown, op: OneHookOp) => unknown;
 
 // AllHookFunc executes right before the query populate the row result from All() call (aka. op).
 // Its return value is what All() returns.
@@ -281,6 +287,7 @@ export type AllHookFunc = (
   q: Query,
   sliceA: unknown,
   op: (sliceB: unknown) => Array<unknown>,
+  // oxlint-disable-next-line quality/no-unknown-returns -- the hook decides the value All() returns (any value; the caller's T casts it), and All() returns it unchanged
 ) => unknown;
 
 // QueryLogFunc is called each time when performing a SQL query.
@@ -371,6 +378,7 @@ export class Query {
 
   // the cause of the query's cancellation (context.Cause), null when the
   // query is not cancelled
+  // oxlint-disable-next-line quality/no-unknown-returns -- the cause is the caller's value as given to withCancelCause (unknown), returned unchanged
   cancelCause(): unknown {
     return this.ctxCanceled ? this.ctxCause : null;
   }
@@ -543,8 +551,9 @@ export class Query {
     return result as T;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the One hook may return any value (OneHookFunc), which One() returns unchanged
   private populateOne(row: Row, a: StructModel | undefined): unknown {
-    const op = (b: unknown): unknown => {
+    const op = (b: unknown): StructModel | Row => {
       if (isStructModel(b)) {
         scanStruct(b, row);
         return b;
@@ -578,6 +587,7 @@ export class Query {
     return result as Array<T>;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the All hook may return any value (AllHookFunc returns unknown), which All() returns unchanged
   private populateAll(rows: Array<Row>, factory: (() => StructModel) | undefined): unknown {
     const op = (b: unknown): Array<unknown> => {
       if (typeof b === "function") {
@@ -640,11 +650,11 @@ export class Query {
   // runs the query on this thread and reads its rows; a deadline that
   // passed while they were read fails the query (rows.ts), as an
   // interrupted one
-  private read(mode: ReadMode): unknown {
+  private read(mode: ReadMode): ReadValue {
     return readRows(this.rowsOp(false), mode);
   }
 
-  private async readAsync(mode: ReadMode): Promise<unknown> {
+  private async readAsync(mode: ReadMode): Promise<ReadValue> {
     const reader = this.executor.reader;
     if (reader === undefined) {
       return this.read(mode);

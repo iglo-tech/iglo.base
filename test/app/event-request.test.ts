@@ -190,7 +190,7 @@ describe("snakecase", () => {
   }
 });
 
-async function bodyOf(contentType: string, body: string): Promise<unknown> {
+async function bodyOf(contentType: string, body: string): Promise<Error | RequestInfo["body"]> {
   const e = newEvent({
     method: "POST",
     target: "/",

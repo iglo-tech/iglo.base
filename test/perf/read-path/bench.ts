@@ -38,7 +38,11 @@ const seconds = Number(values.seconds);
 const scratch = values.scratch as string;
 const concurrency = 8;
 
-async function latency(target: Target, run: () => unknown, ms: number): Promise<Array<number>> {
+async function latency<R>(
+  target: Target,
+  run: () => R | Promise<R>,
+  ms: number,
+): Promise<Array<number>> {
   const samples: Array<number> = [];
   const end = performance.now() + ms;
   while (performance.now() < end) {
@@ -49,8 +53,8 @@ async function latency(target: Target, run: () => unknown, ms: number): Promise<
   return samples;
 }
 
-async function throughput(
-  run: () => unknown,
+async function throughput<R>(
+  run: () => R | Promise<R>,
   ms: number,
 ): Promise<{ qps: number; lag: ReturnType<typeof summarize> }> {
   let done = 0;

@@ -7,6 +7,7 @@ import { DefaultFileFieldMaxSize, FieldTypeFile, FileField } from "@/fields/file
 import type { File } from "@/tools/filesystem/file";
 import { NewFileFromBytes } from "@/tools/filesystem/file";
 import { marshal } from "@/tools/types/go-json";
+import type { ErrorParams } from "@/validation/error";
 
 import {
   TestApp,
@@ -739,7 +740,7 @@ describe("errors", () => {
       return null;
     }
     // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    const v = err as unknown as { code(): string; message: string; params(): unknown };
+    const v = err as unknown as { code(): string; message: string; params(): ErrorParams };
     return { code: v.code(), message: v.message, params: marshal(v.params()) };
   }
 

@@ -1,6 +1,6 @@
 // js-sdk v0.28.1 tests/mocks.ts
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import type { JsonObject } from "@sdk/tools/json";
+import type { Json, JsonObject } from "@sdk/tools/json";
 
 // The request init the SDK sends: its headers are always a plain record (Client.send builds them
 // with Object.assign), so the matchers can read them by name.
@@ -16,7 +16,7 @@ export type RequestMock = {
   delay?: number;
   replyCode?: number;
   replyHeaders?: Record<string, string> | Headers | (() => Record<string, string> | Headers);
-  replyBody?: unknown;
+  replyBody?: Json | (() => Json);
 };
 
 export function dummyJWT(payload = {}) {
@@ -91,9 +91,9 @@ export class FetchMock {
           status: mock.replyCode,
           statusText: "test",
           headers,
-          json: async (): Promise<unknown> => {
+          json: async (): Promise<Json> => {
             if (typeof mock.replyBody == "function") {
-              return (mock.replyBody as () => unknown)();
+              return mock.replyBody();
             }
 
             return mock.replyBody || {};

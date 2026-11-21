@@ -64,7 +64,7 @@ import type { TestImage } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
-import type { RunningServer } from "@test/support/executable";
+import type { RunResult, RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
@@ -284,7 +284,7 @@ function copyPreserving(source: string, target: string): void {
 
 export function serveSuite(storage: "local" | "s3"): void {
   const roots: Array<string> = [];
-  const running: Array<{ stop(): Promise<unknown> }> = [];
+  const running: Array<{ stop(): Promise<RunResult | void> }> = [];
 
   const baseBucket = "base";
   // the S3 server, on S3
@@ -311,7 +311,7 @@ export function serveSuite(storage: "local" | "s3"): void {
   }
 
   // a stored thumb's attributes, without what depends on its own bytes
-  async function thumbAttributes(store: string, file: string): Promise<unknown> {
+  async function thumbAttributes(store: string, file: string) {
     if (gw === undefined) {
       const attrs = JSON.parse(readFileSync(file + ".attrs", "utf8")) as JsonObject;
       expect(attrs["md5"]).toBe(createHash("md5").update(readFileSync(file)).digest("base64"));

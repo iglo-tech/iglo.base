@@ -44,6 +44,7 @@ export class Job {
 
 // the timers of the ticker; the global ones unless a test sets its own
 export interface CronTimers {
+  // oxlint-disable-next-line quality/no-unknown-returns -- the handle is opaque to Cron: Bun's timer or a test's id, passed back unchanged to clearTimeout
   setTimeout(fn: () => void, ms: number): unknown;
   clearTimeout(handle: unknown): void;
 }

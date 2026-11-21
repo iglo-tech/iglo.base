@@ -10,6 +10,8 @@ import {
 import { createNuxtAuth } from "@sdk/ssr/nuxt";
 import type { NuxtAuth, NuxtCookieOptions, NuxtEvent } from "@sdk/ssr/nuxt";
 import type { AdapterOptions, AdapterRoutes } from "@sdk/ssr/adapter";
+import type { BrowserToken } from "@sdk/ssr/types";
+import type { Json } from "@sdk/tools/json";
 import {
   API,
   APP,
@@ -81,8 +83,8 @@ function makeEvent(
     method?: string;
     headers?: Record<string, string>;
     cookies?: Record<string, string>;
-    body?: unknown;
-    readBody?: () => Promise<unknown>;
+    body?: Json;
+    readBody?: () => Promise<Json>;
   } = {},
 ) {
   const cookieHeader = Object.entries(init.cookies ?? {})
@@ -168,7 +170,7 @@ describe("middleware: the session on the event context", () => {
     const { event } = await run(auth, "/");
     const pb = event.context["pb"] as ServerClient;
     expect(pb.authStore.isValid).toBe(false);
-    const pbBrowserToken = event.context["pbBrowserToken"] as () => Promise<unknown>;
+    const pbBrowserToken = event.context["pbBrowserToken"] as () => Promise<BrowserToken | null>;
     expect(await pbBrowserToken()).toBeNull();
     expect(api.calls.filter((c) => c.path.includes("/impersonate/"))).toHaveLength(0);
   });

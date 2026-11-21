@@ -70,7 +70,7 @@ const idTokenClaims = (): JsonObject => ({
 
 // the provider reads the id_token: no userInfoURL
 function idTokenProvider(
-  idToken: () => unknown,
+  idToken: () => string,
   extra?: JsonObject,
   spec: (p: MockProvider) => ProviderSpec = () => ({}),
 ): PrepareStep {

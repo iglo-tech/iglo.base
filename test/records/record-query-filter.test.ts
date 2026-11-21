@@ -73,7 +73,7 @@ async function onPool<T>(app: RecordsApp, read: () => Promise<T>): Promise<T> {
 }
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown) {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;
@@ -82,7 +82,8 @@ function errorOf(fn: () => unknown) {
   }
 }
 
-async function asyncErrorOf(fn: () => Promise<unknown>): Promise<unknown> {
+// oxlint-disable-next-line quality/no-unknown-returns -- resolves with the caught value of any thrown type (null when fn does not throw); checkRecords and checkRecord take it as unknown
+async function asyncErrorOf(fn: () => Promise<void>): Promise<unknown> {
   try {
     await fn();
     return null;

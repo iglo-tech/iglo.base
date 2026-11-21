@@ -10,11 +10,12 @@ export function resetAutoRefresh(client: Client) {
   (client as AutoRefreshClient)._resetAutoRefresh?.();
 }
 
-export function registerAutoRefresh(
+// the results are awaited and ignored, so each callback keeps the type of its own request
+export function registerAutoRefresh<Refreshed, Reauthenticated>(
   client: Client,
   threshold: number,
-  refreshFunc: () => Promise<unknown>,
-  reauthenticateFunc: () => Promise<unknown>,
+  refreshFunc: () => Promise<Refreshed>,
+  reauthenticateFunc: () => Promise<Reauthenticated>,
 ) {
   resetAutoRefresh(client);
 

@@ -41,6 +41,7 @@ export type Kind =
 // encoding.TextUnmarshaler: unmarshalText returns the parsed value or throws.
 export interface TextType {
   kind: "text";
+  // oxlint-disable-next-line quality/no-unknown-returns -- the parsed value of a TextUnmarshaler: any value of the Go type
   unmarshalText(text: string): unknown;
 }
 
@@ -74,6 +75,7 @@ export interface StructField {
 export const structOf = (fields: Array<StructField>): StructType => ({ kind: "struct", fields });
 export const sliceOf = (elem: FieldType): SliceType => ({ kind: "slice", elem });
 export const pointerTo = (elem: FieldType): PointerType => ({ kind: "pointer", elem });
+// oxlint-disable-next-line quality/no-unknown-returns -- the parsed value of a TextUnmarshaler: any value of the Go type
 export const textOf = (unmarshalText: (text: string) => unknown): TextType => ({
   kind: "text",
   unmarshalText,
@@ -320,7 +322,7 @@ export function structValue(dst: StructDst, name: string) {
 }
 
 // setRegularReflectedValue: value cast to kind.
-function regularValue(kind: Kind, value: string): unknown {
+function regularValue(kind: Kind, value: string): string | number | bigint | boolean {
   switch (kind) {
     case "string":
       return value;
@@ -787,6 +789,7 @@ function unmarshalMap(value: JsonValue, current: GoMap | null): GoMap | null {
 // otherwise a held value keeps its Go type (bool, string, float64, []any,
 // map[string]any) and the JSON value must fit it. Maps are merged, slices
 // are replaced. An empty `any` gets a fresh value.
+// oxlint-disable-next-line quality/no-unknown-returns -- a Go any: a JSON value toAny unmarshals, or the held value kept as it is
 function unmarshalAny(value: JsonValue, current: unknown): unknown {
   if (value === null) {
     // oxlint-disable-next-line quality/no-known-value-widening -- the result is a Go any: null, or a value toAny unmarshals (unknown), so no narrower return type holds for every branch
@@ -843,6 +846,7 @@ function jsonFieldValue(
   type: FieldType,
   current: unknown,
   caseInsensitive: boolean,
+  // oxlint-disable-next-line quality/no-unknown-returns -- a Go value of the field's type: any value of that type
 ): unknown {
   if (value === null) {
     // null resets the value to its zero value

@@ -63,6 +63,7 @@ export type GoType =
   | { slice: GoType; json?: JSONElemType }
   | { struct: GoClass; make(): object };
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a custom method returns a membrane value of any JS type, which the migration file gets unchanged
 export type CustomMethod = (target: never, args: Array<unknown>, m: Membrane) => unknown;
 
 export type Method = string | CustomMethod;
@@ -120,6 +121,7 @@ export function isField(v: unknown): v is Field {
 }
 
 // the value a Go function gets for one argument
+// oxlint-disable-next-line quality/no-unknown-returns -- converts a migration file's argument to a Go value of the signature's type; the 'any' codes keep an arbitrary host value
 function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: boolean): unknown {
   switch (code) {
     case "s":
@@ -202,6 +204,7 @@ function filterFunc(m: Membrane, fn: unknown, i: number) {
     throw conversionError(m, i, fn, "func(*dbx.SelectQuery) error");
   }
   return (q: unknown) => {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a migration file's function returns a value of any JS type, which throwResult checks
     throwResult(m, (fn as (q: unknown) => unknown)(m.toVm(q)));
   };
 }
@@ -233,6 +236,7 @@ export function goArgs(
   return converted;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- returns the Go method's result as a membrane value of any JS type
 function goResult(m: Membrane, signature: string, value: unknown): unknown {
   switch (parseSignature(signature).result) {
     case "d":
@@ -250,12 +254,14 @@ export function goMethod(
   target: object,
   key: string,
   method: Method,
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a Go method whose result is a membrane value of any JS type
 ): (...args: Array<unknown>) => unknown {
   if (typeof method === "function") {
     return (...args) => m.guard(() => method(target as never, args, m));
   }
   return (...args) =>
     m.guard(() => {
+      // oxlint-disable-next-line quality/no-unknown-returns -- a Go member is a method of any signature, called with the Go arguments
       const fn = (target as MigrationObject)[key] as (...a: Array<unknown>) => unknown;
       return goResult(m, method, fn.apply(target, goArgs(m, method, args)));
     });
@@ -501,6 +507,7 @@ export function toSql(m: Membrane, v: unknown) {
 
 // a value of a dbx.HashExp: a plain slice is an IN list, any other value a
 // single parameter (a JSONArray has a driver value, so it is one)
+// oxlint-disable-next-line quality/no-unknown-returns -- returns a SQL value: a BoundValue, a Go value or a membrane value of any JS type
 function hashValue(m: Membrane, v: unknown): unknown {
   const sql = toSql(m, v);
   if (isInstance(BoundValue, sql) && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
@@ -510,6 +517,7 @@ function hashValue(m: Membrane, v: unknown): unknown {
 }
 
 // a map of values for SQL; a map goja holds as a Go value reads as its data
+// oxlint-disable-next-line quality/no-unknown-returns -- the value callback returns a SQL parameter of any JS type, stored unchanged
 function sqlParams(m: Membrane, v: unknown, value: (item: unknown) => unknown): MigrationObject {
   const params: MigrationObject = {};
   if (typeof v !== "object" || v === null) {
@@ -537,6 +545,7 @@ function sqlParams(m: Membrane, v: unknown, value: (item: unknown) => unknown): 
 }
 
 // Go's assignment to a struct field, as goja converts the value.
+// oxlint-disable-next-line quality/no-unknown-returns -- returns a Go value of the field's type; for the 'any' type it is an arbitrary host value
 export function toGo(m: Membrane, value: unknown, type: GoType, current: unknown): unknown {
   if (typeof type === "object") {
     if ("ptr" in type) {
@@ -588,7 +597,7 @@ function assignStruct(
   return target;
 }
 
-// oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
+// oxlint-disable-next-line quality/no-object-parameters, quality/no-unknown-returns -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers; the Go field's value is a membrane value of any JS type
 function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknown {
   const fields = holder as StructFields;
   const value = fields[name];

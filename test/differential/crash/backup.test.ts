@@ -47,7 +47,7 @@ type Point = "temp-zip" | "persisting";
 const name = "crash_backup.zip";
 
 // every listed backup downloads as a whole zip with the database in it
-export async function backupsInspect(target: Target): Promise<unknown> {
+export async function backupsInspect(target: Target) {
   const listed = await api(target, "GET", "/api/backups");
   expect(listed.status).toBe(200);
   const items = (await listed.json()) as Array<{ key: string; size: number }>;

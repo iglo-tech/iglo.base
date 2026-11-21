@@ -27,7 +27,7 @@ import type { SQLQueryBindings } from "bun:sqlite";
 import { DeadlineExceededError } from "@/db/dbx/query";
 import type { AsyncReader, Deadline } from "@/db/dbx/query";
 import { NoRowsError, rowsFromValues } from "@/db/dbx/rows";
-import type { ReadMode } from "@/db/dbx/rows";
+import type { ReadMode, ReadValue } from "@/db/dbx/rows";
 
 export interface ReadRequestMessage {
   id: number;
@@ -59,7 +59,7 @@ export type ReadResponseMessage =
 interface Request {
   readonly id: number;
   readonly message: ReadRequestMessage;
-  readonly resolve: (value: unknown) => void;
+  readonly resolve: (value: ReadValue) => void;
   readonly reject: (err: unknown) => void;
   readonly deadline: Deadline | null;
   timer: ReturnType<typeof setTimeout> | null;
@@ -199,14 +199,14 @@ export class ReadPool {
     mode: ReadMode,
     deadline: Deadline | null,
     exactIntegers: boolean,
-  ): Promise<unknown> {
+  ): Promise<ReadValue> {
     if (this.closed) {
       return Promise.reject(new Error("sql: database is closed"));
     }
     if (deadline?.expired()) {
       return Promise.reject(new DeadlineExceededError());
     }
-    return new Promise((resolve, reject) => {
+    return new Promise<ReadValue>((resolve, reject) => {
       const id = this.nextId++;
       const request: Request = {
         id,
@@ -257,7 +257,7 @@ export class ReadPool {
         request.resolve(
           request.message.mode === "all"
             ? rowsFromValues((res.value as RowTable).names, (res.value as RowTable).rows)
-            : res.value,
+            : (res.value as ReadValue),
         );
       } else {
         request.reject(deserializeError(res.error));

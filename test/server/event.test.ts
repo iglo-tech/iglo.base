@@ -14,7 +14,7 @@ import { ErrInvalidRedirectStatusCode, ErrMissingFile, Event } from "@/server/ev
 import { ResponseWriter } from "@/server/router";
 import { pointerTo, structOf } from "@/server/unmarshal-request-data";
 import type { MapRef, StructType } from "@/server/unmarshal-request-data";
-import type { JsonObject } from "@test/support/json";
+import type { Json } from "@test/support/json";
 import { newTestRequest } from "@test/support/router";
 import type { TestRequest } from "@test/support/router";
 
@@ -209,14 +209,14 @@ function testResponseWrite(
   });
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: Json): Json {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return value;
   }
   return Object.fromEntries(
     Object.keys(value)
       .toSorted()
-      .map((k) => [k, sortKeys((value as JsonObject)[k])]),
+      .map((k) => [k, sortKeys(value[k] as Json)]),
   );
 }
 

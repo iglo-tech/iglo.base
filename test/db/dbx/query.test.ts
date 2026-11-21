@@ -250,7 +250,7 @@ describe("TestQueryWithExecHook", () => {
   });
 
   test("Row(), One(), All(), Column(), Execute()", () => {
-    const resolvers: Array<[string, (q: Query) => unknown]> = [
+    const resolvers: Array<[string, (q: Query) => void]> = [
       ["Row()", (q) => q.row()],
       ["One()", (q) => q.one()],
       ["All()", (q) => q.all()],
@@ -723,7 +723,7 @@ describe("rows() has a statement of its own", () => {
 });
 
 // the error fn throws
-function canceledError(fn: () => unknown): Error {
+function canceledError(fn: () => void): Error {
   try {
     fn();
   } catch (error) {
@@ -746,7 +746,7 @@ describe("a cancelled query", () => {
 
   test("fails every synchronous execution path before its SQL runs", () => {
     const db = getPreparedDB();
-    const count = (): unknown => db.newQuery("SELECT COUNT(*) FROM item").row()[0];
+    const count = (): number => db.newQuery("SELECT COUNT(*) FROM item").row()[0] as number;
     const before = count();
 
     const insert = db.newQuery("INSERT INTO item (name) VALUES ('x')").withCancelCause(cause);

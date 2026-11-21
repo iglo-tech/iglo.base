@@ -428,6 +428,7 @@ export function requestAuthRecord(requestInfo: RequestInfo | null): Record | nul
 }
 
 // a request info value as Go's driver binds it: a JS number is a float64
+// oxlint-disable-next-line quality/no-unknown-returns -- a request info value of any kind, bound as it is (a JS number is converted to a Float64)
 export function paramValue(v: unknown): unknown {
   return typeof v === "number" ? new Float64(v) : v;
 }
@@ -471,6 +472,7 @@ function isPlainMap(v: unknown): v is { [key: string]: unknown } {
   return proto === Object.prototype || proto === null;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the value at the key path: a JSON or Go value of any kind
 export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unknown {
   if (keys.length === 0) {
     throw new Error("at least one key should be provided");
@@ -507,7 +509,7 @@ export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unkn
   throw new Error(`expected map or array, got ${String(rawData)}`);
 }
 
-// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: a plain object whose values are of any kind
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type, quality/no-unknown-returns -- a Go map[string]any: a plain object whose values are of any kind, and the member at the key path is a value of any kind
 function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   const key = keys[0] as string;
   if (!Object.hasOwn(m, key)) {
@@ -526,6 +528,7 @@ function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   return extractNestedVal(result, ...keys.slice(1));
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the array member at the key path: a JSON or Go value of any kind
 function arrVal(m: ReadonlyArray<unknown>, keys: Array<string>): unknown {
   const key = keys[0] as string;
   const idx = goAtoi(key);

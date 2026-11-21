@@ -27,6 +27,7 @@ import type { JSONMap } from "@/tools/types/json-map";
 export class GoJSONMap {
   constructor(public data: JSONMap<unknown> = {}) {}
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a value the migration file set in the map: any JS type, read back unchanged
   get(key: string): unknown {
     return jsonMapGet(this.data, key) ?? null;
   }

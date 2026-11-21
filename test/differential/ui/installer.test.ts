@@ -28,7 +28,7 @@ function claims(output: string): JsonObject {
   ) as JsonObject;
 }
 
-async function install(url: string, output: string): Promise<unknown> {
+async function install(url: string, output: string) {
   const token = /pbinstall\/([\w-]+\.[\w-]+\.[\w-]+)/.exec(output)?.[1] ?? "";
   const res = await fetch(`${url}/api/collections/_superusers/records`, {
     method: "POST",
@@ -49,7 +49,7 @@ async function install(url: string, output: string): Promise<unknown> {
 }
 
 // the superusers' emails, through upstream's API
-async function superusers(url: string): Promise<unknown> {
+async function superusers(url: string): Promise<Array<JsonObject>> {
   const login = await fetch(`${url}/api/collections/_superusers/auth-with-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,7 +59,7 @@ async function superusers(url: string): Promise<unknown> {
   const res = await fetch(`${url}/api/collections/_superusers/records?fields=email&sort=email`, {
     headers: { Authorization: token },
   });
-  return ((await res.json()) as { items: Array<unknown> }).items;
+  return ((await res.json()) as { items: Array<JsonObject> }).items;
 }
 
 test("fresh pb_data: banner, installer link and the first superuser", async () => {

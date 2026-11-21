@@ -124,6 +124,7 @@ class driver implements Driver {
   close(): void {}
 
   // NormalizeError implements [blob/Driver.NormalizeError].
+  // oxlint-disable-next-line quality/no-unknown-returns -- a caught driver error of any thrown value, returned unchanged unless it is a not-exist error
   normalizeError(err: unknown): unknown {
     if (isNotExist(err)) {
       return joinNotFound(err);

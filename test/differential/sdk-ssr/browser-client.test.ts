@@ -57,7 +57,7 @@ function manualClock(startMs: number) {
   return {
     now: () => now,
     timers: {
-      setTimeout: (fn: () => void, ms: number): unknown => {
+      setTimeout: (fn: () => void, ms: number): number => {
         seq++;
         pending.set(seq, { due: now + ms, fn });
         return seq;

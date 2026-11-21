@@ -20,6 +20,7 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { executable, startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { defaultLayout, requireTool } from "@test/support/reference-tools";
@@ -41,7 +42,8 @@ interface Server {
   kind: Kind;
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  // the iglo.base process's RunResult, or nothing for upstream
+  stop(): Promise<RunResult | void>;
 }
 
 interface Reply {

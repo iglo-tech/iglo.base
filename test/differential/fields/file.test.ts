@@ -351,7 +351,7 @@ function replaceModifiers(record: TestRecord, data: Map<string, unknown>): Map<s
 
 // router.inferValue: "true"/"false" become bools and plain decimal
 // numbers floats (the file field casts them back to the same text)
-function inferValue(raw: string): unknown {
+function inferValue(raw: string): boolean | number | string {
   if (raw === "true" || raw === "false") {
     return raw === "true";
   }

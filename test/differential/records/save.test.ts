@@ -470,11 +470,11 @@ function snapshot(db: Database): Snapshot {
 // the snapshot with generated ids aliased and the volatile columns as
 // new/same/changed against the previous snapshot
 function normalize(current: Snapshot, previous: Snapshot | null, aliases: Map<string, string>) {
-  const alias = (v: unknown): unknown => {
+  const alias = <T>(v: T): T | string => {
     if (typeof v !== "string") {
       return v;
     }
-    let s = v;
+    let s: string = v;
     for (const [id, name] of aliases) {
       s = s.replaceAll(id, name);
     }

@@ -253,6 +253,7 @@ const storedRecords: Array<StoredRecord> = [];
 
 // the value a record field is bound with: DriverValue, or the value's own
 // driver.Valuer (DateTime, JSONRaw, GeoPoint; JSONArray for arrays)
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound value is an arbitrary driver value (Go's driver.Value, and the record's raw field value), passed through unchanged to SQLite, which checks its type on bind
 function bindValue(field: Field, record: TestRecord): unknown {
   let v: unknown;
   if (isDriverValuer(field)) {
@@ -270,6 +271,7 @@ function bindValue(field: Field, record: TestRecord): unknown {
     v !== null &&
     typeof (v as { value?: unknown }).value === "function"
   ) {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a Valuer's value() returns Go's driver.Value, an arbitrary value passed through unchanged to SQLite
     return (v as { value(): unknown }).value();
   }
   return v;

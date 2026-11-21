@@ -131,6 +131,7 @@ export class Part implements IoReader {
     return this.#dispositionParams;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the Go error of the header read: an error result is the thrown value, which is unknown in this port
   async populateHeaders(headerSizeLimit: number, headerLimit: number): Promise<unknown> {
     const r = new TextprotoReader(this.mr.bufReader);
     const [header, readErr] = await readMIMEHeader(r, headerSizeLimit, headerLimit);

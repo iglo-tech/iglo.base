@@ -11,6 +11,7 @@ import { Browser } from "@test/browser/support";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import { startServer, tempDir } from "@test/support/executable";
+import type { Json } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 
 import {
@@ -102,7 +103,7 @@ async function api(
   method: string,
   path: string,
   body?: unknown,
-): Promise<unknown> {
+): Promise<Json> {
   const res = await fetch(`${url}${path}`, {
     method,
     headers: { "Content-Type": "application/json", Authorization: token },
@@ -111,7 +112,7 @@ async function api(
   if (!res.ok) {
     throw new Error(`${method} ${path} on ${url} failed: ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  return res.json() as Promise<Json>;
 }
 
 /** The live collection the browser subscribes to: public, so guests may see its events. */

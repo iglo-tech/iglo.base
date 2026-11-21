@@ -117,6 +117,7 @@ function q(s: string): string {
 
 // wrapError wraps err; a not found error is joined with ErrNotFound by
 // the driver.
+// oxlint-disable-next-line quality/no-unknown-returns -- a caught error of any thrown value, returned unchanged unless it is wrapped
 export function wrapError(b: Pick<Driver, "normalizeError">, err: unknown, key: string): unknown {
   // don't wrap or normalize EOF errors
   if (errorsIs(err, errEOF)) {

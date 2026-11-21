@@ -403,6 +403,7 @@ export type GoMap = Record<string, unknown>;
 
 // The value as unmarshaled into a Go `any`: objects become plain objects,
 // numbers float64.
+// oxlint-disable-next-line quality/no-unknown-returns -- the value a JSON value unmarshals into a Go any: a number, string, boolean, null, array or map
 export function toAny(value: JsonValue): unknown {
   if (isInstance(JsonNumber, value)) {
     const n = Number(value.literal);

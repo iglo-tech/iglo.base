@@ -61,6 +61,7 @@ export interface NuxtEvent {
   // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape: Nitro's per-request context is an open bag shared with other middleware (D36)
   context: Record<string, unknown>;
   /** Reads the request body as JSON. Only the popup route calls it. */
+  // oxlint-disable-next-line quality/no-unknown-returns -- public SDK shape, parity with JS SDK v0.29.0 (D36): the body is whatever the framework parsed; the SDK only passes it to JSON.stringify, so no narrower type is true
   readBody?: () => Promise<unknown>;
   /** Writes a cookie on the response (h3's `setCookie`). */
   setCookie(name: string, value: string, options: NuxtCookieOptions): void;

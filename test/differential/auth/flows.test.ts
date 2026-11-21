@@ -17,6 +17,7 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { hostHasSendmail } from "@test/support/sendmail";
 import { startUpstream } from "@test/support/upstream";
 import type { JsonObject } from "@test/support/json";
@@ -27,7 +28,8 @@ const userAgent = "iglo-base-auth-flows/1.0";
 interface Server {
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  // the iglo.base process's RunResult, or nothing for upstream
+  stop(): Promise<RunResult | void>;
 }
 
 const roots: Array<string> = [];

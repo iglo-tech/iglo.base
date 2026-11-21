@@ -59,7 +59,7 @@ interface Request {
   body?: boolean;
 }
 
-async function send(base: string, req: Request): Promise<unknown> {
+async function send(base: string, req: Request) {
   let path = req.path;
   if (typeof path === "function") {
     path = path(await (await fetch(`${base}/_/`)).text());

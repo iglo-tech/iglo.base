@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { RunResult as ServerRunResult } from "@test/support/executable";
 import { executable, startServer } from "@test/support/executable";
 import { defaultLayout, requireTool } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
@@ -88,7 +89,7 @@ export const superuser = { identity: "admin@example.com", password: "1234567890"
 export interface Server {
   url: string;
   token: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<ServerRunResult | void>;
 }
 
 // Starts the site's server with automigrate on, with a superuser.

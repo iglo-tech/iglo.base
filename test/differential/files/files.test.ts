@@ -42,7 +42,7 @@ import {
 import type { Res, Side } from "@test/differential/files/record-requests";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
-import type { RunningServer } from "@test/support/executable";
+import type { RunResult, RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 import type { JsonObject } from "@test/support/json";
@@ -122,7 +122,7 @@ function byId(x: JsonObject, y: JsonObject): number {
 }
 
 const roots: Array<string> = [];
-const running: Array<{ stop(): Promise<unknown> }> = [];
+const running: Array<{ stop(): Promise<RunResult | void> }> = [];
 
 afterAll(async () => {
   await Promise.allSettled(running.map((s) => s.stop()));
@@ -137,7 +137,7 @@ function newRoot(): string {
   return root;
 }
 
-async function stop(server: { stop(): Promise<unknown> }): Promise<void> {
+async function stop(server: { stop(): Promise<RunResult | void> }): Promise<void> {
   await server.stop();
   running.splice(running.indexOf(server), 1);
 }

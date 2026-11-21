@@ -35,7 +35,7 @@ import { isInstance } from "@/tools/types/is-instance";
 export const pass = Symbol("pass");
 
 export interface Adapter {
-  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
+  // oxlint-disable-next-line quality/no-object-parameters, quality/no-unknown-returns -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers; the result is a membrane value of any JS type, or pass
   get?(target: object, key: string, m: Membrane): unknown;
   // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   set?(target: object, key: string, value: unknown, m: Membrane): boolean | typeof pass;
@@ -51,15 +51,19 @@ export interface Adapter {
 export interface SliceSource {
   read(): ReadonlyArray<unknown>;
   write(next: Array<unknown>): void;
+  // oxlint-disable-next-line quality/no-unknown-returns -- converts a slice item to a membrane value of any JS type
   fromGo?: (item: unknown) => unknown;
+  // oxlint-disable-next-line quality/no-unknown-returns -- converts a migration file's item to a Go value of any type
   toGo?: (item: unknown) => unknown;
   // goja refuses an item of another Go type: a sloppy `list[0] = v` is
   // ignored and a push throws, as for a refused Proxy set
   accepts?(item: unknown): boolean;
   // the Go methods of the slice type
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a Go method of the slice type, a function the membrane wraps
   methods?: { keys: ReadonlyArray<string>; get(key: string): unknown };
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a function of a migration file or a host function: its result is a JS value of any type, passed on unchanged
 type AnyFunction = (...args: Array<unknown>) => unknown;
 
 // A plain object whose members are JS values of any type: the migration
@@ -68,10 +72,19 @@ type AnyFunction = (...args: Array<unknown>) => unknown;
 // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the members are JS values of any type that a migration file can hold; a membrane passes them through unchanged
 export type MigrationObject = Record<string, unknown>;
 
+// a value JSON.parse makes: JSON data, built in the migration file's realm
+export type JsonData =
+  | null
+  | boolean
+  | number
+  | string
+  | Array<JsonData>
+  | { [key: string]: JsonData };
+
 interface VmIntrinsics {
   GoError: new (message: string) => Error & { value: unknown };
   TypeError: new (message: string) => Error;
-  parse(text: string): unknown;
+  parse(text: string): JsonData;
   objectPrototype: object;
   object(): MigrationObject;
   array(): Array<unknown>;
@@ -142,6 +155,7 @@ export class Membrane {
   }
 
   // A value for a migration file.
+  // oxlint-disable-next-line quality/no-unknown-returns -- a membrane value: the migration file's view of v, of any JS type
   toVm(v: unknown): unknown {
     switch (typeof v) {
       case "bigint":
@@ -181,11 +195,12 @@ export class Membrane {
   }
 
   // A plain copy for a migration file, through its JSON.
-  toVmJSON(v: unknown): unknown {
+  toVmJSON(v: unknown): JsonData {
     return this.vm.parse(JSON.stringify(v));
   }
 
   // A value for the internal modules.
+  // oxlint-disable-next-line quality/no-unknown-returns -- toHost is recursive and passes a VM value through as its host form, which can be any JS value; no narrower return type is true
   toHost(v: unknown): unknown {
     if (typeof v === "function") {
       return this.#hostFunction(v as AnyFunction);
@@ -394,7 +409,7 @@ export class Membrane {
   }
 
   // The named member of an internal object, as a migration file sees it.
-  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
+  // oxlint-disable-next-line quality/no-object-parameters, quality/no-unknown-returns -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers; the member is a membrane value of any JS type
   member(target: object, key: string | symbol): unknown {
     // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
     const value: unknown = Reflect.get(target, key, target);
@@ -453,7 +468,7 @@ export class Membrane {
         next.scan(this.toHost(value));
         replace(next);
       },
-    } satisfies Record<string, (...args: Array<unknown>) => unknown>;
+    } satisfies Record<string, (...args: Array<unknown>) => void>;
     for (const [name, value] of Object.entries(methods)) {
       Object.defineProperty(array, name, { value, enumerable: false });
     }

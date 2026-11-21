@@ -161,7 +161,7 @@ function upstreamToken(name: string): string {
 interface Response_ {
   status: number;
   text: string;
-  json: unknown;
+  json: Json;
 }
 
 async function api(
@@ -195,12 +195,7 @@ async function api(
   return { status: res.status, text, json };
 }
 
-async function ok(
-  method: string,
-  path: string,
-  body?: unknown,
-  auth = superToken,
-): Promise<unknown> {
+async function ok(method: string, path: string, body?: unknown, auth = superToken): Promise<Json> {
   const res = await api(method, path, body, auth);
   if (res.status !== 200 && res.status !== 204) {
     throw new Error(`${method} ${path}: ${res.status} ${res.text}`);

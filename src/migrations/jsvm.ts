@@ -147,6 +147,7 @@ function runMigrationFunc(fn: unknown, txApp: App, m: Membrane): void {
   const binding = new AppBinding(txApp, runTxFunc);
 
   try {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a migration file's function returns a value of any JS type, checked for an error or a promise
     const result = (fn as (app: unknown) => unknown)(m.toVm(binding));
 
     if (result === undefined || result === null) {
@@ -274,11 +275,13 @@ function newRequire(
   context: vm.Context,
   sandbox: MigrationObject,
   m: Membrane,
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns require: its result is a native module or a module's exports, a value of any JS type
 ): (name: string) => unknown {
   const cache = new Map<string, { exports: unknown }>();
 
   const invalidModule = (): Error => new m.vm.GoError("Invalid module");
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a module's exports: any JS value that the module file sets
   const load = (filename: string): unknown => {
     const cached = cache.get(filename);
     if (cached !== undefined) {
@@ -300,7 +303,7 @@ function newRequire(
       `(function (exports, require, module, __filename, __dirname) {${text}\n})`,
       context,
       { filename },
-    ) as (...args: Array<unknown>) => unknown;
+    ) as (...args: Array<unknown>) => void;
     wrapper(
       moduleObject.exports,
       requireFrom(path.dirname(filename)),
@@ -314,6 +317,7 @@ function newRequire(
 
   const requireFrom =
     (dir: string) =>
+    // oxlint-disable-next-line quality/no-unknown-returns -- returns a native module or a module's exports: a value of any JS type
     (name: string): unknown => {
       const native = nativeModule(name, sandbox, m);
       if (native !== undefined) {
@@ -329,6 +333,7 @@ function newRequire(
   return requireFrom(config.cwd);
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- returns a sandbox global or a native module: a value of any JS type
 function nativeModule(name: string, sandbox: MigrationObject, m: Membrane): unknown {
   switch (name) {
     case "console":

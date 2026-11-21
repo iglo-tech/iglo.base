@@ -25,7 +25,7 @@ import { startServer } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
-import type { JsonObject } from "@test/support/json";
+import type { Json, JsonObject } from "@test/support/json";
 
 export const listRules = {
   // a relation in a rule (the fixture's demo1 has a null rule, which users
@@ -57,11 +57,12 @@ const identities: Array<{ who: Exclude<Who, "guest">; collection: string; id: st
   { who: "superuser", collection: "_superusers", id: "sywbhecnh46rhm0" },
 ];
 
-async function getJson(
+// the parsed JSON body of a 200 response, typed by the caller
+async function getJson<T = Json>(
   url: string,
   authorization: string,
   init: RequestInit = {},
-): Promise<unknown> {
+): Promise<T> {
   const headers = { authorization };
   if (init.body !== undefined) {
     Object.assign(headers, jsonHeader);
@@ -73,7 +74,7 @@ async function getJson(
   if (res.status !== 200) {
     throw new Error(`${init.method ?? "GET"} ${url}: ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  return (await res.json()) as T;
 }
 
 const jsonHeader = { "content-type": "application/json" };
@@ -82,7 +83,7 @@ const jsonHeader = { "content-type": "application/json" };
 async function prepareSource(dataDir: string): Promise<void> {
   const server = await startUpstream({ dataDir });
   try {
-    const post = (path: string, body: string): Promise<unknown> =>
+    const post = (path: string, body: string): Promise<Json> =>
       getJson(`${server.url}${path}`, superuserToken, { method: "POST", body });
     for (const [name, listRule] of Object.entries(listRules)) {
       await getJson(`${server.url}/api/collections/${name}`, superuserToken, {
@@ -114,26 +115,27 @@ async function prepareSource(dataDir: string): Promise<void> {
 async function mintTokens(url: string): Promise<TokenSet> {
   const tokens: TokenSet = { guest: "", users: "", clients: "", nologin: "", superuser: "" };
   for (const { who, collection, id } of identities) {
-    const res = (await getJson(
+    const res = await getJson<{ token: string }>(
       `${url}/api/collections/${collection}/impersonate/${id}`,
       superuserToken,
       { method: "POST" },
-    )) as { token: string };
+    );
     tokens[who] = res.token;
   }
   return tokens;
 }
 
 async function readModel(url: string, token: string): Promise<Model> {
-  const list = (await getJson(`${url}/api/collections?perPage=500&sort=name`, token)) as {
-    items: Array<ApiCollection>;
-  };
+  const list = await getJson<{ items: Array<ApiCollection> }>(
+    `${url}/api/collections?perPage=500&sort=name`,
+    token,
+  );
   const records = new Map<string, Array<JsonObject>>();
   for (const c of list.items) {
-    const page = (await getJson(
+    const page = await getJson<{ items: Array<JsonObject> }>(
       `${url}/api/collections/${c.name}/records?perPage=500&sort=id`,
       token,
-    )) as { items: Array<JsonObject> };
+    );
     records.set(c.name, page.items);
   }
   return buildModel(list.items, records);
@@ -163,6 +165,7 @@ export async function startFuzzServers(): Promise<FuzzServers> {
     const [upStart, igStart] = started;
     if (upStart?.status !== "fulfilled" || igStart?.status !== "fulfilled") {
       throw new Error("a server failed to start", {
+        // oxlint-disable-next-line quality/no-unknown-returns -- a rejected promise's reason is any thrown value, and it is only passed on as the Error cause (typed unknown by the lib)
         cause: started.map((s): unknown => (s.status === "rejected" ? s.reason : "started")),
       });
     }

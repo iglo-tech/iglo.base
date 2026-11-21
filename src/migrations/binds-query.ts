@@ -47,6 +47,7 @@ interface ShapeField {
   // the name on the model: the mapped name of Go's exported field
   name: string;
   // the zero value of a "go" field
+  // oxlint-disable-next-line quality/no-unknown-returns -- the zero value is a membrane value (toVm) of any JS type
   zero?: () => unknown;
 }
 
@@ -135,6 +136,7 @@ export class QueryModels {
     return typeof v === "object" && v !== null && this.#arrays.has(v);
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns the model given to arrayOf(), a migration file's value of any JS type
   modelOf(v: unknown): unknown {
     return this.#arrays.get(v as object);
   }
@@ -220,6 +222,7 @@ export class QueryModels {
 
   // json.Unmarshal into an arrayOf() of models or of a primitive; newItem
   // makes a model from an item's JSON
+  // oxlint-disable-next-line quality/no-unknown-returns -- an element is a membrane value of any JS type, or the item as it is, stored in the array unchanged
   unmarshalArray(dst: Array<unknown>, decoded: unknown, newItem: (raw: string) => unknown): void {
     if (!Array.isArray(decoded)) {
       throw new Error(`json: cannot unmarshal JSON ${jsonKindOf(decoded)} into Go slice`);
@@ -442,6 +445,7 @@ function replaceItems(array: Array<unknown>, items: ReadonlyArray<unknown>): voi
 
 // goja's assignment to a struct field of a DynamicModel. A value goja cannot
 // export to a JSONMap or a JSONArray leaves the field as it is.
+// oxlint-disable-next-line quality/no-unknown-returns -- a field value is the migration file's value as it is, or a membrane value of any JS type
 function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
   if (value === null || value === undefined) {
     return field.nullable ? null : zeroOf(m, field);
@@ -499,6 +503,7 @@ function zeroOf(m: Membrane, field: ShapeField) {
 }
 
 // an element of a slice of pointers: goja wraps the pointer (GoPointer)
+// oxlint-disable-next-line quality/no-unknown-returns -- a field value is the value as it is, or a membrane value of any JS type
 function pointerTo(m: Membrane, value: unknown, field: ShapeField): unknown {
   const scalar =
     typeof value === "string" || typeof value === "number" || typeof value === "boolean";
@@ -529,6 +534,7 @@ function jsonShape(
   field: ShapeField,
   path: string,
   current: unknown,
+  // oxlint-disable-next-line quality/no-unknown-returns -- a field value is the membrane value of any JS type stored in the model
 ): unknown {
   if (value === null) {
     return zeroOf(m, field);

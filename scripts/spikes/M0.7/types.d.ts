@@ -24,14 +24,14 @@ declare module "@jsquash/jpeg/encode.js" {
 }
 
 declare module "@jsquash/png/decode.js" {
-  export function init(module: WebAssembly.Module): Promise<unknown>;
+  export function init(module: WebAssembly.Module): Promise<void>;
   export default function decode(
     data: ArrayBuffer,
   ): Promise<{ data: Uint8ClampedArray; width: number; height: number }>;
 }
 
 declare module "@jsquash/png/encode.js" {
-  export function init(module: WebAssembly.Module): Promise<unknown>;
+  export function init(module: WebAssembly.Module): Promise<void>;
   export default function encode(
     data: { data: Uint8ClampedArray; width: number; height: number },
     options?: Record<string, string | number | boolean>,

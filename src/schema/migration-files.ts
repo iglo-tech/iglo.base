@@ -30,6 +30,7 @@ export function schemaMigrationRecord(file: string): string {
   return schemaMigrationPrefix + file;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a JS migration's up(tx) may return any value; apply.ts checks the result for a promise at runtime
 export type MigrationUp = (tx: MigrationTx) => unknown;
 
 // the renames a migration declares: a field of a collection, and a collection.

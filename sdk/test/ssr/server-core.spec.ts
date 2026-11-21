@@ -219,6 +219,7 @@ describe("SSR server core: round-1 regressions", () => {
         clock: () => base * 1000,
       });
       // The app replaces the hook before the sign-in; the SDK must still learn from the response
+      // oxlint-disable-next-line quality/no-unknown-returns -- test hook passes the SDK's raw response data (Loose, any) through unchanged; typing the return would need an assertion
       pb.afterSend = (_response, data): unknown => data;
       await pb.collection("col_as").authWithPassword("a@x.y", "pass");
 

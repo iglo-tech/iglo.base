@@ -180,7 +180,7 @@ export function normalize(o: Observation, unorderedData: boolean): string {
     (key, value: unknown) => {
       if (unorderedData && key === "data" && typeof value === "string") {
         try {
-          return sortKeys(JSON.parse(value));
+          return sortKeys(JSON.parse(value) as Json);
         } catch {
           return value;
         }
@@ -201,7 +201,7 @@ export function normalize(o: Observation, unorderedData: boolean): string {
     .replaceAll(datePattern, "<date>");
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: Json): Json {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }

@@ -85,6 +85,7 @@ function withTimeout(q: Query, timeout: number, now: NowFunc): () => void {
   };
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the function returns err unchanged for a no-rows error (any caught value, so unknown)
 function failedQueryError(q: Query, err: unknown): unknown {
   if (isNoRowsError(err)) {
     return err;
