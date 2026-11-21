@@ -251,7 +251,9 @@ Owner decision 2026-11-20 ([D43](10-decisions.md#d43-baseline-moved-from-v0410-t
 | ID | Task | Depends on |
 |---|---|---|
 | L.1 | Adopt `@cloudflare/oxlint-config` and fix every issue it reports (D44) | U.2 |
-| L.2 | Turn on the twelve type-safety rules L.1 left off and fix what they report (D44) | L.1 |
+| L.2 | Type-safety rules part 1: unsafe flows, non-null, throws, methods (569 findings; D44) | L.1 |
+| L.3 | Type-safety rules part 2: dictionary types, value widening, unknown returns (1,525; D44) | L.2 |
+| L.4 | Type-safety rules part 3: unsafe type assertions (3,192; D44) | L.3 |
 
 ## Order
 

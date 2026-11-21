@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.1 | review | `task/L.1-cloudflare-oxlint` (#111) | 2 | Owner 2026-11-21: adopt @cloudflare/oxlint-config (D44). ~14k fixed; 12 type-safety rules (5,286) split to L.2 (D44, agents) |
+| L.2 | worker | `task/L.2-type-safety-1` | 0 | Owner 2026-11-21 via D44: first 8 of the 12 rules L.1 left off (569 findings); L.3, L.4 follow |
 
 
 
@@ -22,6 +22,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| L.1 | [#111](https://github.com/iglo-tech/iglo.base/pull/111) | 2026-11-21 (`3720fe1`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. `oxlint.config.ts` spreads @cloudflare/oxlint-config without React/jsx-a11y (owner); ~14k findings fixed; exceptions with reasons (charset names, Go `\xNN`, `String.raw` + Bun non-ASCII lowering, SDK ES2021/`instanceof` parity D36, CLI console); lint builds the SDK first. 12 type-safety rules (5,286) left to L.2–L.4. Check 19,026/0, reference 4,444/0. Backlog: Bun `String.raw` non-ASCII bug unreported (outside our repos) |
 | U.2 | [#110](https://github.com/iglo-tech/iglo.base/pull/110) | 2026-11-21 (`0ee7b69`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. `ui/` re-copied from v0.42.3 with the 13 PATCHES.md entries; SDK 1.1.0 = js-sdk v0.29.0 (clear auth store on 401; SSR server and superuser clients opt out, tested); docs note the 401 change. Check 19,026/0, reference 4,444/0, browser 7/0. Backlog: browser client clears on 401 right after expiry (one `renew()` could avoid it); no browser tests for the v0.42.3 dashboard changes; `js-sdk v0.28.1` source headers |
 | U.1 | [#109](https://github.com/iglo-tech/iglo.base/pull/109) | 2026-11-20 (`d327296`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. Reference pinned to v0.42.3; 401 on unknown tokens (35 routes matched upstream), realtime/OAuth2 IP fallback, logs VACUUM after 50k + WAL checkpoint, request log order and benign level, `image/jxl` inline, thumbs hint; round 1 added mimetype v1.4.16 (12 MiB ID3v2, CDF root walk, GHSA fix) and pflag 1.1.0 messages and help format. Check 18,992/0, reference 4,444/0. Backlog: tests for Ppt/Xls fall-through and .msg with embedded Word; one CDF sample tests nothing; `--origins` malformed-quote error text (older) |
 | S.8 | [#108](https://github.com/iglo-tech/iglo.base/pull/108) | 2026-11-14 (`105c7fd`) | Three review rounds (Opus; Haiku worker and fixers); round 3 approved. Digit-led field names in rename index scan; views exist while TS migrations run (D40 order amended twice); removed views in dependency order; `records()` pages by id (+26–75% vs main accepted for bounded memory) and takes a name or id; create types accept null/"" on optional files; `// prettier-ignore`; case-only renames kept; six D34 links. Check 18,978/0, reference 4,438/0. Lead widened the removed-chain limitation in D40 and `docs/schema.md`. Released as [v1.2.1](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.1) after CI (incl. linux-arm64) on `c59f41d`. Docker image published. Backlog: spurious "Dependent view collection(s)" log rows |
