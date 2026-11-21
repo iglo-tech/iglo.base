@@ -42,7 +42,7 @@ Only Linux is supported; on other systems, run from source with Bun. Check the a
 ### Docker
 
 ```sh
-docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.2.0
+docker run -d --name iglo -p 8090:8090 -v iglo-data:/pb_data ghcr.io/iglo-tech/iglo.base:1.3.0
 docker exec iglo /iglo-base superuser upsert admin@example.com 'a long password'
 ```
 
@@ -125,7 +125,7 @@ A few edge cases behave slightly differently, such as error texts for malformed 
 
 ## Status
 
-The current release is 1.2.0, which adds schema as code to 1.1.0 (6 November 2026). iglo.base is maintained by [iglo-tech](https://github.com/iglo-tech) for its own projects and published as is: there is no support promise and no release schedule. It is not an official PocketBase project.
+The current release is 1.3.0 (21 November 2026), which moves the PocketBase base to v0.42.3; 1.2 added schema as code. iglo.base is maintained by [iglo-tech](https://github.com/iglo-tech) for its own projects and published as is: there is no support promise and no release schedule. It is not an official PocketBase project.
 
 ## For developers
 

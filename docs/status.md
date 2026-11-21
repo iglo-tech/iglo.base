@@ -2,7 +2,7 @@
 
 Kept by the chief of staff ([runbook](chief-of-staff.md)). Tasks are defined in the [work plan](design/12-work-plan.md). Merged tasks keep one line; review details are in their PRs.
 
-Updated: 2026-11-20
+Updated: 2026-11-21
 
 Released [v1.2.1](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.1) (2026-11-14; schema-as-code fixes) and [v1.2.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.0) (2026-11-14; schema as code), linux-x64 and linux-arm64, images published; SDK `@iglo.tech/iglo.base` 1.0.1 on npm. Now: baseline move to PocketBase v0.42.3 for v1.3.0 (owner 2026-11-20, D43; tasks U.1, U.2). Read-only replicas were not built (R.2 gate; owner 2026-11-20, research kept in D42). Before that: released [v1.1.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.1.0) (2026-11-06; linux-x64, linux-arm64, darwin-arm64, the last darwin build (D35); image `ghcr.io/iglo-tech/iglo.base:1.1.0` and `:latest` for amd64 and arm64, run 42189486971). Pre-tag native CI had only P.6 flakes. v1.0.0 2026-11-05. The Docker image is public (owner, 2026-11-06). README rewritten for users ([#68](https://github.com/iglo-tech/iglo.base/pull/68)). Docs: the user docs are on https://iglo.tech (site repository [iglo-tech/iglo.tech](https://github.com/iglo-tech/iglo.tech), deployed by its own agent; the SSR guide is live since 2026-11-09); it pulls the docs from this repository at build time.
 
@@ -14,7 +14,6 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| U.2 | review | [#110](https://github.com/iglo-tech/iglo.base/pull/110) | 2 (round 1: SSR/README 401 and SDK-base docs fixed, keep-token test, `10ed6cd`) | Dashboard from v0.42.3, SDK 1.1.0 (0.29.0), v1.3.0 prep |
 
 
 
@@ -22,6 +21,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| U.2 | [#110](https://github.com/iglo-tech/iglo.base/pull/110) | 2026-11-21 (`0ee7b69`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. `ui/` re-copied from v0.42.3 with the 13 PATCHES.md entries; SDK 1.1.0 = js-sdk v0.29.0 (clear auth store on 401; SSR server and superuser clients opt out, tested); docs note the 401 change. Check 19,026/0, reference 4,444/0, browser 7/0. Backlog: browser client clears on 401 right after expiry (one `renew()` could avoid it); no browser tests for the v0.42.3 dashboard changes; `js-sdk v0.28.1` source headers |
 | U.1 | [#109](https://github.com/iglo-tech/iglo.base/pull/109) | 2026-11-20 (`d327296`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. Reference pinned to v0.42.3; 401 on unknown tokens (35 routes matched upstream), realtime/OAuth2 IP fallback, logs VACUUM after 50k + WAL checkpoint, request log order and benign level, `image/jxl` inline, thumbs hint; round 1 added mimetype v1.4.16 (12 MiB ID3v2, CDF root walk, GHSA fix) and pflag 1.1.0 messages and help format. Check 18,992/0, reference 4,444/0. Backlog: tests for Ppt/Xls fall-through and .msg with embedded Word; one CDF sample tests nothing; `--origins` malformed-quote error text (older) |
 | S.8 | [#108](https://github.com/iglo-tech/iglo.base/pull/108) | 2026-11-14 (`105c7fd`) | Three review rounds (Opus; Haiku worker and fixers); round 3 approved. Digit-led field names in rename index scan; views exist while TS migrations run (D40 order amended twice); removed views in dependency order; `records()` pages by id (+26–75% vs main accepted for bounded memory) and takes a name or id; create types accept null/"" on optional files; `// prettier-ignore`; case-only renames kept; six D34 links. Check 18,978/0, reference 4,438/0. Lead widened the removed-chain limitation in D40 and `docs/schema.md`. Released as [v1.2.1](https://github.com/iglo-tech/iglo.base/releases/tag/v1.2.1) after CI (incl. linux-arm64) on `c59f41d`. Docker image published. Backlog: spurious "Dependent view collection(s)" log rows |
 | R.2 | [#107](https://github.com/iglo-tech/iglo.base/pull/107) | 2026-11-14 | Gate failed, stopped after phase 1 (no review needed: the result applies a rule fixed in advance). 1-client create: today 0.65 ms, HTTP-client hop 1.15 ms, raw relay 0.85 ms (+0.18 ms vs +0.1 ms bar); an extra process alone costs ~0.07 ms per round trip. #83 closed. Prototype on `spike/R.2-gate` |
