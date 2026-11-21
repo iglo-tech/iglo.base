@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.1 | review | `task/L.1-cloudflare-oxlint` (#111) | 1 | Owner 2026-11-21: adopt @cloudflare/oxlint-config (D44). ~14k fixed; 12 type-safety rules (5,286) split to L.2 (D44, agents) |
+| L.1 | fix | `task/L.1-cloudflare-oxlint` (#111) | 1 | Owner 2026-11-21: adopt @cloudflare/oxlint-config (D44). ~14k fixed; 12 type-safety rules (5,286) split to L.2 (D44, agents) |
 
 
 
