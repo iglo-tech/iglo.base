@@ -42,7 +42,7 @@ const RENEW_REQUEST: RequestInit = {
 
 /** The timers the client uses. Injected by tests, which run without sleeping. */
 export interface BrowserTimers {
-  // oxlint-disable-next-line quality/no-unknown-returns -- public SDK shape, parity with JS SDK v0.29.0 (D36): the handle is an opaque platform value (number in browsers, Timeout in Node) that the SDK only passes back to clearTimeout
+  // oxlint-disable-next-line quality/no-unknown-returns -- keeps iglo's published SSR types stable: the handle is an opaque platform value (number in browsers, Timeout in Node) that the SDK only passes back to clearTimeout
   setTimeout: (callback: () => void, ms: number) => unknown;
   clearTimeout: (handle: unknown) => void;
 }

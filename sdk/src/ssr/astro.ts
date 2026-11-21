@@ -24,9 +24,9 @@ import type { AdapterOptions, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 
 export interface AstroCookieStore {
   get(name: string): { value: string } | undefined;
-  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape: Astro's cookie options bag, kept open so user cookie stores compile (D36)
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- keeps iglo's published SSR types stable: Astro's cookie options bag, kept open so user cookie stores compile
   set(name: string, value: string, options?: Record<string, unknown>): void;
-  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- public SDK shape: Astro's cookie options bag, kept open so user cookie stores compile (D36)
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- keeps iglo's published SSR types stable: Astro's cookie options bag, kept open so user cookie stores compile
   delete(name: string, options?: Record<string, unknown>): void;
 }
 
