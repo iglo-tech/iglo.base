@@ -24,7 +24,8 @@ const preset = {
 };
 
 // Test support files (harnesses, fixtures, scenario data) get the same
-// relaxations the preset gives *.test.ts files.
+// relaxations the preset gives *.test.ts files. The list is a copy of the
+// preset's test override (typeScriptTests in @cloudflare/oxlint-config): change both.
 const testSupportFiles = ["test/**/*.ts", "sdk/test/**/*.ts"];
 
 export default defineConfig({
@@ -36,9 +37,12 @@ export default defineConfig({
       files: testSupportFiles,
       rules: {
         "typescript/no-explicit-any": "off",
+        "typescript/no-non-null-assertion": "off",
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-member-access": "off",
+        "typescript/only-throw-error": "off",
+        "typescript/unbound-method": "off",
       },
     },
     {
@@ -124,12 +128,6 @@ export default defineConfig({
       files: ["sdk/src/**", "sdk/test/**"],
       rules: {
         "@nkzw/no-instanceof": "off",
-      },
-    },
-    {
-      files: ["sdk/test/**"],
-      rules: {
-        "typescript/no-explicit-any": "off",
       },
     },
     // L.1 open items: these rules still report issues and stay off until the
