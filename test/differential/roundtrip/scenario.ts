@@ -306,7 +306,7 @@ async function writeRecords(
     const listed = (await c.get(`${records(`rt${tag}_refs`)}?sort=-@rowid&perPage=1`)) as {
       items: Array<{ id: string }>;
     };
-    c.state.generatedIds.add(listed.items[0]!.id);
+    c.state.generatedIds.add((listed.items[0] as { id: string }).id);
   }
 
   // multipart: every value arrives as text

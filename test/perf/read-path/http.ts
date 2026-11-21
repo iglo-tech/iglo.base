@@ -37,7 +37,11 @@ const { values, positionals } = parseArgs({
 });
 
 if (positionals[0] === "serve") {
-  const target = openTarget(values.dataset as Dataset, values.dir!, Number(values.workers));
+  const target = openTarget(
+    values.dataset as Dataset,
+    values.dir as string,
+    Number(values.workers),
+  );
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
@@ -66,7 +70,7 @@ async function client(): Promise<void> {
     if (source === undefined) {
       continue;
     }
-    const dir = copyDataset(dataset, source, values.scratch!);
+    const dir = copyDataset(dataset, source, values.scratch as string);
     try {
       for (const workers of modes) {
         guard();
@@ -102,8 +106,13 @@ async function client(): Promise<void> {
             }
           }
           const rssMiB =
-            Number(/VmRSS:\s+(\d+) kB/.exec(readFileSync(`/proc/${proc.pid}/status`, "utf8"))![1]) /
-            1024;
+            Number(
+              (
+                /VmRSS:\s+(\d+) kB/.exec(
+                  readFileSync(`/proc/${proc.pid}/status`, "utf8"),
+                ) as RegExpExecArray
+              )[1],
+            ) / 1024;
           const cells: Record<string, unknown> = {};
           for (const name of workloadNames) {
             guard();

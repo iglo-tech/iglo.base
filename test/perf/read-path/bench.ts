@@ -35,7 +35,7 @@ const { values } = parseArgs({
 });
 const modes = values.modes.split(",").map(Number);
 const seconds = Number(values.seconds);
-const scratch = values.scratch!;
+const scratch = values.scratch as string;
 const concurrency = 8;
 
 async function latency(target: Target, run: () => unknown, ms: number): Promise<Array<number>> {

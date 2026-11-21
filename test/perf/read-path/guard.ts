@@ -14,7 +14,7 @@ import { modelQuery } from "@/db/db";
 import { HashExp } from "@/db/dbx/expression";
 import { runInTransaction } from "@/db/tx";
 import { Demo } from "@test/db/models";
-const dir = process.argv[2]!;
+const dir = process.argv[2] as string;
 rmSync(dir, { recursive: true, force: true });
 mkdirSync(dir, { recursive: true });
 const app = Databases.open({ dataDir: dir, readWorkers: 1 });
@@ -45,7 +45,7 @@ function run(name: string, f: () => unknown) {
     res.push(((performance.now() - t) * 1000) / n);
   }
   res.sort((a, b) => a - b);
-  console.log(name, "median µs/query", res[2]!.toFixed(2));
+  console.log(name, "median µs/query", (res[2] as number).toFixed(2));
 }
 run("one by id", () =>
   modelQuery(app, new Demo())

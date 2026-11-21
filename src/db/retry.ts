@@ -139,9 +139,9 @@ function isLockError(err: unknown): boolean {
 // the retry interval in ms
 export function getDefaultRetryInterval(attempt: number): number {
   if (attempt < 0 || attempt > defaultRetryIntervals.length - 1) {
-    return defaultRetryIntervals.at(-1)!;
+    return defaultRetryIntervals.at(-1) as number;
   }
-  return defaultRetryIntervals[attempt]!;
+  return defaultRetryIntervals[attempt] as number;
 }
 
 function errorMessage(err: unknown): string {

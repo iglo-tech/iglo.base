@@ -78,7 +78,7 @@ time("insert, one statement per batch", m, () => {
       const params: { [key: string]: unknown } = {};
       const values: Array<string> = [];
       for (let i = 0; i < 200; i++) {
-        const row = rows[i]!;
+        const row = rows[i] as { [key: string]: unknown };
         values.push(`({:i${i}},{:c${i}},{:l${i}},{:m${i}},{:d${i}})`);
         params[`i${i}`] = generateDefaultRandomId();
         params[`c${i}`] = row.created;

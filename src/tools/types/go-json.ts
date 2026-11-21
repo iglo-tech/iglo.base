@@ -243,8 +243,13 @@ function encodeObject(
   if (n > 1) {
     order.sort(
       plain
-        ? (a, b) => (names[a]! < names[b]! ? -1 : names[a]! > names[b]! ? 1 : a - b)
-        : (a, b) => compareUTF8(names[a]!, names[b]!) || a - b,
+        ? (a, b) =>
+            (names[a] as string) < (names[b] as string)
+              ? -1
+              : (names[a] as string) > (names[b] as string)
+                ? 1
+                : a - b
+        : (a, b) => compareUTF8(names[a] as string, names[b] as string) || a - b,
     );
   }
   let out = "{";

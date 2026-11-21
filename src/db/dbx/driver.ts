@@ -110,7 +110,7 @@ export function splitStatements(sql: string): Array<ScriptPart> {
   let blank = true;
 
   for (let i = 0; i < n; i++) {
-    const c = sql[i]!;
+    const c = sql[i] as string;
     let token: number;
     switch (c) {
       case ";":
@@ -172,7 +172,7 @@ export function splitStatements(sql: string): Array<ScriptPart> {
       }
     }
 
-    state = trans[state]![token]!;
+    state = (trans[state] as ReadonlyArray<number>)[token] as number;
     if (token === tkSEMI) {
       if (state === 1) {
         if (!blank) {
@@ -195,7 +195,7 @@ export function splitStatements(sql: string): Array<ScriptPart> {
 // a single statement that the driver prepares once and caches (newStmt
 // without a tail)
 export function isSingle(parts: Array<ScriptPart>): parts is [ScriptPart] {
-  return parts.length === 1 && parts[0]!.last;
+  return parts.length === 1 && (parts[0] as ScriptPart).last;
 }
 
 // the arguments a statement binds: argument i for its parameter i
@@ -211,10 +211,8 @@ function bindArgs(stmt: Statement, args: Array<SQLQueryBindings>): Array<SQLQuer
 // statement's direct changes (and keeps the previous count for a statement
 // that changes nothing), unlike the change counts bun:sqlite reports
 function lastResult(conn: Database): ExecResult {
-  const [changes, rowid] = conn
-    .query("SELECT changes(), last_insert_rowid()")
-    .safeIntegers(true)
-    .values()[0]!;
+  const row = conn.query("SELECT changes(), last_insert_rowid()").safeIntegers(true).values()[0];
+  const [changes, rowid] = row as NonNullable<typeof row>;
   return {
     rowsAffected: Number(changes),
     lastInsertId: narrowInteger(rowid) as number | bigint,

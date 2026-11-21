@@ -31,7 +31,7 @@ function withCopy<T>(fn: (dataDir: string) => T): T {
 
 function median(xs: Array<number>): number {
   const sorted = xs.toSorted((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)]!;
+  return sorted[Math.floor(sorted.length / 2)] as number;
 }
 
 function time(fn: () => void): number {

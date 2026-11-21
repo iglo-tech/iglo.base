@@ -18,7 +18,7 @@ const { values, positionals } = parseArgs({
     upstream: { type: "boolean", default: false },
   },
 });
-const src = positionals[0]!;
+const src = positionals[0] as string;
 const exe = values.upstream ? upstreamBinary() : values.exe;
 const times: Array<number> = [];
 const cpus: Array<number> = [];
@@ -66,7 +66,7 @@ try {
 times.sort((a, b) => a - b);
 cpus.sort((a, b) => a - b);
 console.log(
-  `${values.upstream ? "upstream" : "iglo.base"} startup ms: median ${times[Math.floor(times.length / 2)]!.toFixed(0)}, min ${times[0]!.toFixed(0)}, max ${times.at(-1)!.toFixed(0)}, CPU ms median ${(cpus[Math.floor(cpus.length / 2)] ?? 0).toFixed(0)} (to exit, so includes shutdown), load ${await Bun.file(
+  `${values.upstream ? "upstream" : "iglo.base"} startup ms: median ${(times[Math.floor(times.length / 2)] as number).toFixed(0)}, min ${(times[0] as number).toFixed(0)}, max ${(times.at(-1) as number).toFixed(0)}, CPU ms median ${(cpus[Math.floor(cpus.length / 2)] ?? 0).toFixed(0)} (to exit, so includes shutdown), load ${await Bun.file(
     "/proc/loadavg",
   )
     .text()

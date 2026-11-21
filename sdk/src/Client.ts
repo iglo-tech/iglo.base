@@ -318,7 +318,7 @@ export default class Client {
     }
 
     const pattern = Object.keys(paramsWithPlaceholders)
-      .map((k) => (RegExp as RegExpWithEscape).escape!(k))
+      .map((k) => ((RegExp as RegExpWithEscape).escape as (str: string) => string)(k))
       .join("|");
     if (!pattern) {
       return raw; // no params to replace

@@ -18,7 +18,7 @@ interface Node {
   callFrame: { functionName: string; url: string; lineNumber: number };
   children?: Array<number>;
 }
-const profile = JSON.parse(readFileSync(positionals[0]!, "utf8")) as {
+const profile = JSON.parse(readFileSync(positionals[0] as string, "utf8")) as {
   nodes: Array<Node>;
   samples: Array<number>;
   timeDeltas: Array<number>;
@@ -37,7 +37,10 @@ let total = 0;
 for (let i = 0; i < profile.samples.length; i++) {
   // a sample's duration is the delta to the next one
   const dt = profile.timeDeltas[i + 1] ?? profile.timeDeltas[i] ?? 0;
-  selfByNode.set(profile.samples[i]!, (selfByNode.get(profile.samples[i]!) ?? 0) + dt);
+  selfByNode.set(
+    profile.samples[i] as number,
+    (selfByNode.get(profile.samples[i] as number) ?? 0) + dt,
+  );
   total += dt;
 }
 
@@ -54,12 +57,12 @@ function label(n: Node): string {
 const self = new Map<string, number>();
 const totalByFn = new Map<string, number>();
 for (const [id, t] of selfByNode) {
-  const n = byId.get(id)!;
+  const n = byId.get(id) as Node;
   self.set(label(n), (self.get(label(n)) ?? 0) + t);
   // total: once per distinct function on the stack
   const seen = new Set<string>();
   for (let cur: number | undefined = id; cur !== undefined; cur = parent.get(cur)) {
-    const l = label(byId.get(cur)!);
+    const l = label(byId.get(cur) as Node);
     if (!seen.has(l)) {
       seen.add(l);
       totalByFn.set(l, (totalByFn.get(l) ?? 0) + t);

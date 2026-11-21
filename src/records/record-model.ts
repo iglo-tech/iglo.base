@@ -206,7 +206,7 @@ export function newRecordsFromRows(
 ): Array<Record> {
   const records: Array<Record> = Array.from({ length: rows.length });
   for (let i = 0; i < rows.length; i++) {
-    records[i] = newRecordFromRow(collection, rows[i]!);
+    records[i] = newRecordFromRow(collection, rows[i] as Row);
   }
   return records;
 }

@@ -216,8 +216,8 @@ export class Rows implements Iterable<Array<unknown>> {
   first(): Row {
     if (this.fresh()) {
       try {
-        const row = this.guard(() => this.reader!.get(...this.args) as Row | null);
-        this.names = this.reader!.columnNames;
+        const row = this.guard(() => (this.reader as Statement).get(...this.args) as Row | null);
+        this.names = (this.reader as Statement).columnNames;
         if (row === null) {
           throw new NoRowsError();
         }
@@ -245,8 +245,8 @@ export class Rows implements Iterable<Array<unknown>> {
   all(): Array<Row> {
     if (this.fresh()) {
       try {
-        const rows = this.guard(() => this.reader!.all(...this.args) as Array<Row>);
-        this.names = this.reader!.columnNames;
+        const rows = this.guard(() => (this.reader as Statement).all(...this.args) as Array<Row>);
+        this.names = (this.reader as Statement).columnNames;
         if (!this.exact) {
           for (const row of rows) {
             narrowRow(row, this.names);
@@ -270,10 +270,12 @@ export class Rows implements Iterable<Array<unknown>> {
   allValues(): Array<Array<unknown>> {
     if (this.fresh()) {
       try {
-        const rows = this.guard(() => this.reader!.values(...this.args) as Array<Array<unknown>>);
+        const rows = this.guard(
+          () => (this.reader as Statement).values(...this.args) as Array<Array<unknown>>,
+        );
         // a cached statement re-prepares after a schema change (an added
         // column): its names are current only once it has run
-        this.names = this.reader!.columnNames;
+        this.names = (this.reader as Statement).columnNames;
         if (!this.exact) {
           for (const values of rows) {
             narrowValues(values);
@@ -322,9 +324,9 @@ export class Rows implements Iterable<Array<unknown>> {
   private open(): Iterator<unknown> {
     if (this.it === null) {
       if (this.keys === null) {
-        this.it = this.stmt!.values(...this.args)[Symbol.iterator]();
+        this.it = (this.stmt as Statement).values(...this.args)[Symbol.iterator]();
       } else {
-        this.it = this.reader!.iterate(...this.args);
+        this.it = (this.reader as Statement).iterate(...this.args);
       }
     }
     return this.it;
@@ -382,7 +384,7 @@ export class Rows implements Iterable<Array<unknown>> {
   private toRow(values: Array<unknown>): Row {
     const row: Row = {};
     for (let i = 0; i < this.names.length; i++) {
-      setOwn(row, this.names[i]!, values[i]);
+      setOwn(row, this.names[i] as string, values[i]);
     }
     return row;
   }
@@ -395,15 +397,15 @@ export function rowsFromValues(names: Array<string>, rows: Array<Array<unknown>>
   const plain = !names.includes("__proto__");
   const n = names.length;
   for (let r = 0; r < rows.length; r++) {
-    const values = rows[r]!;
+    const values = rows[r] as Array<unknown>;
     const row: Row = {};
     if (plain) {
       for (let i = 0; i < n; i++) {
-        row[names[i]!] = values[i];
+        row[names[i] as string] = values[i];
       }
     } else {
       for (let i = 0; i < n; i++) {
-        setOwn(row, names[i]!, values[i]);
+        setOwn(row, names[i] as string, values[i]);
       }
     }
     out[r] = row;

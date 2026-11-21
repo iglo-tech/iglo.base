@@ -101,12 +101,12 @@ export class RealtimeService extends BaseService {
     if (!this.subscriptions[key]) {
       this.subscriptions[key] = [];
     }
-    this.subscriptions[key]!.push(listener);
+    (this.subscriptions[key] as Array<EventListener>).push(listener);
 
     if (!this.isConnected) {
       // initialize sse connection
       await this.connect();
-    } else if (this.subscriptions[key]!.length === 1) {
+    } else if ((this.subscriptions[key] as Array<EventListener>).length === 1) {
       // send the updated subscriptions (if it is the first for the key)
       await this.submitSubscriptions();
     } else {
@@ -180,7 +180,7 @@ export class RealtimeService extends BaseService {
           continue; // already unsubscribed
         }
 
-        for (const listener of this.subscriptions[key]!) {
+        for (const listener of this.subscriptions[key] as Array<EventListener>) {
           this.eventSource?.removeEventListener(key, listener);
         }
         delete this.subscriptions[key];
@@ -207,7 +207,7 @@ export class RealtimeService extends BaseService {
       }
 
       hasAtleastOneTopic = true;
-      for (const listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key] as Array<EventListener>) {
         this.eventSource?.removeEventListener(key, listener);
       }
       delete this.subscriptions[key];
@@ -333,7 +333,7 @@ export class RealtimeService extends BaseService {
 
     for (const key in this.subscriptions) {
       if ((key + "?").startsWith(topic)) {
-        result[key] = this.subscriptions[key]!;
+        result[key] = this.subscriptions[key] as Array<EventListener>;
       }
     }
 
@@ -344,7 +344,7 @@ export class RealtimeService extends BaseService {
     const result: Array<string> = [];
 
     for (const key in this.subscriptions) {
-      if (this.subscriptions[key]!.length) {
+      if ((this.subscriptions[key] as Array<EventListener>).length) {
         result.push(key);
       }
     }
@@ -415,7 +415,7 @@ export class RealtimeService extends BaseService {
     this.removeAllSubscriptionListeners();
 
     for (const key in this.subscriptions) {
-      for (const listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key] as Array<EventListener>) {
         this.eventSource.addEventListener(key, listener);
       }
     }
@@ -427,7 +427,7 @@ export class RealtimeService extends BaseService {
     }
 
     for (const key in this.subscriptions) {
-      for (const listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key] as Array<EventListener>) {
         this.eventSource.removeEventListener(key, listener);
       }
     }
@@ -526,7 +526,7 @@ export class RealtimeService extends BaseService {
           // propagate the PB_CONNECT event
           const connectSubs = this.getSubscriptionsByTopic("PB_CONNECT");
           for (const key in connectSubs) {
-            for (const listener of connectSubs[key]!) {
+            for (const listener of connectSubs[key] as Array<EventListener>) {
               listener(e);
             }
           }

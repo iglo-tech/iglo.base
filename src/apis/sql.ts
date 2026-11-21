@@ -328,7 +328,8 @@ function parseDriverTime(s: string): string | undefined {
   return undefined;
 }
 
-const isDigit = (s: string, i: number): boolean => i < s.length && s[i]! >= "0" && s[i]! <= "9";
+const isDigit = (s: string, i: number): boolean =>
+  i < s.length && (s[i] as string) >= "0" && (s[i] as string) <= "9";
 
 // getnum: one or two digits (exactly two when fixed)
 function getnum(s: string, fixed: boolean): [number, string] | undefined {
@@ -362,7 +363,12 @@ function parseTimeZone(s: string): number | undefined {
     return m === null ? undefined : m[0].length;
   }
   let nUpper = 0;
-  while (nUpper < 6 && nUpper < s.length && s[nUpper]! >= "A" && s[nUpper]! <= "Z") {
+  while (
+    nUpper < 6 &&
+    nUpper < s.length &&
+    (s[nUpper] as string) >= "A" &&
+    (s[nUpper] as string) <= "Z"
+  ) {
     nUpper++;
   }
   switch (nUpper) {
@@ -408,7 +414,7 @@ function goParseTime(layout: Array<Token>, value: string): string | undefined {
   };
 
   for (let i = 0; i < layout.length; i++) {
-    const token = layout[i]!;
+    const token = layout[i] as Token;
     if (typeof token === "object") {
       // skip: a space matches one or more spaces
       for (const c of token.lit) {

@@ -139,7 +139,7 @@ export async function batchTypes(): Promise<void> {
 
   const results = await batch.send();
   type _Results = Expect<Equal<typeof results, Array<BatchRequestResult>>>;
-  const status: number = results[0]!.status;
+  const status: number = (results[0] as BatchRequestResult).status;
   void status;
 
   // @ts-expect-error update needs the record id

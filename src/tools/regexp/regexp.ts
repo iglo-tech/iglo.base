@@ -131,7 +131,7 @@ export class Regexp {
 
   #compiled(): Compiled {
     if (this.#c === null) {
-      const { mode, longest } = this.#pending!;
+      const { mode, longest } = this.#pending as { mode: Flags; longest: boolean };
       this.#c = compileParts(this.#expr, mode, longest);
       this.#pending = null;
     }

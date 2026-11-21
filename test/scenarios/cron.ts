@@ -31,14 +31,15 @@ export const liveRow = "liverow00000000";
 export function writeOTPs(dataDir: string): void {
   const db = new Database(join(dataDir, "data.db"));
   try {
-    for (const [id, created] of [
+    const rows: Array<[string, string]> = [
       [expiredRow, "2020-01-01 00:00:00.000Z"],
       [liveRow, "2099-01-01 00:00:00.000Z"],
-    ]) {
+    ];
+    for (const [id, created] of rows) {
       db.query(
         `INSERT INTO _otps (id, collectionRef, recordRef, password, sentTo, created, updated)
          VALUES (?, ?, ?, 'unused', '', ?, ?)`,
-      ).run(id!, usersCollection, userId, created!, created!);
+      ).run(id, usersCollection, userId, created, created);
     }
   } finally {
     db.close();
@@ -48,14 +49,15 @@ export function writeOTPs(dataDir: string): void {
 export function writeMFAs(dataDir: string): void {
   const db = new Database(join(dataDir, "data.db"));
   try {
-    for (const [id, created] of [
+    const rows: Array<[string, string]> = [
       [expiredRow, "2020-01-01 00:00:00.000Z"],
       [liveRow, "2099-01-01 00:00:00.000Z"],
-    ]) {
+    ];
+    for (const [id, created] of rows) {
       db.query(
         `INSERT INTO _mfas (id, collectionRef, recordRef, method, created, updated)
          VALUES (?, ?, ?, 'test', ?, ?)`,
-      ).run(id!, usersCollection, userId, created!, created!);
+      ).run(id, usersCollection, userId, created, created);
     }
   } finally {
     db.close();

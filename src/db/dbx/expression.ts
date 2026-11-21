@@ -209,7 +209,7 @@ export class HashExp implements Expression {
       }
     }
     if (parts.length === 1) {
-      return parts[0]!;
+      return parts[0] as string;
     }
     return parts.join(" AND ");
   }
@@ -251,7 +251,7 @@ export class AndOrExp implements Expression {
       }
     }
     if (parts.length === 1) {
-      return parts[0]!;
+      return parts[0] as string;
     }
     // Go joins a nil slice to "" and wraps it, so no parts gives "()"
     return "(" + parts.join(") " + this.op + " (") + ")";
@@ -342,7 +342,7 @@ export class LikeExp implements Expression {
     for (let value of this.values) {
       const name = `p${paramsLen(params)}`;
       for (let i = 0; i < this.escapeChars.length; i += 2) {
-        value = value.replaceAll(this.escapeChars[i]!, this.escapeChars[i + 1]!);
+        value = value.replaceAll(this.escapeChars[i] as string, this.escapeChars[i + 1] as string);
       }
       if (this.left) {
         value = "%" + value;

@@ -48,7 +48,7 @@ const exitCode = await runCli({
   // os.Executable, os.Args and os.Environ; process.argv[1] is the bundled
   // entry point in a compiled executable, which argv0 stands for
   restart: () =>
-    process.execve!(
+    (process.execve as NonNullable<typeof process.execve>)(
       process.execPath,
       isCompiled ? [process.argv0, ...process.argv.slice(2)] : process.argv,
       process.env,

@@ -287,7 +287,7 @@ export class ReadPool {
       if (slot === undefined) {
         return;
       }
-      const request = this.queue.shift()!;
+      const request = this.queue.shift() as Request;
       slot.request = request;
       request.slot = slot;
       slot.worker.ref();

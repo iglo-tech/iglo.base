@@ -229,7 +229,7 @@ export class Stmt {
     if (isSingle(parts)) {
       this.single = conn.prepare(parts[0].sql).safeIntegers(true);
     } else if (parts.length > 0) {
-      conn.prepare(parts[0]!.sql).finalize();
+      conn.prepare((parts[0] as ScriptPart).sql).finalize();
     }
   }
 
