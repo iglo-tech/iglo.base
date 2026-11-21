@@ -443,3 +443,10 @@ Owner decision 2026-11-20 (option A of two: move the baseline, or stay on v0.41.
   - **SDK 0.29.0:** `authStore` is cleared automatically after a 401 (`autoClearAuthStore(false)` turns it off).
   The rest is not ported: Go and `modernc.org/sqlite` bumps, `golang.org/x/oauth2` v0.38.0 (its device flow only), `golang.org/x/net` v0.62.0's `render.go` and its parser text buffering (the same tree), `golang.org/x/text` v0.44.0 (no upstream import), the Go cron race guard, hex encoding, `update/Config.Channel` (the `update` command is dropped, D19), JS VM types (extension surface). The S3 `CompleteMultipartUpload` body check was already in iglo.base.
 - **Why:** it keeps "behaves like upstream" literally true and takes a real OAuth2 login fix, at no data-format cost. Staying on v0.41.0 would have left the OAuth2 bug and made the next baseline move larger.
+
+## D44. Lint with @cloudflare/oxlint-config
+
+Owner request 2026-11-21. Task L.1.
+
+- **Decision:** the lint config spreads `@cloudflare/oxlint-config` (which builds on `@nkzw/oxlint-config`) with oxlint ≥ 1.94 and its type-aware backend `tsrs`, plus the project's own rules (the `@/` import alias, `no-explicit-any`, `eqeqeq`, the `ui/` and `examples/` ignores). Every issue it reports is fixed. A rule is turned off or narrowed only where fixing it would change behavior (the data and API contracts, SDK parity with upstream, D36), break a project rule (CLI output is allowed console output) or rewrite raw stored JSON; each such exception is listed in the L.1 PR.
+- **Why:** stricter type-safety and promise rules catch unhandled rejections and unchecked `any` flows that `tsc` and the old category-based config miss. The packages are dev dependencies only and do not ship in the executable or the SDK.

@@ -246,6 +246,12 @@ Owner decision 2026-11-20 ([D43](10-decisions.md#d43-baseline-moved-from-v0410-t
 | U.1 | Server: pin v0.42.3 in the reference lock, port the v0.41.1–v0.42.3 server changes (401 on unknown tokens, realtime and OAuth2 IP checks, logs cleanup `VACUUM`, log levels, `image/jxl`), baseline references in docs | S.8 |
 | U.2 | Dashboard re-copied from v0.42.3 `ui/`, SDK 0.29.0 changes (SDK 1.1.0), v1.3.0 release prep | U.1 |
 
+### Lint (owner request 2026-11-21)
+
+| ID | Task | Depends on |
+|---|---|---|
+| L.1 | Adopt `@cloudflare/oxlint-config` and fix every issue it reports (D44) | U.2 |
+
 ## Order
 
 ```text
