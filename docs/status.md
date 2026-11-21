@@ -14,7 +14,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.2 | review | `task/L.2-type-safety-1` (#112) | 1 | Owner 2026-11-21 via D44: first 8 of the 12 rules L.1 left off (569 findings); L.3, L.4 follow |
+| L.3 | worker | `task/L.3-type-safety-2` | 0 | Owner 2026-11-21 via D44: three quality/* rules (1,525 at L.1); L.4 follows (3,192 + ~220 casts added by L.2) |
 
 
 
@@ -22,6 +22,7 @@ Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| L.2 | [#112](https://github.com/iglo-tech/iglo.base/pull/112) | 2026-11-21 (`77da4d10`) | One review round (Opus, approve; Haiku worker). Eight type-safety rules on, 644 findings fixed (569 counted with the test-support override), test-support files no longer relaxed for them; 24 reasoned disables (16 Go-style throws read by callers, 11 SDK loose-shape type tests); ~220 casts left for L.4. Check 19,026/0, reference 4,443/1 (known concurrent-thumb flake on upstream's side; file reruns 71/71). Backlog: `select ;` on `/api/sql` gets a different SQLite message (older, D26) |
 | L.1 | [#111](https://github.com/iglo-tech/iglo.base/pull/111) | 2026-11-21 (`3720fe1`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. `oxlint.config.ts` spreads @cloudflare/oxlint-config without React/jsx-a11y (owner); ~14k findings fixed; exceptions with reasons (charset names, Go `\xNN`, `String.raw` + Bun non-ASCII lowering, SDK ES2021/`instanceof` parity D36, CLI console); lint builds the SDK first. 12 type-safety rules (5,286) left to L.2–L.4. Check 19,026/0, reference 4,444/0. Backlog: Bun `String.raw` non-ASCII bug unreported (outside our repos) |
 | U.2 | [#110](https://github.com/iglo-tech/iglo.base/pull/110) | 2026-11-21 (`0ee7b69`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. `ui/` re-copied from v0.42.3 with the 13 PATCHES.md entries; SDK 1.1.0 = js-sdk v0.29.0 (clear auth store on 401; SSR server and superuser clients opt out, tested); docs note the 401 change. Check 19,026/0, reference 4,444/0, browser 7/0. Backlog: browser client clears on 401 right after expiry (one `renew()` could avoid it); no browser tests for the v0.42.3 dashboard changes; `js-sdk v0.28.1` source headers |
 | U.1 | [#109](https://github.com/iglo-tech/iglo.base/pull/109) | 2026-11-20 (`d327296`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. Reference pinned to v0.42.3; 401 on unknown tokens (35 routes matched upstream), realtime/OAuth2 IP fallback, logs VACUUM after 50k + WAL checkpoint, request log order and benign level, `image/jxl` inline, thumbs hint; round 1 added mimetype v1.4.16 (12 MiB ID3v2, CDF root walk, GHSA fix) and pflag 1.1.0 messages and help format. Check 18,992/0, reference 4,444/0. Backlog: tests for Ppt/Xls fall-through and .msg with embedded Word; one CDF sample tests nothing; `--origins` malformed-quote error text (older) |
