@@ -128,7 +128,7 @@ export function realtimeRecordDelete(app: RecordsApp, record: Record): void {
     app.logger.debug("Failed to dry cache record delete", {
       id: record.id,
       collectionName: record.collection().name,
-      error: error,
+      error,
     });
   }
 }

@@ -468,7 +468,7 @@ describe("Client", () => {
         url: newUrl,
         replyCode: 200,
         replyBody: "123",
-        additionalMatcher: function (url, config) {
+        additionalMatcher(url, config) {
           return url == newUrl && (config?.headers as any)?.["X-Custom-Header"] == "456";
         },
       });
@@ -496,7 +496,7 @@ describe("Client", () => {
         url: newUrl,
         replyCode: 200,
         replyBody: "123",
-        additionalMatcher: function (url, config) {
+        additionalMatcher(url, config) {
           return url == newUrl && (config?.headers as any)?.["X-Custom-Header"] == "456";
         },
       });

@@ -199,7 +199,7 @@ export function* authOriginsOnUpdate(app: RecordsApp, record: Record, next: Next
       yield* deleteAllRefsByRecord(app, CollectionNameAuthOrigins, record);
     } catch (error) {
       app.logger.warn("Failed to delete all previous auth origin fingerprints", {
-        error: error,
+        error,
         recordId: record.id,
         collectionId: record.collection().id,
       });

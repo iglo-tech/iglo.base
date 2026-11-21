@@ -199,7 +199,7 @@ export async function recordAuthResponse(
     try {
       await authAlert(e, authRecord);
     } catch (error) {
-      e.app.logger.warn("[recordAuthResponse] Failed to send login alert", { error: error });
+      e.app.logger.warn("[recordAuthResponse] Failed to send login alert", { error });
     }
   }
 
@@ -340,7 +340,7 @@ async function checkMFA(
       try {
         await deleteMFA(e.app, mfa);
       } catch (error) {
-        e.app.logger.warn("Failed to delete expired MFA record", { error: error, mfaId: mfa.id });
+        e.app.logger.warn("Failed to delete expired MFA record", { error, mfaId: mfa.id });
       }
     }
   };
@@ -412,7 +412,7 @@ export async function enrichRecords(
     await defaultEnrichRecords(e.app, info, records, ...expands);
   } catch (error) {
     // not critical
-    e.app.logger.warn("failed to apply default enriching", { error: error });
+    e.app.logger.warn("failed to apply default enriching", { error });
   }
 
   return undefined;
@@ -458,7 +458,7 @@ export function expandFetch(app: App, originalRequestInfo: RequestInfo): ExpandF
     } catch (error) {
       // non-critical error
       app.logger.warn("Failed to apply autoResolveRecordsFlags for the expanded records", {
-        error: error,
+        error,
       });
     }
 
@@ -480,7 +480,7 @@ export function expandFetchSync(app: App, originalRequestInfo: RequestInfo): Exp
     } catch (error) {
       // non-critical error
       app.logger.warn("Failed to apply autoResolveRecordsFlags for the expanded records", {
-        error: error,
+        error,
       });
     }
 
@@ -763,7 +763,7 @@ async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
       } catch (error) {
         // treat as non-critical error, just log for now
         e.app.logger.warn("Failed to delete old AuthOrigin record", {
-          error: error,
+          error,
           authOriginId: origin.id,
         });
       }

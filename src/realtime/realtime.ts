@@ -104,7 +104,7 @@ export function findOAuth2RedirectClient(
     client = app.subscriptionsBroker.clientById(state);
   } catch (error) {
     app.logger.warn("Missing or invalid OAuth2 subscription client", {
-      error: error,
+      error,
       clientId: state,
     });
     return undefined;
@@ -237,7 +237,7 @@ function realtimeConnect(e: RequestEvent, timers: RealtimeTimers): HandlerResult
         m === connectMessage
           ? "Realtime connection closed (failed to deliver PB_CONNECT)"
           : "Realtime connection closed (failed to deliver message)",
-        { error: error },
+        { error },
       );
       return false;
     }

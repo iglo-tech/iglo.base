@@ -148,7 +148,7 @@ function enrichRecordSync(e: RequestEvent, info: RequestInfo, record: Record): u
     }
   } catch (error) {
     // not critical
-    e.app.logger.warn("failed to apply default enriching", { error: error });
+    e.app.logger.warn("failed to apply default enriching", { error });
   }
 
   return undefined;
@@ -951,7 +951,7 @@ function* hasAuthManageAccess(
     query.andWhere(expr);
   } catch (error) {
     app.logger.error("Manage rule build expression error", {
-      error: error,
+      error,
       collectionId: collection.id,
     });
     return false;

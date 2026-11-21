@@ -202,7 +202,7 @@ async function extractAndReplace(
     } catch (error) {
       app.logger.warn("[RestoreBackup] Failed to remove the temp zip backup file", {
         file: tempZip,
-        error: error,
+        error,
       });
     }
 

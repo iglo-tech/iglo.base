@@ -171,7 +171,7 @@ export class NotifyWatcher implements Notifier {
     try {
       writeFileSync(file, "", { mode: 0o644 });
     } catch (error) {
-      this.#logger.warn("Failed to write watcher file", { error: error, file });
+      this.#logger.warn("Failed to write watcher file", { error, file });
     }
     try {
       rmSync(file, { force: true });
@@ -212,7 +212,7 @@ export class NotifyWatcher implements Notifier {
         try {
           await reload.settings();
         } catch (error) {
-          this.#logger.warn("Failed to reload app settings after notify", { error: error });
+          this.#logger.warn("Failed to reload app settings after notify", { error });
         }
       }
       if (collections && !this.#closed) {
@@ -220,7 +220,7 @@ export class NotifyWatcher implements Notifier {
         try {
           reload.collections();
         } catch (error) {
-          this.#logger.warn("Failed to reload cached collections after notify", { error: error });
+          this.#logger.warn("Failed to reload cached collections after notify", { error });
         }
       }
     }

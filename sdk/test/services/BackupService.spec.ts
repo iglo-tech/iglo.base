@@ -36,7 +36,7 @@ describe("BackupService", () => {
           return config?.headers?.["x-test"] === "123";
         },
         replyCode: 200,
-        replyBody: replyBody,
+        replyBody,
       });
 
       const result = await service.getFullList({

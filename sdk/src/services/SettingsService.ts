@@ -53,7 +53,7 @@ export class SettingsService extends BaseService {
       {
         method: "POST",
         body: {
-          filesystem: filesystem,
+          filesystem,
         },
       },
       options,

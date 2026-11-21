@@ -145,7 +145,7 @@ export async function prunePreSchemaBackups(app: App): Promise<void> {
         } catch (error) {
           app.logger.error("[schema] failed to remove an old pre-schema backup", {
             key,
-            error: error,
+            error,
           });
         }
       }
@@ -153,6 +153,6 @@ export async function prunePreSchemaBackups(app: App): Promise<void> {
       fsys.close();
     }
   } catch (error) {
-    app.logger.error("[schema] failed to prune the pre-schema backups", { error: error });
+    app.logger.error("[schema] failed to prune the pre-schema backups", { error });
   }
 }

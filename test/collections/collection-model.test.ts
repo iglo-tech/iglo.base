@@ -573,7 +573,7 @@ test("CollectionIndexHelpers", () => {
 
   const expectedIndexes: Record<string, string> = {
     missing: "",
-    idx1: idx1,
+    idx1,
     // the name is case insensitive
     iDX3: idx3,
   };

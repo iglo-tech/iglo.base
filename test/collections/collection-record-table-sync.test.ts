@@ -92,14 +92,14 @@ describe("TestSyncRecordTableSchema", () => {
         {
           name: "no changes",
           newCollection: oldCollection,
-          oldCollection: oldCollection,
+          oldCollection,
           expectedColumns: ["id", "created", "updated", "title", "active"],
           expectedIndexesCount: 3,
         },
         {
           name: "renamed table, deleted column, renamed columnd and new column",
           newCollection: updatedCollection,
-          oldCollection: oldCollection,
+          oldCollection,
           expectedColumns: ["id", "created", "updated", "title_renamed", "new_field"],
           expectedIndexesCount: 1,
         },

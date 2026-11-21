@@ -483,7 +483,7 @@ export default class Client {
           throw new ClientResponseError({
             url: response.url,
             status: response.status,
-            data: data,
+            data,
           });
         }
 

@@ -95,7 +95,7 @@ async function sendPasswordResetInBackground(
   try {
     await sendRecordPasswordReset(app, record);
   } catch (error) {
-    app.logger.error("Failed to send password reset email", { error: error });
+    app.logger.error("Failed to send password reset email", { error });
     // a failed send keeps no throttle (as upstream, which sets the key after the send)
     if (app.store.get(resendKey) === token) {
       app.store.remove(resendKey);

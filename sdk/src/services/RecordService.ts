@@ -352,7 +352,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         method: "POST",
         body: {
           identity: usernameOrEmail,
-          password: password,
+          password,
         },
       },
       options,
@@ -437,11 +437,11 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        provider: provider,
-        code: code,
-        codeVerifier: codeVerifier,
-        redirectURL: redirectURL,
-        createData: createData,
+        provider,
+        code,
+        codeVerifier,
+        redirectURL,
+        createData,
       },
     };
 
@@ -754,7 +754,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        email: email,
+        email,
       },
     };
 
@@ -805,8 +805,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       method: "POST",
       body: {
         token: passwordResetToken,
-        password: password,
-        passwordConfirm: passwordConfirm,
+        password,
+        passwordConfirm,
       },
     };
 
@@ -843,7 +843,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        email: email,
+        email,
       },
     };
 
@@ -937,7 +937,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        newEmail: newEmail,
+        newEmail,
       },
     };
 
@@ -988,7 +988,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       method: "POST",
       body: {
         token: emailChangeToken,
-        password: password,
+        password,
       },
     };
 
@@ -1059,7 +1059,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     options = Object.assign(
       {
         method: "POST",
-        body: { email: email },
+        body: { email },
       },
       options,
     );
@@ -1110,7 +1110,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     options = Object.assign(
       {
         method: "POST",
-        body: { duration: duration },
+        body: { duration },
       },
       options,
     );

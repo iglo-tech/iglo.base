@@ -69,8 +69,8 @@ export abstract class CrudService<M> extends BaseService {
 
     options.query = Object.assign(
       {
-        page: page,
-        perPage: perPage,
+        page,
+        perPage,
       },
       options.query,
     );
@@ -112,7 +112,7 @@ export abstract class CrudService<M> extends BaseService {
 
     options.query = Object.assign(
       {
-        filter: filter,
+        filter,
         skipTotal: 1,
       },
       options.query,

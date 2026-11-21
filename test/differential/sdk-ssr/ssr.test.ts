@@ -189,7 +189,7 @@ describe("SSR differential", () => {
       const user = await env.step("create user", () =>
         admin.collection("users").create({
           email: "revoke_test@example.com",
-          password: password,
+          password,
           passwordConfirm: password,
         }),
       );
@@ -331,7 +331,7 @@ describe("SSR differential", () => {
       const user = await env.step("create user for impersonate", () =>
         admin.collection("users").create({
           email: "impersonate_realtime@example.com",
-          password: password,
+          password,
           passwordConfirm: password,
         }),
       );

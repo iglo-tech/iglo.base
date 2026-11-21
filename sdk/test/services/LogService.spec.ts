@@ -39,7 +39,7 @@ describe("LogService", () => {
           return config?.headers?.["x-test"] === "456";
         },
         replyCode: 200,
-        replyBody: replyBody,
+        replyBody,
       });
 
       const list = await service.getList(2, 1, {

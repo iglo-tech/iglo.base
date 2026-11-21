@@ -51,8 +51,8 @@ export class LocalAuthStore extends BaseAuthStore {
    */
   override save(token: string, record?: AuthRecord) {
     this._storageSet(this.storageKey, {
-      token: token,
-      record: record,
+      token,
+      record,
     });
 
     super.save(token, record);

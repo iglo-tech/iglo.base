@@ -98,7 +98,7 @@ function* superusersSaveExecute(
       );
     } catch (error) {
       if (!isNoRows(error)) {
-        app.logger.warn("Failed to fetch installer superuser", { error: error });
+        app.logger.warn("Failed to fetch installer superuser", { error });
       }
       // else already deleted
       return;
@@ -107,7 +107,7 @@ function* superusersSaveExecute(
     try {
       yield* deleteStep(app, installer);
     } catch (error) {
-      app.logger.warn("Failed to delete installer superuser", { error: error });
+      app.logger.warn("Failed to delete installer superuser", { error });
     }
   }
 }

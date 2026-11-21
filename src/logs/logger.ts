@@ -295,7 +295,7 @@ export function logsSettingsReloaded(
   try {
     app.databases.auxNonconcurrentDB().delete(LogsTableName, expr).execute();
   } catch (error) {
-    app.logger.warn("Failed to cleanup old logs", { error: error });
+    app.logger.warn("Failed to cleanup old logs", { error });
   }
 
   // no logs are allowed -> try to reclaim preserved disk space after the previous delete operation
@@ -303,7 +303,7 @@ export function logsSettingsReloaded(
     try {
       auxVacuum(app.databases);
     } catch (error) {
-      app.logger.warn("Failed to VACUUM aux database", { error: error });
+      app.logger.warn("Failed to VACUUM aux database", { error });
     }
   }
 }

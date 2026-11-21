@@ -492,7 +492,7 @@ export class FileField
         yield* this.deleteEmptyRecordDir(app, record);
       } catch (error) {
         app.logger.warn("Failed to delete empty dir after new record commit failure", {
-          error: error,
+          error,
         });
       }
     }

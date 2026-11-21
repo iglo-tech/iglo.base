@@ -48,7 +48,7 @@ export function registerCrons(app: App): void {
     try {
       await deleteExpiredMFAs(app);
     } catch (error) {
-      app.logger.warn("Failed to delete expired MFA sessions", { error: error });
+      app.logger.warn("Failed to delete expired MFA sessions", { error });
     }
   });
 
@@ -57,7 +57,7 @@ export function registerCrons(app: App): void {
     try {
       await deleteExpiredOTPs(app);
     } catch (error) {
-      app.logger.warn("Failed to delete expired OTP sessions", { error: error });
+      app.logger.warn("Failed to delete expired OTP sessions", { error });
     }
   });
 
@@ -74,7 +74,7 @@ export function registerCrons(app: App): void {
     try {
       oldCount = countLogs(app);
     } catch (error) {
-      app.logger.warn("Failed to count logs before delete", { error: error });
+      app.logger.warn("Failed to count logs before delete", { error });
     }
 
     try {
@@ -83,14 +83,14 @@ export function registerCrons(app: App): void {
         DateTime.fromDate(app.clock.now()).addDate(0, 0, -Number(app.settings.Logs.MaxDays)),
       );
     } catch (error) {
-      app.logger.warn("Failed to delete old logs", { error: error });
+      app.logger.warn("Failed to delete old logs", { error });
     }
 
     let newCount = 0;
     try {
       newCount = countLogs(app);
     } catch (error) {
-      app.logger.warn("Failed to count logs after delete", { error: error });
+      app.logger.warn("Failed to count logs after delete", { error });
     }
 
     // try to free up unused disk space if a lot of logs have been deleted
@@ -102,7 +102,7 @@ export function registerCrons(app: App): void {
       try {
         auxVacuum(app.databases);
       } catch (error) {
-        app.logger.warn("Failed to VACUUM aux database after cleanup", { error: error });
+        app.logger.warn("Failed to VACUUM aux database after cleanup", { error });
       }
     }
 

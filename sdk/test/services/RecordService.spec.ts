@@ -164,7 +164,7 @@ describe("RecordService", () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-verification",
-        body: { token: token },
+        body: { token },
         replyCode: 204,
         replyBody: true,
       });
@@ -188,7 +188,7 @@ describe("RecordService", () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-verification",
-        body: { token: token },
+        body: { token },
         replyCode: 204,
         replyBody: true,
       });
@@ -213,7 +213,7 @@ describe("RecordService", () => {
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-email-change",
         body: {
-          token: token,
+          token,
           password: "1234",
         },
         replyCode: 204,
@@ -239,7 +239,7 @@ describe("RecordService", () => {
         method: "POST",
         url: service.client.buildURL(service.baseCollectionPath) + "/confirm-email-change",
         body: {
-          token: token,
+          token,
           password: "1234",
         },
         replyCode: 204,

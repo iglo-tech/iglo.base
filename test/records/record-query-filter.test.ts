@@ -49,7 +49,7 @@ function openPooledApp(): RecordsApp & { cleanup(): Promise<void> } {
     clock: { now: () => new Date() },
     logger: testLogger(),
     filesystem: newAppFilesystem({
-      dataDir: dataDir,
+      dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
       logger: testLogger(),

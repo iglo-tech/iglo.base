@@ -435,7 +435,7 @@ export async function serve(
       color: out.color,
     });
   } catch (error) {
-    app.logger.warn("Failed to initialize installer", { error: error });
+    app.logger.warn("Failed to initialize installer", { error });
   }
 
   if (!shutdown.aborted) {

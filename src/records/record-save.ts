@@ -652,7 +652,7 @@ function* afterSuccess(
       }
       result.catch((error: unknown) => {
         app.logger.error(`Record ${successAction} interceptors failed after the transaction`, {
-          error: error,
+          error,
         });
       });
     }
@@ -728,7 +728,7 @@ function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: st
     app.logger.debug(`Failed to broadcast record ${action}`, {
       id: record.id,
       collectionName: record.collection().name,
-      error: error,
+      error,
     });
   }
 }

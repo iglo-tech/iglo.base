@@ -30,8 +30,8 @@ export class CollectionService extends CrudService<CollectionModel> {
       {
         method: "PUT",
         body: {
-          collections: collections,
-          deleteMissing: deleteMissing,
+          collections,
+          deleteMissing,
         },
       },
       options,

@@ -97,7 +97,7 @@ async function sendVerificationInBackground(
   try {
     await sendRecordVerification(app, record);
   } catch (error) {
-    app.logger.error("Failed to send verification email", { error: error });
+    app.logger.error("Failed to send verification email", { error });
   }
 
   // the timer removes only its own entry: a confirm may have cleared the key

@@ -420,9 +420,9 @@ export class ServerClient extends Client {
         error instanceof ClientResponseError &&
         (error.status === 401 || error.status === 403 || error.status === 404)
       ) {
-        return { kind: "revoked", error: error };
+        return { kind: "revoked", error };
       }
-      return { kind: "transient", error: error };
+      return { kind: "transient", error };
     }
   }
 

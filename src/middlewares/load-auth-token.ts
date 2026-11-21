@@ -41,7 +41,7 @@ export function loadAuthToken(): Handler<RequestEvent> {
         e.auth = findAuthRecordByToken(e.app, token, TokenTypeAuth);
       } catch (error) {
         // a missing, invalid or expired token leaves the request a guest
-        e.app.logger.debug("loadAuthToken failure", { error: error });
+        e.app.logger.debug("loadAuthToken failure", { error });
       }
 
       return e.next();

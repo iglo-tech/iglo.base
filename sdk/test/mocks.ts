@@ -86,10 +86,10 @@ export class FetchMock {
         }
 
         const response = {
-          url: url,
+          url,
           status: mock.replyCode,
           statusText: "test",
-          headers: headers,
+          headers,
           json: async () => {
             if (typeof mock.replyBody == "function") {
               return mock.replyBody();

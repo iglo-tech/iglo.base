@@ -101,7 +101,7 @@ function logsTruncate(e: RequestEvent): HandlerResult {
   try {
     auxVacuum(e.app.databases);
   } catch (error) {
-    e.app.logger.warn("Failed to VACUUM aux database", { error: error });
+    e.app.logger.warn("Failed to VACUUM aux database", { error });
   }
 
   return e.noContent(204);

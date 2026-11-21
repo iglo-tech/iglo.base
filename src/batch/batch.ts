@@ -628,7 +628,7 @@ function processBatch(
       try {
         result = processInternalRequest(txApp, e, item);
       } catch (error) {
-        e.app.logger.error("Batch item failed unexpectedly", { error: error });
+        e.app.logger.error("Batch item failed unexpectedly", { error });
         result = errBatchTimeout;
       }
       if (result === errBatchTimeout) {

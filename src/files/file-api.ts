@@ -201,7 +201,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
             await createThumb(e.app, fsys, originalPath, servedPath, thumbSize);
           } catch (error) {
             e.app.logger.warn(`Fallback to original - failed to create thumb ${servedName}`, {
-              error: error,
+              error,
               original: originalPath,
               thumb: servedPath,
             });

@@ -186,7 +186,7 @@ class BackupTracker implements FilesystemWatcher {
     } catch (error) {
       if ((error as { code?: string }).code !== "ENOENT") {
         this.#app.logger.warn(`${this.#logPrefix}failed to copy file in backup zip before delete`, {
-          error: error,
+          error,
           file: zipPath,
         });
       }

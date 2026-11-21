@@ -487,7 +487,7 @@ async function downloadAvatar(
     // the internal request's multipart part, named after the file's normalized name
     return await NewFileFromBytes(await file.reader.bytes(), file.name);
   } catch (error) {
-    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error: error });
+    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error });
     return undefined;
   }
 }

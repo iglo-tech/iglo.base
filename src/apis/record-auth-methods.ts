@@ -103,7 +103,7 @@ export function recordAuthMethods(e: RequestEvent): HandlerResult {
     try {
       provider = initProvider(config);
     } catch (error) {
-      e.app.logger.debug("Failed to setup OAuth2 provider", { name: config.name, error: error });
+      e.app.logger.debug("Failed to setup OAuth2 provider", { name: config.name, error });
       continue; // skip provider
     }
 

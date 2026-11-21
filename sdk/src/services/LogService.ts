@@ -20,8 +20,8 @@ export class LogService extends BaseService {
 
     options.query = Object.assign(
       {
-        page: page,
-        perPage: perPage,
+        page,
+        perPage,
       },
       options.query,
     );

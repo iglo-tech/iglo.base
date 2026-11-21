@@ -68,7 +68,6 @@ export default defineConfig({
         "no-regex-spaces": "off",
         "no-useless-assignment": "off",
         "no-var": "off",
-        "object-shorthand": "off",
         "oxc/bad-bitwise-operator": "off",
         "prefer-const": "off",
         "prefer-promise-reject-errors": "off",

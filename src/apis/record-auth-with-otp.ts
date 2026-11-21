@@ -146,7 +146,7 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
       await saveRecord(e.app, record);
     } catch (error) {
       e.app.logger.error("Failed to update record verified state after successful OTP validation", {
-        error: error,
+        error,
         otpId,
         recordId: record.id,
       });

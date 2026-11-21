@@ -408,7 +408,7 @@ function onCollectionSaveExecute(
         "Dependent view collection(s) may need to be updated after " +
           collection.name +
           " collection change",
-        { error: error },
+        { error },
       );
     }
   } finally {

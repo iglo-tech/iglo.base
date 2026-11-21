@@ -277,7 +277,7 @@ export class RecordFieldResolver implements FieldResolver {
       resultVal = extractNestedVal(this.staticRequestInfo, ...path);
     } catch (error) {
       extractErr = error;
-      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error: error });
+      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error });
       resultVal = null;
     }
 
