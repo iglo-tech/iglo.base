@@ -144,7 +144,7 @@ export default defineConfig({
     },
   ],
   rules: {
-    ...cloudflare.rules,
+    ...preset.rules,
     "no-restricted-imports": [
       "error",
       {
