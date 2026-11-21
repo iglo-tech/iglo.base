@@ -197,7 +197,8 @@ export class HashExp implements Expression {
           parts.push("(" + sql + ")");
         }
       } else if (Array.isArray(value)) {
-        const sql = inExp(name, ...value).build(db, params);
+        const items: Array<unknown> = value;
+        const sql = inExp(name, ...items).build(db, params);
         if (sql !== "") {
           parts.push(sql);
         }

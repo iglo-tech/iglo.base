@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 // Checks the built package from the outside, the way a consumer uses it:
 // `npm pack`, install the tarball into a temporary project, then
 //   - import it as ESM with Node and with Bun,

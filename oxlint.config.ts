@@ -38,7 +38,6 @@ export default defineConfig({
       rules: {
         "typescript/no-explicit-any": "off",
         "typescript/no-non-null-assertion": "off",
-        "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-member-access": "off",
       },
@@ -138,7 +137,6 @@ export default defineConfig({
         "quality/no-unknown-returns": "off",
         "quality/no-unsafe-dictionary-type": "off",
         "typescript/no-non-null-assertion": "off",
-        "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-call": "off",
         "typescript/no-unsafe-member-access": "off",

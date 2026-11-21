@@ -25,8 +25,8 @@ export class FileService extends BaseService {
     parts.push(
       "api",
       "files",
-      encodeURIComponent(record.collectionId || record.collectionName),
-      encodeURIComponent(record.id),
+      encodeURIComponent((record.collectionId || record.collectionName) as string),
+      encodeURIComponent(record.id as string),
       encodeURIComponent(filename),
     );
 

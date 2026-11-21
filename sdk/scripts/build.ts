@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 // Builds sdk/dist: the ESM bundle, source maps and declaration files.
 // Replaces js-sdk v0.28.1's rollup.config.mjs.
 //
@@ -45,7 +46,7 @@ for await (const file of walk(typesDir)) {
   const text = await readFile(file, "utf8");
   const rewritten = text.replaceAll(
     /(from\s*|import\s*\(\s*)(["'])@sdk\/([^"']+)\2/g,
-    (_m, pre, q, spec) => {
+    (_m: string, pre: string, q: string, spec: string) => {
       let rel = relative(dirname(file), join(srcTypes, spec)).split("\\").join("/");
       if (!rel.startsWith(".")) {
         rel = "./" + rel;

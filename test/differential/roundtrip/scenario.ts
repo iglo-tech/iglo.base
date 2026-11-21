@@ -301,9 +301,10 @@ async function writeRecords(
   if (generated?.id !== undefined) {
     c.state.generatedIds.add(generated.id as string);
     await c.post(records(`rt${tag}_refs`), { one: generated.id, many: [generated.id] });
-    c.state.generatedIds.add(
-      (await c.get(`${records(`rt${tag}_refs`)}?sort=-@rowid&perPage=1`)).items[0].id,
+    const listed: { items: Array<{ id: string }> } = await c.get(
+      `${records(`rt${tag}_refs`)}?sort=-@rowid&perPage=1`,
     );
+    c.state.generatedIds.add(listed.items[0]!.id);
   }
 
   // multipart: every value arrives as text
@@ -461,7 +462,7 @@ async function changeFields(
   name: string,
   change: (fields: Array<Record<string, unknown>>) => Array<Record<string, unknown>>,
 ): Promise<void> {
-  const current = await c.get(collectionPath(name));
+  const current: { fields: Array<Record<string, unknown>> } = await c.get(collectionPath(name));
   await c.patch(collectionPath(name), { fields: change(current.fields) });
 }
 

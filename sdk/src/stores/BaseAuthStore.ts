@@ -137,7 +137,7 @@ export class BaseAuthStore {
 
     let data: Record<string, unknown> = {};
     try {
-      const parsed: unknown = JSON.parse(rawData);
+      const parsed: unknown = JSON.parse(rawData as string);
       // normalize
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
         data = {};

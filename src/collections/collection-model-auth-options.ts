@@ -454,7 +454,7 @@ export class EmailTemplate {
     let body = this.body;
     let subject = this.subject;
 
-    const entries =
+    const entries: Array<[string, unknown]> =
       placeholders === null
         ? []
         : isInstance(Map, placeholders)

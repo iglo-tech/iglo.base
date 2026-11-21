@@ -89,7 +89,7 @@ export class RealtimeService extends BaseService {
 
       let data;
       try {
-        data = JSON.parse(msgEvent?.data);
+        data = JSON.parse(msgEvent?.data as string);
       } catch {
         // not JSON: the callback gets an empty object
       }

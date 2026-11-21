@@ -407,7 +407,7 @@ export class ServerClient extends Client {
 
     try {
       const res = await this.send<{ token: string; record: RecordModel }>(
-        `/api/collections/${encodeURIComponent(collection)}/auth-refresh`,
+        `/api/collections/${encodeURIComponent(collection as string)}/auth-refresh`,
         { method: "POST", headers: { Authorization: token } },
       );
       return {

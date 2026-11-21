@@ -55,7 +55,7 @@ export class BatchService extends BaseService {
 
       if (req.files) {
         for (const key in req.files) {
-          const files = req.files[key] || [];
+          const files: Array<Blob> = req.files[key] || [];
           for (const file of files) {
             formData.append("requests." + i + "." + key, file);
           }
@@ -195,7 +195,7 @@ export class SubBatchService {
     // -----------------------------------------------------------
     let body = options.body;
     if (isFormData(body)) {
-      body = convertFormDataToObject(body);
+      body = convertFormDataToObject(body as FormData);
     }
 
     for (const key in body) {
