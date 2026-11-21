@@ -496,7 +496,9 @@ describe("schema apply and schema plan", () => {
     const url = `http://127.0.0.1:${port}`;
     const shutdown = new AbortController();
     let restarted!: () => void;
-    const restartCalled = new Promise<void>((resolve) => (restarted = resolve));
+    const restartCalled = new Promise<void>((resolve) => {
+      restarted = resolve;
+    });
     const ctx: CliContext = {
       args: ["serve", "--http", `127.0.0.1:${port}`, "--dir", site.dataDir, "--schema", path],
       argv0: "iglo-base",

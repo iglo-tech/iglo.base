@@ -101,7 +101,7 @@ describe("Uploader required fields", () => {
       key: "",
     });
 
-    await expect(uploader.upload()).rejects.toThrow("Uploader.Key is required");
+    await Promise.resolve(expect(uploader.upload()).rejects.toThrow("Uploader.Key is required"));
     expect(recorder.requests).toHaveLength(0);
   });
 
@@ -233,7 +233,7 @@ describe("Uploader multipart upload", () => {
       minPartSize: 3,
     });
 
-    await expect(uploader.upload()).rejects.toThrow("400 S3ResponseError");
+    await Promise.resolve(expect(uploader.upload()).rejects.toThrow("400 S3ResponseError"));
 
     // the other workers may have sent part 3 before the failure stopped them,
     // but nothing is sent after the abort, and the upload is never completed
@@ -262,7 +262,7 @@ describe("Uploader multipart upload", () => {
       minPartSize: 3,
     });
 
-    await expect(uploader.upload()).rejects.toThrow("400 S3ResponseError");
+    await Promise.resolve(expect(uploader.upload()).rejects.toThrow("400 S3ResponseError"));
 
     expect(sortedTargets(recorder.requests)).toEqual([
       "DELETE /test_bucket/test_key?uploadId=test_id",
@@ -284,7 +284,7 @@ describe("Uploader multipart upload", () => {
       }),
     );
 
-    await expect(upload(recorder)).rejects.toThrow("200 InternalError: try again");
+    await Promise.resolve(expect(upload(recorder)).rejects.toThrow("200 InternalError: try again"));
     expect(recorder.requests.at(-1)?.method).toBe("DELETE");
   });
 
@@ -303,7 +303,9 @@ describe("Uploader multipart upload", () => {
   test("a part response without an ETag aborts the upload", async () => {
     const recorder = startRecorder(multipartResponder({ emptyEtagPart: 1 }));
 
-    await expect(upload(recorder)).rejects.toThrow("missing ETag in the response of part 1");
+    await Promise.resolve(
+      expect(upload(recorder)).rejects.toThrow("missing ETag in the response of part 1"),
+    );
     expect(recorder.requests.at(-1)?.method).toBe("DELETE");
     expect(
       recorder.requests.filter((r) => r.method === "POST" && r.query.includes("uploadId=")),
@@ -318,7 +320,7 @@ describe("Uploader multipart upload", () => {
       }),
     );
 
-    await expect(upload(recorder)).rejects.toThrow("missing UploadId");
+    await Promise.resolve(expect(upload(recorder)).rejects.toThrow("missing UploadId"));
     expect(recorder.requests).toHaveLength(1);
   });
 });

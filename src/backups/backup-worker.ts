@@ -91,19 +91,21 @@ async function handle(req: BackupRequest): Promise<boolean | undefined> {
   }
 }
 
-self.addEventListener("message", async (event: MessageEvent<BackupRequest>) => {
-  const { id } = event.data;
-  let res: BackupResponse;
-  try {
-    res = { id, ok: true, value: await handle(event.data) };
-  } catch (error) {
-    res = {
-      id,
-      ok: false,
-      message: error instanceof Error ? error.message : String(error),
-      code: (error as { code?: string } | null)?.code ?? null,
-    };
-  }
-  // a Worker's postMessage has no target origin (that is window.postMessage)
-  self.postMessage(res);
+self.addEventListener("message", (event: MessageEvent<BackupRequest>) => {
+  void (async () => {
+    const { id } = event.data;
+    let res: BackupResponse;
+    try {
+      res = { id, ok: true, value: await handle(event.data) };
+    } catch (error) {
+      res = {
+        id,
+        ok: false,
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as { code?: string } | null)?.code ?? null,
+      };
+    }
+    // a Worker's postMessage has no target origin (that is window.postMessage)
+    self.postMessage(res);
+  })();
 });

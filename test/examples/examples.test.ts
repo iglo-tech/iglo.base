@@ -54,15 +54,17 @@ async function freshDataDir(kind: ServerKind): Promise<string> {
   const dataDir = join(tempDir(), kind, "pb_data");
   copyDataDir(fixtureDir, dataDir);
   // the provider's authorization URL is absolute, as a real provider's is (the fixture has none)
-  await useProvider(
-    { user: { sub: "ssr-example", ...verifiedEmail(OAUTH_USER_EMAIL) } },
-    (collection, provider) => {
-      for (const config of collection.oauth2.providers ?? []) {
-        config.authURL = provider.authURL;
-      }
-    },
-    "users",
-  )({ dataDir });
+  await Promise.resolve(
+    useProvider(
+      { user: { sub: "ssr-example", ...verifiedEmail(OAUTH_USER_EMAIL) } },
+      (collection, provider) => {
+        for (const config of collection.oauth2.providers ?? []) {
+          config.authURL = provider.authURL;
+        }
+      },
+      "users",
+    )({ dataDir }),
+  );
   return dataDir;
 }
 

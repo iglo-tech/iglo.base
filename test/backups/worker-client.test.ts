@@ -48,10 +48,14 @@ describe("BackupWorker", () => {
     await w.call({ op: "zipAbort" });
     w.close();
 
-    await expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped");
+    await Promise.resolve(
+      expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped"),
+    );
     // closing again keeps the state
     w.close();
-    await expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped");
+    await Promise.resolve(
+      expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped"),
+    );
   });
 
   test("a call in flight when the worker closes rejects, and so do the next ones", async () => {
@@ -62,8 +66,10 @@ describe("BackupWorker", () => {
     const inflight = w.call({ op: "zipOpen", path: join(dir, "a.zip") });
     w.close();
 
-    await expect(inflight).rejects.toThrow("the backup worker was stopped");
-    await expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped");
+    await Promise.resolve(expect(inflight).rejects.toThrow("the backup worker was stopped"));
+    await Promise.resolve(
+      expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped"),
+    );
   });
 
   test("zipOpen closes the writer an earlier zipOpen left open", async () => {

@@ -450,7 +450,7 @@ export class System {
 
     setServeHeaders(res, req, fileKey, name, realContentType);
 
-    serveContent(
+    void serveContent(
       res,
       req,
       name,

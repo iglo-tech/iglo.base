@@ -294,7 +294,7 @@ describe("SSR server core: round-1 regressions", () => {
 
       const joined = await joining;
       expect(joined.authStore.isValid).toBe(true);
-      await expect(verifying).rejects.toBeInstanceOf(ClientResponseError);
+      await Promise.resolve(expect(verifying).rejects.toBeInstanceOf(ClientResponseError));
       expect(seed.written.length).toBe(0);
     });
 
@@ -584,8 +584,10 @@ describe("SSR server core: round-1 regressions", () => {
         },
         clock: () => CLOCK,
       });
-      await expect(pb.collection("_superusers").getList(1, 1)).rejects.toBeInstanceOf(
-        ClientResponseError,
+      await Promise.resolve(
+        expect(pb.collection("_superusers").getList(1, 1)).rejects.toBeInstanceOf(
+          ClientResponseError,
+        ),
       );
       expect(pb.authStore.isValid).toBe(true);
     });

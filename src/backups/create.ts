@@ -343,7 +343,9 @@ export async function uploadBackupFile(
     return;
   }
   for (const _ of fsys.uploadFileSteps(file, fileKey)) {
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }
 

@@ -40,7 +40,7 @@ test("clearBootstrap closes everything even if a step fails, and reports the err
   (app.cron as unknown as { waitForRunning: () => Promise<void> }).waitForRunning = () =>
     Promise.reject(new Error("cron did not stop"));
 
-  await expect(clearBootstrap(app)).rejects.toThrow("cron did not stop");
+  await Promise.resolve(expect(clearBootstrap(app)).rejects.toThrow("cron did not stop"));
   expect(walFiles(dataDir)).toEqual([]);
 });
 
@@ -50,7 +50,7 @@ test("a failed bootstrap leaves no open database", async () => {
   // a settings row that cannot be loaded
   execSQL(join(dataDir, "data.db"), "UPDATE _params SET value = 'not json' WHERE id = 'settings'");
 
-  await expect(bootstrap(config(dataDir))).rejects.toThrow();
+  await Promise.resolve(expect(bootstrap(config(dataDir))).rejects.toThrow());
   expect(walFiles(dataDir)).toEqual([]);
 });
 
@@ -65,8 +65,10 @@ test("clearBootstrap names every failing step in its error message", async () =>
 
   const err = await clearBootstrap(app).then(
     () => undefined,
-    (error: Error) => error,
+    (error: unknown) => error,
   );
-  expect(err?.message).toBe("cron did not stop\nthumbs did not close");
+  expect(err instanceof Error ? err.message : undefined).toBe(
+    "cron did not stop\nthumbs did not close",
+  );
   expect(walFiles(dataDir)).toEqual([]);
 });

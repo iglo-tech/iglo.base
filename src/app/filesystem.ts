@@ -138,7 +138,9 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
             break;
           }
           // give the event loop back between pages
-          await new Promise<void>((resolve) => setImmediate(resolve));
+          await new Promise<void>((resolve) => {
+            setImmediate(resolve);
+          });
         }
       }
       if (failures.length > 0) {
@@ -222,7 +224,9 @@ class Semaphore {
     if (this.tryAcquire()) {
       return Promise.resolve();
     }
-    return new Promise((resolve) => this.#waiters.push(resolve));
+    return new Promise((resolve) => {
+      this.#waiters.push(resolve);
+    });
   }
 
   release(): void {

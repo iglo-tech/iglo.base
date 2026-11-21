@@ -141,49 +141,53 @@ function rawRequest(
       clearTimeout(timer);
       finish();
     });
-    socket.on("connect", async () => {
-      const head =
-        `POST ${path} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n` +
-        `Content-Type: multipart/form-data; boundary=${boundary}\r\n` +
-        (chunked ? "Transfer-Encoding: chunked\r\n" : `Content-Length: ${body.length}\r\n`) +
-        "\r\n";
-      socket.write(head);
-      const slice = 64 * 1024;
-      for (let off = 0; off < body.length; off += slice) {
-        if (finished || sentAtResponse >= 0) {
-          return;
-        }
-        const part = body.subarray(off, Math.min(off + slice, body.length));
-        // one write per slice: a short-circuited write would break the framing
-        socket.write(
-          chunked
-            ? Buffer.concat([
-                Buffer.from(`${part.length.toString(16)}\r\n`),
-                part,
-                Buffer.from("\r\n"),
-              ])
-            : part,
-        );
-        sent += part.length;
-        // let the response (if any) be read before the next slice, also
-        // when the server keeps accepting the body
-        await new Promise((r) => setImmediate(r));
-        // checked after the yield: a "drain" during it is not missed
-        if (socket.writableNeedDrain && !finished) {
-          await new Promise<void>((r) => {
-            const done = (): void => {
-              socket.off("drain", done);
-              socket.off("close", done);
-              r();
-            };
-            socket.on("drain", done);
-            socket.on("close", done);
+    socket.on("connect", () => {
+      void (async () => {
+        const head =
+          `POST ${path} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n` +
+          `Content-Type: multipart/form-data; boundary=${boundary}\r\n` +
+          (chunked ? "Transfer-Encoding: chunked\r\n" : `Content-Length: ${body.length}\r\n`) +
+          "\r\n";
+        socket.write(head);
+        const slice = 64 * 1024;
+        for (let off = 0; off < body.length; off += slice) {
+          if (finished || sentAtResponse >= 0) {
+            return;
+          }
+          const part = body.subarray(off, Math.min(off + slice, body.length));
+          // one write per slice: a short-circuited write would break the framing
+          socket.write(
+            chunked
+              ? Buffer.concat([
+                  Buffer.from(`${part.length.toString(16)}\r\n`),
+                  part,
+                  Buffer.from("\r\n"),
+                ])
+              : part,
+          );
+          sent += part.length;
+          // let the response (if any) be read before the next slice, also
+          // when the server keeps accepting the body
+          await new Promise((r) => {
+            setImmediate(r);
           });
+          // checked after the yield: a "drain" during it is not missed
+          if (socket.writableNeedDrain && !finished) {
+            await new Promise<void>((r) => {
+              const done = (): void => {
+                socket.off("drain", done);
+                socket.off("close", done);
+                r();
+              };
+              socket.on("drain", done);
+              socket.on("close", done);
+            });
+          }
         }
-      }
-      if (chunked && !finished && sentAtResponse < 0) {
-        socket.write("0\r\n\r\n");
-      }
+        if (chunked && !finished && sentAtResponse < 0) {
+          socket.write("0\r\n\r\n");
+        }
+      })();
     });
   });
 }

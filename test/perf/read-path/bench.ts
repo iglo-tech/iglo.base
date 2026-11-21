@@ -69,7 +69,9 @@ async function throughput(
         await run();
         done++;
         // let timers run between queries, as an HTTP server's event loop would
-        await new Promise((r) => setImmediate(r));
+        await new Promise((r) => {
+          setImmediate(r);
+        });
       }
     }),
   );

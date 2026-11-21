@@ -84,7 +84,9 @@ describe("Decrypt", () => {
 
   for (const [name, cipher] of more) {
     test(name, async () => {
-      await expect(decrypt(cipher, "abcdabcdabcdabcdabcdabcdabcdabcd")).rejects.toThrow();
+      await Promise.resolve(
+        expect(decrypt(cipher, "abcdabcdabcdabcdabcdabcdabcdabcd")).rejects.toThrow(),
+      );
     });
   }
 

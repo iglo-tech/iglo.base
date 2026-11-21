@@ -440,16 +440,18 @@ export async function serve(
   }
 
   if (!shutdown.aborted) {
-    await new Promise<void>((resolve) =>
-      shutdown.addEventListener("abort", () => resolve(), { once: true }),
-    );
+    await new Promise<void>((resolve) => {
+      shutdown.addEventListener("abort", () => resolve(), { once: true });
+    });
   }
 
   // the realtime streams would keep their requests open
   closeRealtimeConnections(app);
 
   // graceful shutdown with upstream's 1 second limit
-  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 1000).unref());
+  const timeout = new Promise<void>((resolve) => {
+    setTimeout(resolve, 1000).unref();
+  });
   await Promise.race([server.stop(), timeout]);
   await server.stop(true);
 }

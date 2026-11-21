@@ -131,7 +131,7 @@ export class AsyncAuthStore extends BaseAuthStore {
       return;
     }
 
-    this.queue[0]!().finally(() => {
+    void this.queue[0]!().finally(() => {
       this.queue.shift();
 
       if (!this.queue.length) {

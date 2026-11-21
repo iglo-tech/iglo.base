@@ -200,7 +200,7 @@ test("no credentials over an unencrypted connection to another host", async () =
   for (const authMethod of ["PLAIN", "LOGIN"]) {
     const server = startServer("127.0.0.2");
     const send = client(server, { username: "test", password: "123456", authMethod }).send(message);
-    await expect(send).rejects.toThrow("unencrypted connection");
+    await Promise.resolve(expect(send).rejects.toThrow("unencrypted connection"));
     expect(server.commands.some((c) => /^AUTH/i.test(c))).toBe(false);
     expect(server.data).toEqual([]);
   }
@@ -208,9 +208,11 @@ test("no credentials over an unencrypted connection to another host", async () =
 
 test("a server error reads as Go's textproto.Error", async () => {
   const server = startServer();
-  await expect(
-    client(server).send({ ...message, to: [{ name: "", address: "reject@example.com" }] }),
-  ).rejects.toThrow(`550 "5.1.1 no such user"`);
+  await Promise.resolve(
+    expect(
+      client(server).send({ ...message, to: [{ name: "", address: "reject@example.com" }] }),
+    ).rejects.toThrow(`550 "5.1.1 no such user"`),
+  );
 });
 
 test("the message as mailyak writes it", async () => {

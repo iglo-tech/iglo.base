@@ -570,7 +570,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     function cleanup() {
       eagerDefaultPopup?.close();
-      realtime.unsubscribe();
+      void realtime.unsubscribe();
     }
 
     const requestKeyOptions: SendOptions = {};
@@ -590,108 +590,111 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
         const redirectURL = this.client.buildURL("/api/oauth2-redirect");
 
-        // oxlint-disable-next-line no-async-promise-executor -- upstream async promise executor
-        return new Promise(async (resolve, reject) => {
-          // find the AbortController associated with the current request key (if any)
-          const cancelController = requestKey
-            ? this.client["cancelControllers"]?.[requestKey]
-            : undefined;
-          if (cancelController) {
-            cancelController.signal.onabort = () => {
-              cleanup();
-              reject(
-                new ClientResponseError({
-                  isAbort: true,
-                  message: "manually cancelled",
-                }),
-              );
-            };
-          }
-
-          // disconnected due to network/server error
-          realtime.onDisconnect = (activeSubscriptions: Array<string>) => {
-            if (activeSubscriptions.length && reject) {
-              cleanup();
-              reject(new ClientResponseError(new Error("realtime connection interrupted")));
-            }
-          };
-
-          try {
-            await realtime.subscribe("@oauth2", async (e) => {
-              const oldState = realtime.clientId;
-
-              try {
-                if (!e.state || oldState !== e.state) {
-                  throw new Error("State parameters don't match.");
-                }
-
-                if (e.error || !e.code) {
-                  throw new Error("OAuth2 redirect error or missing code: " + e.error);
-                }
-
-                // clear the non SendOptions props
-                const options: Partial<OAuth2AuthConfig> = Object.assign({}, config);
-                delete options.provider;
-                delete options.scopes;
-                delete options.createData;
-                delete options.urlCallback;
-
-                // reset the cancelController listener as it will be triggered by the next api call
-                if (cancelController?.signal?.onabort) {
-                  cancelController.signal.onabort = null;
-                }
-
-                const authData = await this.authWithOAuth2Code<T>(
-                  provider.name,
-                  e.code,
-                  provider.codeVerifier,
-                  redirectURL,
-                  config.createData,
-                  options,
+        return new Promise((resolve, reject) => {
+          void (async () => {
+            // find the AbortController associated with the current request key (if any)
+            const cancelController = requestKey
+              ? this.client["cancelControllers"]?.[requestKey]
+              : undefined;
+            if (cancelController) {
+              cancelController.signal.onabort = () => {
+                cleanup();
+                reject(
+                  new ClientResponseError({
+                    isAbort: true,
+                    message: "manually cancelled",
+                  }),
                 );
+              };
+            }
 
-                resolve(authData);
-              } catch (error) {
-                reject(new ClientResponseError(error));
+            // disconnected due to network/server error
+            realtime.onDisconnect = (activeSubscriptions: Array<string>) => {
+              if (activeSubscriptions.length && reject) {
+                cleanup();
+                reject(new ClientResponseError(new Error("realtime connection interrupted")));
+              }
+            };
+
+            try {
+              await realtime.subscribe("@oauth2", (e) => {
+                void (async () => {
+                  const oldState = realtime.clientId;
+
+                  try {
+                    if (!e.state || oldState !== e.state) {
+                      throw new Error("State parameters don't match.");
+                    }
+
+                    if (e.error || !e.code) {
+                      throw new Error("OAuth2 redirect error or missing code: " + e.error);
+                    }
+
+                    // clear the non SendOptions props
+                    const options: Partial<OAuth2AuthConfig> = Object.assign({}, config);
+                    delete options.provider;
+                    delete options.scopes;
+                    delete options.createData;
+                    delete options.urlCallback;
+
+                    // reset the cancelController listener as it will be triggered by the next api call
+                    if (cancelController?.signal?.onabort) {
+                      cancelController.signal.onabort = null;
+                    }
+
+                    const authData = await this.authWithOAuth2Code<T>(
+                      provider.name,
+                      e.code,
+                      provider.codeVerifier,
+                      redirectURL,
+                      config.createData,
+                      options,
+                    );
+
+                    resolve(authData);
+                  } catch (error) {
+                    reject(new ClientResponseError(error));
+                  }
+
+                  cleanup();
+                })();
+              });
+
+              const replacements: Record<string, string> = {
+                state: realtime.clientId,
+              };
+              if (config.scopes?.length) {
+                replacements["scope"] = config.scopes.join(" ");
+              }
+
+              const url = this._replaceQueryParams(provider.authURL + redirectURL, replacements);
+
+              const urlCallback =
+                config.urlCallback ||
+                function (url: string) {
+                  if (eagerDefaultPopup) {
+                    eagerDefaultPopup.location.href = url;
+                  } else {
+                    // it could have been blocked due to its empty initial url,
+                    // try again...
+                    eagerDefaultPopup = openBrowserPopup(url);
+                  }
+                };
+
+              await urlCallback(url);
+            } catch (error) {
+              // reset the cancelController listener in case the request key is reused
+              if (cancelController?.signal?.onabort) {
+                cancelController.signal.onabort = null;
               }
 
               cleanup();
-            });
-
-            const replacements: Record<string, string> = {
-              state: realtime.clientId,
-            };
-            if (config.scopes?.length) {
-              replacements["scope"] = config.scopes.join(" ");
+              reject(new ClientResponseError(error));
             }
-
-            const url = this._replaceQueryParams(provider.authURL + redirectURL, replacements);
-
-            const urlCallback =
-              config.urlCallback ||
-              function (url: string) {
-                if (eagerDefaultPopup) {
-                  eagerDefaultPopup.location.href = url;
-                } else {
-                  // it could have been blocked due to its empty initial url,
-                  // try again...
-                  eagerDefaultPopup = openBrowserPopup(url);
-                }
-              };
-
-            await urlCallback(url);
-          } catch (error) {
-            // reset the cancelController listener in case the request key is reused
-            if (cancelController?.signal?.onabort) {
-              cancelController.signal.onabort = null;
-            }
-
-            cleanup();
-            reject(new ClientResponseError(error));
-          }
+          })();
         });
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         cleanup();
         throw error; // rethrow
       }) as Promise<RecordAuthResponse<T>>;

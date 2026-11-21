@@ -485,6 +485,6 @@ describe("createNextAuth: no-cache headers and runtime", () => {
   });
 
   test("the browser stub names the Node.js runtime for a bundle that loads the server-only module", async () => {
-    await expect(import("@sdk/ssr/browser")).rejects.toThrow(/Node\.js runtime/);
+    await Promise.resolve(expect(import("@sdk/ssr/browser")).rejects.toThrow(/Node\.js runtime/));
   });
 });

@@ -105,7 +105,7 @@ test("a request settles when finishing the response fails after a panic", async 
     },
   };
   const request = new Request(`${url}/anything`);
-  await expect(handleRequest(app, mux as never, request, null)).rejects.toThrow(
-    "unrecovered panic",
+  await Promise.resolve(
+    expect(handleRequest(app, mux as never, request, null)).rejects.toThrow("unrecovered panic"),
   );
 });

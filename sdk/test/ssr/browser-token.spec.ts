@@ -141,7 +141,7 @@ describe("mintBrowserToken", () => {
       fetch,
       origin: APP,
     });
-    await expect(mintBrowserToken(server, undefined)).rejects.toThrow(TypeError);
+    await Promise.resolve(expect(mintBrowserToken(server, undefined)).rejects.toThrow(TypeError));
   });
 
   test("in fallback mode without superuser credentials, the session token itself is returned", async () => {
@@ -406,9 +406,11 @@ describe("handleBrowserTokenRenew: configuration and mint failures", () => {
     const clock = testClock(T0 * 1000);
     const session = authToken(T0 + 3600);
     const { fetch, calls } = stubApi(clock, {});
-    await expect(
-      handleBrowserTokenRenew(renewRequest(cookieHeader(session)), { url: API, clock, fetch }),
-    ).rejects.toThrow(TypeError);
+    await Promise.resolve(
+      expect(
+        handleBrowserTokenRenew(renewRequest(cookieHeader(session)), { url: API, clock, fetch }),
+      ).rejects.toThrow(TypeError),
+    );
     expect(calls).toHaveLength(0);
   });
 

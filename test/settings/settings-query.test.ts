@@ -124,8 +124,10 @@ describe("loadParam errors", () => {
         .nonconcurrentDB()
         .newQuery(`UPDATE _params SET value = 'not json' WHERE id = 'settings'`)
         .execute();
-      await expect(reloadSettings(app)).rejects.toThrow(
-        'invalid settings db data or missing encryption key "PB_TEST_KEY"',
+      await Promise.resolve(
+        expect(reloadSettings(app)).rejects.toThrow(
+          'invalid settings db data or missing encryption key "PB_TEST_KEY"',
+        ),
       );
     } finally {
       await app.cleanup();
@@ -155,8 +157,8 @@ describe("loadParam errors", () => {
     const app = await openFixtureApp({ encryptionEnv: "PB_TEST_KEY", getenv: () => "short" });
     try {
       // plain settings load without decryption; the save encrypts
-      await expect(saveSettings(app, app.settings)).rejects.toThrow(
-        "crypto/aes: invalid key size 5",
+      await Promise.resolve(
+        expect(saveSettings(app, app.settings)).rejects.toThrow("crypto/aes: invalid key size 5"),
       );
     } finally {
       await app.cleanup();

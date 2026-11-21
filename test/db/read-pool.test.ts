@@ -102,7 +102,7 @@ test("the async resolvers read on the pool what the synchronous ones read", asyn
     await q()
       .where(new HashExp({ id: "missing" }))
       .oneAsync()
-      .catch((error) => error),
+      .catch((error: unknown) => error),
   ).toBeInstanceOf(NoRowsError);
 
   // models, and the auxiliary database
@@ -118,7 +118,7 @@ test("the async resolvers read on the pool what the synchronous ones read", asyn
   const err = (await modelQuery(app, new Demo())
     .where(newExp("missing_column = 1"))
     .allAsync()
-    .catch((error) => error)) as Error & { code?: string };
+    .catch((error: unknown) => error)) as Error & { code?: string };
   expect(err.message).toBe(
     "no such column: missing_column; failed query: SELECT {{demo}}.* FROM `demo` WHERE missing_column = 1",
   );
@@ -157,7 +157,7 @@ test("the pool's connections are read-only and use upstream's pragmas", async ()
   const err = (await db
     .newQuery("INSERT INTO demo (id) VALUES ('x') RETURNING id")
     .allAsync()
-    .catch((error) => error)) as Error;
+    .catch((error: unknown) => error)) as Error;
   expect(err.message).toBe("attempt to write a readonly database");
 });
 
@@ -259,7 +259,7 @@ test("a prepared query's async resolvers read on the pool and honor the deadline
 
   const q = modelQuery(app, new Demo()).where(slowWhere).build().prepare();
   const start = performance.now();
-  const pending = q.allAsync().catch((error) => error as Error);
+  const pending = q.allAsync().catch((error: unknown) => error as Error);
   // the statement runs on the worker, not on this thread
   expect(performance.now() - start).toBeLessThan(100);
   const err = await pending;
@@ -289,7 +289,7 @@ test("a pooled result that arrives after the deadline fails the query", async ()
   // its result is delivered before the timer runs
   const pending = q()
     .oneAsync()
-    .catch((error) => error as Error);
+    .catch((error: unknown) => error as Error);
   clock += 20_000;
   const start = performance.now();
   const err = await pending;
@@ -313,7 +313,7 @@ test("waiting for a free worker counts towards the deadline", async () => {
   const err = (await modelQuery(app, new Demo())
     .where(new HashExp({ id: "id1" }))
     .oneAsync()
-    .catch((error) => error)) as Error;
+    .catch((error: unknown) => error)) as Error;
   expect(err.message).toBe(
     "context deadline exceeded; failed query: SELECT {{demo}}.* FROM `demo` WHERE `id`={:p0}",
   );
@@ -455,10 +455,12 @@ test("closing the databases fails the pool's queued and running reads", async ()
   const running = app.concurrentDB().select("count(*)").from("demo").where(slowWhere).rowAsync();
   const queued = app.concurrentDB().select("count(*)").from("demo").rowAsync();
   app.close();
-  expect(((await running.catch((error) => error)) as Error).message).toBe(
+  expect(((await running.catch((error: unknown) => error)) as Error).message).toBe(
     "sql: database is closed",
   );
-  expect(((await queued.catch((error) => error)) as Error).message).toBe("sql: database is closed");
+  expect(((await queued.catch((error: unknown) => error)) as Error).message).toBe(
+    "sql: database is closed",
+  );
   await app.closed();
   expect(app.readPool()!.stats()).toEqual({ workers: 0, busy: 0, queued: 0, abandoned: 0 });
 });

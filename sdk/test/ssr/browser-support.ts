@@ -148,6 +148,8 @@ export function fakeTimers(clock: TestClock) {
 /** Lets pending promise callbacks and Response body reads settle (no timers involved). */
 export async function settle(): Promise<void> {
   for (let i = 0; i < 5; i++) {
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }

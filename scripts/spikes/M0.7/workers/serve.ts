@@ -39,35 +39,37 @@ async function warm(createThumb: CreateThumb): Promise<number> {
 }
 
 export function serve(createThumb: CreateThumb): void {
-  self.addEventListener("message", async (event: MessageEvent<Job | "warm">) => {
-    if (event.data === "warm") {
-      postMessage({ warmMs: await warm(createThumb) });
-      return;
-    }
-    const job = event.data;
-    const started = performance.now();
-    try {
-      const input = await Bun.file(job.input).bytes();
-      const thumb = await createThumb(input, job.contentType, job.size, job.maxPixels);
-      const ms = performance.now() - started;
-      if (job.out) {
-        writeFileSync(job.out, thumb.bytes);
+  self.addEventListener("message", (event: MessageEvent<Job | "warm">) => {
+    void (async () => {
+      if (event.data === "warm") {
+        postMessage({ warmMs: await warm(createThumb) });
+        return;
       }
-      postMessage({
-        id: job.id,
-        ms,
-        contentType: thumb.contentType,
-        bytes: thumb.bytes.length,
-      } satisfies JobResult);
-    } catch (error) {
-      postMessage({
-        id: job.id,
-        ms: performance.now() - started,
-        error:
-          error instanceof Error
-            ? String(error)
-            : `${typeof error}: ${JSON.stringify(error) ?? String(error)}`,
-      } satisfies JobResult);
-    }
+      const job = event.data;
+      const started = performance.now();
+      try {
+        const input = await Bun.file(job.input).bytes();
+        const thumb = await createThumb(input, job.contentType, job.size, job.maxPixels);
+        const ms = performance.now() - started;
+        if (job.out) {
+          writeFileSync(job.out, thumb.bytes);
+        }
+        postMessage({
+          id: job.id,
+          ms,
+          contentType: thumb.contentType,
+          bytes: thumb.bytes.length,
+        } satisfies JobResult);
+      } catch (error) {
+        postMessage({
+          id: job.id,
+          ms: performance.now() - started,
+          error:
+            error instanceof Error
+              ? String(error)
+              : `${typeof error}: ${JSON.stringify(error) ?? String(error)}`,
+        } satisfies JobResult);
+      }
+    })();
   });
 }

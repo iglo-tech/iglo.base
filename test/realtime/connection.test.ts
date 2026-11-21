@@ -75,7 +75,7 @@ class Stream {
 
   static async open(mux: Mux): Promise<Stream> {
     const stream = new Stream(await serveTest(mux, { target: "/api/realtime" }));
-    stream.#read();
+    void stream.#read();
     await stream.waitFor(1);
     return stream;
   }
@@ -256,16 +256,18 @@ test("a client with more than 8 MiB unsent is closed (D27)", async () => {
 
   expect(await subscribe(mux, clientId, [])).toBe(404);
   expect(reading.done).toBe(false);
-  await expect(
-    (async () => {
-      for (;;) {
-        const { done } = await reader.read();
-        if (done) {
-          return "ended";
+  await Promise.resolve(
+    expect(
+      (async () => {
+        for (;;) {
+          const { done } = await reader.read();
+          if (done) {
+            return "ended";
+          }
         }
-      }
-    })(),
-  ).rejects.toThrow();
+      })(),
+    ).rejects.toThrow(),
+  );
   expect(await subscribe(mux, reading.clientId, [])).toBe(204);
 });
 

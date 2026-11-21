@@ -262,8 +262,10 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
     expect(one.collection().name).toBe("demo1");
     expect(one.isNew()).toBe(false);
 
-    await expect(recordQuery(app, "missing").allAsync(recordsTarget)).rejects.toThrow(
-      "context canceled; failed query: ",
+    await Promise.resolve(
+      expect(recordQuery(app, "missing").allAsync(recordsTarget)).rejects.toThrow(
+        "context canceled; failed query: ",
+      ),
     );
   });
 });

@@ -35,40 +35,56 @@ afterEach(() => {
 
 describe("the id_token leeway", () => {
   test("5 minutes by default", async () => {
-    await expect(
-      provider().fetchAuthUser(idToken({ exp: nowSeconds - 299 })),
-    ).resolves.toMatchObject({ id: "abc" });
-    await expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 301 }))).rejects.toThrow(
-      "token is expired",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 299 }))).resolves.toMatchObject({
+        id: "abc",
+      }),
+    );
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 301 }))).rejects.toThrow(
+        "token is expired",
+      ),
     );
   });
 
   test("PB_ID_TOKEN_LEEWAY sets it", async () => {
     process.env["PB_ID_TOKEN_LEEWAY"] = "10";
-    await expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 9 }))).resolves.toMatchObject(
-      { id: "abc" },
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 9 }))).resolves.toMatchObject({
+        id: "abc",
+      }),
     );
-    await expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 11 }))).rejects.toThrow(
-      "token is expired",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 11 }))).rejects.toThrow(
+        "token is expired",
+      ),
     );
   });
 
   test("an invalid PB_ID_TOKEN_LEEWAY keeps the default", async () => {
     process.env["PB_ID_TOKEN_LEEWAY"] = "soon";
-    await expect(
-      provider().fetchAuthUser(idToken({ exp: nowSeconds - 299 })),
-    ).resolves.toMatchObject({ id: "abc" });
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ exp: nowSeconds - 299 }))).resolves.toMatchObject({
+        id: "abc",
+      }),
+    );
   });
 
   test("covers iat and nbf", async () => {
-    await expect(
-      provider().fetchAuthUser(idToken({ iat: nowSeconds + 299, nbf: nowSeconds + 299 })),
-    ).resolves.toMatchObject({ id: "abc" });
-    await expect(provider().fetchAuthUser(idToken({ iat: nowSeconds + 301 }))).rejects.toThrow(
-      "used before issued",
+    await Promise.resolve(
+      expect(
+        provider().fetchAuthUser(idToken({ iat: nowSeconds + 299, nbf: nowSeconds + 299 })),
+      ).resolves.toMatchObject({ id: "abc" }),
     );
-    await expect(provider().fetchAuthUser(idToken({ nbf: nowSeconds + 301 }))).rejects.toThrow(
-      "not valid yet",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ iat: nowSeconds + 301 }))).rejects.toThrow(
+        "used before issued",
+      ),
+    );
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ nbf: nowSeconds + 301 }))).rejects.toThrow(
+        "not valid yet",
+      ),
     );
   });
 });
@@ -83,23 +99,31 @@ describe("the id_token claims", () => {
   });
 
   test("an aud of another type is no audience", async () => {
-    await expect(provider().fetchAuthUser(idToken({ aud: 1 }))).rejects.toThrow("aud");
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ aud: 1 }))).rejects.toThrow("aud"),
+    );
   });
 
   test("a list of audiences with a non-string member", async () => {
-    await expect(provider().fetchAuthUser(idToken({ aud: ["client", 1] }))).rejects.toThrow(
-      "aud is invalid",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(idToken({ aud: ["client", 1] }))).rejects.toThrow(
+        "aud is invalid",
+      ),
     );
   });
 
   test("a non-string iss fails the issuers check", async () => {
     const p = provider();
     p.extra = { issuers: ["https://a.example"] };
-    await expect(p.fetchAuthUser(idToken({ iss: 1 }))).rejects.toThrow("iss must be one of");
+    await Promise.resolve(
+      expect(p.fetchAuthUser(idToken({ iss: 1 }))).rejects.toThrow("iss must be one of"),
+    );
   });
 
   test("a query string token's numeric id_token is no id_token", async () => {
     const token = new Token({ accessToken: "abc", raw: new Map([["id_token", ["123"]]]) });
-    await expect(provider().fetchAuthUser(token)).rejects.toThrow("empty or invalid id_token");
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(token)).rejects.toThrow("empty or invalid id_token"),
+    );
   });
 });

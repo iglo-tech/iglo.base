@@ -41,7 +41,7 @@ export function startS3Recorder(respond: (req: RecordedRequest) => Response): S3
     endpoint: `http://127.0.0.1:${server.port}/`,
     requests,
     stop: () => {
-      server.stop(true);
+      void server.stop(true);
     },
   };
 }

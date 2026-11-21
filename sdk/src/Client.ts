@@ -491,7 +491,7 @@ export default class Client {
 
         return data as T;
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         // wrap to normalize all errors
         throw new ClientResponseError(error);
       })

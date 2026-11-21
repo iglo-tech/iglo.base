@@ -33,5 +33,5 @@ test("the response's root element may have any name", async () => {
 });
 
 test("an empty response fails as Go's decoder does", async () => {
-  await expect(copyObject(client(""), "src", "dst")).rejects.toThrow("EOF");
+  await Promise.resolve(expect(copyObject(client(""), "src", "dst")).rejects.toThrow("EOF"));
 });

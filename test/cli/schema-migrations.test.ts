@@ -407,7 +407,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("refuses renames that cannot run, and the apply leaves the database unchanged", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     const cases: Array<[string, string, Array<string>]> = [
       [
@@ -526,7 +526,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("a migration that throws rolls back the whole startup and names the file", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeSchema(site, { posts: posts({ title: { type: "text" }, note: { type: "text" } }) });
     writeMigration(
@@ -548,7 +548,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("an async up fails the apply, because up must be synchronous", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeMigration(
       site,
@@ -587,7 +587,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("schema plan with a pending migration changes nothing", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeMigration(
       site,
@@ -824,7 +824,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
       "20261113240000_kept.ts",
       migrationSource(`  up(tx) {\n    tx.create("posts", { title: "kept" });\n  },`),
     );
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
     expect(migrationRows(site.dataDir)).toContain("@schema/20261113240000_kept.ts");
 
     rmFile(join(site.migrationsDir, "20261113240000_kept.ts"));
@@ -1363,7 +1363,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
   test("a rename to a hidden field type-checks against the generated Migration type", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, secret: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeSchema(site, {
       posts: posts({ title: { type: "text" }, apikey: { type: "text", hidden: true } }),
@@ -1759,7 +1759,7 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
   test("rename checks compare names without regard to case, and say so", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     const cases: Array<[string, string, Array<string>]> = [
       [
@@ -1804,7 +1804,7 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
       posts: posts({ title: { type: "text" } }),
       news: posts({ title: { type: "text" } }),
     });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeSchema(site, { Posts: posts({ title: { type: "text" } }) });
     writeMigration(

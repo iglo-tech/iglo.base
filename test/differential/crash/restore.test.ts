@@ -248,7 +248,9 @@ describe("crash: restore directory states", () => {
         checkDatabases(after);
         expect(await readState("upstream", after)).toBe(igloState);
 
-        const upstreamState = await readState("upstream", copy).catch((error) => `fails: ${error}`);
+        const upstreamState = await readState("upstream", copy).catch(
+          (error: unknown) => `fails: ${error}`,
+        );
         console.warn(
           `${label}: iglo ${igloState}, upstream on the same directory ${upstreamState}`,
         );
@@ -294,7 +296,7 @@ describe("crash: restore record that cannot be read", () => {
       rmSync(join(temp, "restore_phase.moving-new"));
       writeFileSync(join(temp, "restore_phase"), "");
       const before = walk(dataDir);
-      await expect(launch("iglo", dataDir)).rejects.toThrow();
+      await Promise.resolve(expect(launch("iglo", dataDir)).rejects.toThrow());
       expect(walk(dataDir)).toEqual(before);
     },
     timeout,

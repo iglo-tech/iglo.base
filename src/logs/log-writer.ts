@@ -69,7 +69,9 @@ export class LogWriter {
     if (Atomics.load(running.done, 0) >= seq) {
       return Promise.resolve();
     }
-    return new Promise((resolve) => this.#waiters.push({ seq, resolve }));
+    return new Promise((resolve) => {
+      this.#waiters.push({ seq, resolve });
+    });
   }
 
   // blocks until every batch posted so far has been written: the app is
@@ -95,7 +97,9 @@ export class LogWriter {
     // suspend of a backup or a restore
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timedOut = await Promise.race([
-      new Promise<boolean>((resolve) => this.#waiters.push({ seq, resolve: () => resolve(false) })),
+      new Promise<boolean>((resolve) => {
+        this.#waiters.push({ seq, resolve: () => resolve(false) });
+      }),
       new Promise<boolean>((resolve) => {
         timer = setTimeout(() => resolve(true), this.#timeoutMs);
       }),

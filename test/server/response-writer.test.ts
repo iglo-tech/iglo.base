@@ -52,7 +52,7 @@ test("a writeBody body is sent after a flush", async () => {
 test("a write after the response finished is refused", () => {
   const rw = new ResponseWriter(() => {});
   rw.write("body");
-  rw.finish();
+  void rw.finish();
   expect(rw.write("late")).toBe(ErrWriteAfterFinish);
   expect(rw.writeBody(new Blob(["late"]))).toBe(ErrWriteAfterFinish);
 });
@@ -78,7 +78,9 @@ test("gzip compresses a writeBody body and runs the cleanups after the response"
     "compressed body",
   );
   // the cleanups run on a timer after the response reached the server
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
   expect(cleaned).toBe(1);
   await app.cleanup();
 });
@@ -100,7 +102,7 @@ test("a write after a plain flush is streamed", async () => {
   rw.write("one ");
   rw.flush();
   expect(rw.write("two")).toBeUndefined();
-  rw.finish();
+  void rw.finish();
   expect(await sent[0]?.text()).toBe("one two");
 });
 

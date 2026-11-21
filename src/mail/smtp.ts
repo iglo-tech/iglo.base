@@ -154,9 +154,9 @@ export class SMTPClient implements Mailer {
     const step = <T>(run: (done: (err: Error | null, value?: T) => void) => void): Promise<T> =>
       Promise.race([
         failed,
-        new Promise<T>((resolve, reject) =>
-          run((err, value) => (err ? reject(failure ?? err) : resolve(value as T))),
-        ),
+        new Promise<T>((resolve, reject) => {
+          run((err, value) => (err ? reject(failure ?? err) : resolve(value as T)));
+        }),
       ]);
 
     try {

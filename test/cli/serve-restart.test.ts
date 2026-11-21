@@ -21,7 +21,9 @@ test("a failed restart after a restore reverts the data and serves again", async
 
   let restartCalls = 0;
   let restartCalled!: () => void;
-  const restarted = new Promise<void>((resolve) => (restartCalled = resolve));
+  const restarted = new Promise<void>((resolve) => {
+    restartCalled = resolve;
+  });
   const ctx: CliContext = {
     args: ["serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, "--automigrate=false"],
     argv0: "iglo-base",

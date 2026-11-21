@@ -456,7 +456,7 @@ export class PasswordFieldValue {
           this.#pending = null;
         }
       },
-      (error) => {
+      (error: unknown) => {
         if (this.#pending === pending) {
           this.lastError = error as Error;
           this.#pending = null;

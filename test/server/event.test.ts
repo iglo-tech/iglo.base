@@ -118,7 +118,7 @@ describe("FindUploadedFiles", () => {
   test("missing", async () => {
     const event = newEvent(multipartRequest());
 
-    await expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile);
+    await Promise.resolve(expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile));
   });
 
   // mime/multipart ReadForm: a part with an empty filename is a form value
@@ -126,7 +126,7 @@ describe("FindUploadedFiles", () => {
     test(`empty filename, content ${JSON.stringify(content)}`, async () => {
       const event = newEvent(multipartRequest({ field: "test", filename: "", content }));
 
-      await expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile);
+      await Promise.resolve(expect(event.findUploadedFiles("test")).rejects.toBe(ErrMissingFile));
       expect(event.request.multipartForm?.value.get("test")).toEqual([content]);
       expect(event.request.form?.get("test")).toEqual([content]);
     });

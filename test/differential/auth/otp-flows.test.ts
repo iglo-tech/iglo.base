@@ -611,7 +611,9 @@ describe("MFA", () => {
           const [rawA = ""] = await rawMessages(mail, 1);
           const b = step(await requestOTP(server));
           const [rawB = ""] = await rawMessages(mail, 2);
-          const passwords = await Promise.all([rawA, rawB].map(mailedPassword));
+          const passwords = await Promise.all(
+            [rawA, rawB].map((raw) => Promise.resolve(mailedPassword(raw))),
+          );
 
           const first = step(await authWithOTP(server, a.json["otpId"], passwords[0] as string));
           const second = step(

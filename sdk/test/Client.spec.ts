@@ -536,7 +536,7 @@ describe("Client", () => {
       assert.equal(responseSuccess, "789");
 
       const responseFailure = client.send("/failure", { method: "GET" });
-      await expect(responseFailure).rejects.toThrow();
+      await Promise.resolve(expect(responseFailure).rejects.toThrow());
     });
 
     test("Should trigger the async after hook", async () => {
@@ -562,7 +562,7 @@ describe("Client", () => {
       });
 
       const response = client.send("/async_after", { method: "GET" });
-      await expect(response).rejects.toThrow("after_err");
+      await Promise.resolve(expect(response).rejects.toThrow("after_err"));
     });
 
     test("Should return a wrapped AbortError in case the request is cancelled during the json response resolving", async () => {
@@ -578,7 +578,7 @@ describe("Client", () => {
       });
 
       const response = client.send("/abc", { method: "GET" });
-      await expect(response).rejects.toThrow("request was aborted");
+      await Promise.resolve(expect(response).rejects.toThrow("request was aborted"));
     });
   });
 
@@ -600,7 +600,7 @@ describe("Client", () => {
 
       client.cancelRequest("testKey");
 
-      await expect(response).rejects.toThrow();
+      await Promise.resolve(expect(response).rejects.toThrow());
     });
   });
 
@@ -631,8 +631,8 @@ describe("Client", () => {
 
       client.cancelAllRequests();
 
-      await expect(requestA).rejects.toThrow();
-      await expect(requestB).rejects.toThrow();
+      await Promise.resolve(expect(requestA).rejects.toThrow());
+      await Promise.resolve(expect(requestB).rejects.toThrow());
     });
   });
 
@@ -652,8 +652,8 @@ describe("Client", () => {
       const requestA = client.send("/123", { method: "GET" });
       const requestB = client.send("/123", { method: "GET" });
 
-      await expect(requestA).resolves.toBeDefined();
-      await expect(requestB).resolves.toBeDefined();
+      await Promise.resolve(expect(requestA).resolves.toBeDefined());
+      await Promise.resolve(expect(requestB).resolves.toBeDefined());
     });
 
     test("Should auto cancel duplicated requests with default key", async () => {
@@ -674,9 +674,9 @@ describe("Client", () => {
       requestA.catch(() => {});
       requestB.catch(() => {});
 
-      await expect(requestA).rejects.toThrow();
-      await expect(requestB).rejects.toThrow();
-      await expect(requestC).resolves.toBeDefined();
+      await Promise.resolve(expect(requestA).rejects.toThrow());
+      await Promise.resolve(expect(requestB).rejects.toThrow());
+      await Promise.resolve(expect(requestC).resolves.toBeDefined());
     });
 
     test("(legacy) Should auto cancel duplicated requests with custom key", async () => {
@@ -695,8 +695,8 @@ describe("Client", () => {
       });
       const requestB = client.send("/123", { method: "GET" });
 
-      await expect(requestA).resolves.toBeDefined();
-      await expect(requestB).resolves.toBeDefined();
+      await Promise.resolve(expect(requestA).resolves.toBeDefined());
+      await Promise.resolve(expect(requestB).resolves.toBeDefined());
     });
 
     test("Should auto cancel duplicated requests with custom key", async () => {
@@ -719,9 +719,9 @@ describe("Client", () => {
       });
       const requestC = client.send("/123", { method: "GET" });
 
-      await expect(requestA).rejects.toThrow();
-      await expect(requestB).resolves.toBeDefined();
-      await expect(requestC).resolves.toBeDefined();
+      await Promise.resolve(expect(requestA).rejects.toThrow());
+      await Promise.resolve(expect(requestB).resolves.toBeDefined());
+      await Promise.resolve(expect(requestC).resolves.toBeDefined());
     });
 
     test("(legacy) Should skip auto cancellation", async () => {
@@ -747,9 +747,9 @@ describe("Client", () => {
         params: { $autoCancel: false },
       });
 
-      await expect(requestA).resolves.toBeDefined();
-      await expect(requestB).resolves.toBeDefined();
-      await expect(requestC).resolves.toBeDefined();
+      await Promise.resolve(expect(requestA).resolves.toBeDefined());
+      await Promise.resolve(expect(requestB).resolves.toBeDefined());
+      await Promise.resolve(expect(requestC).resolves.toBeDefined());
     });
 
     test("Should skip auto cancellation", async () => {
@@ -766,9 +766,9 @@ describe("Client", () => {
       const requestB = client.send("/123", { method: "GET", requestKey: null });
       const requestC = client.send("/123", { method: "GET", requestKey: null });
 
-      await expect(requestA).resolves.toBeDefined();
-      await expect(requestB).resolves.toBeDefined();
-      await expect(requestC).resolves.toBeDefined();
+      await Promise.resolve(expect(requestA).resolves.toBeDefined());
+      await Promise.resolve(expect(requestB).resolves.toBeDefined());
+      await Promise.resolve(expect(requestC).resolves.toBeDefined());
     });
   });
 

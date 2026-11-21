@@ -53,7 +53,7 @@ describe("NewFilesystem", () => {
       logger: testLogger(),
     }).newFilesystem();
     try {
-      fs.upload(new TextEncoder().encode("hi"), "c/r/f.txt");
+      void fs.upload(new TextEncoder().encode("hi"), "c/r/f.txt");
     } finally {
       fs.close();
     }
@@ -105,8 +105,8 @@ describe("deleteModelFiles", () => {
       logger: testLogger(),
     });
 
-    appFs.deleteModelFiles({ baseFilesPath: () => "c1/r1", fieldTypes: () => ["text"] });
-    appFs.deleteModelFiles({ baseFilesPath: () => "", fieldTypes: () => ["file"] });
+    void appFs.deleteModelFiles({ baseFilesPath: () => "c1/r1", fieldTypes: () => ["text"] });
+    void appFs.deleteModelFiles({ baseFilesPath: () => "", fieldTypes: () => ["file"] });
     await Bun.sleep(50);
     expect(existsSync(join(dataDir, "storage", "c1", "r1", "a.txt"))).toBe(true);
   });
@@ -148,7 +148,7 @@ describe("deleteModelFiles", () => {
       logger: testLogger((message) => logged.push(message)),
     });
     settings.S3.Enabled = true; // NewFilesystem fails
-    appFs.deleteModelFiles(fileModel("c1/r1"));
+    void appFs.deleteModelFiles(fileModel("c1/r1"));
     await Bun.sleep(50);
     expect(logged).toEqual([
       "Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits)",

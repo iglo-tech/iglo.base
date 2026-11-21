@@ -76,7 +76,9 @@ async function open(options: TestAppOptions = {}): Promise<Harness> {
       }
     },
     settle: async () => {
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
       await (app.logger as Logger).flush();
     },
   };

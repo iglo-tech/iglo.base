@@ -282,7 +282,9 @@ export class RealtimeService extends BaseService {
       this.pendingSubmits.push({ resolve, reject });
 
       if (this.pendingSubmits.length == 1) {
-        queueMicrotask(() => this.finalizePendingSubscriptions());
+        queueMicrotask(() => {
+          void this.finalizePendingSubscriptions();
+        });
       }
     });
   }
@@ -533,7 +535,7 @@ export class RealtimeService extends BaseService {
             await this.submitSubscriptions();
           }
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           if (!isCurrent()) {
             return; // a closed connection's failure is not the current one's
           }

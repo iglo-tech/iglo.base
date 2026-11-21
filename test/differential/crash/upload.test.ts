@@ -96,9 +96,9 @@ function startUpload(url: string, bytes: number): Upload {
         const all = Buffer.concat([Buffer.from(head), body]);
         const limit = Math.min(all.length, head.length + bytes);
         for (let at = 0; at < limit; at += 65_536) {
-          await new Promise<void>((done) =>
-            socket.write(all.subarray(at, Math.min(at + 65_536, limit)), () => done()),
-          );
+          await new Promise<void>((done) => {
+            socket.write(all.subarray(at, Math.min(at + 65_536, limit)), () => done());
+          });
         }
         resolve();
       })();

@@ -65,7 +65,7 @@ export function startS3Proxy(target: string): S3Proxy {
 
   proxy.endpoint = `http://127.0.0.1:${server.port}`;
   proxy.stop = () => {
-    server.stop(true);
+    void server.stop(true);
   };
   return proxy;
 }

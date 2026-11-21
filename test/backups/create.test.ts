@@ -79,19 +79,21 @@ async function until(check: () => boolean): Promise<void> {
     if (Date.now() > deadline) {
       throw new Error("timed out");
     }
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }
 
 function addStorageFile(app: TestApp, key: string, content: Uint8Array | string): void {
   const fs = app.filesystem.newFilesystem();
-  fs.upload(typeof content === "string" ? new TextEncoder().encode(content) : content, key);
+  void fs.upload(typeof content === "string" ? new TextEncoder().encode(content) : content, key);
   fs.close();
 }
 
 function deleteStorageFile(app: TestApp, key: string): void {
   const fs = app.filesystem.newFilesystem();
-  fs.delete(key);
+  void fs.delete(key);
   fs.close();
 }
 
@@ -122,7 +124,7 @@ describe("TestCreateBackup", () => {
 
     // test pending error
     app.store.set(StoreKeyActiveBackup, "");
-    await expect(createBackup(app, "test.zip")).rejects.toThrow("try again later");
+    await Promise.resolve(expect(createBackup(app, "test.zip")).rejects.toThrow("try again later"));
     app.store.remove(StoreKeyActiveBackup);
 
     // create with auto generated name
@@ -380,10 +382,12 @@ describe("one backup or restore at a time", () => {
     expect(before.data.canBackup).toBe(true);
 
     const backup = createBackup(app, "a.zip");
-    await expect(createBackup(app, "b.zip")).rejects.toThrow(
-      "try again later - another backup/restore operation has already been started",
+    await Promise.resolve(
+      expect(createBackup(app, "b.zip")).rejects.toThrow(
+        "try again later - another backup/restore operation has already been started",
+      ),
     );
-    await expect(restoreBackup(app, "a.zip")).rejects.toThrow("try again later");
+    await Promise.resolve(expect(restoreBackup(app, "a.zip")).rejects.toThrow("try again later"));
 
     const during = (await (await send(app, "GET", "/api/health")).json()) as {
       data: { canBackup: boolean };
@@ -404,7 +408,7 @@ describe("one backup or restore at a time", () => {
     // the temp directory cannot be created
     writeFileSync(join(app.dataDir, ".pb_temp_to_delete"), "");
 
-    await expect(createBackup(app, "a.zip")).rejects.toThrow();
+    await Promise.resolve(expect(createBackup(app, "a.zip")).rejects.toThrow());
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
 
     rmSync(join(app.dataDir, ".pb_temp_to_delete"));
@@ -417,7 +421,7 @@ describe("one backup or restore at a time", () => {
     // VACUUM INTO refuses a directory as its target
     mkdirSync(tempFile(app, "data.db"), { recursive: true });
 
-    await expect(createBackup(app, "a.zip")).rejects.toThrow();
+    await Promise.resolve(expect(createBackup(app, "a.zip")).rejects.toThrow());
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
     expect(readdirSync(backupsDir(app))).toEqual([]);
   });
@@ -430,12 +434,14 @@ describe("TestRestoreBackup", () => {
 
     // test pending error
     app.store.set(StoreKeyActiveBackup, "");
-    await expect(restoreBackup(app, "test")).rejects.toThrow("try again later");
+    await Promise.resolve(expect(restoreBackup(app, "test")).rejects.toThrow("try again later"));
     app.store.remove(StoreKeyActiveBackup);
 
     // missing backup
-    await expect(restoreBackup(app, "missing")).rejects.toThrow(
-      `missing or invalid backup file "missing" to restore`,
+    await Promise.resolve(
+      expect(restoreBackup(app, "missing")).rejects.toThrow(
+        `missing or invalid backup file "missing" to restore`,
+      ),
     );
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
   });
@@ -447,7 +453,9 @@ describe("TestRestoreBackup", () => {
     const before = readdirSync(app.dataDir).toSorted();
 
     // no restart under a test app: it fails after the moves
-    await expect(restoreBackup(app, "test")).rejects.toThrow("failed to restart the app process");
+    await Promise.resolve(
+      expect(restoreBackup(app, "test")).rejects.toThrow("failed to restart the app process"),
+    );
 
     expect(readdirSync(app.dataDir).toSorted()).toEqual(before);
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
@@ -566,9 +574,13 @@ describe("backups.s3 enabled, S3 out of reach", () => {
 
   test("createBackup and restoreBackup give the error and leave nothing", async () => {
     const app = await s3App();
-    await expect(createBackup(app, "new.zip")).rejects.toThrow("connection refused");
-    await expect(restoreBackup(app, "local.zip")).rejects.toThrow(
-      `missing or invalid backup file "local.zip" to restore`,
+    await Promise.resolve(
+      expect(createBackup(app, "new.zip")).rejects.toThrow("connection refused"),
+    );
+    await Promise.resolve(
+      expect(restoreBackup(app, "local.zip")).rejects.toThrow(
+        `missing or invalid backup file "local.zip" to restore`,
+      ),
     );
     expect(existsSync(join(backupsDir(app), "new.zip"))).toBe(false);
     expect(readdirSync(join(app.dataDir, ".pb_temp_to_delete"))).toEqual([]);

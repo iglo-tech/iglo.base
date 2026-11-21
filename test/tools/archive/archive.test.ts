@@ -165,7 +165,9 @@ describe("create", () => {
 describe("extract", () => {
   test("TestExtractFailure", async () => {
     const extractedPath = join(newDir(), "pb_zip_extract");
-    await expect(extract(join(newDir(), "missing.zip"), extractedPath)).rejects.toThrow();
+    await Promise.resolve(
+      expect(extract(join(newDir(), "missing.zip"), extractedPath)).rejects.toThrow(),
+    );
     expect(existsSync(extractedPath)).toBe(false);
   });
 
@@ -220,15 +222,19 @@ describe("extract", () => {
   test("Zip Slip is refused", async () => {
     const parent = newDir();
     const out = join(parent, "out");
-    await expect(
-      extract(writeZip(rawZip([{ name: "../evil.txt", content: new Uint8Array(1) }])), out),
-    ).rejects.toThrow(`invalid file path: ${join(parent, "evil.txt")}`);
+    await Promise.resolve(
+      expect(
+        extract(writeZip(rawZip([{ name: "../evil.txt", content: new Uint8Array(1) }])), out),
+      ).rejects.toThrow(`invalid file path: ${join(parent, "evil.txt")}`),
+    );
     expect(existsSync(join(parent, "evil.txt"))).toBe(false);
 
     // a sibling with the same name start
-    await expect(
-      extract(writeZip(rawZip([{ name: "../out-2/x", content: new Uint8Array(1) }])), out),
-    ).rejects.toThrow("invalid file path");
+    await Promise.resolve(
+      expect(
+        extract(writeZip(rawZip([{ name: "../out-2/x", content: new Uint8Array(1) }])), out),
+      ).rejects.toThrow("invalid file path"),
+    );
     expect(existsSync(join(parent, "out-2"))).toBe(false);
   });
 
@@ -294,7 +300,9 @@ describe("extract", () => {
   ];
   for (const [name, zip, message] of bad) {
     test(`${name} fails`, async () => {
-      await expect(extract(writeZip(zip()), join(newDir(), "out"))).rejects.toThrow(message);
+      await Promise.resolve(
+        expect(extract(writeZip(zip()), join(newDir(), "out"))).rejects.toThrow(message),
+      );
     });
   }
 
@@ -303,8 +311,8 @@ describe("extract", () => {
     const zipPath = join(newDir(), "pb_test.zip");
     create(dir, zipPath);
     truncateSync(zipPath, statSync(zipPath).size - 30);
-    await expect(extract(zipPath, join(newDir(), "out"))).rejects.toThrow(
-      "zip: not a valid zip file",
+    await Promise.resolve(
+      expect(extract(zipPath, join(newDir(), "out"))).rejects.toThrow("zip: not a valid zip file"),
     );
   });
 });
@@ -381,7 +389,7 @@ describe("zip format", () => {
     const entry = zr.files[0] as ZipEntry;
     zr.close();
     zr.close();
-    await expect(zr.copyTo(entry, () => {})).rejects.toThrow("reader is closed");
+    await Promise.resolve(expect(zr.copyTo(entry, () => {})).rejects.toThrow("reader is closed"));
   });
 
   test("a named pipe is left out", () => {

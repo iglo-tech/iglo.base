@@ -94,7 +94,9 @@ async function until(check: () => boolean): Promise<void> {
     if (Date.now() > deadline) {
       throw new Error("timed out");
     }
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }
 

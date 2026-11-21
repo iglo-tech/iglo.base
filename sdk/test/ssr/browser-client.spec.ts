@@ -330,7 +330,7 @@ describe("createBrowserClient", () => {
   test("no renewal is scheduled without renewUrl, and renew() rejects", async () => {
     const { ft, pb } = harness(undefined, { renewUrl: undefined });
     expect(ft.count).toBe(0);
-    await expect(pb.renew()).rejects.toThrow(TypeError);
+    await Promise.resolve(expect(pb.renew()).rejects.toThrow(TypeError));
   });
 
   test("a record for another user is dropped", () => {
@@ -436,7 +436,7 @@ describe("createBrowserClient", () => {
       token: popup,
       handOffUrl: HAND_OFF_URL,
     });
-    await expect(pb.handOff()).rejects.toMatchObject({ status: 401 });
+    await Promise.resolve(expect(pb.handOff()).rejects.toMatchObject({ status: 401 }));
     expect(pb.authStore.token).toBe("");
   });
 
@@ -471,7 +471,7 @@ describe("createBrowserClient", () => {
         token: popup,
         handOffUrl: HAND_OFF_URL,
       });
-      await expect(pb.handOff()).rejects.toMatchObject({ status });
+      await Promise.resolve(expect(pb.handOff()).rejects.toMatchObject({ status }));
       expect(pb.authStore.token).toBe("");
       pb.dispose();
     }
@@ -486,7 +486,7 @@ describe("createBrowserClient", () => {
       }),
       { token: popup, handOffUrl: HAND_OFF_URL },
     );
-    await expect(pb.handOff()).rejects.toMatchObject({ status: 503 });
+    await Promise.resolve(expect(pb.handOff()).rejects.toMatchObject({ status: 503 }));
     expect(pb.authStore.token).toBe("");
   });
 
