@@ -13,7 +13,7 @@ export interface PopupHandOffOptions extends Omit<
   "cookies" | "request" | "origin"
 > {
   /** Origins besides the request's own that may post the token (see `checkOrigin`). */
-  allowedOrigins?: readonly string[];
+  allowedOrigins?: ReadonlyArray<string>;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -77,11 +77,11 @@ export async function handlePopupHandOff(
       `/api/collections/${encodeURIComponent(payload["collectionId"])}/auth-refresh`,
       { method: "POST", headers: { Authorization: token } },
     );
-  } catch (err: unknown) {
-    if (err instanceof ClientResponseError && err.status >= 400 && err.status < 500) {
+  } catch (error: unknown) {
+    if (error instanceof ClientResponseError && error.status >= 400 && error.status < 500) {
       return errorResponse(
-        err.status === 401 || err.status === 403 ? 401 : err.status,
-        err.message,
+        error.status === 401 || error.status === 403 ? 401 : error.status,
+        error.message,
       );
     }
     return errorResponse(503, "The sign-in could not be checked. Try again.");

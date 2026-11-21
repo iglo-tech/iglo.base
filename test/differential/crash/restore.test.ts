@@ -29,14 +29,14 @@ import {
   verifyAfterKill,
   waitFor,
   walk,
-  type Kind,
-  type Outcome,
 } from "@test/differential/crash/harness";
+import type { Kind, Outcome } from "@test/differential/crash/harness";
 import { tempDir } from "@test/support/executable";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
-const roots: string[] = [];
+const roots: Array<string> = [];
 let gw: Versitygw;
 
 beforeAll(async () => {
@@ -78,7 +78,7 @@ async function withBackup(kind: Kind, storage: Storage) {
   return { server, dataDir };
 }
 
-function tempEntries(dataDir: string): string[] {
+function tempEntries(dataDir: string): Array<string> {
   return walk(join(dataDir, ".pb_temp_to_delete"));
 }
 
@@ -109,10 +109,10 @@ async function crashedRestore(kind: Kind, storage: Storage, point: Point): Promi
   // than the name claims must not pass as this point
   try {
     await waitFor(`the restore point ${point}`, () => seen(), 20_000);
-  } catch (err) {
+  } catch (error) {
     await server.kill();
     await request;
-    throw err;
+    throw error;
   }
   await server.kill();
   await request;
@@ -248,7 +248,9 @@ describe("crash: restore directory states", () => {
         checkDatabases(after);
         expect(await readState("upstream", after)).toBe(igloState);
 
-        const upstreamState = await readState("upstream", copy).catch((e) => `fails: ${e}`);
+        const upstreamState = await readState("upstream", copy).catch(
+          (error: unknown) => `fails: ${error}`,
+        );
         console.warn(
           `${label}: iglo ${igloState}, upstream on the same directory ${upstreamState}`,
         );
@@ -258,7 +260,7 @@ describe("crash: restore directory states", () => {
   }
 });
 
-function oldDirsLeft(dataDir: string): string[] {
+function oldDirsLeft(dataDir: string): Array<string> {
   const temp = join(dataDir, ".pb_temp_to_delete");
   return existsSync(temp) ? readdirSync(temp).filter((n) => n.startsWith("old_pb_data_")) : [];
 }
@@ -294,7 +296,7 @@ describe("crash: restore record that cannot be read", () => {
       rmSync(join(temp, "restore_phase.moving-new"));
       writeFileSync(join(temp, "restore_phase"), "");
       const before = walk(dataDir);
-      await expect(launch("iglo", dataDir)).rejects.toThrow();
+      await Promise.resolve(expect(launch("iglo", dataDir)).rejects.toThrow());
       expect(walk(dataDir)).toEqual(before);
     },
     timeout,
@@ -321,7 +323,7 @@ describe("restore after a rollback that failed", () => {
         const filter = encodeURIComponent('level=8 && message="Failed to restore backup"');
         const failure = await waitFor("the logged restore failure", async () => {
           const logs = await api(server, "GET", `/api/logs?filter=${filter}`);
-          const { items } = (await logs.json()) as { items?: { data: { error?: string } }[] };
+          const { items } = (await logs.json()) as { items?: Array<{ data: { error?: string } }> };
           return items?.[0];
         });
         expect(failure.data.error).toContain("earlier restore did not finish");

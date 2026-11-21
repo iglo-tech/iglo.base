@@ -27,7 +27,7 @@ function compareJobs(a: Job, b: Job): number {
 // slices.SortStableFunc for its below 20 items: insertionSortCmpFunc.
 // compareJobs is not a consistent ordering, so the result is this algorithm's
 // and not any stable sort's; the app registers fewer than 20 jobs.
-function sortJobs(jobs: Job[]): void {
+function sortJobs(jobs: Array<Job>): void {
   for (let i = 1; i < jobs.length; i++) {
     for (let j = i; j > 0 && compareJobs(jobs[j]!, jobs[j - 1]!) < 0; j--) {
       [jobs[j], jobs[j - 1]] = [jobs[j - 1]!, jobs[j]!];

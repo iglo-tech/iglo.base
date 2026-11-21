@@ -6,9 +6,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { makePreSchemaBackup, preSchemaBackupName } from "@/schema/backup";
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 
-let opened: TestApp[] = [];
+let opened: Array<TestApp> = [];
 
 afterEach(async () => {
   for (const app of opened) {

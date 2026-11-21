@@ -17,14 +17,17 @@
 
 import type { RequestInfo } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
-import { Float64, type Params, setOwn } from "@/db/dbx/query";
+import { Float64, setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
 import { goQuote } from "@/fields/field";
 import { FieldTypeNumber } from "@/fields/number";
-import { Record } from "@/records/record-model";
-import { getCollectionByModelOrIdentifier, type RecordsApp } from "@/records/record-query";
+import type { Record } from "@/records/record-model";
+import { getCollectionByModelOrIdentifier } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { parseAndRun } from "@/resolver/record-field-resolver-runner";
-import { type FilterBuildOptions, filterBuildExpr, type ParsedFilterCache } from "@/search/filter";
+import { filterBuildExpr } from "@/search/filter";
+import type { FilterBuildOptions, ParsedFilterCache } from "@/search/filter";
 import type { Join } from "@/search/multi-match-subquery";
 import type { FieldResolver, ResolverResult } from "@/search/simple-field-resolver";
 import { parseGoFloat } from "@/server/unmarshal-request-data";
@@ -33,6 +36,7 @@ import { toStringE } from "@/tools/types/cast";
 import { anyType, marshal, unmarshal } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import type { Expression } from "@/db/dbx/expression";
+import { isInstance } from "@/tools/types/is-instance";
 
 // filter modifiers
 export const eachModifier = "each";
@@ -74,11 +78,11 @@ export class RecordFieldResolver implements FieldResolver {
   baseCollection: Collection;
   requestInfo: RequestInfo | null;
   staticRequestInfo: { [key: string]: unknown };
-  allowedFields: string[];
-  joins: Join[];
+  allowedFields: Array<string>;
+  joins: Array<Join>;
   allowHiddenFields: boolean;
   // ---
-  listRuleJoins: RuleJoin[] = [];
+  listRuleJoins: Array<RuleJoin> = [];
   joinAliasSuffix = ""; // used for uniqueness in the flatten collection list rule join
   baseCollectionAlias = "";
   // the optional parse cache of the filters the resolver builds itself
@@ -127,12 +131,12 @@ export class RecordFieldResolver implements FieldResolver {
   }
 
   // AllowedFields returns a copy of the resolver's allowed fields.
-  getAllowedFields(): string[] {
+  getAllowedFields(): Array<string> {
     return [...this.allowedFields];
   }
 
   // SetAllowedFields replaces the resolver's allowed fields with the new ones.
-  setAllowedFields(newAllowedFields: readonly string[]): void {
+  setAllowedFields(newAllowedFields: ReadonlyArray<string>): void {
     this.allowedFields = [...newAllowedFields];
   }
 
@@ -207,10 +211,10 @@ export class RecordFieldResolver implements FieldResolver {
     let expr: Expression;
     try {
       expr = filterBuildExpr("id='' || (\n" + c.listRule + "\n)", cloneR, this.filterOptions());
-    } catch (err) {
+    } catch (error) {
       throw wrapResolverError(
         `failed to build ${goQuote(c.name)} ListRule join subquery filter expression`,
-        err,
+        error,
       );
     }
 
@@ -258,12 +262,12 @@ export class RecordFieldResolver implements FieldResolver {
     return parseAndRun(fieldName, this);
   }
 
-  resolveStaticRequestField(...path: string[]): ResolverResult {
+  resolveStaticRequestField(...path: Array<string>): ResolverResult {
     if (path.length === 0) {
       throw new Error("at least one path key should be provided");
     }
 
-    const [lastProp, modifier] = splitModifier(path[path.length - 1] as string);
+    const [lastProp, modifier] = splitModifier(path.at(-1) as string);
 
     path[path.length - 1] = lastProp;
 
@@ -272,9 +276,9 @@ export class RecordFieldResolver implements FieldResolver {
     let extractErr: unknown = null;
     try {
       resultVal = extractNestedVal(this.staticRequestInfo, ...path);
-    } catch (err) {
-      extractErr = err;
-      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error: err });
+    } catch (error) {
+      extractErr = error;
+      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error });
       resultVal = null;
     }
 
@@ -295,7 +299,7 @@ export class RecordFieldResolver implements FieldResolver {
       // check if it is a number field and explicitly try to cast to
       // float in case of a numeric string value was used
       // (this usually the case when the data is from a multipart/form-data request)
-      const field = this.baseCollection.fields.getByName(path[path.length - 1] as string);
+      const field = this.baseCollection.fields.getByName(path.at(-1) as string);
       if (field !== null && field.type() === FieldTypeNumber) {
         try {
           resultVal = parseGoFloat(resultVal, 64);
@@ -460,7 +464,7 @@ function isPlainMap(v: unknown): v is { [key: string]: unknown } {
   return proto === Object.prototype || proto === null;
 }
 
-export function extractNestedVal(rawData: unknown, ...keys: string[]): unknown {
+export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unknown {
   if (keys.length === 0) {
     throw new Error("at least one key should be provided");
   }
@@ -469,14 +473,14 @@ export function extractNestedVal(rawData: unknown, ...keys: string[]): unknown {
   if (isPlainMap(rawData)) {
     return mapVal(rawData, keys);
   }
-  if (rawData instanceof JSONRaw) {
+  if (isInstance(JSONRaw, rawData)) {
     let raw: unknown;
     try {
       raw = unmarshal(rawData.bytes(), anyType);
-    } catch (err) {
+    } catch (error) {
       throw wrapResolverError(
         "failed to unmarshal raw JSON in order extract nested value from",
-        err,
+        error,
       );
     }
     return extractNestedVal(raw, ...keys);
@@ -489,14 +493,14 @@ export function extractNestedVal(rawData: unknown, ...keys: string[]): unknown {
   if (Array.isArray(rawData)) {
     return arrVal(rawData, keys);
   }
-  if (rawData instanceof Uint8Array) {
+  if (isInstance(Uint8Array, rawData)) {
     return arrVal(Array.from(rawData), keys);
   }
 
   throw new Error(`expected map or array, got ${String(rawData)}`);
 }
 
-function mapVal(m: { [key: string]: unknown }, keys: string[]): unknown {
+function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   const key = keys[0] as string;
   if (!Object.hasOwn(m, key)) {
     throw new Error(`invalid key path - missing key ${goQuote(key)}`);
@@ -514,7 +518,7 @@ function mapVal(m: { [key: string]: unknown }, keys: string[]): unknown {
   return extractNestedVal(result, ...keys.slice(1));
 }
 
-function arrVal(m: readonly unknown[], keys: string[]): unknown {
+function arrVal(m: ReadonlyArray<unknown>, keys: Array<string>): unknown {
   const key = keys[0] as string;
   const idx = goAtoi(key);
   if (idx === null || idx < 0 || idx >= m.length) {
@@ -564,6 +568,7 @@ export function splitModifier(combined: string): [string, string] {
     case lowerModifier:
     case changedModifier:
       return [parts[0] as string, parts[1]];
+    case undefined:
   }
 
   throw new Error(`unknown modifier in ${goQuote(combined)}`);

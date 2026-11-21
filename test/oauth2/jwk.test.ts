@@ -1,7 +1,8 @@
 // Upstream: tools/auth/internal/jwk/jwk_test.go
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { type KeyObject, generateKeyPairSync, sign } from "node:crypto";
+import { generateKeyPairSync, sign } from "node:crypto";
+import type { KeyObject } from "node:crypto";
 
 import { JWK, fetchJWK, validateTokenSignature } from "@/oauth2/jwk";
 
@@ -18,7 +19,7 @@ const edPair = generateKeyPairSync("ed25519");
 const edJWK = edPair.publicKey.export({ format: "jwk" });
 
 // a compact JWT: header and payload are signed as base64url text
-function signJWT(header: object, key: KeyObject, alg: "EdDSA" | "RS256"): string {
+function signJWT(header: Record<string, unknown>, key: KeyObject, alg: "EdDSA" | "RS256"): string {
   const signingInput = b64url(JSON.stringify(header)) + "." + b64url("{}");
   const data = Buffer.from(signingInput);
   const signature = alg === "EdDSA" ? sign(null, data, key) : sign("sha256", data, key);
@@ -101,19 +102,19 @@ describe("TestFetch", () => {
   });
 
   afterAll(() => {
-    server.stop(true);
+    void server.stop(true);
   });
 
   test("error response", async () => {
-    await expect(fetchJWK(undefined, keysURL + "?error", "def")).rejects.toThrow();
+    await Promise.resolve(expect(fetchJWK(undefined, keysURL + "?error", "def")).rejects.toThrow());
   });
 
   test("non-matching kid", async () => {
-    await expect(fetchJWK(undefined, keysURL, "missing")).rejects.toThrow();
+    await Promise.resolve(expect(fetchJWK(undefined, keysURL, "missing")).rejects.toThrow());
   });
 
   test("matching kid (no alg)", async () => {
-    await expect(fetchJWK(undefined, keysURL, "abc")).rejects.toThrow();
+    await Promise.resolve(expect(fetchJWK(undefined, keysURL, "abc")).rejects.toThrow());
   });
 
   test("matching kid", async () => {
@@ -153,7 +154,7 @@ describe("TestValidateTokenSignature", () => {
   });
 
   afterAll(() => {
-    server.stop(true);
+    void server.stop(true);
   });
 
   const nonmatchingKidToken = signJWT(
@@ -165,28 +166,34 @@ describe("TestValidateTokenSignature", () => {
   const key2Token = signJWT({ alg: "RS256", typ: "JWT", kid: "key2" }, rsaPair.privateKey, "RS256");
 
   test("empty token", async () => {
-    await expect(validateTokenSignature(undefined, "", jwksURL, clock)).rejects.toThrow();
+    await Promise.resolve(
+      expect(validateTokenSignature(undefined, "", jwksURL, clock)).rejects.toThrow(),
+    );
   });
 
   test("invalid token", async () => {
-    await expect(validateTokenSignature(undefined, "abc", jwksURL, clock)).rejects.toThrow();
+    await Promise.resolve(
+      expect(validateTokenSignature(undefined, "abc", jwksURL, clock)).rejects.toThrow(),
+    );
   });
 
   test("no matching kid", async () => {
-    await expect(
-      validateTokenSignature(undefined, nonmatchingKidToken, jwksURL, clock),
-    ).rejects.toThrow();
+    await Promise.resolve(
+      expect(
+        validateTokenSignature(undefined, nonmatchingKidToken, jwksURL, clock),
+      ).rejects.toThrow(),
+    );
   });
 
   test("valid Ed25519 token", async () => {
-    await expect(validateTokenSignature(undefined, key1Token, jwksURL, clock)).resolves.toBe(
-      undefined,
+    await Promise.resolve(
+      expect(validateTokenSignature(undefined, key1Token, jwksURL, clock)).resolves.toBe(undefined),
     );
   });
 
   test("valid RSA token", async () => {
-    await expect(validateTokenSignature(undefined, key2Token, jwksURL, clock)).resolves.toBe(
-      undefined,
+    await Promise.resolve(
+      expect(validateTokenSignature(undefined, key2Token, jwksURL, clock)).resolves.toBe(undefined),
     );
   });
 });

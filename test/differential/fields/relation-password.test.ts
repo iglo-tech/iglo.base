@@ -24,6 +24,7 @@
 //     rejects); after a restart,
 //     POST /api/collections/{c}/auth-with-password must succeed exactly
 //     when PasswordFieldValue.validate accepts the password.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -31,12 +32,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  InterceptorActionValidate,
-  isDriverValuer,
-  isRecordInterceptor,
-  type Field,
-} from "@/fields/field";
+import { InterceptorActionValidate, isDriverValuer, isRecordInterceptor } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { fieldFactory } from "@/fields/fields";
 import { PasswordField, PasswordFieldValue } from "@/fields/password";
 import { newBadRequestError } from "@/server/error";
@@ -70,7 +67,8 @@ import {
   newBaseCollection,
   interceptorArgs,
 } from "@test/support/fields";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks create collections and records through upstream and start and
 // stop it, which is slow on the macOS runners
@@ -104,14 +102,15 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const res = await fetch(`${upstream.url}${path}`, {
-    method,
-    headers: {
-      "content-type": "application/json",
-      ...(auth ? { authorization: token } : {}),
-    },
-    ...(body === undefined ? {} : { body }),
-  });
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (auth) {
+    headers.authorization = token;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -227,7 +226,7 @@ function rawField(text: string): Field {
   return field;
 }
 
-function modelCollection(name: string, defs: FieldDef[]): TestCollection {
+function modelCollection(name: string, defs: Array<FieldDef>): TestCollection {
   const collection = newBaseCollection(name);
   for (const def of defs) {
     collection.fields.add(modelField(def));
@@ -290,7 +289,7 @@ async function checkCollection(
   return res.status;
 }
 
-const createdCollections: TestCollection[] = [];
+const createdCollections: Array<TestCollection> = [];
 
 describe("settings", () => {
   for (const [i, def] of validSettings.entries()) {
@@ -327,10 +326,10 @@ describe("settings", () => {
     // ok_0 holds a relation to "targets"
     const saved = model().findCollectionByNameOrId("ok_0");
     const fields = (
-      JSON.parse(responseFields((await request("GET", "/api/collections/ok_0")).text)) as {
+      JSON.parse(responseFields((await request("GET", "/api/collections/ok_0")).text)) as Array<{
         name: string;
         collectionId?: string;
-      }[]
+      }>
     ).map((f) => (f.name === "r" ? { ...f, collectionId: placeholders.get("$U") } : f));
 
     const changed = new TestCollection(saved.type, saved.name, saved.id);
@@ -354,7 +353,7 @@ describe("raw settings", () => {
       try {
         collection = newBaseCollection(name);
         collection.fields.add(rawField(field));
-      } catch (err) {
+      } catch (error) {
         // BindBody fails: upstream answers before validating
         const res = await request("POST", "/api/collections", body);
         expect({ status: res.status, body: res.text }).toEqual({
@@ -362,7 +361,7 @@ describe("raw settings", () => {
           body: marshal(
             newBadRequestError(
               "Failed to load the submitted data due to invalid formatting.",
-              err,
+              error,
             ).toJSON(),
           ),
         });
@@ -401,7 +400,7 @@ interface StoredRecord {
   passwords: Record<string, [string, string]>;
 }
 
-const storedRecords: StoredRecord[] = [];
+const storedRecords: Array<StoredRecord> = [];
 
 // the value a record field is bound with: DriverValue (JSONArray for
 // arrays)
@@ -422,7 +421,7 @@ function storeModel(
   record: TestRecord,
 ): Record<string, [string, unknown]> {
   const fields = [...collection.fields].filter(
-    (f) => f.getName() !== "id" && !(f instanceof PasswordField),
+    (f) => f.getName() !== "id" && !isInstance(PasswordField, f),
   );
   if (fields.length === 0) {
     return {};
@@ -432,7 +431,7 @@ function storeModel(
     db.run(
       `CREATE TABLE t (${fields.map((f) => `"${f.getName()}" ${f.columnType(model())}`).join(", ")})`,
     );
-    const values = fields.map((f) => bindValue(f, record)) as (string | number | null)[];
+    const values = fields.map((f) => bindValue(f, record)) as Array<string | number | null>;
     db.query(`INSERT INTO t VALUES (${fields.map(() => "?").join(", ")})`).run(...values);
     return readColumns(
       db,
@@ -448,7 +447,7 @@ function storeModel(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): Record<string, [string, unknown]> {
   if (names.length === 0) {
@@ -456,7 +455,7 @@ function readColumns(
   }
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: Record<string, [string, unknown]> = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];
@@ -559,7 +558,7 @@ describe("values", () => {
       const stored: Record<string, string> = {};
       for (const field of collection.fields) {
         const name = field.getName();
-        if (field instanceof PasswordField) {
+        if (isInstance(PasswordField, field)) {
           const [hash] = field.driverValue(record) as [string, Error | null];
           passwords[name] = [record.getString(name), hash];
           stored[name] = hash;
@@ -593,7 +592,7 @@ function goHash(cost: number, salt: string, plain: string): string {
 }
 
 describe("stored data", () => {
-  const authCases: AuthCase[] = [];
+  const authCases: Array<AuthCase> = [];
   let storedDb: Database | undefined;
   // the database read after upstream stops (set by the setup hook)
   const db = (): Database => {
@@ -681,10 +680,10 @@ describe("stored data", () => {
   test("upstream's hashes verify with PasswordFieldValue.validate", () => {
     const rows = db()
       .query("SELECT email, password FROM users WHERE email LIKE 'known%'")
-      .all() as {
+      .all() as Array<{
       email: string;
       password: string;
-    }[];
+    }>;
     expect(rows.length).toBe(knownUsers);
     for (const { password: hash } of rows) {
       expect(hash).toMatch(/^\$2a\$10\$/);
@@ -699,7 +698,7 @@ describe("stored data", () => {
       fields: string;
     };
     const usersCollection = new TestCollection("auth", "users", "users");
-    for (const def of JSON.parse(users.fields) as { type: string }[]) {
+    for (const def of JSON.parse(users.fields) as Array<{ type: string }>) {
       if (fieldFactory(def.type) !== undefined) {
         usersCollection.fields.add(modelField(def));
       }
@@ -708,7 +707,7 @@ describe("stored data", () => {
 
     const rows = db()
       .query("SELECT email, password FROM users WHERE email LIKE 'known%' ORDER BY email")
-      .all() as { email: string; password: string }[];
+      .all() as Array<{ email: string; password: string }>;
     const upstreamHash = (rows[0] as { password: string }).password;
     const salt = upstreamHash.slice(7, 29);
     const hash = upstreamHash.slice(29);
@@ -730,7 +729,7 @@ describe("stored data", () => {
     const shortSaltHash =
       "$2a$04$" + ".".repeat(18) + "\n".repeat(4) + "a0F5K/0ysQILL30JqYxI1CinCna9k0.";
     const p72 = "x".repeat(72);
-    const variants: [string, string][] = [
+    const variants: Array<[string, string]> = [
       [igloHash("iglo-password-1"), "iglo-password-1"],
       [igloHash("iglo-pässwörd-2"), "iglo-pässwörd-2"],
       [
@@ -783,7 +782,7 @@ describe("stored data", () => {
       storedDb = new Database(":memory:");
       upstream = await startUpstream({ dataDir });
 
-      const results: { email: string; hash: string; upstream: number; iglo: boolean }[] = [];
+      const results: Array<{ email: string; hash: string; upstream: number; iglo: boolean }> = [];
       for (const c of authCases) {
         const res = await request(
           "POST",

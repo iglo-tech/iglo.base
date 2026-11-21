@@ -8,7 +8,7 @@ export class Route<T extends Resolver> {
   action: HandlerFunc<T>;
   method: string;
   path: string;
-  middlewares: Handler<T>[] = [];
+  middlewares: Array<Handler<T>> = [];
 
   constructor(method: string, path: string, action: HandlerFunc<T>) {
     this.method = method;
@@ -20,7 +20,7 @@ export class Route<T extends Resolver> {
   //
   // The registered middleware functions are "anonymous" and with default priority,
   // aka. executes in the order they were registered.
-  bindFunc(...middlewareFuncs: HandlerFunc<T>[]): this {
+  bindFunc(...middlewareFuncs: Array<HandlerFunc<T>>): this {
     for (const m of middlewareFuncs) {
       this.middlewares.push({ func: m });
     }
@@ -28,7 +28,7 @@ export class Route<T extends Resolver> {
   }
 
   // Bind registers one or multiple middleware handlers to the current route.
-  bind(...middlewares: Handler<T>[]): this {
+  bind(...middlewares: Array<Handler<T>>): this {
     this.middlewares.push(...middlewares);
 
     // unmark the newly added middlewares in case they were previously "excluded"
@@ -50,7 +50,7 @@ export class Route<T extends Resolver> {
   //
   // Anonymous middlewares are considered non-removable, aka. this method
   // does nothing if the middleware id is an empty string.
-  unbind(...middlewareIds: string[]): this {
+  unbind(...middlewareIds: Array<string>): this {
     for (const middlewareId of middlewareIds) {
       if (middlewareId === "") {
         continue;

@@ -12,7 +12,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Clock } from "@/app/clock";
-import { type CollectionsApp, reloadCachedCollections } from "@/collections/collection-query";
+import { reloadCachedCollections } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { Databases } from "@/db/base";
 import { Store } from "@/tools/store/store";
 
@@ -22,7 +23,7 @@ export interface TestCollectionsApp extends CollectionsApp {
   // the pb_data directory
   readonly dataDir: string;
   // what the app logged (upstream's Logger().Warn calls)
-  readonly logged: { message: string; cause: unknown }[];
+  readonly logged: Array<{ message: string; cause: unknown }>;
   cleanup(): void;
 }
 
@@ -64,7 +65,7 @@ export function openDataDir(
   queryTimeout?: number,
 ): TestCollectionsApp {
   const databases = Databases.open({ dataDir, devSQLLog: queryLog, queryTimeout });
-  const logged: { message: string; cause: unknown }[] = [];
+  const logged: Array<{ message: string; cause: unknown }> = [];
   return {
     databases,
     store: new Store<string, unknown>(),

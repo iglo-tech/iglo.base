@@ -18,7 +18,8 @@
 // dropped: iglo.base has no hooks.
 
 import { superuserToken } from "@test/scenarios/record-crud";
-import { type HttpResult, jsonRequest, RealtimeStream, type SseEvent } from "@test/realtime/client";
+import { jsonRequest, RealtimeStream } from "@test/realtime/client";
+import type { HttpResult, SseEvent } from "@test/realtime/client";
 
 export type Observation = { [key: string]: unknown };
 
@@ -37,7 +38,7 @@ export interface RealtimeScenario {
 }
 
 export class ScenarioContext {
-  readonly #streams: RealtimeStream[] = [];
+  readonly #streams: Array<RealtimeStream> = [];
 
   constructor(readonly url: string) {}
 
@@ -51,7 +52,7 @@ export class ScenarioContext {
   // POST /api/realtime
   subscribe(
     clientId: string,
-    subscriptions: string[] | undefined,
+    subscriptions: Array<string> | undefined,
     token?: string,
     localAddress?: string,
   ): Promise<HttpResult> {
@@ -136,18 +137,18 @@ export function response(res: HttpResult): Observation {
 }
 
 // the events of a stream after PB_CONNECT, as observed
-export function events(list: SseEvent[]): Observation[] {
-  return list.filter((e) => e.event !== "PB_CONNECT").map((e) => ({ ...e }));
+export function events(list: Array<SseEvent>): Array<Observation> {
+  return list.flatMap((e) => (e.event !== "PB_CONNECT" ? [{ ...e }] : []));
 }
 
 // the events once the stream had none new for a while
-export async function settled(stream: RealtimeStream): Promise<Observation[]> {
+export async function settled(stream: RealtimeStream): Promise<Array<Observation>> {
   return events(await stream.settle());
 }
 
 // the action and record id of each event, for the checks
-export function actions(list: unknown): string[] {
-  return (list as SseEvent[]).map((e) => {
+export function actions(list: unknown): Array<string> {
+  return (list as Array<SseEvent>).map((e) => {
     const data = JSON.parse(e.data) as { action: string; record: { id: string } };
     return `${e.event} ${data.action} ${data.record.id}`;
   });
@@ -179,7 +180,7 @@ export function normalize(o: Observation, unorderedData: boolean): string {
     2,
   );
   return text
-    .replace(clientIdPattern, (id) => {
+    .replaceAll(clientIdPattern, (id) => {
       let n = ids.get(id);
       if (n === undefined) {
         n = `<client${ids.size + 1}>`;
@@ -187,7 +188,7 @@ export function normalize(o: Observation, unorderedData: boolean): string {
       }
       return n;
     })
-    .replace(datePattern, "<date>");
+    .replaceAll(datePattern, "<date>");
 }
 
 function sortKeys(value: unknown): unknown {

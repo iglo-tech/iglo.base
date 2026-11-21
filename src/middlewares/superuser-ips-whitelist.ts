@@ -40,7 +40,7 @@ export function superuserIPsWhitelist(): Handler<RequestEvent> {
 }
 
 // isIPInList checks if the specified IP is in a list of other individual IPs or subnets.
-export function isIPInList(ipsOrSubnets: readonly string[], ip: string): boolean {
+export function isIPInList(ipsOrSubnets: ReadonlyArray<string>, ip: string): boolean {
   if (ipsOrSubnets.length === 0 || ip === "") {
     return false;
   }
@@ -77,7 +77,7 @@ export function isIPInList(ipsOrSubnets: readonly string[], ip: string): boolean
 // a netip.Addr: the family, the 4 or 16 address bytes and the IPv6 zone
 interface IP {
   is4: boolean;
-  bytes: number[];
+  bytes: Array<number>;
   zone: string;
 }
 
@@ -119,7 +119,7 @@ function parseIP(s: string, is4: boolean, zone: string): IP {
   let text = percent >= 0 ? s.slice(0, percent) : s;
 
   // an embedded IPv4 address in the last 32 bits
-  let tail: number[] = [];
+  let tail: Array<number> = [];
   const dot = text.indexOf(".");
   if (dot >= 0) {
     const colon = text.lastIndexOf(":");
@@ -137,7 +137,7 @@ function parseIP(s: string, is4: boolean, zone: string): IP {
     }
   }
 
-  let words: number[];
+  let words: Array<number>;
   const ellipsis = text.indexOf("::");
   if (ellipsis >= 0) {
     const head = groups(text.slice(0, ellipsis));
@@ -148,7 +148,7 @@ function parseIP(s: string, is4: boolean, zone: string): IP {
     words = [...groups(text), ...tail];
   }
 
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   for (const w of words) {
     bytes.push(w >> 8, w & 0xff);
   }
@@ -177,6 +177,6 @@ function prefixContains(p: IPPrefix, ip: IP): boolean {
 }
 
 // the 16-bit groups of a colon-separated IPv6 part
-function groups(part: string): number[] {
-  return part === "" ? [] : part.split(":").map((g) => parseInt(g, 16));
+function groups(part: string): Array<number> {
+  return part === "" ? [] : part.split(":").map((g) => Number.parseInt(g, 16));
 }

@@ -2,7 +2,8 @@
 // s3-files.test.ts): the requests of a case, the pairing of generated values
 // and the comparison of the responses.
 
-import { type FileCase, type Part, text } from "@test/differential/files/cases";
+import { text } from "@test/differential/files/cases";
+import type { FileCase, Part } from "@test/differential/files/cases";
 import { superuserToken } from "@test/scenarios/record-crud";
 
 export interface Res {
@@ -19,14 +20,15 @@ export async function req(
   body?: Uint8Array | string,
   contentType?: string,
 ): Promise<Res> {
-  const res = await fetch(url + path, {
-    method,
-    headers: {
-      authorization: superuserToken,
-      ...(contentType ? { "content-type": contentType } : {}),
-    },
-    ...(body === undefined ? {} : { body }),
-  });
+  const headers: Record<string, string> = { authorization: superuserToken };
+  if (contentType) {
+    headers["content-type"] = contentType;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(url + path, init);
   const bytes = new Uint8Array(await res.arrayBuffer());
   return {
     status: res.status,
@@ -59,7 +61,7 @@ export class Pairing {
 }
 
 function escapeRegExp(s: string): string {
-  return s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+  return s.replaceAll(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
 }
 
 // tools/filesystem/file.go normalizeName: a stored name is the cleaned base
@@ -93,7 +95,7 @@ export function compareJSON(
   ig: unknown,
   path: string,
   pairing: Pairing,
-  out: string[],
+  out: Array<string>,
 ): void {
   if (typeof up === "string" && typeof ig === "string") {
     if (up === ig) {
@@ -154,8 +156,8 @@ export function compareJSON(
   }
 }
 
-export function compareRes(up: Res, ig: Res, pairing: Pairing): string[] {
-  const out: string[] = [];
+export function compareRes(up: Res, ig: Res, pairing: Pairing): Array<string> {
+  const out: Array<string> = [];
   if (up.status !== ig.status) {
     out.push(`status ${up.status} != ${ig.status}: ${up.text} / ${ig.text}`);
     return out;
@@ -180,7 +182,7 @@ export interface Side {
 }
 
 function resolveValue(v: string, side: Side): string {
-  return v.replace(
+  return v.replaceAll(
     /\$([a-z0-9]+)\.([a-z]+)(?:\.(\d+))?/g,
     (_m, ref: string, field: string, i?: string) => {
       const rec = side.records.get(ref);
@@ -210,11 +212,11 @@ export function resolveJSON(v: unknown, side: Side): unknown {
 }
 
 function escapeQuotes(s: string): string {
-  return s.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return s.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
 }
 
-export function multipartBody(parts: Part[], boundary: string, side: Side): Uint8Array {
-  const chunks: Uint8Array[] = [];
+export function multipartBody(parts: Array<Part>, boundary: string, side: Side): Uint8Array {
+  const chunks: Array<Uint8Array> = [];
   for (const p of parts) {
     if ("value" in p) {
       chunks.push(

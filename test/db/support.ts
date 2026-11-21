@@ -30,7 +30,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Databases } from "@/db/base";
-import { newFromDB, type DB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 
 // dbx testdata/mysql.sql in SQLite syntax: same tables, columns and rows
 export const fixtureSQL = `
@@ -120,10 +121,10 @@ export function tempDir(prefix = "iglo-base-db-"): string {
 export function openTempDatabases(onSleep: (ms: number) => void = () => {}): {
   app: Databases;
   dataDir: string;
-  sleeps: number[];
+  sleeps: Array<number>;
 } {
   const dataDir = tempDir("iglo-base-pb_data-");
-  const sleeps: number[] = [];
+  const sleeps: Array<number> = [];
   const app = Databases.open({
     dataDir,
     sleep: (ms) => {

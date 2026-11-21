@@ -7,7 +7,8 @@
 
 import type { Clock } from "@/app/clock";
 import type { Record } from "@/records/record-model";
-import { JWTError, type MapClaims, newJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { JWTError, newJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 
 // Supported record token types
 export const TokenTypeAuth = "auth";
@@ -34,11 +35,11 @@ export const ErrMissingSigningKey = new Error("missing or invalid signing key");
 export function parseUnverifiedClaims(token: string, clock: Clock): MapClaims {
   try {
     return parseUnverifiedJWT(token, clock);
-  } catch (err) {
-    if (err instanceof JWTError) {
-      return err.claims;
+  } catch (error) {
+    if (error instanceof JWTError) {
+      return error.claims;
     }
-    throw err;
+    throw error;
   }
 }
 

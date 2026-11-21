@@ -7,7 +7,8 @@
 import { DateTime } from "@/tools/types/datetime";
 import { parse } from "@/tools/types/go-time";
 import { parsedTime } from "@/tools/types/go-zoneinfo";
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { EnsureString, Indirect, IsEmpty } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 

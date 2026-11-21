@@ -20,15 +20,14 @@ import { join } from "node:path";
 import {
   api,
   kinds,
-  type Kind,
   newSite,
   normalizeOutput,
   readMigrations,
   runIn,
   serveSite,
-  type Site,
   writeMigrations,
 } from "@test/differential/migrations/support";
+import type { Kind, Site } from "@test/differential/migrations/support";
 import { bindingFiles } from "@test/differential/migrations/bindings";
 import { patternFiles } from "@test/differential/migrations/patterns";
 import { diffSnapshots, takeSnapshot } from "@test/differential/roundtrip/snapshot";
@@ -45,16 +44,16 @@ function site(kind: Kind): Site {
   return newSite(kind, root);
 }
 
-function query<T>(s: Site, sql: string): T[] {
+function query<T>(s: Site, sql: string): Array<T> {
   const db = new Database(join(s.dataDir, "data.db"), { readonly: true });
   try {
-    return db.query(sql).all() as T[];
+    return db.query(sql).all() as Array<T>;
   } finally {
     db.close();
   }
 }
 
-function userMigrations(s: Site): string[] {
+function userMigrations(s: Site): Array<string> {
   return query<{ file: string }>(
     s,
     "SELECT file FROM _migrations WHERE file NOT LIKE '%.go' ORDER BY file",
@@ -72,14 +71,14 @@ function normalizedRun(
   };
 }
 
-function tables(s: Site): unknown[] {
+function tables(s: Site): Array<unknown> {
   return query(
     s,
     "SELECT type, name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name",
   );
 }
 
-function collections(s: Site): unknown[] {
+function collections(s: Site): Array<unknown> {
   return query(
     s,
     "SELECT id, name, type, system, listRule, viewRule, createRule, updateRule, deleteRule, indexes FROM _collections ORDER BY name",
@@ -90,7 +89,7 @@ function collections(s: Site): unknown[] {
 // pb_data's top level differs by design: upstream also writes types.d.ts
 // and .notify, which hold no data. The `applied` times differ by nature;
 // userMigrations compares the files.
-function snapshotDiff(control: Site, subject: Site): string[] {
+function snapshotDiff(control: Site, subject: Site): Array<string> {
   const options = { start: { contains: () => false }, startedAt: "2000-01-01 00:00:00.000Z" };
   return diffSnapshots(
     takeSnapshot(control.dataDir, options),
@@ -333,7 +332,7 @@ migrate((app) => {
     app.db().update("seed", { v }, $dbx.hashExp({ k: k + ":update" })).execute();
   }
 })`;
-      const stored: { k: string; t: string; v: string }[][] = [];
+      const stored: Array<Array<{ k: string; t: string; v: string }>> = [];
       for (const kind of kinds) {
         const s = site(kind);
         writeMigrations(s, { "1000000001_seed.js": text });
@@ -448,7 +447,7 @@ migrate((app) => {
   );
 });
 
-const failures: [string, string][] = [
+const failures: Array<[string, string]> = [
   ["a thrown error", `migrate((app) => { throw new Error("boom") })`],
   ["a thrown string", `migrate((app) => { throw "str" })`],
   ["a thrown object", `migrate((app) => { throw {a:1} })`],
@@ -513,7 +512,7 @@ describe("failures", () => {
 
 describe("the migrate command", () => {
   // each step runs on both servers, in order, on one site each
-  const steps: { args: string[]; stdin?: string; files?: Record<string, string> }[] = [
+  const steps: Array<{ args: Array<string>; stdin?: string; files?: Record<string, string> }> = [
     { args: ["migrate"] },
     { args: ["migrate", "up"] },
     { args: ["migrate", "--help"] },
@@ -570,18 +569,18 @@ describe("the migrate command", () => {
 // order depends on the clock
 function cleanHelp(result: unknown): unknown {
   const r = JSON.parse(
-    JSON.stringify(result).replace(/(pocketbase|iglo-base) migrate/g, "BIN migrate"),
+    JSON.stringify(result).replaceAll(/(pocketbase|iglo-base) migrate/g, "BIN migrate"),
   ) as { stdout: string; stderr: string };
   const created = /TIME_(new_file_name|collections_snapshot)/g;
   return {
     ...r,
-    stderr: r.stderr.replace(created, "CREATED").split("\n").toSorted().join("\n"),
+    stderr: r.stderr.replaceAll(created, "CREATED").split("\n").toSorted().join("\n"),
     stdout: r.stdout
-      .replace(created, "CREATED")
-      .replace(/^ {6}--hooks\w+(\[=true\|false\])? .*\n/gm, "")
-      .replace(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
-      .replace(/ +--/g, " --")
-      .replace(/ {2,}/g, " ")
+      .replaceAll(created, "CREATED")
+      .replaceAll(/^ {6}--hooks\w+(\[=true\|false\])? .*\n/gm, "")
+      .replaceAll(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
+      .replaceAll(/ +--/g, " --")
+      .replaceAll(/ {2,}/g, " ")
       .split("\n")
       .toSorted()
       .join("\n"),
@@ -678,17 +677,17 @@ const tokens = {
 };
 
 function normalizeFile(text: string): string {
-  return text.replace(generatedId, '"$1": "GENERATED"');
+  return text.replaceAll(generatedId, '"$1": "GENERATED"');
 }
 
-function normalizedFiles(s: Site): [string, string][] {
+function normalizedFiles(s: Site): Array<[string, string]> {
   return Object.entries(readMigrations(s)).map(([name, text]) => [
     name.replace(/^\d+/, "TIME"),
     normalizeFile(text),
   ]);
 }
 
-function normalizedRows(s: Site): string[] {
+function normalizedRows(s: Site): Array<string> {
   return userMigrations(s).map((file) => file.replace(/^\d+/, "TIME"));
 }
 
@@ -704,7 +703,19 @@ describe("automigrate", () => {
 
       const uploaded = normalizedFiles(upstream);
       expect(uploaded).toHaveLength(6);
-      expect(normalizedFiles(iglo).toSorted()).toEqual(uploaded.toSorted());
+      expect(
+        normalizedFiles(iglo).toSorted((a, b) => {
+          const x = String(a);
+          const y = String(b);
+          return x < y ? -1 : x > y ? 1 : 0;
+        }),
+      ).toEqual(
+        uploaded.toSorted((a, b) => {
+          const x = String(a);
+          const y = String(b);
+          return x < y ? -1 : x > y ? 1 : 0;
+        }),
+      );
       expect(normalizedRows(iglo).toSorted()).toEqual(normalizedRows(upstream).toSorted());
 
       // files generated by each server, applied by the other and by itself

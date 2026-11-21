@@ -15,7 +15,7 @@ export function printExpr(e: Expr): string {
   return `{${printToken(e.left)} ${e.op} ${printToken(e.right)}}`;
 }
 
-export function printGroups(groups: readonly ExprGroup[] | null): string {
+export function printGroups(groups: ReadonlyArray<ExprGroup> | null): string {
   return "[" + (groups ?? []).map(printGroup).join(" ") + "]";
 }
 

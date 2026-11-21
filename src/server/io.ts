@@ -36,8 +36,8 @@ export function bodyReader(body: ReadCloser): Reader {
           return [n, err];
         }
         return [n, eof ? EOF : undefined];
-      } catch (err) {
-        return [0, err];
+      } catch (error) {
+        return [0, error];
       }
     },
   };
@@ -45,7 +45,7 @@ export function bodyReader(body: ReadCloser): Reader {
 
 // a Writer that keeps what is written in memory (bytes.Buffer)
 export class BytesBuffer {
-  readonly chunks: Uint8Array[] = [];
+  readonly chunks: Array<Uint8Array> = [];
   length = 0;
 
   write(p: Uint8Array): void {

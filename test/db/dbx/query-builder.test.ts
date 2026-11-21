@@ -26,7 +26,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { BaseQueryBuilder, type JoinInfo, type UnionInfo } from "@/db/dbx/query-builder";
+import { BaseQueryBuilder } from "@/db/dbx/query-builder";
+import type { JoinInfo, UnionInfo } from "@/db/dbx/query-builder";
 import type { Expression } from "@/db/dbx/expression";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { getDB } from "@test/db/support";
@@ -114,7 +115,7 @@ describe("query builder", () => {
   });
 
   test("TestQB_BuildWhere", () => {
-    const tests: { exp: Expression | null; expected: string; count: number; tag: string }[] = [
+    const tests: Array<{ exp: Expression | null; expected: string; count: number; tag: string }> = [
       {
         exp: new HashExp({ age: 30, dept: "marketing" }),
         expected: "WHERE `age`={:p0} AND `dept`={:p1}",
@@ -135,7 +136,7 @@ describe("query builder", () => {
   });
 
   test("TestQB_BuildHaving", () => {
-    const tests: { exp: Expression | null; expected: string; count: number; tag: string }[] = [
+    const tests: Array<{ exp: Expression | null; expected: string; count: number; tag: string }> = [
       {
         exp: new HashExp({ age: 30, dept: "marketing" }),
         expected: "HAVING `age`={:p0} AND `dept`={:p1}",

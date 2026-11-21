@@ -13,7 +13,8 @@ import { clearBootstrap } from "@/app/bootstrap";
 import { Collection } from "@/collections/collection-model";
 import { collectionQuery } from "@/collections/collection-query";
 import { joinErrors, wrapError } from "@/collections/view";
-import { argsMinusFirst, FlagError, parseFlags, type FlagSpec, type FlagValue } from "@/cli/flags";
+import { argsMinusFirst, FlagError, parseFlags } from "@/cli/flags";
+import type { FlagSpec, FlagValue } from "@/cli/flags";
 import { helpText } from "@/cli/help";
 import { yesNoPrompt } from "@/cli/prompt";
 import type { AppConfig, CliContext } from "@/cli/root";
@@ -24,11 +25,11 @@ import {
   down,
   initMigrationsTable,
   lastAppliedMigrations,
-  type Migration,
   removeMissingAppliedMigrations,
   up,
   DefaultMigrationsTable,
 } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
 import { jsBlankTemplate, jsSnapshotTemplate } from "@/migrations/templates";
 import { toInt } from "@/records/cast";
 import { snakecase } from "@/tools/inflector/inflector";
@@ -46,7 +47,7 @@ const migrateLong = `Supported arguments are:
 function migrateCreate(
   dir: string,
   template: string | null,
-  args: string[],
+  args: Array<string>,
   ctx: CliContext,
 ): void {
   const [name] = args;
@@ -75,29 +76,29 @@ function migrateCreate(
   // save the migration file
   try {
     writeFileSync(resultFilePath, template ?? jsBlankTemplate(), { mode: 0o644 });
-  } catch (err) {
-    throw wrapError(`failed to save migration file ${goQuote(resultFilePath)}`, err);
+  } catch (error) {
+    throw wrapError(`failed to save migration file ${goQuote(resultFilePath)}`, error);
   }
 
   ctx.out.stdout(`Successfully created file ${goQuote(resultFilePath)}\n`);
 }
 
 // migrateCollectionsHandler
-function migrateCollections(app: App, dir: string, args: string[], ctx: CliContext): void {
-  let collections: Collection[];
+function migrateCollections(app: App, dir: string, args: Array<string>, ctx: CliContext): void {
+  let collections: Array<Collection>;
   try {
     collections = collectionQuery(app)
       .orderBy("created ASC")
       .all<Collection>(() => new Collection());
-  } catch (err) {
-    throw wrapError("failed to fetch migrations list", err);
+  } catch (error) {
+    throw wrapError("failed to fetch migrations list", error);
   }
 
   migrateCreate(dir, jsSnapshotTemplate(collections), ["collections_snapshot", ...args], ctx);
 }
 
 // MigrationsRunner.Run
-function run(app: App, list: readonly Migration[], args: string[], ctx: CliContext): void {
+function run(app: App, list: ReadonlyArray<Migration>, args: Array<string>, ctx: CliContext): void {
   initMigrationsTable(app.databases);
 
   const [cmd = "up"] = args;
@@ -165,16 +166,16 @@ function run(app: App, list: readonly Migration[], args: string[], ctx: CliConte
 // "transaction afterFunc errors" does.
 async function runAndWaitForFileDeletes(
   app: App,
-  list: readonly Migration[],
-  args: string[],
+  list: ReadonlyArray<Migration>,
+  args: Array<string>,
   ctx: CliContext,
 ): Promise<void> {
-  const afterTransaction: Promise<void>[] = [];
+  const afterTransaction: Array<Promise<void>> = [];
   let runErr: unknown = null;
   try {
     run({ ...app, afterTransaction }, list, args, ctx);
-  } catch (err) {
-    runErr = err;
+  } catch (error) {
+    runErr = error;
   }
   const failures = (await Promise.allSettled(afterTransaction)).flatMap((r) =>
     r.status === "rejected" ? [r.reason as unknown] : [],
@@ -189,8 +190,8 @@ async function runAndWaitForFileDeletes(
 
 export async function runMigrateCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
-  list: readonly Migration[],
+  persistent: Array<FlagSpec>,
+  list: ReadonlyArray<Migration>,
   migrationsDir: string,
   ctx: CliContext,
   name: string,
@@ -209,11 +210,11 @@ export async function runMigrateCommand(
       [helpFlag, ...persistent],
       { allowUnknown: false },
     );
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CommandError(err.message);
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CommandError(error.message);
     }
-    throw err;
+    throw error;
   }
 
   if (parsed.values.get("help") === true) {

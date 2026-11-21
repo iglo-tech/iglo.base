@@ -7,7 +7,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { DateTime } from "@/tools/types/datetime";
-import { Float64, type Error as ValidationError, NewError } from "@/validation/error";
+import { Float64, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 
 function assertError(expected: string, err: globalThis.Error | null): void {
@@ -29,13 +30,13 @@ const date20001201 = utc(2000, 12, 1);
 const date20000601 = utc(2000, 6, 1);
 
 describe("TestMin", () => {
-  const rows: {
+  const rows: Array<{
     tag: string;
     threshold: unknown;
     exclusive: boolean;
     value: unknown;
     err: string;
-  }[] = [
+  }> = [
     // int cases
     { tag: "t1.1", threshold: 1, exclusive: false, value: 1, err: "" },
     { tag: "t1.2", threshold: 1, exclusive: false, value: 2, err: "" },
@@ -126,13 +127,13 @@ describe("TestMinError", () => {
 });
 
 describe("TestMax", () => {
-  const rows: {
+  const rows: Array<{
     tag: string;
     threshold: unknown;
     exclusive: boolean;
     value: unknown;
     err: string;
-  }[] = [
+  }> = [
     // int cases
     { tag: "t1.1", threshold: 2, exclusive: false, value: 2, err: "" },
     { tag: "t1.2", threshold: 2, exclusive: false, value: 1, err: "" },

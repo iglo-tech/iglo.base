@@ -180,11 +180,11 @@ describe("expression", () => {
     expect(Object.keys(params).length).toBe(3);
 
     // Go literal "a_\\%" is the four characters a _ \ %
-    const e7 = like("name", "a_\\%");
+    const e7 = like("name", String.raw`a_\%`);
     params = {};
     e7.build(db, params);
     // Go literal "%a\\_\\\\\\%%" is the characters % a \ _ \ \ \ % %
-    expect(params["p0"]).toBe("%a\\_\\\\\\%%");
+    expect(params["p0"]).toBe(String.raw`%a\_\\\%%`);
 
     const e8 = like("name", "a").match(false, true);
     params = {};

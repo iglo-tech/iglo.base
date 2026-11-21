@@ -82,7 +82,7 @@ export interface FieldResolver {
 //
 // Each `allowedFields` could be a plain string (eg. "name")
 // or a regexp pattern (eg. `^\w+[\w\.]*$`).
-export function newSimpleFieldResolver(...allowedFields: string[]): SimpleFieldResolver {
+export function newSimpleFieldResolver(...allowedFields: Array<string>): SimpleFieldResolver {
   return new SimpleFieldResolver(allowedFields);
 }
 
@@ -91,7 +91,7 @@ export function newSimpleFieldResolver(...allowedFields: string[]): SimpleFieldR
 //
 // If `allowedFields` are empty no fields filtering is applied.
 export class SimpleFieldResolver implements FieldResolver {
-  constructor(private readonly allowedFields: readonly string[]) {}
+  constructor(private readonly allowedFields: ReadonlyArray<string>) {}
 
   // UpdateQuery implements `search.UpdateQuery` interface.
   updateQuery(_query: SelectQuery | null): void {

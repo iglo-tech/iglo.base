@@ -14,13 +14,9 @@ import { BackupService } from "@sdk/services/BackupService";
 import { CronService } from "@sdk/services/CronService";
 import { SQLService } from "@sdk/services/SQLService";
 import { BatchService } from "@sdk/services/BatchService";
-import { type RecordModel } from "@sdk/tools/dtos";
-import {
-  type SendOptions,
-  type FileOptions,
-  normalizeUnknownQueryParams,
-  serializeQueryParams,
-} from "@sdk/tools/options";
+import type { RecordModel } from "@sdk/tools/dtos";
+import { normalizeUnknownQueryParams, serializeQueryParams } from "@sdk/tools/options";
+import type { SendOptions, FileOptions } from "@sdk/tools/options";
 import { isFormData, convertToFormDataIfNeeded } from "@sdk/tools/formdata";
 
 // @todo remove after upgrading the Node.js dev setup
@@ -29,7 +25,7 @@ type RegExpWithEscape = { escape?: (str: string) => string };
 if (!(RegExp as RegExpWithEscape).escape) {
   // https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript#answer-3561711
   (RegExp as RegExpWithEscape).escape = function (str: string): string {
-    return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
+    return str.replaceAll(/[/\-\\^$*+?.()|[\]{}]/g, String.raw`\$&`);
   };
 }
 
@@ -278,7 +274,7 @@ export default class Client {
    * Cancels all pending requests.
    */
   cancelAllRequests(): Client {
-    for (let k in this.cancelControllers) {
+    for (const k in this.cancelControllers) {
       this.cancelControllers[k]?.abort();
     }
 
@@ -336,7 +332,7 @@ export default class Client {
           return "" + val;
         case "string":
           return JSON.stringify(val);
-        default:
+        default: {
           if (val == null) {
             return "null";
           }
@@ -353,10 +349,11 @@ export default class Client {
           }
 
           return stringified;
+        }
       }
     }
 
-    return raw.replace(new RegExp(pattern, "g"), (match) =>
+    return raw.replaceAll(new RegExp(pattern, "g"), (match) =>
       stringify(paramsWithPlaceholders[match]),
     );
   }
@@ -391,7 +388,7 @@ export default class Client {
       !url.startsWith("http://")
     ) {
       url = window.location.origin?.endsWith("/")
-        ? window.location.origin.substring(0, window.location.origin.length - 1)
+        ? window.location.origin.slice(0, -1)
         : window.location.origin || "";
 
       if (!this.baseURL.startsWith("/")) {
@@ -405,7 +402,7 @@ export default class Client {
     // concatenate the path
     if (path) {
       url += url.endsWith("/") ? "" : "/"; // append trailing slash if missing
-      url += path.startsWith("/") ? path.substring(1) : path;
+      url += path.startsWith("/") ? path.slice(1) : path;
     }
 
     return url;
@@ -424,12 +421,12 @@ export default class Client {
 
     if (this.beforeSend) {
       const result = Object.assign({}, await this.beforeSend(url, options));
-      if (typeof result.url !== "undefined" || typeof result.options !== "undefined") {
+      if (result.url !== undefined || result.options !== undefined) {
         url = result.url || url;
         options = result.options || options;
       } else if (Object.keys(result).length) {
         // legacy behavior
-        options = result as SendOptions;
+        options = result;
         // oxlint-disable-next-line no-unused-expressions -- upstream short-circuit logging
         console?.warn &&
           console.warn(
@@ -439,7 +436,7 @@ export default class Client {
     }
 
     // serialize the query parameters
-    if (typeof options.query !== "undefined") {
+    if (options.query !== undefined) {
       const query = serializeQueryParams(options.query);
       if (query) {
         url += (url.includes("?") ? "&" : "?") + query;
@@ -460,50 +457,53 @@ export default class Client {
     const fetchFunc = options.fetch || fetch;
 
     // send the request
-    return fetchFunc(url, options)
-      .then(async (response) => {
-        let data: unknown = {};
+    return (
+      fetchFunc(url, options)
+        .then(async (response) => {
+          let data: unknown = {};
 
-        try {
-          data = await response.json();
-        } catch (err) {
-          // @todo map against the response content type
-          // all api responses are expected to return json
-          // with exception of the realtime events and 204
-          if (
-            options.signal?.aborted ||
-            (err as ErrorLike | undefined)?.name == "AbortError" ||
-            (err as ErrorLike | undefined)?.message == "Aborted"
-          ) {
-            throw err;
+          try {
+            data = await response.json();
+          } catch (error) {
+            // @todo map against the response content type
+            // all api responses are expected to return json
+            // with exception of the realtime events and 204
+            if (
+              options.signal?.aborted ||
+              (error as ErrorLike | undefined)?.name == "AbortError" ||
+              (error as ErrorLike | undefined)?.message == "Aborted"
+            ) {
+              throw error;
+            }
           }
-        }
 
-        if (this.afterSend) {
-          data = await this.afterSend(response, data, options);
-        }
+          if (this.afterSend) {
+            data = await this.afterSend(response, data, options);
+          }
 
-        if (response.status >= 400) {
-          throw new ClientResponseError({
-            url: response.url,
-            status: response.status,
-            data: data,
-          });
-        }
+          if (response.status >= 400) {
+            throw new ClientResponseError({
+              url: response.url,
+              status: response.status,
+              data,
+            });
+          }
 
-        return data as T;
-      })
-      .catch((err) => {
-        // wrap to normalize all errors
-        throw new ClientResponseError(err);
-      })
-      .catch((err: ClientResponseError) => {
-        if (this.enableAutoClearAuthStore && err.status == 401) {
-          this.authStore.clear();
-        }
+          return data as T;
+        })
+        .catch((error: unknown) => {
+          // wrap to normalize all errors
+          throw new ClientResponseError(error);
+        })
+        // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
+        .catch((error: ClientResponseError) => {
+          if (this.enableAutoClearAuthStore && error.status == 401) {
+            this.authStore.clear();
+          }
 
-        throw err;
-      });
+          throw error;
+        })
+    );
   }
 
   /**
@@ -525,7 +525,7 @@ export default class Client {
     // requestKey normalizations for backward-compatibility
     // ---
     options.query = Object.assign({}, options.params, options.query);
-    if (typeof options.requestKey === "undefined") {
+    if (options.requestKey === undefined) {
       if (options.$autoCancel === false || options.query.$autoCancel === false) {
         options.requestKey = null;
       } else if (options.$cancelKey || options.query.$cancelKey) {
@@ -593,7 +593,7 @@ export default class Client {
     headers = headers || {};
     name = name.toLowerCase();
 
-    for (let key in headers) {
+    for (const key in headers) {
       if (key.toLowerCase() == name) {
         return headers[key] as string;
       }

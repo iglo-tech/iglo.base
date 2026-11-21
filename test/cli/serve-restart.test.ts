@@ -7,7 +7,8 @@ import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { type CliContext, runCli } from "@/cli/root";
+import { runCli } from "@/cli/root";
+import type { CliContext } from "@/cli/root";
 
 import { appName, fixtureCopy, login, patchSettings, waitFor } from "@test/notify/support";
 import { freePort, tempDir } from "@test/support/executable";
@@ -20,7 +21,9 @@ test("a failed restart after a restore reverts the data and serves again", async
 
   let restartCalls = 0;
   let restartCalled!: () => void;
-  const restarted = new Promise<void>((resolve) => (restartCalled = resolve));
+  const restarted = new Promise<void>((resolve) => {
+    restartCalled = resolve;
+  });
   const ctx: CliContext = {
     args: ["serve", "--http", `127.0.0.1:${port}`, "--dir", dataDir, "--automigrate=false"],
     argv0: "iglo-base",

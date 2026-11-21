@@ -12,7 +12,8 @@ import { validateTokenSignature } from "@/oauth2/jwk";
 import { idTokenLeewaySeconds } from "@/oauth2/oidc";
 import { decodeFields, decodeRawUser } from "@/oauth2/user-fields";
 import type { Token } from "@/oauth2/token";
-import { type MapClaims, parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import { parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { toBool } from "@/tools/types/cast";
 import { anyType, marshal, stringType } from "@/tools/types/go-json";
 
@@ -97,8 +98,8 @@ export class Apple extends BaseProvider {
     // (see also https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)
     try {
       await validateTokenSignature(this.signal, idToken, this.jwksURL, this.clock);
-    } catch (err) {
-      throw new Error(`id_token validation failed: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`id_token validation failed: ${(error as Error).message}`, { cause: error });
     }
 
     return claims;
@@ -109,7 +110,7 @@ export class Apple extends BaseProvider {
 // the expiration are checked with the id_token leeway, and the issuer and
 // the audience must match. Every failed check is reported.
 function validateAppleClaims(claims: MapClaims, clock: Clock, audience: string): void {
-  const errors: string[] = [];
+  const errors: Array<string> = [];
 
   const exp = claims["exp"];
   if (exp === undefined || exp === null) {
@@ -123,8 +124,8 @@ function validateAppleClaims(claims: MapClaims, clock: Clock, audience: string):
       audience,
       parserPrefix: false,
     });
-  } catch (err) {
-    errors.push((err as Error).message);
+  } catch (error) {
+    errors.push((error as Error).message);
   }
 
   if (claims["iss"] !== appleIssuer) {

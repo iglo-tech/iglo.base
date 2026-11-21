@@ -8,10 +8,12 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { type CliContext, runCli } from "@/cli/root";
+import { runCli } from "@/cli/root";
+import type { CliContext } from "@/cli/root";
 import { readSchema } from "@/schema/read";
 import type { SchemaDescription } from "@/schema/types";
-import { freePort, run, startServer, tempDir, type RunResult } from "@test/support/executable";
+import { freePort, run, startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 
 const superuser = { email: "admin@apply.test", password: "1234567890" };
 
@@ -76,7 +78,7 @@ function collectionsOf(file: Json): Record<string, Json> {
 }
 
 // the serve command with the file, until it is stopped: the start succeeds
-async function applyOK(site: Site, file: string, extra: string[] = []): Promise<void> {
+async function applyOK(site: Site, file: string, extra: Array<string> = []): Promise<void> {
   const server = await startServer(["--schema", file, ...extra], site.dataDir);
   const result = await server.stop();
   expect(result.stderr).not.toContain("schema not applied");
@@ -84,7 +86,7 @@ async function applyOK(site: Site, file: string, extra: string[] = []): Promise<
 }
 
 // the serve command with the file: the start is refused
-async function applyFails(site: Site, file: string, extra: string[] = []): Promise<RunResult> {
+async function applyFails(site: Site, file: string, extra: Array<string> = []): Promise<RunResult> {
   const port = await freePort();
   const result = await run(
     ["serve", "--http", `127.0.0.1:${port}`, "--dir", site.dataDir, "--schema", file, ...extra],
@@ -95,14 +97,14 @@ async function applyFails(site: Site, file: string, extra: string[] = []): Promi
   return result;
 }
 
-async function plan(site: Site, file: string, extra: string[] = []): Promise<RunResult> {
+async function plan(site: Site, file: string, extra: Array<string> = []): Promise<RunResult> {
   return run(["--dir", site.dataDir, "schema", "plan", "--schema", file, ...extra], {
     cwd: site.root,
   });
 }
 
 // the pre-schema backups in the backups directory, by name
-function preSchemaBackups(site: Site): string[] {
+function preSchemaBackups(site: Site): Array<string> {
   const dir = join(site.dataDir, "backups");
   if (!existsSync(dir)) {
     return [];
@@ -150,7 +152,7 @@ async function api(
 // a running server on the site, with a superuser token, until fn returns
 async function withServer<T>(
   site: Site,
-  args: string[],
+  args: Array<string>,
   fn: (url: string, token: string) => Promise<T>,
 ): Promise<T> {
   const server = await startServer(args, site.dataDir);
@@ -176,15 +178,15 @@ function storedCollection(site: Site, name: string): Json {
 }
 
 // the tables and views of data.db
-function tableNames(site: Site): string[] {
+function tableNames(site: Site): Array<string> {
   const db = new Database(join(site.dataDir, "data.db"), { readonly: true });
   try {
     return (
       db
         .query("SELECT name FROM sqlite_schema WHERE type IN ('table', 'view') ORDER BY name")
-        .all() as {
+        .all() as Array<{
         name: string;
-      }[]
+      }>
     ).map((row) => row.name);
   } finally {
     db.close();
@@ -466,7 +468,7 @@ describe("schema apply and schema plan", () => {
       const options = JSON.parse(String(row.options)) as Json;
       return {
         secret: ((options.authToken as Json).secret as string) ?? "",
-        providers: JSON.stringify(((options.oauth2 as Json).providers as unknown) ?? null),
+        providers: JSON.stringify((options.oauth2 as Json).providers ?? null),
       };
     };
     const secrets = stored();
@@ -494,7 +496,9 @@ describe("schema apply and schema plan", () => {
     const url = `http://127.0.0.1:${port}`;
     const shutdown = new AbortController();
     let restarted!: () => void;
-    const restartCalled = new Promise<void>((resolve) => (restarted = resolve));
+    const restartCalled = new Promise<void>((resolve) => {
+      restarted = resolve;
+    });
     const ctx: CliContext = {
       args: ["serve", "--http", `127.0.0.1:${port}`, "--dir", site.dataDir, "--schema", path],
       argv0: "iglo-base",
@@ -542,7 +546,7 @@ describe("schema apply and schema plan", () => {
       }
       expect(token).not.toBe("");
       const collection = await api(url, token, "GET", "/api/collections/posts");
-      const fields = ((collection.json as Json).fields as Json[]).map((f) => f.name);
+      const fields = ((collection.json as Json).fields as Array<Json>).map((f) => f.name);
       expect(fields).toContain("restored");
     } finally {
       shutdown.abort();
@@ -859,8 +863,8 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
   test("an implied auth index the file lists is compared by definition, under its stored name", async () => {
     const site = await createSite();
-    const stored = (): string[] =>
-      JSON.parse(String(storedCollection(site, "users").indexes)) as string[];
+    const stored = (): Array<string> =>
+      JSON.parse(String(storedCollection(site, "users").indexes)) as Array<string>;
     const before = stored();
     const implied = before.find(
       (statement) => /`email`/.test(statement) && /UNIQUE/i.test(statement),
@@ -1081,7 +1085,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
         "GET",
         "/api/collections/posts/records?filter=title='three'",
       );
-      const items = (listed.json as { items: Json[] }).items;
+      const items = (listed.json as { items: Array<Json> }).items;
       expect(items[0]?.tags).toHaveLength(1);
     });
   });
@@ -1121,10 +1125,10 @@ async function createWithFile(
 }
 
 // the ids of a table's rows in data.db
-function storedIds(site: Site, table: string): string[] {
+function storedIds(site: Site, table: string): Array<string> {
   const db = new Database(join(site.dataDir, "data.db"), { readonly: true });
   try {
-    return (db.query(`SELECT id FROM "${table}" ORDER BY id`).all() as { id: string }[]).map(
+    return (db.query(`SELECT id FROM "${table}" ORDER BY id`).all() as Array<{ id: string }>).map(
       (row) => row.id,
     );
   } finally {
@@ -1160,7 +1164,7 @@ async function siteWithStoredFile(): Promise<{
   site: Site;
   v1: string;
   v2: string;
-  migrations: string[];
+  migrations: Array<string>;
   record: { id: string; doc: string };
   collectionId: string;
 }> {

@@ -13,13 +13,14 @@ import { isAbsolute, join } from "node:path";
 import {
   addressString,
   getHeader,
-  type Header,
   QEncoding,
   setHeader,
   wordEncode,
   writeHeader,
 } from "@/mail/go-mime";
-import { addressesToStrings, type Mailer, type Message } from "@/mail/mailer";
+import type { Header } from "@/mail/go-mime";
+import { addressesToStrings } from "@/mail/mailer";
+import type { Mailer, Message } from "@/mail/mailer";
 import { pseudorandomString } from "@/tools/security/random";
 
 // Sendmail implements the Mailer interface and defines a mail client that

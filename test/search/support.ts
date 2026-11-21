@@ -4,7 +4,8 @@
 import { Database } from "bun:sqlite";
 import { expect } from "bun:test";
 
-import { type DB, newFromDB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 import { newExp } from "@/db/dbx/expression";
 import type { Token, TokenType } from "@/search/fexpr/scanner";
 import type { ResolverResult } from "@/search/simple-field-resolver";
@@ -14,7 +15,7 @@ export const MaxSortFieldLength = 255;
 export interface TestDB {
   db: DB;
   // the SQL of every query that returned data (dbx's QueryLogFunc)
-  calledQueries: string[];
+  calledQueries: Array<string>;
   close(): void;
 }
 
@@ -48,9 +49,7 @@ export function tok(literal: string, type: TokenType): Token {
 }
 
 // fmt's %v of a param value
-function printValue(v: unknown): string {
-  return String(v);
-}
+const printValue: (v: unknown) => string = String;
 
 // testCompareResults: a is the expected result, b the actual one (null
 // for Go's nil)

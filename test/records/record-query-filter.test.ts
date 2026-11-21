@@ -21,7 +21,8 @@ import { Databases } from "@/db/base";
 import type { Params } from "@/db/dbx/query";
 import { NoRowsError } from "@/db/dbx/rows";
 import type { Record } from "@/records/record-model";
-import { findAuthRecordByEmail, findRecordById, type RecordsApp } from "@/records/record-query";
+import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import {
   canAccessRecord,
   canAccessRecordAsync,
@@ -32,7 +33,8 @@ import {
 } from "@/records/record-query-filter";
 import { Store } from "@/tools/store/store";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
 // a copy of the vendored fixture with a read worker pool
@@ -47,7 +49,7 @@ function openPooledApp(): RecordsApp & { cleanup(): Promise<void> } {
     clock: { now: () => new Date() },
     logger: testLogger(),
     filesystem: newAppFilesystem({
-      dataDir: dataDir,
+      dataDir,
       settings: () => newDefaultSettings(),
       getenv: () => "",
       logger: testLogger(),
@@ -74,8 +76,8 @@ function errorOf(fn: () => unknown): unknown {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 
@@ -83,15 +85,15 @@ async function asyncErrorOf(fn: () => Promise<unknown>): Promise<unknown> {
   try {
     await fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 
 function checkRecords(
   expectError: string,
-  expectRecordIds: string[],
-  records: Record[] | undefined,
+  expectRecordIds: Array<string>,
+  records: Array<Record> | undefined,
   err: unknown,
 ): void {
   if (expectError !== "") {
@@ -148,12 +150,12 @@ describe("TestFindRecordsByFilter", () => {
     sort: string;
     limit: number;
     offset: number;
-    params: Params[];
+    params: Array<Params>;
     expectError: string;
-    expectRecordIds: string[];
+    expectRecordIds: Array<string>;
   }
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     {
       name: "missing collection",
       collectionIdOrName: "missing",
@@ -259,7 +261,7 @@ describe("TestFindRecordsByFilter", () => {
 
   for (const s of scenarios) {
     test(s.name, async () => {
-      let records: Record[] | undefined;
+      let records: Array<Record> | undefined;
       let err = errorOf(() => {
         records = findRecordsByFilter(
           app,
@@ -296,7 +298,7 @@ describe("TestFindRecordsByFilter", () => {
 
 describe("TestFindFirstRecordByFilter", () => {
   // [name, collectionIdOrName, filter, params, expectError, expectRecordId]
-  const scenarios: [string, string, string, Params[], string, string][] = [
+  const scenarios: Array<[string, string, string, Array<Params>, string, string]> = [
     ["missing collection", "missing", "id != ''", [], "sql: no rows in result set", ""],
     [
       "invalid filter",
@@ -355,7 +357,7 @@ describe("TestCanAccessRecord", () => {
     boolean,
   ];
 
-  const scenarios: Scenario[] = [
+  const scenarios: Array<Scenario> = [
     ["as superuser with nil rule", "superuser", undefined, null, true, false],
     // the filter rule should be ignored
     ["as superuser with non-empty rule", "superuser", undefined, "id = ''", true, false],
@@ -401,7 +403,14 @@ describe("TestCanAccessRecord", () => {
         const user = findAuthRecordByEmail(a, "users", "test@example.com");
         const record = findRecordById(a, "demo1", "imy661ixudk5izi");
         const auth = authName === "superuser" ? superuser : authName === "user" ? user : undefined;
-        const info = requestInfo({ ...(auth ? { auth } : {}), ...(body ? { body } : {}) });
+        const requestFields: Parameters<typeof requestInfo>[0] = {};
+        if (auth) {
+          requestFields.auth = auth;
+        }
+        if (body) {
+          requestFields.body = body;
+        }
+        const info = requestInfo(requestFields);
 
         // Go returns (false, err): the result of a thrown error is false
         let result = false;

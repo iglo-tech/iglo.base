@@ -15,7 +15,8 @@
 // node recycling must match Go's for the limits to fire on the same
 // patterns.
 
-import { perlGroup, posixGroup, type charGroup } from "@/tools/regexp/syntax/perl-groups";
+import { perlGroup, posixGroup } from "@/tools/regexp/syntax/perl-groups";
+import type { charGroup } from "@/tools/regexp/syntax/perl-groups";
 import {
   OpAlternate,
   OpAnyChar,
@@ -38,8 +39,8 @@ import {
   OpWordBoundary,
   Regexp,
   opPseudo,
-  type Op,
 } from "@/tools/regexp/syntax/regexp";
+import type { Op } from "@/tools/regexp/syntax/regexp";
 import {
   Categories,
   FoldCategory,
@@ -47,10 +48,11 @@ import {
   MaxRune,
   Scripts,
   SimpleFold,
-  type RangeTable,
 } from "@/tools/unicode/letter";
+import type { RangeTable } from "@/tools/unicode/letter";
 import { CategoryAliases } from "@/tools/unicode/tables";
 import { DecodeRuneInString, RuneError, RuneSelf, goString } from "@/tools/unicode/utf8";
+import { isInstance } from "@/tools/types/is-instance";
 
 // An ErrorCode describes a failure to parse a regular expression.
 export type ErrorCode = string;
@@ -107,7 +109,7 @@ export const MatchNL: Flags = ClassNL | DotNL;
 export const Perl: Flags = ClassNL | OneLine | PerlX | UnicodeGroups; // as close to Perl as possible
 export const POSIX: Flags = 0; // POSIX syntax
 
-const flagsMask = 0xffff;
+const flagsMask = 0xff_ff;
 
 // Pseudo-ops for parsing stack (opPseudo + iota; literals here because
 // regexp.ts imports this module).
@@ -135,11 +137,11 @@ class limitPanic {
 
 class parser {
   flags: Flags = 0; // parse mode flags
-  stack: Regexp[] = []; // stack of parsed expressions
+  stack: Array<Regexp> = []; // stack of parsed expressions
   free: Regexp | null = null;
   numCap = 0; // number of capturing groups seen
   wholeRegexp = "";
-  tmpClass: number[] = []; // temporary char class work space
+  tmpClass: Array<number> = []; // temporary char class work space
   numRegexp = 0; // number of regexps allocated
   numRunes = 0; // number of runes in char classes
   repeats = 0; // product of all repetitions seen
@@ -333,15 +335,15 @@ class parser {
         rs[0] === rs[1] &&
         rs[2] === rs[3] &&
         SimpleFold(rs[0] as number) === rs[2] &&
-        SimpleFold(rs[2] as number) === rs[0]) ||
+        SimpleFold(rs[2]) === rs[0]) ||
       (re.op === OpCharClass &&
         rs.length === 2 &&
         (rs[0] as number) + 1 === rs[1] &&
         SimpleFold(rs[0] as number) === rs[1] &&
-        SimpleFold(rs[1] as number) === rs[0])
+        SimpleFold(rs[1]) === rs[0])
     ) {
       // Case-insensitive rune like [Aa] or [Δδ].
-      if (this.maybeConcat(rs[0] as number, this.flags | FoldCase)) {
+      if (this.maybeConcat(rs[0], this.flags | FoldCase)) {
         return null;
       }
 
@@ -514,7 +516,7 @@ class parser {
     // Make sure top class is clean.
     // All the others already are (see swapVerticalBar).
     if (subs.length > 0) {
-      cleanAlt(subs[subs.length - 1] as Regexp);
+      cleanAlt(subs.at(-1) as Regexp);
     }
 
     // Empty alternate is special case
@@ -530,7 +532,7 @@ class parser {
   // If sub contains op nodes, they all get hoisted up
   // so that there is never a concat of a concat or an
   // alternate of an alternate.
-  collapse(subs: Regexp[], op: Op): Regexp {
+  collapse(subs: Array<Regexp>, op: Op): Regexp {
     if (subs.length === 1) {
       return subs[0] as Regexp;
     }
@@ -570,20 +572,20 @@ class parser {
   // which simplifies by character class introduction to
   //
   //	A(B[CD]|EF)|BC[XY]
-  factor(sub: Regexp[]): Regexp[] {
+  factor(sub: Array<Regexp>): Array<Regexp> {
     if (sub.length < 2) {
       return sub;
     }
 
     // Round 1: Factor out common literal prefixes.
-    let str: number[] = [];
+    let str: Array<number> = [];
     let strflags = 0;
     let start = 0;
-    let out: Regexp[] = [];
+    let out: Array<Regexp> = [];
     for (let i = 0; i <= sub.length; i++) {
       // Invariant: sub[start:i] consists of regexps that all begin
       // with str as modified by strflags.
-      let istr: number[] = [];
+      let istr: Array<number> = [];
       let iflags = 0;
       if (i < sub.length) {
         [istr, iflags] = this.leadingString(sub[i] as Regexp);
@@ -757,7 +759,7 @@ class parser {
   }
 
   // leadingString returns the leading literal string that re begins with.
-  leadingString(re: Regexp): [number[], Flags] {
+  leadingString(re: Regexp): [Array<number>, Flags] {
     if (re.op === OpConcat && re.sub.length > 0) {
       re = re.sub[0] as Regexp;
     }
@@ -1264,7 +1266,7 @@ class parser {
   // parsePerlClassEscape parses a leading Perl character class escape like \d
   // from the beginning of s. If one is present, it appends the characters to r
   // and returns the new slice r and the remainder of the string.
-  parsePerlClassEscape(s: string, r: number[]): [out: number[], rest: string] | null {
+  parsePerlClassEscape(s: string, r: Array<number>): [out: Array<number>, rest: string] | null {
     if ((this.flags & PerlX) === 0 || s.length < 2 || s[0] !== "\\") {
       return null;
     }
@@ -1278,7 +1280,7 @@ class parser {
   // parseNamedClass parses a leading POSIX named character class like [:alnum:]
   // from the beginning of s. If one is present, it appends the characters to r
   // and returns the new slice r and the remainder of the string.
-  parseNamedClass(s: string, r: number[]): [out: number[], rest: string] | null {
+  parseNamedClass(s: string, r: Array<number>): [out: Array<number>, rest: string] | null {
     if (s.length < 2 || s[0] !== "[" || s[1] !== ":") {
       return null;
     }
@@ -1297,7 +1299,7 @@ class parser {
     return [this.appendGroup(r, g), s];
   }
 
-  appendGroup(r: number[], g: charGroup): number[] {
+  appendGroup(r: Array<number>, g: charGroup): Array<number> {
     if ((this.flags & FoldCase) === 0) {
       if (g.sign < 0) {
         r = appendNegatedClass(r, g.class);
@@ -1319,7 +1321,7 @@ class parser {
   // parseUnicodeClass parses a leading Unicode character class like \p{Han}
   // from the beginning of s. If one is present, it appends the characters to r
   // and returns the new slice r and the remainder of the string.
-  parseUnicodeClass(s: string, r: number[]): [out: number[], rest: string] | null {
+  parseUnicodeClass(s: string, r: Array<number>): [out: Array<number>, rest: string] | null {
     if (
       (this.flags & UnicodeGroups) === 0 ||
       s.length < 2 ||
@@ -1579,7 +1581,7 @@ export function Parse(s: string | Uint8Array, flags: Flags): Regexp {
   try {
     return parse(str, flags & flagsMask);
   } catch (error) {
-    if (error instanceof limitPanic) {
+    if (isInstance(limitPanic, error)) {
       // too big or too deep
       throw new RegexpSyntaxError(error.code, str);
     }
@@ -1719,7 +1721,7 @@ function parse(s: string, flags: Flags): Regexp {
               // \Q ... \E: the ... is always literals
               let lit: string;
               const rest = t.slice(2);
-              const end = rest.indexOf("\\E");
+              const end = rest.indexOf(String.raw`\E`);
               if (end < 0) {
                 lit = rest;
                 t = "";
@@ -1737,6 +1739,7 @@ function parse(s: string, flags: Flags): Regexp {
               p.op(OpEndText);
               t = t.slice(2);
               break bigSwitch;
+            case undefined:
           }
         }
 
@@ -1870,7 +1873,7 @@ function mergeCharClass(dst: Regexp, src: Regexp): void {
   }
 }
 
-const anyTable: RangeTable = { ranges: [0, 0xffff, 1, 0x10000, MaxRune, 1] };
+const anyTable: RangeTable = { ranges: [0, 0xff_ff, 1, 0x1_00_00, MaxRune, 1] };
 
 const asciiTable: RangeTable = { ranges: [0, 0x7f, 1] };
 
@@ -1879,11 +1882,11 @@ const asciiFoldTable: RangeTable = {
     0,
     0x7f,
     1,
-    0x017f, // Old English long s (ſ), folds to S/s.
-    0x017f,
+    0x01_7f, // Old English long s (ſ), folds to S/s.
+    0x01_7f,
     1,
-    0x212a, // Kelvin K, folds to K/k.
-    0x212a,
+    0x21_2a, // Kelvin K, folds to K/k.
+    0x21_2a,
     1,
   ],
 };
@@ -1984,9 +1987,9 @@ function unicodeTable(
 
 // cleanClass sorts the ranges (pairs of elements of r),
 // merges them, and eliminates duplicates. It works in place and returns r.
-function cleanClass(r: number[]): number[] {
+function cleanClass(r: Array<number>): Array<number> {
   // Sort by lo increasing, hi decreasing to break ties.
-  const pairs: [number, number][] = [];
+  const pairs: Array<[number, number]> = [];
   for (let i = 0; i + 1 < r.length; i += 2) {
     pairs.push([r[i] as number, r[i + 1] as number]);
   }
@@ -2024,7 +2027,7 @@ function cleanClass(r: number[]): number[] {
 
 // inCharClass reports whether r is in the class.
 // It assumes the class has been cleaned by cleanClass.
-export function inCharClass(r: number, cls: readonly number[]): boolean {
+export function inCharClass(r: number, cls: ReadonlyArray<number>): boolean {
   let lo = 0;
   let hi = cls.length / 2;
   while (lo < hi) {
@@ -2041,7 +2044,7 @@ export function inCharClass(r: number, cls: readonly number[]): boolean {
 }
 
 // appendLiteral returns the result of appending the literal x to the class r.
-function appendLiteral(r: number[], x: number, flags: Flags): number[] {
+function appendLiteral(r: Array<number>, x: number, flags: Flags): Array<number> {
   if ((flags & FoldCase) !== 0) {
     return appendFoldedRange(r, x, x);
   }
@@ -2049,7 +2052,7 @@ function appendLiteral(r: number[], x: number, flags: Flags): number[] {
 }
 
 // appendRange returns the result of appending the range lo-hi to the class r.
-export function appendRange(r: number[], lo: number, hi: number): number[] {
+export function appendRange(r: Array<number>, lo: number, hi: number): Array<number> {
   // Expand last range or next to last range if it overlaps or abuts.
   // Checking two ranges helps when appending case-folded
   // alphabets, so that one range can be expanding A-Z and the
@@ -2078,12 +2081,12 @@ export function appendRange(r: number[], lo: number, hi: number): number[] {
 
 // minimum and maximum runes involved in folding.
 // checked during test.
-export const minFold = 0x0041;
-export const maxFold = 0x1e943;
+export const minFold = 0x00_41;
+export const maxFold = 0x1_e9_43;
 
 // appendFoldedRange returns the result of appending the range lo-hi
 // and its case folding-equivalent runes to the class r.
-function appendFoldedRange(r: number[], lo: number, hi: number): number[] {
+function appendFoldedRange(r: Array<number>, lo: number, hi: number): Array<number> {
   // Optimizations.
   if (lo <= minFold && hi >= maxFold) {
     // Range is full: folding can't add more.
@@ -2118,7 +2121,7 @@ function appendFoldedRange(r: number[], lo: number, hi: number): number[] {
 
 // appendClass returns the result of appending the class x to the class r.
 // It assume x is clean.
-function appendClass(r: number[], x: readonly number[]): number[] {
+function appendClass(r: Array<number>, x: ReadonlyArray<number>): Array<number> {
   for (let i = 0; i < x.length; i += 2) {
     r = appendRange(r, x[i] as number, x[i + 1] as number);
   }
@@ -2126,7 +2129,7 @@ function appendClass(r: number[], x: readonly number[]): number[] {
 }
 
 // appendFoldedClass returns the result of appending the case folding of the class x to the class r.
-function appendFoldedClass(r: number[], x: readonly number[]): number[] {
+function appendFoldedClass(r: Array<number>, x: ReadonlyArray<number>): Array<number> {
   for (let i = 0; i < x.length; i += 2) {
     r = appendFoldedRange(r, x[i] as number, x[i + 1] as number);
   }
@@ -2135,7 +2138,7 @@ function appendFoldedClass(r: number[], x: readonly number[]): number[] {
 
 // appendNegatedClass returns the result of appending the negation of the class x to the class r.
 // It assumes x is clean.
-function appendNegatedClass(r: number[], x: readonly number[]): number[] {
+function appendNegatedClass(r: Array<number>, x: ReadonlyArray<number>): Array<number> {
   let nextLo = 0;
   for (let i = 0; i < x.length; i += 2) {
     const lo = x[i] as number;
@@ -2152,7 +2155,7 @@ function appendNegatedClass(r: number[], x: readonly number[]): number[] {
 }
 
 // appendTable returns the result of appending x to the class r.
-function appendTable(r: number[], x: RangeTable): number[] {
+function appendTable(r: Array<number>, x: RangeTable): Array<number> {
   const ranges = x.ranges;
   for (let i = 0; i < ranges.length; i += 3) {
     const lo = ranges[i] as number;
@@ -2170,7 +2173,7 @@ function appendTable(r: number[], x: RangeTable): number[] {
 }
 
 // appendNegatedTable returns the result of appending the negation of x to the class r.
-function appendNegatedTable(r: number[], x: RangeTable): number[] {
+function appendNegatedTable(r: Array<number>, x: RangeTable): Array<number> {
   let nextLo = 0; // lo end of next class to add
   const ranges = x.ranges;
   for (let i = 0; i < ranges.length; i += 3) {
@@ -2199,7 +2202,7 @@ function appendNegatedTable(r: number[], x: RangeTable): number[] {
 
 // negateClass overwrites r and returns r's negation.
 // It assumes the class r is already clean.
-function negateClass(r: number[]): number[] {
+function negateClass(r: Array<number>): Array<number> {
   let nextLo = 0; // lo end of next class to add
   let w = 0; // write index
   for (let i = 0; i < r.length; i += 2) {

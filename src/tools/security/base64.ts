@@ -63,7 +63,7 @@ export class Encoding {
   // DecodeString. Characters outside Latin-1 are invalid input bytes.
   decodeString(s: string): Uint8Array<ArrayBuffer> {
     const src = s;
-    const out: number[] = [];
+    const out: Array<number> = [];
     let si = 0;
     for (;;) {
       const dbuf = [0, 0, 0, 0];

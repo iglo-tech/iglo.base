@@ -21,17 +21,19 @@ import { EmailField } from "@/fields/email";
 import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
-import { type Pending, caseTest, expectValidationErrors } from "@test/collections/validation";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
+import { caseTest, expectValidationErrors } from "@test/collections/validation";
+import type { Pending } from "@test/collections/validation";
 
 interface Scenario {
   name: string;
   collection: (app: TestCollectionsApp) => Collection;
-  expectedErrors: string[];
+  expectedErrors: Array<string>;
   pending?: Pending;
 }
 
-const scenarios: Scenario[] = [
+const scenarios: Array<Scenario> = [
   {
     name: "empty collection",
     collection: () => new Collection(),
@@ -667,7 +669,7 @@ const scenarios: Scenario[] = [
     collection: () => {
       const c = newBaseCollection("new_auth");
       c.fields = newFieldsList(
-        new TextField({ name: "id", primaryKey: true, required: true, pattern: "\\w+" }),
+        new TextField({ name: "id", primaryKey: true, required: true, pattern: String.raw`\w+` }),
       );
       return c;
     },
@@ -678,7 +680,7 @@ const scenarios: Scenario[] = [
     collection: () => {
       const c = newBaseCollection("new_auth");
       c.fields = newFieldsList(
-        new TextField({ name: "id", primaryKey: true, required: true, pattern: "\\w+" }),
+        new TextField({ name: "id", primaryKey: true, required: true, pattern: String.raw`\w+` }),
         new TextField({ id: "f1", name: "Test" }), // case-insensitive
         new BoolField({ id: "f2", name: "test" }),
       );

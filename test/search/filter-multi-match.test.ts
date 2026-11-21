@@ -39,7 +39,7 @@ function build(filter: string): { sql: string; params: Params } {
   const expr = filterBuildExpr(filter, resolver, { clock });
   const sql = expr.build(newFromDB(new Database(":memory:"), "sqlite"), params);
   const names = new Map<string, string>();
-  const normalized = sql.replace(/\{:(t\w{8})\}|__(sm|ml|mr)\w{8}/g, (m: string) => {
+  const normalized = sql.replaceAll(/\{:(t\w{8})\}|__(sm|ml|mr)\w{8}/g, (m: string) => {
     if (!names.has(m)) {
       names.set(m, m.startsWith("{:") ? `{:p${names.size}}` : m.slice(0, 4) + names.size);
     }
@@ -59,7 +59,13 @@ test("many vs one", () => {
     `((([[a.x]] = {:p0}) AND (NOT EXISTS (SELECT 1 FROM (${subA}) {{__sm1}} WHERE NOT ([[__sm1.multiMatchValue]] = {:p0})))))`,
   );
   // the subquery params are merged into the root params
-  expect(Object.values(params).toSorted()).toEqual(["a", "v"]);
+  expect(
+    Object.values(params).toSorted((a, b) => {
+      const x = String(a);
+      const y = String(b);
+      return x < y ? -1 : x > y ? 1 : 0;
+    }),
+  ).toEqual(["a", "v"]);
 });
 
 test("one vs many (inverse)", () => {
@@ -76,7 +82,7 @@ test("many vs many", () => {
 
 test("any-of operators skip the multi-match subquery", () => {
   expect(build("a.x ?= 'v' && a.x ?~ b.y").sql).toBe(
-    "([[a.x]] = {:p0} AND [[a.x]] LIKE ('%' || [[b.y]] || '%') ESCAPE '\\')",
+    String.raw`([[a.x]] = {:p0} AND [[a.x]] LIKE ('%' || [[b.y]] || '%') ESCAPE '\')`,
   );
 });
 

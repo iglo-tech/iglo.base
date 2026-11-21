@@ -18,6 +18,7 @@
 //     markers there, which match [a-z0-9]{10});
 //   - stored data: with upstream stopped, the record columns (typeof and
 //     value) and `_collections.fields` are compared with the model's.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -25,11 +26,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { FieldNameId, isDriverValuer, isSetterFinder, type Field } from "@/fields/field";
+import { FieldNameId, isDriverValuer, isSetterFinder } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { FileField } from "@/fields/file";
 import { fieldFactory } from "@/fields/fields";
 import { newBadRequestError } from "@/server/error";
-import { NewFileFromMultipart, type File, type RandomSource } from "@/tools/filesystem/file";
+import { NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { File, RandomSource } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { anyType, mapOf, marshal, textToBytes, unmarshal } from "@/tools/types/go-json";
 import { jsonArrayValue } from "@/tools/types/json-array";
@@ -43,12 +46,12 @@ import {
   uploadCases,
   validSettings,
   valueCollections,
-  type Content,
-  type Part,
-  type UploadCase,
 } from "@test/differential/fields/file-cases";
-import { TestCollection, TestRecord, newBaseCollection, noDBApp } from "@test/support/fields";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { Content, Part, UploadCase } from "@test/differential/fields/file-cases";
+import type { TestCollection } from "@test/support/fields";
+import { TestRecord, newBaseCollection, noDBApp } from "@test/support/fields";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "fields@example.com";
 const password = "1234567890";
@@ -71,14 +74,15 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const res = await fetch(`${upstream.url}${path}`, {
-    method,
-    headers: {
-      "content-type": contentType,
-      ...(auth ? { authorization: token } : {}),
-    },
-    ...(body === undefined ? {} : { body }),
-  });
+  const headers: Record<string, string> = { "content-type": contentType };
+  if (auth) {
+    headers.authorization = token;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -132,7 +136,7 @@ function modelField(text: string): Field {
   return field;
 }
 
-function modelCollection(name: string, defs: FieldDef[]): TestCollection {
+function modelCollection(name: string, defs: Array<FieldDef>): TestCollection {
   const collection = newBaseCollection(name);
   for (const def of defs) {
     collection.fields.add(modelField(JSON.stringify(def)));
@@ -169,7 +173,7 @@ function responseFields(body: string): string {
   return body.slice(start, body.indexOf(`,"indexes":`, start));
 }
 
-const createdCollections: TestCollection[] = [];
+const createdCollections: Array<TestCollection> = [];
 
 // compares upstream's answer to a collection request with the model's
 async function checkCollection(body: string, collection: TestCollection): Promise<number> {
@@ -218,7 +222,7 @@ describe("settings", () => {
       try {
         collection = newBaseCollection(name);
         collection.fields.add(modelField(raw));
-      } catch (err) {
+      } catch (error) {
         // BindBody fails: upstream answers before validating
         const res = await request("POST", "/api/collections", body);
         expect({ status: res.status, body: res.text }).toEqual({
@@ -226,7 +230,7 @@ describe("settings", () => {
           body: marshal(
             newBadRequestError(
               "Failed to load the submitted data due to invalid formatting.",
-              err,
+              error,
             ).toJSON(),
           ),
         });
@@ -246,14 +250,14 @@ function contentBytes(content: Content): Uint8Array {
   if (typeof content === "string") {
     return encoder.encode(content);
   }
-  if (content instanceof Uint8Array) {
+  if (isInstance(Uint8Array, content)) {
     return content;
   }
   return new Uint8Array(content.size).fill(0x61); // "aaa…": text/plain
 }
 
 // the multipart body of the parts (Bun's FormData encoding)
-async function multipart(parts: Part[]): Promise<{ contentType: string; body: Uint8Array }> {
+async function multipart(parts: Array<Part>): Promise<{ contentType: string; body: Uint8Array }> {
   const form = new FormData();
   for (const part of parts) {
     if (part.length === 2) {
@@ -271,7 +275,7 @@ async function multipart(parts: Part[]): Promise<{ contentType: string; body: Ui
 
 // unique 10-letter markers in place of the random name parts: uppercase,
 // which normalized names never contain outside their extension
-const markers: string[] = [];
+const markers: Array<string> = [];
 const markerRandom: RandomSource = (length) => {
   let n = markers.length;
   let marker = "";
@@ -285,7 +289,7 @@ const markerRandom: RandomSource = (length) => {
 
 // a regexp for upstream's text of a model text with markers
 function namePattern(modelText: string): RegExp {
-  let pattern = modelText.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  let pattern = modelText.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`);
   for (const marker of markers) {
     if (pattern.includes(marker)) {
       pattern = pattern.replaceAll(marker, "[a-z0-9]{10}");
@@ -369,8 +373,8 @@ async function modelSubmit(
   }).formData();
 
   // RequestInfo.Body (the text values) and the file parts per key
-  const values = new Map<string, string[]>();
-  const files = new Map<string, globalThis.File[]>();
+  const values = new Map<string, Array<string>>();
+  const files = new Map<string, Array<globalThis.File>>();
   for (const [key, value] of form.entries()) {
     if (typeof value === "string") {
       values.set(key, [...(values.get(key) ?? []), value]);
@@ -385,16 +389,16 @@ async function modelSubmit(
 
   // recordDataFromRequest
   let result = replaceModifiers(record, info);
-  const uploadedFiles = new Map<string, File[]>();
+  const uploadedFiles = new Map<string, Array<File>>();
   for (const field of record.collection.fields) {
-    if (!(field instanceof FileField)) {
+    if (!isInstance(FileField, field)) {
       continue;
     }
     const baseKey = field.getName();
     for (const k of [baseKey, "+" + baseKey, baseKey + "+"]) {
       const parts = files.get(k) ?? [];
       if (parts.length > 0) {
-        const list: File[] = [];
+        const list: Array<File> = [];
         for (const part of parts) {
           list.push(await NewFileFromMultipart(part, { random: markerRandom }));
         }
@@ -404,7 +408,7 @@ async function modelSubmit(
   }
   if (uploadedFiles.size > 0) {
     for (const [k, list] of uploadedFiles) {
-      const uploaded: unknown[] = [];
+      const uploaded: Array<unknown> = [];
       if (info.get(k) !== undefined && !k.startsWith("+") && !k.endsWith("+") && !k.endsWith("-")) {
         uploaded.push(...toUniqueStringSlice(info.get(k)));
       }
@@ -474,12 +478,12 @@ function storeModel(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): Record<string, [string, unknown]> {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: Record<string, [string, unknown]> = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];
@@ -510,16 +514,16 @@ interface StoredRecord {
   columns: Record<string, [string, unknown]>;
 }
 
-const storedRecords: StoredRecord[] = [];
+const storedRecords: Array<StoredRecord> = [];
 let requests = 0;
 let storageRejections = 0;
 
 // the new uploads of the record's file fields
-function uploads(record: TestRecord): File[] {
-  const out: File[] = [];
+function uploads(record: TestRecord): Array<File> {
+  const out: Array<File> = [];
   for (const field of record.collection.fields) {
-    if (field instanceof FileField) {
-      out.push(...(field.findGetter(field.getName() + ":unsaved")?.(record) as File[]));
+    if (isInstance(FileField, field)) {
+      out.push(...(field.findGetter(field.getName() + ":unsaved")?.(record) as Array<File>));
     }
   }
   return out;
@@ -539,7 +543,7 @@ async function submit(
   label: string,
   collection: TestCollection,
   record: TestRecord,
-  parts: Part[],
+  parts: Array<Part>,
 ): Promise<Record<string, unknown> | null> {
   const { contentType, body } = await multipart(parts);
   const errs = await modelSubmit(record, contentType, body);
@@ -618,18 +622,18 @@ function savedRecord(collection: TestCollection, saved: Record<string, unknown>)
 }
 
 // "$i" -> the i-th stored name of the key's field
-function resolveParts(parts: Part[], saved: Record<string, unknown>): Part[] {
+function resolveParts(parts: Array<Part>, saved: Record<string, unknown>): Array<Part> {
   return parts.map((part) => {
     if (part.length !== 2 || !/^\$\d+$/.test(part[1])) {
       return part;
     }
-    const fieldName = part[0].replace(/^\+|[+-]$/g, "");
+    const fieldName = part[0].replaceAll(/^\+|[+-]$/g, "");
     const names = toUniqueStringSlice(saved[fieldName]);
     return [part[0], names[Number(part[1].slice(1))] as string];
   });
 }
 
-function partsLabel(parts: Part[]): string {
+function partsLabel(parts: Array<Part>): string {
   return parts
     .map((p) => (p.length === 2 ? `${p[0]}=${p[1]}` : `${p[0]}@${p[1]}`))
     .join(" ")

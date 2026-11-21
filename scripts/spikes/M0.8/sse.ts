@@ -19,7 +19,8 @@
 // POST /broadcast; upstream broadcasts a record create in `notes` (list
 // rule ""). Server RSS and open file descriptors come from /proc.
 
-import { connect, type Socket } from "node:net";
+import { connect } from "node:net";
+import type { Socket } from "node:net";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -35,8 +36,8 @@ import {
   spikeRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 const { values } = parseArgs({
   options: {
@@ -50,7 +51,7 @@ const total = Number(values.connections);
 interface Round {
   n: number;
   t0: number;
-  latencies: number[];
+  latencies: Array<number>;
 }
 
 let round: Round | undefined;
@@ -129,7 +130,7 @@ interface Target {
   broadcast(n: number, size: number): Promise<void>;
   stats(): Promise<unknown>;
   // after PB_CONNECT
-  subscribe?(conns: Conn[]): Promise<void>;
+  subscribe?(conns: Array<Conn>): Promise<void>;
 }
 
 async function startBunTarget(root: string, idle: string): Promise<Target> {
@@ -220,10 +221,10 @@ function fmt(s: { rssMiB: number; fds: number; threads: number }): string {
 
 async function broadcastRound(
   t: Target,
-  conns: Conn[],
+  conns: Array<Conn>,
   n: number,
   size: number,
-): Promise<{ latencies: number[]; missing: number }> {
+): Promise<{ latencies: Array<number>; missing: number }> {
   const open = conns.filter((c) => c.open());
   const before = open.map((c) => c.received);
   round = { n, t0: performance.now(), latencies: [] };
@@ -240,7 +241,7 @@ async function broadcastRound(
 
 async function scenario(name: string): Promise<void> {
   const spike = spikeRoot(`m08-sse-${name}`);
-  const conns: Conn[] = [];
+  const conns: Array<Conn> = [];
   let t: Target | undefined;
   try {
     guardMemory(2500);
@@ -295,8 +296,8 @@ async function scenario(name: string): Promise<void> {
       ["small (64 B data)", 64, 20],
       ["16 KiB", 16 * 1024, 5],
     ] as const) {
-      const all: number[] = [];
-      const lasts: number[] = [];
+      const all: Array<number> = [];
+      const lasts: Array<number> = [];
       let missing = 0;
       for (let i = 0; i < count; i++) {
         const r = await broadcastRound(t, conns, i + 1, size);

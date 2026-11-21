@@ -16,7 +16,7 @@ function c(name: string, collection: string, filter: string, sort = "id"): Filte
   return { name, collection, filter, sort };
 }
 
-export const filterCases: FilterCase[] = [
+export const filterCases: Array<FilterCase> = [
   // plain fields
   c("text eq", "posts", "title = 'Hello World'"),
   c("text neq", "posts", "title != 'Hello World'"),
@@ -25,7 +25,7 @@ export const filterCases: FilterCase[] = [
   c("text like underscore", "posts", "title ~ 'Gamma_'"),
   c("text like percent", "posts", "title ~ '100%'"),
   c("text like quote", "posts", "title ~ \"'quote'\""),
-  c("text like backslash", "posts", "title ~ '\\\\'"),
+  c("text like backslash", "posts", String.raw`title ~ '\\'`),
   c("text unicode", "posts", "title = 'Ünïcode ✓'"),
   c("text empty", "posts", "title = ''"),
   c("text null", "posts", "title = null"),

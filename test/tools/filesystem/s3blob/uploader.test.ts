@@ -11,9 +11,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 import { Uploader } from "@/tools/filesystem/internal/s3blob/s3/uploader";
-import { type RecordedRequest, type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
+import { startS3Recorder } from "@test/support/s3-recorder";
+import type { RecordedRequest, S3Recorder } from "@test/support/s3-recorder";
 
-const recorders: S3Recorder[] = [];
+const recorders: Array<S3Recorder> = [];
 afterEach(() => {
   for (const r of recorders.splice(0)) {
     r.stop();
@@ -46,7 +47,7 @@ function expectSignedWithHeader(req: RecordedRequest): void {
 }
 
 // "METHOD /path?query" of each request, sorted
-function sortedTargets(requests: RecordedRequest[]): string[] {
+function sortedTargets(requests: Array<RecordedRequest>): Array<string> {
   return requests.map((r) => `${r.method} ${r.path}?${r.query}`).toSorted();
 }
 
@@ -100,7 +101,7 @@ describe("Uploader required fields", () => {
       key: "",
     });
 
-    await expect(uploader.upload()).rejects.toThrow("Uploader.Key is required");
+    await Promise.resolve(expect(uploader.upload()).rejects.toThrow("Uploader.Key is required"));
     expect(recorder.requests).toHaveLength(0);
   });
 
@@ -232,7 +233,7 @@ describe("Uploader multipart upload", () => {
       minPartSize: 3,
     });
 
-    await expect(uploader.upload()).rejects.toThrow("400 S3ResponseError");
+    await Promise.resolve(expect(uploader.upload()).rejects.toThrow("400 S3ResponseError"));
 
     // the other workers may have sent part 3 before the failure stopped them,
     // but nothing is sent after the abort, and the upload is never completed
@@ -261,7 +262,7 @@ describe("Uploader multipart upload", () => {
       minPartSize: 3,
     });
 
-    await expect(uploader.upload()).rejects.toThrow("400 S3ResponseError");
+    await Promise.resolve(expect(uploader.upload()).rejects.toThrow("400 S3ResponseError"));
 
     expect(sortedTargets(recorder.requests)).toEqual([
       "DELETE /test_bucket/test_key?uploadId=test_id",
@@ -283,7 +284,7 @@ describe("Uploader multipart upload", () => {
       }),
     );
 
-    await expect(upload(recorder)).rejects.toThrow("200 InternalError: try again");
+    await Promise.resolve(expect(upload(recorder)).rejects.toThrow("200 InternalError: try again"));
     expect(recorder.requests.at(-1)?.method).toBe("DELETE");
   });
 
@@ -302,7 +303,9 @@ describe("Uploader multipart upload", () => {
   test("a part response without an ETag aborts the upload", async () => {
     const recorder = startRecorder(multipartResponder({ emptyEtagPart: 1 }));
 
-    await expect(upload(recorder)).rejects.toThrow("missing ETag in the response of part 1");
+    await Promise.resolve(
+      expect(upload(recorder)).rejects.toThrow("missing ETag in the response of part 1"),
+    );
     expect(recorder.requests.at(-1)?.method).toBe("DELETE");
     expect(
       recorder.requests.filter((r) => r.method === "POST" && r.query.includes("uploadId=")),
@@ -317,7 +320,7 @@ describe("Uploader multipart upload", () => {
       }),
     );
 
-    await expect(upload(recorder)).rejects.toThrow("missing UploadId");
+    await Promise.resolve(expect(upload(recorder)).rejects.toThrow("missing UploadId"));
     expect(recorder.requests).toHaveLength(1);
   });
 });

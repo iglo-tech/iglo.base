@@ -30,7 +30,7 @@ describe("TestEmailFieldPrepareValue", () => {
   const f = new EmailField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["test", "test"],
     [false, "false"],
@@ -57,12 +57,12 @@ describe("TestEmailFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: EmailField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new EmailField({ name: "test" }),
@@ -137,7 +137,7 @@ describe("TestEmailFieldValidateSettings", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; field: () => EmailField; expectErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; field: () => EmailField; expectErrors: Array<string> }> = [
     {
       name: "zero minimal",
       field: () => new EmailField({ id: "test", name: "test" }),

@@ -6,20 +6,22 @@
 
 import { Errors } from "@/validation/error";
 import { isMap } from "@/validation/util";
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Each returns a validation rule that loops through an iterable (map, slice
 // or array) and validates each value inside with the provided rules. An
 // empty iterable is considered valid. Use the Required rule to make sure
 // the iterable is not empty.
-export function Each(...rules: Rule[]): EachRule {
+export function Each(...rules: Array<Rule>): EachRule {
   return new EachRule(rules);
 }
 
 // EachRule is a validation rule that validates elements in a map/slice/array
 // using the specified list of rules.
 export class EachRule implements Rule {
-  constructor(private readonly rules: readonly Rule[]) {}
+  constructor(private readonly rules: ReadonlyArray<Rule>) {}
 
   // Validate loops through the given iterable and calls the Ozzo Validate()
   // method for each value.
@@ -36,8 +38,10 @@ export class EachRule implements Rule {
           errs.errors[String(i)] = err;
         }
       }
-    } else if (value instanceof Map || isMap(value)) {
-      const entries = value instanceof Map ? [...value.entries()] : Object.entries(value);
+    } else if (isInstance<Map<unknown, unknown>>(Map, value) || isMap(value)) {
+      const entries = isInstance<Map<unknown, unknown>>(Map, value)
+        ? [...value.entries()]
+        : Object.entries(value);
       for (const [k, val] of entries) {
         const err = Validate(val, ...this.rules);
         if (err !== null) {

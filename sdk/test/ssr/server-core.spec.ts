@@ -3,13 +3,8 @@
 import { describe, expect, test, beforeAll, afterAll, afterEach } from "bun:test";
 import { FetchMock, dummyJWT } from "@sdk-test/mocks";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import {
-  createServerClient,
-  createSuperuserClient,
-  createSessionCache,
-  type CookieAdapter,
-  type CookieToSet,
-} from "@sdk/ssr/index";
+import { createServerClient, createSuperuserClient, createSessionCache } from "@sdk/ssr/index";
+import type { CookieAdapter, CookieToSet } from "@sdk/ssr/index";
 
 const API = "http://localhost:8090";
 // authStore.isValid checks expiry against the real clock, so token times are relative to now.
@@ -31,7 +26,7 @@ function serverToken(opts: { exp: number; id?: string; collectionId?: string }):
 
 /** A cookie adapter that keeps what the SDK writes. */
 function jar(initial: Array<{ name: string; value: string }>) {
-  const written: CookieToSet[][] = [];
+  const written: Array<Array<CookieToSet>> = [];
   let cookies = initial;
   const adapter: CookieAdapter = {
     getAll: () => cookies,
@@ -299,7 +294,7 @@ describe("SSR server core: round-1 regressions", () => {
 
       const joined = await joining;
       expect(joined.authStore.isValid).toBe(true);
-      await expect(verifying).rejects.toBeInstanceOf(ClientResponseError);
+      await Promise.resolve(expect(verifying).rejects.toBeInstanceOf(ClientResponseError));
       expect(seed.written.length).toBe(0);
     });
 
@@ -440,7 +435,7 @@ describe("SSR server core: round-1 regressions", () => {
     test("on https a session cookie under the plain name is ignored: anonymous, and no request is made", async () => {
       // a sibling subdomain can set the plain name for the parent domain; the SDK must not sign in with it
       const token = serverToken({ exp: NOW + 86_400, id: "u_plain" });
-      const requests: string[] = [];
+      const requests: Array<string> = [];
       const { adapter } = jar([{ name: "pb_auth", value: sessionValue(token, { id: "u_plain" }) }]);
       const pb = await createServerClient({
         url: API,
@@ -538,7 +533,7 @@ describe("SSR server core: round-1 regressions", () => {
         method: "GET",
         url: `${API}/api/collections/users/records/u_bs`,
         additionalMatcher: (_url, config) => {
-          seen.push(config as RequestInit);
+          seen.push(config);
           return true;
         },
         replyCode: 200,
@@ -589,8 +584,10 @@ describe("SSR server core: round-1 regressions", () => {
         },
         clock: () => CLOCK,
       });
-      await expect(pb.collection("_superusers").getList(1, 1)).rejects.toBeInstanceOf(
-        ClientResponseError,
+      await Promise.resolve(
+        expect(pb.collection("_superusers").getList(1, 1)).rejects.toBeInstanceOf(
+          ClientResponseError,
+        ),
       );
       expect(pb.authStore.isValid).toBe(true);
     });

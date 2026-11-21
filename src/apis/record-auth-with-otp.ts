@@ -3,11 +3,8 @@
 // The OnRecordAuthWithOTPRequest hook is not ported (no extension
 // surface): its default action runs directly.
 
-import {
-  type RequestEvent,
-  RequestEventKeyInfoContext,
-  RequestInfoContextOTP,
-} from "@/app/event-request";
+import { RequestEventKeyInfoContext, RequestInfoContextOTP } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
 import {
   consumeOTPSync,
@@ -39,6 +36,7 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
   }
 
   const form: AuthWithOTPForm = { OTPId: "", Password: "" };
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as { [key: string]: unknown }, authWithOTPType);
   if (bindErr) {
     return firstApiError(
@@ -62,8 +60,8 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
   let otp: OTP;
   try {
     otp = findOTPById(e.app, form.OTPId);
-  } catch (err) {
-    return e.badRequestError("Invalid or expired OTP", err);
+  } catch (error) {
+    return e.badRequestError("Invalid or expired OTP", error);
   }
 
   if (otp.collectionRef() !== collection.id) {
@@ -80,11 +78,11 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
   let record: Record;
   try {
     record = findRecordById(e.app, otp.collectionRef(), otp.recordRef());
-  } catch (err) {
+  } catch (error) {
     return e.badRequestError(
       "Invalid or expired OTP",
-      new Error(`missing auth record: ${err instanceof Error ? err.message : String(err)}`, {
-        cause: err,
+      new Error(`missing auth record: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
       }),
     );
   }
@@ -120,12 +118,15 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
   // check above is awaited), the others answer like for an invalid OTP
   try {
     consumeOTPSync(e.app, otp);
-  } catch (err) {
+  } catch (error) {
     return e.badRequestError(
       "Invalid or expired OTP",
-      new Error(`failed to consume the OTP: ${err instanceof Error ? err.message : String(err)}`, {
-        cause: err,
-      }),
+      new Error(
+        `failed to consume the OTP: ${error instanceof Error ? error.message : String(error)}`,
+        {
+          cause: error,
+        },
+      ),
     );
   }
 
@@ -144,9 +145,9 @@ export async function recordAuthWithOTP(e: RequestEvent): Promise<HandlerResult>
 
     try {
       await saveRecord(e.app, record);
-    } catch (err) {
+    } catch (error) {
       e.app.logger.error("Failed to update record verified state after successful OTP validation", {
-        error: err,
+        error,
         otpId,
         recordId: record.id,
       });

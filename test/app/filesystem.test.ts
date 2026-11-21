@@ -15,7 +15,7 @@ import { newDefaultSettings } from "@/settings/settings-model";
 
 import { openTestApp } from "@test/collections/app";
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -30,7 +30,7 @@ function newDataDir(): string {
 }
 
 // a pb_data with files under storage/<dir>/<file>
-function withFiles(dataDir: string, dirs: string[]): void {
+function withFiles(dataDir: string, dirs: Array<string>): void {
   for (const d of dirs) {
     mkdirSync(join(dataDir, "storage", d), { recursive: true });
     writeFileSync(join(dataDir, "storage", d, "a.txt"), "a");
@@ -53,7 +53,7 @@ describe("NewFilesystem", () => {
       logger: testLogger(),
     }).newFilesystem();
     try {
-      fs.upload(new TextEncoder().encode("hi"), "c/r/f.txt");
+      void fs.upload(new TextEncoder().encode("hi"), "c/r/f.txt");
     } finally {
       fs.close();
     }
@@ -105,8 +105,8 @@ describe("deleteModelFiles", () => {
       logger: testLogger(),
     });
 
-    appFs.deleteModelFiles({ baseFilesPath: () => "c1/r1", fieldTypes: () => ["text"] });
-    appFs.deleteModelFiles({ baseFilesPath: () => "", fieldTypes: () => ["file"] });
+    void appFs.deleteModelFiles({ baseFilesPath: () => "c1/r1", fieldTypes: () => ["text"] });
+    void appFs.deleteModelFiles({ baseFilesPath: () => "", fieldTypes: () => ["file"] });
     await Bun.sleep(50);
     expect(existsSync(join(dataDir, "storage", "c1", "r1", "a.txt"))).toBe(true);
   });
@@ -140,7 +140,7 @@ describe("deleteModelFiles", () => {
   test("a failed delete is logged", async () => {
     const dataDir = newDataDir();
     const settings = newDefaultSettings();
-    const logged: string[] = [];
+    const logged: Array<string> = [];
     const appFs = newAppFilesystem({
       dataDir,
       settings: () => settings,
@@ -148,7 +148,7 @@ describe("deleteModelFiles", () => {
       logger: testLogger((message) => logged.push(message)),
     });
     settings.S3.Enabled = true; // NewFilesystem fails
-    appFs.deleteModelFiles(fileModel("c1/r1"));
+    void appFs.deleteModelFiles(fileModel("c1/r1"));
     await Bun.sleep(50);
     expect(logged).toEqual([
       "Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits)",

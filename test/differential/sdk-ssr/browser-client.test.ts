@@ -4,6 +4,7 @@
 // own clock and keeps its subscription, and a password change signs it out. A second test runs
 // the fallback without superuser credentials, where the browser client reads the cookie.
 // Every recorded value is compared across the two servers; tokens are recorded by shape only.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { describe, expect } from "bun:test";
 import {
@@ -12,13 +13,13 @@ import {
   createSuperuserClient,
   handleBrowserTokenRenew,
   mintBrowserToken,
-  type CookieAdapter,
-  type CookieToSet,
-  type ServerClient,
 } from "@iglo.tech/iglo.base/ssr";
-import { createBrowserClient, type BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import type { CookieAdapter, CookieToSet, ServerClient } from "@iglo.tech/iglo.base/ssr";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import type { BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 import { ClientResponseError, getTokenPayload } from "@iglo.tech/iglo.base";
-import { password, sdkTest, superuserToken, type SdkEnv } from "@test/differential/sdk/harness";
+import { password, sdkTest, superuserToken } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 import { Browser } from "@test/differential/sdk-ssr/browser";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
 
@@ -36,7 +37,7 @@ const OTHER_EMAIL = "test2@example.com";
 function appCookies(browser: Browser): CookieAdapter {
   return {
     getAll: () => [...browser.jar].map(([name, value]) => ({ name, value })),
-    setAll: (list: CookieToSet[]) => {
+    setAll: (list: Array<CookieToSet>) => {
       for (const c of list) {
         if (c.options?.maxAge === 0) {
           browser.jar.delete(c.name);
@@ -154,8 +155,8 @@ async function signInAs(backend: string, browser: Browser, email: string): Promi
 }
 
 interface PageStatuses {
-  renew: number[];
-  realtime: number[];
+  renew: Array<number>;
+  realtime: Array<number>;
 }
 
 /**
@@ -179,7 +180,7 @@ async function openPage(
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const url = String(input instanceof Request ? input.url : input);
+    const url = String(isInstance(Request, input) ? input.url : input);
     if (url === RENEW_URL) {
       const response = await handleBrowserTokenRenew(
         browser.request(url, { method: init?.method ?? "GET", headers: { origin: APP } }),
@@ -206,7 +207,12 @@ async function openPage(
 }
 
 /** Creates a marker in the public collection and waits until the page has received it. */
-async function sentinel(env: SdkEnv, open: string, id: string, received: string[]): Promise<void> {
+async function sentinel(
+  env: SdkEnv,
+  open: string,
+  id: string,
+  received: Array<string>,
+): Promise<void> {
   await env.step(`create sentinel ${id}`, () =>
     env.superuser().collection(open).create({ id, title: "sentinel" }),
   );
@@ -264,14 +270,14 @@ describe("browser client", () => {
 
       // the renew route, in process, with the browser's cookies and origin
       const sessionCache = createSessionCache();
-      const renewStatuses: number[] = [];
-      const realtimeStatuses: number[] = [];
+      const renewStatuses: Array<number> = [];
+      const realtimeStatuses: Array<number> = [];
       const clock = manualClock(Date.now());
       const pageFetch = async (
         input: string | URL | Request,
         init?: RequestInit,
       ): Promise<Response> => {
-        const url = String(input instanceof Request ? input.url : input);
+        const url = String(isInstance(Request, input) ? input.url : input);
         if (url === RENEW_URL) {
           const response = await handleBrowserTokenRenew(
             browser.request(url, { method: init?.method ?? "GET", headers: { origin: APP } }),
@@ -300,8 +306,9 @@ describe("browser client", () => {
       expect(pb.authStore.isValid).toBe(true);
       expect(clock.count).toBe(1);
 
-      const seen: SeenEvent[] = [];
+      const seen: Array<SeenEvent> = [];
       await pb.collection(collection).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         seen.push(e as unknown as SeenEvent);
       });
       await env.step("create (before renewal)", () =>
@@ -343,8 +350,8 @@ describe("browser client", () => {
       let failure: unknown;
       try {
         await pb.renew();
-      } catch (err) {
-        failure = err;
+      } catch (error) {
+        failure = error;
       }
       expect(failure).toBeInstanceOf(ClientResponseError);
       expect((failure as ClientResponseError).status).toBe(401);
@@ -386,7 +393,7 @@ describe("browser client", () => {
         readableCookie: true,
         cookies: {
           getAll: () => [...jar].map(([name, value]) => ({ name, value })),
-          setAll: (list: CookieToSet[]) => {
+          setAll: (list: Array<CookieToSet>) => {
             for (const c of list) {
               flags.push({ name: c.name, httpOnly: c.options?.httpOnly !== false });
               if (c.options?.maxAge === 0) {
@@ -408,7 +415,7 @@ describe("browser client", () => {
       expect(flags.every((f) => !f.httpOnly)).toBe(true);
 
       // the page has no token: the browser client reads document.cookie
-      const scope = globalThis as unknown as Record<string, unknown>;
+      const scope = globalThis as Record<string, unknown>;
       const savedDocument = scope["document"];
       const savedLocation = scope["location"];
       const cookie = [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
@@ -420,8 +427,9 @@ describe("browser client", () => {
         expect(pb.authStore.isValid).toBe(true);
         expect(pb.authStore.record?.email).toBe(USER_EMAIL);
 
-        const seen: SeenEvent[] = [];
+        const seen: Array<SeenEvent> = [];
         await pb.collection(collection).subscribe("*", (e) => {
+          // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
           seen.push(e as unknown as SeenEvent);
         });
         await env.step("create (fallback)", () =>
@@ -456,12 +464,14 @@ describe("browser client", () => {
       const statuses: PageStatuses = { renew: [], realtime: [] };
       const pb = await openPage(env, browser, app, statuses);
 
-      const seen: string[] = [];
-      const received: string[] = [];
+      const seen: Array<string> = [];
+      const received: Array<string> = [];
       await pb.collection(guarded).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         seen.push((e as unknown as SeenEvent).record.id);
       });
       await pb.collection(open).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         received.push((e as unknown as SeenEvent).record.id);
       });
 
@@ -513,12 +523,14 @@ describe("browser client", () => {
       const statuses: PageStatuses = { renew: [], realtime: [] };
       const pb = await openPage(env, browser, app, statuses);
 
-      const seen: string[] = [];
-      const received: string[] = [];
+      const seen: Array<string> = [];
+      const received: Array<string> = [];
       await pb.collection(collection).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         seen.push((e as unknown as SeenEvent).record.id);
       });
       await pb.collection(open).subscribe("*", (e) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         received.push((e as unknown as SeenEvent).record.id);
       });
 
@@ -602,8 +614,8 @@ describe("browser client", () => {
       });
       const working = await createSuperuserClient({ url: env.url, token: superuserToken });
 
-      const statuses: number[] = [];
-      const cookieClears: number[] = [];
+      const statuses: Array<number> = [];
+      const cookieClears: Array<number> = [];
       const renew = async (superuser: Awaited<ReturnType<typeof createSuperuserClient>>) => {
         const res = await handleBrowserTokenRenew(
           browser.request(RENEW_URL, { method: "POST", headers: { origin: APP } }),

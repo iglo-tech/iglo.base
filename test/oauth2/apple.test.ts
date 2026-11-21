@@ -10,7 +10,8 @@ import { generateKeyPairSync, sign } from "node:crypto";
 
 import { Apple } from "@/oauth2/apple";
 import { Token } from "@/oauth2/token";
-import { json, type StubbedFetch, stubFetch } from "@test/support/fetch-stub";
+import { json, stubFetch } from "@test/support/fetch-stub";
+import type { StubbedFetch } from "@test/support/fetch-stub";
 
 const jwksURL = "https://appleid.apple.com/auth/keys";
 const clientId = "com.example.app";
@@ -112,34 +113,42 @@ describe("Apple id_token", () => {
   });
 
   test("a missing id_token", async () => {
-    await expect(provider().fetchAuthUser(new Token({ accessToken: "access" }))).rejects.toThrow(
-      "empty id_token",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(new Token({ accessToken: "access" }))).rejects.toThrow(
+        "empty id_token",
+      ),
     );
   });
 
   test("an id_token from another issuer is rejected before any request", async () => {
     stub = stubFetch({});
-    await expect(
-      provider().fetchAuthUser(tokenWith(idToken(validClaims({ iss: "https://evil.example" })))),
-    ).rejects.toThrow("invalid issuer");
+    await Promise.resolve(
+      expect(
+        provider().fetchAuthUser(tokenWith(idToken(validClaims({ iss: "https://evil.example" })))),
+      ).rejects.toThrow("invalid issuer"),
+    );
     expect(stub.calls).toEqual([]);
   });
 
   test("an id_token for another audience is rejected", async () => {
     stub = stubFetch({});
-    await expect(
-      provider().fetchAuthUser(tokenWith(idToken(validClaims({ aud: "another.client" })))),
-    ).rejects.toThrow("audience");
+    await Promise.resolve(
+      expect(
+        provider().fetchAuthUser(tokenWith(idToken(validClaims({ aud: "another.client" })))),
+      ).rejects.toThrow("audience"),
+    );
     expect(stub.calls).toEqual([]);
   });
 
   test("an expired id_token is rejected", async () => {
     stub = stubFetch({});
-    await expect(
-      provider().fetchAuthUser(
-        tokenWith(idToken(validClaims({ exp: now() - 3600, iat: now() - 7200 }))),
-      ),
-    ).rejects.toThrow("expired");
+    await Promise.resolve(
+      expect(
+        provider().fetchAuthUser(
+          tokenWith(idToken(validClaims({ exp: now() - 3600, iat: now() - 7200 }))),
+        ),
+      ).rejects.toThrow("expired"),
+    );
     expect(stub.calls).toEqual([]);
   });
 
@@ -147,24 +156,30 @@ describe("Apple id_token", () => {
     stub = stubFetch({});
     const claims = validClaims();
     delete claims["exp"];
-    await expect(provider().fetchAuthUser(tokenWith(idToken(claims)))).rejects.toThrow(
-      "exp claim is required",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(tokenWith(idToken(claims)))).rejects.toThrow(
+        "exp claim is required",
+      ),
     );
   });
 
   test("an id_token signed with another key is rejected", async () => {
     serveJWKS();
-    await expect(
-      provider().fetchAuthUser(tokenWith(idToken(validClaims(), { key: otherKey }))),
-    ).rejects.toThrow("id_token validation failed");
+    await Promise.resolve(
+      expect(
+        provider().fetchAuthUser(tokenWith(idToken(validClaims(), { key: otherKey }))),
+      ).rejects.toThrow("id_token validation failed"),
+    );
     expect(stub?.calls).toEqual([jwksURL]);
   });
 
   test("an id_token whose key id is not in the key set is rejected", async () => {
     serveJWKS();
-    await expect(
-      provider().fetchAuthUser(tokenWith(idToken(validClaims(), { header: { kid: "unknown" } }))),
-    ).rejects.toThrow("id_token validation failed");
+    await Promise.resolve(
+      expect(
+        provider().fetchAuthUser(tokenWith(idToken(validClaims(), { header: { kid: "unknown" } }))),
+      ).rejects.toThrow("id_token validation failed"),
+    );
   });
 
   test("an id_token without a key id is rejected", async () => {
@@ -172,8 +187,10 @@ describe("Apple id_token", () => {
     // the header without kid: the signature is over this header
     const head = `${b64url(JSON.stringify({ alg: "RS256" }))}.${b64url(JSON.stringify(validClaims()))}`;
     const signed = `${head}.${b64url(sign("sha256", Buffer.from(head), privateKey))}`;
-    await expect(provider().fetchAuthUser(tokenWith(signed))).rejects.toThrow(
-      "missing kid header value",
+    await Promise.resolve(
+      expect(provider().fetchAuthUser(tokenWith(signed))).rejects.toThrow(
+        "missing kid header value",
+      ),
     );
   });
 });

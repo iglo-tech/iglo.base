@@ -29,7 +29,7 @@ function r(
   return { name, target: "posts", listRule: rule, ...extra };
 }
 
-export const ruleCases: RuleCase[] = [
+export const ruleCases: Array<RuleCase> = [
   // plain rules and @request.auth
   r("public", ""),
   r("superusers only", null),

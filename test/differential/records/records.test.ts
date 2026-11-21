@@ -35,14 +35,12 @@ import { join } from "node:path";
 import type { Collection } from "@/collections/collection-model";
 import { fieldApp, findCollectionByNameOrId } from "@/collections/collection-query";
 import { HashExp } from "@/db/dbx/expression";
-import {
-  type Record as RecordModel,
-  newRecordFromNullStringMap,
-  nullStringMapFromRow,
-} from "@/records/record-model";
+import { newRecordFromNullStringMap, nullStringMapFromRow } from "@/records/record-model";
+import type { Record as RecordModel } from "@/records/record-model";
 import { jsonArrayValue } from "@/tools/types/json-array";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import {
   allCollection,
@@ -59,9 +57,10 @@ import {
   usersFields,
   userPayloads,
   userUpdates,
-  type Payload,
 } from "@test/differential/records/cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { Payload } from "@test/differential/records/cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "records@example.com";
 const password = "1234567890";
@@ -115,11 +114,11 @@ async function request(
   if (auth) {
     headers.authorization = token;
   }
-  const res = await fetch(`${upstream.url}${path}`, {
-    method,
-    headers,
-    ...(body === undefined ? {} : { body }),
-  });
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -152,7 +151,7 @@ async function saveRecord(collection: string, p: Payload, id?: string): Promise<
   return (JSON.parse(res.text) as { id: string }).id;
 }
 
-async function createCollection(body: object): Promise<string> {
+async function createCollection(body: Record<string, unknown>): Promise<string> {
   const res = await request("POST", "/api/collections", JSON.stringify(body));
   expect({ status: res.status, body: res.status === 200 ? "" : res.text }).toEqual({
     status: 200,
@@ -168,12 +167,12 @@ interface Saved {
   guestBody: string;
 }
 
-const saved: Saved[] = [];
+const saved: Array<Saved> = [];
 let saves = 0;
 
 describe("upstream", () => {
-  const userIds: string[] = [];
-  const allIds: string[] = [];
+  const userIds: Array<string> = [];
+  const allIds: Array<string> = [];
 
   test("collections and records", async () => {
     const usersId = await createCollection({
@@ -209,7 +208,7 @@ describe("upstream", () => {
       for (const [k, v] of Object.entries(json)) {
         if (v.includes("$firstDoc")) {
           const current = await request("GET", `/api/collections/${allCollection}/records/${id}`);
-          const docs = (JSON.parse(current.text) as { docs: string[] }).docs;
+          const docs = (JSON.parse(current.text) as { docs: Array<string> }).docs;
           json[k] = v.replace("$firstDoc", docs[0] as string);
         }
       }
@@ -224,7 +223,7 @@ describe("upstream", () => {
       viewRule: "",
       fields: numsFields,
     });
-    const numIds: string[] = [];
+    const numIds: Array<string> = [];
     for (const p of numsPayloads()) {
       numIds.push(await saveRecord(numsCollection, p));
       saves++;
@@ -370,7 +369,7 @@ describe("records read from data.db", () => {
 });
 
 // "<typeof> <value>" of each row of a two-column select
-function classes(db: Database, sql: string): string[] {
+function classes(db: Database, sql: string): Array<string> {
   return db
     .prepare(sql)
     .values()
@@ -407,14 +406,9 @@ function storeExported(
     mem.run(
       `CREATE TABLE t (${fields.map((f) => `"${f.getName()}" ${f.columnType(fieldApp(app))}`).join(", ")})`,
     );
-    const values = names.map((n) => driverValue(exported[n])) as (
-      | string
-      | number
-      | bigint
-      | boolean
-      | null
-      | Uint8Array
-    )[];
+    const values = names.map((n) => driverValue(exported[n])) as Array<
+      string | number | bigint | boolean | null | Uint8Array
+    >;
     mem.query(`INSERT INTO t VALUES (${names.map(() => "?").join(", ")})`).run(...values);
     return readColumns(mem, "t", names, null);
   } finally {
@@ -425,12 +419,12 @@ function storeExported(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): { [name: string]: [string, unknown] } {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM ${table}${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: { [name: string]: [string, unknown] } = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];

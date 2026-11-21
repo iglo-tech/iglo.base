@@ -17,11 +17,14 @@ import path from "node:path";
 import vm from "node:vm";
 
 import type { App } from "@/app/app";
-import { bindAll, type BindConfig } from "@/migrations/binds";
-import { AppBinding, type RunTxFunc } from "@/migrations/binds-app";
+import { bindAll } from "@/migrations/binds";
+import type { BindConfig } from "@/migrations/binds";
+import { AppBinding } from "@/migrations/binds-app";
+import type { RunTxFunc } from "@/migrations/binds-app";
 import { throwResult } from "@/migrations/go-class";
 import type { Membrane } from "@/migrations/membrane";
-import { addMigration, type Migration, type MigrationFunc } from "@/migrations/migrations-runner";
+import { addMigration } from "@/migrations/migrations-runner";
+import type { Migration, MigrationFunc } from "@/migrations/migrations-runner";
 
 // defaultScriptPath
 const scriptName = "pb.js";
@@ -41,22 +44,22 @@ export interface JsvmConfig extends BindConfig {
 
 // registerMigrations: the migrations of all files of the directory, sorted
 // by file name.
-export function registerMigrations(config: JsvmConfig): Migration[] {
-  const list: Migration[] = [];
+export function registerMigrations(config: JsvmConfig): Array<Migration> {
+  const list: Array<Migration> = [];
 
-  let files: [string, string][];
+  let files: Array<[string, string]>;
   try {
     files = filesContent(config.migrationsDir);
-  } catch (err) {
-    throw new PanicError(`registerMigrations: ${(err as Error).message}`);
+  } catch (error) {
+    throw new PanicError(`registerMigrations: ${(error as Error).message}`);
   }
 
   for (const [file, content] of files) {
     try {
       runFile(config, file, content, list);
-    } catch (err) {
+    } catch (error) {
       throw new PanicError(
-        `registerMigrations: failed to run migration ${file}: ${describeError(err, config.cwd)}`,
+        `registerMigrations: failed to run migration ${file}: ${describeError(error, config.cwd)}`,
       );
     }
   }
@@ -66,15 +69,15 @@ export function registerMigrations(config: JsvmConfig): Migration[] {
 
 // filesContent: the direct files of the directory and their content, by
 // file name; none when the directory is missing.
-function filesContent(dirPath: string): [string, string][] {
+function filesContent(dirPath: string): Array<[string, string]> {
   let entries;
   try {
     entries = readdirSync(dirPath, { withFileTypes: true });
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
     }
-    throw err;
+    throw error;
   }
 
   return entries
@@ -83,7 +86,7 @@ function filesContent(dirPath: string): [string, string][] {
     .toSorted(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 
-function runFile(config: JsvmConfig, file: string, content: string, list: Migration[]): void {
+function runFile(config: JsvmConfig, file: string, content: string, list: Array<Migration>): void {
   const sandbox: Record<string, unknown> = {};
   const context = vm.createContext(sandbox);
   const m = bindAll(sandbox, context, config);
@@ -92,7 +95,6 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Migrat
   sandbox.process = { env: { ...config.environ } };
   sandbox.Buffer = Buffer;
   sandbox.require = newRequire(config, context, sandbox, m);
-  // oxlint-disable-next-line no-underscore-dangle
   sandbox.__hooks = path.resolve(config.cwd, config.hooksDir);
 
   const filename = path.join(config.cwd, scriptName);
@@ -109,8 +111,8 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Migrat
     return (txApp) => {
       try {
         runMigrationFunc(fn, txApp, m);
-      } catch (err) {
-        throw normalizeException(err, m, config.cwd);
+      } catch (error) {
+        throw normalizeException(error, m, config.cwd);
       }
     };
   };
@@ -126,8 +128,8 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Migrat
   let script: vm.Script;
   try {
     script = new vm.Script(content, { filename });
-  } catch (err) {
-    throw new SyntaxError(`SyntaxError: ${filename}: ${(err as Error).message}`);
+  } catch (error) {
+    throw new SyntaxError(`SyntaxError: ${filename}: ${(error as Error).message}`);
   }
   script.runInContext(context);
 }
@@ -224,20 +226,20 @@ function firstFrame(stack: string, file: string): string | undefined {
 
 // console (goja_nodejs util.Format); every method prints the same way
 function newConsole(config: JsvmConfig): Record<string, unknown> {
-  const write = (...args: unknown[]): void => {
+  const write = (...args: Array<unknown>): void => {
     config.log(formatLog(args));
   };
   return { log: write, error: write, warn: write, info: write, debug: write };
 }
 
-function formatLog(args: unknown[]): string {
+function formatLog(args: Array<unknown>): string {
   const rest = [...args];
 
   let text = "";
   const [first] = rest;
   if (typeof first === "string") {
     rest.shift();
-    text = first.replace(/%([sdj%])/g, (directive, verb: string) => {
+    text = first.replaceAll(/%([sdj%])/g, (directive, verb: string) => {
       if (verb === "%") {
         return "%";
       }
@@ -260,7 +262,7 @@ function formatLog(args: unknown[]): string {
     text += " ";
   }
 
-  return text + rest.map((arg) => String(arg)).join(" ");
+  return text + rest.map(String).join(" ");
 }
 
 // goja_nodejs require: a relative name is relative to the requiring module,
@@ -298,7 +300,7 @@ function newRequire(
       `(function (exports, require, module, __filename, __dirname) {${text}\n})`,
       context,
       { filename },
-    ) as (...args: unknown[]) => unknown;
+    ) as (...args: Array<unknown>) => unknown;
     wrapper(
       moduleObject.exports,
       requireFrom(path.dirname(filename)),

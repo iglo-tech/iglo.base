@@ -72,7 +72,7 @@ const getAValueTestCases = [
   { in: `"abc" >`, out: "abc", hasMore: true },
 ];
 
-const getAllAttributesTestCases: { in: string; expected: [string, string][] }[] = [
+const getAllAttributesTestCases: Array<{ in: string; expected: Array<[string, string]> }> = [
   { in: "", expected: [] },
   // doesn't have ending >
   { in: "a", expected: [] },
@@ -164,9 +164,9 @@ const skipACommentTestCases = [
 ];
 
 // getAll is the Go test's helper: read attributes until one has no name.
-const getAll = (input: string): [string, string][] => {
+const getAll = (input: string): Array<[string, string]> => {
   const s = new Bytes(raw(input));
-  const ret: [string, string][] = [];
+  const ret: Array<[string, string]> = [];
   for (;;) {
     const [name, value] = getAnAttribute(s);
     if (name === null || name.length === 0) {

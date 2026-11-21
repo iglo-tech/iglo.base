@@ -78,7 +78,7 @@ describe("FileService", () => {
         ],
       }),
     );
-    const names = created["files"] as string[];
+    const names = created["files"] as Array<string>;
     for (const name of names) {
       const res = await env.fetch(
         `download ${name.replace(/_[a-z0-9]{10}(\.[a-z]+)$/, "$1")}`,
@@ -103,7 +103,7 @@ describe("FileService", () => {
     for (const thumb of ["70x50", "0x50"]) {
       const res = await env.fetch(
         `generated thumb ${thumb}`,
-        `/api/files/demo3/${withImage.id}/${(withImage["files"] as string[])[0]}?thumb=${thumb}`,
+        `/api/files/demo3/${withImage.id}/${(withImage["files"] as Array<string>)[0]}?thumb=${thumb}`,
         { headers: { Authorization: pb.authStore.token } },
       );
       await res.arrayBuffer();

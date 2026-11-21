@@ -8,7 +8,8 @@
 // Returned slices point into the buffer, as Go's, and stop being valid at
 // the next read.
 
-import { ErrNoProgress, type Reader as IoReader } from "@/server/io";
+import { ErrNoProgress } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 
 const defaultBufSize = 4096;
 const minReadBufferSize = 16;
@@ -231,7 +232,7 @@ export class Reader implements IoReader {
 
     // Handle last byte, if any.
     if (line.length > 0) {
-      this.#lastByte = line[line.length - 1] as number;
+      this.#lastByte = line.at(-1) as number;
     }
 
     return [line, err];
@@ -248,7 +249,7 @@ export class Reader implements IoReader {
     let [line, err] = await this.readSlice(0x0a);
     if (err === ErrBufferFull) {
       // Handle the case where "\r\n" straddles the buffer.
-      if (line.length > 0 && line[line.length - 1] === 0x0d) {
+      if (line.length > 0 && line.at(-1) === 0x0d) {
         // Put the '\r' back on buf and drop it from line.
         // Let the next call to ReadLine check for "\r\n".
         if (this.#r === 0) {
@@ -266,9 +267,9 @@ export class Reader implements IoReader {
     }
     err = undefined;
 
-    if (line[line.length - 1] === 0x0a) {
+    if (line.at(-1) === 0x0a) {
       let drop = 1;
-      if (line.length > 1 && line[line.length - 2] === 0x0d) {
+      if (line.length > 1 && line.at(-2) === 0x0d) {
         drop = 2;
       }
       line = line.subarray(0, line.length - drop);

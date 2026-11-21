@@ -17,8 +17,8 @@ import {
   NewFileFromPath,
   extractExtension,
   normalizeName,
-  type RandomSource,
 } from "@/tools/filesystem/file";
+import type { RandomSource } from "@/tools/filesystem/file";
 import { ThumbSizeRegex } from "@/tools/filesystem/filesystem";
 import { textToBytes } from "@/tools/types/go-json";
 
@@ -102,7 +102,7 @@ test("TestNewFileFromMultipart", async () => {
 });
 
 describe("TestFileNameNormalizations", () => {
-  const scenarios: [string, RegExp][] = [
+  const scenarios: Array<[string, RegExp]> = [
     ["", /^\w{10}_\w{10}\.txt$/],
     [".png", /^\w{10}_\w{10}\.png$/],
     [".tar.gz", /^\w{10}_\w{10}\.tar\.gz$/],
@@ -127,7 +127,7 @@ describe("TestFileNameNormalizations", () => {
 
 describe("name rules", () => {
   const text = encoder.encode("abc");
-  const scenarios: [name: string, content: Uint8Array, expected: string][] = [
+  const scenarios: Array<[name: string, content: Uint8Array, expected: string]> = [
     ["test.txt", text, "test_RRRRRRRRRR.txt"],
     ["Test File.TXT", text, "test_file_RRRRRRRRRR.TXT"],
     ["myTestDB.json", text, "my_test_db_RRRRRRRRRR.json"],
@@ -198,7 +198,7 @@ describe("name rules", () => {
   });
 
   test("the random parts come from the source in order", () => {
-    const calls: [number, string][] = [];
+    const calls: Array<[number, string]> = [];
     let n = 0;
     const random: RandomSource = (length, alphabet) => {
       calls.push([length, alphabet]);
@@ -236,13 +236,13 @@ test("extractExtension", () => {
 });
 
 test("NewFileFromMultipart drops the directory parts as filepath.Base", async () => {
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["dir/sub/a.txt", "a.txt"],
     ["/abs/b.txt", "b.txt"],
     ["c.txt/", "c.txt"],
     ["/", "/"],
     ["//", "/"],
-    ["a\\b.txt", "a\\b.txt"], // not a separator on Unix
+    [String.raw`a\b.txt`, String.raw`a\b.txt`], // not a separator on Unix
     ["", ""],
   ];
   for (const [name, original] of cases) {

@@ -2,7 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type Error as ValidationError, NewError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { NotIn } from "@/validation/not-in";
 
 function assertError(expected: string, err: globalThis.Error | null): void {

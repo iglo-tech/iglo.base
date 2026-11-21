@@ -14,11 +14,12 @@ import {
   findAllRefsByRecord,
 } from "@/records/record-auth-refs";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget, recordTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { run } from "@/records/record-save";
 
 // FindAllAuthOriginsByRecord returns all AuthOrigin models linked to the provided auth record (in DESC order).
-export function findAllAuthOriginsByRecord(app: RecordsApp, authRecord: Record): AuthOrigin[] {
+export function findAllAuthOriginsByRecord(app: RecordsApp, authRecord: Record): Array<AuthOrigin> {
   return findAllRefsByRecord(app, CollectionNameAuthOrigins, authRecord).map(
     (r) => new AuthOrigin(r),
   );
@@ -28,7 +29,7 @@ export function findAllAuthOriginsByRecord(app: RecordsApp, authRecord: Record):
 export function findAllAuthOriginsByCollection(
   app: RecordsApp,
   collection: Collection,
-): AuthOrigin[] {
+): Array<AuthOrigin> {
   return recordQuery(app, CollectionNameAuthOrigins)
     .andWhere(new HashExp({ collectionRef: collection.id }))
     .orderBy("created DESC")

@@ -11,7 +11,8 @@ import { join } from "node:path";
 
 import Ajv2020 from "ajv/dist/2020";
 
-import { executable, run, startServer, tempDir, type RunResult } from "@test/support/executable";
+import { executable, run, startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
 
 const schemaJSON = JSON.parse(
@@ -94,7 +95,7 @@ async function api(
 }
 
 // the executable with extra environment variables, run to completion
-async function runWithEnv(args: string[], env: Record<string, string>): Promise<RunResult> {
+async function runWithEnv(args: Array<string>, env: Record<string, string>): Promise<RunResult> {
   const proc = Bun.spawn([await executable(), ...args], {
     cwd: tempDir(),
     stdout: "pipe",
@@ -111,9 +112,9 @@ async function runWithEnv(args: string[], env: Record<string, string>): Promise<
 }
 
 // the file's oauth2 providers, parsed
-function providersOf(text: string): Record<string, unknown>[] {
+function providersOf(text: string): Array<Record<string, unknown>> {
   const file = JSON.parse(text) as {
-    collections: Record<string, { oauth2?: { providers?: Record<string, unknown>[] } }>;
+    collections: Record<string, { oauth2?: { providers?: Array<Record<string, unknown>> } }>;
   };
   return file.collections.users?.oauth2?.providers ?? [];
 }
@@ -309,7 +310,7 @@ describe("sign-in with a provider from references", () => {
     );
     try {
       const methods = await fetch(`${server.url}/api/collections/users/auth-methods`);
-      const listed = ((await methods.json()) as { oauth2: { providers: { name: string }[] } })
+      const listed = ((await methods.json()) as { oauth2: { providers: Array<{ name: string }> } })
         .oauth2.providers;
       expect(listed.map((p) => p.name)).toEqual(["github"]);
 

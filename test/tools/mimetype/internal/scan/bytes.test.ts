@@ -159,10 +159,10 @@ describe("scan.Bytes", () => {
     const tcases = [
       { name: "empty", in: raw(""), line: raw(""), leftover: raw(""), scanText: "" },
       { name: "one line", in: raw("abc"), line: raw("abc"), leftover: raw(""), scanText: "abc" },
-      { name: "just a \\n", in: g`\n`, line: raw(""), leftover: raw(""), scanText: "" },
-      { name: "just two \\n", in: g`\n\n`, line: raw(""), leftover: g`\n`, scanText: "" },
+      { name: String.raw`just a \n`, in: g`\n`, line: raw(""), leftover: raw(""), scanText: "" },
+      { name: String.raw`just two \n`, in: g`\n\n`, line: raw(""), leftover: g`\n`, scanText: "" },
       {
-        name: "one line with \\n",
+        name: String.raw`one line with \n`,
         in: g`abc\n`,
         line: raw("abc"),
         leftover: raw(""),
@@ -176,7 +176,7 @@ describe("scan.Bytes", () => {
         scanText: "abc",
       },
       {
-        name: "two lines with \\n",
+        name: String.raw`two lines with \n`,
         in: g`abc\ndef\n`,
         line: raw("abc"),
         leftover: g`def\n`,

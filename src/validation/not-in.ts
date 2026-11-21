@@ -2,7 +2,8 @@
 //
 // Go compares with == on interface values: === here.
 
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
 
@@ -14,7 +15,7 @@ export const ErrNotInInvalid = NewError("validation_not_in_invalid", "must not b
 // possible range of values must be of the same type. An empty value is
 // considered valid. Use the Required rule to make sure a value is not
 // empty.
-export function NotIn(...values: unknown[]): NotInRule {
+export function NotIn(...values: Array<unknown>): NotInRule {
   return new NotInRule(values, ErrNotInInvalid);
 }
 
@@ -22,7 +23,7 @@ export function NotIn(...values: unknown[]): NotInRule {
 // given list of values.
 export class NotInRule implements Rule {
   constructor(
-    private readonly elements: readonly unknown[],
+    private readonly elements: ReadonlyArray<unknown>,
     private readonly err: ValidationError,
   ) {}
 

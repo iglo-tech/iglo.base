@@ -27,15 +27,11 @@ import {
   zeroInstant,
 } from "@/tools/types/cast";
 import { stringType, unmarshal } from "@/tools/types/go-json";
-import { type Instant, appendInt, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
-import {
-  type Location,
-  UTC,
-  dateIn,
-  localLocation,
-  lookup,
-  parsedTime,
-} from "@/tools/types/go-zoneinfo";
+import { appendInt, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
+import type { Instant } from "@/tools/types/go-time";
+import { UTC, dateIn, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
+import type { Location } from "@/tools/types/go-zoneinfo";
+import { isInstance } from "@/tools/types/is-instance";
 
 // DefaultDateLayout specifies the default app date strings layout.
 export const DefaultDateLayout = "2006-01-02 15:04:05.000Z";
@@ -69,8 +65,8 @@ export function parseDateTime(value: unknown): DateTime {
 // DateTime represents an instant in UTC that is serialized using the app
 // default date layout.
 // 1000-01-01T00:00:00Z and 9999-12-31T23:59:59Z as Unix seconds
-const minISOSec = -30610224000;
-const maxISOSec = 253402300799;
+const minISOSec = -30_610_224_000;
+const maxISOSec = 253_402_300_799;
 
 export class DateTime {
   // Unix seconds and nanoseconds in [0, 1e9); Go's zero time by default
@@ -219,7 +215,7 @@ export class DateTime {
 
   // UnmarshalJSON: b must be a JSON string (null is ""), which is scanned.
   unmarshalJSON(b: string | Uint8Array): void {
-    this.scan(unmarshal(b, stringType) as string);
+    this.scan(unmarshal(b, stringType));
   }
 
   // Value implements the db driver Valuer: the String form.
@@ -231,11 +227,11 @@ export class DateTime {
   // give the zero time, as cast.ToTime does).
   scan(value: unknown): void {
     let t: Instant;
-    let loc: Location = UTC;
-    if (value instanceof DateTime) {
+    let loc: Location;
+    if (isInstance(DateTime, value)) {
       t = value.instant();
       loc = value.loc;
-    } else if (value instanceof Date) {
+    } else if (isInstance(Date, value)) {
       t = fromDate(value);
       loc = localLocation();
     } else if (typeof value === "string") {
@@ -310,9 +306,9 @@ export function parseDefaultLayoutFast(v: string): Instant | null {
   // days since 1970-01-01 (proleptic Gregorian, any year >= 0)
   const y = year - 1;
   const daysToYear =
-    y * 365 + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 719162;
+    y * 365 + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 719_162;
   const yday = (daysBeforeMonth[month - 1] as number) + (leap && month > 2 ? 1 : 0) + day - 1;
-  return { sec: (daysToYear + yday) * 86400 + hour * 3600 + min * 60 + sec, nsec: ms * 1e6 };
+  return { sec: (daysToYear + yday) * 86_400 + hour * 3600 + min * 60 + sec, nsec: ms * 1e6 };
 }
 
 // DefaultDateLayout ends in a literal "Z", so it parses in UTC

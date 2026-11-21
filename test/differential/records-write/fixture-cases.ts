@@ -18,7 +18,7 @@ const demo5 = "/api/collections/demo5/records";
 // after plain value parts
 const emptyFilenameBoundary = "4f6a0e9c2d7b1a5e8c3f6d9b2a7e1c4f8d3b6a9e2c5f8b1d4a7e0c3f6b9d";
 function emptyFilenameParts(
-  parts: [string, string][],
+  parts: Array<[string, string]>,
   values: Record<string, string> = {},
 ): {
   body: string;
@@ -51,11 +51,11 @@ const byteLength = (text: string) => new TextEncoder().encode(text).length;
 const partsBoundary = "9b3e7d1a5c8f2e6b0d4a7c1f5e8b2d6a";
 interface RawPart {
   name?: string;
-  headers?: string[];
+  headers?: Array<string>;
   content: string;
 }
 function rawParts(
-  parts: RawPart[],
+  parts: Array<RawPart>,
   { boundary = partsBoundary, end = `--${partsBoundary}--\r\n` } = {},
 ): string {
   let body = "";
@@ -72,7 +72,7 @@ const partsHeaders = { "Content-Type": `multipart/form-data; boundary=${partsBou
 
 // n parts: the id, the title and n - 2 unknown fields
 function manyParts(id: string, n: number): string {
-  const parts: RawPart[] = [
+  const parts: Array<RawPart> = [
     { name: "id", content: id },
     { name: "title", content: "parttest" },
   ];
@@ -85,7 +85,7 @@ function manyParts(id: string, n: number): string {
 // a title part with n header lines in all (its Content-Disposition and
 // n - 1 more)
 function manyHeaders(id: string, n: number): string {
-  const headers: string[] = [];
+  const headers: Array<string> = [];
   for (let i = 1; i < n; i++) {
     headers.push(`X-Extra-${i}: v`);
   }
@@ -109,7 +109,7 @@ function boundaryBody(at: number, id: string, token: string, cut: number, inTitl
   return body("p".repeat(at - cut - prefix));
 }
 
-export const fixtureCases: WriteCase[] = [
+export const fixtureCases: Array<WriteCase> = [
   // demo1: nil rules, every field type
   {
     name: "demo1: guest create (nil rule)",
@@ -164,7 +164,7 @@ export const fixtureCases: WriteCase[] = [
     as: "superuser",
     method: "PATCH",
     url: `${demo1}/imy661ixudk5izi`,
-    body: '{"json":{"z":1,"a":[1.50,2e3,12345678901234567890],"s":"\\u00e9"}}',
+    body: String.raw`{"json":{"z":1,"a":[1.50,2e3,12345678901234567890],"s":"\u00e9"}}`,
   },
   {
     name: "demo1: superuser invalid values",
@@ -416,49 +416,49 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000015", "\\ud83d\\ude00", 6),
+    body: boundaryBody(64, "wfixdemo2000015", String.raw`\ud83d\ude00`, 6),
   },
   {
     name: "demo2: guest create with a surrogate pair escape cut after its backslash at 64 bytes",
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000016", "\\ud83d\\ude00", 7),
+    body: boundaryBody(64, "wfixdemo2000016", String.raw`\ud83d\ude00`, 7),
   },
   {
-    name: "demo2: guest create with a surrogate pair escape cut after \\u at 64 bytes",
+    name: String.raw`demo2: guest create with a surrogate pair escape cut after \u at 64 bytes`,
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000017", "\\ud83d\\ude00", 8),
+    body: boundaryBody(64, "wfixdemo2000017", String.raw`\ud83d\ude00`, 8),
   },
   {
     name: "demo2: guest create with a surrogate pair escape cut in the low half's digits at 64 bytes",
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000018", "\\ud83d\\ude00", 10),
+    body: boundaryBody(64, "wfixdemo2000018", String.raw`\ud83d\ude00`, 10),
   },
   {
-    name: "demo2: guest create with a \\u escape cut after \\u at 64 bytes",
+    name: String.raw`demo2: guest create with a \u escape cut after \u at 64 bytes`,
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000019", "\\u00e9", 2),
+    body: boundaryBody(64, "wfixdemo2000019", String.raw`\u00e9`, 2),
   },
   {
-    name: "demo2: guest create with a \\u escape cut in its digits at 64 bytes",
+    name: String.raw`demo2: guest create with a \u escape cut in its digits at 64 bytes`,
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000020", "\\ud83d\\ude00", 4),
+    body: boundaryBody(64, "wfixdemo2000020", String.raw`\ud83d\ude00`, 4),
   },
   {
     name: "demo2: guest create with an escape cut after its backslash at 64 bytes",
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000021", "\\/", 1),
+    body: boundaryBody(64, "wfixdemo2000021", String.raw`\/`, 1),
   },
   {
     name: "demo2: guest create with a 4-byte UTF-8 character cut after 2 bytes at 64 bytes",
@@ -493,7 +493,7 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(128, "wfixdemo2000026", "\\ud83d\\ude00", 6),
+    body: boundaryBody(128, "wfixdemo2000026", String.raw`\ud83d\ude00`, 6),
   },
   {
     name: "demo2: guest create with a 4-byte UTF-8 character cut after 3 bytes at 128 bytes",
@@ -507,21 +507,21 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(256, "wfixdemo2000028", "\\ud83d\\ude00", 7),
+    body: boundaryBody(256, "wfixdemo2000028", String.raw`\ud83d\ude00`, 7),
   },
   {
     name: "demo2: guest create with a lone high surrogate escape before x at 64 bytes",
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000029", "\\ud83dx", 6),
+    body: boundaryBody(64, "wfixdemo2000029", String.raw`\ud83dx`, 6),
   },
   {
     name: "demo2: guest create with a lone high surrogate escape before x",
     as: "guest",
     method: "POST",
     url: demo2,
-    body: boundaryBody(64, "wfixdemo2000030", "\\ud83dx", 30),
+    body: boundaryBody(64, "wfixdemo2000030", String.raw`\ud83dx`, 30),
   },
   // a number already invalid (a leading 0 before a digit) at the 32 MiB
   // body limit is a syntax error (400); an incomplete one ("1.") waits for
@@ -554,8 +554,8 @@ export const fixtureCases: WriteCase[] = [
     method: "POST",
     url: demo2,
     chunked: [
-      [" ", (32 << 20) - '{"id":"wfixdemo2000033","title":"\\udc00'.length],
-      ['{"id":"wfixdemo2000033","title":"\\udc00', 1],
+      [" ", (32 << 20) - String.raw`{"id":"wfixdemo2000033","title":"\udc00`.length],
+      [String.raw`{"id":"wfixdemo2000033","title":"\udc00`, 1],
       ['x"}', 1],
       [" ", 1000],
     ],
@@ -627,7 +627,7 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: manyHeaders("wfixdemo2000039", 10000),
+    body: manyHeaders("wfixdemo2000039", 10_000),
     headers: partsHeaders,
   },
   {
@@ -635,7 +635,7 @@ export const fixtureCases: WriteCase[] = [
     as: "guest",
     method: "POST",
     url: demo2,
-    body: manyHeaders("wfixdemo2000040", 10001),
+    body: manyHeaders("wfixdemo2000040", 10_001),
     headers: partsHeaders,
   },
   {

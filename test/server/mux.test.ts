@@ -1,6 +1,5 @@
 // Upstream: Go 1.27.2 net/http pattern_test.go and routing_tree_test.go (the tables for parsing, precedence, conflicts and tree matching).
 import {
-  type Relationship,
   ServeMux,
   commonPath,
   comparePaths,
@@ -14,6 +13,7 @@ import {
   parsePattern,
   RoutingNode,
 } from "@/server/mux";
+import type { Relationship } from "@/server/mux";
 import { describe, expect, test } from "bun:test";
 
 interface Seg {
@@ -36,7 +36,7 @@ const inverseRelationship: Record<Relationship, Relationship> = {
 };
 
 // buildTree mirrors routing_tree_test.go's buildTree; the handler is the pattern string.
-function buildTree(...pats: string[]): RoutingNode<string> {
+function buildTree(...pats: Array<string>): RoutingNode<string> {
   const root = new RoutingNode<string>();
   for (const p of pats) {
     root.addPattern(parsePattern(p), p);
@@ -45,7 +45,7 @@ function buildTree(...pats: string[]): RoutingNode<string> {
 }
 
 describe("parsePattern", () => {
-  const cases: { in: string; method?: string; host?: string; segments: Seg[] }[] = [
+  const cases: Array<{ in: string; method?: string; host?: string; segments: Array<Seg> }> = [
     { in: "/", segments: [multi("")] },
     { in: "/a", segments: [lit("a")] },
     { in: "/a/", segments: [lit("a"), multi("")] },
@@ -103,7 +103,7 @@ describe("parsePattern", () => {
 });
 
 describe("parsePattern errors", () => {
-  const cases: { in: string; contains: string }[] = [
+  const cases: Array<{ in: string; contains: string }> = [
     { in: "", contains: "empty pattern" },
     { in: "A=B /", contains: "at offset 0: invalid method" },
     { in: " ", contains: "at offset 1: host/path missing /" },
@@ -139,7 +139,7 @@ describe("parsePattern errors", () => {
 });
 
 describe("compareMethods", () => {
-  const cases: { p1: string; p2: string; want: Relationship }[] = [
+  const cases: Array<{ p1: string; p2: string; want: Relationship }> = [
     { p1: "/", p2: "/", want: "equivalent" },
     { p1: "GET /", p2: "GET /", want: "equivalent" },
     { p1: "HEAD /", p2: "HEAD /", want: "equivalent" },
@@ -161,7 +161,7 @@ describe("compareMethods", () => {
 });
 
 describe("comparePaths", () => {
-  const cases: { p1: string; p2: string; want: Relationship }[] = [
+  const cases: Array<{ p1: string; p2: string; want: Relationship }> = [
     // A literal should be more specific than anything it overlaps, except itself.
     { p1: "/a", p2: "/a", want: "equivalent" },
     { p1: "/a", p2: "/b", want: "disjoint" },
@@ -301,7 +301,7 @@ describe("comparePaths", () => {
 });
 
 describe("conflictsWith", () => {
-  const cases: { p1: string; p2: string; want: boolean }[] = [
+  const cases: Array<{ p1: string; p2: string; want: boolean }> = [
     { p1: "/a", p2: "/a", want: true },
     { p1: "/a", p2: "/ab", want: false },
     { p1: "/a/b/cd", p2: "/a/b/cd", want: true },
@@ -349,7 +349,7 @@ describe("ServeMux registration conflicts", () => {
 });
 
 describe("describeConflict", () => {
-  const cases: { p1: string; p2: string; want: string }[] = [
+  const cases: Array<{ p1: string; p2: string; want: string }> = [
     { p1: "/a/{x}", p2: "/a/{y}", want: "the same requests" },
     { p1: "/", p2: "/{m...}", want: "the same requests" },
     { p1: "/a/{x}", p2: "/{y}/b", want: "both match some paths" },
@@ -379,7 +379,7 @@ describe("describeConflict", () => {
 });
 
 describe("commonPath", () => {
-  const cases: { p1: string; p2: string; want: string }[] = [
+  const cases: Array<{ p1: string; p2: string; want: string }> = [
     { p1: "/a/{x}", p2: "/{x}/a", want: "/a/a" },
     { p1: "/a/{z}/", p2: "/{z}/a/", want: "/a/a/" },
     { p1: "/a/{z}/{m...}", p2: "/{z}/a/", want: "/a/a/" },
@@ -403,7 +403,7 @@ describe("commonPath", () => {
 });
 
 describe("differencePath", () => {
-  const cases: { p1: string; p2: string; want: string }[] = [
+  const cases: Array<{ p1: string; p2: string; want: string }> = [
     { p1: "/a/{x}", p2: "/{x}/a", want: "/a/x" },
     { p1: "/{x}/a", p2: "/a/{x}", want: "/x/a" },
     { p1: "/a/{z}/", p2: "/{z}/a/", want: "/a/z/" },
@@ -443,7 +443,7 @@ describe("differencePath", () => {
 });
 
 describe("firstSegment", () => {
-  const cases: { in: string; want: string[] }[] = [
+  const cases: Array<{ in: string; want: Array<string> }> = [
     { in: "/a/b/c", want: ["a", "b", "c"] },
     { in: "/a/b/", want: ["a", "b", "/"] },
     { in: "/", want: ["/"] },
@@ -453,7 +453,7 @@ describe("firstSegment", () => {
 
   for (const c of cases) {
     test(c.in, () => {
-      const got: string[] = [];
+      const got: Array<string> = [];
       let rest = c.in;
       while (rest.length > 0) {
         const [seg, next] = firstSegment(rest);
@@ -475,10 +475,10 @@ interface MatchCase {
   path: string;
   // "" for no match
   wantPat: string;
-  wantMatches: string[];
+  wantMatches: Array<string>;
 }
 
-function runMatchCases(tree: RoutingNode<string>, cases: MatchCase[]): void {
+function runMatchCases(tree: RoutingNode<string>, cases: Array<MatchCase>): void {
   for (const c of cases) {
     test(`${c.method} ${c.host} ${c.path} -> ${c.wantPat || "no match"}`, () => {
       const [node, matches] = match(tree, c.host, c.method, c.path);
@@ -662,13 +662,13 @@ describe("RoutingNode match", () => {
 
 describe("matchingMethods", () => {
   const hostTree = buildTree("GET a.com/", "PUT b.com/", "POST /foo/{x}");
-  const cases: {
+  const cases: Array<{
     name: string;
     tree: RoutingNode<string>;
     host: string;
     path: string;
     want: string;
-  }[] = [
+  }> = [
     { name: "post", tree: buildTree("POST /"), host: "", path: "/foo", want: "POST" },
     { name: "get", tree: buildTree("GET /"), host: "", path: "/foo", want: "GET,HEAD" },
     { name: "host", tree: hostTree, host: "", path: "/foo", want: "" },

@@ -9,19 +9,22 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { toFloat64 } from "@/tools/types/cast";
 import { anyType, boolType, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { Float64, NewError } from "@/validation/error";
 import { Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
-import { By, type Rule } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
 
 export const FieldTypeNumber = "number";
@@ -189,7 +192,7 @@ export class NumberField implements Field, SetterFinder {
 
   // ValidateSettings implements [Field.ValidateSettings] interface method.
   validateSettings(_app: FieldApp, _collection: FieldCollection): Error | null {
-    const maxRules: Rule[] = [By((value) => this.checkOnlyInt(value))];
+    const maxRules: Array<Rule> = [By((value) => this.checkOnlyInt(value))];
     if (this.min !== null && this.max !== null) {
       maxRules.push(
         By((value) => {

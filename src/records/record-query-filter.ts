@@ -19,12 +19,11 @@ import { isNoRowsError, NoRowsError } from "@/db/dbx/rows";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { Record } from "@/records/record-model";
 import {
-  type CollectionModelOrIdentifier,
   getCollectionByModelOrIdentifier,
-  type RecordsApp,
   recordQuery,
   recordsTarget,
 } from "@/records/record-query";
+import type { CollectionModelOrIdentifier, RecordsApp } from "@/records/record-query";
 import { newRecordFieldResolver, wrapResolverError } from "@/resolver/record-field-resolver";
 import { filterBuildExpr } from "@/search/filter";
 import { parseSortFromString, sortFieldBuildExpr } from "@/search/sort";
@@ -63,8 +62,8 @@ export function findRecordsByFilter(
   sort: string,
   limit: number,
   offset: number,
-  ...params: Params[]
-): Record[] {
+  ...params: Array<Params>
+): Array<Record> {
   return recordsByFilterQuery(
     app,
     collectionModelOrIdentifier,
@@ -84,13 +83,13 @@ export function findRecordsByFilterAsync(
   sort: string,
   limit: number,
   offset: number,
-  ...params: Params[]
-): Promise<Record[]> {
+  ...params: Array<Params>
+): Promise<Array<Record>> {
   let q: SelectQuery;
   try {
     q = recordsByFilterQuery(app, collectionModelOrIdentifier, filter, sort, limit, offset, params);
-  } catch (err) {
-    return Promise.reject(err);
+  } catch (error) {
+    return Promise.reject(error);
   }
   return q.allAsync<Record>(recordsTarget);
 }
@@ -104,8 +103,8 @@ export function findRecordIdsByFilter(
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   filter: string,
   sort: string,
-  ...params: Params[]
-): string[] {
+  ...params: Array<Params>
+): Array<string> {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
   const db = app.databases.concurrentDB();
   return recordsByFilterQuery(app, collection, filter, sort, 0, 0, params)
@@ -121,7 +120,7 @@ function recordsByFilterQuery(
   sort: string,
   limit: number,
   offset: number,
-  params: Params[],
+  params: Array<Params>,
 ): SelectQuery {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
 
@@ -140,8 +139,8 @@ function recordsByFilterQuery(
     let expr;
     try {
       expr = filterBuildExpr(filter, resolver, resolver.filterOptions(), ...params);
-    } catch (err) {
-      throw wrapResolverError("invalid filter expression", err);
+    } catch (error) {
+      throw wrapResolverError("invalid filter expression", error);
     }
     q.andWhere(expr);
   }
@@ -183,7 +182,7 @@ export function findFirstRecordByFilter(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   filter: string,
-  ...params: Params[]
+  ...params: Array<Params>
 ): Record {
   const result = findRecordsByFilter(app, collectionModelOrIdentifier, filter, "", 1, 0, ...params);
 
@@ -195,7 +194,7 @@ export async function findFirstRecordByFilterAsync(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   filter: string,
-  ...params: Params[]
+  ...params: Array<Params>
 ): Promise<Record> {
   const result = await findRecordsByFilterAsync(
     app,
@@ -210,7 +209,7 @@ export async function findFirstRecordByFilterAsync(
   return firstRecord(result);
 }
 
-function firstRecord(result: Record[]): Record {
+function firstRecord(result: Array<Record>): Record {
   if (result.length === 0) {
     throw new NoRowsError();
   }
@@ -250,9 +249,9 @@ export function canAccessRecord(
   let exists: unknown = 0;
   try {
     [exists] = query.row();
-  } catch (err) {
-    if (!isNoRowsCause(err)) {
-      throw err;
+  } catch (error) {
+    if (!isNoRowsCause(error)) {
+      throw error;
     }
   }
 
@@ -274,9 +273,9 @@ export async function canAccessRecordAsync(
   let exists: unknown = 0;
   try {
     [exists] = await query.rowAsync();
-  } catch (err) {
-    if (!isNoRowsCause(err)) {
-      throw err;
+  } catch (error) {
+    if (!isNoRowsCause(error)) {
+      throw error;
     }
   }
 

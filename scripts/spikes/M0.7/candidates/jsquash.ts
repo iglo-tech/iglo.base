@@ -14,8 +14,8 @@ import encodePngWasm, { init as initPngEncode } from "@jsquash/png/encode.js";
 import decodeWebp, { init as initWebpDecode } from "@jsquash/webp/decode.js";
 import jpegDecWasm from "@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm" with { type: "file" };
 import jpegEncWasm from "@jsquash/jpeg/codec/enc/mozjpeg_enc.wasm" with { type: "file" };
-// the package ships a .d.ts for this file, so the default is read by hand
-import * as pngWasmFile from "@jsquash/png/codec/pkg/squoosh_png_bg.wasm" with { type: "file" };
+// the default export of a wasm file import is its path
+import pngWasmFile from "@jsquash/png/codec/pkg/squoosh_png_bg.wasm" with { type: "file" };
 import webpDecWasm from "@jsquash/webp/codec/dec/webp_dec.wasm" with { type: "file" };
 import { GifReader } from "omggif";
 
@@ -29,7 +29,8 @@ import {
 } from "@/../scripts/spikes/M0.7/imaging";
 import { fixOrientation, readOrientation } from "@/../scripts/spikes/M0.7/orient";
 import type { Raw } from "@/../scripts/spikes/M0.7/png";
-import { thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { thumbContentType } from "@/../scripts/spikes/M0.7/thumb";
+import type { CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 // the emscripten modules build ImageData results; Bun has no ImageData
 class ImageDataShim {
@@ -41,7 +42,7 @@ class ImageDataShim {
 }
 (globalThis as Record<string, unknown>).ImageData ??= ImageDataShim;
 
-const pngWasm = (pngWasmFile as unknown as { default: string }).default;
+const pngWasm = pngWasmFile;
 
 const compile = async (path: string): Promise<WebAssembly.Module> =>
   WebAssembly.compile(await Bun.file(path).arrayBuffer());

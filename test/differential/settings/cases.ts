@@ -31,7 +31,7 @@ const patch = (name: string, body: string, headers?: Record<string, string>): Se
 const get: SettingsCase = { name: "GET", as: "superuser", method: "GET", url: "/api/settings" };
 
 // every settings endpoint, for the access checks
-const endpoints: [SettingsCase["method"], string, string][] = [
+const endpoints: Array<[SettingsCase["method"], string, string]> = [
   ["GET", "/api/settings", ""],
   ["PATCH", "/api/settings", `{"meta":{"appName":"access_test"}}`],
   ["POST", "/api/settings/test/s3", `{"filesystem":"storage"}`],
@@ -40,7 +40,7 @@ const endpoints: [SettingsCase["method"], string, string][] = [
   ["POST", "/api/settings/apple/generate-client-secret", `{}`],
 ];
 
-export const accessCases: SettingsCase[] = endpoints.flatMap(([method, url, body]) =>
+export const accessCases: Array<SettingsCase> = endpoints.flatMap(([method, url, body]) =>
   (["guest", "users", "superuser"] as const).map((as) => ({
     name: `${method} ${url} as ${as}`,
     as,
@@ -50,7 +50,7 @@ export const accessCases: SettingsCase[] = endpoints.flatMap(([method, url, body
   })),
 );
 
-export const validationCases: SettingsCase[] = [
+export const validationCases: Array<SettingsCase> = [
   // meta
   patch("meta: empty appName", `{"meta":{"appName":""}}`),
   patch("meta: appName over 255 bytes", `{"meta":{"appName":"${"a".repeat(256)}"}}`),
@@ -158,7 +158,7 @@ export const validationCases: SettingsCase[] = [
   get,
 ];
 
-export const mergeCases: SettingsCase[] = [
+export const mergeCases: Array<SettingsCase> = [
   patch("empty object", `{}`),
   patch("one meta field", `{"meta":{"appName":"merge_test"}}`),
   get,
@@ -225,7 +225,7 @@ export const mergeCases: SettingsCase[] = [
   patch("reset superuserIPs", `{"superuserIPs":[]}`),
 ];
 
-export const secretCases: SettingsCase[] = [
+export const secretCases: Array<SettingsCase> = [
   patch(
     "set every secret",
     `{"smtp":{"password":"smtp_secret","username":"u"},"s3":{"secret":"s3_secret","accessKey":"k"},"backups":{"s3":{"secret":"backups_secret"}}}`,
@@ -251,7 +251,7 @@ export const secretCases: SettingsCase[] = [
 
 // on a pair of its own: once 127.0.0.1 is not whitelisted, the superuser
 // cannot change the settings back
-export const whitelistCases: SettingsCase[] = [
+export const whitelistCases: Array<SettingsCase> = [
   patch("whitelist loopback", `{"superuserIPs":["127.0.0.1","::1"]}`),
   get,
   {

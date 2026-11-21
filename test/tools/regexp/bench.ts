@@ -16,7 +16,7 @@ const words = (
 // deterministic lowercase text with spaces and digits, without the
 // letters o, t, f, s, e and n, so no word of the alternation occurs
 function text(n: number): string {
-  let x = 0x2545f491;
+  let x = 0x25_45_f4_91;
   let out = "";
   for (let i = 0; i < n; i++) {
     x ^= x << 13;
@@ -38,7 +38,7 @@ interface benchCase {
   note: string;
 }
 
-const cases: benchCase[] = [
+const cases: Array<benchCase> = [
   {
     name: "email-like",
     pattern: String.raw`^[\w.+-]+@[\w-]+(\.[\w-]+)+$`,

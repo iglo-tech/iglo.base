@@ -15,34 +15,29 @@
 // missing name and a failed avatar download, as upstream.
 
 import type { App } from "@/app/app";
-import {
-  type RequestEvent,
-  RequestEventKeyInfoContext,
-  RequestInfoContextOAuth2,
-} from "@/app/event-request";
+import { RequestEventKeyInfoContext, RequestInfoContextOAuth2 } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
 import { oauth2RedirectAppleNameStoreKeyPrefix } from "@/apis/record-auth-with-oauth2-redirect";
 import { firstApiError, recordAuthResponseWithNewToken } from "@/apis/record-helpers";
-import {
-  InternalRequest,
-  type PreparedItem,
-  prepareItem,
-  processInternalRequest,
-  setItemBody,
-} from "@/batch/batch";
+import { InternalRequest, prepareItem, processInternalRequest, setItemBody } from "@/batch/batch";
+import type { PreparedItem } from "@/batch/batch";
 import type { Collection } from "@/collections/collection-model";
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { runInTransaction } from "@/db/tx";
 import { FieldNameEmail, FieldNameId } from "@/fields/field";
-import { preUploadFiles, type UploadTarget } from "@/files/pre-upload";
+import { preUploadFiles } from "@/files/pre-upload";
+import type { UploadTarget } from "@/files/pre-upload";
 import { FieldTypeFile } from "@/fields/file";
 import { TextField } from "@/fields/text";
 import type { AuthUser, BaseProvider } from "@/oauth2/base-provider";
 import { initProvider } from "@/oauth2/providers";
-import { safeFileFromURL, type SafeFileOptions } from "@/oauth2/safe-file";
+import { safeFileFromURL } from "@/oauth2/safe-file";
+import type { SafeFileOptions } from "@/oauth2/safe-file";
 import type { Token } from "@/oauth2/token";
-import { ExternalAuth, newExternalAuth, saveExternalAuthSync } from "@/records/external-auth-model";
+import type { ExternalAuth } from "@/records/external-auth-model";
+import { newExternalAuth, saveExternalAuthSync } from "@/records/external-auth-model";
 import {
   deleteAllExternalAuthsByRecordSync,
   findFirstExternalAuthByExpr,
@@ -50,12 +45,8 @@ import {
 import { MFAMethodOAuth2 } from "@/records/mfa-model";
 import type { Record } from "@/records/record-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import {
-  findAuthRecordByEmail,
-  findRecordById,
-  recordQuery,
-  type RecordsApp,
-} from "@/records/record-query";
+import { findAuthRecordByEmail, findRecordById, recordQuery } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { isNoRows, saveRecordSync } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
@@ -63,13 +54,16 @@ import { setOwn } from "@/server/json-decode";
 import { toString } from "@/tools/types/cast";
 import { structOf } from "@/server/unmarshal-request-data";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
-import { type File, NewFileFromBytes } from "@/tools/filesystem/file";
+import { NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import { columnify } from "@/tools/inflector/inflector";
 import { Length } from "@/validation/length";
 import { NewError } from "@/validation/error";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // auth.NameApple
 const NameApple = "apple";
@@ -116,6 +110,7 @@ export async function recordAuthWithOAuth2(
     RedirectUrl: "",
   };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordOAuth2LoginFormType,
   );
@@ -160,10 +155,10 @@ export async function recordAuthWithOAuth2(
   let provider: BaseProvider;
   try {
     provider = (options.initProvider ?? initProvider)(providerConfig);
-  } catch (err) {
+  } catch (error) {
     return firstApiError(
-      err,
-      e.internalServerError("Failed to init provider " + form.Provider, err),
+      error,
+      e.internalServerError("Failed to init provider " + form.Provider, error),
     );
   }
 
@@ -171,7 +166,7 @@ export async function recordAuthWithOAuth2(
   provider.clock = e.app.clock;
   provider.redirectURL = form.RedirectURL;
 
-  const opts: [string, string][] = [];
+  const opts: Array<[string, string]> = [];
 
   if (provider.pkce) {
     opts.push(["code_verifier", form.CodeVerifier]);
@@ -181,16 +176,16 @@ export async function recordAuthWithOAuth2(
   let token: Token;
   try {
     token = await provider.fetchToken(form.Code, opts);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to fetch OAuth2 token.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to fetch OAuth2 token.", error));
   }
 
   // fetch external auth user
   let authUser: AuthUser;
   try {
     authUser = await provider.fetchAuthUser(token);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to fetch OAuth2 user.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to fetch OAuth2 user.", error));
   }
 
   // Apple currently returns the user's name only as part of the first redirect data response
@@ -219,17 +214,17 @@ export async function recordAuthWithOAuth2(
         providerId: authUser.id,
       }),
     );
-  } catch (err) {
-    if (!isNoRows(err)) {
-      return e.internalServerError("Failed OAuth2 relation check.", err);
+  } catch (error) {
+    if (!isNoRows(error)) {
+      return e.internalServerError("Failed OAuth2 relation check.", error);
     }
   }
 
   if (externalAuthRel !== undefined) {
     try {
       authRecord = findRecordById(e.app, collection, externalAuthRel.recordRef());
-    } catch (err) {
-      return err as Error;
+    } catch (error) {
+      return error as Error;
     }
   } else if (fallbackAuthRecord !== undefined) {
     // fallback to the logged auth record (if any)
@@ -238,9 +233,9 @@ export async function recordAuthWithOAuth2(
     // look for an existing auth record by the external auth record's email
     try {
       authRecord = findAuthRecordByEmail(e.app, collection.id, authUser.email);
-    } catch (err) {
-      if (!isNoRows(err)) {
-        return e.internalServerError("Failed OAuth2 auth record check.", err);
+    } catch (error) {
+      if (!isNoRows(error)) {
+        return e.internalServerError("Failed OAuth2 auth record check.", error);
       }
     }
   }
@@ -279,9 +274,9 @@ export async function recordAuthWithOAuth2(
 
   try {
     oauth2Submit(e, submit, externalAuthRel);
-  } catch (err) {
+  } catch (error) {
     await uploads.finish(false);
-    return firstApiError(err, e.badRequestError("Failed to authenticate.", err));
+    return firstApiError(error, e.badRequestError("Failed to authenticate.", error));
   }
 
   await uploads.finish(true);
@@ -290,8 +285,8 @@ export async function recordAuthWithOAuth2(
   let meta: { [key: string]: unknown };
   try {
     meta = authUser.toMeta();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
   meta["isNew"] = submit.isNewRecord;
 
@@ -364,7 +359,7 @@ function oldCanAssignUsername(app: RecordsApp, collection: Collection, username:
   }
 
   // ensure that the value matches the pattern of the username field (if text)
-  if (field instanceof TextField && field.validatePlainValue(username) !== null) {
+  if (isInstance(TextField, field) && field.validatePlainValue(username) !== null) {
     return false;
   }
 
@@ -387,7 +382,7 @@ function oldCanAssignUsername(app: RecordsApp, collection: Collection, username:
         .select("(1)")
         .andWhere(expr)
         .limit(1)
-        .row() as number[];
+        .row() as Array<number>;
     } catch {
       // a failed read leaves it 0, as upstream ignores the error
     }
@@ -473,7 +468,7 @@ function oauth2CreatePayload(
 }
 
 // the avatar stored before the transaction of the record's create opens
-function avatarUploadTargets(app: RecordsApp, s: OAuth2Submit): UploadTarget[] {
+function avatarUploadTargets(app: RecordsApp, s: OAuth2Submit): Array<UploadTarget> {
   if (s.avatar === undefined) {
     return [];
   }
@@ -493,8 +488,8 @@ async function downloadAvatar(
     const file = await safeFileFromURL(url, options);
     // the internal request's multipart part, named after the file's normalized name
     return await NewFileFromBytes(await file.reader.bytes(), file.name);
-  } catch (err) {
-    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error: err });
+  } catch (error) {
+    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error });
     return undefined;
   }
 }
@@ -585,8 +580,8 @@ function oauth2Submit(
 
       try {
         saveExternalAuthSync(txApp, rel);
-      } catch (err) {
-        throw new Error(`failed to save linked rel: ${(err as Error).message}`, { cause: err });
+      } catch (error) {
+        throw new Error(`failed to save linked rel: ${(error as Error).message}`, { cause: error });
       }
     }
   });

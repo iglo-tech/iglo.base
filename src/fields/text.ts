@@ -17,30 +17,36 @@ import {
   idColumn,
   marshalStruct,
   maxSafeJSONInt,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
 } from "@/fields/field";
-import { boolType, intType, stringType, unmarshalStruct, type GoInt } from "@/tools/types/go-json";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
+} from "@/fields/field";
+import { boolType, intType, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { matchString } from "@/tools/regexp/regexp";
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
 import { toString as castToString } from "@/tools/types/cast";
 import { SimpleFold } from "@/tools/unicode/letter";
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { In } from "@/validation/in";
 import { Max, Min } from "@/validation/minmax";
 import { Empty } from "@/validation/absent";
 import { Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { runeCount } from "@/validation/util";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { IsRegex } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeText = "text";
 
@@ -274,8 +280,8 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
               .limit(1)
               .row();
             exists = Number(row[0] ?? 0);
-          } catch (err) {
-            failed = !isNoRowsError(err);
+          } catch (error) {
+            failed = !isNoRowsError(error);
           }
           if (exists > 0 || failed) {
             return NewError(
@@ -400,7 +406,7 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
 
       let totalPrimaryKeys = 0;
       for (const field of collection.fields) {
-        if (field instanceof TextField && field.primaryKey) {
+        if (isInstance(TextField, field) && field.primaryKey) {
           totalPrimaryKeys++;
         }
 
@@ -427,8 +433,8 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
       let generated: string;
       try {
         generated = randomStringByRegex(v);
-      } catch (err) {
-        return NewError("validation_invalid_autogenerate_pattern", (err as Error).message);
+      } catch (error) {
+        return NewError("validation_invalid_autogenerate_pattern", (error as Error).message);
       }
 
       // (loosely) check whether the generated pattern satisfies the current
@@ -459,10 +465,10 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
           let v: string;
           try {
             v = randomStringByRegex(this.autogeneratePattern);
-          } catch (err) {
+          } catch (error) {
             throw new Error(
-              `failed to autogenerate ${goQuote(this.name)} value: ${(err as Error).message}`,
-              { cause: err },
+              `failed to autogenerate ${goQuote(this.name)} value: ${(error as Error).message}`,
+              { cause: error },
             );
           }
           record.setRaw(this.name, v);
@@ -576,8 +582,8 @@ export type TextFieldSettings = Pick<
 
 // strings.EqualFold: equal under Unicode simple case folding
 function equalFold(s: string, t: string): boolean {
-  const a = [...s];
-  const b = [...t];
+  const a = Array.from(s);
+  const b = Array.from(t);
   if (a.length !== b.length) {
     return false;
   }

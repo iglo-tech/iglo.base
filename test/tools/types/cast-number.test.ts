@@ -9,7 +9,7 @@ import { describe, expect, test } from "bun:test";
 import { toBool, toBoolE, toFloat64, toFloat64E } from "@/tools/types/cast";
 
 describe("ToFloat64E", () => {
-  const cases: [unknown, number, boolean][] = [
+  const cases: Array<[unknown, number, boolean]> = [
     // positive numbers
     [8n, 8, false],
     [8, 8, false],
@@ -34,7 +34,7 @@ describe("ToFloat64E", () => {
     ["10...17", 0, true],
     ["10.foobar", 0, true],
     ["10.0i", 0, true],
-    ["10.0E9", 10000000000, false],
+    ["10.0E9", 10_000_000_000, false],
     // strconv.ParseFloat forms (not in cast's table)
     ["0x10", 0, true], // a hex mantissa needs a p exponent
     ["0x1p-2", 0.25, false],
@@ -62,7 +62,7 @@ describe("ToFloat64E", () => {
 });
 
 describe("ToBoolE", () => {
-  const cases: [unknown, boolean, boolean][] = [
+  const cases: Array<[unknown, boolean, boolean]> = [
     [0, false, false],
     [0n, false, false],
     [0.0, false, false],

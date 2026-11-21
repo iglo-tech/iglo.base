@@ -34,7 +34,7 @@ export interface FileCase {
   collection: string;
   // the record a PATCH, DELETE or GET addresses, or the one a POST stores
   ref?: string;
-  parts?: Part[];
+  parts?: Array<Part>;
   // a JSON body instead of parts
   json?: Record<string, unknown>;
   // the multipart Content-Type's boundary parameter, as written (quoted)
@@ -63,7 +63,7 @@ const file = (name: string, filename: string, content: Uint8Array | string): Fil
 const value = (name: string, v: string): TextPart => ({ name, value: v });
 
 // The collections, all rules "" (guests may write).
-export const collections: Record<string, unknown>[] = [
+export const collections: Array<Record<string, unknown>> = [
   {
     name: "fsingle",
     type: "base",
@@ -77,7 +77,7 @@ export const collections: Record<string, unknown>[] = [
     type: "base",
     fields: [
       { name: "title", type: "text" },
-      { name: "docs", type: "file", maxSelect: 3, maxSize: 100000 },
+      { name: "docs", type: "file", maxSelect: 3, maxSize: 100_000 },
       { name: "img", type: "file", maxSelect: 1, mimeTypes: ["image/png"] },
       { name: "prot", type: "file", maxSelect: 2, protected: true },
     ],
@@ -140,7 +140,7 @@ const longCutWhole = "é".repeat(127) + "x" + "é".repeat(10) + ".txt";
 // two "x" and two-byte characters: byte 255 is the first half of one
 const longCutInside = "xx" + "é".repeat(140) + ".txt";
 
-export const cases: FileCase[] = [
+export const cases: Array<FileCase> = [
   // single file field
   {
     name: "single: create with a file",
@@ -245,7 +245,7 @@ export const cases: FileCase[] = [
     status: 400,
     method: "POST",
     collection: "fmulti",
-    parts: [file("docs", "ok.txt", "ok"), file("docs", "huge.txt", "y".repeat(100001))],
+    parts: [file("docs", "ok.txt", "ok"), file("docs", "huge.txt", "y".repeat(100_001))],
   },
   {
     name: "multi: docs+ appends",
@@ -417,7 +417,7 @@ export const cases: FileCase[] = [
     method: "POST",
     collection: "fmulti",
     ref: "n6",
-    parts: [file("docs", 'a "quoted" \\ name.txt', "q")],
+    parts: [file("docs", String.raw`a "quoted" \ name.txt`, "q")],
   },
   {
     name: "name: an empty file",

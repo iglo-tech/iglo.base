@@ -42,9 +42,8 @@ import {
   isDriverValuer,
   isGetterFinder,
   isSetterFinder,
-  type Field,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldRecord } from "@/fields/field";
 import { FieldTypeFile, FileField } from "@/fields/file";
 import { toInt, toInt64, toStringMap } from "@/records/cast";
 import {
@@ -65,15 +64,14 @@ import {
 import { recordIsSuperuser } from "@/records/record-model-superusers";
 import { File } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
-import { recordJSONLayout, type RecordJSONLayout } from "@/records/record-json";
+import { recordJSONLayout } from "@/records/record-json";
+import type { RecordJSONLayout } from "@/records/record-json";
 import { Store } from "@/tools/store/store";
 import { toBool, toFloat64, toString as castToString } from "@/tools/types/cast";
-import { type DateTime, parseDateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 import { GeoPoint } from "@/tools/types/geo-point";
 import {
-  type GoInt,
-  type GoType,
-  type JSONMarshaler,
   anyType,
   bytesToText,
   encodeFlags,
@@ -84,8 +82,10 @@ import {
   unmarshal,
   withPartial,
 } from "@/tools/types/go-json";
+import type { GoInt, GoType, JSONMarshaler } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { formatFloatV } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the options of marshalJSON (see there)
 const recordFlags = encodeFlags({ allowDuplicateNames: true, allowInvalidUTF8: true });
@@ -120,7 +120,7 @@ export function nullStringText(v: unknown): string | null {
   if (v === null || v === undefined) {
     return null;
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
+  if (typeof v === "string" || isInstance(Uint8Array, v)) {
     return bytesToText(v);
   }
   // INTEGER (int64)
@@ -194,14 +194,17 @@ function hydrateRecord(collection: Collection, text: (name: string) => string | 
 // Note that this method is intended to load and Scan data from a database rows result.
 export function newRecordsFromNullStringMaps(
   collection: Collection,
-  rows: readonly NullStringMap[],
-): Record[] {
+  rows: ReadonlyArray<NullStringMap>,
+): Array<Record> {
   return rows.map((row) => newRecordFromNullStringMap(collection, row));
 }
 
 // newRecordsFromNullStringMaps for rows as the driver reads them
-export function newRecordsFromRows(collection: Collection, rows: readonly Row[]): Record[] {
-  const records: Record[] = Array.from({ length: rows.length });
+export function newRecordsFromRows(
+  collection: Collection,
+  rows: ReadonlyArray<Row>,
+): Array<Record> {
+  const records: Array<Record> = Array.from({ length: rows.length });
   for (let i = 0; i < rows.length; i++) {
     records[i] = newRecordFromRow(collection, rows[i]!);
   }
@@ -405,8 +408,8 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       const old = oldExpand.get(key);
 
       let wasOldSlice = false;
-      let oldSlice: Record[];
-      if (old instanceof Record) {
+      let oldSlice: Array<Record>;
+      if (isInstance(Record, old)) {
         oldSlice = [old];
       } else if (isRecordSlice(old)) {
         wasOldSlice = true;
@@ -419,8 +422,8 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       }
 
       let wasNewSlice = false;
-      let newSlice: Record[];
-      if (newValue instanceof Record) {
+      let newSlice: Array<Record>;
+      if (isInstance(Record, newValue)) {
         newSlice = [newValue];
       } else if (isRecordSlice(newValue)) {
         wasNewSlice = true;
@@ -667,7 +670,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // GetStringSlice returns the data value for "key" as a slice of non-zero unique strings.
-  getStringSlice(key: string): string[] {
+  getStringSlice(key: string): Array<string> {
     return toUniqueStringSlice(this.get(key));
   }
 
@@ -676,7 +679,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // validations or modifications (including changing the file name or content before persisting).
   //
   // Returns null (Go's nil slice) when the key is not a file field.
-  getUnsavedFiles(key: string): File[] | null {
+  getUnsavedFiles(key: string): Array<File> | null {
     if (!key.endsWith(":unsaved")) {
       key += ":unsaved";
     }
@@ -684,11 +687,11 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
     const values = this.get(key);
 
     // Go's type assertion to []*filesystem.File
-    return Array.isArray(values) && values.every((v) => v instanceof File) ? values : null;
+    return Array.isArray(values) && values.every((v) => isInstance(File, v)) ? values : null;
   }
 
   // Deprecated: replaced with GetUnsavedFiles.
-  getUploadedFiles(key: string): File[] | null {
+  getUploadedFiles(key: string): Array<File> | null {
     return this.getUnsavedFiles(key);
   }
 
@@ -712,7 +715,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
     const rel = this.#expand.get(relField);
 
-    if (rel instanceof Record) {
+    if (isInstance(Record, rel)) {
       return rel;
     }
     if (isRecordSlice(rel) && rel.length > 0) {
@@ -729,14 +732,14 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // the return result and will wrap the single model as a slice.
   //
   // Returns null (Go's nil slice) if there is no such expand relation loaded.
-  expandedAll(relField: string): Record[] | null {
+  expandedAll(relField: string): Array<Record> | null {
     if (this.#expand === null) {
       return null;
     }
 
     const rel = this.#expand.get(relField);
 
-    if (rel instanceof Record) {
+    if (isInstance(Record, rel)) {
       return [rel];
     }
     if (isRecordSlice(rel)) {
@@ -754,7 +757,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
         continue;
       }
 
-      if (!(field instanceof FileField)) {
+      if (!isInstance(FileField, field)) {
         continue;
       }
 
@@ -812,7 +815,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // Hide hides the specified fields from the public safe serialization of the record.
-  hide(...fieldNames: string[]): this {
+  hide(...fieldNames: Array<string>): this {
     for (const name of fieldNames) {
       (this.#customVisibility ??= new Store<string, boolean>()).set(name, false);
     }
@@ -822,7 +825,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
   // Unhide forces to unhide the specified fields from the public safe serialization
   // of the record (even when the collection field itself is marked as hidden).
-  unhide(...fieldNames: string[]): this {
+  unhide(...fieldNames: Array<string>): this {
     for (const name of fieldNames) {
       (this.#customVisibility ??= new Store<string, boolean>()).set(name, true);
     }
@@ -998,8 +1001,8 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       sep = ",";
       try {
         out += ":" + encodeValue(value, recordFlags, 1);
-      } catch (err) {
-        throw withPartial(err, out, ":");
+      } catch (error) {
+        throw withPartial(error, out, ":");
       }
     }
 
@@ -1143,8 +1146,8 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 }
 
 // a Go []*Record: an array whose items are all records
-function isRecordSlice(v: unknown): v is Record[] {
-  return Array.isArray(v) && v.every((item) => item instanceof Record);
+function isRecordSlice(v: unknown): v is Array<Record> {
+  return Array.isArray(v) && v.every((item) => isInstance(Record, item));
 }
 
 function toMap(
@@ -1153,7 +1156,7 @@ function toMap(
   if (data === null || data === undefined) {
     return new Map();
   }
-  return new Map(data instanceof Map ? data : Object.entries(data));
+  return new Map(isInstance(Map, data) ? data : Object.entries(data));
 }
 
 function toDataMap(m: ReadonlyMap<string, unknown>): DataMap {
@@ -1177,11 +1180,11 @@ export function areValuesEqual(a: unknown, b: unknown): boolean {
     // Go's == on float64: NaN != NaN, 0 == -0
     return typeof b === "number" && a === b;
   }
-  if (a instanceof Uint8Array) {
-    return b instanceof Uint8Array && a.length === b.length && a.every((x, i) => x === b[i]);
+  if (isInstance(Uint8Array, a)) {
+    return isInstance(Uint8Array, b) && a.length === b.length && a.every((x, i) => x === b[i]);
   }
-  if (a instanceof JSONRaw) {
-    return b instanceof JSONRaw && a.bytes() === b.bytes();
+  if (isInstance(JSONRaw, a)) {
+    return isInstance(JSONRaw, b) && a.bytes() === b.bytes();
   }
   if (Array.isArray(a) && a.every(isPrimitive)) {
     return (

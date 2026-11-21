@@ -9,16 +9,18 @@ import {
   InterceptorActionAfterCreate,
   InterceptorActionAfterUpdate,
   marshalStruct,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type GetterFinder,
-  type GetterFunc,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  GetterFinder,
+  GetterFunc,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import {
   DefaultCost,
@@ -32,14 +34,8 @@ import {
 } from "@/tools/crypto/bcrypt";
 import { matchString } from "@/tools/regexp/regexp";
 import { toString as castToString } from "@/tools/types/cast";
-import {
-  boolType,
-  intType,
-  stringType,
-  textToBytes,
-  unmarshalStruct,
-  type GoInt,
-} from "@/tools/types/go-json";
+import { boolType, intType, stringType, textToBytes, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 import { Required } from "@/validation/required";
@@ -48,6 +44,7 @@ import { runeCount } from "@/validation/util";
 import { By } from "@/validation/validation";
 import { IsRegex } from "@/validators/string";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypePassword = "password";
 
@@ -192,7 +189,7 @@ export class PasswordField
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const fp = record.getRaw(this.name);
-    if (!(fp instanceof PasswordFieldValue)) {
+    if (!isInstance(PasswordFieldValue, fp)) {
       return ErrUnsupportedValueType;
     }
 
@@ -268,7 +265,7 @@ export class PasswordField
   private getPasswordValue(record: FieldRecord): PasswordFieldValue {
     const raw = record.getRaw(this.name);
 
-    if (raw instanceof PasswordFieldValue) {
+    if (isInstance(PasswordFieldValue, raw)) {
       return raw;
     }
     // we assume that any raw string starting with $2 is bcrypt hash
@@ -343,8 +340,8 @@ export class PasswordField
         const bytes = textToBytes(fv.plain);
         const c = checkGenerate(bytes, cost);
         fv.startHash(bytes, c, generateFromPasswordAsync(bytes, c));
-      } catch (err) {
-        fv.lastError = err as Error;
+      } catch (error) {
+        fv.lastError = error as Error;
       }
     }
 
@@ -459,9 +456,9 @@ export class PasswordFieldValue {
           this.#pending = null;
         }
       },
-      (err) => {
+      (error: unknown) => {
         if (this.#pending === pending) {
-          this.lastError = err as Error;
+          this.lastError = error as Error;
           this.#pending = null;
         }
       },
@@ -482,8 +479,8 @@ export class PasswordFieldValue {
     this.#pending = null;
     try {
       this.#hash = generateFromPassword(this.#pendingPlain, this.#pendingCost);
-    } catch (err) {
-      this.lastError = err as Error;
+    } catch (error) {
+      this.lastError = error as Error;
     }
   }
 

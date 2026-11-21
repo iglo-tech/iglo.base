@@ -10,11 +10,11 @@ import { logDBExport as logDBExportBefore } from "@test/logs/log-model-before-m7
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -32,18 +32,18 @@ const texts = [
 
 const times = [
   0,
-  1700000000123,
-  -30610224000000,
-  -30610224000001,
-  253402300799999,
-  253402300800000,
-  -62167219200000,
+  1_700_000_000_123,
+  -30_610_224_000_000,
+  -30_610_224_000_001,
+  253_402_300_799_999,
+  253_402_300_800_000,
+  -62_167_219_200_000,
   8.64e15,
   Number.NaN,
 ];
 
 function attrValue(r: () => number, depth: number): unknown {
-  const pick = <T>(a: T[]): T => a[Math.floor(r() * a.length)] as T;
+  const pick = <T>(a: Array<T>): T => a[Math.floor(r() * a.length)] as T;
   switch (Math.floor(r() * (depth > 2 ? 6 : 9))) {
     case 0:
       return null;
@@ -88,12 +88,12 @@ test("logDBExport equals the M7.1b export", () => {
       message: texts[Math.floor(r() * texts.length)] as string,
       data,
     };
-    for (const max of [0, 50, 200, 5000, 16384]) {
+    for (const max of [0, 50, 200, 5000, 16_384]) {
       const run = (f: typeof logDBExport): string => {
         try {
           return JSON.stringify(f("id", log, max));
-        } catch (err) {
-          return "err:" + (err as Error).message;
+        } catch (error) {
+          return "err:" + (error as Error).message;
         }
       };
       expect(run(logDBExport)).toBe(run(logDBExportBefore));

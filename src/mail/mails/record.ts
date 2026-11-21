@@ -22,7 +22,8 @@ import { FieldTypeDate } from "@/fields/date";
 import { FieldTypeNumber } from "@/fields/number";
 import { resolveLayout } from "@/mail/mails/templates";
 import type { Message } from "@/mail/mailer";
-import { type OTP, saveOTP } from "@/records/otp-model";
+import { saveOTP } from "@/records/otp-model";
+import type { OTP } from "@/records/otp-model";
 import { findOTPById } from "@/records/otp-query";
 import type { Record } from "@/records/record-model";
 import { CollectionNameSuperusers, DefaultInstallerEmail } from "@/records/record-model-superusers";
@@ -84,10 +85,10 @@ export async function sendRecordOTP(
   let otp: OTP;
   try {
     otp = findOTPById(app, otpId);
-  } catch (err) {
+  } catch (error) {
     app.logger.warn(
       "Unable to find OTP to update its sentTo field (either it was already deleted or the id is nonexisting)",
-      { error: err, otpId },
+      { error, otpId },
     );
     return;
   }
@@ -99,8 +100,8 @@ export async function sendRecordOTP(
   otp.setSentTo(toAddress);
   try {
     await saveOTP(app, otp);
-  } catch (err) {
-    app.logger.error("Failed to update OTP sentTo field", { error: err, otpId, to: toAddress });
+  } catch (error) {
+    app.logger.error("Failed to update OTP sentTo field", { error, otpId, to: toAddress });
   }
 }
 
@@ -179,7 +180,7 @@ function newMessage(app: App, to: string, subject: string, body: string): Messag
   };
 }
 
-const nonescapeTypes = [FieldTypeAutodate, FieldTypeDate, FieldTypeBool, FieldTypeNumber];
+const nonescapeTypes = new Set([FieldTypeAutodate, FieldTypeDate, FieldTypeBool, FieldTypeNumber]);
 
 function resolveEmailTemplate(
   app: App,
@@ -207,7 +208,7 @@ function resolveEmailTemplate(
 
       // note: the escaping is not strictly necessary but for just in case
       // the user decide to store and render the email as plain html
-      if (!nonescapeTypes.includes(field.type())) {
+      if (!nonescapeTypes.has(field.type())) {
         val = escapeString(val);
       }
 
@@ -222,7 +223,7 @@ function resolveEmailTemplate(
 
 // html.EscapeString (Go's standard library): escapes only <, >, &, ' and "
 export function escapeString(s: string): string {
-  return s.replace(/[<>&'"]/g, (c) => htmlEscapes[c] as string);
+  return s.replaceAll(/[<>&'"]/g, (c) => htmlEscapes[c] as string);
 }
 
 const htmlEscapes: { [c: string]: string } = {

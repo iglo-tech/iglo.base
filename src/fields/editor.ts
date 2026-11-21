@@ -6,20 +6,17 @@ import {
   DefaultFieldNameValidationRule,
   marshalStruct,
   maxSafeJSONInt,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MaxBodySizeCalculator,
+} from "@/fields/field";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MaxBodySizeCalculator,
 } from "@/fields/field";
 import { toString as castToString } from "@/tools/types/cast";
-import {
-  boolType,
-  int64Type,
-  stringType,
-  unmarshalStruct,
-  type GoInt,
-} from "@/tools/types/go-json";
+import { boolType, int64Type, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
 import { Required } from "@/validation/required";

@@ -20,8 +20,10 @@
 
 import { wrapError } from "@/collections/view";
 import type { Record } from "@/records/record-model";
-import { countRecords, findAuthRecordByEmail, type RecordsApp } from "@/records/record-query";
-import { deleteStep, inTransaction, isNoRows, type Next, type Step } from "@/records/record-save";
+import { countRecords, findAuthRecordByEmail } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
+import { deleteStep, inTransaction, isNoRows } from "@/records/record-save";
+import type { Next, Step } from "@/records/record-save";
 import { newBadRequestError } from "@/server/error";
 
 export const CollectionNameSuperusers = "_superusers";
@@ -47,8 +49,8 @@ export function* superusersOnDelete(app: RecordsApp, record: Record, next: Next)
     let total: number;
     try {
       total = countRecords(txApp, CollectionNameSuperusers);
-    } catch (err) {
-      throw wrapError("failed to fetch total superusers count", err);
+    } catch (error) {
+      throw wrapError("failed to fetch total superusers count", error);
     }
 
     if (total === 1) {
@@ -94,9 +96,9 @@ function* superusersSaveExecute(
         CollectionNameSuperusers,
         DefaultInstallerEmail,
       );
-    } catch (err) {
-      if (!isNoRows(err)) {
-        app.logger.warn("Failed to fetch installer superuser", { error: err });
+    } catch (error) {
+      if (!isNoRows(error)) {
+        app.logger.warn("Failed to fetch installer superuser", { error });
       }
       // else already deleted
       return;
@@ -104,8 +106,8 @@ function* superusersSaveExecute(
 
     try {
       yield* deleteStep(app, installer);
-    } catch (err) {
-      app.logger.warn("Failed to delete installer superuser", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to delete installer superuser", { error });
     }
   }
 }

@@ -30,6 +30,7 @@
 // ported caller uses.
 
 import { decodeUTF8Bytes } from "@/server/json-decode";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Values with their own JSON form, as Go's json.Marshaler. The returned
 // text must be one valid JSON value; it is compacted and checked when it is
@@ -94,7 +95,7 @@ export function withPartial(err: unknown, prefix: string, delim: string): unknow
 }
 
 // jsontext's maxNestingDepth
-const maxNestingDepth = 10000;
+const maxNestingDepth = 10_000;
 
 export interface MarshalOptions {
   // encoding/json (v1) defaults: EscapeForHTML, EscapeForJS,
@@ -156,6 +157,7 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
     case "function":
     case "symbol":
       throw new JSONSemanticError(`cannot marshal ${typeof value}`);
+    case "object":
   }
   if (value === null) {
     return "null";
@@ -175,24 +177,24 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
       try {
         const item = encodeValue(value[i], flags, depth + 1);
         out += (i > 0 ? "," : "") + item;
-      } catch (err) {
-        throw withPartial(err, out, i > 0 ? "," : "");
+      } catch (error) {
+        throw withPartial(error, out, i > 0 ? "," : "");
       }
     }
     return out + "]";
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     // []byte is a base64 (StdEncoding) string
     return quote(value.toBase64(), flags);
   }
-  if (value instanceof Date) {
+  if (isInstance(Date, value)) {
     // time.Time is RFC 3339 with nanoseconds, trailing zeros trimmed
     return quote(formatRFC3339Nano(value), flags);
   }
-  if (value instanceof Map) {
-    const names: string[] = [];
-    const values: unknown[] = [];
-    for (const [k, v] of value as Map<unknown, unknown>) {
+  if (isInstance<Map<unknown, unknown>>(Map, value)) {
+    const names: Array<string> = [];
+    const values: Array<unknown> = [];
+    for (const [k, v] of value) {
       names.push(typeof k === "string" ? k : String(k));
       values.push(v);
     }
@@ -200,7 +202,7 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
   }
   const obj = value as { [key: string]: unknown };
   const names = Object.keys(obj);
-  const values: unknown[] = Array.from({ length: names.length });
+  const values: Array<unknown> = Array.from({ length: names.length });
   for (let i = 0; i < names.length; i++) {
     values[i] = obj[names[i] as string];
   }
@@ -208,8 +210,8 @@ export function encodeValue(value: unknown, flags: EncodeFlags, depth: number): 
 }
 
 function encodeObject(
-  entries: string[],
-  values: unknown[],
+  entries: Array<string>,
+  values: Array<unknown>,
   flags: EncodeFlags,
   depth: number,
 ): string {
@@ -219,8 +221,8 @@ function encodeObject(
   if (n === 0) {
     return "{}";
   }
-  const quoted: string[] = Array.from({ length: n });
-  const names: string[] = Array.from({ length: n });
+  const quoted: Array<string> = Array.from({ length: n });
+  const names: Array<string> = Array.from({ length: n });
   // without surrogates UTF-16 order is the UTF-8 (code point) order
   let plain = true;
   for (let i = 0; i < n; i++) {
@@ -234,7 +236,7 @@ function encodeObject(
       plain = false;
     }
   }
-  const order: number[] = Array.from({ length: n }, (_, i) => i);
+  const order: Array<number> = Array.from({ length: n }, (_, i) => i);
   for (let i = 0; i < n; i++) {
     order[i] = i;
   }
@@ -255,8 +257,8 @@ function encodeObject(
     out += (k > 0 ? "," : "") + quoted[i];
     try {
       out += ":" + encodeValue(values[i], flags, depth + 1);
-    } catch (err) {
-      throw withPartial(err, out, ":");
+    } catch (error) {
+      throw withPartial(error, out, ":");
     }
   }
   return out + "}";
@@ -272,7 +274,7 @@ export function compareUTF8(a: string, b: string): number {
     if (ca !== cb) {
       return ca < cb ? -1 : 1;
     }
-    if (ca > 0xffff) {
+    if (ca > 0xff_ff) {
       i++;
     }
   }
@@ -315,7 +317,7 @@ export function quote(
       esc = escapeASCII(c);
     } else if ((c === 0x3c || c === 0x3e || c === 0x26) && flags.escapeForHTML) {
       esc = escapeUTF16(c);
-    } else if ((c === 0x2028 || c === 0x2029) && flags.escapeForJS) {
+    } else if ((c === 0x20_28 || c === 0x20_29) && flags.escapeForJS) {
       esc = escapeUTF16(c);
     }
     if (esc !== undefined) {
@@ -338,26 +340,26 @@ function isPlainString(s: string): boolean {
 function escapeASCII(c: number): string {
   switch (c) {
     case 0x22:
-      return '\\"';
+      return String.raw`\"`;
     case 0x5c:
-      return "\\\\";
+      return String.raw`\\`;
     case 0x08:
-      return "\\b";
+      return String.raw`\b`;
     case 0x0c:
-      return "\\f";
+      return String.raw`\f`;
     case 0x0a:
-      return "\\n";
+      return String.raw`\n`;
     case 0x0d:
-      return "\\r";
+      return String.raw`\r`;
     case 0x09:
-      return "\\t";
+      return String.raw`\t`;
     default:
       return escapeUTF16(c);
   }
 }
 
 function escapeUTF16(c: number): string {
-  return "\\u" + c.toString(16).padStart(4, "0");
+  return String.raw`\u` + c.toString(16).padStart(4, "0");
 }
 
 function formatRFC3339Nano(d: Date): string {
@@ -553,9 +555,9 @@ function scanCanonicalString(s: string, i: number): number {
       }
       return -1;
     }
-    if (c >= 0xd800 && c <= 0xdfff) {
+    if (c >= 0xd8_00 && c <= 0xdf_ff) {
       const next = s.charCodeAt(i + 1);
-      if (c <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      if (c <= 0xdb_ff && next >= 0xdc_00 && next <= 0xdf_ff) {
         i++;
         continue;
       }
@@ -631,7 +633,7 @@ class Reformatter {
         const c = ch.charCodeAt(0);
         if ((c === 0x3c || c === 0x3e || c === 0x26) && this.flags.escapeForHTML) {
           out += escapeUTF16(c);
-        } else if ((c === 0x2028 || c === 0x2029) && this.flags.escapeForJS) {
+        } else if ((c === 0x20_28 || c === 0x20_29) && this.flags.escapeForJS) {
           out += escapeUTF16(c);
         } else {
           out += ch;
@@ -647,7 +649,7 @@ class Reformatter {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const items: string[] = [];
+    const items: Array<string> = [];
     this.skipWhitespace();
     if (this.s[this.i] === "]") {
       this.i++;
@@ -672,7 +674,7 @@ class Reformatter {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const members: string[] = [];
+    const members: Array<string> = [];
     const seen = new Set<string>();
     this.skipWhitespace();
     if (this.s[this.i] === "}") {
@@ -755,12 +757,12 @@ function scanString(s: string, start: number, validateUTF8: boolean): [string, n
     if (c < 0x20) {
       throw new JSONSyntaxError(`invalid character in string at offset ${i}`);
     }
-    if (c >= 0xd800 && c <= 0xdfff) {
+    if (c >= 0xd8_00 && c <= 0xdf_ff) {
       const pair =
-        c <= 0xdbff &&
+        c <= 0xdb_ff &&
         i + 1 < s.length &&
-        s.charCodeAt(i + 1) >= 0xdc00 &&
-        s.charCodeAt(i + 1) <= 0xdfff;
+        s.charCodeAt(i + 1) >= 0xdc_00 &&
+        s.charCodeAt(i + 1) <= 0xdf_ff;
       if (pair) {
         i += 2;
         continue;
@@ -833,7 +835,7 @@ function scanString(s: string, start: number, validateUTF8: boolean): [string, n
           canonical = false;
         }
         i += 6;
-        if (v1 < 0xd800 || v1 > 0xdfff) {
+        if (v1 < 0xd8_00 || v1 > 0xdf_ff) {
           out += String.fromCharCode(v1);
           break;
         }
@@ -843,7 +845,7 @@ function scanString(s: string, start: number, validateUTF8: boolean): [string, n
           s[i] === "\\" && s[i + 1] === "u" && /^[0-9a-fA-F]{4}$/.test(hex2)
             ? Number.parseInt(hex2, 16)
             : -1;
-        if (v1 <= 0xdbff && v2 >= 0xdc00 && v2 <= 0xdfff) {
+        if (v1 <= 0xdb_ff && v2 >= 0xdc_00 && v2 <= 0xdf_ff) {
           out += String.fromCharCode(v1, v2);
           i += 6;
           break;
@@ -870,10 +872,10 @@ class NumberNode {
 }
 
 class ObjectNode {
-  constructor(readonly members: [string, Node][]) {}
+  constructor(readonly members: Array<[string, Node]>) {}
 }
 
-type Node = null | boolean | string | NumberNode | Node[] | ObjectNode;
+type Node = null | boolean | string | NumberNode | Array<Node> | ObjectNode;
 
 export interface UnmarshalOptions {
   // encoding/json (v1) semantics: duplicate names allowed (last wins),
@@ -924,19 +926,19 @@ export function bytesToText(data: string | Uint8Array): string {
 // lone surrogates, which bytesToText never yields, become U+FFFD).
 export function textToBytes(text: string): Uint8Array {
   const encoder = new TextEncoder();
-  const parts: Uint8Array[] = [];
+  const parts: Array<Uint8Array> = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
-    if (c >= 0xd800 && c <= 0xdbff) {
+    if (c >= 0xd8_00 && c <= 0xdb_ff) {
       const next = text.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
+      if (next >= 0xdc_00 && next <= 0xdf_ff) {
         i++;
       }
       continue;
     }
-    if (c >= 0xdc80 && c <= 0xdcff) {
-      parts.push(encoder.encode(text.slice(start, i)), Uint8Array.of(c - 0xdc00));
+    if (c >= 0xdc_80 && c <= 0xdc_ff) {
+      parts.push(encoder.encode(text.slice(start, i)), Uint8Array.of(c - 0xdc_00));
       start = i + 1;
     }
   }
@@ -983,6 +985,7 @@ class Parser {
         return this.literal("true", true);
       case "f":
         return this.literal("false", false);
+      case undefined:
     }
     const n = consumeNumber(this.s, this.i);
     this.i += n;
@@ -1005,12 +1008,12 @@ class Parser {
 
   // onElement is called for each element as soon as it is read (see
   // object)
-  array(depth: number, onElement?: (value: Node) => void): Node[] {
+  array(depth: number, onElement?: (value: Node) => void): Array<Node> {
     if (depth > maxNestingDepth) {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const items: Node[] = [];
+    const items: Array<Node> = [];
     this.skipWhitespace();
     if (this.s[this.i] === "]") {
       this.i++;
@@ -1041,7 +1044,7 @@ class Parser {
       throw new JSONSyntaxError("exceeded max depth");
     }
     this.i++;
-    const members: [string, Node][] = [];
+    const members: Array<[string, Node]> = [];
     const seen = new Set<string>();
     this.skipWhitespace();
     if (this.s[this.i] === "}") {
@@ -1161,11 +1164,11 @@ export function unmarshalStruct(
       }
       try {
         set(convert(value, t, undefined, p.legacy));
-      } catch (err) {
+      } catch (error) {
         if (!p.legacy) {
-          throw err;
+          throw error;
         }
-        firstError ??= err;
+        firstError ??= error;
       }
     });
     p.end();
@@ -1192,9 +1195,9 @@ export function unmarshalSlicePartial(
   data: string | Uint8Array,
   elem: GoType,
   opts: UnmarshalOptions = {},
-): [unknown[] | undefined, unknown] {
+): [Array<unknown> | undefined, unknown] {
   const p = new Parser(bytesToText(data), opts.legacy === true);
-  let result: unknown[] | undefined;
+  let result: Array<unknown> | undefined;
   let firstError: unknown;
   try {
     p.skipWhitespace();
@@ -1204,12 +1207,12 @@ export function unmarshalSlicePartial(
       p.array(1, (node) => {
         try {
           out.push(convert(node, elem, undefined, p.legacy));
-        } catch (err) {
+        } catch (error) {
           out.push(convert(null, elem, undefined, p.legacy));
           if (!p.legacy) {
-            throw err;
+            throw error;
           }
-          firstError ??= err;
+          firstError ??= error;
         }
       });
     } else {
@@ -1219,8 +1222,8 @@ export function unmarshalSlicePartial(
       }
     }
     p.end();
-  } catch (err) {
-    firstError ??= err;
+  } catch (error) {
+    firstError ??= error;
   }
   return [result, firstError];
 }
@@ -1235,7 +1238,7 @@ function kindOf(node: Node): string {
   if (typeof node === "string") {
     return "string";
   }
-  if (node instanceof NumberNode) {
+  if (isInstance(NumberNode, node)) {
     return "number";
   }
   if (Array.isArray(node)) {
@@ -1276,7 +1279,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       if (node === null) {
         return 0;
       }
-      if (!(node instanceof NumberNode)) {
+      if (!isInstance(NumberNode, node)) {
         throw mismatch(node, "float64");
       }
       return parseFloat64(node.literal);
@@ -1285,7 +1288,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       if (node === null) {
         return 0;
       }
-      if (!(node instanceof NumberNode)) {
+      if (!isInstance(NumberNode, node)) {
         throw mismatch(node, t.kind);
       }
       return parseInt64(node.literal, t.kind);
@@ -1319,7 +1322,7 @@ function convertObject(
   goType: string,
   legacy: boolean,
 ): Record<string, unknown> {
-  if (!(node instanceof ObjectNode)) {
+  if (!isInstance(ObjectNode, node)) {
     throw mismatch(node, goType);
   }
   let firstError: unknown;
@@ -1330,9 +1333,9 @@ function convertObject(
       // whatever its type
       try {
         setOwn(target, name, convert(value, elem, undefined, legacy));
-      } catch (err) {
+      } catch (error) {
         // v1: a semantic error does not stop the remaining members
-        firstError ??= err;
+        firstError ??= error;
       }
       continue;
     }
@@ -1360,6 +1363,11 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
         return convert(node, stringType, undefined, legacy);
       case "boolean":
         return convert(node, boolType, undefined, legacy);
+      case "bigint":
+      case "function":
+      case "object":
+      case "symbol":
+      case "undefined":
     }
     if (Array.isArray(existing)) {
       return convert(node, sliceOf(anyType), undefined, legacy);
@@ -1374,13 +1382,13 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
       );
     }
   }
-  if (node instanceof NumberNode) {
+  if (isInstance(NumberNode, node)) {
     return parseFloat64(node.literal);
   }
   if (Array.isArray(node)) {
     return node.map((item) => convertAny(item, undefined, legacy));
   }
-  if (node instanceof ObjectNode) {
+  if (isInstance(ObjectNode, node)) {
     return convertObject(node, anyType, {}, "map[string]any", legacy);
   }
   return node;

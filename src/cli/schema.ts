@@ -14,25 +14,22 @@ import { join, resolve } from "node:path";
 
 import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
-import {
-  argsMinusFirst,
-  FlagError,
-  parseFlags,
-  stripFlags,
-  type FlagSpec,
-  type FlagValue,
-} from "@/cli/flags";
-import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { argsMinusFirst, FlagError, parseFlags, stripFlags } from "@/cli/flags";
+import type { FlagSpec, FlagValue } from "@/cli/flags";
+import { helpText, usageText } from "@/cli/help";
+import type { CommandHelp } from "@/cli/help";
 import type { AppConfig, CliContext } from "@/cli/root";
 import { bootstrapApp } from "@/cli/serve";
 import { CommandError } from "@/cli/superuser";
 import { findAllCollections } from "@/collections/collection-query";
 import { dataDBFilename } from "@/db/base";
 import { parseSchemaFile, planSchema, SchemaFileError } from "@/schema/apply";
-import { loadSchemaMigrationsFor, type SchemaMigration } from "@/schema/migration-files";
+import { loadSchemaMigrationsFor } from "@/schema/migration-files";
+import type { SchemaMigration } from "@/schema/migration-files";
 import { JSONSyntaxError } from "@/schema/json-tree";
 import type { Collection } from "@/collections/collection-model";
-import { schemaFileText, type SchemaFileText } from "@/schema/file-text";
+import { schemaFileText } from "@/schema/file-text";
+import type { SchemaFileText } from "@/schema/file-text";
 import { schemaJSONText } from "@/schema/json-schema";
 import { formatReport, reportIsOK } from "@/schema/report";
 import { schemaURL } from "@/schema/url";
@@ -100,11 +97,11 @@ const schemaMigrationsDirFlag: FlagSpec = {
 // JavaScript migrations of pb_migrations (plan runs them in its transaction).
 export async function runSchemaCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
   version: string,
-  migrations: readonly Migration[],
+  migrations: ReadonlyArray<Migration>,
 ): Promise<void> {
   const rest = argsMinusFirst(ctx.args, "schema", persistent);
   // cobra Command.Find: the first argument that is not a flag (or a flag's value)
@@ -127,11 +124,11 @@ export async function runSchemaCommand(
   if (subName === undefined) {
     try {
       parseFlags(rest, [helpFlag("schema"), ...persistent], { allowUnknown: false });
-    } catch (err) {
-      if (err instanceof FlagError) {
-        throw new CommandError(err.message, usageText(help));
+    } catch (error) {
+      if (error instanceof FlagError) {
+        throw new CommandError(error.message, usageText(help));
       }
-      throw err;
+      throw error;
     }
     ctx.out.stdout(helpText(help));
     return;
@@ -144,11 +141,11 @@ export async function runSchemaCommand(
         [helpFlag("schema json-schema"), ...persistent],
         { allowUnknown: false },
       );
-    } catch (err) {
-      if (err instanceof FlagError) {
-        throw new CommandError(err.message);
+    } catch (error) {
+      if (error instanceof FlagError) {
+        throw new CommandError(error.message);
       }
-      throw err;
+      throw error;
     }
     if (parsedJSON.values.get("help") === true) {
       ctx.out.stdout(
@@ -187,11 +184,11 @@ export async function runSchemaCommand(
     parsed = parseFlags(argsMinusFirst(rest, "pull", persistent), [...local, ...persistent], {
       allowUnknown: false,
     });
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CommandError(err.message);
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CommandError(error.message);
     }
-    throw err;
+    throw error;
   }
   if (parsed.values.get("help") === true) {
     ctx.out.stdout(
@@ -264,21 +261,21 @@ async function pull(
     existing = readFileSync(path, "utf8");
     try {
       extractExtras(existing);
-    } catch (err) {
-      if (err instanceof JSONSyntaxError) {
+    } catch (error) {
+      if (error instanceof JSONSyntaxError) {
         throw new CommandError(
-          `cannot keep the descriptions of ${JSON.stringify(out)}: ${err.message} (fix the file or remove it)`,
+          `cannot keep the descriptions of ${JSON.stringify(out)}: ${error.message} (fix the file or remove it)`,
         );
       }
-      throw err;
+      throw error;
     }
   }
 
   let result: SchemaFileText;
   try {
     result = schemaFileText(app, existing, schemaURL(version));
-  } catch (err) {
-    throw new CommandError(err instanceof Error ? err.message : String(err));
+  } catch (error) {
+    throw new CommandError(error instanceof Error ? error.message : String(error));
   }
   for (const note of result.notes) {
     ctx.out.stderr(`note: ${note}\n`);
@@ -295,11 +292,11 @@ async function pull(
 // standard output, and exits nonzero when the file would not apply.
 async function runPlan(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
-  migrations: readonly Migration[],
-  rest: string[],
+  migrations: ReadonlyArray<Migration>,
+  rest: Array<string>,
 ): Promise<void> {
   const local = [helpFlag("schema plan"), schemaFlag, allowDataLossFlag, schemaMigrationsDirFlag];
   let parsed;
@@ -307,11 +304,11 @@ async function runPlan(
     parsed = parseFlags(argsMinusFirst(rest, "plan", persistent), [...local, ...persistent], {
       allowUnknown: false,
     });
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CommandError(err.message);
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CommandError(error.message);
     }
-    throw err;
+    throw error;
   }
   if (parsed.values.get("help") === true) {
     ctx.out.stdout(
@@ -355,11 +352,11 @@ async function runPlan(
         migrations,
         schemaMigrations,
       });
-    } catch (err) {
-      if (err instanceof SchemaFileError) {
-        throw new CommandError(err.message);
+    } catch (error) {
+      if (error instanceof SchemaFileError) {
+        throw new CommandError(error.message);
       }
-      throw err;
+      throw error;
     }
     ctx.out.stdout(formatReport(report));
     if (!reportIsOK(report)) {
@@ -376,31 +373,31 @@ async function migrationsOf(
   ctx: CliContext,
   schemaFile: string,
   values: Map<string, FlagValue>,
-): Promise<SchemaMigration[]> {
+): Promise<Array<SchemaMigration>> {
   const dir = values.get("schemaMigrationsDir") as string | undefined;
   try {
     return await loadSchemaMigrationsFor(
       resolve(ctx.cwd, schemaFile),
       dir === undefined ? undefined : resolve(ctx.cwd, dir),
     );
-  } catch (err) {
-    throw new CommandError(err instanceof Error ? err.message : String(err));
+  } catch (error) {
+    throw new CommandError(error instanceof Error ? error.message : String(error));
   }
 }
 
 function readPlanFile(path: string, given: string): string {
   try {
     return readFileSync(path, "utf8");
-  } catch (err) {
+  } catch (error) {
     throw new CommandError(
-      `cannot read the schema file ${JSON.stringify(given)}: ${err instanceof Error ? err.message : String(err)}`,
+      `cannot read the schema file ${JSON.stringify(given)}: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
 
 // the API's JSON of each collection, parsed (upstream's MarshalJSON, with the
 // fields a view has resolved)
-function collectionsJSON(collections: readonly Collection[]): SchemaObject[] {
+function collectionsJSON(collections: ReadonlyArray<Collection>): Array<SchemaObject> {
   return collections.map((collection) => JSON.parse(collection.marshalJSON()) as SchemaObject);
 }
 
@@ -411,11 +408,11 @@ function collectionsJSON(collections: readonly Collection[]): SchemaObject[] {
 // descriptions and tsType come from the file: the database does not hold them.
 async function runTypes(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
-  migrations: readonly Migration[],
-  rest: string[],
+  migrations: ReadonlyArray<Migration>,
+  rest: Array<string>,
 ): Promise<void> {
   const local = [
     helpFlag("schema types"),
@@ -429,11 +426,11 @@ async function runTypes(
     parsed = parseFlags(argsMinusFirst(rest, "types", persistent), [...local, ...persistent], {
       allowUnknown: false,
     });
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CommandError(err.message);
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CommandError(error.message);
     }
-    throw err;
+    throw error;
   }
   if (parsed.values.get("help") === true) {
     ctx.out.stdout(
@@ -470,7 +467,7 @@ async function runTypes(
 
   const app: App = await bootstrapApp(config, logsToStderr(ctx));
   try {
-    let collections: SchemaObject[];
+    let collections: Array<SchemaObject>;
     let schema: SchemaDescription | undefined;
     if (given === undefined) {
       collections = collectionsJSON(findAllCollections(app));
@@ -479,13 +476,13 @@ async function runTypes(
       const schemaMigrations = await migrationsOf(ctx, given, parsed.values);
       try {
         schema = parseSchemaFile(schemaText);
-      } catch (err) {
-        if (err instanceof SchemaFileError) {
-          throw new CommandError(err.message);
+      } catch (error) {
+        if (error instanceof SchemaFileError) {
+          throw new CommandError(error.message);
         }
-        throw err;
+        throw error;
       }
-      let applied: SchemaObject[] | undefined;
+      let applied: Array<SchemaObject> | undefined;
       const report = planSchema(app, schemaText, {
         allowDataLoss: false,
         migrations,
@@ -506,11 +503,11 @@ async function runTypes(
     let text: string;
     try {
       text = generateTypes(collections, schema);
-    } catch (err) {
-      if (err instanceof TypesError) {
-        throw new CommandError(err.message);
+    } catch (error) {
+      if (error instanceof TypesError) {
+        throw new CommandError(error.message);
       }
-      throw err;
+      throw error;
     }
 
     if (out === undefined) {

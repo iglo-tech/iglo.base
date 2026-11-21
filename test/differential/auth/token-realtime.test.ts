@@ -12,14 +12,8 @@ import { describe, expect, test } from "bun:test";
 import { mint } from "@test/differential/auth/token-cases";
 import type { RealtimeStream } from "@test/realtime/client";
 import { observe } from "@test/realtime/run";
-import {
-  normalize,
-  type Observation,
-  type RealtimeScenario,
-  response,
-  type ScenarioContext,
-  settled,
-} from "@test/realtime/scenario";
+import { normalize, response, settled } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
@@ -61,7 +55,7 @@ function confirmScenario(name: string, path: string, body: unknown): RealtimeSce
     },
     check: (o) => {
       expect((o.confirm as { status: number }).status).toBe(204);
-      expect((o.superuser as unknown[]).length).toBeGreaterThan(0);
+      expect((o.superuser as Array<unknown>).length).toBeGreaterThan(0);
     },
   };
 }

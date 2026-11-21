@@ -37,13 +37,14 @@ import {
   multipartBody,
   Pairing,
   req,
-  type Res,
   sendCase,
-  type Side,
 } from "@test/differential/files/record-requests";
+import type { Res, Side } from "@test/differential/files/record-requests";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // -------------------------------------------------------------------
 // storage trees
@@ -69,10 +70,10 @@ function tree(dir: string): Map<string, Uint8Array> {
 function compareStorage(
   upDir: string,
   igDir: string,
-  collectionIds: string[],
+  collectionIds: Array<string>,
   pairing: Pairing,
-): string[] {
-  const out: string[] = [];
+): Array<string> {
+  const out: Array<string> = [];
   for (const cid of collectionIds) {
     const up = tree(join(upDir, "storage", cid));
     const ig = tree(join(igDir, "storage", cid));
@@ -111,16 +112,16 @@ function compareStorage(
 
 // -------------------------------------------------------------------
 
-function items(r: Res): Record<string, unknown>[] {
-  return (JSON.parse(r.text) as { items: Record<string, unknown>[] }).items;
+function items(r: Res): Array<Record<string, unknown>> {
+  return (JSON.parse(r.text) as { items: Array<Record<string, unknown>> }).items;
 }
 
 function byId(x: Record<string, unknown>, y: Record<string, unknown>): number {
   return String(x.id).localeCompare(String(y.id));
 }
 
-const roots: string[] = [];
-const running: { stop(): Promise<unknown> }[] = [];
+const roots: Array<string> = [];
+const running: Array<{ stop(): Promise<unknown> }> = [];
 
 afterAll(async () => {
   await Promise.allSettled(running.map((s) => s.stop()));
@@ -159,7 +160,8 @@ describe("record files", () => {
     running.push(setup);
     try {
       for (const def of collections) {
-        const body = JSON.parse(JSON.stringify(def)) as { fields: Record<string, unknown>[] };
+        // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
+        const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Record<string, unknown>> };
         for (const f of body.fields) {
           if (typeof f.collectionId === "string") {
             f.collectionId = collectionIds.get(f.collectionId);
@@ -241,7 +243,7 @@ describe("record files", () => {
       startUpstream({ dataDir: upDir }),
     ]);
     running.push(onIglo, onOwn);
-    const diffs: string[] = [];
+    const diffs: Array<string> = [];
     try {
       // every record lists the same
       for (const name of collectionIds.keys()) {
@@ -273,12 +275,12 @@ describe("record files", () => {
         }
         const collection = String(rec.collectionName);
         for (const field of ["doc", "docs", "img", "att"]) {
-          const names = ([] as unknown[])
+          const names = ([] as Array<unknown>)
             .concat(rec[field] ?? [])
-            .filter((n) => n !== "") as string[];
-          const upNames = ([] as unknown[])
+            .filter((n) => n !== "") as Array<string>;
+          const upNames = ([] as Array<unknown>)
             .concat(upRec[field] ?? [])
-            .filter((n) => n !== "") as string[];
+            .filter((n) => n !== "") as Array<string>;
           for (const [i, n] of names.entries()) {
             const [a, b] = await Promise.all([
               req(
@@ -310,7 +312,7 @@ describe("record files", () => {
       // upstream replaces and deletes iglo.base's files
       const n5 = ig.records.get("n5") as Record<string, unknown>;
       const n5Dir = join(fromIglo, "storage", collectionIds.get("fmulti") as string, String(n5.id));
-      const oldNames = n5.docs as string[];
+      const oldNames = n5.docs as Array<string>;
       const patch = await req(
         onIglo.url,
         "PATCH",
@@ -353,7 +355,7 @@ describe("record files", () => {
       const n1Before = tree(n1Dir);
 
       // replace: the old upstream file and its .attrs go, the other stays
-      const [first, second] = n4.docs as string[];
+      const [first, second] = n4.docs as Array<string>;
       const body = multipartBody(
         [
           { name: "docs-", value: first as string },
@@ -370,7 +372,7 @@ describe("record files", () => {
         "multipart/form-data; boundary=roundtripboundary",
       );
       expect(patch.status).toBe(200);
-      const saved = JSON.parse(patch.text) as { docs: string[] };
+      const saved = JSON.parse(patch.text) as { docs: Array<string> };
       expect(saved.docs[0]).toBe(second as string);
       expect(existsSync(join(n4Dir, first as string))).toBe(false);
       expect(existsSync(join(n4Dir, (first as string) + ".attrs"))).toBe(false);

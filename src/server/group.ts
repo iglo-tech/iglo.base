@@ -5,15 +5,16 @@
 
 import type { Handler, HandlerFunc, Resolver } from "@/server/handler";
 import { Route } from "@/server/route";
+import { isInstance } from "@/tools/types/is-instance";
 
 // RouterGroup represents a collection of routes and other sub groups
 // that share common pattern prefix and middlewares.
 export class RouterGroup<T extends Resolver> {
   excludedMiddlewares: Set<string> | undefined;
-  children: (RouterGroup<T> | Route<T>)[] = [];
+  children: Array<RouterGroup<T> | Route<T>> = [];
 
   prefix = "";
-  middlewares: Handler<T>[] = [];
+  middlewares: Array<Handler<T>> = [];
 
   // Group creates and registers a new child group into the current one
   // with the specified prefix.
@@ -34,7 +35,7 @@ export class RouterGroup<T extends Resolver> {
   //
   // The registered middleware functions are "anonymous" and with default priority,
   // aka. executes in the order they were registered.
-  bindFunc(...middlewareFuncs: HandlerFunc<T>[]): this {
+  bindFunc(...middlewareFuncs: Array<HandlerFunc<T>>): this {
     for (const m of middlewareFuncs) {
       this.middlewares.push({ func: m });
     }
@@ -42,7 +43,7 @@ export class RouterGroup<T extends Resolver> {
   }
 
   // Bind registers one or multiple middleware handlers to the current group.
-  bind(...middlewares: Handler<T>[]): this {
+  bind(...middlewares: Array<Handler<T>>): this {
     this.middlewares.push(...middlewares);
 
     // unmark the newly added middlewares in case they were previously "excluded"
@@ -62,7 +63,7 @@ export class RouterGroup<T extends Resolver> {
   //
   // Anonymous middlewares are not removable, aka. this method does nothing
   // if the middleware id is an empty string.
-  unbind(...middlewareIds: string[]): this {
+  unbind(...middlewareIds: Array<string>): this {
     for (const middlewareId of middlewareIds) {
       if (middlewareId === "") {
         continue;
@@ -148,9 +149,9 @@ export class RouterGroup<T extends Resolver> {
     return this.#hasRoute(pattern, []);
   }
 
-  #hasRoute(pattern: string, parents: RouterGroup<T>[]): boolean {
+  #hasRoute(pattern: string, parents: Array<RouterGroup<T>>): boolean {
     for (const child of this.children) {
-      if (child instanceof RouterGroup) {
+      if (isInstance<RouterGroup<T>>(RouterGroup, child)) {
         if (child.#hasRoute(pattern, [...parents, this])) {
           return true;
         }

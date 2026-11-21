@@ -39,13 +39,16 @@ import type { Field } from "@/fields/field";
 import { isExpression } from "@/db/dbx/expression";
 import { BoundValue, Float64 } from "@/db/dbx/query";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
-import { type Adapter, type Membrane, toInteger } from "@/migrations/membrane";
+import { toInteger } from "@/migrations/membrane";
+import type { Adapter, Membrane } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { Settings } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
 import type { GoType as JSONElemType } from "@/tools/types/go-json";
 import { stringType } from "@/tools/types/go-json";
-import { localLocation, lookup, type Location, UTC } from "@/tools/types/go-zoneinfo";
+import { localLocation, lookup, UTC } from "@/tools/types/go-zoneinfo";
+import type { Location } from "@/tools/types/go-zoneinfo";
+import { isInstance } from "@/tools/types/is-instance";
 
 export type GoType =
   | "string"
@@ -59,7 +62,7 @@ export type GoType =
   | { slice: GoType; json?: JSONElemType }
   | { struct: GoClass; make(): object };
 
-export type CustomMethod = (target: never, args: unknown[], m: Membrane) => unknown;
+export type CustomMethod = (target: never, args: Array<unknown>, m: Membrane) => unknown;
 
 export type Method = string | CustomMethod;
 
@@ -74,7 +77,7 @@ export interface GoClass {
 }
 
 interface Signature {
-  params: string[];
+  params: Array<string>;
   variadic: string | undefined;
   result: string | undefined;
 }
@@ -104,7 +107,7 @@ function conversionError(m: Membrane, i: number, v: unknown, to: string): Error 
 }
 
 function isModel(v: unknown): boolean {
-  return v instanceof RecordModel || v instanceof Collection || v instanceof Settings;
+  return isInstance(RecordModel, v) || isInstance(Collection, v) || isInstance(Settings, v);
 }
 
 export function isField(v: unknown): v is Field {
@@ -166,7 +169,7 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
       return host;
     }
     case "P":
-      return (v === undefined || v === null ? {} : m.toHost(v)) as object;
+      return v === undefined || v === null ? {} : m.toHost(v);
     case "S":
       return toSql(m, v);
     case "H":
@@ -211,7 +214,11 @@ export function throwResult(m: Membrane, result: unknown): void {
   throw new Error(`could not convert ${String(result)} to error`);
 }
 
-export function goArgs(m: Membrane, signature: string, args: readonly unknown[]): unknown[] {
+export function goArgs(
+  m: Membrane,
+  signature: string,
+  args: ReadonlyArray<unknown>,
+): Array<unknown> {
   const { params, variadic } = parseSignature(signature);
   const converted = params.map((code, i) => convertArg(m, code, args[i], i, i >= args.length));
   if (variadic !== undefined) {
@@ -235,16 +242,17 @@ function goResult(m: Membrane, signature: string, value: unknown): unknown {
 
 export function goMethod(
   m: Membrane,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   target: object,
   key: string,
   method: Method,
-): (...args: unknown[]) => unknown {
+): (...args: Array<unknown>) => unknown {
   if (typeof method === "function") {
     return (...args) => m.guard(() => method(target as never, args, m));
   }
   return (...args) =>
     m.guard(() => {
-      const fn = (target as Record<string, unknown>)[key] as (...a: unknown[]) => unknown;
+      const fn = (target as Record<string, unknown>)[key] as (...a: Array<unknown>) => unknown;
       return goResult(m, method, fn.apply(target, goArgs(m, method, args)));
     });
 }
@@ -426,13 +434,13 @@ function unsupportedType(go: unknown): string {
   if (typeof go === "function") {
     return "func(goja.FunctionCall) goja.Value, a func";
   }
-  if (go instanceof RecordModel) {
+  if (isInstance(RecordModel, go)) {
     return "core.Record, a struct";
   }
-  if (go instanceof Collection) {
+  if (isInstance(Collection, go)) {
     return "core.Collection, a struct";
   }
-  if (go instanceof Settings) {
+  if (isInstance(Settings, go)) {
     return "core.Settings, a struct";
   }
   const name = (go as object).constructor.name;
@@ -464,19 +472,19 @@ export function toSql(m: Membrane, v: unknown): unknown {
   const target = m.targetOf(v);
   const go = target ?? m.toHost(v);
 
-  if (go instanceof Uint8Array || isExpression(go)) {
+  if (isInstance(Uint8Array, go) || isExpression(go)) {
     return go;
   }
-  if (go instanceof GoPointer) {
+  if (isInstance(GoPointer, go)) {
     return go.float ? new Float64(go.value as number) : new BoundValue(go, () => go.value);
   }
-  if (go instanceof GoDuration) {
+  if (isInstance(GoDuration, go)) {
     return new BoundValue(go, () => go.ns);
   }
-  if (go instanceof GoFileMode) {
+  if (isInstance(GoFileMode, go)) {
     return new BoundValue(go, () => go.mode);
   }
-  if (go instanceof Date) {
+  if (isInstance(Date, go)) {
     // goja exports a JS Date in the local zone
     return new BoundValue(go, () => timeText(go, target === undefined ? localLocation() : UTC));
   }
@@ -491,8 +499,8 @@ export function toSql(m: Membrane, v: unknown): unknown {
 // single parameter (a JSONArray has a driver value, so it is one)
 function hashValue(m: Membrane, v: unknown): unknown {
   const sql = toSql(m, v);
-  if (sql instanceof BoundValue && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
-    return Array.from(v as unknown[], (item) => toSql(m, item));
+  if (isInstance(BoundValue, sql) && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
+    return Array.from(v as Array<unknown>, (item) => toSql(m, item));
   }
   return sql;
 }
@@ -508,7 +516,7 @@ function sqlParams(
     return params;
   }
   const target = m.targetOf(v);
-  const source = (target instanceof GoJSONMap ? target.data : (target ?? v)) as Record<
+  const source = (isInstance(GoJSONMap, target) ? target.data : (target ?? v)) as Record<
     string,
     unknown
   >;
@@ -520,7 +528,7 @@ function sqlParams(
       value:
         target === undefined
           ? value(item)
-          : item instanceof BoundValue || item instanceof Float64
+          : isInstance(BoundValue, item) || isInstance(Float64, item)
             ? item
             : value(m.toVm(item)),
       writable: true,
@@ -555,7 +563,7 @@ export function toGo(m: Membrane, value: unknown, type: GoType, current: unknown
       return Boolean(value);
     case "datetime": {
       const host = m.toHost(value);
-      return host instanceof DateTime ? host : new DateTime();
+      return isInstance(DateTime, host) ? host : new DateTime();
     }
     default:
       return m.toHost(value);
@@ -585,6 +593,7 @@ function assignStruct(
   return target;
 }
 
+// oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
 function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknown {
   const fields = holder as Record<string, unknown>;
   const value = fields[name];
@@ -601,7 +610,7 @@ function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknow
       }
       const elem = type.slice;
       return m.sliceView({
-        read: () => (fields[name] ?? []) as unknown[],
+        read: () => (fields[name] ?? []) as Array<unknown>,
         write: (next) => {
           fields[name] = next;
         },
@@ -640,6 +649,7 @@ export function classAdapter(cls: GoClass, overrides: Partial<Adapter> = {}): Ad
         return () => String(target);
       }
       if (key in m.vm.objectPrototype) {
+        // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(m.vm.objectPrototype, key) as unknown;
       }
       return undefined;
@@ -903,9 +913,9 @@ const fieldMethods: Readonly<Record<string, Method>> = {
 
 // the fields' `(value, error)` results and `error` results
 function tuple(key: "prepareValue" | "driverValue", params: number): CustomMethod {
-  return (target: Record<string, (...a: unknown[]) => [unknown, Error | null]>, args, m) => {
+  return (target: Record<string, (...a: Array<unknown>) => [unknown, Error | null]>, args, m) => {
     const hostArgs = Array.from({ length: params }, (_v, i) => m.toHost(args[i]));
-    const fn = target[key] as (...a: unknown[]) => [unknown, Error | null];
+    const fn = target[key] as (...a: Array<unknown>) => [unknown, Error | null];
     const [value, err] = fn.apply(target, hostArgs);
     if (err !== null) {
       throw err;
@@ -937,24 +947,29 @@ const fieldClass = (
   own: Readonly<Record<string, GoType>>,
   methods: Readonly<Record<string, Method>> = {},
   help = true,
-): GoClass => ({
-  fields: {
+): GoClass => {
+  const fields: Record<string, GoType> = {
     name: "string",
     id: "string",
     system: "bool",
     hidden: "bool",
     presentable: "bool",
-    ...(help ? { help: "string" } : {}),
-    ...own,
-  },
-  methods: {
-    ...fieldMethods,
-    prepareValue: tuple("prepareValue", 2),
-    validateValue: errorResult("validateValue"),
-    validateSettings: errorResult("validateSettings"),
-    ...methods,
-  },
-});
+  };
+  if (help) {
+    fields.help = "string";
+  }
+  Object.assign(fields, own);
+  return {
+    fields,
+    methods: {
+      ...fieldMethods,
+      prepareValue: tuple("prepareValue", 2),
+      validateValue: errorResult("validateValue"),
+      validateSettings: errorResult("validateSettings"),
+      ...methods,
+    },
+  };
+};
 
 const setter = { findSetter: "s" };
 const multiple = { isMultiple: "" };

@@ -1,7 +1,8 @@
 // js-sdk v0.28.1 src/stores/BaseAuthStore.ts
-import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
+import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
+import type { SerializeOptions } from "@sdk/tools/cookie";
 import { isTokenExpired, getTokenPayload } from "@sdk/tools/jwt";
-import { type RecordModel } from "@sdk/tools/dtos";
+import type { RecordModel } from "@sdk/tools/dtos";
 
 export type AuthRecord = RecordModel | null;
 
@@ -57,7 +58,7 @@ export class BaseAuthStore {
    * Alternatively you can also compare directly `pb.authStore.record?.collectionName`.
    */
   get isSuperuser(): boolean {
-    let payload = getTokenPayload(this.token);
+    const payload = getTokenPayload(this.token);
 
     return (
       payload.type == "auth" &&
@@ -143,7 +144,9 @@ export class BaseAuthStore {
       } else {
         data = parsed as Record<string, unknown>;
       }
-    } catch {}
+    } catch {
+      // not valid JSON: keep the empty data
+    }
 
     const token = typeof data["token"] === "string" ? data["token"] : "";
     const recordOrModel = (data["record"] || data["model"] || null) as AuthRecord;
@@ -185,6 +188,7 @@ export class BaseAuthStore {
 
     const rawData = {
       token: this.token,
+      // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
       record: this.record ? JSON.parse(JSON.stringify(this.record)) : null,
     };
 
@@ -195,9 +199,9 @@ export class BaseAuthStore {
     // strip down the model data to the bare minimum
     if (rawData.record && resultLength > 4096) {
       rawData.record = { id: rawData.record?.id, email: rawData.record?.email };
-      const extraProps = ["collectionId", "collectionName", "verified"];
+      const extraProps = new Set(["collectionId", "collectionName", "verified"]);
       for (const prop in this.record) {
-        if (extraProps.includes(prop)) {
+        if (extraProps.has(prop)) {
           rawData.record[prop] = this.record[prop];
         }
       }
@@ -225,8 +229,7 @@ export class BaseAuthStore {
     return () => {
       for (let i = this._onChangeCallbacks.length - 1; i >= 0; i--) {
         if (this._onChangeCallbacks[i] == callback) {
-          delete this._onChangeCallbacks[i]; // removes the function reference
-          this._onChangeCallbacks.splice(i, 1); // reindex the array
+          this._onChangeCallbacks.splice(i, 1); // removes the function reference and reindexes the array
           return;
         }
       }

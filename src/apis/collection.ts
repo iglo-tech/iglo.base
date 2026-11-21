@@ -60,7 +60,8 @@ import {
   unmarshalRequestData,
 } from "@/server/unmarshal-request-data";
 import { randomStringWithAlphabet } from "@/tools/security/random";
-import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
+import { marshal } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
@@ -98,8 +99,8 @@ async function collectionsList(e: RequestEvent): Promise<Error | undefined> {
     result = await newProvider(fieldResolver, { clock: e.app.clock })
       .query(collectionQuery(e.app))
       .parseAndExec<Collection>(encodeValues(e.request.query()), () => new Collection());
-  } catch (err) {
-    return e.badRequestError("", err);
+  } catch (error) {
+    return e.badRequestError("", error);
   }
 
   return e.json(200, result);
@@ -109,8 +110,8 @@ function collectionView(e: RequestEvent): HandlerResult {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   return e.json(200, collection);
@@ -120,7 +121,7 @@ function collectionView(e: RequestEvent): HandlerResult {
 // (BaseModel.Id, baseCollection, collectionAuthOptions and
 // collectionViewOptions, in struct order), and the Collection properties
 // they are
-const collectionFormMembers: [goName: string, prop: keyof Collection][] = [
+const collectionFormMembers: Array<[goName: string, prop: keyof Collection]> = [
   ["Id", "id"],
   ["ListRule", "listRule"],
   ["ViewRule", "viewRule"],
@@ -187,6 +188,7 @@ async function bindCollectionBody(
     }
     unmarshalRequestData(data, holder, collectionForm);
     for (const [goName, prop] of collectionFormMembers) {
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       (collection as unknown as Record<string, unknown>)[prop] = holder[goName];
     }
 
@@ -195,8 +197,8 @@ async function bindCollectionBody(
       decodeValue(payload);
       collection.unmarshalJSON(payload);
     }
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 
   return undefined;
@@ -236,15 +238,18 @@ async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
   return automigrateOnCollectionChange(e.app, collection, () => {
     try {
       saveCollection(e.app, collection);
-    } catch (err) {
+    } catch (error) {
       // validation failure
-      const validationErrors = errorsAs(err, Errors);
+      const validationErrors = errorsAs(error, Errors);
       if (validationErrors) {
         return e.badRequestError("Failed to create collection.", validationErrors);
       }
 
       // other generic db error
-      return e.badRequestError(`Failed to create collection. Raw error: \n${errorText(err)}`, null);
+      return e.badRequestError(
+        `Failed to create collection. Raw error: \n${errorText(error)}`,
+        null,
+      );
     }
     e.app.collectionsChanged?.([collection.name]);
 
@@ -259,8 +264,8 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
   let collection: Collection;
   try {
     collection = findCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   const bindErr = await bindCollectionBody(e, collection);
@@ -274,15 +279,18 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
   return automigrateOnCollectionChange(e.app, collection, () => {
     try {
       saveCollection(e.app, collection);
-    } catch (err) {
+    } catch (error) {
       // validation failure
-      const validationErrors = errorsAs(err, Errors);
+      const validationErrors = errorsAs(error, Errors);
       if (validationErrors) {
         return e.badRequestError("Failed to update collection.", validationErrors);
       }
 
       // other generic db error
-      return e.badRequestError(`Failed to update collection. Raw error: \n${errorText(err)}`, null);
+      return e.badRequestError(
+        `Failed to update collection. Raw error: \n${errorText(error)}`,
+        null,
+      );
     }
     e.app.collectionsChanged?.([collection.name]);
 
@@ -297,14 +305,14 @@ function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResu
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   return automigrateOnCollectionChange(e.app, collection, () => {
     try {
       deleteCollection(e.app, collection);
-    } catch (err) {
+    } catch (error) {
       let msg = "Failed to delete collection";
 
       // check fo references
@@ -319,7 +327,7 @@ function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResu
         msg += " probably due to existing reference in " + names.join(", ");
       }
 
-      return e.badRequestError(msg, err);
+      return e.badRequestError(msg, error);
     }
     e.app.collectionsChanged?.([collection.name]);
 
@@ -331,8 +339,8 @@ function collectionTruncate(e: RequestEvent): HandlerResult {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   if (collection.isView()) {
@@ -344,10 +352,10 @@ function collectionTruncate(e: RequestEvent): HandlerResult {
 
   try {
     truncateCollection(e.app, collection);
-  } catch (err) {
+  } catch (error) {
     return e.badRequestError(
       "Failed to truncate collection (most likely due to required cascade delete record references).",
-      err,
+      error,
     );
   }
 
@@ -384,7 +392,7 @@ interface ProviderListItem {
 }
 
 function collectionListOAuth2Providers(e: RequestEvent): HandlerResult {
-  const providers: ProviderListItem[] = [];
+  const providers: Array<ProviderListItem> = [];
 
   for (const [name, p] of providerMetadata) {
     providers.push({
@@ -439,6 +447,7 @@ async function collectionDryRunView(e: RequestEvent): Promise<Error | undefined>
 
   const form: DryRunViewForm = { Query: "" };
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, dryRunViewFormType);
   if (bindErr) {
     return firstApiError(
@@ -458,10 +467,10 @@ async function collectionDryRunView(e: RequestEvent): Promise<Error | undefined>
   let result;
   try {
     result = dryRunView(e.app, form.Query, 10);
-  } catch (err) {
+  } catch (error) {
     return firstApiError(
-      err,
-      e.badRequestError(`Invalid view query. Raw error: \n${errorText(err)}`, null),
+      error,
+      e.badRequestError(`Invalid view query. Raw error: \n${errorText(error)}`, null),
     );
   }
 

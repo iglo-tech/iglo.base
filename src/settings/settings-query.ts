@@ -9,22 +9,20 @@
 
 import { logsSettingsReloaded } from "@/logs/logger";
 import type { App } from "@/app/app";
-import { type Notifier, notifyAfterSave } from "@/app/notify-watcher";
+import { notifyAfterSave } from "@/app/notify-watcher";
+import type { Notifier } from "@/app/notify-watcher";
 import { loadAutobackupJob } from "@/backups/autobackup";
 import type { Row } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { saveNoValidate } from "@/db/db";
-import { BaseModel, type Model } from "@/db/model";
+import { BaseModel } from "@/db/model";
+import type { Model } from "@/db/model";
 import { goQuote } from "@/fields/field";
-import { destroyRateLimitersStore, type RateLimitersApp } from "@/middlewares/rate-limit";
+import { destroyRateLimitersStore } from "@/middlewares/rate-limit";
+import type { RateLimitersApp } from "@/middlewares/rate-limit";
 import { decodeUTF8Bytes } from "@/server/json-decode";
-import {
-  paramsKeySettings,
-  paramsTable,
-  type Settings,
-  type SettingsExport,
-  unmarshalSettings,
-} from "@/settings/settings-model";
+import { paramsKeySettings, paramsTable, unmarshalSettings } from "@/settings/settings-model";
+import type { Settings, SettingsExport } from "@/settings/settings-model";
 import { decrypt } from "@/tools/security/encrypt";
 
 // Param is a `_params` row.
@@ -70,11 +68,11 @@ function findSettingsParam(app: App): Param | null {
       .select("{{" + paramsTable + "}}.*")
       .from(paramsTable)
       .model(paramsKeySettings, param);
-  } catch (err) {
-    if (isNoRowsError(err)) {
+  } catch (error) {
+    if (isNoRowsError(error)) {
       return null;
     }
-    throw err;
+    throw error;
   }
   return param;
 }
@@ -130,8 +128,8 @@ async function loadParam(s: Settings, app: App, value: Uint8Array | string | nul
   let plainDecodeErr: unknown;
   try {
     unmarshalSettings(raw, s);
-  } catch (err) {
-    plainDecodeErr = err;
+  } catch (error) {
+    plainDecodeErr = error;
   }
 
   // failed, try to decrypt

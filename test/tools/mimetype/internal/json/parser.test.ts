@@ -2,13 +2,14 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type query, parserState } from "@/tools/mimetype/internal/json/parser";
+import { parserState } from "@/tools/mimetype/internal/json/parser";
+import type { query } from "@/tools/mimetype/internal/json/parser";
 import { Bytes } from "@/tools/mimetype/internal/scan/bytes";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { g, raw } from "@test/tools/mimetype/go-literal";
 
 // These samples come from https://github.com/nst/JSONTestSuite.
-const positives: { json: Uint8Array; stdlib: boolean }[] = [
+const positives: Array<{ json: Uint8Array; stdlib: boolean }> = [
   { json: raw("[[]   ]"), stdlib: true },
   { json: raw("[]"), stdlib: true },
   { json: raw('[""]'), stdlib: true },
@@ -49,7 +50,7 @@ const positives: { json: Uint8Array; stdlib: boolean }[] = [
   { json: raw('{"a":"b","a":"c"}'), stdlib: true },
   { json: raw("{}"), stdlib: true },
   { json: raw('{"":0}'), stdlib: true },
-  { json: raw('{"foo\\u0000bar": 42}'), stdlib: true },
+  { json: raw(String.raw`{"foo\u0000bar": 42}`), stdlib: true },
   { json: raw('{ "min": -1.0e+28, "max": 1.0e+28 }'), stdlib: true },
   { json: raw('{"asd":"sdf", "dfg":"fgh"}'), stdlib: true },
   {
@@ -61,52 +62,52 @@ const positives: { json: Uint8Array; stdlib: boolean }[] = [
   { json: raw('{"a":[]}'), stdlib: true },
   {
     json: raw(
-      '{"title":"\\u041f\\u043e\\u043b\\u0442\\u043e\\u0440\\u0430 \\u0417\\u0435\\u043c\\u043b\\u0435\\u043a\\u043e\\u043f\\u0430" }',
+      String.raw`{"title":"\u041f\u043e\u043b\u0442\u043e\u0440\u0430 \u0417\u0435\u043c\u043b\u0435\u043a\u043e\u043f\u0430" }`,
     ),
     stdlib: true,
   },
   { json: raw('{\n"a": "b"\n}'), stdlib: true },
-  { json: raw('["\\u0060\\u012a\\u12AB"]'), stdlib: true },
-  { json: raw('["\\uD801\\udc37"]'), stdlib: true },
-  { json: raw('["\\ud83d\\ude39\\ud83d\\udc8d"]'), stdlib: true },
-  { json: raw('["\\"\\\\\\/\\b\\f\\n\\r\\t"]'), stdlib: true },
-  { json: raw('["\\\\u0000"]'), stdlib: true },
-  { json: raw('["\\""]'), stdlib: true },
+  { json: raw(String.raw`["\u0060\u012a\u12AB"]`), stdlib: true },
+  { json: raw(String.raw`["\uD801\udc37"]`), stdlib: true },
+  { json: raw(String.raw`["\ud83d\ude39\ud83d\udc8d"]`), stdlib: true },
+  { json: raw(String.raw`["\"\\\/\b\f\n\r\t"]`), stdlib: true },
+  { json: raw(String.raw`["\\u0000"]`), stdlib: true },
+  { json: raw(String.raw`["\""]`), stdlib: true },
   { json: raw('["a/*b*/c/*d//e"]'), stdlib: true },
-  { json: raw('["\\\\a"]'), stdlib: true },
-  { json: raw('["\\\\n"]'), stdlib: true },
-  { json: raw('["\\u0012"]'), stdlib: true },
-  { json: raw('["\\uFFFF"]'), stdlib: true },
+  { json: raw(String.raw`["\\a"]`), stdlib: true },
+  { json: raw(String.raw`["\\n"]`), stdlib: true },
+  { json: raw(String.raw`["\u0012"]`), stdlib: true },
+  { json: raw(String.raw`["\uFFFF"]`), stdlib: true },
   { json: raw('["asd"]'), stdlib: true },
   { json: raw('[ "asd"]'), stdlib: true },
-  { json: raw('["\\uDBFF\\uDFFF"]'), stdlib: true },
-  { json: raw('["new\\u00A0line"]'), stdlib: true },
+  { json: raw(String.raw`["\uDBFF\uDFFF"]`), stdlib: true },
+  { json: raw(String.raw`["new\u00A0line"]`), stdlib: true },
   { json: raw('["􏿿"]'), stdlib: true },
   { json: raw('["￿"]'), stdlib: true },
-  { json: raw('["\\u0000"]'), stdlib: true },
-  { json: raw('["\\u002c"]'), stdlib: true },
+  { json: raw(String.raw`["\u0000"]`), stdlib: true },
+  { json: raw(String.raw`["\u002c"]`), stdlib: true },
   { json: raw('["π"]'), stdlib: true },
   { json: raw('["𛿿"]'), stdlib: true },
   { json: raw('["asd "]'), stdlib: true },
   { json: raw('" "'), stdlib: true },
-  { json: raw('["\\uD834\\uDd1e"]'), stdlib: true },
-  { json: raw('["\\u0821"]'), stdlib: true },
-  { json: raw('["\\u0123"]'), stdlib: true },
+  { json: raw(String.raw`["\uD834\uDd1e"]`), stdlib: true },
+  { json: raw(String.raw`["\u0821"]`), stdlib: true },
+  { json: raw(String.raw`["\u0123"]`), stdlib: true },
   { json: raw('[" "]'), stdlib: true },
   { json: raw('[" "]'), stdlib: true },
-  { json: raw('["new\\u000Aline"]'), stdlib: true },
-  { json: raw('["\\u0061\\u30af\\u30EA\\u30b9"]'), stdlib: true },
+  { json: raw(String.raw`["new\u000Aline"]`), stdlib: true },
+  { json: raw(String.raw`["\u0061\u30af\u30EA\u30b9"]`), stdlib: true },
   { json: raw('[""]'), stdlib: true },
   { json: raw('["⍂㈴⍂"]'), stdlib: true },
-  { json: raw('["\\u005C"]'), stdlib: true },
-  { json: raw('["\\u0022"]'), stdlib: true },
-  { json: raw('["\\uA66D"]'), stdlib: true },
-  { json: raw('["\\uDBFF\\uDFFE"]'), stdlib: true },
-  { json: raw('["\\uD83F\\uDFFE"]'), stdlib: true },
-  { json: raw('["\\u200B"]'), stdlib: true },
-  { json: raw('["\\u2064"]'), stdlib: true },
-  { json: raw('["\\uFDD0"]'), stdlib: true },
-  { json: raw('["\\uFFFE"]'), stdlib: true },
+  { json: raw(String.raw`["\u005C"]`), stdlib: true },
+  { json: raw(String.raw`["\u0022"]`), stdlib: true },
+  { json: raw(String.raw`["\uA66D"]`), stdlib: true },
+  { json: raw(String.raw`["\uDBFF\uDFFE"]`), stdlib: true },
+  { json: raw(String.raw`["\uD83F\uDFFE"]`), stdlib: true },
+  { json: raw(String.raw`["\u200B"]`), stdlib: true },
+  { json: raw(String.raw`["\u2064"]`), stdlib: true },
+  { json: raw(String.raw`["\uFDD0"]`), stdlib: true },
+  { json: raw(String.raw`["\uFFFE"]`), stdlib: true },
   { json: raw('["€𝄞"]'), stdlib: true },
   { json: raw('["aa"]'), stdlib: true },
   { json: raw("false"), stdlib: true },
@@ -145,7 +146,9 @@ const positives: { json: Uint8Array; stdlib: boolean }[] = [
 ];
 
 // Bug: following samples are invalid JSONs but they are parsed successfully.
-const negatives: [name: string, json: Uint8Array, expectParse: number, expectInspect: number][] = [
+const negatives: Array<
+  [name: string, json: Uint8Array, expectParse: number, expectInspect: number]
+> = [
   ["array_1_true_without_comma", raw("[1 true]"), 1, 3],
   ["array_a_invalid_utf8", raw("[a�]"), 1, 1],
   ["array_colon_instead_of_comma", raw('["": 1]'), 1, 3],
@@ -240,30 +243,30 @@ const negatives: [name: string, json: Uint8Array, expectParse: number, expectIns
   ["object_with_single_string", raw('{ "foo" : "bar", "a" }'), 1, 21],
   ["object_with_trailing_garbage", raw('{"a":"b"}#'), 9, 9],
   ["single_space", raw(" "), 0, 1],
-  ["string_1_surrogate_then_escape", raw('["\\uD800\\"]'), 1, 11],
-  ["string_1_surrogate_then_escape_u1", raw('["\\uD800\\u1"]'), 1, 11],
-  ["string_1_surrogate_then_escape_u1x", raw('["\\uD800\\u1x"]'), 1, 11],
-  ["string_1_surrogate_then_escape_u", raw('["\\uD800\\u"]'), 1, 10],
+  ["string_1_surrogate_then_escape", raw(String.raw`["\uD800\"]`), 1, 11],
+  ["string_1_surrogate_then_escape_u1", raw(String.raw`["\uD800\u1"]`), 1, 11],
+  ["string_1_surrogate_then_escape_u1x", raw(String.raw`["\uD800\u1x"]`), 1, 11],
+  ["string_1_surrogate_then_escape_u", raw(String.raw`["\uD800\u"]`), 1, 10],
   ["string_accentuated_char_no_quotes", raw("[é]"), 1, 1],
   ["string_backslash_00", g`\x5b\x22\x5c\x00\x22\x5d`, 1, 3],
-  ["string_escaped_backslash_bad", raw('["\\\\\\"]'), 1, 7],
+  ["string_escaped_backslash_bad", raw(String.raw`["\\\"]`), 1, 7],
   ["string_escaped_ctrl_char_tab", g`\x5b\x22\x5c\x09\x22\x5d`, 1, 3],
   ["string_escaped_emoji", raw('["\\🌀"]'), 1, 3],
-  ["string_escape_x", raw('["\\x00"]'), 1, 3],
-  ["string_incomplete_escaped_character", raw('["\\u00A"]'), 1, 7],
-  ["string_incomplete_escape", raw('["\\"]'), 1, 5],
-  ["string_incomplete_surrogate_escape_invalid", raw('["\\uD800\\uD800\\x"]'), 1, 15],
-  ["string_incomplete_surrogate", raw('["\\uD834\\uDd"]'), 1, 12],
-  ["string_invalid_backslash_esc", raw('["\\a"]'), 1, 3],
-  ["string_invalid_unicode_escape", raw('["\\uqqqq"]'), 1, 4],
+  ["string_escape_x", raw(String.raw`["\x00"]`), 1, 3],
+  ["string_incomplete_escaped_character", raw(String.raw`["\u00A"]`), 1, 7],
+  ["string_incomplete_escape", raw(String.raw`["\"]`), 1, 5],
+  ["string_incomplete_surrogate_escape_invalid", raw(String.raw`["\uD800\uD800\x"]`), 1, 15],
+  ["string_incomplete_surrogate", raw(String.raw`["\uD834\uDd"]`), 1, 12],
+  ["string_invalid_backslash_esc", raw(String.raw`["\a"]`), 1, 3],
+  ["string_invalid_unicode_escape", raw(String.raw`["\uqqqq"]`), 1, 4],
   ["string_invalid_utf8_after_escape", raw('["\\�"]'), 1, 3],
   ["string_invalid-utf-8-in-escape", raw('["\\u�"]'), 1, 4],
-  ["string_leading_uescaped_thinspace", raw('[\\u0020"asd"]'), 1, 1],
-  ["string_no_quotes_with_bad_escape", raw("[\\n]"), 1, 1],
+  ["string_leading_uescaped_thinspace", raw(String.raw`[\u0020"asd"]`), 1, 1],
+  ["string_no_quotes_with_bad_escape", raw(String.raw`[\n]`), 1, 1],
   ["string_single_quote", raw("['single quote']"), 1, 1],
   ["string_single_string_no_double_quotes", raw("abc"), 0, 0],
   ["string_start_escape_unclosed", raw('["\\'), 1, 3],
-  ["string_unicode_CapitalU", raw('"\\UA66D"'), 1, 2],
+  ["string_unicode_CapitalU", raw(String.raw`"\UA66D"`), 1, 2],
   ["string_with_trailing_garbage", raw('""x'), 2, 2],
   ["structure_angle_bracket_.", raw("<.>"), 0, 0],
   ["structure_angle_bracket_null", raw("[<null>]"), 1, 1],
@@ -294,12 +297,12 @@ const negatives: [name: string, json: Uint8Array, expectParse: number, expectIns
   ["structure_open_object_open_array", raw("{["), 1, 1],
   ["structure_open_object_open_string", raw('{"a'), 1, 3],
   ["structure_open_object_string_with_apostrophes", raw("{'a'"), 1, 1],
-  ["structure_open_open", raw('["\\{["\\{["\\{["\\{'), 1, 3],
+  ["structure_open_open", raw(String.raw`["\{["\{["\{["\{`), 1, 3],
   ["structure_single_eacute", raw("�"), 0, 0],
   ["structure_single_star", raw("*"), 0, 0],
   ["structure_trailing_#", raw('{"a":"b"}#{}'), 9, 9],
   ["structure_U+2060_word_joined", g`\x5b\xe2\x81\xa0\x5d`, 1, 1],
-  ["structure_uescaped_LF_before_string", raw('[\\u000A""]'), 1, 1],
+  ["structure_uescaped_LF_before_string", raw(String.raw`[\u000A""]`), 1, 1],
   ["structure_unclosed_array", raw("[1"), 1, 2],
   ["structure_unclosed_array_partial_null", raw("[ false, nul"), 1, 12],
   ["structure_unclosed_array_unfinished_false", raw("[ true, fals"), 1, 12],
@@ -316,7 +319,7 @@ const negatives: [name: string, json: Uint8Array, expectParse: number, expectIns
 // library. indents is in the order of the Go indents table: {"", " "},
 // {" ", " "}, {" ", "\t"}, {"\t", "\t"}, {"\t", " \t"}, {"", "\r\n"},
 // {"", " \r\n"}.
-const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
+const stdlibGolden: Array<{ json: string; compact: string; indents: Array<string> }> = [
   {
     json: "[[]   ]",
     compact: "[[]]",
@@ -757,8 +760,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '{"foo\\u0000bar": 42}',
-    compact: '{"foo\\u0000bar":42}',
+    json: String.raw`{"foo\u0000bar": 42}`,
+    compact: String.raw`{"foo\u0000bar":42}`,
     indents: [
       '{\n "foo\\u0000bar": 42\n}',
       '{\n  "foo\\u0000bar": 42\n }',
@@ -823,9 +826,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '{"title":"\\u041f\\u043e\\u043b\\u0442\\u043e\\u0440\\u0430 \\u0417\\u0435\\u043c\\u043b\\u0435\\u043a\\u043e\\u043f\\u0430" }',
-    compact:
-      '{"title":"\\u041f\\u043e\\u043b\\u0442\\u043e\\u0440\\u0430 \\u0417\\u0435\\u043c\\u043b\\u0435\\u043a\\u043e\\u043f\\u0430"}',
+    json: String.raw`{"title":"\u041f\u043e\u043b\u0442\u043e\u0440\u0430 \u0417\u0435\u043c\u043b\u0435\u043a\u043e\u043f\u0430" }`,
+    compact: String.raw`{"title":"\u041f\u043e\u043b\u0442\u043e\u0440\u0430 \u0417\u0435\u043c\u043b\u0435\u043a\u043e\u043f\u0430"}`,
     indents: [
       '{\n "title": "\\u041f\\u043e\\u043b\\u0442\\u043e\\u0440\\u0430 \\u0417\\u0435\\u043c\\u043b\\u0435\\u043a\\u043e\\u043f\\u0430"\n}',
       '{\n  "title": "\\u041f\\u043e\\u043b\\u0442\\u043e\\u0440\\u0430 \\u0417\\u0435\\u043c\\u043b\\u0435\\u043a\\u043e\\u043f\\u0430"\n }',
@@ -850,8 +852,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0060\\u012a\\u12AB"]',
-    compact: '["\\u0060\\u012a\\u12AB"]',
+    json: String.raw`["\u0060\u012a\u12AB"]`,
+    compact: String.raw`["\u0060\u012a\u12AB"]`,
     indents: [
       '[\n "\\u0060\\u012a\\u12AB"\n]',
       '[\n  "\\u0060\\u012a\\u12AB"\n ]',
@@ -863,8 +865,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uD801\\udc37"]',
-    compact: '["\\uD801\\udc37"]',
+    json: String.raw`["\uD801\udc37"]`,
+    compact: String.raw`["\uD801\udc37"]`,
     indents: [
       '[\n "\\uD801\\udc37"\n]',
       '[\n  "\\uD801\\udc37"\n ]',
@@ -876,8 +878,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\ud83d\\ude39\\ud83d\\udc8d"]',
-    compact: '["\\ud83d\\ude39\\ud83d\\udc8d"]',
+    json: String.raw`["\ud83d\ude39\ud83d\udc8d"]`,
+    compact: String.raw`["\ud83d\ude39\ud83d\udc8d"]`,
     indents: [
       '[\n "\\ud83d\\ude39\\ud83d\\udc8d"\n]',
       '[\n  "\\ud83d\\ude39\\ud83d\\udc8d"\n ]',
@@ -889,8 +891,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\"\\\\\\/\\b\\f\\n\\r\\t"]',
-    compact: '["\\"\\\\\\/\\b\\f\\n\\r\\t"]',
+    json: String.raw`["\"\\\/\b\f\n\r\t"]`,
+    compact: String.raw`["\"\\\/\b\f\n\r\t"]`,
     indents: [
       '[\n "\\"\\\\\\/\\b\\f\\n\\r\\t"\n]',
       '[\n  "\\"\\\\\\/\\b\\f\\n\\r\\t"\n ]',
@@ -902,8 +904,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\\\u0000"]',
-    compact: '["\\\\u0000"]',
+    json: String.raw`["\\u0000"]`,
+    compact: String.raw`["\\u0000"]`,
     indents: [
       '[\n "\\\\u0000"\n]',
       '[\n  "\\\\u0000"\n ]',
@@ -915,8 +917,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\""]',
-    compact: '["\\""]',
+    json: String.raw`["\""]`,
+    compact: String.raw`["\""]`,
     indents: [
       '[\n "\\""\n]',
       '[\n  "\\""\n ]',
@@ -941,8 +943,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\\\a"]',
-    compact: '["\\\\a"]',
+    json: String.raw`["\\a"]`,
+    compact: String.raw`["\\a"]`,
     indents: [
       '[\n "\\\\a"\n]',
       '[\n  "\\\\a"\n ]',
@@ -954,8 +956,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\\\n"]',
-    compact: '["\\\\n"]',
+    json: String.raw`["\\n"]`,
+    compact: String.raw`["\\n"]`,
     indents: [
       '[\n "\\\\n"\n]',
       '[\n  "\\\\n"\n ]',
@@ -967,8 +969,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0012"]',
-    compact: '["\\u0012"]',
+    json: String.raw`["\u0012"]`,
+    compact: String.raw`["\u0012"]`,
     indents: [
       '[\n "\\u0012"\n]',
       '[\n  "\\u0012"\n ]',
@@ -980,8 +982,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uFFFF"]',
-    compact: '["\\uFFFF"]',
+    json: String.raw`["\uFFFF"]`,
+    compact: String.raw`["\uFFFF"]`,
     indents: [
       '[\n "\\uFFFF"\n]',
       '[\n  "\\uFFFF"\n ]',
@@ -1019,8 +1021,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uDBFF\\uDFFF"]',
-    compact: '["\\uDBFF\\uDFFF"]',
+    json: String.raw`["\uDBFF\uDFFF"]`,
+    compact: String.raw`["\uDBFF\uDFFF"]`,
     indents: [
       '[\n "\\uDBFF\\uDFFF"\n]',
       '[\n  "\\uDBFF\\uDFFF"\n ]',
@@ -1032,8 +1034,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["new\\u00A0line"]',
-    compact: '["new\\u00A0line"]',
+    json: String.raw`["new\u00A0line"]`,
+    compact: String.raw`["new\u00A0line"]`,
     indents: [
       '[\n "new\\u00A0line"\n]',
       '[\n  "new\\u00A0line"\n ]',
@@ -1071,8 +1073,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0000"]',
-    compact: '["\\u0000"]',
+    json: String.raw`["\u0000"]`,
+    compact: String.raw`["\u0000"]`,
     indents: [
       '[\n "\\u0000"\n]',
       '[\n  "\\u0000"\n ]',
@@ -1084,8 +1086,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u002c"]',
-    compact: '["\\u002c"]',
+    json: String.raw`["\u002c"]`,
+    compact: String.raw`["\u002c"]`,
     indents: [
       '[\n "\\u002c"\n]',
       '[\n  "\\u002c"\n ]',
@@ -1141,8 +1143,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     indents: ['" "', '" "', '" "', '" "', '" "', '" "', '" "'],
   },
   {
-    json: '["\\uD834\\uDd1e"]',
-    compact: '["\\uD834\\uDd1e"]',
+    json: String.raw`["\uD834\uDd1e"]`,
+    compact: String.raw`["\uD834\uDd1e"]`,
     indents: [
       '[\n "\\uD834\\uDd1e"\n]',
       '[\n  "\\uD834\\uDd1e"\n ]',
@@ -1154,8 +1156,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0821"]',
-    compact: '["\\u0821"]',
+    json: String.raw`["\u0821"]`,
+    compact: String.raw`["\u0821"]`,
     indents: [
       '[\n "\\u0821"\n]',
       '[\n  "\\u0821"\n ]',
@@ -1167,8 +1169,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0123"]',
-    compact: '["\\u0123"]',
+    json: String.raw`["\u0123"]`,
+    compact: String.raw`["\u0123"]`,
     indents: [
       '[\n "\\u0123"\n]',
       '[\n  "\\u0123"\n ]',
@@ -1206,8 +1208,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["new\\u000Aline"]',
-    compact: '["new\\u000Aline"]',
+    json: String.raw`["new\u000Aline"]`,
+    compact: String.raw`["new\u000Aline"]`,
     indents: [
       '[\n "new\\u000Aline"\n]',
       '[\n  "new\\u000Aline"\n ]',
@@ -1219,8 +1221,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0061\\u30af\\u30EA\\u30b9"]',
-    compact: '["\\u0061\\u30af\\u30EA\\u30b9"]',
+    json: String.raw`["\u0061\u30af\u30EA\u30b9"]`,
+    compact: String.raw`["\u0061\u30af\u30EA\u30b9"]`,
     indents: [
       '[\n "\\u0061\\u30af\\u30EA\\u30b9"\n]',
       '[\n  "\\u0061\\u30af\\u30EA\\u30b9"\n ]',
@@ -1258,8 +1260,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u005C"]',
-    compact: '["\\u005C"]',
+    json: String.raw`["\u005C"]`,
+    compact: String.raw`["\u005C"]`,
     indents: [
       '[\n "\\u005C"\n]',
       '[\n  "\\u005C"\n ]',
@@ -1271,8 +1273,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u0022"]',
-    compact: '["\\u0022"]',
+    json: String.raw`["\u0022"]`,
+    compact: String.raw`["\u0022"]`,
     indents: [
       '[\n "\\u0022"\n]',
       '[\n  "\\u0022"\n ]',
@@ -1284,8 +1286,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uA66D"]',
-    compact: '["\\uA66D"]',
+    json: String.raw`["\uA66D"]`,
+    compact: String.raw`["\uA66D"]`,
     indents: [
       '[\n "\\uA66D"\n]',
       '[\n  "\\uA66D"\n ]',
@@ -1297,8 +1299,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uDBFF\\uDFFE"]',
-    compact: '["\\uDBFF\\uDFFE"]',
+    json: String.raw`["\uDBFF\uDFFE"]`,
+    compact: String.raw`["\uDBFF\uDFFE"]`,
     indents: [
       '[\n "\\uDBFF\\uDFFE"\n]',
       '[\n  "\\uDBFF\\uDFFE"\n ]',
@@ -1310,8 +1312,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uD83F\\uDFFE"]',
-    compact: '["\\uD83F\\uDFFE"]',
+    json: String.raw`["\uD83F\uDFFE"]`,
+    compact: String.raw`["\uD83F\uDFFE"]`,
     indents: [
       '[\n "\\uD83F\\uDFFE"\n]',
       '[\n  "\\uD83F\\uDFFE"\n ]',
@@ -1323,8 +1325,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u200B"]',
-    compact: '["\\u200B"]',
+    json: String.raw`["\u200B"]`,
+    compact: String.raw`["\u200B"]`,
     indents: [
       '[\n "\\u200B"\n]',
       '[\n  "\\u200B"\n ]',
@@ -1336,8 +1338,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\u2064"]',
-    compact: '["\\u2064"]',
+    json: String.raw`["\u2064"]`,
+    compact: String.raw`["\u2064"]`,
     indents: [
       '[\n "\\u2064"\n]',
       '[\n  "\\u2064"\n ]',
@@ -1349,8 +1351,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uFDD0"]',
-    compact: '["\\uFDD0"]',
+    json: String.raw`["\uFDD0"]`,
+    compact: String.raw`["\uFDD0"]`,
     indents: [
       '[\n "\\uFDD0"\n]',
       '[\n  "\\uFDD0"\n ]',
@@ -1362,8 +1364,8 @@ const stdlibGolden: { json: string; compact: string; indents: string[] }[] = [
     ],
   },
   {
-    json: '["\\uFFFE"]',
-    compact: '["\\uFFFE"]',
+    json: String.raw`["\uFFFE"]`,
+    compact: String.raw`["\uFFFE"]`,
     indents: [
       '[\n "\\uFFFE"\n]',
       '[\n  "\\uFFFE"\n ]',
@@ -1482,7 +1484,7 @@ function testTruncating(jsonBytes: Uint8Array): void {
 }
 
 describe("TestConsumeString", () => {
-  const tCases: [name: string, data: Uint8Array, expected: number][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: number]> = [
     ["ascii string", raw(`foo"`), 4],
     ["utf-8 string one char", raw(`ß"`), 3],
     ["utf-8 string multiple chars", raw(`ßßßß"`), 9],
@@ -1502,7 +1504,7 @@ describe("TestConsumeString", () => {
 });
 
 describe("TestConsumeNumber", () => {
-  const tCases: [data: string, expected: number][] = [
+  const tCases: Array<[data: string, expected: number]> = [
     [`123`, 3],
     [`123.1`, 5],
     [`123.`, 4],
@@ -1537,8 +1539,8 @@ describe("TestConsumeNumber", () => {
     ["-9876543210x", 11],
     [" 9876543210", 0],
     ["- 9876543210", 0],
-    ["9876543210".repeat(1000), 10000],
-    ["-" + "9876543210".repeat(1000), 1 + 10000],
+    ["9876543210".repeat(1000), 10_000],
+    ["-" + "9876543210".repeat(1000), 1 + 10_000],
     ["0.", 2],
     ["-0.", 3],
     ["0e", 0],
@@ -1593,7 +1595,7 @@ describe("TestConsumeNumber", () => {
 });
 
 describe("TestConsumeArray", () => {
-  const tCases: [name: string, data: Uint8Array, expected: number][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: number]> = [
     ["empty array", raw(`]`), 1],
     ["empty array spaces", raw(` ]`), 2],
     ["one int array", raw(`1]`), 2],
@@ -1616,7 +1618,7 @@ describe("TestConsumeArray", () => {
 });
 
 describe("TestQueryObject", () => {
-  const tCases: { name: string; json: Uint8Array; query: query; expectedFind: boolean }[] = [
+  const tCases: Array<{ name: string; json: Uint8Array; query: query; expectedFind: boolean }> = [
     {
       name: "empty path",
       json: raw(String.raw`{"foo": {"bar": "baz"}}`),
@@ -1689,7 +1691,7 @@ describe("TestQueryObject", () => {
 });
 
 describe("TestConsumeObject", () => {
-  const tCases: [name: string, data: Uint8Array, expected: number][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: number]> = [
     ["empty object", raw(`}`), 1],
     ["object", raw(`"a":"b"}`), 8],
     ["panic found with fuzz", g`\"\":0`, 0],
@@ -1704,7 +1706,7 @@ describe("TestConsumeObject", () => {
 });
 
 describe("TestConsumeConst", () => {
-  const tCases: [b: string, cnst: string, expect: number, inspect: number][] = [
+  const tCases: Array<[b: string, cnst: string, expect: number, inspect: number]> = [
     ["", "", 0, 0],
     ["", "true", 0, 0],
     ["true", "", 0, 0],
@@ -1731,7 +1733,7 @@ test("TestPositives", () => {
 });
 
 test("TestPositivesCompacted", () => {
-  const stdlib = positives.filter((tt) => tt.stdlib).map((tt) => bytesToText(tt.json));
+  const stdlib = positives.flatMap((tt) => (tt.stdlib ? [bytesToText(tt.json)] : []));
   expect(stdlib).toEqual(stdlibGolden.map((gd) => gd.json));
   for (const gd of stdlibGolden) {
     testTruncating(textToBytes(gd.compact));
@@ -1759,13 +1761,15 @@ describe("TestNegatives", () => {
 
 describe("TestMaxRecursion", () => {
   // Go names subtests with the first 10 bytes of the input.
-  const tCases: [
-    name: string,
-    maxRecursion: number,
-    input: Uint8Array,
-    expectParsed: number,
-    expectInspected: number,
-  ][] = [
+  const tCases: Array<
+    [
+      name: string,
+      maxRecursion: number,
+      input: Uint8Array,
+      expectParsed: number,
+      expectInspected: number,
+    ]
+  > = [
     ["[]", 0, raw(`[]`), 2, 2],
     ["[[[]]]", 0, raw(`[[[]]]`), 6, 6],
     // Go's test nests 10000 levels. With no limit, JavaScript recurses once
@@ -1786,10 +1790,10 @@ describe("TestMaxRecursion", () => {
   }
 });
 
-const join = (bs: Uint8Array[]): string => bs.map((b) => bytesToText(b)).join("§");
+const join = (bs: Array<Uint8Array>): string => bs.map((b) => bytesToText(b)).join("§");
 
 describe("TestStack", () => {
-  const tCases: [name: string, data: Uint8Array, expected: string][] = [
+  const tCases: Array<[name: string, data: Uint8Array, expected: string]> = [
     ["empty", raw(` `), ""],
     ["a string", raw(`"abc"`), ""],
     ["an int", raw(`123`), ""],

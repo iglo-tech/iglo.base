@@ -21,7 +21,7 @@ export function dummyJWT(payload = {}) {
 }
 
 export class FetchMock {
-  private originalFetch?: Function;
+  private originalFetch?: typeof fetch;
   private mocks: Array<RequestMock> = [];
 
   on(request: RequestMock) {
@@ -38,7 +38,7 @@ export class FetchMock {
       url: RequestInfo | URL,
       config: RequestInit | { [key: string]: any } | undefined,
     ) => {
-      for (let mock of this.mocks) {
+      for (const mock of this.mocks) {
         // match url and method
         const matchUrl =
           mock.url === url ||
@@ -61,7 +61,7 @@ export class FetchMock {
           let hasMissingBodyParam = false;
           for (const key in mock.body) {
             if (
-              typeof configBody[key] === "undefined" ||
+              configBody[key] === undefined ||
               JSON.stringify(configBody[key]) != JSON.stringify(mock.body[key])
             ) {
               hasMissingBodyParam = true;
@@ -86,10 +86,10 @@ export class FetchMock {
         }
 
         const response = {
-          url: url,
+          url,
           status: mock.replyCode,
           statusText: "test",
-          headers: headers,
+          headers,
           json: async () => {
             if (typeof mock.replyBody == "function") {
               return mock.replyBody();
@@ -103,6 +103,7 @@ export class FetchMock {
           setTimeout(() => {
             if (config?.signal?.aborted) {
               reject(new ClientResponseError());
+              return;
             }
             resolve(response);
           }, mock.delay || 0);

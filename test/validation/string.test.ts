@@ -8,7 +8,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { NewStringRule, NewStringRuleWithError } from "@/validation/string";
 
 function validateMe(s: string): boolean {

@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { aliasOrIdentifier } from "@/tools/dbutils/select";
 
 describe("AliasOrIdentifier", () => {
-  const scenarios: { value: string; expected: string }[] = [
+  const scenarios: Array<{ value: string; expected: string }> = [
     { value: "", expected: "" },
     { value: "abc", expected: "abc" },
     { value: "abc  ", expected: "abc  " }, // return unmodified

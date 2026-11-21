@@ -4,6 +4,7 @@
 // and verified changes and on delete. Upstream has no unit tests for them
 // in core (its API tests cover them); the reference test
 // (test/differential/records/save.test.ts) compares them with upstream.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterEach, describe, expect, test } from "bun:test";
 
@@ -17,14 +18,17 @@ import {
   CollectionNameOTPs,
   findAllRefsByRecord,
 } from "@/records/record-auth-refs";
-import { type Record, newRecord } from "@/records/record-model";
-import { findRecordById, type RecordsApp } from "@/records/record-query";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
+import { findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { deleteRecord, saveRecord } from "@/records/record-save";
 import { Errors } from "@/validation/error";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(): TestCollectionsApp {
   const app = openTestApp();
@@ -42,8 +46,8 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -98,7 +102,7 @@ describe("ref validation", () => {
       provider: "github",
       providerId: "p1",
     };
-    const scenarios: [string, { [key: string]: unknown }, string][] = [
+    const scenarios: Array<[string, { [key: string]: unknown }, string]> = [
       [
         "no data (the field validators)",
         {},
@@ -136,7 +140,7 @@ describe("ref validation", () => {
       const record = newRecord(collection);
       record.load(data);
       const err = await errorOf(saveRecord(app, record));
-      expect({ name, err: err instanceof Errors ? err.marshalJSON() : String(err) }).toEqual({
+      expect({ name, err: isInstance(Errors, err) ? err.marshalJSON() : String(err) }).toEqual({
         name,
         err: expected,
       });

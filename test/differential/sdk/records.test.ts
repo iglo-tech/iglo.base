@@ -132,7 +132,7 @@ describe("RecordService CRUD", () => {
         .update(rec.id, { "files+": [new File(["x"], "extra.txt", { type: "text/plain" })] }),
     );
     await env.step("update (remove file)", () =>
-      su.collection("demo3").update(rec.id, { "files-": [(rec["files"] as string[])[0]] }),
+      su.collection("demo3").update(rec.id, { "files-": [(rec["files"] as Array<string>)[0]] }),
     );
   });
 
@@ -145,11 +145,11 @@ describe("RecordService CRUD", () => {
         text: 'zażółć gęślą jaźń 🚀 \u0000-free "quotes" <tag> &amp;',
         url: "https://example.com/a?b=c&d=é",
         email: "values@example.com",
-        number: 12345.678,
+        number: 12_345.678,
         bool: true,
         datetime: "2030-02-03 04:05:06.789Z",
         select_many: ["optionA", "optionC"],
-        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 1234567890123456 },
+        json: { b: 1, a: [1, 2, { "10": "x", "2": "y" }], big: 1_234_567_890_123_456 },
         point: { lon: 12.5, lat: -45.25 },
       }),
     );
@@ -197,7 +197,7 @@ describe("Client", () => {
         method: "POST",
         body: { title: "from send" },
         fields: "title",
-      } as never),
+      }),
     );
     await env.fails("send 404", () => pb.send("/api/nope", {}));
     env.record("filter", {
@@ -225,11 +225,11 @@ describe("Client", () => {
       const first = pb
         .collection("demo2")
         .getList(1, 1)
-        .catch((e: unknown) => e);
+        .catch((error: unknown) => error);
       const second = pb
         .collection("demo2")
         .getList(1, 1)
-        .catch((e: unknown) => e);
+        .catch((error: unknown) => error);
       return { first: await first, second: Object.keys((await second) as object) };
     });
     pb.autoCancellation(false);

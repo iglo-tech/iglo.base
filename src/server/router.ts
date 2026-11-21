@@ -4,11 +4,13 @@
 // the mux's own redirect, 404 and 405 responses.
 
 import { newNotFoundError, statusText, toApiError } from "@/server/error";
-import { Chain, type HandlerFunc, type Resolver } from "@/server/handler";
+import { Chain } from "@/server/handler";
+import type { HandlerFunc, Resolver } from "@/server/handler";
 import { RouterGroup } from "@/server/group";
 import { ServeMux, cleanSlashPath } from "@/server/mux";
 import type { HttpRequest } from "@/server/request";
 import { Route } from "@/server/route";
+import { isInstance } from "@/tools/types/is-instance";
 
 const encoder = new TextEncoder();
 
@@ -38,11 +40,11 @@ export class ResponseWriter {
   #written = false;
   #status = 0;
   #sentHeader: Headers | undefined;
-  #chunks: Uint8Array[] = [];
+  #chunks: Array<Uint8Array> = [];
   // a body set by writeBody, sent as it is
   #body: Blob | ReadableStream<Uint8Array> | Promise<Blob> | null = null;
   // run once the response has been handed to the server
-  #afterResponse: (() => void)[] = [];
+  #afterResponse: Array<() => void> = [];
   #controller: ReadableStreamDefaultController<Uint8Array> | undefined;
   #committed = false;
   #bodyFlushed = false;
@@ -129,11 +131,11 @@ export class ResponseWriter {
     if (this.#committed || this.#chunks.length > 0 || this.#body !== null) {
       return new Error("writeBody after other body writes");
     }
-    if (body instanceof Promise) {
+    if (isInstance<Promise<unknown>>(Promise, body)) {
       // its failure reaches the server through finish()
       body.catch(() => {});
     }
-    if (!(body instanceof Blob) || body.size > 0) {
+    if (!isInstance(Blob, body) || body.size > 0) {
       this.#body = body;
     }
     return undefined;
@@ -175,18 +177,18 @@ export class ResponseWriter {
       this.#body = null;
       // the flushed response carries the whole body: later writes have no stream
       this.#bodyFlushed = whole !== null;
-      let body: ReadableStream<Uint8Array> | Blob | null = null;
+      let body: ReadableStream<Uint8Array> | Blob | null;
       if (!bodyAllowedForStatus(this.#sentStatus())) {
         body = null;
-      } else if (whole instanceof Promise) {
+      } else if (isInstance<Promise<unknown>>(Promise, whole)) {
         // a body set by writeBody goes out with the flush, as it resolves
         body = new ReadableStream<Uint8Array>({
           start: async (controller) => {
             try {
               controller.enqueue(new Uint8Array(await (await whole).arrayBuffer()));
               controller.close();
-            } catch (err) {
-              controller.error(err);
+            } catch (error) {
+              controller.error(error);
             }
           },
         });
@@ -246,7 +248,7 @@ export class ResponseWriter {
     }
     const allowed = bodyAllowedForStatus(this.#sentStatus());
     const body = this.#body ?? (this.#chunks.length === 0 ? null : new Blob(this.#chunks));
-    if (body instanceof Promise) {
+    if (isInstance<Promise<unknown>>(Promise, body)) {
       return body.then((blob) => this.#response(allowed ? blob : null));
     }
     return this.#response(allowed ? body : null);
@@ -319,7 +321,7 @@ const htmlReplacements: Record<string, string> = {
 };
 
 function htmlEscape(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => htmlReplacements[c] as string);
+  return s.replaceAll(/[&<>"']/g, (c) => htmlReplacements[c] as string);
 }
 
 function hexEscapeNonASCII(s: string): string {
@@ -448,13 +450,17 @@ export class Router<T extends Resolver> extends RouterGroup<T> {
     return new Mux(mux);
   }
 
-  #loadMux(mux: ServeMux<RouteHandler>, group: RouterGroup<T>, parents: RouterGroup<T>[]): void {
+  #loadMux(
+    mux: ServeMux<RouteHandler>,
+    group: RouterGroup<T>,
+    parents: Array<RouterGroup<T>>,
+  ): void {
     for (const child of group.children) {
-      if (child instanceof RouterGroup) {
+      if (isInstance<RouterGroup<T>>(RouterGroup, child)) {
         this.#loadMux(mux, child, [...parents, group]);
         continue;
       }
-      if (!(child instanceof Route)) {
+      if (!isInstance<Route<T>>(Route, child)) {
         throw new Error("invalid Group item type");
       }
 

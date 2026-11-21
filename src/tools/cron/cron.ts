@@ -11,8 +11,10 @@
 // them before the databases close (upstream's process just exits); the
 // locks have no counterpart, JS runs each of these calls to its end.
 
-import { type Clock, systemClock } from "@/app/clock";
-import { newMoment, newSchedule, type Schedule } from "@/tools/cron/schedule";
+import { systemClock } from "@/app/clock";
+import type { Clock } from "@/app/clock";
+import { newMoment, newSchedule } from "@/tools/cron/schedule";
+import type { Schedule } from "@/tools/cron/schedule";
 
 export type JobFunc = () => void | Promise<void>;
 
@@ -67,7 +69,7 @@ export class Cron {
   readonly #timers: CronTimers;
   #timezone = "UTC";
   #interval = 60_000;
-  #jobs: Job[] = [];
+  #jobs: Array<Job> = [];
   // Go's startTimer: the delay until the first tick
   #startTimer: unknown;
   // Go's ticker: set from the first tick until Stop
@@ -111,8 +113,8 @@ export class Cron {
     let schedule: Schedule;
     try {
       schedule = newSchedule(cronExpr);
-    } catch (err) {
-      throw new Error(`failed to add new cron job: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`failed to add new cron job: ${(error as Error).message}`, { cause: error });
     }
 
     // remove previous (if any)
@@ -138,7 +140,7 @@ export class Cron {
   }
 
   // Jobs returns a shallow copy of the currently registered cron jobs.
-  jobs(): Job[] {
+  jobs(): Array<Job> {
     return [...this.#jobs];
   }
 
@@ -214,8 +216,8 @@ export class Cron {
       setImmediate(resolve);
     })
       .then(() => job.run())
-      .catch((err: unknown) => {
-        this.#logPanic(err);
+      .catch((error: unknown) => {
+        this.#logPanic(error);
       })
       .finally(() => {
         this.#running.delete(running);

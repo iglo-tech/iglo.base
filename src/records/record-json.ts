@@ -14,12 +14,9 @@
 // field named like one of the helper members) has no layout and the record
 // is written through the generic path.
 
-import {
-  FieldNameCollectionId,
-  FieldNameCollectionName,
-  FieldNameExpand,
-  type Field,
-} from "@/fields/field";
+import { FieldNameCollectionId, FieldNameCollectionName, FieldNameExpand } from "@/fields/field";
+import type { Field } from "@/fields/field";
+import type { FieldsList } from "@/collections/fields-list";
 
 // a member of the record's JSON object
 export interface LayoutMember {
@@ -32,13 +29,13 @@ export interface LayoutMember {
 
 export interface RecordJSONLayout {
   // all possible members in the order they are written
-  readonly members: readonly LayoutMember[];
+  readonly members: ReadonlyArray<LayoutMember>;
 }
 
 // what the layout was built from, to check it is still current
 interface Entry {
-  readonly fields: readonly Field[];
-  readonly names: readonly string[];
+  readonly fields: ReadonlyArray<Field>;
+  readonly names: ReadonlyArray<string>;
   readonly layout: RecordJSONLayout | null;
 }
 
@@ -50,7 +47,10 @@ const entries = new WeakMap<object, Entry>();
 const plainName = /^[^\u0000-\u001f"\\\ud800-\udfff]*$/;
 
 // the layout for the field list `owner` holds, or null when there is none
-export function recordJSONLayout(owner: object, fields: Iterable<Field>): RecordJSONLayout | null {
+export function recordJSONLayout(
+  owner: FieldsList,
+  fields: Iterable<Field>,
+): RecordJSONLayout | null {
   const cached = entries.get(owner);
   if (cached !== undefined && matches(cached, fields)) {
     return cached.layout;
@@ -72,9 +72,9 @@ function matches(entry: Entry, fields: Iterable<Field>): boolean {
 }
 
 function build(fields: Iterable<Field>): Entry {
-  const list: Field[] = [];
-  const names: string[] = [];
-  const members: LayoutMember[] = [];
+  const list: Array<Field> = [];
+  const names: Array<string> = [];
+  const members: Array<LayoutMember> = [];
   const seen = new Set<string>();
   let covered = true;
   for (const f of fields) {

@@ -18,7 +18,8 @@ import { isIP } from "node:net";
 
 import type { Clock } from "@/app/clock";
 import { quote } from "@/mail/go-mime";
-import { addressesToStrings, detectReaderMimeType, type Mailer, type Message } from "@/mail/mailer";
+import { addressesToStrings, detectReaderMimeType } from "@/mail/mailer";
+import type { Mailer, Message } from "@/mail/mailer";
 import { MailYak } from "@/mail/mailyak";
 import { html2Text } from "@/mail/html2text";
 import { pseudorandomString } from "@/tools/security/random";
@@ -153,9 +154,9 @@ export class SMTPClient implements Mailer {
     const step = <T>(run: (done: (err: Error | null, value?: T) => void) => void): Promise<T> =>
       Promise.race([
         failed,
-        new Promise<T>((resolve, reject) =>
-          run((err, value) => (err ? reject(failure ?? err) : resolve(value as T))),
-        ),
+        new Promise<T>((resolve, reject) => {
+          run((err, value) => (err ? reject(failure ?? err) : resolve(value as T)));
+        }),
       ]);
 
     try {
@@ -181,8 +182,8 @@ export class SMTPClient implements Mailer {
         conn.send({ from: yak.fromAddr, to: yak.getToAddrs() }, Buffer.from(yak.buildMime()), done),
       );
       conn.quit();
-    } catch (err) {
-      throw await goError(err, c.host, c.port);
+    } catch (error) {
+      throw await goError(error, c.host, c.port);
     } finally {
       conn.close();
     }
@@ -220,7 +221,7 @@ async function goError(err: unknown, host: string, port: number): Promise<Error>
   const { code, response, errors } = e as {
     code?: string;
     response?: unknown;
-    errors?: unknown[];
+    errors?: Array<unknown>;
   };
   // Node's dial error is "connect ECONNREFUSED <ip>:<port>", or an
   // AggregateError of them when it tried several addresses; nodemailer

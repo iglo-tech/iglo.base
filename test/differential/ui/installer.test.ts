@@ -15,7 +15,7 @@ import { startUpstream } from "@test/support/upstream";
 function normalize(output: string, url: string): string {
   return output
     .replaceAll(url, "URL")
-    .replace(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
+    .replaceAll(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
     .replace(/pbinstall\/[\w-]+\.[\w-]+\.[\w-]+/, "pbinstall/TOKEN")
     .replace(/running: \S+ superuser upsert/, "running: BIN superuser upsert");
 }
@@ -56,7 +56,7 @@ async function superusers(url: string): Promise<unknown> {
   const res = await fetch(`${url}/api/collections/_superusers/records?fields=email&sort=email`, {
     headers: { Authorization: token },
   });
-  return ((await res.json()) as { items: unknown[] }).items;
+  return ((await res.json()) as { items: Array<unknown> }).items;
 }
 
 test("fresh pb_data: banner, installer link and the first superuser", async () => {

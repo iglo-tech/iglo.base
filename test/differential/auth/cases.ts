@@ -43,7 +43,7 @@ const login = (
 const pw = "1234567890";
 
 // several prepare steps in order
-function all(...steps: ((ctx: PrepareContext) => void)[]): (ctx: PrepareContext) => void {
+function all(...steps: Array<(ctx: PrepareContext) => void>): (ctx: PrepareContext) => void {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -60,7 +60,10 @@ function setAuthRule(collection: string, rule: string | null): (ctx: PrepareCont
     });
 }
 
-function setIdentityFields(collection: string, ...fields: string[]): (ctx: PrepareContext) => void {
+function setIdentityFields(
+  collection: string,
+  ...fields: Array<string>
+): (ctx: PrepareContext) => void {
   return ({ dataDir }) =>
     updateCollection(dataDir, collection, (c) => {
       c.passwordAuth.identityFields = fields;
@@ -91,7 +94,7 @@ function mfaRow(id: string, n: number): Scenario["after"] {
 
 const mfaId = "m".repeat(15);
 
-export function authCases(tokens: CaseTokens): Scenario[] {
+export function authCases(tokens: CaseTokens): Array<Scenario> {
   const form = multipart({ identity: "test@example.com", password: pw });
   return [
     // identity fields

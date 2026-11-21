@@ -31,7 +31,7 @@ export function jsBlankTemplate(): string {
   );
 }
 
-export function jsSnapshotTemplate(collections: readonly Collection[]): string {
+export function jsSnapshotTemplate(collections: ReadonlyArray<Collection>): string {
   // unset timestamp fields
   const collectionsData = collections.map((c) => templateData(c));
 
@@ -101,8 +101,8 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
     return jsCreateTemplate(newC);
   }
 
-  const upParts: string[] = [];
-  const downParts: string[] = [];
+  const upParts: Array<string> = [];
+  const downParts: Array<string> = [];
   const varName = "collection";
 
   const newMap = toMap(newC);
@@ -118,18 +118,16 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
     const rawUpDiff = marshalWithoutEscape(upDiff, "  ", "  ");
     const rawDownDiff = marshalWithoutEscape(downDiff, "  ", "  ");
 
-    upParts.push("// update collection data");
-    upParts.push(`unmarshal(${rawUpDiff}, ${varName})\n`);
+    upParts.push("// update collection data", `unmarshal(${rawUpDiff}, ${varName})\n`);
     // ---
-    downParts.push("// update collection data");
-    downParts.push(`unmarshal(${rawDownDiff}, ${varName})\n`);
+    downParts.push("// update collection data", `unmarshal(${rawDownDiff}, ${varName})\n`);
   }
 
   // fields
   // -----------------------------------------------------------------
 
-  const oldFieldsSlice = oldMap.fields as unknown[];
-  const newFieldsSlice = newMap.fields as unknown[];
+  const oldFieldsSlice = oldMap.fields as Array<unknown>;
+  const newFieldsSlice = newMap.fields as Array<unknown>;
   const oldFields = old.fields.toArray();
   const newFields = newC.fields.toArray();
 
@@ -141,11 +139,9 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
 
     const rawOldField = marshalWithoutEscape(oldFieldsSlice[i], "  ", "  ");
 
-    upParts.push("// remove field");
-    upParts.push(`${varName}.fields.removeById(${goQuote(oldField.getId())})\n`);
+    upParts.push("// remove field", `${varName}.fields.removeById(${goQuote(oldField.getId())})\n`);
 
-    downParts.push("// add field");
-    downParts.push(`${varName}.fields.addAt(${i}, new Field(${rawOldField}))\n`);
+    downParts.push("// add field", `${varName}.fields.addAt(${i}, new Field(${rawOldField}))\n`);
   }
 
   // created fields
@@ -156,11 +152,12 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
 
     const rawNewField = marshalWithoutEscape(newFieldsSlice[i], "  ", "  ");
 
-    upParts.push("// add field");
-    upParts.push(`${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
+    upParts.push("// add field", `${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
 
-    downParts.push("// remove field");
-    downParts.push(`${varName}.fields.removeById(${goQuote(newField.getId())})\n`);
+    downParts.push(
+      "// remove field",
+      `${varName}.fields.removeById(${goQuote(newField.getId())})\n`,
+    );
   }
 
   // modified fields
@@ -178,11 +175,12 @@ export function jsDiffTemplate(newC: Collection | null, old: Collection | null):
       continue; // no change
     }
 
-    upParts.push("// update field");
-    upParts.push(`${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
+    upParts.push("// update field", `${varName}.fields.addAt(${i}, new Field(${rawNewField}))\n`);
 
-    downParts.push("// update field");
-    downParts.push(`${varName}.fields.addAt(${oldFieldIndex}, new Field(${rawOldField}))\n`);
+    downParts.push(
+      "// update field",
+      `${varName}.fields.addAt(${oldFieldIndex}, new Field(${rawOldField}))\n`,
+    );
   }
 
   // -----------------------------------------------------------------
@@ -229,7 +227,7 @@ function toMap(c: Collection): JSONObject {
   return JSON.parse(c.marshalJSON()) as JSONObject;
 }
 
-function diffMaps(old: JSONObject, newMap: JSONObject, ...excludeKeys: string[]): JSONObject {
+function diffMaps(old: JSONObject, newMap: JSONObject, ...excludeKeys: Array<string>): JSONObject {
   const diff: JSONObject = {};
 
   for (const [k, vNew] of Object.entries(newMap)) {

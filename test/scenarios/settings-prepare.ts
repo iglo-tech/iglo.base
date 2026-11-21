@@ -3,6 +3,7 @@
 // apis/middlewares_test.go): they change or read the settings row of a
 // scenario's pb_data with SQLite. The fixture's settings value is plain
 // JSON stored as a BLOB; a changed value is written back as one.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ import type { AfterContext, PrepareContext } from "@test/scenarios/scenario";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 
 type SettingsJSON = { [key: string]: { [key: string]: unknown } } & {
-  superuserIPs?: string[];
+  superuserIPs?: Array<string>;
 };
 
 // the stored settings JSON of a pb_data
@@ -21,7 +22,9 @@ export function readStoredSettings(dataDir: string): SettingsJSON {
     const row = db.query("SELECT value FROM _params WHERE id = 'settings'").get() as {
       value: string | Uint8Array;
     };
-    const text = row.value instanceof Uint8Array ? new TextDecoder().decode(row.value) : row.value;
+    const text = isInstance(Uint8Array, row.value)
+      ? new TextDecoder().decode(row.value)
+      : row.value;
     return JSON.parse(text) as SettingsJSON;
   } finally {
     db.close();
@@ -44,7 +47,7 @@ export function changeSettings(dataDir: string, change: (settings: SettingsJSON)
 
 // setupWhitelist of TestSuperuserIPsWhitelist: the trusted proxy header
 // x-test-ip and the superuser IPs
-export function setupWhitelist(...superuserIPs: string[]): (ctx: PrepareContext) => void {
+export function setupWhitelist(...superuserIPs: Array<string>): (ctx: PrepareContext) => void {
   return ({ dataDir }) => {
     changeSettings(dataDir, (settings) => {
       // allow loading a mock IP from the test scenario
@@ -114,7 +117,7 @@ export function mailSent(to: string, htmlContains: string): (ctx: AfterContext) 
 // secrets are persisted (upstream reads them from app.Settings())
 export function secretsPersisted(ctx: AfterContext): void {
   const settings = readStoredSettings(ctx.dataDir);
-  const secrets: [string, unknown, string][] = [
+  const secrets: Array<[string, unknown, string]> = [
     ["smtp.password", settings.smtp?.password, "new_smtp_password"],
     ["s3.secret", settings.s3?.secret, "new_s3_secret"],
     [

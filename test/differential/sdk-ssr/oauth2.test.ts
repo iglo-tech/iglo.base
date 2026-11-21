@@ -9,10 +9,10 @@ import {
   createServerClient,
   createSessionCache,
   handlePopupHandOff,
-  OAuth2Error,
-  type CompleteOAuth2Result,
 } from "@iglo.tech/iglo.base/ssr";
-import { password, sdkTest, type SdkEnv } from "@test/differential/sdk/harness";
+import type { CompleteOAuth2Result, OAuth2Error } from "@iglo.tech/iglo.base/ssr";
+import { password, sdkTest } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 import { Browser } from "@test/differential/sdk-ssr/browser";
 import { useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import type { MockProvider } from "@test/support/oauth2-mock";
@@ -45,7 +45,7 @@ function providerOf(env: SdkEnv): MockProvider {
 }
 
 // the set-cookie headers as shapes: the name and the attributes, not the value
-function cookieShapes(response: Response): string[] {
+function cookieShapes(response: Response): Array<string> {
   return response.headers
     .getSetCookie()
     .map((line) =>

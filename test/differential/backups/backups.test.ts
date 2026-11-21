@@ -22,13 +22,14 @@ import { snapshot } from "@test/differential/backups/snapshot";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
-import { centralEntries, type CentralEntry } from "@test/tools/archive/central-directory";
+import { centralEntries } from "@test/tools/archive/central-directory";
+import type { CentralEntry } from "@test/tools/archive/central-directory";
 
 const timeout = 60_000;
 
 const asSuperuser = { Authorization: superuserToken };
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -100,7 +101,7 @@ async function download(server: Server, name: string): Promise<Uint8Array> {
 
 async function upload(server: Server, name: string, zip: Uint8Array): Promise<void> {
   const body = new FormData();
-  body.set("file", new File([zip as Uint8Array<ArrayBuffer>], name, { type: "application/zip" }));
+  body.set("file", new File([zip], name, { type: "application/zip" }));
   const res = await fetch(`${server.url}/api/backups/upload`, {
     method: "POST",
     headers: asSuperuser,
@@ -139,7 +140,7 @@ async function restoreAndWait(server: Server, name: string): Promise<void> {
   expect(restarted).toBe(true);
 }
 
-function logged(logs: unknown[]): unknown[] {
+function logged(logs: Array<unknown>): Array<unknown> {
   return logs.filter((l) => (l as { id: string }).id === "backuplog000000");
 }
 
@@ -171,7 +172,7 @@ describe("a zip restored by the other server", () => {
 
           // the local backups dir survives
           const list = await fetch(`${target.url}/api/backups`, { headers: asSuperuser });
-          const listed = ((await list.json()) as { key: string }[]).map((b) => b.key);
+          const listed = ((await list.json()) as Array<{ key: string }>).map((b) => b.key);
           expect(listed).toEqual(["cross.zip"]);
 
           const settings = await fetch(`${target.url}/api/settings`, { headers: asSuperuser });
@@ -198,7 +199,7 @@ describe("a zip restored by the other server", () => {
 });
 
 // what the two servers must agree on
-function comparable(zip: Uint8Array): CentralEntry[] {
+function comparable(zip: Uint8Array): Array<CentralEntry> {
   return centralEntries(zip)
     .map((e) => ({
       ...e,
@@ -256,14 +257,14 @@ describe("what a zip has", () => {
 // vanishes between the walk and its stat (apis/backup.go backupsList; once in
 // 37,693 requests). A request that raced a prune is repeated; any other
 // answer, or the same 400 that stays, is an error.
-async function keys(server: Server): Promise<string[]> {
+async function keys(server: Server): Promise<Array<string>> {
   let last = "";
   for (let attempt = 0; attempt < 20; attempt++) {
     const res = await fetch(`${server.url}/api/backups`, { headers: asSuperuser });
     if (res.status === 200) {
       // a backup still being written is listed under its temp name
       // (fileblob's `<key>.<hex>.tmp`, in both servers) until it is renamed
-      return ((await res.json()) as { key: string }[])
+      return ((await res.json()) as Array<{ key: string }>)
         .map((b) => b.key)
         .filter((key) => !key.endsWith(".tmp"));
     }

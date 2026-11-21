@@ -15,14 +15,10 @@ import { join } from "node:path";
 import { newServeRouter } from "@/server/serve";
 import { saveSettings } from "@/settings/settings-query";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
-import {
-  type Case,
-  cases,
-  prepareCase,
-  type Step,
-  tooManyRequestsBody,
-} from "@test/differential/rate-limit/cases";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
+import { cases, prepareCase, tooManyRequestsBody } from "@test/differential/rate-limit/cases";
+import type { Case, Step } from "@test/differential/rate-limit/cases";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startClock } from "@test/differential/rate-limit/clock";
 import { tempDir } from "@test/support/executable";
@@ -31,7 +27,7 @@ import { serveTest } from "@test/support/router";
 // a whole second near the real time, as the fixture's OTP rows are written then
 const start = new Date(Math.floor(Date.now() / 1000) * 1000);
 
-let opened: { app: TestApp; root: string }[] = [];
+let opened: Array<{ app: TestApp; root: string }> = [];
 
 afterEach(async () => {
   for (const { app, root } of opened) {

@@ -26,7 +26,7 @@ describe("JSONArrayLength", () => {
 });
 
 describe("JSONExtract", () => {
-  const scenarios: { name: string; column: string; path: string; expected: string }[] = [
+  const scenarios: Array<{ name: string; column: string; path: string; expected: string }> = [
     {
       name: "empty path",
       column: "a.b",

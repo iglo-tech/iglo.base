@@ -6,6 +6,7 @@ declare const global: { HermesInternal?: unknown } | undefined;
 // @todo remove after https://github.com/reactwg/react-native-releases/issues/287
 const isReactNative =
   (typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
+  // oxlint-disable-next-line unicorn/no-typeof-undefined -- global is undeclared outside Hermes: typeof must not throw
   (typeof global !== "undefined" && global.HermesInternal);
 
 let atobPolyfill: (input: string) => string;
@@ -19,30 +20,34 @@ if (typeof atob === "function" && !isReactNative) {
   atobPolyfill = (input: string) => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
-    let str = String(input).replace(/=+$/, "");
+    const str = String(input).replace(/=+$/, "");
     if (str.length % 4 == 1) {
       throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
     }
 
+    // initialize result and counters
+    let bc = 0;
+    let bs: number | undefined;
+    let buffer: string | number;
+    let idx = 0;
+    let output = "";
     for (
-      // initialize result and counters
-      var bc = 0, bs: number | undefined, buffer: string | number, idx = 0, output = "";
+      ;
       // get next character
       (buffer = str.charAt(idx++));
       // character found in table? initialize bit storage and add its ascii value;
       ~buffer &&
-      ((bs = bc % 4 ? (bs as number) * 64 + (buffer as number) : (buffer as number)),
+      ((bs = bc % 4 ? (bs as number) * 64 + buffer : buffer),
       // and if not first of each 4 characters,
       // convert the first 8 bits to one ascii character
       bc++ % 4)
-        ? (output += String.fromCharCode(255 & ((bs as number) >> ((-2 * bc) & 6))))
+        ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
         : 0
     ) {
       // try to find character in table (0-63, not found => -1)
       buffer = chars.indexOf(buffer);
     }
 
-    // oxlint-disable-next-line block-scoped-var -- upstream atob polyfill loop variable
     return output;
   };
 }
@@ -56,14 +61,16 @@ export function getTokenPayload(token: string): LooseObject {
       const encodedPayload = decodeURIComponent(
         atobPolyfill(token.split(".")[1] as string)
           .split("")
-          .map(function (c: string) {
+          .map((c: string) => {
             return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
           })
           .join(""),
       );
 
       return JSON.parse(encodedPayload) || {};
-    } catch {}
+    } catch {
+      // not a decodable payload: fall through to the empty object
+    }
   }
 
   return {};
@@ -78,7 +85,7 @@ export function getTokenPayload(token: string): LooseObject {
  * @param [expirationThreshold] Time in seconds that will be subtracted from the token `exp` property.
  */
 export function isTokenExpired(token: string, expirationThreshold = 0): boolean {
-  let payload = getTokenPayload(token);
+  const payload = getTokenPayload(token);
 
   if (
     Object.keys(payload).length > 0 &&

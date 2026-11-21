@@ -14,11 +14,8 @@
 // goes to the app logs as a warning.
 
 import type { App } from "@/app/app";
-import {
-  type RequestEvent,
-  RequestInfo,
-  RequestInfoContextProtectedFile,
-} from "@/app/event-request";
+import { RequestInfo, RequestInfoContextProtectedFile } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import { findRecordByViewFile } from "@/collections/view";
@@ -35,8 +32,14 @@ import type { HandlerResult } from "@/server/handler";
 import type { System } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
 
-const imageContentTypes = ["image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp"];
-const defaultThumbSizes = ["100x100"];
+const imageContentTypes = new Set([
+  "image/png",
+  "image/jpg",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+]);
+const defaultThumbSizes = new Set(["100x100"]);
 
 // bindFileApi registers the file api endpoints and the corresponding handlers.
 export function bindFileApi(_app: App, rg: RouterGroup<RequestEvent>): void {
@@ -56,8 +59,8 @@ function fileToken(e: RequestEvent): HandlerResult {
   let token: string;
   try {
     token = newFileToken(e.auth, e.app.clock);
-  } catch (err) {
-    return e.internalServerError("Failed to generate file token", err);
+  } catch (error) {
+    return e.internalServerError("Failed to generate file token", error);
   }
 
   // execAfterSuccessTx: the handler never runs in a transaction here
@@ -84,8 +87,8 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
       .andWhere(new HashExp({ [collection.name + ".id"]: recordId }))
       .limit(1)
       .oneAsync<Record>(recordTarget);
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   const filename = e.request.pathValue("filename");
@@ -124,7 +127,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     requestInfo.context = RequestInfoContextProtectedFile;
     requestInfo.auth = authRecord;
 
-    let ok = false;
+    let ok: boolean;
     try {
       ok = await canAccessRecordAsync(e.app, record, requestInfo, record.collection().viewRule);
     } catch {
@@ -142,11 +145,11 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     let fileRecord: Record;
     try {
       fileRecord = findRecordByViewFile(e.app, collection.id, fileField.getName(), filename);
-    } catch (err) {
+    } catch (error) {
       return e.notFoundError(
         "",
-        new Error(`failed to fetch view file field record: ${(err as Error).message}`, {
-          cause: err,
+        new Error(`failed to fetch view file field record: ${(error as Error).message}`, {
+          cause: error,
         }),
       );
     }
@@ -156,8 +159,8 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newFilesystem();
-  } catch (err) {
-    return e.internalServerError("Filesystem initialization failure.", err);
+  } catch (error) {
+    return e.internalServerError("Filesystem initialization failure.", error);
   }
 
   // S3 may take longer than the server's idle timeout to answer
@@ -175,7 +178,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     const thumbSize = e.request.query().get("thumb")?.[0] ?? "";
     if (
       thumbSize !== "" &&
-      (defaultThumbSizes.includes(thumbSize) || fileField.thumbs.includes(thumbSize))
+      (defaultThumbSizes.has(thumbSize) || fileField.thumbs.includes(thumbSize))
     ) {
       // extract the original file meta attributes and check it existence
       let originalContentType: string;
@@ -187,7 +190,7 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
       }
 
       // check if it is an image
-      if (imageContentTypes.includes(originalContentType)) {
+      if (imageContentTypes.has(originalContentType)) {
         // add thumb size as file suffix
         servedName = thumbSize + "_" + filename;
         servedPath = baseFilesPath + "/thumbs_" + filename + "/" + servedName;
@@ -202,9 +205,9 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
         if (!exists) {
           try {
             await createThumb(e.app, fsys, originalPath, servedPath, thumbSize);
-          } catch (err) {
+          } catch (error) {
             e.app.logger.warn(`Fallback to original - failed to create thumb ${servedName}`, {
-              error: err,
+              error,
               original: originalPath,
               thumb: servedPath,
             });
@@ -225,8 +228,8 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     // execAfterSuccessTx: the handler never runs in a transaction here
     try {
       await fsys.serve(e.response, e.request, servedPath, servedName);
-    } catch (err) {
-      return e.notFoundError("", err);
+    } catch (error) {
+      return e.notFoundError("", error);
     }
 
     return undefined;

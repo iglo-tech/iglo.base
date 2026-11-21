@@ -2,8 +2,8 @@
 import type { LooseObject } from "@sdk/tools/loose";
 import { BaseService } from "@sdk/services/BaseService";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { type ListResult } from "@sdk/tools/dtos";
-import { type CommonOptions, type ListOptions, type FullListOptions } from "@sdk/tools/options";
+import type { ListResult } from "@sdk/tools/dtos";
+import type { CommonOptions, ListOptions, FullListOptions } from "@sdk/tools/options";
 
 export abstract class CrudService<M> extends BaseService {
   /**
@@ -15,7 +15,7 @@ export abstract class CrudService<M> extends BaseService {
    * Response data decoder.
    */
   decode<T = M>(data: Record<string, unknown>): T {
-    return data as unknown as T;
+    return data as T;
   }
 
   /**
@@ -69,8 +69,8 @@ export abstract class CrudService<M> extends BaseService {
 
     options.query = Object.assign(
       {
-        page: page,
-        perPage: perPage,
+        page,
+        perPage,
       },
       options.query,
     );
@@ -85,6 +85,7 @@ export abstract class CrudService<M> extends BaseService {
             },
           ) || [];
 
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         return responseData as unknown as ListResult<T>;
       });
   }
@@ -112,7 +113,7 @@ export abstract class CrudService<M> extends BaseService {
 
     options.query = Object.assign(
       {
-        filter: filter,
+        filter,
         skipTotal: 1,
       },
       options.query,
@@ -246,8 +247,9 @@ export abstract class CrudService<M> extends BaseService {
 
     let result: Array<T> = [];
 
-    let request = async (page: number): Promise<Array<T>> => {
+    const request = async (page: number): Promise<Array<T>> => {
       return this.getList(page, batchSize || 1000, options).then((list) => {
+        // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
         const castedList = list as unknown as ListResult<T>;
         const items = castedList.items;
 

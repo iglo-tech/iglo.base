@@ -35,8 +35,10 @@ import { parseMediaType } from "@/tools/mimetype/mediatype";
 import { detect } from "@/tools/mimetype/mimetype";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import { corpus, type Sample } from "@test/differential/mimetype/corpus";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { corpus } from "@test/differential/mimetype/corpus";
+import type { Sample } from "@test/differential/mimetype/corpus";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "mimetype@example.com";
 const password = "1234567890";
@@ -72,7 +74,10 @@ afterAll(async () => {
 // The value Go decodes from JSON.stringify(s): a lone surrogate (the string
 // form of an invalid UTF-8 byte) arrives as U+FFFD.
 function viaJSON(s: string): string {
-  return s.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "�");
+  return s.replaceAll(
+    /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g,
+    "�",
+  );
 }
 
 // mime.FormatMediaType(mime.ParseMediaType(s)) when it is s itself: no
@@ -87,12 +92,12 @@ function formatsAsItself(s: string): boolean {
 
 interface Field {
   name: string;
-  mimeTypes: string[];
+  mimeTypes: Array<string>;
 }
 
-function fieldsFor(m: MIME): Field[] {
+function fieldsFor(m: MIME): Array<Field> {
   const [base] = parseMediaType(m.string());
-  const ancestors: string[] = [];
+  const ancestors: Array<string> = [];
   for (let p = m.parent(); p !== null; p = p.parent()) {
     ancestors.push(p.string());
   }
@@ -108,12 +113,13 @@ async function api(method: string, path: string, body: string | FormData) {
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
+  const headers: Record<string, string> = { authorization: token };
+  if (typeof body === "string") {
+    headers["content-type"] = "application/json";
+  }
   const res = await fetch(`${upstream.url}${path}`, {
     method,
-    headers: {
-      authorization: token,
-      ...(typeof body === "string" ? { "content-type": "application/json" } : {}),
-    },
+    headers,
     body,
   });
   return { status: res.status, text: await res.text() };
@@ -131,8 +137,8 @@ function serialized<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function check(sample: Sample, i: number): Promise<string[]> {
-  const problems: string[] = [];
+async function check(sample: Sample, i: number): Promise<Array<string>> {
+  const problems: Array<string> = [];
   const m = detect(sample.data);
   const fields = fieldsFor(m);
   const name = `m${i}`;
@@ -211,7 +217,7 @@ async function check(sample: Sample, i: number): Promise<string[]> {
 
 test("uploads are accepted and rejected by mimeTypes as iglo.base's detection predicts", async () => {
   expect(corpus.length).toBeGreaterThanOrEqual(200);
-  const problems: string[] = [];
+  const problems: Array<string> = [];
   let next = 0;
   const worker = async () => {
     while (next < corpus.length) {

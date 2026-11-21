@@ -23,7 +23,7 @@ const T = 1; /* character appears in plain ASCII text */
 const I = 2; /* character appears in ISO-8859 text */
 const X = 3; /* character appears in non-ISO extended ASCII (Mac, IBM PC) */
 
-const boms: { bom: Uint8Array; enc: string }[] = [
+const boms: Array<{ bom: Uint8Array; enc: string }> = [
   { bom: Uint8Array.of(0xef, 0xbb, 0xbf), enc: "utf-8" },
   { bom: Uint8Array.of(0x00, 0x00, 0xfe, 0xff), enc: "utf-32be" },
   { bom: Uint8Array.of(0xff, 0xfe, 0x00, 0x00), enc: "utf-32le" },
@@ -273,9 +273,9 @@ function toLower(b: Uint8Array): string {
       out += "�";
     } else if (r >= 0x41 && r <= 0x5a) {
       out += String.fromCharCode(r + 0x20);
-    } else if (r === 0x130) {
+    } else if (r === 0x1_30) {
       out += "i";
-    } else if (r === 0x212a) {
+    } else if (r === 0x21_2a) {
       out += "k";
     } else {
       out += String.fromCodePoint(r);

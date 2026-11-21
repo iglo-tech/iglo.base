@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
-import { type Observation, type RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
+import { ScenarioContext } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario } from "@test/realtime/scenario";
 
 export interface StartedServer {
   url: string;

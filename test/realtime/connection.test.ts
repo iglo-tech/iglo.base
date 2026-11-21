@@ -18,13 +18,14 @@ import {
   findOAuth2RedirectClient,
   realtimeIdleTimeoutMs,
   realtimeMaxTimeoutMs,
-  type RealtimeTimers,
   sendOAuth2Redirect,
 } from "@/realtime/realtime";
+import type { RealtimeTimers } from "@/realtime/realtime";
 import { handleRequest } from "@/server/serve";
 import type { Mux } from "@/server/router";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { serveTest } from "@test/support/router";
 
@@ -66,7 +67,7 @@ class FakeTimers implements RealtimeTimers {
 
 // an SSE stream read from an in-process response
 class Stream {
-  readonly events: { event: string; data: string }[] = [];
+  readonly events: Array<{ event: string; data: string }> = [];
   done = false;
   #text = "";
 
@@ -74,7 +75,7 @@ class Stream {
 
   static async open(mux: Mux): Promise<Stream> {
     const stream = new Stream(await serveTest(mux, { target: "/api/realtime" }));
-    stream.#read();
+    void stream.#read();
     await stream.waitFor(1);
     return stream;
   }
@@ -132,7 +133,11 @@ beforeAll(async () => {
 
 afterAll(() => app.cleanup());
 
-async function subscribe(mux: Mux, clientId: string, subscriptions: string[]): Promise<number> {
+async function subscribe(
+  mux: Mux,
+  clientId: string,
+  subscriptions: Array<string>,
+): Promise<number> {
   const res = await serveTest(mux, {
     method: "POST",
     target: "/api/realtime",
@@ -144,7 +149,11 @@ async function subscribe(mux: Mux, clientId: string, subscriptions: string[]): P
 
 let created = 0;
 
-async function create(mux: Mux, collection: string, data: object): Promise<void> {
+async function create(
+  mux: Mux,
+  collection: string,
+  data: { [key: string]: unknown },
+): Promise<void> {
   const res = await serveTest(mux, {
     method: "POST",
     target: `/api/collections/${collection}/records`,
@@ -251,16 +260,18 @@ test("a client with more than 8 MiB unsent is closed (D27)", async () => {
 
   expect(await subscribe(mux, clientId, [])).toBe(404);
   expect(reading.done).toBe(false);
-  await expect(
-    (async () => {
-      for (;;) {
-        const { done } = await reader.read();
-        if (done) {
-          return "ended";
+  await Promise.resolve(
+    expect(
+      (async () => {
+        for (;;) {
+          const { done } = await reader.read();
+          if (done) {
+            return "ended";
+          }
         }
-      }
-    })(),
-  ).rejects.toThrow();
+      })(),
+    ).rejects.toThrow(),
+  );
   expect(await subscribe(mux, reading.clientId, [])).toBe(204);
 });
 

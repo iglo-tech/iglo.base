@@ -18,31 +18,22 @@ import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import {
-  freshStart,
-  freshSuperuser,
-  type Outcome,
-  roundTrip,
-  signedIn,
-} from "@test/differential/roundtrip/run";
+import { freshStart, freshSuperuser, roundTrip, signedIn } from "@test/differential/roundtrip/run";
+import type { Outcome } from "@test/differential/roundtrip/run";
 import {
   fixtureWrites,
   password,
   settingsScenario,
   writeScenario,
 } from "@test/differential/roundtrip/scenario";
-import {
-  diffSnapshots,
-  takeSnapshot,
-  thumbPaths,
-  type Snapshot,
-} from "@test/differential/roundtrip/snapshot";
+import { diffSnapshots, takeSnapshot, thumbPaths } from "@test/differential/roundtrip/snapshot";
+import type { Snapshot } from "@test/differential/roundtrip/snapshot";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 
 const smtpPort = sharedSmtpSink().port;
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 function tempRoot(): string {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-roundtrip-test-"));
@@ -75,16 +66,18 @@ function alteredDiff(
   change: (dataDir: string) => void,
   // whether the altered copy's thumbnails count as written by iglo.base
   igloThumbs = false,
-): string[] {
+): Array<string> {
   const dataDir = join(tempRoot(), "pb_data");
   cpSync(control.dataDir, dataDir, { recursive: true });
   change(dataDir);
-  const options = {
+  const options: Parameters<typeof takeSnapshot>[1] = {
     start,
     startedAt: control.startedAt,
     generatedIds: control.state.generatedIds,
-    ...(control.encryptionKey === undefined ? {} : { encryptionKey: control.encryptionKey }),
   };
+  if (control.encryptionKey !== undefined) {
+    options.encryptionKey = control.encryptionKey;
+  }
   return diffSnapshots(
     takeSnapshot(control.dataDir, options),
     takeSnapshot(dataDir, igloThumbs ? { ...options, igloThumbs: thumbPaths(dataDir) } : options),
@@ -111,7 +104,7 @@ function wrongMd5(path: string): void {
 }
 
 // the paths in storage/ that end with the suffix
-function storedPaths(dataDir: string, suffix: string): string[] {
+function storedPaths(dataDir: string, suffix: string): Array<string> {
   const glob = new Bun.Glob(`**/*${suffix}`);
   return [...glob.scanSync({ cwd: join(dataDir, "storage") })].map((path) =>
     join(dataDir, "storage", path),
@@ -134,7 +127,7 @@ function storedFile(dataDir: string, suffix: string): string {
 
 describe("upstream's fixture", () => {
   let outcome: Outcome;
-  const altered = (change: (dataDir: string) => void): string[] =>
+  const altered = (change: (dataDir: string) => void): Array<string> =>
     alteredDiff(outcome.control, outcome.start, change);
 
   beforeAll(async () => {
@@ -200,7 +193,7 @@ function thumbFile(path: string): boolean {
 
 describe("a fresh install", () => {
   let outcome: Outcome;
-  const altered = (change: (dataDir: string) => void, igloThumbs = false): string[] =>
+  const altered = (change: (dataDir: string) => void, igloThumbs = false): Array<string> =>
     alteredDiff(outcome.control, outcome.start, change, igloThumbs);
 
   beforeAll(async () => {
@@ -351,7 +344,7 @@ describe("a fresh install", () => {
       const out = altered((dataDir) => {
         const path = storedPaths(dataDir, ".png").find((p) => /\/thumbs_original_[^/]*$/.test(p));
         const bytes = readFileSync(path as string);
-        bytes[bytes.length - 1] = (bytes[bytes.length - 1] as number) ^ 1;
+        bytes[bytes.length - 1] = (bytes.at(-1) as number) ^ 1;
         writeFileSync(path as string, bytes);
       }, true);
       expect(out.some((d) => d.startsWith("storage: subject only"))).toBe(true);

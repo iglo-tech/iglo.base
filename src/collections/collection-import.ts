@@ -10,11 +10,11 @@
 
 import { Collection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   collectionQuery,
   findCollectionByNameOrId,
   runInAppTransaction,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { deleteCollection, saveCollectionNoValidate } from "@/collections/collection-save";
 import { newCollectionValidator } from "@/collections/collection-validate";
 import { withDriverErrors } from "@/collections/driver-error";
@@ -41,7 +41,7 @@ export function importCollectionsByMarshaledJSON(
 ): void {
   const data =
     (unmarshal(rawSliceOfMaps, sliceOf(mapOf(anyType))) as
-      | (Record<string, unknown> | null)[]
+      | Array<Record<string, unknown> | null>
       | undefined) ?? [];
 
   importCollections(app, data, deleteMissing);
@@ -56,7 +56,7 @@ export function importCollectionsByMarshaledJSON(
 // (this includes their related records data).
 export function importCollections(
   app: CollectionsApp,
-  toImport: readonly (Record<string, unknown> | null)[],
+  toImport: ReadonlyArray<Record<string, unknown> | null>,
   deleteMissing: boolean,
 ): void {
   if (toImport.length === 0) {
@@ -64,7 +64,7 @@ export function importCollections(
     throw new Error("no collections to import");
   }
 
-  const importedCollections: Collection[] = [];
+  const importedCollections: Array<Collection> = [];
   const mappedImported = new Map<string, Collection>();
 
   // normalize imported collections data to ensure that all
@@ -80,9 +80,9 @@ export function importCollections(
     let existing: Collection | null = null;
     try {
       existing = withDriverErrors(() => findCollectionByNameOrId(app, identifier));
-    } catch (err) {
-      if (!(err instanceof NoRowsError)) {
-        throw err;
+    } catch (error) {
+      if (!(error instanceof NoRowsError)) {
+        throw error;
       }
     }
 
@@ -174,8 +174,8 @@ export function importCollections(
     for (const imported of importedCollections) {
       try {
         saveCollectionNoValidate(txApp, imported);
-      } catch (err) {
-        throw wrapError(`failed to save collection ${goQuote(imported.name)}`, err);
+      } catch (error) {
+        throw wrapError(`failed to save collection ${goQuote(imported.name)}`, error);
       }
     }
 

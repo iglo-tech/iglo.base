@@ -20,14 +20,14 @@ import {
   verifyAfterKill,
   waitFor,
   walk,
-  type Kind,
-  type Target,
 } from "@test/differential/crash/harness";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import type { Kind, Target } from "@test/differential/crash/harness";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 import { centralEntries } from "@test/tools/archive/central-directory";
 
 const timeout = 120_000;
-const roots: string[] = [];
+const roots: Array<string> = [];
 let gw: Versitygw;
 
 beforeAll(async () => {
@@ -112,10 +112,17 @@ async function crashedBackup(kind: Kind, storage: Storage, point: Point): Promis
 }
 
 // the leftovers with what is random in a name replaced
-function normalized(paths: string[]): string[] {
+function normalized(paths: Array<string>): Array<string> {
   return paths
-    .filter((p) => p !== "bulk.bin")
-    .map((p) => p.replace(/[0-9a-f]{16}\.tmp/g, "X.tmp").replace(/pb_backup_\w{6}/g, "pb_backup_X"))
+    .flatMap((p) =>
+      p !== "bulk.bin"
+        ? [
+            p
+              .replaceAll(/[0-9a-f]{16}\.tmp/g, "X.tmp")
+              .replaceAll(/pb_backup_\w{6}/g, "pb_backup_X"),
+          ]
+        : [],
+    )
     .toSorted();
 }
 

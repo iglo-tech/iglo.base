@@ -14,19 +14,20 @@
 // Extras (descriptions and tsType) are not in the database. A pull that
 // writes over an existing file keeps them, from extractExtras.
 
-import { objectValue, parseJSONTree, type JSONNode } from "@/schema/json-tree";
+import { objectValue, parseJSONTree } from "@/schema/json-tree";
+import type { JSONNode } from "@/schema/json-tree";
 import { assertFileProviders } from "@/schema/providers";
 import { defaultCollectionDescription, impliedFieldCount, fieldDefault } from "@/schema/defaults";
 import { isPlainObject, isArrayIndexName, jsonEqual, withKeyOrder } from "@/schema/values";
-import {
-  type SchemaCollection,
-  type SchemaCollectionExtra,
-  type SchemaDescription,
-  type SchemaExtras,
-  type SchemaField,
-  type SchemaFieldExtra,
-  type SchemaObject,
-  type SchemaValue,
+import type {
+  SchemaCollection,
+  SchemaCollectionExtra,
+  SchemaDescription,
+  SchemaExtras,
+  SchemaField,
+  SchemaFieldExtra,
+  SchemaObject,
+  SchemaValue,
 } from "@/schema/types";
 
 // the order of the keys of a collection and of a field in the file; the rest

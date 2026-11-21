@@ -5,7 +5,8 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 let upstream: UpstreamServer;
 

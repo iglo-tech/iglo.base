@@ -38,14 +38,14 @@ interface ProviderInfo {
 
 // the response members in the order of upstream's struct fields
 interface AuthMethodsResponse {
-  password: { identityFields: string[]; enabled: boolean };
-  oauth2: { providers: ProviderInfo[]; enabled: boolean };
+  password: { identityFields: Array<string>; enabled: boolean };
+  oauth2: { providers: Array<ProviderInfo>; enabled: boolean };
   mfa: { enabled: boolean; duration: number }; // duration in seconds
   otp: { enabled: boolean; duration: number }; // duration in seconds
 
   // legacy fields
   // @todo remove after dropping v0.22 support
-  authProviders: ProviderInfo[];
+  authProviders: Array<ProviderInfo>;
   usernamePassword: boolean;
   emailPassword: boolean;
 }
@@ -102,8 +102,8 @@ export function recordAuthMethods(e: RequestEvent): HandlerResult {
     let provider: BaseProvider;
     try {
       provider = initProvider(config);
-    } catch (err) {
-      e.app.logger.debug("Failed to setup OAuth2 provider", { name: config.name, error: err });
+    } catch (error) {
+      e.app.logger.debug("Failed to setup OAuth2 provider", { name: config.name, error });
       continue; // skip provider
     }
 
@@ -123,7 +123,7 @@ export function recordAuthMethods(e: RequestEvent): HandlerResult {
       info.displayName = config.name;
     }
 
-    const urlOpts: [string, string][] = [];
+    const urlOpts: Array<[string, string]> = [];
 
     // custom providers url options
     switch (config.name) {

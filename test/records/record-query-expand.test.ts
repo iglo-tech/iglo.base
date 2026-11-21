@@ -17,12 +17,15 @@ import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { FieldNameExpand } from "@/fields/field";
 import { Record } from "@/records/record-model";
-import { findRecordById, findRecordsByIds, type RecordsApp } from "@/records/record-query";
-import { type ExpandFetchFunc, expandRecord, expandRecords } from "@/records/record-query-expand";
+import { findRecordById, findRecordsByIds } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
+import { expandRecord, expandRecords } from "@/records/record-query-expand";
+import type { ExpandFetchFunc } from "@/records/record-query-expand";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { marshal } from "@/tools/types/go-json";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the fetchFunc of a scenario, built on the app the scenario runs on
 // (null: the default fetch, all relation records)
@@ -52,7 +55,11 @@ function nonemptyExpandProps(encoded: string): number {
 
 // the records of FindRecordsByIds, where the Go test ignores the error (an
 // unknown collection gives no records)
-function recordsByIdsOrNone(app: RecordsApp, collectionIdOrName: string, ids: string[]): Record[] {
+function recordsByIdsOrNone(
+  app: RecordsApp,
+  collectionIdOrName: string,
+  ids: Array<string>,
+): Array<Record> {
   try {
     return findRecordsByIds(app, collectionIdOrName, ids);
   } catch {
@@ -63,14 +70,14 @@ function recordsByIdsOrNone(app: RecordsApp, collectionIdOrName: string, ids: st
 interface ExpandRecordsScenario {
   testName: string;
   collectionIdOrName: string;
-  recordIds: string[];
-  expands: string[];
+  recordIds: Array<string>;
+  expands: Array<string>;
   fetchFunc: FetchFactory;
   expectNonemptyExpandProps: number;
   expectExpandFailures: number;
 }
 
-const expandRecordsScenarios: ExpandRecordsScenario[] = [
+const expandRecordsScenarios: Array<ExpandRecordsScenario> = [
   {
     testName: "empty records",
     collectionIdOrName: "",
@@ -275,13 +282,13 @@ interface ExpandRecordScenario {
   testName: string;
   collectionIdOrName: string;
   recordId: string;
-  expands: string[];
+  expands: Array<string>;
   fetchFunc: FetchFactory;
   expectNonemptyExpandProps: number;
   expectExpandFailures: number;
 }
 
-const expandRecordScenarios: ExpandRecordScenario[] = [
+const expandRecordScenarios: Array<ExpandRecordScenario> = [
   {
     testName: "empty expand",
     collectionIdOrName: "demo4",
@@ -467,7 +474,7 @@ describe("TestExpandRecordsQuerySkipDuplicatedIds", () => {
     // the SQL log of the app's data.db (openTestApp opens it without a read
     // pool, so the async reads of the expand run on this logged connection);
     // each line is "[<ms>ms] <sql>"
-    const logged: string[] = [];
+    const logged: Array<string> = [];
     const app = openTestApp(undefined, (line) => logged.push(line));
     try {
       // fetch records that are known to have at least 1 common relation between them

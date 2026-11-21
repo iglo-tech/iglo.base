@@ -26,13 +26,15 @@
 // At the end, upstream is started on iglo.base's pb_data: it opens it
 // without errors, its integrity check passes, and its GET /api/collections
 // returns the same bodies as for its own sequence.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Collection, newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
 import { importCollections } from "@/collections/collection-import";
 import {
   findCachedCollectionByNameOrId,
@@ -46,10 +48,13 @@ import { newBadRequestError, newNotFoundError } from "@/server/error";
 import { anyType, mapOf, sliceOf, unmarshal } from "@/tools/types/go-json";
 import { Errors, NewError } from "@/validation/error";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
-import { type Ctx, type Step, steps } from "@test/differential/collections/save-cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { steps } from "@test/differential/collections/save-cases";
+import type { Ctx, Step } from "@test/differential/collections/save-cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 120_000;
@@ -73,11 +78,14 @@ async function request(
   path: string,
   body?: string,
 ): Promise<{ status: number; text: string }> {
-  const res = await fetch(`${target.url}${path}`, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json", authorization: token },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${target.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -96,16 +104,16 @@ function model(): TestCollectionsApp {
 }
 
 // rows through upstream's POST /api/sql
-async function upstreamSQL(query: string): Promise<unknown[][]> {
+async function upstreamSQL(query: string): Promise<Array<Array<unknown>>> {
   const res = await request(server(), "POST", "/api/sql", JSON.stringify({ query }));
   if (res.status !== 200) {
     throw new Error(`POST /api/sql ${query}: ${res.status} ${res.text}`);
   }
-  return (JSON.parse(res.text) as { rows: unknown[][] }).rows;
+  return (JSON.parse(res.text) as { rows: Array<Array<unknown>> }).rows;
 }
 
 // the rows as upstream's /api/sql returns them (values as text)
-function modelSQL(query: string): unknown[][] {
+function modelSQL(query: string): Array<Array<unknown>> {
   return model()
     .databases.concurrentDB()
     .newQuery(query)
@@ -113,10 +121,10 @@ function modelSQL(query: string): unknown[][] {
     .map((row) => Object.values(row).map((v) => (v === null ? null : String(v))));
 }
 
-async function upstreamCollections(s: UpstreamServer): Promise<Record<string, unknown>[]> {
+async function upstreamCollections(s: UpstreamServer): Promise<Array<Record<string, unknown>>> {
   const res = await request(s, "GET", "/api/collections?perPage=500&sort=name");
   expect(res.status).toBe(200);
-  return (JSON.parse(res.text) as { items: Record<string, unknown>[] }).items;
+  return (JSON.parse(res.text) as { items: Array<Record<string, unknown>> }).items;
 }
 
 async function readCtx(): Promise<Ctx> {
@@ -131,7 +139,7 @@ async function readCtx(): Promise<Ctx> {
   };
   return {
     id: (name) => get(name).id as string,
-    fields: (name) => get(name).fields as Record<string, unknown>[],
+    fields: (name) => get(name).fields as Array<Record<string, unknown>>,
     collection: get,
     all: () => structuredClone(items),
   };
@@ -202,8 +210,8 @@ function modelSave(target: string | undefined, body: string): Outcome {
   } else {
     try {
       collection = findCollectionByNameOrId(model(), target);
-    } catch (err) {
-      return apiError(newNotFoundError("", err));
+    } catch (error) {
+      return apiError(newNotFoundError("", error));
     }
   }
 
@@ -212,16 +220,16 @@ function modelSave(target: string | undefined, body: string): Outcome {
 
   try {
     saveCollection(model(), collection);
-  } catch (err) {
+  } catch (error) {
     const action = target === undefined ? "create" : "update";
     // validation failure
-    if (err instanceof Errors) {
-      return apiError(newBadRequestError(`Failed to ${action} collection.`, err));
+    if (isInstance(Errors, error)) {
+      return apiError(newBadRequestError(`Failed to ${action} collection.`, error));
     }
     // other generic db error
     return apiError(
       newBadRequestError(
-        `Failed to ${action} collection. Raw error: \n${err instanceof Error ? err.message : String(err)}`,
+        `Failed to ${action} collection. Raw error: \n${error instanceof Error ? error.message : String(error)}`,
         null,
       ),
     );
@@ -235,13 +243,13 @@ function modelDelete(target: string): Outcome {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(model(), target);
-  } catch (err) {
-    return apiError(newNotFoundError("", err));
+  } catch (error) {
+    return apiError(newNotFoundError("", error));
   }
 
   try {
     deleteCollection(model(), collection);
-  } catch (err) {
+  } catch (error) {
     let msg = "Failed to delete collection";
 
     // check fo references
@@ -256,7 +264,7 @@ function modelDelete(target: string): Outcome {
         " probably due to existing reference in " + [...refs.keys()].map((r) => r.name).join(", ");
     }
 
-    return apiError(newBadRequestError(msg, err));
+    return apiError(newBadRequestError(msg, error));
   }
 
   return { status: 204, body: "" };
@@ -269,14 +277,14 @@ function modelImport(body: string): Outcome {
     deleteMissing?: boolean;
   };
   const data = (unmarshal(JSON.stringify(form.collections), sliceOf(mapOf(anyType))) ??
-    []) as Record<string, unknown>[];
+    []) as Array<Record<string, unknown>>;
 
   try {
     importCollections(model(), data, form.deleteMissing === true);
-  } catch (err) {
+  } catch (error) {
     // validation failure
-    if (err instanceof Errors) {
-      return apiError(newBadRequestError("Failed to import collections.", err));
+    if (isInstance(Errors, error)) {
+      return apiError(newBadRequestError("Failed to import collections.", error));
     }
 
     // generic/db failure
@@ -287,7 +295,7 @@ function modelImport(body: string): Outcome {
           collections: NewError(
             "validation_collections_import_failure",
             "Failed to import the collections configuration. Raw error:\n" +
-              (err instanceof Error ? err.message : String(err)),
+              (error instanceof Error ? error.message : String(error)),
           ),
         }),
       ),
@@ -321,7 +329,7 @@ function sortedJSON(text: string): string {
 // a view field copied from a collection gets a random "_clone_" id
 // (core/view.go parseQueryToFields)
 function withoutCloneIds(text: string): string {
-  return text.replace(/"_clone_[A-Za-z0-9]{4}"/g, `"_clone_<random>"`);
+  return text.replaceAll(/"_clone_[A-Za-z0-9]{4}"/g, `"_clone_<random>"`);
 }
 
 // a collection's JSON with created, updated and the clone ids replaced
@@ -370,15 +378,15 @@ function replaceSecrets(options: unknown, marks: Map<string, string>, prefix = "
 
 interface Side {
   name: string;
-  sql(query: string): Promise<unknown[][]> | unknown[][];
+  sql(query: string): Promise<Array<Array<unknown>>> | Array<Array<unknown>>;
   // the secrets of the previous snapshot, by collection id and path
   secrets: Map<string, string>;
 }
 
 interface Snapshot {
-  schema: unknown[][];
-  collections: unknown[][];
-  records: Record<string, unknown[][]>;
+  schema: Array<Array<unknown>>;
+  collections: Array<Array<unknown>>;
+  records: Record<string, Array<Array<unknown>>>;
 }
 
 const collectionColumns = [
@@ -435,7 +443,7 @@ async function snapshot(side: Side): Promise<Snapshot> {
   side.secrets = secrets;
 
   const tables = new Set(schema.filter((r) => r[0] === "table").map((r) => String(r[1])));
-  const records: Record<string, unknown[][]> = {};
+  const records: Record<string, Array<Array<unknown>>> = {};
   for (const table of recordTables) {
     if (tables.has(table)) {
       records[table] = await side.sql(`SELECT * FROM [${table}] ORDER BY id`);
@@ -511,8 +519,8 @@ describe("collection save sequence against upstream", () => {
         const got = modelOutcome(step, body);
         // DryRunView generates a fresh temporary name on each side.
         if (step.name === "reject malformed JSON in view sample") {
-          expected.body = expected.body.replace(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
-          got.body = got.body.replace(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
+          expected.body = expected.body.replaceAll(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
+          got.body = got.body.replaceAll(/temp_view_[a-zA-Z0-9]{5}/g, "temp_view_RANDOM");
         }
 
         // upstream's outcome is the step's expectation
@@ -575,10 +583,12 @@ describe("collection save sequence against upstream", () => {
             JSON.stringify({ query: "PRAGMA integrity_check" }),
           );
           expect(integrity.status).toBe(200);
-          expect((JSON.parse(integrity.text) as { rows: unknown[][] }).rows).toEqual([["ok"]]);
+          expect((JSON.parse(integrity.text) as { rows: Array<Array<unknown>> }).rows).toEqual([
+            ["ok"],
+          ]);
 
           const have = await upstreamCollections(other);
-          const normalize = (items: Record<string, unknown>[]) =>
+          const normalize = (items: Array<Record<string, unknown>>) =>
             items.map((c) => normalizedCollectionJSON(JSON.stringify(c)));
           expect(normalize(have)).toEqual(normalize(want));
         } finally {

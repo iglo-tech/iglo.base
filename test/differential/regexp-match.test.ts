@@ -17,7 +17,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 import { matchString } from "@/tools/regexp/regexp";
 
@@ -25,7 +26,7 @@ const email = "regexp@example.com";
 const password = "1234567890";
 
 // pattern, then the values to create records with
-const cases: [string, string[]][] = [
+const cases: Array<[string, Array<string>]> = [
   // Unicode classes
   [String.raw`^\p{L}+$`, ["Zażółć", "abc1", "日本語"]],
   [String.raw`^\p{Greek}+$`, ["αβγ", "αβc"]],

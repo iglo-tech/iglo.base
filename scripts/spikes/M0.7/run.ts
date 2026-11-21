@@ -50,22 +50,23 @@ import {
   spikeRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 import {
   synthetic,
   writeCompatSet,
   writeEdgeSet,
   writeQualitySet,
-  type TestImage,
 } from "@/../scripts/spikes/M0.7/images";
-import { decodePng, encodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
+import type { TestImage } from "@/../scripts/spikes/M0.7/images";
+import { decodePng, encodePng } from "@/../scripts/spikes/M0.7/png";
+import type { Raw } from "@/../scripts/spikes/M0.7/png";
 import type { Job, JobResult } from "@/../scripts/spikes/M0.7/workers/serve";
 
 const spikeDir = join(repoRoot, "scripts/spikes/M0.7");
 const skipPerf = process.argv.includes("--skip-perf");
 const skipQuality = process.argv.includes("--skip-quality");
-const arg = (name: string): string[] | undefined =>
+const arg = (name: string): Array<string> | undefined =>
   process.argv
     .find((a) => a.startsWith(`--${name}=`))
     ?.slice(name.length + 3)
@@ -113,8 +114,8 @@ if (!process.argv.includes("--installed")) {
 
 const { root, cleanup } = spikeRoot("M0.7");
 const log = (s: string): void => console.error(`[${new Date().toISOString().slice(11, 19)}] ${s}`);
-const tables: string[] = [`Host: ${hostFacts()}`];
-const table = (head: string[], rows: (string | number)[][]): void => {
+const tables: Array<string> = [`Host: ${hostFacts()}`];
+const table = (head: Array<string>, rows: Array<Array<string | number>>): void => {
   tables.push(
     [
       `| ${head.join(" | ")} |`,
@@ -124,7 +125,7 @@ const table = (head: string[], rows: (string | number)[][]): void => {
   );
 };
 
-async function run(cmd: string[], cwd = repoRoot): Promise<string> {
+async function run(cmd: Array<string>, cwd = repoRoot): Promise<string> {
   const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
   const [out, err] = [
     await new Response(proc.stdout).text(),
@@ -142,7 +143,7 @@ async function build(): Promise<Map<string, string>> {
   const bins = new Map<string, string>();
   const binDir = join(root, "bin");
   mkdirSync(binDir);
-  const rows: (string | number)[][] = [];
+  const rows: Array<Array<string | number>> = [];
   let base = 0;
   for (const c of ["none", ...candidates]) {
     const outfile = join(binDir, `bench-${c}`);
@@ -166,8 +167,8 @@ async function build(): Promise<Map<string, string>> {
         (size / 2 ** 20).toFixed(1),
         c === "none" ? "" : ((size - base) / 2 ** 20).toFixed(2),
       ]);
-    } catch (err) {
-      rows.push([c, "build failed", String(err).split("\n").slice(1, 3).join(" ")]);
+    } catch (error) {
+      rows.push([c, "build failed", String(error).split("\n").slice(1, 3).join(" ")]);
     }
   }
   table(["build", "executable MiB", "added MiB"], rows);
@@ -177,11 +178,11 @@ async function build(): Promise<Map<string, string>> {
 // --- bench runs, one process at a time, killed on low memory
 
 interface BenchResult {
-  warmMs: number[];
+  warmMs: Array<number>;
   rssBeforeMiB: number;
   hwmMiB: number;
   wallMs: number;
-  results: JobResult[];
+  results: Array<JobResult>;
 }
 
 let jobFile = 0;
@@ -190,7 +191,7 @@ async function bench(
   bins: Map<string, string>,
   candidate: string,
   concurrency: number,
-  jobs: Job[],
+  jobs: Array<Job>,
   timeoutMs = 300_000,
 ): Promise<BenchResult | string> {
   const bin = bins.get(candidate);
@@ -250,7 +251,7 @@ async function decode(bytes: Uint8Array): Promise<Raw> {
 }
 
 // mean absolute error per channel (R, G, B premultiplied by alpha, then A)
-function mae(a: Raw, b: Raw): number[] {
+function mae(a: Raw, b: Raw): Array<number> {
   const sum = [0, 0, 0, 0];
   const n = a.width * a.height;
   for (let i = 0; i < n * 4; i += 4) {
@@ -300,7 +301,7 @@ function blur(r: Raw): Float64Array {
 // the mean absolute error after a 3x3 box blur of both: Floyd-Steinberg
 // dithering turns a small input difference into a different dot pattern
 // that the plain per-pixel error counts in full
-function blurredMae(a: Raw, b: Raw): number[] {
+function blurredMae(a: Raw, b: Raw): Array<number> {
   const ba = blur(a);
   const bb = blur(b);
   const sum = [0, 0, 0, 0];
@@ -431,12 +432,12 @@ async function quality(
   bins: Map<string, string>,
   u: Upstream,
   qDir: string,
-  images: TestImage[],
-  compat: TestImage[],
-  edges: TestImage[],
+  images: Array<TestImage>,
+  compat: Array<TestImage>,
+  edges: Array<TestImage>,
 ): Promise<void> {
   log("upstream thumbs of the image set");
-  const refs: Ref[] = [];
+  const refs: Array<Ref> = [];
   for (const image of [...images, ...edges]) {
     const rec = await upload(u, qDir, image.name, image.contentType);
     const original = readFileSync(join(qDir, image.name));
@@ -446,7 +447,7 @@ async function quality(
     }
   }
   log("upstream thumbs of the compatibility set");
-  const compatRefs = async (target: Upstream, list: TestImage[]): Promise<void> => {
+  const compatRefs = async (target: Upstream, list: Array<TestImage>): Promise<void> => {
     for (const image of list) {
       const rec = await upload(target, qDir, image.name, image.contentType);
       const original = readFileSync(join(qDir, image.name));
@@ -469,23 +470,23 @@ async function quality(
     await withLimit(u, limit, (l) => compatRefs(l, limited));
   }
   const thumbable = images.filter((i) => !["image/bmp", "image/tiff"].includes(i.contentType));
-  const rows: (string | number)[][] = [];
-  const perImage: (string | number)[][] = [];
-  const decodeRows: (string | number)[][] = [];
-  const edgeRows: (string | number)[][] = [];
-  const compatRows: (string | number)[][] = [];
-  const compatImageRows: (string | number)[][] = [];
+  const rows: Array<Array<string | number>> = [];
+  const perImage: Array<Array<string | number>> = [];
+  const decodeRows: Array<Array<string | number>> = [];
+  const edgeRows: Array<Array<string | number>> = [];
+  const compatRows: Array<Array<string | number>> = [];
+  const compatImageRows: Array<Array<string | number>> = [];
   for (const c of candidates) {
     log(`quality: ${c}`);
     const outDir = join(root, `out-${c}`);
     mkdirSync(outDir);
-    const jobs: Job[] = [];
-    const meta: {
+    const jobs: Array<Job> = [];
+    const meta: Array<{
       ref?: Ref;
       image: TestImage;
       size: string;
       kind: "set" | "compat" | "decode" | "edge";
-    }[] = [];
+    }> = [];
     for (const image of thumbable) {
       for (const size of sizes) {
         meta.push({
@@ -528,11 +529,11 @@ async function quality(
       rows.push([c, res, "", "", "", ""]);
       continue;
     }
-    const bySize = new Map<string, number[][]>();
+    const bySize = new Map<string, Array<Array<number>>>();
     let dimsOk = 0;
     let typeOk = 0;
     let total = 0;
-    const failures: string[] = [];
+    const failures: Array<string> = [];
     // per compatibility image: sizes, same outcome, same dimensions and
     // content type, the largest MAE channel, the first difference
     const compatByImage = new Map<
@@ -729,9 +730,9 @@ async function quality(
     compatImageRows,
   );
   // what upstream did with each compatibility image
-  const upstreamRows: (string | number)[][] = [];
+  const upstreamRows: Array<Array<string | number>> = [];
   for (const image of compat) {
-    const cells: string[] = [];
+    const cells: Array<string> = [];
     for (const r of refs.filter((x) => x.image === image)) {
       const d = r.original ? undefined : await decode(r.bytes);
       cells.push(`${r.size}: ${d ? `${d.width}x${d.height}` : "original"}`);
@@ -757,13 +758,17 @@ async function quality(
         "worst size (largest channel)",
       ],
       names.map((n) => {
-        const list = mine
-          .filter((r) => r[1] === n)
-          .map((r) => ({
-            size: r[2] as string,
-            e: String(r[3]).split(" / ").map(Number),
-            b: String(r[4]).split(" / ").map(Number),
-          }));
+        const list = mine.flatMap((r) =>
+          r[1] === n
+            ? [
+                {
+                  size: r[2] as string,
+                  e: String(r[3]).split(" / ").map(Number),
+                  b: String(r[4]).split(" / ").map(Number),
+                },
+              ]
+            : [],
+        );
         const mean = (key: "e" | "b"): string =>
           [0, 1, 2, 3]
             .map((ch) =>
@@ -785,13 +790,15 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
   log("generating the 50 MP JPEG");
   {
     const raw = synthetic(8660, 5773, 11);
-    let png: Uint8Array | undefined = encodePng(raw, 0);
-    raw.pix = new Uint8Array();
-    writeFileSync(
-      join(bigDir, "big.jpg"),
-      await new Bun.Image(png, { maxPixels: 1 << 30 }).jpeg({ quality: 90 }).bytes(),
-    );
-    png = undefined;
+    {
+      // the PNG bytes leave scope before the collection below
+      const png = encodePng(raw, 0);
+      raw.pix = new Uint8Array();
+      writeFileSync(
+        join(bigDir, "big.jpg"),
+        await new Bun.Image(png, { maxPixels: 1 << 30 }).jpeg({ quality: 90 }).bytes(),
+      );
+    }
     Bun.gc(true);
   }
   log("generating the 12 MP PNG");
@@ -807,7 +814,7 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
 
   // upstream: four records per image, a fresh server per measurement
   log("upstream: uploading the large images");
-  const recs = new Map<string, { id: string; file: string }[]>();
+  const recs = new Map<string, Array<{ id: string; file: string }>>();
   for (const b of bigs) {
     const list = [];
     for (let i = 0; i < 4; i++) {
@@ -816,7 +823,7 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
     recs.set(b.name, list);
   }
   await u.server.stop();
-  const rows: (string | number)[][] = [];
+  const rows: Array<Array<string | number>> = [];
   const upstreamThumbs = new Map<string, Uint8Array>();
   for (const b of bigs) {
     for (const size of ["100x100", "1200x0"]) {
@@ -836,7 +843,7 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
         const before = procStats(up.server.pid).rssMiB;
         const watch = sampler(up.server.pid, () => void up.server.stop(), 20, 2048);
         const started = performance.now();
-        const times: number[] = [];
+        const times: Array<number> = [];
         let note = "";
         await Promise.all(
           (recs.get(b.name) ?? []).slice(0, conc).map(async (rec, i) => {
@@ -847,8 +854,8 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
               if (i === 0 && conc === 1) {
                 upstreamThumbs.set(`${b.name} ${size}`, t.bytes);
               }
-            } catch (err) {
-              note = String(err);
+            } catch (error) {
+              note = String(error);
             }
           }),
         );
@@ -873,13 +880,13 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
     }
   }
 
-  const compareRows: (string | number)[][] = [];
+  const compareRows: Array<Array<string | number>> = [];
   for (const c of candidates) {
     for (const b of bigs) {
       for (const size of ["100x100", "1200x0"]) {
         for (const conc of concurrencies) {
           const outBase = join(root, `big-${c}-${b.name}-${size}`);
-          const jobs: Job[] = Array.from({ length: conc }, (_, id) => ({
+          const jobs: Array<Job> = Array.from({ length: conc }, (_, id) => ({
             id,
             input: join(bigDir, b.name),
             contentType: b.contentType,

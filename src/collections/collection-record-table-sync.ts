@@ -9,7 +9,8 @@
 // in insertion order.
 
 import type { Collection } from "@/collections/collection-model";
-import { type CollectionsApp, fieldApp, runInAppTransaction } from "@/collections/collection-query";
+import { fieldApp, runInAppTransaction } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { equalFold } from "@/collections/go-strings";
 import { HashExp, newExp } from "@/db/dbx/expression";
@@ -100,8 +101,8 @@ export function syncRecordTableSchema(
 
       try {
         withDriverErrors(() => db().dropColumn(newTableName, oldField.getName()).execute());
-      } catch (err) {
-        throw wrap(`failed to drop column ${oldField.getName()} - `, err);
+      } catch (error) {
+        throw wrap(`failed to drop column ${oldField.getName()} - `, error);
       }
     }
 
@@ -126,8 +127,8 @@ export function syncRecordTableSchema(
               .addColumn(newTableName, tempName, field.columnType(fieldApp(txApp)))
               .execute(),
           );
-        } catch (err) {
-          throw wrap(`failed to add column ${field.getName()} - `, err);
+        } catch (error) {
+          throw wrap(`failed to add column ${field.getName()} - `, error);
         }
       } else if (oldField.getName() !== field.getName()) {
         const tempName = field.getName() + pseudorandomString(5);
@@ -138,8 +139,8 @@ export function syncRecordTableSchema(
           withDriverErrors(() =>
             db().renameColumn(newTableName, oldField.getName(), tempName).execute(),
           );
-        } catch (err) {
-          throw wrap(`failed to rename column ${oldField.getName()} - `, err);
+        } catch (error) {
+          throw wrap(`failed to rename column ${oldField.getName()} - `, error);
         }
       }
     }
@@ -160,9 +161,9 @@ export function syncRecordTableSchema(
   // (https://www.sqlite.org/pragma.html#pragma_optimize)
   try {
     app.databases.nonconcurrentDB().newQuery("PRAGMA optimize").execute();
-  } catch (err) {
+  } catch (error) {
     app.logger.warn("Failed to run PRAGMA optimize after record table sync", {
-      error: driverError(err),
+      error: driverError(error),
     });
   }
 }
@@ -331,10 +332,10 @@ function createCollectionIndexes(app: CollectionsApp, collection: Collection): v
 
       try {
         withDriverErrors(() => txApp.databases.db().newQuery(parsed.build()).execute());
-      } catch (err) {
+      } catch (error) {
         errs.errors[String(i)] = NewError(
           "validation_invalid_index_expression",
-          `Failed to create index ${parsed.indexName} - ${err instanceof Error ? err.message : String(err)}.`,
+          `Failed to create index ${parsed.indexName} - ${error instanceof Error ? error.message : String(error)}.`,
         );
         continue;
       }

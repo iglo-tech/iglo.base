@@ -17,12 +17,14 @@ import {
   mintBrowserToken,
   OAuth2Error,
   SSR_NO_CACHE_HEADERS,
-  type BrowserToken,
-  type CookieAdapter,
-  type CreateServerClientOptions,
-  type ServerClient,
-  type SessionCache,
-  type SuperuserClient,
+} from "@sdk/ssr/index";
+import type {
+  BrowserToken,
+  CookieAdapter,
+  CreateServerClientOptions,
+  ServerClient,
+  SessionCache,
+  SuperuserClient,
 } from "@sdk/ssr/index";
 
 /** The paths the adapter answers. A route set to `false` is not mounted. */
@@ -68,7 +70,7 @@ export interface AdapterOptions {
    * The CSRF guard on state-changing requests that carry the session cookie. `false` turns it
    * off; `allowedOrigins` lists the other origins that may send them.
    */
-  csrf?: false | { allowedOrigins?: readonly string[] };
+  csrf?: false | { allowedOrigins?: ReadonlyArray<string> };
   /** Lifetime of minted browser tokens in seconds (default 900). */
   browserTokenDuration?: number;
   routes?: Partial<AdapterRoutes>;
@@ -280,7 +282,7 @@ export async function resumeSession(
  * is configured, since behind a proxy the request's URL can name another origin) and the
  * `allowedOrigins` the app lists.
  */
-function allowedOriginsOf(options: ResolvedAdapterOptions): string[] {
+function allowedOriginsOf(options: ResolvedAdapterOptions): Array<string> {
   const listed = options.csrf === false ? [] : (options.csrf?.allowedOrigins ?? []);
   return options.origin ? [new URL(options.origin).origin, ...listed] : [...listed];
 }
@@ -392,16 +394,20 @@ export async function handleRoute(
         redirectTo: searchParams.get("redirectTo") ?? "/",
       });
       return redirectWithCookies(location, cookies);
-    } catch (err: unknown) {
-      if (err instanceof OAuth2Error) {
+    } catch (error: unknown) {
+      if (error instanceof OAuth2Error) {
         const status =
-          err.kind === "unknown-provider" ? 404 : err.kind === "unsupported-provider" ? 400 : 500;
-        return jsonError(status, err.message);
+          error.kind === "unknown-provider"
+            ? 404
+            : error.kind === "unsupported-provider"
+              ? 400
+              : 500;
+        return jsonError(status, error.message);
       }
-      if (err instanceof ClientResponseError) {
+      if (error instanceof ClientResponseError) {
         return jsonError(502, "iglo.base refused the OAuth2 start.");
       }
-      throw err;
+      throw error;
     }
   }
 

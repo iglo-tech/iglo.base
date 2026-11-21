@@ -12,7 +12,8 @@ import { AuthUser, BaseProvider } from "@/oauth2/base-provider";
 import { validateTokenSignature } from "@/oauth2/jwk";
 import type { Token } from "@/oauth2/token";
 import { constantTimeCompare } from "@/tools/security/crypto";
-import { type MapClaims, parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import { parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { toBool, toString, toStringSlice } from "@/tools/types/cast";
 import { DateTime } from "@/tools/types/datetime";
 import {
@@ -149,8 +150,10 @@ export class OIDC extends BaseProvider {
     if (jwksURL !== "") {
       try {
         await validateTokenSignature(this.signal, idToken, jwksURL, this.clock);
-      } catch (err) {
-        throw new Error(`id_token validation failed: ${(err as Error).message}`, { cause: err });
+      } catch (error) {
+        throw new Error(`id_token validation failed: ${(error as Error).message}`, {
+          cause: error,
+        });
       }
     }
 

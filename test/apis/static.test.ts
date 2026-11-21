@@ -17,9 +17,11 @@ import { newRouter, staticHandler, StaticWildcardParam } from "@/apis/base";
 import { dirFS } from "@/apis/static-fs";
 import { RequestEvent } from "@/app/event-request";
 import { ApiError } from "@/server/error";
-import { ResponseWriter, type Mux } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux } from "@/server/router";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { tempDir } from "@test/support/executable";
 import { newTestRequest, serveTest } from "@test/support/router";
 
@@ -60,7 +62,7 @@ describe("TestStatic", () => {
     expectError: boolean;
   }
 
-  const scenarios: StaticScenario[] = [
+  const scenarios: Array<StaticScenario> = [
     {
       path: "",
       indexFallback: false,
@@ -124,13 +126,13 @@ describe("TestStatic", () => {
   // extra directory traversal checks
   const dtp = [
     "/../",
-    "\\../",
+    String.raw`\../`,
     "../",
     "../../",
     "..\\",
     "..\\..\\",
     "../..\\",
-    "..\\..//",
+    String.raw`..\..//`,
     "%2e%2e%2f",
     "%2e%2e%2f%2e%2e%2f",
     "%2e%2e/",
@@ -208,7 +210,7 @@ describe("TestEventFileFS", () => {
   // FileFS through Static: for an existing file or a directory with a
   // trailing slash, Static serves it with FileFS; "" is fs.ValidPath's
   // failure, reached here as the stat of the root's missing name
-  const scenarios: [name: string, path: string, expected: string][] = [
+  const scenarios: Array<[name: string, path: string, expected: string]> = [
     ["root with no explicit file", "/", "index"],
     ["root with explicit file", "/test.txt", "test"],
     ["sub dir with no explicit file", "/sub1/", "sub1 index"],

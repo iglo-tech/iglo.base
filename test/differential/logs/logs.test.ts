@@ -20,7 +20,7 @@ const timeout = 60_000;
 const userToken =
   "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo";
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -49,7 +49,7 @@ const json = { "content-type": "application/json" };
 const expiredToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.5Tm6_6amQqOlX3urAnXlEdmxwG5qQJfiTg6U0hHR1hk";
 
-const requests: Request[] = [
+const requests: Array<Request> = [
   // successes
   { path: "/api/health?a=1" },
   { path: "/api/health?a=%20b&c=d+e", headers: { Referer: "http://example.com/x" } },
@@ -160,31 +160,38 @@ const requests: Request[] = [
 ];
 
 async function send(url: string, r: Request): Promise<void> {
+  const headers: Record<string, string> = { ...r.headers };
+  if (r.token) {
+    headers.Authorization = r.token;
+  }
   const res = await fetch(url + r.path, {
     method: r.method ?? "GET",
     redirect: "manual",
-    headers: { ...r.headers, ...(r.token ? { Authorization: r.token } : {}) },
+    headers,
     body: r.body,
   });
   await res.arrayBuffer();
 }
 
-function readRows(dataDir: string): Row[] {
+function readRows(dataDir: string): Array<Row> {
   const db = new Database(join(dataDir, "auxiliary.db"), { readonly: true });
   try {
     return db
       .query("SELECT level, message, data, created FROM _logs WHERE message != 'fixture'")
-      .all() as Row[];
+      .all() as Array<Row>;
   } finally {
     db.close();
   }
 }
 
 // the time and id of a row differ; everything else is compared as stored
-function normalized(rows: Row[]): string[] {
+function normalized(rows: Array<Row>): Array<string> {
   return rows
-    .filter((row) => row.message !== "GET /api/health") // the harness's ready checks
-    .map((row) => {
+    .flatMap((row) => {
+      if (row.message === "GET /api/health") {
+        // the harness's ready checks
+        return [];
+      }
       expect(row.created).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/);
       // a request row has its time; a debug row (realtime) has none
       if (row.data.includes('"type":"request"')) {
@@ -195,7 +202,7 @@ function normalized(rows: Row[]): string[] {
         .replace(/"clientId":"[^"]*"/, '"clientId":""');
       // a batch failure's details are a Go map marshaled without an order
       const data = row.message === "POST /api/batch" ? sortedKeys(raw) : raw;
-      return `${row.level} ${row.message} ${data}`;
+      return [`${row.level} ${row.message} ${data}`];
     })
     .toSorted();
 }
@@ -335,7 +342,7 @@ describe("request logs", () => {
         await startUpstream({ dataDir: fixtureCopy(logs) }),
         await startServer([], fixtureCopy(logs)),
       ];
-      const stats: string[] = [];
+      const stats: Array<string> = [];
       for (const server of servers) {
         await send(server.url, { path: "/api/logs/nope", token: superuserToken });
         expect(
@@ -349,10 +356,10 @@ describe("request logs", () => {
         const res = await fetch(`${server.url}/api/logs/stats?filter=data.status>=400`, {
           headers: { Authorization: superuserToken },
         });
-        stats.push((await res.text()).replace(/"date":"[^"]+"/g, '"date":""'));
+        stats.push((await res.text()).replaceAll(/"date":"[^"]+"/g, '"date":""'));
         await server.stop();
       }
-      expect(stats[1]).toBe(stats[0]!);
+      expect(stats[1]).toBe(stats[0]);
     },
     timeout,
   );

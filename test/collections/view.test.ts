@@ -7,7 +7,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { findCollectionByNameOrId, runInAppTransaction } from "@/collections/collection-query";
-import { type Collection, newViewCollection } from "@/collections/collection-model";
+import { newViewCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { saveCollection } from "@/collections/collection-save";
 import { createViewFields, dryRunView, findRecordByViewFile, saveView } from "@/collections/view";
 import { NoRowsError } from "@/db/dbx/rows";
@@ -15,15 +16,16 @@ import { HashExp, newExp } from "@/db/dbx/expression";
 import { deleteView, tableInfo } from "@/db/table";
 import { NumberField } from "@/fields/number";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -59,7 +61,7 @@ describe("TestDeleteView", () => {
   });
 
   test("delete view scenarios", () => {
-    const scenarios: { viewName: string; expectError: boolean }[] = [
+    const scenarios: Array<{ viewName: string; expectError: boolean }> = [
       { viewName: "", expectError: true },
       { viewName: "demo1", expectError: true }, // not a view table
       { viewName: "missing", expectError: false }, // missing or already deleted
@@ -96,13 +98,13 @@ describe("TestSaveView", () => {
     }
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     scenarioName: string;
     viewName: string;
     query: string;
     expectError: boolean;
-    expectColumns: string[] | null;
-  }[] = [
+    expectColumns: Array<string> | null;
+  }> = [
     {
       scenarioName: "empty name and query",
       viewName: "",
@@ -252,12 +254,12 @@ describe("TestCreateViewFields", () => {
     }
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     query: string;
     expectError: boolean;
     expectFields: Record<string, string> | null; // name-type pairs
-  }[] = [
+  }> = [
     {
       name: "empty query",
       query: "",
@@ -663,7 +665,7 @@ describe("TestCreateViewFieldsWithNumberOnlyInt", () => {
 describe("TestFindRecordByViewFile", () => {
   let app: TestCollectionsApp;
   const totalLevels = 6;
-  const mockCollections: Collection[] = [];
+  const mockCollections: Array<Collection> = [];
 
   beforeAll(() => {
     app = openTestApp();
@@ -695,7 +697,7 @@ describe("TestFindRecordByViewFile", () => {
   const fileManyName = "test_QZFjKjXchk.txt";
   const expectedRecordId = "84nmscqy84lsi1t";
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collectionNameOrId: () => string;
     fileFieldName: string;
@@ -704,7 +706,7 @@ describe("TestFindRecordByViewFile", () => {
     expectRecordId: string;
     // not upstream's: the error text
     expectErrorText?: string;
-  }[] = [
+  }> = [
     {
       name: "missing collection",
       collectionNameOrId: () => "missing",
@@ -806,6 +808,7 @@ describe("TestFindRecordByViewFile", () => {
         return;
       }
 
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       const found = record as unknown as ReturnType<typeof findRecordByViewFile>;
       expect(found.id).toBe(s.expectRecordId);
       expect(found.collection().name).toBe("demo1");
@@ -828,14 +831,14 @@ describe("TestDryRunView", () => {
     }
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     query: string;
     sampleSize: number;
     expectError: boolean;
     expectFields: Record<string, string> | null; // name-type pairs
-    expectSampleIds: string[] | null; // record ids of the resulting sample
-  }[] = [
+    expectSampleIds: Array<string> | null; // record ids of the resulting sample
+  }> = [
     {
       name: "empty query",
       query: "",
@@ -922,9 +925,9 @@ describe("TestDryRunView", () => {
       let result: ReturnType<typeof dryRunView>;
       try {
         result = dryRunView(app, s.query, s.sampleSize);
-      } catch (err) {
+      } catch (error) {
         if (!s.expectError) {
-          throw err;
+          throw error;
         }
         return;
       }

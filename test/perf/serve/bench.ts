@@ -37,7 +37,7 @@ interface Workload {
   status?: number;
 }
 
-const workloads: Workload[] = [
+const workloads: Array<Workload> = [
   { name: "static 4 KiB script", path: "/app.js" },
   { name: "static 1 MiB image", path: "/photo.png" },
   { name: "SPA fallback (missing path)", path: "/some/route" },
@@ -54,7 +54,7 @@ async function run(
   w: Workload,
   n: number,
 ): Promise<{ rps: number; p50: number; p99: number; status: number }> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   let next = 0;
   let status = 0;
   const started = performance.now();
@@ -129,7 +129,7 @@ try {
   writeFileSync(join(pub, "photo.png"), png);
 
   const targets = ["upstream", "iglo.base", ...(values.before ? ["before"] : [])];
-  const results: string[] = [];
+  const results: Array<string> = [];
   for (const target of targets) {
     const copy = join(root, target, "pb_data");
     copyDataDir(fixtureDir, copy);

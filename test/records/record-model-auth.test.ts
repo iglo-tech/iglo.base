@@ -1,4 +1,5 @@
 // Upstream: core/record_model_auth_test.go
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -9,7 +10,8 @@ import { newRecord } from "@/records/record-model";
 import { pseudorandomString } from "@/tools/security/random";
 import { fieldApp } from "@/collections/collection-query";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 test("RecordEmail", () => {
   const record = newRecord(newAuthCollection("test"));
@@ -61,7 +63,7 @@ test("RecordTokenKey", () => {
 });
 
 describe("RecordPassword", () => {
-  const scenarios: [string, string, boolean][] = [
+  const scenarios: Array<[string, string, boolean]> = [
     ["empty password", "", false],
     ["non-empty password", "123456", true],
   ];
@@ -109,7 +111,7 @@ describe("RecordSetRandomPassword", () => {
     expect(record.tokenKey()).not.toBe(oldTokenKey);
 
     const f = record.collection().fields.getByName(FieldNamePassword);
-    if (!(f instanceof PasswordField)) {
+    if (!isInstance(PasswordField, f)) {
       throw new Error("Expected PasswordField");
     }
 

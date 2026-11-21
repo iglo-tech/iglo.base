@@ -18,7 +18,7 @@ type After = (ctx: AfterContext) => Promise<void>;
 // ensureDeletedFiles of TestCollectionDelete)
 export function collectionFilesDeleted(collectionId: string): After {
   return ({ dataDir }) => {
-    let entries: string[] = [];
+    let entries: Array<string> = [];
     try {
       entries = readdirSync(join(dataDir, "storage", collectionId));
     } catch {
@@ -34,13 +34,13 @@ export function collectionFilesDeleted(collectionId: string): After {
 }
 
 // app.TableIndexes(table) has exactly these index names
-export function tableIndexesAre(table: string, ...names: string[]): After {
+export function tableIndexesAre(table: string, ...names: Array<string>): After {
   return ({ dataDir }) => {
     const rows = queryRows(
       dataDir,
       "SELECT name FROM sqlite_master WHERE sql IS NOT NULL AND type = 'index' AND tbl_name = ?",
       table,
-    ) as { name: string }[];
+    ) as Array<{ name: string }>;
     const got = rows.map((r) => r.name).toSorted();
     if (got.join(",") !== names.toSorted().join(",")) {
       return Promise.reject(
@@ -70,7 +70,7 @@ export function tableExists(table: string): After {
 // (the number of system ones)
 export function collectionsCount(n: number | ((systemCount: number) => number)): After {
   return ({ dataDir }) => {
-    const rows = queryRows(dataDir, "SELECT system FROM _collections") as { system: number }[];
+    const rows = queryRows(dataDir, "SELECT system FROM _collections") as Array<{ system: number }>;
     const expected = typeof n === "number" ? n : n(rows.filter((r) => r.system).length);
     if (rows.length !== expected) {
       return Promise.reject(new Error(`Expected ${expected} collections, got ${rows.length}`));
@@ -90,7 +90,7 @@ export function addDemo1Index(name: string): (ctx: PrepareContext) => void {
 // this order
 export function oauth2ProvidersAre(
   collection: string,
-  ...names: string[]
+  ...names: Array<string>
 ): (ctx: PrepareContext) => void {
   return ({ dataDir }) => {
     const db = new Database(join(dataDir, "data.db"), { readonly: true });
@@ -98,7 +98,7 @@ export function oauth2ProvidersAre(
       const row = db.query("SELECT options FROM _collections WHERE name = ?").get(collection) as {
         options: string;
       };
-      const options = JSON.parse(row.options) as { oauth2: { providers: { name: string }[] } };
+      const options = JSON.parse(row.options) as { oauth2: { providers: Array<{ name: string }> } };
       const got = options.oauth2.providers.map((p) => p.name);
       if (got.join(",") !== names.join(",")) {
         throw new Error(`Expected OAuth2 providers ${names.join(", ")}, got ${got.join(", ")}`);

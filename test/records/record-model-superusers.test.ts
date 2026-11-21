@@ -13,7 +13,8 @@ import { countRecords, findAuthRecordByEmail, findRecordById } from "@/records/r
 import { deleteRecord, saveRecord, saveRecordSync } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 describe("RecordIsSuperUser", () => {
   let app: TestCollectionsApp;
@@ -143,7 +144,7 @@ describe("superusers record checks", () => {
     const last = findRecordById(app, CollectionNameSuperusers, all[0] as string);
     const err = await deleteRecord(app, last).then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     expect(err).toBeInstanceOf(ApiError);
     expect((err as ApiError).toJSON()).toEqual({

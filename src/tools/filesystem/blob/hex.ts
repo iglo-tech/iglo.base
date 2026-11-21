@@ -16,7 +16,10 @@
 // index. Passing it a single byte or a single rune doesn't provide enough
 // context for some escape decisions; for example, the caller might want to
 // escape the second "/" in "//" but not the first one.
-export function HexEscape(s: string, shouldEscape: (s: number[], i: number) => boolean): string {
+export function HexEscape(
+  s: string,
+  shouldEscape: (s: Array<number>, i: number) => boolean,
+): string {
   // Do a first pass to see which runes (if any) need escaping.
   const runes = toRunes(s);
   const toEscape = new Set<number>();
@@ -47,7 +50,7 @@ export function HexEscape(s: string, shouldEscape: (s: number[], i: number) => b
 // It returns a boolean indicating whether the unescaping was successful,
 // and (if true) the unescaped rune and the last index of r that was used
 // during unescaping.
-function unescape(r: number[], i: number): [boolean, number, number] {
+function unescape(r: Array<number>, i: number): [boolean, number, number] {
   const underscore = 0x5f;
   // Look for "__0x".
   if (r[i] !== underscore) {
@@ -68,7 +71,7 @@ function unescape(r: number[], i: number): [boolean, number, number] {
   i++;
 
   // Capture the digits until the next "_" (if any).
-  const hexdigits: number[] = [];
+  const hexdigits: Array<number> = [];
   for (; i < r.length && r[i] !== underscore; i++) {
     hexdigits.push(r[i] as number);
   }
@@ -113,7 +116,7 @@ function parseInt32Hex(s: string): number | null {
 
 // HexUnescape reverses HexEscape.
 export function HexUnescape(s: string): string {
-  let unescaped: number[] | null = null;
+  let unescaped: Array<number> | null = null;
 
   const runes = toRunes(s);
   for (let i = 0; i < runes.length; i++) {
@@ -141,21 +144,23 @@ export function HexUnescape(s: string): string {
 }
 
 // []rune(s): invalid bytes and lone surrogates become U+FFFD
-function toRunes(s: string): number[] {
-  const runes: number[] = [];
+function toRunes(s: string): Array<number> {
+  const runes: Array<number> = [];
   for (const ch of s) {
     const c = ch.codePointAt(0) as number;
-    runes.push(c >= 0xd800 && c <= 0xdfff ? 0xfffd : c);
+    runes.push(c >= 0xd8_00 && c <= 0xdf_ff ? 0xff_fd : c);
   }
   return runes;
 }
 
 // string(runes): a rune outside the valid range (a negative, a surrogate or
 // a too large value) becomes U+FFFD
-function runesToString(runes: number[]): string {
+function runesToString(runes: Array<number>): string {
   let out = "";
   for (const r of runes) {
-    out += String.fromCodePoint(r < 0 || r > 0x10ffff || (r >= 0xd800 && r <= 0xdfff) ? 0xfffd : r);
+    out += String.fromCodePoint(
+      r < 0 || r > 0x10_ff_ff || (r >= 0xd8_00 && r <= 0xdf_ff) ? 0xff_fd : r,
+    );
   }
   return out;
 }

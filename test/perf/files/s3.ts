@@ -32,7 +32,7 @@ function rss(pid: number): number {
   }
 }
 
-function percentile(sorted: number[], p: number): number {
+function percentile(sorted: Array<number>, p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
 }
 
@@ -41,7 +41,7 @@ function round(n: number): number {
 }
 
 function sampleHealth(url: string): { stop: () => Promise<Record<string, number>> } {
-  const times: number[] = [];
+  const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {
     while (state.running) {
@@ -66,7 +66,7 @@ function sampleHealth(url: string): { stop: () => Promise<Record<string, number>
   };
 }
 
-async function curl(args: string[]): Promise<string> {
+async function curl(args: Array<string>): Promise<string> {
   const proc = Bun.spawn(["curl", "-sSf", ...args], { stdout: "pipe", stderr: "inherit" });
   const out = await new Response(proc.stdout).text();
   if ((await proc.exited) !== 0) {
@@ -75,7 +75,7 @@ async function curl(args: string[]): Promise<string> {
   return out;
 }
 
-async function measure(name: string, command: string[], source: string): Promise<void> {
+async function measure(name: string, command: Array<string>, source: string): Promise<void> {
   const root = join(workDir, name);
   const dataDir = join(root, "pb_data");
   mkdirSync(root, { recursive: true });

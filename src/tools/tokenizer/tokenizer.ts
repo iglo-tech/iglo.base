@@ -19,7 +19,7 @@ import { goQuote } from "@/fields/field";
 const eof = 0;
 
 // DefaultSeparators is a list with the default token separator characters.
-export const DefaultSeparators: readonly string[] = Object.freeze([","]);
+export const DefaultSeparators: ReadonlyArray<string> = Object.freeze([","]);
 
 const whitespaceChars = ["\t", "\n", "\v", "\f", "\r", " ", "\u0085", " "];
 
@@ -30,7 +30,7 @@ export class Tokenizer {
   private lastSize = -1;
 
   private trimCutset = "";
-  private separators: string[] = [];
+  private separators: Array<string> = [];
   private keepSeparatorState = false;
   private keepEmptyTokensState = false;
   private ignoreParenthesisState = false;
@@ -47,7 +47,7 @@ export class Tokenizer {
   }
 
   // Separators defines the provided separatos of the current Tokenizer.
-  setSeparators(...separators: string[]): void {
+  setSeparators(...separators: Array<string>): void {
     this.separators = separators;
 
     this.rebuildTrimCutset();
@@ -95,8 +95,8 @@ export class Tokenizer {
   }
 
   // ScanAll reads the entire Tokenizer's buffer and return all found tokens.
-  scanAll(): string[] {
-    const tokens: string[] = [];
+  scanAll(): Array<string> {
+    const tokens: Array<string> = [];
 
     for (;;) {
       const token = this.scan();
@@ -173,9 +173,9 @@ export class Tokenizer {
     }
 
     let ch = this.r.codePointAt(this.pos) as number;
-    const size = ch > 0xffff ? 2 : 1;
-    if (ch >= 0xd800 && ch <= 0xdfff) {
-      ch = 0xfffd; // an invalid UTF-8 byte
+    const size = ch > 0xff_ff ? 2 : 1;
+    if (ch >= 0xd8_00 && ch <= 0xdf_ff) {
+      ch = 0xff_fd; // an invalid UTF-8 byte
     }
     this.pos += size;
     this.lastSize = size;
@@ -230,7 +230,7 @@ export class Tokenizer {
 // strings.Trim: s without the leading and trailing runes in cutset
 function trim(s: string, cutset: string): string {
   const set = new Set(cutset);
-  const chars = [...s];
+  const chars = Array.from(s);
   let start = 0;
   let end = chars.length;
   while (start < end && set.has(chars[start] as string)) {

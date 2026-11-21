@@ -92,7 +92,7 @@ export function recordCount(collection: string, n: number): After {
 }
 
 // rows of a query on the server's data.db (read only)
-export function queryRows(dataDir: string, sql: string, ...args: string[]): unknown[] {
+export function queryRows(dataDir: string, sql: string, ...args: Array<string>): Array<unknown> {
   const db = new Database(join(dataDir, "data.db"), { readonly: true });
   try {
     return db.query(sql).all(...args);
@@ -104,9 +104,13 @@ export function queryRows(dataDir: string, sql: string, ...args: string[]): unkn
 // the record's stored password hash matches (record.ValidatePassword)
 export function passwordIs(collection: string, id: string, password: string): After {
   return async ({ dataDir }) => {
-    const rows = queryRows(dataDir, `SELECT password FROM "${collection}" WHERE id = ?`, id) as {
+    const rows = queryRows(
+      dataDir,
+      `SELECT password FROM "${collection}" WHERE id = ?`,
+      id,
+    ) as Array<{
       password: string;
-    }[];
+    }>;
     const hash = rows[0]?.password ?? "";
     if (hash === "" || !(await Bun.password.verify(password, hash))) {
       throw new Error(`${collection}/${id}: the password was not changed`);
@@ -151,7 +155,7 @@ export function externalAuthsCount(collectionId: string, recordId: string, n: nu
 export function filesDeleted(collectionId: string, recordId: string): After {
   return async ({ dataDir }) => {
     const { readdirSync } = await import("node:fs");
-    let entries: string[] = [];
+    let entries: Array<string> = [];
     try {
       entries = readdirSync(join(dataDir, "storage", collectionId, recordId));
     } catch {
@@ -166,7 +170,7 @@ export function filesDeleted(collectionId: string, recordId: string): After {
 }
 
 // runs the checks in order
-export function checks(...list: After[]): After {
+export function checks(...list: Array<After>): After {
   return async (ctx) => {
     for (const check of list) {
       await check(ctx);
@@ -186,16 +190,16 @@ export function responsePasswordIs(collection: string, password: string): After 
 // invalidates the superuser token the API checks use)
 export function rowHas(table: string, id: string, columns: { [key: string]: unknown }): After {
   return ({ dataDir }) => {
-    const rows = queryRows(dataDir, `SELECT * FROM "${table}" WHERE id = ?`, id) as {
+    const rows = queryRows(dataDir, `SELECT * FROM "${table}" WHERE id = ?`, id) as Array<{
       [key: string]: unknown;
-    }[];
+    }>;
     if (rows.length !== 1) {
       return Promise.reject(new Error(`${table}/${id}: expected the row, got ${rows.length}`));
     }
     try {
       expectFields(`${table}/${id}`, rows[0] as { [key: string]: unknown }, columns);
-    } catch (err) {
-      return Promise.reject(err as Error);
+    } catch (error) {
+      return Promise.reject(error);
     }
     return Promise.resolve();
   };

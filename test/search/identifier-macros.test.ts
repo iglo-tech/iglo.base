@@ -12,7 +12,7 @@ test("IdentifierMacros", () => {
   // time.Date(2023, 2, 3, 4, 5, 6, 7, time.UTC): a Date holds milliseconds,
   // which the macros read as whole milliseconds as well
   const now = new Date(Date.UTC(2023, 1, 3, 4, 5, 6, 0));
-  expect(fromDate(now)).toEqual({ sec: 1675397106, nsec: 0 });
+  expect(fromDate(now)).toEqual({ sec: 1_675_397_106, nsec: 0 });
 
   const testMacros = new Map<string, unknown>([
     ["@now", "2023-02-03 04:05:06.000Z"],
@@ -44,7 +44,7 @@ test("IdentifierMacros", () => {
 
 test("IdentifierMacros month and year ends", () => {
   // leap years, December and the 31st, as Go's AddDate(0, 1, -1) gives them
-  const cases: [Date, string, string][] = [
+  const cases: Array<[Date, string, string]> = [
     [new Date(Date.UTC(2024, 1, 29, 12)), "2024-02-29 23:59:59.999Z", "2024-02-28 12:00:00.000Z"],
     [
       new Date(Date.UTC(2023, 11, 31, 23, 59, 59, 999)),

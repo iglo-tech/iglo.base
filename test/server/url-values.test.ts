@@ -5,7 +5,7 @@ import { expect, test } from "bun:test";
 
 import { encodeValues, parseQuery, queryEscape } from "@/server/request";
 
-test.each<[Map<string, string[]>, string]>([
+test.each<[Map<string, Array<string>>, string]>([
   [new Map(), ""],
   [
     new Map([

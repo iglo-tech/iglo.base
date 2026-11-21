@@ -37,10 +37,10 @@ conn.run(`CREATE TABLE \`posts\` (
 let seed = 42;
 // mulberry32
 function rand(): number {
-  seed = (seed + 0x6d2b79f5) | 0;
+  seed = (seed + 0x6d_2b_79_f5) | 0;
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
 }
 const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
 const words =
@@ -58,10 +58,14 @@ for (let done = 0; done < total; done += batch) {
   conn.transaction(() => {
     for (let i = done; i < Math.min(total, done + batch); i++) {
       let id = "";
-      for (let j = 0; j < 15; j++) id += alphabet[Math.floor(rand() * alphabet.length)];
+      for (let j = 0; j < 15; j++) {
+        id += alphabet[Math.floor(rand() * alphabet.length)];
+      }
       const created = new Date(start + i * 30_000).toISOString().replace("T", " ");
       let body = "";
-      while (body.length < 200) body += words[Math.floor(rand() * words.length)] + " ";
+      while (body.length < 200) {
+        body += words[Math.floor(rand() * words.length)] + " ";
+      }
       ins.run(
         id,
         created,

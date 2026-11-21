@@ -35,7 +35,7 @@ type Route = (seen: Seen) => Response | Promise<Response>;
 
 /** A fetch that answers by `METHOD /path` and records every call. */
 function fakeIglo(routes: Record<string, Route>) {
-  const calls: Seen[] = [];
+  const calls: Array<Seen> = [];
   const fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input));
     const method = (init?.method ?? "GET").toUpperCase();
@@ -62,7 +62,7 @@ function json(status: number, body: unknown, date = new Date()): Response {
   });
 }
 
-const authMethods = (overrides: { enabled?: boolean; providers?: unknown[] } = {}) => ({
+const authMethods = (overrides: { enabled?: boolean; providers?: Array<unknown> } = {}) => ({
   password: { enabled: false, identityFields: [] },
   otp: { enabled: false, duration: 0 },
   mfa: { enabled: false, duration: 0 },
@@ -267,7 +267,7 @@ describe("OAuth2 redirect flow: start", () => {
     const pb = await createServerClient({ url: API, cookies, request, fetch: iglo.fetch });
     const error = await pb
       .startOAuth2("github", { callbackUrl: CALLBACK })
-      .catch((e: unknown) => e);
+      .catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(OAuth2Error);
     expect((error as OAuth2Error).kind).toBe("unknown-provider");
     expect(cookies.queuedCookies).toEqual([]);
@@ -282,7 +282,9 @@ describe("OAuth2 redirect flow: start", () => {
       cookies: createRequestCookieAdapter(new Request(`${APP}/login`)),
       fetch: iglo.fetch,
     });
-    const error = await pb.startOAuth2("oidc", { callbackUrl: CALLBACK }).catch((e: unknown) => e);
+    const error = await pb
+      .startOAuth2("oidc", { callbackUrl: CALLBACK })
+      .catch((error_: unknown) => error_);
     expect((error as OAuth2Error).kind).toBe("unknown-provider");
   });
 
@@ -296,7 +298,9 @@ describe("OAuth2 redirect flow: start", () => {
       cookies: createRequestCookieAdapter(new Request(`${APP}/login`)),
       fetch: iglo.fetch,
     });
-    const error = await pb.startOAuth2("oidc", { callbackUrl: CALLBACK }).catch((e: unknown) => e);
+    const error = await pb
+      .startOAuth2("oidc", { callbackUrl: CALLBACK })
+      .catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ClientResponseError);
   });
 
@@ -309,7 +313,7 @@ describe("OAuth2 redirect flow: start", () => {
     });
     const error = await pb
       .startOAuth2("oidc", { callbackUrl: "/callback" })
-      .catch((e: unknown) => e);
+      .catch((error_: unknown) => error_);
     expect((error as OAuth2Error).kind).toBe("invalid-callback");
     expect(iglo.calls).toEqual([]);
   });
@@ -539,7 +543,7 @@ describe("OAuth2 redirect flow: complete", () => {
     for (const redirectTo of [
       "https://evil.example",
       "//evil.example",
-      "/\\evil.example",
+      String.raw`/\evil.example`,
       "javascript:alert(1)",
       "evil",
       "/%09/evil.example",
@@ -820,7 +824,9 @@ describe("OAuth2 redirect flow: cookie names follow the origin", () => {
     const cookies = createRequestCookieAdapter(request);
     const pb = await createServerClient({ url: API, cookies, request, fetch: iglo.fetch });
 
-    const error = await pb.startOAuth2("apple", { callbackUrl: CALLBACK }).catch((e: unknown) => e);
+    const error = await pb
+      .startOAuth2("apple", { callbackUrl: CALLBACK })
+      .catch((error_: unknown) => error_);
 
     expect(error).toBeInstanceOf(OAuth2Error);
     expect((error as OAuth2Error).kind).toBe("unsupported-provider");

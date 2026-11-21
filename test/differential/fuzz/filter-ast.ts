@@ -3,7 +3,7 @@
 
 export type FilterNode =
   | { k: "cond"; left: string; op: string; right: string; gap: string }
-  | { k: "join"; op: "&&" | "||"; items: FilterNode[]; gap: string }
+  | { k: "join"; op: "&&" | "||"; items: Array<FilterNode>; gap: string }
   | { k: "paren"; inner: FilterNode }
   // text that is not a well-formed tree: invalid forms, comments, mutations
   | { k: "raw"; text: string };

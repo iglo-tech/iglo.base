@@ -16,12 +16,13 @@ import { usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext } from "@test/scenarios/scenario";
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
-import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
+import { sharedSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage } from "@test/support/smtp-sink";
 
 const email = "test@example.com";
 const userId = "4q1xlclmfloku33";
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -48,17 +49,18 @@ async function withServer(dataDir: string, fn: (url: string) => Promise<void>): 
 }
 
 function post(url: string, path: string, body: unknown, token?: string): Promise<Response> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token !== undefined) {
+    headers.Authorization = token;
+  }
   return fetch(`${url}/api/collections/users/${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token === undefined ? {} : { Authorization: token }),
-    },
+    headers,
     body: JSON.stringify(body),
   });
 }
 
-function messagesSince(since: number, link: string): SinkMessage[] {
+function messagesSince(since: number, link: string): Array<SinkMessage> {
   return sharedSmtpSink().messages.filter((m) => m.received >= since && m.data.includes(link));
 }
 
@@ -92,7 +94,7 @@ const checked = (url: string, dataDir: string): AfterContext => ({
 });
 
 describe("existing auth record (after already sent)", () => {
-  const cases: [string, string, string][] = [
+  const cases: Array<[string, string, string]> = [
     [
       "apis/record_auth_verification_request_test.go",
       "request-verification",
@@ -169,7 +171,7 @@ describe("the mailed tokens", () => {
       const request = await post(url, "request-email-change", { newEmail }, usersToken);
       expect(request.status).toBe(204);
       // sent before the response
-      const message = (messagesSince(since, link)[0] as SinkMessage | undefined) ?? null;
+      const message = messagesSince(since, link)[0] ?? null;
       expect(message?.to).toEqual([newEmail]);
       const token = mailedToken(message as SinkMessage, link);
 

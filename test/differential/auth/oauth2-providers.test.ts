@@ -17,14 +17,15 @@ import { OAuth2ProviderConfig } from "@/collections/collection-model-auth-option
 import {
   appleSecretPrivateKey,
   authMethodsProviders,
-  type ProviderCase,
   providerCases,
 } from "@test/differential/auth/oauth2-provider-cases";
+import type { ProviderCase } from "@test/differential/auth/oauth2-provider-cases";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { updateCollection } from "@test/scenarios/prepare";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
-import { type MockRequest, sharedOAuth2Mock } from "@test/support/oauth2-mock";
+import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
+import type { MockRequest } from "@test/support/oauth2-mock";
 import { startUpstream } from "@test/support/upstream";
 
 const timeout = 120_000;
@@ -36,7 +37,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -73,16 +74,16 @@ function scrub(transcript: unknown): string {
     return value;
   };
   return JSON.stringify(sorted(transcript), null, 2)
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<token>")
-    .replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "<date>")
-    .replace(/"(id|recordRef|mfaId)": "[a-z0-9]{15}"/g, '"$1": "<id>"')
-    .replace(/users[0-9]{5}/g, "<username>")
-    .replace(/\b[A-Za-z0-9]{40}\b/g, "<client>")
-    .replace(/logo_[a-z0-9]{10}_[a-z0-9]{10}\.png/g, "<file>");
+    .replaceAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<token>")
+    .replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "<date>")
+    .replaceAll(/"(id|recordRef|mfaId)": "[a-z0-9]{15}"/g, '"$1": "<id>"')
+    .replaceAll(/users[0-9]{5}/g, "<username>")
+    .replaceAll(/\b[A-Za-z0-9]{40}\b/g, "<client>")
+    .replaceAll(/logo_[a-z0-9]{10}_[a-z0-9]{10}\.png/g, "<file>");
 }
 
 // what the mock saw of one provider, without its per-server ids
-const seen = (requests: MockRequest[]) =>
+const seen = (requests: Array<MockRequest>) =>
   requests.map((r) => ({
     method: r.method,
     path: r.path,
@@ -215,7 +216,7 @@ async function authMethods(kind: Kind): Promise<unknown> {
     const res = await fetch(`${server.url}/api/collections/users/auth-methods`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      oauth2: { providers: { [key: string]: unknown }[] };
+      oauth2: { providers: Array<{ [key: string]: unknown }> };
     };
     // state and the PKCE values are generated for each request
     return body.oauth2.providers.map((p) => ({
@@ -307,8 +308,8 @@ describe("Apple client secret", () => {
       expect(igloBase.raw.header).toBe(upstream.raw.header);
       // the same members in the same order, the same audience form
       expect(Object.keys(igloBase.claims)).toEqual(Object.keys(upstream.claims));
-      expect(igloBase.raw.claims.replace(/"(iat|exp)":\d+/g, "")).toBe(
-        upstream.raw.claims.replace(/"(iat|exp)":\d+/g, ""),
+      expect(igloBase.raw.claims.replaceAll(/"(iat|exp)":\d+/g, "")).toBe(
+        upstream.raw.claims.replaceAll(/"(iat|exp)":\d+/g, ""),
       );
       expect(igloBase.claims["exp"] as number).toBe((igloBase.claims["iat"] as number) + 3600);
       expect(upstream.claims["exp"] as number).toBe((upstream.claims["iat"] as number) + 3600);

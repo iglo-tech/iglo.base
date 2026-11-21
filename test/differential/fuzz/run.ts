@@ -2,9 +2,11 @@
 // concurrency, retries clock-dependent differences once, shrinks the rest and
 // keeps a bounded number of distinct failures.
 
-import { type CaseResult, requestPath, runCase, sortText } from "@test/differential/fuzz/compare";
+import { requestPath, runCase, sortText } from "@test/differential/fuzz/compare";
+import type { CaseResult } from "@test/differential/fuzz/compare";
 import { printFilter } from "@test/differential/fuzz/filter-ast";
-import { type FuzzCase, generateCase } from "@test/differential/fuzz/generate";
+import { generateCase } from "@test/differential/fuzz/generate";
+import type { FuzzCase } from "@test/differential/fuzz/generate";
 import type { FuzzServers } from "@test/differential/fuzz/servers";
 import { shrinkCase } from "@test/differential/fuzz/shrink";
 
@@ -38,7 +40,7 @@ export interface Report {
   invalid: number;
   clockRetries: number;
   clockFlips: number;
-  failures: Failure[];
+  failures: Array<Failure>;
   // failures past the bound of distinct ones
   unrecorded: number;
 }
@@ -175,7 +177,7 @@ export async function runFuzz(servers: FuzzServers, options: RunOptions): Promis
         report.invalid++;
       }
       if (result.up?.status === 200) {
-        if ((result.up.body as { items: unknown[] }).items.length === 0) {
+        if ((result.up.body as { items: Array<unknown> }).items.length === 0) {
           report.empty++;
         } else {
           report.nonEmpty++;

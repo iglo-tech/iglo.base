@@ -1,17 +1,15 @@
 // Type tests for the public generics of the SDK. This file only has to compile:
 // `bun run typecheck` fails when an `Expect<Equal<...>>` is false or when a
 // `@ts-expect-error` line stops being an error.
-import PocketBase, {
-  BaseAuthStore,
-  ClientResponseError,
-  LocalAuthStore,
-  type AuthRecord,
-  type BatchRequestResult,
-  type ListResult,
-  type RecordAuthResponse,
-  type RecordModel,
-  type RecordSubscription,
-  type UnsubscribeFunc,
+import PocketBase, { BaseAuthStore, ClientResponseError, LocalAuthStore } from "@sdk/index";
+import type {
+  AuthRecord,
+  BatchRequestResult,
+  ListResult,
+  RecordAuthResponse,
+  RecordModel,
+  RecordSubscription,
+  UnsubscribeFunc,
 } from "@sdk/index";
 import type { Equal, Expect } from "@sdk-test-types/helpers";
 
@@ -177,15 +175,15 @@ export function authStoreModels(): void {
 export function clientResponseErrorTypes(): void {
   try {
     throw new ClientResponseError({ status: 400 });
-  } catch (err) {
-    if (err instanceof ClientResponseError) {
-      type _Status = Expect<Equal<typeof err.status, number>>;
-      type _Url = Expect<Equal<typeof err.url, string>>;
-      type _Abort = Expect<Equal<typeof err.isAbort, boolean>>;
-      type _Data = Expect<Equal<typeof err.data, typeof err.response>>;
+  } catch (error) {
+    if (error instanceof ClientResponseError) {
+      type _Status = Expect<Equal<typeof error.status, number>>;
+      type _Url = Expect<Equal<typeof error.url, string>>;
+      type _Abort = Expect<Equal<typeof error.isAbort, boolean>>;
+      type _Data = Expect<Equal<typeof error.data, typeof error.response>>;
       // the response bag stays readable without casts
-      const message: string = err.response.message;
-      const field: string = err.data.data.email.message;
+      const message: string = error.response.message;
+      const field: string = error.data.data.email.message;
       void [message, field];
     }
   }

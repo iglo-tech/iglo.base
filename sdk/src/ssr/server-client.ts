@@ -1,7 +1,8 @@
 // docs/design/13-ssr.md ("Clients", "Session cookie", "Session cache, check and refresh")
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { RecordModel } from "@sdk/tools/dtos";
 import type { SendOptions } from "@sdk/tools/options";
@@ -27,12 +28,12 @@ import {
   buildSessionCookieToSet,
   findCookie,
   isSecureSession,
-  type CookieSettings,
   isHttpLocalUrl,
   normalizeCookies,
   parseSessionValue,
   recordForToken,
 } from "@sdk/ssr/cookies";
+import type { CookieSettings } from "@sdk/ssr/cookies";
 import { noStoreFetch } from "@sdk/ssr/no-store-fetch";
 import {
   DEFAULT_OAUTH2_COLLECTION,
@@ -44,8 +45,8 @@ import {
   safeRedirectPath,
   validateCallbackUrl,
   withRedirectUri,
-  type OAuth2Pending,
 } from "@sdk/ssr/oauth2";
+import type { OAuth2Pending } from "@sdk/ssr/oauth2";
 
 /** Tokens past their `exp` by up to this many seconds still count as valid (clock skew). */
 const CLOCK_SKEW_SEC = 60;
@@ -261,7 +262,7 @@ export class ServerClient extends Client {
       return undefined;
     }
     const matched = findCookie(
-      normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
+      normalizeCookies(rawCookies as Array<Cookie> | CookieValueMap),
       OAUTH2_COOKIE_KEY,
       isSecureSession(this._cookieSettings()),
     );
@@ -312,11 +313,11 @@ export class ServerClient extends Client {
         pending.redirectURL,
       );
       return { ok: true, redirectTo, auth };
-    } catch (err: unknown) {
-      if (err instanceof ClientResponseError) {
-        return fail(err);
+    } catch (error: unknown) {
+      if (error instanceof ClientResponseError) {
+        return fail(error);
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -339,7 +340,7 @@ export class ServerClient extends Client {
     }
 
     const matched = findCookie(
-      normalizeCookies(rawCookies as Cookie[] | CookieValueMap),
+      normalizeCookies(rawCookies as Array<Cookie> | CookieValueMap),
       this._cookieName,
       isSecureSession(this._cookieSettings()),
     );
@@ -412,16 +413,16 @@ export class ServerClient extends Client {
       return {
         kind: "ok",
         token: res?.token || token,
-        record: (res?.record as AuthRecord) ?? this.authStore.record,
+        record: res?.record ?? this.authStore.record,
       };
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       if (
-        err instanceof ClientResponseError &&
-        (err.status === 401 || err.status === 403 || err.status === 404)
+        error instanceof ClientResponseError &&
+        (error.status === 401 || error.status === 403 || error.status === 404)
       ) {
-        return { kind: "revoked", error: err };
+        return { kind: "revoked", error };
       }
-      return { kind: "transient", error: err };
+      return { kind: "transient", error };
     }
   }
 
@@ -516,7 +517,7 @@ export class ServerClient extends Client {
     ]);
   }
 
-  private _writeCookies(cookies: CookieToSet[]): void {
+  private _writeCookies(cookies: Array<CookieToSet>): void {
     if (!this.cookies.setAll) {
       return;
     }
@@ -533,7 +534,7 @@ export class ServerClient extends Client {
    * a session response (see `SESSION_RESPONSE_PATH`).
    */
   private _observeResponse(path: string, dateHeader: string | null | undefined, data: Loose): void {
-    const serverMs = dateHeader ? Date.parse(dateHeader) : NaN;
+    const serverMs = dateHeader ? Date.parse(dateHeader) : Number.NaN;
     if (Number.isNaN(serverMs)) {
       return;
     }

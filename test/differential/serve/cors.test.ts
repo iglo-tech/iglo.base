@@ -9,7 +9,8 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { both, startPair, type Pair } from "@test/differential/serve/pair";
+import { both, startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 import { usersToken } from "@test/scenarios/record-crud";
 
 const timeout = 60_000;
@@ -57,7 +58,7 @@ const origins = [
 
 const fileURL = "/api/files/_pb_users_auth_/oap640cot4yru2s/test_kfd2wYLxkz.txt";
 
-const requests: Req[] = [
+const requests: Array<Req> = [
   // preflights
   ["OPTIONS", "/api/health"],
   ["OPTIONS", "/api/collections/users/records", { "Access-Control-Request-Method": "GET" }],

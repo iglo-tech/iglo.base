@@ -26,7 +26,8 @@ import { createBackup, generateBackupName } from "@/backups/create";
 import { restoreBackup } from "@/backups/restore";
 import { extract } from "@/tools/archive/extract";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { createTestBackups } from "@test/scenarios/backup";
 import { superuserToken } from "@test/scenarios/cron";
 import { tempDir } from "@test/support/executable";
@@ -34,8 +35,8 @@ import { serveTest } from "@test/support/router";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 import { centralEntries } from "@test/tools/archive/central-directory";
 
-let opened: TestApp[] = [];
-let dirs: string[] = [];
+let opened: Array<TestApp> = [];
+let dirs: Array<string> = [];
 
 afterEach(async () => {
   for (const app of opened) {
@@ -55,19 +56,22 @@ async function open(options: Parameters<typeof openFixtureApp>[0] = {}): Promise
 }
 
 function send(app: TestApp, method: string, target: string, body?: string): Promise<Response> {
-  return serveTest(newRouter(app).buildMux(), {
+  const init: Parameters<typeof serveTest>[1] = {
     method,
     target,
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  return serveTest(newRouter(app).buildMux(), init);
 }
 
 function backupsDir(app: TestApp): string {
   return join(app.dataDir, "backups");
 }
 
-function zipNames(app: TestApp, name: string): string[] {
+function zipNames(app: TestApp, name: string): Array<string> {
   return centralEntries(readFileSync(join(backupsDir(app), name))).map((e) => e.name);
 }
 
@@ -78,19 +82,21 @@ async function until(check: () => boolean): Promise<void> {
     if (Date.now() > deadline) {
       throw new Error("timed out");
     }
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }
 
 function addStorageFile(app: TestApp, key: string, content: Uint8Array | string): void {
   const fs = app.filesystem.newFilesystem();
-  fs.upload(typeof content === "string" ? new TextEncoder().encode(content) : content, key);
+  void fs.upload(typeof content === "string" ? new TextEncoder().encode(content) : content, key);
   fs.close();
 }
 
 function deleteStorageFile(app: TestApp, key: string): void {
   const fs = app.filesystem.newFilesystem();
-  fs.delete(key);
+  void fs.delete(key);
   fs.close();
 }
 
@@ -121,7 +127,7 @@ describe("TestCreateBackup", () => {
 
     // test pending error
     app.store.set(StoreKeyActiveBackup, "");
-    await expect(createBackup(app, "test.zip")).rejects.toThrow("try again later");
+    await Promise.resolve(expect(createBackup(app, "test.zip")).rejects.toThrow("try again later"));
     app.store.remove(StoreKeyActiveBackup);
 
     // create with auto generated name
@@ -379,10 +385,12 @@ describe("one backup or restore at a time", () => {
     expect(before.data.canBackup).toBe(true);
 
     const backup = createBackup(app, "a.zip");
-    await expect(createBackup(app, "b.zip")).rejects.toThrow(
-      "try again later - another backup/restore operation has already been started",
+    await Promise.resolve(
+      expect(createBackup(app, "b.zip")).rejects.toThrow(
+        "try again later - another backup/restore operation has already been started",
+      ),
     );
-    await expect(restoreBackup(app, "a.zip")).rejects.toThrow("try again later");
+    await Promise.resolve(expect(restoreBackup(app, "a.zip")).rejects.toThrow("try again later"));
 
     const during = (await (await send(app, "GET", "/api/health")).json()) as {
       data: { canBackup: boolean };
@@ -403,7 +411,7 @@ describe("one backup or restore at a time", () => {
     // the temp directory cannot be created
     writeFileSync(join(app.dataDir, ".pb_temp_to_delete"), "");
 
-    await expect(createBackup(app, "a.zip")).rejects.toThrow();
+    await Promise.resolve(expect(createBackup(app, "a.zip")).rejects.toThrow());
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
 
     rmSync(join(app.dataDir, ".pb_temp_to_delete"));
@@ -416,7 +424,7 @@ describe("one backup or restore at a time", () => {
     // VACUUM INTO refuses a directory as its target
     mkdirSync(tempFile(app, "data.db"), { recursive: true });
 
-    await expect(createBackup(app, "a.zip")).rejects.toThrow();
+    await Promise.resolve(expect(createBackup(app, "a.zip")).rejects.toThrow());
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
     expect(readdirSync(backupsDir(app))).toEqual([]);
   });
@@ -429,12 +437,14 @@ describe("TestRestoreBackup", () => {
 
     // test pending error
     app.store.set(StoreKeyActiveBackup, "");
-    await expect(restoreBackup(app, "test")).rejects.toThrow("try again later");
+    await Promise.resolve(expect(restoreBackup(app, "test")).rejects.toThrow("try again later"));
     app.store.remove(StoreKeyActiveBackup);
 
     // missing backup
-    await expect(restoreBackup(app, "missing")).rejects.toThrow(
-      `missing or invalid backup file "missing" to restore`,
+    await Promise.resolve(
+      expect(restoreBackup(app, "missing")).rejects.toThrow(
+        `missing or invalid backup file "missing" to restore`,
+      ),
     );
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
   });
@@ -446,7 +456,9 @@ describe("TestRestoreBackup", () => {
     const before = readdirSync(app.dataDir).toSorted();
 
     // no restart under a test app: it fails after the moves
-    await expect(restoreBackup(app, "test")).rejects.toThrow("failed to restart the app process");
+    await Promise.resolve(
+      expect(restoreBackup(app, "test")).rejects.toThrow("failed to restart the app process"),
+    );
 
     expect(readdirSync(app.dataDir).toSorted()).toEqual(before);
     expect(app.store.has(StoreKeyActiveBackup)).toBe(false);
@@ -455,7 +467,7 @@ describe("TestRestoreBackup", () => {
 });
 
 describe("apis/backup_test.go scenarios with a preset active backup", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     method: string;
     url: string;
@@ -463,7 +475,7 @@ describe("apis/backup_test.go scenarios with a preset active backup", () => {
     status: number;
     message: string;
     backups: number;
-  }[] = [
+  }> = [
     {
       name: "TestBackupsCreate: authorized as superuser (pending backup)",
       method: "POST",
@@ -542,7 +554,7 @@ describe("backups.s3 enabled, S3 out of reach", () => {
     const app = await s3App();
     const before = readdirSync(backupsDir(app)).toSorted();
 
-    const expected: [string, string, string | undefined, number][] = [
+    const expected: Array<[string, string, string | undefined, number]> = [
       ["GET", "/api/backups", undefined, 400],
       ["POST", "/api/backups", "{}", 400],
       ["POST", "/api/backups", `{"name":"new.zip"}`, 400],
@@ -565,9 +577,13 @@ describe("backups.s3 enabled, S3 out of reach", () => {
 
   test("createBackup and restoreBackup give the error and leave nothing", async () => {
     const app = await s3App();
-    await expect(createBackup(app, "new.zip")).rejects.toThrow("connection refused");
-    await expect(restoreBackup(app, "local.zip")).rejects.toThrow(
-      `missing or invalid backup file "local.zip" to restore`,
+    await Promise.resolve(
+      expect(createBackup(app, "new.zip")).rejects.toThrow("connection refused"),
+    );
+    await Promise.resolve(
+      expect(restoreBackup(app, "local.zip")).rejects.toThrow(
+        `missing or invalid backup file "local.zip" to restore`,
+      ),
     );
     expect(existsSync(join(backupsDir(app), "new.zip"))).toBe(false);
     expect(readdirSync(join(app.dataDir, ".pb_temp_to_delete"))).toEqual([]);
@@ -641,7 +657,7 @@ describe("__pbAutoBackup__", () => {
     // a backup of the user's stays
     await createBackup(app, "manual.zip");
 
-    const names: string[] = [];
+    const names: Array<string> = [];
     for (let i = 0; i < 3; i++) {
       await runJob(app);
       const name = generateBackupName(app, "@auto_pb_backup_");

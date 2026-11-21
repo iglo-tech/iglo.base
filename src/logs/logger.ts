@@ -20,17 +20,11 @@ import { generateDefaultRandomId } from "@/db/db";
 import { newExp } from "@/db/dbx/expression";
 import { auxVacuum } from "@/db/table";
 import { auxRunInTransaction } from "@/db/tx";
-import {
-  BatchHandler,
-  LevelDebug,
-  LevelError,
-  LevelInfo,
-  LevelWarn,
-  type Log,
-  type LogAttrs,
-} from "@/logs/batch-handler";
+import { BatchHandler, LevelDebug, LevelError, LevelInfo, LevelWarn } from "@/logs/batch-handler";
+import type { Log, LogAttrs } from "@/logs/batch-handler";
 import { logDBExport, LogsTableName } from "@/logs/log-model";
-import { LogWriter, type LogRow } from "@/logs/log-writer";
+import { LogWriter } from "@/logs/log-writer";
+import type { LogRow } from "@/logs/log-writer";
 import { formatLog } from "@/logs/log-printer";
 import type { LogsConfig } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
@@ -86,7 +80,7 @@ export interface LoggerConfig {
 // In this case DB logs are still filtered but the checks for the min level are done
 // in the BatchOptions.BeforeAddFunc instead of the slog.Handler.Enabled() method.
 function getLoggerMinLevel(isDev: boolean, logs: LogsConfig): number {
-  return isDev ? -99999 : Number(logs.MinLevel);
+  return isDev ? -99_999 : Number(logs.MinLevel);
 }
 
 export class Logger implements AppLogger {
@@ -94,10 +88,10 @@ export class Logger implements AppLogger {
   readonly #handler: BatchHandler;
   readonly #ticker: LogTicker;
   // batches waiting for their turn on the event loop
-  readonly #pending = new Set<Log[]>();
+  readonly #pending = new Set<Array<Log>>();
   readonly #writer: LogWriter | null;
   // rows taken while the writer is suspended (a backup or restore runs)
-  #held: LogRow[][] = [];
+  #held: Array<Array<LogRow>> = [];
   #suspended = false;
   #stopped = false;
 
@@ -216,7 +210,7 @@ export class Logger implements AppLogger {
   }
 
   // don't block and wait for the write transaction to complete
-  #writeLater(logs: Log[]): void {
+  #writeLater(logs: Array<Log>): void {
     this.#pending.add(logs);
     setImmediate(() => {
       if (this.#pending.delete(logs)) {
@@ -225,7 +219,7 @@ export class Logger implements AppLogger {
     });
   }
 
-  #runLogsWrite(logs: Log[]): void {
+  #runLogsWrite(logs: Array<Log>): void {
     const { databases, stderrLog } = this.#config;
     const settings = this.#config.settings();
 
@@ -234,7 +228,7 @@ export class Logger implements AppLogger {
     }
 
     if (this.#writer !== null) {
-      const rows: LogRow[] = [];
+      const rows: Array<LogRow> = [];
       for (const log of logs) {
         try {
           const row = logDBExport(generateDefaultRandomId(), log, Number(settings.MaxDataSize));
@@ -245,8 +239,8 @@ export class Logger implements AppLogger {
             String(row.message),
             String(row.data),
           ]);
-        } catch (err) {
-          stderrLog(`Failed to write log ${log.message} ${String(err)}`);
+        } catch (error) {
+          stderrLog(`Failed to write log ${log.message} ${String(error)}`);
         }
       }
       if (this.#suspended) {
@@ -266,8 +260,8 @@ export class Logger implements AppLogger {
           try {
             const row = logDBExport(generateDefaultRandomId(), log, Number(settings.MaxDataSize));
             insert.bind(row).execute();
-          } catch (err) {
-            stderrLog(`Failed to write log ${log.message} ${String(err)}`);
+          } catch (error) {
+            stderrLog(`Failed to write log ${log.message} ${String(error)}`);
           }
         }
         insert.close();
@@ -277,7 +271,7 @@ export class Logger implements AppLogger {
     }
   }
 
-  #post(rows: LogRow[]): void {
+  #post(rows: Array<LogRow>): void {
     if (rows.length > 0) {
       this.#writer?.write(rows);
     }
@@ -300,16 +294,16 @@ export function logsSettingsReloaded(
   });
   try {
     app.databases.auxNonconcurrentDB().delete(LogsTableName, expr).execute();
-  } catch (err) {
-    app.logger.warn("Failed to cleanup old logs", { error: err });
+  } catch (error) {
+    app.logger.warn("Failed to cleanup old logs", { error });
   }
 
   // no logs are allowed -> try to reclaim preserved disk space after the previous delete operation
   if (Number(logs.MaxDays) === 0) {
     try {
       auxVacuum(app.databases);
-    } catch (err) {
-      app.logger.warn("Failed to VACUUM aux database", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to VACUUM aux database", { error });
     }
   }
 }

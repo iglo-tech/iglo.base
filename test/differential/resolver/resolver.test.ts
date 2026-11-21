@@ -30,6 +30,7 @@
 // same auth record, query and headers, and each record's view through
 // CanAccessRecord (sync and async). The stored rules of the copy follow
 // upstream's for each case.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -43,11 +44,11 @@ import type { Clock } from "@/app/clock";
 import { RequestInfo, snakecase } from "@/app/event-request";
 import type { Collection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   findCachedCollectionByNameOrId,
   findCollectionByNameOrId,
   reloadCachedCollections,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { validateCollection } from "@/collections/collection-validate";
 import { Databases } from "@/db/base";
 import type { Record } from "@/records/record-model";
@@ -72,8 +73,10 @@ import { Store } from "@/tools/store/store";
 import { Errors } from "@/validation/error";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import { type FilterCase, filterCases } from "@test/differential/resolver/filter-cases";
-import { type RuleCase, ruleCases } from "@test/differential/resolver/rule-cases";
+import { filterCases } from "@test/differential/resolver/filter-cases";
+import type { FilterCase } from "@test/differential/resolver/filter-cases";
+import { ruleCases } from "@test/differential/resolver/rule-cases";
+import type { RuleCase } from "@test/differential/resolver/rule-cases";
 import {
   authUsers,
   collectionSteps,
@@ -82,7 +85,8 @@ import {
   rid,
 } from "@test/differential/resolver/schema";
 import { copyDataDir } from "@test/scenarios/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const superEmail = "resolver@example.com";
 const clock: Clock = { now: () => new Date() };
@@ -98,7 +102,7 @@ const collectionIds = new Map<string, string>();
 // the rules as created (restored after each case)
 const originalRules = new Map<string, { listRule: string | null; viewRule: string | null }>();
 // the record ids of each rules matrix target
-const targetIds = new Map<string, string[]>();
+const targetIds = new Map<string, Array<string>>();
 
 interface Outcome {
   status: number;
@@ -139,7 +143,7 @@ async function api(
   if (auth !== "") {
     (init.headers as { [key: string]: string }).authorization = auth;
   }
-  if (body instanceof FormData) {
+  if (isInstance(FormData, body)) {
     init.body = body;
   } else if (body !== undefined) {
     (init.headers as { [key: string]: string })["content-type"] = "application/json";
@@ -210,7 +214,7 @@ function listQueryParams(rc: RuleCase): { [key: string]: string } {
 function listOutcome(status: number, json: unknown, asSet: boolean): Outcome {
   if (status === 200) {
     const list = json as {
-      items: { id: string }[];
+      items: Array<{ id: string }>;
       page: number;
       perPage: number;
       totalItems: number;
@@ -246,7 +250,7 @@ beforeAll(async () => {
 
   const readIds = async (): Promise<void> => {
     const list = (await ok("GET", "/api/collections?perPage=200")) as {
-      items: { id: string; name: string }[];
+      items: Array<{ id: string; name: string }>;
     };
     for (const item of list.items) {
       collectionIds.set(item.name, item.id);
@@ -259,7 +263,7 @@ beforeAll(async () => {
       await ok("POST", "/api/collections", step.create(ids));
     } else if (step.addFields !== undefined) {
       const current = (await ok("GET", `/api/collections/${step.addFields.collection}`)) as {
-        fields: object[];
+        fields: Array<object>;
       };
       await ok("PATCH", `/api/collections/${step.addFields.collection}`, {
         fields: [...current.fields, ...step.addFields.fields(ids)],
@@ -293,7 +297,7 @@ beforeAll(async () => {
   }
 
   const all = (await ok("GET", "/api/collections?perPage=200")) as {
-    items: { name: string; listRule: string | null; viewRule: string | null }[];
+    items: Array<{ name: string; listRule: string | null; viewRule: string | null }>;
   };
   for (const item of all.items) {
     originalRules.set(item.name, { listRule: item.listRule, viewRule: item.viewRule });
@@ -325,7 +329,7 @@ beforeAll(async () => {
   // (b) the rules matrix
   for (const target of new Set(ruleCases.map((rc) => rc.target))) {
     const list = (await ok("GET", `/api/collections/${target}/records?perPage=200&sort=id`)) as {
-      items: { id: string }[];
+      items: Array<{ id: string }>;
     };
     targetIds.set(
       target,
@@ -339,7 +343,7 @@ beforeAll(async () => {
     const listUrl = new URL(`${upstream.url}/api/collections/${rc.target}/records?${raw}`);
     sentRuleQueries.set(rc.name, listUrl.search.slice(1));
     for (const who of identities) {
-      const token = tokens.get(who as Identity) ?? "";
+      const token = tokens.get(who) ?? "";
       const res = await api(
         "GET",
         `/api/collections/${rc.target}/records?${raw}`,
@@ -426,7 +430,7 @@ function queryEscape(s: string): string {
 // e.Request.URL.Query().Encode()
 function queryEncode(rawQuery: string): string {
   const { values } = parseQuery(rawQuery);
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   for (const key of [...values.keys()].toSorted()) {
     for (const v of values.get(key) ?? []) {
       parts.push(queryEscape(key) + "=" + queryEscape(v));
@@ -451,6 +455,7 @@ function apiErrorOutcome(err: unknown): Outcome {
     err instanceof Error && "status" in err && "toJSON" in err
       ? (err as ReturnType<typeof newBadRequestError>)
       : newBadRequestError("", err);
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const body = JSON.parse(JSON.stringify(apiErr.toJSON())) as {
     status: number;
     message: string;
@@ -551,8 +556,8 @@ async function igloList(
         totalPages: result.totalPages,
       },
     };
-  } catch (err) {
-    return apiErrorOutcome(err);
+  } catch (error) {
+    return apiErrorOutcome(error);
   }
 }
 
@@ -566,6 +571,7 @@ function igloRuleError(app: CollectionsApp, collectionName: string, rule: string
   }
   expect(result).toBeInstanceOf(Errors);
   // the error data as upstream's API body has it
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const body = JSON.parse(
     JSON.stringify(newBadRequestError("Failed to update collection.", result).toJSON()),
   ) as { data: { listRule?: unknown } };
@@ -592,8 +598,8 @@ function errorOf(fn: () => unknown): unknown {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 
@@ -605,9 +611,9 @@ describe("filters as a superuser", () => {
     expect(statuses.filter((s) => s === 200).length).toBeGreaterThan(110);
     expect(statuses.filter((s) => s === 400).length).toBeGreaterThan(15);
     // the matches are not trivial
-    const sizes = [...filterOutcomes.values()]
-      .filter((o) => o.status === 200)
-      .map((o) => (o.body as { ids: string[] }).ids.length);
+    const sizes = [...filterOutcomes.values()].flatMap((o) =>
+      o.status === 200 ? [(o.body as { ids: Array<string> }).ids.length] : [],
+    );
     expect(sizes.filter((n) => n === 0).length).toBeLessThan(sizes.length / 4);
   });
 
@@ -616,7 +622,7 @@ describe("filters as a superuser", () => {
     const cache = new ParsedFilterCache();
     try {
       const superuser = authRecord(app, "superuser");
-      const mismatches: unknown[] = [];
+      const mismatches: Array<unknown> = [];
       for (const fc of filterCases) {
         const expected = filterOutcomes.get(fc.name);
         const raw = sentFilterQueries.get(fc.name) ?? "";
@@ -630,12 +636,12 @@ describe("filters as a superuser", () => {
         const usesRequest = fc.filter.includes("@request") || fc.sort.includes("@request");
         if (!usesRequest && expected !== undefined) {
           const expectedIds =
-            expected.status === 200 ? (expected.body as { ids: string[] }).ids : null;
-          const asIds = (records: Record[]): string[] => {
+            expected.status === 200 ? (expected.body as { ids: Array<string> }).ids : null;
+          const asIds = (records: Array<Record>): Array<string> => {
             const list = records.map((record) => record.id);
             return fc.sort === "" ? list.toSorted() : list;
           };
-          let asyncIds: string[] | null = null;
+          let asyncIds: Array<string> | null = null;
           try {
             asyncIds = asIds(
               await findRecordsByFilterAsync(app, collection, fc.filter, fc.sort, 0, 0),
@@ -643,7 +649,7 @@ describe("filters as a superuser", () => {
           } catch {
             asyncIds = null;
           }
-          let syncIds: string[] | null = null;
+          let syncIds: Array<string> | null = null;
           const err = errorOf(() => {
             syncIds = asIds(findRecordsByFilter(app, collection, fc.filter, fc.sort, 0, 0));
           });
@@ -703,7 +709,7 @@ describe("rules matrix", () => {
     const cache = new ParsedFilterCache();
     try {
       const auths = new Map(identities.map((who) => [who, authRecord(app, who)] as const));
-      const mismatches: unknown[] = [];
+      const mismatches: Array<unknown> = [];
       for (const rc of ruleCases) {
         const rules = caseRules(rc);
         setStoredRules(app, rc.target, rules);
@@ -740,8 +746,8 @@ describe("rules matrix", () => {
             let asyncErr: unknown = null;
             try {
               asyncResult = await canAccessRecordAsync(app, record, viewInfo, rules.viewRule);
-            } catch (err) {
-              asyncErr = err;
+            } catch (error) {
+              asyncErr = error;
             }
             if (syncErr !== null || asyncErr !== null || syncResult !== asyncResult) {
               mismatches.push({ case: key, id, syncErr, asyncErr, syncResult, asyncResult });

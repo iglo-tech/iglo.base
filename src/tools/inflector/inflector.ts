@@ -14,8 +14,7 @@ const columnifyRemoveRegex = /[^\w.*\-_@#]+/g;
 const snakecaseSplitRegex = /[\W_]+/;
 
 // unicode.IsSpace
-const goSpace =
-  "\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
+const goSpace = String.raw`\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000`;
 const trimSpaceRegex = new RegExp(`^[${goSpace}]+|[${goSpace}]+$`, "g");
 
 const letterRegex = /^\p{L}$/u;
@@ -24,7 +23,7 @@ const numberRegex = /^\p{N}$/u;
 // strings.TrimSpace (unicode.IsSpace, which unlike JS trim() includes
 // U+0085 and excludes U+FEFF)
 function trimSpace(s: string): string {
-  return s.replace(trimSpaceRegex, "");
+  return s.replaceAll(trimSpaceRegex, "");
 }
 
 // Greek letters with iota subscript, whose simple uppercase mapping (the
@@ -32,19 +31,19 @@ function trimSpace(s: string): string {
 // mapping expands them to two characters
 function greekIotaUpper(cp: number): number | undefined {
   if (
-    (cp >= 0x1f80 && cp <= 0x1f87) ||
-    (cp >= 0x1f90 && cp <= 0x1f97) ||
-    (cp >= 0x1fa0 && cp <= 0x1fa7)
+    (cp >= 0x1f_80 && cp <= 0x1f_87) ||
+    (cp >= 0x1f_90 && cp <= 0x1f_97) ||
+    (cp >= 0x1f_a0 && cp <= 0x1f_a7)
   ) {
     return cp + 8;
   }
   switch (cp) {
-    case 0x1fb3:
-      return 0x1fbc;
-    case 0x1fc3:
-      return 0x1fcc;
-    case 0x1ff3:
-      return 0x1ffc;
+    case 0x1f_b3:
+      return 0x1f_bc;
+    case 0x1f_c3:
+      return 0x1f_cc;
+    case 0x1f_f3:
+      return 0x1f_fc;
   }
   return undefined;
 }
@@ -55,7 +54,7 @@ function greekIotaUpper(cp: number): number | undefined {
 // above.
 export function toUpperRune(ch: string): string {
   const upper = ch.toUpperCase();
-  if ([...upper].length === 1) {
+  if (Array.from(upper).length === 1) {
     return upper;
   }
   const greek = greekIotaUpper(ch.codePointAt(0) as number);
@@ -73,7 +72,7 @@ export function ucFirst(str: string): string {
 
 // Columnify strips invalid db identifier characters.
 export function columnify(str: string): string {
-  return str.replace(columnifyRemoveRegex, "");
+  return str.replaceAll(columnifyRemoveRegex, "");
 }
 
 // Sentenize converts and normalizes a string into a sentence.
@@ -85,7 +84,7 @@ export function sentenize(str: string): string {
   str = ucFirst(str);
   // Go compares the last byte; '.', '?' and '!' are ASCII, so the last
   // UTF-16 unit gives the same answer
-  const lastChar = str[str.length - 1];
+  const lastChar = str.at(-1);
   if (lastChar !== "." && lastChar !== "?" && lastChar !== "!") {
     return str + ".";
   }
@@ -95,7 +94,7 @@ export function sentenize(str: string): string {
 // Sanitize removes all characters matching the JS RegExp removePattern.
 // Throws if the pattern is not a valid regular expression.
 export function sanitize(str: string, removePattern: string): string {
-  return str.replace(new RegExp(removePattern, "g"), "");
+  return str.replaceAll(new RegExp(removePattern, "g"), "");
 }
 
 // Snakecase removes all non word characters and converts any english text

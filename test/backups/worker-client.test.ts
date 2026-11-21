@@ -11,8 +11,8 @@ import { join } from "node:path";
 
 import { BackupWorker } from "@/backups/worker-client";
 
-const dirs: string[] = [];
-const workers: BackupWorker[] = [];
+const dirs: Array<string> = [];
+const workers: Array<BackupWorker> = [];
 
 afterEach(() => {
   for (const w of workers.splice(0)) {
@@ -30,8 +30,8 @@ function start(): BackupWorker {
 }
 
 // the paths the process holds open
-function openPaths(): string[] {
-  const paths: string[] = [];
+function openPaths(): Array<string> {
+  const paths: Array<string> = [];
   for (const fd of readdirSync("/proc/self/fd")) {
     try {
       paths.push(readlinkSync(join("/proc/self/fd", fd)));
@@ -48,10 +48,14 @@ describe("BackupWorker", () => {
     await w.call({ op: "zipAbort" });
     w.close();
 
-    await expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped");
+    await Promise.resolve(
+      expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped"),
+    );
     // closing again keeps the state
     w.close();
-    await expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped");
+    await Promise.resolve(
+      expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped"),
+    );
   });
 
   test("a call in flight when the worker closes rejects, and so do the next ones", async () => {
@@ -62,8 +66,10 @@ describe("BackupWorker", () => {
     const inflight = w.call({ op: "zipOpen", path: join(dir, "a.zip") });
     w.close();
 
-    await expect(inflight).rejects.toThrow("the backup worker was stopped");
-    await expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped");
+    await Promise.resolve(expect(inflight).rejects.toThrow("the backup worker was stopped"));
+    await Promise.resolve(
+      expect(w.call({ op: "zipAbort" })).rejects.toThrow("the backup worker was stopped"),
+    );
   });
 
   test("zipOpen closes the writer an earlier zipOpen left open", async () => {

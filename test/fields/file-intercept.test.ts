@@ -11,20 +11,23 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { findCollectionByNameOrId, runInAppTransaction } from "@/collections/collection-query";
 import type { Collection } from "@/collections/collection-model";
-import { TextField } from "@/fields/text";
-import { newRecord, type Record } from "@/records/record-model";
+import type { TextField } from "@/fields/text";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import type { RecordsApp } from "@/records/record-query";
 import { saveRecord, saveRecordSync } from "@/records/record-save";
-import { type File, NewFileFromBytes } from "@/tools/filesystem/file";
+import { NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { marshal } from "@/tools/types/go-json";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 
 const content = new TextEncoder().encode("test");
 
-async function newFiles(): Promise<File[]> {
+async function newFiles(): Promise<Array<File>> {
   return Promise.all(
     ["new1.txt", "new2.txt", "new3.txt", "new4.txt"].map((n) => NewFileFromBytes(content, n)),
   );
@@ -41,8 +44,8 @@ function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 }
 
@@ -50,13 +53,13 @@ async function errorOfAsync(p: Promise<void>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 }
 
 // the record's stored files (without thumbs) are exactly expectedKeys
-function checkRecordFiles(app: RecordsApp, record: Record, expectedKeys: string[]): void {
+function checkRecordFiles(app: RecordsApp, record: Record, expectedKeys: Array<string>): void {
   const fsys = app.filesystem.newFilesystem();
   if (fsys.remote) {
     throw new Error("the test runs on the local storage");
@@ -94,7 +97,7 @@ describe("TestFileFieldIntercept", () => {
 
     expectValidationErrors(await errorOfAsync(saveRecord(app, record)), ["text"]);
 
-    const value = record.getRaw("file_many") as unknown[];
+    const value = record.getRaw("file_many") as Array<unknown>;
     expect(value.length).toBe(2);
   });
 

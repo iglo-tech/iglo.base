@@ -5,46 +5,46 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { FileService } from "@sdk/services/FileService";
 
-describe("FileService", function () {
+describe("FileService", () => {
   const client = new Client("test_base_url");
   const service = new FileService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("getUrl()", function () {
-    test("Should return empty string (missing record id)", async function () {
+  describe("getUrl()", () => {
+    test("Should return empty string (missing record id)", async () => {
       const record = { id: "", collectionId: "123", collectionName: "789" };
       const result = service.getURL(record, "demo.png");
 
       assert.deepEqual(result, "");
     });
 
-    test("Should return empty string (missing filename)", async function () {
+    test("Should return empty string (missing filename)", async () => {
       const record = { id: "456", collectionId: "123", collectionName: "789" };
       const result = service.getURL(record, "");
 
       assert.deepEqual(result, "");
     });
 
-    test("Should return a formatted url", async function () {
+    test("Should return a formatted url", async () => {
       const record = { id: "456", collectionId: "123", collectionName: "789" };
       const result = service.getURL(record, "demo.png");
 
       assert.deepEqual(result, "test_base_url/api/files/123/456/demo.png");
     });
 
-    test("Should return a formatted url + query params", async function () {
+    test("Should return a formatted url + query params", async () => {
       const record = { id: "456", collectionId: "123", collectionName: "789" };
       const result = service.getURL(record, "demo=", {
         test: "abc",
@@ -57,8 +57,8 @@ describe("FileService", function () {
     });
   });
 
-  describe("getToken()", function () {
-    test("Should send a file token request", async function () {
+  describe("getToken()", () => {
+    test("Should send a file token request", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/files/token") + "?q1=123",

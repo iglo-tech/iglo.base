@@ -29,10 +29,12 @@ import { Token } from "@/oauth2/token";
 import { findAuthRecordByEmail } from "@/records/record-query";
 import { Client } from "@/tools/subscriptions/client";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { json as jsonResponse, stubFetch } from "@test/support/fetch-stub";
 import { serveTest } from "@test/support/router";
-import { type RecordedRequest, type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
+import { startS3Recorder } from "@test/support/s3-recorder";
+import type { RecordedRequest, S3Recorder } from "@test/support/s3-recorder";
 
 const pngPixel = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
@@ -117,7 +119,7 @@ const oauth2User = (): AuthUser =>
     avatarURL,
   });
 
-function storedFiles(recordId: string): string[] {
+function storedFiles(recordId: string): Array<string> {
   const dir = join(app.dataDir, "storage", "_pb_users_auth_", recordId);
   return existsSync(dir) ? readdirSync(dir).filter((f) => !f.endsWith(".attrs")) : [];
 }

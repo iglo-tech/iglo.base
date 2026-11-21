@@ -19,14 +19,16 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { type App, type AppConfig, type AppLogger, newApp } from "@/app/app";
+import { newApp } from "@/app/app";
+import type { App, AppConfig, AppLogger } from "@/app/app";
 import { registerCrons } from "@/app/crons";
 import { LocalTempDirName } from "@/app/filesystem";
 import { loadAutobackupJob } from "@/backups/autobackup";
 import { recoverInterruptedRestore, removeRestoreTemp } from "@/backups/restore-phase";
 import { reloadCachedCollections } from "@/collections/collection-query";
 import { loadCollectionsCache } from "@/collections/collection-save";
-import { Logger, type LogTickerFunc } from "@/logs/logger";
+import { Logger } from "@/logs/logger";
+import type { LogTickerFunc } from "@/logs/logger";
 import { newDefaultSettings } from "@/settings/settings-model";
 import { reloadSettings } from "@/settings/settings-query";
 import { auxDBFilename, Databases, defaultReadWorkers } from "@/db/base";
@@ -121,7 +123,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     await reloadSettings(app);
 
     loadAutobackupJob(app);
-  } catch (err) {
+  } catch (error) {
     // the read workers must not outlive a failed bootstrap
     try {
       logger.close();
@@ -133,7 +135,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     } catch {
       // the bootstrap error is the one reported
     }
-    throw err;
+    throw error;
   }
 
   // try to cleanup the pb_data temp directory (if any)
@@ -162,12 +164,12 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
 export async function clearBootstrap(app: App): Promise<void> {
   // every step runs even if an earlier one failed; the errors are
   // rethrown together
-  const errs: unknown[] = [];
+  const errs: Array<unknown> = [];
   const step = async (fn: () => void | Promise<void>): Promise<void> => {
     try {
       await fn();
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
   };
 

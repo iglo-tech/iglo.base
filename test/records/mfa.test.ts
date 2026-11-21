@@ -24,12 +24,15 @@ import {
 } from "@/records/mfa-query";
 import { CollectionNameMFAs } from "@/records/record-auth-refs";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import { newRecord, type Record } from "@/records/record-model";
-import { findAuthRecordByEmail, findRecordById, type RecordsApp } from "@/records/record-query";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
+import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { saveRecord, saveRecordNoValidate } from "@/records/record-save";
 import { DateTime } from "@/tools/types/datetime";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 
 // a clock the test moves by hand (tests never sleep)
@@ -47,7 +50,7 @@ class ManualClock implements Clock {
 
 const startTime = new Date("2026-10-29T12:00:00.000Z");
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(clock: ManualClock = new ManualClock(startTime)): TestCollectionsApp {
   const app = openTestApp(clock);
@@ -65,8 +68,8 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -85,7 +88,7 @@ async function stubMFARecords(app: RecordsApp, now: Date): Promise<void> {
 
   const old = new Date(now.getTime() - 60 * msMinute);
 
-  const stubs: [string, Record, [string, Date][]][] = [
+  const stubs: Array<[string, Record, Array<[string, Date]>]> = [
     [
       "superuser2",
       superuser2,
@@ -122,13 +125,13 @@ async function stubMFARecords(app: RecordsApp, now: Date): Promise<void> {
 }
 
 // the ids of the MFAs of all auth collections
-function allMFAIds(app: RecordsApp): string[] {
+function allMFAIds(app: RecordsApp): Array<string> {
   return findAllCollections(app, CollectionTypeAuth).flatMap((c) =>
     findAllMFAsByCollection(app, c).map((m) => m.id),
   );
 }
 
-function mfaIds(mfas: MFA[]): string[] {
+function mfaIds(mfas: Array<MFA>): Array<string> {
   return mfas.map((m) => m.id);
 }
 
@@ -241,7 +244,7 @@ describe("TestMFAHasExpired", () => {
     // clock moves on by one millisecond instead
     clock.current = new Date(startTime.getTime() + 1);
 
-    const scenarios: [string, bigint, boolean][] = [
+    const scenarios: Array<[string, bigint, boolean]> = [
       ["0m", 0n, true],
       ["3m", 3n * 60n * 1_000_000_000n, true],
       ["5m", 5n * 60n * 1_000_000_000n, true],
@@ -295,7 +298,7 @@ describe("TestMFAPreValidate", () => {
 });
 
 describe("TestMFAValidateHook", () => {
-  const scenarios: [string, (app: RecordsApp) => MFA, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => MFA, Array<string>]> = [
     ["empty", (app) => newMFA(app), ["collectionRef", "recordRef", "method"]],
     [
       "non-auth collection",
@@ -352,7 +355,7 @@ describe("TestMFAClearOnPasswordChange", () => {
     const user1 = findAuthRecordByEmail(app, "users", "test@example.com");
     const user2 = findAuthRecordByEmail(app, "users", "test2@example.com");
 
-    const mfasToCreate: [Record, number][] = [
+    const mfasToCreate: Array<[Record, number]> = [
       [user1, 3],
       [user2, 2],
     ];
@@ -380,7 +383,7 @@ describe("TestMFAClearOnPasswordChange", () => {
 // queries (core/mfa_query_test.go)
 
 describe("TestFindAllMFAsByRecord", () => {
-  const scenarios: [string, (app: RecordsApp) => Record, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => Record, Array<string>]> = [
     ["demo1", (app) => findRecordById(app, "demo1", "84nmscqy84lsi1t"), []],
     [
       "superuser2",
@@ -408,7 +411,7 @@ describe("TestFindAllMFAsByRecord", () => {
 });
 
 describe("TestFindAllMFAsByCollection", () => {
-  const scenarios: [string, string[]][] = [
+  const scenarios: Array<[string, Array<string>]> = [
     ["demo1", []],
     [
       CollectionNameSuperusers,
@@ -440,7 +443,7 @@ describe("TestFindAllMFAsByCollection", () => {
 });
 
 describe("TestFindMFAById", () => {
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["", true],
     ["84nmscqy84lsi1t", true], // non-mfa id
     ["superuser2_0", false],
@@ -464,7 +467,7 @@ describe("TestFindMFAById", () => {
 });
 
 describe("TestDeleteAllMFAsByRecord", () => {
-  const scenarios: [string, (app: RecordsApp) => Record, string[]][] = [
+  const scenarios: Array<[string, (app: RecordsApp) => Record, Array<string>]> = [
     ["demo1", (app) => findRecordById(app, "demo1", "84nmscqy84lsi1t"), []], // non-auth record
     [
       "superuser2",
@@ -496,7 +499,7 @@ describe("TestDeleteAllMFAsByRecord", () => {
 });
 
 // stubs the MFAs, deletes the expired ones and compares the deleted ids
-async function checkDeletedIds(app: RecordsApp, expectedDeletedIds: string[]): Promise<void> {
+async function checkDeletedIds(app: RecordsApp, expectedDeletedIds: Array<string>): Promise<void> {
   await stubMFARecords(app, startTime);
   const before = allMFAIds(app);
 

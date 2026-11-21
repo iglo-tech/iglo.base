@@ -11,21 +11,16 @@
 //
 // Typed structurally: nothing here imports `@sveltejs/kit`.
 import type { SerializeOptions } from "@sdk/tools/cookie";
-import {
-  createRequestCookieAdapter,
-  type BrowserToken,
-  type CookieAdapter,
-  type ServerClient,
-} from "@sdk/ssr/index";
+import { createRequestCookieAdapter } from "@sdk/ssr/index";
+import type { BrowserToken, CookieAdapter, ServerClient } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
   noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
-  type AdapterOptions,
-  type ResolvedAdapterOptions,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 
 export interface SvelteKitCookies {
   getAll(): Array<{ name: string; value: string }>;

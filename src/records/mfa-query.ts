@@ -6,7 +6,8 @@
 // missing MFA, see isNoRows in src/records/record-save.ts).
 
 import { findAllCollections } from "@/collections/collection-query";
-import { type Collection, CollectionTypeAuth } from "@/collections/collection-model";
+import { CollectionTypeAuth } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { MFA } from "@/records/mfa-model";
 import {
@@ -15,17 +16,18 @@ import {
   findAllRefsByRecord,
 } from "@/records/record-auth-refs";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget, recordTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { deleteRecord, run } from "@/records/record-save";
 import { DateTime } from "@/tools/types/datetime";
 
 // FindAllMFAsByRecord returns all MFA models linked to the provided auth record.
-export function findAllMFAsByRecord(app: RecordsApp, authRecord: Record): MFA[] {
+export function findAllMFAsByRecord(app: RecordsApp, authRecord: Record): Array<MFA> {
   return findAllRefsByRecord(app, CollectionNameMFAs, authRecord).map((r) => new MFA(r));
 }
 
 // FindAllMFAsByCollection returns all MFA models linked to the provided collection.
-export function findAllMFAsByCollection(app: RecordsApp, collection: Collection): MFA[] {
+export function findAllMFAsByCollection(app: RecordsApp, collection: Collection): Array<MFA> {
   return recordQuery(app, CollectionNameMFAs)
     .andWhere(new HashExp({ collectionRef: collection.id }))
     .orderBy("created DESC")

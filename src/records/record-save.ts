@@ -108,20 +108,21 @@ import {
   findCachedCollectionReferences,
   runInAppTransaction,
 } from "@/collections/collection-query";
-import { type Collection, CollectionTypeAuth } from "@/collections/collection-model";
+import { CollectionTypeAuth } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { withDriverErrors } from "@/collections/driver-error";
 import { joinErrors, wrapError } from "@/collections/view";
 import type { Databases } from "@/db/base";
-import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
+import { deleteModel, saveNoValidate } from "@/db/db";
+import type { DBExporter } from "@/db/db";
 import { Errors as JoinedErrors } from "@/db/dbx/db";
 import { exists, HashExp, newExp, not } from "@/db/dbx/expression";
-import { type Params, setOwn } from "@/db/dbx/query";
+import { setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 import type { Model } from "@/db/model";
 import {
-  type Field,
   FieldNamePassword,
-  type InterceptorApp,
   InterceptorActionAfterCreate,
   InterceptorActionAfterCreateError,
   InterceptorActionAfterDelete,
@@ -138,6 +139,7 @@ import {
   isMultiValuer,
   isRecordInterceptor,
 } from "@/fields/field";
+import type { Field, InterceptorApp } from "@/fields/field";
 import { FileField } from "@/fields/file";
 import { RelationField } from "@/fields/relation";
 import { Tx } from "@/db/dbx/tx";
@@ -155,7 +157,8 @@ import {
   superusersOnDelete,
   superusersOnUpdateExecute,
 } from "@/records/record-model-superusers";
-import { findRecordById, type RecordsApp } from "@/records/record-query";
+import { findRecordById } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import {
   realtimeRecordAfterCreate,
   realtimeRecordAfterDelete,
@@ -171,6 +174,7 @@ import { jsonArrayValue } from "@/tools/types/json-array";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { Errors, NewError } from "@/validation/error";
 import { NormalizeUniqueIndexError } from "@/validators/db";
+import { isInstance } from "@/tools/types/is-instance";
 
 // -------------------------------------------------------------------
 // the chain runner
@@ -195,7 +199,7 @@ export function call(step: Step): Call {
 // a step's state in run: the steps called and not yet returned (the
 // last one runs), and what the running one gets back next
 interface RunState {
-  readonly stack: Step[];
+  readonly stack: Array<Step>;
   input: unknown;
   failed: boolean;
 }
@@ -209,7 +213,7 @@ export function run(step: Step): void | Promise<void> {
     if (pending === null) {
       return;
     }
-    if (pending instanceof Promise) {
+    if (isInstance(Promise, pending)) {
       return runAsync(state, pending);
     }
   }
@@ -220,8 +224,8 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
     try {
       state.input = await pending;
       state.failed = false;
-    } catch (err) {
-      state.input = err;
+    } catch (error) {
+      state.input = error;
       state.failed = true;
     }
     for (;;) {
@@ -229,7 +233,7 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
       if (next === null) {
         return;
       }
-      if (next instanceof Promise) {
+      if (isInstance(Promise, next)) {
         pending = next;
         break;
       }
@@ -242,17 +246,17 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
 // first step's error.
 function advance(state: RunState): Promise<unknown> | null | undefined {
   const stack = state.stack;
-  const step = stack[stack.length - 1] as Step;
+  const step = stack.at(-1) as Step;
   let res: IteratorResult<unknown, void>;
   try {
     res = state.failed ? step.throw(state.input) : step.next(state.input);
-  } catch (err) {
+  } catch (error) {
     stack.pop();
     if (stack.length === 0) {
-      throw err;
+      throw error;
     }
     // the calling step gets the error
-    state.input = err;
+    state.input = error;
     state.failed = true;
     return undefined;
   }
@@ -264,11 +268,11 @@ function advance(state: RunState): Promise<unknown> | null | undefined {
     stack.pop();
     return stack.length === 0 ? null : undefined;
   }
-  if (res.value instanceof Call) {
+  if (isInstance(Call, res.value)) {
     stack.push(res.value.step);
     return undefined;
   }
-  if (res.value instanceof Promise) {
+  if (isInstance(Promise, res.value)) {
     return res.value;
   }
   state.input = res.value;
@@ -279,7 +283,7 @@ function advance(state: RunState): Promise<unknown> | null | undefined {
 // stay synchronous.
 export function runSync(step: Step): void {
   const result = run(step);
-  if (result instanceof Promise) {
+  if (isInstance(Promise, result)) {
     // the promise still settles; its outcome no longer matters
     result.catch(() => {});
     throw new Error("record interceptors must be synchronous inside a transaction");
@@ -342,7 +346,7 @@ export function deleteRecordSync(app: RecordsApp, record: Record): void {
 function settleHashesSync(record: Record): void {
   for (const field of record.collection().fields) {
     const raw = field.type() === "password" ? record.getRaw(field.getName()) : undefined;
-    if (raw instanceof PasswordFieldValue && raw.hashPending()) {
+    if (isInstance(PasswordFieldValue, raw) && raw.hashPending()) {
       void raw.hash;
     }
   }
@@ -353,13 +357,13 @@ function settleHashesSync(record: Record): void {
 // not compute it on the event loop. Inside a transaction the hashes are
 // computed at once.
 export function* settlePasswordHashes(app: RecordsApp, record: Record): Step {
-  if (app.databases.nonconcurrentDB() instanceof Tx) {
+  if (isInstance(Tx, app.databases.nonconcurrentDB())) {
     settleHashesSync(record);
     return;
   }
   for (const field of record.collection().fields) {
     const raw = field.type() === "password" ? record.getRaw(field.getName()) : undefined;
-    if (raw instanceof PasswordFieldValue && raw.hashPending()) {
+    if (isInstance(PasswordFieldValue, raw) && raw.hashPending()) {
       yield raw.hashSettled();
     }
   }
@@ -404,7 +408,7 @@ export function* callFieldInterceptors(
     }
 
     const result = fn();
-    if (result instanceof Promise) {
+    if (isInstance(Promise, result)) {
       yield result;
     }
 
@@ -425,7 +429,7 @@ export function* callFieldInterceptors(
 
   // a synchronous result needs no round trip through the runner
   const result = fn();
-  if (result instanceof Promise) {
+  if (isInstance(Promise, result)) {
     yield result;
   }
 }
@@ -443,7 +447,7 @@ function noop(): Step {
 // RunInTransaction for a step: inside a transaction it is the same
 // transaction (src/db/tx.ts), so the step runs inline.
 export function* inTransaction(app: RecordsApp, fn: Next): Step {
-  if (app.databases.nonconcurrentDB() instanceof Tx) {
+  if (isInstance(Tx, app.databases.nonconcurrentDB())) {
     yield* fn(app);
     return;
   }
@@ -512,10 +516,10 @@ function* createStep(app: RecordsApp, record: Record, withValidations: boolean):
         ),
       );
     });
-  } catch (saveErr) {
+  } catch (error) {
     record.markAsNew(); // reset "new" state
 
-    yield* afterError(app, record, InterceptorActionAfterCreateError, saveErr);
+    yield* afterError(app, record, InterceptorActionAfterCreateError, error);
   }
 
   yield* afterSuccess(app, record, InterceptorActionAfterCreate, InterceptorActionAfterCreateError);
@@ -545,8 +549,8 @@ function* updateStep(app: RecordsApp, record: Record, withValidations: boolean):
         }),
       ),
     );
-  } catch (saveErr) {
-    yield* afterError(app, record, InterceptorActionAfterUpdateError, saveErr);
+  } catch (error) {
+    yield* afterError(app, record, InterceptorActionAfterUpdateError, error);
   }
 
   yield* afterSuccess(app, record, InterceptorActionAfterUpdate, InterceptorActionAfterUpdateError);
@@ -560,7 +564,7 @@ function reservePreUploadedId(record: Record): void {
   }
 
   for (const field of record.collection().fields) {
-    if (field instanceof FileField) {
+    if (isInstance(FileField, field)) {
       const id = field.preUploadedId(record);
       if (id !== "") {
         record.id = id;
@@ -580,8 +584,8 @@ function* afterError(
 ): Generator<unknown, never, unknown> {
   try {
     yield* callFieldInterceptors(app, record, errorAction, noop);
-  } catch (hookErr) {
-    throw joinErrors([actionErr, hookErr]);
+  } catch (error) {
+    throw joinErrors([actionErr, error]);
   }
   throw actionErr;
 }
@@ -605,7 +609,7 @@ function* afterSuccess(
     if (successAction === InterceptorActionAfterDelete) {
       // a promise while every delete worker is busy
       const waiting = deleteRecordFiles(app, record);
-      if (waiting instanceof Promise) {
+      if (isInstance(Promise, waiting)) {
         yield waiting;
       }
     }
@@ -642,14 +646,14 @@ function* afterSuccess(
     const result = afterTransaction(txErr, base);
 
     // an async interceptor ends after the transaction call returned
-    if (result instanceof Promise) {
+    if (isInstance(Promise, result)) {
       if (app.afterTransaction !== undefined) {
         app.afterTransaction.push(result);
         return;
       }
-      result.catch((err: unknown) => {
+      result.catch((error: unknown) => {
         app.logger.error(`Record ${successAction} interceptors failed after the transaction`, {
-          error: err,
+          error,
         });
       });
     }
@@ -715,7 +719,7 @@ function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: st
     } else if (successAction === InterceptorActionAfterDelete) {
       realtimeRecordAfterDelete(app, record);
     }
-  } catch (err) {
+  } catch (error) {
     const action =
       successAction === InterceptorActionAfterCreate
         ? "create"
@@ -725,7 +729,7 @@ function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: st
     app.logger.debug(`Failed to broadcast record ${action}`, {
       id: record.id,
       collectionName: record.collection().name,
-      error: err,
+      error,
     });
   }
 }
@@ -759,11 +763,11 @@ function* onRecordSaveExecute(app: RecordsApp, record: Record, next: Next): Step
 
     // loosely cross-check that the auth record id is unique across all auth collections
     // to minimize impact of mistakes in API rules when multiple auth collections are used
-    let authCollections: Collection[];
+    let authCollections: Array<Collection>;
     try {
       authCollections = withDriverErrors(() => findAllCollections(app, CollectionTypeAuth));
-    } catch (err) {
-      throw wrapError("unable to fetch the auth collections for cross-id unique check", err);
+    } catch (error) {
+      throw wrapError("unable to fetch the auth collections for cross-id unique check", error);
     }
     for (const c of authCollections) {
       if (collection.id === c.id) {
@@ -785,8 +789,12 @@ function* onRecordSaveExecute(app: RecordsApp, record: Record, next: Next): Step
 
   try {
     yield* next(app);
-  } catch (err) {
-    throw NormalizeUniqueIndexError(toError(err), collection.name, collection.fields.fieldNames());
+  } catch (error) {
+    throw NormalizeUniqueIndexError(
+      toError(error),
+      collection.name,
+      collection.fields.fieldNames(),
+    );
   }
 }
 
@@ -827,9 +835,9 @@ export function* deleteStep(app: RecordsApp, record: Record): Step {
         );
       });
     });
-  } catch (deleteErr) {
+  } catch (error) {
     realtimeRecordAfterDeleteError(app, record);
-    yield* afterError(app, record, InterceptorActionAfterDeleteError, deleteErr);
+    yield* afterError(app, record, InterceptorActionAfterDeleteError, error);
   }
 
   yield* afterSuccess(app, record, InterceptorActionAfterDelete, InterceptorActionAfterDeleteError);
@@ -863,7 +871,7 @@ function* onRecordDeleteExecute(app: RecordsApp, record: Record, next: Next): St
 function* cascadeRecordDelete(
   app: RecordsApp,
   mainRecord: Record,
-  refs: Map<Collection, Field[]>,
+  refs: Map<Collection, Array<Field>>,
 ): Step {
   // Sort the refs keys to ensure that the cascade events firing order is always the same.
   // This is not necessary for the operation to function correctly but it helps having deterministic output during testing.
@@ -934,10 +942,10 @@ function* deleteRefRecords(
   app: RecordsApp,
   mainRecord: Record,
   refCollection: Collection,
-  refIds: readonly string[],
+  refIds: ReadonlyArray<string>,
   field: Field,
 ): Step {
-  if (!(field instanceof RelationField)) {
+  if (!isInstance(RelationField, field)) {
     throw new Error("only RelationField is supported at the moment, got " + field.type());
   }
   const relField = field;
@@ -946,11 +954,11 @@ function* deleteRefRecords(
     let refRecord: Record;
     try {
       refRecord = findRecordById(app, refCollection, refId);
-    } catch (err) {
-      if (isNoRows(err)) {
+    } catch (error) {
+      if (isNoRows(error)) {
         continue; // already deleted
       }
-      throw err;
+      throw error;
     }
 
     const ids = refRecord.getStringSlice(relField.name);
@@ -989,13 +997,13 @@ function* deleteRefRecords(
 // truncateCollection in src/collections inside its transaction
 
 // deletes the given records; a record that is already gone is skipped
-export function deleteTruncatedRecords(app: RecordsApp, records: readonly Record[]): void {
+export function deleteTruncatedRecords(app: RecordsApp, records: ReadonlyArray<Record>): void {
   for (const record of records) {
     try {
       deleteRecordSync(app, record);
-    } catch (err) {
-      if (!isNoRows(err)) {
-        throw err;
+    } catch (error) {
+      if (!isNoRows(error)) {
+        throw error;
       }
     }
   }
@@ -1009,7 +1017,7 @@ export function isNoRows(err: unknown): boolean {
   if (isNoRowsError(err)) {
     return true;
   }
-  if (err instanceof AggregateError || err instanceof JoinedErrors) {
+  if (err instanceof AggregateError || isInstance(JoinedErrors, err)) {
     return err.errors.some(isNoRows);
   }
   if (err instanceof Error && err.cause !== undefined) {
@@ -1048,12 +1056,12 @@ function driverValues(data: Params): Params {
 // it is. Exported for the record create rule check (src/apis/record-crud.ts),
 // which binds a record's dbExport() as query parameters.
 export function driverValue(key: string, value: unknown): unknown {
-  if (value instanceof DateTime || value instanceof GeoPoint) {
+  if (isInstance(DateTime, value) || isInstance(GeoPoint, value)) {
     return value.value();
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     const v = value.value();
-    if (v instanceof Uint8Array) {
+    if (isInstance(Uint8Array, v)) {
       // a Go string with bytes that are not valid UTF-8, stored as TEXT
       return newExp(`CAST({:${jsonTextParam(key)}} AS TEXT)`, { [jsonTextParam(key)]: v });
     }

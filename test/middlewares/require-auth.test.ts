@@ -25,7 +25,8 @@ import {
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { Router } from "@/server/router";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { serveTest } from "@test/support/router";
 
 const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };
@@ -66,7 +67,7 @@ const guestOnlyRoute = (router: Router<RequestEvent>) => {
 };
 
 const authRoute =
-  (...names: string[]) =>
+  (...names: Array<string>) =>
   (router: Router<RequestEvent>) => {
     router.GET("/my/test", handler).bind(requireAuth(...names));
   };
@@ -94,7 +95,7 @@ beforeAll(async () => {
 
 afterAll(() => testApp.cleanup());
 
-function run(scenarios: Scenario[]): void {
+function run(scenarios: Array<Scenario>): void {
   for (const s of scenarios) {
     test(s.name, async () => {
       const router = newRouter(testApp);

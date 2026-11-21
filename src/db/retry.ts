@@ -9,7 +9,8 @@
 // As upstream, a query without a deadline gets one from the query timeout
 // (--queryTimeout) for all of its attempts, and loses it afterwards.
 
-import { Deadline, type AsyncExecHookFunc, type ExecHookFunc, type Query } from "@/db/dbx/query";
+import { Deadline } from "@/db/dbx/query";
+import type { AsyncExecHookFunc, ExecHookFunc, Query } from "@/db/dbx/query";
 import { isNoRowsError } from "@/db/dbx/rows";
 
 // blocks for the given milliseconds
@@ -28,7 +29,7 @@ export const defaultAsyncSleep: AsyncSleepFunc = (ms) => Bun.sleep(ms);
 export const defaultNow: NowFunc = () => performance.now();
 
 // default retries intervals (in ms)
-export const defaultRetryIntervals: readonly number[] = Object.freeze([
+export const defaultRetryIntervals: ReadonlyArray<number> = Object.freeze([
   50, 100, 150, 200, 300, 400, 500, 700, 1000,
 ]);
 
@@ -46,8 +47,8 @@ export function execLockRetry(
     const reset = withTimeout(q, timeout, now);
     try {
       baseLockRetry(() => op(), maxRetries, sleep);
-    } catch (err) {
-      throw failedQueryError(q, err);
+    } catch (error) {
+      throw failedQueryError(q, error);
     } finally {
       reset();
     }
@@ -65,8 +66,8 @@ export function execLockRetryAsync(
     const reset = withTimeout(q, timeout, now);
     try {
       await baseLockRetryAsync(() => op(), maxRetries, sleep);
-    } catch (err) {
-      throw failedQueryError(q, err);
+    } catch (error) {
+      throw failedQueryError(q, error);
     } finally {
       reset();
     }
@@ -100,9 +101,9 @@ export function baseLockRetry(
     try {
       op(attempt);
       return;
-    } catch (err) {
-      if (attempt > maxRetries || !isLockError(err)) {
-        throw err;
+    } catch (error) {
+      if (attempt > maxRetries || !isLockError(error)) {
+        throw error;
       }
       // wait and retry
       sleep(getDefaultRetryInterval(attempt));
@@ -119,9 +120,9 @@ export async function baseLockRetryAsync(
     try {
       await op(attempt);
       return;
-    } catch (err) {
-      if (attempt > maxRetries || !isLockError(err)) {
-        throw err;
+    } catch (error) {
+      if (attempt > maxRetries || !isLockError(error)) {
+        throw error;
       }
       // wait and retry
       await sleep(getDefaultRetryInterval(attempt));
@@ -138,7 +139,7 @@ function isLockError(err: unknown): boolean {
 // the retry interval in ms
 export function getDefaultRetryInterval(attempt: number): number {
   if (attempt < 0 || attempt > defaultRetryIntervals.length - 1) {
-    return defaultRetryIntervals[defaultRetryIntervals.length - 1]!;
+    return defaultRetryIntervals.at(-1)!;
   }
   return defaultRetryIntervals[attempt]!;
 }

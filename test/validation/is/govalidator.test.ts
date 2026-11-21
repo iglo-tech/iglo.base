@@ -66,7 +66,7 @@ test.each<[string, boolean]>([
   ["rtmp://foobar.com", false],
   ["http://localhost:3000/", true],
   ["http://foobar.com#baz=qux", true],
-  ["http://foobar.com/t$-_.+!*\\'(),", true],
+  [String.raw`http://foobar.com/t$-_.+!*\'(),`, true],
   ["http://www.foobar.com/~foobar", true],
   ["http://www.-foobar.com/", false],
   ["http://www.foo---bar.com/", false],

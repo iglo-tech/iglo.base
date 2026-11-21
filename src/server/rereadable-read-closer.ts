@@ -6,7 +6,8 @@
 //
 // Close it after done working with the reader.
 
-import { BufferWithFile, type ReadCloser, type ReadResult } from "@/server/buffer-with-file";
+import { BufferWithFile } from "@/server/buffer-with-file";
+import type { ReadCloser, ReadResult } from "@/server/buffer-with-file";
 
 // Rereader defines an interface for rewindable readers.
 export interface Rereader {
@@ -20,7 +21,7 @@ export function isRereader(r: unknown): r is Rereader {
 export class RereadableReadCloser implements ReadCloser, Rereader {
   #reader: ReadCloser;
   #copy: BufferWithFile | undefined;
-  #closeErrors: unknown[] = [];
+  #closeErrors: Array<unknown> = [];
 
   // MaxMemory specifies the max size of the in memory copy buffer before
   // switching to read/write from temp disk file. If negative or zero,
@@ -67,8 +68,8 @@ export class RereadableReadCloser implements ReadCloser, Rereader {
     // eagerly close the old reader to prevent accumulating too much memory or temp files
     try {
       this.#reader.close();
-    } catch (err) {
-      this.#closeErrors.push(err);
+    } catch (error) {
+      this.#closeErrors.push(error);
     }
 
     this.#reader = this.#copy;
@@ -81,15 +82,15 @@ export class RereadableReadCloser implements ReadCloser, Rereader {
     if (this.#copy) {
       try {
         this.#copy.close();
-      } catch (err) {
-        this.#closeErrors.push(err);
+      } catch (error) {
+        this.#closeErrors.push(error);
       }
     }
 
     try {
       this.#reader.close();
-    } catch (err) {
-      this.#closeErrors.push(err);
+    } catch (error) {
+      this.#closeErrors.push(error);
     }
 
     if (this.#closeErrors.length > 0) {
@@ -100,7 +101,7 @@ export class RereadableReadCloser implements ReadCloser, Rereader {
 
 // Reads r until EOF (io.ReadAll).
 export async function readAll(r: ReadCloser): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   let total = 0;
   const p = new Uint8Array(32 * 1024);
   for (;;) {

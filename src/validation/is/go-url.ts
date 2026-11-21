@@ -48,7 +48,7 @@ function ishex(c: string | undefined): boolean {
 
 // Precondition: ishex(c) is true.
 function unhex(c: string): number {
-  return parseInt(c, 16);
+  return Number.parseInt(c, 16);
 }
 
 // shouldEscape for the host and zone modes, the only ones unescape asks
@@ -326,8 +326,8 @@ function parseHost(scheme: string, host: string): string {
     let is4: boolean;
     try {
       is4 = ParseAddr(unescapedHostname).is4;
-    } catch (err) {
-      throw new URLError(`invalid host: ${(err as Error).message}`);
+    } catch (error) {
+      throw new URLError(`invalid host: ${(error as Error).message}`);
     }
     if (is4) {
       throw new URLError("invalid IP-literal");

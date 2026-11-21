@@ -12,7 +12,7 @@ export interface Child {
 }
 
 export function spawnChild(
-  command: string[],
+  command: Array<string>,
   options: { cwd: string; env?: Record<string, string> },
 ): Child {
   const proc = Bun.spawn(command, {
@@ -49,7 +49,7 @@ export function spawnChild(
     async stop() {
       if (!exited) {
         proc.kill("SIGTERM");
-        const timer = setTimeout(() => proc.kill("SIGKILL"), 5_000);
+        const timer = setTimeout(() => proc.kill("SIGKILL"), 5000);
         await proc.exited;
         clearTimeout(timer);
       }

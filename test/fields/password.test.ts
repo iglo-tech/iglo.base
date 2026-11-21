@@ -6,8 +6,8 @@ import {
   InterceptorActionAfterCreate,
   InterceptorActionAfterUpdate,
   InterceptorActionCreate,
-  type Field,
 } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { FieldTypePassword, PasswordField, PasswordFieldValue } from "@/fields/password";
 import { newBadRequestError } from "@/server/error";
 import { Cost, DefaultCost, ErrPasswordTooLong, MaxCost, MinCost } from "@/tools/crypto/bcrypt";
@@ -41,7 +41,7 @@ describe("TestPasswordFieldPrepareValue", () => {
   const f = new PasswordField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: { raw: unknown; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; expected: string }> = [
     { raw: "", expected: "" },
     { raw: "test", expected: "test" },
     { raw: false, expected: "false" },
@@ -64,7 +64,7 @@ describe("TestPasswordFieldDriverValue", () => {
 
   const err = new Error("example_err");
 
-  const scenarios: { raw: unknown; expected: PasswordFieldValue }[] = [
+  const scenarios: Array<{ raw: unknown; expected: PasswordFieldValue }> = [
     { raw: 123, expected: new PasswordFieldValue() },
     { raw: "abc", expected: new PasswordFieldValue() },
     { raw: "$2abc", expected: new PasswordFieldValue({ hash: "$2abc" }) },
@@ -98,12 +98,12 @@ describe("TestPasswordFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: PasswordField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new PasswordField({ name: "test" }),
@@ -204,7 +204,7 @@ describe("PasswordField.validateValue errors", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { field: PasswordField; value: unknown; expected: Error }[] = [
+  const scenarios: Array<{ field: PasswordField; value: unknown; expected: Error }> = [
     {
       field: new PasswordField({ name: "test" }),
       value: "123",
@@ -268,7 +268,11 @@ describe("TestPasswordFieldValidateSettings", () => {
 
   const app = noDBApp();
 
-  const scenarios: { name: string; field: () => PasswordField; expectErrors: string[] }[] = [
+  const scenarios: Array<{
+    name: string;
+    field: () => PasswordField;
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "zero minimal",
       field: () => new PasswordField({ id: "test", name: "test" }),
@@ -346,14 +350,14 @@ describe("TestPasswordFieldValidateSettings", () => {
 });
 
 describe("TestPasswordFieldFindSetter", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     value: unknown;
     field: PasswordField;
     hasSetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",
@@ -395,13 +399,13 @@ describe("TestPasswordFieldFindSetter", () => {
 });
 
 describe("TestPasswordFieldFindGetter", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     field: PasswordField;
     hasGetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",

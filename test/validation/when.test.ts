@@ -6,8 +6,10 @@ import { describe, expect, test } from "bun:test";
 
 import { Required } from "@/validation/required";
 import { NewStringRule } from "@/validation/string";
-import { When, type WhenRule } from "@/validation/when";
-import { Validate, type Rule } from "@/validation/validation";
+import { When } from "@/validation/when";
+import type { WhenRule } from "@/validation/when";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 function abcValidation(val: string): boolean {
   return val === "abc";
@@ -21,14 +23,14 @@ describe("when", () => {
   const abcRule = NewStringRule(abcValidation, "wrong_abc");
   const validateMeRule = NewStringRule(validateMe, "wrong_me");
 
-  const rows: {
+  const rows: Array<{
     tag: string;
     condition: boolean;
     value: unknown;
-    rules: Rule[];
-    elseRules: Rule[];
+    rules: Array<Rule>;
+    elseRules: Array<Rule>;
     err: string;
-  }[] = [
+  }> = [
     // True condition
     { tag: "t1.1", condition: true, value: null, rules: [], elseRules: [], err: "" },
     { tag: "t1.2", condition: true, value: "", rules: [], elseRules: [], err: "" },

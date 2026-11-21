@@ -24,14 +24,16 @@
 
 import type { SQLQueryBindings } from "bun:sqlite";
 
-import { DeadlineExceededError, type AsyncReader, type Deadline } from "@/db/dbx/query";
-import { NoRowsError, rowsFromValues, type ReadMode } from "@/db/dbx/rows";
+import { DeadlineExceededError } from "@/db/dbx/query";
+import type { AsyncReader, Deadline } from "@/db/dbx/query";
+import { NoRowsError, rowsFromValues } from "@/db/dbx/rows";
+import type { ReadMode } from "@/db/dbx/rows";
 
 export interface ReadRequestMessage {
   id: number;
   path: string;
   sql: string;
-  args: SQLQueryBindings[];
+  args: Array<SQLQueryBindings>;
   mode: ReadMode;
   // Query.withExactIntegers
   exactIntegers: boolean;
@@ -39,8 +41,8 @@ export interface ReadRequestMessage {
 
 // the result of an "all" read as the worker sends it
 export interface RowTable {
-  names: string[];
-  rows: unknown[][];
+  names: Array<string>;
+  rows: Array<Array<unknown>>;
 }
 
 export interface SerializedError {
@@ -117,10 +119,10 @@ export interface ReadPoolStats {
 }
 
 export class ReadPool {
-  private readonly slots: Slot[] = [];
-  private readonly queue: Request[] = [];
+  private readonly slots: Array<Slot> = [];
+  private readonly queue: Array<Request> = [];
   private readonly abandoned = new Set<Worker>();
-  private readonly exited: Promise<void>[] = [];
+  private readonly exited: Array<Promise<void>> = [];
   private nextId = 1;
   private closed = false;
 
@@ -179,7 +181,6 @@ export class ReadPool {
           // that SQLite checkpoints and removes the -wal and -shm files
           // once the last connection of a database is gone
           slot.worker.ref();
-          // oxlint-disable-next-line unicorn/require-post-message-target-origin
           slot.worker.postMessage("close");
         } else {
           slot.worker.terminate();
@@ -194,7 +195,7 @@ export class ReadPool {
   private read(
     path: string,
     sql: string,
-    args: SQLQueryBindings[],
+    args: Array<SQLQueryBindings>,
     mode: ReadMode,
     deadline: Deadline | null,
     exactIntegers: boolean,
@@ -291,7 +292,6 @@ export class ReadPool {
       request.slot = slot;
       slot.worker.ref();
       // a Worker's postMessage has no target origin (that is window.postMessage)
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       slot.worker.postMessage(request.message);
     }
   }

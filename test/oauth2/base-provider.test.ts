@@ -6,7 +6,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
 import { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
-import { type AuthUser, BaseProvider } from "@/oauth2/base-provider";
+import { BaseProvider } from "@/oauth2/base-provider";
+import type { AuthUser } from "@/oauth2/base-provider";
 import { OIDC } from "@/oauth2/oidc";
 import { isProviderName } from "@/oauth2/provider-names";
 import { buildAuthURL, initProvider } from "@/oauth2/providers";
@@ -33,7 +34,7 @@ interface Recorded {
   body: string;
 }
 
-const requests: Recorded[] = [];
+const requests: Array<Recorded> = [];
 let server: ReturnType<typeof Bun.serve>;
 let base = "";
 
@@ -66,7 +67,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  server.stop(true);
+  void server.stop(true);
 });
 
 beforeEach(() => {
@@ -90,7 +91,7 @@ describe("BaseProvider fields", () => {
   });
 
   // the zero value of each field, and a value it takes after being set
-  const cases: [string, string, unknown, unknown][] = [
+  const cases: Array<[string, string, unknown, unknown]> = [
     ["TestDisplayName", "displayName", "", "test"],
     ["TestOrder", "order", 0, 123],
     ["TestLogo", "logo", "", "test"],
@@ -109,10 +110,12 @@ describe("BaseProvider fields", () => {
     test(name, () => {
       const provider = new TestProvider();
 
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       expect(Reflect.get(provider, field)).toEqual(zero);
 
       Reflect.set(provider, field, value);
 
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       expect(Reflect.get(provider, field)).toEqual(value);
     });
   }

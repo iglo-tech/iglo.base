@@ -16,18 +16,18 @@
 import { CaseRanges as caseRangesText } from "@/tools/unicode/tables";
 import { SimpleFold } from "@/tools/unicode/letter";
 
-const MaxRune = 0x10ffff;
+const MaxRune = 0x10_ff_ff;
 const MaxASCII = 0x7f;
-const RuneError = 0xfffd;
+const RuneError = 0xff_fd;
 const LowerCase = 1;
 const UpperLower = MaxRune + 1;
 
 // lo, hi and the UpperCase, LowerCase and TitleCase deltas
 type CaseRange = [lo: number, hi: number, upper: number, lower: number, title: number];
 
-let caseRanges: CaseRange[] | undefined;
+let caseRanges: Array<CaseRange> | undefined;
 
-function decodeCaseRanges(): CaseRange[] {
+function decodeCaseRanges(): Array<CaseRange> {
   return caseRangesText.split(",").map((item) => {
     const [lo = "", hi = "", ...deltas] = item.split(" ");
     const d = deltas.map((delta) => (delta === "UL" ? UpperLower : Number(delta)));
@@ -86,13 +86,13 @@ export function toLower(s: string): string {
     }
   }
   if (isASCII) {
-    return s.replace(/[A-Z]+/g, (m) => m.toLowerCase());
+    return s.replaceAll(/[A-Z]+/g, (m) => m.toLowerCase());
   }
 
   let out = "";
   for (const ch of s) {
     const r = ch.codePointAt(0) as number;
-    if (r >= 0xd800 && r <= 0xdfff) {
+    if (r >= 0xd8_00 && r <= 0xdf_ff) {
       out += String.fromCodePoint(RuneError);
       continue;
     }
@@ -104,8 +104,8 @@ export function toLower(s: string): string {
 // strings.EqualFold reports whether s and t are equal under simple Unicode
 // case-folding.
 export function equalFold(s: string, t: string): boolean {
-  const a = [...s];
-  const b = [...t];
+  const a = Array.from(s);
+  const b = Array.from(t);
   if (a.length !== b.length) {
     return false;
   }
@@ -140,15 +140,15 @@ function isSpace(r: number): boolean {
     case 0x20:
     case 0x85:
     case 0xa0:
-    case 0x1680:
-    case 0x2028:
-    case 0x2029:
-    case 0x202f:
-    case 0x205f:
-    case 0x3000:
+    case 0x16_80:
+    case 0x20_28:
+    case 0x20_29:
+    case 0x20_2f:
+    case 0x20_5f:
+    case 0x30_00:
       return true;
   }
-  return r >= 0x2000 && r <= 0x200a;
+  return r >= 0x20_00 && r <= 0x20_0a;
 }
 
 // strings.TrimSpace returns s with all leading and trailing white space
@@ -169,7 +169,7 @@ export function trimSpace(s: string): string {
 // contained in cutset removed.
 export function trim(s: string, cutset: string): string {
   const cut = new Set(cutset);
-  const chars = [...s];
+  const chars = Array.from(s);
   let start = 0;
   let end = chars.length;
   while (start < end && cut.has(chars[start] as string)) {

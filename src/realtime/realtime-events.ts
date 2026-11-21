@@ -67,7 +67,8 @@ import { joinErrors } from "@/collections/view";
 import { HashExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { Record } from "@/records/record-model";
-import { type RecordsApp, recordQuery } from "@/records/record-query";
+import { recordQuery } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { expandRecordSync } from "@/records/record-query-expand";
 import { filterBuildExpr } from "@/search/filter";
 import { FilterQueryParam } from "@/search/provider";
@@ -122,12 +123,12 @@ export function realtimeRecordAfterUpdate(app: RecordsApp, record: Record): void
 export function realtimeRecordDelete(app: RecordsApp, record: Record): void {
   try {
     dryCacheRecordDelete(app, record);
-  } catch (err) {
+  } catch (error) {
     // the delete goes on (upstream only logs the error)
     app.logger.debug("Failed to dry cache record delete", {
       id: record.id,
       collectionName: record.collection().name,
-      error: err,
+      error,
     });
   }
 }
@@ -287,7 +288,7 @@ function realtimeBroadcastRecord(app: RecordsApp, action: string, record: Record
   const broadcast = new RecordBroadcast(app, app, action, record.fresh());
 
   // prepared now, against the database state this write left
-  const pending: [Client, Message[]][] = [];
+  const pending: Array<[Client, Array<Message>]> = [];
   for (const chunk of broker.chunkedClients(clientsChunkSize)) {
     for (const client of chunk) {
       const messages = broadcast.clientMessages(client);
@@ -301,7 +302,7 @@ function realtimeBroadcastRecord(app: RecordsApp, action: string, record: Record
 }
 
 // sends the prepared messages after the broadcasts before them
-function sendLater(app: RecordsApp, pending: [Client, Message[]][]): void {
+function sendLater(app: RecordsApp, pending: Array<[Client, Array<Message>]>): void {
   if (pending.length === 0) {
     return;
   }
@@ -321,7 +322,7 @@ function realtimeBroadcastDryCacheKey(app: RecordsApp, broker: Broker, key: stri
     return; // no subscribers
   }
 
-  const pending: [Client, Message[]][] = [];
+  const pending: Array<[Client, Array<Message>]> = [];
   for (const client of broker.clients().values()) {
     const messages = client.get(key);
     if (!Array.isArray(messages)) {
@@ -330,7 +331,7 @@ function realtimeBroadcastDryCacheKey(app: RecordsApp, broker: Broker, key: stri
 
     client.unset(key);
 
-    pending.push([client, messages as Message[]]);
+    pending.push([client, messages as Array<Message>]);
   }
 
   sendLater(app, pending);
@@ -353,7 +354,7 @@ function getDryCacheKey(action: string, record: Record): string {
 class RecordBroadcast {
   readonly #collection: Collection;
   // the subscription topic prefixes with the rule each is checked against
-  readonly #subscriptionRules: [string, string | null][];
+  readonly #subscriptionRules: Array<[string, string | null]>;
   // the encoded data shared by the subscribers that get the same bytes
   readonly #encoded = new Map<string, Uint8Array>();
   // the access checks made so far, by everything their result depends on
@@ -385,9 +386,9 @@ class RecordBroadcast {
   }
 
   // the messages of one client, in its subscriptions' order
-  clientMessages(client: Client): Message[] {
+  clientMessages(client: Client): Array<Message> {
     const collection = this.#collection;
-    const messages: Message[] = [];
+    const messages: Array<Message> = [];
 
     // note: not executed concurrently to avoid races and to ensure
     // that the access checks are applied for the current record db state
@@ -666,8 +667,8 @@ function recordData(
   if (rawFields !== "") {
     try {
       encodedRecord = marshal(pick(record, rawFields));
-    } catch (err) {
-      onPickError(err);
+    } catch (error) {
+      onPickError(error);
     }
   }
 

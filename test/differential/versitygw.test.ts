@@ -3,7 +3,8 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 let s3: Versitygw;
 

@@ -12,7 +12,7 @@ import {
 
 // wwwRedirect performs www->non-www redirect(s) if the request host
 // matches with one of the values in redirectHosts.
-export function wwwRedirect(redirectHosts: string[]): Handler<RequestEvent> {
+export function wwwRedirect(redirectHosts: Array<string>): Handler<RequestEvent> {
   return {
     id: DefaultWWWRedirectMiddlewareId,
     priority: DefaultWWWRedirectMiddlewarePriority,

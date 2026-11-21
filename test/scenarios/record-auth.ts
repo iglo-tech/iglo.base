@@ -48,16 +48,22 @@ export function rateLimitScenario(
   name: string,
   method: string,
   url: string,
-  rules: RateLimitRuleData[],
+  rules: Array<RateLimitRuleData>,
   headers?: Record<string, string>,
   body?: string,
 ): Scenario {
+  const optional: Pick<Scenario, "headers" | "body"> = {};
+  if (headers) {
+    optional.headers = headers;
+  }
+  if (body !== undefined) {
+    optional.body = body;
+  }
   return {
     name,
     method,
     url,
-    ...(headers ? { headers } : {}),
-    ...(body === undefined ? {} : { body }),
+    ...optional,
     prepare: ({ dataDir }) => setRateLimits(dataDir, rules),
     expectedStatus: 429,
     expectedContent: [`"data":{}`],

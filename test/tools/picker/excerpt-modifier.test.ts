@@ -6,7 +6,7 @@ import { toInt } from "@/records/cast";
 import { newExcerptModifier } from "@/tools/picker/excerpt-modifier";
 import { toBool } from "@/tools/types/cast";
 
-test.each<[string, string[], boolean]>([
+test.each<[string, Array<string>, boolean]>([
   ["no arguments", [], true],
   ["too many arguments", ["12", "false", "something"], true],
   ["non-numeric max argument", ["something"], true], // should fallback to 0 which is not allowed
@@ -20,8 +20,8 @@ test.each<[string, string[], boolean]>([
   let err: unknown;
   try {
     m = newExcerptModifier(...args);
-  } catch (e) {
-    err = e;
+  } catch (error) {
+    err = error;
   }
 
   expect(err !== undefined).toBe(expectError);
@@ -41,7 +41,7 @@ const html = ` <script>var a = 123;</script>   <p>Hello</p><div id="test_id">t  
 
 const plainText = "Hello t est12 3456 word 7 89!? a b c# title";
 
-test.each<[string, string[], string, string]>([
+test.each<[string, Array<string>, string, string]>([
   // without ellipsis
   ["only max < len(plainText)", ["2"], html, plainText.slice(0, 2)],
   ["only max = len(plainText)", [String(plainText.length)], html, plainText],

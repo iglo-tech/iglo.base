@@ -11,7 +11,8 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { run, startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { run, startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const sdkSource = join(repoRoot, "sdk/src");
@@ -63,12 +64,12 @@ function digests(dataDir: string): Record<string, string> {
           .query(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
           )
-          .all() as { name: string }[]
+          .all() as Array<{ name: string }>
       ).map((row) => row.name);
       const content = Object.fromEntries(
         tables.map((table) => [
           table,
-          (db.query(`SELECT * FROM "${table}"`).all() as Record<string, unknown>[])
+          (db.query(`SELECT * FROM "${table}"`).all() as Array<Record<string, unknown>>)
             .map((row) => JSON.stringify(row))
             .toSorted(),
         ]),
@@ -82,27 +83,27 @@ function digests(dataDir: string): Record<string, string> {
 }
 
 // starts the server with the schema file; the start applies it
-function serveWith(site: Site, extra: string[] = []): Promise<RunningServer> {
+function serveWith(site: Site, extra: Array<string> = []): Promise<RunningServer> {
   return startServer(["--schema", site.schemaPath, ...extra], site.dataDir);
 }
 
 // the start fails: the error text of the failed start
-async function startFails(site: Site, extra: string[] = []): Promise<string> {
+async function startFails(site: Site, extra: Array<string> = []): Promise<string> {
   try {
     const server = await serveWith(site, extra);
     await server.stop();
-  } catch (err) {
-    return err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
   throw new Error("the server started, but the apply was expected to fail");
 }
 
 // the rows of the migrations table, read from the file
-function migrationRows(dataDir: string): string[] {
+function migrationRows(dataDir: string): Array<string> {
   const db = new Database(join(dataDir, "data.db"), { readonly: true });
   try {
     return (
-      db.query("SELECT file FROM _migrations ORDER BY rowid").all() as { file: string }[]
+      db.query("SELECT file FROM _migrations ORDER BY rowid").all() as Array<{ file: string }>
     ).map((row) => row.file);
   } finally {
     db.close();
@@ -110,7 +111,7 @@ function migrationRows(dataDir: string): string[] {
 }
 
 // the rows the apply recorded (the TypeScript migrations' rows)
-function schemaRows(dataDir: string): string[] {
+function schemaRows(dataDir: string): Array<string> {
   return migrationRows(dataDir).filter((row) => row.startsWith("@schema/"));
 }
 
@@ -149,10 +150,10 @@ async function records(
   url: string,
   token: string,
   collection: string,
-): Promise<Record<string, unknown>[]> {
+): Promise<Array<Record<string, unknown>>> {
   const result = await api(url, token, "GET", `/api/collections/${collection}/records?perPage=500`);
   expect(result.status).toBe(200);
-  return result.json.items as Record<string, unknown>[];
+  return result.json.items as Array<Record<string, unknown>>;
 }
 
 // the fields of a collection as the API returns them
@@ -163,7 +164,7 @@ async function fieldsOf(
 ): Promise<Record<string, Record<string, unknown>>> {
   const result = await api(url, token, "GET", `/api/collections/${collection}`);
   expect(result.status).toBe(200);
-  const fields = result.json.fields as Record<string, unknown>[];
+  const fields = result.json.fields as Array<Record<string, unknown>>;
   return Object.fromEntries(fields.map((field) => [String(field.name), field]));
 }
 
@@ -239,7 +240,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
         {
           title: { type: "text" },
           author: { type: "relation", collection: "authors", maxSelect: 1 },
-          cover: { type: "file", maxSelect: 1, maxSize: 100000 },
+          cover: { type: "file", maxSelect: 1, maxSize: 100_000 },
         },
         { list: '@collection.authors.id != ""', view: "" },
       ),
@@ -273,7 +274,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
         {
           title: { type: "text" },
           author: { type: "relation", collection: "writers", maxSelect: 1 },
-          cover: { type: "file", maxSelect: 1, maxSize: 100000 },
+          cover: { type: "file", maxSelect: 1, maxSize: 100_000 },
         },
         { list: '@collection.writers.id != ""', view: "" },
       ),
@@ -309,7 +310,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     writeSchema(site, {
       authors: { type: "base", rules: { list: "", view: "" }, fields: { name: { type: "text" } } },
     });
-    let server = await serveWith(site);
+    const server = await serveWith(site);
     const token = await superuser(server.url);
     const settings = await api(server.url, token, "PATCH", "/api/settings", {
       rateLimits: {
@@ -406,9 +407,9 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("refuses renames that cannot run, and the apply leaves the database unchanged", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
-    const cases: [string, string, string[]][] = [
+    const cases: Array<[string, string, Array<string>]> = [
       [
         "20261113160000_missing.ts",
         `  renames: { posts: { nothere: "author" } },`,
@@ -495,7 +496,15 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
     server = await serveWith(site);
     token = await superuser(server.url);
     const rows = await records(server.url, token, "posts");
-    expect(rows.map((row) => row.title).toSorted()).toEqual(["one!", "two!"]);
+    expect(
+      rows
+        .map((row) => row.title)
+        .toSorted((a, b) => {
+          const x = String(a);
+          const y = String(b);
+          return x < y ? -1 : x > y ? 1 : 0;
+        }),
+    ).toEqual(["one!", "two!"]);
     expect(rows.every((row) => String(row.slug).startsWith("s-"))).toBe(true);
     expect((await fieldsOf(server.url, token, "posts")).slug?.required).toBe(true);
     await server.stop();
@@ -504,7 +513,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("a required field that stays empty fails the record check, and nothing is applied", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    let server = await serveWith(site);
+    const server = await serveWith(site);
     const token = await superuser(server.url);
     expect(
       (await api(server.url, token, "POST", "/api/collections/posts/records", { title: "x" }))
@@ -525,7 +534,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("a migration that throws rolls back the whole startup and names the file", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeSchema(site, { posts: posts({ title: { type: "text" }, note: { type: "text" } }) });
     writeMigration(
@@ -547,7 +556,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("an async up fails the apply, because up must be synchronous", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeMigration(
       site,
@@ -586,7 +595,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
   test("schema plan with a pending migration changes nothing", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeMigration(
       site,
@@ -823,7 +832,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
       "20261113240000_kept.ts",
       migrationSource(`  up(tx) {\n    tx.create("posts", { title: "kept" });\n  },`),
     );
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
     expect(migrationRows(site.dataDir)).toContain("@schema/20261113240000_kept.ts");
 
     rmFile(join(site.migrationsDir, "20261113240000_kept.ts"));
@@ -841,7 +850,7 @@ async function renameScenario(
   before: Record<string, unknown>,
   seed: (url: string, token: string) => Promise<void>,
   after: Record<string, unknown>,
-  migrations: [file: string, source: string][],
+  migrations: Array<[file: string, source: string]>,
   check: (url: string, token: string) => Promise<void>,
 ): Promise<void> {
   const site = await newSite();
@@ -1187,7 +1196,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
         ],
       ],
       async (url, token) => {
-        const indexes = (await collectionOf(url, token, "posts")).indexes as string[];
+        const indexes = (await collectionOf(url, token, "posts")).indexes as Array<string>;
         expect(indexes.join("\n")).toContain("lower(author)");
         expect(indexes.join("\n")).toContain("WHERE author");
         expect(indexes.join("\n")).not.toContain("writer");
@@ -1352,7 +1361,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
       ],
       async (url, token) => {
         const [member] = (await api(url, token, "GET", "/api/collections/members/records")).json
-          .items as Record<string, unknown>[];
+          .items as Array<Record<string, unknown>>;
         expect(member?.note).toBe("ann@example.test|s3cr3t");
         expect(member?.secret).toBe("s3cr3t");
       },
@@ -1362,7 +1371,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
   test("a rename to a hidden field type-checks against the generated Migration type", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, secret: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeSchema(site, {
       posts: posts({ title: { type: "text" }, apikey: { type: "text", hidden: true } }),
@@ -1710,7 +1719,15 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
       ],
       async (url, token) => {
         const rows = await records(url, token, "posts");
-        expect(rows.map((row) => row.title).toSorted()).toEqual(["a", "seen 1"]);
+        expect(
+          rows
+            .map((row) => row.title)
+            .toSorted((a, b) => {
+              const x = String(a);
+              const y = String(b);
+              return x < y ? -1 : x > y ? 1 : 0;
+            }),
+        ).toEqual(["a", "seen 1"]);
         expect(rows.find((row) => row.title === "seen 1")).toEqual(
           expect.objectContaining({ author: "Ann" }),
         );
@@ -1750,7 +1767,15 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
       ],
       async (url, token) => {
         const rows = await records(url, token, "posts");
-        expect(rows.map((row) => row.title).toSorted()).toEqual(["a", "seen a"]);
+        expect(
+          rows
+            .map((row) => row.title)
+            .toSorted((a, b) => {
+              const x = String(a);
+              const y = String(b);
+              return x < y ? -1 : x > y ? 1 : 0;
+            }),
+        ).toEqual(["a", "seen a"]);
       },
     );
   });
@@ -1758,9 +1783,9 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
   test("rename checks compare names without regard to case, and say so", async () => {
     const site = await newSite();
     writeSchema(site, { posts: posts({ title: { type: "text" }, writer: { type: "text" } }) });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
-    const cases: [string, string, string[]][] = [
+    const cases: Array<[string, string, Array<string>]> = [
       [
         "20261114120300_case_field.ts",
         `  renames: { posts: { writer: "Title" } },`,
@@ -1803,7 +1828,7 @@ describe("S.8 follow-ups: digit-led names, views in migrations, case in renames,
       posts: posts({ title: { type: "text" } }),
       news: posts({ title: { type: "text" } }),
     });
-    (await serveWith(site)).stop();
+    void (await serveWith(site)).stop();
 
     writeSchema(site, { Posts: posts({ title: { type: "text" } }) });
     writeMigration(

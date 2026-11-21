@@ -172,8 +172,8 @@ export class S3 implements S3Config {
     let resp: Response;
     try {
       resp = await fetch(req.url, init);
-    } catch (err) {
-      throw goRequestError(req.method, req.url, err, req.signal);
+    } catch (error) {
+      throw goRequestError(req.method, req.url, error, req.signal);
     }
 
     if (resp.status < 400) {
@@ -184,8 +184,8 @@ export class S3 implements S3Config {
 
     try {
       respErr.raw = new Uint8Array(await resp.arrayBuffer());
-    } catch (err) {
-      throw joinErrors(goRequestError(req.method, req.url, err, req.signal), respErr);
+    } catch (error) {
+      throw joinErrors(goRequestError(req.method, req.url, error, req.signal), respErr);
     }
 
     if (respErr.raw.length > 0) {
@@ -197,8 +197,8 @@ export class S3 implements S3Config {
         if (Number.isSafeInteger(status)) {
           respErr.status = status;
         }
-      } catch (err) {
-        throw joinErrors(err, respErr);
+      } catch (error) {
+        throw joinErrors(error, respErr);
       }
     }
 
@@ -224,7 +224,7 @@ export class S3 implements S3Config {
       dateTime = new Date()
         .toISOString()
         .replace(/\.\d+Z$/, "Z")
-        .replace(/[-:]/g, "");
+        .replaceAll(/[-:]/g, "");
       headers.set("x-amz-date", dateTime);
     }
 
@@ -276,7 +276,7 @@ interface ParsedURL {
   // the decoded path, a string of bytes
   path: string;
   // the decoded query, key and value as strings of bytes
-  query: [string, string][];
+  query: Array<[string, string]>;
 }
 
 function parseRequestURL(url: string): ParsedURL {
@@ -302,8 +302,8 @@ function parseRequestURL(url: string): ParsedURL {
 }
 
 // url.ParseQuery, leaving out what it refuses
-function parseQuery(rawQuery: string): [string, string][] {
-  const out: [string, string][] = [];
+function parseQuery(rawQuery: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
   for (const pair of rawQuery.split("&")) {
     if (pair === "" || pair.includes(";")) {
       continue;
@@ -359,7 +359,7 @@ function canonicalAndSignedHeaders(headers: Headers): {
   canonicalHeaders: string;
   signedHeaders: string;
 } {
-  const signed: string[] = [];
+  const signed: Array<string> = [];
   const canonical = new Map<string, string>();
 
   headers.forEach((value, key) => {
@@ -410,12 +410,12 @@ export function extractMetadata(headers: Headers): Map<string, string> {
 // escapeQuery returns the URI encoded request query parameters according to
 // the AWS S3 spec requirements (it is similar to url.Values.Encode but
 // instead of url.QueryEscape uses our own escape method).
-function escapeQuery(values: [string, string][]): string {
+function escapeQuery(values: Array<[string, string]>): string {
   const keys = [...new Set(values.map(([k]) => k))].toSorted((a, b) =>
     a < b ? -1 : a > b ? 1 : 0,
   );
 
-  const out: string[] = [];
+  const out: Array<string> = [];
   for (const k of keys) {
     for (const [key, value] of values) {
       if (key === k) {

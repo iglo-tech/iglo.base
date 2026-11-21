@@ -13,7 +13,8 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { type Case, cases, prepareCase, type Step } from "@test/differential/rate-limit/cases";
+import { cases, prepareCase } from "@test/differential/rate-limit/cases";
+import type { Case, Step } from "@test/differential/rate-limit/cases";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
@@ -23,7 +24,7 @@ const timedAttempts = 5;
 // where in its second a timed case starts
 const startOffsetMs = 20;
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -44,12 +45,15 @@ async function send(baseURL: string, step: Step): Promise<Reply> {
     headers["Content-Type"] ??= "application/json";
     body = typeof step.body === "string" ? step.body : JSON.stringify(step.body);
   }
-  const res = await fetch(baseURL + step.url, {
+  const init: RequestInit = {
     method: step.method ?? "GET",
     headers,
     redirect: "manual",
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(baseURL + step.url, init);
   return {
     status: res.status,
     contentType: res.headers.get("Content-Type"),
@@ -57,9 +61,9 @@ async function send(baseURL: string, step: Step): Promise<Reply> {
   };
 }
 
-function failures(step: Step, index: number, upstream: Reply, igloBase: Reply): string[] {
+function failures(step: Step, index: number, upstream: Reply, igloBase: Reply): Array<string> {
   const at = `step ${index + 1} ${step.method ?? "GET"} ${step.url}`;
-  const out: string[] = [];
+  const out: Array<string> = [];
   if (upstream.status !== step.status) {
     out.push(`${at}: upstream answered ${upstream.status}, expected ${step.status}`);
   }
@@ -76,7 +80,7 @@ function failures(step: Step, index: number, upstream: Reply, igloBase: Reply): 
 }
 
 // the case on two fresh servers; null when a timed step missed its second
-async function runCase(c: Case): Promise<string[] | null> {
+async function runCase(c: Case): Promise<Array<string> | null> {
   const root = tempDir();
   roots.push(root);
   const prepared = join(root, "pb_data");
@@ -91,7 +95,7 @@ async function runCase(c: Case): Promise<string[] | null> {
   try {
     const igloBase = await startServer([], igloBaseDir);
     try {
-      const out: string[] = [];
+      const out: Array<string> = [];
       const startSecond = Math.floor(Date.now() / 1000) + 1;
       if (c.timed) {
         await Bun.sleep(startSecond * 1000 + startOffsetMs - Date.now());

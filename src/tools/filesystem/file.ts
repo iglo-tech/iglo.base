@@ -40,6 +40,7 @@ import { snakecase } from "@/tools/inflector/inflector";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { randomStringWithAlphabet } from "@/tools/security/random";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // RandomSource returns a random string of length characters from alphabet
 // (security.RandomStringWithAlphabet by default; tests inject their own).
@@ -103,7 +104,7 @@ export class BytesReader implements FileReader {
   }
 
   blob(): Blob {
-    this.#blob ??= new Blob([this.bytes as Uint8Array<ArrayBuffer>]);
+    this.#blob ??= new Blob([this.bytes]);
     return this.#blob;
   }
 }
@@ -233,7 +234,7 @@ export class File {
     originalName: string,
     size: number,
   ) {
-    this.#reader = reader instanceof Blob ? new blobReader(reader) : reader;
+    this.#reader = isInstance(Blob, reader) ? new blobReader(reader) : reader;
     this.#head = head;
     this.name = name;
     this.originalName = originalName;
@@ -263,7 +264,7 @@ export class File {
   // bytes read when the File was created, and the read error (with
   // application/octet-stream) if that read failed.
   detect(): [MIME, Error | null] {
-    const head = this.#reader instanceof PathReader ? readHead(this.#reader) : this.#head;
+    const head = isInstance(PathReader, this.#reader) ? readHead(this.#reader) : this.#head;
     if (head instanceof Error) {
       return [errMIME, head];
     }
@@ -287,8 +288,8 @@ export function readHead(reader: FileReader): Uint8Array | Error {
   let r: ReadCloser;
   try {
     r = reader.open();
-  } catch (err) {
-    return toError(err);
+  } catch (error) {
+    return toError(error);
   }
   try {
     const buf = new Uint8Array(defaultLimit);
@@ -301,8 +302,8 @@ export function readHead(reader: FileReader): Uint8Array | Error {
       n += read;
     }
     return buf.subarray(0, n);
-  } catch (err) {
-    return toError(err);
+  } catch (error) {
+    return toError(error);
   } finally {
     try {
       r.close();
@@ -364,7 +365,7 @@ export async function NewFileFromMultipart(
   mh: MultipartFileHeader | globalThis.File,
   opts: FileOptions = {},
 ): Promise<File> {
-  if (mh instanceof globalThis.File) {
+  if (isInstance(globalThis.File, mh)) {
     const filename = mh.name === "" ? "" : goBase(mh.name);
     const content = new Uint8Array(await mh.arrayBuffer());
     return newFile(new BytesReader(content), filename, mh.size, opts);

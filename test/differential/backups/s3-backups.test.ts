@@ -15,7 +15,8 @@ import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { freePort, startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 
@@ -29,7 +30,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 async function start(kind: Kind): Promise<Server> {
   const root = tempDir();
@@ -92,12 +93,12 @@ interface Answer {
 function normalize(text: string): string {
   return (
     text
-      .replace(/127\.0\.0\.1:\d+/g, "S3")
-      .replace(/pb_settings_test_[A-Za-z0-9]+/g, "pb_settings_test_X")
-      .replace(/<RequestId>[^<]*<\/RequestId>/g, "<RequestId/>")
-      .replace(/<HostId>[^<]*<\/HostId>/g, "<HostId/>")
+      .replaceAll(/127\.0\.0\.1:\d+/g, "S3")
+      .replaceAll(/pb_settings_test_[A-Za-z0-9]+/g, "pb_settings_test_X")
+      .replaceAll(/<RequestId>[^<]*<\/RequestId>/g, "<RequestId/>")
+      .replaceAll(/<HostId>[^<]*<\/HostId>/g, "<HostId/>")
       // versitygw's signature error tells the date and the signature
-      .replace(
+      .replaceAll(
         /<(StringToSign|SignatureProvided|StringToSignBytes|CanonicalRequest|CanonicalRequestBytes)>[^<]*<\/\1>/g,
         "<$1/>",
       )
@@ -181,7 +182,7 @@ async function downloadBytes(server: Server, key: string): Promise<Uint8Array> {
 
 function uploadForm(name: string, zip: Uint8Array): FormData {
   const form = new FormData();
-  form.set("file", new File([zip as Uint8Array<ArrayBuffer>], name, { type: "application/zip" }));
+  form.set("file", new File([zip], name, { type: "application/zip" }));
   return form;
 }
 
@@ -195,7 +196,7 @@ async function canBackup(server: Server): Promise<boolean> {
   return body.data.canBackup;
 }
 
-function tempFiles(server: Server): string[] {
+function tempFiles(server: Server): Array<string> {
   try {
     return readdirSync(join(server.dataDir, ".pb_temp_to_delete"));
   } catch {
@@ -217,7 +218,7 @@ async function rawHead(s3: Versitygw, key: string): Promise<Record<string, strin
   return out;
 }
 
-function bucketFiles(s3: Versitygw): string[] {
+function bucketFiles(s3: Versitygw): Array<string> {
   return readdirSync(join(s3.posixRoot, s3.bucket), { recursive: true, encoding: "utf8" })
     .filter((f) => !f.startsWith(".sgwtmp"))
     .toSorted();
@@ -259,7 +260,7 @@ async function bothServers(
 }
 
 function listBody(a: Answer): { status: number; body: unknown } {
-  const list = JSON.parse(a.body) as { key: string; size: number; modified: string }[];
+  const list = JSON.parse(a.body) as Array<{ key: string; size: number; modified: string }>;
   return {
     status: a.status,
     body: list.map((o) => ({
@@ -275,19 +276,23 @@ describe("the backup endpoints with backups.s3 enabled", () => {
     "list, create, upload, download, delete",
     async () => {
       await bothServers(async (server, s3) => {
-        const out: unknown[] = [];
-        out.push(listBody(await call(server, "GET", "/api/backups")));
-        out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })));
-        out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })));
-        out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "A b.zip" } })));
-        out.push(await rawHead(s3, "a.zip"));
+        const out: Array<unknown> = [];
+        out.push(
+          listBody(await call(server, "GET", "/api/backups")),
+          plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })),
+          plain(await call(server, "POST", "/api/backups", { json: { name: "a.zip" } })),
+          plain(await call(server, "POST", "/api/backups", { json: { name: "A b.zip" } })),
+          await rawHead(s3, "a.zip"),
+        );
 
         const name = "kopia zapasowa żółć+1.zip";
-        out.push(plain(await upload(server, name, emptyZip)));
-        out.push(plain(await upload(server, name, emptyZip)));
-        out.push(await rawHead(s3, name));
-        out.push(bucketFiles(s3));
-        out.push(listBody(await call(server, "GET", "/api/backups")));
+        out.push(
+          plain(await upload(server, name, emptyZip)),
+          plain(await upload(server, name, emptyZip)),
+          await rawHead(s3, name),
+          bucketFiles(s3),
+          listBody(await call(server, "GET", "/api/backups")),
+        );
 
         const whole = await download(server, name);
         delete whole.headers?.["Last-Modified"];
@@ -304,12 +309,14 @@ describe("the backup endpoints with backups.s3 enabled", () => {
         out.push(notModified.status);
 
         const key = encodeURIComponent(name);
-        out.push(plain(await download(server, "missing.zip")));
-        out.push(plain(await call(server, "DELETE", "/api/backups/missing.zip")));
-        out.push(plain(await call(server, "POST", "/api/backups/missing.zip/restore")));
-        out.push(plain(await call(server, "DELETE", `/api/backups/${key}`)));
-        out.push(bucketFiles(s3));
-        out.push(tempFiles(server));
+        out.push(
+          plain(await download(server, "missing.zip")),
+          plain(await call(server, "DELETE", "/api/backups/missing.zip")),
+          plain(await call(server, "POST", "/api/backups/missing.zip/restore")),
+          plain(await call(server, "DELETE", `/api/backups/${key}`)),
+          bucketFiles(s3),
+          tempFiles(server),
+        );
         return out;
       });
     },
@@ -350,7 +357,7 @@ describe("the backup endpoints with backups.s3 enabled", () => {
         writeFileSync(join(dir, "manual.zip"), "x");
 
         const before = await call(server, "GET", "/api/backups");
-        const listed = (JSON.parse(before.body) as { key: string }[]).length;
+        const listed = (JSON.parse(before.body) as Array<{ key: string }>).length;
 
         const res = await call(server, "POST", "/api/crons/__pbAutoBackup__");
         const done = await eventually(() => bucketFiles(s3).length === 3);
@@ -366,7 +373,7 @@ describe("the backup endpoints with backups.s3 enabled", () => {
   );
 });
 
-function kept(logs: unknown[]): unknown[] {
+function kept(logs: Array<unknown>): Array<unknown> {
   return logs.filter((l) => (l as { id: string }).id === "backuplog000000");
 }
 
@@ -390,7 +397,7 @@ describe("a backup restored by the other server, through S3", () => {
           const expected = snapshot(source.dataDir);
 
           const list = await call(target, "GET", "/api/backups");
-          expect((JSON.parse(list.body) as { key: string }[]).map((b) => b.key)).toEqual([
+          expect((JSON.parse(list.body) as Array<{ key: string }>).map((b) => b.key)).toEqual([
             "cross.zip",
           ]);
           const zip = await downloadBytes(target, "cross.zip");
@@ -451,7 +458,7 @@ interface Seen {
 type Script = (req: Request, url: URL) => Response | null | Promise<Response | null>;
 
 class ScriptedS3 {
-  readonly seen: Seen[] = [];
+  readonly seen: Array<Seen> = [];
   script: Script = () => null;
   readonly #objects = new Map<string, { body: Uint8Array; headers: Headers }>();
   readonly #server = Bun.serve({
@@ -490,7 +497,7 @@ class ScriptedS3 {
       ),
       body: isPart
         ? `${bytes.length} bytes`
-        : new TextDecoder().decode(bytes).replace(/&#34;[0-9a-f]+&#34;/g, "ETAG"),
+        : new TextDecoder().decode(bytes).replaceAll(/&#34;[0-9a-f]+&#34;/g, "ETAG"),
     });
 
     const scripted = await this.script(req, url);
@@ -539,14 +546,17 @@ class ScriptedS3 {
     const range = /bytes=(\d+)-(\d*)/.exec(req.headers.get("Range") ?? "");
     const first = Number(range?.[1] ?? 0);
     const end = range?.[2] ? Number(range[2]) + 1 : object.body.length;
+    const headers: Record<string, string> = {
+      "Content-Type": object.headers.get("Content-Type") ?? "",
+      "Content-Length": String(end - first),
+      "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+    };
+    if (range) {
+      headers["Content-Range"] = `bytes ${first}-${end - 1}/${object.body.length}`;
+    }
     return new Response(req.method === "HEAD" ? null : object.body.slice(first, end), {
       status: range ? 206 : 200,
-      headers: {
-        "Content-Type": object.headers.get("Content-Type") ?? "",
-        "Content-Length": String(end - first),
-        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
-        ...(range ? { "Content-Range": `bytes ${first}-${end - 1}/${object.body.length}` } : {}),
-      },
+      headers,
     });
   }
 }
@@ -561,21 +571,21 @@ function largeZip(size: number): Uint8Array {
 const xmlDenied =
   "<?xml version='1.0' encoding='UTF-8'?>\n<Error><Code>AccessDenied</Code><Message>Denied &amp; logged</Message><RequestId>r1</RequestId></Error>";
 
-async function allEndpoints(server: Server, s3: ScriptedS3): Promise<unknown[]> {
-  const out: unknown[] = [];
-  out.push(plain(await call(server, "GET", "/api/backups")));
-  out.push(plain(await call(server, "POST", "/api/backups", { json: {} })));
-  out.push(plain(await call(server, "POST", "/api/backups", { json: { name: "n.zip" } })));
-  out.push(plain(await upload(server, "u.zip", emptyZip)));
-  out.push(plain(await download(server, "d.zip")));
-  out.push(plain(await call(server, "DELETE", "/api/backups/d.zip")));
-  out.push(plain(await call(server, "POST", "/api/backups/d.zip/restore")));
+async function allEndpoints(server: Server, s3: ScriptedS3): Promise<Array<unknown>> {
+  const out: Array<unknown> = [];
   out.push(
+    plain(await call(server, "GET", "/api/backups")),
+    plain(await call(server, "POST", "/api/backups", { json: {} })),
+    plain(await call(server, "POST", "/api/backups", { json: { name: "n.zip" } })),
+    plain(await upload(server, "u.zip", emptyZip)),
+    plain(await download(server, "d.zip")),
+    plain(await call(server, "DELETE", "/api/backups/d.zip")),
+    plain(await call(server, "POST", "/api/backups/d.zip/restore")),
     plain(await call(server, "POST", "/api/settings/test/s3", { json: { filesystem: "backups" } })),
+    await canBackup(server),
+    tempFiles(server),
+    s3.seen.length > 0,
   );
-  out.push(await canBackup(server));
-  out.push(tempFiles(server));
-  out.push(s3.seen.length > 0);
   s3.seen.length = 0;
   return out;
 }
@@ -584,7 +594,7 @@ async function bothAgainst(
   script: Script,
   steps: (server: Server, s3: ScriptedS3) => Promise<unknown>,
 ): Promise<void> {
-  const results: unknown[] = [];
+  const results: Array<unknown> = [];
   for (const server of [upstream, iglo]) {
     const s3 = new ScriptedS3();
     s3.script = script;
@@ -650,7 +660,7 @@ async function slowDenial(): Promise<Response> {
 }
 
 describe("a refusing S3", () => {
-  const cases: [string, Script][] = [
+  const cases: Array<[string, Script]> = [
     ["403 with an XML error", () => new Response(xmlDenied, { status: 403 })],
     [
       "404 on everything",
@@ -688,7 +698,7 @@ describe("a refusing S3", () => {
     "nothing listening",
     async () => {
       const port = await freePort();
-      const results: unknown[] = [];
+      const results: Array<unknown> = [];
       for (const server of [upstream, iglo]) {
         await useBackupsS3(server, { endpoint: `http://127.0.0.1:${port}`, bucket: "b" });
         const seen = new ScriptedS3();
@@ -774,25 +784,35 @@ describe("POST /api/settings/test/s3", () => {
   test(
     "not enabled, an unknown filesystem, success and bad credentials on both filesystems",
     async () => {
-      const results: unknown[] = [];
+      const results: Array<unknown> = [];
       for (const server of [upstream, iglo]) {
         const s3 = await startVersitygw();
-        const out: unknown[] = [];
+        const out: Array<unknown> = [];
         try {
-          out.push(await testS3(server, "storage"), await testS3(server, "backups"));
-          out.push(await testS3(server, "other"), await testS3(server, ""));
+          out.push(
+            await testS3(server, "storage"),
+            await testS3(server, "backups"),
+            await testS3(server, "other"),
+            await testS3(server, ""),
+          );
 
           await patchSettings(server, {
             backups: { s3: s3Settings(s3) },
             s3: s3Settings(s3),
           });
-          out.push(await testS3(server, "storage"), await testS3(server, "backups"));
-          out.push(bucketFiles(s3));
+          out.push(
+            await testS3(server, "storage"),
+            await testS3(server, "backups"),
+            bucketFiles(s3),
+          );
 
           const bad = { endpoint: s3.endpoint, bucket: s3.bucket, secret: "wrong-secret" };
           await patchSettings(server, { backups: { s3: s3Settings(bad) }, s3: s3Settings(bad) });
-          out.push(await testS3(server, "storage"), await testS3(server, "backups"));
-          out.push(bucketFiles(s3));
+          out.push(
+            await testS3(server, "storage"),
+            await testS3(server, "backups"),
+            bucketFiles(s3),
+          );
 
           const missing = { endpoint: s3.endpoint, bucket: "no-such-bucket" };
           await patchSettings(server, { backups: { s3: s3Settings(missing) } });
@@ -811,7 +831,7 @@ describe("POST /api/settings/test/s3", () => {
   test(
     "a bad secret on the backup endpoints, as versitygw refuses it",
     async () => {
-      const results: unknown[] = [];
+      const results: Array<unknown> = [];
       for (const server of [upstream, iglo]) {
         const s3 = await startVersitygw();
         try {
@@ -820,7 +840,7 @@ describe("POST /api/settings/test/s3", () => {
             bucket: s3.bucket,
             secret: "wrong-secret",
           });
-          results.push(await allEndpoints(server, { seen: [{}] } as unknown as ScriptedS3));
+          results.push(await allEndpoints(server, { seen: [{}] } as ScriptedS3));
         } finally {
           await useBackupsS3(server, null);
           await s3.stop();
@@ -840,7 +860,7 @@ describe("forcePathStyle false", () => {
       const realFetch = globalThis.fetch;
       // *.s3.test resolves nowhere: the connection goes to versitygw, the URL
       // and Host header stay the client's
-      const hosts: string[] = [];
+      const hosts: Array<string> = [];
       globalThis.fetch = ((input: string, init: RequestInit) => {
         const url = new URL(input);
         hosts.push(url.host);

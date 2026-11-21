@@ -6,31 +6,29 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MultiValuer,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MultiValuer,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { subtractSlice, toInterfaceSlice, toUniqueStringSlice } from "@/tools/list/list";
-import {
-  boolType,
-  intType,
-  maxGoInt,
-  stringType,
-  unmarshalStruct,
-  type GoInt,
-} from "@/tools/types/go-json";
+import { boolType, intType, maxGoInt, stringType, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { NewError } from "@/validation/error";
 import { Min } from "@/validation/minmax";
 import { ErrRequired, Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeRelation = "relation";
 
@@ -189,12 +187,12 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
     return [this.normalizeValue(raw), null];
   }
 
-  private normalizeValue(raw: unknown): string | string[] {
+  private normalizeValue(raw: unknown): string | Array<string> {
     const val = toUniqueStringSlice(raw);
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return val[val.length - 1] as string; // the last selected
+        return val.at(-1) as string; // the last selected
       }
       return "";
     }
@@ -210,7 +208,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return [val[val.length - 1] as string, null]; // the last selected
+        return [val.at(-1), null]; // the last selected
       }
       return ["", null];
     }
@@ -313,15 +311,15 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
       if (!collection.isNew()) {
         try {
           oldCollection = app.findCachedCollectionByNameOrId(collection.id);
-        } catch (err) {
-          return err as Error;
+        } catch (error) {
+          return error as Error;
         }
       }
 
       // prevent collectionId change
       if (oldCollection !== null) {
         const oldField = oldCollection.fields.getById(this.id);
-        if (oldField instanceof RelationField && oldField.collectionId !== v) {
+        if (isInstance(RelationField, oldField) && oldField.collectionId !== v) {
           return NewError(
             "validation_field_relation_change",
             "The relation collection cannot be changed.",

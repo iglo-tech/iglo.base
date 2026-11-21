@@ -23,15 +23,14 @@
 import type { Field } from "@/fields/field";
 import { FieldNameEmail, marshalStruct } from "@/fields/field";
 import {
-  type EmailTemplateData,
   defaultAuthAlertTemplate,
   defaultConfirmEmailChangeTemplate,
   defaultOTPTemplate,
   defaultResetPasswordTemplate,
   defaultVerificationTemplate,
 } from "@/collections/collection-model-auth-templates";
+import type { EmailTemplateData } from "@/collections/collection-model-auth-templates";
 import {
-  type MemberDecoders,
   arrayElements,
   decodeAs,
   decodeBool,
@@ -42,12 +41,12 @@ import {
   decodeString,
   unmarshalGoStruct,
 } from "@/collections/go-json-struct";
+import type { MemberDecoders } from "@/collections/go-json-struct";
 import { isProviderName } from "@/oauth2/provider-names";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { randomString } from "@/tools/security/random";
 import { toString as castToString } from "@/tools/types/cast";
 import {
-  type GoInt,
   anyType,
   mapOf,
   marshal,
@@ -55,14 +54,18 @@ import {
   stringType,
   unmarshalMapInto,
 } from "@/tools/types/go-json";
-import { Errors, NewError, type Error as ValidationError } from "@/validation/error";
+import type { GoInt } from "@/tools/types/go-json";
+import { Errors, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { URL } from "@/validation/is/rules";
 import { Length } from "@/validation/length";
 import { Max, Min } from "@/validation/minmax";
 import { NilOrNotEmpty, Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
-import { By, Validate, type RuleFunc } from "@/validation/validation";
+import { By, Validate } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the collection members the two helpers below read
 interface AuthOptionsCollection extends CollectionAuthOptions {
@@ -132,7 +135,7 @@ export function setDefaultAuthOptions(m: CollectionAuthOptions): void {
     }),
     authToken: new TokenConfig({
       secret: randomString(50),
-      duration: 432000, // 5days
+      duration: 432_000, // 5days
     }),
     passwordResetToken: new TokenConfig({
       secret: randomString(50),
@@ -144,7 +147,7 @@ export function setDefaultAuthOptions(m: CollectionAuthOptions): void {
     }),
     verificationToken: new TokenConfig({
       secret: randomString(50),
-      duration: 86400, // 1day
+      duration: 86_400, // 1day
     }),
     fileToken: new TokenConfig({
       secret: randomString(50),
@@ -251,7 +254,10 @@ export function setAuthOptions(m: CollectionAuthOptions, src: CollectionAuthOpti
 // client secrets are left out (they are cleared on a copy and omitted by
 // omitempty) and nil providers are an empty array (as they are anyway in
 // json v2).
-export function authOptionsMembers(o: CollectionAuthOptions, redact = false): [string, unknown][] {
+export function authOptionsMembers(
+  o: CollectionAuthOptions,
+  redact = false,
+): Array<[string, unknown]> {
   const token = (t: TokenConfig): TokenConfig =>
     redact ? new TokenConfig({ duration: t.duration }) : t;
   return [
@@ -385,7 +391,7 @@ export function validateAuthOptions(
     }
 
     if (o.mfa.rule !== "") {
-      const mfaRuleValidators: RuleFunc[] = [
+      const mfaRuleValidators: Array<RuleFunc> = [
         cv.checkRule,
         cv.ensureNoSystemRuleChange(cv.original.mfa.rule),
       ];
@@ -451,7 +457,7 @@ export class EmailTemplate {
     const entries =
       placeholders === null
         ? []
-        : placeholders instanceof Map
+        : isInstance(Map, placeholders)
           ? [...placeholders.entries()]
           : Object.entries(placeholders);
 
@@ -579,12 +585,12 @@ export class TokenConfig {
   validate(): Error | null {
     return ValidateStruct(
       StructField("secret", this.secret, Required, Length(30, 255)),
-      StructField("duration", this.duration, Required, Min(10), Max(94670856)), // ~3y max
+      StructField("duration", this.duration, Required, Min(10), Max(94_670_856)), // ~3y max
     );
   }
 
   marshalJSON(): string {
-    const members: [string, unknown][] = [];
+    const members: Array<[string, unknown]> = [];
     if (this.secret !== "") {
       members.push(["secret", this.secret]); // omitempty
     }
@@ -628,7 +634,7 @@ export class OTPConfig {
   }
 
   clone(): OTPConfig {
-    return new OTPConfig({ ...this, emailTemplate: this.emailTemplate.clone() });
+    return new OTPConfig(Object.assign({}, this, { emailTemplate: this.emailTemplate.clone() }));
   }
 
   // DurationTime returns the current Duration as Go's time.Duration
@@ -640,7 +646,7 @@ export class OTPConfig {
   // Validate makes OTPConfig validatable (validation.Validatable).
   validate(): Error | null {
     return ValidateStruct(
-      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86400))),
+      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86_400))),
       StructField("length", this.length, When(this.enabled, Required, Min(4))),
       // note: for now always run the email template validations even
       // if not enabled since it could be used separately
@@ -701,7 +707,7 @@ export class MFAConfig {
   // Validate makes MFAConfig validatable (validation.Validatable).
   validate(): Error | null {
     return ValidateStruct(
-      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86400))),
+      StructField("duration", this.duration, When(this.enabled, Required, Min(10), Max(86_400))),
     );
   }
 
@@ -737,7 +743,7 @@ export class PasswordAuthConfig {
   // Usually only fields that has single column UNIQUE index are accepted
   // as values. A nil Go slice is an empty array (json v2 marshals both as
   // []).
-  identityFields: string[] = [];
+  identityFields: Array<string> = [];
 
   constructor(init: Partial<Pick<PasswordAuthConfig, "enabled" | "identityFields">> = {}) {
     Object.assign(this, init);
@@ -776,7 +782,7 @@ export class PasswordAuthConfig {
         enabled: (raw) => (this.enabled = decodeBool(raw)),
         identityFields: (raw) =>
           (this.identityFields =
-            (decodeAs(raw, sliceOf(stringType)) as string[] | undefined) ?? []),
+            (decodeAs(raw, sliceOf(stringType)) as Array<string> | undefined) ?? []),
       },
       () => Object.assign(this, new PasswordAuthConfig()),
     );
@@ -826,7 +832,7 @@ export class OAuth2KnownFields {
 
 export class OAuth2Config {
   // null is Go's nil slice (marshaled as [] by json v2)
-  providers: OAuth2ProviderConfig[] | null = null;
+  providers: Array<OAuth2ProviderConfig> | null = null;
 
   mappedFields = new OAuth2KnownFields();
 
@@ -920,14 +926,14 @@ export class OAuth2Config {
 
     // unmarshal again but this time into a plain array of objects
     // so that we have only the submitted fields and no zero defaults
-    let plainProviders: (Record<string, unknown> | undefined)[] = [];
+    let plainProviders: Array<Record<string, unknown> | undefined> = [];
     unmarshalGoStruct(
       data,
       {
         providers: (raw) =>
           (plainProviders =
             (decodeAs(raw, sliceOf(mapOf(anyType))) as
-              | (Record<string, unknown> | undefined)[]
+              | Array<Record<string, unknown> | undefined>
               | undefined) ?? []),
       },
       () => {},
@@ -979,7 +985,7 @@ export class OAuth2Config {
 }
 
 function checkForDuplicatedProviders(value: unknown): ValidationError | Errors | null {
-  const configs = Array.isArray(value) ? (value as OAuth2ProviderConfig[]) : [];
+  const configs = Array.isArray(value) ? (value as Array<OAuth2ProviderConfig>) : [];
 
   const existing = new Set<string>();
 
@@ -1055,7 +1061,7 @@ export class OAuth2ProviderConfig {
   }
 
   marshalJSON(): string {
-    const members: [string, unknown][] = [
+    const members: Array<[string, unknown]> = [
       ["pkce", this.pkce],
       ["name", this.name],
       ["clientId", this.clientId],

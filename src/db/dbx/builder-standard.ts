@@ -26,7 +26,8 @@ import { BaseBuilder } from "@/db/dbx/builder";
 import type { DB } from "@/db/dbx/db";
 import { ModelQuery } from "@/db/dbx/model-query";
 import type { Executor } from "@/db/dbx/query";
-import { BaseQueryBuilder, type QueryBuilder } from "@/db/dbx/query-builder";
+import { BaseQueryBuilder } from "@/db/dbx/query-builder";
+import type { QueryBuilder } from "@/db/dbx/query-builder";
 import { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 
@@ -47,7 +48,7 @@ export class StandardBuilder extends BaseBuilder {
   // Select returns a new SelectQuery object that can be used to build a SELECT statement.
   // The parameters to this method should be the list column names to be selected.
   // A column name may have an optional alias name. For example, Select("id", "my_name AS name").
-  select(...cols: string[]): SelectQuery {
+  select(...cols: Array<string>): SelectQuery {
     return new SelectQuery(this).select(...cols);
   }
 

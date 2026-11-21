@@ -29,7 +29,7 @@ check("empty input is text/plain", "", TEXT);
 check("whitespace only is text/plain", "   \n\t", TEXT);
 
 // HTML: every tag variant, lower/mixed case, and a tag-terminating byte (' ' or '>').
-const htmlTags: [string, string][] = [
+const htmlTags: Array<[string, string]> = [
   ["<!DOCTYPE HTML>", "<!DOCTYPE HTML>"],
   ["<!DOCTYPE HTML with space", "<!DOCTYPE HTML "],
   ["<!doctype html> lower", "<!doctype html>"],
@@ -146,17 +146,29 @@ check(
   "\x00\x00\x00\x18ftypisom\x00\x00\x00\x01mp41isom",
   "video/mp4",
 );
-check("mp4: mp42 as major brand", "\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00", "video/mp4");
-check("mp4: mp4 only in version field is ignored", "\x00\x00\x00\x10ftypisommp4 ", BINARY);
-check("mp4: box size larger than data", "\x00\x00\x00\x1Aftypisom\x00\x00\x00\x01mp41isom", BINARY);
 check(
-  "mp4: box size not a multiple of 4",
-  "\x00\x00\x00\x16ftypisom\x00\x00\x00\x01mp41isom",
+  "mp4: mp42 as major brand",
+  "\u0000\u0000\u0000\u0010ftypmp42\u0000\u0000\u0000\u0000",
+  "video/mp4",
+);
+check("mp4: mp4 only in version field is ignored", "\u0000\u0000\u0000\u0010ftypisommp4 ", BINARY);
+check(
+  "mp4: box size larger than data",
+  "\u0000\u0000\u0000\u001Aftypisom\u0000\u0000\u0000\u0001mp41isom",
   BINARY,
 );
-check("mp4: box type is not ftyp", "\x00\x00\x00\x10freeisom\x00\x00\x00\x00mp41", BINARY);
-check("mp4: zero box size", "\x00\x00\x00\x00ftypmp41", BINARY);
-check("mp4: under 12 bytes", "\x00\x00\x00\x08ftyp", BINARY);
+check(
+  "mp4: box size not a multiple of 4",
+  "\u0000\u0000\u0000\u0016ftypisom\u0000\u0000\u0000\u0001mp41isom",
+  BINARY,
+);
+check(
+  "mp4: box type is not ftyp",
+  "\u0000\u0000\u0000\u0010freeisom\u0000\u0000\u0000\u0000mp41",
+  BINARY,
+);
+check("mp4: zero box size", "\u0000\u0000\u0000\u0000ftypmp41", BINARY);
+check("mp4: under 12 bytes", "\u0000\u0000\u0000\u0008ftyp", BINARY);
 
 // Fonts.
 check(

@@ -37,7 +37,7 @@ export const ids = {
   peopleView: "peopleviewcoll1",
 };
 
-export const collections: CollectionCase[] = [
+export const collections: Array<CollectionCase> = [
   {
     body: {
       id: ids.people,
@@ -269,8 +269,8 @@ export type Step =
   | { kind: "update"; collection: string; id: string; body: { [key: string]: unknown } }
   | { kind: "delete"; collection: string; id: string }
   | { kind: "truncate"; collection: string }
-  | { kind: "chain"; collection: string; field: string; ids: string[] }
-  | { kind: "batch"; creates: { collection: string; body: { [key: string]: unknown } }[] };
+  | { kind: "chain"; collection: string; field: string; ids: Array<string> }
+  | { kind: "batch"; creates: Array<{ collection: string; body: { [key: string]: unknown } }> };
 
 const pw = { password: "1234567890", passwordConfirm: "1234567890" };
 
@@ -311,7 +311,7 @@ const protoBody = (value: string): { [key: string]: unknown } => {
 // 1,000 records, record n references n-1 (upstream deletes them all)
 const chainIds = Array.from({ length: 1000 }, (_, i) => "cn" + String(i).padStart(13, "0"));
 
-export const steps: Step[] = [
+export const steps: Array<Step> = [
   // auth records
   create("people", { id: p1, email: "p1@example.com", ...pw, name: "Ann", age: 30 }),
   create("people", {
@@ -387,7 +387,7 @@ export const steps: Step[] = [
     owner: p1,
     tags: [t1, t2],
   }),
-  create("items", { id: i2, title: "Second", amount: 12345678901234568 }),
+  create("items", { id: i2, title: "Second", amount: 12_345_678_901_234_568 }),
   create("items", { title: "Third", amount: 1e21, meta: "text", spot: { lon: 0, lat: 90 } }),
   create("items", {
     title: "ab",
@@ -406,7 +406,7 @@ export const steps: Step[] = [
   update("items", i1, { meta: null, flag: false, due: "", amount: 0 }),
   update("items", i1, { meta: [1, "two", true], spot: { lon: 0, lat: 0 }, kind: "" }),
   update("items", i2, { owner: p1, tags: [t2], "+tags": t1, secret: "another1" }),
-  update("items", i2, { amount: 9007199254740992, qty: 1000 }),
+  update("items", i2, { amount: 9_007_199_254_740_992, qty: 1000 }),
   create("items", { id: t1, title: "Same id as a tag" }),
   update("items", t1, { title: "" }),
   update("items", "it0000000000009", { title: "Missing" }),

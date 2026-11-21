@@ -6,7 +6,8 @@
 // ported, so the decoder-only checks run.
 
 import { expect, test } from "bun:test";
-import { BytesBuffer, copy, EOF, type Reader as IoReader } from "@/server/io";
+import { BytesBuffer, copy, EOF } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 import { Reader as QPReader } from "@/server/quotedprintable";
 
 // The byte string of a Go string literal (one character per byte).
@@ -124,11 +125,11 @@ function everySequence(base: string, alpha: string, length: number, fn: (s: stri
 const badSoftRx = /=([^\r\n]+?\n)|([^\r\n]+$)|(\r$)|(\r[^\n]+\n)|( \r\n)/;
 
 test("TestExhaustive", async () => {
-  const sequences: string[] = [];
+  const sequences: Array<string> = [];
   everySequence("", "0A \r\n=", 6, (s) => sequences.push(s));
 
   const res = new Map<string, number>();
-  const unexpected: string[] = [];
+  const unexpected: Array<string> = [];
   for (const s of sequences) {
     if (s.endsWith("=") || s.includes("==")) {
       continue;

@@ -22,7 +22,7 @@ export function picture(name: string): File {
   return file(name, png, "image/png");
 }
 
-function form(values: Record<string, string | string[] | File | File[]>): FormData {
+function form(values: Record<string, string | Array<string> | File | Array<File>>): FormData {
   const out = new FormData();
   for (const [key, value] of Object.entries(values)) {
     for (const item of Array.isArray(value) ? value : [value]) {
@@ -96,7 +96,7 @@ export function settingsBody(tag: string, smtpPort: number): Record<string, unkn
 
 // the JSON bodies at the edges of each field type; raw text keeps what
 // JSON.stringify would change
-function edgeBodies(tag: string, people: string[]): { id: string; raw: string }[] {
+function edgeBodies(tag: string, people: Array<string>): Array<{ id: string; raw: string }> {
   const [alice, bob, carol] = people as [string, string, string];
   const raw = (name: string, members: string): { id: string; raw: string } => {
     const id = rid(`${tag}${name}`);
@@ -130,14 +130,14 @@ function edgeBodies(tag: string, people: string[]): { id: string; raw: string }[
     raw("e18", `"g":{"lon":180,"lat":90},"r1":"${carol}"`),
     raw("e19", `"g":{"lon":0.1234567890123456,"lat":-0.000001},"pw":"pässwörd-1234"`),
     raw("e20", `"g":{"lon":0,"lat":0},"pw":"${"x".repeat(71)}"`),
-    raw("e21", `"t":"${"long ".repeat(1000)}","ed":"<div>${"x".repeat(10000)}</div>"`),
+    raw("e21", `"t":"${"long ".repeat(1000)}","ed":"<div>${"x".repeat(10_000)}</div>"`),
     raw("e22", `"t":"line\\nbreak\\ttab","secret":"hidden value","rm":[]`),
     raw("e23", `"j" : { "spaced" : [ 1 , 2 ] ,\n "2":1 , "1":2.0 }`),
     raw("e24", `"t":"prefix\\u0000one","ed":"<p>a\\u0000b</p>"`),
   ];
 }
 
-function allFields(people: string): Record<string, unknown>[] {
+function allFields(people: string): Array<Record<string, unknown>> {
   return [
     { name: "t", type: "text" },
     { name: "ed", type: "editor", convertURLs: true },
@@ -154,15 +154,15 @@ function allFields(people: string): Record<string, unknown>[] {
     { name: "rm", type: "relation", collectionId: people, maxSelect: 5 },
     { name: "pw", type: "password", cost: 4, hidden: true },
     { name: "secret", type: "text", hidden: true },
-    { name: "f1", type: "file", maxSelect: 1, maxSize: 1048576 },
+    { name: "f1", type: "file", maxSelect: 1, maxSize: 1_048_576 },
     {
       name: "fm",
       type: "file",
       maxSelect: 6,
-      maxSize: 1048576,
+      maxSize: 1_048_576,
       thumbs: ["50x50", "50x50t", "0x30", "30x0", "40x40f", "40x40b"],
     },
-    { name: "fp", type: "file", maxSelect: 1, maxSize: 1048576, protected: true },
+    { name: "fp", type: "file", maxSelect: 1, maxSize: 1_048_576, protected: true },
     { name: "created", type: "autodate", onCreate: true },
     { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
   ];
@@ -192,7 +192,7 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
       authAlert: { enabled: true },
       fields: [
         { name: "nick", type: "text", max: 40 },
-        { name: "avatar", type: "file", maxSelect: 1, maxSize: 1048576 },
+        { name: "avatar", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
       indexes: [`CREATE INDEX idx_${tag}_people_nick ON ${people} (nick)`],
     })
@@ -229,7 +229,7 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
           required: true,
           cascadeDelete: true,
         },
-        { name: "doc", type: "file", maxSelect: 1, maxSize: 1048576 },
+        { name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 },
       ],
     })
   ).id as string;
@@ -262,9 +262,9 @@ async function createCollections(c: Client, tag: string): Promise<LegIds> {
   return { people: peopleId, all: allId, kids, refs };
 }
 
-async function createPeople(c: Client, tag: string): Promise<string[]> {
+async function createPeople(c: Client, tag: string): Promise<Array<string>> {
   const people = `rt${tag}_people`;
-  const ids: string[] = [];
+  const ids: Array<string> = [];
   for (const name of ["alice", "bob", "carol"]) {
     const id = rid(`${tag}${name}`);
     ids.push(id);
@@ -285,7 +285,12 @@ async function createPeople(c: Client, tag: string): Promise<string[]> {
 }
 
 // fields and modifiers on one record after the other
-async function writeRecords(c: Client, tag: string, ids: LegIds, people: string[]): Promise<void> {
+async function writeRecords(
+  c: Client,
+  tag: string,
+  ids: LegIds,
+  people: Array<string>,
+): Promise<void> {
   const all = `rt${tag}_all`;
   for (const body of edgeBodies(tag, people)) {
     await c.request("POST", records(all), { raw: body.raw });
@@ -345,7 +350,7 @@ async function writeRecords(c: Client, tag: string, ids: LegIds, people: string[
     form: form({
       "fm+": file("appended.txt", "appended"),
       "+fm": picture("prepended.png"),
-      "fm-": (stored?.fm ?? []).slice(1, 2) as string[],
+      "fm-": (stored?.fm ?? []).slice(1, 2) as Array<string>,
     }),
   });
   await c.request("PATCH", records(all, rid(`${tag}form2`)), {
@@ -363,7 +368,7 @@ async function writeRecords(c: Client, tag: string, ids: LegIds, people: string[
 
   // thumbs of every declared size
   const pictured = await c.get(records(all, target));
-  for (const name of (pictured?.fm ?? []) as string[]) {
+  for (const name of (pictured?.fm ?? []) as Array<string>) {
     if (name.endsWith(".png")) {
       for (const size of ["50x50", "50x50t", "0x30", "30x0", "40x40f", "40x40b"]) {
         await c.get(`/api/files/${ids.all}/${target}/${name}?thumb=${size}`, { token: "" });
@@ -454,7 +459,7 @@ async function batches(c: Client, tag: string): Promise<void> {
 async function changeFields(
   c: Client,
   name: string,
-  change: (fields: Record<string, unknown>[]) => Record<string, unknown>[],
+  change: (fields: Array<Record<string, unknown>>) => Array<Record<string, unknown>>,
 ): Promise<void> {
   const current = await c.get(collectionPath(name));
   await c.patch(collectionPath(name), { fields: change(current.fields) });
@@ -502,10 +507,12 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   // rename, with an index on the field
   const beforeRename = await c.get(collectionPath(sch));
   await c.patch(collectionPath(sch), {
-    fields: (beforeRename.fields as Record<string, unknown>[]).map((f) =>
+    fields: (beforeRename.fields as Array<Record<string, unknown>>).map((f) =>
       f["name"] === "b" ? { ...f, name: "b_renamed" } : f,
     ),
-    indexes: (beforeRename.indexes as string[]).map((s) => s.replace(/\(`?b`?\)/, "(`b_renamed`)")),
+    indexes: (beforeRename.indexes as Array<string>).map((s) =>
+      s.replace(/\(`?b`?\)/, "(`b_renamed`)"),
+    ),
   });
   // drop
   await changeFields(c, sch, (fields) => fields.filter((f) => f["name"] !== "drop_me"));
@@ -520,7 +527,7 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   const current = await c.get(collectionPath(renamed));
   await c.patch(collectionPath(renamed), {
     indexes: [
-      ...(current.indexes as string[]).filter((s) => !s.includes(`idx_${tag}_sch_a`)),
+      ...(current.indexes as Array<string>).filter((s) => !s.includes(`idx_${tag}_sch_a`)),
       `CREATE INDEX idx_${tag}_sch_added ON ${renamed} (added, c DESC)`,
     ],
   });
@@ -541,7 +548,7 @@ async function schemaChanges(c: Client, tag: string): Promise<void> {
   const tmp = await c.post("/api/collections", {
     name: `rt${tag}_tmp`,
     type: "base",
-    fields: [{ name: "doc", type: "file", maxSelect: 1, maxSize: 1048576 }],
+    fields: [{ name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 }],
   });
   await c.request("POST", records(`rt${tag}_tmp`), {
     form: form({ id: rid(`${tag}tmp1`), doc: file("tmp.txt", "gone with the truncate") }),
@@ -631,7 +638,7 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   // files: add, replace and remove, and new thumbs of the old files
   const form1 = rid(`${p}form1`);
   const stored = await c.get(records(all, form1));
-  const names = (stored?.fm ?? []) as string[];
+  const names = (stored?.fm ?? []) as Array<string>;
   await c.request("PATCH", records(all, form1), {
     form: form({
       "fm+": picture(`added-${tag}.png`),
@@ -641,7 +648,7 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   await c.request("PATCH", records(all, rid(`${p}form2`)), {
     form: form({ f1: file(`replaced-${tag}.txt`, "replaced") }),
   });
-  const picturedNames = (await c.get(records(all, form1)))?.fm as string[] | undefined;
+  const picturedNames = (await c.get(records(all, form1)))?.fm as Array<string> | undefined;
   for (const name of picturedNames ?? []) {
     if (name.endsWith(".png")) {
       await c.get(`/api/files/${allId}/${form1}/${name}?thumb=30x0`, { token: "" });
@@ -668,19 +675,19 @@ async function touchPrevious(c: Client, tag: string, p: string): Promise<void> {
   const before = await c.get(collectionPath(renamed));
   await c.patch(collectionPath(renamed), {
     fields: [
-      ...(before.fields as Record<string, unknown>[]).filter((f) => f["name"] !== "c"),
+      ...(before.fields as Array<Record<string, unknown>>).filter((f) => f["name"] !== "c"),
       { name: `added_${tag}`, type: "number" },
     ],
-    indexes: (before.indexes as string[]).filter(
+    indexes: (before.indexes as Array<string>).filter(
       (s) => !s.includes(`idx_${p}_sch_c`) && !s.includes(`idx_${p}_sch_added`),
     ),
   });
   const beforeRename = await c.get(collectionPath(renamed));
   await c.patch(collectionPath(renamed), {
-    fields: (beforeRename.fields as Record<string, unknown>[]).map((f) =>
+    fields: (beforeRename.fields as Array<Record<string, unknown>>).map((f) =>
       f["name"] === "b_renamed" ? { ...f, name: `b_${tag}` } : f,
     ),
-    indexes: (beforeRename.indexes as string[]).map((s) =>
+    indexes: (beforeRename.indexes as Array<string>).map((s) =>
       s.replace(/\(`?b_renamed`?\)/, `(\`b_${tag}\`)`),
     ),
   });
@@ -744,14 +751,16 @@ export function writeScenario(options: ScenarioOptions): RoundTripScenario {
       }
     },
     reads(leg) {
-      const out: { path: string; token: string }[] = [];
+      const out: Array<{ path: string; token: string }> = [];
       for (const tag of tags.slice(0, leg + 1)) {
         const people = `rt${tag}_people`;
         const token = `${people} alice`;
         // a list only an auth record may read, and a rule on a relation
-        out.push({ path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token });
-        out.push({ path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token: "" });
-        out.push({ path: `${records(people)}?sort=@rowid&expand=avatar`, token: "" });
+        out.push(
+          { path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token },
+          { path: `${records(`rt${tag}_refs`)}?sort=@rowid`, token: "" },
+          { path: `${records(people)}?sort=@rowid&expand=avatar`, token: "" },
+        );
       }
       return out;
     },
@@ -777,7 +786,7 @@ export async function fixtureWrites(c: Client, tag: string): Promise<void> {
   });
   const demo1 = await c.get(records("demo1", "84nmscqy84lsi1t"));
   await c.request("PATCH", records("demo1", "84nmscqy84lsi1t"), {
-    form: form({ "file_many-": ((demo1?.file_many ?? []) as string[]).slice(0, 1) }),
+    form: form({ "file_many-": ((demo1?.file_many ?? []) as Array<string>).slice(0, 1) }),
   });
   await signIn(c, {
     collection: "clients",
@@ -790,7 +799,7 @@ export async function fixtureWrites(c: Client, tag: string): Promise<void> {
   const demo2Index = await c.get(collectionPath("demo2"));
   await c.patch(collectionPath("demo2"), {
     indexes: [
-      ...(demo2Index.indexes as string[]),
+      ...(demo2Index.indexes as Array<string>),
       `CREATE INDEX idx_fixture_${tag} ON demo2 (${["title, active", "active, title", "active DESC, title"][leg]})`,
     ],
   });

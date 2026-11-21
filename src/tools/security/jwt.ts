@@ -132,7 +132,7 @@ export function parseUnverifiedToken(token: string, claims: MapClaims): Unverifi
 
 // Unix seconds as Go's internal time seconds (since year 1), wrapped to
 // int64 like time.Unix's addition
-const unixToInternal = 62135596800n;
+const unixToInternal = 62_135_596_800n;
 
 function internalSeconds(unixSec: bigint): bigint {
   return BigInt.asIntN(64, unixSec + unixToInternal);
@@ -180,7 +180,7 @@ export interface ValidateOptions {
 
 // MapClaims.parseClaimsString: a string or a list of them; any other type
 // is no value at all
-function parseClaimStrings(claims: MapClaims, key: string): string[] {
+function parseClaimStrings(claims: MapClaims, key: string): Array<string> {
   const v = Object.hasOwn(claims, key) ? claims[key] : undefined;
   if (typeof v === "string") {
     return [v];
@@ -198,11 +198,11 @@ function parseClaimStrings(claims: MapClaims, key: string): string[] {
 
 // Validator.verifyAudience with one expected value, which makes aud required
 function verifyAudience(claims: MapClaims, expected: string): string | undefined {
-  let aud: string[];
+  let aud: Array<string>;
   try {
     aud = parseClaimStrings(claims, "aud");
-  } catch (err) {
-    return (err as Error).message;
+  } catch (error) {
+    return (error as Error).message;
   }
   if (aud.length === 0 || (aud.length === 1 && aud[0] === "")) {
     return "token is missing required claim: aud claim is required";
@@ -217,14 +217,14 @@ export function validateClaims(claims: MapClaims, clock: Clock, opts: ValidateOp
   const leeway = BigInt(opts.leewaySeconds ?? 0);
   const ms = clock.now().getTime();
   const now = internalSeconds(BigInt(Math.floor(ms / 1000)));
-  const errors: string[] = [];
+  const errors: Array<string> = [];
   const check = (key: string, ok: (t: bigint) => boolean, message: string) => {
     let t: bigint | undefined;
     try {
       t = parseNumericDate(claims, key);
-    } catch (err) {
+    } catch (error) {
       // the prefix is added once, around the joined errors
-      errors.push((err as Error).message.replace(/^token has invalid claims: /, ""));
+      errors.push((error as Error).message.replace(/^token has invalid claims: /, ""));
       return;
     }
     // a time with whole seconds compared with now (which may have a

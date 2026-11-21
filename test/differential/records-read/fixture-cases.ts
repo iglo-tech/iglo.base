@@ -11,13 +11,13 @@ export interface ReadCase {
   name: string;
   url: string;
   // the identities the request is sent as (all when not set)
-  as?: Identity[];
+  as?: Array<Identity>;
   headers?: Record<string, string>;
 }
 
 const e = encodeURIComponent;
 
-export const fixtureCases: ReadCase[] = [
+export const fixtureCases: Array<ReadCase> = [
   // collection lookup and the rule checks
   { name: "unknown collection list", url: "/api/collections/missing/records" },
   { name: "unknown collection view", url: "/api/collections/missing/records/abc" },

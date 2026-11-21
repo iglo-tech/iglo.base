@@ -7,9 +7,9 @@
 // in docs/design/01-scope.md. A missing global exists and fails with an
 // error that names it.
 
-import { createDecipheriv, type DecipherGCM } from "node:crypto";
+import { createDecipheriv } from "node:crypto";
+import type { DecipherGCM } from "node:crypto";
 import {
-  type Dirent,
   lstatSync,
   mkdirSync,
   readdirSync,
@@ -17,13 +17,14 @@ import {
   renameSync,
   rmSync,
   rmdirSync,
-  type Stats,
   statSync,
   truncateSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import type { Dirent, Stats } from "node:fs";
 import { tmpdir } from "node:os";
+import type { Context } from "node:vm";
 import path from "node:path";
 
 import type { Clock } from "@/app/clock";
@@ -46,7 +47,6 @@ import {
   and,
   between,
   exists,
-  type Expression,
   HashExp,
   inExp,
   isExpression,
@@ -62,7 +62,9 @@ import {
   orLike,
   orNotLike,
 } from "@/db/dbx/expression";
-import { type Params, Query } from "@/db/dbx/query";
+import type { Expression } from "@/db/dbx/expression";
+import { Query } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { SelectQuery } from "@/db/dbx/select";
 import { Tx } from "@/db/dbx/tx";
 import type { Field } from "@/fields/field";
@@ -82,7 +84,6 @@ import {
   fieldsListMethods,
   fileModeAdapter,
   geoPointClass,
-  type GoClass,
   GoDuration,
   GoFileMode,
   goArgs,
@@ -91,7 +92,6 @@ import {
   isField,
   jsonArrayMethods,
   jsonMapClass,
-  type Method,
   mfaConfig,
   oauth2Config,
   oauth2KnownFields,
@@ -108,9 +108,11 @@ import {
   tokenConfig,
   txMethods,
 } from "@/migrations/go-class";
+import type { GoClass, Method } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
-import { type Adapter, Membrane, pass, toInteger } from "@/migrations/membrane";
+import { Membrane, pass, toInteger } from "@/migrations/membrane";
+import type { Adapter } from "@/migrations/membrane";
 import { newRecord, Record as RecordModel } from "@/records/record-model";
 import {
   newAuthToken,
@@ -122,10 +124,8 @@ import {
 } from "@/records/record-tokens";
 import {
   findRateLimitRule,
-  type RateLimitRule,
   rateLimitRuleDurationTime,
   rateLimitRuleString,
-  type RateLimitsConfig,
   Settings,
   settingsType,
   unmarshalSettings,
@@ -139,6 +139,7 @@ import {
   validateSMTP,
   validateTrustedProxy,
 } from "@/settings/settings-model";
+import type { RateLimitRule, RateLimitsConfig } from "@/settings/settings-model";
 import { equal, hs256, hs512, md5, sha256, sha512 } from "@/tools/security/crypto";
 import { encryptSync } from "@/tools/security/encrypt";
 import { StdEncoding } from "@/tools/security/base64";
@@ -155,16 +156,18 @@ import { DateTime, nowDateTime, parseDateTime } from "@/tools/types/datetime";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { bytesToText, stringType, textToBytes } from "@/tools/types/go-json";
 import { decodeValue } from "@/server/json-decode";
-import { type FieldType, structOf, unmarshalJSON } from "@/server/unmarshal-request-data";
+import { structOf, unmarshalJSON } from "@/server/unmarshal-request-data";
+import type { FieldType } from "@/server/unmarshal-request-data";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { ErrorObject, NewError } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 export interface BindConfig {
   clock: Clock;
-  argv: readonly string[];
+  argv: ReadonlyArray<string>;
   cwd: string;
   getenv(name: string): string;
   exit(code: number): never;
@@ -213,8 +216,8 @@ function recordClass(clock: Clock, blank: WeakSet<object>, models: QueryModels):
   };
 }
 
-function isFieldsListValue(v: unknown): v is FieldsList | unknown[] {
-  return v instanceof FieldsList || Array.isArray(v);
+function isFieldsListValue(v: unknown): v is FieldsList | Array<unknown> {
+  return isInstance(FieldsList, v) || Array.isArray(v);
 }
 
 // `collection.fields = ...` gets a list or an array of fields; rawOptions
@@ -223,10 +226,9 @@ const collectionAdapter = classAdapter(collectionClass, {
   set(target, key, value, m) {
     if (key === "rawOptions") {
       const raw = m.toHost(value);
-      (target as Collection).rawOptions =
-        raw instanceof JSONRaw
-          ? raw
-          : new JSONRaw(bytesToText(m.toBytes(value) ?? new Uint8Array()));
+      (target as Collection).rawOptions = isInstance(JSONRaw, raw)
+        ? raw
+        : new JSONRaw(bytesToText(m.toBytes(value) ?? new Uint8Array()));
       return true;
     }
     if (key !== "fields") {
@@ -236,11 +238,11 @@ const collectionAdapter = classAdapter(collectionClass, {
     if (!isFieldsListValue(host)) {
       throw new m.vm.TypeError(`Go type conversion error: could not convert ${String(value)}`);
     }
-    if (host instanceof FieldsList) {
+    if (isInstance(FieldsList, host)) {
       (target as Collection).fields = host;
     } else {
       const list = new FieldsList();
-      list.setItems(host as Field[]);
+      list.setItems(host as Array<Field>);
       (target as Collection).fields = list;
     }
     return true;
@@ -255,7 +257,7 @@ const fieldsListAdapter: Adapter = {
       {
         read: () => list.items(),
         write: (next) => {
-          list.setItems(next as Field[]);
+          list.setItems(next as Array<Field>);
         },
         accepts: (item) => isField(m.toHost(item)),
         methods: {
@@ -294,7 +296,7 @@ const jsonArrayAdapter: Adapter = {
 const expressionMethods: GoClass["methods"] = {
   build: (target: Expression, args, m) => {
     const builder = m.toHost(args[0]) as Builder | null | undefined;
-    const db = (builder?.queryBuilder() as unknown as { db(): DB } | undefined)?.db() ?? null;
+    const db = (builder?.queryBuilder() as { db(): DB } | undefined)?.db() ?? null;
     return target.build(db as DB, (m.toHost(args[1]) ?? {}) as Params);
   },
 };
@@ -305,7 +307,7 @@ const likeExpAdapter = classAdapter(
   { fields: { like: "any" }, methods: { ...expressionMethods, escape: "...s", match: "b,b" } },
   {
     get(target, key) {
-      return key === "like" ? (target as unknown as { likeOp: string }).likeOp : undefined;
+      return key === "like" ? (target as { likeOp: string }).likeOp : undefined;
     },
   },
 );
@@ -401,6 +403,7 @@ function adapters(
   models: QueryModels,
   clock: Clock,
   blank: WeakSet<object>,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
 ): (target: object) => Adapter | undefined {
   const fieldAdapter = fieldAdapters();
   const queryAdapter = classAdapter({ methods: { ...queryMethods, ...models.queryMethods() } }, {});
@@ -411,42 +414,43 @@ function adapters(
   const recordAdapter = classAdapter(recordClass(clock, blank, models));
   const settingsAdapter = newSettingsAdapter();
 
-  const singles: readonly (readonly [abstract new (...args: never[]) => object, Adapter])[] = [
-    [SelectQuery, selectAdapter],
-    [Query, queryAdapter],
-    [AppBinding, appBindingAdapter],
-    [FieldsList, fieldsListAdapter],
-    [GoJSONArray, jsonArrayAdapter],
-    [GoJSONMap, classAdapter(jsonMapClass)],
-    [Settings, settingsAdapter],
-    [Collection, collectionAdapter],
-    [RecordModel, recordAdapter],
-    [DateTime, classAdapter(dateTimeClass)],
-    [GeoPoint, classAdapter(geoPointClass)],
-    [TokenConfig, classAdapter(tokenConfig)],
-    [OTPConfig, classAdapter(otpConfig)],
-    [MFAConfig, classAdapter(mfaConfig)],
-    [AuthAlertConfig, classAdapter(authAlertConfig)],
-    [PasswordAuthConfig, classAdapter(passwordAuthConfig)],
-    [OAuth2Config, classAdapter(oauth2Config)],
-    [OAuth2KnownFields, classAdapter(oauth2KnownFields)],
-    [OAuth2ProviderConfig, classAdapter(oauth2ProviderConfig)],
-    [EmailTemplate, classAdapter(emailTemplateClass)],
-    [Tx, classAdapter({ methods: { ...builderMethods, ...txMethods } })],
-    [DB, classAdapter({ methods: dbMethods })],
-    [LikeExp, likeExpAdapter],
-    [GoPointer, pointerAdapter],
-    [GoDuration, durationAdapter],
-    [GoFileMode, fileModeAdapter],
-    [Date, timeAdapter],
-    [NullShape, nullShapeAdapter],
-    [RowsCursor, rowsAdapter],
-    [ErrorObject, errorObjectAdapter],
-  ];
+  const singles: ReadonlyArray<readonly [abstract new (...args: Array<never>) => object, Adapter]> =
+    [
+      [SelectQuery, selectAdapter],
+      [Query, queryAdapter],
+      [AppBinding, appBindingAdapter],
+      [FieldsList, fieldsListAdapter],
+      [GoJSONArray, jsonArrayAdapter],
+      [GoJSONMap, classAdapter(jsonMapClass)],
+      [Settings, settingsAdapter],
+      [Collection, collectionAdapter],
+      [RecordModel, recordAdapter],
+      [DateTime, classAdapter(dateTimeClass)],
+      [GeoPoint, classAdapter(geoPointClass)],
+      [TokenConfig, classAdapter(tokenConfig)],
+      [OTPConfig, classAdapter(otpConfig)],
+      [MFAConfig, classAdapter(mfaConfig)],
+      [AuthAlertConfig, classAdapter(authAlertConfig)],
+      [PasswordAuthConfig, classAdapter(passwordAuthConfig)],
+      [OAuth2Config, classAdapter(oauth2Config)],
+      [OAuth2KnownFields, classAdapter(oauth2KnownFields)],
+      [OAuth2ProviderConfig, classAdapter(oauth2ProviderConfig)],
+      [EmailTemplate, classAdapter(emailTemplateClass)],
+      [Tx, classAdapter({ methods: { ...builderMethods, ...txMethods } })],
+      [DB, classAdapter({ methods: dbMethods })],
+      [LikeExp, likeExpAdapter],
+      [GoPointer, pointerAdapter],
+      [GoDuration, durationAdapter],
+      [GoFileMode, fileModeAdapter],
+      [Date, timeAdapter],
+      [NullShape, nullShapeAdapter],
+      [RowsCursor, rowsAdapter],
+      [ErrorObject, errorObjectAdapter],
+    ];
 
   return (target) => {
     for (const [type, adapter] of singles) {
-      if (target instanceof type) {
+      if (isInstance<object>(type, target)) {
         return adapter;
       }
     }
@@ -461,7 +465,7 @@ function adapters(
 }
 
 // The Settings keep the Go names: a view of a struct with the JS names.
-function structMembers(type: FieldType | undefined): { name: string; type: FieldType }[] {
+function structMembers(type: FieldType | undefined): Array<{ name: string; type: FieldType }> {
   if (typeof type !== "object" || type.kind !== "struct") {
     return [];
   }
@@ -470,7 +474,7 @@ function structMembers(type: FieldType | undefined): { name: string; type: Field
   );
 }
 
-type StructMethods = Readonly<Record<string, (data: never, args: unknown[]) => unknown>>;
+type StructMethods = Readonly<Record<string, (data: never, args: Array<unknown>) => unknown>>;
 
 const throwing =
   <T>(validate: (c: T) => Error | null) =>
@@ -493,7 +497,7 @@ const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
   RateLimits: {
     validate: throwing(validateRateLimits),
     findRateLimitRule: (data: RateLimitsConfig, args) =>
-      findRateLimitRule(data, args[0] as string[], ...(args.slice(1) as string[])),
+      findRateLimitRule(data, args[0] as Array<string>, ...(args.slice(1) as Array<string>)),
   },
   Rules: {
     validate: throwing(validateRateLimitRule),
@@ -506,6 +510,7 @@ const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
 function structView(
   m: Membrane,
   settings: Settings,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   data: object,
   type: FieldType | undefined,
   methods: StructMethods = {},
@@ -525,7 +530,7 @@ function structView(
     }
     const method = Object.hasOwn(methods, key) ? methods[key] : undefined;
     if (method !== undefined) {
-      return (...args: unknown[]) =>
+      return (...args: Array<unknown>) =>
         m.guard(() =>
           m.toVm(
             method(
@@ -541,11 +546,13 @@ function structView(
   const proxy = new Proxy(data, {
     get: (t, key) => {
       if (typeof key !== "string") {
+        // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(t, key, t);
       }
       if (key === "toJSON") {
         return undefined;
       }
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       return keys.includes(key) ? read(key) : Reflect.get(m.vm.objectPrototype, key);
     },
     set: (t, key, value) => {
@@ -576,6 +583,7 @@ function structView(
 function memberView(
   m: Membrane,
   settings: Settings,
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   holder: object,
   name: string,
   type: FieldType,
@@ -586,7 +594,7 @@ function memberView(
   if (Array.isArray(value) || (typeof type === "object" && type.kind === "slice")) {
     const element = elementType(type);
     return m.sliceView({
-      read: () => (fields[name] ?? []) as unknown[],
+      read: () => (fields[name] ?? []) as Array<unknown>,
       write: (next) => {
         fields[name] = next;
         settings.normalize();
@@ -650,6 +658,7 @@ function newSettingsAdapter(): Adapter {
     stringer: true,
     methods: {
       ...settingsMethods,
+      // oxlint-disable-next-line unicorn/prefer-native-coercion-functions -- the arrow keeps fn.name and fn.length, which the migration VM can see
       string: (settings: Settings) => String(settings),
       postValidate: (settings: Settings) => {
         const err = settings.validate();
@@ -681,6 +690,7 @@ function newSettingsAdapter(): Adapter {
       if (found === undefined) {
         return pass;
       }
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       const holder = settings.settings as unknown as Record<string, unknown>;
       holder[found.name] = convertValue(value, found.type, holder[found.name]);
       settings.normalize();
@@ -709,9 +719,13 @@ function stringify(v: unknown): string | undefined {
 
 // goja gives only the objects `new` made the constructor's prototype: a field
 // a list holds is no `instanceof TextField`.
-function constructor(m: Membrane, name: string, build: (...args: unknown[]) => unknown): unknown {
+function constructor(
+  m: Membrane,
+  name: string,
+  build: (...args: Array<unknown>) => unknown,
+): unknown {
   const instances = new WeakSet();
-  const fn = function (...args: unknown[]): unknown {
+  const fn = function (...args: Array<unknown>): unknown {
     const instance = m.guard(() => build(...args));
     if (typeof instance === "object" && instance !== null) {
       instances.add(instance);
@@ -725,7 +739,7 @@ function constructor(m: Membrane, name: string, build: (...args: unknown[]) => u
   return fn;
 }
 
-const namedFields: readonly (readonly [string, string])[] = Object.freeze([
+const namedFields: ReadonlyArray<readonly [string, string]> = Object.freeze([
   ["NumberField", "number"],
   ["BoolField", "bool"],
   ["TextField", "text"],
@@ -787,7 +801,7 @@ function bindCore(
 
   scope.Record = constructor(m, "Record", (collection, data) => {
     const target = m.targetOf(collection);
-    if (!(target instanceof Collection)) {
+    if (!isInstance(Collection, target)) {
       // Go's zero Record: a query gives it a collection
       const record = newRecord(new Collection());
       blank.add(record);
@@ -894,6 +908,11 @@ function unmarshalIgnoringErrors(data: unknown, decode: (raw: string) => void): 
   }
 }
 
+// whether a value has the json.Unmarshaler method (a property read, as the Go check does)
+function hasUnmarshalJSON(value: unknown): value is { unmarshalJSON(b: string): void } {
+  return typeof (value as { unmarshalJSON?: unknown } | undefined)?.unmarshalJSON === "function";
+}
+
 // What json.Unmarshal(raw, &dst) reaches. goja hands a JS object or array
 // over as a copy, so the file's own values never change: only a Go value
 // behind the binding (a model, or what arrayOf made) takes the data.
@@ -905,22 +924,22 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
 
   const target = m.targetOf(dst);
 
-  if (target instanceof DateTime) {
+  if (isInstance(DateTime, target)) {
     return; // a value, not a pointer
   }
 
-  if (target instanceof GoJSONMap || target instanceof GoJSONArray) {
+  if (isInstance(GoJSONMap, target) || isInstance(GoJSONArray, target)) {
     target.scan(raw);
     return;
   }
 
-  if (target instanceof Settings) {
+  if (isInstance(Settings, target)) {
     unmarshalSettings(raw, target);
     return;
   }
 
-  if (typeof (target as { unmarshalJSON?: unknown } | undefined)?.unmarshalJSON === "function") {
-    (target as unknown as { unmarshalJSON(b: string): void }).unmarshalJSON(raw);
+  if (hasUnmarshalJSON(target)) {
+    target.unmarshalJSON(raw);
     return;
   }
 
@@ -933,10 +952,10 @@ function unmarshalInto(m: Membrane, models: QueryModels, raw: string, dst: unkno
   if (models.isDynamicModel(dst)) {
     models.unmarshalModel(dst, decoded, "");
   } else if (models.isArrayOf(dst)) {
-    models.unmarshalArray(dst as unknown[], decoded, (data) => {
+    models.unmarshalArray(dst as Array<unknown>, decoded, (data) => {
       const model = models.modelOf(dst);
       const host = m.targetOf(model);
-      if (host instanceof Collection) {
+      if (isInstance(Collection, host)) {
         const collection = new Collection();
         collection.unmarshalJSON(data);
         return m.toVm(collection);
@@ -961,7 +980,7 @@ function toStringValue(m: Membrane, raw: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     return value.string();
   }
   try {
@@ -973,7 +992,7 @@ function toStringValue(m: Membrane, raw: unknown): string {
 }
 
 // cast.ToUint8SliceE of an array; undefined when an element does not cast
-function castBytes(items: readonly unknown[]): Uint8Array | undefined {
+function castBytes(items: ReadonlyArray<unknown>): Uint8Array | undefined {
   const bytes = new Uint8Array(items.length);
   for (const [i, item] of items.entries()) {
     const n =
@@ -1000,10 +1019,10 @@ function toBytesValue(m: Membrane, raw: unknown): Uint8Array {
   if (typeof value === "string") {
     return textToBytes(value);
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     return textToBytes(value.bytes());
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     return value;
   }
   const bytes = Array.isArray(value) ? castBytes(value) : undefined;
@@ -1085,8 +1104,8 @@ function decryptSync(cipherText: string, key: string): string {
       decipher.final(),
     ]);
     return decoder.decode(plain);
-  } catch (err) {
-    throw new Error("cipher: message authentication failed", { cause: err });
+  } catch (error) {
+    throw new Error("cipher: message authentication failed", { cause: error });
   }
 }
 
@@ -1156,10 +1175,10 @@ const goErrnoTexts: Readonly<Record<string, string>> = {
 function osCall<T>(op: string, name: string, fn: () => T): T {
   try {
     return fn();
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code ?? "";
-    throw new Error(`${op} ${name}: ${goErrnoTexts[code] ?? (err as Error).message}`, {
-      cause: err,
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? "";
+    throw new Error(`${op} ${name}: ${goErrnoTexts[code] ?? (error as Error).message}`, {
+      cause: error,
     });
   }
 }
@@ -1301,7 +1320,7 @@ function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
     fromSlash: (p: string) => p,
     toSlash: (p: string) => p,
     isAbs: (p: string) => path.posix.isAbsolute(p),
-    join: (...parts: string[]) => {
+    join: (...parts: Array<string>) => {
       const used = parts.filter((part) => part !== "");
       return used.length === 0 ? "" : clean(used.join("/"));
     },
@@ -1364,13 +1383,13 @@ function bindMissing(scope: Record<string, unknown>, m: Membrane): void {
 // of that context.
 export function bindAll(
   sandbox: Record<string, unknown>,
-  context: import("node:vm").Context,
+  context: Context,
   c: BindConfig,
 ): Membrane {
   const m = new Membrane(
     context,
-    (target) => (target instanceof RecordSlot ? target.record : target),
-    (target) => (target instanceof RecordModel ? new RecordSlot(target) : target),
+    (target) => (isInstance(RecordSlot, target) ? target.record : target),
+    (target) => (isInstance(RecordModel, target) ? new RecordSlot(target) : target),
   );
   const blank = new WeakSet<object>();
   const models = new QueryModels(m, blank);

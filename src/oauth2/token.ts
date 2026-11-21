@@ -16,9 +16,11 @@
 
 import type { Clock } from "@/app/clock";
 import { fetchFollowingRedirects } from "@/oauth2/http-client";
-import { parseQuery, encodeValues, queryEscape, type Values } from "@/server/request";
+import { parseQuery, encodeValues, queryEscape } from "@/server/request";
+import type { Values } from "@/server/request";
 import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { anyType, mapOf, stringType, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // defaultExpiryDelta: how many seconds before its expiry a token counts as expired
 const defaultExpiryDeltaMs = 10_000;
@@ -26,7 +28,7 @@ const defaultExpiryDeltaMs = 10_000;
 // doTokenRoundTrip's io.LimitReader
 const maxTokenResponseBytes = 1 << 20;
 
-const maxInt32 = 2147483647n;
+const maxInt32 = 2_147_483_647n;
 
 // the endpoint and credentials of a token request (the parts of
 // oauth2.Config that RetrieveToken reads)
@@ -74,7 +76,7 @@ export class Token {
     if (raw === null) {
       return undefined;
     }
-    if (!(raw instanceof Map)) {
+    if (!isInstance<Map<unknown, unknown>>(Map, raw)) {
       return Object.hasOwn(raw, key) ? raw[key] : undefined;
     }
 
@@ -120,7 +122,7 @@ export function exchangeToken(
   c: TokenConfig,
   redirectURL: string,
   code: string,
-  opts: readonly (readonly [key: string, value: string])[],
+  opts: ReadonlyArray<readonly [key: string, value: string]>,
 ): Promise<Token> {
   const v: Values = new Map([
     ["grant_type", ["authorization_code"]],
@@ -207,7 +209,7 @@ async function doTokenRoundTrip(c: TokenConfig, init: RequestInit): Promise<Toke
     );
 
   let token: Token;
-  let errorCode = "";
+  let errorCode: string;
   const content = mediaType(res.headers.get("Content-Type") ?? "");
   if (content === "application/x-www-form-urlencoded" || content === "text/plain") {
     // some endpoints return a query string
@@ -233,11 +235,11 @@ async function doTokenRoundTrip(c: TokenConfig, init: RequestInit): Promise<Toke
     let tj: TokenJSON;
     try {
       tj = decodeTokenJSON(body);
-    } catch (err) {
+    } catch (error) {
       if (failureStatus) {
         throw retrieveError();
       }
-      throw new Error(`oauth2: cannot parse json: ${(err as Error).message}`, { cause: err });
+      throw new Error(`oauth2: cannot parse json: ${(error as Error).message}`, { cause: error });
     }
     errorCode = tj.error;
     token = new Token({
@@ -349,7 +351,7 @@ export async function readLimited(res: Response, limit: number): Promise<Uint8Ar
     return new Uint8Array();
   }
 
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   let size = 0;
   while (size < limit) {
     const { done, value } = await reader.read();

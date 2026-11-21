@@ -14,14 +14,16 @@ const logger = { debug() {}, warn() {}, error() {}, info() {} } as never;
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve!: () => void;
-  const promise = new Promise<void>((r) => (resolve = r));
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
   return { promise, resolve };
 }
 
 test("close waits for a running reload and no reload starts after it", async () => {
   const dataDir = tempDir();
   const watcher = new NotifyWatcher({ dataDir, logger, instanceId: "me" });
-  const events: string[] = [];
+  const events: Array<string> = [];
   const started = deferred();
   const release = deferred();
   let active = 0;

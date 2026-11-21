@@ -5,14 +5,16 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MultiValuer,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MultiValuer,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { subtractSlice, toUniqueStringSlice } from "@/tools/list/list";
 import {
@@ -22,8 +24,8 @@ import {
   sliceOf,
   stringType,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { NewError } from "@/validation/error";
 import { Max, Min } from "@/validation/minmax";
@@ -94,7 +96,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
   // Values specifies the list of accepted values.
   //
   // (Go's nil slice is an empty array: json v2 marshals both as [].)
-  values: string[] = [];
+  values: Array<string> = [];
 
   // MaxSelect specifies the max allowed selected values.
   //
@@ -174,12 +176,12 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
     return [this.normalizeValue(raw), null];
   }
 
-  private normalizeValue(raw: unknown): string | string[] {
+  private normalizeValue(raw: unknown): string | Array<string> {
     const val = toUniqueStringSlice(raw);
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return val[val.length - 1] as string; // the last selected
+        return val.at(-1) as string; // the last selected
       }
       return "";
     }
@@ -195,7 +197,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
 
     if (!this.isMultiple()) {
       if (val.length > 0) {
-        return [val[val.length - 1] as string, null]; // the last selected
+        return [val.at(-1), null]; // the last selected
       }
       return ["", null];
     }
@@ -319,7 +321,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
         hidden: (v) => (this.hidden = v as boolean),
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
-        values: (v) => (this.values = (v as string[] | undefined) ?? []),
+        values: (v) => (this.values = (v as Array<string> | undefined) ?? []),
         maxSelect: (v) => (this.maxSelect = v as GoInt),
         required: (v) => (this.required = v as boolean),
       },

@@ -25,23 +25,27 @@ import { open } from "node:fs/promises";
 
 import type { FileHandle } from "node:fs/promises";
 
-import { type AsyncReader, AsyncBucket } from "@/tools/filesystem/blob/async-bucket";
+import { AsyncBucket } from "@/tools/filesystem/blob/async-bucket";
+import type { AsyncReader } from "@/tools/filesystem/blob/async-bucket";
 import type { WriterOptions } from "@/tools/filesystem/blob/bucket";
 import type { Attributes, ListObject } from "@/tools/filesystem/blob/driver";
-import { type File, PathReader } from "@/tools/filesystem/file";
+import { PathReader } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import {
   parseThumbSize,
   readThumbOriginal,
   setServeHeaders,
-  type ThumbRenderer,
   uploadFileOptions,
 } from "@/tools/filesystem/filesystem";
+import type { ThumbRenderer } from "@/tools/filesystem/filesystem";
 import { New as newS3blob } from "@/tools/filesystem/internal/s3blob/s3blob";
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 import type { HttpRequest } from "@/server/request";
 import type { ResponseWriter } from "@/server/router";
-import { type HttpRange, serveContent } from "@/server/serve-content";
+import { serveContent } from "@/server/serve-content";
+import type { HttpRange } from "@/server/serve-content";
 import { detect } from "@/tools/mimetype/mimetype";
+import { isInstance } from "@/tools/types/is-instance";
 
 export class S3System {
   // calls go over the network, so they never run in a transaction
@@ -83,8 +87,8 @@ export class S3System {
 
   // List returns a flat list with info for all files under the specified
   // prefix.
-  async list(prefix: string): Promise<ListObject[]> {
-    const files: ListObject[] = [];
+  async list(prefix: string): Promise<Array<ListObject>> {
+    const files: Array<ListObject> = [];
 
     const iter = this.#bucket.list({ prefix });
 
@@ -101,7 +105,7 @@ export class S3System {
 
   // Upload writes content into the fileKey location.
   upload(content: Uint8Array, fileKey: string): Promise<void> {
-    return this.#upload(new Blob([content as Uint8Array<ArrayBuffer>]), fileKey, {
+    return this.#upload(new Blob([content]), fileKey, {
       contentType: detect(content).string(),
     });
   }
@@ -137,8 +141,8 @@ export class S3System {
   //
   // The prefix could be subpath (ex. "/a/b/") or filename prefix (ex.
   // "/a/b/file_").
-  async deletePrefix(prefix: string): Promise<unknown[]> {
-    const failed: unknown[] = [];
+  async deletePrefix(prefix: string): Promise<Array<unknown>> {
+    const failed: Array<unknown> = [];
 
     if (prefix === "") {
       failed.push(new Error("prefix mustn't be empty"));
@@ -162,8 +166,8 @@ export class S3System {
       let obj: ListObject | null;
       try {
         obj = await iter.next();
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
         break;
       }
       if (obj === null) {
@@ -178,8 +182,8 @@ export class S3System {
             dirsMap.add(obj.key.slice(0, slashIdx));
           }
         }
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
       }
     }
     // ---
@@ -230,10 +234,10 @@ export class S3System {
     const out = await open(path, "wx", 0o600);
     try {
       await this.#copyRange(fileKey, 0, -1, out);
-    } catch (err) {
+    } catch (error) {
       await out.close();
       rmSync(path, { force: true });
-      throw err;
+      throw error;
     }
     await out.close();
   }
@@ -264,7 +268,7 @@ export class S3System {
         { size: attrs.size, spool: (parts) => this.#spool(fileKey, parts) },
         attrs.modTime,
       );
-    } catch (err) {
+    } catch (error) {
       // nothing is sent yet: the caller answers with an API error, as for a
       // refused GET upstream
       for (const key of Array.from(res.header.keys())) {
@@ -273,7 +277,7 @@ export class S3System {
       for (const [key, value] of headers) {
         res.header.append(key, value);
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -310,7 +314,7 @@ export class S3System {
 
     const thumb = await render.render(original, attrs.contentType, size);
 
-    await this.#upload(new Blob([thumb.bytes as Uint8Array<ArrayBuffer>]), thumbKey, {
+    await this.#upload(new Blob([thumb.bytes]), thumbKey, {
       contentType: thumb.contentType,
     });
   }
@@ -320,23 +324,23 @@ export class S3System {
   // start.
   async #spool(
     fileKey: string,
-    parts: (Uint8Array | HttpRange)[],
+    parts: Array<Uint8Array | HttpRange>,
   ): Promise<{ blob: Blob; remove: () => void }> {
     const path = this.#tempPath("ranges_");
     const remove = (): void => rmSync(path, { force: true });
     const out = await open(path, "wx", 0o600);
     try {
       for (const part of parts) {
-        if (part instanceof Uint8Array) {
+        if (isInstance(Uint8Array, part)) {
           await out.write(part);
         } else {
           await this.#copyRange(fileKey, part.start, part.length, out);
         }
       }
-    } catch (err) {
+    } catch (error) {
       await out.close();
       remove();
-      throw err;
+      throw error;
     }
     await out.close();
     return { blob: Bun.file(path), remove };

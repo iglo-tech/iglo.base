@@ -5,9 +5,11 @@
 // and plain objects (Go maps) element by element, other objects by
 // identity.
 
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Indirect, IsEmpty, isMap } from "@/validation/util";
 import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // ErrInInvalid is the error that returns in case of an invalid value for "in" rule.
 export const ErrInInvalid = NewError("validation_in_invalid", "must be a valid value");
@@ -17,7 +19,7 @@ export const ErrInInvalid = NewError("validation_in_invalid", "must be a valid v
 // two values are equal. For more details please refer to
 // https://golang.org/pkg/reflect/#DeepEqual An empty value is considered
 // valid. Use the Required rule to make sure a value is not empty.
-export function In(...values: unknown[]): InRule {
+export function In(...values: Array<unknown>): InRule {
   return new InRule(values, ErrInInvalid);
 }
 
@@ -25,7 +27,7 @@ export function In(...values: unknown[]): InRule {
 // given list of values.
 export class InRule implements Rule {
   constructor(
-    private readonly elements: readonly unknown[],
+    private readonly elements: ReadonlyArray<unknown>,
     private readonly err: ValidationError,
   ) {}
 
@@ -63,7 +65,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
   }
-  if (a instanceof Uint8Array && b instanceof Uint8Array) {
+  if (isInstance(Uint8Array, a) && isInstance(Uint8Array, b)) {
     return a.length === b.length && a.every((v, i) => v === b[i]);
   }
   if (isMap(a) && isMap(b)) {

@@ -73,12 +73,12 @@ export interface MockRequest {
 }
 
 export interface MockProvider extends MockEndpoints {
-  requests: MockRequest[];
+  requests: Array<MockRequest>;
 }
 
 interface Entry {
   spec: MockProviderSpec;
-  requests: MockRequest[];
+  requests: Array<MockRequest>;
 }
 
 const pngPixel = Buffer.from(
@@ -132,7 +132,7 @@ export class OAuth2Mock {
       moved: (status, endpoint, otherHost = false) =>
         `${base}/moved/${status}/${otherHost ? "localhost" : "127.0.0.1"}/${endpoint}`,
     };
-    const requests: MockRequest[] = [];
+    const requests: Array<MockRequest> = [];
     this.#entries.set(id, {
       spec: typeof spec === "function" ? spec(endpoints) : spec,
       requests,
@@ -156,9 +156,9 @@ export class OAuth2Mock {
       authorization: req.headers.get("Authorization") ?? "",
       contentType: req.headers.get("Content-Type") ?? "",
       headers: Object.fromEntries(
-        recordedHeaders
-          .filter((name) => req.headers.has(name))
-          .map((name) => [name, req.headers.get(name) ?? ""]),
+        recordedHeaders.flatMap((name) =>
+          req.headers.has(name) ? [[name, req.headers.get(name) ?? ""]] : [],
+        ),
       ),
       body,
     });

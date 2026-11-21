@@ -27,15 +27,15 @@ import {
   InstRune1,
   InstRuneAny,
   InstRuneAnyNotNL,
-  type Prog,
 } from "@/tools/regexp/syntax/prog";
+import type { Prog } from "@/tools/regexp/syntax/prog";
 import { MaxRune, SimpleFold } from "@/tools/unicode/letter";
 import { RuneError, runeString } from "@/tools/unicode/utf8";
 
 // A onePassProg is a compiled one-pass regular expression program.
 // It is the same as syntax.Prog except for the use of onePassInst.
 export interface onePassProg {
-  inst: onePassInst[];
+  inst: Array<onePassInst>;
   start: number; // index of start instruction
   numCap: number; // number of InstCapture insts in re
 }
@@ -43,7 +43,7 @@ export interface onePassProg {
 // A onePassInst is a single instruction in a one-pass regular expression program.
 // It is the same as syntax.Inst except for the new 'Next' field.
 export class onePassInst extends Inst {
-  next: number[] = [];
+  next: Array<number> = [];
 }
 
 // onePassInst{Inst: inst}
@@ -170,14 +170,14 @@ class queueOnePass {
 // i, NextIp[i/2] is the target. If the input sets intersect, an empty runeset and a
 // NextIp array with the single element mergeFailed is returned.
 // The code assumes that both inputs contain ordered and non-intersecting rune pairs.
-const mergeFailed = 0xffffffff;
+const mergeFailed = 0xff_ff_ff_ff;
 
 function mergeRuneSets(
-  leftRunes: readonly number[],
-  rightRunes: readonly number[],
+  leftRunes: ReadonlyArray<number>,
+  rightRunes: ReadonlyArray<number>,
   leftPC: number,
   rightPC: number,
-): [number[], number[]] {
+): [Array<number>, Array<number>] {
   const leftLen = leftRunes.length;
   const rightLen = rightRunes.length;
   if ((leftLen & 0x1) !== 0 || (rightLen & 0x1) !== 0) {
@@ -185,11 +185,11 @@ function mergeRuneSets(
   }
   let lx = 0;
   let rx = 0;
-  const merged: number[] = [];
-  const next: number[] = [];
+  const merged: Array<number> = [];
+  const next: Array<number> = [];
 
   let ix = -1;
-  const extend = (newLow: number, newArray: readonly number[], pc: number): boolean => {
+  const extend = (newLow: number, newArray: ReadonlyArray<number>, pc: number): boolean => {
     if (ix > 0 && (newArray[newLow] as number) <= (merged[ix] as number)) {
       return false;
     }
@@ -346,19 +346,19 @@ function makeOnePass(p: onePassProg): onePassProg | null {
 
   const instQueue = new queueOnePass(p.inst.length);
   const visitQueue = new queueOnePass(p.inst.length);
-  const onePassRunes: number[][] = Array.from({ length: p.inst.length }, () => []);
+  const onePassRunes: Array<Array<number>> = Array.from({ length: p.inst.length }, () => []);
 
   // fill sets inst.Next to len(onePassRunes[pc])/2+1 copies of inst.Out
   const fillNext = (inst: onePassInst, pc: number): void => {
     inst.next = Array.from(
-      { length: (onePassRunes[pc] as number[]).length / 2 + 1 },
+      { length: (onePassRunes[pc] as Array<number>).length / 2 + 1 },
       () => inst.out,
     );
   };
 
   // check that paths from Alt instructions are unambiguous, and rebuild the new
   // program as a onepass program
-  const check = (pc: number, m: boolean[]): boolean => {
+  const check = (pc: number, m: Array<boolean>): boolean => {
     let ok = true;
     const inst = p.inst[pc] as onePassInst;
     if (visitQueue.contains(pc)) {
@@ -371,7 +371,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
         ok = check(inst.out, m) && check(inst.arg, m);
         // check no-input paths to InstMatch
         let matchOut = m[inst.out] as boolean;
-        let matchArg = m[inst.arg] as boolean;
+        const matchArg = m[inst.arg] as boolean;
         if (matchOut && matchArg) {
           ok = false;
           break;
@@ -379,7 +379,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
         // Match on empty goes in inst.Out
         if (matchArg) {
           [inst.out, inst.arg] = [inst.arg, inst.out];
-          [matchOut, matchArg] = [matchArg, matchOut];
+          matchOut = matchArg;
         }
         if (matchOut) {
           m[pc] = true;
@@ -388,8 +388,8 @@ function makeOnePass(p: onePassProg): onePassProg | null {
 
         // build a dispatch operator from the two legs of the alt.
         [onePassRunes[pc], inst.next] = mergeRuneSets(
-          onePassRunes[inst.out] as number[],
-          onePassRunes[inst.arg] as number[],
+          onePassRunes[inst.out] as Array<number>,
+          onePassRunes[inst.arg] as Array<number>,
           inst.out,
           inst.arg,
         );
@@ -405,7 +405,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
         ok = check(inst.out, m);
         m[pc] = m[inst.out] as boolean;
         // pass matching runes back through these no-ops.
-        onePassRunes[pc] = (onePassRunes[inst.out] as number[]).slice();
+        onePassRunes[pc] = (onePassRunes[inst.out] as Array<number>).slice();
         fillNext(inst, pc);
         break;
       case InstMatch:
@@ -423,7 +423,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
           inst.next = [inst.out];
           break;
         }
-        let runes: number[] = [];
+        let runes: Array<number> = [];
         if (inst.rune.length === 1 && (inst.arg & FoldCase) !== 0) {
           const r0 = inst.rune[0] as number;
           runes.push(r0, r0);
@@ -445,7 +445,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
           break;
         }
         instQueue.insert(inst.out);
-        const runes: number[] = [];
+        const runes: Array<number> = [];
         // expand case-folded runes
         if ((inst.arg & FoldCase) !== 0) {
           const r0 = inst.rune[0] as number;
@@ -486,7 +486,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
 
   instQueue.clear();
   instQueue.insert(p.start);
-  const m: boolean[] = Array.from({ length: p.inst.length }, () => false);
+  const m: Array<boolean> = Array.from({ length: p.inst.length }, () => false);
   let result: onePassProg | null = p;
   while (!instQueue.empty()) {
     visitQueue.clear();
@@ -498,7 +498,7 @@ function makeOnePass(p: onePassProg): onePassProg | null {
   }
   if (result !== null) {
     result.inst.forEach((inst, i) => {
-      inst.rune = onePassRunes[i] as number[];
+      inst.rune = onePassRunes[i] as Array<number>;
     });
   }
   return result;

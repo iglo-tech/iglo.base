@@ -9,8 +9,11 @@
 
 import { parseGoFloat } from "@/server/unmarshal-request-data";
 import { bytesToText } from "@/tools/types/go-json";
-import { type Instant, date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
-import { type Location, UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
+import { date, fieldsOf, parse, unixToInternal } from "@/tools/types/go-time";
+import type { Instant } from "@/tools/types/go-time";
+import { UTC, localLocation, lookup, parsedTime } from "@/tools/types/go-zoneinfo";
+import type { Location } from "@/tools/types/go-zoneinfo";
+import { isInstance } from "@/tools/types/is-instance";
 
 // how the time zone of a layout is applied (internal.TimeFormatType)
 const noTimezone = 0;
@@ -20,7 +23,7 @@ const numericAndNamedTimezone = 3;
 const timeOnly = 4;
 
 // internal.TimeFormats, in cast's order
-const timeFormats: [string, number][] = [
+const timeFormats: Array<[string, number]> = [
   ["2006-01-02", noTimezone],
   ["2006-01-02T15:04:05Z07:00", numericTimezone], // time.RFC3339
   ["2006-01-02T15:04:05", noTimezone], // iso8601 without timezone
@@ -89,7 +92,7 @@ export function stringToDateLocated(s: string): [Instant, Location] {
 
 // ToTimeE(i) with the default location time.UTC
 export function toTimeE(i: unknown): Instant {
-  if (i instanceof Date) {
+  if (isInstance(Date, i)) {
     return fromDate(i);
   }
   switch (typeof i) {
@@ -100,6 +103,11 @@ export function toTimeE(i: unknown): Instant {
       return { sec: Number(BigInt.asIntN(64, i)), nsec: 0 };
     case "undefined":
       return { ...zeroInstant };
+    case "boolean":
+    case "function":
+    case "number":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return { ...zeroInstant };
@@ -127,7 +135,7 @@ export function toTimeLocated(i: unknown): [Instant, Location] {
       return [{ ...zeroInstant }, UTC];
     }
   }
-  if (typeof i === "bigint" || i instanceof Date) {
+  if (typeof i === "bigint" || isInstance(Date, i)) {
     return [toTime(i), localLocation()];
   }
   return [toTime(i), UTC];
@@ -176,11 +184,14 @@ export function toStringE(i: unknown): string {
       return i.toString();
     case "undefined":
       return "";
+    case "function":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return "";
   }
-  if (i instanceof Uint8Array) {
+  if (isInstance(Uint8Array, i)) {
     return bytesToText(i);
   }
   if (typeof i === "object" && typeof (i as { string?: unknown }).string === "function") {
@@ -204,16 +215,16 @@ export function toString(i: unknown): string {
 // ToStringSliceE: every element of an array cast with ToStringE (any
 // failure fails the whole cast), a string split on whitespace
 // (strings.Fields), any other non-nil value as a single element
-export function toStringSliceE(i: unknown): string[] {
+export function toStringSliceE(i: unknown): Array<string> {
   if (i === null || i === undefined) {
     throw new CastError("unable to cast <nil> to []string");
   }
   if (Array.isArray(i)) {
     return i.map((item) => toStringE(item));
   }
-  if (i instanceof Uint8Array) {
+  if (isInstance(Uint8Array, i)) {
     // []byte is a slice of uint8 values
-    return Array.from(i, (b) => String(b));
+    return Array.from(i, String);
   }
   if (typeof i === "string") {
     return fields(i);
@@ -222,7 +233,7 @@ export function toStringSliceE(i: unknown): string[] {
 }
 
 // ToStringSlice: ToStringSliceE without the error (an empty slice instead)
-export function toStringSlice(i: unknown): string[] {
+export function toStringSlice(i: unknown): Array<string> {
   try {
     return toStringSliceE(i);
   } catch {
@@ -234,7 +245,7 @@ export function toStringSlice(i: unknown): string[] {
 const goSpace = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/;
 
 // strings.Fields: s split around runs of unicode.IsSpace
-function fields(s: string): string[] {
+function fields(s: string): Array<string> {
   return s.split(new RegExp(goSpace.source + "+")).filter((f) => f !== "");
 }
 
@@ -257,11 +268,14 @@ export function toFloat64E(i: unknown): number {
       }
       try {
         return parseGoFloat(i, 64);
-      } catch (err) {
+      } catch (error) {
         throw new CastError(
-          `unable to cast ${JSON.stringify(i)} of type string to float64: ${(err as Error).message}`,
+          `unable to cast ${JSON.stringify(i)} of type string to float64: ${(error as Error).message}`,
         );
       }
+    case "function":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return 0;
@@ -292,6 +306,9 @@ export function toBoolE(i: unknown): boolean {
       return i !== 0n;
     case "string":
       return parseBool(i);
+    case "function":
+    case "object":
+    case "symbol":
   }
   if (i === null) {
     return false;

@@ -19,9 +19,8 @@ import {
   openTarget,
   summarize,
   workloadNames,
-  type Dataset,
-  type WorkloadName,
 } from "@test/perf/read-path/workloads";
+import type { Dataset, WorkloadName } from "@test/perf/read-path/workloads";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -45,7 +44,7 @@ if (positionals[0] === "serve") {
     routes: {
       "/health": () => new Response("ok"),
       "/q/:w": async (req) => {
-        const rows = (await target.run(req.params.w as WorkloadName)) as unknown[];
+        const rows = (await target.run(req.params.w as WorkloadName)) as Array<unknown>;
         return Response.json({ rows: rows.length });
       },
     },
@@ -56,15 +55,17 @@ if (positionals[0] === "serve") {
 }
 
 async function client(): Promise<void> {
-  const modes = values.modes!.split(",").map(Number);
+  const modes = values.modes.split(",").map(Number);
   const seconds = Number(values.seconds);
-  const results: unknown[] = [];
-  const datasets: [Dataset, string | undefined][] = [
+  const results: Array<unknown> = [];
+  const datasets: Array<[Dataset, string | undefined]> = [
     ["fixture", values.fixture],
     ["1m", values.big],
   ];
   for (const [dataset, source] of datasets) {
-    if (source === undefined) continue;
+    if (source === undefined) {
+      continue;
+    }
     const dir = copyDataset(dataset, source, values.scratch!);
     try {
       for (const workers of modes) {
@@ -127,8 +128,8 @@ async function client(): Promise<void> {
 }
 
 async function load(url: string, name: string, ms: number) {
-  const q: number[] = [];
-  const health: number[] = [];
+  const q: Array<number> = [];
+  const health: Array<number> = [];
   const end = performance.now() + ms;
   const start = performance.now();
   const loops = Array.from({ length: 8 }, async () => {
@@ -136,7 +137,9 @@ async function load(url: string, name: string, ms: number) {
       const t = performance.now();
       const res = await fetch(`${url}/q/${name}`);
       await res.text();
-      if (!res.ok) throw new Error(`${name}: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`${name}: ${res.status}`);
+      }
       q.push(performance.now() - t);
     }
   });

@@ -2,18 +2,20 @@
 import type { Loose, LooseObject } from "@sdk/tools/loose";
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { RealtimeService, type UnsubscribeFunc } from "@sdk/services/RealtimeService";
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { RealtimeService } from "@sdk/services/RealtimeService";
+import type { UnsubscribeFunc } from "@sdk/services/RealtimeService";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { CrudService } from "@sdk/services/CrudService";
-import { type ListResult, type RecordModel } from "@sdk/tools/dtos";
+import type { ListResult, RecordModel } from "@sdk/tools/dtos";
 import { normalizeLegacyOptionsArgs } from "@sdk/tools/legacy";
-import {
-  type CommonOptions,
-  type RecordFullListOptions,
-  type RecordListOptions,
-  type RecordOptions,
-  type SendOptions,
-  type RecordSubscribeOptions,
+import type {
+  CommonOptions,
+  RecordFullListOptions,
+  RecordListOptions,
+  RecordOptions,
+  SendOptions,
+  RecordSubscribeOptions,
 } from "@sdk/tools/options";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import { registerAutoRefresh, resetAutoRefresh } from "@sdk/tools/refresh";
@@ -257,8 +259,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         (this.client.authStore.record?.collectionId === this.collectionIdOrName ||
           this.client.authStore.record?.collectionName === this.collectionIdOrName)
       ) {
-        let authExpand = Object.assign({}, this.client.authStore.record.expand);
-        let authRecord = Object.assign({}, this.client.authStore.record, item);
+        const authExpand = Object.assign({}, this.client.authStore.record.expand);
+        const authRecord = Object.assign({}, this.client.authStore.record, item);
         if (authExpand) {
           // for now "merge" only top-level expand
           authRecord.expand = Object.assign(authExpand, item.expand);
@@ -267,7 +269,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         this.client.authStore.save(this.client.authStore.token, authRecord);
       }
 
-      return item as unknown as T;
+      return item as T;
     });
   }
 
@@ -308,6 +310,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     return Object.assign({}, responseData, {
       // normalize common fields
       token: responseData?.token || "",
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       record: record as unknown as T,
     });
   }
@@ -350,7 +353,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         method: "POST",
         body: {
           identity: usernameOrEmail,
-          password: password,
+          password,
         },
       },
       options,
@@ -435,11 +438,11 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        provider: provider,
-        code: code,
-        codeVerifier: codeVerifier,
-        redirectURL: redirectURL,
-        createData: createData,
+        provider,
+        code,
+        codeVerifier,
+        redirectURL,
+        createData,
       },
     };
 
@@ -526,7 +529,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
    */
   async authWithOAuth2<T = M>(options: OAuth2AuthConfig): Promise<RecordAuthResponse<T>>;
 
-  authWithOAuth2<T = M>(...args: unknown[]): Promise<RecordAuthResponse<T>> {
+  authWithOAuth2<T = M>(...args: Array<unknown>): Promise<RecordAuthResponse<T>> {
     // fallback to legacy format
     if (args.length > 1 || typeof args?.[0] === "string") {
       console.warn(
@@ -568,7 +571,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     function cleanup() {
       eagerDefaultPopup?.close();
-      realtime.unsubscribe();
+      void realtime.unsubscribe();
     }
 
     const requestKeyOptions: SendOptions = {};
@@ -588,114 +591,113 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
         const redirectURL = this.client.buildURL("/api/oauth2-redirect");
 
-        // oxlint-disable-next-line no-async-promise-executor -- upstream async promise executor
-        return new Promise(async (resolve, reject) => {
-          // find the AbortController associated with the current request key (if any)
-          const cancelController = requestKey
-            ? this.client["cancelControllers"]?.[requestKey]
-            : undefined;
-          if (cancelController) {
-            // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
-            cancelController.signal.onabort = () => {
-              cleanup();
-              reject(
-                new ClientResponseError({
-                  isAbort: true,
-                  message: "manually cancelled",
-                }),
-              );
-            };
-          }
-
-          // disconnected due to network/server error
-          realtime.onDisconnect = (activeSubscriptions: Array<string>) => {
-            if (activeSubscriptions.length && reject) {
-              cleanup();
-              reject(new ClientResponseError(new Error("realtime connection interrupted")));
-            }
-          };
-
-          try {
-            await realtime.subscribe("@oauth2", async (e) => {
-              const oldState = realtime.clientId;
-
-              try {
-                if (!e.state || oldState !== e.state) {
-                  throw new Error("State parameters don't match.");
-                }
-
-                if (e.error || !e.code) {
-                  throw new Error("OAuth2 redirect error or missing code: " + e.error);
-                }
-
-                // clear the non SendOptions props
-                const options: Partial<OAuth2AuthConfig> = Object.assign({}, config);
-                delete options.provider;
-                delete options.scopes;
-                delete options.createData;
-                delete options.urlCallback;
-
-                // reset the cancelController listener as it will be triggered by the next api call
-                if (cancelController?.signal?.onabort) {
-                  // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
-                  cancelController.signal.onabort = null;
-                }
-
-                const authData = await this.authWithOAuth2Code<T>(
-                  provider.name,
-                  e.code,
-                  provider.codeVerifier,
-                  redirectURL,
-                  config.createData,
-                  options,
+        return new Promise((resolve, reject) => {
+          void (async () => {
+            // find the AbortController associated with the current request key (if any)
+            const cancelController = requestKey
+              ? this.client["cancelControllers"]?.[requestKey]
+              : undefined;
+            if (cancelController) {
+              cancelController.signal.onabort = () => {
+                cleanup();
+                reject(
+                  new ClientResponseError({
+                    isAbort: true,
+                    message: "manually cancelled",
+                  }),
                 );
+              };
+            }
 
-                resolve(authData);
-              } catch (err) {
-                reject(new ClientResponseError(err));
+            // disconnected due to network/server error
+            realtime.onDisconnect = (activeSubscriptions: Array<string>) => {
+              if (activeSubscriptions.length && reject) {
+                cleanup();
+                reject(new ClientResponseError(new Error("realtime connection interrupted")));
+              }
+            };
+
+            try {
+              await realtime.subscribe("@oauth2", (e) => {
+                void (async () => {
+                  const oldState = realtime.clientId;
+
+                  try {
+                    if (!e.state || oldState !== e.state) {
+                      throw new Error("State parameters don't match.");
+                    }
+
+                    if (e.error || !e.code) {
+                      throw new Error("OAuth2 redirect error or missing code: " + e.error);
+                    }
+
+                    // clear the non SendOptions props
+                    const options: Partial<OAuth2AuthConfig> = Object.assign({}, config);
+                    delete options.provider;
+                    delete options.scopes;
+                    delete options.createData;
+                    delete options.urlCallback;
+
+                    // reset the cancelController listener as it will be triggered by the next api call
+                    if (cancelController?.signal?.onabort) {
+                      cancelController.signal.onabort = null;
+                    }
+
+                    const authData = await this.authWithOAuth2Code<T>(
+                      provider.name,
+                      e.code,
+                      provider.codeVerifier,
+                      redirectURL,
+                      config.createData,
+                      options,
+                    );
+
+                    resolve(authData);
+                  } catch (error) {
+                    reject(new ClientResponseError(error));
+                  }
+
+                  cleanup();
+                })();
+              });
+
+              const replacements: Record<string, string> = {
+                state: realtime.clientId,
+              };
+              if (config.scopes?.length) {
+                replacements["scope"] = config.scopes.join(" ");
+              }
+
+              const url = this._replaceQueryParams(provider.authURL + redirectURL, replacements);
+
+              const urlCallback =
+                config.urlCallback ||
+                function (url: string) {
+                  if (eagerDefaultPopup) {
+                    eagerDefaultPopup.location.href = url;
+                  } else {
+                    // it could have been blocked due to its empty initial url,
+                    // try again...
+                    eagerDefaultPopup = openBrowserPopup(url);
+                  }
+                };
+
+              await urlCallback(url);
+            } catch (error) {
+              // reset the cancelController listener in case the request key is reused
+              if (cancelController?.signal?.onabort) {
+                cancelController.signal.onabort = null;
               }
 
               cleanup();
-            });
-
-            const replacements: Record<string, string> = {
-              state: realtime.clientId,
-            };
-            if (config.scopes?.length) {
-              replacements["scope"] = config.scopes.join(" ");
+              reject(new ClientResponseError(error));
             }
-
-            const url = this._replaceQueryParams(provider.authURL + redirectURL, replacements);
-
-            let urlCallback =
-              config.urlCallback ||
-              // oxlint-disable-next-line no-shadow -- upstream callback parameter name matches URL
-              function (url: string) {
-                if (eagerDefaultPopup) {
-                  eagerDefaultPopup.location.href = url;
-                } else {
-                  // it could have been blocked due to its empty initial url,
-                  // try again...
-                  eagerDefaultPopup = openBrowserPopup(url);
-                }
-              };
-
-            await urlCallback(url);
-          } catch (err) {
-            // reset the cancelController listener in case the request key is reused
-            if (cancelController?.signal?.onabort) {
-              // oxlint-disable-next-line unicorn/prefer-add-event-listener -- signal.onabort is cleared by assigning null
-              cancelController.signal.onabort = null;
-            }
-
-            cleanup();
-            reject(new ClientResponseError(err));
-          }
+          })();
         });
       })
-      .catch((err) => {
+      .catch((error: unknown) => {
         cleanup();
-        throw err; // rethrow
+        throw error; // rethrow
       }) as Promise<RecordAuthResponse<T>>;
   }
 
@@ -756,7 +758,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        email: email,
+        email,
       },
     };
 
@@ -807,8 +809,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       method: "POST",
       body: {
         token: passwordResetToken,
-        password: password,
-        passwordConfirm: passwordConfirm,
+        password,
+        passwordConfirm,
       },
     };
 
@@ -845,7 +847,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        email: email,
+        email,
       },
     };
 
@@ -939,7 +941,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     let options: SendOptions = {
       method: "POST",
       body: {
-        newEmail: newEmail,
+        newEmail,
       },
     };
 
@@ -990,7 +992,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       method: "POST",
       body: {
         token: emailChangeToken,
-        password: password,
+        password,
       },
     };
 
@@ -1061,7 +1063,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     options = Object.assign(
       {
         method: "POST",
-        body: { email: email },
+        body: { email },
       },
       options,
     );
@@ -1112,7 +1114,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
     options = Object.assign(
       {
         method: "POST",
-        body: { duration: duration },
+        body: { duration },
       },
       options,
     );
@@ -1148,8 +1150,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     const queryIndex = url.indexOf("?");
     if (queryIndex >= 0) {
-      urlPath = url.substring(0, url.indexOf("?"));
-      query = url.substring(url.indexOf("?") + 1);
+      urlPath = url.slice(0, url.indexOf("?"));
+      query = url.slice(url.indexOf("?") + 1);
     }
 
     const parsedParams: { [key: string]: string } = {};
@@ -1162,14 +1164,14 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       }
 
       const pair = param.split("=");
-      parsedParams[decodeURIComponent(pair[0]!.replace(/\+/g, " "))] = decodeURIComponent(
-        (pair[1] || "").replace(/\+/g, " "),
+      parsedParams[decodeURIComponent(pair[0]!.replaceAll("+", " "))] = decodeURIComponent(
+        (pair[1] || "").replaceAll("+", " "),
       );
     }
 
     // apply the replacements
-    for (let key in replacements) {
-      if (!replacements.hasOwnProperty(key)) {
+    for (const key in replacements) {
+      if (!Object.prototype.hasOwnProperty.call(replacements, key)) {
         continue;
       }
 
@@ -1182,8 +1184,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     // construct back the full query string
     query = "";
-    for (let key in parsedParams) {
-      if (!parsedParams.hasOwnProperty(key)) {
+    for (const key in parsedParams) {
+      if (!Object.prototype.hasOwnProperty.call(parsedParams, key)) {
         continue;
       }
 
@@ -1192,9 +1194,9 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
       }
 
       query +=
-        encodeURIComponent(key.replace(/%20/g, "+")) +
+        encodeURIComponent(key.replaceAll("%20", "+")) +
         "=" +
-        encodeURIComponent(parsedParams[key]!.replace(/%20/g, "+"));
+        encodeURIComponent(parsedParams[key]!.replaceAll("%20", "+"));
     }
 
     return query != "" ? urlPath + "?" + query : urlPath;
@@ -1211,15 +1213,15 @@ function openBrowserPopup(url?: string): Window | null {
   let width = 1024;
   let height = 768;
 
-  let windowWidth = window.innerWidth;
-  let windowHeight = window.innerHeight;
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
 
   // normalize window size
   width = width > windowWidth ? windowWidth : width;
   height = height > windowHeight ? windowHeight : height;
 
-  let left = windowWidth / 2 - width / 2;
-  let top = windowHeight / 2 - height / 2;
+  const left = windowWidth / 2 - width / 2;
+  const top = windowHeight / 2 - height / 2;
 
   // note: we don't use the noopener and noreferrer attributes since
   // for some reason browser blocks such windows then url is undefined/blank

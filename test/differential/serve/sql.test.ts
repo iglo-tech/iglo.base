@@ -9,7 +9,8 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
-import { startPair, type Pair } from "@test/differential/serve/pair";
+import { startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 import { superuserToken } from "@test/scenarios/record-crud";
 
 let pair: Pair;
@@ -21,7 +22,7 @@ beforeAll(async () => {
 afterAll(() => pair?.stop());
 
 // a string is the query; an object is sent as the body as it is
-const queries: (string | Record<string, unknown>)[] = [
+const queries: Array<string | Record<string, unknown>> = [
   "select 1",
   "select 1.5, 1234567.0, 1e-7, 1e21, null, x'00ff41', 'a', 9007199254740993, -0.0, 1e300*1e300, 100000.0, 0.000001, x'e28241', '<a>&b', char(8232)",
   "select id, created, email, verified from users limit 2",
@@ -95,7 +96,7 @@ async function run(base: string, q: string | Record<string, unknown>): Promise<s
 }
 
 test("the same queries give the same responses", async () => {
-  const differences: string[] = [];
+  const differences: Array<string> = [];
   for (const q of queries) {
     const [up, ig] = await Promise.all([run(pair.upstream.url, q), run(pair.igloBase.url, q)]);
     if (up !== ig) {

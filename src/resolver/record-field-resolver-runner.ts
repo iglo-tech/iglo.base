@@ -3,10 +3,10 @@
 // Go's (result, error) returns are the result, and the error is thrown.
 
 import type { Collection } from "@/collections/collection-model";
-import { and, enclose, type Expression, HashExp, inExp, newExp } from "@/db/dbx/expression";
+import { and, enclose, HashExp, inExp, newExp } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import { setOwn } from "@/db/dbx/query";
 import {
-  type Field,
   FieldNameCollectionId,
   FieldNameCollectionName,
   FieldNameEmail,
@@ -16,6 +16,7 @@ import {
   goQuote,
   isMultiValuer,
 } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { FieldTypeGeoPoint } from "@/fields/geo-point";
 import { FieldTypeJSON } from "@/fields/json";
 import { FieldTypeRelation, RelationField } from "@/fields/relation";
@@ -27,13 +28,14 @@ import {
   lengthModifier,
   lowerModifier,
   ownValue,
-  type RecordFieldResolver,
   requestAuthRecord,
   splitModifier,
 } from "@/resolver/record-field-resolver";
+import type { RecordFieldResolver } from "@/resolver/record-field-resolver";
 import { filterBuildExpr } from "@/search/filter";
 import { MultiMatchSubquery } from "@/search/multi-match-subquery";
-import { NullFallbackDisabled, type ResolverResult } from "@/search/simple-field-resolver";
+import { NullFallbackDisabled } from "@/search/simple-field-resolver";
+import type { ResolverResult } from "@/search/simple-field-resolver";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { jsonArrayLength, jsonEach, jsonExtract } from "@/tools/dbutils/json";
 import { columnify } from "@/tools/inflector/inflector";
@@ -41,6 +43,7 @@ import { existInSliceWithRegex, toInterfaceSlice, toUniqueStringSlice } from "@/
 import { pseudorandomString } from "@/tools/security/random";
 import { toString } from "@/tools/types/cast";
 import { marshal, textToBytes } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // maxNestedRels defines the max allowed nested relations depth.
 const maxNestedRels = 6;
@@ -68,7 +71,7 @@ class Runner {
 
   // shared processing state
   // ---------------------------------------------------------------
-  private activeProps: string[] = []; // holds the active props that remains to be processed
+  private activeProps: Array<string> = []; // holds the active props that remains to be processed
   private activeCollectionName = ""; // the last used collection name
   private activeTableAlias = ""; // the last used table alias
   private nullifyMisingField = false; // indicating whether to return null on missing field or return an error
@@ -378,7 +381,7 @@ class Runner {
   }
 
   private processRequestBodyRelationField(bodyField: Field): ResolverResult {
-    if (!(bodyField instanceof RelationField)) {
+    if (!isInstance(RelationField, bodyField)) {
       throw new Error(`failed to initialize data relation field ${goQuote(bodyField.getName())}`);
     }
     const relField = bodyField;
@@ -392,7 +395,7 @@ class Runner {
       );
     }
 
-    let dataRelIds: string[] = [];
+    let dataRelIds: Array<string> = [];
     const body = this.resolver.requestInfo?.body;
     if (this.resolver.requestInfo !== null && body !== null && body !== undefined) {
       if (Object.keys(body).length !== 0) {
@@ -535,7 +538,7 @@ class Runner {
           throw new Error(`non-filterable back relation field ${goQuote(backField.getName())}`);
         }
 
-        if (!(backField instanceof RelationField)) {
+        if (!isInstance(RelationField, backField)) {
           throw new Error(
             `failed to initialize back relation field ${goQuote(backField.getName())}`,
           );
@@ -633,7 +636,7 @@ class Runner {
 
       // join the relation to the main query
       // ---
-      if (!(field instanceof RelationField)) {
+      if (!isInstance(RelationField, field)) {
         throw new Error(`failed to initialize relation field ${goQuote(prop)}`);
       }
       const relField = field;
@@ -853,7 +856,7 @@ class Runner {
 const viaRegex = /^(\w+)_via_(\w+)$/;
 
 // note: nil value is returned as empty slice
-function toSlice(value: unknown): unknown[] {
+function toSlice(value: unknown): Array<unknown> {
   if (value === null || value === undefined) {
     return [];
   }
@@ -861,7 +864,7 @@ function toSlice(value: unknown): unknown[] {
   if (Array.isArray(value)) {
     return [...value];
   }
-  if (value instanceof Uint8Array) {
+  if (isInstance(Uint8Array, value)) {
     return Array.from(value);
   }
 
@@ -869,7 +872,7 @@ function toSlice(value: unknown): unknown[] {
 }
 
 // strings.SplitN(s, sep, n) for n > 0
-function splitN(s: string, sep: string, n: number): string[] {
+function splitN(s: string, sep: string, n: number): Array<string> {
   const parts = s.split(sep);
   if (parts.length <= n) {
     return parts;

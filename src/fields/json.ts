@@ -9,11 +9,13 @@ import {
   goQuote,
   marshalStruct,
   maxSafeJSONInt,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type MaxBodySizeCalculator,
+} from "@/fields/field";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  MaxBodySizeCalculator,
 } from "@/fields/field";
 import {
   anyType,
@@ -22,8 +24,8 @@ import {
   stringType,
   unmarshal,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
 import { NewError } from "@/validation/error";
 import { JSON as JSONRule } from "@/validation/is/rules";
@@ -33,6 +35,7 @@ import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { byteLength } from "@/validation/util";
 import { By } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeJSON = "json";
 
@@ -170,15 +173,15 @@ export class JSONField implements Field, MaxBodySizeCalculator {
 
     try {
       return [parseJSONRaw(raw), null];
-    } catch (err) {
-      return [new JSONRaw(), err as Error];
+    } catch (error) {
+      return [new JSONRaw(), error as Error];
     }
   }
 
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const raw = record.getRaw(this.name);
-    if (!(raw instanceof JSONRaw)) {
+    if (!isInstance(JSONRaw, raw)) {
       return ErrUnsupportedValueType;
     }
 
@@ -206,7 +209,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
 
     const rawStr = trimSpace(raw.string());
 
-    if (this.required && emptyJSONValues.includes(rawStr)) {
+    if (this.required && emptyJSONValues.has(rawStr)) {
       return ErrRequired;
     }
 
@@ -280,7 +283,7 @@ export type JSONFieldSettings = Pick<
   "name" | "id" | "system" | "hidden" | "presentable" | "help" | "maxSize" | "required"
 >;
 
-const emptyJSONValues = ["null", `""`, "[]", "{}", ""];
+const emptyJSONValues = new Set(["null", `""`, "[]", "{}", ""]);
 
 // unicode.IsSpace
 const spaceChars =
@@ -288,5 +291,5 @@ const spaceChars =
 
 // strings.TrimSpace: leading and trailing unicode.IsSpace runes removed
 function trimSpace(s: string): string {
-  return s.replace(spaceChars, "");
+  return s.replaceAll(spaceChars, "");
 }

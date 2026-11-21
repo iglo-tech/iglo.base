@@ -101,11 +101,11 @@ export function Lotus123(raw: Uint8Array, _limit: number): boolean {
     return false;
   }
   const version = beUint32(raw, 0);
-  if (version === 0x00000200) {
+  if (version === 0x00_00_02_00) {
     return raw[6] !== 0 && raw[7] === 0;
   }
 
-  return version === 0x00001a00 && (raw[20] as number) > 0 && (raw[20] as number) < 32;
+  return version === 0x00_00_1a_00 && (raw[20] as number) > 0 && (raw[20] as number) < 32;
 }
 
 const chmSig = lit("ITSF\x03\x00\x00\x00\x60\x00\x00\x00");

@@ -30,21 +30,12 @@ import { mkdirSync, rmSync } from "node:fs";
 import { open } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import {
-  Bucket,
-  type Reader,
-  type Writer,
-  type WriterOptions,
-} from "@/tools/filesystem/blob/bucket";
+import { Bucket } from "@/tools/filesystem/blob/bucket";
+import type { Reader, Writer, WriterOptions } from "@/tools/filesystem/blob/bucket";
 import type { Attributes, ListObject } from "@/tools/filesystem/blob/driver";
 import { New as newFileblob } from "@/tools/filesystem/internal/fileblob/fileblob";
-import {
-  File,
-  type FileReader,
-  normalizeName,
-  readHead,
-  type ReadCloser,
-} from "@/tools/filesystem/file";
+import { File, normalizeName, readHead } from "@/tools/filesystem/file";
+import type { FileReader, ReadCloser } from "@/tools/filesystem/file";
 import { goQuote } from "@/fields/field";
 import { checkSource } from "@/files/create-thumb";
 import { gifFirstFrameLength, readerSource, webpCheckImageChunk } from "@/files/image-config";
@@ -55,10 +46,11 @@ import { serveContent } from "@/server/serve-content";
 import { detect } from "@/tools/mimetype/mimetype";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ThumbSizeRegex = lazyMustCompile(String.raw`^(\d+)x(\d+)(t|b|f)?$`);
 
-const inlineServeContentTypes = [
+const inlineServeContentTypes = new Set([
   // image
   "image/png",
   "image/jpg",
@@ -89,7 +81,7 @@ const inlineServeContentTypes = [
   // document
   "application/pdf",
   "application/x-pdf",
-];
+]);
 
 // manualExtensionContentTypes is a map of file extensions to content types.
 const manualExtensionContentTypes = new Map([
@@ -247,8 +239,8 @@ export class System {
 
   // List returns a flat list with info for all files under the specified
   // prefix.
-  list(prefix: string): ListObject[] {
-    const files: ListObject[] = [];
+  list(prefix: string): Array<ListObject> {
+    const files: Array<ListObject> = [];
 
     const iter = this.#bucket.list({ prefix });
 
@@ -269,9 +261,9 @@ export class System {
 
     try {
       w.write(content);
-    } catch (err) {
+    } catch (error) {
       w.cancel();
-      throw err;
+      throw error;
     }
 
     w.close();
@@ -347,7 +339,7 @@ export class System {
   //
   // The prefix could be subpath (ex. "/a/b/") or filename prefix (ex.
   // "/a/b/file_").
-  deletePrefix(prefix: string): unknown[] {
+  deletePrefix(prefix: string): Array<unknown> {
     const steps = this.deletePrefixSteps(prefix);
     for (;;) {
       const r = steps.next();
@@ -359,8 +351,8 @@ export class System {
 
   // DeletePrefix as a generator: it yields after each page of deleted
   // files and returns the failures.
-  *deletePrefixSteps(prefix: string): Generator<void, unknown[], void> {
-    const failed: unknown[] = [];
+  *deletePrefixSteps(prefix: string): Generator<void, Array<unknown>, void> {
+    const failed: Array<unknown> = [];
 
     if (prefix === "") {
       failed.push(new Error("prefix mustn't be empty"));
@@ -385,8 +377,8 @@ export class System {
       let obj: ListObject | null;
       try {
         obj = iter.next();
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
         break;
       }
       if (obj === null) {
@@ -401,8 +393,8 @@ export class System {
             dirsMap.add(obj.key.slice(0, slashIdx));
           }
         }
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
       }
 
       if (++deleted % deletePageSize === 0) {
@@ -458,7 +450,7 @@ export class System {
 
     setServeHeaders(res, req, fileKey, name, realContentType);
 
-    serveContent(
+    void serveContent(
       res,
       req,
       name,
@@ -493,7 +485,7 @@ export class System {
   // directory), reading the ranges in pieces of spoolChunk bytes.
   async #spool(
     fileKey: string,
-    parts: (Uint8Array | { start: number; length: number })[],
+    parts: Array<Uint8Array | { start: number; length: number }>,
   ): Promise<{ blob: Blob; remove: () => void }> {
     const tempDir = join(dirname(this.#localDir), localTempDirName);
     mkdirSync(tempDir, { recursive: true });
@@ -508,7 +500,7 @@ export class System {
       try {
         const buf = new Uint8Array(spoolChunk);
         for (const part of parts) {
-          if (part instanceof Uint8Array) {
+          if (isInstance(Uint8Array, part)) {
             await out.write(part);
             continue;
           }
@@ -525,10 +517,10 @@ export class System {
       } finally {
         await src.close();
       }
-    } catch (err) {
+    } catch (error) {
       await out.close();
       remove();
-      throw err;
+      throw error;
     }
     await out.close();
     return { blob: Bun.file(path), remove };
@@ -572,9 +564,9 @@ export class System {
     // thumb encode (aka. upload)
     try {
       w.write(thumb.bytes);
-    } catch (err) {
+    } catch (error) {
       w.cancel();
-      throw err;
+      throw error;
     }
 
     // check for close errors to ensure that the thumb was really saved
@@ -715,7 +707,7 @@ export function setServeHeaders(
   }
 
   let disposition = "attachment";
-  if (!forceAttachment && inlineServeContentTypes.includes(realContentType)) {
+  if (!forceAttachment && inlineServeContentTypes.has(realContentType)) {
     disposition = "inline";
   }
 
@@ -804,5 +796,5 @@ function parseBool(str: string): boolean {
 // clamped to the int64 range, as Atoi returns it with its (ignored) error
 function goAtoi(digits: string): number {
   const n = BigInt(digits);
-  return n > 9223372036854775807n ? Number(9223372036854775807n) : Number(n);
+  return n > 9_223_372_036_854_775_807n ? Number(9_223_372_036_854_775_807n) : Number(n);
 }

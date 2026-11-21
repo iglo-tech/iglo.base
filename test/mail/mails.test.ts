@@ -16,8 +16,10 @@ import {
 import type { Record } from "@/records/record-model";
 import { findFirstRecordByData } from "@/records/record-query";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
-import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
+import { sharedSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage } from "@test/support/smtp-sink";
 
 let app: TestApp;
 let user: Record;
@@ -51,7 +53,7 @@ function escape(s: string): string {
 }
 
 // the messages sent since the test started
-function sent(): SinkMessage[] {
+function sent(): Array<SinkMessage> {
   return sharedSmtpSink().messages.filter((m) => m.received >= since);
 }
 
@@ -64,7 +66,9 @@ function lastHTML(to: string): string {
   expect(start).toBeGreaterThan(-1);
   const qp = data.slice(start).split("\r\n\r\n")[1]?.split("\r\n--")[0] ?? "";
   const bytes = Buffer.from(
-    qp.replace(/=([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16))),
+    qp.replaceAll(/=([0-9A-F]{2})/g, (_, hex: string) =>
+      String.fromCharCode(Number.parseInt(hex, 16)),
+    ),
     "latin1",
   );
   return bytes.toString("utf8");

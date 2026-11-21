@@ -9,9 +9,8 @@ import {
   createSessionCache,
   createRequestCookieAdapter,
   SSR_NO_CACHE_HEADERS,
-  type CookieToSet,
-  type CookieAdapter,
 } from "@sdk/ssr/index";
+import type { CookieToSet, CookieAdapter } from "@sdk/ssr/index";
 
 /** The posts list answers 401 while the token stays valid. */
 function denyPostsList(fetchMock: FetchMock): void {
@@ -31,9 +30,11 @@ function denyPostsList(fetchMock: FetchMock): void {
 async function failureOf(call: Promise<unknown>): Promise<ClientResponseError> {
   try {
     await call;
-  } catch (err) {
-    if (err instanceof ClientResponseError) return err;
-    throw err;
+  } catch (error) {
+    if (error instanceof ClientResponseError) {
+      return error;
+    }
+    throw error;
   }
   throw new Error("the call should have failed with a 401");
 }
@@ -73,7 +74,7 @@ describe("SSR Core", () => {
         refreshable: true,
       });
 
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       let setHeaders: Record<string, string> | undefined;
 
       const cookies: CookieAdapter = {
@@ -134,7 +135,7 @@ describe("SSR Core", () => {
         refreshable: true,
       });
 
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       let setHeaders: Record<string, string> | undefined;
 
       const cookies: CookieAdapter = {
@@ -427,7 +428,7 @@ describe("SSR Core", () => {
     });
 
     test("LRU eviction drops least recently used entry when maxEntries is exceeded", async () => {
-      let clockTime = 1000;
+      const clockTime = 1000;
       const cache = createSessionCache({
         maxEntries: 2,
         clock: () => clockTime,
@@ -482,9 +483,9 @@ describe("SSR Core", () => {
         },
       });
 
-      const setCookiesCalls: CookieToSet[][] = [];
+      const setCookiesCalls: Array<Array<CookieToSet>> = [];
       const createTestClient = async () => {
-        const clearedCookies: CookieToSet[] = [];
+        const clearedCookies: Array<CookieToSet> = [];
         setCookiesCalls.push(clearedCookies);
         const cookies: CookieAdapter = {
           getAll: () => [{ name: "pb_auth", value: JSON.stringify({ token }) }],
@@ -593,7 +594,7 @@ describe("SSR Core", () => {
   describe("Server Sign-in and Sign-out", () => {
     test("authWithPassword writes cookie and updates session cache", async () => {
       const cache = createSessionCache();
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       let setHeaders: Record<string, string> | undefined;
 
       const cookies: CookieAdapter = {
@@ -651,7 +652,7 @@ describe("SSR Core", () => {
 
     test("authStore.clear() clears cookie and evicts session cache", async () => {
       const cache = createSessionCache();
-      const setCookies: CookieToSet[] = [];
+      const setCookies: Array<CookieToSet> = [];
       const token = dummyJWT({
         exp: 1_500_000,
         id: "user_to_logout",
@@ -756,9 +757,9 @@ describe("SSR Core", () => {
       let threw401 = false;
       try {
         await client.collection("_superusers").getFullList();
-      } catch (err: any) {
+      } catch (error: any) {
         threw401 = true;
-        expect(err.status).toBe(401);
+        expect(error.status).toBe(401);
       }
       expect(threw401).toBe(true);
 

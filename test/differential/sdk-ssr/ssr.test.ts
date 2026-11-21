@@ -8,10 +8,8 @@ import {
   createSuperuserClient,
   createSessionCache,
   DEFAULT_TTL_MS,
-  type Cookie,
-  type CookieAdapter,
-  type CookieToSet,
 } from "@iglo.tech/iglo.base/ssr";
+import type { Cookie, CookieAdapter, CookieToSet } from "@iglo.tech/iglo.base/ssr";
 import { password, sdkTest, superuserToken } from "@test/differential/sdk/harness";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
 import { ClientResponseError } from "@iglo.tech/iglo.base";
@@ -74,13 +72,13 @@ describe("SSR differential", () => {
         (res) => ({ email: res.record.email }),
       );
 
-      let cookieJarA: Cookie[] = [
+      let cookieJarA: Array<Cookie> = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: authA.token, record: authA.record }),
         },
       ];
-      let cookieJarB: Cookie[] = [
+      let cookieJarB: Array<Cookie> = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: authB.token, record: authB.record }),
@@ -89,19 +87,19 @@ describe("SSR differential", () => {
 
       const cookiesA: CookieAdapter = {
         getAll: () => cookieJarA,
-        setAll: (c: CookieToSet[]) => {
+        setAll: (c: Array<CookieToSet>) => {
           cookieJarA = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
         },
       };
       const cookiesB: CookieAdapter = {
         getAll: () => cookieJarB,
-        setAll: (c: CookieToSet[]) => {
+        setAll: (c: Array<CookieToSet>) => {
           cookieJarB = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
         },
       };
 
       // Near real-time clock (not 1970) so half-life calculations match real server token exp
-      let mockClock = Date.now();
+      const mockClock = Date.now();
       const sessionCache = createSessionCache({ clock: () => mockClock });
 
       // Requests are counted at the server boundary by a proxy in its own process
@@ -191,7 +189,7 @@ describe("SSR differential", () => {
       const user = await env.step("create user", () =>
         admin.collection("users").create({
           email: "revoke_test@example.com",
-          password: password,
+          password,
           passwordConfirm: password,
         }),
       );
@@ -206,7 +204,7 @@ describe("SSR differential", () => {
 
       // The browser's cookie jar. The warm-up refresh issues a new token and its cookie write
       // must reach the next request, as it would in a browser; the next client reads the jar.
-      let cookieVal: Cookie[] = [
+      let cookieVal: Array<Cookie> = [
         {
           name: "pb_auth",
           value: JSON.stringify({ token: auth.token, record: auth.record }),
@@ -219,7 +217,7 @@ describe("SSR differential", () => {
         origin: "http://localhost:3000",
         cookies: {
           getAll: () => cookieVal,
-          setAll: (c: CookieToSet[]) => {
+          setAll: (c: Array<CookieToSet>) => {
             cookieVal = c.map((item: CookieToSet) => ({ name: item.name, value: item.value }));
           },
         },
@@ -236,7 +234,7 @@ describe("SSR differential", () => {
       );
 
       // 1. Next data call: session is cached, but server rejects token on data call
-      const clearedCookiesDataCall: CookieToSet[] = [];
+      const clearedCookiesDataCall: Array<CookieToSet> = [];
       const pbData = await createServerClient({
         url: env.url,
         origin: "http://localhost:3000",
@@ -253,8 +251,11 @@ describe("SSR differential", () => {
       let dataCallRejected = false;
       try {
         await pbData.collection("users").getOne(user.id);
-      } catch (err: unknown) {
-        if (err instanceof ClientResponseError && (err.status === 404 || err.status === 401)) {
+      } catch (error: unknown) {
+        if (
+          error instanceof ClientResponseError &&
+          (error.status === 404 || error.status === 401)
+        ) {
           dataCallRejected = true;
         }
       }
@@ -292,7 +293,7 @@ describe("SSR differential", () => {
       // Advance injected clock past cache TTL (default TTL is 5 minutes = 300_000 ms)
       mockClock += DEFAULT_TTL_MS + 10_000;
 
-      const clearedCookiesTTL: CookieToSet[] = [];
+      const clearedCookiesTTL: Array<CookieToSet> = [];
       const pbTTL = await createServerClient({
         url: env.url,
         origin: "http://localhost:3000",
@@ -330,7 +331,7 @@ describe("SSR differential", () => {
       const user = await env.step("create user for impersonate", () =>
         admin.collection("users").create({
           email: "impersonate_realtime@example.com",
-          password: password,
+          password,
           passwordConfirm: password,
         }),
       );
@@ -351,7 +352,7 @@ describe("SSR differential", () => {
       const realtimeClient = env.client();
       realtimeClient.authStore.save(minted.token, minted.record);
 
-      const events: unknown[] = [];
+      const events: Array<unknown> = [];
       const unsub = await env.step("subscribe demo2 with impersonated token", () =>
         realtimeClient.collection("demo2").subscribe("*", (e) => events.push(e)),
       );

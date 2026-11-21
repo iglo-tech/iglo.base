@@ -1,8 +1,8 @@
 // js-sdk v0.28.1 src/services/LogService.ts
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import { BaseService } from "@sdk/services/BaseService";
-import { type ListResult, type LogModel } from "@sdk/tools/dtos";
-import { type CommonOptions, type ListOptions, type LogStatsOptions } from "@sdk/tools/options";
+import type { ListResult, LogModel } from "@sdk/tools/dtos";
+import type { CommonOptions, ListOptions, LogStatsOptions } from "@sdk/tools/options";
 
 export interface HourlyStats {
   total: number;
@@ -20,8 +20,8 @@ export class LogService extends BaseService {
 
     options.query = Object.assign(
       {
-        page: page,
-        perPage: perPage,
+        page,
+        perPage,
       },
       options.query,
     );

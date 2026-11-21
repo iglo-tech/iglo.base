@@ -34,11 +34,11 @@ describe("bcrypt async", () => {
   });
 
   test("the argument and hash errors are the synchronous ones", async () => {
-    await expect(generateFromPasswordAsync(bytes("a".repeat(73)), 6)).rejects.toBe(
-      ErrPasswordTooLong,
+    await Promise.resolve(
+      expect(generateFromPasswordAsync(bytes("a".repeat(73)), 6)).rejects.toBe(ErrPasswordTooLong),
     );
-    await expect(generateFromPasswordAsync(bytes("a"), 40)).rejects.toBeInstanceOf(
-      InvalidCostError,
+    await Promise.resolve(
+      expect(generateFromPasswordAsync(bytes("a"), 40)).rejects.toBeInstanceOf(InvalidCostError),
     );
     const short = bytes("$2a$06$short");
     expect(await compareHashAndPasswordAsync(short, bytes("a"))).toEqual(

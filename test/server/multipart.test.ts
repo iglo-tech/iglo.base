@@ -22,13 +22,10 @@ import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { BytesBuffer, copy, EOF, ErrUnexpectedEOF, type Reader as IoReader } from "@/server/io";
-import {
-  ErrMessageTooLarge,
-  type FileHeader,
-  Part,
-  Reader as MultipartReader,
-} from "@/server/multipart";
+import { BytesBuffer, copy, EOF, ErrUnexpectedEOF } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
+import { ErrMessageTooLarge, Part, Reader as MultipartReader } from "@/server/multipart";
+import type { FileHeader } from "@/server/multipart";
 import { MultipartReader as MultipartFileReader } from "@/tools/filesystem/file";
 import type { MIMEHeader } from "@/server/textproto";
 
@@ -55,7 +52,7 @@ function reader(data: Uint8Array, maxChunk = Number.POSITIVE_INFINITY): IoReader
 }
 
 // io.MultiReader
-function multiReader(...readers: IoReader[]): IoReader {
+function multiReader(...readers: Array<IoReader>): IoReader {
   const rs = [...readers];
   return {
     async read(p) {
@@ -82,23 +79,23 @@ async function readAll(r: IoReader): Promise<[string, unknown]> {
   return [Buffer.from(buf.bytes()).toString("latin1"), err];
 }
 
-function headerObject(h: MIMEHeader): Record<string, string[]> {
+function headerObject(h: MIMEHeader): Record<string, Array<string>> {
   return Object.fromEntries(h.entries());
 }
 
-function first<T>(xs: T[] | undefined): T {
+function first<T>(xs: Array<T> | undefined): T {
   if (xs === undefined || xs.length === 0) {
     throw new Error("no value");
   }
   return xs[0] as T;
 }
 
-type WrittenPart = { header: Record<string, string[]>; body: string };
+type WrittenPart = { header: Record<string, Array<string>>; body: string };
 
 // The bytes mime/multipart's Writer produces for parts: CreatePart writes
 // "--boundary" (or "\r\n--boundary" after a part), the header lines in key
 // order and a blank line before the body; Close writes "\r\n--boundary--\r\n".
-function writeMultipart(boundary: string, parts: WrittenPart[]): string {
+function writeMultipart(boundary: string, parts: Array<WrittenPart>): string {
   let out = "";
   parts.forEach((p, i) => {
     out += i === 0 ? `--${boundary}\r\n` : `\r\n--${boundary}\r\n`;
@@ -118,7 +115,10 @@ function formField(name: string, value: string): WrittenPart {
 }
 
 // the MIME header of a Writer.CreatePart call (Set canonicalizes the keys)
-function formData(key: string, value: string): { header: Record<string, string[]>; body: string } {
+function formData(
+  key: string,
+  value: string,
+): { header: Record<string, Array<string>>; body: string } {
   return {
     header: {
       "Content-Type": ["text/plain; charset=ISO-8859-1"],
@@ -128,8 +128,8 @@ function formData(key: string, value: string): { header: Record<string, string[]
   };
 }
 
-async function partsFromReader(mr: MultipartReader): Promise<WrittenPart[]> {
-  const got: WrittenPart[] = [];
+async function partsFromReader(mr: MultipartReader): Promise<Array<WrittenPart>> {
+  const got: Array<WrittenPart> = [];
   for (;;) {
     const [p, err] = await mr.nextPart();
     if (err === EOF) {
@@ -500,7 +500,7 @@ const parseTests: Array<{
   name: string;
   in: string;
   sep: string;
-  want: WrittenPart[];
+  want: Array<WrittenPart>;
 }> = [
   // Actual body from App Engine on a blob upload. The final part (the
   // Content-Type: message/external-body) is what App Engine replaces
@@ -1157,7 +1157,7 @@ test.each([
     body: () =>
       writeMultipart(
         boundary,
-        Array.from({ length: 110000 }, () => formField("f", "v")),
+        Array.from({ length: 110_000 }, () => formField("f", "v")),
       ),
   },
 ])(
@@ -1183,16 +1183,16 @@ test.each([
   { values: 0, files: 1001, extraKeysPerFile: 0, wantErr: ErrMessageTooLarge },
   // plus Content-Disposition and Content-Type
   { values: 0, files: 1, extraKeysPerFile: 9998, wantErr: undefined },
-  { values: 0, files: 1, extraKeysPerFile: 10000, wantErr: ErrMessageTooLarge },
+  { values: 0, files: 1, extraKeysPerFile: 10_000, wantErr: ErrMessageTooLarge },
 ])(
   "TestReadFormLimits: values=$values/files=$files/extraKeysPerFile=$extraKeysPerFile",
   async ({ values, files, extraKeysPerFile, wantErr }) => {
-    const parts: WrittenPart[] = [];
+    const parts: Array<WrittenPart> = [];
     for (let i = 0; i < values; i++) {
       parts.push(formField(`field${i}`, `value ${i}`));
     }
     for (let i = 0; i < files; i++) {
-      const header: Record<string, string[]> = {
+      const header: Record<string, Array<string>> = {
         "Content-Disposition": [`form-data; name="file${i}"; filename="file${i}"`],
         "Content-Type": ["application/octet-stream"],
       };
@@ -1264,7 +1264,7 @@ Body 2
     "MyBoundary",
   );
 
-  const readPart = async (header: Record<string, string[]>, body: string) => {
+  const readPart = async (header: Record<string, Array<string>>, body: string) => {
     const part = await expectPart(r);
     expect(headerObject(part.header)).toEqual(header);
     const [data, err] = await readAll(part);

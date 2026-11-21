@@ -13,22 +13,21 @@ import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { type BatchCase, batchCases } from "@test/differential/batch/cases";
+import { batchCases } from "@test/differential/batch/cases";
+import type { BatchCase } from "@test/differential/batch/cases";
 import { createBatchCollections } from "@test/differential/batch/schema";
-import {
-  compareResponses,
-  Pairing,
-  readStartingData,
-  type StartingData,
-} from "@test/differential/harness/compare";
+import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
+import type { StartingData } from "@test/differential/harness/compare";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { send } from "@test/scenarios/runner";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import type { Scenario } from "@test/scenarios/scenario";
 import type { ScenarioResponse } from "@test/scenarios/request";
-import { type RunningServer, startServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const root = mkdtempSync(join(tmpdir(), "iglo-base-batch-"));
 const sourceDir = join(root, "source", "pb_data");
@@ -68,12 +67,16 @@ async function sendOk(url: string, request: Scenario): Promise<ScenarioResponse>
 
 function batchRequest(c: BatchCase): Scenario {
   const multipartHeaders = c.multipart?.headers ?? {};
+  const authHeaders: Record<string, string> = {};
+  if (c.token !== undefined) {
+    authHeaders.Authorization = c.token;
+  }
   return {
     name: c.name,
     method: "POST",
     url: `/api/batch${c.query ?? ""}`,
     headers: {
-      ...(c.token === undefined ? {} : { Authorization: c.token }),
+      ...authHeaders,
       ...c.headers,
       ...multipartHeaders,
     },
@@ -125,15 +128,15 @@ function readRequest(collection: string): Scenario {
   };
 }
 
-function storedFiles(dataDir: string): string[] {
+function storedFiles(dataDir: string): Array<string> {
   // file names without their random parts
-  const out: string[] = [];
+  const out: Array<string> = [];
   const storage = join(dataDir, "storage");
   for (const collection of readdirSync(storage)) {
     for (const record of readdirSync(join(storage, collection))) {
       for (const name of readdirSync(join(storage, collection, record))) {
         out.push(
-          `${collection}/${record}/${name.replace(/_[a-z0-9]{10}/g, "").replace(/[0-9]{5,}/g, "")}`,
+          `${collection}/${record}/${name.replaceAll(/_[a-z0-9]{10}/g, "").replaceAll(/[0-9]{5,}/g, "")}`,
         );
       }
     }

@@ -44,7 +44,7 @@ function vm(pid: number, key: string): number {
   }
 }
 
-function percentile(sorted: number[], p: number): number {
+function percentile(sorted: Array<number>, p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
 }
 
@@ -53,7 +53,7 @@ function round(n: number): number {
 }
 
 function sampleLatency(url: string): { stop: () => Promise<Record<string, number>> } {
-  const times: number[] = [];
+  const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {
     while (state.running) {
@@ -80,14 +80,14 @@ function sampleLatency(url: string): { stop: () => Promise<Record<string, number
   };
 }
 
-async function run(cmd: string[]): Promise<void> {
+async function run(cmd: Array<string>): Promise<void> {
   const proc = Bun.spawn(cmd, { stdout: "ignore", stderr: "inherit" });
   if ((await proc.exited) !== 0) {
     throw new Error(`failed: ${cmd.join(" ")}`);
   }
 }
 
-async function measure(name: string, command: string[]): Promise<void> {
+async function measure(name: string, command: Array<string>): Promise<void> {
   const root = join(workDir, name);
   const dataDir = join(root, "pb_data");
   mkdirSync(root, { recursive: true });

@@ -7,9 +7,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
-import { rawRequest, type RawResponse } from "@test/support/raw-http";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { rawRequest } from "@test/support/raw-http";
+import type { RawResponse } from "@test/support/raw-http";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 let upstream: UpstreamServer;
 let iglo: RunningServer;
@@ -56,7 +59,7 @@ async function compare(method: string, target: string): Promise<void> {
   expect(normalize(got)).toEqual(normalize(want));
 }
 
-const cases: [string, string][] = [
+const cases: Array<[string, string]> = [
   ["GET", "/api/health"],
   ["HEAD", "/api/health"],
   ["GET", "/api/health?x=1"],
@@ -86,12 +89,12 @@ describe("router", () => {
   // resolved path directly where upstream redirects to the clean path (or,
   // for %2e%2e and "\\", does not match).
   // Each case checks both sides of the recorded difference.
-  const dotSegments: [string, string, string, number][] = [
+  const dotSegments: Array<[string, string, string, number]> = [
     ["GET", "/api/../api/health", "/api/health", 307],
     ["GET", "/api/health/.", "/api/health/", 307],
     ["GET", "/./api/health", "/api/health", 307],
     ["GET", "/x/%2e%2e/api/health", "/api/health", 404],
-    ["GET", "/api\\health", "/api/health", 404],
+    ["GET", String.raw`/api\health`, "/api/health", 404],
   ];
   for (const [method, target, resolved, upstreamStatus] of dotSegments) {
     test(`${method} ${target} (D22: answered as ${resolved})`, async () => {

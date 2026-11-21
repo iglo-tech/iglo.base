@@ -7,14 +7,15 @@
 import { trimSpace } from "@/collections/go-strings";
 import { toInt } from "@/records/cast";
 import { parse } from "@/tools/html/parse";
-import { ElementNode, type Node, TextNode } from "@/tools/html/node";
+import { ElementNode, TextNode } from "@/tools/html/node";
+import type { Node } from "@/tools/html/node";
 import type { Modifier } from "@/tools/picker/modifiers";
 import { toBool } from "@/tools/types/cast";
 
 // Go's regexp `\s+` (RE2's \s is [\t\n\f\r ])
 const whitespaceRegex = /[\t\n\f\r ]+/g;
 
-const excludeTags = [
+const excludeTags = new Set([
   "head",
   "style",
   "script",
@@ -33,9 +34,9 @@ const excludeTags = [
   "input",
   "select",
   "option",
-];
+]);
 
-const inlineTags = [
+const inlineTags = new Set([
   "a",
   "abbr",
   "acronym",
@@ -57,7 +58,7 @@ const inlineTags = [
   "sub",
   "sup",
   "time",
-];
+]);
 
 const encoder = new TextEncoder();
 
@@ -101,7 +102,7 @@ export class ExcerptModifier implements Modifier {
     const stripTags = (n: Node): void => {
       if (n.type === TextNode) {
         // collapse multiple spaces into one
-        let txt = n.data.replace(whitespaceRegex, " ");
+        let txt = n.data.replaceAll(whitespaceRegex, " ");
 
         if (hasPrevSpace) {
           txt = txt.replace(/^ +/, "");
@@ -121,8 +122,8 @@ export class ExcerptModifier implements Modifier {
       }
 
       for (let c = n.firstChild; c !== null; c = c.nextSibling) {
-        if (c.type !== ElementNode || !excludeTags.includes(c.data)) {
-          const isBlock = c.type === ElementNode && !inlineTags.includes(c.data);
+        if (c.type !== ElementNode || !excludeTags.has(c.data)) {
+          const isBlock = c.type === ElementNode && !inlineTags.has(c.data);
 
           if (isBlock && !hasPrevSpace) {
             write(" ");
@@ -162,7 +163,7 @@ export class ExcerptModifier implements Modifier {
 // initializes a new ExcerptModifier.
 //
 // This method is usually invoked in initModifer().
-export function newExcerptModifier(...args: string[]): ExcerptModifier {
+export function newExcerptModifier(...args: Array<string>): ExcerptModifier {
   const totalArgs = args.length;
 
   if (totalArgs === 0) {

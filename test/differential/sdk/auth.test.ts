@@ -5,15 +5,10 @@
 // own SMTP sink). Not part of `bun test`: run `bun run test:reference`.
 
 import { describe, expect } from "bun:test";
-import PocketBase from "@iglo.tech/iglo.base";
+import type PocketBase from "@iglo.tech/iglo.base";
 
-import {
-  mailMatch,
-  messageBody,
-  password,
-  sdkTest,
-  type SdkEnv,
-} from "@test/differential/sdk/harness";
+import { mailMatch, messageBody, password, sdkTest } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 import { updateCollection } from "@test/scenarios/prepare";
 import { all, useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
@@ -51,7 +46,7 @@ describe("password auth", () => {
       env.record("authStore (user)", store(pb));
       await env.step("authRefresh", () => pb.collection("users").authRefresh());
       env.record("authStore (refreshed)", store(pb));
-      const changes: unknown[] = [];
+      const changes: Array<unknown> = [];
       const off = pb.authStore.onChange((token, record) =>
         changes.push([token !== "", record?.id]),
       );
@@ -167,7 +162,7 @@ describe("auth records and stores", () => {
         const slow = pb
           .collection("demo2")
           .getList(1, 1, { requestKey: "k" })
-          .catch((e: unknown) => e);
+          .catch((error: unknown) => error);
         pb.cancelRequest("k");
         return slow;
       });
@@ -176,7 +171,7 @@ describe("auth records and stores", () => {
           pb
             .collection("demo2")
             .getList(n, 1, { requestKey: `k${n}` })
-            .catch((e: unknown) => e),
+            .catch((error: unknown) => error),
         );
         pb.cancelAllRequests();
         return Promise.all(many);
@@ -319,13 +314,13 @@ describe("mail flows", () => {
       const m2 = await env.mail("otp mail (again)", "test2@example.com", since);
       const code2 = /\b(\d{8})\b/.exec(messageBody(m2))?.[1] ?? "";
       await env.step("authWithOTP (mfaId option)", () =>
-        pb.collection("users").authWithOTP(otp2.otpId, code2, { mfaId: mfaId2 } as never),
+        pb.collection("users").authWithOTP(otp2.otpId, code2, { mfaId: mfaId2 }),
       );
     },
   );
 });
 
-const prepare = (user: object) => (env: { dataDir: string }) =>
+const prepare = (user: Record<string, unknown>) => (env: { dataDir: string }) =>
   all(
     noMFA,
     useProvider({ user }, (collection, provider) => {
@@ -407,7 +402,7 @@ describe("OAuth2", () => {
     { prepare: prepare({ sub: "sdk-2", ...verifiedEmail("oauth-url@example.com") }) },
     async (env) => {
       const pb = env.client();
-      const urls: string[] = [];
+      const urls: Array<string> = [];
       await env.step("authWithOAuth2", () =>
         pb.collection("users").authWithOAuth2({
           provider: "oidc",

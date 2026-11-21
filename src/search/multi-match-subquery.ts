@@ -2,7 +2,8 @@
 
 import type { DB } from "@/db/dbx/db";
 import type { Expression } from "@/db/dbx/expression";
-import { assignOwn, type Params } from "@/db/dbx/query";
+import { assignOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 
 // Join defines common fields required for a single SQL JOIN clause.
 export interface Join {
@@ -17,7 +18,7 @@ export class MultiMatchSubquery implements Expression {
   fromTableName = "";
   fromTableAlias = "";
   valueIdentifier = "";
-  joins: Join[] = [];
+  joins: Array<Join> = [];
   params: Params = {};
 
   constructor(init: Partial<MultiMatchSubquery> = {}) {

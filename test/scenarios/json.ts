@@ -9,8 +9,8 @@
 export type JsonNode =
   | { kind: "null" | "true" | "false" | "number"; start: number; raw: string }
   | { kind: "string"; start: number; raw: string; value: string }
-  | { kind: "array"; start: number; raw: string; items: JsonNode[] }
-  | { kind: "object"; start: number; raw: string; entries: [name: string, value: JsonNode][] };
+  | { kind: "array"; start: number; raw: string; items: Array<JsonNode> }
+  | { kind: "object"; start: number; raw: string; entries: Array<[name: string, value: JsonNode]> };
 
 export class JsonSyntaxError extends Error {}
 
@@ -86,7 +86,7 @@ class Parser {
   }
 
   private object(start: number): JsonNode {
-    const entries: [string, JsonNode][] = [];
+    const entries: Array<[string, JsonNode]> = [];
     this.pos++;
     this.skipWhitespace();
     if (this.text[this.pos] !== "}") {
@@ -109,7 +109,7 @@ class Parser {
   }
 
   private array(start: number): JsonNode {
-    const items: JsonNode[] = [];
+    const items: Array<JsonNode> = [];
     this.pos++;
     this.skipWhitespace();
     if (this.text[this.pos] !== "]") {
@@ -143,7 +143,7 @@ export function goNormalizedBody(body: Uint8Array): Uint8Array {
   } catch {
     return body;
   }
-  const out: string[] = [];
+  const out: Array<string> = [];
   if (!appendGo(node, out)) {
     return body;
   }
@@ -152,7 +152,7 @@ export function goNormalizedBody(body: Uint8Array): Uint8Array {
 }
 
 // false on a duplicate object name
-function appendGo(node: JsonNode, out: string[]): boolean {
+function appendGo(node: JsonNode, out: Array<string>): boolean {
   switch (node.kind) {
     case "string":
       out.push(goQuote(node.value));
@@ -210,9 +210,9 @@ function goQuote(value: string): string {
 }
 
 const shortEscapes: Record<string, string> = {
-  "\b": "\\b",
-  "\f": "\\f",
-  "\n": "\\n",
-  "\r": "\\r",
-  "\t": "\\t",
+  "\b": String.raw`\b`,
+  "\f": String.raw`\f`,
+  "\n": String.raw`\n`,
+  "\r": String.raw`\r`,
+  "\t": String.raw`\t`,
 };

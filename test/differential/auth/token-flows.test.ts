@@ -26,7 +26,8 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { freePort, startServer } from "@test/support/executable";
-import { type Mailpit, startMailpit } from "@test/support/mailpit";
+import { startMailpit } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners
@@ -39,7 +40,7 @@ const newEmail = "change@example.com";
 const userId = "4q1xlclmfloku33";
 
 type Kind = "upstream" | "igloBase";
-const kinds: Kind[] = ["upstream", "igloBase"];
+const kinds: Array<Kind> = ["upstream", "igloBase"];
 
 interface Server {
   kind: Kind;
@@ -57,7 +58,7 @@ type Row = { [key: string]: unknown };
 
 type Confirm = (server: Server, token: string) => Promise<Reply>;
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 let mailpits: Record<Kind, Mailpit>;
 
@@ -117,14 +118,15 @@ async function request(
   body: unknown,
   token?: string,
 ): Promise<Reply> {
-  const res = await fetch(server.url + path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token === undefined ? {} : { Authorization: token }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token !== undefined) {
+    headers.Authorization = token;
+  }
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(server.url + path, init);
   const text = await res.text();
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
 }
@@ -160,9 +162,9 @@ async function clear(m: Mailpit): Promise<void> {
   await fetch(`${m.apiUrl}/api/v1/messages`, { method: "DELETE" });
 }
 
-async function allRaw(m: Mailpit): Promise<string[]> {
+async function allRaw(m: Mailpit): Promise<Array<string>> {
   const list = (await fetch(`${m.apiUrl}/api/v1/messages`).then((res) => res.json())) as {
-    messages: { ID: string }[];
+    messages: Array<{ ID: string }>;
   };
   return Promise.all(
     list.messages.map((msg) =>
@@ -172,11 +174,11 @@ async function allRaw(m: Mailpit): Promise<string[]> {
 }
 
 function unfold(raw: string): string {
-  return raw.replace(/\r\n/g, "\n").replace(/=\n/g, "");
+  return raw.replaceAll("\r\n", "\n").replaceAll("=\n", "");
 }
 
 // waits for n messages with the confirm link, returned raw, the newest first
-async function rawMessages(m: Mailpit, link: string, n: number): Promise<string[]> {
+async function rawMessages(m: Mailpit, link: string, n: number): Promise<Array<string>> {
   const until = Date.now() + 10_000;
   for (;;) {
     const matching = (await allRaw(m)).filter((raw) => unfold(raw).includes(link));
@@ -221,8 +223,8 @@ function claimsOf(token: string): { [key: string]: unknown } {
 
 // the raw message without what differs per send, as mail.test.ts
 function normalizeMail(raw: string): string {
-  let text = raw.replace(/\r\n/g, "\n");
-  text = text.replace(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
+  let text = raw.replaceAll("\r\n", "\n");
+  text = text.replaceAll(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
   text = text.replace(/^Date: .*$/m, "Date: <date>");
   text = text.replace(/^(Message-I[Dd]): <[A-Za-z0-9]{15}@/m, "$1: <id@");
   const boundaries = [
@@ -231,7 +233,7 @@ function normalizeMail(raw: string): string {
   boundaries.forEach((b, i) => {
     text = text.replaceAll(b as string, `<boundary${i}>`);
   });
-  text = text.replace(/=\n/g, "");
+  text = text.replaceAll("=\n", "");
   return text.replaceAll(new RegExp(jwtRegex, "g"), "<token>");
 }
 
@@ -240,6 +242,7 @@ function normalizeMail(raw: string): string {
 
 // generated values replaced, for comparing two servers' replies
 function shape(reply: Reply): unknown {
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const json = JSON.parse(JSON.stringify(reply.json)) as { [key: string]: unknown };
   if (typeof json["token"] === "string") {
     json["token"] = "<token>";
@@ -253,7 +256,7 @@ function shape(reply: Reply): unknown {
 }
 
 function userRow(dataDir: string, id = userId): Row {
-  const [row] = queryRows(dataDir, "SELECT * FROM users WHERE id = ?", id) as Row[];
+  const [row] = queryRows(dataDir, "SELECT * FROM users WHERE id = ?", id) as Array<Row>;
   return row as Row;
 }
 
@@ -296,7 +299,7 @@ async function bothFlows(
   prepare: (dataDir: string) => void,
   flow: (f: Flow) => Promise<void>,
 ): Promise<void> {
-  const transcripts: unknown[][] = [];
+  const transcripts: Array<Array<unknown>> = [];
   for (const kind of kinds) {
     const mail = mailpits[kind];
     await clear(mail);
@@ -304,7 +307,7 @@ async function bothFlows(
     smtpTo(dataDir, mail.smtpPort);
     prepare(dataDir);
     const server = await start(kind, dataDir);
-    const transcript: unknown[] = [];
+    const transcript: Array<unknown> = [];
     try {
       await flow({
         server,
@@ -322,7 +325,7 @@ async function bothFlows(
     }
     transcripts.push(transcript);
   }
-  expect(transcripts[1]).toEqual(transcripts[0] as unknown[]);
+  expect(transcripts[1]).toEqual(transcripts[0] as Array<unknown>);
 }
 
 // no second factor, and a row of each kind that a confirm can remove
@@ -341,7 +344,7 @@ const changeLink = "/auth/confirm-email-change/";
 // -------------------------------------------------------------------
 
 describe("the three emails", () => {
-  const cases: [string, (server: Server) => Promise<Reply>, string][] = [
+  const cases: Array<[string, (server: Server) => Promise<Reply>, string]> = [
     ["verification", requestVerification, verificationLink],
     ["password reset", requestReset, resetLink],
     ["email change", requestChange, changeLink],
@@ -350,7 +353,7 @@ describe("the three emails", () => {
     test(
       `${name}: the message and its token claims are upstream's`,
       async () => {
-        const messages: string[] = [];
+        const messages: Array<string> = [];
         await bothFlows(withAuthRows, async ({ server, mail, step, note }) => {
           step(await send(server));
           const [raw = ""] = await rawMessages(mail, link, 1);
@@ -646,12 +649,12 @@ describe("a failed send", () => {
 });
 
 describe("tokens after the record changed", () => {
-  const sends: [string, (server: Server) => Promise<Reply>, string, Confirm][] = [
+  const sends: Array<[string, (server: Server) => Promise<Reply>, string, Confirm]> = [
     ["verification", requestVerification, verificationLink, confirmVerification],
     ["password reset", requestReset, resetLink, confirmReset],
     ["email change", requestChange, changeLink, confirmChange],
   ];
-  const changes: [string, unknown][] = [
+  const changes: Array<[string, unknown]> = [
     ["password", { password: newPassword, passwordConfirm: newPassword }],
     ["email", { email: "other@example.com" }],
   ];
@@ -674,7 +677,7 @@ describe("tokens after the record changed", () => {
 });
 
 describe("across the servers", () => {
-  const flows: [string, (s: Server) => Promise<Reply>, string, Confirm][] = [
+  const flows: Array<[string, (s: Server) => Promise<Reply>, string, Confirm]> = [
     ["verification", requestVerification, verificationLink, confirmVerification],
     ["password reset", requestReset, resetLink, confirmReset],
     ["email change", requestChange, changeLink, confirmChange],
@@ -684,7 +687,7 @@ describe("across the servers", () => {
     for (const [issuer, confirmer] of [
       ["upstream", "igloBase"],
       ["igloBase", "upstream"],
-    ] as [Kind, Kind][]) {
+    ] as Array<[Kind, Kind]>) {
       test(
         `${name}: a token mailed by ${issuer} confirms on ${confirmer}, and ${issuer} reads the row`,
         async () => {

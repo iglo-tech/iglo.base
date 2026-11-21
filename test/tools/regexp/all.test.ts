@@ -34,8 +34,8 @@ describe("Compile", () => {
     let error: unknown;
     try {
       compile(re);
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(RegexpSyntaxError);
     expect((error as Error).message).toContain(err);
@@ -72,7 +72,7 @@ describe("ReplaceAllLiteral", () => {
 });
 
 describe("ReplaceAllFunc", () => {
-  const replaceFuncTests: [string, (s: string) => string, string, string][] = [
+  const replaceFuncTests: Array<[string, (s: string) => string, string, string]> = [
     ["[a-c]", (s) => "x" + s + "y", "defabcdef", "defxayxbyxcydef"],
     ["[a-c]+", (s) => "x" + s + "y", "defabcdef", "defxabcydef"],
     ["[a-c]*", (s) => "x" + s + "y", "defabcdef", "xydxyexyfxabcydxyexyfxy"],
@@ -144,12 +144,12 @@ describe("Split", () => {
 });
 
 // strings.SplitN for the inputs of splitTests
-function splitN(s: string, sep: string, n: number): string[] | null {
+function splitN(s: string, sep: string, n: number): Array<string> | null {
   if (n === 0) {
     return null;
   }
   if (sep === "") {
-    const chars = [...s];
+    const chars = Array.from(s);
     if (n < 0 || n > chars.length) {
       return chars;
     }

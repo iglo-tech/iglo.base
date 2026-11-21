@@ -23,15 +23,8 @@
 //
 // The server never watches anything in production (--mode prod).
 
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  watch,
-  writeFileSync,
-  type FSWatcher,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, watch, writeFileSync } from "node:fs";
+import type { FSWatcher } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import type { App } from "@/app/app";
@@ -56,7 +49,7 @@ export interface SyncOptions {
   // the value of "$schema" in the written file
   schemaURL: string;
   // the JavaScript migrations of pb_migrations, as serve loaded them
-  migrations: readonly Migration[];
+  migrations: ReadonlyArray<Migration>;
   allowDataLoss: boolean;
   // a line on the terminal (standard error), with its time
   log: (line: string) => void;
@@ -100,7 +93,7 @@ export class SchemaSync {
   // Called after a collection change through the API. Writes the file and the
   // types of the database; never throws (the change itself is done). `changed`
   // names the collections the change is to.
-  writeBack(changed: readonly string[]): void {
+  writeBack(changed: ReadonlyArray<string>): void {
     const { schemaPath, schemaURL, log } = this.options;
     try {
       const app = this.options.app();
@@ -130,8 +123,8 @@ export class SchemaSync {
         };
       }
       this.writeTypes(app, result.text);
-    } catch (err) {
-      log(`schema: writing ${basename(schemaPath)} failed: ${messageOf(err)}`);
+    } catch (error) {
+      log(`schema: writing ${basename(schemaPath)} failed: ${messageOf(error)}`);
     }
   }
 
@@ -171,8 +164,8 @@ export class SchemaSync {
     let text: string;
     try {
       text = readFileSync(schemaPath, "utf8");
-    } catch (err) {
-      log(`schema: cannot read ${basename(schemaPath)}: ${messageOf(err)}`);
+    } catch (error) {
+      log(`schema: cannot read ${basename(schemaPath)}: ${messageOf(error)}`);
       return;
     }
     const schema = hashOf(text);
@@ -209,11 +202,12 @@ export class SchemaSync {
           log(`schema: ${line}`);
         }
       }
-    } catch (err) {
+    } catch (error) {
       // the report (or the file's problem, or a variable that is not set)
       // goes to the terminal; the database is unchanged
       this.failed = failedState;
-      const detail = err instanceof SchemaApplyError ? formatReport(err.report) : messageOf(err);
+      const detail =
+        error instanceof SchemaApplyError ? formatReport(error.report) : messageOf(error);
       for (const line of detail.split("\n")) {
         log(`schema: ${line}`);
       }
@@ -245,8 +239,8 @@ export class SchemaSync {
       try {
         const watcher = watch(dir, (_event, name) => this.onEvent(dir, name));
         this.watches.set(dir, { watcher, ino });
-      } catch (err) {
-        log(`schema: cannot watch ${dir}: ${messageOf(err)}`);
+      } catch (error) {
+        log(`schema: cannot watch ${dir}: ${messageOf(error)}`);
       }
     }
   }
@@ -291,8 +285,8 @@ export class SchemaSync {
         return;
       }
       writeFileSync(typesPath, types);
-    } catch (err) {
-      log(`schema: writing the types failed: ${messageOf(err)}`);
+    } catch (error) {
+      log(`schema: writing the types failed: ${messageOf(error)}`);
     }
   }
 
@@ -353,7 +347,7 @@ function isDirectory(path: string): boolean {
 
 // the names of the TypeScript files of a directory, in name order; a directory
 // that goes away meanwhile has none
-function listTypeScript(dir: string): string[] {
+function listTypeScript(dir: string): Array<string> {
   try {
     return readdirSync(dir)
       .filter((file) => file.endsWith(".ts"))
@@ -372,7 +366,7 @@ function inodeOf(path: string): number | undefined {
 }
 
 // the collections a change is to, for the terminal
-function namesOf(names: readonly string[]): string {
+function namesOf(names: ReadonlyArray<string>): string {
   return names.length > 0 ? names.join(", ") : "collections";
 }
 

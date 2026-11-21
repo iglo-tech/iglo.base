@@ -7,8 +7,8 @@ function errorMessage(fn: () => unknown): string {
   try {
     fn();
     return "no error";
-  } catch (err) {
-    return (err as Error).message;
+  } catch (error) {
+    return (error as Error).message;
   }
 }
 

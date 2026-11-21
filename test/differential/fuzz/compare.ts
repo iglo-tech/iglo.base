@@ -42,7 +42,7 @@ export interface ListBody {
   perPage: number;
   totalItems: number;
   totalPages: number;
-  items: { id: string }[];
+  items: Array<{ id: string }>;
 }
 
 export interface Difference {
@@ -98,8 +98,12 @@ async function request(
   headers: { [name: string]: string },
 ): Promise<Outcome | { error: string }> {
   try {
+    const requestHeaders: { [name: string]: string } = { ...headers };
+    if (tokens[who] !== "") {
+      requestHeaders.authorization = tokens[who];
+    }
     const res = await fetch(base + path, {
-      headers: { ...headers, ...(tokens[who] === "" ? {} : { authorization: tokens[who] }) },
+      headers: requestHeaders,
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
     const text = await res.text();
@@ -144,7 +148,7 @@ function classifyKey(model: Model, base: CollectionModel, key: string): SortClas
   return "multi-row";
 }
 
-function sortKeys(sort: string | null): string[] {
+function sortKeys(sort: string | null): Array<string> {
   return sort === null || sort === ""
     ? []
     : sort.split(",").map((key) => key.trim().replace(/^[-+]/, ""));
@@ -165,7 +169,7 @@ function page(body: unknown): ListBody {
   return body as ListBody;
 }
 
-function ids(list: ListBody): string[] {
+function ids(list: ListBody): Array<string> {
   return list.items.map((item) => item.id);
 }
 
@@ -178,19 +182,24 @@ function holdsEveryMatch(list: ListBody): boolean {
   );
 }
 
-function fields(l: ListBody): number[] {
+function fields(l: ListBody): Array<number> {
   return [l.page, l.perPage, l.totalItems, l.totalPages];
 }
 
-function sameIds(a: string[], b: string[]): boolean {
+function sameIds(a: Array<string>, b: Array<string>): boolean {
   return Bun.deepEquals(a, b);
 }
 
-function sameSet(a: string[], b: string[]): boolean {
+function sameSet(a: Array<string>, b: Array<string>): boolean {
   return Bun.deepEquals(a.toSorted(), b.toSorted());
 }
 
-function bothLists(kind: "ids" | "id-set", a: string[], b: string[], what: string): Difference {
+function bothLists(
+  kind: "ids" | "id-set",
+  a: Array<string>,
+  b: Array<string>,
+  what: string,
+): Difference {
   return { kind, detail: `${what}: upstream ${a.join(",")}; iglo.base ${b.join(",")}` };
 }
 
@@ -323,8 +332,8 @@ function checkOwnPage(side: string, list: ListBody, full: ListBody): Difference 
 
 // the group of ties at each position: a group ends where the first k ids are
 // the same set under `,id` and under `,-id`
-function tieGroups(asc: string[], desc: string[]): number[] {
-  const groups: number[] = [];
+function tieGroups(asc: Array<string>, desc: Array<string>): Array<number> {
+  const groups: Array<number> = [];
   const open = new Set<string>();
   let group = 0;
   for (const [i, id] of asc.entries()) {
@@ -347,8 +356,8 @@ function tieGroups(asc: string[], desc: string[]): number[] {
 function checkOwnOrder(
   side: string,
   list: ListBody,
-  asc: string[],
-  desc: string[],
+  asc: Array<string>,
+  desc: Array<string>,
 ): Difference | null {
   const groups = tieGroups(asc, desc);
   const groupOf = new Map(asc.map((id, i) => [id, groups[i]]));

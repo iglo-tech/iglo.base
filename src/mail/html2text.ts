@@ -4,12 +4,13 @@
 
 import { trimSpace } from "@/collections/go-strings";
 import { parse } from "@/tools/html/parse";
-import { ElementNode, type Node, TextNode } from "@/tools/html/node";
+import { ElementNode, TextNode } from "@/tools/html/node";
+import type { Node } from "@/tools/html/node";
 
 // Go's regexp `\s+` (RE2's \s is [\t\n\f\r ])
 const whitespaceRegex = /[\t\n\f\r ]+/g;
 
-const tagsToSkip = [
+const tagsToSkip = new Set([
   "style",
   "script",
   "iframe",
@@ -24,9 +25,21 @@ const tagsToSkip = [
   "select",
   "option",
   "template",
-];
+]);
 
-const inlineTags = ["a", "span", "small", "strike", "strong", "sub", "sup", "em", "b", "u", "i"];
+const inlineTags = new Set([
+  "a",
+  "span",
+  "small",
+  "strike",
+  "strong",
+  "sub",
+  "sup",
+  "em",
+  "b",
+  "u",
+  "i",
+]);
 
 // a strings.Builder
 class Builder {
@@ -59,7 +72,7 @@ export function html2Text(htmlDocument: string): string {
     }
 
     if (n.type === TextNode) {
-      let txt = n.data.replace(whitespaceRegex, " ");
+      let txt = n.data.replaceAll(whitespaceRegex, " ");
 
       // the prev node has new line so it is safe to trim the indentation
       if (!canAddNewLine) {
@@ -75,7 +88,7 @@ export function html2Text(htmlDocument: string): string {
         // always write new lines when <br> tag is used
         activeBuilder.text += "\r\n";
         canAddNewLine = false;
-      } else if (canAddNewLine && !inlineTags.includes(n.data)) {
+      } else if (canAddNewLine && !inlineTags.has(n.data)) {
         activeBuilder.text += "\r\n";
         canAddNewLine = false;
       }
@@ -87,7 +100,7 @@ export function html2Text(htmlDocument: string): string {
     }
 
     for (let c = n.firstChild; c !== null; c = c.nextSibling) {
-      if (c.type !== ElementNode || !tagsToSkip.includes(c.data)) {
+      if (c.type !== ElementNode || !tagsToSkip.has(c.data)) {
         f(c, activeBuilder);
       }
     }

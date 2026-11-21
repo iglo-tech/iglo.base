@@ -13,7 +13,7 @@ export const targetIds = ["aaaaaaaaaaaaaa1", "aaaaaaaaaaaaaa2", "aaaaaaaaaaaaaa3
 export const userId = "uuuuuuuuuuuuuu1";
 
 // Settings upstream accepts: one collection per entry, one field each.
-export const validSettings: FieldDef[] = [
+export const validSettings: Array<FieldDef> = [
   { name: "r", type: "relation", collectionId: "$T" },
   {
     name: "r",
@@ -43,7 +43,7 @@ export const validSettings: FieldDef[] = [
 ];
 
 // Settings upstream rejects: one collection each.
-export const invalidSettings: FieldDef[] = [
+export const invalidSettings: Array<FieldDef> = [
   { name: "r", type: "relation" },
   { name: "r", type: "relation", collectionId: "targets" }, // a name, not the id
   { name: "r", type: "relation", collectionId: "missing0000000" },
@@ -65,12 +65,12 @@ export const invalidSettings: FieldDef[] = [
 
 export interface ValueCollection {
   name: string;
-  fields: FieldDef[];
+  fields: Array<FieldDef>;
 }
 
 // The collections records are created in. Only the rel_req and pw_req
 // collections hold a required field.
-export const valueCollections: ValueCollection[] = [
+export const valueCollections: Array<ValueCollection> = [
   {
     name: "rel_a",
     fields: [
@@ -100,13 +100,13 @@ export const valueCollections: ValueCollection[] = [
 
 const q = (s: string): string => JSON.stringify(s);
 
-function cases(collection: string, key: string, values: string[]): ValueCase[] {
+function cases(collection: string, key: string, values: Array<string>): Array<ValueCase> {
   return values.map((v) => [collection, key, v]);
 }
 
 const [t1, t2, t3] = targetIds;
 
-export const valueCases: ValueCase[] = [
+export const valueCases: Array<ValueCase> = [
   // relation, single
   ...cases("rel_a", "single", [
     q(""),
@@ -196,7 +196,7 @@ export const valueCases: ValueCase[] = [
 // Upstream decodes them into Go int / int64: out of range, fractions and
 // exponents fail when the body is read; the other values are compared
 // exactly by the settings validators.
-export const rawSettings: string[] = [
+export const rawSettings: Array<string> = [
   // relation minSelect/maxSelect (int)
   `{"name":"r","type":"relation","collectionId":"$T","minSelect":9007199254740993,"maxSelect":9007199254740992}`,
   `{"name":"r","type":"relation","collectionId":"$T","minSelect":9007199254740992,"maxSelect":9007199254740993}`,

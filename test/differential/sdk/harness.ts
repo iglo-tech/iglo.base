@@ -13,6 +13,7 @@
 // ids, tokens, timestamps and file-name suffixes are replaced by their format
 // on both sides; everything else must be equal. Files and mails the call
 // produced are recorded as steps too (`record`).
+import { isInstance } from "@/tools/types/is-instance";
 
 import { rmSync } from "node:fs";
 import { join } from "node:path";
@@ -26,9 +27,11 @@ import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { startServer, tempDir } from "@test/support/executable";
-import { startSmtpSink, type SinkMessage, type SmtpSink } from "@test/support/smtp-sink";
+import { startSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage, SmtpSink } from "@test/support/smtp-sink";
 import { startUpstream } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 installEventSource();
 
@@ -52,7 +55,7 @@ interface Step {
   label: string;
   // JSON text of the value (or of the error)
   value: string;
-  exchanges: Exchange[];
+  exchanges: Array<Exchange>;
 }
 
 export type SdkClient = PocketBase;
@@ -71,7 +74,7 @@ export interface SdkOptions {
   // each server gets its own S3 test server (env.s3)
   s3?: boolean;
   // `serve` arguments of both servers
-  args?: string[];
+  args?: Array<string>;
   timeout?: number;
 }
 
@@ -125,10 +128,10 @@ function replacer(_key: string, v: unknown): unknown {
       isAbort: v.isAbort,
     };
   }
-  if (v instanceof Blob) {
+  if (isInstance(Blob, v)) {
     return { blob: true, size: v.size, type: v.type };
   }
-  if (v instanceof PocketBase) {
+  if (isInstance(PocketBase, v)) {
     return {
       client: true,
       baseURL: v.baseURL,
@@ -178,8 +181,10 @@ function decodeMessage(m: SinkMessage): string {
   // quoted-printable decoded text of the whole message
   return m.data
     .replaceAll("\r\n", "\n")
-    .replaceAll(/=\n/g, "")
-    .replaceAll(/=([0-9A-F]{2})/g, (_s, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+    .replaceAll("=\n", "")
+    .replaceAll(/=([0-9A-F]{2})/g, (_s, hex: string) =>
+      String.fromCharCode(Number.parseInt(hex, 16)),
+    );
 }
 
 export function messageBody(m: SinkMessage): string {
@@ -197,15 +202,15 @@ export function mailMatch(m: SinkMessage, pattern: RegExp): string {
 }
 
 class Recording implements SdkEnv {
-  readonly steps: Step[] = [];
-  #current: Exchange[] = [];
-  readonly clients: PocketBase[] = [];
+  readonly steps: Array<Step> = [];
+  #current: Array<Exchange> = [];
+  readonly clients: Array<PocketBase> = [];
   // requests made outside any step, `fails`, `derived` or `fetch`: never
   // compared, so the test must not leave any
-  leftover(): string[] {
+  leftover(): Array<string> {
     return this.#current.map((e) => `${e.method} ${e.url}`);
   }
-  readonly cleanup: (() => Promise<unknown>)[] = [];
+  readonly cleanup: Array<() => Promise<unknown>> = [];
 
   constructor(
     readonly name: SdkEnv["name"],
@@ -219,9 +224,9 @@ class Recording implements SdkEnv {
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const url = String(input instanceof Request ? input.url : input);
+    const url = String(isInstance(Request, input) ? input.url : input);
     const method = (
-      init?.method ?? (input instanceof Request ? input.method : "GET")
+      init?.method ?? (isInstance(Request, input) ? input.method : "GET")
     ).toUpperCase();
     const res = await fetch(input, init);
     // the body is read here; the SDK gets an equal copy
@@ -277,8 +282,8 @@ class Recording implements SdkEnv {
     let error: unknown;
     try {
       value = await fn();
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     this.steps.push({
       label,
@@ -296,8 +301,8 @@ class Recording implements SdkEnv {
     let error: unknown;
     try {
       await fn();
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     this.steps.push({
       label,
@@ -327,8 +332,8 @@ class Recording implements SdkEnv {
     let error: unknown;
     try {
       await fn();
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     this.#current.splice(before);
     if (!(error instanceof ClientResponseError)) {
@@ -381,7 +386,7 @@ function bodyText(body: unknown): string {
   if (typeof body === "string") {
     return body;
   }
-  if (body instanceof FormData) {
+  if (isInstance(FormData, body)) {
     // the SDK's JSON part (a batch's requests, the non-file values): the
     // comparison reads it as the request body
     const json = body.get("@jsonPayload");
@@ -406,8 +411,8 @@ export function compareRecordings(
   upstream: Recording,
   igloBase: Recording,
   start: ReturnType<typeof readStartingData>,
-): string[] {
-  const out: string[] = [];
+): Array<string> {
+  const out: Array<string> = [];
   const pairing = new Pairing({ history: true });
   const count = Math.max(upstream.steps.length, igloBase.steps.length);
   for (let i = 0; i < count; i++) {
@@ -489,7 +494,7 @@ export function sdkTest(name: string, options: SdkOptions, fn: Run): void {
         await options.prepare?.({ dataDir: dirs[kind], sink: sinks[kind] });
       }
       const start = readStartingData(dirs.upstream);
-      const gateways: Versitygw[] = [];
+      const gateways: Array<Versitygw> = [];
       const noS3 = {
         endpoint: "http://s3.invalid",
         bucket: "",

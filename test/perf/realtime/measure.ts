@@ -22,7 +22,8 @@
 // The script stops a target when MemAvailable falls under 1.5 GiB, and
 // removes everything it wrote.
 
-import { connect, type Socket } from "node:net";
+import { connect } from "node:net";
+import type { Socket } from "node:net";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -38,8 +39,8 @@ import {
   spikeRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 import { freePort } from "@test/support/executable";
 
@@ -54,7 +55,7 @@ const total = Number(values.connections);
 
 interface Round {
   t0: number;
-  latencies: number[];
+  latencies: Array<number>;
 }
 
 let round: Round | undefined;
@@ -160,7 +161,7 @@ function fmt(s: { rssMiB: number; fds: number }): string {
 
 async function subscribeAll(
   call: ReturnType<typeof apiClient>["call"],
-  conns: Conn[],
+  conns: Array<Conn>,
   topic: string,
   token: string,
   url: string,
@@ -186,13 +187,13 @@ async function subscribeAll(
 }
 
 async function broadcasts(
-  conns: Conn[],
+  conns: Array<Conn>,
   count: number,
   create: () => Promise<void>,
-): Promise<{ all: number[]; lasts: number[]; missed: number; creates: number[] }> {
-  const all: number[] = [];
-  const lasts: number[] = [];
-  const creates: number[] = [];
+): Promise<{ all: Array<number>; lasts: Array<number>; missed: number; creates: Array<number> }> {
+  const all: Array<number> = [];
+  const lasts: Array<number> = [];
+  const creates: Array<number> = [];
   let missed = 0;
   for (let i = 0; i < count; i++) {
     const before = conns.map((c) => c.received);
@@ -218,7 +219,7 @@ async function broadcasts(
 
 function report(
   label: string,
-  r: { all: number[]; lasts: number[]; missed: number; creates: number[] },
+  r: { all: Array<number>; lasts: Array<number>; missed: number; creates: Array<number> },
 ): void {
   console.log(
     `${label}: per client p50 ${percentile(r.all, 0.5).toFixed(1)} ms, p99 ${percentile(r.all, 0.99).toFixed(1)} ms; last client p50 ${percentile(r.lasts, 0.5).toFixed(1)} ms, max ${(r.lasts.at(-1) ?? 0).toFixed(1)} ms; create response p50 ${percentile(r.creates, 0.5).toFixed(1)} ms; missed ${r.missed}`,
@@ -227,7 +228,7 @@ function report(
 
 async function measure(name: string): Promise<void> {
   const spike = spikeRoot(`m51-realtime-${name}`);
-  const conns: Conn[] = [];
+  const conns: Array<Conn> = [];
   let server: Server | undefined;
   let watch: ReturnType<typeof sampler> | undefined;
   try {

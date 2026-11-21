@@ -2,11 +2,12 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Event } from "@/server/event";
+import type { Event } from "@/server/event";
 import { RouterGroup } from "@/server/group";
-import { Route } from "@/server/route";
+import type { Route } from "@/server/route";
 
 // the handlers under test ignore their event argument, as the Go tests pass nil
+// oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
 const nilEvent = undefined as unknown as Event;
 const noop = () => undefined;
 
@@ -193,7 +194,7 @@ describe("RouterGroup", () => {
 
     const testAction = () => testErr;
 
-    const scenarios: { route: Route<Event>; expectMethod: string; expectPath: string }[] = [
+    const scenarios: Array<{ route: Route<Event>; expectMethod: string; expectPath: string }> = [
       {
         route: group.any("/test", testAction),
         expectMethod: "",
@@ -272,7 +273,7 @@ describe("RouterGroup", () => {
     group.GET("/c/", noop); // the same as /c/{test...}
     group.GET("/d/{test...}", noop); // the same as /d/
 
-    const scenarios: { method: string; path: string; expected: boolean }[] = [
+    const scenarios: Array<{ method: string; path: string; expected: boolean }> = [
       {
         method: "GET",
         path: "",

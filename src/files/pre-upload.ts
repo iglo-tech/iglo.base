@@ -29,20 +29,21 @@ import { TextField } from "@/fields/text";
 import { findRecordById } from "@/records/record-query";
 import type { File } from "@/tools/filesystem/file";
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface UploadTarget {
   collection: Collection;
   // "" for a record whose id is generated
   recordId: string;
-  files: File[];
+  files: Array<File>;
 }
 
 // the files stored for one transaction
 export class PreUploads {
   readonly #app: App;
-  readonly #files: File[];
+  readonly #files: Array<File>;
 
-  constructor(app: App, files: File[]) {
+  constructor(app: App, files: Array<File>) {
     this.#app = app;
     this.#files = files;
   }
@@ -61,8 +62,8 @@ export class PreUploads {
     let fsys;
     try {
       fsys = this.#app.filesystem.newFilesystem();
-    } catch (err) {
-      this.#logFailure(leftover, err);
+    } catch (error) {
+      this.#logFailure(leftover, error);
       return;
     }
 
@@ -72,8 +73,8 @@ export class PreUploads {
         file.preUpload = null;
         try {
           await fsys.delete(key);
-        } catch (err) {
-          this.#logFailure([file], err);
+        } catch (error) {
+          this.#logFailure([file], error);
         }
       }
     } finally {
@@ -81,7 +82,7 @@ export class PreUploads {
     }
   }
 
-  #logFailure(files: File[], err: unknown): void {
+  #logFailure(files: Array<File>, err: unknown): void {
     this.#app.logger.warn("Failed to cleanup the new uploaded file after record db write failure", {
       error: err,
       failedToDelete: files.map((f) => f.name),
@@ -94,7 +95,7 @@ export class PreUploads {
 // existing one may come from an import (core/field_text.go).
 function targetRecordId(app: App, target: UploadTarget): string | null {
   const field = target.collection.fields.getByName(FieldNameId);
-  if (!(field instanceof TextField)) {
+  if (!isInstance(TextField, field)) {
     return null;
   }
 
@@ -122,9 +123,9 @@ function recordExists(app: App, target: UploadTarget, id: string): boolean {
 // local storage is written by the save itself, inside the transaction.
 export async function preUploadFiles(
   app: App,
-  targets: readonly UploadTarget[],
+  targets: ReadonlyArray<UploadTarget>,
 ): Promise<PreUploads> {
-  const stored: File[] = [];
+  const stored: Array<File> = [];
   if (!app.settings.S3.Enabled) {
     return new PreUploads(app, stored);
   }
@@ -133,8 +134,8 @@ export async function preUploadFiles(
   let fsys;
   try {
     fsys = app.filesystem.newFilesystem();
-  } catch (err) {
-    failure = err;
+  } catch (error) {
+    failure = error;
   }
 
   try {
@@ -155,9 +156,9 @@ export async function preUploadFiles(
         stored.push(file);
         try {
           await fsys.uploadFile(file, key);
-        } catch (err) {
-          preUpload.error = err;
-          failure = err;
+        } catch (error) {
+          preUpload.error = error;
+          failure = error;
         }
       }
     }

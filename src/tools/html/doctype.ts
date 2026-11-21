@@ -109,7 +109,7 @@ export function parseDoctype(input: string): [Node, boolean] {
         quirks = true;
       }
     }
-    const lastAttr = n.attr[n.attr.length - 1]!;
+    const lastAttr = n.attr.at(-1)!;
     if (
       lastAttr.key === "system" &&
       equalFold(lastAttr.val, "http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd")
@@ -121,7 +121,7 @@ export function parseDoctype(input: string): [Node, boolean] {
   return [n, quirks];
 }
 
-const quirkyIDs: readonly string[] = [
+const quirkyIDs: ReadonlyArray<string> = [
   "+//silmaril//dtd html pro v0r11 19970101//",
   "-//advasoft ltd//dtd html 3.0 aswedit + extensions//",
   "-//as//dtd html 3.0 aswedit + extensions//",

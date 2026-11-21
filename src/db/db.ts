@@ -169,9 +169,9 @@ function create(app: Databases, model: Model, isForAuxDB: boolean): void {
     );
 
     model.markAsNotNew();
-  } catch (err) {
+  } catch (error) {
     model.markAsNew(); // reset "new" state
-    throw err;
+    throw error;
   }
 
   const txInfo = app.txInfo();

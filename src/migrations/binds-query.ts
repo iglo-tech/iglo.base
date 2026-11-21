@@ -12,16 +12,19 @@ import { Collection } from "@/collections/collection-model";
 import { HashExp } from "@/db/dbx/expression";
 import type { Query, Row } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
-import { type CustomMethod, GoPointer, toSql } from "@/migrations/go-class";
+import { GoPointer, toSql } from "@/migrations/go-class";
+import type { CustomMethod } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
-import { type Membrane, toInteger } from "@/migrations/membrane";
+import { toInteger } from "@/migrations/membrane";
+import type { Membrane } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { NotRecordQueryError, recordsTarget, recordTarget } from "@/records/record-query";
 import { goQuote } from "@/fields/field";
 import { DateTime } from "@/tools/types/datetime";
 import { bytesToText } from "@/tools/types/go-json";
 import { scanJSONMap } from "@/tools/types/json-map";
+import { isInstance } from "@/tools/types/is-instance";
 
 // What a migration file's Record stands on. Go's One assigns over the given
 // Record (`*v = *record`), collection included; an internal Record cannot
@@ -58,8 +61,8 @@ export class RowsCursor {
   #closed = false;
 
   constructor(
-    private readonly rows: Row[],
-    private readonly names: string[],
+    private readonly rows: Array<Row>,
+    private readonly names: Array<string>,
     private readonly fill: (dst: unknown, row: Row) => void,
   ) {}
 
@@ -72,7 +75,7 @@ export class RowsCursor {
     return false;
   }
 
-  columns(): string[] {
+  columns(): Array<string> {
     return this.names;
   }
 
@@ -87,7 +90,7 @@ export class RowsCursor {
   // goja hands a JS object over as a copy
   scanMap(): void {}
 
-  scan(args: readonly unknown[]): void {
+  scan(args: ReadonlyArray<unknown>): void {
     scanDestinations(this.names, args);
   }
 
@@ -97,7 +100,7 @@ export class RowsCursor {
 }
 
 // Go's Scan needs pointers, which a migration file cannot make
-function scanDestinations(names: readonly string[], args: readonly unknown[]): void {
+function scanDestinations(names: ReadonlyArray<string>, args: ReadonlyArray<unknown>): void {
   if (args.length !== names.length) {
     throw new Error(
       `sql: expected ${names.length} destination arguments in Scan, not ${args.length}`,
@@ -149,14 +152,18 @@ export class QueryModels {
       const value = (shape as Record<string, unknown>)[key];
       const name = convertGoToJSName(key.slice(0, 1).toUpperCase() + key.slice(1));
       const target = this.m.targetOf(value);
-      if (target instanceof NullShape) {
+      if (isInstance(NullShape, target)) {
         fields.set(key, { kind: target.kind, nullable: true, name });
         model[name] = null;
         continue;
       }
-      if (target !== undefined && !Array.isArray(value) && !(target instanceof GoJSONMap)) {
-        const zero = target instanceof DateTime ? () => this.m.toVm(new DateTime()) : undefined;
-        fields.set(key, { kind: "go", nullable: false, name, ...(zero ? { zero } : {}) });
+      if (target !== undefined && !Array.isArray(value) && !isInstance(GoJSONMap, target)) {
+        const zero = isInstance(DateTime, target) ? () => this.m.toVm(new DateTime()) : undefined;
+        const goField: ShapeField = { kind: "go", nullable: false, name };
+        if (zero) {
+          goField.zero = zero;
+        }
+        fields.set(key, goField);
         model[name] = value;
         continue;
       }
@@ -190,7 +197,7 @@ export class QueryModels {
     return proxy;
   }
 
-  arrayOf(model: unknown): unknown[] {
+  arrayOf(model: unknown): Array<unknown> {
     const array = this.m.vm.array();
     this.#arrays.set(array, model);
     return array;
@@ -213,7 +220,7 @@ export class QueryModels {
 
   // json.Unmarshal into an arrayOf() of models or of a primitive; newItem
   // makes a model from an item's JSON
-  unmarshalArray(dst: unknown[], decoded: unknown, newItem: (raw: string) => unknown): void {
+  unmarshalArray(dst: Array<unknown>, decoded: unknown, newItem: (raw: string) => unknown): void {
     if (!Array.isArray(decoded)) {
       throw new Error(`json: cannot unmarshal JSON ${jsonKindOf(decoded)} into Go slice`);
     }
@@ -288,13 +295,13 @@ export class QueryModels {
   #one(q: SelectQuery | Query, dst: unknown): void {
     const slot = this.m.boxOf(dst);
 
-    if (slot instanceof RecordSlot) {
+    if (isInstance(RecordSlot, slot)) {
       this.#hydrate(q, dst as object, slot);
       return;
     }
 
     const target = this.m.targetOf(dst);
-    if (target instanceof Collection) {
+    if (isInstance(Collection, target)) {
       q.one(target);
       return;
     }
@@ -307,13 +314,14 @@ export class QueryModels {
 
   // A record query assigns its Record over the destination. Any other
   // query scans the columns of the struct: a Record has only its id.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #hydrate(q: SelectQuery | Query, dst: object, slot: RecordSlot): void {
     let record: RecordModel;
     try {
       record = q.one<RecordModel>(recordTarget);
-    } catch (err) {
-      if (!(err instanceof NotRecordQueryError)) {
-        throw err;
+    } catch (error) {
+      if (!(error instanceof NotRecordQueryError)) {
+        throw error;
       }
       const row = q.one<Row>();
       slot.record.id = String(row.id ?? "");
@@ -328,11 +336,11 @@ export class QueryModels {
   // SelectQuery.Model: the row with the primary key
   #model(q: SelectQuery, pk: unknown, dst: unknown): void {
     const target = this.m.targetOf(dst);
-    if (target instanceof Collection) {
+    if (isInstance(Collection, target)) {
       q.model(toSql(this.m, pk), target);
       return;
     }
-    if (target instanceof RecordModel && q.info().from.length === 0) {
+    if (isInstance(RecordModel, target) && q.info().from.length === 0) {
       q.from(target.tableName());
     }
     q.andWhere(new HashExp({ id: toSql(this.m, pk) }));
@@ -344,14 +352,14 @@ export class QueryModels {
       throw invalidVariable("must be a pointer");
     }
 
-    const array = dst as unknown[];
+    const array = dst as Array<unknown>;
     const model = this.modelOf(dst);
     const target = this.m.targetOf(model);
 
-    let items: unknown[];
-    if (target instanceof RecordModel) {
+    let items: Array<unknown>;
+    if (isInstance(RecordModel, target)) {
       items = q.all<RecordModel>(recordsTarget).map((r) => this.m.toVm(r));
-    } else if (target instanceof Collection) {
+    } else if (isInstance(Collection, target)) {
       items = q.all<Collection>(() => new Collection()).map((c) => this.m.toVm(c));
     } else if (this.isDynamicModel(model)) {
       items = q.all<Row>().map((row) => {
@@ -371,7 +379,7 @@ export class QueryModels {
       throw invalidVariable("must be a pointer to a slice");
     }
 
-    const array = dst as unknown[];
+    const array = dst as Array<unknown>;
     const model = this.modelOf(dst);
     const field = this.#scalarField(model) ?? { kind: kindOf(model), nullable: false, name: "" };
     const items = q
@@ -384,7 +392,7 @@ export class QueryModels {
   // the field of an arrayOf() of a primitive or of a nullable shape value
   #scalarField(model: unknown): ShapeField | undefined {
     const target = this.m.targetOf(model);
-    if (target instanceof NullShape) {
+    if (isInstance(NullShape, target)) {
       return { kind: target.kind, nullable: true, name: "" };
     }
     return typeof model !== "object" || model === null
@@ -398,6 +406,7 @@ export class QueryModels {
 
   // A slice's new element: the Go zero value of the model's type, not a
   // copy of the shape's values.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #newElement(model: object): DynamicModel {
     const fields = this.#shapeOf(model) as Map<string, ShapeField>;
     const element = this.m.vm.object();
@@ -424,7 +433,7 @@ export class QueryModels {
   }
 }
 
-function replaceItems(array: unknown[], items: readonly unknown[]): void {
+function replaceItems(array: Array<unknown>, items: ReadonlyArray<unknown>): void {
   array.length = 0;
   for (const item of items) {
     array.push(item);
@@ -447,21 +456,21 @@ function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
     case "bool":
       return Boolean(value);
     case "array": {
-      if (m.targetOf(value) instanceof GoJSONArray) {
+      if (isInstance(GoJSONArray, m.targetOf(value))) {
         return value;
       }
       const host = m.toHost(value);
       return Array.isArray(host) ? m.toVm(GoJSONArray.of(host)) : ignored;
     }
     case "object": {
-      if (m.targetOf(value) instanceof GoJSONMap) {
+      if (isInstance(GoJSONMap, m.targetOf(value))) {
         return value;
       }
       if (typeof value !== "object" || m.targetOf(value) !== undefined) {
         return ignored;
       }
       const host = m.toHost(value) as Record<string, unknown>;
-      return m.toVm(new GoJSONMap(Array.isArray(host) ? { ...host } : host));
+      return m.toVm(new GoJSONMap(Array.isArray(host) ? Object.assign({}, host) : host));
     }
     default:
       return value;
@@ -557,7 +566,7 @@ function jsonShape(
 // the map of a model's field: json.Unmarshal and Scan keep its members
 function goMapOf(m: Membrane, current: unknown): GoJSONMap {
   const target = m.targetOf(current);
-  return target instanceof GoJSONMap ? target : new GoJSONMap();
+  return isInstance(GoJSONMap, target) ? target : new GoJSONMap();
 }
 
 function kindOf(value: unknown): ShapeKind {
@@ -586,7 +595,7 @@ function scanValue(
     new Error(`sql: Scan error on column index ${index}, name ${goQuote(column)}: ${reason}`);
   const fail = (from: string, to: string): Error => scanError(`converting ${from} to ${to}`);
 
-  const value = raw instanceof Uint8Array ? bytesToText(raw) : raw;
+  const value = isInstance(Uint8Array, raw) ? bytesToText(raw) : raw;
 
   if (value === null || value === undefined) {
     if (field.nullable) {
@@ -628,8 +637,8 @@ function scanValue(
         const array = GoJSONArray.of([]);
         array.scan(value);
         return m.toVm(array);
-      } catch (err) {
-        throw scanError((err as Error).message);
+      } catch (error) {
+        throw scanError((error as Error).message);
       }
     case "object":
       try {
@@ -637,14 +646,14 @@ function scanValue(
         const map = field.nullable ? new GoJSONMap() : goMapOf(m, current);
         map.scan(value);
         return m.toVm(map);
-      } catch (err) {
-        throw scanError((err as Error).message);
+      } catch (error) {
+        throw scanError((error as Error).message);
       }
     case "go":
       try {
         return m.toVmJSON(scanJSONMap(value));
-      } catch (err) {
-        throw scanError((err as Error).message);
+      } catch (error) {
+        throw scanError((error as Error).message);
       }
   }
 }

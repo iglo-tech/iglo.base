@@ -4,7 +4,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { createBrowserClient, type CreateBrowserClientOptions } from "@sdk/ssr/browser-client";
+import { createBrowserClient } from "@sdk/ssr/browser-client";
+import type { CreateBrowserClientOptions } from "@sdk/ssr/browser-client";
 import type { FetchFunction } from "@sdk/ssr/no-store-fetch";
 import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
 import type { Loose } from "@sdk/tools/loose";
@@ -19,10 +20,8 @@ import {
   settle,
   stubApi,
   testClock,
-  type Call,
-  type Handler,
-  type TestClock,
 } from "@sdk-test/ssr/browser-support";
+import type { Call, Handler, TestClock } from "@sdk-test/ssr/browser-support";
 
 const T0 = Math.floor(Date.now() / 1000);
 const START = T0 * 1000;
@@ -100,7 +99,7 @@ function harness(
   return { clock, ft, api, pb, token };
 }
 
-function callsTo(calls: Call[], method: string, path: string): Call[] {
+function callsTo(calls: Array<Call>, method: string, path: string): Array<Call> {
   return calls.filter((c) => c.method === method && c.path === path);
 }
 
@@ -223,7 +222,7 @@ describe("createBrowserClient", () => {
   });
 
   test("successful renewals are at least 30 seconds apart, even for a token that lives under a minute", async () => {
-    const renewedAt: number[] = [];
+    const renewedAt: Array<number> = [];
     const { ft, api, clock, pb } = harness(
       (c) => ({
         [RENEW]: (call) => {
@@ -279,7 +278,7 @@ describe("createBrowserClient", () => {
     const { ft, pb, api } = harness((c) => ({ [RENEW]: failing(c, 401) }));
     const error = await pb.renew().then(
       () => undefined,
-      (err: unknown) => err,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(ClientResponseError);
     expect((error as ClientResponseError).status).toBe(401);
@@ -299,9 +298,9 @@ describe("createBrowserClient", () => {
 
     await ft.advance(450_000);
     expect(pb.authStore.token).toBe(token);
-    expect(ft.delays()).toEqual([1_000]);
+    expect(ft.delays()).toEqual([1000]);
 
-    await ft.advance(1_000);
+    await ft.advance(1000);
     expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(2);
     expect(pb.authStore.token).not.toBe(token);
   });
@@ -331,7 +330,7 @@ describe("createBrowserClient", () => {
   test("no renewal is scheduled without renewUrl, and renew() rejects", async () => {
     const { ft, pb } = harness(undefined, { renewUrl: undefined });
     expect(ft.count).toBe(0);
-    await expect(pb.renew()).rejects.toThrow(TypeError);
+    await Promise.resolve(expect(pb.renew()).rejects.toThrow(TypeError));
   });
 
   test("a record for another user is dropped", () => {
@@ -357,7 +356,7 @@ describe("createBrowserClient", () => {
     const { pb, clock, ft } = harness(() => ({ [RENEW]: () => held }));
     const other = authToken(Math.floor(START / 1000) + 900, "u2");
 
-    const pending = pb.renew().catch((err: unknown) => err);
+    const pending = pb.renew().catch((error: unknown) => error);
     pb.authStore.save(other, record("u2")); // another user signs in while the renewal is out
     answer(json(clock, 503, { status: 503, message: "down", data: {} }));
     await pending;
@@ -376,9 +375,9 @@ describe("createBrowserClient", () => {
     const { pb, api } = harness(() => ({ [RENEW]: () => held }));
     const other = authToken(Math.floor(START / 1000) + 900, "u2");
 
-    const first = pb.renew().catch((err: unknown) => err);
+    const first = pb.renew().catch((error: unknown) => error);
     pb.authStore.save(other, record("u2"));
-    const second = pb.renew().catch((err: unknown) => err);
+    const second = pb.renew().catch((error: unknown) => error);
     expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(2);
 
     answer(new Response(null, { status: 401 }));
@@ -437,7 +436,7 @@ describe("createBrowserClient", () => {
       token: popup,
       handOffUrl: HAND_OFF_URL,
     });
-    await expect(pb.handOff()).rejects.toMatchObject({ status: 401 });
+    await Promise.resolve(expect(pb.handOff()).rejects.toMatchObject({ status: 401 }));
     expect(pb.authStore.token).toBe("");
   });
 
@@ -457,7 +456,7 @@ describe("createBrowserClient", () => {
     });
     const error = await pb.handOff().then(
       () => undefined,
-      (err: unknown) => err,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(ClientResponseError);
     expect((error as ClientResponseError).status).toBe(0);
@@ -472,7 +471,7 @@ describe("createBrowserClient", () => {
         token: popup,
         handOffUrl: HAND_OFF_URL,
       });
-      await expect(pb.handOff()).rejects.toMatchObject({ status });
+      await Promise.resolve(expect(pb.handOff()).rejects.toMatchObject({ status }));
       expect(pb.authStore.token).toBe("");
       pb.dispose();
     }
@@ -487,7 +486,7 @@ describe("createBrowserClient", () => {
       }),
       { token: popup, handOffUrl: HAND_OFF_URL },
     );
-    await expect(pb.handOff()).rejects.toMatchObject({ status: 503 });
+    await Promise.resolve(expect(pb.handOff()).rejects.toMatchObject({ status: 503 }));
     expect(pb.authStore.token).toBe("");
   });
 
@@ -526,11 +525,11 @@ async function subscribed(user = "u1") {
   return { ...h, user };
 }
 
-function realtimePosts(api: Harness["api"]): Call[] {
+function realtimePosts(api: Harness["api"]): Array<Call> {
   return callsTo(api.calls, "POST", "/api/realtime");
 }
 
-function lastOf<T>(items: T[]): T | undefined {
+function lastOf<T>(items: Array<T>): T | undefined {
   return items[items.length - 1];
 }
 
@@ -697,7 +696,7 @@ describe("realtime recovers from an outage", () => {
 
   test("a sign-out during an outage: retried with the usual backoff, then restored as a guest", async () => {
     const { pb, api } = await subscribed("u1");
-    const hooks: string[][] = [];
+    const hooks: Array<Array<string>> = [];
     pb.realtime.onDisconnect = (subs) => {
       hooks.push(subs);
     };
@@ -752,7 +751,7 @@ describe("realtime recovers from an outage", () => {
 
   test("a dropped connection during an outage: retried with the usual backoff, with no auth change", async () => {
     const { pb, api, token } = await subscribed("u1");
-    const hooks: string[][] = [];
+    const hooks: Array<Array<string>> = [];
     pb.realtime.onDisconnect = (subs) => {
       hooks.push(subs);
     };
@@ -1061,7 +1060,7 @@ function cookieFor(token: string, name: string): string {
 }
 
 /** Every connection the tests opened, in order, and the client IDs they were given. */
-const fakeSources: FakeEventSource[] = [];
+const fakeSources: Array<FakeEventSource> = [];
 let fakeClientSeq = 0;
 
 function resetFakeEventSources(): void {
@@ -1117,7 +1116,7 @@ class FakeEventSource {
 }
 
 function setGlobal(name: string, value: unknown): void {
-  const scope = globalThis as unknown as Record<string, unknown>;
+  const scope = globalThis as Record<string, unknown>;
   if (value === undefined) {
     delete scope[name];
   } else {

@@ -18,7 +18,7 @@ export interface FuzzCase {
   collection: string;
   who: Who;
   filter: FilterNode | null;
-  sort: string[] | null;
+  sort: Array<string> | null;
   // sort text that is not made of terms (invalid and over-limit forms)
   rawSort: string | null;
   params: { [name: string]: string };
@@ -31,7 +31,7 @@ export interface FuzzCase {
   tags: Set<string>;
 }
 
-const collectionWeights: [string, number][] = [
+const collectionWeights: Array<[string, number]> = [
   ["fuzz_items", 26],
   ["fuzz_tags", 6],
   ["demo1", 18],
@@ -50,7 +50,7 @@ const collectionWeights: [string, number][] = [
   ["_externalAuths", 1],
 ];
 
-const whoWeights: [Who, number][] = [
+const whoWeights: Array<[Who, number]> = [
   ["superuser", 45],
   ["guest", 20],
   ["users", 15],
@@ -211,7 +211,7 @@ interface Ctx {
   params: { [name: string]: string };
   headers: { [name: string]: string };
   // @collection joins with an alias are shared by the conditions that name it
-  aliases: string[];
+  aliases: Array<string>;
 }
 
 function quote(r: Rng, text: string): string {
@@ -224,7 +224,7 @@ interface Path {
   leaf: FieldModel | null;
 }
 
-function fieldsOf(ctx: Ctx, c: CollectionModel): FieldModel[] {
+function fieldsOf(ctx: Ctx, c: CollectionModel): Array<FieldModel> {
   const visible = c.fields.filter((f) => !f.hidden);
   return ctx.r.chance(0.02) || visible.length === 0 ? c.fields : visible;
 }
@@ -438,7 +438,7 @@ function genFunction(ctx: Ctx): string {
     return `geoDistance(${pointOf("lon")}, ${pointOf("lat")}, ${pointOf("lon")}, ${pointOf("lat")})`;
   }
   ctx.tags.add("strftime");
-  const args: string[] = [];
+  const args: Array<string> = [];
   const value = r.weighted([
     ["field", 6],
     ["date", 3],
@@ -515,7 +515,7 @@ function genSample(ctx: Ctx, leaf: FieldModel): string {
   }
   // a stored array or object: its text, or one of its values
   if (typeof sample === "object" && r.chance(0.6)) {
-    const [value] = Object.values(sample as object) as unknown[];
+    const [value] = Object.values(sample) as Array<unknown>;
     if (typeof value === "number" || typeof value === "boolean") {
       return String(value);
     }
@@ -601,7 +601,7 @@ function genOperand(ctx: Ctx): Path {
   ])();
 }
 
-function partMacrosWithTag(ctx: Ctx): string[] {
+function partMacrosWithTag(ctx: Ctx): Array<string> {
   ctx.tags.add("macro");
   ctx.timeDependent = true;
   return partMacros;
@@ -638,7 +638,7 @@ function genTree(ctx: Ctx, depth: number): FilterNode {
     return { k: "paren", inner: genTree(ctx, depth - 1) };
   }
   const size = 2 + r.int(4);
-  const items: FilterNode[] = [];
+  const items: Array<FilterNode> = [];
   for (let i = 0; i < size; i++) {
     items.push(genTree(ctx, depth - 1));
   }
@@ -694,9 +694,9 @@ function genSortTerm(ctx: Ctx): string {
   return `${prefix}${path.text}`;
 }
 
-function genSort(ctx: Ctx): string[] {
+function genSort(ctx: Ctx): Array<string> {
   const r = ctx.r;
-  const terms: string[] = [];
+  const terms: Array<string> = [];
   const size =
     1 +
     r.weighted([
@@ -956,10 +956,13 @@ function genInvalid(ctx: Ctx, base: FilterNode): { filter: FilterNode | null; so
       };
     case "over-limit": {
       const limit = overLimit(ctx);
-      return {
+      const result: { filter: FilterNode | null; sort?: string } = {
         filter: limit.filter === undefined ? base : { k: "raw", text: limit.filter },
-        ...(limit.sort === undefined ? {} : { sort: limit.sort }),
       };
+      if (limit.sort !== undefined) {
+        result.sort = limit.sort;
+      }
+      return result;
     }
   }
 }
@@ -981,7 +984,7 @@ export function generateCase(model: Model, seed: number, n: number): FuzzCase {
   };
   genParams(ctx);
   let filter: FilterNode | null = r.chance(0.93) ? genFilter(ctx) : null;
-  let sort: string[] | null = r.chance(0.65) ? genSort(ctx) : null;
+  let sort: Array<string> | null = r.chance(0.65) ? genSort(ctx) : null;
   let rawSort: string | null = null;
   const invalid = r.chance(0.1);
   if (invalid) {

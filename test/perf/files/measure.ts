@@ -111,9 +111,9 @@ async function prepare(): Promise<{ dataDir: string; jpegPath: string; bigPath: 
   const fd = openSync(bigPath, "w");
   const block = new Uint8Array(mib);
   for (let i = 0; i < 160; i++) {
-    crypto.getRandomValues(block.subarray(0, 65536));
-    for (let o = 65536; o < mib; o += 65536) {
-      block.copyWithin(o, 0, 65536);
+    crypto.getRandomValues(block.subarray(0, 65_536));
+    for (let o = 65_536; o < mib; o += 65_536) {
+      block.copyWithin(o, 0, 65_536);
     }
     writeSync(fd, block);
   }
@@ -183,7 +183,7 @@ async function runCase(
   kind: "upstream" | "iglo",
   baseDir: string,
   label: string,
-  paths: string[],
+  paths: Array<string>,
 ): Promise<Row> {
   guard();
   const dataDir = join(root, `${kind}-${label.replaceAll(/\W+/g, "-")}`, "pb_data");
@@ -236,7 +236,7 @@ try {
   const jpeg = ids["jpeg"] as { id: string; name: string };
   const big = ids["big"] as { id: string; name: string };
   const jpegPath = `/api/files/perf/${jpeg.id}/${jpeg.name}`;
-  const cases: [string, string[]][] = [
+  const cases: Array<[string, Array<string>]> = [
     ["50 MP JPEG thumb, c=1", [`${jpegPath}?thumb=100x100`]],
     [
       "50 MP JPEG thumbs, c=4",
@@ -244,7 +244,7 @@ try {
     ],
     ["160 MiB download", [`/api/files/perf/${big.id}/${big.name}`]],
   ];
-  const rows: Row[] = [];
+  const rows: Array<Row> = [];
   for (const [label, paths] of cases) {
     for (const kind of ["upstream", "iglo"] as const) {
       const row = await runCase(kind, dataDir, label, paths);

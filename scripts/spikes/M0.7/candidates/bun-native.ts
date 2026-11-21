@@ -10,7 +10,8 @@
 import { bunEncode, bunHeader, bunImage } from "@/../scripts/spikes/M0.7/candidates/bun-imaging";
 import { cropRect, parseThumbSize, thumbFormat, thumbPlan } from "@/../scripts/spikes/M0.7/imaging";
 import { decodePng } from "@/../scripts/spikes/M0.7/png";
-import { thumbContentType, type CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
+import { thumbContentType } from "@/../scripts/spikes/M0.7/thumb";
+import type { CreateThumb } from "@/../scripts/spikes/M0.7/thumb";
 
 export const createThumb: CreateThumb = async (input, contentType, size, maxPixels) => {
   const thumbSize = parseThumbSize(size);

@@ -78,5 +78,7 @@ test("an expired token without a refresh token fails before any request", async 
     clock,
   };
   const token = new Token({ accessToken: "abc", expiry: inSeconds(-1) });
-  await expect(validToken(config, token)).rejects.toThrow("refresh token is not set");
+  await Promise.resolve(
+    expect(validToken(config, token)).rejects.toThrow("refresh token is not set"),
+  );
 });

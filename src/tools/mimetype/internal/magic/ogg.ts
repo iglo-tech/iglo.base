@@ -25,7 +25,12 @@ export function Ogg(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, oggSig);
 }
 
-const audioSigs = [lit("\x7fFLAC"), lit("\x01vorbis"), lit("OpusHead"), lit("Speex\x20\x20\x20")];
+const audioSigs = [
+  lit("\u007fFLAC"),
+  lit("\u0001vorbis"),
+  lit("OpusHead"),
+  lit("Speex\u0020\u0020\u0020"),
+];
 // OggAudio matches an audio ogg file.
 export function OggAudio(raw: Uint8Array, _limit: number): boolean {
   return raw.length >= 37 && audioSigs.some((s) => hasPrefix(raw.subarray(28), s));

@@ -9,7 +9,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 describe("Encrypt", () => {
-  const scenarios: [string, string, boolean][] = [
+  const scenarios: Array<[string, string, boolean]> = [
     ["", "", true],
     ["123", "test", true], // key must be valid 32 char aes string
     ["123", "abcdabcdabcdabcdabcdabcdabcdabcd", false],
@@ -46,7 +46,7 @@ describe("Encrypt", () => {
 });
 
 describe("Decrypt", () => {
-  const scenarios: [string, string, boolean, string][] = [
+  const scenarios: Array<[string, string, boolean, string]> = [
     ["", "", true, ""],
     ["123", "test", true, ""], // key must be valid 32 char aes string
     ["8kcEqilvvYKYcfnSr0aSC54gmnQCsB02SaB8ATlnA==", "abcdabcdabcdabcdabcdabcdabcdabcd", true, ""], // illegal base64 encoded cipherText
@@ -75,7 +75,7 @@ describe("Decrypt", () => {
   });
 
   // Not in upstream's tests.
-  const more: [string, string][] = [
+  const more: Array<[string, string]> = [
     ["tampered ciphertext", "8kcEqilvv+YKYcfnTr0aSC54gmnQCsB02SaB8ATlnA=="],
     ["shorter than nonce and tag", "AAAA"],
     ["missing padding", "8kcEqilvv+YKYcfnSr0aSC54gmnQCsB02SaB8ATlnA"],
@@ -84,7 +84,9 @@ describe("Decrypt", () => {
 
   for (const [name, cipher] of more) {
     test(name, async () => {
-      await expect(decrypt(cipher, "abcdabcdabcdabcdabcdabcdabcdabcd")).rejects.toThrow();
+      await Promise.resolve(
+        expect(decrypt(cipher, "abcdabcdabcdabcdabcdabcdabcdabcd")).rejects.toThrow(),
+      );
     });
   }
 

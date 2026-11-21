@@ -22,6 +22,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
   }
   const form: CollectionsImportForm = { Collections: [], DeleteMissing: false };
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   let err = await e.bindBody(form as unknown as Record<string, unknown>, collectionsImportFormType);
   err ??= checkMaps(form.Collections);
   if (err) {
@@ -40,13 +41,13 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
   }
 
   try {
-    const imported = form.Collections as (Record<string, unknown> | null)[];
+    const imported = form.Collections as Array<Record<string, unknown> | null>;
     const before = collectionNames(e.app);
     importCollections(e.app, imported, form.DeleteMissing);
     e.app.collectionsChanged?.(importChanges(before, collectionNames(e.app), imported));
-  } catch (importErr) {
+  } catch (error) {
     // validation failure
-    const validationErrors = errorsAs(importErr, Errors);
+    const validationErrors = errorsAs(error, Errors);
     if (validationErrors) {
       return e.badRequestError("Failed to import collections.", validationErrors);
     }
@@ -58,7 +59,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
         collections: NewError(
           "validation_collections_import_failure",
           "Failed to import the collections configuration. Raw error:\n" +
-            (importErr instanceof Error ? importErr.message : String(importErr)),
+            (error instanceof Error ? error.message : String(error)),
         ),
       }),
     );
@@ -81,12 +82,12 @@ const collectionsImportFormType = structOf([
 ]);
 
 interface CollectionsImportForm {
-  Collections: unknown[] | null;
+  Collections: Array<unknown> | null;
   DeleteMissing: boolean;
 }
 
 // the error json/v2 gives for an element that is not a JSON object or null
-function checkMaps(collections: unknown[] | null): Error | undefined {
+function checkMaps(collections: Array<unknown> | null): Error | undefined {
   for (const c of collections ?? []) {
     if (c !== null && (typeof c !== "object" || Array.isArray(c))) {
       return new Error("json: cannot unmarshal into Go map[string]any");
@@ -107,8 +108,8 @@ function collectionNames(app: App): Set<string> {
 function importChanges(
   before: ReadonlySet<string>,
   after: ReadonlySet<string>,
-  imported: readonly (Record<string, unknown> | null)[],
-): string[] {
+  imported: ReadonlyArray<Record<string, unknown> | null>,
+): Array<string> {
   const changed = new Set<string>();
   for (const item of imported) {
     if (typeof item?.name === "string") {

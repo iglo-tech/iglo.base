@@ -102,7 +102,7 @@ export class Inst {
   op: InstOp;
   out = 0; // all but InstMatch, InstFail
   arg = 0; // InstAlt, InstAltMatch, InstCapture, InstEmptyWidth
-  rune: number[] = [];
+  rune: Array<number> = [];
 
   constructor(op: InstOp) {
     this.op = op;
@@ -213,7 +213,7 @@ export class Inst {
   }
 
   toString(): string {
-    const b: string[] = [];
+    const b: Array<string> = [];
     dumpInst(b, this);
     return b.join("");
   }
@@ -223,12 +223,12 @@ const noMatch = -1;
 
 // A Prog is a compiled regular expression program.
 export class Prog {
-  inst: Inst[] = [];
+  inst: Array<Inst> = [];
   start = 0; // index of start instruction
   numCap = 0; // number of InstCapture insts in re
 
   toString(): string {
-    const b: string[] = [];
+    const b: Array<string> = [];
     dumpProg(b, this);
     return b.join("");
   }
@@ -275,9 +275,11 @@ export class Prog {
     let i = this.inst[pc] as Inst;
     for (;;) {
       switch (i.op) {
-        case InstEmptyWidth:
-          flag |= i.arg;
+        case InstEmptyWidth: {
+          const arg: number = i.arg;
+          flag = flag | arg;
           break;
+        }
         case InstFail:
           return EmptyImpossible;
         case InstCapture:
@@ -293,7 +295,7 @@ export class Prog {
   }
 }
 
-function dumpProg(b: string[], p: Prog): void {
+function dumpProg(b: Array<string>, p: Prog): void {
   p.inst.forEach((i, j) => {
     let pc = String(j);
     if (pc.length < 3) {
@@ -308,7 +310,7 @@ function dumpProg(b: string[], p: Prog): void {
   });
 }
 
-function dumpInst(b: string[], i: Inst): void {
+function dumpInst(b: Array<string>, i: Inst): void {
   switch (i.op) {
     case InstAlt:
       b.push("alt -> ", String(i.out), ", ", String(i.arg));
@@ -352,7 +354,7 @@ function dumpInst(b: string[], i: Inst): void {
 
 // strconv.QuoteToASCII(string(runes)): string(runes) turns an invalid
 // rune into U+FFFD, which QuoteToASCII prints as �.
-function quoteToASCII(runes: readonly number[]): string {
+function quoteToASCII(runes: ReadonlyArray<number>): string {
   let out = '"';
   for (let r of runes) {
     if (!ValidRune(r)) {
@@ -365,33 +367,33 @@ function quoteToASCII(runes: readonly number[]): string {
     } else {
       switch (r) {
         case 0x07:
-          out += "\\a";
+          out += String.raw`\a`;
           break;
         case 0x08:
-          out += "\\b";
+          out += String.raw`\b`;
           break;
         case 0x0c:
-          out += "\\f";
+          out += String.raw`\f`;
           break;
         case 0x0a:
-          out += "\\n";
+          out += String.raw`\n`;
           break;
         case 0x0d:
-          out += "\\r";
+          out += String.raw`\r`;
           break;
         case 0x09:
-          out += "\\t";
+          out += String.raw`\t`;
           break;
         case 0x0b:
-          out += "\\v";
+          out += String.raw`\v`;
           break;
         default:
           if (r < 0x20 || r === 0x7f) {
-            out += "\\x" + r.toString(16).padStart(2, "0");
-          } else if (r < 0x10000) {
-            out += "\\u" + r.toString(16).padStart(4, "0");
+            out += String.raw`\x` + r.toString(16).padStart(2, "0");
+          } else if (r < 0x1_00_00) {
+            out += String.raw`\u` + r.toString(16).padStart(4, "0");
           } else {
-            out += "\\U" + r.toString(16).padStart(8, "0");
+            out += String.raw`\U` + r.toString(16).padStart(8, "0");
           }
       }
     }

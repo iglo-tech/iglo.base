@@ -3,20 +3,19 @@
 // The OnRecordAuthWithPasswordRequest hook is not ported (no extension
 // surface): its default action runs directly.
 
-import {
-  type RequestEvent,
-  RequestEventKeyInfoContext,
-  RequestInfoContextPasswordAuth,
-} from "@/app/event-request";
+import { RequestEventKeyInfoContext, RequestInfoContextPasswordAuth } from "@/app/event-request";
+import type { RequestEvent } from "@/app/event-request";
 import { findAuthCollection } from "@/apis/record-auth";
 import { firstApiError, recordAuthResponseWithNewToken } from "@/apis/record-helpers";
 import type { Collection } from "@/collections/collection-model";
 import { equalFold } from "@/collections/go-strings";
-import { type Expression, HashExp, newExp } from "@/db/dbx/expression";
+import { HashExp, newExp } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import { FieldNameEmail } from "@/fields/field";
 import { MFAMethodPassword } from "@/records/mfa-model";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { isNoRows } from "@/records/record-save";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
@@ -44,6 +43,7 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
 
   const form: AuthWithPasswordForm = { Identity: "", Password: "", IdentityField: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     authWithPasswordType,
   );
@@ -71,8 +71,8 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
     foundErr = null;
     try {
       foundRecord = findRecordByIdentityField(e.app, collection, field, form.Identity);
-    } catch (err) {
-      foundErr = err;
+    } catch (error) {
+      foundErr = error;
     }
   };
 
@@ -114,7 +114,7 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
   }
 
   // the OnRecordAuthWithPasswordRequest default action
-  const record = foundRecord as Record | undefined;
+  const record = foundRecord;
   if (record === undefined || !(await record.validatePasswordAsync(form.Password))) {
     // dummy password check to minimize enumeration side-channel attacks
     if (record === undefined) {

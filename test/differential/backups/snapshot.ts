@@ -6,17 +6,17 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-function tableRows(path: string): Record<string, unknown[]> {
+function tableRows(path: string): Record<string, Array<unknown>> {
   const db = new Database(path, { readonly: true });
   try {
-    const result: Record<string, unknown[]> = {
+    const result: Record<string, Array<unknown>> = {
       sqlite_schema: db
         .query("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name")
         .all(),
     };
     const tables = db
       .query("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
-      .all() as { name: string }[];
+      .all() as Array<{ name: string }>;
     for (const { name } of tables) {
       result[name] = db.query(`SELECT * FROM "${name}" ORDER BY 1`).all();
     }
@@ -38,8 +38,8 @@ function fileHashes(dir: string): Record<string, string> {
 }
 
 export function snapshot(dataDir: string): {
-  data: Record<string, unknown[]>;
-  logs: unknown[];
+  data: Record<string, Array<unknown>>;
+  logs: Array<unknown>;
   storage: Record<string, string>;
 } {
   return {

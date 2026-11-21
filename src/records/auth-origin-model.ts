@@ -11,9 +11,11 @@
 // src/records/record-auth-refs.ts and src/collections/collection-save.ts.
 
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
-import { type Collection, newBaseCollection } from "@/collections/collection-model";
+import { newBaseCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { CollectionNameAuthOrigins } from "@/records/record-auth-refs";
-import { newRecord, type Record } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import type { RecordsApp } from "@/records/record-query";
 import { deleteRecord, saveRecord, validateRecord } from "@/records/record-save";
 import type { DateTime } from "@/tools/types/datetime";

@@ -7,12 +7,8 @@ import {
   ServerClient,
   SSR_NO_CACHE_HEADERS,
 } from "@sdk/ssr/index";
-import {
-  createNuxtAuth,
-  type NuxtAuth,
-  type NuxtCookieOptions,
-  type NuxtEvent,
-} from "@sdk/ssr/nuxt";
+import { createNuxtAuth } from "@sdk/ssr/nuxt";
+import type { NuxtAuth, NuxtCookieOptions, NuxtEvent } from "@sdk/ssr/nuxt";
 import type { AdapterOptions, AdapterRoutes } from "@sdk/ssr/adapter";
 import {
   API,
@@ -23,8 +19,8 @@ import {
   stubApi,
   superuserToken,
   testClock,
-  type Handler,
 } from "@sdk-test/ssr/browser-support";
+import type { Handler } from "@sdk-test/ssr/browser-support";
 
 const T0 = Math.floor(Date.now() / 1000);
 const clock = testClock(T0 * 1000);
@@ -63,7 +59,7 @@ async function adapter(
 ): Promise<NuxtAuth> {
   const superuser = await createSuperuserClient({
     url: API,
-    token: superuserToken(T0 + 99999),
+    token: superuserToken(T0 + 99_999),
     fetch: api.fetch,
     clock,
   });
@@ -96,7 +92,7 @@ function makeEvent(
   if (cookieHeader) {
     headers["cookie"] = cookieHeader;
   }
-  const setCookies: SetCookie[] = [];
+  const setCookies: Array<SetCookie> = [];
   const setHeaders: Array<[string, string]> = [];
   const readBody = init.readBody ?? (init.body === undefined ? undefined : async () => init.body);
   const event: NuxtEvent = {

@@ -27,11 +27,14 @@
 // query from it (tools/search/provider.go); clone() does that here.
 
 import type { Builder } from "@/db/dbx/builder";
-import { and, HashExp, or, type Expression } from "@/db/dbx/expression";
-import { assignOwn, type Params, type Query, type Row } from "@/db/dbx/query";
+import { and, HashExp, or } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
+import { assignOwn } from "@/db/dbx/query";
+import type { Params, Query, Row } from "@/db/dbx/query";
 import type { JoinInfo, UnionInfo } from "@/db/dbx/query-builder";
 import type { Rows } from "@/db/dbx/rows";
-import { primaryKeyNames, type StructModel } from "@/db/dbx/struct";
+import { primaryKeyNames } from "@/db/dbx/struct";
+import type { StructModel } from "@/db/dbx/struct";
 
 // BuildHookFunc defines a callback function that is executed on Query creation.
 export type BuildHookFunc = (q: Query) => void;
@@ -56,16 +59,16 @@ export interface QueryInfo {
   preFragment: string;
   postFragment: string;
   builder: Builder;
-  selects: string[];
+  selects: Array<string>;
   distinct: boolean;
   selectOption: string;
-  from: string[];
+  from: Array<string>;
   where: Expression | null;
-  join: JoinInfo[];
-  orderBy: string[];
-  groupBy: string[];
+  join: Array<JoinInfo>;
+  orderBy: Array<string>;
+  groupBy: Array<string>;
   having: Expression | null;
-  union: UnionInfo[];
+  union: Array<UnionInfo>;
   limit: number;
   offset: number;
   params: Params;
@@ -81,16 +84,16 @@ export class SelectQuery {
 
   private preFragmentSQL = "";
   private postFragmentSQL = "";
-  private selects: string[] = [];
+  private selects: Array<string> = [];
   private isDistinct = false;
   private selectOptionSQL = "";
-  private fromTables: string[] = [];
+  private fromTables: Array<string> = [];
   private whereExp: Expression | null = null;
-  private joins: JoinInfo[] = [];
-  private orderByCols: string[] = [];
-  private groupByCols: string[] = [];
+  private joins: Array<JoinInfo> = [];
+  private orderByCols: Array<string> = [];
+  private groupByCols: Array<string> = [];
   private havingExp: Expression | null = null;
-  private unions: UnionInfo[] = [];
+  private unions: Array<UnionInfo> = [];
   private limitValue = -1;
   private offsetValue = 0;
   private boundParams: Params = {};
@@ -159,14 +162,14 @@ export class SelectQuery {
 
   // Select specifies the columns to be selected.
   // Column names will be automatically quoted.
-  select(...cols: string[]): this {
+  select(...cols: Array<string>): this {
     this.selects = cols;
     return this;
   }
 
   // AndSelect adds additional columns to be selected.
   // Column names will be automatically quoted.
-  andSelect(...cols: string[]): this {
+  andSelect(...cols: Array<string>): this {
     this.selects = [...this.selects, ...cols];
     return this;
   }
@@ -186,7 +189,7 @@ export class SelectQuery {
 
   // From specifies which tables to select from.
   // Table names will be automatically quoted.
-  from(...tables: string[]): this {
+  from(...tables: Array<string>): this {
     this.fromTables = tables;
     return this;
   }
@@ -236,28 +239,28 @@ export class SelectQuery {
 
   // OrderBy specifies the ORDER BY clause.
   // Column names will be properly quoted. A column name can contain "ASC" or "DESC" to indicate its ordering direction.
-  orderBy(...cols: string[]): this {
+  orderBy(...cols: Array<string>): this {
     this.orderByCols = cols;
     return this;
   }
 
   // AndOrderBy appends additional columns to the existing ORDER BY clause.
   // Column names will be properly quoted. A column name can contain "ASC" or "DESC" to indicate its ordering direction.
-  andOrderBy(...cols: string[]): this {
+  andOrderBy(...cols: Array<string>): this {
     this.orderByCols = [...this.orderByCols, ...cols];
     return this;
   }
 
   // GroupBy specifies the GROUP BY clause.
   // Column names will be properly quoted.
-  groupBy(...cols: string[]): this {
+  groupBy(...cols: Array<string>): this {
     this.groupByCols = cols;
     return this;
   }
 
   // AndGroupBy appends additional columns to the existing GROUP BY clause.
   // Column names will be properly quoted.
-  andGroupBy(...cols: string[]): this {
+  andGroupBy(...cols: Array<string>): this {
     this.groupByCols = [...this.groupByCols, ...cols];
     return this;
   }
@@ -405,7 +408,7 @@ export class SelectQuery {
   //
   // If the query does not specify a "from" clause, the method uses the
   // table name of the factory's models.
-  all<T = Row>(factory?: () => StructModel): T[] {
+  all<T = Row>(factory?: () => StructModel): Array<T> {
     if (this.fromTables.length === 0 && factory !== undefined) {
       this.fromTables = [factory().tableName()];
     }
@@ -413,7 +416,7 @@ export class SelectQuery {
   }
 
   // AllAsync is All, run on the builder's read worker pool when it has one.
-  allAsync<T = Row>(factory?: () => StructModel): Promise<T[]> {
+  allAsync<T = Row>(factory?: () => StructModel): Promise<Array<T>> {
     if (this.fromTables.length === 0 && factory !== undefined) {
       this.fromTables = [factory().tableName()];
     }
@@ -428,23 +431,23 @@ export class SelectQuery {
 
   // Row builds and executes the SELECT query and returns the values of the first row.
   // This is a shortcut to SelectQuery.Build().Row()
-  row(): unknown[] {
+  row(): Array<unknown> {
     return this.build().row();
   }
 
   // Column builds and executes the SELECT statement and returns the first column of the result.
   // This is a shortcut to SelectQuery.Build().Column()
-  column<T = unknown>(): T[] {
+  column<T = unknown>(): Array<T> {
     return this.build().column<T>();
   }
 
   // RowAsync is Row, run on the builder's read worker pool when it has one.
-  rowAsync(): Promise<unknown[]> {
+  rowAsync(): Promise<Array<unknown>> {
     return this.build().rowAsync();
   }
 
   // ColumnAsync is Column, run on the builder's read worker pool when it has one.
-  columnAsync<T = unknown>(): Promise<T[]> {
+  columnAsync<T = unknown>(): Promise<Array<T>> {
     return this.build().columnAsync<T>();
   }
 

@@ -35,10 +35,7 @@
 import {
   JoinAnd,
   JoinOr,
-  type JoinOp,
   newScanner,
-  type SignOp,
-  type Token,
   TokenComment,
   TokenEOF,
   TokenFunction,
@@ -50,6 +47,7 @@ import {
   TokenText,
   TokenWS,
 } from "@/search/fexpr/scanner";
+import type { JoinOp, SignOp, Token } from "@/search/fexpr/scanner";
 import { goQuote } from "@/fields/field";
 
 export const ErrEmpty = new Error("empty filter expression");
@@ -79,7 +77,7 @@ export function exprIsZero(e: Expr): boolean {
 //
 // The group's Item could be either an `Expr` instance or `[]ExprGroup` slice (for nested expressions).
 export interface ExprGroup {
-  item: Expr | ExprGroup | ExprGroup[];
+  item: Expr | ExprGroup | Array<ExprGroup>;
   join: JoinOp;
 }
 
@@ -97,8 +95,8 @@ function zeroToken(): Token {
 // in the form of `ExprGroup` slice(s).
 //
 // Comments and whitespaces are ignored.
-export function parse(text: string): ExprGroup[] {
-  const result: ExprGroup[] = [];
+export function parse(text: string): Array<ExprGroup> {
+  const result: Array<ExprGroup> = [];
   const scanner = newScanner(text);
   let step = stepBeforeSign;
   let join: JoinOp = JoinAnd;

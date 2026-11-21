@@ -11,10 +11,10 @@ export interface FieldDef {
 // the auth collection: the default auth fields plus a text, a hidden text
 // and a single file field
 export const usersCollection = "ref_users";
-export const usersFields: FieldDef[] = [
+export const usersFields: Array<FieldDef> = [
   { name: "name", type: "text", max: 40 },
   { name: "secret", type: "text", hidden: true },
-  { name: "avatar", type: "file", maxSelect: 1, maxSize: 1048576 },
+  { name: "avatar", type: "file", maxSelect: 1, maxSize: 1_048_576 },
   { name: "created", type: "autodate", onCreate: true },
   { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
 ];
@@ -22,7 +22,7 @@ export const usersFields: FieldDef[] = [
 // the base collection: every field type (relations to the auth collection
 // are added with its id)
 export const allCollection = "ref_all";
-export function allFields(usersId: string): FieldDef[] {
+export function allFields(usersId: string): Array<FieldDef> {
   return [
     { name: "title", type: "text", max: 20 },
     { name: "note", type: "text", hidden: true },
@@ -36,8 +36,8 @@ export function allFields(usersId: string): FieldDef[] {
     { name: "one", type: "select", maxSelect: 1, values: ["a", "b", "ü", "漢字"] },
     { name: "many", type: "select", maxSelect: 4, values: ["a", "b", "ü", "漢字"] },
     { name: "data", type: "json" },
-    { name: "doc", type: "file", maxSelect: 1, maxSize: 1048576 },
-    { name: "docs", type: "file", maxSelect: 5, maxSize: 1048576 },
+    { name: "doc", type: "file", maxSelect: 1, maxSize: 1_048_576 },
+    { name: "docs", type: "file", maxSelect: 5, maxSize: 1_048_576 },
     { name: "owner", type: "relation", maxSelect: 1, collectionId: usersId },
     { name: "team", type: "relation", maxSelect: 5, collectionId: usersId },
     { name: "loc", type: "geoPoint" },
@@ -54,7 +54,7 @@ export type FilePart = [string, string, string];
 // multipart with the members under @jsonPayload)
 export interface Payload {
   json: Record<string, string>;
-  files?: FilePart[];
+  files?: Array<FilePart>;
 }
 
 const q = JSON.stringify;
@@ -81,7 +81,7 @@ const userNames = [
   "ŁÓDŹ",
 ];
 
-export function userPayloads(): Payload[] {
+export function userPayloads(): Array<Payload> {
   return userNames.map((name, i): Payload => {
     const json: Record<string, string> = {
       email: q(`user${i}@example.com`),
@@ -94,13 +94,14 @@ export function userPayloads(): Payload[] {
     if (i % 4 !== 1) {
       json.secret = q(`secret ${i}`);
     }
-    const files: FilePart[] = i % 5 === 2 ? [["avatar", `avatar ${i}.txt`, `avatar ${i}`]] : [];
+    const files: Array<FilePart> =
+      i % 5 === 2 ? [["avatar", `avatar ${i}.txt`, `avatar ${i}`]] : [];
     return { json, files };
   });
 }
 
 // updates of the users: [user index, payload]
-export function userUpdates(): [number, Payload][] {
+export function userUpdates(): Array<[number, Payload]> {
   return [
     [0, { json: { emailVisibility: q(true), name: q("updated 0") } }],
     [1, { json: { emailVisibility: q(false), verified: q(true) } }],
@@ -119,7 +120,7 @@ const titles = [
   "hello",
   "ünïcødé 漢字 🎉",
   "a".repeat(20),
-  'q"\\</>&',
+  String.raw`q"\</>&`,
   "\u2028x\u2029",
   "line\nbreak",
   "  trimmed?  ",
@@ -209,14 +210,14 @@ const geoPoints = [
   `{"lat":1.5,"lon":2.5}`,
 ];
 
-function pick<T>(list: readonly T[], i: number, step = 1): T {
+function pick<T>(list: ReadonlyArray<T>, i: number, step = 1): T {
   return list[(i * step) % list.length] as T;
 }
 
 // the base records: field values cycle through the edge value lists, with
 // different strides, so that the 50 records combine them differently
-export function allPayloads(userIds: readonly string[]): Payload[] {
-  const out: Payload[] = [];
+export function allPayloads(userIds: ReadonlyArray<string>): Array<Payload> {
+  const out: Array<Payload> = [];
   for (let i = 0; i < 50; i++) {
     const json: Record<string, string> = {
       title: q(pick(titles, i)),
@@ -244,7 +245,7 @@ export function allPayloads(userIds: readonly string[]): Payload[] {
     if (i % 3 === 2) {
       json.team = q([pick(userIds, i), pick(userIds, i + 3), pick(userIds, i + 7)]);
     }
-    const files: FilePart[] = [];
+    const files: Array<FilePart> = [];
     if (i % 6 === 1) {
       files.push(["doc", `doc ${i}.txt`, `doc ${i}`]);
     }
@@ -258,7 +259,7 @@ export function allPayloads(userIds: readonly string[]): Payload[] {
 
 // updates of the base records: [record index, payload]; "$firstDoc" in a
 // member is replaced with the stored name of the record's first "docs" file
-export function allUpdates(userIds: readonly string[]): [number, Payload][] {
+export function allUpdates(userIds: ReadonlyArray<string>): Array<[number, Payload]> {
   return [
     [0, { json: { title: q("updated"), data: `{"z":1,"y":[2]}` } }],
     [1, { json: { "num+": "2.5", "int-": "1" } }],
@@ -286,7 +287,7 @@ export function allUpdates(userIds: readonly string[]): [number, Payload][] {
 // numbers as INTEGER and the others as REAL; the rows are read back by
 // storage class (INTEGER in decimal, REAL with Go's float formatting)
 export const numsCollection = "ref_nums";
-export const numsFields: FieldDef[] = [
+export const numsFields: Array<FieldDef> = [
   { name: "j", type: "json" },
   { name: "n", type: "number" },
 ];
@@ -310,7 +311,7 @@ export const numberTexts = [
   "123456789.5",
 ];
 
-export function numsPayloads(): Payload[] {
+export function numsPayloads(): Array<Payload> {
   return numberTexts.map((text) => ({ json: { j: text, n: text } }));
 }
 
@@ -318,7 +319,7 @@ export function numsPayloads(): Payload[] {
 // A number column holds an exact INTEGER the API, which saves a float64,
 // cannot store (within 2^53, where the float64 DBExport stores it back as
 // the same INTEGER).
-export const numsSQLRows: [string, string, string][] = [
+export const numsSQLRows: Array<[string, string, string]> = [
   ["sqlnum000000001", "1234567", "1234567"],
   ["sqlnum000000002", "-1000000", "-1000000"],
   ["sqlnum000000003", "9007199254740991", "9007199254740991"],

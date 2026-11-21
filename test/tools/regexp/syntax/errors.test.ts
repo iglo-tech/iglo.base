@@ -38,8 +38,8 @@ import {
   OpRepeat,
   OpStar,
   opString,
-  type Regexp,
 } from "@/tools/regexp/syntax/regexp";
+import type { Regexp } from "@/tools/regexp/syntax/regexp";
 
 function parseError(pattern: string | Uint8Array, flags: number): RegexpSyntaxError {
   try {
@@ -51,39 +51,39 @@ function parseError(pattern: string | Uint8Array, flags: number): RegexpSyntaxEr
   throw new Error(`${JSON.stringify(pattern)} parsed`);
 }
 
-const perlErrors: [pattern: string, message: string][] = [
+const perlErrors: Array<[pattern: string, message: string]> = [
   ["(abc", "error parsing regexp: missing closing ): `(abc`"],
   ["abc)", "error parsing regexp: unexpected ): `abc)`"],
   ["x[a-z", "error parsing regexp: missing closing ]: `[a-z`"],
   ["*", "error parsing regexp: missing argument to repetition operator: `*`"],
-  ["\\Q\\E*", "error parsing regexp: missing argument to repetition operator: `*`"],
+  [String.raw`\Q\E*`, "error parsing regexp: missing argument to repetition operator: `*`"],
   ["a**", "error parsing regexp: invalid nested repetition operator: `**`"],
   ["x{2}{3}", "error parsing regexp: invalid nested repetition operator: `{2}{3}`"],
   ["x{1001}", "error parsing regexp: invalid repeat count: `{1001}`"],
   ["x{2,1}", "error parsing regexp: invalid repeat count: `{2,1}`"],
   ["((a{100}){100})", "error parsing regexp: invalid repeat count: `{100}`"],
-  ["\\8", "error parsing regexp: invalid escape sequence: `\\8`"],
-  ["\\xZZ", "error parsing regexp: invalid escape sequence: `\\xZZ`"],
-  ["\\x{110000}", "error parsing regexp: invalid escape sequence: `\\x{110000`"],
+  [String.raw`\8`, "error parsing regexp: invalid escape sequence: `\\8`"],
+  [String.raw`\xZZ`, "error parsing regexp: invalid escape sequence: `\\xZZ`"],
+  [String.raw`\x{110000}`, "error parsing regexp: invalid escape sequence: `\\x{110000`"],
   ["abc\\", "error parsing regexp: trailing backslash at end of expression: ``"],
   ["[z-a]", "error parsing regexp: invalid character class range: `z-a`"],
-  ["\\p{Foo}", "error parsing regexp: invalid character class range: `\\p{Foo}`"],
+  [String.raw`\p{Foo}`, "error parsing regexp: invalid character class range: `\\p{Foo}`"],
   ["[[:foo:]]", "error parsing regexp: invalid character class range: `[:foo:]`"],
   ["(?P<x y>a)", "error parsing regexp: invalid named capture: `(?P<x y>`"],
   ["(?<>a)", "error parsing regexp: invalid named capture: `(?<>`"],
   ["(?P<name", "error parsing regexp: invalid named capture: `(?P<name`"],
   ["(?z)", "error parsing regexp: invalid or unsupported Perl syntax: `(?z`"],
   ["(?i-)", "error parsing regexp: invalid or unsupported Perl syntax: `(?i-)`"],
-  ["\\C", "error parsing regexp: invalid escape sequence: `\\C`"],
+  [String.raw`\C`, "error parsing regexp: invalid escape sequence: `\\C`"],
 ];
 
-const posixErrors: [pattern: string, message: string][] = [
-  ["\\z", "error parsing regexp: invalid escape sequence: `\\z`"],
+const posixErrors: Array<[pattern: string, message: string]> = [
+  [String.raw`\z`, "error parsing regexp: invalid escape sequence: `\\z`"],
   ["[a-b-c]", "error parsing regexp: invalid character class range: `-c`"],
-  ["\\Qabc\\E", "error parsing regexp: invalid escape sequence: `\\Q`"],
+  [String.raw`\Qabc\E`, "error parsing regexp: invalid escape sequence: `\\Q`"],
   ["(?:a)", "error parsing regexp: missing argument to repetition operator: `?`"],
-  ["\\d", "error parsing regexp: invalid escape sequence: `\\d`"],
-  ["\\pL", "error parsing regexp: invalid escape sequence: `\\p`"],
+  [String.raw`\d`, "error parsing regexp: invalid escape sequence: `\\d`"],
+  [String.raw`\pL`, "error parsing regexp: invalid escape sequence: `\\p`"],
 ];
 
 describe("Error() text", () => {
@@ -125,7 +125,7 @@ describe("Error() text", () => {
 describe("invalid UTF-8", () => {
   // Go's message holds the bytes from the invalid one on; here they are
   // lone surrogates (U+DC80+byte), which textToBytes turns back into bytes.
-  const cases: [bytes: number[], flags: number, message: string][] = [
+  const cases: Array<[bytes: Array<number>, flags: number, message: string]> = [
     [[0x61, 0xff, 0x62], Perl, "error parsing regexp: invalid UTF-8: `\xffb`"],
     [[0x5b, 0xc3, 0x5d], Perl, "error parsing regexp: invalid UTF-8: `\xc3]`"],
     [[0x5c, 0xff], Perl, "error parsing regexp: invalid UTF-8: `\xff`"],
@@ -147,11 +147,11 @@ describe("invalid UTF-8", () => {
     // U+DCFF stands for the byte 0xff; another lone surrogate cannot be in a
     // Go string and becomes U+FFFD
     expect(parseError("a\udcff", Perl).code).toBe("invalid UTF-8");
-    expect(Parse("\ud800", Perl).rune).toEqual([0xfffd]);
+    expect(Parse("\ud800", Perl).rune).toEqual([0xff_fd]);
   });
 
   test("U+FFFD itself is valid", () => {
-    expect(Parse("�", Perl).rune).toEqual([0xfffd]);
+    expect(Parse("�", Perl).rune).toEqual([0xff_fd]);
   });
 });
 
@@ -217,10 +217,10 @@ describe("tree", () => {
   });
 
   test("negated classes run up to unicode.MaxRune", () => {
-    expect(Parse("[^a]", Perl).rune).toEqual([0, 0x60, 0x62, 0x10ffff]);
+    expect(Parse("[^a]", Perl).rune).toEqual([0, 0x60, 0x62, 0x10_ff_ff]);
     // without ClassNL, \n is excluded
-    expect(Parse("[^a]", POSIX).rune).toEqual([0, 9, 0xb, 0x60, 0x62, 0x10ffff]);
-    const none = Parse("\\p{^Any}", Perl);
+    expect(Parse("[^a]", POSIX).rune).toEqual([0, 9, 0xb, 0x60, 0x62, 0x10_ff_ff]);
+    const none = Parse(String.raw`\p{^Any}`, Perl);
     expect([none.op, none.rune]).toEqual([OpCharClass, []]);
   });
 
@@ -228,18 +228,18 @@ describe("tree", () => {
     const re = Parse("(?i)a", Perl);
     expect([re.op, re.rune, re.flags]).toEqual([OpLiteral, [0x41], Perl | FoldCase]);
     expect(Parse("$", Perl).flags & WasDollar).toBe(WasDollar);
-    expect(Parse("\\z", Perl).flags & WasDollar).toBe(0);
+    expect(Parse(String.raw`\z`, Perl).flags & WasDollar).toBe(0);
   });
 
   test("runes beyond the valid range stay as Go keeps them", () => {
     // \x{D800} is a surrogate rune in the tree, as in Go
-    expect(Parse("\\x{D800}", Perl).rune).toEqual([0xd800]);
+    expect(Parse(String.raw`\x{D800}`, Perl).rune).toEqual([0xd8_00]);
   });
 
   test("the empty pattern and empty alternation", () => {
     expect(Parse("", Perl).op).toBe(OpEmptyMatch);
     expect(Parse("a|", Perl).op).toBe(OpAlternate);
-    expect(Parse("[^\\x00-\\x{10FFFF}]", Perl).rune).toEqual([]);
+    expect(Parse(String.raw`[^\x00-\x{10FFFF}]`, Perl).rune).toEqual([]);
   });
 
   test("bytes and strings parse alike", () => {

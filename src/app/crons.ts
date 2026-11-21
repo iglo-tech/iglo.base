@@ -22,24 +22,24 @@ export function registerCrons(app: App): void {
     // the pragma's result row, which upstream ignores too
     try {
       app.databases.nonconcurrentDB().newQuery("PRAGMA wal_checkpoint(TRUNCATE)").execute();
-    } catch (err) {
+    } catch (error) {
       app.logger.warn("Failed to run periodic PRAGMA wal_checkpoint for the main DB", {
-        error: driverError(err),
+        error: driverError(error),
       });
     }
 
     try {
       app.databases.auxNonconcurrentDB().newQuery("PRAGMA wal_checkpoint(TRUNCATE)").execute();
-    } catch (err) {
+    } catch (error) {
       app.logger.warn("Failed to run periodic PRAGMA wal_checkpoint for the auxiliary DB", {
-        error: driverError(err),
+        error: driverError(error),
       });
     }
 
     try {
       app.databases.nonconcurrentDB().newQuery("PRAGMA optimize").execute();
-    } catch (err) {
-      app.logger.warn("Failed to run periodic PRAGMA optimize", { error: driverError(err) });
+    } catch (error) {
+      app.logger.warn("Failed to run periodic PRAGMA optimize", { error: driverError(error) });
     }
   });
 
@@ -47,8 +47,8 @@ export function registerCrons(app: App): void {
   app.cron.add("__pbMFACleanup__", "0 * * * *", async () => {
     try {
       await deleteExpiredMFAs(app);
-    } catch (err) {
-      app.logger.warn("Failed to delete expired MFA sessions", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to delete expired MFA sessions", { error });
     }
   });
 
@@ -56,8 +56,8 @@ export function registerCrons(app: App): void {
   app.cron.add("__pbOTPCleanup__", "0 * * * *", async () => {
     try {
       await deleteExpiredOTPs(app);
-    } catch (err) {
-      app.logger.warn("Failed to delete expired OTP sessions", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to delete expired OTP sessions", { error });
     }
   });
 
@@ -73,8 +73,8 @@ export function registerCrons(app: App): void {
     let oldCount = 0;
     try {
       oldCount = countLogs(app);
-    } catch (err) {
-      app.logger.warn("Failed to count logs before delete", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to count logs before delete", { error });
     }
 
     try {
@@ -82,15 +82,15 @@ export function registerCrons(app: App): void {
         app,
         DateTime.fromDate(app.clock.now()).addDate(0, 0, -Number(app.settings.Logs.MaxDays)),
       );
-    } catch (err) {
-      app.logger.warn("Failed to delete old logs", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to delete old logs", { error });
     }
 
     let newCount = 0;
     try {
       newCount = countLogs(app);
-    } catch (err) {
-      app.logger.warn("Failed to count logs after delete", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to count logs after delete", { error });
     }
 
     // try to free up unused disk space if a lot of logs have been deleted
@@ -101,8 +101,8 @@ export function registerCrons(app: App): void {
 
       try {
         auxVacuum(app.databases);
-      } catch (err) {
-        app.logger.warn("Failed to VACUUM aux database after cleanup", { error: err });
+      } catch (error) {
+        app.logger.warn("Failed to VACUUM aux database after cleanup", { error });
       }
     }
 
@@ -110,9 +110,9 @@ export function registerCrons(app: App): void {
     // growth due to slower delete or vacuum
     try {
       app.databases.auxNonconcurrentDB().newQuery("PRAGMA wal_checkpoint(TRUNCATE)").execute();
-    } catch (err) {
+    } catch (error) {
       app.logger.warn("Failed to run PRAGMA wal_checkpoint after logs cleanup", {
-        error: driverError(err),
+        error: driverError(error),
       });
     }
   });

@@ -42,13 +42,13 @@ export function createTestBackups(dataDir: string): void {
 }
 
 // the keys of GET /api/backups
-async function backupKeys(url: string): Promise<string[]> {
+async function backupKeys(url: string): Promise<Array<string>> {
   const res = await fetch(`${url}/api/backups`, { headers: asSuperuser });
-  const items = (await res.json()) as { key: string }[];
+  const items = (await res.json()) as Array<{ key: string }>;
   return items.map((item) => item.key);
 }
 
-function keysAfter(check: (keys: string[]) => void): (ctx: AfterContext) => Promise<void> {
+function keysAfter(check: (keys: Array<string>) => void): (ctx: AfterContext) => Promise<void> {
   return async ({ url }) => {
     check(await backupKeys(url));
   };

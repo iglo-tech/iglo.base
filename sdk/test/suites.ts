@@ -1,20 +1,20 @@
 // js-sdk v0.28.1 tests/suites.ts
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { assert } from "@sdk-test/assert";
-import { CrudService } from "@sdk/services/CrudService";
+import type { CrudService } from "@sdk/services/CrudService";
 import { FetchMock } from "@sdk-test/mocks";
 
 export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePath: string) {
   const id = "abc=";
 
-  describe("CrudServiceTests", function () {
+  describe("CrudServiceTests", () => {
     const fetchMock = new FetchMock();
 
-    beforeAll(function () {
+    beforeAll(() => {
       fetchMock.init();
     });
 
-    afterAll(function () {
+    afterAll(() => {
       fetchMock.restore();
     });
 
@@ -208,14 +208,14 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
 
     // -----------------------------------------------------------
 
-    describe("baseCrudPath()", function () {
-      test("Should corectly return the service base crud path", function () {
+    describe("baseCrudPath()", () => {
+      test("Should corectly return the service base crud path", () => {
         assert.equal(service.baseCrudPath, expectedBasePath);
       });
     });
 
-    describe("getFullList()", function () {
-      test("items.length == batchSize (aka. empty request stop check)", async function () {
+    describe("getFullList()", () => {
+      test("items.length == batchSize (aka. empty request stop check)", async () => {
         const result = await service.getFullList({
           batch: 1,
           q1: "emptyRequest",
@@ -225,7 +225,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
 
         assert.deepEqual(result, expected);
       });
-      test("items.length < batchSize (aka. no empty request stop check)", async function () {
+      test("items.length < batchSize (aka. no empty request stop check)", async () => {
         const result = await service.getFullList({
           batch: 2,
           q1: "noEmptyRequest",
@@ -241,8 +241,8 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       });
     });
 
-    describe("getList()", function () {
-      test("Should correctly return paginated list result", async function () {
+    describe("getList()", () => {
+      test("Should correctly return paginated list result", async () => {
         const list = await service.getList(2, 1, {
           q1: "abc",
           headers: { "x-test": "789" },
@@ -259,8 +259,8 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       });
     });
 
-    describe("getFirstListItem()", function () {
-      test("Should return single model item by a filter", async function () {
+    describe("getFirstListItem()", () => {
+      test("Should return single model item by a filter", async () => {
         const result = await service.getFirstListItem("test=123", {
           q1: "abc",
           headers: { "x-test": "789" },
@@ -271,8 +271,8 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       });
     });
 
-    describe("getOne()", function () {
-      test("Should return single model item by an id", async function () {
+    describe("getOne()", () => {
+      test("Should return single model item by an id", async () => {
         const result = await service.getOne(id, {
           q1: "abc",
           headers: { "x-test": "789" },
@@ -282,7 +282,7 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
         assert.deepEqual(result, expected);
       });
 
-      test("Should return a 404 error if id is empty", async function () {
+      test("Should return a 404 error if id is empty", async () => {
         const options = { q1: "abc", headers: { "x-test": "789" } };
 
         expect(service.getOne("", options)).rejects.toThrow("Missing required record id.");
@@ -293,8 +293,8 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       });
     });
 
-    describe("create()", function () {
-      test("Should create new model item", async function () {
+    describe("create()", () => {
+      test("Should create new model item", async () => {
         const result = await service.create({ b1: 123 }, { q1: 456, headers: { "x-test": "789" } });
         const expected = service.decode({ id: "item-create" });
 
@@ -302,8 +302,8 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       });
     });
 
-    describe("update()", function () {
-      test("Should update existing model item", async function () {
+    describe("update()", () => {
+      test("Should update existing model item", async () => {
         const result = await service.update(
           id,
           { b1: 123 },
@@ -315,8 +315,8 @@ export function crudServiceTestsSuite<M>(service: CrudService<M>, expectedBasePa
       });
     });
 
-    describe("delete()", function () {
-      test("Should delete single model item", async function () {
+    describe("delete()", () => {
+      test("Should delete single model item", async () => {
         const result = await service.delete(id, {
           q1: 456,
           headers: { "x-test": "789" },

@@ -44,9 +44,9 @@
 
 import { notifyAfterSave } from "@/app/notify-watcher";
 import { unsetMissingOAuth2MappedFields } from "@/collections/collection-model-auth-options";
-import { type Collection, CollectionTypeBase } from "@/collections/collection-model";
+import { CollectionTypeBase } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import {
-  type CollectionsApp,
   findCachedCollectionByNameOrId,
   findCollectionReferences,
   normalizeViewQueryId,
@@ -54,12 +54,14 @@ import {
   resaveViewsWithChangedFields,
   runInAppTransaction,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { syncRecordTableSchema } from "@/collections/collection-record-table-sync";
 import { validateCollection } from "@/collections/collection-validate";
 import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { newFieldsList } from "@/collections/fields-list";
 import { createViewFields, saveView, wrapError } from "@/collections/view";
-import { type DBExporter, deleteModel, saveNoValidate } from "@/db/db";
+import { deleteModel, saveNoValidate } from "@/db/db";
+import type { DBExporter } from "@/db/db";
 import { refsOnCollectionDeleteExecute } from "@/records/record-auth-refs";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import {
@@ -67,6 +69,7 @@ import {
   realtimeCollectionUpdate,
 } from "@/realtime/realtime-events";
 import { relabelRateLimitRules } from "@/settings/settings-query";
+import type { SettingsSaveApp } from "@/settings/settings-query";
 import type { Params } from "@/db/dbx/query";
 import type { Model } from "@/db/model";
 import { deleteTable, deleteView } from "@/db/table";
@@ -79,6 +82,7 @@ import { JSONRaw } from "@/tools/types/json-raw";
 import { jsonArrayValue } from "@/tools/types/json-array";
 import { FieldsList } from "@/collections/fields-list";
 import { DateTime } from "@/tools/types/datetime";
+import { isInstance } from "@/tools/types/is-instance";
 
 // app.Save(collection): validates and saves the collection, its view or
 // records table and its indexes.
@@ -108,9 +112,9 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
         withDriverErrors(() => deleteModel(refApp.databases, collectionRow(collection)));
       });
     });
-  } catch (err) {
+  } catch (error) {
     onErrorReloadCachedCollections(app);
-    throw err;
+    throw error;
   }
 
   afterTransactionError(app, () => {});
@@ -148,8 +152,8 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
 export function loadCollectionsCache(app: CollectionsApp): void {
   try {
     withDriverErrors(() => reloadCachedCollections(app));
-  } catch (err) {
-    throw wrapError("failed to load collections cache", err);
+  } catch (error) {
+    throw wrapError("failed to load collections cache", error);
   }
 }
 
@@ -176,8 +180,8 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
     if (!isNew && app.settings !== undefined) {
       try {
         oldName = findCachedCollectionByNameOrId(app, collection.id).name;
-      } catch (err) {
-        throw wrapError("failed to retrieve old cached collection", err);
+      } catch (error) {
+        throw wrapError("failed to retrieve old cached collection", error);
       }
     }
 
@@ -196,29 +200,29 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
 
     // update existing rate limit rules on collection rename
     if (oldName !== null && app.settings !== undefined) {
-      relabelRateLimitRules(
-        {
-          databases: app.databases,
-          clock: app.clock,
-          encryptionEnv: app.encryptionEnv ?? "",
-          getenv: (name) => app.getenv?.(name) ?? "",
-          store: app.store,
-          ...(app.notify === undefined ? {} : { notify: app.notify }),
-          ...(app.cron === undefined ? {} : { cron: app.cron }),
-        },
-        app.settings,
-        oldName,
-        collection.name,
-      );
+      const relabelApp: { -readonly [K in keyof SettingsSaveApp]: SettingsSaveApp[K] } = {
+        databases: app.databases,
+        clock: app.clock,
+        encryptionEnv: app.encryptionEnv ?? "",
+        getenv: (name) => app.getenv?.(name) ?? "",
+        store: app.store,
+      };
+      if (app.notify !== undefined) {
+        relabelApp.notify = app.notify;
+      }
+      if (app.cron !== undefined) {
+        relabelApp.cron = app.cron;
+      }
+      relabelRateLimitRules(relabelApp, app.settings, oldName, collection.name);
     }
 
     realtimeCollectionUpdate(app, collection, cachedAuth);
-  } catch (err) {
+  } catch (error) {
     if (isNew) {
       collection.markAsNew(); // reset "new" state
     }
     onErrorReloadCachedCollections(app);
-    throw err;
+    throw error;
   }
 
   // OnCollectionAfterCreateSuccess/UpdateSuccess' notify (priority 999)
@@ -253,9 +257,9 @@ function afterTransactionError(app: CollectionsApp, onError: () => void): void {
 function onErrorReloadCachedCollections(app: CollectionsApp): void {
   try {
     reloadCachedCollections(app);
-  } catch (err) {
+  } catch (error) {
     app.logger.warn("Failed to reload collections cache after collection change error", {
-      error: driverError(err),
+      error: driverError(error),
     });
   }
 }
@@ -263,8 +267,8 @@ function onErrorReloadCachedCollections(app: CollectionsApp): void {
 function reloadCachedCollectionsOrWarn(app: CollectionsApp): void {
   try {
     reloadCachedCollections(app);
-  } catch (err) {
-    app.logger.warn("Failed to reload collections cache", { error: driverError(err) });
+  } catch (error) {
+    app.logger.warn("Failed to reload collections cache", { error: driverError(error) });
   }
 }
 
@@ -376,8 +380,8 @@ function onCollectionSaveExecute(
         // wrap view query if necessary
         try {
           query = normalizeViewQueryId(txApp, query);
-        } catch (normalizeErr) {
-          throw wrapError("failed to normalize view query id", normalizeErr);
+        } catch (error) {
+          throw wrapError("failed to normalize view query id", error);
         }
 
         // (re)create the view
@@ -401,12 +405,12 @@ function onCollectionSaveExecute(
     // (only log the error to allow users to adjust the problematic view queries from the UI)
     try {
       resaveViewsWithChangedFields(app, collection.id);
-    } catch (depViewsErr) {
+    } catch (error) {
       app.logger.warn(
         "Dependent view collection(s) may need to be updated after " +
           collection.name +
           " collection change",
-        { error: depViewsErr },
+        { error },
       );
     }
   } finally {
@@ -433,8 +437,8 @@ function onCollectionDeleteExecute(
         references = withDriverErrors(() =>
           findCollectionReferences(app, collection, collection.id),
         );
-      } catch (err) {
-        throw wrapError(`[${collection.name}] failed to check collection references`, err);
+      } catch (error) {
+        throw wrapError(`[${collection.name}] failed to check collection references`, error);
       }
       if (references.size > 0) {
         const names = [...references.keys()].map((ref) => ref.name);
@@ -456,10 +460,10 @@ function onCollectionDeleteExecute(
         // trigger views resave to check for dependencies
         try {
           resaveViewsWithChangedFields(txApp, collection.id);
-        } catch (err) {
+        } catch (error) {
           throw wrapError(
             `[${collection.name}] failed to delete due to existing view dependency`,
-            err,
+            error,
           );
         }
       }
@@ -499,13 +503,13 @@ function driverValues(data: Params): Params {
 }
 
 function driverValue(key: string, value: unknown): unknown {
-  if (value instanceof FieldsList || value instanceof DateTime) {
+  if (isInstance(FieldsList, value) || isInstance(DateTime, value)) {
     return value.value();
   }
-  if (value instanceof JSONRaw) {
+  if (isInstance(JSONRaw, value)) {
     const v = value.value();
     // the options text is valid UTF-8 (Collection.dbExport() marshals it)
-    return v instanceof Uint8Array ? bytesToText(v) : v;
+    return isInstance(Uint8Array, v) ? bytesToText(v) : v;
   }
   if (key === "indexes" && Array.isArray(value)) {
     return jsonArrayValue(value);

@@ -1,9 +1,7 @@
 // Upstream: tools/filesystem/internal/s3blob/s3/get_object.go
 
-import {
-  type HeadObjectResponse,
-  loadHeadObject,
-} from "@/tools/filesystem/internal/s3blob/s3/head-object";
+import { loadHeadObject } from "@/tools/filesystem/internal/s3blob/s3/head-object";
+import type { HeadObjectResponse } from "@/tools/filesystem/internal/s3blob/s3/head-object";
 import type { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html#API_GetObject_ResponseElements

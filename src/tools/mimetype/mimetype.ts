@@ -50,8 +50,8 @@ export async function detectReader(r: Blob): Promise<[MIME, Error | null]> {
   let input: Uint8Array;
   try {
     input = new Uint8Array(await r.slice(0, l).arrayBuffer());
-  } catch (err) {
-    return [errMIME, err instanceof Error ? err : new Error(String(err))];
+  } catch (error) {
+    return [errMIME, error instanceof Error ? error : new Error(String(error))];
   }
 
   return [root.match(input, l, root), null];
@@ -61,7 +61,7 @@ export async function detectReader(r: Blob): Promise<[MIME, Error | null]> {
 // MIME type equality test is done on the "type/subtype" section, ignores
 // any optional MIME parameters, ignores any leading and trailing whitespace,
 // and is case insensitive.
-export function equalsAny(s: string, ...mimes: string[]): boolean {
+export function equalsAny(s: string, ...mimes: Array<string>): boolean {
   [s] = parseMediaType(s);
   for (let m of mimes) {
     [m] = parseMediaType(m);

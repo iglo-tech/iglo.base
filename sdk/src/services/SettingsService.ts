@@ -1,7 +1,7 @@
 // js-sdk v0.28.1 src/services/SettingsService.ts
 import type { LooseObject } from "@sdk/tools/loose";
 import { BaseService } from "@sdk/services/BaseService";
-import { type CommonOptions } from "@sdk/tools/options";
+import type { CommonOptions } from "@sdk/tools/options";
 
 interface appleClientSecret {
   secret: string;
@@ -53,7 +53,7 @@ export class SettingsService extends BaseService {
       {
         method: "POST",
         body: {
-          filesystem: filesystem,
+          filesystem,
         },
       },
       options,

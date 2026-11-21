@@ -12,7 +12,7 @@ import { join } from "node:path";
 //
 // It is an alternative to os.Rename() for the cases where we can't
 // rename/delete the src dir (see https://ganigeorgiev.com/pocketbase/discussions/2519).
-export function moveDirContent(src: string, dest: string, ...rootExclude: string[]): void {
+export function moveDirContent(src: string, dest: string, ...rootExclude: Array<string>): void {
   const entries = readdirSync(src);
 
   // make sure that the dest dir exist
@@ -26,14 +26,14 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: string
 
   const moved = new Map<string, string>();
 
-  const tryRollback = (): unknown[] => {
-    const errs: unknown[] = [];
+  const tryRollback = (): Array<unknown> => {
+    const errs: Array<unknown> = [];
 
     for (const [oldPath, newPath] of moved) {
       try {
         renameSync(newPath, oldPath);
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
 
@@ -41,8 +41,8 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: string
     if (manuallyCreatedDestDir && errs.length === 0) {
       try {
         rmdirSync(dest);
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
 
@@ -59,9 +59,9 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: string
 
     try {
       renameSync(oldPath, newPath);
-    } catch (err) {
-      const errs = [...tryRollback(), err];
-      throw errs.length > 1 ? new AggregateError(errs, errs.map(String).join("\n")) : err;
+    } catch (error) {
+      const errs = [...tryRollback(), error];
+      throw errs.length > 1 ? new AggregateError(errs, errs.map(String).join("\n")) : error;
     }
 
     moved.set(oldPath, newPath);

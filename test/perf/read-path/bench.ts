@@ -21,10 +21,8 @@ import {
   openTarget,
   summarize,
   workloadNames,
-  type Dataset,
-  type Target,
-  type WorkloadName,
 } from "@test/perf/read-path/workloads";
+import type { Dataset, Target } from "@test/perf/read-path/workloads";
 
 const { values } = parseArgs({
   options: {
@@ -35,13 +33,13 @@ const { values } = parseArgs({
     seconds: { type: "string", default: "2" },
   },
 });
-const modes = values.modes!.split(",").map(Number);
+const modes = values.modes.split(",").map(Number);
 const seconds = Number(values.seconds);
 const scratch = values.scratch!;
 const concurrency = 8;
 
-async function latency(target: Target, run: () => unknown, ms: number): Promise<number[]> {
-  const samples: number[] = [];
+async function latency(target: Target, run: () => unknown, ms: number): Promise<Array<number>> {
+  const samples: Array<number> = [];
   const end = performance.now() + ms;
   while (performance.now() < end) {
     const t = performance.now();
@@ -56,7 +54,7 @@ async function throughput(
   ms: number,
 ): Promise<{ qps: number; lag: ReturnType<typeof summarize> }> {
   let done = 0;
-  const lags: number[] = [];
+  const lags: Array<number> = [];
   let expected = performance.now() + 5;
   const timer = setInterval(() => {
     const now = performance.now();
@@ -71,7 +69,9 @@ async function throughput(
         await run();
         done++;
         // let timers run between queries, as an HTTP server's event loop would
-        await new Promise((r) => setImmediate(r));
+        await new Promise((r) => {
+          setImmediate(r);
+        });
       }
     }),
   );
@@ -80,13 +80,15 @@ async function throughput(
   return { qps: (done / elapsed) * 1000, lag: summarize(lags) };
 }
 
-const results: unknown[] = [];
-const datasets: [Dataset, string | undefined][] = [
+const results: Array<unknown> = [];
+const datasets: Array<[Dataset, string | undefined]> = [
   ["fixture", values.fixture],
   ["1m", values.big],
 ];
 for (const [dataset, source] of datasets) {
-  if (source === undefined) continue;
+  if (source === undefined) {
+    continue;
+  }
   const dir = copyDataset(dataset, source, scratch);
   try {
     for (const workers of modes) {
@@ -111,7 +113,7 @@ for (const [dataset, source] of datasets) {
         for (const name of workloadNames) {
           guard();
           const ms = (name === "slow" ? 1.5 : 1) * seconds * 1000;
-          const run = () => target.run(name as WorkloadName);
+          const run = () => target.run(name);
           const lat = summarize(await latency(target, run, ms));
           const tp = await throughput(run, ms);
           cells[name] = { latency: lat, qps: tp.qps, lag: tp.lag };

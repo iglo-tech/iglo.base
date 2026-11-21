@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 src/stores/AsyncAuthStore.ts
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 
 export type AsyncSaveFunc = (serializedPayload: string) => Promise<void>;
 
@@ -106,7 +107,9 @@ export class AsyncAuthStore extends BaseAuthStore {
         const recordOrModel = (parsed!.record || parsed!.model || null) as AuthRecord;
         this.save(token, recordOrModel);
       }
-    } catch {}
+    } catch {
+      // unparsable stored auth data: the store stays as it is
+    }
   }
 
   /**
@@ -128,7 +131,7 @@ export class AsyncAuthStore extends BaseAuthStore {
       return;
     }
 
-    this.queue[0]!().finally(() => {
+    void this.queue[0]!().finally(() => {
       this.queue.shift();
 
       if (!this.queue.length) {

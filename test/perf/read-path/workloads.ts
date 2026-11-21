@@ -10,7 +10,7 @@ import type { Params } from "@/db/dbx/query";
 
 export type Dataset = "fixture" | "1m";
 export type WorkloadName = "lookup" | "page" | "count" | "slow";
-export const workloadNames: readonly WorkloadName[] = ["lookup", "page", "count", "slow"];
+export const workloadNames: ReadonlyArray<WorkloadName> = ["lookup", "page", "count", "slow"];
 
 export interface Workload {
   // a new query's SQL and params each call
@@ -27,7 +27,7 @@ export interface Target {
   close(): Promise<void>;
 }
 
-function pick<T>(items: T[]): T {
+function pick<T>(items: Array<T>): T {
   return items[Math.floor(Math.random() * items.length)]!;
 }
 
@@ -118,12 +118,19 @@ export function openTarget(dataset: Dataset, dir: string, workers: number): Targ
   };
 }
 
-export function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return Number.NaN;
+export function percentile(sorted: Array<number>, p: number): number {
+  if (sorted.length === 0) {
+    return Number.NaN;
+  }
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]!;
 }
 
-export function summarize(samples: number[]): { n: number; p50: number; p95: number; p99: number } {
+export function summarize(samples: Array<number>): {
+  n: number;
+  p50: number;
+  p95: number;
+  p99: number;
+} {
   const sorted = samples.toSorted((a, b) => a - b);
   return {
     n: sorted.length,

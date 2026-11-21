@@ -7,7 +7,7 @@ import { Message } from "@/tools/subscriptions/message";
 test("TestMessageWrite", () => {
   const m = new Message("test_name", new TextEncoder().encode("test_data"));
 
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   m.writeSSE((chunk) => chunks.push(chunk), "test_id");
 
   const expected = "id:test_id\nevent:test_name\ndata:test_data\n\n";

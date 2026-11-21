@@ -12,7 +12,7 @@ interface Seen {
   body: string;
 }
 
-const seen: Seen[] = [];
+const seen: Array<Seen> = [];
 
 const server = Bun.serve({
   hostname: "127.0.0.1",
@@ -47,7 +47,7 @@ const local = `http://127.0.0.1:${server.port}`;
 const named = `http://localhost:${server.port}`;
 
 afterAll(() => {
-  server.stop(true);
+  void server.stop(true);
 });
 
 const via = (status: number, to: string): string =>
@@ -117,13 +117,17 @@ describe("fetchFollowingRedirects", () => {
   });
 
   test("refuses a file URL", async () => {
-    await expect(fetchFollowingRedirects(file)).rejects.toThrow("unsupported protocol scheme");
+    await Promise.resolve(
+      expect(fetchFollowingRedirects(file)).rejects.toThrow("unsupported protocol scheme"),
+    );
   });
 
   test("refuses a redirect to a file URL or another scheme", async () => {
     for (const to of [file, "data:application/json,{}", "ftp://127.0.0.1/a"]) {
-      await expect(fetchFollowingRedirects(via(302, to))).rejects.toThrow(
-        "unsupported protocol scheme",
+      await Promise.resolve(
+        expect(fetchFollowingRedirects(via(302, to))).rejects.toThrow(
+          "unsupported protocol scheme",
+        ),
       );
     }
   });
@@ -139,8 +143,10 @@ describe("fetchFollowingRedirects", () => {
   });
 
   test("stops at the 10th redirect", async () => {
-    await expect(fetchFollowingRedirects(`${local}/hops/10`)).rejects.toThrow(
-      "stopped after 10 redirects",
+    await Promise.resolve(
+      expect(fetchFollowingRedirects(`${local}/hops/10`)).rejects.toThrow(
+        "stopped after 10 redirects",
+      ),
     );
   });
 });

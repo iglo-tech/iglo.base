@@ -35,12 +35,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  InterceptorActionValidate,
-  isDriverValuer,
-  isRecordInterceptor,
-  type Field,
-} from "@/fields/field";
+import { InterceptorActionValidate, isDriverValuer, isRecordInterceptor } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { fieldFactory } from "@/fields/fields";
 import { newBadRequestError } from "@/server/error";
 import { anyType, bytesToText, mapOf, marshal, unmarshal } from "@/tools/types/go-json";
@@ -53,16 +49,12 @@ import {
   validSettings,
   valueCases,
   valueCollections,
-  type FieldDef,
 } from "@test/differential/fields/cases";
-import {
-  TestRecord,
-  TestCollection,
-  newBaseCollection,
-  noDBApp,
-  interceptorArgs,
-} from "@test/support/fields";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import type { FieldDef } from "@test/differential/fields/cases";
+import type { TestCollection } from "@test/support/fields";
+import { TestRecord, newBaseCollection, noDBApp, interceptorArgs } from "@test/support/fields";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const email = "fields@example.com";
 const password = "1234567890";
@@ -105,11 +97,14 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const res = await fetch(`${upstream.url}${path}`, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json", authorization: token },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -137,7 +132,7 @@ function modelField(def: FieldDef): Field {
   return field;
 }
 
-function modelCollection(name: string, defs: FieldDef[]): TestCollection {
+function modelCollection(name: string, defs: Array<FieldDef>): TestCollection {
   const collection = newBaseCollection(name);
   for (const def of defs) {
     collection.fields.add(modelField(def));
@@ -187,18 +182,18 @@ interface CreatedCollection {
   responseFields: string;
 }
 
-const createdCollections: CreatedCollection[] = [];
+const createdCollections: Array<CreatedCollection> = [];
 
 async function createCollection(
   name: string,
-  defs: FieldDef[],
+  defs: Array<FieldDef>,
 ): Promise<{ status: number; text: string }> {
   return request("POST", "/api/collections", JSON.stringify({ name, type: "base", fields: defs }));
 }
 
 // posts the collection and compares upstream's answer with the model's:
 // the error data of a rejected one, the field JSON of an accepted one
-async function checkCollection(name: string, defs: FieldDef[]): Promise<number> {
+async function checkCollection(name: string, defs: Array<FieldDef>): Promise<number> {
   const model = modelCollection(name, defs);
   const errs = settingsErrors(model);
 
@@ -253,7 +248,7 @@ interface StoredRecord {
   columns: Record<string, [string, unknown]>;
 }
 
-const storedRecords: StoredRecord[] = [];
+const storedRecords: Array<StoredRecord> = [];
 
 // the value a record field is bound with: DriverValue, or the value's own
 // driver.Valuer (DateTime, JSONRaw, GeoPoint; JSONArray for arrays)
@@ -291,13 +286,9 @@ function storeModel(
     db.run(
       `CREATE TABLE t (${fields.map((f) => `"${f.getName()}" ${f.columnType(app)}`).join(", ")})`,
     );
-    const values = fields.map((f) => bindValue(f, record)) as (
-      | string
-      | number
-      | boolean
-      | null
-      | Uint8Array
-    )[];
+    const values = fields.map((f) => bindValue(f, record)) as Array<
+      string | number | boolean | null | Uint8Array
+    >;
     db.query(`INSERT INTO t VALUES (${fields.map(() => "?").join(", ")})`).run(...values);
     return readColumns(
       db,
@@ -313,12 +304,12 @@ function storeModel(
 function readColumns(
   db: Database,
   table: string,
-  names: string[],
+  names: Array<string>,
   id: string | null,
 ): Record<string, [string, unknown]> {
   const select = names.map((n) => `typeof("${n}"), "${n}"`).join(", ");
   const stmt = db.prepare(`SELECT ${select} FROM "${table}"${id === null ? "" : ` WHERE id = ?`}`);
-  const row = (id === null ? stmt.values() : stmt.values(id))[0] as unknown[];
+  const row = (id === null ? stmt.values() : stmt.values(id))[0] as Array<unknown>;
   const out: Record<string, [string, unknown]> = {};
   for (const [i, n] of names.entries()) {
     out[n] = [row[2 * i] as string, row[2 * i + 1]];

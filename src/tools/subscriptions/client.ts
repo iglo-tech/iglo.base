@@ -40,7 +40,7 @@ export class Client {
   readonly #subscriptions = new Map<string, SubscriptionOptions>();
   #receiver: ClientReceiver | null = null;
   // messages sent before a receiver is set
-  #pending: Message[] = [];
+  #pending: Array<Message> = [];
   #isDiscarded = false;
 
   // NewDefaultClient creates and returns a new Client instance.
@@ -70,7 +70,7 @@ export class Client {
 
   // Subscriptions returns a shallow copy of the client subscriptions matching the prefixes.
   // If no prefix is specified, returns all subscriptions.
-  subscriptions(...prefixes: string[]): Map<string, SubscriptionOptions> {
+  subscriptions(...prefixes: Array<string>): Map<string, SubscriptionOptions> {
     // no prefix -> return copy of all subscriptions
     if (prefixes.length === 0) {
       return new Map(this.#subscriptions);
@@ -103,7 +103,7 @@ export class Client {
   //	)
   //
   // Empty subscriptions (aka. "") are ignored.
-  subscribe(...subs: string[]): void {
+  subscribe(...subs: Array<string>): void {
     for (const s of subs) {
       if (s === "") {
         continue; // skip empty
@@ -151,7 +151,7 @@ export class Client {
   // Unsubscribe unsubscribes the client from the provided subscriptions list.
   //
   // If subs is not set, this method removes all registered client's subscriptions.
-  unsubscribe(...subs: string[]): void {
+  unsubscribe(...subs: Array<string>): void {
     if (subs.length > 0) {
       for (const s of subs) {
         this.#subscriptions.delete(s);

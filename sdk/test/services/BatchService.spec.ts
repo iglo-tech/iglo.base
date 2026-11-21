@@ -5,24 +5,24 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { BatchService } from "@sdk/services/BatchService";
 
-describe("BatchService", function () {
+describe("BatchService", () => {
   const client = new Client("test_base_url");
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("send()", function () {
-    test("Should send a create/update/upsert/delete batch request", async function () {
+  describe("send()", () => {
+    test("Should send a create/update/upsert/delete batch request", async () => {
       const service = new BatchService(client);
 
       fetchMock.on({
@@ -132,10 +132,10 @@ describe("BatchService", function () {
         },
       });
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
 
-    test("Should successfully detect ReactNative file object format", async function () {
+    test("Should successfully detect ReactNative file object format", async () => {
       const service = new BatchService(client);
 
       fetchMock.on({
@@ -197,10 +197,10 @@ describe("BatchService", function () {
       // restore
       (globalThis.global as any).HermesInternal = false;
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
 
-    test("Should convert FormData to object on individual batch request level", async function () {
+    test("Should convert FormData to object on individual batch request level", async () => {
       const service = new BatchService(client);
 
       fetchMock.on({
@@ -251,7 +251,7 @@ describe("BatchService", function () {
         replyBody: true,
       });
 
-      let formData = new FormData();
+      const formData = new FormData();
       formData.append("title", "test_title");
       formData.append("description", "old");
       formData.append("number1", "123");
@@ -281,7 +281,7 @@ describe("BatchService", function () {
         },
       });
 
-      assert.deepEqual(result as any, true);
+      assert.deepEqual(result, true);
     });
   });
 });

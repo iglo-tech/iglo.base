@@ -5,6 +5,7 @@ import { HashExp } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
 import { Errors, NewError } from "@/validation/error";
 import type { RuleFunc } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // UniqueId checks whether a field string id already exists in the
 // specified table.
@@ -29,8 +30,8 @@ export function UniqueId(db: Builder, tableName: string): RuleFunc {
         .limit(1)
         .row();
       foundId = row[0] === null || row[0] === undefined ? "" : String(row[0]);
-    } catch (err) {
-      failed = !isNoRowsError(err);
+    } catch (error) {
+      failed = !isNoRowsError(error);
     }
 
     if (failed || foundId !== "") {
@@ -54,13 +55,13 @@ export function UniqueId(db: Builder, tableName: string): RuleFunc {
 export function NormalizeUniqueIndexError(
   err: Error | null,
   tableOrAlias: string,
-  fieldNames: readonly string[],
+  fieldNames: ReadonlyArray<string>,
 ): Error | null {
   if (err === null) {
     return err;
   }
 
-  if (err instanceof Errors) {
+  if (isInstance(Errors, err)) {
     return err;
   }
 

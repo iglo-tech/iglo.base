@@ -1,5 +1,5 @@
 // js-sdk v0.28.1 src/tools/legacy.ts
-import { type SendOptions } from "@sdk/tools/options";
+import type { SendOptions } from "@sdk/tools/options";
 
 export function normalizeLegacyOptionsArgs(
   legacyWarn: string,
@@ -7,8 +7,8 @@ export function normalizeLegacyOptionsArgs(
   bodyOrOptions?: unknown,
   query?: unknown,
 ): SendOptions {
-  const hasBodyOrOptions = typeof bodyOrOptions !== "undefined";
-  const hasQuery = typeof query !== "undefined";
+  const hasBodyOrOptions = bodyOrOptions !== undefined;
+  const hasQuery = query !== undefined;
 
   if (!hasQuery && !hasBodyOrOptions) {
     return baseOptions;

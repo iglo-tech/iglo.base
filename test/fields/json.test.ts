@@ -36,7 +36,7 @@ describe("TestJSONFieldPrepareValue", () => {
   const f = new JSONField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: { raw: unknown; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; expected: string }> = [
     { raw: "null", expected: `null` },
     { raw: "", expected: `""` },
     { raw: "true", expected: `true` },
@@ -79,12 +79,12 @@ describe("TestJSONFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: JSONField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new JSONField({ name: "test" }),
@@ -157,11 +157,11 @@ describe("TestJSONFieldValidateSettings", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: () => JSONField;
-    expectErrors: string[];
-  }[] = [
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "MaxSize < 0",
       field: () => new JSONField({ id: "test", name: "test", maxSize: -1 }),
@@ -194,7 +194,7 @@ describe("TestJSONFieldValidateSettings", () => {
 });
 
 describe("TestJSONFieldCalculateMaxBodySize", () => {
-  const scenarios: { field: JSONField; expected: number }[] = [
+  const scenarios: Array<{ field: JSONField; expected: number }> = [
     { field: new JSONField(), expected: DefaultJSONFieldMaxSize },
     { field: new JSONField({ maxSize: 10 }), expected: 10 },
   ];
@@ -230,7 +230,7 @@ describe("JSONField large integers", () => {
     expect(settingsErrors(loadLargeInt(`"maxSize":9007199254740991`))).toBeNull();
     const field = loadLargeInt(`"maxSize":9007199254740993`);
     expect(field.marshalJSON()).toContain(`"maxSize":9007199254740993`);
-    expect(field.calculateMaxBodySize()).toBe(9007199254740993n);
+    expect(field.calculateMaxBodySize()).toBe(9_007_199_254_740_993n);
     expect(settingsErrors(field)).toBe(
       `{"maxSize":{"code":"validation_max_less_equal_than_required","message":"Must be no greater than 9007199254740991.","params":{"threshold":9007199254740991}}}`,
     );

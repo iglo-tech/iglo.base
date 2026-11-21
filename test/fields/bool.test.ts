@@ -25,7 +25,7 @@ describe("TestBoolFieldPrepareValue", () => {
   const f = new BoolField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, boolean][] = [
+  const scenarios: Array<[unknown, boolean]> = [
     ["", false],
     ["f", false],
     ["t", true],
@@ -51,12 +51,12 @@ describe("TestBoolFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: BoolField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new BoolField({ name: "test" }),

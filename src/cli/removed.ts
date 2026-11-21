@@ -31,7 +31,7 @@ export function ignoredDirWarning(dir: string): string {
 }
 
 // The first removed flag in argv, before any "--" terminator.
-export function findRemovedFlag(argv: string[]): string | undefined {
+export function findRemovedFlag(argv: Array<string>): string | undefined {
   for (const arg of argv) {
     if (arg === "--") {
       return undefined;

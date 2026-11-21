@@ -44,6 +44,7 @@ export function ParseAddr(s: string): Addr {
         // Assume that this was trying to be an IPv6 address with
         // a zone specifier, but the address is missing.
         throw new ParseAddrError(s, "missing IPv6 address");
+      case undefined:
     }
   }
   throw new ParseAddrError(s, "unable to parse IP");
@@ -156,7 +157,7 @@ function parseIPv6(input: string): Addr {
         // more than 4 digits in group, fail.
         throw new ParseAddrError(input, "each group must have 4 or less digits", s);
       }
-      if (acc > 0xffff) {
+      if (acc > 0xff_ff) {
         // Overflow, fail.
         throw new ParseAddrError(input, "IPv6 field has value >=2^16", s);
       }
@@ -262,8 +263,8 @@ export function ParsePrefix(s: string): Prefix {
   let ip: Addr;
   try {
     ip = ParseAddr(s.slice(0, i));
-  } catch (err) {
-    throw new ParsePrefixError(s, (err as Error).message);
+  } catch (error) {
+    throw new ParsePrefixError(s, (error as Error).message);
   }
   // IPv6 zones are not allowed: https://go.dev/issue/51899
   if (!ip.is4 && ip.zone !== "") {

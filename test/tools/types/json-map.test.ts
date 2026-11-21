@@ -8,7 +8,6 @@ import { describe, expect, test } from "bun:test";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { anyType, marshal } from "@/tools/types/go-json";
 import {
-  type JSONMap,
   jsonMapGet,
   jsonMapMarshalJSON,
   jsonMapSet,
@@ -16,11 +15,12 @@ import {
   jsonMapValue,
   scanJSONMap,
 } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 
 describe("JSONMapMarshalJSON", () => {
-  const scenarios: [JSONMap<unknown> | undefined, string][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string]> = [
     [undefined, "{}"],
     [{}, `{}`],
     [{ test: [1, 2, 3] }, `{"test":[1,2,3]}`],
@@ -38,7 +38,7 @@ describe("JSONMapMarshalJSON", () => {
 });
 
 describe("JSONMapMarshalString", () => {
-  const scenarios: [JSONMap<unknown> | undefined, string][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string]> = [
     [undefined, "{}"],
     [{}, `{}`],
     [{ test1: 123, test2: "lorem" }, `{"test1":123,"test2":"lorem"}`],
@@ -54,7 +54,7 @@ describe("JSONMapMarshalString", () => {
 
 describe("JSONMapGet", () => {
   // Go returns T's zero value (nil for any); here a missing key is undefined
-  const scenarios: [JSONMap<unknown> | undefined, string, unknown][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string, unknown]> = [
     [undefined, "test", undefined],
     [{ test: 123 }, "test", 123],
     [{ test: 123 }, "missing", undefined],
@@ -68,7 +68,7 @@ describe("JSONMapGet", () => {
 });
 
 describe("JSONMapSet", () => {
-  const scenarios: [string, unknown][] = [
+  const scenarios: Array<[string, unknown]> = [
     ["a", null],
     ["a", 123],
     ["b", "test"],
@@ -86,7 +86,7 @@ describe("JSONMapSet", () => {
 });
 
 describe("JSONMapValue", () => {
-  const scenarios: [JSONMap<unknown> | undefined, string][] = [
+  const scenarios: Array<[JSONMap<unknown> | undefined, string]> = [
     [undefined, `{}`],
     [{}, `{}`],
     [{ test1: 123, test2: "lorem" }, `{"test1":123,"test2":"lorem"}`],
@@ -101,7 +101,7 @@ describe("JSONMapValue", () => {
 });
 
 describe("JSONArrayMapScan", () => {
-  const scenarios: [unknown, boolean, string][] = [
+  const scenarios: Array<[unknown, boolean, string]> = [
     [``, false, `{}`],
     [null, false, `{}`],
     [new Uint8Array(), false, `{}`],
@@ -133,7 +133,7 @@ describe("JSONArrayMapScan", () => {
 
 // Not in upstream's tests: the bytes Go's json v2 (Deterministic) gives.
 describe("JSONMap Go bytes", () => {
-  const scenarios: [string, JSONMap<unknown>, string][] = [
+  const scenarios: Array<[string, JSONMap<unknown>, string]> = [
     [
       "keys sorted by UTF-8 bytes",
       { b: 1, a: 2, "10": 3, "9": 4, é: 5, "\u{1f600}": 6, "￿": 7 },
@@ -156,7 +156,7 @@ describe("JSONMap Go bytes", () => {
     ],
     [
       "number text",
-      { a: 1e21, b: 1e20, c: 1e-7, d: 0.000001, e: 1.5, f: -0, g: 123456789.123 },
+      { a: 1e21, b: 1e20, c: 1e-7, d: 0.000001, e: 1.5, f: -0, g: 123_456_789.123 },
       `{"a":1e+21,"b":100000000000000000000,"c":1e-7,"d":0.000001,"e":1.5,"f":-0,"g":123456789.123}`,
     ],
     ["null and bool", { a: null, b: true, c: false }, `{"a":null,"b":true,"c":false}`],
@@ -196,7 +196,7 @@ describe("JSONMapScan Go decoding", () => {
   test("numbers are float64 and keys keep their own properties", () => {
     const m = scanJSONMap(`{"__proto__":{"a":1},"n":9007199254740993}`);
     expect(Object.hasOwn(m, "__proto__")).toBe(true);
-    expect(m["n"]).toBe(9007199254740992);
+    expect(m["n"]).toBe(9_007_199_254_740_992);
   });
 
   test("merges into an existing map", () => {
@@ -206,12 +206,12 @@ describe("JSONMapScan Go decoding", () => {
   });
 
   test("an existing value keeps its Go type", () => {
-    expect(() => scanJSONMap(`{"a":"x"}`, anyType, { a: 1 } as JSONMap<unknown>)).toThrow();
-    expect(scanJSONMap(`{"a":null}`, anyType, { a: 1 } as JSONMap<unknown>)).toEqual({ a: null });
+    expect(() => scanJSONMap<unknown>(`{"a":"x"}`, anyType, { a: 1 })).toThrow();
+    expect(scanJSONMap<unknown>(`{"a":null}`, anyType, { a: 1 })).toEqual({ a: null });
   });
 
   // upstream resets the map whenever decoding fails
-  const failing: [string, string][] = [
+  const failing: Array<[string, string]> = [
     ["a number out of range", `{"a":2,"b":1e400}`],
     ["malformed syntax", `{"a":2,`],
     ["an incomplete number", `{"a":2,"b":5.}`],

@@ -21,7 +21,7 @@ import {
 import { escapeKey, unescapeKey } from "@/tools/filesystem/internal/fileblob/fileblob";
 
 const encoder = new TextEncoder();
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -41,7 +41,7 @@ function all(): boolean {
 }
 
 describe("HexEscape", () => {
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["", ""],
     ["a", "__0x61__"],
     [" ", "__0x20__"],
@@ -68,7 +68,7 @@ describe("HexEscape", () => {
 });
 
 describe("escapeKey", () => {
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["a/b/c.txt", "a/b/c.txt"],
     ["a\x01b", "a__0x1__b"],
     ["../a", "..__0x2f__a"],
@@ -108,8 +108,8 @@ describe("keys", () => {
       let err: unknown;
       try {
         fs.delete("missing/file.txt");
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
       expect(isNotFound(err)).toBe(true);
       expect(String((err as Error).message)).toStartWith("[key: missing/file.txt] ");
@@ -140,8 +140,8 @@ describe("keys", () => {
 
 describe(".attrs", () => {
   test("json/v2 string escaping", () => {
-    expect(quote('a"b\\c')).toBe('"a\\"b\\\\c"');
-    expect(quote("\b\t\n\f\r\x01\x1f")).toBe('"\\b\\t\\n\\f\\r\\u0001\\u001f"');
+    expect(quote(String.raw`a"b\c`)).toBe(String.raw`"a\"b\\c"`);
+    expect(quote("\b\t\n\f\r\u0001\u001f")).toBe(String.raw`"\b\t\n\f\r\u0001\u001f"`);
     expect(quote("<>&  \x7f é😀")).toBe('"<>&  \x7f é😀"');
     expect(() => quote("a\udcc3")).toThrow("invalid UTF-8");
   });
@@ -272,7 +272,7 @@ describe("List and DeletePrefix over several pages", () => {
 });
 
 describe("formatMediaType", () => {
-  const cases: [string, Map<string, string>, string][] = [
+  const cases: Array<[string, Map<string, string>, string]> = [
     ["text/plain", new Map([["charset", "utf-8"]]), "text/plain; charset=utf-8"],
     ["Image/PNG", new Map(), "image/png"],
     [

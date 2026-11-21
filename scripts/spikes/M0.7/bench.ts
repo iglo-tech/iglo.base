@@ -21,7 +21,7 @@ if (!candidate || !jobsPath) {
 }
 const { concurrency, jobs } = JSON.parse(readFileSync(jobsPath, "utf8")) as {
   concurrency: number;
-  jobs: Job[];
+  jobs: Array<Job>;
 };
 
 const statusKiB = (key: string): number => {
@@ -48,7 +48,6 @@ function call<T>(w: Worker, message: unknown): Promise<T> {
     w.addEventListener("message", onMessage, { once: true });
     w.addEventListener("error", onError, { once: true });
     // a Worker's postMessage has no target origin (that is window.postMessage)
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     w.postMessage(message);
   });
 }
@@ -60,17 +59,17 @@ Bun.gc(true);
 const rssBeforeMiB = statusKiB("VmRSS") / 1024;
 
 const queue = [...jobs];
-const results: JobResult[] = [];
+const results: Array<JobResult> = [];
 const started = performance.now();
 await Promise.all(
   workers.map(async (w) => {
     for (let job = queue.shift(); job; job = queue.shift()) {
       const current = job;
       results.push(
-        await call<JobResult>(w, current).catch((err: unknown) => ({
+        await call<JobResult>(w, current).catch((error: unknown) => ({
           id: current.id,
           ms: 0,
-          error: `worker error: ${String(err)}`,
+          error: `worker error: ${String(error)}`,
         })),
       );
     }

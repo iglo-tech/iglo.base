@@ -61,7 +61,7 @@ describe("Router", () => {
 
     const mux = r.buildMux();
 
-    const scenarios: { method: string; path: string; calls: string }[] = [
+    const scenarios: Array<{ method: string; path: string; calls: string }> = [
       { method: "GET", path: "/any", calls: "root_m:/any:cleanup" },
       { method: "OPTIONS", path: "/any", calls: "root_m:/any:cleanup" },
       { method: "PATCH", path: "/any", calls: "root_m:/any:cleanup" },
@@ -182,7 +182,7 @@ describe("Router", () => {
 
     const mux = r.buildMux();
 
-    const scenarios: { method: string; path: string; calls: string }[] = [
+    const scenarios: Array<{ method: string; path: string; calls: string }> = [
       { method: "GET", path: "/action", calls: "root_2:root_3:root_action:cleanup" },
       {
         method: "GET",

@@ -15,6 +15,7 @@ export function isFile(val: unknown): boolean {
       typeof val === "object" &&
       (val as { uri?: unknown }).uri &&
       ((typeof navigator !== "undefined" && navigator.product === "ReactNative") ||
+        // oxlint-disable-next-line unicorn/no-typeof-undefined -- global is undeclared outside Hermes: typeof must not throw
         (typeof global !== "undefined" && global.HermesInternal))),
   );
 }
@@ -65,7 +66,7 @@ export function hasFileField(body: unknown): boolean {
 export function convertToFormDataIfNeeded(body: unknown): unknown {
   if (
     typeof FormData === "undefined" ||
-    typeof body === "undefined" ||
+    body === undefined ||
     typeof body !== "object" ||
     body === null ||
     isFormData(body) ||
@@ -82,7 +83,7 @@ export function convertToFormDataIfNeeded(body: unknown): unknown {
 
     // skip undefined values for consistency with JSON.stringify
     // (see https://ganigeorgiev.com/pocketbase/discussions/6731#comment-5v564g1mzopqmot)
-    if (typeof val === "undefined") {
+    if (val === undefined) {
       continue;
     }
 
@@ -125,15 +126,15 @@ export function convertFormDataToObject(formData: FormData): Record<string, unkn
         if (typeof parsed === "object" && parsed !== null) {
           Object.assign(result, parsed);
         }
-      } catch (err) {
-        console.warn("@jsonPayload error:", err);
+      } catch (error) {
+        console.warn("@jsonPayload error:", error);
       }
     } else {
-      if (typeof result[k] !== "undefined") {
+      if (result[k] !== undefined) {
         if (!Array.isArray(result[k])) {
           result[k] = [result[k]];
         }
-        (result[k] as unknown[]).push(inferFormDataValue(v));
+        (result[k] as Array<unknown>).push(inferFormDataValue(v));
       } else {
         result[k] = inferFormDataValue(v);
       }
@@ -163,7 +164,7 @@ function inferFormDataValue(value: unknown): unknown {
     (value[0] === "-" || (value[0]! >= "0" && value[0]! <= "9")) &&
     inferNumberCharsRegex.test(value)
   ) {
-    let num = +value;
+    const num = +value;
     if ("" + num === value) {
       return num;
     }

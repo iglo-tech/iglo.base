@@ -8,7 +8,8 @@ import { AuthUser, BaseProvider, expiryOf } from "@/oauth2/base-provider";
 import { idTokenLeewaySeconds } from "@/oauth2/oidc";
 import type { Token } from "@/oauth2/token";
 import { decodeFields, decodeRawUser } from "@/oauth2/user-fields";
-import { type MapClaims, parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import { parseUnverifiedToken, validateClaims } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { toBool, toString } from "@/tools/types/cast";
 import { stringType } from "@/tools/types/go-json";
 

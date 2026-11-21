@@ -148,7 +148,7 @@ class rootChildIter {
   private i = 0; // next index for the flat fallback scan
   private readonly flat: boolean; // no usable tree; scan all entries instead
   private visited = 0; // entries visited so far; guards against cyclic trees
-  private readonly stack: number[] = []; // ids waiting to be visited
+  private readonly stack: Array<number> = []; // ids waiting to be visited
 
   constructor(private readonly c: cdf) {
     this.n = c.dirLen();
@@ -204,7 +204,7 @@ class cdf {
   satSecs = new int32s(); // list of SAT sector ids; usually a sub-slice of raw input
   satEntries = 0; // number of valid SAT entries reachable through satSecs
   firstSSAT = 0;
-  ssatSecs: number[] = []; // list of SSAT sector ids, precomputed from the firstSSAT chain
+  ssatSecs: Array<number> = []; // list of SSAT sector ids, precomputed from the firstSSAT chain
   dirRaw: Uint8Array = new Uint8Array(0); // directory stream bytes (entries are decoded on demand)
   sst: Uint8Array | null = null; // short-stream pool (root storage's stream)
   sstBuilt = false; // whether sst was already loaded (it is loaded lazily)
@@ -296,7 +296,7 @@ class cdf {
   // (a self-looping sector) cannot spin forever.
   buildSSAT(): void {
     const maxIDs = Math.floor(this.data.length / this.secSize) + 1;
-    const ids: number[] = [];
+    const ids: Array<number> = [];
     for (let sid = this.firstSSAT; sid >= 0;) {
       if (sid >= this.satLen()) {
         break; // SAT is truncated; stop collecting
@@ -391,7 +391,7 @@ class cdf {
     // into a fresh buffer. Even here we only allocate space for ids (4 bytes
     // each), not the full SAT contents.
     const maxIDs = Math.floor(this.data.length / this.secSize) + 1;
-    const buf: number[] = [];
+    const buf: Array<number> = [];
     for (let i = 0; i < masterSAT.len(); i++) {
       if (masterSAT.at(i) < 0) {
         break;
@@ -497,7 +497,7 @@ class cdf {
     // non-contiguous directory and stream chains, so this fallback is required
     // for correct detection on those files.
     const maxBytes = this.data.length;
-    const parts: Uint8Array[] = [];
+    const parts: Array<Uint8Array> = [];
     let outLen = 0;
     while (sid >= 0) {
       if (sid >= this.satLen()) {
@@ -529,7 +529,7 @@ class cdf {
     if (sst === null) {
       return null;
     }
-    const parts: Uint8Array[] = [];
+    const parts: Array<Uint8Array> = [];
     let outLen = 0;
     while (sid >= 0) {
       const off = sid * this.shortSecSize;
@@ -606,7 +606,7 @@ class cdf {
   }
 }
 
-function concat(parts: Uint8Array[], length: number): Uint8Array {
+function concat(parts: Array<Uint8Array>, length: number): Uint8Array {
   const out = new Uint8Array(length);
   let off = 0;
   for (const p of parts) {
@@ -618,8 +618,8 @@ function concat(parts: Uint8Array[], length: number): Uint8Array {
 
 const propIDNameOfApplication = 0x12;
 
-const typeMask = 0x0fff;
-const typeVector = 0x1000;
+const typeMask = 0x0f_ff;
+const typeVector = 0x10_00;
 const typeStringASCII = 0x1e;
 const typeStringWide = 0x1f;
 
@@ -657,7 +657,7 @@ export function summaryAppName(stream: Uint8Array): Uint8Array | null {
     if ((typ & typeVector) !== 0) {
       return null;
     }
-    let step = 0;
+    let step: number;
     switch (typ & typeMask) {
       case typeStringASCII:
         step = 1;
@@ -682,7 +682,7 @@ export function summaryAppName(stream: Uint8Array): Uint8Array | null {
 // printableLowBytes copies the printable low byte of each step-byte unit
 // in b, stopping at the first NUL.
 function printableLowBytes(b: Uint8Array, step: number): Uint8Array {
-  const out: number[] = [];
+  const out: Array<number> = [];
   for (let i = 0; i + step <= b.length; i += step) {
     const c = b[i] as number;
     if (c === 0) {
@@ -708,7 +708,7 @@ const pat = (needle: string, typ: CDFType): pattern => ({ needle: lit(needle), t
 // app2type maps NameOfApplication values to CDFTypes.
 // Mirrors app2mime[] in libmagic. Needles are upper-cased for case-insensitive
 // matching via scan.IgnoreCase.
-const app2type: pattern[] = [
+const app2type: Array<pattern> = [
   pat("WORD", CDFTypeDoc),
   pat("EXCEL", CDFTypeXls),
   pat("POWERPOINT", CDFTypePpt),
@@ -722,7 +722,7 @@ const app2type: pattern[] = [
 // name2type maps directory entry names to CDFTypes.
 // Mirrors name2mime[] in libmagic. Needles are upper-cased for case-insensitive
 // matching via scan.IgnoreCase.
-const name2type: pattern[] = [
+const name2type: Array<pattern> = [
   pat("BOOK", CDFTypeXls),
   pat("WORKBOOK", CDFTypeXls),
   pat("WORDDOCUMENT", CDFTypeDoc),
@@ -733,7 +733,7 @@ const name2type: pattern[] = [
 // lookupSubstring returns the CDFType for the first entry in t whose needle
 // is a case-insensitive substring of v. Mirrors C's strcasestr semantics
 // under the C locale.
-function lookupSubstring(v: Uint8Array, t: pattern[]): [CDFType, boolean] {
+function lookupSubstring(v: Uint8Array, t: Array<pattern>): [CDFType, boolean] {
   const s = new Bytes(v);
   for (const p of t) {
     const [i] = s.search(p.needle, IgnoreCase);
@@ -775,7 +775,7 @@ interface section {
 // sectionTypes maps distinctive directory entries to CDFTypes — a flattened
 // equivalent of sectioninfo[] in libmagic. Used as a fallback when no
 // SummaryInformation stream is present.
-const sectionTypes: section[] = [
+const sectionTypes: Array<section> = [
   // libmagic uses application/encrypted, but that is not a registered media type.
   // For now, we skip identifying that and fall-back on CDFTypeGeneric
   // {"EncryptedPackage", dirTypeUserStream, CDFTypeEncrypted},

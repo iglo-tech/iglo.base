@@ -21,8 +21,8 @@ const jsonContentType = `@request.headers.content_type = "application/json"`;
 const multipartContentType = `@request.headers.content_type ~ "multipart/form-data"`;
 
 // the parents' id is filled in when its turn comes
-function collections(parentsId: string, parentsListView: string): CollectionData[] {
-  const parent = (extra: object): object => ({
+function collections(parentsId: string, parentsListView: string): Array<CollectionData> {
+  const parent = (extra: Record<string, unknown>): object => ({
     name: "parent",
     type: "relation",
     collectionId: parentsId,

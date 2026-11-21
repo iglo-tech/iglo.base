@@ -22,13 +22,14 @@ import { deflateRawSync } from "node:zlib";
 
 import { create } from "@/tools/archive/create";
 import { extract } from "@/tools/archive/extract";
-import { ZipReader, type ZipEntry } from "@/tools/archive/zip-reader";
+import { ZipReader } from "@/tools/archive/zip-reader";
+import type { ZipEntry } from "@/tools/archive/zip-reader";
 import { ZipWriter } from "@/tools/archive/zip-writer";
 
 import { tempDir } from "@test/support/executable";
 import { centralEntries } from "@test/tools/archive/central-directory";
 
-let dirs: string[] = [];
+let dirs: Array<string> = [];
 
 function newDir(): string {
   const dir = tempDir();
@@ -54,7 +55,7 @@ function createTestDir(): string {
   return dir;
 }
 
-function filesIn(dir: string): string[] {
+function filesIn(dir: string): Array<string> {
   return readdirSync(dir, { recursive: true, encoding: "utf8" })
     .filter((name) => statSync(join(dir, name)).isFile())
     .toSorted();
@@ -74,9 +75,9 @@ interface RawEntry {
 }
 
 // a zip from raw entries, with data and comment around it
-function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
-  const parts: Uint8Array[] = [prefix];
-  const directory: Uint8Array[] = [];
+function rawZip(entries: Array<RawEntry>, prefix = new Uint8Array(0)): Uint8Array {
+  const parts: Array<Uint8Array> = [prefix];
+  const directory: Array<Uint8Array> = [];
   let offset = 0;
   const push = (p: Uint8Array): void => {
     parts.push(p);
@@ -92,7 +93,7 @@ function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
 
     const local = new Uint8Array(30 + name.length);
     const lv = new DataView(local.buffer);
-    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint32(0, 0x04_03_4b_50, true);
     lv.setUint16(4, 20, true);
     lv.setUint16(8, method, true);
     lv.setUint32(14, crc32, true);
@@ -103,15 +104,15 @@ function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
 
     const central = new Uint8Array(46 + name.length);
     const cv = new DataView(central.buffer);
-    cv.setUint32(0, 0x02014b50, true);
-    cv.setUint16(4, e.creator ?? 0x0314, true);
+    cv.setUint32(0, 0x02_01_4b_50, true);
+    cv.setUint16(4, e.creator ?? 0x03_14, true);
     cv.setUint16(6, 20, true);
     cv.setUint16(10, method, true);
     cv.setUint32(16, crc32, true);
     cv.setUint32(20, stored.length, true);
     cv.setUint32(24, size, true);
     cv.setUint16(28, name.length, true);
-    cv.setUint32(38, e.attrs ?? 0o100644 * 65536, true);
+    cv.setUint32(38, e.attrs ?? 0o10_0644 * 65_536, true);
     cv.setUint32(42, offset, true);
     central.set(name, 46);
 
@@ -125,7 +126,7 @@ function rawZip(entries: RawEntry[], prefix = new Uint8Array(0)): Uint8Array {
   }
   const end = new Uint8Array(22);
   const ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint32(0, 0x06_05_4b_50, true);
   ev.setUint16(8, entries.length, true);
   ev.setUint16(10, entries.length, true);
   ev.setUint32(12, offset - start, true);
@@ -164,7 +165,9 @@ describe("create", () => {
 describe("extract", () => {
   test("TestExtractFailure", async () => {
     const extractedPath = join(newDir(), "pb_zip_extract");
-    await expect(extract(join(newDir(), "missing.zip"), extractedPath)).rejects.toThrow();
+    await Promise.resolve(
+      expect(extract(join(newDir(), "missing.zip"), extractedPath)).rejects.toThrow(),
+    );
     expect(existsSync(extractedPath)).toBe(false);
   });
 
@@ -203,7 +206,7 @@ describe("extract", () => {
     const content = new TextEncoder().encode("hello hello hello");
     const zip = rawZip(
       [
-        { name: "dir/", attrs: 0o040755 * 65536 },
+        { name: "dir/", attrs: 0o04_0755 * 65_536 },
         { name: "dir/stored.txt", content },
         { name: "deflated.txt", content, stored: deflateRawSync(content), method: 8 },
       ],
@@ -219,15 +222,19 @@ describe("extract", () => {
   test("Zip Slip is refused", async () => {
     const parent = newDir();
     const out = join(parent, "out");
-    await expect(
-      extract(writeZip(rawZip([{ name: "../evil.txt", content: new Uint8Array(1) }])), out),
-    ).rejects.toThrow(`invalid file path: ${join(parent, "evil.txt")}`);
+    await Promise.resolve(
+      expect(
+        extract(writeZip(rawZip([{ name: "../evil.txt", content: new Uint8Array(1) }])), out),
+      ).rejects.toThrow(`invalid file path: ${join(parent, "evil.txt")}`),
+    );
     expect(existsSync(join(parent, "evil.txt"))).toBe(false);
 
     // a sibling with the same name start
-    await expect(
-      extract(writeZip(rawZip([{ name: "../out-2/x", content: new Uint8Array(1) }])), out),
-    ).rejects.toThrow("invalid file path");
+    await Promise.resolve(
+      expect(
+        extract(writeZip(rawZip([{ name: "../out-2/x", content: new Uint8Array(1) }])), out),
+      ).rejects.toThrow("invalid file path"),
+    );
     expect(existsSync(join(parent, "out-2"))).toBe(false);
   });
 
@@ -243,10 +250,10 @@ describe("extract", () => {
     await extract(
       writeZip(
         rawZip([
-          { name: "link", content: target, attrs: 0o120777 * 65536 },
-          { name: "fifo", attrs: 0o010644 * 65536 },
-          { name: "socket", attrs: 0o140644 * 65536 },
-          { name: "device", attrs: 0o020644 * 65536 },
+          { name: "link", content: target, attrs: 0o12_0777 * 65_536 },
+          { name: "fifo", attrs: 0o01_0644 * 65_536 },
+          { name: "socket", attrs: 0o14_0644 * 65_536 },
+          { name: "device", attrs: 0o02_0644 * 65_536 },
           { name: "regular", content: target },
         ]),
       ),
@@ -260,8 +267,8 @@ describe("extract", () => {
     await extract(
       writeZip(
         rawZip([
-          { name: "folder", creator: 0x0014, attrs: 0x10 },
-          { name: "read-only", creator: 0x0a14, attrs: 0x01, content: new Uint8Array(1) },
+          { name: "folder", creator: 0x00_14, attrs: 0x10 },
+          { name: "read-only", creator: 0x0a_14, attrs: 0x01, content: new Uint8Array(1) },
         ]),
       ),
       out,
@@ -270,7 +277,7 @@ describe("extract", () => {
   });
 
   const content = new TextEncoder().encode("content");
-  const bad: [string, () => Uint8Array, string][] = [
+  const bad: Array<[string, () => Uint8Array, string]> = [
     ["not a zip", () => new Uint8Array(500), "zip: not a valid zip file"],
     ["empty file", () => new Uint8Array(0), "zip: not a valid zip file"],
     ["a wrong checksum", () => rawZip([{ name: "a", content, crc32: 1 }]), "zip: checksum error"],
@@ -293,7 +300,9 @@ describe("extract", () => {
   ];
   for (const [name, zip, message] of bad) {
     test(`${name} fails`, async () => {
-      await expect(extract(writeZip(zip()), join(newDir(), "out"))).rejects.toThrow(message);
+      await Promise.resolve(
+        expect(extract(writeZip(zip()), join(newDir(), "out"))).rejects.toThrow(message),
+      );
     });
   }
 
@@ -302,8 +311,8 @@ describe("extract", () => {
     const zipPath = join(newDir(), "pb_test.zip");
     create(dir, zipPath);
     truncateSync(zipPath, statSync(zipPath).size - 30);
-    await expect(extract(zipPath, join(newDir(), "out"))).rejects.toThrow(
-      "zip: not a valid zip file",
+    await Promise.resolve(
+      expect(extract(zipPath, join(newDir(), "out"))).rejects.toThrow("zip: not a valid zip file"),
     );
   });
 });
@@ -320,8 +329,8 @@ describe("zip format", () => {
     expect(entry).toEqual({
       name: "sub/ż.txt",
       method: 8,
-      flags: 0x808,
-      mode: 0o100640,
+      flags: 0x8_08,
+      mode: 0o10_0640,
       modTime: Math.trunc(statSync(join(dir, "sub/ż.txt")).mtimeMs / 1000),
     });
   });
@@ -346,8 +355,8 @@ describe("zip format", () => {
     // the regular end record only points to the Zip64 one
     const bytes = readFileSync(zipPath);
     const end = new DataView(bytes.buffer, bytes.byteOffset + bytes.length - 22);
-    expect(end.getUint16(10, true)).toBe(0xffff);
-    expect(end.getUint32(16, true)).toBe(0xffffffff);
+    expect(end.getUint16(10, true)).toBe(0xff_ff);
+    expect(end.getUint32(16, true)).toBe(0xff_ff_ff_ff);
     expect(bytes.includes(Buffer.from([0x50, 0x4b, 0x06, 0x06]))).toBe(true);
   }, 30_000);
 
@@ -380,7 +389,7 @@ describe("zip format", () => {
     const entry = zr.files[0] as ZipEntry;
     zr.close();
     zr.close();
-    await expect(zr.copyTo(entry, () => {})).rejects.toThrow("reader is closed");
+    await Promise.resolve(expect(zr.copyTo(entry, () => {})).rejects.toThrow("reader is closed"));
   });
 
   test("a named pipe is left out", () => {
@@ -399,7 +408,7 @@ describe("zip format", () => {
     create(dir, zipPath);
     const [link] = centralEntries(readFileSync(zipPath));
     expect(link?.name).toBe("link");
-    expect((link?.mode ?? 0) & 0o170000).toBe(0o120000);
+    expect((link?.mode ?? 0) & 0o17_0000).toBe(0o12_0000);
   });
 
   test("a symlink to a directory fails, as Go's read does", () => {

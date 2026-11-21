@@ -28,10 +28,12 @@ import { CollectionNameSuperusers } from "@/records/record-model-superusers";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
-import { type S3Config, Settings, settingsType } from "@/settings/settings-model";
+import { settingsType } from "@/settings/settings-model";
+import type { S3Config, Settings } from "@/settings/settings-model";
 import { saveSettings } from "@/settings/settings-query";
 import { wrapf } from "@/tools/filesystem/blob/bucket";
-import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
+import { NewS3 } from "@/tools/filesystem/s3-system";
+import type { S3System } from "@/tools/filesystem/s3-system";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { pseudorandomString } from "@/tools/security/random";
 import { nowDateTime } from "@/tools/types/datetime";
@@ -45,6 +47,7 @@ import { schemaLockedMessage } from "@/schema/lock";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // bindSettingsApi registers the settings api endpoints.
 export function bindSettingsApi(_app: App, rg: RouterGroup<RequestEvent>): void {
@@ -62,8 +65,8 @@ function settingsList(e: RequestEvent): HandlerResult {
   let clone: Settings;
   try {
     clone = e.app.settings.clone();
-  } catch (err) {
-    return e.internalServerError("", err);
+  } catch (error) {
+    return e.internalServerError("", error);
   }
 
   return e.json(200, clone);
@@ -77,11 +80,12 @@ async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
   try {
     // OldSettings (a clone too) is only read by the update hook
     newSettings = e.app.settings.clone();
-  } catch (err) {
-    return e.badRequestError("", err);
+  } catch (error) {
+    return e.badRequestError("", error);
   }
 
   const data = newSettings.settings;
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(newSettings as unknown as Record<string, unknown>, settingsType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
@@ -95,15 +99,15 @@ async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
 
   try {
     await saveSettings(e.app, newSettings);
-  } catch (err) {
-    return e.badRequestError("An error occurred while saving the new settings.", err);
+  } catch (error) {
+    return e.badRequestError("An error occurred while saving the new settings.", error);
   }
 
   let appSettings: Settings;
   try {
     appSettings = e.app.settings.clone();
-  } catch (err) {
-    return e.internalServerError("Failed to clone app settings.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to clone app settings.", error);
   }
 
   return e.json(200, appSettings);
@@ -159,8 +163,8 @@ async function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Promise
       s3Config.ForcePathStyle,
       join(app.dataDir, LocalTempDirName),
     );
-  } catch (initErr) {
-    return wrapf("failed to initialize the S3 filesystem: ", initErr);
+  } catch (error) {
+    return wrapf("failed to initialize the S3 filesystem: ", error);
   }
 
   try {
@@ -170,8 +174,8 @@ async function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Promise
     // try to upload a test file
     try {
       await fsys.upload(new TextEncoder().encode("test"), testFileKey);
-    } catch (uploadErr) {
-      return wrapf("failed to upload a test file: ", uploadErr);
+    } catch (error) {
+      return wrapf("failed to upload a test file: ", error);
     }
 
     // test prefix deletion (ensures that both bucket list and delete works)
@@ -194,6 +198,7 @@ async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
 
   // load request
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as Record<string, unknown>,
     testS3FilesystemType,
   );
@@ -205,7 +210,7 @@ async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
   const err = await submitTestS3Filesystem(e.app, form);
   if (err !== null) {
     // form error
-    if (err instanceof Errors) {
+    if (isInstance(Errors, err)) {
       return e.badRequestError("Failed to test the S3 filesystem.", err);
     }
 
@@ -330,8 +335,8 @@ async function submitTestEmailSend(app: App, form: TestEmailSend): Promise<Error
       default:
         return new Error("unknown template " + form.Template);
     }
-  } catch (sendErr) {
-    return sendErr instanceof Error ? sendErr : new Error(String(sendErr));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 
   return null;
@@ -341,6 +346,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
   const form: TestEmailSend = { Email: "", Template: "", Collection: "" };
 
   // load request
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, testEmailSendType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
@@ -350,7 +356,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
   const err = await submitTestEmailSend(e.app, form);
   if (err !== null) {
     // form error
-    if (err instanceof Errors) {
+    if (isInstance(Errors, err)) {
       return e.badRequestError("Failed to send the test email.", err);
     }
 
@@ -399,7 +405,7 @@ function validateAppleClientSecretCreate(form: AppleClientSecretCreate): Error |
     Field("teamId", form.TeamId, Required, Length(10, 10)),
     Field("keyId", form.KeyId, Required, Length(10, 10)),
     Field("privateKey", form.PrivateKey, Required, Match(privateKeyRegex)),
-    Field("duration", form.Duration, Required, Min(1), Max(15777000)),
+    Field("duration", form.Duration, Required, Min(1), Max(15_777_000)),
   );
 }
 
@@ -425,8 +431,8 @@ function submitAppleClientSecretCreate(
       clock,
     );
     return [secret, null];
-  } catch (signErr) {
-    return ["", signErr as Error];
+  } catch (error) {
+    return ["", error as Error];
   }
 }
 
@@ -441,6 +447,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
 
   // load request
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as Record<string, unknown>,
     appleClientSecretCreateType,
   );
@@ -452,7 +459,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
   const [secret, err] = submitAppleClientSecretCreate(form, e.app.clock);
   if (err !== null) {
     // form error
-    if (err instanceof Errors) {
+    if (isInstance(Errors, err)) {
       return e.badRequestError("Invalid client secret data.", err);
     }
 

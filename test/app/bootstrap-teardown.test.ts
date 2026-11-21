@@ -14,7 +14,7 @@ import { execSQL } from "@test/migrations/dump";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { tempDir } from "@test/support/executable";
 
-function walFiles(dataDir: string): string[] {
+function walFiles(dataDir: string): Array<string> {
   return ["data.db-wal", "auxiliary.db-wal"].filter((name) => existsSync(join(dataDir, name)));
 }
 
@@ -37,10 +37,11 @@ test("clearBootstrap closes everything even if a step fails, and reports the err
   // a connection is open: the WAL files exist
   expect(walFiles(dataDir).length).toBeGreaterThan(0);
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   (app.cron as unknown as { waitForRunning: () => Promise<void> }).waitForRunning = () =>
     Promise.reject(new Error("cron did not stop"));
 
-  await expect(clearBootstrap(app)).rejects.toThrow("cron did not stop");
+  await Promise.resolve(expect(clearBootstrap(app)).rejects.toThrow("cron did not stop"));
   expect(walFiles(dataDir)).toEqual([]);
 });
 
@@ -50,7 +51,7 @@ test("a failed bootstrap leaves no open database", async () => {
   // a settings row that cannot be loaded
   execSQL(join(dataDir, "data.db"), "UPDATE _params SET value = 'not json' WHERE id = 'settings'");
 
-  await expect(bootstrap(config(dataDir))).rejects.toThrow();
+  await Promise.resolve(expect(bootstrap(config(dataDir))).rejects.toThrow());
   expect(walFiles(dataDir)).toEqual([]);
 });
 
@@ -58,15 +59,19 @@ test("clearBootstrap names every failing step in its error message", async () =>
   const dataDir = join(tempDir(), "pb_data");
   copyDataDir(fixtureDir, dataDir);
   const app = await bootstrap(config(dataDir));
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const cron = app.cron as unknown as { waitForRunning: () => Promise<void> };
   cron.waitForRunning = () => Promise.reject(new Error("cron did not stop"));
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const thumbs = app.thumbs as unknown as { close: () => Promise<void> };
   thumbs.close = () => Promise.reject(new Error("thumbs did not close"));
 
   const err = await clearBootstrap(app).then(
     () => undefined,
-    (e: Error) => e,
+    (error: unknown) => error,
   );
-  expect(err?.message).toBe("cron did not stop\nthumbs did not close");
+  expect(err instanceof Error ? err.message : undefined).toBe(
+    "cron did not stop\nthumbs did not close",
+  );
   expect(walFiles(dataDir)).toEqual([]);
 });

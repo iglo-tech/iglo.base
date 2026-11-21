@@ -43,7 +43,7 @@ function fixtureCopy(): string {
 }
 
 // bootstraps on dataDir and closes again; returns the warnings
-async function open(dataDir: string): Promise<string[]> {
+async function open(dataDir: string): Promise<Array<string>> {
   const app = await openFixtureApp({ dataDir, clock });
   await app.cleanup();
   return app.warnings;
@@ -60,8 +60,8 @@ async function openError(dataDir: string): Promise<unknown> {
       logger: testLogger(),
       readWorkers: 0,
     });
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
   return undefined;
 }

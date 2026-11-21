@@ -61,13 +61,13 @@ export function setAttrs(path: string, xa: xattrs): void {
     while (off < data.length) {
       off += writeSync(fd, data, off, data.length - off);
     }
-  } catch (err) {
+  } catch (error) {
     try {
       closeSync(fd);
     } finally {
       rmSync(name, { force: true });
     }
-    throw err;
+    throw error;
   }
 
   closeSync(fd);
@@ -80,12 +80,12 @@ export function getAttrs(path: string): xattrs {
   let data: Uint8Array;
   try {
     data = readFileSync(path + attrsExt);
-  } catch (err) {
-    if ((err as { code?: string }).code === "ENOENT") {
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") {
       // Handle gracefully for non-existent .attr files.
       return { ...emptyAttrs(), contentType: "application/octet-stream" };
     }
-    throw err;
+    throw error;
   }
 
   return unmarshalAttrs(data);
@@ -124,43 +124,43 @@ export function quote(s: string): string {
   let out = '"';
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
-    if (c >= 0xd800 && c <= 0xdbff) {
+    if (c >= 0xd8_00 && c <= 0xdb_ff) {
       const next = s.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
+      if (next >= 0xdc_00 && next <= 0xdf_ff) {
         out += s.slice(i, i + 2);
         i++;
         continue;
       }
       throw invalidUTF8();
     }
-    if (c >= 0xdc00 && c <= 0xdfff) {
+    if (c >= 0xdc_00 && c <= 0xdf_ff) {
       throw invalidUTF8();
     }
     switch (c) {
       case 0x22:
-        out += '\\"';
+        out += String.raw`\"`;
         continue;
       case 0x5c:
-        out += "\\\\";
+        out += String.raw`\\`;
         continue;
       case 0x08:
-        out += "\\b";
+        out += String.raw`\b`;
         continue;
       case 0x09:
-        out += "\\t";
+        out += String.raw`\t`;
         continue;
       case 0x0a:
-        out += "\\n";
+        out += String.raw`\n`;
         continue;
       case 0x0c:
-        out += "\\f";
+        out += String.raw`\f`;
         continue;
       case 0x0d:
-        out += "\\r";
+        out += String.raw`\r`;
         continue;
     }
     if (c < 0x20) {
-      out += "\\u00" + hex.charAt(c >> 4) + hex.charAt(c & 0xf);
+      out += String.raw`\u00` + hex.charAt(c >> 4) + hex.charAt(c & 0xf);
       continue;
     }
     out += s.charAt(i);

@@ -27,7 +27,7 @@ const password = "1234567890";
 const rows = 10_000;
 const insertRows = `INSERT INTO bench (id, title, n, active) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${rows}) SELECT printf('r%014d', x), 'title ' || x, x % 100, x % 2 FROM c`;
 
-function median(values: number[]): number {
+function median(values: Array<number>): number {
   const s = values.toSorted((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 === 1
@@ -37,7 +37,7 @@ function median(values: number[]): number {
 
 async function timeAsync(runs: number, fn: () => Promise<void>): Promise<number> {
   await fn(); // warm-up
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
     await fn();
@@ -48,7 +48,7 @@ async function timeAsync(runs: number, fn: () => Promise<void>): Promise<number>
 
 function timeSync(runs: number, fn: () => void): number {
   fn(); // warm-up
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
     fn();
@@ -69,14 +69,17 @@ try {
   }
 
   const upstream = await startUpstream({ dataDir });
-  const results: [string, string, number][] = [];
+  const results: Array<[string, string, number]> = [];
   try {
     const call = async (method: string, path: string, body?: unknown): Promise<string> => {
-      const res = await fetch(`${upstream.url}${path}`, {
+      const init: RequestInit = {
         method,
         headers: { "content-type": "application/json", authorization: token },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      };
+      if (body !== undefined) {
+        init.body = JSON.stringify(body);
+      }
+      const res = await fetch(`${upstream.url}${path}`, init);
       const text = await res.text();
       if (res.status !== 200 && res.status !== 204) {
         throw new Error(`${method} ${path}: ${res.status} ${text}`);
@@ -104,29 +107,34 @@ try {
     await call("POST", "/api/sql", { query: insertRows });
 
     const id = "r00000000005000";
-    results.push([
-      "view one record",
-      "GET /records/{id}",
-      await timeAsync(200, async () => {
-        await call("GET", `/api/collections/bench/records/${id}`);
-      }),
-    ]);
-    results.push([
-      "all 10,000 records",
-      "GET /records, 10 pages of 1,000 (skipTotal)",
-      await timeAsync(10, async () => {
-        for (let page = 1; page <= 10; page++) {
-          await call("GET", `/api/collections/bench/records?perPage=1000&page=${page}&skipTotal=1`);
-        }
-      }),
-    ]);
-    results.push([
-      "count with active = true",
-      "GET /records?filter=active=true&perPage=1 (totalItems)",
-      await timeAsync(50, async () => {
-        await call("GET", "/api/collections/bench/records?filter=active%3Dtrue&perPage=1");
-      }),
-    ]);
+    results.push(
+      [
+        "view one record",
+        "GET /records/{id}",
+        await timeAsync(200, async () => {
+          await call("GET", `/api/collections/bench/records/${id}`);
+        }),
+      ],
+      [
+        "all 10,000 records",
+        "GET /records, 10 pages of 1,000 (skipTotal)",
+        await timeAsync(10, async () => {
+          for (let page = 1; page <= 10; page++) {
+            await call(
+              "GET",
+              `/api/collections/bench/records?perPage=1000&page=${page}&skipTotal=1`,
+            );
+          }
+        }),
+      ],
+      [
+        "count with active = true",
+        "GET /records?filter=active=true&perPage=1 (totalItems)",
+        await timeAsync(50, async () => {
+          await call("GET", "/api/collections/bench/records?filter=active%3Dtrue&perPage=1");
+        }),
+      ],
+    );
   } finally {
     await upstream.stop();
   }
@@ -136,7 +144,7 @@ try {
   const app = openDataDir(copy);
   try {
     reloadCachedCollections(app);
-    const iglo: number[] = [
+    const iglo: Array<number> = [
       timeSync(200, () => {
         findRecordById(app, "bench", "r00000000005000");
       }),

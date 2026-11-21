@@ -120,7 +120,7 @@ const emailChange = (newEmail: string, recordId = userId, collection = "users"):
 type Step = (ctx: PrepareContext) => void;
 
 // several prepare steps in order
-function all(...steps: Step[]): Step {
+function all(...steps: Array<Step>): Step {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -131,12 +131,15 @@ function all(...steps: Step[]): Step {
 type Target = Pick<Scenario, "method" | "url" | "body" | "headers">;
 
 function post(collection: string, path: string, body: unknown, token?: string): Target {
-  return {
+  const target: Target = {
     method: "POST",
     url: `/api/collections/${collection}/${path}`,
     body: typeof body === "string" ? body : JSON.stringify(body),
-    ...(token === undefined ? {} : { headers: { Authorization: token } }),
   };
+  if (token !== undefined) {
+    target.headers = { Authorization: token };
+  }
+  return target;
 }
 
 const requestVerification = (collection: string, body: unknown): Target =>
@@ -180,9 +183,9 @@ function fixtureColumn(table: string, id: string, column: string): unknown {
 // the token key is the fixture's, or another one
 function tokenKeyKept(table: string, id: string, kept: boolean) {
   return ({ dataDir }: AfterContext): Promise<void> => {
-    const [row] = queryRows(dataDir, `SELECT tokenKey FROM "${table}" WHERE id = ?`, id) as {
+    const [row] = queryRows(dataDir, `SELECT tokenKey FROM "${table}" WHERE id = ?`, id) as Array<{
       tokenKey: string;
-    }[];
+    }>;
     if ((row?.tokenKey === fixtureColumn(table, id, "tokenKey")) !== kept) {
       return Promise.reject(new Error(`expected the token key ${kept ? "kept" : "refreshed"}`));
     }
@@ -204,10 +207,11 @@ function setPasswordAuth(collection: string, enabled: boolean): Step {
     });
 }
 
-function setEmailDomains(collection: string, onlyDomains: string[]): Step {
+function setEmailDomains(collection: string, onlyDomains: Array<string>): Step {
   return ({ dataDir }) =>
     updateCollection(dataDir, collection, (c) => {
-      const field = c.fields.getByName("email") as unknown as { onlyDomains: string[] };
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+      const field = c.fields.getByName("email") as unknown as { onlyDomains: Array<string> };
       field.onlyDomains = onlyDomains;
     });
 }
@@ -241,7 +245,7 @@ function verified({ dataDir }: PrepareContext): void {
 
 const longLocalPart = "a".repeat(250);
 
-export function tokenCases(): Scenario[] {
+export function tokenCases(): Array<Scenario> {
   return [
     // enumeration-safe answers
     // -----------------------------------------------------------
@@ -558,6 +562,7 @@ export function tokenCases(): Scenario[] {
       ...confirmReset(mint("passwordReset", "users", userId)),
       prepare: ({ dataDir }) =>
         updateCollection(dataDir, "users", (c) => {
+          // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
           (c.fields.getByName("password") as unknown as { pattern: string }).pattern = "^x+$";
         }),
       expectedStatus: 400,
@@ -575,6 +580,7 @@ export function tokenCases(): Scenario[] {
           db.close();
         }
         updateCollection(dataDir, "users", (c) => {
+          // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
           (c.fields.getByName("name") as unknown as { required: boolean }).required = true;
         });
       },

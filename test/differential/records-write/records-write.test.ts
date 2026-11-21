@@ -20,6 +20,7 @@
 // copy of iglo.base's pb_data. Every record of every collection, listed
 // by upstream from that copy, must equal the list upstream gives from its
 // own pb_data, and the passwords the cases set must sign in.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -29,13 +30,13 @@ import { join } from "node:path";
 import { runUpstream } from "@test/differential/db/fixture";
 import { sendChunked } from "@test/differential/records-write/chunked";
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
-import { type FixtureIdentity, fixtureCases } from "@test/differential/records-write/fixture-cases";
+import { fixtureCases } from "@test/differential/records-write/fixture-cases";
+import type { FixtureIdentity } from "@test/differential/records-write/fixture-cases";
 import {
   changedPasswords,
   freshCases,
   freshCollections,
   freshCollections2,
-  type FreshIdentity,
   freshPassword,
   freshRecords,
   members,
@@ -43,6 +44,7 @@ import {
   ruleShapes,
   typesFiles,
 } from "@test/differential/records-write/fresh-cases";
+import type { FreshIdentity } from "@test/differential/records-write/fresh-cases";
 import type { WriteCase } from "@test/differential/records-write/write-case";
 import { rid } from "@test/differential/resolver/schema";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -55,8 +57,10 @@ import {
 import { send } from "@test/scenarios/runner";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 interface ServerPair {
   // the starting pb_data (only read)
@@ -67,8 +71,8 @@ interface ServerPair {
   igloBase: RunningServer | null;
 }
 
-const roots: string[] = [];
-const servers: { stop(): Promise<unknown> }[] = [];
+const roots: Array<string> = [];
+const servers: Array<{ stop(): Promise<unknown> }> = [];
 
 async function startPair(sourceDir: string): Promise<ServerPair> {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-"));
@@ -124,7 +128,7 @@ async function runCase(
   pair: ServerPair,
   c: WriteCase,
   authorization: string,
-): Promise<{ status: number; differences: string[] }> {
+): Promise<{ status: number; differences: Array<string> }> {
   const headers: Record<string, string> = { ...c.headers };
   if (authorization !== "") {
     headers["Authorization"] = authorization;
@@ -149,7 +153,7 @@ async function runCase(
   const differences = compareResponses(up, ig, { start, request }, pairing);
 
   // the records to read back: [upstream's path, iglo.base's path]
-  const reads: [string, string][] = [];
+  const reads: Array<[string, string]> = [];
   if (c.method === "POST") {
     if (up.status === 200 && ig.status === 200) {
       const upId = (JSON.parse(responseText(up)) as { id?: string }).id;
@@ -203,7 +207,7 @@ let currentSuperuserToken = superuserToken;
 // Round trip: iglo.base stops, upstream starts on a copy of its pb_data,
 // and every collection's records listed from that copy must equal the ones
 // upstream lists from its own data.
-async function roundTrip(pair: ServerPair, token: string): Promise<string[]> {
+async function roundTrip(pair: ServerPair, token: string): Promise<Array<string>> {
   await (pair.igloBase as RunningServer).stop();
   pair.igloBase = null;
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-rt-"));
@@ -229,12 +233,14 @@ async function roundTrip(pair: ServerPair, token: string): Promise<string[]> {
 
   const collections = JSON.parse(
     responseText(await get(pair.upstream, "/api/collections?perPage=500&sort=name")),
-  ) as { items: { name: string; type: string; fields: { name: string; type: string }[] }[] };
+  ) as {
+    items: Array<{ name: string; type: string; fields: Array<{ name: string; type: string }> }>;
+  };
   const rtCollections = await get(rt, "/api/collections?perPage=500&sort=name");
 
   const start = readStartingData(pair.dataDir);
   const pairing = new Pairing();
-  const differences: string[] = [];
+  const differences: Array<string> = [];
   differences.push(
     ...compareResponses(
       await get(pair.upstream, "/api/collections?perPage=500&sort=name"),
@@ -302,8 +308,8 @@ const superEmail = "records-write@example.com";
 describe("fresh install", () => {
   let pair: ServerPair;
   const tokens = new Map<FreshIdentity, string>([["guest", ""]]);
-  let fileNames: string[] = [];
-  const statuses: { name: string; status: number }[] = [];
+  let fileNames: Array<string> = [];
+  const statuses: Array<{ name: string; status: number }> = [];
 
   beforeAll(async () => {
     const root = mkdtempSync(join(tmpdir(), "iglo-base-records-write-fresh-"));
@@ -322,16 +328,22 @@ describe("fresh install", () => {
         body?: unknown,
         auth = tokens.get("superuser") ?? "",
       ) => {
+        const headers: Record<string, string> = {};
+        if (auth !== "") {
+          headers.authorization = auth;
+        }
+        if (body !== undefined && !isInstance(FormData, body)) {
+          headers["content-type"] = "application/json";
+        }
         const res = await fetch(`${builder.url}${path}`, {
           method,
-          headers: {
-            ...(auth === "" ? {} : { authorization: auth }),
-            ...(body === undefined || body instanceof FormData
-              ? {}
-              : { "content-type": "application/json" }),
-          },
+          headers,
           body:
-            body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+            body === undefined
+              ? undefined
+              : isInstance(FormData, body)
+                ? body
+                : JSON.stringify(body),
         });
         const text = await res.text();
         if (res.status !== 200 && res.status !== 204) {
@@ -354,7 +366,7 @@ describe("fresh install", () => {
       const collectionIds = new Map<string, string>();
       const readIds = async (): Promise<void> => {
         const list = (await api("GET", "/api/collections?perPage=500")) as {
-          items: { id: string; name: string }[];
+          items: Array<{ id: string; name: string }>;
         };
         for (const item of list.items) {
           collectionIds.set(item.name, item.id);
@@ -391,7 +403,7 @@ describe("fresh install", () => {
         "PATCH",
         `/api/collections/w_types/records/${rid("types1")}`,
         form,
-      )) as { fl: string[] };
+      )) as { fl: Array<string> };
       fileNames = types1.fl;
 
       for (const who of ["alice", "bob", "dave"] as const) {
@@ -423,9 +435,9 @@ describe("fresh install", () => {
   // and, but for the public one, refuses some
   test("every rule shape has allowed and refused writes", () => {
     for (const s of ruleShapes) {
-      const shapeStatuses = statuses
-        .filter((x) => x.name.startsWith(`${s.shape}: `))
-        .map((x) => x.status);
+      const shapeStatuses = statuses.flatMap((x) =>
+        x.name.startsWith(`${s.shape}: `) ? [x.status] : [],
+      );
       expect(shapeStatuses.some((status) => status === 200 || status === 204)).toBe(true);
       if (s.shape !== "empty") {
         expect(shapeStatuses.some((status) => status >= 400)).toBe(true);

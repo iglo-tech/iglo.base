@@ -37,18 +37,18 @@ describe("ParseDateTime", () => {
   const nowTime = clock.now();
   const nowDateTimeValue = parseDateTime(nowTime);
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     [null, ""],
     ["", ""],
     ["invalid", ""],
     [nowDateTimeValue, nowStr],
     [nowTime, nowStr],
-    [1641024040n, "2022-01-01 08:00:40.000Z"], // int
-    [BigInt.asIntN(32, 1641024040n), "2022-01-01 08:00:40.000Z"], // int32
-    [BigInt.asIntN(64, 1641024040n), "2022-01-01 08:00:40.000Z"], // int64
-    [BigInt.asUintN(64, 1641024040n), "2022-01-01 08:00:40.000Z"], // uint
-    [BigInt.asUintN(64, 1641024040n), "2022-01-01 08:00:40.000Z"], // uint64
-    [BigInt.asUintN(32, 1641024040n), "2022-01-01 08:00:40.000Z"], // uint32
+    [1_641_024_040n, "2022-01-01 08:00:40.000Z"], // int
+    [BigInt.asIntN(32, 1_641_024_040n), "2022-01-01 08:00:40.000Z"], // int32
+    [BigInt.asIntN(64, 1_641_024_040n), "2022-01-01 08:00:40.000Z"], // int64
+    [BigInt.asUintN(64, 1_641_024_040n), "2022-01-01 08:00:40.000Z"], // uint
+    [BigInt.asUintN(64, 1_641_024_040n), "2022-01-01 08:00:40.000Z"], // uint64
+    [BigInt.asUintN(32, 1_641_024_040n), "2022-01-01 08:00:40.000Z"], // uint32
     ["2022-01-01 11:23:45.678", "2022-01-01 11:23:45.678Z"],
   ];
 
@@ -94,7 +94,7 @@ describe("DateTimeAddDate", () => {
   // Not in upstream's tests: time.Time.AddDate works on the calendar of the
   // parsed location, so a fixed offset that puts the value on another UTC
   // date changes the result.
-  const scenarios: [string, unknown, [number, number, number], string][] = [
+  const scenarios: Array<[string, unknown, [number, number, number], string]> = [
     [
       "negative offset, next UTC day",
       "2024-01-31T23:30:00-02:00",
@@ -164,7 +164,7 @@ const d2 = parseDateTime("2024-01-02 10:00:00.123Z");
 const d3 = parseDateTime("2024-01-03 10:00:00.123Z");
 
 describe("DateTimeAfter", () => {
-  const scenarios: [DateTime, DateTime, boolean][] = [
+  const scenarios: Array<[DateTime, DateTime, boolean]> = [
     // d1
     [d1, d1, false],
     [d1, d2, false],
@@ -187,7 +187,7 @@ describe("DateTimeAfter", () => {
 });
 
 describe("DateTimeBefore", () => {
-  const scenarios: [DateTime, DateTime, boolean][] = [
+  const scenarios: Array<[DateTime, DateTime, boolean]> = [
     // d1
     [d1, d1, false],
     [d1, d2, true],
@@ -210,7 +210,7 @@ describe("DateTimeBefore", () => {
 });
 
 describe("DateTimeCompare", () => {
-  const scenarios: [DateTime, DateTime, number][] = [
+  const scenarios: Array<[DateTime, DateTime, number]> = [
     // d1
     [d1, d1, 0],
     [d1, d2, -1],
@@ -237,7 +237,7 @@ describe("DateTimeEqual", () => {
   const e2 = parseDateTime("2024-01-01 10:00:00.123Z");
   const e3 = parseDateTime("2024-01-01 10:00:00.124Z");
 
-  const scenarios: [DateTime, DateTime, boolean][] = [
+  const scenarios: Array<[DateTime, DateTime, boolean]> = [
     [e1, e1, true],
     [e1, e2, true],
     [e1, e3, false],
@@ -251,9 +251,9 @@ describe("DateTimeEqual", () => {
 });
 
 describe("DateTimeUnix", () => {
-  const scenarios: [string, number][] = [
-    ["", -62135596800],
-    ["2022-01-01 11:23:45.678Z", 1641036225],
+  const scenarios: Array<[string, number]> = [
+    ["", -62_135_596_800],
+    ["2022-01-01 11:23:45.678Z", 1_641_036_225],
   ];
 
   scenarios.forEach(([date, expected], i) => {
@@ -279,7 +279,7 @@ describe("DateTimeString", () => {
 });
 
 describe("DateTimeMarshalJSON", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", `""`],
     ["2022-01-01 11:23:45.678", `"2022-01-01 11:23:45.678Z"`],
   ];
@@ -292,7 +292,7 @@ describe("DateTimeMarshalJSON", () => {
 });
 
 describe("DateTimeUnmarshalJSON", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["invalid_json", ""],
     ["'123'", ""],
@@ -314,10 +314,10 @@ describe("DateTimeUnmarshalJSON", () => {
 });
 
 describe("DateTimeValue", () => {
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["invalid", ""],
-    [1641024040n, "2022-01-01 08:00:40.000Z"],
+    [1_641_024_040n, "2022-01-01 08:00:40.000Z"],
     ["2022-01-01 11:23:45.678", "2022-01-01 11:23:45.678Z"],
     [nowDateTime(clock), nowDateTime(clock).string()],
   ];
@@ -332,14 +332,14 @@ describe("DateTimeValue", () => {
 describe("DateTimeScan", () => {
   const now = "2024-05-06 07:08:09"; // without ms part, as upstream
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     [null, ""],
     ["", ""],
     ["invalid", ""],
     [nowDateTime(clock), now],
     [clock.now(), now],
     [1.0, ""],
-    [1641024040n, "2022-01-01 08:00:40.000Z"],
+    [1_641_024_040n, "2022-01-01 08:00:40.000Z"],
     ["2022-01-01 11:23:45.678", "2022-01-01 11:23:45.678Z"],
   ];
 
@@ -355,7 +355,7 @@ describe("DateTimeScan", () => {
   // float64 never parses (cast.ToString gives "1", which matches no layout)
   test("a float64 gives the zero time", () => {
     const dt = new DateTime();
-    dt.scan(1641024040);
+    dt.scan(1_641_024_040);
     expect(dt.isZero()).toBe(true);
   });
 });
@@ -363,7 +363,7 @@ describe("DateTimeScan", () => {
 // Not in upstream's tests: the cast.ToTime layouts Scan falls back to, with
 // the results Go's time.Parse and cast v1.10.0 give.
 describe("DateTimeScan cast layouts", () => {
-  const scenarios: [string, string, string][] = [
+  const scenarios: Array<[string, string, string]> = [
     ["default layout", "2022-01-01 11:23:45.678Z", "2022-01-01 11:23:45.678Z"],
     // the default layout needs exactly 3 fraction digits; cast's
     // "2006-01-02 15:04:05Z0700" then takes any fraction and the Z
@@ -437,7 +437,7 @@ describe("DateTime precision", () => {
   test("keeps nanoseconds through Add and comparisons", () => {
     const a = parseDateTime("2022-01-02T03:04:05.123456789Z");
     const b = parseDateTime("2022-01-02T03:04:05.123456788Z");
-    expect(a.instant()).toEqual({ sec: 1641092645, nsec: 123456789 });
+    expect(a.instant()).toEqual({ sec: 1_641_092_645, nsec: 123_456_789 });
     expect(a.after(b)).toBe(true);
     expect(a.equal(b)).toBe(false);
     expect(a.sub(b)).toBe(1);
@@ -525,13 +525,13 @@ describe("the fast path of the stored layout", () => {
       const v = `${t.slice(0, 10)} ${t.slice(11, 23)}Z`;
       expect(parseDefaultLayoutFast(v), v).toEqual(slow(v));
     }
-    let seed = 12345;
+    let seed = 12_345;
     const next = (n: number): number => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      seed = (seed * 1_103_515_245 + 12_345) & 0x7f_ff_ff_ff;
       return seed % n;
     };
-    for (let i = 0; i < 20000; i++) {
-      const v = `${pad(next(10000), 4)}-${pad(next(14), 2)}-${pad(next(33), 2)} ${pad(next(26), 2)}:${pad(next(62), 2)}:${pad(next(62), 2)}.${pad(next(1000), 3)}Z`;
+    for (let i = 0; i < 20_000; i++) {
+      const v = `${pad(next(10_000), 4)}-${pad(next(14), 2)}-${pad(next(33), 2)} ${pad(next(26), 2)}:${pad(next(62), 2)}:${pad(next(62), 2)}.${pad(next(1000), 3)}Z`;
       expect(parseDefaultLayoutFast(v), v).toEqual(slow(v));
     }
   });
@@ -547,16 +547,16 @@ const p = (n: number, w: number): string => String(n).padStart(w, "0");
 describe("string", () => {
   // the formatting of every year: the digits of the Date's own fields
   test("formats generated times as DefaultDateLayout", () => {
-    let seed = 12345;
+    let seed = 12_345;
     const rand = (): number => {
-      seed = (seed * 1103515245 + 12345) % 2147483648;
-      return seed / 2147483648;
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed / 2_147_483_648;
     };
     const edges = [
-      -30610224000000, -30610224000001, -30610223999999, 253402300799999, 253402300800000,
-      253402300799000, 0, -1, 1,
+      -30_610_224_000_000, -30_610_224_000_001, -30_610_223_999_999, 253_402_300_799_999,
+      253_402_300_800_000, 253_402_300_799_000, 0, -1, 1,
     ];
-    for (let i = 0; i < 20000; i++) {
+    for (let i = 0; i < 20_000; i++) {
       // years 1 to 9999, edges around 1000 and 9999 included
       const ms = i < edges.length ? edges[i]! : Math.floor(rand() * 2.5e14 - 6.2e13);
       const d = new Date(ms);

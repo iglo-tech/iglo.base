@@ -27,7 +27,8 @@ import { isIP } from "node:net";
 
 import { DefaultMaxBodySize } from "@/middlewares/middlewares";
 import { readLimited } from "@/oauth2/token";
-import { type File, goBase, NewFileFromBytes } from "@/tools/filesystem/file";
+import { goBase, NewFileFromBytes } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 
 const safeFileTimeoutMs = 10_000;
 
@@ -38,13 +39,13 @@ export interface SafeFileOptions {
   // overrides isAllowedAddress
   isAllowedAddress?: (address: string) => boolean;
   // overrides the name resolution
-  lookupAddresses?: (host: string) => Promise<string[]>;
+  lookupAddresses?: (host: string) => Promise<Array<string>>;
   timeoutMs?: number;
   // a certificate authority to trust
   ca?: string;
 }
 
-function parseIPv4(address: string): number[] | null {
+function parseIPv4(address: string): Array<number> | null {
   const parts = address.split(".");
   if (parts.length !== 4 || !parts.every((p) => /^[0-9]{1,3}$/.test(p) && Number(p) <= 255)) {
     return null;
@@ -52,13 +53,13 @@ function parseIPv4(address: string): number[] | null {
   return parts.map(Number);
 }
 
-function groups(part: string): number[] {
-  return part === "" ? [] : part.split(":").map((g) => parseInt(g, 16));
+function groups(part: string): Array<number> {
+  return part === "" ? [] : part.split(":").map((g) => Number.parseInt(g, 16));
 }
 
 // the 16 bytes of an IPv6 address; null for anything else (a zone is not
 // part of net.ParseIP's input)
-function parseIPv6(address: string): number[] | null {
+function parseIPv6(address: string): Array<number> | null {
   if (isIP(address) !== 6 || address.includes("%")) {
     return null;
   }
@@ -120,7 +121,7 @@ export function isAllowedAddress(address: string): boolean {
   );
 }
 
-async function resolve(host: string, opts: SafeFileOptions): Promise<string[]> {
+async function resolve(host: string, opts: SafeFileOptions): Promise<Array<string>> {
   if (isIP(host) !== 0) {
     return [host];
   }
@@ -136,7 +137,7 @@ async function resolveUntilDeadline(
   host: string,
   signal: AbortSignal,
   opts: SafeFileOptions,
-): Promise<string[]> {
+): Promise<Array<string>> {
   signal.throwIfAborted();
   return Promise.race([
     resolve(host, opts),
@@ -154,7 +155,7 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
   }
 
   // the brackets of an IPv6 literal aren't part of the address
-  const host = url.hostname.replace(/^\[|\]$/g, "");
+  const host = url.hostname.replaceAll(/^\[|\]$/g, "");
   const isAllowed = opts.isAllowedAddress ?? isAllowedAddress;
 
   let lastErr: unknown = new Error(`no addresses for ${host}`);
@@ -174,16 +175,20 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
       signal,
     };
     if (url.protocol === "https:") {
-      init.tls = {
-        ...(isIP(host) === 0 ? { serverName: host } : {}),
-        ...(opts.ca === undefined ? {} : { ca: opts.ca }),
-      };
+      const tls: NonNullable<BunFetchRequestInit["tls"]> = {};
+      if (isIP(host) === 0) {
+        tls.serverName = host;
+      }
+      if (opts.ca !== undefined) {
+        tls.ca = opts.ca;
+      }
+      init.tls = tls;
     }
 
     try {
       return await fetch(target, init);
-    } catch (err) {
-      lastErr = err;
+    } catch (error) {
+      lastErr = error;
       if (signal.aborted) {
         break;
       }

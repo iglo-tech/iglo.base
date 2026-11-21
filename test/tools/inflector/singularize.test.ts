@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { singularize } from "@/tools/inflector/singularize";
 
 describe("Singularize", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["abcnese", "abcnese"],
     ["deer", "deer"],
     ["sheep", "sheep"],
@@ -70,7 +70,7 @@ describe("Singularize", () => {
 // Not in upstream's tests: RE2's (?i) uses Unicode simple case folding,
 // and RE2's dot matches \r (JS's does not).
 describe("Singularize RE2 semantics", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["\u017ftatuses", "\u017ftatus"], // long s folds to s
     ["Statu\u017fes", "Status"],
     ["a\rus", "a\rus"], // ^(.*us)$ matches, so the last rule never runs

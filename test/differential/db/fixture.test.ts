@@ -31,8 +31,8 @@ import {
   fixtureChecksums,
   serveUpstream,
   upstreamSQL,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
+import type { FixtureCopy } from "@test/differential/db/fixture";
 
 const collectionNameSuperusers = "_superusers";
 
@@ -49,7 +49,9 @@ class Superuser extends BaseModel {
 
   override dbScan(row: Row): void {
     super.dbScan(row);
-    if ("email" in row) this.email = String(row.email);
+    if ("email" in row) {
+      this.email = String(row.email);
+    }
   }
 }
 
@@ -64,8 +66,8 @@ function findSuperuserByEmail(app: Databases, email: string): Superuser | null {
 }
 
 // tests.NewTestApp: a fresh copy of tests/data per test
-const copies: FixtureCopy[] = [];
-const apps: Databases[] = [];
+const copies: Array<FixtureCopy> = [];
+const apps: Array<Databases> = [];
 function newTestApp(): Databases {
   const copy = copyFixture();
   copies.push(copy);
@@ -81,8 +83,12 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  for (const app of apps) app.close();
-  for (const copy of copies) copy.remove();
+  for (const app of apps) {
+    app.close();
+  }
+  for (const copy of copies) {
+    copy.remove();
+  }
   // the fixture itself is never written
   expect(fixtureChecksums()).toEqual(checksumsBefore);
 });
@@ -161,7 +167,7 @@ describe("fixture rows", () => {
 describe("db_table_test", () => {
   test("TestHasTable", () => {
     const app = newTestApp();
-    const scenarios: [string, boolean][] = [
+    const scenarios: Array<[string, boolean]> = [
       ["", false],
       ["test", false],
       [collectionNameSuperusers, true],
@@ -176,7 +182,7 @@ describe("db_table_test", () => {
 
   test("TestAuxHasTable", () => {
     const app = newTestApp();
-    const scenarios: [string, boolean][] = [
+    const scenarios: Array<[string, boolean]> = [
       ["", false],
       ["test", false],
       ["_lOGS", true], // table names are case insensitives by default
@@ -232,7 +238,7 @@ describe("db_table_test", () => {
 
   test("TestDeleteTable", () => {
     const app = newTestApp();
-    const scenarios: [string, boolean][] = [
+    const scenarios: Array<[string, boolean]> = [
       ["", true],
       ["test", false], // missing tables are ignored
       ["_admins", false],
@@ -252,7 +258,7 @@ describe("db_table_test", () => {
 
   test("TestVacuum", () => {
     const app = newTestApp();
-    const calledQueries: string[] = [];
+    const calledQueries: Array<string> = [];
     const db = app.nonconcurrentDB() as DB;
     db.queryLogFunc = (_ms, sql) => calledQueries.push(sql);
     db.execLogFunc = (_ms, sql) => calledQueries.push(sql);
@@ -264,7 +270,7 @@ describe("db_table_test", () => {
 
   test("TestAuxVacuum", () => {
     const app = newTestApp();
-    const calledQueries: string[] = [];
+    const calledQueries: Array<string> = [];
     const db = app.auxNonconcurrentDB() as DB;
     db.queryLogFunc = (_ms, sql) => calledQueries.push(sql);
     db.execLogFunc = (_ms, sql) => calledQueries.push(sql);
@@ -278,7 +284,7 @@ describe("db_table_test", () => {
 // Upstream: core/view_test.go TestDeleteView
 test("TestDeleteView", () => {
   const app = newTestApp();
-  const scenarios: [string, boolean][] = [
+  const scenarios: Array<[string, boolean]> = [
     ["", true],
     ["demo1", true], // not a view table
     ["missing", false], // missing or already deleted

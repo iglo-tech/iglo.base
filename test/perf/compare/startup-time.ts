@@ -19,9 +19,9 @@ const { values, positionals } = parseArgs({
   },
 });
 const src = positionals[0]!;
-const exe = values.upstream ? upstreamBinary() : values.exe!;
-const times: number[] = [];
-const cpus: number[] = [];
+const exe = values.upstream ? upstreamBinary() : values.exe;
+const times: Array<number> = [];
+const cpus: Array<number> = [];
 const root = mkdtempSync(join(repoRoot, "dist", "startup-"));
 try {
   for (let i = 0; i < Number(values.repeat); i++) {
@@ -43,15 +43,21 @@ try {
     );
     for (;;) {
       try {
-        if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) break;
-      } catch {}
+        if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) {
+          break;
+        }
+      } catch {
+        // the server is not listening yet: retry after a short sleep
+      }
       await Bun.sleep(2);
     }
     times.push(performance.now() - t0);
     proc.kill("SIGTERM");
     await proc.exited;
     const ru = proc.resourceUsage();
-    if (ru) cpus.push(Number(ru.cpuTime.user + ru.cpuTime.system) / 1000);
+    if (ru) {
+      cpus.push(Number(ru.cpuTime.user + ru.cpuTime.system) / 1000);
+    }
     rmSync(join(root, `d${i}`), { recursive: true, force: true });
   }
 } finally {

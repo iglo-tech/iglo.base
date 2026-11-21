@@ -27,10 +27,12 @@ import { readFileSync } from "node:fs";
 
 import type { HttpRequest } from "@/server/request";
 import { detectContentType } from "@/server/sniff";
-import { httpError, type ResponseWriter } from "@/server/router";
+import { httpError } from "@/server/router";
+import type { ResponseWriter } from "@/server/router";
+import { isInstance } from "@/tools/types/is-instance";
 
 // mime's builtinTypesLower (Go 1.27.2 mime/type.go)
-const builtinTypes: readonly [string, string][] = [
+const builtinTypes: ReadonlyArray<[string, string]> = [
   [".ai", "application/postscript"],
   [".apk", "application/vnd.android.package-archive"],
   [".apng", "image/apng"],
@@ -117,7 +119,7 @@ const typeFiles = [
   "/etc/httpd/conf/mime.types",
 ];
 
-function readLines(path: string): string[] | undefined {
+function readLines(path: string): Array<string> | undefined {
   try {
     return readFileSync(path, "utf8").split("\n");
   } catch {
@@ -215,7 +217,7 @@ function goToLower(s: string): string {
   let out = "";
   for (const c of s) {
     const l = c.toLowerCase();
-    out += [...l].length === 1 ? l : c;
+    out += Array.from(l).length === 1 ? l : c;
   }
   return out;
 }
@@ -244,7 +246,7 @@ const errNoOverlap = new RangeError("invalid range: failed to overlap");
 
 // textproto.TrimString: trims ASCII spaces and tabs (and CR/LF).
 function trimString(s: string): string {
-  return s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+  return s.replaceAll(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
 }
 
 // strconv.ParseInt(s, 10, 64); undefined on error.
@@ -253,7 +255,7 @@ function parseInt64(s: string): number | undefined {
     return undefined;
   }
   const n = BigInt(s);
-  if (n > 9223372036854775807n || n < -9223372036854775808n) {
+  if (n > 9_223_372_036_854_775_807n || n < -9_223_372_036_854_775_808n) {
     return undefined;
   }
   return Number(n);
@@ -261,7 +263,7 @@ function parseInt64(s: string): number | undefined {
 
 // parseRange parses a Range header string as per RFC 7233.
 // errNoOverlap is thrown if none of the ranges overlap.
-function parseRange(s: string, size: number): HttpRange[] {
+function parseRange(s: string, size: number): Array<HttpRange> {
   if (s === "") {
     return []; // header not present
   }
@@ -269,7 +271,7 @@ function parseRange(s: string, size: number): HttpRange[] {
   if (!s.startsWith(b)) {
     throw new RangeError("invalid range");
   }
-  const ranges: HttpRange[] = [];
+  const ranges: Array<HttpRange> = [];
   let noOverlap = false;
   for (let ra of s.slice(b.length).split(",")) {
     ra = trimString(ra);
@@ -492,8 +494,16 @@ function compareTime(a: bigint, b: bigint): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-const shortDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-const longDays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const shortDays = new Set(["sun", "mon", "tue", "wed", "thu", "fri", "sat"]);
+const longDays = new Set([
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+]);
 const shortMonths = [
   "jan",
   "feb",
@@ -513,14 +523,14 @@ const shortMonths = [
 const fraction = String.raw`(?:[.,](\d+))?`;
 
 // http.ParseTime's layouts: TimeFormat, time.RFC850 and time.ANSIC
-const timeLayouts: { re: RegExp; parts: (m: RegExpExecArray) => TimeParts | undefined }[] = [
+const timeLayouts: Array<{ re: RegExp; parts: (m: RegExpExecArray) => TimeParts | undefined }> = [
   {
     // Mon, 02 Jan 2006 15:04:05 GMT
     re: new RegExp(
       String.raw`^([A-Za-z]{3}), (\d{2}) ([A-Za-z]{3}) (\d{4}) (\d{1,2}):(\d{2}):(\d{2})${fraction} GMT$`,
     ),
     parts: (m) =>
-      shortDays.includes((m[1] as string).toLowerCase())
+      shortDays.has((m[1] as string).toLowerCase())
         ? timeParts(m[4], m[3], m[2], m[5], m[6], m[7], m[8])
         : undefined,
   },
@@ -530,7 +540,7 @@ const timeLayouts: { re: RegExp; parts: (m: RegExpExecArray) => TimeParts | unde
       String.raw`^([A-Za-z]+), (\d{2})-([A-Za-z]{3})-(\d{2}) (\d{1,2}):(\d{2}):(\d{2})${fraction} ([A-Z]{3,5}|[+-]\d+)$`,
     ),
     parts: (m) => {
-      if (!longDays.includes((m[1] as string).toLowerCase())) {
+      if (!longDays.has((m[1] as string).toLowerCase())) {
         return undefined;
       }
       const yy = Number(m[4]);
@@ -544,7 +554,7 @@ const timeLayouts: { re: RegExp; parts: (m: RegExpExecArray) => TimeParts | unde
       String.raw`^([A-Za-z]{3}) ([A-Za-z]{3}) ( ?\d{1,2}) (\d{1,2}):(\d{2}):(\d{2})${fraction} (\d{4})$`,
     ),
     parts: (m) =>
-      shortDays.includes((m[1] as string).toLowerCase())
+      shortDays.has((m[1] as string).toLowerCase())
         ? timeParts(m[8], m[2], (m[3] as string).trim(), m[4], m[5], m[6], m[7])
         : undefined,
   },
@@ -695,7 +705,7 @@ export interface ServedFile {
   // to a temporary file, in bounded pieces, and returns that file's Blob
   // and a remove function that deletes the file (on Linux the open file
   // stays readable).
-  spool(parts: (Uint8Array | HttpRange)[]): Promise<{ blob: Blob; remove: () => void }>;
+  spool(parts: Array<Uint8Array | HttpRange>): Promise<{ blob: Blob; remove: () => void }>;
 }
 
 // A stored file served from elsewhere (S3): only its size is known here, and
@@ -726,7 +736,7 @@ export function serveContent(
   file: Uint8Array | ServedFile | RemoteFile,
   modtime = 0n,
 ): void | Promise<void> {
-  const content = file instanceof Uint8Array ? file : "blob" in file ? file.blob : null;
+  const content = isInstance(Uint8Array, file) ? file : "blob" in file ? file.blob : null;
   // setLastModified
   if (!isZeroTime(modtime)) {
     w.header.set("Last-Modified", formatHttpTime(modtime));
@@ -745,7 +755,7 @@ export function serveContent(
     ctype = typeByExtension(name);
     if (ctype === "") {
       // read a chunk to decide between utf-8 text and binary
-      if (content instanceof Uint8Array) {
+      if (isInstance(Uint8Array, content)) {
         ctype = detectContentType(content.subarray(0, 512));
       } else if (content !== null) {
         const f = file as ServedFile;
@@ -761,30 +771,30 @@ export function serveContent(
   if (content === null) {
     size = (file as RemoteFile).size;
   } else {
-    size = content instanceof Blob ? content.size : content.length;
+    size = isInstance(Blob, content) ? content.size : content.length;
   }
 
   // handle Content-Range header.
   let sendSize = size;
   // the parts of the body to spool, when it is spooled
-  let spoolParts: (Uint8Array | HttpRange)[] | null =
+  let spoolParts: Array<Uint8Array | HttpRange> | null =
     content === null && size > 0 ? [{ start: 0, length: size }] : null;
   let sendContent: Uint8Array | Blob | Promise<Blob> = content ?? new Blob();
-  let ranges: HttpRange[];
+  let ranges: Array<HttpRange>;
   try {
     ranges = parseRange(rangeReq, size);
-  } catch (err) {
-    if (err === errNoOverlap && size === 0) {
+  } catch (error) {
+    if (error === errNoOverlap && size === 0) {
       // Some clients add a Range header to all requests to
       // limit the size of the response. If the file is empty,
       // ignore the range header and respond with a 200 rather
       // than a 416.
       ranges = [];
     } else {
-      if (err === errNoOverlap) {
+      if (error === errNoOverlap) {
         w.header.set("Content-Range", `bytes */${size}`);
       }
-      serveError(w, (err as Error).message, 416);
+      serveError(w, (error as Error).message, 416);
       return;
     }
   }
@@ -817,7 +827,7 @@ export function serveContent(
   } else if (ranges.length > 1) {
     const boundary = randomBoundary();
     const encoder = new TextEncoder();
-    const parts: (Uint8Array | HttpRange)[] = [];
+    const parts: Array<Uint8Array | HttpRange> = [];
     ranges.forEach((ra, i) => {
       parts.push(
         encoder.encode(
@@ -828,11 +838,11 @@ export function serveContent(
     });
     parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
     sendSize = parts.reduce((n, p) => n + p.length, 0);
-    if (file instanceof Uint8Array) {
+    if (isInstance(Uint8Array, file)) {
       sendContent = new Uint8Array(
         Buffer.concat(
           parts.map((p) =>
-            p instanceof Uint8Array ? p : file.subarray(p.start, p.start + p.length),
+            isInstance(Uint8Array, p) ? p : file.subarray(p.start, p.start + p.length),
           ),
         ),
       );
@@ -841,7 +851,7 @@ export function serveContent(
     } else {
       sendContent = new Uint8Array(
         Buffer.concat(
-          parts.map((p) => (p instanceof Uint8Array ? p : file.read(p.start, p.length))),
+          parts.map((p) => (isInstance(Uint8Array, p) ? p : file.read(p.start, p.length))),
         ),
       );
     }
@@ -877,7 +887,7 @@ export function serveContent(
         return blob;
       });
     }
-    if (sendContent instanceof Uint8Array) {
+    if (isInstance(Uint8Array, sendContent)) {
       w.write(sendContent);
     } else {
       w.writeBody(sendContent);

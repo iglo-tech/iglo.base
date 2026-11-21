@@ -6,7 +6,7 @@
 import { disk, g } from "@test/tools/mimetype/go-literal";
 
 // testcases are used for correctness and benchmarks.
-export const testcases: [name: string, data: Uint8Array, expectedMIME: string][] = [
+export const testcases: Array<[name: string, data: Uint8Array, expectedMIME: string]> = [
   ["3gpp2", g`\x00\x00\x00\x18ftyp3g24`, "video/3gpp2"],
   ["3gpp2 without ftyp", g`\x00\x00\x00\x18mtyp3g24`, "application/octet-stream"],
   ["3gp", g`\x00\x00\x00\x18ftyp3gp1`, "video/3gpp"],
@@ -73,7 +73,7 @@ export const testcases: [name: string, data: Uint8Array, expectedMIME: string][]
     "application/x-chrome-extension",
   ],
   ["csv", g`1,2\n\"abc\",\"def\"\na,\"b`, "text/csv"],
-  ["csv with \\r\\n", g`1,2\r\n3,4\r\na,b`, "text/csv"],
+  [String.raw`csv with \r\n`, g`1,2\r\n3,4\r\na,b`, "text/csv"],
   ["cpio 7", g`070707`, "application/x-cpio"],
   ["cpio 1", g`070701`, "application/x-cpio"],
   ["cpio 2", g`070702`, "application/x-cpio"],

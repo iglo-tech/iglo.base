@@ -11,7 +11,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { request, type RealtimeStream } from "@test/realtime/client";
+import { request } from "@test/realtime/client";
+import type { RealtimeStream } from "@test/realtime/client";
 import { actions, ScenarioContext, settled } from "@test/realtime/scenario";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { all, useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
@@ -26,7 +27,7 @@ import { startUpstream } from "@test/support/upstream";
 const timeout = 120_000;
 
 type Kind = "upstream" | "igloBase";
-const kinds: Kind[] = ["upstream", "igloBase"];
+const kinds: Array<Kind> = ["upstream", "igloBase"];
 
 interface Server {
   url: string;
@@ -38,7 +39,7 @@ interface Reply {
   json: { [key: string]: unknown };
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -64,11 +65,14 @@ async function api(
   body?: unknown,
   headers: Record<string, string> = {},
 ): Promise<Reply> {
-  const res = await fetch(server.url + path, {
+  const init: RequestInit = {
     method,
     headers: { "Content-Type": "application/json", ...headers },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(server.url + path, init);
   const text = await res.text();
   return { status: res.status, json: text === "" ? {} : (JSON.parse(text) as Reply["json"]) };
 }
@@ -105,11 +109,11 @@ function scrub(transcript: unknown): string {
     return value;
   };
   return JSON.stringify(sorted(transcript), null, 2)
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<token>")
-    .replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "<date>")
-    .replace(/"(id|recordRef|mfaId)": "[a-z0-9]{15}"/g, '"$1": "<id>"')
-    .replace(/users[0-9]{5}/g, "<username>")
-    .replace(/\b[A-Za-z0-9]{40}\b/g, "<client>");
+    .replaceAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<token>")
+    .replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "<date>")
+    .replaceAll(/"(id|recordRef|mfaId)": "[a-z0-9]{15}"/g, '"$1": "<id>"')
+    .replaceAll(/users[0-9]{5}/g, "<username>")
+    .replaceAll(/\b[A-Za-z0-9]{40}\b/g, "<client>");
 }
 
 // runs a flow on each server, on its own prepared fixture copy, one after
@@ -118,7 +122,7 @@ async function onBoth(
   flow: (server: Server, dataDir: string, kind: Kind) => Promise<unknown>,
   prepare: (ctx: { dataDir: string }) => void,
 ): Promise<void> {
-  const transcripts: string[] = [];
+  const transcripts: Array<string> = [];
   for (const kind of kinds) {
     const dataDir = fixtureCopy();
     prepare({ dataDir });
@@ -140,11 +144,11 @@ async function oauth2Client(ctx: ScenarioContext): Promise<RealtimeStream> {
   return stream;
 }
 
-function externalAuthRows(dataDir: string): { [key: string]: unknown }[] {
+function externalAuthRows(dataDir: string): Array<{ [key: string]: unknown }> {
   return queryRows(
     dataDir,
     "SELECT * FROM _externalAuths WHERE provider = 'oidc' ORDER BY providerId",
-  ) as { [key: string]: unknown }[];
+  ) as Array<{ [key: string]: unknown }>;
 }
 
 describe("the popup flow", () => {
@@ -168,7 +172,7 @@ describe("the popup flow", () => {
             const auth = await signIn(server, { code });
             return {
               providers: (
-                methods.json["oauth2"] as { providers: { name: string }[] }
+                methods.json["oauth2"] as { providers: Array<{ name: string }> }
               ).providers.map((p) => p.name),
               redirect: [redirect.status, redirect.headers.get("location")],
               message,
@@ -223,7 +227,7 @@ describe("_externalAuths across the servers", () => {
   for (const [writer, reader] of [
     ["igloBase", "upstream"],
     ["upstream", "igloBase"],
-  ] as [Kind, Kind][]) {
+  ] as Array<[Kind, Kind]>) {
     test(
       `rows written by ${writer} are used and deleted by ${reader}`,
       async () => {
@@ -309,8 +313,8 @@ describe("what a sign-in triggers", () => {
       await onBoth(
         async (server) => {
           const before = sink.messages.length;
-          const statuses: number[] = [];
-          const counts: number[] = [];
+          const statuses: Array<number> = [];
+          const counts: Array<number> = [];
           for (const agent of ["agent one", "agent two", "agent two"]) {
             statuses.push((await signIn(server, {}, { "User-Agent": agent })).status);
             await Bun.sleep(150);
@@ -338,12 +342,16 @@ describe("what a sign-in triggers", () => {
     async () => {
       await onBoth(
         async (server) => {
-          const password = (mfaId?: string): Promise<Reply> =>
-            api(server, "POST", "/api/collections/users/auth-with-password", {
+          const password = (mfaId?: string): Promise<Reply> => {
+            const body: { [key: string]: unknown } = {
               identity: "test2@example.com",
               password: "1234567890",
-              ...(mfaId === undefined ? {} : { mfaId }),
-            });
+            };
+            if (mfaId !== undefined) {
+              body.mfaId = mfaId;
+            }
+            return api(server, "POST", "/api/collections/users/auth-with-password", body);
+          };
 
           const first = await signIn(server);
           const mfaId = first.json["mfaId"] as string;

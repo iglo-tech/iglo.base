@@ -24,8 +24,10 @@
 import type { ErrorLogger } from "@/app/app";
 import { toInt64 } from "@/records/cast";
 import type { Settings } from "@/settings/settings-model";
-import { type FilesystemWatcher, NewLocal, type System } from "@/tools/filesystem/filesystem";
-import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
+import { NewLocal } from "@/tools/filesystem/filesystem";
+import type { FilesystemWatcher, System } from "@/tools/filesystem/filesystem";
+import { NewS3 } from "@/tools/filesystem/s3-system";
+import type { S3System } from "@/tools/filesystem/s3-system";
 
 export const LocalStorageDirName = "storage";
 export const LocalBackupsDirName = "backups";
@@ -124,7 +126,7 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
   const deletePrefix = async (prefix: string): Promise<void> => {
     const fs = newFilesystem();
     try {
-      let failures: unknown[];
+      let failures: Array<unknown>;
       if (fs.remote) {
         failures = await fs.deletePrefix(prefix);
       } else {
@@ -136,7 +138,9 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
             break;
           }
           // give the event loop back between pages
-          await new Promise<void>((resolve) => setImmediate(resolve));
+          await new Promise<void>((resolve) => {
+            setImmediate(resolve);
+          });
         }
       }
       if (failures.length > 0) {
@@ -154,10 +158,10 @@ export function newAppFilesystem(config: AppFilesystemConfig): AppFilesystem {
     // delete transaction
     setImmediate(() => {
       deletePrefix(prefix)
-        .catch((err: unknown) => {
+        .catch((error: unknown) => {
           config.logger.error(
             "Failed to delete storage prefix (non critical error; usually could happen because of S3 api limits)",
-            { prefix, error: err },
+            { prefix, error },
           );
         })
         .finally(() => deleteSem.release());
@@ -202,7 +206,7 @@ function supportFiles(model: FilesModel): boolean {
 // semaphore.Weighted with weight 1 per acquire
 class Semaphore {
   #free: number;
-  readonly #waiters: (() => void)[] = [];
+  readonly #waiters: Array<() => void> = [];
 
   constructor(size: number) {
     this.#free = size;
@@ -220,7 +224,9 @@ class Semaphore {
     if (this.tryAcquire()) {
       return Promise.resolve();
     }
-    return new Promise((resolve) => this.#waiters.push(resolve));
+    return new Promise((resolve) => {
+      this.#waiters.push(resolve);
+    });
   }
 
   release(): void {

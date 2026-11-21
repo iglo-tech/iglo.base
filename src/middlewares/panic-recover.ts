@@ -18,8 +18,8 @@ export function panicRecover(): Handler<RequestEvent> {
     func: async (e) => {
       try {
         return await e.next();
-      } catch (recovered) {
-        const recoverErr = recovered instanceof Error ? recovered : new Error(String(recovered));
+      } catch (error) {
+        const recoverErr = error instanceof Error ? error : new Error(String(error));
         return e.internalServerError(
           "",
           new Error(`[PANIC RECOVER] ${recoverErr.message} ${recoverErr.stack ?? ""}`, {

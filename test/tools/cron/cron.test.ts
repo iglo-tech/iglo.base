@@ -6,7 +6,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Cron, type CronConfig } from "@/tools/cron/cron";
+import { Cron } from "@/tools/cron/cron";
+import type { CronConfig } from "@/tools/cron/cron";
 
 const minute = 60_000;
 
@@ -108,7 +109,7 @@ test("setInterval changes the tick interval of a started ticker", async () => {
 test("setTimezone moves the moments", async () => {
   const c = new Cron();
   c.setTimezone("Asia/Tokyo");
-  const ran: string[] = [];
+  const ran: Array<string> = [];
   c.add("tokyo", "30 9 15 6 6", () => {
     ran.push("due");
   });
@@ -278,7 +279,7 @@ describe("the ticker", () => {
   test("each tick runs the jobs due in its minute, in UTC", async () => {
     const time = fakeTime("2030-01-01T09:59:30Z");
     const c = new Cron(time.config);
-    const ran: string[] = [];
+    const ran: Array<string> = [];
     c.add("hourly", "0 * * * *", () => {
       ran.push("hourly");
     });
@@ -418,7 +419,7 @@ describe("the ticker", () => {
 
   test("a job that throws or rejects never stops later ticks", async () => {
     const time = fakeTime("2030-01-01T00:00:00Z");
-    const panics: unknown[] = [];
+    const panics: Array<unknown> = [];
     const c = new Cron({ ...time.config, logPanic: (cause) => panics.push(cause) });
     let calls = 0;
     c.add("sync", "* * * * *", () => {

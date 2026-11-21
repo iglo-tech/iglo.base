@@ -5,25 +5,25 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { BackupService } from "@sdk/services/BackupService";
 
-describe("BackupService", function () {
+describe("BackupService", () => {
   const client = new Client("test_base_url");
   const service = new BackupService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("getFullList()", function () {
-    test("Should fetch all backups", async function () {
+  describe("getFullList()", () => {
+    test("Should fetch all backups", async () => {
       const replyBody = [
         { key: "test1", size: 100, modified: "2023-05-18 10:00:00.123Z" },
         { key: "test2", size: 200, modified: "2023-05-18 11:00:00.123Z" },
@@ -36,7 +36,7 @@ describe("BackupService", function () {
           return config?.headers?.["x-test"] === "123";
         },
         replyCode: 200,
-        replyBody: replyBody,
+        replyBody,
       });
 
       const result = await service.getFullList({
@@ -48,8 +48,8 @@ describe("BackupService", function () {
     });
   });
 
-  describe("create()", function () {
-    test("Should initialize a backup create", async function () {
+  describe("create()", () => {
+    test("Should initialize a backup create", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/backups") + "?q1=123",
@@ -70,8 +70,8 @@ describe("BackupService", function () {
     });
   });
 
-  describe("upload()", function () {
-    test("Should upload a backup", async function () {
+  describe("upload()", () => {
+    test("Should upload a backup", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/backups/upload") + "?q1=123",
@@ -92,8 +92,8 @@ describe("BackupService", function () {
     });
   });
 
-  describe("delete()", function () {
-    test("Should delete a single backup", async function () {
+  describe("delete()", () => {
+    test("Should delete a single backup", async () => {
       fetchMock.on({
         method: "DELETE",
         url: service.client.buildURL("/api/backups") + "/%40test?q1=123",
@@ -113,8 +113,8 @@ describe("BackupService", function () {
     });
   });
 
-  describe("restore()", function () {
-    test("Should initialize a backup restore", async function () {
+  describe("restore()", () => {
+    test("Should initialize a backup restore", async () => {
       fetchMock.on({
         method: "POST",
         url: service.client.buildURL("/api/backups") + "/%40test/restore?q1=123",
@@ -134,8 +134,8 @@ describe("BackupService", function () {
     });
   });
 
-  describe("getDownloadURL()", function () {
-    test("Should initialize a backup getDownloadURL", function () {
+  describe("getDownloadURL()", () => {
+    test("Should initialize a backup getDownloadURL", () => {
       const result = service.getDownloadURL("@token", "@test");
 
       assert.deepEqual(result, service.client.buildURL("/api/backups") + "/%40test?token=%40token");

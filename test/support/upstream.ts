@@ -17,7 +17,8 @@ import { join } from "node:path";
 
 import { spawnChild, waitUntilReady } from "@test/support/child";
 import { freePort, releasePort } from "@test/support/executable";
-import { defaultLayout, requireTool, type Layout } from "@test/support/reference-tools";
+import { defaultLayout, requireTool } from "@test/support/reference-tools";
+import type { Layout } from "@test/support/reference-tools";
 
 export interface UpstreamServer {
   url: string;
@@ -34,7 +35,7 @@ export async function startUpstream(
     layout?: Layout;
     dataDir?: string;
     // more `serve` arguments (e.g. --encryptionEnv)
-    args?: string[];
+    args?: Array<string>;
     // more environment variables
     env?: Record<string, string>;
   } = {},

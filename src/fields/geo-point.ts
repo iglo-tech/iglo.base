@@ -5,11 +5,8 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldApp, FieldCollection, FieldRecord } from "@/fields/field";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { boolType, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
@@ -17,6 +14,7 @@ import { ErrRequired } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeGeoPoint = "geoPoint";
 
@@ -122,9 +120,9 @@ export class GeoPointField implements Field {
     const point = new GeoPoint();
     try {
       point.scan(raw);
-    } catch (err) {
+    } catch (error) {
       // a failed scan may have changed the point already, as in Go
-      return [point, err as Error];
+      return [point, error as Error];
     }
     return [point, null];
   }
@@ -132,7 +130,7 @@ export class GeoPointField implements Field {
   // ValidateValue implements [Field.ValidateValue] interface method.
   validateValue(_app: FieldApp, record: FieldRecord): Error | null {
     const val = record.getRaw(this.name);
-    if (!(val instanceof GeoPoint)) {
+    if (!isInstance(GeoPoint, val)) {
       return ErrUnsupportedValueType;
     }
 

@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { escapeString, unescapeString } from "@/tools/html/escape";
 import { entity, longestEntityWithoutSemicolon } from "@/tools/html/entity";
 
-const unescapeTests: { desc: string; html: string; unescaped: string }[] = [
+const unescapeTests: Array<{ desc: string; html: string; unescaped: string }> = [
   // Handle no entities.
   { desc: "copy", html: "A\ttext\nstring", unescaped: "A\ttext\nstring" },
   // Handle simple named entities.

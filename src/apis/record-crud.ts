@@ -25,7 +25,8 @@
 // unless a test replaces it); its limiter windows read the app clock.
 
 import type { App } from "@/app/app";
-import { type RequestEvent, RequestInfoContextOAuth2, type RequestInfo } from "@/app/event-request";
+import { RequestInfoContextOAuth2 } from "@/app/event-request";
+import type { RequestEvent, RequestInfo } from "@/app/event-request";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import type { Collection } from "@/collections/collection-model";
 import type { Params } from "@/db/dbx/query";
@@ -38,7 +39,8 @@ import { dynamicCollectionBodyLimit } from "@/middlewares/body-limit";
 import { DefaultRateLimitMiddlewareId } from "@/middlewares/middlewares";
 import { checkCollectionRateLimit, checkRateLimit } from "@/middlewares/rate-limit";
 import type { RateLimitRule } from "@/settings/settings-model";
-import { type DataMap, newRecord, type Record } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { DataMap, Record } from "@/records/record-model";
 import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
 import { joinErrors, wrapError } from "@/collections/view";
 import { expandRecordSync } from "@/records/record-query-expand";
@@ -48,8 +50,8 @@ import {
   driverValue,
   run,
   settlePasswordHashes,
-  type Step,
 } from "@/records/record-save";
+import type { Step } from "@/records/record-save";
 import { RecordUpsert } from "@/records/record-upsert";
 import {
   autoResolveRecordsFlagsSync,
@@ -62,7 +64,8 @@ import {
   newRequestFieldResolver,
 } from "@/apis/record-helpers";
 import { filterBuildExpr } from "@/search/filter";
-import { newProvider, type SearchResult } from "@/search/provider";
+import { newProvider } from "@/search/provider";
+import type { SearchResult } from "@/search/provider";
 import { ErrMissingFile } from "@/server/event";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
@@ -73,6 +76,7 @@ import { columnify } from "@/tools/inflector/inflector";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { JSONRaw } from "@/tools/types/json-raw";
 import { pseudorandomString, randomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 // a handler as a step: yields what RecordIO returns and gets it back resolved
 export type HandlerStep = Generator<unknown, HandlerResult, unknown>;
@@ -82,8 +86,8 @@ export type HandlerStep = Generator<unknown, HandlerResult, unknown>;
 export interface RecordIO {
   requestInfo(e: RequestEvent): RequestInfo | Error | Promise<RequestInfo | Error>;
   // FindUploadedFiles: throws ErrMissingFile when the key has no files
-  uploadedFiles(e: RequestEvent, key: string): File[] | Promise<File[]>;
-  row(q: SelectQuery): unknown[] | Promise<unknown[]>;
+  uploadedFiles(e: RequestEvent, key: string): Array<File> | Promise<Array<File>>;
+  row(q: SelectQuery): Array<unknown> | Promise<Array<unknown>>;
   record(q: SelectQuery): Record | Promise<Record>;
   submit(form: RecordUpsert): void | Promise<void>;
   deleteRecord(e: RequestEvent, record: Record): void | Promise<void>;
@@ -106,7 +110,7 @@ const routeIO: RecordIO = {
 // opened
 export function txRecordIO(
   requestInfo: RequestInfo | Error,
-  uploadedFiles: ReadonlyMap<string, File[]>,
+  uploadedFiles: ReadonlyMap<string, Array<File>>,
 ): RecordIO {
   return {
     requestInfo: () => requestInfo,
@@ -143,9 +147,9 @@ function enrichRecordSync(e: RequestEvent, info: RequestInfo, record: Record): u
         throw joinErrors([...failed].map(([key, err]) => wrapError(key, err)));
       }
     }
-  } catch (err) {
+  } catch (error) {
     // not critical
-    e.app.logger.warn("failed to apply default enriching", { error: err });
+    e.app.logger.warn("failed to apply default enriching", { error });
   }
 
   return undefined;
@@ -205,8 +209,8 @@ async function recordsList(
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   const rateLimitErr = checkCollectionRateLimit(e, collection, "list");
@@ -245,8 +249,8 @@ async function recordsList(
         fieldsResolver.filterOptions(),
       );
       query.andWhere(expr);
-    } catch (err) {
-      return asError(err);
+    } catch (error) {
+      return asError(error);
     }
 
     // will be applied by the search provider right before executing the query
@@ -269,8 +273,8 @@ async function recordsList(
       encodeValues(e.request.query()),
       recordsTarget,
     );
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("", error));
   }
 
   const enrichErr = await enrichRecords(e, result.items);
@@ -332,8 +336,8 @@ async function recordView(e: RequestEvent): Promise<HandlerResult> {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   const rateLimitErr = checkCollectionRateLimit(e, collection, "view");
@@ -379,9 +383,9 @@ async function recordView(e: RequestEvent): Promise<HandlerResult> {
     );
     ruleFunc(q);
     record = await q.limit(1).oneAsync<Record>(recordTarget);
-  } catch (fetchErr) {
+  } catch (error) {
     // upstream passes the (nil) RequestInfo error first: always a 404
-    return firstApiError(undefined, e.notFoundError("", fetchErr));
+    return firstApiError(undefined, e.notFoundError("", error));
   }
 
   const enrichErr = await enrichRecord(e, record);
@@ -401,8 +405,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   if (collection.isView()) {
@@ -429,8 +433,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
   let data: DataMap | null;
   try {
     data = yield* recordDataFromRequest(e, record, io);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to read the submitted data.", error));
   }
 
   // set a random password for the OAuth2 ignoring its plain password validators
@@ -457,7 +461,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
   if (skipPlainPasswordRecordValidators) {
     // unset the plain value to skip the plain password field validators
     const raw = record.getRaw(FieldNamePassword);
-    if (raw instanceof PasswordFieldValue) {
+    if (isInstance(PasswordFieldValue, raw)) {
       raw.plain = "";
     }
   }
@@ -482,21 +486,21 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
     let dummyExport: Params;
     try {
       dummyExport = dummyRecord.dbExport();
-    } catch (err) {
+    } catch (error) {
       return e.badRequestError(
         "Failed to create record",
-        new Error(`dummy DBExport error: ${errorMessage(err)}`, { cause: err }),
+        new Error(`dummy DBExport error: ${errorMessage(error)}`, { cause: error }),
       );
     }
 
     const dummyParams: Params = {};
-    const selects: string[] = [];
-    for (let [k, v] of Object.entries(dummyExport)) {
+    const selects: Array<string> = [];
+    for (const [rawKey, v] of Object.entries(dummyExport)) {
       // bound as Go's driver binds the typed values
-      const value = driverValue(k, v);
-      k = columnify(k); // columnify is just as extra measure in case of custom fields
+      const value = driverValue(rawKey, v);
+      const k = columnify(rawKey); // columnify is just as extra measure in case of custom fields
       const param = "__pb_create__" + k;
-      if (isExpression(value) && v instanceof JSONRaw) {
+      if (isExpression(value) && isInstance(JSONRaw, v)) {
         // JSON text that is not valid UTF-8: a Go string with its bytes
         setOwn(dummyParams, param, v.value());
         selects.push("CAST({:" + param + "} AS TEXT) AS [[" + k + "]]");
@@ -534,31 +538,31 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
           resolver.filterOptions(),
         );
         ruleQuery.andWhere(expr);
-      } catch (err) {
+      } catch (error) {
         return e.badRequestError(
           "Failed to create record",
-          new Error(`create rule build expression failure: ${errorMessage(err)}`, {
-            cause: err,
+          new Error(`create rule build expression failure: ${errorMessage(error)}`, {
+            cause: error,
           }),
         );
       }
 
       try {
         resolver.updateQuery(ruleQuery);
-      } catch (err) {
+      } catch (error) {
         return e.badRequestError(
           "Failed to create record",
-          new Error(`create rule update query failure: ${errorMessage(err)}`, { cause: err }),
+          new Error(`create rule update query failure: ${errorMessage(error)}`, { cause: error }),
         );
       }
 
       let exists = 0;
       let ruleErr: unknown = null;
       try {
-        const row = (yield io.row(ruleQuery.limit(1))) as unknown[];
+        const row = (yield io.row(ruleQuery.limit(1))) as Array<unknown>;
         exists = Number(row[0] ?? 0);
-      } catch (err) {
-        ruleErr = err;
+      } catch (error) {
+        ruleErr = error;
       }
       if (ruleErr !== null || exists === 0) {
         return e.badRequestError(
@@ -591,8 +595,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
 
   try {
     yield io.submit(form);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to create record", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to create record", error));
   }
 
   const enrichErr = (yield io.enrich(e, record)) as Error | undefined;
@@ -608,8 +612,8 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   if (collection.isView()) {
@@ -644,15 +648,15 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
   let record: Record;
   try {
     record = (yield findRecordByIdIO(e.app, collection, recordId, null, io)) as Record;
-  } catch (err) {
-    return firstApiError(err, e.notFoundError("", err));
+  } catch (error) {
+    return firstApiError(error, e.notFoundError("", error));
   }
 
   let data: DataMap | null;
   try {
     data = yield* recordDataFromRequest(e, record, io);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to read the submitted data.", error));
   }
 
   // replace modifiers fields so that the resolved value is always
@@ -674,8 +678,8 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
   // refetch with access checks
   try {
     record = (yield findRecordByIdIO(e.app, collection, recordId, ruleFunc, io)) as Record;
-  } catch (err) {
-    return firstApiError(err, e.notFoundError("", err));
+  } catch (error) {
+    return firstApiError(error, e.notFoundError("", error));
   }
 
   const form = new RecordUpsert(e.app, record);
@@ -702,8 +706,8 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
 
   try {
     yield io.submit(form);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to update record.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to update record.", error));
   }
 
   const enrichErr = (yield io.enrich(e, record)) as Error | undefined;
@@ -719,8 +723,8 @@ export function* recordDelete(e: RequestEvent, io: RecordIO): HandlerStep {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   if (collection.isView()) {
@@ -765,19 +769,19 @@ export function* recordDelete(e: RequestEvent, io: RecordIO): HandlerStep {
   let record: Record;
   try {
     record = (yield findRecordByIdIO(e.app, collection, recordId, ruleFunc, io)) as Record;
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   // the default OnRecordDeleteRequest action
   try {
     yield io.deleteRecord(e, record);
-  } catch (err) {
+  } catch (error) {
     return firstApiError(
-      err,
+      error,
       e.badRequestError(
         "Failed to delete record. Make sure that the record is not part of a required relation reference.",
-        err,
+        error,
       ),
     );
   }
@@ -822,7 +826,7 @@ function* recordDataFromRequest(
     result ??= {};
 
     for (const [k, files] of uploadedFiles) {
-      const uploaded: unknown[] = [];
+      const uploaded: Array<unknown> = [];
 
       // if not remove/prepend/append -> merge with the submitted
       // info.Body values to prevent accidental old files deletion
@@ -874,13 +878,13 @@ function* extractUploadedFiles(
   collection: Collection,
   prefix: string,
   io: RecordIO,
-): Generator<unknown, Map<string, File[]> | null, unknown> {
+): Generator<unknown, Map<string, Array<File>> | null, unknown> {
   const contentType = re.request.headers.get("content-type") ?? "";
   if (!contentType.startsWith("multipart/form-data")) {
     return null; // not multipart/form-data request
   }
 
-  const result = new Map<string, File[]>();
+  const result = new Map<string, Array<File>>();
 
   for (const field of collection.fields) {
     if (field.type() !== FieldTypeFile) {
@@ -900,12 +904,12 @@ function* extractUploadedFiles(
       if (prefix !== "") {
         k = prefix + "." + k;
       }
-      let files: File[] = [];
+      let files: Array<File> = [];
       try {
-        files = (yield io.uploadedFiles(re, k)) as File[];
-      } catch (err) {
-        if (err !== ErrMissingFile) {
-          throw err;
+        files = (yield io.uploadedFiles(re, k)) as Array<File>;
+      } catch (error) {
+        if (error !== ErrMissingFile) {
+          throw error;
         }
       }
       if (files.length > 0) {
@@ -946,9 +950,9 @@ function* hasAuthManageAccess(
   try {
     const expr = filterBuildExpr(manageRule, resolver, resolver.filterOptions());
     query.andWhere(expr);
-  } catch (err) {
+  } catch (error) {
     app.logger.error("Manage rule build expression error", {
-      error: err,
+      error,
       collectionId: collection.id,
     });
     return false;
@@ -961,7 +965,7 @@ function* hasAuthManageAccess(
   }
 
   try {
-    const row = (yield io.row(query.limit(1))) as unknown[];
+    const row = (yield io.row(query.limit(1))) as Array<unknown>;
     return Number(row[0] ?? 0) > 0;
   } catch {
     return false;

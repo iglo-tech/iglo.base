@@ -6,7 +6,8 @@
 // Go's nil slices are null here.
 
 import { hasPrefix, index, lit } from "@/tools/mimetype/go-bytes";
-import { byteIsWS, type Bytes } from "@/tools/mimetype/internal/scan/bytes";
+import { byteIsWS } from "@/tools/mimetype/internal/scan/bytes";
+import type { Bytes } from "@/tools/mimetype/internal/scan/bytes";
 
 // GetAnAttribute assumes we passed over an SGML tag and extracts first
 // attribute and its value.

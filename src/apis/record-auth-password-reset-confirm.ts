@@ -25,8 +25,10 @@ import { NewError } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { Equal } from "@/validators/equal";
+import { isInstance } from "@/tools/types/is-instance";
 
 export async function recordConfirmPasswordReset(e: RequestEvent): Promise<HandlerResult> {
   const collection = findAuthCollection(e);
@@ -36,6 +38,7 @@ export async function recordConfirmPasswordReset(e: RequestEvent): Promise<Handl
 
   const form: RecordConfirmPasswordResetForm = { Token: "", Password: "", PasswordConfirm: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordConfirmPasswordResetType,
   );
@@ -53,8 +56,11 @@ export async function recordConfirmPasswordReset(e: RequestEvent): Promise<Handl
   let authRecord: Record;
   try {
     authRecord = findAuthRecordByToken(e.app, form.Token, TokenTypePasswordReset);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Invalid or expired password reset token.", err));
+  } catch (error) {
+    return firstApiError(
+      error,
+      e.badRequestError("Invalid or expired password reset token.", error),
+    );
   }
 
   // the OnRecordConfirmPasswordResetRequest default action
@@ -67,8 +73,8 @@ export async function recordConfirmPasswordReset(e: RequestEvent): Promise<Handl
 
   try {
     await saveRecord(e.app, authRecord);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to set new password.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to set new password.", error));
   }
 
   e.app.store.remove(getPasswordResetResendKey(authRecord));
@@ -113,7 +119,7 @@ function validateRecordConfirmPasswordResetForm(
 ): Error | null {
   let min = 1;
   const passField = collection.fields.getByName(FieldNamePassword);
-  if (passField instanceof PasswordField && passField.min > 0) {
+  if (isInstance(PasswordField, passField) && passField.min > 0) {
     min = Number(passField.min);
   }
 

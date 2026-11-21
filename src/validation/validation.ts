@@ -17,6 +17,7 @@
 // where it behaves as ValidateStruct.
 
 import { Errors } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Rule represents a validation rule.
 export interface Rule {
@@ -54,9 +55,9 @@ export function isValidatable(value: unknown): value is Validatable {
 //  3. If the value being validated is a map/slice/array, and the element
 //     type implements `Validatable`, for each element call the element
 //     value's `Validate()`. Return with the validation result.
-export function Validate(value: unknown, ...rules: Rule[]): Error | null {
+export function Validate(value: unknown, ...rules: Array<Rule>): Error | null {
   for (const rule of rules) {
-    if (rule instanceof SkipRule && rule.skip) {
+    if (isInstance(SkipRule, rule) && rule.skip) {
       return null;
     }
     const err = rule.validate(value);
@@ -76,7 +77,7 @@ export function Validate(value: unknown, ...rules: Rule[]): Error | null {
   if (Array.isArray(value)) {
     return validateSlice(value);
   }
-  if (value instanceof Map) {
+  if (isInstance<Map<unknown, unknown>>(Map, value)) {
     return validateMap([...value.entries()]);
   }
 
@@ -84,7 +85,7 @@ export function Validate(value: unknown, ...rules: Rule[]): Error | null {
 }
 
 // validateMap validates a map of validatable elements
-function validateMap(entries: [unknown, unknown][]): Error | null {
+function validateMap(entries: Array<[unknown, unknown]>): Error | null {
   const errs = new Errors();
   for (const [key, mv] of entries) {
     if (isValidatable(mv)) {
@@ -101,7 +102,7 @@ function validateMap(entries: [unknown, unknown][]): Error | null {
 }
 
 // validateSlice validates a slice/array of validatable elements
-function validateSlice(list: readonly unknown[]): Error | null {
+function validateSlice(list: ReadonlyArray<unknown>): Error | null {
   const errs = new Errors();
   for (const [i, ev] of list.entries()) {
     if (isValidatable(ev)) {

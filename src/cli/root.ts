@@ -13,17 +13,21 @@
 
 import { basename, dirname, join } from "node:path";
 
-import { argsMinusFirst, FlagError, parseFlags, stripFlags, type FlagSpec } from "@/cli/flags";
-import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { argsMinusFirst, FlagError, parseFlags, stripFlags } from "@/cli/flags";
+import type { FlagSpec } from "@/cli/flags";
+import { helpText, usageText } from "@/cli/help";
+import type { CommandHelp } from "@/cli/help";
 import { migrateShort, runMigrateCommand } from "@/cli/migrate";
 import { findRemovedFlag, removedCommandMessage, removedFlagMessage } from "@/cli/removed";
 import { runSchemaCommand, schemaShort } from "@/cli/schema";
 import { runServeCommand, serveFlags, serveShort, serveUse } from "@/cli/serve";
 import { CommandError, runSuperuserCommand, superuserShort } from "@/cli/superuser";
 import { PanicError, registerMigrations } from "@/migrations/jsvm";
-import { addMigration, type Migration } from "@/migrations/migrations-runner";
+import { addMigration } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
 import { systemMigrationFiles, systemMigrationHasDown } from "@/migrations/system-migrations";
-import { logTime, type Output } from "@/server/serve";
+import { logTime } from "@/server/serve";
+import type { Output } from "@/server/serve";
 import type { StaticFS } from "@/apis/ui-pack";
 
 // Version of iglo.base. The release build (scripts/build.ts, M7.3) replaces
@@ -37,7 +41,7 @@ const defaultQueryTimeout = 30;
 
 export interface CliContext {
   // os.Args[1:]
-  args: string[];
+  args: Array<string>;
   // os.Args[0], the path the executable was invoked as
   argv0: string;
   cwd: string;
@@ -91,7 +95,7 @@ const subcommands = [
   { name: "superuser", short: superuserShort },
 ];
 
-function rootFlags(defaults: AppConfig): FlagSpec[] {
+function rootFlags(defaults: AppConfig): Array<FlagSpec> {
   return [
     {
       name: "dir",
@@ -184,7 +188,11 @@ function withMigrationsDir(config: AppConfig): AppConfig {
 
 // the flags of the whole command line, as main.go's eager ParseFlags: what
 // it cannot parse is left to the command
-function eagerConfig(defaults: AppConfig, persistent: FlagSpec[], args: string[]): AppConfig {
+function eagerConfig(
+  defaults: AppConfig,
+  persistent: Array<FlagSpec>,
+  args: Array<string>,
+): AppConfig {
   try {
     return resolveConfig(defaults, parseFlags(args, persistent, { allowUnknown: true }).values);
   } catch {
@@ -193,8 +201,8 @@ function eagerConfig(defaults: AppConfig, persistent: FlagSpec[], args: string[]
 }
 
 // the system migrations (by name) and the app's, for the runner
-function allMigrations(appMigrations: readonly Migration[]): Migration[] {
-  const list: Migration[] = [];
+function allMigrations(appMigrations: ReadonlyArray<Migration>): Array<Migration> {
+  const list: Array<Migration> = [];
   for (const file of systemMigrationFiles) {
     addMigration(list, {
       file,
@@ -228,11 +236,12 @@ function distance(a: string, b: string): number {
 }
 
 function suggestionsFor(typed: string): string {
-  const matches = subcommands
-    .map((cmd) => cmd.name)
-    .filter(
-      (name) => distance(typed, name) <= 2 || name.toLowerCase().startsWith(typed.toLowerCase()),
-    );
+  const matches = subcommands.flatMap((cmd) => {
+    const name = cmd.name;
+    return distance(typed, name) <= 2 || name.toLowerCase().startsWith(typed.toLowerCase())
+      ? [name]
+      : [];
+  });
   return matches.length > 0
     ? `\n\nDid you mean this?\n${matches.map((name) => `\t${name}\n`).join("")}`
     : "";
@@ -340,7 +349,7 @@ async function execute(ctx: CliContext): Promise<number> {
   }
 
   // the root command itself: only --help and --version do something
-  const local: FlagSpec[] = [
+  const local: Array<FlagSpec> = [
     ...persistent,
     { name: "help", kind: "bool", shorthand: "h", usage: `help for ${name}` },
     { name: "version", kind: "bool", shorthand: "v", usage: `version for ${name}` },
@@ -356,11 +365,11 @@ async function execute(ctx: CliContext): Promise<number> {
   let parsed;
   try {
     parsed = parseFlags(ctx.args, local, { allowUnknown: true });
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CliError(err.message, usageText(help));
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CliError(error.message, usageText(help));
     }
-    throw err;
+    throw error;
   }
   if (parsed.values.get("help") !== true && parsed.values.get("version") === true) {
     ctx.out.stdout(`${name} version ${version}\n`);
@@ -378,16 +387,16 @@ function exitUnset(): never {
 export async function runCli(ctx: CliContext): Promise<number> {
   try {
     return await execute(ctx);
-  } catch (err) {
-    if (err instanceof PanicError) {
-      ctx.out.stderr(`panic: ${err.message}\n`);
+  } catch (error) {
+    if (error instanceof PanicError) {
+      ctx.out.stderr(`panic: ${error.message}\n`);
       return 2;
     }
-    if ((err instanceof CliError || err instanceof CommandError) && err.usage) {
-      ctx.out.stderr(`${err.usage}\n`);
+    if ((error instanceof CliError || error instanceof CommandError) && error.usage) {
+      ctx.out.stderr(`${error.usage}\n`);
     }
     // log.Fatal
-    const message = err instanceof Error ? err.message : String(err);
+    const message = error instanceof Error ? error.message : String(error);
     ctx.out.stderr(`${logTime(ctx.out.now())} ${message}${message.endsWith("\n") ? "" : "\n"}`);
     return 1;
   }

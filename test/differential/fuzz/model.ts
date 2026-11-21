@@ -11,7 +11,7 @@ export interface FieldModel {
   // target collection of a relation field
   target?: string;
   // the distinct stored values, flattened for multi-value fields
-  samples: unknown[];
+  samples: Array<unknown>;
 }
 
 export interface BackRelation {
@@ -22,15 +22,15 @@ export interface BackRelation {
 export interface CollectionModel {
   name: string;
   type: string;
-  fields: FieldModel[];
+  fields: Array<FieldModel>;
   // relation fields of other collections that point here
-  backRelations: BackRelation[];
-  ids: string[];
+  backRelations: Array<BackRelation>;
+  ids: Array<string>;
 }
 
 export interface Model {
   collections: Map<string, CollectionModel>;
-  names: string[];
+  names: Array<string>;
 }
 
 interface ApiField {
@@ -45,14 +45,15 @@ export interface ApiCollection {
   id: string;
   name: string;
   type: string;
-  fields: ApiField[];
+  fields: Array<ApiField>;
 }
 
-function samplesOf(field: ApiField, records: Record<string, unknown>[]): unknown[] {
+function samplesOf(field: ApiField, records: Array<Record<string, unknown>>): Array<unknown> {
   const seen = new Map<string, unknown>();
   for (const record of records) {
     const value = record[field.name];
-    const values = Array.isArray(value) && field.type !== "json" ? (value as unknown[]) : [value];
+    const values =
+      Array.isArray(value) && field.type !== "json" ? (value as Array<unknown>) : [value];
     for (const v of values) {
       if (v !== undefined) {
         seen.set(JSON.stringify(v), v);
@@ -63,8 +64,8 @@ function samplesOf(field: ApiField, records: Record<string, unknown>[]): unknown
 }
 
 export function buildModel(
-  collections: ApiCollection[],
-  records: Map<string, Record<string, unknown>[]>,
+  collections: Array<ApiCollection>,
+  records: Map<string, Array<Record<string, unknown>>>,
 ): Model {
   const namesById = new Map(collections.map((c) => [c.id, c.name]));
   const model: Model = {
@@ -77,14 +78,20 @@ export function buildModel(
     model.collections.set(name, {
       name,
       type: c.type,
-      fields: c.fields.map((f) => ({
-        name: f.name,
-        type: f.type,
-        hidden: f.hidden === true,
-        multiple: (f.maxSelect ?? 1) > 1,
-        ...(f.type === "relation" ? { target: namesById.get(f.collectionId ?? "") ?? "" } : {}),
-        samples: samplesOf(f, rows),
-      })),
+      fields: c.fields.map((f) => {
+        const relation: Pick<FieldModel, "target"> = {};
+        if (f.type === "relation") {
+          relation.target = namesById.get(f.collectionId ?? "") ?? "";
+        }
+        return {
+          name: f.name,
+          type: f.type,
+          hidden: f.hidden === true,
+          multiple: (f.maxSelect ?? 1) > 1,
+          ...relation,
+          samples: samplesOf(f, rows),
+        };
+      }),
       backRelations: [],
       ids: rows.map((row) => String(row.id)).toSorted(),
     });

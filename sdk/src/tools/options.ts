@@ -109,7 +109,7 @@ export interface AuthOptions extends CommonOptions {
 // -------------------------------------------------------------------
 
 // list of known SendOptions keys (everything else is treated as query param)
-const knownSendOptionsKeys = [
+const knownSendOptionsKeys = new Set([
   "requestKey",
   "$cancelKey",
   "$autoCancel",
@@ -131,7 +131,7 @@ const knownSendOptionsKeys = [
   "referrerPolicy",
   "signal",
   "window",
-];
+]);
 
 // modifies in place the provided options by moving unknown send options as query parameters.
 export function normalizeUnknownQueryParams(options?: SendOptions): void {
@@ -140,8 +140,8 @@ export function normalizeUnknownQueryParams(options?: SendOptions): void {
   }
 
   options.query = options.query || {};
-  for (let key in options) {
-    if (knownSendOptionsKeys.includes(key)) {
+  for (const key in options) {
+    if (knownSendOptionsKeys.has(key)) {
       continue;
     }
 
@@ -171,7 +171,7 @@ export function serializeQueryParams(params: LooseObject): string {
 
 // encodes and normalizes the provided query param value.
 function prepareQueryParamValue(value: unknown): null | string {
-  if (value === null || typeof value === "undefined") {
+  if (value === null || value === undefined) {
     return null;
   }
 

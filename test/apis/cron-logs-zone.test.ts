@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 const probe = join(import.meta.dir, "cron-logs-zone-probe.ts");
 
-function left(tz: string, now: string, cutoff: string, afterCutoff: string): string[] {
+function left(tz: string, now: string, cutoff: string, afterCutoff: string): Array<string> {
   const result = Bun.spawnSync(
     [process.execPath, probe, now, "7", `probe-at=${cutoff}`, `probe-after=${afterCutoff}`],
     { env: { ...process.env, TZ: tz }, stderr: "pipe" },
@@ -17,7 +17,7 @@ function left(tz: string, now: string, cutoff: string, afterCutoff: string): str
   if (result.exitCode !== 0) {
     throw new Error(result.stderr.toString());
   }
-  return JSON.parse(result.stdout.toString()) as string[];
+  return JSON.parse(result.stdout.toString()) as Array<string>;
 }
 
 describe("__pbLogsCleanup__ cutoff", () => {

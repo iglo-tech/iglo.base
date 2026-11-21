@@ -12,7 +12,8 @@ import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 
-import { newRouter, type RouterOptions } from "@/apis/base";
+import { newRouter } from "@/apis/base";
+import type { RouterOptions } from "@/apis/base";
 import { loadInstaller } from "@/apis/installer";
 import { bindDashboard } from "@/apis/serve-ui";
 import { closeRealtimeConnections } from "@/realtime/realtime";
@@ -24,7 +25,9 @@ import type { RequestEvent } from "@/app/event-request";
 import { unescapeBytes } from "@/server/mux";
 import { HttpRequest } from "@/server/request";
 import { RereadableReadCloser, streamReader } from "@/server/rereadable-read-closer";
-import { ResponseWriter, type Mux, type Router } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux, Router } from "@/server/router";
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface Output {
   stdout(text: string): void;
@@ -40,9 +43,9 @@ export interface ServeConfig {
   // TCP address for the HTTPS server; empty means no TLS
   httpsAddr: string;
   // domains for the TLS certificate
-  certificateDomains: string[];
+  certificateDomains: Array<string>;
   // AllowedOrigins is an optional list of CORS origins (default to "*").
-  allowedOrigins: string[];
+  allowedOrigins: Array<string>;
   // the directory to serve static files from (--publicDir) and whether a
   // missing static path falls back to its index.html (--indexFallback)
   publicDir: string;
@@ -112,11 +115,11 @@ async function listenHost(host: string): Promise<string> {
   if (isIP(host) !== 0) {
     return host;
   }
-  let addresses: { address: string; family: number }[];
+  let addresses: Array<{ address: string; family: number }>;
   try {
     addresses = await lookup(host, { all: true, verbatim: true });
-  } catch (err) {
-    throw new Error(`listen tcp: lookup ${host}: no such host`, { cause: err });
+  } catch (error) {
+    throw new Error(`listen tcp: lookup ${host}: no such host`, { cause: error });
   }
   const chosen = addresses.find((a) => a.family === 4) ?? addresses[0];
   if (!chosen) {
@@ -165,7 +168,7 @@ function parseListenAddr(addr: string): { hostname: string; port: number } {
     if (port.startsWith("-") && portNumber !== 0) {
       portNumber = -portNumber;
     }
-    if (portNumber < 0 || portNumber > 65535) {
+    if (portNumber < 0 || portNumber > 65_535) {
       throw new Error(`listen tcp: address ${port}: invalid port`);
     }
   } else {
@@ -276,26 +279,26 @@ export async function handleRequest(
           if (response) {
             resolve(response);
           }
-        } catch (err) {
+        } catch (error) {
           // a status Bun cannot send (outside 200-599)
-          reject(err);
+          reject(error);
         }
       },
-      (err: unknown) => {
+      (error: unknown) => {
         // a panic that no middleware recovered
-        const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
         app.logger.debug(`http: panic serving ${req.remoteAddr}: ${message}`);
         try {
           // runs the afterResponse cleanups; its response is not sent
           const response = rw.finish();
-          if (response instanceof Promise) {
+          if (isInstance<Promise<unknown>>(Promise, response)) {
             response.catch(() => {});
           }
         } catch {
           // the panic is the error that is reported
         } finally {
           // the request settles even if finish throws (an invalid status)
-          reject(err);
+          reject(error);
         }
       },
     );
@@ -352,7 +355,7 @@ export function newServeRouter(
   if (hostNames.length === 0) {
     hostNames.push(splitHost(mainAddr));
   }
-  const wwwRedirects: string[] = [];
+  const wwwRedirects: Array<string> = [];
   // the hosts given, not the www hosts added below
   const givenHosts = hostNames.slice();
   for (const host of givenHosts) {
@@ -411,11 +414,11 @@ export async function serve(
           bunServer.timeout(request, 0),
         ),
     });
-  } catch (err) {
-    if ((err as { code?: string }).code === "EADDRINUSE") {
-      throw new Error(`listen tcp ${mainAddr}: bind: address already in use`, { cause: err });
+  } catch (error) {
+    if ((error as { code?: string }).code === "EADDRINUSE") {
+      throw new Error(`listen tcp ${mainAddr}: bind: address already in use`, { cause: error });
     }
-    throw err;
+    throw error;
   }
 
   const baseURL = `http://${serverAddrToHost(mainAddr)}`;
@@ -432,21 +435,23 @@ export async function serve(
       stdout: out.stdout,
       color: out.color,
     });
-  } catch (err) {
-    app.logger.warn("Failed to initialize installer", { error: err });
+  } catch (error) {
+    app.logger.warn("Failed to initialize installer", { error });
   }
 
   if (!shutdown.aborted) {
-    await new Promise<void>((resolve) =>
-      shutdown.addEventListener("abort", () => resolve(), { once: true }),
-    );
+    await new Promise<void>((resolve) => {
+      shutdown.addEventListener("abort", () => resolve(), { once: true });
+    });
   }
 
   // the realtime streams would keep their requests open
   closeRealtimeConnections(app);
 
   // graceful shutdown with upstream's 1 second limit
-  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 1000).unref());
+  const timeout = new Promise<void>((resolve) => {
+    setTimeout(resolve, 1000).unref();
+  });
   await Promise.race([server.stop(), timeout]);
   await server.stop(true);
 }

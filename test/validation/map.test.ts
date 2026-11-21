@@ -12,10 +12,12 @@ import { describe, expect, test } from "bun:test";
 import { Each } from "@/validation/each";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
-import { Map, Key, type KeyRules } from "@/validation/map";
+import { Map, Key } from "@/validation/map";
+import type { KeyRules } from "@/validation/map";
 import { NewInternalError } from "@/validation/error";
 import { ValidateStruct, Field } from "@/validation/struct";
-import { Skip, Validate, type Rule, type Validatable } from "@/validation/validation";
+import { Skip, Validate } from "@/validation/validation";
+import type { Rule, Validatable } from "@/validation/validation";
 
 // a Go string type with a Validate method
 class String123 implements Validatable {
@@ -93,7 +95,7 @@ describe("map", () => {
   ]);
   const m0: Record<string, unknown> | null = null;
 
-  const rows: { tag: string; model: unknown; rules: KeyRules[]; err: string }[] = [
+  const rows: Array<{ tag: string; model: unknown; rules: Array<KeyRules>; err: string }> = [
     // empty rules
     { tag: "t1.1", model: m1, rules: [], err: "" },
     { tag: "t1.2", model: m1, rules: [Key("A"), Key("B")], err: "" },

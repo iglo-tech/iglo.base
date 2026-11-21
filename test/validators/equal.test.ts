@@ -14,7 +14,7 @@ test("Equal", () => {
   const strNilPtr = null;
   const strNilPtr2 = null;
 
-  const scenarios: [valA: unknown, valB: unknown, expectError: boolean][] = [
+  const scenarios: Array<[valA: unknown, valB: unknown, expectError: boolean]> = [
     [null, null, false],
     ["", "", false],
     ["", "456", true],

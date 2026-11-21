@@ -11,7 +11,8 @@ import { describe, expect, test } from "bun:test";
 
 import { realtimeCases } from "@test/differential/realtime/cases";
 import { observe } from "@test/realtime/run";
-import { normalize, type RealtimeScenario } from "@test/realtime/scenario";
+import { normalize } from "@test/realtime/scenario";
+import type { RealtimeScenario } from "@test/realtime/scenario";
 import { realtimeScenarios } from "@test/scenarios/realtime";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";

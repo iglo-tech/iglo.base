@@ -63,7 +63,7 @@ describe("bcrypt", () => {
   });
 
   test("TestInvalidHashErrors", () => {
-    const invalidTests: [Error, string][] = [
+    const invalidTests: Array<[Error, string]> = [
       [ErrHashTooShort, "$2a$10$fooo"],
       [ErrHashTooShort, "$2a"],
       [
@@ -169,7 +169,7 @@ describe("bcrypt: Go's parsing", () => {
   const salt = "XajjQvNhvvRt5GSeFk1xFe";
   const hash = "yqRrsxkhBkUiQeg0dt.wU1qD4aFDcga"; // "allmine" at cost 10
 
-  const scenarios: [string, string, Error | null][] = [
+  const scenarios: Array<[string, string, Error | null]> = [
     ["$2a$10$" + salt + hash, "allmine", null],
     ["$2b$10$" + salt + hash, "allmine", null],
     ["$2y$10$" + salt + hash, "allmine", null],
@@ -284,7 +284,7 @@ describe("bcrypt: salts with CR or LF", () => {
     expect(base64Decode(bytes("ab\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")).length).toBe(1);
   });
 
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["\r\nABCDEFGHIJ\r\nKLMN\r\n\r\n", "crlf-password"], // 14 characters: 10 bytes
     ["\n".repeat(20) + "ab", "one-byte-salt"], // 1 byte
     ["abcdef" + "\r".repeat(16), ""], // 4 bytes, the empty password
@@ -302,7 +302,7 @@ describe("bcrypt: salts with CR or LF", () => {
   }
 
   // Go's base64 errors (the salt with "==" appended)
-  const invalid: [string, number][] = [
+  const invalid: Array<[string, number]> = [
     ["abcdefghijklmnopqrst\r\n", 22], // 20 characters: '=' at a quantum start
     ["abcdefghijklmnopqrs\r\n\r", 23], // 19: trailing garbage after one '='
     ["abcdefghijklmnopqrstu\n", 22], // 21: one character before '='

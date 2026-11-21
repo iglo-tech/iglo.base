@@ -55,7 +55,8 @@
 // `plan` runs the same transaction and rolls it back, with no backup.
 
 import type { App } from "@/app/app";
-import { Collection, newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
 import type { Field } from "@/fields/field";
 import {
   findAllCollections,
@@ -69,7 +70,8 @@ import type { Databases } from "@/db/base";
 import { deleteView } from "@/db/table";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";
 import { parseIndex } from "@/tools/dbutils";
-import { collectionJSON, fieldJSON, settingsJSON, type CollectionIdOf } from "@/schema/apply-json";
+import { collectionJSON, fieldJSON, settingsJSON } from "@/schema/apply-json";
+import type { CollectionIdOf } from "@/schema/apply-json";
 import { makePreSchemaBackup, prunePreSchemaBackups } from "@/schema/backup";
 import {
   countBeyondMax,
@@ -88,43 +90,36 @@ import {
   impliedStatements,
   keepStoredIndexes,
   lostFields,
-  type CollectionChange,
-  type SchemaChanges,
 } from "@/schema/diff";
+import type { CollectionChange, SchemaChanges } from "@/schema/diff";
 import { explicitIndexes, isImpliedIndex } from "@/schema/implied";
-import {
-  formatReport,
-  newReport,
-  reportIsOK,
-  type ApplyReport,
-  type Problem,
-} from "@/schema/report";
-import { readSchema, type SchemaIssue } from "@/schema/read";
-import {
-  ruleKeys,
-  type SchemaCollection,
-  type SchemaDescription,
-  type SchemaField,
-  type SchemaObject,
+import { formatReport, newReport, reportIsOK } from "@/schema/report";
+import type { ApplyReport, Problem } from "@/schema/report";
+import { readSchema } from "@/schema/read";
+import type { SchemaIssue } from "@/schema/read";
+import { ruleKeys } from "@/schema/types";
+import type {
+  SchemaCollection,
+  SchemaDescription,
+  SchemaField,
+  SchemaObject,
 } from "@/schema/types";
 import { reloadSettings } from "@/settings/settings-query";
-import {
-  isMigrationApplied,
-  saveAppliedMigration,
-  up,
-  type Migration,
-} from "@/migrations/migrations-runner";
-import { schemaMigrationRecord, type SchemaMigration } from "@/schema/migration-files";
+import { isMigrationApplied, saveAppliedMigration, up } from "@/migrations/migrations-runner";
+import type { Migration } from "@/migrations/migrations-runner";
+import { schemaMigrationRecord } from "@/schema/migration-files";
+import type { SchemaMigration } from "@/schema/migration-files";
 import { newMigrationHelpers } from "@/schema/migration-tx";
 import { fileProblems } from "@/schema/renames";
 import { resolveProviders } from "@/schema/providers";
 import { Errors } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 
 type Json = Record<string, unknown>;
 
 // The file is not a valid schema: its problems, with their JSON paths.
 export class SchemaFileError extends Error {
-  constructor(readonly issues: SchemaIssue[]) {
+  constructor(readonly issues: Array<SchemaIssue>) {
     super(
       "the schema file is not valid:\n" +
         issues.map((issue) => `  ${issue.path}: ${issue.message}`).join("\n"),
@@ -146,9 +141,9 @@ export interface ApplyOptions {
   // delete the fields and collections that hold data (the data-loss guard)
   allowDataLoss: boolean;
   // the JavaScript migrations of pb_migrations, in run order
-  migrations: readonly Migration[];
+  migrations: ReadonlyArray<Migration>;
   // the TypeScript migrations of the migrations directory, in name order
-  schemaMigrations?: readonly SchemaMigration[];
+  schemaMigrations?: ReadonlyArray<SchemaMigration>;
   // false for a development re-apply (D40): no dry run and no backup, so the
   // transaction alone keeps the database when the file fails. Default true.
   backup?: boolean;
@@ -265,7 +260,7 @@ function withProviderValues(app: App, desired: SchemaDescription): SchemaDescrip
 }
 
 // the names of the migrations that have not run yet, JavaScript ones first
-function pendingMigrations(app: App, options: ApplyOptions): string[] {
+function pendingMigrations(app: App, options: ApplyOptions): Array<string> {
   return [
     ...options.migrations
       .filter((m) => !isMigrationApplied(app.databases, m.file))
@@ -275,7 +270,7 @@ function pendingMigrations(app: App, options: ApplyOptions): string[] {
 }
 
 // the TypeScript migrations that have not run yet, in name order
-function pendingSchemaMigrations(app: App, options: ApplyOptions): SchemaMigration[] {
+function pendingSchemaMigrations(app: App, options: ApplyOptions): Array<SchemaMigration> {
   return (options.schemaMigrations ?? []).filter(
     (m) => !isMigrationApplied(app.databases, schemaMigrationRecord(m.file)),
   );
@@ -307,11 +302,11 @@ function runTransaction(
       });
     });
     report.committed = mode === "apply" && reportIsOK(report);
-  } catch (err) {
-    if (err instanceof SaveFailed) {
-      report.problems.push(saveProblem(err));
-    } else if (!(err instanceof StopApply) && !(err instanceof RollBack)) {
-      report.problems.push({ where: "schema", message: messageOf(err) });
+  } catch (error) {
+    if (isInstance(SaveFailed, error)) {
+      report.problems.push(saveProblem(error));
+    } else if (!isInstance(StopApply, error) && !isInstance(RollBack, error)) {
+      report.problems.push({ where: "schema", message: messageOf(error) });
     }
   } finally {
     try {
@@ -340,7 +335,7 @@ function saveProblem(err: SaveFailed): Problem {
 
 // the text of an error: a validation error lists its fields
 function messageOf(err: unknown): string {
-  if (err instanceof Errors) {
+  if (isInstance(Errors, err)) {
     return Object.entries(err.errors)
       .map(([key, value]) => `${key}: ${value === null ? "invalid" : messageOf(value)}`)
       .join("; ");
@@ -352,8 +347,8 @@ function messageOf(err: unknown): string {
 function saveAs(app: App, collection: Collection, name: string): void {
   try {
     saveCollection(app, collection);
-  } catch (err) {
-    throw new SaveFailed(name, err);
+  } catch (error) {
+    throw new SaveFailed(name, error);
   }
 }
 
@@ -477,8 +472,8 @@ function applyInTransaction(
   for (const name of readByRemoved.toReversed()) {
     try {
       saveViewSQL(app, name, storedModel(app, name).viewQuery);
-    } catch (err) {
-      throw new SaveFailed(name, err);
+    } catch (error) {
+      throw new SaveFailed(name, error);
     }
   }
   for (const name of removedViews) {
@@ -492,7 +487,7 @@ function applyInTransaction(
   );
 
   // 8: the record check, of the collections whose fields changed
-  const problems: Problem[] = [];
+  const problems: Array<Problem> = [];
   for (const collection of desired.collections) {
     const change = changeByName.get(collection.name);
     if (collection.type === "view" || change === undefined || change.kind !== "changed") {
@@ -524,7 +519,7 @@ function applyInTransaction(
 // since a view's query or rules may name an old name.
 function applyRenames(
   app: App,
-  files: readonly SchemaMigration[],
+  files: ReadonlyArray<SchemaMigration>,
   desired: SchemaDescription,
   report: ApplyReport,
 ): StoredCollections | undefined {
@@ -542,7 +537,7 @@ function applyRenames(
   }
   const stored = storedCollections(app);
   clearStoredReferences(app, renamedNamesOf(declaring));
-  const applied: AppliedRename[] = [];
+  const applied: Array<AppliedRename> = [];
   for (const file of declaring) {
     // the file's problems are checked against the names as they are now, and
     // a refused file stops the apply before its renames run
@@ -659,7 +654,7 @@ function renameFile(
   app: App,
   file: SchemaMigration,
   report: ApplyReport,
-  applied: AppliedRename[],
+  applied: Array<AppliedRename>,
 ): void {
   const models = findAllCollections(app);
   const byName = new Map(models.map((model) => [model.name, model]));
@@ -711,7 +706,7 @@ function renameFile(
   for (const { model, fields, to } of plans.values()) {
     const json = JSON.parse(model.marshalJSON()) as Json;
     if (fields.size > 0) {
-      json.fields = (json.fields as Json[]).map((field) => {
+      json.fields = (json.fields as Array<Json>).map((field) => {
         const renamed = fields.get(String(field.name));
         return renamed === undefined ? field : { ...field, name: renamed };
       });
@@ -720,7 +715,7 @@ function renameFile(
     if (to !== undefined) {
       json.name = to;
       // the implied indexes name the table: they are built again for the new one
-      json.indexes = (json.indexes as string[]).map((statement) => retabled(statement, to));
+      json.indexes = (json.indexes as Array<string>).map((statement) => retabled(statement, to));
     }
     model.unmarshalJSON(JSON.stringify(json));
     saveAs(app, model, to ?? before);
@@ -753,7 +748,7 @@ function clearStoredReferences(app: App, renamed: ReadonlyMap<string, ReadonlySe
     if (model.type === "auth") {
       changed = clearAuthReferences(json) || changed;
     }
-    const indexes = json.indexes as string[];
+    const indexes = json.indexes as Array<string>;
     const kept = indexes.filter(
       (statement) => !clearedIndex(statement, model, renamed.get(model.name)),
     );
@@ -792,7 +787,7 @@ function clearedIndex(
 
 // the field names that the declaring files rename, per collection name (the
 // names before and after each rename), lowercased as SQLite compares them
-function renamedNamesOf(files: readonly SchemaMigration[]): Map<string, Set<string>> {
+function renamedNamesOf(files: ReadonlyArray<SchemaMigration>): Map<string, Set<string>> {
   const names = new Map<string, Set<string>>();
   for (const file of files) {
     for (const [collection, pairs] of Object.entries(file.renames)) {
@@ -833,9 +828,9 @@ function isObject(value: unknown): value is Json {
 function appliedProblems(
   app: App,
   desired: SchemaDescription,
-  applied: readonly AppliedRename[],
-): Problem[] {
-  const problems: Problem[] = [];
+  applied: ReadonlyArray<AppliedRename>,
+): Array<Problem> {
+  const problems: Array<Problem> = [];
   const byId = new Map(findAllCollections(app).map((model) => [model.id, model]));
   for (const rename of applied) {
     const model = byId.get(rename.collectionId);
@@ -894,7 +889,7 @@ function retabled(statement: string, table: string): string {
 // fails the apply, naming the file. Each run is recorded as @schema/<file>.
 function runSchemaMigrations(
   app: App,
-  pending: readonly SchemaMigration[],
+  pending: ReadonlyArray<SchemaMigration>,
   report: ApplyReport,
 ): void {
   for (const migration of pending) {
@@ -902,8 +897,10 @@ function runSchemaMigrations(
       let result: unknown;
       try {
         result = migration.up(newMigrationHelpers(app));
-      } catch (err) {
-        throw new Error(`migration ${migration.file} failed: ${messageOf(err)}`, { cause: err });
+      } catch (error) {
+        throw new Error(`migration ${migration.file} failed: ${messageOf(error)}`, {
+          cause: error,
+        });
       }
       if (isThenable(result)) {
         // the promise is only observed here, so its rejection is not unhandled
@@ -1062,9 +1059,9 @@ function mentions(query: string, name: string, self: string): boolean {
 }
 
 // the views to create, each after the views its query reads
-function orderedViews(desired: SchemaDescription, rebuild: Set<string>): SchemaCollection[] {
+function orderedViews(desired: SchemaDescription, rebuild: Set<string>): Array<SchemaCollection> {
   const pending = desired.collections.filter((c) => c.type === "view" && rebuild.has(c.name));
-  const ordered: SchemaCollection[] = [];
+  const ordered: Array<SchemaCollection> = [];
   while (pending.length > 0) {
     const ready = pending.findIndex(
       (view) =>
@@ -1083,9 +1080,12 @@ function orderedViews(desired: SchemaDescription, rebuild: Set<string>): SchemaC
 // once no other removed view reads it. Deleting a view saves every view again
 // to check it (upstream's integrity check), so the view it reads must still
 // exist when the reader goes.
-function removedViewsInOrder(names: readonly string[], stored: StoredCollections): string[] {
+function removedViewsInOrder(
+  names: ReadonlyArray<string>,
+  stored: StoredCollections,
+): Array<string> {
   const pending = [...names];
-  const ordered: string[] = [];
+  const ordered: Array<string> = [];
   while (pending.length > 0) {
     const ready = pending.findIndex(
       (name) =>
@@ -1153,7 +1153,7 @@ function plainFieldJSON(field: SchemaField, id: string, lookup: CollectionIdOf):
 }
 
 // the names of the collections that a collection's relation fields target
-function relationTargets(collection: SchemaCollection): string[] {
+function relationTargets(collection: SchemaCollection): Array<string> {
   return collection.fields
     .filter((field) => field.type === "relation")
     .map((field) => String(field.options.collection));
@@ -1212,7 +1212,7 @@ function narrow(
   app: App,
   desired: SchemaDescription,
   changeByName: Map<string, CollectionChange>,
-  transient: readonly string[],
+  transient: ReadonlyArray<string>,
 ): void {
   const idOf = collectionIdsOf(app);
   for (const collection of desired.collections) {
@@ -1249,8 +1249,8 @@ function narrow(
 function storedModel(app: App, name: string): Collection {
   try {
     return findCollectionByNameOrId(app, name);
-  } catch (err) {
-    throw new SaveFailed(name, err);
+  } catch (error) {
+    throw new SaveFailed(name, error);
   }
 }
 
@@ -1259,8 +1259,8 @@ function removeCollection(app: App, name: string): void {
   const model = storedModel(app, name);
   try {
     deleteCollection(app, model);
-  } catch (err) {
-    throw new SaveFailed(name, err);
+  } catch (error) {
+    throw new SaveFailed(name, error);
   }
 }
 
@@ -1270,15 +1270,15 @@ function removeCollection(app: App, name: string): void {
 // collection is saved without its relation fields into the removed set, and
 // then the cycle is gone. A collection that is referenced by a collection the
 // apply keeps is no cycle of ours: the save refuses it and names the reference.
-function removeCollections(app: App, names: readonly string[]): void {
+function removeCollections(app: App, names: ReadonlyArray<string>): void {
   const pending = [...names];
   while (pending.length > 0) {
     const models = pending.map((name) => storedModel(app, name));
     const free = models.findIndex((model) => {
       try {
         return findCollectionReferences(app, model, model.id).size === 0;
-      } catch (err) {
-        throw new SaveFailed(model.name, err);
+      } catch (error) {
+        throw new SaveFailed(model.name, error);
       }
     });
     if (free >= 0) {
@@ -1302,8 +1302,8 @@ function removeCollections(app: App, names: readonly string[]): void {
 }
 
 // the stored fields of a collection, as the API's JSON
-function storedFields(model: Collection): Json[] {
-  return JSON.parse(model.fields.marshalJSON()) as Json[];
+function storedFields(model: Collection): Array<Json> {
+  return JSON.parse(model.fields.marshalJSON()) as Array<Json>;
 }
 
 // whether a field is a relation into a set of collections (by id)

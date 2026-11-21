@@ -36,6 +36,7 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
   const form: BackupCreateForm = { Name: "" };
 
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as Record<string, unknown>,
     backupCreateFormType,
   );
@@ -56,8 +57,8 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
 
   try {
     await createBackup(e.app, form.Name);
-  } catch (err) {
-    return e.badRequestError("Failed to create backup.", err);
+  } catch (error) {
+    return e.badRequestError("Failed to create backup.", error);
   }
 
   // we don't retrieve the generated backup file because it may not be
@@ -92,8 +93,8 @@ async function checkUniqueName(e: RequestEvent, v: string): Promise<Error | null
   let fsys;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 
   try {

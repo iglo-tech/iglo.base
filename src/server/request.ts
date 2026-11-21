@@ -10,11 +10,12 @@
 
 import type { ReadCloser } from "@/server/buffer-with-file";
 import { bodyReader } from "@/server/io";
-import { type Form, Reader as MultipartReader } from "@/server/multipart";
+import { Reader as MultipartReader } from "@/server/multipart";
+import type { Form } from "@/server/multipart";
 import { readAll } from "@/server/rereadable-read-closer";
 import { unescapeBytes } from "@/server/mux";
 
-export type Values = Map<string, string[]>;
+export type Values = Map<string, Array<string>>;
 
 export interface HttpRequestInit {
   method: string;
@@ -236,7 +237,7 @@ export function encodeValues(values: Values): string {
     .map((k): [string, Uint8Array] => [k, encoder.encode(k)])
     .toSorted((a, b) => Buffer.compare(a[1], b[1]))
     .map(([k]) => k);
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   for (const k of keys) {
     const keyEscaped = queryEscape(k);
     for (const v of values.get(k) ?? []) {
@@ -304,7 +305,7 @@ function trimLeftSpace(s: string): string {
   return s.slice((spaceRun.exec(s)?.[0] ?? "").length);
 }
 
-const tspecials = '()<>@,;:\\"/[]?=';
+const tspecials = String.raw`()<>@,;:\"/[]?=`;
 function isTokenChar(c: string): boolean {
   const code = c.charCodeAt(0);
   return code > 0x20 && code < 0x7f && !tspecials.includes(c);
@@ -512,7 +513,7 @@ function percentHexUnescape(s: string): string | undefined {
   }
 
   const encoder = new TextEncoder();
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   for (let i = 0; i < s.length;) {
     if (s[i] === "%") {
       bytes.push(Number.parseInt(s.slice(i + 1, i + 3), 16));

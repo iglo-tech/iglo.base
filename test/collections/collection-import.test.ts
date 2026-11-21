@@ -14,15 +14,16 @@ import {
 } from "@/collections/collection-import";
 import { HashExp } from "@/db/dbx/expression";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -53,14 +54,14 @@ describe("TestImportCollections", () => {
   const totalSystemCollections = counts.system;
   const totalCollections = totalRegularCollections + totalSystemCollections;
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
-    data: Record<string, unknown>[];
+    data: Array<Record<string, unknown>>;
     deleteMissing: boolean;
     expectError: boolean;
     expectCollectionsCount: number;
     afterTestFunc?: (app: TestCollectionsApp) => void;
-  }[] = [
+  }> = [
     {
       name: "empty collections",
       data: [],
@@ -247,14 +248,14 @@ describe("TestImportCollectionsByMarshaledJSON", () => {
   const totalSystemCollections = counts.system;
   const totalCollections = totalRegularCollections + totalSystemCollections;
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: string;
     deleteMissing: boolean;
     expectError: boolean;
     expectCollectionsCount: number;
     afterTestFunc?: (app: TestCollectionsApp) => void;
-  }[] = [
+  }> = [
     {
       name: "invalid json array",
       data: `{"test":123}`,
@@ -325,11 +326,11 @@ describe("TestImportCollectionsByMarshaledJSON", () => {
 });
 
 describe("TestImportCollectionsUpdateRules", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: Record<string, unknown>;
     deleteMissing: boolean;
-  }[] = [
+  }> = [
     {
       name: "extend existing by name (without deleteMissing)",
       data: {

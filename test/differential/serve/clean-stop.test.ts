@@ -9,7 +9,8 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { startPair, type Pair } from "@test/differential/serve/pair";
+import { startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 
 let pair: Pair;
 
@@ -22,7 +23,7 @@ afterAll(() => {
 });
 
 // the database files and their companions (upstream also writes types.d.ts)
-function databaseFiles(dataDir: string): string[] {
+function databaseFiles(dataDir: string): Array<string> {
   return readdirSync(dataDir)
     .filter((name) => /\.db($|-)/.test(name))
     .toSorted();

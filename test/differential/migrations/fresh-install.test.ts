@@ -23,7 +23,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { copyDataDir } from "@test/scenarios/fixture";
-import { dumpPbData, type PbDataDump, withoutStat4 } from "@test/migrations/dump";
+import { dumpPbData, withoutStat4 } from "@test/migrations/dump";
+import type { PbDataDump } from "@test/migrations/dump";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 
@@ -64,11 +65,11 @@ const secretPattern = /"secret":"([^"]*)"/g;
 
 // the `_collections` rows with the generated values replaced, after
 // checking their formats
-function normalizedCollections(dump: PbDataDump): { [key: string]: unknown }[] {
+function normalizedCollections(dump: PbDataDump): Array<{ [key: string]: unknown }> {
   return dump.collections.map((row) => {
     expect(row.created).toMatch(datePattern);
     expect(row.updated).toMatch(datePattern);
-    const options = String(row.options).replace(secretPattern, (_, secret: string) => {
+    const options = String(row.options).replaceAll(secretPattern, (_, secret: string) => {
       expect(secret).toMatch(/^[a-zA-Z0-9]{50}$/);
       return `"secret":"<secret>"`;
     });

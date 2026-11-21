@@ -32,7 +32,7 @@ describe("TestUploadedFileSize", () => {
     file = await NewFileFromBytes(encoder.encode("test"), "test.txt");
   });
 
-  const scenarios: [maxBytes: number, withFile: boolean, expectError: boolean][] = [
+  const scenarios: Array<[maxBytes: number, withFile: boolean, expectError: boolean]> = [
     [0, false, false],
     [4, false, false],
     [3, true, true], // all test files have "test" as content
@@ -54,7 +54,7 @@ describe("TestUploadedFileMimeType", () => {
     file = await NewFileFromBytes(encoder.encode("test"), "test.png"); // the extension shouldn't matter
   });
 
-  const scenarios: [types: string[] | null, withFile: boolean, expectError: boolean][] = [
+  const scenarios: Array<[types: Array<string> | null, withFile: boolean, expectError: boolean]> = [
     [null, false, false],
     [["image/jpeg"], false, false],
     [[], true, true],

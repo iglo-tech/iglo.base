@@ -17,9 +17,9 @@ export interface CommandHelp {
   // cobra's Example, shown under "Examples:"
   example?: string;
   runnable: boolean;
-  subcommands: { name: string; short: string }[];
-  localFlags: FlagSpec[];
-  inheritedFlags: FlagSpec[];
+  subcommands: Array<{ name: string; short: string }>;
+  localFlags: Array<FlagSpec>;
+  inheritedFlags: Array<FlagSpec>;
 }
 
 function varname(spec: FlagSpec): string {
@@ -35,9 +35,9 @@ function varname(spec: FlagSpec): string {
   }
 }
 
-export function flagUsages(specs: FlagSpec[]): string {
+export function flagUsages(specs: Array<FlagSpec>): string {
   const sorted = specs.toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  const lines: { head: string; usage: string }[] = [];
+  const lines: Array<{ head: string; usage: string }> = [];
   let maxlen = 0;
   for (const spec of sorted) {
     let head = spec.shorthand ? `  -${spec.shorthand}, --${spec.name}` : `      --${spec.name}`;

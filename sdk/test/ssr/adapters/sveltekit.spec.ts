@@ -7,12 +7,8 @@ import {
   ServerClient,
   SSR_NO_CACHE_HEADERS,
 } from "@sdk/ssr/index";
-import {
-  createSvelteKitAuth,
-  type SvelteKitAuth,
-  type SvelteKitEvent,
-  type SvelteKitLocals,
-} from "@sdk/ssr/sveltekit";
+import { createSvelteKitAuth } from "@sdk/ssr/sveltekit";
+import type { SvelteKitAuth, SvelteKitEvent, SvelteKitLocals } from "@sdk/ssr/sveltekit";
 import type { AdapterOptions, AdapterRoutes } from "@sdk/ssr/adapter";
 import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import {
@@ -24,8 +20,8 @@ import {
   stubApi,
   superuserToken,
   testClock,
-  type Handler,
 } from "@sdk-test/ssr/browser-support";
+import type { Handler } from "@sdk-test/ssr/browser-support";
 
 const T0 = Math.floor(Date.now() / 1000);
 const clock = testClock(T0 * 1000);
@@ -64,7 +60,7 @@ async function adapter(
 ): Promise<SvelteKitAuth> {
   const superuser = await createSuperuserClient({
     url: API,
-    token: superuserToken(T0 + 99999),
+    token: superuserToken(T0 + 99_999),
     fetch: api.fetch,
     clock,
   });
@@ -101,7 +97,7 @@ function makeEvent(
     headers,
     body: init.body,
   });
-  const sets: CookieWrite[] = [];
+  const sets: Array<CookieWrite> = [];
   const event: SvelteKitEvent & { locals: Partial<SvelteKitLocals> } = {
     request,
     url,
@@ -118,7 +114,7 @@ function makeEvent(
 
 /** The `resolve` of an app that answers `200 app` and records the events it saw. */
 function appResolve() {
-  const seen: SvelteKitEvent[] = [];
+  const seen: Array<SvelteKitEvent> = [];
   const resolve = async (event: SvelteKitEvent): Promise<Response> => {
     seen.push(event);
     return new Response("app", { status: 200 });

@@ -26,7 +26,7 @@ export class ProtocolError extends Error {
 // A MIMEHeader represents a MIME-style header mapping keys to sets of
 // values.
 export class MIMEHeader {
-  readonly #m = new Map<string, string[]>();
+  readonly #m = new Map<string, Array<string>>();
 
   // Get gets the first value associated with the given key, or "".
   get(key: string): string {
@@ -39,15 +39,15 @@ export class MIMEHeader {
   }
 
   // the values of a canonical key, as stored
-  values(key: string): string[] | undefined {
+  values(key: string): Array<string> | undefined {
     return this.#m.get(key);
   }
 
-  set(key: string, values: string[]): void {
+  set(key: string, values: Array<string>): void {
     this.#m.set(key, values);
   }
 
-  entries(): IterableIterator<[string, string[]]> {
+  entries(): IterableIterator<[string, Array<string>]> {
     return this.#m.entries();
   }
 }
@@ -75,7 +75,7 @@ function bytesString(b: Uint8Array): string {
 // responses from a text protocol network connection.
 export class Reader {
   readonly R: BufReader;
-  #buf: number[] = []; // a re-usable buffer for readContinuedLineSlice
+  #buf: Array<number> = []; // a re-usable buffer for readContinuedLineSlice
 
   constructor(r: BufReader) {
     this.R = r;
@@ -86,7 +86,7 @@ export class Reader {
   // the returned string.
   async readLineSlice(lim: number): Promise<[Uint8Array | undefined, unknown]> {
     // the pieces of a line longer than the buffer, joined at its end
-    const pieces: Uint8Array[] = [];
+    const pieces: Array<Uint8Array> = [];
     let length = 0;
     for (;;) {
       const [l, more, err] = await this.R.readLine();
@@ -413,11 +413,11 @@ function canonicalMIMEHeaderKeyString(s: string): string {
 }
 
 const quoteEscapes = new Map<number, string>([
-  [0x22, '\\"'],
-  [0x5c, "\\\\"],
-  [0x0a, "\\n"],
-  [0x0d, "\\r"],
-  [0x09, "\\t"],
+  [0x22, String.raw`\"`],
+  [0x5c, String.raw`\\`],
+  [0x0a, String.raw`\n`],
+  [0x0d, String.raw`\r`],
+  [0x09, String.raw`\t`],
 ]);
 
 // Go's %q of a byte slice, for error texts (which no response shows):

@@ -7,7 +7,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 import { rawRequest } from "@test/support/raw-http";
 
 const csp =
@@ -54,7 +55,7 @@ async function get(
 const text = (b: Uint8Array): string => new TextDecoder().decode(b);
 
 // the asset paths index.html references, relative to /_/
-async function indexAssets(): Promise<string[]> {
+async function indexAssets(): Promise<Array<string>> {
   const html = text((await get("/_/")).body);
   return [...html.matchAll(/(?:src|href)="\.\/([^"]+)"/g)].map((m) => m[1] ?? "");
 }
@@ -117,7 +118,7 @@ describe("assets", () => {
     }
   });
 
-  const types: [string, string][] = [
+  const types: Array<[string, string]> = [
     ["images/favicon.png", "image/png"],
     ["images/favicon_prod.png", "image/png"],
     ["images/logo.svg", "image/svg+xml"],
@@ -209,7 +210,7 @@ describe("ranges and preconditions", () => {
 });
 
 describe("redirects and missing files", () => {
-  const redirects: [string, number, string][] = [
+  const redirects: Array<[string, number, string]> = [
     ["/_", 307, "/_/"],
     ["/_/index.html", 301, "/_/"],
     ["/_/assets", 301, "/_/assets/"],

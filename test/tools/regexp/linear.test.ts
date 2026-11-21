@@ -27,7 +27,7 @@ function perByte(run: () => void, bytes: number): number {
   return (now - start) / n / bytes;
 }
 
-const cases: [string, (n: number) => string][] = [
+const cases: Array<[string, (n: number) => string]> = [
   ["(a+)+$", (n) => "a".repeat(n - 1) + "b"],
   ["(a|aa)*b", (n) => "a".repeat(n)],
   ["(x+x+)+y", (n) => "x".repeat(n)],

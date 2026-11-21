@@ -14,6 +14,7 @@ import {
 import { PasswordFieldValue } from "@/fields/password";
 import type { Record } from "@/records/record-model";
 import { randomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 // core/field_text.go autogenerateModifier: the text field setter modifier
 // that sets a new value generated from the field's autogeneratePattern
@@ -83,7 +84,7 @@ export function recordSetRandomPassword(m: Record): string {
 
   // unset the plain value to skip the field validators
   const raw = m.getRaw(FieldNamePassword);
-  if (raw instanceof PasswordFieldValue) {
+  if (isInstance(PasswordFieldValue, raw)) {
     raw.plain = "";
   }
 
@@ -95,7 +96,7 @@ export function recordSetRandomPassword(m: Record): string {
 // Returns false if the password is incorrect.
 export function recordValidatePassword(m: Record, password: string): boolean {
   const pv = m.getRaw(FieldNamePassword);
-  if (!(pv instanceof PasswordFieldValue)) {
+  if (!isInstance(PasswordFieldValue, pv)) {
     return false;
   }
 
@@ -106,7 +107,7 @@ export function recordValidatePassword(m: Record, password: string): boolean {
 // Bun's thread pool, for the handlers that can wait.
 export async function recordValidatePasswordAsync(m: Record, password: string): Promise<boolean> {
   const pv = m.getRaw(FieldNamePassword);
-  if (!(pv instanceof PasswordFieldValue)) {
+  if (!isInstance(PasswordFieldValue, pv)) {
     return false;
   }
 

@@ -3,22 +3,19 @@
 // Upstream's TokenFunctions is an exported, writable map; here it is a
 // read-only map (no extension surface, AGENTS.md).
 
-import { Float64, type Params, setOwn } from "@/db/dbx/query";
-import {
-  type Token,
-  TokenIdentifier,
-  TokenNumber,
-  TokenText,
-  type TokenType,
-} from "@/search/fexpr/scanner";
+import { Float64, setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
+import { TokenIdentifier, TokenNumber, TokenText } from "@/search/fexpr/scanner";
+import type { Token, TokenType } from "@/search/fexpr/scanner";
 import { mergeParams } from "@/search/filter";
 import {
   derefResult,
   NilPointerPanic,
   NullFallbackDisabled,
   NullFallbackEnforced,
-  type ResolverResult,
 } from "@/search/simple-field-resolver";
+import type { ResolverResult } from "@/search/simple-field-resolver";
+import { isInstance } from "@/tools/types/is-instance";
 
 // the resolver of a function argument token; null is Go's nil result with
 // a nil error
@@ -26,7 +23,7 @@ export type ArgTokenResolverFunc = (token: Token) => ResolverResult | null;
 
 export type TokenFunction = (
   argTokenResolverFunc: ArgTokenResolverFunc,
-  ...args: Token[]
+  ...args: Array<Token>
 ) => ResolverResult;
 
 // a resolver call whose error is wrapped with the given message prefix
@@ -38,11 +35,11 @@ function resolveArg(
 ): ResolverResult | null {
   try {
     return argTokenResolverFunc(arg);
-  } catch (err) {
-    if (err instanceof NilPointerPanic) {
-      throw err;
+  } catch (error) {
+    if (isInstance(NilPointerPanic, error)) {
+      throw error;
     }
-    throw new Error(`${message}: ${errorText(err)}`, { cause: err });
+    throw new Error(`${message}: ${errorText(error)}`, { cause: error });
   }
 }
 
@@ -69,7 +66,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
         throw new Error(`[geoDistance] expected 4 arguments, got ${args.length}`);
       }
 
-      const resolvedArgs: (ResolverResult | null)[] = [];
+      const resolvedArgs: Array<ResolverResult | null> = [];
       for (const [i, arg] of args.entries()) {
         if (arg.type !== TokenIdentifier && arg.type !== TokenNumber) {
           throw new Error(`[geoDistance] argument ${i} must be an identifier or number`);
@@ -155,7 +152,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
 
       // time-value arg
       // -----------------------------------------------------------
-      const allowedTimeValueTokens: TokenType[] = [TokenText, TokenIdentifier, TokenNumber];
+      const allowedTimeValueTokens: Array<TokenType> = [TokenText, TokenIdentifier, TokenNumber];
       const timeValueArg = args[1] as Token;
       if (!allowedTimeValueTokens.includes(timeValueArg.type)) {
         throw new Error("[strftime] expects the second argument to be of a valid time-value type");
@@ -169,7 +166,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
 
       // modifiers args
       // -----------------------------------------------------------
-      const resolvedModifierArgs: (ResolverResult | null)[] = [];
+      const resolvedModifierArgs: Array<ResolverResult | null> = [];
       for (const [i, arg] of args.slice(2).entries()) {
         if (arg.type !== TokenText) {
           throw new Error(`[strftime] invalid modifier argument ${i} - can be only string`);
@@ -193,7 +190,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
       };
       const resultParams = result.params as Params;
 
-      const identifiers: string[] = [];
+      const identifiers: Array<string> = [];
 
       identifiers.push(formatArgResult.identifier);
       concatUniqueParams(resultParams, formatArgResult.params);
@@ -227,7 +224,7 @@ export const TokenFunctions: ReadonlyMap<string, TokenFunction> = new Map<string
 
 // Go's != on the param values: a Float64 compares by its number
 function sameParam(a: unknown, b: unknown): boolean {
-  if (a instanceof Float64 && b instanceof Float64) {
+  if (isInstance(Float64, a) && isInstance(Float64, b)) {
     return a.value === b.value;
   }
   return a === b;

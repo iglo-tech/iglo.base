@@ -42,6 +42,7 @@
 //       and, on a copy of the changed pb_data, by iglo.base with the error
 //       FindAuthRecordByToken returns; an unchanged user's token stays
 //       valid on both.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, expect, test } from "bun:test";
@@ -73,12 +74,15 @@ import {
 } from "@/records/record-tokens";
 import { RawURLEncoding } from "@/tools/security/base64";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
-import { type Mailpit, startMailpit } from "@test/support/mailpit";
+import { startMailpit } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 import { serveTest } from "@test/support/router";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const password = "1234567890";
 const superEmail = "tokens@example.com";
@@ -108,7 +112,7 @@ const upstreamTokens = new Map<string, string>();
 const issuedAt = new Map<string, [number, number]>();
 
 // every token type that upstream issued, with the record and type
-const tokenCases: { name: string; who: string; collection: string; type: string }[] = [
+const tokenCases: Array<{ name: string; who: string; collection: string; type: string }> = [
   { name: "alice:auth", who: "alice", collection: "members", type: TokenTypeAuth },
   { name: "alice:static", who: "alice", collection: "members", type: TokenTypeAuth },
   { name: "alice:file", who: "alice", collection: "members", type: TokenTypeFile },
@@ -172,7 +176,7 @@ async function api(
     headers.authorization = auth;
   }
   const init: RequestInit = { method, headers };
-  if (body instanceof FormData) {
+  if (isInstance(FormData, body)) {
     init.body = body;
   } else if (body !== undefined) {
     headers["content-type"] = "application/json";
@@ -180,7 +184,7 @@ async function api(
   }
   const res = await fetch(`${upstream.url}${path}`, init);
   const text = await res.text();
-  let json: unknown = null;
+  let json: unknown;
   try {
     json = text === "" ? null : (JSON.parse(text) as unknown);
   } catch {
@@ -232,7 +236,7 @@ async function tokenFromMail(to: string): Promise<string> {
   }
   for (let i = 0; i < 200; i++) {
     const list = (await fetch(`${mailpit.apiUrl}/api/v1/messages`).then((r) => r.json())) as {
-      messages: { ID: string; To: { Address: string }[] }[];
+      messages: Array<{ ID: string; To: Array<{ Address: string }> }>;
     };
     const summary = list.messages.find((m) => m.To.some((t) => t.Address === to));
     if (summary !== undefined) {
@@ -283,12 +287,12 @@ function atSecond<T>(unixSec: number | undefined, fn: () => T): T {
 }
 
 // FindAuthRecordByToken as "collectionName/id", or the error text
-function lookup(app: TestCollectionsApp, token: string, ...types: string[]): string {
+function lookup(app: TestCollectionsApp, token: string, ...types: Array<string>): string {
   try {
     const record = findAuthRecordByToken(app, token, ...types);
     return `${record.collection().name}/${record.id}`;
-  } catch (err) {
-    return `error: ${(err as Error).message}`;
+  } catch (error) {
+    return `error: ${(error as Error).message}`;
   }
 }
 
@@ -328,7 +332,7 @@ const tamper = (token: string, at: number): string => {
   return parts.join(".");
 };
 
-const guardCases: GuardCase[] = [
+const guardCases: Array<GuardCase> = [
   { name: "no header", header: () => undefined },
   { name: "empty", header: () => "" },
   { name: "alice auth", header: () => upstreamToken("alice:auth") },
@@ -367,7 +371,7 @@ const guardCases: GuardCase[] = [
   { name: "second superuser auth", header: () => upstreamToken("super2:auth") },
 ];
 
-const guardEndpoints: { method: string; path: string }[] = [
+const guardEndpoints: Array<{ method: string; path: string }> = [
   { method: "GET", path: "/api/collections" },
   { method: "POST", path: "/api/files/token" },
   { method: "POST", path: "/api/collections/members/auth-refresh" },
@@ -450,7 +454,7 @@ beforeAll(async () => {
     type: "auth",
     listRule: authRule,
     viewRule: authRule,
-    fields: [{ name: "doc", type: "file", protected: true, maxSelect: 1, maxSize: 1048576 }],
+    fields: [{ name: "doc", type: "file", protected: true, maxSelect: 1, maxSize: 1_048_576 }],
   });
   await ok("POST", "/api/collections", { name: "staff", type: "auth" });
 
@@ -477,7 +481,7 @@ beforeAll(async () => {
   const superList = (await ok(
     "GET",
     `/api/collections/_superusers/records?filter=${encodeURIComponent(`email="${superEmail}"`)}`,
-  )) as { items: { id: string }[] };
+  )) as { items: Array<{ id: string }> };
   ids.set("super", superList.items[0]?.id ?? "");
 
   const form = new FormData();

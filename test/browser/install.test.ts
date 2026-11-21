@@ -3,13 +3,8 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 
-import {
-  Browser,
-  installerLink,
-  password,
-  startFixture,
-  type Fixture,
-} from "@test/browser/support";
+import { Browser, installerLink, password, startFixture } from "@test/browser/support";
+import type { Fixture } from "@test/browser/support";
 
 let fx: Fixture;
 let browser: Browser;

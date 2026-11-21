@@ -9,14 +9,8 @@
 // rawUser keeps the document as upstream decodes it: go-json's `any`
 // values, marshaled back in upstream's form (AuthUser.toMeta).
 
-import {
-  type GoInt,
-  type GoType,
-  anyType,
-  mapOf,
-  unmarshal,
-  unmarshalStruct,
-} from "@/tools/types/go-json";
+import { anyType, mapOf, unmarshal, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 
 type Fields<T> = { [K in keyof T]-?: GoType };
 
@@ -58,7 +52,7 @@ export function decodeFields<T>(data: Uint8Array, fields: Fields<T>): T {
       out[name] = value;
     };
   }
-  unmarshalStruct(data, setters, fields as Record<string, GoType>, () => {});
+  unmarshalStruct(data, setters, fields, () => {});
   return out as T;
 }
 
@@ -93,7 +87,7 @@ function valueOf(value: unknown, t: GoType): unknown {
       if (typeof value !== "number") {
         throw new Error("json: cannot unmarshal into Go struct field of a number type");
       }
-      return value as GoInt;
+      return value;
     default:
       throw new Error("json: unsupported nested member type");
   }
@@ -118,7 +112,7 @@ export function decodeNested<T>(value: unknown, fields: Fields<T>): T {
 }
 
 // a nested array of structs (a JSON array decoded as `any`, null for nil)
-export function decodeNestedList<T>(value: unknown, fields: Fields<T>): T[] {
+export function decodeNestedList<T>(value: unknown, fields: Fields<T>): Array<T> {
   if (value === null || value === undefined) {
     return [];
   }

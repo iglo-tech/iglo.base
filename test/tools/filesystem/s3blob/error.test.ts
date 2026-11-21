@@ -10,9 +10,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { ResponseError } from "@/tools/filesystem/internal/s3blob/s3/error";
 import { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
-import { type S3Recorder, startS3Recorder } from "@test/support/s3-recorder";
+import { startS3Recorder } from "@test/support/s3-recorder";
+import type { S3Recorder } from "@test/support/s3-recorder";
 
-const recorders: S3Recorder[] = [];
+const recorders: Array<S3Recorder> = [];
 afterEach(() => {
   for (const r of recorders.splice(0)) {
     r.stop();
@@ -37,7 +38,7 @@ async function failureOf(status: number, body: string): Promise<unknown> {
     () => {
       throw new Error("expected the request to fail");
     },
-    (err: unknown) => err,
+    (error: unknown) => error,
   );
 }
 

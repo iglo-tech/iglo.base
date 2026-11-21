@@ -21,26 +21,33 @@ import { RelationField } from "@/fields/relation";
 import type { Record } from "@/records/record-model";
 import {
   getCollectionByModelOrIdentifier,
-  type RecordsApp,
   recordQuery,
   recordsTarget,
 } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { jsonEach } from "@/tools/dbutils/json";
 import { toUniqueStringSlice } from "@/tools/list/list";
+import { isInstance } from "@/tools/types/is-instance";
 
 // maxNestedRels defines the max allowed nested relations depth
 // (core/record_field_resolver_runner.go).
 const maxNestedRels = 6;
 
 // ExpandFetchFunc defines the function that is used to fetch the expanded relation records.
-export type ExpandFetchFunc = (relCollection: Collection, relIds: string[]) => Promise<Record[]>;
+export type ExpandFetchFunc = (
+  relCollection: Collection,
+  relIds: Array<string>,
+) => Promise<Array<Record>>;
 
 // The synchronous ExpandFetchFunc of expandRecordSync.
-export type ExpandFetchSyncFunc = (relCollection: Collection, relIds: string[]) => Record[];
+export type ExpandFetchSyncFunc = (
+  relCollection: Collection,
+  relIds: Array<string>,
+) => Array<Record>;
 
 // a step of the expand: yields the reads' results, a promise when async
-type ExpandStep<T> = Generator<Record[] | unknown[] | Promise<unknown>, T, unknown>;
+type ExpandStep<T> = Generator<Array<Record> | Array<unknown> | Promise<unknown>, T, unknown>;
 
 // ExpandRecord expands the relations of a single Record model.
 //
@@ -51,7 +58,7 @@ type ExpandStep<T> = Generator<Record[] | unknown[] | Promise<unknown>, T, unkno
 export function expandRecord(
   app: RecordsApp,
   record: Record,
-  expands: readonly string[],
+  expands: ReadonlyArray<string>,
   optFetchFunc?: ExpandFetchFunc | null,
 ): Promise<Map<string, Error>> {
   return expandRecords(app, [record], expands, optFetchFunc);
@@ -65,8 +72,8 @@ export function expandRecord(
 // Returns a map with the failed expand parameters and their errors.
 export function expandRecords(
   app: RecordsApp,
-  records: Record[],
-  expands: readonly string[],
+  records: Array<Record>,
+  expands: ReadonlyArray<string>,
   optFetchFunc?: ExpandFetchFunc | null,
 ): Promise<Map<string, Error>> {
   return driveAsync(
@@ -82,7 +89,7 @@ export function expandRecords(
 export function expandRecordSync(
   app: RecordsApp,
   record: Record,
-  expands: readonly string[],
+  expands: ReadonlyArray<string>,
   optFetchFunc?: ExpandFetchSyncFunc | null,
 ): Map<string, Error> {
   return expandRecordsSync(app, [record], expands, optFetchFunc);
@@ -91,8 +98,8 @@ export function expandRecordSync(
 // ExpandRecords with synchronous reads (see expandRecordSync).
 export function expandRecordsSync(
   app: RecordsApp,
-  records: Record[],
-  expands: readonly string[],
+  records: Array<Record>,
+  expands: ReadonlyArray<string>,
   optFetchFunc?: ExpandFetchSyncFunc | null,
 ): Map<string, Error> {
   return driveSync(
@@ -102,8 +109,8 @@ export function expandRecordsSync(
 
 function* expandRecordsSteps(
   app: RecordsApp,
-  records: Record[],
-  expands: readonly string[],
+  records: Array<Record>,
+  expands: ReadonlyArray<string>,
   fetch: ExpandFetchFunc | ExpandFetchSyncFunc,
   sync: boolean,
 ): ExpandStep<Map<string, Error>> {
@@ -114,8 +121,8 @@ function* expandRecordsSteps(
   for (const expand of normalized) {
     try {
       yield* expandRecordsPath(app, records, expand, fetch, sync, 1);
-    } catch (err) {
-      failed.set(expand, err instanceof Error ? err : new Error(String(err)));
+    } catch (error) {
+      failed.set(expand, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -134,8 +141,8 @@ async function driveAsync<T>(steps: ExpandStep<T>): Promise<T> {
     try {
       input = await res.value;
       failed = false;
-    } catch (err) {
-      input = err;
+    } catch (error) {
+      input = error;
       failed = true;
     }
   }
@@ -179,7 +186,7 @@ function scanString(v: unknown): string {
       'sql: Scan error on column index 0, name "id": converting NULL to string is unsupported',
     );
   }
-  if (v instanceof Uint8Array) {
+  if (isInstance(Uint8Array, v)) {
     return new TextDecoder().decode(v);
   }
   return String(v);
@@ -194,7 +201,7 @@ function scanString(v: unknown): string {
 // - sync: fetch is an ExpandFetchSyncFunc and the reads are synchronous
 function* expandRecordsPath(
   app: RecordsApp,
-  records: Record[],
+  records: Array<Record>,
   expandPath: string,
   fetch: ExpandFetchFunc | ExpandFetchSyncFunc,
   sync: boolean,
@@ -222,7 +229,7 @@ function* expandRecordsPath(
     const backName = matches[1] as string;
     const backFieldName = matches[2] as string;
 
-    let indirectRel: Collection | null = null;
+    let indirectRel: Collection | null;
     try {
       indirectRel = getCollectionByModelOrIdentifier(app, backName);
     } catch {
@@ -233,7 +240,7 @@ function* expandRecordsPath(
     }
 
     const field = indirectRel.fields.getByName(backFieldName);
-    const indirectRelField = field instanceof RelationField ? field : null;
+    const indirectRelField = isInstance(RelationField, field) ? field : null;
     if (indirectRelField === null || indirectRelField.collectionId !== mainCollection.id) {
       throw new Error(
         `couldn't find back-relation field ${goQuote(backFieldName)} in collection ${goQuote(indirectRel.name)}`,
@@ -257,7 +264,7 @@ function* expandRecordsPath(
       }
 
       const query = q.bind({ id: record.id }).build();
-      const relIds = ((yield sync ? query.column() : query.columnAsync()) as unknown[]).map(
+      const relIds = ((yield sync ? query.column() : query.columnAsync()) as Array<unknown>).map(
         scanString,
       );
 
@@ -269,7 +276,7 @@ function* expandRecordsPath(
     // indirect/back relation
     relField = new RelationField();
     relField.name = part0;
-    relField.maxSelect = 2147483647;
+    relField.maxSelect = 2_147_483_647;
     relField.collectionId = indirectRel.id;
     const [, ok] = findSingleColumnUniqueIndex(indirectRel.indexes, indirectRelField.name);
     if (ok) {
@@ -279,14 +286,14 @@ function* expandRecordsPath(
   } else {
     // direct relation
     const field = mainCollection.fields.getByName(part0);
-    relField = field instanceof RelationField ? field : null;
+    relField = isInstance(RelationField, field) ? field : null;
     if (relField === null) {
       throw new Error(
         `couldn't find relation field ${goQuote(part0)} in collection ${goQuote(mainCollection.name)}`,
       );
     }
 
-    let found: Collection | null = null;
+    let found: Collection | null;
     try {
       found = getCollectionByModelOrIdentifier(app, relField.collectionId);
     } catch {
@@ -303,7 +310,7 @@ function* expandRecordsPath(
   // extract the unique ids of the relations to expand
   // (the initial size assumes that most of the relations are single and unique)
   const existsSet = new Set<string>();
-  const relIds: string[] = [];
+  const relIds: Array<string> = [];
   for (const record of records) {
     for (const id of record.getStringSlice(relField.name)) {
       if (!existsSet.has(id)) {
@@ -314,7 +321,7 @@ function* expandRecordsPath(
   }
 
   // fetch rels
-  const rels = (yield fetch(relCollection, relIds)) as Record[];
+  const rels = (yield fetch(relCollection, relIds)) as Array<Record>;
 
   // expand nested fields
   if (parts.length > 1) {
@@ -337,7 +344,7 @@ function* expandRecordsPath(
 
     const ids = model.getStringSlice(relField.name);
 
-    const validRels: Record[] = [];
+    const validRels: Array<Record> = [];
     for (const id of ids) {
       const rel = indexedRels.get(id);
       if (rel !== undefined) {
@@ -350,10 +357,10 @@ function* expandRecordsPath(
     }
 
     // normalize access to the previously expanded rel records (if any)
-    let oldExpandedRels: Record[] = [];
+    let oldExpandedRels: Array<Record> = [];
     const old = Object.hasOwn(expandData, relField.name) ? expandData[relField.name] : undefined;
     if (Array.isArray(old)) {
-      oldExpandedRels = old as Record[];
+      oldExpandedRels = old as Array<Record>;
     } else if (old !== undefined && old !== null && typeof old === "object") {
       oldExpandedRels = [old as Record];
     }
@@ -384,19 +391,19 @@ function* expandRecordsPath(
 
 // normalizeExpands normalizes expand strings and merges self containing paths
 // (eg. ["a.b.c", "a.b", "   test  ", "  ", "test"] -> ["a.b.c", "test"]).
-export function normalizeExpands(paths: readonly string[]): string[] {
+export function normalizeExpands(paths: ReadonlyArray<string>): Array<string> {
   // normalize paths
-  const normalized: string[] = [];
+  const normalized: Array<string> = [];
   for (let p of paths) {
     p = p.replaceAll(" ", ""); // replace spaces
-    p = p.replace(/^\.+|\.+$/g, ""); // trim incomplete paths
+    p = p.replaceAll(/^\.+|\.+$/g, ""); // trim incomplete paths
     if (p !== "") {
       normalized.push(p);
     }
   }
 
   // merge containing paths
-  const result: string[] = [];
+  const result: Array<string> = [];
   for (const [i, p1] of normalized.entries()) {
     let skip = false;
     for (const [j, p2] of normalized.entries()) {

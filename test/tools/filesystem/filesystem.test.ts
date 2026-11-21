@@ -18,8 +18,10 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { isNotFound, type Reader } from "@/tools/filesystem/blob/bucket";
-import { NewLocal, type System } from "@/tools/filesystem/filesystem";
+import { isNotFound } from "@/tools/filesystem/blob/bucket";
+import type { Reader } from "@/tools/filesystem/blob/bucket";
+import { NewLocal } from "@/tools/filesystem/filesystem";
+import type { System } from "@/tools/filesystem/filesystem";
 import { NewFileFromPath } from "@/tools/filesystem/file";
 import { detect } from "@/tools/mimetype/mimetype";
 
@@ -48,7 +50,7 @@ function attrsJSON(contentType: string): string {
   return `{"user.cache_control":"","user.content_disposition":"","user.content_encoding":"","user.content_language":"","user.content_type":"${contentType}","user.metadata":null}`;
 }
 
-const tempDirs: string[] = [];
+const tempDirs: Array<string> = [];
 
 afterAll(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -128,15 +130,15 @@ function useTestFs(): () => { readonly dir: string; readonly fsys: System } {
 function thrownBy(fn: () => unknown): unknown {
   try {
     fn();
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
   throw new Error("expected the call to throw");
 }
 
 // io.ReadAll for a blob reader or an open file content
 function readAll(r: { read(p: Uint8Array): number }): string {
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   const buf = new Uint8Array(1024);
   for (;;) {
     const n = r.read(buf);
@@ -481,7 +483,7 @@ describe("TestFilesystemList", () => {
     },
     {
       prefix: "missing",
-      expected: [] as string[],
+      expected: [] as Array<string>,
     },
   ];
 

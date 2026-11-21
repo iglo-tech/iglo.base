@@ -12,7 +12,8 @@ import { firstApiError } from "@/apis/record-helpers";
 import { sendRecordChangeEmail } from "@/mail/mails/record";
 import type { Record } from "@/records/record-model";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import { findAuthRecordByEmail, type RecordsApp } from "@/records/record-query";
+import { findAuthRecordByEmail } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { ApiError } from "@/server/error";
 import type { HandlerResult } from "@/server/handler";
 import { structOf } from "@/server/unmarshal-request-data";
@@ -22,7 +23,8 @@ import { Length } from "@/validation/length";
 import { NotIn } from "@/validation/not-in";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 export async function recordRequestEmailChange(e: RequestEvent): Promise<HandlerResult> {
   const collection = findAuthCollection(e);
@@ -41,6 +43,7 @@ export async function recordRequestEmailChange(e: RequestEvent): Promise<Handler
 
   const form: EmailChangeRequestForm = { NewEmail: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     emailChangeRequestType,
   );
@@ -61,8 +64,8 @@ export async function recordRequestEmailChange(e: RequestEvent): Promise<Handler
   // the OnRecordRequestEmailChangeRequest default action
   try {
     await sendRecordChangeEmail(e.app, record, form.NewEmail);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to request email change.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to request email change.", error));
   }
 
   return e.noContent(204);

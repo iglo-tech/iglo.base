@@ -190,7 +190,7 @@ const mp4Sig: SniffSig = {
     }
     // binary.BigEndian.Uint32(data[:4])
     const boxSize =
-      byteAt(data, 0) * 0x1000000 +
+      byteAt(data, 0) * 0x1_00_00_00 +
       ((byteAt(data, 1) << 16) | (byteAt(data, 2) << 8) | byteAt(data, 3));
     if (data.length < boxSize || boxSize % 4 !== 0) {
       return "";
@@ -225,7 +225,7 @@ const textSig: SniffSig = {
 };
 
 // Data matching the table in section 6.
-const sniffSignatures: readonly SniffSig[] = [
+const sniffSignatures: ReadonlyArray<SniffSig> = [
   htmlSig("<!DOCTYPE HTML"),
   htmlSig("<HTML"),
   htmlSig("<HEAD"),
@@ -281,8 +281,10 @@ const sniffSignatures: readonly SniffSig[] = [
   exactSig(bytes("GIF87a"), "image/gif"),
   exactSig(bytes("GIF89a"), "image/gif"),
   maskedSig({
-    mask: bytes("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF"),
-    pat: bytes("RIFF\x00\x00\x00\x00WEBPVP"),
+    mask: bytes(
+      "\u00FF\u00FF\u00FF\u00FF\u0000\u0000\u0000\u0000\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF",
+    ),
+    pat: bytes("RIFF\u0000\u0000\u0000\u0000WEBPVP"),
     ct: "image/webp",
   }),
   exactSig(bytes("\x89PNG\x0D\x0A\x1A\x0A"), "image/png"),

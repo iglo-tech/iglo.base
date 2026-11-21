@@ -9,18 +9,18 @@ import { ZipWriter } from "@/tools/archive/zip-writer";
 //
 // You can specify skipPaths to skip/ignore certain directories and files (relative to src)
 // preventing adding them in the final archive.
-export function create(src: string, dest: string, ...skipPaths: string[]): void {
+export function create(src: string, dest: string, ...skipPaths: Array<string>): void {
   mkdirSync(dirname(dest), { recursive: true, mode: 0o777 });
 
   const zw = new ZipWriter(dest);
 
   try {
     zipAddDir(zw, src, "", skipPaths);
-  } catch (err) {
+  } catch (error) {
     // try to cleanup at least the created zip file
     zw.abort();
     rmSync(dest, { force: true });
-    throw err;
+    throw error;
   }
 
   zw.close();
@@ -30,7 +30,7 @@ function clean(path: string): string {
   return normalize(path).replace(/\/+$/, "");
 }
 
-function zipAddDir(zw: ZipWriter, root: string, dir: string, skipPaths: string[]): void {
+function zipAddDir(zw: ZipWriter, root: string, dir: string, skipPaths: Array<string>): void {
   const entries = readdirSync(join(root, dir), { withFileTypes: true }).toSorted((a, b) =>
     a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
   );

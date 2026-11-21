@@ -30,7 +30,7 @@ export class Index {
   indexName = "";
   tableName = "";
   where = "";
-  columns: IndexColumn[] = [];
+  columns: Array<IndexColumn> = [];
   unique = false;
   optional = false;
 
@@ -200,7 +200,7 @@ export function parseIndex(createIndexExpr: string): Index {
 // FindSingleColumnUniqueIndex returns the first matching single column
 // unique index (Go's (Index, bool)).
 export function findSingleColumnUniqueIndex(
-  indexes: readonly string[],
+  indexes: ReadonlyArray<string>,
   column: string,
 ): [Index, boolean] {
   for (const idx of indexes) {
@@ -221,14 +221,17 @@ export function findSingleColumnUniqueIndex(
 //
 // HasColumnUniqueIndex loosely checks whether the specified column has
 // a single column unique index (WHERE statements are ignored).
-export function hasSingleColumnUniqueIndex(column: string, indexes: readonly string[]): boolean {
+export function hasSingleColumnUniqueIndex(
+  column: string,
+  indexes: ReadonlyArray<string>,
+): boolean {
   const [, ok] = findSingleColumnUniqueIndex(indexes, column);
   return ok;
 }
 
 // tokenizer ScanAll with the error ignored (Go's `parts, _ := ScanAll()`
 // gives a nil slice on error)
-function scanAllOrEmpty(tk: Tokenizer): string[] {
+function scanAllOrEmpty(tk: Tokenizer): Array<string> {
   try {
     return tk.scanAll();
   } catch {
@@ -302,8 +305,8 @@ function toUpper(s: string): string {
 
 // strings.EqualFold: equal under Unicode simple case folding
 function equalFold(s: string, t: string): boolean {
-  const a = [...s];
-  const b = [...t];
+  const a = Array.from(s);
+  const b = Array.from(t);
   if (a.length !== b.length) {
     return false;
   }

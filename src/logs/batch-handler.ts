@@ -9,6 +9,7 @@
 import { ValidationErrors, errorsAs } from "@/server/error";
 import { isJSONMarshaler } from "@/tools/types/go-json";
 import type { JSONMap } from "@/tools/types/json-map";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const LevelDebug = -4;
 export const LevelInfo = 0;
@@ -43,7 +44,7 @@ export interface Log {
 export interface BatchOptions {
   // WriteFunc processes the batched logs. `block` is true when the write
   // must finish before the call returns.
-  writeFunc: (logs: Log[], block: boolean) => void;
+  writeFunc: (logs: Array<Log>, block: boolean) => void;
   // BeforeAddFunc is optional function that is invoked every time
   // before a new log is added to the batch queue.
   //
@@ -73,7 +74,7 @@ export class BatchHandler {
   readonly parent: BatchHandler | undefined;
   readonly group: string;
   readonly attrs: LogAttrs;
-  logs: Log[] = [];
+  logs: Array<Log> = [];
 
   constructor(
     options: BatchOptions | ResolvedOptions,
@@ -189,7 +190,7 @@ function resolveAttr(data: JSONMap<unknown>, key: string, value: unknown): void 
     return; // ignore empty attrs
   }
 
-  if (value instanceof LogGroup) {
+  if (isInstance(LogGroup, value)) {
     const keys = Object.keys(value.attrs);
     if (keys.length === 0) {
       return; // ignore empty groups
@@ -210,7 +211,7 @@ function resolveAttr(data: JSONMap<unknown>, key: string, value: unknown): void 
   data[key] = normalizeLogAttrValue(value);
 }
 
-function isPlainMap(value: object): value is { [key: string]: unknown } {
+function isPlainMap(value: unknown): value is { [key: string]: unknown } {
   const proto: unknown = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
@@ -228,7 +229,7 @@ function normalizeLogAttrValue(value: unknown): unknown {
     return null;
   }
 
-  if (value instanceof ValidationErrors) {
+  if (isInstance(ValidationErrors, value)) {
     return serializeMap(value.errors);
   }
 

@@ -5,7 +5,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 
 export const password = "1234567890";
 
@@ -27,7 +28,7 @@ export class Browser {
   readonly session = `iglo-browser-${process.pid}-${Date.now()}-${sessionCounter++}`;
   private readonly binary = requireAgentBrowser();
 
-  async run(...args: string[]): Promise<string> {
+  async run(...args: Array<string>): Promise<string> {
     const proc = Bun.spawn([this.binary, ...args], {
       stdout: "pipe",
       stderr: "pipe",
@@ -125,6 +126,7 @@ export async function startFixture(): Promise<Fixture> {
       }
       return fetch(`${server.url}${path}`, {
         ...init,
+        // oxlint-disable-next-line typescript/no-misused-spread -- the spread copies the own properties of a plain record or spec object, as the test expects
         headers: { Authorization: token, ...init.headers },
       });
     },

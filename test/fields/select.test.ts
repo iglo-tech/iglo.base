@@ -27,7 +27,7 @@ describe("TestSelectFieldBaseMethods", () => {
 describe("TestSelectFieldColumnType", () => {
   const app = noDBApp();
 
-  const scenarios: { name: string; field: SelectField; expected: string }[] = [
+  const scenarios: Array<{ name: string; field: SelectField; expected: string }> = [
     { name: "single (zero)", field: new SelectField(), expected: "TEXT DEFAULT '' NOT NULL" },
     {
       name: "single",
@@ -49,7 +49,7 @@ describe("TestSelectFieldColumnType", () => {
 });
 
 describe("TestSelectFieldIsMultiple", () => {
-  const scenarios: { name: string; field: SelectField; expected: boolean }[] = [
+  const scenarios: Array<{ name: string; field: SelectField; expected: boolean }> = [
     { name: "single (zero)", field: new SelectField(), expected: false },
     { name: "single", field: new SelectField({ maxSelect: 1 }), expected: false },
     { name: "multiple (>1)", field: new SelectField({ maxSelect: 2 }), expected: true },
@@ -65,7 +65,7 @@ describe("TestSelectFieldIsMultiple", () => {
 describe("TestSelectFieldPrepareValue", () => {
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: { raw: unknown; field: SelectField; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; field: SelectField; expected: string }> = [
     // single
     { raw: null, field: new SelectField(), expected: `""` },
     { raw: "", field: new SelectField(), expected: `""` },
@@ -100,7 +100,7 @@ describe("TestSelectFieldPrepareValue", () => {
 });
 
 describe("TestSelectFieldDriverValue", () => {
-  const scenarios: { raw: unknown; field: SelectField; expected: string }[] = [
+  const scenarios: Array<{ raw: unknown; field: SelectField; expected: string }> = [
     // single
     { raw: null, field: new SelectField(), expected: `""` },
     { raw: "", field: new SelectField(), expected: `""` },
@@ -154,12 +154,12 @@ describe("TestSelectFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: SelectField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     // single
     {
       name: "[single] zero field value (not required)",
@@ -246,11 +246,11 @@ describe("TestSelectFieldValidateSettings", () => {
 
   const app = noDBApp();
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: () => SelectField;
-    expectErrors: string[];
-  }[] = [
+    expectErrors: Array<string>;
+  }> = [
     {
       name: "zero minimal",
       field: () => new SelectField({ id: "test", name: "test" }),
@@ -285,14 +285,14 @@ describe("TestSelectFieldValidateSettings", () => {
 describe("TestSelectFieldFindSetter", () => {
   const values = ["a", "b", "c", "d"];
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     value: unknown;
     field: SelectField;
     hasSetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",

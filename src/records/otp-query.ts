@@ -6,7 +6,8 @@
 // missing OTP, see isNoRows in src/records/record-save.ts).
 
 import { findAllCollections } from "@/collections/collection-query";
-import { type Collection, CollectionTypeAuth } from "@/collections/collection-model";
+import { CollectionTypeAuth } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import { OTP } from "@/records/otp-model";
 import {
@@ -15,17 +16,18 @@ import {
   findAllRefsByRecord,
 } from "@/records/record-auth-refs";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget, recordTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { deleteRecord, run } from "@/records/record-save";
 import { DateTime } from "@/tools/types/datetime";
 
 // FindAllOTPsByRecord returns all OTP models linked to the provided auth record.
-export function findAllOTPsByRecord(app: RecordsApp, authRecord: Record): OTP[] {
+export function findAllOTPsByRecord(app: RecordsApp, authRecord: Record): Array<OTP> {
   return findAllRefsByRecord(app, CollectionNameOTPs, authRecord).map((r) => new OTP(r));
 }
 
 // FindAllOTPsByCollection returns all OTP models linked to the provided collection.
-export function findAllOTPsByCollection(app: RecordsApp, collection: Collection): OTP[] {
+export function findAllOTPsByCollection(app: RecordsApp, collection: Collection): Array<OTP> {
   return recordQuery(app, CollectionNameOTPs)
     .andWhere(new HashExp({ collectionRef: collection.id }))
     .orderBy("created DESC")

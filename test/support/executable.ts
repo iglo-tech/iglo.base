@@ -71,7 +71,7 @@ export interface RunResult {
 }
 
 // Runs the executable to completion.
-export async function run(args: string[], options: { cwd?: string } = {}): Promise<RunResult> {
+export async function run(args: Array<string>, options: { cwd?: string } = {}): Promise<RunResult> {
   const proc = Bun.spawn([await executable(), ...args], {
     cwd: options.cwd ?? tempDir(),
     stdout: "pipe",
@@ -128,14 +128,20 @@ function markerOwner(port: number): number {
 // call for a port that was never claimed here, or twice.
 export function releasePort(port: number): void {
   claimedHere.delete(port);
-  if (markerOwner(port) !== process.pid) return;
+  if (markerOwner(port) !== process.pid) {
+    return;
+  }
   try {
     unlinkSync(markerPath(port));
-  } catch {}
+  } catch {
+    // the marker may already be gone; releasing a claim is best effort
+  }
 }
 
 process.on("exit", () => {
-  for (const port of claimedHere) releasePort(port);
+  for (const port of claimedHere) {
+    releasePort(port);
+  }
 });
 
 // Replaces the marker of a dead or expired claim with ours. rename is atomic,
@@ -149,7 +155,9 @@ function takeOver(port: number): boolean {
   } catch {
     try {
       unlinkSync(own);
-    } catch {}
+    } catch {
+      // the file may already be renamed into place: nothing to clean up
+    }
     return false;
   }
   return markerOwner(port) === process.pid;
@@ -163,17 +171,23 @@ function claim(port: number): boolean {
     claimedHere.add(port);
     return true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+      throw error;
+    }
   }
   const owner = markerOwner(port);
-  let expired = false;
+  let expired: boolean;
   try {
     expired = Date.now() - statSync(marker).mtimeMs > claimLease;
   } catch {
     return false;
   }
-  if (owner !== 0 && pidAlive(owner) && !expired) return false;
-  if (!takeOver(port)) return false;
+  if (owner !== 0 && pidAlive(owner) && !expired) {
+    return false;
+  }
+  if (!takeOver(port)) {
+    return false;
+  }
   claimedHere.add(port);
   return true;
 }
@@ -181,7 +195,9 @@ function claim(port: number): boolean {
 export async function freePort(): Promise<number> {
   for (let attempt = 0; attempt < 200; attempt++) {
     const port = portRange.from + Math.floor(Math.random() * (portRange.to - portRange.from));
-    if (!claim(port)) continue;
+    if (!claim(port)) {
+      continue;
+    }
     try {
       const listener = Bun.listen({ hostname: "127.0.0.1", port, socket: { data() {} } });
       listener.stop(true);
@@ -210,7 +226,7 @@ export interface RunningServer {
 // --automigrate is off unless args turn it on: a test's collection changes
 // write no pb_migrations next to its pb_data.
 export async function startServer(
-  args: string[],
+  args: Array<string>,
   dataDir: string,
   host = "127.0.0.1",
   listenPort?: { name: string; urlPort: number },

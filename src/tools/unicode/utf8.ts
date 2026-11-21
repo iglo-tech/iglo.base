@@ -9,9 +9,9 @@
 
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 
-export const RuneError = 0xfffd; // the "error" Rune or "Unicode replacement character"
+export const RuneError = 0xff_fd; // the "error" Rune or "Unicode replacement character"
 export const RuneSelf = 0x80; // characters below RuneSelf are represented as themselves in a single byte.
-export const MaxRune = 0x10ffff; // Maximum valid Unicode code point.
+export const MaxRune = 0x10_ff_ff; // Maximum valid Unicode code point.
 
 const surrogate = /[\ud800-\udfff]/;
 
@@ -34,16 +34,16 @@ export function DecodeRuneInString(s: string): [rune: number, size: number] {
     return [RuneError, 0];
   }
   const c = s.codePointAt(0) as number;
-  if (c >= 0xdc80 && c <= 0xdcff) {
+  if (c >= 0xdc_80 && c <= 0xdc_ff) {
     return [RuneError, 1];
   }
-  return [c, c > 0xffff ? 2 : 1];
+  return [c, c > 0xff_ff ? 2 : 1];
 }
 
 // ValidRune reports whether r can be legally encoded as UTF-8. Code points
 // that are out of range or a surrogate half are illegal.
 export function ValidRune(r: number): boolean {
-  return (r >= 0 && r < 0xd800) || (r > 0xdfff && r <= MaxRune);
+  return (r >= 0 && r < 0xd8_00) || (r > 0xdf_ff && r <= MaxRune);
 }
 
 // string(rune): the UTF-8 of r, or of U+FFFD when r is not a valid rune.
@@ -52,7 +52,7 @@ export function runeString(r: number): string {
 }
 
 // string([]rune): each rune as runeString.
-export function runesString(runes: readonly number[]): string {
+export function runesString(runes: ReadonlyArray<number>): string {
   let out = "";
   for (const r of runes) {
     out += runeString(r);

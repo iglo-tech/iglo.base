@@ -12,21 +12,23 @@ import { FoldCase, Literal, POSIX, RegexpSyntaxError } from "@/tools/regexp/synt
 import { randomStringByRegex } from "@/tools/security/random-by-regex";
 
 describe("TestRandomStringByRegex", () => {
-  const generated: string[] = [];
+  const generated: Array<string> = [];
 
-  const scenarios: [pattern: string, flags: number[], expectError: boolean, match?: RegExp][] = [
+  const scenarios: Array<
+    [pattern: string, flags: Array<number>, expectError: boolean, match?: RegExp]
+  > = [
     ["", [], true],
     ["test", [], false, /^test$/u],
-    ["\\d+", [POSIX], true],
-    ["\\d+", [], false, /^\d+$/u],
-    ["\\d*", [], false, /^\d*$/u],
-    ["\\d{1,20}", [], false, /^\d{1,20}$/u],
-    ["\\d{5}", [], false, /^\d{5}$/u],
-    ["\\d{0,}-abc", [], false, /^\d{0,}-abc$/u],
+    [String.raw`\d+`, [POSIX], true],
+    [String.raw`\d+`, [], false, /^\d+$/u],
+    [String.raw`\d*`, [], false, /^\d*$/u],
+    [String.raw`\d{1,20}`, [], false, /^\d{1,20}$/u],
+    [String.raw`\d{5}`, [], false, /^\d{5}$/u],
+    [String.raw`\d{0,}-abc`, [], false, /^\d{0,}-abc$/u],
     ["[a-zA-Z_]*", [], false, /^[a-zA-Z_]*$/u],
     ["[^a-zA-Z]{5,30}", [], false, /^[^a-zA-Z]{5,30}$/u],
-    ["\\w+_abc", [], false, /^\w+_abc$/u],
-    ["[2-9]{10}-\\w+", [], false, /^[2-9]{10}-\w+$/u],
+    [String.raw`\w+_abc`, [], false, /^\w+_abc$/u],
+    [String.raw`[2-9]{10}-\w+`, [], false, /^[2-9]{10}-\w+$/u],
     ["(a|b|c)", [], false, /^(a|b|c)$/u],
   ];
 
@@ -71,7 +73,7 @@ describe("TestRandomStringByRegex", () => {
 function lengths(pattern: string, runs = 500): Set<number> {
   const seen = new Set<number>();
   for (let i = 0; i < runs; i++) {
-    seen.add([...randomStringByRegex(pattern)].length);
+    seen.add(Array.from(randomStringByRegex(pattern)).length);
   }
   return seen;
 }
@@ -82,28 +84,30 @@ describe("random_by_regex.go behavior", () => {
     expect(() => randomStringByRegex("a(b")).toThrow(
       "error parsing regexp: missing closing ): `a(b`",
     );
-    expect(() => randomStringByRegex("\\d", POSIX)).toThrow(
+    expect(() => randomStringByRegex(String.raw`\d`, POSIX)).toThrow(
       "error parsing regexp: invalid escape sequence: `\\d`",
     );
   });
 
   test("unsupported operators report Go's Op number", () => {
-    const cases: [pattern: string, op: number][] = [
+    const cases: Array<[pattern: string, op: number]> = [
       ["", 2], // OpEmptyMatch
       ["a(?:)b", 2],
       ["(?m)^a", 7], // OpBeginLine
       ["a(?m)$", 8], // OpEndLine
       ["^a", 9], // OpBeginText
-      ["\\Aa", 9],
+      [String.raw`\Aa`, 9],
       ["a$", 10], // OpEndText
-      ["a\\z", 10],
-      ["\\ba", 11], // OpWordBoundary
-      ["\\Ba", 12], // OpNoWordBoundary
+      [String.raw`a\z`, 10],
+      [String.raw`\ba`, 11], // OpWordBoundary
+      [String.raw`\Ba`, 12], // OpNoWordBoundary
     ];
     for (const [pattern, op] of cases) {
       expect(() => randomStringByRegex(pattern)).toThrow(`unsupported pattern operator ${op}`);
     }
-    expect(() => randomStringByRegex("[^\\x00-\\x{10FFFF}]")).toThrow("no runes to choose from");
+    expect(() => randomStringByRegex(String.raw`[^\x00-\x{10FFFF}]`)).toThrow(
+      "no runes to choose from",
+    );
   });
 
   test("repeats: max is exclusive, star and plus stop below defaultMaxRepeat", () => {
@@ -126,16 +130,16 @@ describe("random_by_regex.go behavior", () => {
   test("classes pick from every range", () => {
     const seen = new Set<string>();
     for (let i = 0; i < 300; i++) {
-      seen.add(randomStringByRegex("[ac-d\\x{1F600}]"));
+      seen.add(randomStringByRegex(String.raw`[ac-d\x{1F600}]`));
     }
     expect(seen).toEqual(new Set(["a", "c", "d", "\u{1F600}"]));
   });
 
   test("runes are written as string(rune)", () => {
     // a surrogate rune becomes U+FFFD, in literals and classes
-    expect(randomStringByRegex("\\x{D800}")).toBe("\ufffd");
-    expect(randomStringByRegex("[\\x{D800}-\\x{D801}]")).toBe("\ufffd");
-    expect(randomStringByRegex("a\\x{DFFF}b")).toBe("a\ufffdb");
+    expect(randomStringByRegex(String.raw`\x{D800}`)).toBe("\ufffd");
+    expect(randomStringByRegex(String.raw`[\x{D800}-\x{D801}]`)).toBe("\ufffd");
+    expect(randomStringByRegex(String.raw`a\x{DFFF}b`)).toBe("a\ufffdb");
   });
 
   test("flags are OR-ed; none means Perl", () => {
@@ -144,6 +148,6 @@ describe("random_by_regex.go behavior", () => {
     expect(randomStringByRegex("(?i)k")).toBe("K");
     expect(randomStringByRegex("a.b*", Literal)).toBe("a.b*");
     expect(randomStringByRegex("a.b*", POSIX, Literal)).toBe("a.b*");
-    expect(randomStringByRegex("x\\Qa.b\\E")).toBe("xa.b");
+    expect(randomStringByRegex(String.raw`x\Qa.b\E`)).toBe("xa.b");
   });
 });

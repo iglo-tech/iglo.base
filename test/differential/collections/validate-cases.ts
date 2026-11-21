@@ -15,7 +15,7 @@ export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
   // the stored fields of a collection, as upstream's GET returns them
-  fields(collection: string): Record<string, unknown>[];
+  fields(collection: string): Array<Record<string, unknown>>;
   // one stored field (by name)
   field(collection: string, field: string): Record<string, unknown>;
 }
@@ -34,7 +34,7 @@ export interface ValidateCase {
   pending?: Pending;
 }
 
-export const setupCollections: ((ctx: Ctx) => unknown)[] = [
+export const setupCollections: Array<(ctx: Ctx) => unknown> = [
   (ctx) => ({
     name: "posts",
     type: "base",
@@ -134,13 +134,16 @@ const withField = (
   collection: string,
   field: string,
   change: (f: Record<string, unknown>) => Record<string, unknown>,
-): Record<string, unknown>[] =>
+): Array<Record<string, unknown>> =>
   ctx.fields(collection).map((f) => (f.name === field ? change({ ...f }) : f));
 
-const withoutField = (ctx: Ctx, collection: string, field: string): Record<string, unknown>[] =>
-  ctx.fields(collection).filter((f) => f.name !== field);
+const withoutField = (
+  ctx: Ctx,
+  collection: string,
+  field: string,
+): Array<Record<string, unknown>> => ctx.fields(collection).filter((f) => f.name !== field);
 
-export const validateCases: ValidateCase[] = [
+export const validateCases: Array<ValidateCase> = [
   // -----------------------------------------------------------------
   // id
   //
@@ -538,7 +541,7 @@ export const validateCases: ValidateCase[] = [
     body: (ctx) => ({
       name: "c_fields15",
       fields: [
-        { name: "t", type: "text", min: 1, max: 10, pattern: "^\\w+$" },
+        { name: "t", type: "text", min: 1, max: 10, pattern: String.raw`^\w+$` },
         { name: "n", type: "number", min: 0, max: 10, onlyInt: true },
         { name: "b", type: "bool" },
         { name: "e", type: "email", onlyDomains: ["example.com"] },
@@ -932,7 +935,7 @@ export const validateCases: ValidateCase[] = [
   {
     name: "update: OTP duration too large",
     target: "members",
-    body: () => ({ otp: { enabled: true, duration: 86401, length: 4 } }),
+    body: () => ({ otp: { enabled: true, duration: 86_401, length: 4 } }),
     valid: false,
   },
   {
@@ -967,7 +970,7 @@ export const validateCases: ValidateCase[] = [
   {
     name: "update: MFA duration too large",
     target: "members",
-    body: () => ({ mfa: { enabled: true, duration: 86401 } }),
+    body: () => ({ mfa: { enabled: true, duration: 86_401 } }),
     valid: false,
   },
   {
@@ -990,7 +993,7 @@ export const validateCases: ValidateCase[] = [
     target: "members",
     body: () => ({
       passwordResetToken: { duration: 5 },
-      emailChangeToken: { duration: 94670857 },
+      emailChangeToken: { duration: 94_670_857 },
       verificationToken: { duration: 0 },
       fileToken: { secret: "x".repeat(256) },
     }),

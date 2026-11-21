@@ -34,7 +34,7 @@ describe("TestDateFieldPrepareValue", () => {
   const f = new DateField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["invalid", ""],
     ["2024-01-01 00:11:22.345Z", "2024-01-01 00:11:22.345Z"],
@@ -61,12 +61,12 @@ describe("TestDateFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: DateField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new DateField({ name: "test" }),
@@ -109,7 +109,7 @@ describe("TestDateFieldValidateSettings", () => {
   const app = noDBApp(clock);
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; field: () => DateField; expectErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; field: () => DateField; expectErrors: Array<string> }> = [
     {
       name: "zero Min/Max",
       field: () => new DateField({ id: "test", name: "test" }),

@@ -9,12 +9,14 @@
 // upstream, the random placeholder and alias parts are matched with the
 // expected query's TEST marker (\w+); in addition every {:name} in the
 // SQL must have a bound param.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { RequestInfo } from "@/app/event-request";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
-import { Float64, type Params } from "@/db/dbx/query";
+import { Float64 } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { FieldNameEmail } from "@/fields/field";
 import type { Record } from "@/records/record-model";
 import { findRecordById, recordQuery } from "@/records/record-query";
@@ -23,17 +25,18 @@ import { filterBuildExpr } from "@/search/filter";
 import { marshal } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // regexp.QuoteMeta, then TEST as \w+
 function expectPatternRegex(expectPattern: string): RegExp {
-  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, "\\$&");
-  return new RegExp("^" + quoted.replaceAll("TEST", "\\w+") + "$");
+  const quoted = expectPattern.replaceAll(/[\\.+*?()|[\]{}^$]/g, String.raw`\$&`);
+  return new RegExp("^" + quoted.replaceAll("TEST", String.raw`\w+`) + "$");
 }
 
 // a bound value as Go would hold it (Float64 is a Go float64)
 function goValue(v: unknown): unknown {
-  return v instanceof Float64 ? v.value : v;
+  return isInstance(Float64, v) ? v.value : v;
 }
 
 describe("TestRecordFieldResolverAllowedFields", () => {
@@ -98,7 +101,7 @@ interface UpdateQueryScenario {
   expectQuery: string;
 }
 
-const updateQueryScenarios: UpdateQueryScenario[] = [
+const updateQueryScenarios: Array<UpdateQueryScenario> = [
   {
     name: "none relation field (with all default operators)",
     collectionIdOrName: "demo4",
@@ -652,16 +655,16 @@ describe("TestRecordFieldResolverUpdateQuery", () => {
       let buildErr: unknown = null;
       try {
         expr = filterBuildExpr(s.rule, r, { clock: app.clock });
-      } catch (err) {
-        buildErr = err;
+      } catch (error) {
+        buildErr = error;
       }
       expect({ hasErr: buildErr !== null, buildErr }).toMatchObject({ hasErr: expectError });
 
       let updateErr: unknown = null;
       try {
         r.updateQuery(query);
-      } catch (err) {
-        updateErr = err;
+      } catch (error) {
+        updateErr = error;
       }
       if (updateErr !== null && expectError) {
         throw new Error(`UpdateQuery failed: ${String(updateErr)}`);
@@ -697,7 +700,7 @@ describe("TestRecordFieldResolverResolveCollectionFields", () => {
   });
 
   // [fieldName, expectError, expectName]
-  const scenarios: [string, boolean, string][] = [
+  const scenarios: Array<[string, boolean, string]> = [
     ["", true, ""],
     [" ", true, ""],
     ["unknown", true, ""],
@@ -807,8 +810,8 @@ describe("TestRecordFieldResolverResolveCollectionFields", () => {
       let err: unknown = null;
       try {
         result = r.resolve(fieldName);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect({ hasErr: err !== null, err }).toMatchObject({ hasErr: expectError });
@@ -881,7 +884,7 @@ describe("TestRecordFieldResolverResolveStaticRequestInfoFields", () => {
   });
 
   // [fieldName, expectError, expectParamValue (encoded json)]
-  const scenarios: [string, boolean, string][] = [
+  const scenarios: Array<[string, boolean, string]> = [
     ["@request", true, ""],
     ["@request.invalid format", true, ""],
     ["@request.invalid_format2!", true, ""],
@@ -932,8 +935,8 @@ describe("TestRecordFieldResolverResolveStaticRequestInfoFields", () => {
       let err: unknown = null;
       try {
         result = r.resolve(fieldName);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect({ hasErr: err !== null, err }).toMatchObject({ hasErr: expectError });

@@ -22,7 +22,7 @@ if (target !== "" && !["bun-linux-x64", "bun-linux-arm64"].includes(target)) {
   process.exit(1);
 }
 
-async function run(cmd: string[]): Promise<void> {
+async function run(cmd: Array<string>): Promise<void> {
   const proc = Bun.spawn(cmd, { cwd: repoRoot, stdout: "inherit", stderr: "inherit" });
   const code = await proc.exited;
   if (code !== 0) {

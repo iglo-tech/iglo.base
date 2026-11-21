@@ -5,6 +5,7 @@
 // with M1.6 (core/collection_model.go, core/fields_list.go) and M1.8
 // (core/record_model.go); upstream's tests.NewTestApp is a copy of the
 // vendored fixture opened with src/db.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { testLogger } from "@test/support/logger";
 import { expect } from "bun:test";
@@ -21,18 +22,21 @@ import {
   defaultLowercaseRecordIdPattern,
   isGetterFinder,
   isSetterFinder,
-  type Field,
-  type FieldApp,
-  type InterceptorApp,
-  type InterceptorRecord,
-  type FieldCollection,
-  type FieldRecord,
-  type FieldsListReader,
+} from "@/fields/field";
+import type {
+  Field,
+  FieldApp,
+  InterceptorApp,
+  InterceptorRecord,
+  FieldCollection,
+  FieldRecord,
+  FieldsListReader,
 } from "@/fields/field";
 import { fieldFactory } from "@/fields/fields";
 import { TextField } from "@/fields/text";
 import { toString as castToString } from "@/tools/types/cast";
-import { type DateTime, parseDateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 import { anyType, marshal, sliceOf, unmarshal } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 
@@ -45,9 +49,9 @@ export function crc32Checksum(str: string): string {
 
 // core/fields_list.go FieldsList: the methods the tests use
 export class TestFieldsList implements FieldsListReader {
-  private list: Field[] = [];
+  private list: Array<Field> = [];
 
-  constructor(...fields: Field[]) {
+  constructor(...fields: Array<Field>) {
     this.add(...fields);
   }
 
@@ -70,7 +74,7 @@ export class TestFieldsList implements FieldsListReader {
   // Add adds one or more fields to the list, replacing a field with the
   // same id (or, for a field without id, the same name) in place; a field
   // without id gets "<type><crc32 of name>".
-  add(...fields: Field[]): void {
+  add(...fields: Array<Field>): void {
     for (const f of fields) {
       this.addOne(f);
     }
@@ -331,7 +335,7 @@ export class TestApp implements FieldApp {
       .row();
     const [id, name, type, fieldsJSON] = row as [string, string, string, string];
     const fields = new TestFieldsList();
-    for (const data of unmarshal(fieldsJSON, sliceOf(anyType)) as Record<string, unknown>[]) {
+    for (const data of unmarshal(fieldsJSON, sliceOf(anyType)) as Array<Record<string, unknown>>) {
       const factory = fieldFactory(String(data.type));
       if (factory === undefined) {
         continue;
@@ -407,8 +411,11 @@ export function noDBApp(clock: Clock = { now: () => new Date() }): FieldApp {
 
 // tests.TestValidationErrors: err is validation.Errors with exactly the
 // expected keys (or null for none)
-export function expectValidationErrors(err: Error | null, expectedKeys: readonly string[]): void {
-  if (err !== null && !(err instanceof Errors)) {
+export function expectValidationErrors(
+  err: Error | null,
+  expectedKeys: ReadonlyArray<string>,
+): void {
+  if (err !== null && !isInstance(Errors, err)) {
     throw new Error(`expected validation Errors, got ${err.name}: ${err.message}`);
   }
   const keys = err === null ? [] : Object.keys(err.errors);
@@ -437,6 +444,7 @@ export function interceptorArgs(
   };
   // the record itself, with collection() and baseFilesPath(): every other
   // read and write goes to it
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const irecord = new Proxy(record, {
     get(target, prop) {
       if (prop === "collection") {
@@ -445,8 +453,9 @@ export function interceptorArgs(
       if (prop === "baseFilesPath") {
         return () => target.collection.id + "/" + target.id;
       }
+      // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
       const v: unknown = Reflect.get(target, prop, target);
-      return typeof v === "function" ? (v as (...args: unknown[]) => unknown).bind(target) : v;
+      return typeof v === "function" ? (v as (...args: Array<unknown>) => unknown).bind(target) : v;
     },
     set(target, prop, value) {
       return Reflect.set(target, prop, value, target);

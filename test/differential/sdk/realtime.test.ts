@@ -6,10 +6,11 @@
 
 import { describe, expect } from "bun:test";
 
-import { sdkTest, sortedKeys, type SdkEnv } from "@test/differential/sdk/harness";
+import { sdkTest, sortedKeys } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 
 // waits until the list has n entries
-async function waitFor(env: SdkEnv, list: unknown[], n: number): Promise<void> {
+async function waitFor(env: SdkEnv, list: Array<unknown>, n: number): Promise<void> {
   await env.until(() => list.length >= n, `${n} realtime events`);
 }
 
@@ -17,9 +18,9 @@ describe("realtime", () => {
   sdkTest("record subscriptions: *, id, options, unsubscribe", {}, async (env) => {
     const admin = env.superuser();
     const watcher = env.client();
-    const all: unknown[] = [];
-    const one: unknown[] = [];
-    const picked: unknown[] = [];
+    const all: Array<unknown> = [];
+    const one: Array<unknown> = [];
+    const picked: Array<unknown> = [];
 
     const unsubAll = await env.step("subscribe *", () =>
       watcher.collection("demo2").subscribe("*", (e) => all.push(e)),
@@ -86,10 +87,10 @@ describe("realtime", () => {
   sdkTest("rules, auth, expand and filter", {}, async (env) => {
     const admin = env.superuser();
     const guest = env.client();
-    const guestEvents: unknown[] = [];
-    const adminEvents: unknown[] = [];
-    const expanded: unknown[] = [];
-    const filtered: unknown[] = [];
+    const guestEvents: Array<unknown> = [];
+    const adminEvents: Array<unknown> = [];
+    const expanded: Array<unknown> = [];
+    const filtered: Array<unknown> = [];
 
     const watcher = env.superuser();
     await env.step("subscribe demo3 (guest)", () =>
@@ -139,7 +140,7 @@ describe("realtime", () => {
   sdkTest("RealtimeService topics, listeners and auth change", {}, async (env) => {
     const admin = env.superuser();
     const pb = env.client();
-    const topic: unknown[] = [];
+    const topic: Array<unknown> = [];
     const listener = (e: unknown) => topic.push(e);
     env.record("isConnected before", pb.realtime.isConnected);
     await env.step("subscribe (custom topic)", () =>
@@ -167,8 +168,8 @@ describe("realtime", () => {
     // subscribes to a rule-protected collection (no events), signs in, and
     // subscribes again: that request carries the new auth, and the events of
     // both topics arrive.
-    const guarded: unknown[] = [];
-    const byId: unknown[] = [];
+    const guarded: Array<unknown> = [];
+    const byId: Array<unknown> = [];
     await env.step("subscribe demo3 (guest)", () =>
       pb.collection("demo3").subscribe("*", (e) => guarded.push(e)),
     );

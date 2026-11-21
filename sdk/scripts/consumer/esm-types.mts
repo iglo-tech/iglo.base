@@ -1,8 +1,8 @@
-import PocketBase, {
-  ClientResponseError,
-  type RecordModel,
-  type ListResult,
-  type BeforeSendResult,
+import PocketBase, { ClientResponseError } from "@iglo.tech/iglo.base";
+import type {
+  RecordModel,
+  ListResult,
+  BeforeSendResult,
   BaseAuthStore,
 } from "@iglo.tech/iglo.base";
 type Post = { id: string; title: string };
@@ -22,10 +22,12 @@ import {
   createSuperuserClient,
   createSessionCache,
   createRequestCookieAdapter,
-  type ServerClient,
-  type SuperuserClient,
-  type SessionCache,
-  type RequestCookieAdapter,
+} from "@iglo.tech/iglo.base/ssr";
+import type {
+  ServerClient,
+  SuperuserClient,
+  SessionCache,
+  RequestCookieAdapter,
 } from "@iglo.tech/iglo.base/ssr";
 const dummyReq = new Request("https://example.com");
 const cookieAdapter: RequestCookieAdapter = createRequestCookieAdapter(dummyReq);
@@ -39,7 +41,8 @@ const superuserClientPromise: Promise<SuperuserClient> = createSuperuserClient({
 });
 const cache: SessionCache = createSessionCache();
 
-import { createBrowserClient, type BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
+import type { BrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 const browserClient: BrowserClient = createBrowserClient({ url: "https://example.com" });
 const asPocketBase: PocketBase = browserClient;
 

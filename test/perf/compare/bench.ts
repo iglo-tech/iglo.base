@@ -31,8 +31,8 @@ import {
   repoRoot,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 import { freePort } from "@test/support/executable";
 
@@ -52,8 +52,8 @@ const { values } = parseArgs({
     "no-logs": { type: "boolean", default: false },
   },
 });
-const targets = values.target!.split(",");
-const clientCounts = values.clients!.split(",").map(Number);
+const targets = values.target.split(",");
+const clientCounts = values.clients.split(",").map(Number);
 const seconds = Number(values.seconds);
 const warmup = Number(values.warmup);
 const repeat = Number(values.repeat);
@@ -152,7 +152,7 @@ interface Workload {
   status?: number;
 }
 
-const workloads: Workload[] = [
+const workloads: Array<Workload> = [
   { key: "list", name: "list 30", path: "/api/collections/posts/records?perPage=30" },
   {
     key: "list-filter",
@@ -208,7 +208,7 @@ interface Result {
 }
 
 async function run(url: string, w: Workload, clients: number, secs: number): Promise<Result> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   let errors = 0;
   const cpu0 = process.cpuUsage();
   const started = performance.now();
@@ -257,7 +257,7 @@ async function startIglo(
   const profDir = values["cpu-prof"];
   const cmd = profDir
     ? [process.execPath, "--cpu-prof", "--cpu-prof-dir", profDir, join(repoRoot, "src/main.ts")]
-    : [values.exe!];
+    : [values.exe];
   const t0 = performance.now();
   const proc = Bun.spawn(
     [
@@ -303,7 +303,7 @@ async function startIglo(
       output: () => "",
       async stop() {
         proc.kill("SIGTERM");
-        const timer = setTimeout(() => proc.kill("SIGKILL"), 8_000);
+        const timer = setTimeout(() => proc.kill("SIGKILL"), 8000);
         await proc.exited;
         clearTimeout(timer);
       },
@@ -323,7 +323,7 @@ async function startUp(
 
 const fmt = (n: number | null, d = 2): string => (n === null ? "-" : n.toFixed(d));
 
-const median = (xs: number[]): number => {
+const median = (xs: Array<number>): number => {
   const s = xs.toSorted((a, b) => a - b);
   return s[Math.floor(s.length / 2)]!;
 };
@@ -339,9 +339,9 @@ try {
     await build(base, root);
   }
 
-  const runs: Record<string, Record<string, Result[]>> = {};
-  const startup: Record<string, number[]> = {};
-  const idle: Record<string, number[]> = {};
+  const runs: Record<string, Record<string, Array<Result>>> = {};
+  const startup: Record<string, Array<number>> = {};
+  const idle: Record<string, Array<number>> = {};
   for (let rep = 0; rep < repeat; rep++) {
     for (const target of targets) {
       const dataDir = join(root, `${target}-${rep}`, "pb_data");
@@ -377,7 +377,7 @@ try {
     }
   }
 
-  const table: string[] = [
+  const table: Array<string> = [
     "| Workload | Clients | iglo.base req/s | p50 | p95 | p99 | upstream req/s | p50 | p95 | p99 | p50 ratio | p95 ratio | req/s ratio |",
     "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
   ];

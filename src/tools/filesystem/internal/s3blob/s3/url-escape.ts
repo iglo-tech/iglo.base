@@ -18,7 +18,7 @@ export function urlPathEscape(s: string): string {
 // urlUnescape reverses URLEscape using url.PathUnescape. If the unescape
 // returns an error, it returns s.
 export function urlUnescape(s: string): string {
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   const input = textToBytes(s);
   for (let i = 0; i < input.length; i++) {
     const c = input[i] as number;

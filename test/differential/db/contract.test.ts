@@ -18,8 +18,8 @@ import {
   runUpstream,
   serveUpstream,
   superuserToken,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
+import type { FixtureCopy } from "@test/differential/db/fixture";
 
 const recordId = "iglobasedemo201";
 const logId = "iglobaselog0001";
@@ -27,15 +27,15 @@ const logId = "iglobaselog0001";
 const now = new Date().toISOString().replace("T", " ");
 
 interface Snapshot {
-  files: string[];
-  schema: Record<string, unknown[]>;
-  migrations: unknown[];
+  files: Array<string>;
+  schema: Record<string, Array<unknown>>;
+  migrations: Array<unknown>;
 }
 
 // sqlite_schema of both files, the _migrations rows and the pb_data entries
 function snapshot(dataDir: string): Snapshot {
-  const schema: Record<string, unknown[]> = {};
-  let migrations: unknown[] = [];
+  const schema: Record<string, Array<unknown>> = {};
+  let migrations: Array<unknown> = [];
   for (const name of [dataDBFilename, auxDBFilename]) {
     const conn = new Database(join(dataDir, name));
     try {

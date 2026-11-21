@@ -24,11 +24,11 @@ const simpleEscapes: Record<string, number> = {
 // unquote parses a Go double-quoted string literal; it throws on a
 // malformed one.
 export function unquote(q: string): string {
-  if (q.length < 2 || q[0] !== '"' || q[q.length - 1] !== '"') {
+  if (q.length < 2 || q[0] !== '"' || q.at(-1) !== '"') {
     throw new Error(`invalid quoted string ${q}`);
   }
   const s = q.slice(1, -1);
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   const pushText = (t: string): void => {
     for (const b of encoder.encode(t)) {
       bytes.push(b);
@@ -64,7 +64,7 @@ export function unquote(q: string): string {
       case "U": {
         const n = e === "u" ? 4 : 8;
         const r = hex(s.slice(i, i + n), q);
-        if (r > 0x10ffff || (r >= 0xd800 && r <= 0xdfff)) {
+        if (r > 0x10_ff_ff || (r >= 0xd8_00 && r <= 0xdf_ff)) {
           throw new Error(`invalid quoted string ${q}`);
         }
         pushText(String.fromCodePoint(r));

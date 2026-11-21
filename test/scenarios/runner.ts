@@ -9,7 +9,8 @@ import { rmSync } from "node:fs";
 
 import { checkExpectations, igloBaseExpectations } from "@test/scenarios/expectations";
 import { preparedFixture } from "@test/scenarios/fixture";
-import { sendScenarioRequest, type ScenarioResponse } from "@test/scenarios/request";
+import { sendScenarioRequest } from "@test/scenarios/request";
+import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Expectations, Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
 
@@ -20,7 +21,7 @@ export async function checkResponse(
   expected: Expectations,
   server: { url: string; dataDir: string },
   res: ScenarioResponse,
-): Promise<string[]> {
+): Promise<Array<string>> {
   if (scenario.delayMs) {
     await Bun.sleep(scenario.delayMs);
   }
@@ -47,7 +48,7 @@ export async function send(
 }
 
 // iglo.base's failures for the scenario
-export async function runAgainstIgloBase(scenario: Scenario): Promise<string[]> {
+export async function runAgainstIgloBase(scenario: Scenario): Promise<Array<string>> {
   const fixture = await preparedFixture(scenario);
   try {
     const server = await startServer([], fixture.dataDir);

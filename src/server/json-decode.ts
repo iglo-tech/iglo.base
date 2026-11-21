@@ -1,3 +1,4 @@
+import { isInstance } from "@/tools/types/is-instance";
 // Upstream: Go's encoding/json/v2 decoding rules as used by
 // tools/router (Event.BindBody with jsontext.Decoder and
 // MatchCaseInsensitiveNames, UnmarshalRequestData's @jsonPayload with
@@ -17,8 +18,8 @@ export type JsonValue =
   | boolean
   | string
   | JsonNumber
-  | JsonValue[]
-  | { kind: "object"; members: [string, JsonValue][] };
+  | Array<JsonValue>
+  | { kind: "object"; members: Array<[string, JsonValue]> };
 
 export class JsonSyntaxError extends Error {
   constructor(message: string) {
@@ -152,7 +153,7 @@ class Parser {
       }
       const code = this.hex4(this.i + 2);
       this.i += 6;
-      if (code >= 0xd800 && code <= 0xdbff) {
+      if (code >= 0xd8_00 && code <= 0xdb_ff) {
         // a high surrogate must be followed by an escaped low surrogate;
         // an input that ends within a possible one is truncated
         // (jsonwire's hasEscapedUTF16Prefix)
@@ -167,7 +168,7 @@ class Parser {
         }
         throw new JsonSyntaxError(`invalid surrogate pair in string at offset ${start}`);
       }
-      if (code >= 0xdc00 && code <= 0xdfff) {
+      if (code >= 0xdc_00 && code <= 0xdf_ff) {
         // a low surrogate cannot start a pair, but an input that ends
         // within a possible escape after it is truncated all the same
         const next = this.s.slice(this.i, this.i + 6);
@@ -191,9 +192,9 @@ class Parser {
     return Number.parseInt(hex, 16);
   }
 
-  array(): JsonValue[] {
+  array(): Array<JsonValue> {
     this.i++; // [
-    const out: JsonValue[] = [];
+    const out: Array<JsonValue> = [];
     this.skipWhitespace();
     if (this.s[this.i] === "]") {
       this.i++;
@@ -218,7 +219,7 @@ class Parser {
 
   object(): JsonValue {
     this.i++; // {
-    const members: [string, JsonValue][] = [];
+    const members: Array<[string, JsonValue]> = [];
     const seen = new Set<string>();
     this.skipWhitespace();
     if (this.s[this.i] === "}") {
@@ -298,7 +299,7 @@ export function decodeUTF8Bytes(bytes: Uint8Array): string {
     // fall through to the byte-by-byte decoder
   }
   let out = "";
-  let chunk: number[] = [];
+  let chunk: Array<number> = [];
   for (let i = 0; i < bytes.length;) {
     const [r, size] = decodeRune(bytes, i);
     chunk.push(r);
@@ -317,7 +318,7 @@ function decodeRune(bytes: Uint8Array, i: number): [number, number] {
   if (b0 < 0x80) {
     return [b0, 1];
   }
-  const invalid: [number, number] = [0xdc00 + b0, 1];
+  const invalid: [number, number] = [0xdc_00 + b0, 1];
   // utf8 first and acceptRanges: sequence size and the second byte's range
   let size: number;
   let lo = 0x80;
@@ -384,19 +385,19 @@ export function decodeValue(text: string): JsonValue {
 
 export function isJsonObject(
   value: JsonValue,
-): value is { kind: "object"; members: [string, JsonValue][] } {
+): value is { kind: "object"; members: Array<[string, JsonValue]> } {
   return (
     typeof value === "object" &&
     value !== null &&
     !Array.isArray(value) &&
-    !(value instanceof JsonNumber)
+    !isInstance(JsonNumber, value)
   );
 }
 
 // The value as unmarshaled into a Go `any`: objects become plain objects,
 // numbers float64.
 export function toAny(value: JsonValue): unknown {
-  if (value instanceof JsonNumber) {
+  if (isInstance(JsonNumber, value)) {
     const n = Number(value.literal);
     if (!Number.isFinite(n)) {
       // out of float64 range: json/v2 fails instead of storing ±Inf

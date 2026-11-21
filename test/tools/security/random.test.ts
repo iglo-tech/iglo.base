@@ -10,7 +10,7 @@ import {
 } from "@/tools/security/random";
 
 function testRandomStringWithAlphabet(randomFunc: (n: number, alphabet: string) => string): void {
-  const scenarios: [string, RegExp][] = [
+  const scenarios: Array<[string, RegExp]> = [
     ["0123456789_", /^[0-9_]+$/],
     ["abcdef123", /^[abcdef123]+$/],
     ["!@#$%^&*()", /^[!@#$%^&*()]+$/],
@@ -75,7 +75,7 @@ describe("PseudorandomStringWithAlphabet", () => {
 // Not in upstream's tests: every alphabet character is reachable.
 describe("RandomStringWithAlphabet coverage", () => {
   test("uses the whole default alphabet", () => {
-    const seen = new Set(randomString(20000));
+    const seen = new Set(randomString(20_000));
     expect(seen.size).toBe(62);
   });
 });

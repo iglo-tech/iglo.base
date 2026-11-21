@@ -15,14 +15,15 @@ import { bootstrap, clearBootstrap } from "@/app/bootstrap";
 import { deleteOldLogs } from "@/logs/log-query";
 import { parseDateTime } from "@/tools/types/datetime";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { liveRow, superuserToken, writeMFAs, writeOTPs } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
 
-let opened: TestApp[] = [];
-const stderrLines: string[] = [];
+let opened: Array<TestApp> = [];
+const stderrLines: Array<string> = [];
 
 afterEach(async () => {
   for (const app of opened) {
@@ -35,11 +36,14 @@ async function open(prepare?: (dataDir: string) => void, now?: Date): Promise<Te
   const dataDir = join(tempDir(), "pb_data");
   copyDataDir(fixtureDir, dataDir);
   prepare?.(dataDir);
-  const app = await openFixtureApp({
+  const options: NonNullable<Parameters<typeof openFixtureApp>[0]> = {
     dataDir,
     stderrLog: (line) => stderrLines.push(line),
-    ...(now === undefined ? {} : { clock: { now: () => now } }),
-  });
+  };
+  if (now !== undefined) {
+    options.clock = { now: () => now };
+  }
+  const app = await openFixtureApp(options);
   opened.push(app);
   return app;
 }
@@ -75,7 +79,7 @@ async function runJob(app: TestApp, id: string): Promise<void> {
   await app.cron.waitForRunning(5000);
 }
 
-function ids(app: TestApp, table: string): string[] {
+function ids(app: TestApp, table: string): Array<string> {
   return app.databases.db().newQuery(`SELECT id FROM ${table} ORDER BY id`).column<string>();
 }
 
@@ -136,7 +140,7 @@ describe("TestCronsList", () => {
     }
 
     const res = await send(app, "GET", "/api/crons");
-    const jobs = (await res.json()) as { id: string }[];
+    const jobs = (await res.json()) as Array<{ id: string }>;
     expect(jobs.map((j) => j.id)).toEqual(["a", "b", "c", "__pbX", "__pbY", "__pbZ"]);
   });
 });
@@ -351,7 +355,7 @@ describe("__pbDBOptimize__", () => {
   test("runs its pragmas in upstream's order", async () => {
     const dataDir = join(tempDir(), "pb_data");
     copyDataDir(fixtureDir, dataDir);
-    const lines: string[] = [];
+    const lines: Array<string> = [];
     const app = await bootstrap({
       dataDir,
       isDev: true,
@@ -402,7 +406,7 @@ describe("__pbDBOptimize__", () => {
 
   test("writes no rows of its own", async () => {
     const app = await open();
-    const tables = (): string[] =>
+    const tables = (): Array<string> =>
       app.databases
         .db()
         .newQuery("SELECT name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name")

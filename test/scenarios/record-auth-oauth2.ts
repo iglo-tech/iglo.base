@@ -45,12 +45,8 @@ import {
 } from "@test/scenarios/record-checks";
 import { usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext, PrepareContext, Scenario, Suite } from "@test/scenarios/scenario";
-import {
-  type MockEndpoints,
-  type MockProvider,
-  type MockProviderSpec,
-  sharedOAuth2Mock,
-} from "@test/support/oauth2-mock";
+import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
+import type { MockEndpoints, MockProvider, MockProviderSpec } from "@test/support/oauth2-mock";
 
 export const usersId = "_pb_users_auth_";
 export const user1Id = "4q1xlclmfloku33"; // test@example.com, unverified
@@ -67,7 +63,7 @@ export const authURL = "/api/collections/users/auth-with-oauth2";
 export type PrepareStep = (ctx: PrepareContext) => void;
 
 // several prepare steps in order
-export function all(...steps: PrepareStep[]): PrepareStep {
+export function all(...steps: Array<PrepareStep>): PrepareStep {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -114,13 +110,17 @@ export const verifiedEmail = (email: string): { email: string; email_verified: b
   email_verified: true,
 });
 
-const body = (createData?: unknown): string =>
-  JSON.stringify({
+const body = (createData?: unknown): string => {
+  const data: { [key: string]: unknown } = {
     provider: "oidc",
     code: "123",
     redirectURL: "https://example.com",
-    ...(createData === undefined ? {} : { createData }),
-  });
+  };
+  if (createData !== undefined) {
+    data.createData = createData;
+  }
+  return JSON.stringify(data);
+};
 
 export function authScenario(
   scenario: Omit<Scenario, "method" | "url" | "body"> & { body?: string },
@@ -164,7 +164,7 @@ const createData = {
   rel: "0yxhwia2amd8gec",
 };
 
-const rateLimits = (name: string, rules: { maxRequests: number; label: string }[]): Scenario =>
+const rateLimits = (name: string, rules: Array<{ maxRequests: number; label: string }>): Scenario =>
   rateLimitScenario(name, "POST", authURL, rules);
 
 export const recordAuthWithOAuth2: Suite = {
@@ -629,9 +629,13 @@ export function passwordChanged(recordId: string) {
 // passwordIs for the record found by its username
 function passwordByUsername(username: string, password: string) {
   return async (ctx: AfterContext): Promise<void> => {
-    const [row] = queryRows(ctx.dataDir, "SELECT id FROM users WHERE username = ?", username) as {
+    const [row] = queryRows(
+      ctx.dataDir,
+      "SELECT id FROM users WHERE username = ?",
+      username,
+    ) as Array<{
       id: string;
-    }[];
+    }>;
     if (row === undefined) {
       throw new Error(`missing user ${username}`);
     }

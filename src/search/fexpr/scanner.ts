@@ -96,7 +96,7 @@ export const TokenComment: TokenType = "comment";
 // meta is Go's `Meta interface{}`: the argument tokens of a function token
 // (an empty array for Go's nil []Token), null (a nil interface) otherwise.
 export interface Token {
-  meta: Token[] | null;
+  meta: Array<Token> | null;
   type: TokenType;
   literal: string;
 }
@@ -108,7 +108,7 @@ export type ScanResult = [token: Token, err: Error | undefined];
 // scanner does not import the parser.
 export const ErrInvalidComment = new Error("invalid comment");
 
-function token(type: TokenType, literal: string, meta: Token[] | null = null): Token {
+function token(type: TokenType, literal: string, meta: Array<Token> | null = null): Token {
   return { meta, type, literal };
 }
 
@@ -539,10 +539,10 @@ export class Scanner {
   // extract its arguments and returns a function token with the found
   // Token arguments loaded in Token.Meta.
   private scanFunctionArgs(funcName: string, funcDepth: number): ScanResult {
-    const args: Token[] = [];
+    const args: Array<Token> = [];
 
     let expectComma = false;
-    let isComma = false;
+    let isComma: boolean;
     let isClosed = false;
 
     const start = this.read();
@@ -816,39 +816,39 @@ function isValidIdentifier(literal: string): boolean {
 // strconv.QuoteRune (fmt's %q for a rune): a single-quoted Go character
 // literal; non-printable runes (unicode.IsPrint) are escaped.
 function quoteRune(r: number): string {
-  if (r > 0x10ffff || (r >= 0xd800 && r <= 0xdfff)) {
+  if (r > 0x10_ff_ff || (r >= 0xd8_00 && r <= 0xdf_ff)) {
     r = RuneError;
   }
   switch (r) {
     case 0x27:
-      return "'\\''";
+      return String.raw`'\''`;
     case 0x5c:
-      return "'\\\\'";
+      return String.raw`'\\'`;
   }
   if (IsPrint(r)) {
     return "'" + String.fromCodePoint(r) + "'";
   }
   switch (r) {
     case 0x07:
-      return "'\\a'";
+      return String.raw`'\a'`;
     case 0x08:
-      return "'\\b'";
+      return String.raw`'\b'`;
     case 0x0c:
-      return "'\\f'";
+      return String.raw`'\f'`;
     case 0x0a:
-      return "'\\n'";
+      return String.raw`'\n'`;
     case 0x0d:
-      return "'\\r'";
+      return String.raw`'\r'`;
     case 0x09:
-      return "'\\t'";
+      return String.raw`'\t'`;
     case 0x0b:
-      return "'\\v'";
+      return String.raw`'\v'`;
   }
   if (r < 0x20 || r === 0x7f) {
-    return "'\\x" + r.toString(16).padStart(2, "0") + "'";
+    return String.raw`'\x` + r.toString(16).padStart(2, "0") + "'";
   }
-  if (r < 0x10000) {
-    return "'\\u" + r.toString(16).padStart(4, "0") + "'";
+  if (r < 0x1_00_00) {
+    return String.raw`'\u` + r.toString(16).padStart(4, "0") + "'";
   }
-  return "'\\U" + r.toString(16).padStart(8, "0") + "'";
+  return String.raw`'\U` + r.toString(16).padStart(8, "0") + "'";
 }

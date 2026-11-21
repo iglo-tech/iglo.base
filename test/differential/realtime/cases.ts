@@ -13,14 +13,8 @@ import { expect } from "bun:test";
 
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import type { RealtimeStream } from "@test/realtime/client";
-import {
-  events,
-  type Observation,
-  type RealtimeScenario,
-  response,
-  type ScenarioContext,
-  settled,
-} from "@test/realtime/scenario";
+import { events, response, settled } from "@test/realtime/scenario";
+import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
 
 const user1Id = "4q1xlclmfloku33";
 const user2Id = "oap640cot4yru2s";
@@ -31,7 +25,10 @@ function topic(name: string, options: { query?: object; headers?: object }): str
 }
 
 // rt_posts: public list and view rules, a hidden field and an owner relation
-async function createPosts(ctx: ScenarioContext, rules: object = {}): Promise<string> {
+async function createPosts(
+  ctx: ScenarioContext,
+  rules: Record<string, unknown> = {},
+): Promise<string> {
   return ctx.createCollection({
     name: "rt_posts",
     type: "base",
@@ -51,7 +48,7 @@ async function createPosts(ctx: ScenarioContext, rules: object = {}): Promise<st
 async function post(
   ctx: ScenarioContext,
   id: string,
-  data: object = {},
+  data: Record<string, unknown> = {},
   collection = "rt_posts",
 ): Promise<Observation> {
   return response(
@@ -62,7 +59,7 @@ async function post(
 // a stream subscribed to topics (as token's auth; a guest without)
 async function subscribed(
   ctx: ScenarioContext,
-  topics: string[],
+  topics: Array<string>,
   token?: string,
 ): Promise<RealtimeStream> {
   const stream = await ctx.open();
@@ -83,7 +80,7 @@ async function all(streams: { [name: string]: RealtimeStream }): Promise<Observa
 }
 
 function count(o: Observation, name: string): number {
-  return (o[name] as unknown[]).length;
+  return (o[name] as Array<unknown>).length;
 }
 
 // Sequential writes that do not wait for the SSE stream in between (an SDK
@@ -94,10 +91,10 @@ function count(o: Observation, name: string): number {
 // an event's data without its timestamps, which differ per server (the key
 // events are sorted by when the order is not defined)
 function dataKey(e: Observation): string {
-  return (e.data as string).replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
+  return (e.data as string).replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g, "");
 }
 
-function sortedEvents(list: Observation[]): string[] {
+function sortedEvents(list: Array<Observation>): Array<string> {
   return list
     .map((e) => {
       const data = JSON.parse(e.data as string) as { action: string; record: object };
@@ -121,7 +118,7 @@ function sortKeysDeep(v: unknown): unknown {
 }
 
 // rt_review: title and text, with the given rules
-async function createReview(ctx: ScenarioContext, rules: object): Promise<string> {
+async function createReview(ctx: ScenarioContext, rules: Record<string, unknown>): Promise<string> {
   return ctx.createCollection({
     name: "rt_review",
     type: "base",
@@ -138,8 +135,8 @@ const reverseIds = ["rtreverse000001", "rtreverse000002", "rtreverse000003", "rt
 
 // for each id: a create in one state, then an update to the other, each
 // awaited, without waiting for the stream
-async function draftThenPublish(ctx: ScenarioContext): Promise<Observation[]> {
-  const steps: Observation[] = [];
+async function draftThenPublish(ctx: ScenarioContext): Promise<Array<Observation>> {
+  const steps: Array<Observation> = [];
   for (const id of reviewIds) {
     steps.push(
       response(
@@ -149,8 +146,6 @@ async function draftThenPublish(ctx: ScenarioContext): Promise<Observation[]> {
           text: "PRIVATE DRAFT",
         }),
       ),
-    );
-    steps.push(
       response(
         await ctx.api("PATCH", `/api/collections/rt_review/records/${id}`, {
           title: "visible",
@@ -168,8 +163,6 @@ async function draftThenPublish(ctx: ScenarioContext): Promise<Observation[]> {
           text: "PUBLISHED",
         }),
       ),
-    );
-    steps.push(
       response(
         await ctx.api("PATCH", `/api/collections/rt_review/records/${id}`, {
           title: "hidden",
@@ -183,7 +176,7 @@ async function draftThenPublish(ctx: ScenarioContext): Promise<Observation[]> {
 
 // the statuses of the steps and the stream's sorted events
 async function reviewObservation(
-  steps: Observation[],
+  steps: Array<Observation>,
   stream: RealtimeStream,
 ): Promise<Observation> {
   return {
@@ -194,7 +187,7 @@ async function reviewObservation(
 
 function expectPublishedOnly(o: Observation, perChange: number): void {
   expect(o.statuses).toEqual(Array(16).fill(200));
-  const list = o.events as string[];
+  const list = o.events as Array<string>;
   // an update for each draft→publish, a create for each publish→hidden
   expect(list.length).toBe(8 * perChange);
   expect(list.filter((e) => e.includes(" update ")).length).toBe(4 * perChange);
@@ -202,7 +195,7 @@ function expectPublishedOnly(o: Observation, perChange: number): void {
   expect(list.some((e) => e.includes("PRIVATE DRAFT"))).toBe(false);
 }
 
-export const realtimeCases: RealtimeScenario[] = [
+export const realtimeCases: Array<RealtimeScenario> = [
   {
     func: "differential",
     name: "connect: status, headers and PB_CONNECT",
@@ -227,22 +220,26 @@ export const realtimeCases: RealtimeScenario[] = [
     run: async (ctx) => {
       await createPosts(ctx);
       const stream = await subscribed(ctx, ["rt_posts/*"]);
-      const steps: Observation[] = [];
+      const steps: Array<Observation> = [];
       steps.push(await post(ctx, "rtreplace000001"));
       await stream.waitFor((e) => e.length >= 2);
       // replace with another topic
-      steps.push(response(await ctx.subscribe(stream.clientId, ["demo2/*"])));
-      steps.push(await post(ctx, "rtreplace000002"));
-      steps.push(await post(ctx, "rtreplace000003", {}, "demo2"));
+      steps.push(
+        response(await ctx.subscribe(stream.clientId, ["demo2/*"])),
+        await post(ctx, "rtreplace000002"),
+        await post(ctx, "rtreplace000003", {}, "demo2"),
+      );
       await stream.waitFor((e) => e.length >= 3);
       // unsubscribe all
-      steps.push(response(await ctx.subscribe(stream.clientId, [])));
-      steps.push(await post(ctx, "rtreplace000004", {}, "demo2"));
       // no subscriptions key at all
-      steps.push(response(await ctx.subscribeRaw(`{"clientId":"${stream.clientId}"}`)));
+      steps.push(
+        response(await ctx.subscribe(stream.clientId, [])),
+        await post(ctx, "rtreplace000004", {}, "demo2"),
+        response(await ctx.subscribeRaw(`{"clientId":"${stream.clientId}"}`)),
+      );
       return { steps, events: await settled(stream) };
     },
-    check: (o) => expect((o.events as unknown[]).length).toBe(2),
+    check: (o) => expect((o.events as Array<unknown>).length).toBe(2),
   },
   {
     func: "differential",
@@ -263,7 +260,7 @@ export const realtimeCases: RealtimeScenario[] = [
       );
       return { create, update, del, events: await settled(stream) };
     },
-    check: (o) => expect((o.events as unknown[]).length).toBe(3),
+    check: (o) => expect((o.events as Array<unknown>).length).toBe(3),
   },
   {
     func: "differential",
@@ -526,7 +523,7 @@ export const realtimeCases: RealtimeScenario[] = [
       await post(ctx, "rtrefresh000002");
       return { update, events: await settled(stream) };
     },
-    check: (o) => expect((o.events as unknown[]).length).toBe(2),
+    check: (o) => expect((o.events as Array<unknown>).length).toBe(2),
   },
   {
     func: "differential",
@@ -653,7 +650,7 @@ export const realtimeCases: RealtimeScenario[] = [
       // order of the two cascaded deletes is not defined there
       const observed = await all({ posts, comments, expanded });
       for (const name of ["comments", "expanded"]) {
-        observed[name] = (observed[name] as { data: string }[]).toSorted((a, b) =>
+        observed[name] = (observed[name] as Array<{ data: string }>).toSorted((a, b) =>
           a.data < b.data ? -1 : 1,
         );
       }
@@ -714,7 +711,7 @@ export const realtimeCases: RealtimeScenario[] = [
       await post(ctx, "rtcast000000001");
       return { events: await settled(stream) };
     },
-    check: (o) => expect((o.events as unknown[]).length).toBe(1),
+    check: (o) => expect((o.events as Array<unknown>).length).toBe(1),
   },
   {
     func: "differential",
@@ -767,7 +764,7 @@ export const realtimeCases: RealtimeScenario[] = [
         guest: response(await ctx.subscribe(stream.clientId, ["rt_posts/*"])),
       };
     },
-    check: (o) => expect((o.events as unknown[]).length).toBe(1),
+    check: (o) => expect((o.events as Array<unknown>).length).toBe(1),
   },
   {
     func: "differential",
@@ -865,7 +862,7 @@ export const realtimeCases: RealtimeScenario[] = [
         topic("rt_members/*", { query: { filter: `id != 'excluded_${n}'` } }),
       );
       const stream = await subscribed(ctx, topics);
-      const steps: Observation[] = [];
+      const steps: Array<Observation> = [];
       for (const [i, id] of ["rtmember0000001", "rtmember0000002"].entries()) {
         steps.push(
           response(
@@ -877,8 +874,6 @@ export const realtimeCases: RealtimeScenario[] = [
               managed: false,
             }),
           ),
-        );
-        steps.push(
           response(
             await ctx.api("PATCH", `/api/collections/rt_members/records/${id}`, {
               managed: true,
@@ -893,7 +888,7 @@ export const realtimeCases: RealtimeScenario[] = [
     },
     check: (o) => {
       expect(o.statuses).toEqual([200, 200, 200, 200]);
-      const list = o.events as string[];
+      const list = o.events as Array<string>;
       expect(list.length).toBe(200);
       // the private-state creates never show the email; the managed updates do
       expect(list.filter((e) => e.includes(" create ") && e.includes('"email"')).length).toBe(0);
@@ -927,7 +922,7 @@ export const realtimeCases: RealtimeScenario[] = [
         }),
       );
       const stream = await subscribed(ctx, topics);
-      const steps: Observation[] = [];
+      const steps: Array<Observation> = [];
       for (const id of reviewIds) {
         const tag = id.replace("rtreview", "rtrevtag");
         steps.push(
@@ -937,8 +932,6 @@ export const realtimeCases: RealtimeScenario[] = [
               title: "visible",
             }),
           ),
-        );
-        steps.push(
           response(
             await ctx.api("POST", "/api/collections/rt_review/records", {
               id,
@@ -946,9 +939,7 @@ export const realtimeCases: RealtimeScenario[] = [
               tag,
             }),
           ),
-        );
-        // the tag is hidden from the expand after the create
-        steps.push(
+          // the tag is hidden from the expand after the create
           response(
             await ctx.api("PATCH", `/api/collections/rt_tags/records/${tag}`, {
               title: "hidden",
@@ -963,7 +954,7 @@ export const realtimeCases: RealtimeScenario[] = [
     },
     check: (o) => {
       expect(o.statuses).toEqual(Array(12).fill(200));
-      const list = o.events as string[];
+      const list = o.events as Array<string>;
       expect(list.length).toBe(200);
       expect(list.every((e) => e.includes('"expand":{"tag":{'))).toBe(true);
     },
@@ -1049,8 +1040,8 @@ export const realtimeCases: RealtimeScenario[] = [
     },
     check: (o) => {
       expect((o.del as Observation).status).toBe(204);
-      const data = JSON.parse((o.back as { data: string }[])[0]?.data ?? "{}") as {
-        record: { expand: { rt_grand_via_child?: unknown[] } };
+      const data = JSON.parse((o.back as Array<{ data: string }>)[0]?.data ?? "{}") as {
+        record: { expand: { rt_grand_via_child?: Array<unknown> } };
       };
       expect(data.record.expand.rt_grand_via_child?.length).toBe(1);
     },

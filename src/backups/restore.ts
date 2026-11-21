@@ -43,6 +43,7 @@ import type { System } from "@/tools/filesystem/filesystem";
 import { moveDirContent } from "@/tools/osutils/dir";
 import { S3System } from "@/tools/filesystem/s3-system";
 import { pseudorandomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 // wait max 10 minutes to fetch the backup
 const fetchBackupTimeoutMs = 10 * 60 * 1000;
@@ -67,8 +68,8 @@ function checkExtractedData(dir: string): void {
         conn.close();
       }
     }
-  } catch (err) {
-    throw new Error(`data.db file is missing or invalid: ${errorText(err)}`, { cause: err });
+  } catch (error) {
+    throw new Error(`data.db file is missing or invalid: ${errorText(error)}`, { cause: error });
   }
 }
 
@@ -159,7 +160,7 @@ async function extractBackup(
   tempZip: string,
 ): Promise<void> {
   let src = localZip;
-  if (fsys instanceof S3System) {
+  if (isInstance(S3System, fsys)) {
     await fsys.download(name, tempZip);
     src = tempZip;
   }
@@ -199,10 +200,10 @@ async function extractAndReplace(
     // the zip is no longer needed (the app may restart below)
     try {
       await rm(tempZip, { force: true });
-    } catch (err) {
+    } catch (error) {
       app.logger.warn("[RestoreBackup] Failed to remove the temp zip backup file", {
         file: tempZip,
-        error: err,
+        error,
       });
     }
 
@@ -219,10 +220,10 @@ async function extractAndReplace(
     try {
       try {
         moveDirContent(app.dataDir, oldTempDataDir, ...restoreExclude);
-      } catch (err) {
+      } catch (error) {
         throw new Error(
-          `failed to move the current pb_data content to a temp location: ${errorText(err)}`,
-          { cause: err },
+          `failed to move the current pb_data content to a temp location: ${errorText(error)}`,
+          { cause: error },
         );
       }
       setRestorePhase(localTempDir, app.dataDir, "moving-old", "moving-new");
@@ -230,27 +231,27 @@ async function extractAndReplace(
       // move the extracted archive content to the app's pb_data
       try {
         moveDirContent(extractedDataDir, app.dataDir, ...restoreExclude);
-      } catch (err) {
+      } catch (error) {
         throw new Error(
-          `failed to move the extracted archive content to pb_data: ${errorText(err)}`,
-          { cause: err },
+          `failed to move the extracted archive content to pb_data: ${errorText(error)}`,
+          { cause: error },
         );
       }
       setRestorePhase(localTempDir, app.dataDir, "moving-new", "swapped");
-    } catch (err) {
+    } catch (error) {
       // upstream's transaction fails here and the first move stays; a restore
       // that fails (a failed move or a failed record) must leave pb_data as it was
       try {
         rollbackRestore(app.dataDir, localTempDir);
         unsafe = false;
-      } catch (rollbackErr) {
+      } catch (error_) {
         throw new Error(
-          `${errorText(err)}; and failed to put the old data back (it is in ${oldTempDataDir}): ` +
-            errorText(rollbackErr),
-          { cause: rollbackErr },
+          `${errorText(error)}; and failed to put the old data back (it is in ${oldTempDataDir}): ` +
+            errorText(error_),
+          { cause: error_ },
         );
       }
-      throw err;
+      throw error;
     }
     unsafe = false;
 
@@ -260,9 +261,9 @@ async function extractAndReplace(
       try {
         setRestorePhase(localTempDir, app.dataDir, "swapped", "moving-new");
         rollbackRestore(app.dataDir, localTempDir);
-      } catch (err) {
-        throw new Error(`failed to revert the data dir changes: ${errorText(err)}`, {
-          cause: err,
+      } catch (error) {
+        throw new Error(`failed to revert the data dir changes: ${errorText(error)}`, {
+          cause: error,
         });
       }
       unsafe = false;
@@ -271,8 +272,8 @@ async function extractAndReplace(
     // restart the app
     try {
       await app.restart(revertDataDirChanges);
-    } catch (err) {
-      throw new Error(`failed to restart the app process: ${errorText(err)}`, { cause: err });
+    } catch (error) {
+      throw new Error(`failed to restart the app process: ${errorText(error)}`, { cause: error });
     }
   } finally {
     await rm(tempZip, { force: true });

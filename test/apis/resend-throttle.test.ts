@@ -12,12 +12,14 @@ import { rmSync } from "node:fs";
 
 import { newRouter } from "@/apis/base";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { smtpToSink } from "@test/scenarios/settings-prepare";
 import { tempDir } from "@test/support/executable";
 import { serveTest } from "@test/support/router";
-import { sharedSmtpSink, type SinkMessage } from "@test/support/smtp-sink";
+import { sharedSmtpSink } from "@test/support/smtp-sink";
+import type { SinkMessage } from "@test/support/smtp-sink";
 
 const email = "test@example.com";
 // a verified user: a request for it sends the barrier mail below
@@ -25,18 +27,18 @@ const otherEmail = "test2@example.com";
 const resetLink = "/auth/confirm-password-reset/";
 const resendLimitMs = 2 * 60 * 1000;
 
-let opened: TestApp[] = [];
-let roots: string[] = [];
+let opened: Array<TestApp> = [];
+const roots: Array<string> = [];
 
 // The limit timers are held, and a test fires them by hand. A
 // test ends only once the timers of its sends are held, so that none of them
 // reaches the next test.
 const realSetTimeout = globalThis.setTimeout;
-let timers: (() => void)[] = [];
+let timers: Array<() => void> = [];
 
 beforeEach(() => {
   timers = [];
-  globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: unknown[]) => {
+  globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: Array<unknown>) => {
     if (ms !== resendLimitMs) {
       return realSetTimeout(fn, ms, ...args);
     }
@@ -52,7 +54,7 @@ beforeEach(() => {
       },
     };
     return handle;
-  }) as unknown as typeof setTimeout;
+  }) as typeof setTimeout;
 });
 
 afterEach(async () => {
@@ -92,11 +94,13 @@ async function until(check: () => boolean): Promise<void> {
     if (Date.now() > deadline) {
       throw new Error("timed out");
     }
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }
 
-function mailsTo(since: number, to: string, text: string): SinkMessage[] {
+function mailsTo(since: number, to: string, text: string): Array<SinkMessage> {
   return sharedSmtpSink().messages.filter(
     (m) => m.received >= since && m.to.some((a) => a.includes(to)) && m.data.includes(text),
   );

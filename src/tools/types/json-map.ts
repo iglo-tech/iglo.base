@@ -7,7 +7,6 @@
 // integration; they are kept for the ported tests and callers.
 
 import {
-  type GoType,
   anyType,
   bytesToText,
   marshal,
@@ -15,6 +14,8 @@ import {
   setOwn,
   unmarshalMapInto,
 } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export type JSONMap<T> = Record<string, T>;
 
@@ -40,8 +41,8 @@ export function jsonMapMarshalJSON(m: JSONMap<unknown> | undefined): string {
 export function jsonMapString(m: JSONMap<unknown> | undefined): string {
   try {
     return jsonMapMarshalJSON(m);
-  } catch (err) {
-    return marshalPartial(err);
+  } catch (error) {
+    return marshalPartial(error);
   }
 }
 
@@ -65,7 +66,7 @@ export function scanJSONMap<T = unknown>(
   let data: string;
   if (value === null || value === undefined) {
     data = "";
-  } else if (value instanceof Uint8Array || typeof value === "string") {
+  } else if (isInstance(Uint8Array, value) || typeof value === "string") {
     data = bytesToText(value);
   } else {
     throw new Error(`failed to unmarshal JSONMap[T] value: ${JSON.stringify(String(value))}`);
@@ -75,10 +76,10 @@ export function scanJSONMap<T = unknown>(
   }
   try {
     return (unmarshalMapInto(data, elem, into) as JSONMap<T> | undefined) ?? {};
-  } catch (err) {
+  } catch (error) {
     for (const key of Object.keys(into)) {
       delete into[key];
     }
-    throw err;
+    throw error;
   }
 }

@@ -7,25 +7,30 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
   classifySort,
   compareOutcomes,
-  type Comparison,
-  type ListBody,
-  type Outcome,
   requestPath,
   runCase,
-  type Send,
   sender,
-  type SortClass,
   sortText,
 } from "@test/differential/fuzz/compare";
+import type {
+  Comparison,
+  ListBody,
+  Outcome,
+  Send,
+  SortClass,
+} from "@test/differential/fuzz/compare";
 import { printFilter } from "@test/differential/fuzz/filter-ast";
-import { type FuzzCase, generateCase } from "@test/differential/fuzz/generate";
+import { generateCase } from "@test/differential/fuzz/generate";
+import type { FuzzCase } from "@test/differential/fuzz/generate";
 import type { Model } from "@test/differential/fuzz/model";
-import { boundaries, type FixedCase, fixed, toCase } from "@test/differential/fuzz/regressions";
+import { boundaries, fixed, toCase } from "@test/differential/fuzz/regressions";
+import type { FixedCase } from "@test/differential/fuzz/regressions";
 import { formatFailure, runFuzz } from "@test/differential/fuzz/run";
-import { type FuzzServers, startFuzzServers } from "@test/differential/fuzz/servers";
+import { startFuzzServers } from "@test/differential/fuzz/servers";
+import type { FuzzServers } from "@test/differential/fuzz/servers";
 import { shrinkCase } from "@test/differential/fuzz/shrink";
 
-const shortRunSeed = 20261030;
+const shortRunSeed = 20_261_030;
 const shortRunCases = 500;
 
 let servers: FuzzServers;
@@ -40,7 +45,7 @@ afterAll(async () => {
 
 describe("fixed suite", () => {
   const statuses = new Map<string, number>();
-  for (const c of [...fixed, ...boundaries] as FixedCase[]) {
+  for (const c of [...fixed, ...boundaries] as Array<FixedCase>) {
     test(c.name, async () => {
       const result = await runCase(servers, toCase(c));
       statuses.set(c.name, result.up?.status ?? 0);
@@ -64,7 +69,7 @@ const classify = (collection: string, sort: string | null): SortClass =>
 const compare = (c: FuzzCase, up: Outcome, ig: Outcome, send?: Send): Promise<Comparison> =>
   compareOutcomes(servers.model, c, up, ig, send ?? sender(servers, c));
 
-function requests(model: Model): string[] {
+function requests(model: Model): Array<string> {
   return Array.from({ length: 1000 }, (_, n) => {
     const c = generateCase(model, 1001, n);
     return `${c.who} ${requestPath(c)}`;
@@ -134,7 +139,7 @@ describe("sort classification", () => {
   });
 });
 
-const list = (ids: string[], totalItems = ids.length, page = 1, perPage = 30): Outcome => ({
+const list = (ids: Array<string>, totalItems = ids.length, page = 1, perPage = 30): Outcome => ({
   status: 200,
   body: { page, perPage, totalItems, totalPages: 1, items: ids.map((id) => ({ id })) },
 });
@@ -142,7 +147,7 @@ const list = (ids: string[], totalItems = ids.length, page = 1, perPage = 30): O
 const errorOutcome = (message: string): Outcome => ({ status: 400, body: { message } });
 
 // the answer of a real server with one list replaced by another
-function replaced(body: unknown, ids: string[]): Outcome {
+function replaced(body: unknown, ids: Array<string>): Outcome {
   return { status: 200, body: { ...(body as object), items: ids.map((id) => ({ id })) } };
 }
 

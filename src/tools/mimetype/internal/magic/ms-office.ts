@@ -2,7 +2,6 @@
 
 import { contains, hasPrefix, leUint32, lit } from "@/tools/mimetype/go-bytes";
 import {
-  type CDFType,
   CDFTypeDoc,
   CDFTypeGeneric,
   CDFTypeInstaller,
@@ -11,7 +10,9 @@ import {
   CDFTypeXls,
   detect as cdfDetect,
 } from "@/tools/mimetype/internal/cdf/cdf";
-import { msoxml, type zipEntries } from "@/tools/mimetype/internal/magic/zip";
+import type { CDFType } from "@/tools/mimetype/internal/cdf/cdf";
+import { msoxml } from "@/tools/mimetype/internal/magic/zip";
+import type { zipEntries } from "@/tools/mimetype/internal/magic/zip";
 
 const dirEntry = (name: string): zipEntries => [{ name: lit(name), dir: true }];
 
@@ -137,7 +138,9 @@ const xlsSubHeaders = [
   Uint8Array.of(0xfd, 0xff, 0xff, 0xff, 0x28),
   Uint8Array.of(0xfd, 0xff, 0xff, 0xff, 0x29),
 ];
-const xlsName = lit("W\x00k\x00s\x00S\x00S\x00W\x00o\x00r\x00k\x00B\x00o\x00o\x00k");
+const xlsName = lit(
+  "W\u0000k\u0000s\u0000S\u0000S\u0000W\u0000o\u0000r\u0000k\u0000B\u0000o\u0000o\u0000k",
+);
 
 // Xls matches a Microsoft Excel 97-2003 file.
 export function Xls(raw: Uint8Array, _limit: number): boolean {
@@ -235,7 +238,7 @@ export function One(raw: Uint8Array, _limit: number): boolean {
 
 // cdfOrClsid checks if the raw input is detected as the given CDF type, and if
 // the CDF parser returns a generic result, falls back to matching root storage CLSIDs.
-function cdfOrClsid(raw: Uint8Array, want: CDFType, ...clsids: Uint8Array[]): boolean {
+function cdfOrClsid(raw: Uint8Array, want: CDFType, ...clsids: Array<Uint8Array>): boolean {
   const fromParsing = cdfDetect(raw);
   if (fromParsing === want) {
     return true;

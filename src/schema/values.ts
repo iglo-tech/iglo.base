@@ -34,12 +34,12 @@ export function jsonEqual(a: unknown, b: unknown): boolean {
 // these change order in a JSON object; "01", "007" and "4294967295" keep
 // their insertion order. Schema names that are array indexes are refused.
 export function isArrayIndexName(name: string): boolean {
-  return /^(0|[1-9]\d*)$/.test(name) && Number(name) <= 4294967294;
+  return /^(0|[1-9]\d*)$/.test(name) && Number(name) <= 4_294_967_294;
 }
 
 // A copy of the object whose keys come first in the given order, then the
 // others in code unit order. Only the keys that exist are written.
-export function withKeyOrder(value: SchemaObject, preferred: readonly string[]): SchemaObject {
+export function withKeyOrder(value: SchemaObject, preferred: ReadonlyArray<string>): SchemaObject {
   const out: SchemaObject = {};
   for (const key of preferred) {
     if (Object.hasOwn(value, key)) {

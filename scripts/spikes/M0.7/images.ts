@@ -11,16 +11,17 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { encodeGif } from "@/../scripts/spikes/M0.7/gif";
-import { encodePng, type Raw } from "@/../scripts/spikes/M0.7/png";
+import { encodePng } from "@/../scripts/spikes/M0.7/png";
+import type { Raw } from "@/../scripts/spikes/M0.7/png";
 
 function prng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
+    s = (s + 0x6d_2b_79_f5) >>> 0;
     let t = s;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -73,13 +74,13 @@ export function synthetic(width: number, height: number, seed: number, alpha = f
 // An APP1 Exif segment with one IFD0 entry: Orientation (0x0112) = value,
 // little-endian ("II") or big-endian ("MM")
 function exifSegment(value: number, bigEndian = false): Uint8Array {
-  const u16 = (n: number): number[] => (bigEndian ? [n >> 8, n & 0xff] : [n & 0xff, n >> 8]);
+  const u16 = (n: number): Array<number> => (bigEndian ? [n >> 8, n & 0xff] : [n & 0xff, n >> 8]);
   const tiff = [
     ...(bigEndian ? [0x4d, 0x4d] : [0x49, 0x49]),
     ...u16(42),
     ...(bigEndian ? [0, 0, 0, 8] : [8, 0, 0, 0]), // IFD0 at 8
     ...u16(1), // one entry
-    ...u16(0x0112),
+    ...u16(0x01_12),
     ...u16(3), // SHORT
     ...(bigEndian ? [0, 0, 0, 1] : [1, 0, 0, 0]), // count 1
     ...u16(value),
@@ -101,13 +102,13 @@ function xmpSegment(): Uint8Array {
   return segment(0xe1, [...new TextEncoder().encode(text)]);
 }
 
-function segment(marker: number, payload: number[]): Uint8Array {
+function segment(marker: number, payload: Array<number>): Uint8Array {
   const len = payload.length + 2;
   return new Uint8Array([0xff, marker, len >> 8, len & 0xff, ...payload]);
 }
 
 // the segments, right after SOI
-function withSegments(jpeg: Uint8Array, ...segments: Uint8Array[]): Uint8Array {
+function withSegments(jpeg: Uint8Array, ...segments: Array<Uint8Array>): Uint8Array {
   const parts = [jpeg.subarray(0, 2), ...segments, jpeg.subarray(2)];
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
@@ -197,12 +198,12 @@ export interface TestImage {
   // PB_THUMBS_MAX_SOURCE_PIXELS for this image, when not the default
   limit?: number;
   // the thumb sizes compared, when not all
-  sizes?: string[];
+  sizes?: Array<string>;
 }
 
-export async function writeQualitySet(dir: string, sharpPath: string): Promise<TestImage[]> {
+export async function writeQualitySet(dir: string, sharpPath: string): Promise<Array<TestImage>> {
   const sharp = ((await import(sharpPath)) as { default: SharpLike }).default;
-  const images: TestImage[] = [];
+  const images: Array<TestImage> = [];
   const put = (
     name: string,
     contentType: string,
@@ -327,8 +328,8 @@ export async function writeQualitySet(dir: string, sharpPath: string): Promise<T
 // GIF whose first frame is smaller than its logical screen, and originals
 // at PB_THUMBS_MAX_SOURCE_PIXELS = 1,000,000 in each format the API thumbs,
 // where the header Go reads decides
-export async function writeCompatSet(dir: string): Promise<TestImage[]> {
-  const images: TestImage[] = [];
+export async function writeCompatSet(dir: string): Promise<Array<TestImage>> {
+  const images: Array<TestImage> = [];
   const put = (
     name: string,
     contentType: string,
@@ -437,8 +438,8 @@ export async function writeEdgeSet(
   dir: string,
   photoJpeg: Uint8Array,
   photoPng: Uint8Array,
-): Promise<TestImage[]> {
-  const out: TestImage[] = [];
+): Promise<Array<TestImage>> {
+  const out: Array<TestImage> = [];
   const put = (name: string, contentType: string, bytes: Uint8Array, note: string): void => {
     writeFileSync(join(dir, name), bytes);
     out.push({ name, contentType, width: 0, height: 0, note });
@@ -472,8 +473,8 @@ export async function writeEdgeSet(
   // a valid PNG header claiming 11000x10000 = 110,000,000 px > 104,857,600
   const bomb = encodePng({ width: 1, height: 1, pix: new Uint8Array([0, 0, 0, 255]) });
   const view = new DataView(bomb.buffer);
-  view.setUint32(16, 11000);
-  view.setUint32(20, 10000);
+  view.setUint32(16, 11_000);
+  view.setUint32(20, 10_000);
   view.setUint32(29, Bun.hash.crc32(bomb.subarray(12, 29)) >>> 0);
   put("bomb.png", "image/png", bomb, "PNG header claiming 11000x10000 (110 MP) with 1 px of data");
   // Go's image/jpeg decodes SOF0-2 only; libjpeg-turbo also has arithmetic
@@ -514,8 +515,8 @@ export async function writeEdgeSet(
   return out;
 }
 
-const u24 = (n: number): number[] => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff];
-function riffChunk(id: string, data: number[]): number[] {
+const u24 = (n: number): Array<number> => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff];
+function riffChunk(id: string, data: Array<number>): Array<number> {
   const len = data.length;
   return [
     ...new TextEncoder().encode(id),

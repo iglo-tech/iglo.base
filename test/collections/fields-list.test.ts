@@ -178,12 +178,12 @@ describe("FieldsListAdd", () => {
 });
 
 describe("FieldsListAddMarshaledJSON", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     raw: string | Uint8Array;
     expectError: boolean;
     expectedFields: Record<string, string>;
-  }[] = [
+  }> = [
     {
       name: "nil",
       raw: new Uint8Array(),
@@ -271,7 +271,7 @@ describe("FieldsListAddMarshaledJSON", () => {
 });
 
 describe("FieldsListAddAt", () => {
-  const scenarios: { position: number; expected: string[] }[] = [
+  const scenarios: Array<{ position: number; expected: Array<string> }> = [
     { position: -2, expected: ["test1", "test2_new", "test3", "test4"] },
     { position: -1, expected: ["test1", "test2_new", "test3", "test4"] },
     { position: 0, expected: ["test2_new", "test4", "test1", "test3"] },
@@ -299,7 +299,7 @@ describe("FieldsListAddAt", () => {
 });
 
 describe("FieldsListAddMarshaledJSONAt", () => {
-  const scenarios: { position: number; expected: string[] }[] = [
+  const scenarios: Array<{ position: number; expected: Array<string> }> = [
     { position: -2, expected: ["test1", "test2_new", "test3", "test4"] },
     { position: -1, expected: ["test1", "test2_new", "test3", "test4"] },
     { position: 0, expected: ["test2_new", "test4", "test1", "test3"] },
@@ -372,12 +372,12 @@ describe("FieldsListStringAndValue", () => {
 });
 
 describe("FieldsListScan", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: unknown;
     expectError: boolean;
     expectJSON: string;
-  }[] = [
+  }> = [
     { name: "nil", data: null, expectError: false, expectJSON: "[]" },
     { name: "empty string", data: "", expectError: false, expectJSON: "[]" },
     { name: "empty byte", data: new Uint8Array(), expectError: false, expectJSON: "[]" },
@@ -424,12 +424,12 @@ describe("FieldsListScan", () => {
 });
 
 describe("FieldsListJSON", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: string;
     expectError: boolean;
     expectJSON: string;
-  }[] = [
+  }> = [
     { name: "empty string", data: "", expectError: true, expectJSON: "[]" },
     { name: "invalid string", data: "invalid", expectError: true, expectJSON: "[]" },
     { name: "empty string array", data: "[]", expectError: false, expectJSON: "[]" },

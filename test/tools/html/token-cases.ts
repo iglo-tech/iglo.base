@@ -7,7 +7,7 @@ export interface TokenTestCase {
   golden: string;
 }
 
-export const tokenTests: readonly TokenTestCase[] = [
+export const tokenTests: ReadonlyArray<TokenTestCase> = [
   { desc: "empty", html: "", golden: "" },
   { desc: "text", html: "foo  bar", golden: "foo  bar" },
   { desc: "entity", html: "one &lt; two", golden: "one &lt; two" },
@@ -166,7 +166,7 @@ export const tokenTests: readonly TokenTestCase[] = [
     golden:
       "a$<!--[if gte mso 12]>\n  <xml>\n      <o:OfficeDocumentSettings>\n      <o:AllowPNG/>\n      <o:PixelsPerInch>96</o:PixelsPerInch>\n      </o:OfficeDocumentSettings>\n    </xml>\n<![endif]-->$z",
   },
-  { desc: "backslash", html: '<p id="a\\"b">', golden: '<p id="a\\" b"="">' },
+  { desc: "backslash", html: String.raw`<p id="a\"b">`, golden: String.raw`<p id="a\" b"="">` },
   {
     desc: "tricky",
     html: '<p \t\n iD="a&quot;B"  foo="bar"><EM>te&lt;&amp;;xt</em></p>',
@@ -251,7 +251,11 @@ export const tokenTests: readonly TokenTestCase[] = [
     html: '<p a/ ="">',
     golden: '<p a="" =""="">',
   },
-  { desc: "slash at end of unquoted attribute value", html: '<p a="\\">', golden: '<p a="\\">' },
+  {
+    desc: "slash at end of unquoted attribute value",
+    html: String.raw`<p a="\">`,
+    golden: String.raw`<p a="\">`,
+  },
   { desc: "self-closing tag with attribute", html: "<p a=/>", golden: '<p a="/">' },
   { desc: "duplicate attributes", html: '<p foo="bar" foo="baz">', golden: '<p foo="bar">' },
   {

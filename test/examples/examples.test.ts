@@ -22,9 +22,8 @@ import {
   sameOrigin,
   setCookieLine,
   startApp,
-  type ExampleApp,
-  type RunningApp,
 } from "@test/examples/support";
+import type { RunningApp } from "@test/examples/support";
 
 const SUPERUSER = { email: "test@example.com", password: "1234567890" };
 const USER = { email: "test@example.com", password: "1234567890" };
@@ -55,15 +54,17 @@ async function freshDataDir(kind: ServerKind): Promise<string> {
   const dataDir = join(tempDir(), kind, "pb_data");
   copyDataDir(fixtureDir, dataDir);
   // the provider's authorization URL is absolute, as a real provider's is (the fixture has none)
-  await useProvider(
-    { user: { sub: "ssr-example", ...verifiedEmail(OAUTH_USER_EMAIL) } },
-    (collection, provider) => {
-      for (const config of collection.oauth2.providers ?? []) {
-        config.authURL = provider.authURL;
-      }
-    },
-    "users",
-  )({ dataDir });
+  await Promise.resolve(
+    useProvider(
+      { user: { sub: "ssr-example", ...verifiedEmail(OAUTH_USER_EMAIL) } },
+      (collection, provider) => {
+        for (const config of collection.oauth2.providers ?? []) {
+          config.authURL = provider.authURL;
+        }
+      },
+      "users",
+    )({ dataDir }),
+  );
   return dataDir;
 }
 
@@ -364,7 +365,7 @@ async function realtimeInBrowser(app: RunningApp, pb: PocketBase): Promise<void>
   }
 }
 
-for (const app of EXAMPLE_APPS as readonly ExampleApp[]) {
+for (const app of EXAMPLE_APPS) {
   describe(`example ${app.name}`, () => {
     beforeAll(() => installAndBuild(app), TIMEOUT);
 
@@ -386,10 +387,10 @@ for (const app of EXAMPLE_APPS as readonly ExampleApp[]) {
               }
               const running = await startApp(app, env);
               try {
-                await drive(running, pb, mode.readable).catch((err: unknown) => {
+                await drive(running, pb, mode.readable).catch((error: unknown) => {
                   throw new Error(
-                    `${err instanceof Error ? err.message : String(err)}\n--- ${app.name} output:\n${running.output()}`,
-                    { cause: err },
+                    `${error instanceof Error ? error.message : String(error)}\n--- ${app.name} output:\n${running.output()}`,
+                    { cause: error },
                   );
                 });
               } finally {
@@ -418,10 +419,10 @@ for (const app of EXAMPLE_APPS as readonly ExampleApp[]) {
             PB_SUPERUSER_PASSWORD: SUPERUSER.password,
           });
           try {
-            await realtimeInBrowser(running, pb).catch((err: unknown) => {
+            await realtimeInBrowser(running, pb).catch((error: unknown) => {
               throw new Error(
-                `${err instanceof Error ? err.message : String(err)}\n--- ${app.name} output:\n${running.output()}`,
-                { cause: err },
+                `${error instanceof Error ? error.message : String(error)}\n--- ${app.name} output:\n${running.output()}`,
+                { cause: error },
               );
             });
           } finally {

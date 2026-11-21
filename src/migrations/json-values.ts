@@ -6,7 +6,8 @@
 // one of these classes in a DynamicModel, so its methods and its SQL value
 // stay with it; an internal module gets its plain data (Membrane.toHost).
 
-import { type GoType, anyType } from "@/tools/types/go-json";
+import { anyType } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 import {
   jsonArrayMarshalJSON,
   jsonArrayString,
@@ -14,7 +15,6 @@ import {
   scanJSONArray,
 } from "@/tools/types/json-array";
 import {
-  type JSONMap,
   jsonMapGet,
   jsonMapMarshalJSON,
   jsonMapSet,
@@ -22,6 +22,7 @@ import {
   jsonMapValue,
   scanJSONMap,
 } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 export class GoJSONMap {
   constructor(public data: JSONMap<unknown> = {}) {}
@@ -64,15 +65,15 @@ export class GoJSONArray {
     readonly elem: GoType = anyType,
   ) {}
 
-  static of(items: unknown[], elem: GoType = anyType): GoJSONArray {
+  static of(items: Array<unknown>, elem: GoType = anyType): GoJSONArray {
     return new GoJSONArray({ items }, "items", elem);
   }
 
-  get items(): unknown[] {
-    return (this.holder[this.key] ?? []) as unknown[];
+  get items(): Array<unknown> {
+    return (this.holder[this.key] ?? []) as Array<unknown>;
   }
 
-  set items(next: unknown[]) {
+  set items(next: Array<unknown>) {
     this.holder[this.key] = next;
   }
 
@@ -91,9 +92,9 @@ export class GoJSONArray {
   scan(value: unknown): void {
     try {
       this.items = scanJSONArray(value, this.elem);
-    } catch (err) {
+    } catch (error) {
       this.items = [];
-      throw err;
+      throw error;
     }
   }
 }

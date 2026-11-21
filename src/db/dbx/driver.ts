@@ -48,7 +48,7 @@ const tkEND = 7;
 
 // sqlite3_complete's state transitions; state 1 (START) after a semicolon
 // ends a statement
-const trans: readonly (readonly number[])[] = [
+const trans: ReadonlyArray<ReadonlyArray<number>> = [
   /*               SEMI  WS  OTHER  EXPLAIN  CREATE  TEMP  TRIGGER  END */
   /* 0 NOTHING */ [1, 0, 2, 3, 4, 2, 2, 2],
   /* 1   START */ [1, 1, 2, 3, 4, 2, 2, 2],
@@ -98,12 +98,12 @@ function isPlainStatement(sql: string): boolean {
 // with only whitespace and comments. An unterminated string, identifier or
 // comment extends to the end of the text, where preparing it reports the
 // error (or, for a comment, finds nothing to run).
-export function splitStatements(sql: string): ScriptPart[] {
+export function splitStatements(sql: string): Array<ScriptPart> {
   if (isPlainStatement(sql)) {
     return [{ sql, last: true }];
   }
 
-  const parts: ScriptPart[] = [];
+  const parts: Array<ScriptPart> = [];
   const n = sql.length;
   let state = 0;
   let start = 0;
@@ -194,12 +194,12 @@ export function splitStatements(sql: string): ScriptPart[] {
 
 // a single statement that the driver prepares once and caches (newStmt
 // without a tail)
-export function isSingle(parts: ScriptPart[]): parts is [ScriptPart] {
+export function isSingle(parts: Array<ScriptPart>): parts is [ScriptPart] {
   return parts.length === 1 && parts[0]!.last;
 }
 
 // the arguments a statement binds: argument i for its parameter i
-function bindArgs(stmt: Statement, args: SQLQueryBindings[]): SQLQueryBindings[] {
+function bindArgs(stmt: Statement, args: Array<SQLQueryBindings>): Array<SQLQueryBindings> {
   const n = stmt.paramsCount;
   if (args.length < n) {
     throw new Error(`missing argument with index ${args.length + 1}`);
@@ -226,8 +226,8 @@ function lastResult(conn: Database): ExecResult {
 // the connection's cached statement for its SQL.
 export function execStatements(
   conn: Database,
-  parts: ScriptPart[],
-  args: SQLQueryBindings[],
+  parts: Array<ScriptPart>,
+  args: Array<SQLQueryBindings>,
   prepared: Statement | null,
 ): ExecResult {
   if (isSingle(parts)) {
@@ -256,8 +256,8 @@ export function execStatements(
 // one, for rows read while other queries run.
 export function queryStatements(
   conn: Database,
-  parts: ScriptPart[],
-  args: SQLQueryBindings[],
+  parts: Array<ScriptPart>,
+  args: Array<SQLQueryBindings>,
   prepared: Statement | null,
   own: boolean,
 ): Rows {
@@ -277,9 +277,9 @@ export function queryStatements(
       let rows: Rows;
       try {
         rows = new Rows(conn, stmt, part.sql, bindArgs(stmt, args), true);
-      } catch (err) {
+      } catch (error) {
         stmt.finalize();
-        throw err;
+        throw error;
       }
       if (rows.prefetch()) {
         result?.close();
@@ -293,9 +293,9 @@ export function queryStatements(
         rows.close();
       }
     }
-  } catch (err) {
+  } catch (error) {
     result?.close();
-    throw err;
+    throw error;
   }
   return result ?? Rows.empty();
 }

@@ -46,8 +46,8 @@ export function activityLogger(): Handler<RequestEvent> {
       // a log never fails the response it describes (routine.FireAndForget)
       try {
         logRequest(e, err);
-      } catch (cause) {
-        e.app.stderrLog?.(`[FireAndForget] RECOVERED FROM PANIC: ${String(cause)}`);
+      } catch (error) {
+        e.app.stderrLog?.(`[FireAndForget] RECOVERED FROM PANIC: ${String(error)}`);
       }
 
       return err;

@@ -1,7 +1,8 @@
 // Run by local-zone.test.ts in a child process with the TZ under test:
 // prints what each case gives as JSON (case name → result).
 
-import { type DateTime, nowDateTime, parseDateTime } from "@/tools/types/datetime";
+import { nowDateTime, parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 
 const at = (iso: string): DateTime => nowDateTime({ now: () => new Date(iso) });
 

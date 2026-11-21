@@ -3,7 +3,8 @@
 import { closeSync, mkdirSync, openSync, writeSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
 
-import { entryMode, ZipReader, type ZipEntry } from "@/tools/archive/zip-reader";
+import { entryMode, ZipReader } from "@/tools/archive/zip-reader";
+import type { ZipEntry } from "@/tools/archive/zip-reader";
 
 // Extract extracts the zip archive at "src" to "dest".
 //

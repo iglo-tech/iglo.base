@@ -12,24 +12,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Collection } from "@/collections/collection-model";
-import {
-  OAuth2KnownFields,
-  type OAuth2ProviderConfig,
-} from "@/collections/collection-model-auth-options";
+import { OAuth2KnownFields } from "@/collections/collection-model-auth-options";
+import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 
 import { insertExternalAuth } from "@test/scenarios/record-auth-prepare";
 import {
   all,
   authScenario,
-  type PrepareStep,
   passwordChanged,
-  type ProviderSpec,
   useProvider,
   user1Id,
   user2Id,
   usersId,
   verifiedEmail,
 } from "@test/scenarios/record-auth-oauth2";
+import type { PrepareStep, ProviderSpec } from "@test/scenarios/record-auth-oauth2";
 import {
   authOriginsCount,
   checks,
@@ -81,7 +78,8 @@ function idTokenProvider(
     (p) => {
       const base = spec(p as MockProvider);
       return {
-        ...(base as object),
+        // oxlint-disable-next-line typescript/no-misused-spread -- the spread copies the own properties of a plain record or spec object, as the test expects
+        ...base,
         token: { access_token: "abc", id_token: idToken() },
       };
     },
@@ -97,11 +95,15 @@ function idTokenProvider(
 }
 
 function extraOf(extra: { [key: string]: unknown }, p: MockProvider): { [key: string]: unknown } {
-  return { ...extra, ...(extra["jwksURL"] === "mock" ? { jwksURL: p.jwksURL } : {}) };
+  const merged: { [key: string]: unknown } = { ...extra };
+  if (extra["jwksURL"] === "mock") {
+    merged.jwksURL = p.jwksURL;
+  }
+  return merged;
 }
 
 // the requests a provider got from the server, of one endpoint
-const requestsTo = (provider: MockProvider, path: string): MockRequest[] =>
+const requestsTo = (provider: MockProvider, path: string): Array<MockRequest> =>
   provider.requests.filter((r) => r.path === path);
 
 const newUserContent = [`"record":{`, `"token":"`, `"meta":{`, `"isNew":true`];
@@ -179,7 +181,7 @@ function withConfig(collection: Collection, change: (config: OAuth2ProviderConfi
   }
 }
 
-export function oauth2Cases(): Scenario[] {
+export function oauth2Cases(): Array<Scenario> {
   let provider: MockProvider;
   const capture = (p: MockProvider): void => {
     provider = p;
@@ -199,7 +201,7 @@ export function oauth2Cases(): Scenario[] {
           dataDir,
           "SELECT verified, tokenKey FROM users WHERE email = ?",
           "new@example.com",
-        ) as { verified: number; tokenKey: string }[];
+        ) as Array<{ verified: number; tokenKey: string }>;
         if (row?.verified !== 1 || row.tokenKey === "") {
           throw new Error(`unexpected row ${JSON.stringify(row)}`);
         }
@@ -1053,7 +1055,7 @@ export function oauth2Cases(): Scenario[] {
           ctx.dataDir,
           "SELECT id FROM users WHERE email = ?",
           "origin@example.com",
-        ) as { id: string }[];
+        ) as Array<{ id: string }>;
         await authOriginsCount(usersId, row?.id ?? "", 1)(ctx);
       },
     }),

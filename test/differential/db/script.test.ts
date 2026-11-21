@@ -9,18 +9,13 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 
 import { Databases } from "@/db/base";
 import { runInTransaction } from "@/db/tx";
-import {
-  copyFixture,
-  serveUpstream,
-  superuserToken,
-  type FixtureCopy,
-  type UpstreamServer,
-} from "@test/differential/db/fixture";
+import { copyFixture, serveUpstream, superuserToken } from "@test/differential/db/fixture";
+import type { FixtureCopy, UpstreamServer } from "@test/differential/db/fixture";
 
 interface SQLResult {
   affectedRows: number;
-  columns: string[];
-  rows: unknown[][];
+  columns: Array<string>;
+  rows: Array<Array<unknown>>;
 }
 
 const writePrefixes = [
@@ -62,8 +57,8 @@ async function upstreamSQL(server: UpstreamServer, query: string): Promise<SQLRe
   });
   const body = (await res.json()) as {
     affectedRows: number;
-    columns: { name: string }[];
-    rows: unknown[][];
+    columns: Array<{ name: string }>;
+    rows: Array<Array<unknown>>;
   };
   if (res.status !== 200) {
     throw new Error(`POST /api/sql ${query}: ${res.status} ${JSON.stringify(body)}`);
@@ -94,8 +89,8 @@ const queries = [
 
 let upstreamCopy: FixtureCopy;
 let igloCopy: FixtureCopy;
-const upstream: SQLResult[] = [];
-const iglo: SQLResult[] = [];
+const upstream: Array<SQLResult> = [];
+const iglo: Array<SQLResult> = [];
 
 beforeAll(async () => {
   upstreamCopy = copyFixture();
@@ -126,7 +121,7 @@ afterAll(() => {
 });
 
 test.each(queries.map((query, i) => [query, i] as const))("%s", (_query, i) => {
-  expect(iglo[i]).toEqual(upstream[i]!);
+  expect(iglo[i]).toEqual(upstream[i]);
 });
 
 test("the reference results are the last statement's", () => {

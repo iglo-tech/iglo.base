@@ -8,7 +8,8 @@ import { recordAuthResponse } from "@/apis/record-helpers";
 import { getAuthTokenFromRequest } from "@/middlewares/load-auth-token";
 import { newAuthToken, TokenClaimRefreshable } from "@/records/record-tokens";
 import type { HandlerResult } from "@/server/handler";
-import { JWTError, type MapClaims, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { JWTError, parseUnverifiedJWT } from "@/tools/security/jwt";
+import type { MapClaims } from "@/tools/security/jwt";
 import { toBool } from "@/tools/types/cast";
 
 export async function recordAuthRefresh(e: RequestEvent): Promise<HandlerResult> {
@@ -23,15 +24,15 @@ export async function recordAuthRefresh(e: RequestEvent): Promise<HandlerResult>
   let claims: MapClaims;
   try {
     claims = parseUnverifiedJWT(token, e.app.clock);
-  } catch (err) {
+  } catch (error) {
     // upstream reads the claims parsed before the error
-    claims = err instanceof JWTError ? err.claims : {};
+    claims = error instanceof JWTError ? error.claims : {};
   }
   if (Object.hasOwn(claims, TokenClaimRefreshable) && toBool(claims[TokenClaimRefreshable])) {
     try {
       token = newAuthToken(record, e.app.clock);
-    } catch (err) {
-      return e.internalServerError("Failed to refresh auth token.", err);
+    } catch (error) {
+      return e.internalServerError("Failed to refresh auth token.", error);
     }
   }
 

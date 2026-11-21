@@ -3,13 +3,14 @@
 // on a connection of their own. The thread starts with the first batch and
 // stops with `stop`, so an app that logs nothing holds no thread.
 
-import { MessageChannel, receiveMessageOnPort, type MessagePort } from "node:worker_threads";
+import { MessageChannel, receiveMessageOnPort } from "node:worker_threads";
+import type { MessagePort } from "node:worker_threads";
 
 export type LogRow = [id: string, created: string, level: number, message: string, data: string];
 
 export type LogWorkerRequest =
   | { type: "init"; done: SharedArrayBuffer; errors: MessagePort }
-  | { type: "write"; seq: number; path: string; rows: LogRow[] }
+  | { type: "write"; seq: number; path: string; rows: Array<LogRow> }
   | { type: "close"; seq: number };
 
 // on the worker's own port, so that a stopping app can read them without the event loop
@@ -41,7 +42,7 @@ export class LogWriter {
   readonly #onError: (text: string) => void;
   readonly #timeoutMs: number;
   #running: Running | null = null;
-  #waiters: { seq: number; resolve: () => void }[] = [];
+  #waiters: Array<{ seq: number; resolve: () => void }> = [];
 
   // timeoutMs bounds how long a stop waits for the thread
   constructor(path: string, onError: (text: string) => void, timeoutMs = flushTimeoutMs) {
@@ -51,10 +52,9 @@ export class LogWriter {
   }
 
   // posts one batch
-  write(rows: LogRow[]): number {
+  write(rows: Array<LogRow>): number {
     const running = this.#start();
     const seq = ++running.posted;
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "write", seq, path: this.#path, rows });
     return seq;
   }
@@ -69,7 +69,9 @@ export class LogWriter {
     if (Atomics.load(running.done, 0) >= seq) {
       return Promise.resolve();
     }
-    return new Promise((resolve) => this.#waiters.push({ seq, resolve }));
+    return new Promise((resolve) => {
+      this.#waiters.push({ seq, resolve });
+    });
   }
 
   // blocks until every batch posted so far has been written: the app is
@@ -90,13 +92,14 @@ export class LogWriter {
       return;
     }
     const seq = ++running.posted;
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "close", seq });
     // as stopSync, the wait is bounded: a hung thread must not stall the
     // suspend of a backup or a restore
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timedOut = await Promise.race([
-      new Promise<boolean>((resolve) => this.#waiters.push({ seq, resolve: () => resolve(false) })),
+      new Promise<boolean>((resolve) => {
+        this.#waiters.push({ seq, resolve: () => resolve(false) });
+      }),
       new Promise<boolean>((resolve) => {
         timer = setTimeout(() => resolve(true), this.#timeoutMs);
       }),
@@ -118,7 +121,6 @@ export class LogWriter {
       return;
     }
     const seq = ++running.posted;
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     running.worker.postMessage({ type: "close", seq });
     this.#waitSync(running, seq);
     this.#drainErrors(running);
@@ -196,7 +198,6 @@ export class LogWriter {
       this.#release(Number.MAX_SAFE_INTEGER);
     });
     worker.unref();
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     worker.postMessage({ type: "init", done: buffer, errors: channel.port2 }, [channel.port2]);
     this.#running = running;
     return running;

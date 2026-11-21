@@ -16,7 +16,8 @@ import { formatLog } from "@/logs/log-printer";
 import { ResponseWriter } from "@/server/router";
 import { reloadSettings } from "@/settings/settings-query";
 
-import { openFixtureApp, type TestApp, type TestAppOptions } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp, TestAppOptions } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/cron";
 import { newTestRequest, serveTest } from "@test/support/router";
 
@@ -28,7 +29,7 @@ interface Row {
   created: string;
 }
 
-let opened: TestApp[] = [];
+let opened: Array<TestApp> = [];
 
 afterEach(async () => {
   for (const app of opened) {
@@ -42,7 +43,7 @@ interface Harness {
   tick(): void;
   resets(): number;
   send(method: string, target: string, headers?: Record<string, string>): Promise<Response>;
-  rows(): Row[];
+  rows(): Array<Row>;
   settle(): Promise<void>;
 }
 
@@ -69,13 +70,15 @@ async function open(options: TestAppOptions = {}): Promise<Harness> {
     rows: () => {
       const db = new Database(join(app.dataDir, "auxiliary.db"), { readonly: true });
       try {
-        return db.query("SELECT * FROM _logs ORDER BY rowid").all() as Row[];
+        return db.query("SELECT * FROM _logs ORDER BY rowid").all() as Array<Row>;
       } finally {
         db.close();
       }
     },
     settle: async () => {
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
       await (app.logger as Logger).flush();
     },
   };
@@ -153,7 +156,7 @@ describe("the buffered writer", () => {
   });
 
   test("a failed write reaches stderr, not the logger, and the others are kept", async () => {
-    const lines: string[] = [];
+    const lines: Array<string> = [];
     const h = await open({ stderrLog: (line) => lines.push(line) });
     h.app.logger.warn("good");
     h.app.logger.warn("bad", { value: Number.NaN });
@@ -165,7 +168,7 @@ describe("the buffered writer", () => {
   });
 
   test("a table that cannot be written does not throw or recurse", async () => {
-    const lines: string[] = [];
+    const lines: Array<string> = [];
     const h = await open({ stderrLog: (line) => lines.push(line) });
     h.app.databases.auxNonconcurrentDB().newQuery("ALTER TABLE _logs RENAME TO _gone").execute();
     h.app.logger.warn("lost");
@@ -378,7 +381,7 @@ describe("request logs", () => {
 
 describe("--dev", () => {
   test("prints every level and stores from minLevel", async () => {
-    const printed: string[] = [];
+    const printed: Array<string> = [];
     const h = await open({ isDev: true, logPrint: (text) => printed.push(text) });
     h.app.settings.Logs.MinLevel = 4;
     h.app.logger.debug("debug");

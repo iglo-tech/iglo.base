@@ -1,6 +1,7 @@
 // Upstream: tools/filesystem/internal/s3blob/s3/head_object.go
 
-import { extractMetadata, type S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
+import { extractMetadata } from "@/tools/filesystem/internal/s3blob/s3/s3";
+import type { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 import { parseTime } from "@/server/serve-content";
 
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html#API_HeadObject_ResponseElements

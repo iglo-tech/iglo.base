@@ -80,7 +80,7 @@ export function decodePng(bytes: Uint8Array): Raw {
   let colorType = 0;
   let plte: Uint8Array | undefined;
   let trns: Uint8Array | undefined;
-  const idat: Uint8Array[] = [];
+  const idat: Array<Uint8Array> = [];
   while (off + 8 <= bytes.length) {
     const len = view.getUint32(off);
     const type = String.fromCharCode(...bytes.subarray(off + 4, off + 8));
@@ -170,7 +170,7 @@ export function decodePng(bytes: Uint8Array): Raw {
         pix[o + 2] = plte?.[idx * 3 + 2] ?? 0;
         pix[o + 3] = trns?.[idx] ?? 255;
       } else if (colorType === 0 || colorType === 4) {
-        const g = sample(y, x * (channels as number));
+        const g = sample(y, x * channels);
         pix[o] = g;
         pix[o + 1] = g;
         pix[o + 2] = g;

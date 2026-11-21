@@ -12,14 +12,8 @@ import {
   TokObject,
   parse as jsonParse,
 } from "@/tools/mimetype/internal/json/parser";
-import {
-  ciPrefix,
-  markup,
-  shebang,
-  xml,
-  type shebangSig,
-  type xmlSig,
-} from "@/tools/mimetype/internal/magic/magic";
+import { ciPrefix, markup, shebang, xml } from "@/tools/mimetype/internal/magic/magic";
+import type { shebangSig, xmlSig } from "@/tools/mimetype/internal/magic/magic";
 import { getAnAttribute, skipAComment } from "@/tools/mimetype/internal/markup/markup";
 import {
   Bytes,
@@ -28,10 +22,11 @@ import {
   IgnoreCase,
   byteIsWS,
 } from "@/tools/mimetype/internal/scan/bytes";
-import { parse as timeParse, type ParsedTime } from "@/tools/types/go-time";
+import { parse as timeParse } from "@/tools/types/go-time";
+import type { ParsedTime } from "@/tools/types/go-time";
 import { bytesToText } from "@/tools/types/go-json";
 
-const sigs = (...s: string[]) => s.map(lit);
+const sigs = (...s: Array<string>) => s.map(lit);
 
 const htmlSigs = sigs(
   "<!DOCTYPE HTML",
@@ -289,7 +284,7 @@ export function Tcl(raw: Uint8Array, _limit: number): boolean {
   return shebang(raw, ...tclSigs);
 }
 
-const rtfSig = lit("{\\rtf");
+const rtfSig = lit(String.raw`{\rtf`);
 // Rtf matches a Rich Text Format file.
 export function Rtf(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, rtfSig);
@@ -407,7 +402,12 @@ export function CDXJSON(raw: Uint8Array, limit: number): boolean {
 // jsonHelper parses raw and tries to match the q query against it. wantToks
 // ensures we're not wasting time parsing an input that would not pass anyway,
 // ex: the input is a valid JSON array, but we're looking for a JSON object.
-function jsonHelper(raw: Uint8Array, limit: number, q: string, ...wantToks: number[]): boolean {
+function jsonHelper(
+  raw: Uint8Array,
+  limit: number,
+  q: string,
+  ...wantToks: Array<number>
+): boolean {
   const firstNonWS = new Bytes(raw).firstNonWS();
 
   let hasTargetTok = false;
@@ -639,7 +639,7 @@ const hint = (h: string, matchFlags: number): rfc822Hint => ({ h: lit(h), matchF
 
 // Some of the hints are IgnoreCase, some not. I selected based on what libmagic
 // does and based on personal observations from sample files.
-const rfc822Hints: rfc822Hint[] = [
+const rfc822Hints: Array<rfc822Hint> = [
   // Enron dataset has Message-ID, Message-Id and Message-id.
   hint("Message-ID: ", IgnoreCase),
   hint("From: ", 0),
@@ -677,7 +677,7 @@ export function RFC822(raw: Uint8Array, _limit: number): boolean {
   return false;
 }
 
-function lineHasRFC822Hint(b: Bytes, hints: rfc822Hint[]): boolean {
+function lineHasRFC822Hint(b: Bytes, hints: Array<rfc822Hint>): boolean {
   for (const h of hints) {
     if (b.match(h.h, h.matchFlags) > -1) {
       return true;

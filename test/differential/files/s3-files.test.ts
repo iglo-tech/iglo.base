@@ -15,7 +15,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { isNotFound } from "@/tools/filesystem/blob/bucket";
-import { NewS3, type S3System } from "@/tools/filesystem/s3-system";
+import { NewS3 } from "@/tools/filesystem/s3-system";
+import type { S3System } from "@/tools/filesystem/s3-system";
 import { cases, collections, png } from "@test/differential/files/cases";
 import {
   compareJSON,
@@ -23,18 +24,19 @@ import {
   multipartBody,
   Pairing,
   req,
-  type Res,
   sendCase,
-  type Side,
 } from "@test/differential/files/record-requests";
+import type { Res, Side } from "@test/differential/files/record-requests";
 import { ScenarioContext } from "@test/realtime/scenario";
 import { eventually } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
-import { type S3Proxy, startS3Proxy } from "@test/support/s3-proxy";
+import { startS3Proxy } from "@test/support/s3-proxy";
+import type { S3Proxy } from "@test/support/s3-proxy";
 import { startUpstream } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 
@@ -54,7 +56,7 @@ interface Target {
   fsys: S3System;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 const collectionIds = new Map<string, string>();
 const pairing = new Pairing();
@@ -126,10 +128,10 @@ async function bucketObjects(target: Target): Promise<Map<string, RawObject>> {
         metadata: JSON.stringify([...(attrs.metadata ?? [])]),
         bytes: readFileSync(join(gw.posixRoot, target.bucket, object.key)),
       });
-    } catch (err) {
+    } catch (error) {
       // deleted in the background since the list
-      if (!isNotFound(err) && (err as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw err;
+      if (!isNotFound(error) && (error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
       }
     }
   }
@@ -152,8 +154,8 @@ function comparable(key: string, value: string): string {
   return key.includes("/thumbs_") ? "" : value;
 }
 
-async function compareBuckets(): Promise<string[]> {
-  const out: string[] = [];
+async function compareBuckets(): Promise<Array<string>> {
+  const out: Array<string> = [];
   const upObjects = await bucketObjects(up);
   const igObjects = new Map([...(await bucketObjects(ig))].map(([k, v]) => [mappedKey(k), v]));
   const upKeys = [...upObjects.keys()].toSorted();
@@ -202,7 +204,7 @@ function jsonBody(value: unknown): { body: string; contentType: string } {
 
 type BodyPart = Parameters<typeof multipartBody>[0][number];
 
-function formBody(parts: BodyPart[], side: Side): { body: Uint8Array; contentType: string } {
+function formBody(parts: Array<BodyPart>, side: Side): { body: Uint8Array; contentType: string } {
   const boundary = "s3filesboundary";
   return {
     body: multipartBody(parts, boundary, side),
@@ -228,7 +230,7 @@ function recordId(side: Side, ref: string): string {
   return String(side.records.get(ref)?.["id"]);
 }
 
-async function createBoth(collection: string, ref: string, parts: BodyPart[]): Promise<void> {
+async function createBoth(collection: string, ref: string, parts: Array<BodyPart>): Promise<void> {
   for (const t of [up, ig]) {
     const b = formBody(parts, t.side);
     const res = await req(
@@ -246,10 +248,10 @@ async function createBoth(collection: string, ref: string, parts: BodyPart[]): P
 }
 
 // pairs the file names of a record created without a compared response
-async function compareBucketsPaired(ref: string): Promise<string[]> {
+async function compareBucketsPaired(ref: string): Promise<Array<string>> {
   const a = up.side.records.get(ref) as Record<string, unknown>;
   const b = ig.side.records.get(ref) as Record<string, unknown>;
-  const out: string[] = [];
+  const out: Array<string> = [];
   compareJSON(a, b, "$", pairing, out);
   out.push(...(await compareBuckets()));
   return out;
@@ -284,7 +286,7 @@ async function otherServer(from: Target, kind: "upstream" | "iglo"): Promise<Ser
   );
 }
 
-function zipEntries(zip: string): string[] {
+function zipEntries(zip: string): Array<string> {
   const list = Bun.spawnSync(["unzip", "-Z1", zip]);
   return list.stdout
     .toString()
@@ -294,8 +296,8 @@ function zipEntries(zip: string): string[] {
 }
 
 const batch = (
-  requests: unknown[],
-  files: (side: Side) => BodyPart[],
+  requests: Array<unknown>,
+  files: (side: Side) => Array<BodyPart>,
 ): ((side: Side) => { body: Uint8Array; contentType: string }) => {
   return (side) =>
     formBody([{ name: "@jsonPayload", value: JSON.stringify({ requests }) }, ...files(side)], side);
@@ -311,7 +313,7 @@ const thumbPuts = (t: Target, name: string): number =>
     (r) => r.method === "PUT" && r.path.includes(`/thumbs_${name}/`) && r.query === "",
   ).length;
 
-function methods(requests: { method: string }[]): string[] {
+function methods(requests: Array<{ method: string }>): Array<string> {
   return requests.map((r) => r.method);
 }
 
@@ -325,7 +327,8 @@ beforeAll(async () => {
   const setup = track(await startUpstream({ dataDir: baseDir }));
   try {
     for (const def of collections) {
-      const body = JSON.parse(JSON.stringify(def)) as { fields: Record<string, unknown>[] };
+      // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
+      const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Record<string, unknown>> };
       for (const f of body.fields) {
         if (typeof f["collectionId"] === "string") {
           f["collectionId"] = collectionIds.get(f["collectionId"]);
@@ -407,7 +410,7 @@ describe("batch", () => {
       "POST",
       () => "/api/batch",
       (side) => {
-        const rec = side.records.get("b1") as { docs: string[]; id: string };
+        const rec = side.records.get("b1") as { docs: Array<string>; id: string };
         return batch(
           [
             post("fmulti", { title: "from batch" }),
@@ -489,7 +492,7 @@ describe("batch", () => {
 
     const [collection] = await same("GET", () => "/api/collections/flegacy");
     const { fields } = JSON.parse(Buffer.from(collection.body).toString()) as {
-      fields: { name: string }[];
+      fields: Array<{ name: string }>;
     };
     const [tightened] = await same(
       "PATCH",
@@ -829,7 +832,7 @@ describe("failures around a save", () => {
       "GET",
       (side) => `/api/collections/fmulti/records/${recordId(side, "f3")}`,
     );
-    expect((JSON.parse(res.text) as { docs: string[] }).docs).toEqual([]);
+    expect((JSON.parse(res.text) as { docs: Array<string> }).docs).toEqual([]);
   });
 
   test("a failed delete of a deleted record fails nothing", async () => {
@@ -926,7 +929,11 @@ describe("the other server reads the objects", () => {
         }
 
         // a thumb made by the writer
-        const written = from.side.records.get("rt") as { id: string; img: string; docs: string[] };
+        const written = from.side.records.get("rt") as {
+          id: string;
+          img: string;
+          docs: Array<string>;
+        };
         const base = `/api/files/fmulti/${written.id}/`;
         const madeThumb = await req(from.side.url, "GET", `${base}${written.img}?thumb=100x100`);
         expect(madeThumb.status).toBe(200);
@@ -1047,7 +1054,7 @@ describe("backups", () => {
     async () => {
       await createBoth("fsingle", "bk", [textFile("doc", "kept-in-s3.txt")]);
 
-      const entries: string[][] = [];
+      const entries: Array<Array<string>> = [];
       for (const t of [up, ig]) {
         const res = await req(
           t.side.url,

@@ -52,6 +52,7 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
 
   if (e.request.method === "POST") {
     const bindErr = await e.bindBody(
+      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
       data as unknown as { [key: string]: unknown },
       oauth2RedirectDataType,
     );
@@ -85,9 +86,9 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
         oauth2RedirectAppleNameStoreKeyPrefix + data.Code,
         data.AppleUser,
       );
-    } catch (err) {
+    } catch (error) {
       // non-critical error
-      e.app.logger.warn("Failed to parse and load Apple Redirect name data", { error: err });
+      e.app.logger.warn("Failed to parse and load Apple Redirect name data", { error });
     }
   }
 
@@ -99,8 +100,8 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
       encodedData += `,"error":${marshal(data.Error)}`;
     }
     encodedData += "}";
-  } catch (err) {
-    e.app.logger.warn("Failed to marshalize OAuth2 redirect data", { error: err });
+  } catch (error) {
+    e.app.logger.warn("Failed to marshalize OAuth2 redirect data", { error });
     client.unsubscribe(oauth2SubscriptionTopic);
     return failureRedirect(e);
   }

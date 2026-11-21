@@ -53,9 +53,13 @@ async function build(dataDir: string, root: string): Promise<void> {
   try {
     let token = "";
     const api = async (method: string, path: string, body?: unknown): Promise<unknown> => {
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (token) {
+        headers.authorization = token;
+      }
       const res = await fetch(`${server.url}${path}`, {
         method,
-        headers: { "content-type": "application/json", ...(token ? { authorization: token } : {}) },
+        headers,
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       const text = await res.text();
@@ -142,7 +146,7 @@ interface Workload {
   path: string;
 }
 
-const workloads: Workload[] = [
+const workloads: Array<Workload> = [
   { name: "list 30", path: "/api/collections/posts/records?perPage=30" },
   { name: "list 30, relation rule", path: "/api/collections/posts_rel/records?perPage=30" },
   {
@@ -157,7 +161,7 @@ async function run(
   path: string,
   n: number,
 ): Promise<{ rps: number; p50: number; p99: number }> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   let next = 0;
   const started = performance.now();
   await Promise.all(
@@ -188,7 +192,7 @@ try {
     await build(dataDir, root);
   }
 
-  const results: string[] = [];
+  const results: Array<string> = [];
   for (const target of ["upstream", "iglo.base"] as const) {
     const copy = join(root, target, "pb_data");
     copyDataDir(dataDir, copy);

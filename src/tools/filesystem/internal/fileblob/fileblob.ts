@@ -47,8 +47,8 @@ import {
   errAttrsExt,
   getAttrs,
   setAttrs,
-  type xattrs,
 } from "@/tools/filesystem/internal/fileblob/attrs";
+import type { xattrs } from "@/tools/filesystem/internal/fileblob/attrs";
 import { goBase } from "@/tools/filesystem/file";
 import { cleanSlashPath } from "@/server/mux";
 import { compareUTF8 } from "@/tools/types/go-json";
@@ -80,15 +80,15 @@ export function New(dir: string, opts: Options = {}): Driver {
   let info;
   try {
     info = statSync(absdir);
-  } catch (err) {
-    if (!(opts.createDir === true && isNotExist(err))) {
-      throw err;
+  } catch (error) {
+    if (!(opts.createDir === true && isNotExist(error))) {
+      throw error;
     }
     try {
       mkdirSync(absdir, { recursive: true, mode: dirFileMode });
-    } catch (mkErr) {
-      throw new Error(`tried to create directory but failed: ${errorMessage(mkErr)}`, {
-        cause: mkErr,
+    } catch (error) {
+      throw new Error(`tried to create directory but failed: ${errorMessage(error)}`, {
+        cause: error,
       });
     }
     info = statSync(absdir);
@@ -451,9 +451,9 @@ class driver implements Driver {
           position += n;
           w.write(buf.subarray(0, n));
         }
-      } catch (err) {
+      } catch (error) {
         w.cancel(); // cancel before Close cancels the write
-        throw err;
+        throw error;
       }
 
       w.close();
@@ -470,9 +470,9 @@ class driver implements Driver {
 
     try {
       goRemove(path + attrsExt);
-    } catch (err) {
-      if (!isNotExist(err)) {
-        throw err;
+    } catch (error) {
+      if (!isNotExist(error)) {
+        throw error;
       }
     }
   }
@@ -489,15 +489,15 @@ export function goRemove(path: string): void {
   try {
     unlinkSync(path);
     return;
-  } catch (err) {
-    e = err;
+  } catch (error) {
+    e = error;
   }
   try {
     rmdirSync(path);
     return;
-  } catch (err) {
-    if ((err as { code?: string }).code !== "ENOTDIR") {
-      e = err;
+  } catch (error) {
+    if ((error as { code?: string }).code !== "ENOTDIR") {
+      e = error;
     }
   }
   // the text of Go's *PathError
@@ -520,14 +520,14 @@ function createTemp(path: string, noTempDir: boolean): { fd: number; name: strin
 
     try {
       return { fd: openSync(name, "wx+", 0o666), name };
-    } catch (err) {
-      if ((err as { code?: string }).code === "EEXIST") {
-        if (++tries < 10000) {
+    } catch (error) {
+      if ((error as { code?: string }).code === "EEXIST") {
+        if (++tries < 10_000) {
           continue;
         }
-        throw new Error(`createtemp ${path}.*.tmp: file already exists`, { cause: err });
+        throw new Error(`createtemp ${path}.*.tmp: file already exists`, { cause: error });
       }
-      throw err;
+      throw error;
     }
   }
 }
@@ -583,9 +583,9 @@ class writerWithSidecar implements DriverWriter {
       // Rename the temp file to path.
       try {
         renameSync(this.#tempName, this.#path);
-      } catch (err) {
+      } catch (error) {
         rmSync(this.#path + attrsExt, { force: true });
-        throw err;
+        throw error;
       }
     } finally {
       rmSync(this.#tempName, { force: true });
@@ -689,8 +689,8 @@ function walkDir(root: string, fn: walkDirFunc): void {
   let info;
   try {
     info = lstatSync(root);
-  } catch (err) {
-    fn(root, null, err);
+  } catch (error) {
+    fn(root, null, error);
     return;
   }
   walkDirRec(root, { isDir: info.isDirectory() }, fn);
@@ -706,15 +706,15 @@ function walkDirRec(path: string, d: dirEntry, fn: walkDirFunc): walkResult {
     return r;
   }
 
-  let entries: { name: string; isDir: boolean }[] = [];
+  let entries: Array<{ name: string; isDir: boolean }> = [];
   try {
     // os.ReadDir: the entries sorted by file name
     entries = readdirSync(path, { withFileTypes: true })
       .map((e) => ({ name: e.name, isDir: e.isDirectory() }))
       .toSorted((a, b) => compareUTF8(a.name, b.name));
-  } catch (err) {
+  } catch (error) {
     // Second call, to report ReadDir error.
-    const r2 = fn(path, d, err);
+    const r2 = fn(path, d, error);
     if (r2 !== undefined) {
       return r2 === skipDir && d.isDir ? undefined : r2;
     }

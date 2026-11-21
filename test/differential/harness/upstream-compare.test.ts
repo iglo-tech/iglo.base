@@ -11,7 +11,8 @@ import { join } from "node:path";
 
 import { compareResponses, readStartingData } from "@test/differential/harness/compare";
 import { copyDataDir, preparedFixture } from "@test/scenarios/fixture";
-import { sendScenarioRequest, type ScenarioResponse } from "@test/scenarios/request";
+import { sendScenarioRequest } from "@test/scenarios/request";
+import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startUpstream } from "@test/support/upstream";
 
@@ -24,7 +25,7 @@ const superuser =
 async function twice(
   request: Scenario,
   change: (body: string) => string,
-): Promise<{ first: string; same: string[]; changed: string[] }> {
+): Promise<{ first: string; same: Array<string>; changed: Array<string> }> {
   const fixture = await preparedFixture(request);
   try {
     const dirs = ["a", "b"].map((name) => join(fixture.root, name, "pb_data"));

@@ -21,6 +21,7 @@
 import { ValidationErrors } from "@/server/error";
 import { DateTime } from "@/tools/types/datetime";
 import { compareUTF8, isJSONMarshaler, marshal } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // Error interface represents a validation error (Go's validation.Error).
 export interface Error extends globalThis.Error {
@@ -173,7 +174,7 @@ export class Errors extends ValidationErrors {
         s += "; ";
       }
       const err = this.errors[key];
-      if (err instanceof Errors) {
+      if (isInstance(Errors, err)) {
         s += `${key}: (${err.error()})`;
       } else {
         s += `${key}: ${err === null || err === undefined ? "<nil>" : err.message}`;
@@ -267,16 +268,16 @@ export function printValue(value: unknown): string {
     default:
       break;
   }
-  if (value instanceof Float64) {
+  if (isInstance(Float64, value)) {
     return formatFloatV(value.value);
   }
   if (Array.isArray(value)) {
     return "[" + value.map((v) => printValue(v)).join(" ") + "]";
   }
-  if (value instanceof globalThis.Error) {
+  if (isInstance(globalThis.Error, value)) {
     return value.message;
   }
-  if (value instanceof DateTime) {
+  if (isInstance(DateTime, value)) {
     return value.string();
   }
   const str = (value as { string?: unknown }).string;

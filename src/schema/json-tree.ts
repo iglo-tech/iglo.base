@@ -9,8 +9,8 @@
 // and checked for finiteness only; the reader checks their range.
 
 export type JSONNode =
-  | { kind: "object"; members: { key: string; value: JSONNode }[] }
-  | { kind: "array"; items: JSONNode[] }
+  | { kind: "object"; members: Array<{ key: string; value: JSONNode }> }
+  | { kind: "array"; items: Array<JSONNode> }
   | { kind: "string"; value: string }
   | { kind: "number"; value: number }
   | { kind: "boolean"; value: boolean }
@@ -175,7 +175,7 @@ class Parser {
         case "u": {
           const hex = this.text.slice(this.pos, this.pos + 4);
           if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
-            throw this.error("invalid \\u escape", this.pos - 2);
+            throw this.error(String.raw`invalid \u escape`, this.pos - 2);
           }
           out += String.fromCharCode(Number.parseInt(hex, 16));
           this.pos += 4;
@@ -189,7 +189,7 @@ class Parser {
 
   private parseObject(): JSONNode {
     this.pos++; // {
-    const members: { key: string; value: JSONNode }[] = [];
+    const members: Array<{ key: string; value: JSONNode }> = [];
     this.skipWhitespace();
     if (this.text[this.pos] === "}") {
       this.pos++;
@@ -224,7 +224,7 @@ class Parser {
 
   private parseArray(): JSONNode {
     this.pos++; // [
-    const items: JSONNode[] = [];
+    const items: Array<JSONNode> = [];
     this.skipWhitespace();
     if (this.text[this.pos] === "]") {
       this.pos++;

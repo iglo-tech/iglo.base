@@ -1,5 +1,6 @@
 // js-sdk v0.28.1 src/stores/LocalAuthStore.ts
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 
 /** The auth data as stored by `save()`; `model` is the legacy name of `record`. */
 type StoredAuthData = { token?: string; record?: AuthRecord; model?: AuthRecord };
@@ -50,8 +51,8 @@ export class LocalAuthStore extends BaseAuthStore {
    */
   override save(token: string, record?: AuthRecord) {
     this._storageSet(this.storageKey, {
-      token: token,
-      record: record,
+      token,
+      record,
     });
 
     super.save(token, record);

@@ -45,7 +45,7 @@ describe("TestTextFieldPrepareValue", () => {
   const f = new TextField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["test", "test"],
     [false, "false"],
@@ -76,12 +76,12 @@ describe("TestTextFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: TextField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new TextField({ name: "test" }),
@@ -114,7 +114,7 @@ describe("TestTextFieldValidateValue", () => {
       expectError: false,
     },
     {
-      name: "special forbidden character \\ (non-primaryKey)",
+      name: String.raw`special forbidden character \ (non-primaryKey)`,
       field: new TextField({ name: "test", primaryKey: false }),
       record: withValue("abc\\"),
       expectError: false,
@@ -144,7 +144,7 @@ describe("TestTextFieldValidateValue", () => {
       expectError: true,
     },
     {
-      name: "special forbidden character \\ (primaryKey)",
+      name: String.raw`special forbidden character \ (primaryKey)`,
       field: new TextField({ name: "test", primaryKey: true }),
       record: withValue("abc\\"),
       expectError: true,
@@ -268,7 +268,7 @@ describe("TestTextFieldValidateSettings", () => {
 
   const app = noDBApp();
 
-  const scenarios: { name: string; field: () => TextField; expectErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; field: () => TextField; expectErrors: Array<string> }> = [
     {
       name: "zero minimal",
       field: () => new TextField({ id: "test", name: "test" }),
@@ -394,13 +394,13 @@ describe("TestTextFieldAutogenerate", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     actionName: string;
     field: TextField;
     record: () => TestRecord;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "non-matching action",
       actionName: InterceptorActionUpdate,
@@ -463,14 +463,14 @@ describe("TestTextFieldAutogenerate", () => {
 });
 
 describe("TestTextFieldFindSetter", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     key: string;
     value: unknown;
     field: TextField;
     hasSetter: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no match",
       key: "example",

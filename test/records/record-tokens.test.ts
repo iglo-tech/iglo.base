@@ -50,8 +50,8 @@ function errorOf(fn: () => unknown): unknown {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 
@@ -171,7 +171,7 @@ describe("record tokens: claims and signed JSON (not upstream's)", () => {
   app.cleanup();
 
   // Go's MapClaims marshal with sorted keys
-  const cases: [string, () => string, string, bigint][] = [
+  const cases: Array<[string, () => string, string, bigint]> = [
     [
       "auth",
       () => newAuthToken(user, clock),

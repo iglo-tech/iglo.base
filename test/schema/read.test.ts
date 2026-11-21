@@ -4,7 +4,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { readSchema, type SchemaIssue } from "@/schema/read";
+import { readSchema } from "@/schema/read";
+import type { SchemaIssue } from "@/schema/read";
 import type { SchemaCollection, SchemaDescription } from "@/schema/types";
 
 const url = "https://github.com/iglo-tech/iglo.base/releases/latest/download/iglo.schema.json";
@@ -13,7 +14,7 @@ function file(collections: unknown): string {
   return JSON.stringify({ $schema: url, collections }, null, 2);
 }
 
-function errorsOf(text: string): SchemaIssue[] {
+function errorsOf(text: string): Array<SchemaIssue> {
   const result = readSchema(text);
   if (result.ok) {
     throw new Error("expected the file to be refused");
@@ -22,7 +23,7 @@ function errorsOf(text: string): SchemaIssue[] {
 }
 
 // the errors of a file with one collection and one field, as "path: message"
-function fieldErrors(field: unknown): string[] {
+function fieldErrors(field: unknown): Array<string> {
   return errorsOf(file({ posts: { type: "base", fields: { title: field } } })).map(
     (issue) => `${issue.path}: ${issue.message}`,
   );
@@ -114,7 +115,7 @@ describe("reading a valid file", () => {
       enabled: true,
       identityFields: ["email", "members_name"],
     });
-    expect(members.options.authToken).toEqual({ duration: 432000 });
+    expect(members.options.authToken).toEqual({ duration: 432_000 });
     // the email template keeps the default body it does not change
     expect(members.options.otp).toMatchObject({ enabled: false, duration: 180, length: 8 });
   });
@@ -189,7 +190,7 @@ describe("reading a valid file", () => {
     const superusers = collection(schema, "_superusers");
     expect(superusers.system).toBe(true);
     expect(superusers.type).toBe("auth");
-    expect(superusers.options.authToken).toEqual({ duration: 86400 });
+    expect(superusers.options.authToken).toEqual({ duration: 86_400 });
   });
 });
 

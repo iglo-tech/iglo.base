@@ -11,7 +11,8 @@ import type { Database } from "bun:sqlite";
 
 import { openReadOnly } from "@/db/connect";
 import { queryStatements, splitStatements } from "@/db/dbx/driver";
-import { readRows, type Rows } from "@/db/dbx/rows";
+import { readRows } from "@/db/dbx/rows";
+import type { Rows } from "@/db/dbx/rows";
 import type {
   ReadRequestMessage,
   ReadResponseMessage,
@@ -63,6 +64,7 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage | "clos
     }
     conns.clear();
     // WorkerGlobalScope.close(), ending this thread
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     (self as unknown as { close(): void }).close();
     return;
   }
@@ -79,8 +81,8 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage | "clos
     // the column names once and an array per row (rowsFromValues on the other side)
     const value = req.mode === "all" ? allTable(rows) : readRows(rows, req.mode);
     res = { id: req.id, ok: true, value };
-  } catch (err) {
-    res = { id: req.id, ok: false, error: serializeError(err) };
+  } catch (error) {
+    res = { id: req.id, ok: false, error: serializeError(error) };
   }
   postMessage(res);
 });

@@ -6,7 +6,8 @@ import type { Expression } from "@/db/dbx/expression";
 import { HashExp, newExp } from "@/db/dbx/expression";
 import type { SelectQuery } from "@/db/dbx/select";
 import { Log, LogsTableName } from "@/logs/log-model";
-import { parseDateTime, type DateTime } from "@/tools/types/datetime";
+import { parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 
 // LogQuery returns a new Log select query.
 export function logQuery(app: Pick<App, "databases">): SelectQuery {
@@ -22,7 +23,7 @@ export async function findLogById(app: Pick<App, "databases">, id: string): Prom
 // match the non-null expressions.
 export function countLogs(
   app: Pick<App, "databases">,
-  ...optExprs: (Expression | null | undefined)[]
+  ...optExprs: Array<Expression | null | undefined>
 ): number {
   const q = logQuery(app).select("count(*)");
 
@@ -34,7 +35,7 @@ export function countLogs(
 
   const [total] = q.row();
 
-  return Number(total as bigint);
+  return Number(total);
 }
 
 // LogsStatsItem defines the total number of logs for a specific time period.
@@ -47,7 +48,7 @@ export interface LogsStatsItem {
 export async function logsStats(
   app: Pick<App, "databases">,
   expr: Expression | null,
-): Promise<LogsStatsItem[]> {
+): Promise<Array<LogsStatsItem>> {
   const query = logQuery(app)
     .select("count(id) as total", "strftime('%Y-%m-%d %H:00:00', created) as date")
     .groupBy("date");

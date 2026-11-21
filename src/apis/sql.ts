@@ -31,6 +31,7 @@ import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
 import { formatFloatV } from "@/validation/error";
+import { isInstance } from "@/tools/types/is-instance";
 import { join } from "node:path";
 
 const runSQLMaxRows = 1000;
@@ -58,6 +59,7 @@ async function runSQL(e: RequestEvent): Promise<HandlerResult> {
 
   const form: RunSQLForm = { Query: "" };
 
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, runSQLFormType);
   if (bindErr) {
     return firstApiError(
@@ -77,10 +79,10 @@ async function runSQL(e: RequestEvent): Promise<HandlerResult> {
   let result: RunSQLResult;
   try {
     result = executeQuery(e.app, form.Query, runSQLMaxRows);
-  } catch (err) {
-    const text = err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    const text = error instanceof Error ? error.message : String(error);
     return firstApiError(
-      err,
+      error,
       e.badRequestError("Failed to execute query. Raw error:\n" + text, null),
     );
   }
@@ -97,8 +99,8 @@ interface RunSQLResultColumn {
 interface RunSQLResult {
   execTime: number;
   affectedRows: number;
-  columns: RunSQLResultColumn[];
-  rows: (string | null)[][];
+  columns: Array<RunSQLResultColumn>;
+  rows: Array<Array<string | null>>;
 }
 
 const knownWriteQueryPrefixes = [
@@ -208,8 +210,8 @@ function timedQuery(
 function withDriverError<T>(fn: () => T): T {
   try {
     return fn();
-  } catch (err) {
-    throw driverError(err);
+  } catch (error) {
+    throw driverError(error);
   }
 }
 
@@ -232,9 +234,9 @@ function scanString(v: unknown, declType: string): string | null {
     // a REAL value: the rows read every INTEGER value as a bigint
     return formatFloatV(v);
   }
-  if (v instanceof Uint8Array) {
+  if (isInstance(Uint8Array, v)) {
     // unpaired U+DC80..U+DCFF stand for invalid bytes (bytesToText)
-    return bytesToText(v).replace(/(?<![\ud800-\udbff])[\udc80-\udcff]/g, "�");
+    return bytesToText(v).replaceAll(/(?<![\ud800-\udbff])[\udc80-\udcff]/g, "�");
   }
   const text = String(v);
   if (declType === "DATE" || declType === "DATETIME" || declType === "TIMESTAMP") {
@@ -246,7 +248,7 @@ function scanString(v: unknown, declType: string): string | null {
 // strings.TrimSpace: Unicode White_Space at both ends
 function goTrimSpace(s: string): string {
   // \s without U+FEFF, plus U+0085
-  return s.replace(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
+  return s.replaceAll(/^(?:[^\S\ufeff]|\u0085)+|(?:[^\S\ufeff]|\u0085)+$/g, "");
 }
 
 // strings.ToUpper: each rune's simple upper case mapping (no expansions
@@ -258,7 +260,7 @@ function goToUpper(s: string): string {
   let out = "";
   for (const ch of s) {
     const up = ch.toUpperCase();
-    out += [...up].length === 1 ? up : ch;
+    out += Array.from(up).length === 1 ? up : ch;
   }
   return out;
 }
@@ -285,8 +287,8 @@ type Token =
 
 const lit = (s: string): Token => ({ lit: s });
 
-const date: Token[] = ["year", lit("-"), "month", lit("-"), "day"];
-const clock = (sep: string, seconds: boolean): Token[] => [
+const date: Array<Token> = ["year", lit("-"), "month", lit("-"), "day"];
+const clock = (sep: string, seconds: boolean): Array<Token> => [
   ...date,
   lit(sep),
   "hour",
@@ -295,9 +297,9 @@ const clock = (sep: string, seconds: boolean): Token[] => [
   ...(seconds ? [lit(":"), "second" as Token, "frac" as Token] : []),
 ];
 
-const timeStringLayout: Token[] = [...clock(" ", true), lit(" "), "numTZ", lit(" "), "tzName"];
+const timeStringLayout: Array<Token> = [...clock(" ", true), lit(" "), "numTZ", lit(" "), "tzName"];
 
-const parseTimeLayouts: Token[][] = [
+const parseTimeLayouts: Array<Array<Token>> = [
   [...clock(" ", true), "numColonTZ"],
   [...clock("T", true), "numColonTZ"],
   clock(" ", true),
@@ -387,7 +389,7 @@ function daysIn(month: number, year: number): number {
 }
 
 // time.Parse with a layout of the tokens above, formatted as RFC3339Nano.
-function goParseTime(layout: Token[], value: string): string | undefined {
+function goParseTime(layout: Array<Token>, value: string): string | undefined {
   let year = 0;
   let month = 1;
   let day = 1;

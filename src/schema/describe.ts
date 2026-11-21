@@ -13,14 +13,8 @@ import { explicitIndexes } from "@/schema/implied";
 import { storedProviders } from "@/schema/providers";
 import { isPlainObject } from "@/schema/values";
 import type { SchemaDescription } from "@/schema/types";
-import {
-  type CollectionType,
-  type SchemaCollection,
-  type SchemaField,
-  type SchemaObject,
-  type SchemaValue,
-  ruleKeys,
-} from "@/schema/types";
+import { ruleKeys } from "@/schema/types";
+import type { CollectionType, SchemaCollection, SchemaField, SchemaObject } from "@/schema/types";
 
 // the name of a collection by its id ("" for no collection)
 export type NameOf = (collectionId: string) => string;
@@ -72,11 +66,11 @@ export function describeCollectionJSON(api: SchemaObject, nameOf: NameOf): Schem
     type,
     system: api.system === true,
     rules,
-    indexes: explicitIndexes((api.indexes as string[] | undefined) ?? [], { name, type }),
+    indexes: explicitIndexes((api.indexes as Array<string> | undefined) ?? [], { name, type }),
     fields:
       type === "view"
         ? []
-        : ((api.fields as SchemaObject[] | undefined) ?? []).map((field) =>
+        : ((api.fields as Array<SchemaObject> | undefined) ?? []).map((field) =>
             describeFieldJSON(field, nameOf),
           ),
     options,
@@ -98,7 +92,7 @@ export function describeFieldJSON(api: SchemaObject, nameOf: NameOf): SchemaFiel
       options.collection = nameOf(value as string);
       continue;
     }
-    options[key] = value as SchemaValue;
+    options[key] = value;
   }
   return {
     name: api.name as string,
@@ -124,7 +118,7 @@ export function describeCollectionModel(collection: Collection, nameOf: NameOf):
 }
 
 // the name of a relation target by the id of its collection
-export function collectionNameOf(collections: readonly Collection[]): NameOf {
+export function collectionNameOf(collections: ReadonlyArray<Collection>): NameOf {
   const names = new Map(collections.map((collection) => [collection.id, collection.name]));
   return (collectionId) => {
     if (collectionId === "") {
@@ -142,7 +136,7 @@ export function collectionNameOf(collections: readonly Collection[]): NameOf {
 
 // the description of a set of collections, sorted by name (the providers hold
 // stored values: see describeCollectionModel)
-export function describeCollections(collections: readonly Collection[]): SchemaDescription {
+export function describeCollections(collections: ReadonlyArray<Collection>): SchemaDescription {
   const nameOf = collectionNameOf(collections);
   const described = collections.map((collection) => describeCollectionModel(collection, nameOf));
   return {

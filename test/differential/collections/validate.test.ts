@@ -28,13 +28,15 @@
 //
 // A case marked pending on a later task runs as test.failing: it passes
 // while the model differs and fails once it agrees.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Collection, newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { onCollectionSave } from "@/collections/collection-save";
 import { validateCollection } from "@/collections/collection-validate";
@@ -42,15 +44,13 @@ import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
 import { newBadRequestError } from "@/server/error";
 import { Errors } from "@/validation/error";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
-import {
-  type Ctx,
-  type ValidateCase,
-  setupCollections,
-  validateCases,
-} from "@test/differential/collections/validate-cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { setupCollections, validateCases } from "@test/differential/collections/validate-cases";
+import type { Ctx, ValidateCase } from "@test/differential/collections/validate-cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 60_000;
@@ -72,11 +72,14 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const res = await fetch(`${upstream.url}${path}`, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json", authorization: token },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${upstream.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -86,7 +89,7 @@ async function readCtx(): Promise<Ctx> {
   expect(res.status).toBe(200);
   const items = (
     JSON.parse(res.text) as {
-      items: { id: string; name: string; fields: Record<string, unknown>[] }[];
+      items: Array<{ id: string; name: string; fields: Array<Record<string, unknown>> }>;
     }
   ).items;
   const byName = new Map(items.map((c) => [c.name, c]));
@@ -214,7 +217,7 @@ function modelOutcome(c: ValidateCase, body: string): Outcome {
   if (err === null) {
     return { status: 200, body: "" };
   }
-  if (!(err instanceof Errors)) {
+  if (!isInstance(Errors, err)) {
     throw err;
   }
   const message =

@@ -6,13 +6,14 @@
 
 import { JSONRaw } from "@/tools/types/json-raw";
 import {
-  type JSONMarshaler,
   float64Type,
   formatFloat,
   marshal,
   marshalPartial,
   unmarshalStruct,
 } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export class GeoPoint implements JSONMarshaler {
   constructor(
@@ -26,8 +27,8 @@ export class GeoPoint implements JSONMarshaler {
   string(): string {
     try {
       return this.marshalJSON();
-    } catch (err) {
-      return marshalPartial(err);
+    } catch (error) {
+      return marshalPartial(error);
     }
   }
 
@@ -49,9 +50,9 @@ export class GeoPoint implements JSONMarshaler {
       }
       try {
         out += ":" + formatFloat(n);
-      } catch (err) {
-        (err as { partial?: string }).partial = out;
-        throw err;
+      } catch (error) {
+        (error as { partial?: string }).partial = out;
+        throw error;
       }
     }
     return out + "}";
@@ -76,14 +77,14 @@ export class GeoPoint implements JSONMarshaler {
     try {
       if (value === null || value === undefined) {
         // no cast needed
-      } else if (value instanceof GeoPoint) {
+      } else if (isInstance(GeoPoint, value)) {
         this.lon = value.lon;
         this.lat = value.lat;
-      } else if (value instanceof JSONRaw) {
+      } else if (isInstance(JSONRaw, value)) {
         if (value.bytes().length !== 0) {
           this.unmarshal(value.bytes());
         }
-      } else if (value instanceof Uint8Array || typeof value === "string") {
+      } else if (isInstance(Uint8Array, value) || typeof value === "string") {
         if (value.length !== 0) {
           this.unmarshal(value);
         }
@@ -91,18 +92,18 @@ export class GeoPoint implements JSONMarshaler {
         let raw: string;
         try {
           raw = marshal(value);
-        } catch (err) {
-          throw new Error(`unable to marshalize value for scanning: ${(err as Error).message}`, {
-            cause: err,
+        } catch (error) {
+          throw new Error(`unable to marshalize value for scanning: ${(error as Error).message}`, {
+            cause: error,
           });
         }
         this.unmarshal(raw);
       }
-    } catch (err) {
+    } catch (error) {
       throw new Error(
-        `[GeoPoint] unable to scan value ${String(value)}: ${(err as Error).message}`,
+        `[GeoPoint] unable to scan value ${String(value)}: ${(error as Error).message}`,
         {
-          cause: err,
+          cause: error,
         },
       );
     }

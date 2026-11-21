@@ -1,4 +1,5 @@
 // Upstream: tools/router/rereadable_read_closer_test.go
+import { isInstance } from "@/tools/types/is-instance";
 
 import { existsSync } from "node:fs";
 import { expect, test } from "bun:test";
@@ -13,7 +14,7 @@ test("RereadableReadCloser", async () => {
 
   const totalRereads = 5;
 
-  const tempFilenames: string[] = [];
+  const tempFilenames: Array<string> = [];
 
   // reread multiple times
   for (let i = 0; i < totalRereads; i++) {
@@ -28,7 +29,7 @@ test("RereadableReadCloser", async () => {
 
     const current = rereadable.current();
     expect(current).toBeInstanceOf(BufferWithFile);
-    if (current instanceof BufferWithFile) {
+    if (isInstance(BufferWithFile, current)) {
       const name = current.fileName();
       if (name !== undefined) {
         tempFilenames.push(name);

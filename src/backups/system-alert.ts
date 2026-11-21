@@ -73,7 +73,7 @@ const templateEscapes: { [c: string]: string } = {
 
 // html/template's escaper for a value in HTML text
 function templateEscape(s: string): string {
-  return s.replace(/[\0"&'+<>]/g, (c) => templateEscapes[c] as string);
+  return s.replaceAll(/[\0"&'+<>]/g, (c) => templateEscapes[c] as string);
 }
 
 // sendSystemAlertToAllSuperusers sends a system error alert to all superusers.
@@ -84,12 +84,12 @@ export async function sendSystemAlertToAllSuperusers(
 ): Promise<void> {
   const superusers = findAllRecords(app, CollectionNameSuperusers);
 
-  const alertErrors: unknown[] = [];
+  const alertErrors: Array<unknown> = [];
   for (const superuser of superusers) {
     try {
       await sendSystemAlert(app, superuser, subject, details);
-    } catch (err) {
-      alertErrors.push(err);
+    } catch (error) {
+      alertErrors.push(error);
     }
   }
 

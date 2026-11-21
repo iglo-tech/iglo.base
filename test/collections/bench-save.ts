@@ -28,7 +28,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
-import { newCollection, type Collection } from "@/collections/collection-model";
+import { newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
@@ -48,7 +49,7 @@ const { values } = parseArgs({
 });
 
 type Scenario = "fields50" | "multiple" | "view";
-const scenarios: Scenario[] = ["fields50", "multiple", "view"];
+const scenarios: Array<Scenario> = ["fields50", "multiple", "view"];
 
 const email = "bench@example.com";
 const password = "1234567890";
@@ -92,7 +93,7 @@ function viewQuery(i: number): string {
   return `select id, tag, ${i} as n from big`;
 }
 
-function median(xs: number[]): number {
+function median(xs: Array<number>): number {
   const sorted = xs.toSorted((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)]!;
 }
@@ -144,7 +145,7 @@ function igloScenario(dataDir: string, scenario: Scenario): Result {
     switch (scenario) {
       case "fields50": {
         setupPeakKiB = process.resourceUsage().maxRSS;
-        const runs: number[] = [];
+        const runs: Array<number> = [];
         for (let i = 0; i < 5; i++) {
           const c = create(fields50Body(i));
           runs.push(timed(() => saveCollection(app, c)));
@@ -156,8 +157,8 @@ function igloScenario(dataDir: string, scenario: Scenario): Result {
         saveCollection(app, create(bigBody));
         app.databases.nonconcurrentDB().newQuery(insertRows).execute();
         setupPeakKiB = process.resourceUsage().maxRSS;
-        const toMultiple: number[] = [];
-        const toSingle: number[] = [];
+        const toMultiple: Array<number> = [];
+        const toSingle: Array<number> = [];
         for (let i = 0; i < 3; i++) {
           for (const [maxSelect, list] of [
             [3, toMultiple],
@@ -165,10 +166,10 @@ function igloScenario(dataDir: string, scenario: Scenario): Result {
           ] as const) {
             const fields = JSON.parse(
               findCollectionByNameOrId(app, "big").fields.marshalJSON(),
-            ) as {
+            ) as Array<{
               name: string;
               maxSelect?: number;
-            }[];
+            }>;
             fields.find((f) => f.name === "tag")!.maxSelect = maxSelect;
             const c = update("big", { fields });
             list.push(timed(() => saveCollection(app, c)));
@@ -183,7 +184,7 @@ function igloScenario(dataDir: string, scenario: Scenario): Result {
         app.databases.nonconcurrentDB().newQuery(insertRows).execute();
         saveCollection(app, create({ name: "big_view", type: "view", viewQuery: viewQuery(0) }));
         setupPeakKiB = process.resourceUsage().maxRSS;
-        const runs: number[] = [];
+        const runs: Array<number> = [];
         for (let i = 1; i <= 5; i++) {
           const c = update("big_view", { viewQuery: viewQuery(i) });
           runs.push(timed(() => saveCollection(app, c)));
@@ -247,7 +248,7 @@ async function upstreamScenario(dataDir: string, scenario: Scenario): Promise<Re
       const res = await fetch(`${server.url}/api/collections/${name}`, {
         headers: { authorization: token },
       });
-      return ((await res.json()) as { fields: { name: string; maxSelect?: number }[] }).fields;
+      return ((await res.json()) as { fields: Array<{ name: string; maxSelect?: number }> }).fields;
     };
 
     const times: Record<string, number> = {};
@@ -255,7 +256,7 @@ async function upstreamScenario(dataDir: string, scenario: Scenario): Promise<Re
     switch (scenario) {
       case "fields50": {
         setupPeakKiB = vmHWM(pid);
-        const runs: number[] = [];
+        const runs: Array<number> = [];
         for (let i = 0; i < 5; i++) {
           runs.push(await call("POST", "/api/collections", fields50Body(i)));
         }
@@ -266,8 +267,8 @@ async function upstreamScenario(dataDir: string, scenario: Scenario): Promise<Re
         await call("POST", "/api/collections", bigBody);
         await call("POST", "/api/sql", { query: insertRows });
         setupPeakKiB = vmHWM(pid);
-        const toMultiple: number[] = [];
-        const toSingle: number[] = [];
+        const toMultiple: Array<number> = [];
+        const toSingle: Array<number> = [];
         for (let i = 0; i < 3; i++) {
           for (const [maxSelect, list] of [
             [3, toMultiple],
@@ -291,7 +292,7 @@ async function upstreamScenario(dataDir: string, scenario: Scenario): Promise<Re
           viewQuery: viewQuery(0),
         });
         setupPeakKiB = vmHWM(pid);
-        const runs: number[] = [];
+        const runs: Array<number> = [];
         for (let i = 1; i <= 5; i++) {
           runs.push(await call("PATCH", "/api/collections/big_view", { viewQuery: viewQuery(i) }));
         }

@@ -11,9 +11,11 @@
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { once } from "node:events";
 
+import type NodeZlib from "node:zlib";
+
 // node:zlib is loaded on first use: it was about 10 ms of the start-up (P.3)
-let zlibModule: typeof import("node:zlib") | undefined;
-function zlib(): typeof import("node:zlib") {
+let zlibModule: typeof NodeZlib | undefined;
+function zlib(): typeof NodeZlib {
   return (zlibModule ??= process.getBuiltinModule("node:zlib"));
 }
 
@@ -26,11 +28,11 @@ export const ErrChecksum = new Error("zip: checksum error");
 // io.ErrUnexpectedEOF
 export const ErrUnexpectedEOF = new Error("unexpected EOF");
 
-const fileHeaderSignature = 0x04034b50;
-const directoryHeaderSignature = 0x02014b50;
-const directoryEndSignature = 0x06054b50;
-const directory64LocSignature = 0x07064b50;
-const directory64EndSignature = 0x06064b50;
+const fileHeaderSignature = 0x04_03_4b_50;
+const directoryHeaderSignature = 0x02_01_4b_50;
+const directoryEndSignature = 0x06_05_4b_50;
+const directory64LocSignature = 0x07_06_4b_50;
+const directory64EndSignature = 0x06_06_4b_50;
 
 const fileHeaderLen = 30;
 const directoryHeaderLen = 46;
@@ -38,10 +40,10 @@ const directoryEndLen = 22;
 const directory64LocLen = 20;
 const directory64EndLen = 56;
 
-const uint16max = 0xffff;
-const uint32max = 0xffffffff;
+const uint16max = 0xff_ff;
+const uint32max = 0xff_ff_ff_ff;
 
-const zip64ExtraID = 0x0001;
+const zip64ExtraID = 0x00_01;
 
 const methodStore = 0;
 const methodDeflate = 8;
@@ -52,9 +54,9 @@ const creatorNTFS = 11;
 const creatorVFAT = 14;
 const creatorMacOSX = 19;
 
-const S_IFMT = 0xf000;
-const S_IFDIR = 0x4000;
-const S_IFREG = 0x8000;
+const S_IFMT = 0xf0_00;
+const S_IFDIR = 0x40_00;
+const S_IFREG = 0x80_00;
 
 const msdosDir = 0x10;
 const msdosReadOnly = 0x01;
@@ -119,7 +121,7 @@ export class ZipReader {
   readonly #size: number;
   #closed = false;
   #baseOffset = 0;
-  readonly files: ZipEntry[] = [];
+  readonly files: Array<ZipEntry> = [];
 
   // zip.OpenReader. Throws ErrFormat when path is not a valid zip file.
   constructor(path: string) {
@@ -127,9 +129,9 @@ export class ZipReader {
     try {
       this.#size = fstatSync(this.#fd).size;
       this.#init();
-    } catch (err) {
+    } catch (error) {
       closeSync(this.#fd);
-      throw err;
+      throw error;
     }
   }
 
@@ -453,8 +455,8 @@ export class ZipReader {
       }
       try {
         sink(chunk);
-      } catch (err) {
-        sinkErr = err;
+      } catch (error) {
+        sinkErr = error;
         inflate.destroy();
       }
     });
@@ -485,9 +487,9 @@ export class ZipReader {
       }
       inflate.end();
       await ended;
-    } catch (err) {
+    } catch (error) {
       inflate.destroy();
-      throw sinkErr ?? err;
+      throw sinkErr ?? error;
     }
     if (sinkErr !== undefined) {
       throw sinkErr;

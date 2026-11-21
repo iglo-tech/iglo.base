@@ -15,9 +15,11 @@ import {
   snakecase,
 } from "@/app/event-request";
 import { newAuthCollection } from "@/collections/collection-model";
-import { newRecord, type Record } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import { ResponseWriter } from "@/server/router";
-import { newTestRequest, type TestRequest } from "@test/support/router";
+import { newTestRequest } from "@test/support/router";
+import type { TestRequest } from "@test/support/router";
 import { openFixtureApp } from "@test/app/app";
 
 // an auth record of a new auth collection with the given name
@@ -62,7 +64,7 @@ test("RealIP without trusted proxy headers is the remote IP", () => {
 });
 
 describe("HasSuperuserAuth", () => {
-  const scenarios: [string, Record | undefined, boolean][] = [
+  const scenarios: Array<[string, Record | undefined, boolean]> = [
     ["nil record", undefined, false],
     ["regular user record", authRecord("u", "users"), false],
     ["superuser record", authRecord("s", "_superusers"), true],
@@ -118,7 +120,7 @@ test("RequestInfo fails with the body binding error", async () => {
 
 describe("RequestInfo.HasSuperuserAuth", () => {
   const e = newEvent(testRequest);
-  const scenarios: [string, Record | undefined, boolean][] = [
+  const scenarios: Array<[string, Record | undefined, boolean]> = [
     ["nil record", undefined, false],
     ["regular user record", authRecord("u", "users"), false],
     ["superuser record", authRecord("s", "_superusers"), true],
@@ -166,7 +168,7 @@ test("RequestInfo.Clone", async () => {
 
 // Upstream: tools/inflector/inflector_test.go (TestSnakecase)
 describe("snakecase", () => {
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     [" ", ""],
     ["!@#$%^", ""],
@@ -354,13 +356,13 @@ describe("TestEventRequestRealIP", () => {
     "X-Forwarded-For": "1.2.3.4, invalid,1.1.1.5,1.1.1.6,invalid",
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     headers: { [name: string]: string };
-    trustedHeaders: string[] | null;
+    trustedHeaders: Array<string> | null;
     useLeftmostIP: boolean;
     expected: string;
-  }[] = [
+  }> = [
     {
       name: "no trusted headers",
       headers,

@@ -19,17 +19,19 @@
 // only); orientImage applies imaging's fixOrientation transforms with
 // Bun.Image's rotate, flip and flop, which give the same pixels.
 
+import { isInstance } from "@/tools/types/is-instance";
+
 // image.DecodeConfig: the decoder is chosen by the leading bytes, as
 // image.RegisterFormat's patterns do ("?" matches any byte). The source is
 // read in order, as Go's decoders read their io.Reader: the segments and
 // chunks the header walk skips are read in bounded pieces, never held
 // whole, so the check costs little memory however large the file is.
 export function decodeConfig(src: Uint8Array | ByteSource): Size {
-  const r = src instanceof Uint8Array ? bytesSource(src) : src;
+  const r = isInstance(Uint8Array, src) ? bytesSource(src) : src;
   const head = r.peek(15);
   const match = (pattern: string): boolean =>
     head.length >= pattern.length &&
-    [...pattern].every((c, i) => c === "?" || head[i] === c.charCodeAt(0));
+    Array.from(pattern).every((c, i) => c === "?" || head[i] === c.charCodeAt(0));
   if (match("\xff\xd8")) {
     return jpegConfig(r);
   }
@@ -240,8 +242,8 @@ function processSOF(t: Uint8Array): Size {
     throw new Error("invalid JPEG format: SOF has wrong length");
   }
   const subsampling = "unsupported JPEG feature: luma/chroma subsampling ratio";
-  const ids: number[] = [];
-  const hvs: { h: number; v: number }[] = [];
+  const ids: Array<number> = [];
+  const hvs: Array<{ h: number; v: number }> = [];
   for (let i = 0; i < nComp; i++) {
     const c = t[6 + 3 * i] as number;
     if (ids.includes(c)) {
@@ -334,7 +336,7 @@ function pngConfig(r: ByteSource): Size {
       }
       depth = t[8] as number;
       const colorType = t[9] as number;
-      const valid: Record<number, number[]> = {
+      const valid: Record<number, Array<number>> = {
         1: [0, 3],
         2: [0, 3],
         4: [0, 3],
@@ -374,7 +376,7 @@ function pngConfig(r: ByteSource): Size {
     } else if (type === "IEND") {
       throw order;
     } else {
-      if (length > 0x7fffffff) {
+      if (length > 0x7f_ff_ff_ff) {
         throw new Error(`invalid PNG format: Bad chunk length: ${length}`);
       }
       for (let left = length; left > 0;) {
@@ -547,7 +549,7 @@ function webpConfig(r: ByteSource): Size {
       }
       wantAlpha = false;
     } else if (id === "VP8 ") {
-      if (wantAlpha || len > 0x7fffffff) {
+      if (wantAlpha || len > 0x7f_ff_ff_ff) {
         throw invalid;
       }
       if (len < 3) {
@@ -580,13 +582,12 @@ function webpConfig(r: ByteSource): Size {
       if (bits >>> 29 !== 0) {
         throw new Error("vp8l: invalid version");
       }
-      return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+      return { width: (bits & 0x3f_ff) + 1, height: ((bits >>> 14) & 0x3f_ff) + 1 };
     } else if (id === "VP8X") {
       if (len !== 10) {
         throw invalid;
       }
       const d = r.read(10);
-      wantAlpha = ((d[0] as number) & 0x10) !== 0;
       const w = ((d[4] as number) | ((d[5] as number) << 8) | ((d[6] as number) << 16)) + 1;
       const h = ((d[7] as number) | ((d[8] as number) << 8) | ((d[9] as number) << 16)) + 1;
       if (w * h > 2 ** 31 - 1) {
@@ -615,7 +616,7 @@ export function readOrientation(b: Uint8Array): number {
   const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
   let o = 0;
   const ok = (n: number): boolean => o + n <= b.length;
-  if (!ok(2) || v.getUint16(0) !== 0xffd8) {
+  if (!ok(2) || v.getUint16(0) !== 0xff_d8) {
     return 0;
   }
   o = 2;
@@ -629,7 +630,7 @@ export function readOrientation(b: Uint8Array): number {
     if (marker >> 8 !== 0xff) {
       return 0;
     }
-    if (marker === 0xffe1) {
+    if (marker === 0xff_e1) {
       break;
     }
     if (size < 2) {
@@ -637,7 +638,7 @@ export function readOrientation(b: Uint8Array): number {
     }
     o += size - 2;
   }
-  if (!ok(6) || v.getUint32(o) !== 0x45786966) {
+  if (!ok(6) || v.getUint32(o) !== 0x45_78_69_66) {
     return 0;
   }
   o += 6;
@@ -645,8 +646,8 @@ export function readOrientation(b: Uint8Array): number {
     return 0;
   }
   const tag = v.getUint16(o);
-  const le = tag === 0x4949;
-  if (!le && tag !== 0x4d4d) {
+  const le = tag === 0x49_49;
+  if (!le && tag !== 0x4d_4d) {
     return 0;
   }
   o += 4;
@@ -670,7 +671,7 @@ export function readOrientation(b: Uint8Array): number {
     }
     const t = v.getUint16(o, le);
     o += 2;
-    if (t !== 0x0112) {
+    if (t !== 0x01_12) {
       o += 10;
       continue;
     }

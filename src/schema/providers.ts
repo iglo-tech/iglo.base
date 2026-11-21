@@ -36,7 +36,7 @@ export const providerKeyOrder = [
 ] as const;
 
 // the keys that hold a secret: they are references only in the file
-export const secretProviderKeys: readonly string[] = ["clientSecret"];
+export const secretProviderKeys: ReadonlyArray<string> = ["clientSecret"];
 
 // the value of a key that the file leaves out, as upstream's zero value
 const providerDefaults: Readonly<Record<string, SchemaValue>> = Object.freeze({
@@ -68,7 +68,7 @@ export function envReference(value: unknown): string | undefined {
 
 // the providers of a stored auth configuration, with their values (apply and
 // plan only; see the header)
-export function storedProviders(config: OAuth2Config): SchemaObject[] {
+export function storedProviders(config: OAuth2Config): Array<SchemaObject> {
   return (config.providers ?? []).map((p) => ({
     name: p.name,
     clientId: p.clientId,
@@ -86,10 +86,10 @@ export function storedProviders(config: OAuth2Config): SchemaObject[] {
 // the key, in upper case (USERS_GITHUB_CLIENT_SECRET).
 export function generatedEnvName(collection: string, provider: string, key: string): string {
   return [collection, provider, key]
-    .map((part) => part.replace(/([a-z0-9])([A-Z])/g, "$1_$2"))
+    .map((part) => part.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2"))
     .join("_")
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_");
+    .replaceAll(/[^A-Z0-9]+/g, "_");
 }
 
 // The value of a variable as its key expects it. Throws when the text does not
@@ -122,9 +122,9 @@ function parseEnvValue(key: string, text: string, variable: string): SchemaValue
 // apply, the plan and the start stop on it.
 export function resolveProviders(
   collection: string,
-  providers: readonly SchemaObject[],
+  providers: ReadonlyArray<SchemaObject>,
   getenv: (name: string) => string,
-): SchemaObject[] {
+): Array<SchemaObject> {
   const missing = new Set<string>();
   const resolved = providers.map((provider) => {
     const out: SchemaObject = { name: String(provider.name) };
@@ -163,10 +163,10 @@ export function resolveProviders(
 // What changed in a collection's providers, as lines that name the provider
 // and the key ("github: clientSecret changed"); never a value.
 export function providerChanges(
-  before: readonly SchemaObject[],
-  desired: readonly SchemaObject[],
-): string[] {
-  const changes: string[] = [];
+  before: ReadonlyArray<SchemaObject>,
+  desired: ReadonlyArray<SchemaObject>,
+): Array<string> {
+  const changes: Array<string> = [];
   const beforeByName = new Map(before.map((p) => [String(p.name), p]));
   const desiredNames = new Set(desired.map((p) => String(p.name)));
   for (const provider of desired) {
@@ -210,11 +210,11 @@ function matches(text: string, key: string, stored: SchemaValue | undefined): bo
 // that must hold the secret, never a value.
 export function providersFileForm(
   collection: string,
-  stored: readonly SchemaObject[],
-  existing: readonly SchemaObject[] | undefined,
+  stored: ReadonlyArray<SchemaObject>,
+  existing: ReadonlyArray<SchemaObject> | undefined,
   getenv: (name: string) => string,
-): { providers: SchemaObject[]; notes: string[] } {
-  const notes: string[] = [];
+): { providers: Array<SchemaObject>; notes: Array<string> } {
+  const notes: Array<string> = [];
   const providers = stored.map((provider) => {
     const name = String(provider.name);
     const prior = existing?.find((p) => p.name === name);
@@ -248,7 +248,10 @@ export function providersFileForm(
 
 // The writer's guard: every secret of a provider is a reference. A value
 // here is an internal error, so it stops the write instead of reaching a file.
-export function assertFileProviders(collection: string, providers: readonly SchemaObject[]): void {
+export function assertFileProviders(
+  collection: string,
+  providers: ReadonlyArray<SchemaObject>,
+): void {
   for (const provider of providers) {
     for (const key of secretProviderKeys) {
       if (envReference(provider[key]) === undefined) {

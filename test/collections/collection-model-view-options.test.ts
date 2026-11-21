@@ -9,16 +9,17 @@ import { newViewCollection } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
 import { validateCollection } from "@/collections/collection-validate";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 
 interface Scenario {
   name: string;
   collection: (app: TestCollectionsApp) => ReturnType<typeof newViewCollection>;
-  expectedErrors: string[];
+  expectedErrors: Array<string>;
 }
 
-const scenarios: Scenario[] = [
+const scenarios: Array<Scenario> = [
   {
     name: "view with empty query",
     collection: () => newViewCollection("new_auth"),

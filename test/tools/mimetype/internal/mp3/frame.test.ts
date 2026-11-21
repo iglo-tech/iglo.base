@@ -40,7 +40,7 @@ function copyInto(dst: Uint8Array, src: Uint8Array): void {
   dst.set(src.subarray(0, Math.min(dst.length, src.length)));
 }
 
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Array<Uint8Array>): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let off = 0;
   for (const p of parts) {
@@ -54,7 +54,7 @@ function concat(...parts: Uint8Array[]): Uint8Array {
 // each padded to `frameSize` bytes total. The Go helper can also fill the
 // padding with ChaCha8 random bytes; the test table only uses zero padding.
 function repeatFrames(hdr: Uint8Array, frameSize: number, count: number): Uint8Array {
-  const out: Uint8Array[] = [];
+  const out: Array<Uint8Array> = [];
   for (let i = 0; i < count; i++) {
     const frame = new Uint8Array(frameSize);
     copyInto(frame.subarray(0, 4), hdr);
@@ -76,7 +76,7 @@ describe("TestExtractFrame", () => {
   // Matches how many bytes the implementation searches for.
   const mp3MaxSearch = 2048;
 
-  const tests: { name: string; data: Uint8Array; want: boolean }[] = [
+  const tests: Array<{ name: string; data: Uint8Array; want: boolean }> = [
     {
       name: "four consecutive valid frames, no padding",
       data: repeatFrames(validHeader, frameSize, 4),

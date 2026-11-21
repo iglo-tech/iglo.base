@@ -17,7 +17,7 @@ export class Broker {
   }
 
   // ChunkedClients splits the current clients into a chunked slice.
-  chunkedClients(chunkSize: number): Client[][] {
+  chunkedClients(chunkSize: number): Array<Array<Client>> {
     return toChunks([...this.#store.values()], chunkSize);
   }
 

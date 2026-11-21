@@ -7,7 +7,8 @@ import { expect, test } from "bun:test";
 
 import { SearchResult } from "@/search/provider";
 import { InvalidModifierDataError, pick } from "@/tools/picker/pick";
-import { type ModifierFactoryFunc, Modifiers } from "@/tools/picker/modifiers";
+import { Modifiers } from "@/tools/picker/modifiers";
+import type { ModifierFactoryFunc } from "@/tools/picker/modifiers";
 import { marshal } from "@/tools/types/go-json";
 
 // brokenModifier always fails (upstream registers it in init())
@@ -23,7 +24,7 @@ const modifiers = new Map<string, ModifierFactoryFunc>([
   ],
 ]);
 
-const searchItems = (): unknown[] => [
+const searchItems = (): Array<unknown> => [
   { a: 11, b: 11, c: "test1" },
   { a: 22, b: 22, c: "test2" },
 ];
@@ -158,8 +159,8 @@ test.each<[string, () => unknown, string, boolean, string]>([
   let err: unknown;
   try {
     result = pick(data(), fields, modifiers);
-  } catch (e) {
-    err = e;
+  } catch (error) {
+    err = error;
   }
 
   expect(err !== undefined).toBe(expectError);

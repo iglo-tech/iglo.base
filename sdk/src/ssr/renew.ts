@@ -5,7 +5,8 @@ import { ClientResponseError } from "@sdk/ClientResponseError";
 import { SSR_NO_CACHE_HEADERS, createRequestCookieAdapter } from "@sdk/ssr/cookies";
 import { checkOrigin } from "@sdk/ssr/csrf";
 import { mintBrowserToken } from "@sdk/ssr/browser-token";
-import { createServerClient, type ServerClient } from "@sdk/ssr/server-client";
+import { createServerClient } from "@sdk/ssr/server-client";
+import type { ServerClient } from "@sdk/ssr/server-client";
 import type { SuperuserClient } from "@sdk/ssr/superuser-client";
 import type {
   BrowserToken,
@@ -19,7 +20,7 @@ export interface BrowserTokenRenewOptions
     Omit<CreateServerClientOptions, "cookies" | "request" | "origin">,
     MintBrowserTokenOptions {
   /** Origins besides the request's own that may call the route (see `checkOrigin`). */
-  allowedOrigins?: readonly string[];
+  allowedOrigins?: ReadonlyArray<string>;
   /** Mints with `impersonate`. Without it the server client must be in fallback mode. */
   superuser?: SuperuserClient;
 }
@@ -78,11 +79,11 @@ export async function handleBrowserTokenRenew(
   try {
     client = await createServerClient({ ...options, cookies });
     await client.auth.verify();
-  } catch (err: unknown) {
-    if (!(err instanceof ClientResponseError)) {
-      throw err;
+  } catch (error: unknown) {
+    if (!(error instanceof ClientResponseError)) {
+      throw error;
     }
-    if (err.status === 401 || err.status === 403 || err.status === 404) {
+    if (error.status === 401 || error.status === 403 || error.status === 404) {
       return withCookies(errorResponse(401, "The session is not valid."), cookies);
     }
     return errorResponse(503, "The session could not be checked. Try again.");
@@ -91,11 +92,11 @@ export async function handleBrowserTokenRenew(
   let minted: BrowserToken | null;
   try {
     minted = await mintBrowserToken(client, superuser, { duration });
-  } catch (err: unknown) {
-    if (!(err instanceof ClientResponseError)) {
-      throw err; // a programming error, not a sign-in problem
+  } catch (error: unknown) {
+    if (!(error instanceof ClientResponseError)) {
+      throw error; // a programming error, not a sign-in problem
     }
-    if (err.status === 404) {
+    if (error.status === 404) {
       // impersonate found no such record (deleted since the check): the session is over.
       // Clearing the client's auth store clears the session cookie through the adapter.
       client.authStore.clear();

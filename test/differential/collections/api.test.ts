@@ -21,12 +21,8 @@ import { mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  type ApiCase,
-  type Identity,
-  type Session,
-  sessions,
-} from "@test/differential/collections/api-cases";
+import { sessions } from "@test/differential/collections/api-cases";
+import type { ApiCase, Identity, Session } from "@test/differential/collections/api-cases";
 import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
@@ -44,7 +40,7 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 
 afterAll(async () => {
@@ -117,18 +113,18 @@ function withDb<T>(dataDir: string, fn: (db: Database) => T): T {
 }
 
 interface StoredState {
-  schema: unknown[];
-  collections: Record<string, unknown>[];
-  timestamps: string[];
-  records: Record<string, string[]>;
-  files: string[];
+  schema: Array<unknown>;
+  collections: Array<Record<string, unknown>>;
+  timestamps: Array<string>;
+  records: Record<string, Array<string>>;
+  files: Array<string>;
 }
 
 function mask(text: unknown): unknown {
   return typeof text === "string"
     ? text
-        .replace(/_clone_[A-Za-z0-9]{4}/g, "_clone_*")
-        .replace(/("secret":)"[A-Za-z0-9]{50}"/g, '$1"*"')
+        .replaceAll(/_clone_[A-Za-z0-9]{4}/g, "_clone_*")
+        .replaceAll(/("secret":)"[A-Za-z0-9]{50}"/g, '$1"*"')
     : text;
 }
 
@@ -139,11 +135,10 @@ function storedState(dataDir: string): StoredState {
         "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
       )
       .all();
-    const rows = db.query("SELECT * FROM _collections ORDER BY name").all() as Record<
-      string,
-      unknown
-    >[];
-    const timestamps: string[] = [];
+    const rows = db.query("SELECT * FROM _collections ORDER BY name").all() as Array<
+      Record<string, unknown>
+    >;
+    const timestamps: Array<string> = [];
     const collections = rows.map((row) => {
       const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(row)) {
@@ -155,24 +150,24 @@ function storedState(dataDir: string): StoredState {
       }
       return out;
     });
-    const records: Record<string, string[]> = {};
+    const records: Record<string, Array<string>> = {};
     for (const row of rows) {
       if (row["type"] === "view") {
         continue;
       }
       const name = String(row["name"]);
       records[name] = (
-        db.query(`SELECT id FROM "${name.replaceAll('"', '""')}" ORDER BY id`).all() as {
+        db.query(`SELECT id FROM "${name.replaceAll('"', '""')}" ORDER BY id`).all() as Array<{
           id: string;
-        }[]
+        }>
       ).map((r) => r.id);
     }
     return { schema, collections, timestamps, records, files: listFiles(join(dataDir, "storage")) };
   });
 }
 
-function listFiles(dir: string, prefix = ""): string[] {
-  let entries: string[];
+function listFiles(dir: string, prefix = ""): Array<string> {
+  let entries: Array<string>;
   try {
     entries = readdirSync(dir).toSorted();
   } catch {
@@ -190,9 +185,9 @@ function listFiles(dir: string, prefix = ""): string[] {
 // round trip
 
 // GET /api/collections and every collection's records list
-async function readBack(url: string, dataDir: string): Promise<[string, ScenarioResponse][]> {
+async function readBack(url: string, dataDir: string): Promise<Array<[string, ScenarioResponse]>> {
   const names = withDb(dataDir, (db) =>
-    (db.query("SELECT name FROM _collections ORDER BY name").all() as { name: string }[]).map(
+    (db.query("SELECT name FROM _collections ORDER BY name").all() as Array<{ name: string }>).map(
       (r) => r.name,
     ),
   );
@@ -200,7 +195,7 @@ async function readBack(url: string, dataDir: string): Promise<[string, Scenario
     "/api/collections?perPage=500",
     ...names.map((n) => `/api/collections/${encodeURIComponent(n)}/records?perPage=500&sort=id`),
   ];
-  const out: [string, ScenarioResponse][] = [];
+  const out: Array<[string, ScenarioResponse]> = [];
   for (const u of urls) {
     out.push([u, await sendTo(url, request({ name: u, as: "superuser", method: "GET", url: u }))]);
   }
@@ -213,7 +208,7 @@ function bodyText(res: ScenarioResponse): string {
 
 // -------------------------------------------------------------------
 
-async function runSession(session: Session): Promise<string[]> {
+async function runSession(session: Session): Promise<Array<string>> {
   const source = fixtureCopy();
   session.prepare?.(source);
   const start = readStartingData(source);
@@ -224,7 +219,7 @@ async function runSession(session: Session): Promise<string[]> {
     track(startServer([], igloDir)),
   ]);
 
-  const differences: string[] = [];
+  const differences: Array<string> = [];
   const pairing = new Pairing();
   for (const c of session.cases) {
     const req = request(c);
@@ -240,7 +235,7 @@ async function runSession(session: Session): Promise<string[]> {
 
   const upState = storedState(upstreamDir);
   const igState = storedState(igloDir);
-  for (const key of Object.keys(upState) as (keyof StoredState)[]) {
+  for (const key of Object.keys(upState) as Array<keyof StoredState>) {
     const a = JSON.stringify(upState[key], null, 1);
     const b = JSON.stringify(igState[key], null, 1);
     if (a !== b) {

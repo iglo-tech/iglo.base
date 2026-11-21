@@ -22,7 +22,7 @@ import { runInTransaction } from "@/db/tx";
 import { Demo, Log } from "@test/db/models";
 import { tempDir } from "@test/db/support";
 
-const opened: Databases[] = [];
+const opened: Array<Databases> = [];
 
 afterEach(async () => {
   for (const app of opened.splice(0)) {
@@ -102,7 +102,7 @@ test("the async resolvers read on the pool what the synchronous ones read", asyn
     await q()
       .where(new HashExp({ id: "missing" }))
       .oneAsync()
-      .catch((e) => e),
+      .catch((error: unknown) => error),
   ).toBeInstanceOf(NoRowsError);
 
   // models, and the auxiliary database
@@ -118,7 +118,7 @@ test("the async resolvers read on the pool what the synchronous ones read", asyn
   const err = (await modelQuery(app, new Demo())
     .where(newExp("missing_column = 1"))
     .allAsync()
-    .catch((e) => e)) as Error & { code?: string };
+    .catch((error: unknown) => error)) as Error & { code?: string };
   expect(err.message).toBe(
     "no such column: missing_column; failed query: SELECT {{demo}}.* FROM `demo` WHERE missing_column = 1",
   );
@@ -143,21 +143,21 @@ test("the pool's connections are read-only and use upstream's pragmas", async ()
   for (const p of connectPragmas) {
     const [, name, value] = /^(\w+)\((.*)\)$/.exec(p)!;
     const expected: Record<string, unknown> = {
-      busy_timeout: 10000,
+      busy_timeout: 10_000,
       journal_mode: "wal",
-      journal_size_limit: 200000000,
+      journal_size_limit: 200_000_000,
       synchronous: 1,
       foreign_keys: 1,
       legacy_alter_table: 0,
       temp_store: 2,
-      cache_size: -32000,
+      cache_size: -32_000,
     };
     expect([name, await pragma(name!)]).toEqual([name, expected[name!] ?? value]);
   }
   const err = (await db
     .newQuery("INSERT INTO demo (id) VALUES ('x') RETURNING id")
     .allAsync()
-    .catch((e) => e)) as Error;
+    .catch((error: unknown) => error)) as Error;
   expect(err.message).toBe("attempt to write a readonly database");
 });
 
@@ -175,7 +175,7 @@ test("a read on the pool sees what the main thread committed before it", async (
 
 test("in a transaction the async resolvers read on its connection", async () => {
   const app = open({ readWorkers: 2 });
-  let inside: Promise<unknown[]> | null = null;
+  let inside: Promise<Array<unknown>> | null = null;
   expect(() =>
     runInTransaction(app, (txApp) => {
       txApp.db().insert("demo", { id: "uncommitted", title: "x" }).execute();
@@ -208,8 +208,8 @@ test("a timed-out read fails at the deadline without blocking other requests", a
         try {
           await modelQuery(app, new Demo()).where(slowWhere).allAsync();
           return new Response("done");
-        } catch (err) {
-          return new Response((err as Error).message, { status: 400 });
+        } catch (error) {
+          return new Response((error as Error).message, { status: 400 });
         }
       },
       "/view": async () =>
@@ -259,7 +259,7 @@ test("a prepared query's async resolvers read on the pool and honor the deadline
 
   const q = modelQuery(app, new Demo()).where(slowWhere).build().prepare();
   const start = performance.now();
-  const pending = q.allAsync().catch((e) => e as Error);
+  const pending = q.allAsync().catch((error: unknown) => error as Error);
   // the statement runs on the worker, not on this thread
   expect(performance.now() - start).toBeLessThan(100);
   const err = await pending;
@@ -289,7 +289,7 @@ test("a pooled result that arrives after the deadline fails the query", async ()
   // its result is delivered before the timer runs
   const pending = q()
     .oneAsync()
-    .catch((e) => e as Error);
+    .catch((error: unknown) => error as Error);
   clock += 20_000;
   const start = performance.now();
   const err = await pending;
@@ -313,7 +313,7 @@ test("waiting for a free worker counts towards the deadline", async () => {
   const err = (await modelQuery(app, new Demo())
     .where(new HashExp({ id: "id1" }))
     .oneAsync()
-    .catch((e) => e)) as Error;
+    .catch((error: unknown) => error)) as Error;
   expect(err.message).toBe(
     "context deadline exceeded; failed query: SELECT {{demo}}.* FROM `demo` WHERE `id`={:p0}",
   );
@@ -362,7 +362,8 @@ test("timed-out statements never leave the pool without a live worker", async ()
     modelQuery(app, new Demo())
       .where(slowWhere)
       .allAsync()
-      .catch((e: Error) => e.message);
+      // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
+      .catch((error: Error) => error.message);
   const cheap = () =>
     modelQuery(app, new Demo())
       .where(new HashExp({ id: "id7" }))
@@ -455,8 +456,12 @@ test("closing the databases fails the pool's queued and running reads", async ()
   const running = app.concurrentDB().select("count(*)").from("demo").where(slowWhere).rowAsync();
   const queued = app.concurrentDB().select("count(*)").from("demo").rowAsync();
   app.close();
-  expect(((await running.catch((e) => e)) as Error).message).toBe("sql: database is closed");
-  expect(((await queued.catch((e) => e)) as Error).message).toBe("sql: database is closed");
+  expect(((await running.catch((error: unknown) => error)) as Error).message).toBe(
+    "sql: database is closed",
+  );
+  expect(((await queued.catch((error: unknown) => error)) as Error).message).toBe(
+    "sql: database is closed",
+  );
   await app.closed();
   expect(app.readPool()!.stats()).toEqual({ workers: 0, busy: 0, queued: 0, abandoned: 0 });
 });
@@ -477,7 +482,7 @@ test("a cancelled query's async resolvers fail before reading on the pool", asyn
   ]) {
     const err = await run().then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     expect(err).toBeInstanceOf(ContextCanceledError);
     expect((err as Error).cause).toBe(cause);

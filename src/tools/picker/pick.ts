@@ -13,14 +13,11 @@
 
 import { trimSpace } from "@/collections/go-strings";
 import { SearchResult } from "@/search/provider";
-import {
-  initModifer,
-  type Modifier,
-  type ModifierFactoryFunc,
-  Modifiers,
-} from "@/tools/picker/modifiers";
+import { initModifer, Modifiers } from "@/tools/picker/modifiers";
+import type { Modifier, ModifierFactoryFunc } from "@/tools/picker/modifiers";
 import { Tokenizer } from "@/tools/tokenizer/tokenizer";
 import { anyType, marshal, setOwn, unmarshal } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrInvalidModifierData = new Error(
   "failed to apply some of the field modifiers for the provided data",
@@ -95,7 +92,7 @@ export function pick(
   // ---
 
   // special cases to preserve the same fields format when used with single item or search results data.
-  const isSearchResult = data instanceof SearchResult;
+  const isSearchResult = isInstance<SearchResult<unknown>>(SearchResult, data);
 
   try {
     if (isSearchResult) {
@@ -105,11 +102,11 @@ export function pick(
     } else {
       pickParsedFields(decoded, parsedFields);
     }
-  } catch (err) {
-    if (err instanceof PickPanic) {
-      throw err;
+  } catch (error) {
+    if (isInstance(PickPanic, error)) {
+      throw error;
     }
-    throw new InvalidModifierDataError(err);
+    throw new InvalidModifierDataError(error);
   }
 
   return decoded;
@@ -182,6 +179,11 @@ function goTypeName(v: unknown): string {
       return "float64";
     case "boolean":
       return "bool";
+    case "bigint":
+    case "function":
+    case "object":
+    case "symbol":
+    case "undefined":
   }
   return Array.isArray(v) ? "[]interface {}" : "map[string]interface {}";
 }

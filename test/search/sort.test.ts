@@ -3,20 +3,15 @@
 import { expect, test } from "bun:test";
 
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
-import {
-  parseSortFromString,
-  type SortField,
-  SortAsc,
-  SortDesc,
-  sortFieldBuildExpr,
-} from "@/search/sort";
+import { parseSortFromString, SortAsc, SortDesc, sortFieldBuildExpr } from "@/search/sort";
+import type { SortField } from "@/search/sort";
 import { marshalStruct } from "@/fields/field";
 
 test("SortField.BuildExpr", () => {
   const resolver = newSimpleFieldResolver("test1", "test2", "test3", "test4.sub");
 
   // [sortField, expectError, expectExpression]
-  const scenarios: [SortField, boolean, string][] = [
+  const scenarios: Array<[SortField, boolean, string]> = [
     // empty
     [{ name: "", direction: SortDesc }, true, ""],
     // unknown field
@@ -40,8 +35,8 @@ test("SortField.BuildExpr", () => {
     let err: unknown;
     try {
       result = sortFieldBuildExpr(sortField, resolver);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
 
     expect([sortField.name, err !== undefined]).toEqual([sortField.name, expectError]);
@@ -54,7 +49,7 @@ test("SortField.BuildExpr", () => {
 });
 
 // json.Marshal of []SortField
-export function marshalSort(fields: readonly SortField[]): string {
+export function marshalSort(fields: ReadonlyArray<SortField>): string {
   return (
     "[" +
     fields
@@ -71,7 +66,7 @@ export function marshalSort(fields: readonly SortField[]): string {
 
 test("ParseSortFromString", () => {
   // [value, expected]
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", `[{"name":"","direction":"ASC"}]`],
     ["test", `[{"name":"test","direction":"ASC"}]`],
     ["+test", `[{"name":"test","direction":"ASC"}]`],

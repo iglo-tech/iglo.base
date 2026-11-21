@@ -11,17 +11,18 @@ import { Store } from "@/tools/store/store";
 import { toStringSlice } from "@/tools/types/cast";
 import { GeoPoint } from "@/tools/types/geo-point";
 import { isJSONMarshaler, stringType, unmarshalSlicePartial } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 const cachedPatterns = new Store<string, RegExp>();
 
 // SubtractSlice returns a new array with only the base elements that don't
 // exist in subtract.
-export function subtractSlice<T>(base: readonly T[], subtract: readonly T[]): T[] {
+export function subtractSlice<T>(base: ReadonlyArray<T>, subtract: ReadonlyArray<T>): Array<T> {
   return base.filter((b) => !existInSlice(b, subtract));
 }
 
 // ExistInSlice checks whether an element exists in a list.
-export function existInSlice<T>(item: T, list: readonly T[]): boolean {
+export function existInSlice<T>(item: T, list: ReadonlyArray<T>): boolean {
   for (const v of list) {
     if (v === item) {
       return true;
@@ -42,7 +43,7 @@ export function existInSlice<T>(item: T, list: readonly T[]): boolean {
 // identity escapes such as \@ are valid without the u flag. Unlike RE2, a
 // JS `.` does not match \r, \u2028 or \u2029; none of those patterns uses
 // `.` unescaped.
-export function existInSliceWithRegex(str: string, list: readonly string[]): boolean {
+export function existInSliceWithRegex(str: string, list: ReadonlyArray<string>): boolean {
   for (const field of list) {
     const isRegex = field.startsWith("^") && field.endsWith("$");
     if (!isRegex) {
@@ -74,7 +75,7 @@ export function existInSliceWithRegex(str: string, list: readonly string[]): boo
 
 // ToInterfaceSlice converts a typed array to an array of unknown values (a
 // shallow copy; JS needs no conversion).
-export function toInterfaceSlice<T>(list: readonly T[]): unknown[] {
+export function toInterfaceSlice<T>(list: ReadonlyArray<T>): Array<unknown> {
   return [...list];
 }
 
@@ -88,8 +89,8 @@ function isZero(v: Comparable): boolean {
 // elements are one basic Go type (string, int, float64, bool); its zero
 // value ("", 0, false) is dropped. NaN is never equal to itself, so every
 // NaN is kept, as in Go.
-export function nonzeroUniques<T extends Comparable>(list: readonly T[]): T[] {
-  const result: T[] = [];
+export function nonzeroUniques<T extends Comparable>(list: ReadonlyArray<T>): Array<T> {
+  const result: Array<T> = [];
   const exist = new Set<T>();
   for (const val of list) {
     if (isZero(val)) {
@@ -116,8 +117,8 @@ export function nonzeroUniques<T extends Comparable>(list: readonly T[]): T[] {
 // Upstream's JSONArray values take the json.Marshaler branch. Here a
 // JSONArray is a plain array and takes the cast branch, which gives the
 // same strings for the string elements callers store in them.
-export function toUniqueStringSlice(value: unknown): string[] {
-  let result: string[] = [];
+export function toUniqueStringSlice(value: unknown): Array<string> {
+  let result: Array<string> = [];
   if (value === null || value === undefined) {
     // nothing to cast
   } else if (typeof value === "string") {
@@ -125,7 +126,7 @@ export function toUniqueStringSlice(value: unknown): string[] {
       // check if it is a json encoded array of strings
       if (value.includes("[")) {
         const [decoded, err] = unmarshalSlicePartial(value, stringType);
-        result = (decoded as string[] | undefined) ?? [];
+        result = (decoded as Array<string> | undefined) ?? [];
         if (err !== undefined) {
           // not a json array, just add the string as single array element
           result.push(value);
@@ -136,11 +137,12 @@ export function toUniqueStringSlice(value: unknown): string[] {
     }
   } else if (Array.isArray(value)) {
     result = toStringSlice(value);
-  } else if (isJSONMarshaler(value) && !(value instanceof GeoPoint)) {
+  } else if (isJSONMarshaler(value) && !isInstance(GeoPoint, value)) {
     // upstream's GeoPoint is not a json.Marshaler (its marshalJSON here is
     // only the encoding adapter), so it takes the cast branch below
     result =
-      (unmarshalSlicePartial(value.marshalJSON(), stringType)[0] as string[] | undefined) ?? [];
+      (unmarshalSlicePartial(value.marshalJSON(), stringType)[0] as Array<string> | undefined) ??
+      [];
   } else {
     result = toStringSlice(value);
   }
@@ -149,11 +151,11 @@ export function toUniqueStringSlice(value: unknown): string[] {
 
 // ToChunks splits list into chunks of chunkSize (zero or negative is
 // normalized to 1).
-export function toChunks<T>(list: readonly T[], chunkSize: number): T[][] {
+export function toChunks<T>(list: ReadonlyArray<T>, chunkSize: number): Array<Array<T>> {
   if (chunkSize <= 0) {
     chunkSize = 1;
   }
-  const chunks: T[][] = [];
+  const chunks: Array<Array<T>> = [];
   for (let i = 0; i < list.length; i += chunkSize) {
     chunks.push(list.slice(i, i + chunkSize));
   }

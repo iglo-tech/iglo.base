@@ -8,12 +8,14 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Embedded, Field, ValidateStruct, type FieldRules } from "@/validation/struct";
+import { Embedded, Field, ValidateStruct } from "@/validation/struct";
+import type { FieldRules } from "@/validation/struct";
 import { Length } from "@/validation/length";
 import { Required } from "@/validation/required";
 import { Each } from "@/validation/each";
 import { NewInternalError } from "@/validation/error";
-import { Skip, Validate, type Rule, type Validatable } from "@/validation/validation";
+import { Skip, Validate } from "@/validation/validation";
+import type { Rule, Validatable } from "@/validation/validation";
 
 // a Go string type with a Validate method
 class String123 implements Validatable {
@@ -63,7 +65,7 @@ interface Model1 {
   E: String123 | null;
   F: String123 | null;
   G: string;
-  H: string[];
+  H: Array<string>;
   I: Record<string, string>;
 }
 
@@ -130,7 +132,12 @@ describe("struct", () => {
   const m4 = new Model2(new Model3("abc"), new Model3("abc"), "");
   const m5 = new Model2(new Model3("internal"));
 
-  const rowsValidate: { tag: string; model: unknown; rules: FieldRules[]; err: string }[] = [
+  const rowsValidate: Array<{
+    tag: string;
+    model: unknown;
+    rules: Array<FieldRules>;
+    err: string;
+  }> = [
     // empty rules
     { tag: "t1.1", model: m1, rules: [], err: "" },
     { tag: "t1.2", model: m1, rules: [Field("A", m1.A), Field("B", m1.B)], err: "" },

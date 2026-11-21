@@ -42,7 +42,8 @@ import { NoRowsError } from "@/db/dbx/rows";
 import { runInTransaction } from "@/db/tx";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { Settings } from "@/settings/settings-model";
-import { type Field, type FieldApp, FieldNameId } from "@/fields/field";
+import { FieldNameId } from "@/fields/field";
+import type { Field, FieldApp } from "@/fields/field";
 import { RelationField } from "@/fields/relation";
 import type { Record } from "@/records/record-model";
 import { recordQuery, recordsTarget } from "@/records/record-query";
@@ -51,6 +52,7 @@ import type { Cron } from "@/tools/cron/cron";
 import { existInSlice, nonzeroUniques, toInterfaceSlice } from "@/tools/list/list";
 import type { Store } from "@/tools/store/store";
 import type { Broker } from "@/tools/subscriptions/broker";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const StoreKeyCachedCollections = "pbAppCachedCollections";
 
@@ -85,7 +87,7 @@ export interface CollectionsApp {
   // transaction, for a caller that must wait for them (Go's runAfterFuncs
   // ends before RunInTransaction returns); without it their failures are
   // logged
-  readonly afterTransaction?: Promise<void>[];
+  readonly afterTransaction?: Array<Promise<void>>;
   // tells the other instances on this pb_data that the collections changed
   // (src/app/notify-watcher.ts); absent where nothing watches
   readonly notify?: Notifier;
@@ -117,8 +119,8 @@ export function collectionQuery(app: CollectionsApp): SelectQuery {
 //	findAllCollections(app, "auth", "view") // only auth and view collections
 export function findAllCollections(
   app: CollectionsApp,
-  ...collectionTypes: string[]
-): Collection[] {
+  ...collectionTypes: Array<string>
+): Array<Collection> {
   const q = collectionQuery(app);
 
   const types = nonzeroUniques(collectionTypes);
@@ -154,9 +156,9 @@ export function findCollectionByNameOrId(app: CollectionsApp, nameOrId: string):
 }
 
 // the cached collections (undefined when the cache is not initialized)
-function cachedCollections(app: CollectionsApp): Collection[] | undefined {
+function cachedCollections(app: CollectionsApp): Array<Collection> | undefined {
   const cached = app.store.get(StoreKeyCachedCollections);
-  return Array.isArray(cached) ? (cached as Collection[]) : undefined;
+  return Array.isArray(cached) ? (cached as Array<Collection>) : undefined;
 }
 
 // FindCachedCollectionByNameOrId is similar to findCollectionByNameOrId
@@ -204,8 +206,8 @@ export function findCachedCollectionByNameOrId(app: CollectionsApp, nameOrId: st
 export function findCollectionReferences(
   app: CollectionsApp,
   collection: Collection,
-  ...excludeIds: string[]
-): Map<Collection, Field[]> {
+  ...excludeIds: Array<string>
+): Map<Collection, Array<Field>> {
   const query = collectionQuery(app);
 
   const uniqueExcludeIds = nonzeroUniques(excludeIds);
@@ -238,8 +240,8 @@ export function findCollectionReferences(
 export function findCachedCollectionReferences(
   app: CollectionsApp,
   collection: Collection,
-  ...excludeIds: string[]
-): Map<Collection, Field[]> {
+  ...excludeIds: Array<string>
+): Map<Collection, Array<Field>> {
   const collections = cachedCollections(app);
   if (collections === undefined) {
     // cache is not initialized yet (eg. run in a system migration)
@@ -253,14 +255,14 @@ export function findCachedCollectionReferences(
 }
 
 function relationReferences(
-  collections: readonly Collection[],
+  collections: ReadonlyArray<Collection>,
   collection: Collection,
-): Map<Collection, Field[]> {
-  const result = new Map<Collection, Field[]>();
+): Map<Collection, Array<Field>> {
+  const result = new Map<Collection, Array<Field>>();
 
   for (const c of collections) {
     for (const rawField of c.fields) {
-      if (rawField instanceof RelationField && rawField.collectionId === collection.id) {
+      if (isInstance(RelationField, rawField) && rawField.collectionId === collection.id) {
         const refs = result.get(c);
         if (refs === undefined) {
           result.set(c, [rawField]);
@@ -282,7 +284,7 @@ function relationReferences(
 export function isCollectionNameUnique(
   app: CollectionsApp,
   name: string,
-  ...excludeIds: string[]
+  ...excludeIds: Array<string>
 ): boolean {
   if (name === "") {
     return false;
@@ -365,7 +367,7 @@ export function normalizeViewQueryId(app: CollectionsApp, query: string): string
   const rawParsed = new IdentifiersParser();
   rawParsed.parse(query);
 
-  const columns: string[] = [];
+  const columns: Array<string> = [];
   for (const col of rawParsed.columns) {
     if (col.alias === FieldNameId) {
       columns.push(`CAST([[${col.alias}]] as TEXT) [[${col.alias}]]`);
@@ -378,11 +380,14 @@ export function normalizeViewQueryId(app: CollectionsApp, query: string): string
 }
 
 // resaveViewsWithChangedFields updates all view collections with changed fields.
-export function resaveViewsWithChangedFields(app: CollectionsApp, ...excludeIds: string[]): void {
+export function resaveViewsWithChangedFields(
+  app: CollectionsApp,
+  ...excludeIds: Array<string>
+): void {
   const collections = withDriverErrors(() => findAllCollections(app, CollectionTypeView));
 
   runInAppTransaction(app, (txApp) => {
-    const collectionErrors: Error[] = [];
+    const collectionErrors: Array<Error> = [];
 
     for (const collection of collections) {
       if (excludeIds.length > 0 && existInSlice(collection.id, excludeIds)) {
@@ -419,8 +424,8 @@ export function resaveViewsWithChangedFields(app: CollectionsApp, ...excludeIds:
 
       try {
         check();
-      } catch (err) {
-        const cause = err instanceof Error ? err : new Error(String(err));
+      } catch (error) {
+        const cause = error instanceof Error ? error : new Error(String(error));
         collectionErrors.push(new Error(`[${collection.name}] ${cause.message}`, { cause }));
       }
     }

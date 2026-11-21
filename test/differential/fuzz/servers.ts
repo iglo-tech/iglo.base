@@ -17,11 +17,14 @@ import {
   tagRecords,
 } from "@test/differential/fuzz/data";
 import type { Who } from "@test/differential/fuzz/generate";
-import { type ApiCollection, buildModel, type Model } from "@test/differential/fuzz/model";
+import { buildModel } from "@test/differential/fuzz/model";
+import type { ApiCollection, Model } from "@test/differential/fuzz/model";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 export const listRules: { [collection: string]: string } = {
   // a relation in a rule (the fixture's demo1 has a null rule, which users
@@ -46,7 +49,7 @@ export interface FuzzServers {
 }
 
 // one fixture record of each identity
-const identities: { who: Exclude<Who, "guest">; collection: string; id: string }[] = [
+const identities: Array<{ who: Exclude<Who, "guest">; collection: string; id: string }> = [
   { who: "users", collection: "users", id: "4q1xlclmfloku33" },
   { who: "clients", collection: "clients", id: "gk390qegs4y47wn" },
   { who: "nologin", collection: "nologin", id: "dc49k6jgejn40h3" },
@@ -58,9 +61,13 @@ async function getJson(
   authorization: string,
   init: RequestInit = {},
 ): Promise<unknown> {
+  const headers: Record<string, string> = { authorization };
+  if (init.body !== undefined) {
+    Object.assign(headers, jsonHeader);
+  }
   const res = await fetch(url, {
     ...init,
-    headers: { authorization, ...(init.body === undefined ? {} : jsonHeader) },
+    headers,
   });
   if (res.status !== 200) {
     throw new Error(`${init.method ?? "GET"} ${url}: ${res.status} ${await res.text()}`);
@@ -118,14 +125,14 @@ async function mintTokens(url: string): Promise<TokenSet> {
 
 async function readModel(url: string, token: string): Promise<Model> {
   const list = (await getJson(`${url}/api/collections?perPage=500&sort=name`, token)) as {
-    items: ApiCollection[];
+    items: Array<ApiCollection>;
   };
-  const records = new Map<string, Record<string, unknown>[]>();
+  const records = new Map<string, Array<Record<string, unknown>>>();
   for (const c of list.items) {
     const page = (await getJson(
       `${url}/api/collections/${c.name}/records?perPage=500&sort=id`,
       token,
-    )) as { items: Record<string, unknown>[] };
+    )) as { items: Array<Record<string, unknown>> };
     records.set(c.name, page.items);
   }
   return buildModel(list.items, records);
@@ -136,7 +143,7 @@ export async function startFuzzServers(): Promise<FuzzServers> {
   const source = join(root, "pb_data");
   const upstreamDir = join(root, "upstream", "pb_data");
   const igloBaseDir = join(root, "iglo-base", "pb_data");
-  let started: PromiseSettledResult<UpstreamServer | RunningServer>[] = [];
+  let started: Array<PromiseSettledResult<UpstreamServer | RunningServer>> = [];
   const stop = async (): Promise<void> => {
     await Promise.allSettled(
       started.map((s) => (s.status === "fulfilled" ? s.value.stop() : undefined)),

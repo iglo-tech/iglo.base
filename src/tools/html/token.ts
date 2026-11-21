@@ -83,7 +83,7 @@ export interface Token {
   type: TokenType;
   dataAtom: string;
   data: string;
-  attr: Attribute[];
+  attr: Array<Attribute>;
 }
 
 // tagString returns a string representation of a tag Token's Data and Attr.
@@ -155,7 +155,7 @@ export class Tokenizer {
   // When complete, pendingAttr is pushed onto attr. nAttrReturned is
   // incremented on each call to tagAttr.
   private pendingAttr: [span, span] = [newSpan(), newSpan()];
-  private attr: [span, span][] = [];
+  private attr: Array<[span, span]> = [];
   private attrNames = new Set<string>();
   private nAttrReturned = 0;
   // rawTag is the "script" in "</script>" that closes the next token. If
@@ -838,7 +838,7 @@ export class Tokenizer {
 
   // startTagIn returns whether the start tag in buf[data.start:data.end]
   // case-insensitively matches any element of ss.
-  private startTagIn(...ss: string[]): boolean {
+  private startTagIn(...ss: Array<string>): boolean {
     loop: for (const s of ss) {
       if (this.data.end - this.data.start !== s.length) {
         continue loop;
@@ -1370,7 +1370,7 @@ function replaceNUL(s: Uint8Array): Uint8Array {
   if (!s.includes(nul)) {
     return s.slice();
   }
-  const out: number[] = [];
+  const out: Array<number> = [];
   for (const c of s) {
     if (c === nul) {
       out.push(...replacement);

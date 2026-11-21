@@ -32,18 +32,13 @@
 
 import type { Database, SQLQueryBindings } from "bun:sqlite";
 
-import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
+import { EmbeddedBuilder } from "@/db/dbx/builder";
+import type { Builder } from "@/db/dbx/builder";
 import { SqliteBuilder } from "@/db/dbx/builder-sqlite";
 import { StandardBuilder } from "@/db/dbx/builder-standard";
 import { execStatements, queryStatements, splitStatements } from "@/db/dbx/driver";
-import {
-  Stmt,
-  type AsyncReader,
-  type ExecLogFunc,
-  type ExecResult,
-  type Executor,
-  type QueryLogFunc,
-} from "@/db/dbx/query";
+import { Stmt } from "@/db/dbx/query";
+import type { AsyncReader, ExecLogFunc, ExecResult, Executor, QueryLogFunc } from "@/db/dbx/query";
 import type { Rows } from "@/db/dbx/rows";
 import { Tx, TxDoneError, TxExecutor } from "@/db/dbx/tx";
 
@@ -59,7 +54,7 @@ const builderFuncMap: Readonly<Record<string, BuilderFunc>> = {
 
 // Errors represents a list of errors.
 export class Errors extends Error {
-  constructor(readonly errors: unknown[]) {
+  constructor(readonly errors: Array<unknown>) {
     super(errors.map((e) => (e instanceof Error ? e.message : String(e))).join("\n"));
     this.name = "Errors";
   }
@@ -77,11 +72,11 @@ class ConnExecutor implements Executor {
     }
   }
 
-  exec(sql: string, args: SQLQueryBindings[]): ExecResult {
+  exec(sql: string, args: Array<SQLQueryBindings>): ExecResult {
     return execStatements(this.conn, splitStatements(sql), args, null);
   }
 
-  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows {
+  query(sql: string, args: Array<SQLQueryBindings>, own: boolean): Rows {
     return queryStatements(this.conn, splitStatements(sql), args, null, own);
   }
 
@@ -167,25 +162,25 @@ export class DB extends EmbeddedBuilder {
         Promise.resolve(result).catch(() => {});
         throw new Error("transaction function must be synchronous (it returned a promise)");
       }
-    } catch (err) {
+    } catch (error) {
       try {
         tx.rollback();
-      } catch (err2) {
-        if (err2 instanceof TxDoneError) {
-          throw err;
+      } catch (error_) {
+        if (error_ instanceof TxDoneError) {
+          throw error;
         }
-        throw new Errors([err, err2]);
+        throw new Errors([error, error_]);
       }
-      throw err;
+      throw error;
     }
 
     try {
       tx.commit();
-    } catch (err) {
-      if (err instanceof TxDoneError) {
+    } catch (error) {
+      if (error instanceof TxDoneError) {
         return;
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -233,17 +228,17 @@ export class DB extends EmbeddedBuilder {
   // Not in dbx: a placeholder named in `reals` is given as
   // `+CAST(placeholder AS REAL)`, a REAL value with no affinity, which is how
   // the Go SQLite driver binds a float64 (see Float64 in query.ts).
-  processSQL(s: string, reals?: ReadonlySet<string>): [string, string[]] {
-    const placeholders: string[] = [];
+  processSQL(s: string, reals?: ReadonlySet<string>): [string, Array<string>] {
+    const placeholders: Array<string> = [];
     let count = 0;
-    s = s.replace(plRegex, (m) => {
+    s = s.replaceAll(plRegex, (m) => {
       count++;
       const name = m.slice(2, -1);
       placeholders.push(name);
       const placeholder = this.generatePlaceholder(count);
       return reals?.has(name) === true ? `+CAST(${placeholder} AS REAL)` : placeholder;
     });
-    s = s.replace(quoteRegex, (m) => {
+    s = s.replaceAll(quoteRegex, (m) => {
       if (m[0] === "{") {
         return this.quoteTableName(m.slice(2, -2));
       }

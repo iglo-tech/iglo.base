@@ -27,7 +27,7 @@ export class Pattern {
     // The representation of a path differs from the surface syntax, which
     // simplifies most algorithms: a trailing slash is a multi wildcard with
     // an empty name, and "/{$}" is a literal "/" segment.
-    readonly segments: readonly Segment[],
+    readonly segments: ReadonlyArray<Segment>,
   ) {}
 
   toString(): string {
@@ -35,11 +35,11 @@ export class Pattern {
   }
 
   lastSegment(): Segment {
-    return this.segments[this.segments.length - 1] as Segment;
+    return this.segments.at(-1) as Segment;
   }
 
   // wildcard names, in the order their matches are recorded
-  wildcardNames(): string[] {
+  wildcardNames(): Array<string> {
     return this.segments.filter((s) => s.wild && s.s !== "").map((s) => s.s);
   }
 }
@@ -97,7 +97,7 @@ export function parsePattern(s: string): Pattern {
     throw fail("non-CONNECT pattern with unclean path can never match");
   }
 
-  const segments: Segment[] = [];
+  const segments: Array<Segment> = [];
   const seenNames = new Set<string>(); // remember wildcard names to catch dups
   while (rest.length > 0) {
     // Invariant: rest[0] == '/'.
@@ -125,7 +125,7 @@ export function parsePattern(s: string): Pattern {
     if (brace !== 0) {
       throw fail("bad wildcard segment (must start with '{')");
     }
-    if (seg[seg.length - 1] !== "}") {
+    if (seg.at(-1) !== "}") {
       throw fail("bad wildcard segment (must end with '}')");
     }
     let name = seg.slice(1, -1);
@@ -190,7 +190,7 @@ export function unescapeBytes(s: string): string | undefined {
   if (!s.includes("%")) {
     return s;
   }
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   const encoder = new TextEncoder();
   for (let i = 0; i < s.length;) {
     const c = s[i] as string;
@@ -509,7 +509,7 @@ export class RoutingNode<H> {
   // addSegments adds the given segments to the tree rooted at n.
   // If there are no segments, then n is a leaf node that holds
   // the given pattern and handler.
-  addSegments(segs: readonly Segment[], p: Pattern, h: H): void {
+  addSegments(segs: ReadonlyArray<Segment>, p: Pattern, h: H): void {
     if (segs.length === 0) {
       this.set(p, h);
       return;
@@ -572,7 +572,7 @@ export function match<H>(
   host: string,
   method: string,
   path: string,
-): [RoutingNode<H> | undefined, string[]] {
+): [RoutingNode<H> | undefined, Array<string>] {
   if (host !== "") {
     // There is a host. If there is a pattern that specifies that host and it
     // matches, we are done. If the pattern doesn't match, fall through to
@@ -592,7 +592,7 @@ function matchMethodAndPath<H>(
   n: RoutingNode<H> | undefined,
   method: string,
   path: string,
-): [RoutingNode<H> | undefined, string[]] {
+): [RoutingNode<H> | undefined, Array<string>] {
   if (!n) {
     return [undefined, []];
   }
@@ -618,8 +618,8 @@ function matchMethodAndPath<H>(
 function matchPath<H>(
   n: RoutingNode<H> | undefined,
   path: string,
-  matches: string[],
-): [RoutingNode<H> | undefined, string[]] {
+  matches: Array<string>,
+): [RoutingNode<H> | undefined, Array<string>] {
   if (!n) {
     return [undefined, []];
   }
@@ -729,13 +729,13 @@ export function cleanSlashPath(p: string): string {
     return ".";
   }
   const rooted = p.startsWith("/");
-  const out: string[] = [];
+  const out: Array<string> = [];
   for (const part of p.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
     if (part === "..") {
-      if (out.length > 0 && out[out.length - 1] !== "..") {
+      if (out.length > 0 && out.at(-1) !== "..") {
         out.pop();
       } else if (!rooted) {
         out.push("..");
@@ -762,7 +762,7 @@ export function cleanPath(p: string): string {
   let np = cleanSlashPath(p);
   // path.Clean removes trailing slash except for root;
   // put the trailing slash back if necessary.
-  if (p[p.length - 1] === "/" && np !== "/") {
+  if (p.at(-1) === "/" && np !== "/") {
     np += "/";
   }
   return np;
@@ -807,7 +807,7 @@ function exactMatch<H>(n: RoutingNode<H> | undefined, path: string): boolean {
   }
   // If the path doesn't end in a trailing slash, then the multi match
   // is non-empty.
-  if (path.length > 0 && path[path.length - 1] !== "/") {
+  if (path.length > 0 && path.at(-1) !== "/") {
     return false;
   }
   // Only patterns ending in {$} or a multi wildcard can
@@ -835,16 +835,16 @@ export interface MuxRequest {
 }
 
 export type MuxResult<H> =
-  | { kind: "handler"; handler: H; pattern: Pattern; matches: string[] }
+  | { kind: "handler"; handler: H; pattern: Pattern; matches: Array<string> }
   | { kind: "redirect"; url: string }
-  | { kind: "methodNotAllowed"; allow: string[] }
+  | { kind: "methodNotAllowed"; allow: Array<string> }
   | { kind: "notFound" };
 
 // ServeMux is an HTTP request multiplexer (routing only: the caller writes
 // the redirect, 404 and 405 responses with writeMuxResponse).
 export class ServeMux<H> {
   #tree = new RoutingNode<H>();
-  #patterns: Pattern[] = [];
+  #patterns: Array<Pattern> = [];
 
   // Handle registers the handler for the given pattern. It throws if the
   // pattern is invalid or conflicts with one that is already registered.
@@ -855,8 +855,8 @@ export class ServeMux<H> {
     let pat: Pattern;
     try {
       pat = parsePattern(patstr);
-    } catch (err) {
-      throw new Error(`parsing ${goQuote(patstr)}: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`parsing ${goQuote(patstr)}: ${(error as Error).message}`, { cause: error });
     }
     // Check for conflict.
     for (const pat2 of this.#patterns) {
@@ -879,7 +879,7 @@ export class ServeMux<H> {
     let host: string;
     let path: string;
     let n: RoutingNode<H> | undefined;
-    let matches: string[];
+    let matches: Array<string>;
     // CONNECT requests are not canonicalized.
     if (r.method === "CONNECT") {
       // If r.URL.Path is /tree and its handler is not registered,
@@ -942,7 +942,7 @@ export class ServeMux<H> {
     method: string,
     path: string,
     u: MuxRequest | undefined,
-  ): [RoutingNode<H> | undefined, string[], string | undefined] {
+  ): [RoutingNode<H> | undefined, Array<string>, string | undefined] {
     const [n, matches] = match(this.#tree, host, method, path);
     // We can terminate here if any of the following is true:
     // - We have an exact match already.
@@ -961,7 +961,7 @@ export class ServeMux<H> {
   }
 
   // matchingMethods return a sorted list of all methods that would match with the given host and path.
-  #matchingMethods(host: string, path: string): string[] {
+  #matchingMethods(host: string, path: string): Array<string> {
     const ms = new Set<string>();
     matchingMethods(this.#tree, host, path, ms);
     // matchOrRedirect will try appending a trailing slash if there is no match.

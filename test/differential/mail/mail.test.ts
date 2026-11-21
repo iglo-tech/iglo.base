@@ -32,7 +32,8 @@ import { join } from "node:path";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { freePort, startServer } from "@test/support/executable";
-import { type Mailpit, startMailpit } from "@test/support/mailpit";
+import { startMailpit } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners
@@ -43,9 +44,9 @@ interface Server {
   stop(): Promise<unknown>;
 }
 
-const roots: string[] = [];
-const running: Server[] = [];
-const mailpits: Mailpit[] = [];
+const roots: Array<string> = [];
+const running: Array<Server> = [];
+const mailpits: Array<Mailpit> = [];
 
 let mailpit: Mailpit;
 // SMTP AUTH required (user "mailer", password "secret"), insecure auth allowed
@@ -54,7 +55,7 @@ let authMailpit: Mailpit;
 let remoteMailpit: Mailpit;
 
 let stubDir: string;
-let servers: { name: "upstream" | "iglo.base"; server: Server; sendmailOut: string }[];
+let servers: Array<{ name: "upstream" | "iglo.base"; server: Server; sendmailOut: string }>;
 
 function newRoot(prefix: string): string {
   const root = mkdtempSync(join(tmpdir(), prefix));
@@ -190,9 +191,9 @@ async function clear(m: Mailpit): Promise<void> {
   await fetch(`${m.apiUrl}/api/v1/messages`, { method: "DELETE" });
 }
 
-async function messageIds(m: Mailpit): Promise<string[]> {
+async function messageIds(m: Mailpit): Promise<Array<string>> {
   const list = (await fetch(`${m.apiUrl}/api/v1/messages`).then((res) => res.json())) as {
-    messages: { ID: string }[];
+    messages: Array<{ ID: string }>;
   };
   return list.messages.map((msg) => msg.ID);
 }
@@ -220,16 +221,16 @@ async function onlyMessage(m: Mailpit): Promise<string> {
 
 interface Normalized {
   text: string;
-  claims: Record<string, unknown>[];
+  claims: Array<Record<string, unknown>>;
 }
 
 const jwtRegex = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g;
 
 function normalize(raw: string): Normalized {
-  let text = raw.replace(/\r\n/g, "\n");
+  let text = raw.replaceAll("\r\n", "\n");
 
   // Mailpit's Received header ends with the receive time
-  text = text.replace(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
+  text = text.replaceAll(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
 
   // SMTP messages only (sendmail adds its own)
   const date = /^Date: (.*)$/m.exec(text)?.[1];
@@ -252,12 +253,12 @@ function normalize(raw: string): Normalized {
   });
 
   // quoted-printable soft line breaks
-  text = text.replace(/=\n/g, "");
+  text = text.replaceAll("=\n", "");
 
-  text = text.replace(/\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z/g, "<datetime>");
+  text = text.replaceAll(/\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z/g, "<datetime>");
 
-  const claims: Record<string, unknown>[] = [];
-  text = text.replace(jwtRegex, (token) => {
+  const claims: Array<Record<string, unknown>> = [];
+  text = text.replaceAll(jwtRegex, (token) => {
     claims.push(
       JSON.parse(Buffer.from(token.split(".")[1] as string, "base64url").toString()) as Record<
         string,
@@ -295,9 +296,9 @@ async function both(
   request: (url: string) => Promise<Reply>,
   m?: Mailpit,
   expectMail = true,
-): Promise<{ replies: Reply[]; messages: string[] }> {
-  const replies: Reply[] = [];
-  const messages: string[] = [];
+): Promise<{ replies: Array<Reply>; messages: Array<string> }> {
+  const replies: Array<Reply> = [];
+  const messages: Array<string> = [];
   for (const { name, server } of servers) {
     await setup(server.url);
     if (m) {
@@ -556,7 +557,7 @@ describe("SMTP auth and failures", () => {
     );
   }
 
-  const invalid: [string, unknown][] = [
+  const invalid: Array<[string, unknown]> = [
     ["empty body", {}],
     ["unknown template", { template: "unknown", email: "to@example.com" }],
     ["invalid email", { template: "otp", email: "not an email" }],
@@ -585,7 +586,7 @@ describe("sendmail", () => {
     test.skipIf(hostSendmail)(
       template,
       async () => {
-        const replies: Reply[] = [];
+        const replies: Array<Reply> = [];
         for (const { server, sendmailOut } of servers) {
           rmSync(sendmailOut, { force: true });
           await patchSettings(server.url, { smtp: { enabled: false } });

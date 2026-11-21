@@ -20,10 +20,8 @@ import {
   structOf,
   textOf,
   unmarshalRequestData,
-  type MapRef,
-  type RequestData,
-  type StructType,
 } from "@/server/unmarshal-request-data";
+import type { MapRef, RequestData, StructType } from "@/server/unmarshal-request-data";
 
 const timeType = textOf((text) => {
   const d = new Date(text);
@@ -365,7 +363,7 @@ test("map destination infers values from the data", () => {
   const dst = ref.map as Record<string, unknown>;
 
   // -0 is checked separately: toEqual does not tell -0 and 0 apart
-  const number4 = dst.number4 as number[];
+  const number4 = dst.number4 as Array<number>;
   delete dst.number4;
 
   expect(dst).toEqual({
@@ -621,7 +619,7 @@ test("integers beyond 2^53 stay exact", () => {
     dst,
     type,
   );
-  expect(dst).toEqual({ I: -9223372036854775808n, U: 18446744073709551615n, S: 123 });
+  expect(dst).toEqual({ I: -9_223_372_036_854_775_808n, U: 18_446_744_073_709_551_615n, S: 123 });
 
   const fromJSON: Record<string, unknown> = {};
   unmarshalRequestData(
@@ -629,5 +627,5 @@ test("integers beyond 2^53 stay exact", () => {
     fromJSON,
     type,
   );
-  expect(fromJSON).toEqual({ I: 9007199254740993n, U: 9007199254740991, S: -1 });
+  expect(fromJSON).toEqual({ I: 9_007_199_254_740_993n, U: 9_007_199_254_740_991, S: -1 });
 });

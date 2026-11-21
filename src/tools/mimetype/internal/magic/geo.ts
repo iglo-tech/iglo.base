@@ -2,7 +2,7 @@
 
 import { beUint32, hasPrefix, leUint32 } from "@/tools/mimetype/go-bytes";
 
-const shapeTypes = [
+const shapeTypes = new Set([
   0, // Null shape
   1, // Point
   3, // Polyline
@@ -17,7 +17,7 @@ const shapeTypes = [
   25, // PolygonM
   28, // MultiPointM
   31, // MultiPatch
-];
+]);
 
 // Shp matches a shape format file.
 // https://www.esri.com/library/whitepapers/pdfs/shapefile.pdf
@@ -38,7 +38,7 @@ export function Shp(raw: Uint8Array, _limit: number): boolean {
     return false;
   }
 
-  return shapeTypes.includes(leUint32(raw, 108));
+  return shapeTypes.has(leUint32(raw, 108));
 }
 
 const shxSig = Uint8Array.of(0x00, 0x00, 0x27, 0x0a);

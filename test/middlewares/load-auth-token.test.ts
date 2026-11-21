@@ -13,7 +13,8 @@ import type { RequestEvent } from "@/app/event-request";
 import { findRecordById } from "@/records/record-query";
 import { newFileToken, newVerificationToken } from "@/records/record-tokens";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 import { serveTest } from "@test/support/router";
 
 const clock = { now: () => new Date(Date.UTC(2026, 9, 29)) };
@@ -41,7 +42,7 @@ async function authOf(
   if (options.preset !== undefined) {
     const preset = options.preset;
     // runs before loadAuthToken
-    router.bind({ priority: -99999, func: (e) => (preset(e), e.next()) });
+    router.bind({ priority: -99_999, func: (e) => (preset(e), e.next()) });
   }
   let seen = "";
   router.bind({

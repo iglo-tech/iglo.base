@@ -26,11 +26,11 @@ import { isIPInList } from "@/middlewares/superuser-ips-whitelist";
 import {
   findRateLimitRule,
   marshalRateLimitRule,
-  type RateLimitRule,
   RateLimitRuleAudienceAll,
   RateLimitRuleAudienceAuth,
   RateLimitRuleAudienceGuest,
 } from "@/settings/settings-model";
+import type { RateLimitRule } from "@/settings/settings-model";
 import type { Cron } from "@/tools/cron/cron";
 import { Store } from "@/tools/store/store";
 
@@ -74,7 +74,7 @@ export function rateLimit(): Handler<RequestEvent> {
 // (it replaces the default rate limit middleware of the route, having the same id).
 export function collectionPathRateLimit(
   collectionPathParam: string,
-  ...baseTags: string[]
+  ...baseTags: Array<string>
 ): Handler<RequestEvent> {
   if (collectionPathParam === "") {
     collectionPathParam = "collection";
@@ -90,8 +90,8 @@ export function collectionPathRateLimit(
           e.app,
           e.request.pathValue(collectionPathParam),
         );
-      } catch (err) {
-        return e.notFoundError("Missing or invalid collection context.", err);
+      } catch (error) {
+        return e.notFoundError("Missing or invalid collection context.", error);
       }
 
       const err = checkCollectionRateLimit(e, collection, ...baseTags);
@@ -111,13 +111,13 @@ export function collectionPathRateLimit(
 export function checkCollectionRateLimit(
   e: RequestEvent,
   collection: Collection,
-  ...baseTags: string[]
+  ...baseTags: Array<string>
 ): ApiError | undefined {
   if (skipRateLimit(e)) {
     return undefined;
   }
 
-  const labels: string[] = [];
+  const labels: Array<string> = [];
 
   let rtId = collection.id + e.request.pattern;
 
@@ -201,7 +201,7 @@ function skipRateLimit(e: RequestEvent): boolean {
 const defaultAuthAudience = [RateLimitRuleAudienceAll, RateLimitRuleAudienceAuth];
 const defaultGuestAudience = [RateLimitRuleAudienceAll, RateLimitRuleAudienceGuest];
 
-function defaultRateLimitAudience(e: RequestEvent): string[] {
+function defaultRateLimitAudience(e: RequestEvent): Array<string> {
   if (e.auth !== undefined) {
     return defaultAuthAudience;
   }
@@ -209,7 +209,7 @@ function defaultRateLimitAudience(e: RequestEvent): string[] {
   return defaultGuestAudience;
 }
 
-function defaultRateLimitLabels(e: RequestEvent): string[] {
+function defaultRateLimitLabels(e: RequestEvent): Array<string> {
   return [e.request.method + " " + e.request.path, e.request.path];
 }
 

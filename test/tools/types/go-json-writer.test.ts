@@ -6,12 +6,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  isCanonicalCompactJSON,
-  marshal,
-  marshalPartial,
-  type MarshalOptions,
-} from "@/tools/types/go-json";
+import { isCanonicalCompactJSON, marshal, marshalPartial } from "@/tools/types/go-json";
+import type { MarshalOptions } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 import {
   marshal as marshalBefore,
@@ -22,15 +18,15 @@ import {
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
-const optionSets: MarshalOptions[] = [
+const optionSets: Array<MarshalOptions> = [
   {},
   { allowInvalidUTF8: true },
   { allowDuplicateNames: true },
@@ -41,8 +37,8 @@ const optionSets: MarshalOptions[] = [
 function outcome(fn: () => string, partial: (e: unknown) => string): string {
   try {
     return "ok:" + fn();
-  } catch (err) {
-    return "err:" + (err as Error).message + "|" + partial(err);
+  } catch (error) {
+    return "err:" + (error as Error).message + "|" + partial(error);
   }
 }
 
@@ -58,7 +54,7 @@ const pieces = [
   "Zażółć gęślą jaźń",
   "日本語",
   "😀 emoji",
-  'quote " and \\ backslash',
+  String.raw`quote " and \ backslash`,
   "tab\t nl\n cr\r bs\b ff\f",
   "\u0000\u0001\u001f\u007f",
   "<tag> & more",
@@ -115,20 +111,20 @@ function randomJSONText(r: () => number, depth = 0): string {
         case 1:
           // escapes in the other spellings
           return JSON.stringify(raw)
-            .replaceAll("/", "\\/")
-            .replaceAll("é", "\\u00e9")
-            .replaceAll("\\n", "\\u000A");
+            .replaceAll("/", String.raw`\/`)
+            .replaceAll("é", String.raw`\u00e9`)
+            .replaceAll(String.raw`\n`, String.raw`\u000A`);
         case 2:
           return '"' + raw.replaceAll('"', "").replaceAll("\\", "") + '"';
         case 3:
-          return '"\\u001F\\u001f\\u0007\\u007f\\u00e9\\ud83d\\ude00\\ud800"';
+          return String.raw`"\u001F\u001f\u0007\u007f\u00e9\ud83d\ude00\ud800"`;
         default:
           return JSON.stringify(raw);
       }
     }
     case 6: {
       const n = Math.floor(r() * 4);
-      const items: string[] = [];
+      const items: Array<string> = [];
       for (let i = 0; i < n; i++) {
         items.push(ws() + randomJSONText(r, depth + 1) + ws());
       }
@@ -136,14 +132,14 @@ function randomJSONText(r: () => number, depth = 0): string {
     }
     default: {
       const n = Math.floor(r() * 4);
-      const items: string[] = [];
-      const names = ["a", "b", "1", "10", "2", "a", "é", "😀", "\\u0041", "\\/"];
+      const items: Array<string> = [];
+      const names = ["a", "b", "1", "10", "2", "a", "é", "😀", String.raw`\u0041`, String.raw`\/`];
       for (let i = 0; i < n; i++) {
         const name =
           r() < 0.7
             ? names[Math.floor(r() * names.length)]!
             : // oxlint-disable-next-line no-control-regex
-              randomString(r).replace(/["\\\u0000-\u001f]/g, "");
+              randomString(r).replaceAll(/["\\\u0000-\u001f]/g, "");
         items.push(
           ws() + '"' + name + '"' + ws() + ":" + ws() + randomJSONText(r, depth + 1) + ws(),
         );
@@ -198,7 +194,7 @@ describe("a marshaler's text", () => {
       "0",
       "-1.5e3",
       '"a"',
-      '"\\u0001\\"\\\\\\n"',
+      String.raw`"\u0001\"\\\n"`,
       '"日本語😀"',
       '{"a":[1,2,{"b":null}],"c":"d"}',
       "[]",
@@ -213,11 +209,11 @@ describe("a marshaler's text", () => {
       "1 ",
       '{"a": 1}',
       "[1, 2]",
-      '"\\/"',
-      '"\\u00e9"',
-      '"\\u001F"',
-      '"\\u0008"',
-      '"\\ud800"',
+      String.raw`"\/"`,
+      String.raw`"\u00e9"`,
+      String.raw`"\u001F"`,
+      String.raw`"\u0008"`,
+      String.raw`"\ud800"`,
       '"\ud800"',
       "01",
       "1.",
@@ -243,11 +239,11 @@ function randomValue(r: () => number, depth = 0): unknown {
     case 2:
       return r() < 0.5;
     case 3:
-      return [0, -0, 1, -1, 1.5, 1e21, 1e-7, 123456789012345680000, 2 ** 53, -(2 ** 53)][
+      return [0, -0, 1, -1, 1.5, 1e21, 1e-7, 123_456_789_012_345_680_000, 2 ** 53, -(2 ** 53)][
         Math.floor(r() * 10)
       ];
     case 4:
-      return [0n, 12345678901234567890n, -9223372036854775808n][Math.floor(r() * 3)];
+      return [0n, 12_345_678_901_234_567_890n, -9_223_372_036_854_775_808n][Math.floor(r() * 3)];
     case 5:
     case 6:
       return randomString(r);

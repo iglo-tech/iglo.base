@@ -20,12 +20,10 @@
 //
 // Upstream's down migrations are not ported (no `migrate down`, M3.7).
 
-import {
-  type Collection,
-  newAuthCollection,
-  newBaseCollection,
-} from "@/collections/collection-model";
-import { type CollectionsApp, findAllCollections } from "@/collections/collection-query";
+import { newAuthCollection, newBaseCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
+import { findAllCollections } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { wrapError } from "@/collections/view";
 import { AutodateField } from "@/fields/autodate";
@@ -91,8 +89,8 @@ export function resaveNonSystemCollections(txApp: CollectionsApp): void {
 function step(prefix: string, fn: () => void): void {
   try {
     fn();
-  } catch (err) {
-    throw wrapError(prefix, err);
+  } catch (error) {
+    throw wrapError(prefix, error);
   }
 }
 
@@ -201,7 +199,7 @@ function superusersCollection(): Collection {
   superusers.system = true;
   superusers.fields.add(new EmailField({ name: "email", system: true, required: true }));
   addAutodateFields(superusers, true);
-  superusers.authToken.duration = 86400; // 1 day
+  superusers.authToken.duration = 86_400; // 1 day
 
   return superusers;
 }
@@ -234,7 +232,7 @@ function usersCollection(): Collection {
 // The collections a fresh install creates, as new models (no ids are saved
 // here): the system collections and `users`. The schema file (src/schema)
 // compares them with the database to leave out what is unchanged.
-export function defaultCollections(): Collection[] {
+export function defaultCollections(): Array<Collection> {
   return [
     mfasCollection(),
     otpsCollection(),

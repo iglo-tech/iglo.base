@@ -15,13 +15,13 @@ export interface ExampleApp {
   dir: string;
 }
 
-export const EXAMPLE_APPS: readonly ExampleApp[] = [
+export const EXAMPLE_APPS: ReadonlyArray<ExampleApp> = [
   { name: "nextjs", dir: join(repoRoot, "examples/nextjs") },
   { name: "sveltekit", dir: join(repoRoot, "examples/sveltekit") },
 ];
 
 /** Runs a command in dir and fails with its output when it exits non-zero. */
-export async function run(cmd: string[], dir: string, timeoutMs = 900_000): Promise<void> {
+export async function run(cmd: Array<string>, dir: string, timeoutMs = 900_000): Promise<void> {
   const proc = Bun.spawn(cmd, {
     cwd: dir,
     stdout: "pipe",
@@ -50,7 +50,7 @@ export async function installAndBuild(app: ExampleApp): Promise<void> {
 }
 
 /** Every descendant of pid, deepest first, so that children die before their parent. */
-function descendants(pid: number): number[] {
+function descendants(pid: number): Array<number> {
   const out = Bun.spawnSync(["pgrep", "-P", String(pid)], { stdout: "pipe", stderr: "ignore" });
   const children = out.stdout
     .toString()
@@ -70,7 +70,7 @@ export async function killTree(proc: Bun.Subprocess): Promise<void> {
       // already gone
     }
   }
-  await Promise.race([proc.exited, Bun.sleep(5_000)]);
+  await Promise.race([proc.exited, Bun.sleep(5000)]);
   for (const pid of pids) {
     try {
       process.kill(pid, "SIGKILL");
@@ -127,7 +127,7 @@ export async function startApp(app: ExampleApp, env: Record<string, string>): Pr
       throw new Error(`${app.name} exited while starting:\n${log}`);
     }
     try {
-      await fetch(`${url}/`, { redirect: "manual", signal: AbortSignal.timeout(2_000) });
+      await fetch(`${url}/`, { redirect: "manual", signal: AbortSignal.timeout(2000) });
       break;
     } catch {
       if (Date.now() > deadline) {
@@ -173,7 +173,7 @@ export interface Exchange {
   body: string;
   headers: Headers;
   /** The Set-Cookie headers of this response (the whole lines). */
-  setCookies: string[];
+  setCookies: Array<string>;
 }
 
 /**
@@ -201,7 +201,7 @@ export async function exchange(
 }
 
 /** The cookie line for `name` among the Set-Cookie lines, if the response set one. */
-export function setCookieLine(setCookies: string[], name: string): string | undefined {
+export function setCookieLine(setCookies: Array<string>, name: string): string | undefined {
   return setCookies.find((line) => line.startsWith(`${name}=`));
 }
 

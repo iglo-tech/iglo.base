@@ -11,7 +11,7 @@ export interface CsrfOptions {
    * `https://www.example.com` when the app is served under two origins. Each entry must be an
    * origin: a scheme, a host and an optional port, with no path.
    */
-  allowedOrigins?: readonly string[];
+  allowedOrigins?: ReadonlyArray<string>;
   /** The session cookie's base name (default `pb_auth`). */
   cookieName?: string;
 }
@@ -24,7 +24,7 @@ export type CsrfResult =
 
 const STATE_CHANGING_METHODS: ReadonlySet<string> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-function normalizeAllowed(allowedOrigins: readonly string[] | undefined): string[] {
+function normalizeAllowed(allowedOrigins: ReadonlyArray<string> | undefined): Array<string> {
   return (allowedOrigins ?? []).map((entry) => {
     let parsed: URL;
     try {
@@ -45,7 +45,7 @@ function normalizeAllowed(allowedOrigins: readonly string[] | undefined): string
  * sent as `null`, is rejected. The request's own origin comes from its URL: behind a proxy that
  * changes the public origin, list the public origin in `allowedOrigins`.
  */
-export function checkOrigin(request: Request, allowedOrigins?: readonly string[]): OriginCheck {
+export function checkOrigin(request: Request, allowedOrigins?: ReadonlyArray<string>): OriginCheck {
   // a configuration error is reported on every request, not only on those that reach the list
   const allowed = normalizeAllowed(allowedOrigins);
   const origin = request.headers.get("origin");

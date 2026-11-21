@@ -16,8 +16,8 @@ import {
   serveUpstream,
   superuserToken,
   upstreamSQL,
-  type FixtureCopy,
 } from "@test/differential/db/fixture";
+import type { FixtureCopy } from "@test/differential/db/fixture";
 
 const recordId = "84nmscqy84lsi1t";
 
@@ -35,8 +35,12 @@ class Demo1 extends BaseModel {
 
   override dbScan(row: Row): void {
     super.dbScan(row);
-    if ("text" in row) this.text = String(row.text);
-    if ("json" in row) this.json = row.json;
+    if ("text" in row) {
+      this.text = String(row.text);
+    }
+    if ("json" in row) {
+      this.json = row.json;
+    }
   }
 }
 
@@ -70,7 +74,7 @@ afterAll(() => {
 });
 
 test("the loaded value is the exact integer", () => {
-  expect(loaded).toBe(9007199254740993n);
+  expect(loaded).toBe(9_007_199_254_740_993n);
 });
 
 test("the reference binary reads the exact value back", async () => {

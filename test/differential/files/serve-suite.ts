@@ -49,22 +49,26 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Database } from "bun:sqlite";
 
-import { decodePng, type Raw } from "@/files/png-raw";
+import { decodePng } from "@/files/png-raw";
+import type { Raw } from "@/files/png-raw";
 import { NewS3 } from "@/tools/filesystem/s3-system";
 
 import {
-  type TestImage,
   writeBaseSet,
   writeCompatSet,
   writeEdgeSet,
   writeLargePng,
   writeNoise,
 } from "@test/differential/files/images";
+import type { TestImage } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
-import { startVersitygw, testS3Credentials, type Versitygw } from "@test/support/versitygw";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
+import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const comparedHeaders = [
   "content-type",
@@ -139,7 +143,7 @@ interface Stored {
   note: string;
   // the file's PB_THUMBS_MAX_SOURCE_PIXELS case
   limit?: number;
-  sizes?: string[];
+  sizes?: Array<string>;
 }
 
 async function send(
@@ -190,8 +194,8 @@ function normalized(res: Res): { headers: Map<string, string | null>; body: Buff
 }
 
 // the differences between the responses (originals and errors)
-function differences(up: Res, ig: Res): string[] {
-  const out: string[] = [];
+function differences(up: Res, ig: Res): Array<string> {
+  const out: Array<string> = [];
   if (up.status !== ig.status) {
     out.push(`status: upstream ${up.status}, iglo.base ${ig.status}`);
   }
@@ -225,7 +229,7 @@ async function pixels(bytes: Uint8Array): Promise<Raw> {
   return decodePng(await new Bun.Image(bytes).png({ compressionLevel: 0 }).bytes());
 }
 
-function mae(a: Raw, b: Raw): number[] {
+function mae(a: Raw, b: Raw): Array<number> {
   const sums = [0, 0, 0, 0];
   for (let i = 0; i < a.pix.length; i++) {
     sums[i % 4] = (sums[i % 4] as number) + Math.abs((a.pix[i] as number) - (b.pix[i] as number));
@@ -278,8 +282,8 @@ function copyPreserving(source: string, target: string): void {
 }
 
 export function serveSuite(storage: "local" | "s3"): void {
-  const roots: string[] = [];
-  const running: { stop(): Promise<unknown> }[] = [];
+  const roots: Array<string> = [];
+  const running: Array<{ stop(): Promise<unknown> }> = [];
 
   const baseBucket = "base";
   // the S3 server, on S3
@@ -291,9 +295,9 @@ export function serveSuite(storage: "local" | "s3"): void {
   const stored = new Map<string, Stored>();
   let protectedPng: Stored;
   let goneTxt: Stored;
-  let images: TestImage[] = [];
-  let compat: TestImage[] = [];
-  let edges: TestImage[] = [];
+  let images: Array<TestImage> = [];
+  let compat: Array<TestImage> = [];
+  let edges: Array<TestImage> = [];
 
   function newRoot(): string {
     const root = mkdtempSync(join(tmpdir(), "iglo-base-m52-"));
@@ -330,7 +334,7 @@ export function serveSuite(storage: "local" | "s3"): void {
     }
   }
 
-  const report: string[] = [];
+  const report: Array<string> = [];
 
   // requests a thumb from both servers and compares the outcome
   async function compareThumb(
@@ -448,7 +452,7 @@ export function serveSuite(storage: "local" | "s3"): void {
     const photoJpeg = readFileSync(join(imagesDir, "photo.jpg"));
     const photoPng = readFileSync(join(imagesDir, "photo.png"));
     edges = await writeEdgeSet(imagesDir, photoJpeg, photoPng);
-    const documents: [string, string | Uint8Array][] = [
+    const documents: Array<[string, string | Uint8Array]> = [
       ["drawing.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'],
       ["page.html", "<!DOCTYPE html><html><body><script>alert(1)</script></body></html>"],
       ["doc.pdf", "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"],
@@ -628,7 +632,7 @@ export function serveSuite(storage: "local" | "s3"): void {
   });
 
   describe("Range and conditional requests", () => {
-    const cases: [string, Record<string, string>][] = [
+    const cases: Array<[string, Record<string, string>]> = [
       ["single range", { Range: "bytes=0-99" }],
       ["suffix range", { Range: "bytes=-50" }],
       ["open range", { Range: "bytes=100-" }],
@@ -741,21 +745,36 @@ export function serveSuite(storage: "local" | "s3"): void {
     });
     test("expired user file token", async () => {
       const expired = signToken(
-        { id: "4q1xlclmfloku33", type: "file", collectionId: "_pb_users_auth_", exp: 1640991661 },
+        {
+          id: "4q1xlclmfloku33",
+          type: "file",
+          collectionId: "_pb_users_auth_",
+          exp: 1_640_991_661,
+        },
         key,
       );
       expect((await same(main, `${prot()}?token=${expired}`)).status).toBe(404);
     });
     test("file token of the wrong collection", async () => {
       const wrong = signToken(
-        { id: "4q1xlclmfloku33", type: "file", collectionId: "v851q4r790rhknl", exp: 2524604461 },
+        {
+          id: "4q1xlclmfloku33",
+          type: "file",
+          collectionId: "v851q4r790rhknl",
+          exp: 2_524_604_461,
+        },
         key,
       );
       expect((await same(main, `${prot()}?token=${wrong}`)).status).toBe(404);
     });
     test("file token with a wrong signature", async () => {
       const forged = signToken(
-        { id: "4q1xlclmfloku33", type: "file", collectionId: "_pb_users_auth_", exp: 2524604461 },
+        {
+          id: "4q1xlclmfloku33",
+          type: "file",
+          collectionId: "_pb_users_auth_",
+          exp: 2_524_604_461,
+        },
         key + "x",
       );
       expect((await same(main, `${prot()}?token=${forged}`)).status).toBe(404);
@@ -818,7 +837,7 @@ export function serveSuite(storage: "local" | "s3"): void {
 
   describe("the M0.7 compatibility set", () => {
     test("every image", async () => {
-      const rows: string[] = [];
+      const rows: Array<string> = [];
       for (const image of compat) {
         const s = file(image.name);
         const pair = s.limit !== undefined ? limited : main;

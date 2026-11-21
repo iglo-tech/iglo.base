@@ -18,19 +18,19 @@ export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
   // the stored fields of a collection, as upstream's GET returns them
-  fields(collection: string): Record<string, unknown>[];
+  fields(collection: string): Array<Record<string, unknown>>;
   // the collection as upstream's GET returns it
   collection(name: string): Record<string, unknown>;
   // every collection as upstream's GET returns them
-  all(): Record<string, unknown>[];
+  all(): Array<Record<string, unknown>>;
 }
 
 export type Step = { name: string; ok: boolean } & (
   | { kind: "create"; body: (ctx: Ctx) => unknown }
   | { kind: "update"; target: string; body: (ctx: Ctx) => unknown }
   | { kind: "delete"; target: string }
-  | { kind: "import"; body: (ctx: Ctx) => { collections: unknown[]; deleteMissing: boolean } }
-  | { kind: "sql"; sql: string[] }
+  | { kind: "import"; body: (ctx: Ctx) => { collections: Array<unknown>; deleteMissing: boolean } }
+  | { kind: "sql"; sql: Array<string> }
 );
 
 // the stored fields with fn applied to the named one (keeping its id)
@@ -39,7 +39,7 @@ function withField(
   collection: string,
   field: string,
   fn: (f: Record<string, unknown>) => void,
-): Record<string, unknown>[] {
+): Array<Record<string, unknown>> {
   const fields = ctx.fields(collection);
   const f = fields.find((x) => x.name === field);
   if (f === undefined) {
@@ -50,11 +50,11 @@ function withField(
 }
 
 // every collection that is not a system one, as upstream's GET returns it
-function userCollections(ctx: Ctx, except: string[] = []): Record<string, unknown>[] {
+function userCollections(ctx: Ctx, except: Array<string> = []): Array<Record<string, unknown>> {
   return ctx.all().filter((c) => c.system !== true && !except.includes(c.name as string));
 }
 
-export const steps: Step[] = [
+export const steps: Array<Step> = [
   {
     name: "reject malformed JSON in view sample",
     kind: "create",
@@ -78,7 +78,7 @@ export const steps: Step[] = [
       viewRule: "",
       fields: [
         { name: "title", type: "text", required: true, max: 200 },
-        { name: "body", type: "editor", maxSize: 100000 },
+        { name: "body", type: "editor", maxSize: 100_000 },
         { name: "views", type: "number", onlyInt: true },
         { name: "published", type: "bool" },
         { name: "contact", type: "email" },
@@ -319,7 +319,7 @@ export const steps: Step[] = [
     ok: true,
     body: (ctx) => ({
       indexes: [
-        ...(ctx.collection("articles").indexes as string[]),
+        ...(ctx.collection("articles").indexes as Array<string>),
         "CREATE INDEX `idx_articles_when` ON `articles` (`when`)",
       ],
     }),
@@ -330,7 +330,7 @@ export const steps: Step[] = [
     target: "articles",
     ok: true,
     body: (ctx) => ({
-      indexes: (ctx.collection("articles").indexes as string[]).filter(
+      indexes: (ctx.collection("articles").indexes as Array<string>).filter(
         (i) => !i.includes("idx_posts_views"),
       ),
     }),
@@ -342,7 +342,7 @@ export const steps: Step[] = [
     ok: false,
     body: (ctx) => ({
       indexes: [
-        ...(ctx.collection("articles").indexes as string[]),
+        ...(ctx.collection("articles").indexes as Array<string>),
         "CREATE INDEX `idx_posts_title` ON `articles` (`views`)",
       ],
     }),
@@ -354,7 +354,7 @@ export const steps: Step[] = [
     ok: false,
     body: (ctx) => ({
       indexes: [
-        ...(ctx.collection("articles").indexes as string[]),
+        ...(ctx.collection("articles").indexes as Array<string>),
         "CREATE INDEX `idx_comments_post` ON `articles` (`views`)",
       ],
     }),
@@ -366,7 +366,7 @@ export const steps: Step[] = [
     ok: false,
     body: (ctx) => ({
       indexes: [
-        ...(ctx.collection("articles").indexes as string[]),
+        ...(ctx.collection("articles").indexes as Array<string>),
         "CREATE UNIQUE INDEX `idx_articles_views` ON `articles` (`views`)",
       ],
     }),
@@ -378,7 +378,7 @@ export const steps: Step[] = [
     ok: false,
     body: (ctx) => ({
       indexes: [
-        ...(ctx.collection("articles").indexes as string[]),
+        ...(ctx.collection("articles").indexes as Array<string>),
         "CREATE INDEX `idx_articles_missing` ON `articles` (`missing`)",
       ],
     }),
@@ -531,7 +531,7 @@ export const steps: Step[] = [
         // drop a field by leaving it out
         return {
           ...c,
-          fields: (c.fields as Record<string, unknown>[]).filter((f) => f.name !== "loc"),
+          fields: (c.fields as Array<Record<string, unknown>>).filter((f) => f.name !== "loc"),
         };
       });
       return { deleteMissing: true, collections };

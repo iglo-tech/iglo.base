@@ -21,14 +21,15 @@ import { NumberField } from "@/fields/number";
 import { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
 import { CollectionNameExternalAuths, findAllRefsByRecord } from "@/records/record-auth-refs";
-import { type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import {
   findAllRecords,
   findAuthRecordByEmail,
   findFirstRecordByData,
   findRecordById,
-  type RecordsApp,
 } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { findFirstRecordByFilter } from "@/records/record-query-filter";
 import {
   deleteRecord,
@@ -39,9 +40,10 @@ import {
 import type { JSONRaw } from "@/tools/types/json-raw";
 import { Errors } from "@/validation/error";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
-const apps: TestCollectionsApp[] = [];
+const apps: Array<TestCollectionsApp> = [];
 
 function newTestApp(queryLog?: (line: string) => void, clock?: Clock): TestCollectionsApp {
   const app = openTestApp(clock, queryLog);
@@ -60,14 +62,14 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
 // tests.TestValidationErrors: the error is a validation Errors with exactly
 // the expected keys (or nil when none are expected)
-function expectValidationErrors(err: Error | null, expectedKeys: string[]): void {
+function expectValidationErrors(err: Error | null, expectedKeys: Array<string>): void {
   if (expectedKeys.length === 0) {
     expect(err).toBeNull();
     return;
@@ -115,11 +117,11 @@ describe("TestRecordValidate", () => {
 });
 
 describe("TestRecordSave", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     record: (app: TestCollectionsApp) => Record;
     expectError: boolean;
-  }[] = [
+  }> = [
     // trigger validators
     {
       name: "create - trigger validators",
@@ -275,7 +277,7 @@ describe("TestRecordSaveWithAutoTokenKeyRefresh", () => {
     };
   })();
 
-  const scenarios: [string, { [key: string]: unknown }, boolean][] = [
+  const scenarios: Array<[string, { [key: string]: unknown }, boolean]> = [
     ["no email or password change", { name: "example" }, false],
     ["password change", { password: "1234567890" }, true],
     ["email change", { email: "test_update@example.com" }, true],
@@ -303,7 +305,7 @@ describe("TestRecordSaveWithAutoTokenKeyRefresh", () => {
 
 describe("TestRecordDelete", () => {
   test("delete", async () => {
-    const queries: string[] = [];
+    const queries: Array<string> = [];
     let logging = false;
     const app = newTestApp((line) => {
       if (logging) {
@@ -383,7 +385,7 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
     saveCollection(app, collection);
 
     // create mock records
-    const relsData: [string, string[] | null][] = [
+    const relsData: Array<[string, Array<string> | null]> = [
       ["a", null],
       ["b", ["a"]],
       ["c", ["a", "b"]],
@@ -402,7 +404,7 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
     await deleteRecord(app, aRecord);
 
     // verify cascade delete
-    const expectedRels = new Map<string, string[]>([
+    const expectedRels = new Map<string, Array<string>>([
       ["d", []],
       ["e", ["d"]],
     ]);
@@ -412,14 +414,14 @@ describe("TestRecordDeleteWithMultipleRelationCascade", () => {
 
     for (const r of allRecords) {
       expect(expectedRels.has(r.id)).toBe(true);
-      expect(r.getStringSlice("rels")).toEqual(expectedRels.get(r.id) as string[]);
+      expect(r.getStringSlice("rels")).toEqual(expectedRels.get(r.id) as Array<string>);
     }
   });
 });
 
 // not in upstream's tests: a cascade as deep as Go's growing stack allows
 describe("deep relation cascade", () => {
-  for (const depth of [1_000, 10_000]) {
+  for (const depth of [1000, 10_000]) {
     test(`a self-relation chain of ${depth} records`, async () => {
       const app = newTestApp();
 

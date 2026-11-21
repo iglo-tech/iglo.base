@@ -3,29 +3,29 @@ import { describe, test } from "bun:test";
 import { assert } from "@sdk-test/assert";
 import { LocalAuthStore } from "@sdk/stores/LocalAuthStore";
 
-describe("LocalAuthStore", function () {
-  describe("save()", function () {
-    test("Should store auth data", function () {
+describe("LocalAuthStore", () => {
+  describe("save()", () => {
+    test("Should store auth data", () => {
       const store = new LocalAuthStore();
 
       store.save("test1", { id: "id1" } as any);
       assert.equal(store.token, "test1");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       // update
       store.save("test2", { id: "id2" } as any);
       assert.equal(store.token, "test2");
-      assert.deepEqual(store.record, { id: "id2" } as any);
+      assert.deepEqual(store.record, { id: "id2" });
     });
   });
 
-  describe("clear()", function () {
-    test("Should remove all stored auth data", function () {
+  describe("clear()", () => {
+    test("Should remove all stored auth data", () => {
       const store = new LocalAuthStore();
 
       store.save("test", { id: "id1" } as any);
       assert.equal(store.token, "test");
-      assert.deepEqual(store.record, { id: "id1" } as any);
+      assert.deepEqual(store.record, { id: "id1" });
 
       store.clear();
       assert.equal(store.token, "");
@@ -33,8 +33,8 @@ describe("LocalAuthStore", function () {
     });
   });
 
-  describe("get token()", function () {
-    test("Should extract the stored token value", function () {
+  describe("get token()", () => {
+    test("Should extract the stored token value", () => {
       const store = new LocalAuthStore();
 
       assert.equal(store.token, "");
@@ -43,18 +43,18 @@ describe("LocalAuthStore", function () {
     });
   });
 
-  describe("get record()", function () {
-    test("Should extract the stored record value", function () {
+  describe("get record()", () => {
+    test("Should extract the stored record value", () => {
       const store = new LocalAuthStore();
 
       assert.deepEqual(store.record, null);
       store.save("test", { id: "1" } as any);
-      assert.deepEqual(store.record, { id: "1" } as any);
+      assert.deepEqual(store.record, { id: "1" });
     });
   });
 
-  describe("get isValid()", function () {
-    test("Should validate the stored token value", function () {
+  describe("get isValid()", () => {
+    test("Should validate the stored token value", () => {
       const store = new LocalAuthStore();
 
       assert.isFalse(store.isValid, "empty token string (initial)");
@@ -75,8 +75,8 @@ describe("LocalAuthStore", function () {
   });
 
   // @deprecated
-  describe("get isAdmin()", function () {
-    test("Should checks if the stored token is for admin", function () {
+  describe("get isAdmin()", () => {
+    test("Should checks if the stored token is for admin", () => {
       const store = new LocalAuthStore();
 
       assert.isFalse(store.isAdmin, "empty token (initial)");
@@ -98,8 +98,8 @@ describe("LocalAuthStore", function () {
   });
 
   // @deprecated
-  describe("get isAuthRecord()", function () {
-    test("Should checks if the stored token is for regular auth record", function () {
+  describe("get isAuthRecord()", () => {
+    test("Should checks if the stored token is for regular auth record", () => {
       const store = new LocalAuthStore();
 
       assert.isFalse(store.isAuthRecord, "empty token (initial)");
@@ -120,8 +120,8 @@ describe("LocalAuthStore", function () {
     });
   });
 
-  describe("get isSuperuser()", function () {
-    test("Should checks if the stored token is for superuser", function () {
+  describe("get isSuperuser()", () => {
+    test("Should checks if the stored token is for superuser", () => {
       const store = new LocalAuthStore();
 
       assert.isFalse(store.isSuperuser, "empty token (initial)");
@@ -154,8 +154,8 @@ describe("LocalAuthStore", function () {
     });
   });
 
-  describe("loadFromCookie()", function () {
-    test("Should populate the store with the parsed cookie data", function () {
+  describe("loadFromCookie()", () => {
+    test("Should populate the store with the parsed cookie data", () => {
       const store = new LocalAuthStore();
 
       const data = {
@@ -169,7 +169,7 @@ describe("LocalAuthStore", function () {
       assert.deepEqual((store.record as any).id, data.record?.id);
     });
 
-    test("Should not throw on pb_auth=null cookie value (upstream bug)", function () {
+    test("Should not throw on pb_auth=null cookie value (upstream bug)", () => {
       const store = new LocalAuthStore();
       store.save("test_token", { id: "123" } as any);
       store.loadFromCookie("pb_auth=null");
@@ -178,8 +178,8 @@ describe("LocalAuthStore", function () {
     });
   });
 
-  describe("exportToCookie()", function () {
-    test("Should generate a cookie from the store data (with default options)", function () {
+  describe("exportToCookie()", () => {
+    test("Should generate a cookie from the store data (with default options)", () => {
       const store = new LocalAuthStore();
       store.save(
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjMsImV4cCI6MTkwODc4NDgwMH0.vVbRVx-Bs7pusxfU8TTTOEtNcUEYSzmJUboC68PB5iE",
@@ -194,7 +194,7 @@ describe("LocalAuthStore", function () {
       );
     });
 
-    test("Should generate a cookie from the store data (with custom options)", function () {
+    test("Should generate a cookie from the store data (with custom options)", () => {
       const store = new LocalAuthStore();
       store.save(
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjMsImV4cCI6MTkwODc4NDgwMH0.vVbRVx-Bs7pusxfU8TTTOEtNcUEYSzmJUboC68PB5iE",
@@ -222,7 +222,7 @@ describe("LocalAuthStore", function () {
       );
     });
 
-    test("Should strip the record data in the generated cookie if exceed 4096", function () {
+    test("Should strip the record data in the generated cookie if exceed 4096", () => {
       const store = new LocalAuthStore();
       store.save(
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjMsImV4cCI6MTkwODc4NDgwMH0.vVbRVx-Bs7pusxfU8TTTOEtNcUEYSzmJUboC68PB5iE",
@@ -248,8 +248,8 @@ describe("LocalAuthStore", function () {
     });
   });
 
-  describe("onChange()", function () {
-    test("Should trigger the onChange() callbacks", function () {
+  describe("onChange()", () => {
+    test("Should trigger the onChange() callbacks", () => {
       const store = new LocalAuthStore();
 
       let callback1Calls = 0;

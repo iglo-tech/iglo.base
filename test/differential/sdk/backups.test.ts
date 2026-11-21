@@ -6,9 +6,10 @@
 
 import { describe, expect } from "bun:test";
 
-import { sdkTest, type SdkEnv } from "@test/differential/sdk/harness";
+import { sdkTest } from "@test/differential/sdk/harness";
+import type { SdkEnv } from "@test/differential/sdk/harness";
 
-const keys = (list: { key: string }[]): string[] => list.map((b) => b.key).toSorted();
+const keys = (list: Array<{ key: string }>): Array<string> => list.map((b) => b.key).toSorted();
 
 async function download(env: SdkEnv, label: string, url: string): Promise<void> {
   const res = await fetch(url);
@@ -47,7 +48,7 @@ describe("BackupService", () => {
     const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
     await env.step("upload", () =>
       pb.backups.upload({
-        file: new File([bytes as Uint8Array<ArrayBuffer>], "uploaded.zip", {
+        file: new File([bytes], "uploaded.zip", {
           type: "application/zip",
         }),
       }),

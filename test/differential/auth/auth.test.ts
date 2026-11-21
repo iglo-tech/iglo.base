@@ -14,7 +14,8 @@ import { findRecordById } from "@/records/record-query";
 import { newAuthToken, newFileToken } from "@/records/record-tokens";
 
 import { openDataDir } from "@test/collections/app";
-import { authCases, type CaseTokens } from "@test/differential/auth/cases";
+import { authCases } from "@test/differential/auth/cases";
+import type { CaseTokens } from "@test/differential/auth/cases";
 import { runDifferential } from "@test/differential/harness/run";
 import { outcome } from "@test/scenarios/expectations";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";

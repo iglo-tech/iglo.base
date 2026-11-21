@@ -5,25 +5,25 @@ import { FetchMock } from "@sdk-test/mocks";
 import Client from "@sdk/Client";
 import { SQLService } from "@sdk/services/SQLService";
 
-describe("SQLService", function () {
+describe("SQLService", () => {
   const client = new Client("test_base_url");
   const service = new SQLService(client);
   const fetchMock = new FetchMock();
 
-  beforeAll(function () {
+  beforeAll(() => {
     fetchMock.init();
   });
 
-  afterAll(function () {
+  afterAll(() => {
     fetchMock.restore();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     fetchMock.clearMocks();
   });
 
-  describe("run()", function () {
-    test("Should send a SQL query run request", async function () {
+  describe("run()", () => {
+    test("Should send a SQL query run request", async () => {
       const mockReply = {
         execTime: 1,
         affectedRows: 2,

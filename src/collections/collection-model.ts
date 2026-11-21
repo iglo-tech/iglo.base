@@ -18,7 +18,6 @@
 // upstream and left out, as src/db's DBExporter has none.
 
 import {
-  type CollectionAuthOptions,
   AuthAlertConfig,
   EmailTemplate,
   MFAConfig,
@@ -32,23 +31,24 @@ import {
   setDefaultAuthOptions,
   unmarshalAuthOptions,
 } from "@/collections/collection-model-auth-options";
+import type { CollectionAuthOptions } from "@/collections/collection-model-auth-options";
 import {
-  type CollectionViewOptions,
   marshalViewOptions,
   unmarshalViewOptions,
   viewOptionsDecoders,
   viewOptionsMembers,
 } from "@/collections/collection-model-view-options";
+import type { CollectionViewOptions } from "@/collections/collection-model-view-options";
 import { FieldsList, newFieldsList } from "@/collections/fields-list";
 import { equalFold } from "@/collections/go-strings";
 import {
-  type MemberDecoders,
   decodeAs,
   decodeBool,
   decodeNullableString,
   decodeString,
   unmarshalGoStruct,
 } from "@/collections/go-json-struct";
+import type { MemberDecoders } from "@/collections/go-json-struct";
 import { crc32Checksum, defaultIdAlphabet, modelQuery } from "@/db/db";
 import { HashExp } from "@/db/dbx/expression";
 import type { CollectionsApp } from "@/collections/collection-query";
@@ -66,8 +66,8 @@ import {
   defaultLowercaseRecordIdPattern,
   goQuote,
   marshalStruct,
-  type FieldCollection,
 } from "@/fields/field";
+import type { FieldCollection } from "@/fields/field";
 import { PasswordField } from "@/fields/password";
 import { TextField } from "@/fields/text";
 import { findSingleColumnUniqueIndex, parseIndex } from "@/tools/dbutils/index";
@@ -76,6 +76,7 @@ import { DateTime } from "@/tools/types/datetime";
 import { bytesToText, sliceOf, stringType, textToBytes } from "@/tools/types/go-json";
 import { JSONRaw, parseJSONRaw } from "@/tools/types/json-raw";
 import { scanJSONArray } from "@/tools/types/json-array";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const CollectionTypeBase = "base";
 export const CollectionTypeAuth = "auth";
@@ -109,7 +110,7 @@ export class Collection
   fields = new FieldsList();
   // types.JSONArray[string]; a nil slice is an empty array (both marshal
   // as [])
-  indexes: string[] = [];
+  indexes: Array<string> = [];
   created = new DateTime();
   updated = new DateTime();
 
@@ -241,7 +242,7 @@ export class Collection
       type: (raw) => (this.type = decodeString(raw)),
       fields: (raw) => this.fields.unmarshalJSON(raw),
       indexes: (raw) =>
-        (this.indexes = (decodeAs(raw, sliceOf(stringType)) as string[] | undefined) ?? []),
+        (this.indexes = (decodeAs(raw, sliceOf(stringType)) as Array<string> | undefined) ?? []),
       created: (raw) => {
         const d = new DateTime();
         d.unmarshalJSON(raw);
@@ -257,7 +258,7 @@ export class Collection
   }
 
   // the members of baseCollection in the Go struct order
-  private baseMembers(): [string, unknown][] {
+  private baseMembers(): Array<[string, unknown]> {
     return [
       ["id", this.id],
       ["listRule", this.listRule],
@@ -406,9 +407,9 @@ export class Collection
     if (has("indexes")) {
       try {
         this.indexes = scanJSONArray<string>(row.indexes, stringType);
-      } catch (err) {
+      } catch (error) {
         this.indexes = [];
-        throw err;
+        throw error;
       }
     }
     if (has("created")) {
@@ -506,7 +507,7 @@ export class Collection
     for (let i = 2; i < 1000; i++) {
       // app.CollectionQuery() (collection-query.ts, which imports this
       // module); a query error counts as no match, as upstream ignores it
-      let exists = 0;
+      let exists: number;
       try {
         const [v] = modelQuery(app.databases, new Collection())
           .select("(1)")
@@ -563,7 +564,7 @@ export class Collection
 
   private initIdField(): void {
     const existing = this.fields.getByName(FieldNameId);
-    const field = existing instanceof TextField ? existing : null;
+    const field = isInstance(TextField, existing) ? existing : null;
     if (field === null) {
       // create default field
       const created = new TextField({
@@ -593,7 +594,7 @@ export class Collection
 
   private initPasswordField(): void {
     const existing = this.fields.getByName(FieldNamePassword);
-    const field = existing instanceof PasswordField ? existing : null;
+    const field = isInstance(PasswordField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -615,7 +616,7 @@ export class Collection
 
   private initTokenKeyField(): void {
     const existing = this.fields.getByName(FieldNameTokenKey);
-    const field = existing instanceof TextField ? existing : null;
+    const field = isInstance(TextField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -653,7 +654,7 @@ export class Collection
 
   private initEmailField(): void {
     const existing = this.fields.getByName(FieldNameEmail);
-    const field = existing instanceof EmailField ? existing : null;
+    const field = isInstance(EmailField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -688,7 +689,7 @@ export class Collection
 
   private initEmailVisibilityField(): void {
     const existing = this.fields.getByName(FieldNameEmailVisibility);
-    const field = existing instanceof BoolField ? existing : null;
+    const field = isInstance(BoolField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -705,7 +706,7 @@ export class Collection
 
   private initVerifiedField(): void {
     const existing = this.fields.getByName(FieldNameVerified);
-    const field = existing instanceof BoolField ? existing : null;
+    const field = isInstance(BoolField, existing) ? existing : null;
     if (field === null) {
       // load default field
       this.fields.add(
@@ -814,7 +815,7 @@ function scanString(v: unknown, column: string): string {
       `sql: Scan error on column ${goQuote(column)}: converting NULL to string is unsupported`,
     );
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
+  if (typeof v === "string" || isInstance(Uint8Array, v)) {
     return bytesToText(v);
   }
   return String(v);
@@ -834,7 +835,7 @@ function scanBool(v: unknown, column: string): boolean {
       return false;
     }
   }
-  if (typeof v === "string" || v instanceof Uint8Array) {
+  if (typeof v === "string" || isInstance(Uint8Array, v)) {
     switch (bytesToText(v)) {
       case "1":
       case "t":

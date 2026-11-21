@@ -26,10 +26,10 @@ export type Ids = (collection: string) => string;
 export interface CollectionStep {
   // POST /api/collections, or a PATCH that adds fields (addFields)
   create?: (ids: Ids) => object;
-  addFields?: { collection: string; fields: (ids: Ids) => object[] };
+  addFields?: { collection: string; fields: (ids: Ids) => Array<object> };
 }
 
-export const collectionSteps: CollectionStep[] = [
+export const collectionSteps: Array<CollectionStep> = [
   {
     create: () => ({
       name: "teams",
@@ -141,7 +141,7 @@ export const collectionSteps: CollectionStep[] = [
         { name: "publishedAt", type: "date" },
         { name: "website", type: "url" },
         { name: "contactEmail", type: "email" },
-        { name: "attachments", type: "file", maxSelect: 3, maxSize: 1000000 },
+        { name: "attachments", type: "file", maxSelect: 3, maxSize: 1_000_000 },
         { name: "hiddenScore", type: "number", hidden: true },
         { name: "slug", type: "text" },
         { name: "created", type: "autodate", onCreate: true },
@@ -200,7 +200,7 @@ export interface RecordStep {
 
 const m = (name: string): string => rid(name);
 
-export const recordSteps: RecordStep[] = [
+export const recordSteps: Array<RecordStep> = [
   // teams (leaders and crews are set once the members exist)
   {
     collection: "teams",
@@ -424,7 +424,7 @@ export const recordSteps: RecordStep[] = [
     body: {
       id: rid("p6"),
       title: "UPPER case",
-      views: 1000000,
+      views: 1_000_000,
       published: false,
       status: "review",
       categories: ["news"],
@@ -458,7 +458,7 @@ export const recordSteps: RecordStep[] = [
     collection: "posts",
     body: {
       id: rid("p8"),
-      title: "with 'quote' \\ back",
+      title: String.raw`with 'quote' \ back`,
       views: 12,
       published: true,
       author: m("alice"),

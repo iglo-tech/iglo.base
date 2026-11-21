@@ -5,7 +5,6 @@
 // Exec: the returned page fields and the SQL of the queries it runs.
 
 // Provider.sort is upstream's setter, not Array#sort
-/* oxlint-disable unicorn/no-array-sort */
 
 import { describe, expect, test } from "bun:test";
 
@@ -28,16 +27,17 @@ import {
   MaxPerPage,
   MaxSortFieldLength,
   newProvider,
-  type Provider,
-  type Result,
   SearchResult,
 } from "@/search/provider";
+import type { Provider, Result } from "@/search/provider";
 import type { FieldResolver, ResolverResult } from "@/search/simple-field-resolver";
-import { type SortField, SortAsc, SortDesc } from "@/search/sort";
+import { SortAsc, SortDesc } from "@/search/sort";
+import type { SortField } from "@/search/sort";
 import { existInSliceWithRegex } from "@/tools/list/list";
 import { marshal } from "@/tools/types/go-json";
 
-import { createTestDB, type TestDB } from "@test/search/support";
+import { createTestDB } from "@test/search/support";
+import type { TestDB } from "@test/search/support";
 
 const clock: Clock = { now: () => new Date(Date.UTC(2023, 1, 3, 4, 5, 6)) };
 
@@ -90,15 +90,15 @@ function filterOf(n: number): FilterData {
   return Array(n).fill("1=1").join(" && ");
 }
 
-function sortOf(n: number): SortField[] {
+function sortOf(n: number): Array<SortField> {
   return Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc }));
 }
 
 async function execError(p: Provider): Promise<unknown> {
   try {
     await p.exec();
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
   return undefined;
 }
@@ -268,7 +268,7 @@ test("Provider.Page and PerPage", async () => {
 test("Provider.Sort and AddSort", async () => {
   const testDB = createTestDB();
   try {
-    const initialSort: SortField[] = [
+    const initialSort: Array<SortField> = [
       { name: "test1", direction: SortAsc },
       { name: "test2", direction: SortAsc },
     ];
@@ -307,17 +307,17 @@ test("Provider.Filter and AddFilter", async () => {
 describe("Provider.Parse", () => {
   const initialPage = 2;
   const initialPerPage = 123;
-  const initialSort: SortField[] = [
+  const initialSort: Array<SortField> = [
     { name: "test1", direction: SortAsc },
     { name: "test2", direction: SortAsc },
   ];
   // upstream's initial filters ("test1", "test2") are not valid filters,
   // which Exec would reject; these are
-  const initialFilter: FilterData[] = ["test1 > 0", "test2 > 0"];
+  const initialFilter: Array<FilterData> = ["test1 > 0", "test2 > 0"];
   const initialWhere = "((NOT (`test1` IS NULL)) AND (test1 > 0)) AND (test2 > 0)";
 
   // [query, expectError, expectPage, expectPerPage, expect ORDER BY, expect WHERE]
-  const scenarios: [string, string | undefined, number, number, string, string][] = [
+  const scenarios: Array<[string, string | undefined, number, number, string, string]> = [
     // empty
     [
       "",
@@ -388,15 +388,15 @@ describe("Provider.Parse", () => {
         let err: unknown;
         try {
           p.parse(query);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err === undefined ? undefined : (err as Error).message).toBe(expectError);
 
         const result = await p.exec();
         expect([result.page, result.perPage]).toEqual([expectPage, expectPerPage]);
 
-        const sql = modelsQuery(testDB).replace(/\{:t\w+\}/g, "0");
+        const sql = modelsQuery(testDB).replaceAll(/\{:t\w+\}/g, "0");
         expect(sql).toBe(
           `SELECT * FROM \`test\` WHERE ${where} ORDER BY ${orderBy} LIMIT ${expectPerPage} OFFSET ${expectPerPage * (expectPage - 1)}`,
         );
@@ -407,7 +407,7 @@ describe("Provider.Parse", () => {
   }
 
   test("parse errors", () => {
-    const cases: [string, string][] = [
+    const cases: Array<[string, string]> = [
       ["skipTotal=a", 'strconv.ParseBool: parsing "a": invalid syntax'],
       ["page=1.5", 'strconv.Atoi: parsing "1.5": invalid syntax'],
       ["page=%2B", 'strconv.Atoi: parsing "+": invalid syntax'],
@@ -437,17 +437,19 @@ test("Provider.Exec empty query", async () => {
 
 describe("Provider.Exec non-empty query", () => {
   // [name, page, perPage, sort, filter, skipTotal, expectError, expectResult, expectQueries]
-  const scenarios: [
-    string,
-    number,
-    number,
-    SortField[],
-    FilterData[],
-    boolean,
-    boolean,
-    string,
-    string[] | null,
-  ][] = [
+  const scenarios: Array<
+    [
+      string,
+      number,
+      number,
+      Array<SortField>,
+      Array<FilterData>,
+      boolean,
+      boolean,
+      string,
+      Array<string> | null,
+    ]
+  > = [
     [
       "page normalization",
       -1,
@@ -601,8 +603,8 @@ describe("Provider.Exec non-empty query", () => {
       let err: unknown;
       try {
         result = await p.exec();
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== undefined).toBe(expectError);
@@ -625,7 +627,9 @@ describe("Provider.Exec non-empty query", () => {
 
 describe("Provider filter and sort limits", () => {
   // [name, filter, sort, maxFilterExprLimit, maxSortExprLimit, expectError]
-  const scenarios: [string, FilterData[], SortField[], number, number, Error | undefined][] = [
+  const scenarios: Array<
+    [string, Array<FilterData>, Array<SortField>, number, number, Error | undefined]
+  > = [
     // filter
     [
       "<= max filter length",
@@ -753,7 +757,7 @@ describe("Provider filter and sort limits", () => {
 
 describe("Provider.ParseAndExec", () => {
   // [name, queryString, expectError, expectResult]
-  const scenarios: [string, string, boolean, string][] = [
+  const scenarios: Array<[string, string, boolean, string]> = [
     [
       "no extra query params (aka. use the provider presets)",
       "",
@@ -805,8 +809,8 @@ describe("Provider.ParseAndExec", () => {
       let err: unknown;
       try {
         result = await provider.parseAndExec(queryString);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== undefined).toBe(expectError);
@@ -831,7 +835,7 @@ describe("Provider page arithmetic", () => {
       const p = newProvider(new TestFieldResolver(), { clock }).query(baseQuery(testDB));
       p.parse("page=9223372036854775807&perPage=1");
       let result = await p.exec();
-      expect(result.page).toBe(9223372036854775807n);
+      expect(result.page).toBe(9_223_372_036_854_775_807n);
       expect(result.items.length).toBe(0);
       // (an offset past 2^53 rows is given as 2^53 - 1: no table is near either)
       expect(modelsQuery(testDB)).toEndWith(" LIMIT 1 OFFSET 9007199254740991");
@@ -840,7 +844,7 @@ describe("Provider page arithmetic", () => {
       testDB.calledQueries = [];
       p.parse("page=4611686018427387904&perPage=1000");
       result = await p.exec();
-      expect(result.page).toBe(4611686018427387904n);
+      expect(result.page).toBe(4_611_686_018_427_387_904n);
       expect(result.items.length).toBe(2);
       expect(modelsQuery(testDB)).toEndWith(" LIMIT 1000");
 

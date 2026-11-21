@@ -16,9 +16,10 @@ import {
   JsonSyntaxError,
   setOwn,
   toAny,
-  type JsonValue,
 } from "@/server/json-decode";
+import type { JsonValue } from "@/server/json-decode";
 import { goInt } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export type Kind =
   | "bool"
@@ -45,7 +46,7 @@ export interface TextType {
 
 export interface StructType {
   kind: "struct";
-  fields: StructField[];
+  fields: Array<StructField>;
 }
 
 export interface SliceType {
@@ -70,7 +71,7 @@ export interface StructField {
   embedded?: boolean;
 }
 
-export const structOf = (fields: StructField[]): StructType => ({ kind: "struct", fields });
+export const structOf = (fields: Array<StructField>): StructType => ({ kind: "struct", fields });
 export const sliceOf = (elem: FieldType): SliceType => ({ kind: "slice", elem });
 export const pointerTo = (elem: FieldType): PointerType => ({ kind: "pointer", elem });
 export const textOf = (unmarshalText: (text: string) => unknown): TextType => ({
@@ -82,7 +83,7 @@ export const textOf = (unmarshalText: (text: string) => unknown): TextType => ({
 // used for reading serialized json payload without normalization.
 export const JSONPayloadKey = "@jsonPayload";
 
-export type RequestData = Map<string, string[]> | Record<string, string[]>;
+export type RequestData = Map<string, Array<string>> | Record<string, Array<string>>;
 
 // MapRef is a *map[string]any destination: unmarshaling a JSON null into it
 // sets the map to nil (null), as json/v2 does.
@@ -90,12 +91,16 @@ export interface MapRef {
   map: Record<string, unknown> | null;
 }
 
-function getValues(data: RequestData, key: string): string[] | undefined {
-  return data instanceof Map ? data.get(key) : Object.hasOwn(data, key) ? data[key] : undefined;
+function getValues(data: RequestData, key: string): Array<string> | undefined {
+  return isInstance<Map<unknown, unknown>>(Map, data)
+    ? data.get(key)
+    : Object.hasOwn(data, key)
+      ? data[key]
+      : undefined;
 }
 
-function entries(data: RequestData): [string, string[]][] {
-  return data instanceof Map ? [...data] : Object.entries(data);
+function entries(data: RequestData): Array<[string, Array<string>]> {
+  return isInstance<Map<unknown, unknown>>(Map, data) ? [...data] : Object.entries(data);
 }
 
 // UnmarshalRequestData unmarshals url.Values type of data (query,
@@ -572,7 +577,7 @@ function jsonKind(value: JsonValue): string {
   if (typeof value === "string") {
     return "string";
   }
-  if (value instanceof JsonNumber) {
+  if (isInstance(JsonNumber, value)) {
     return "number";
   }
   if (Array.isArray(value)) {
@@ -611,7 +616,7 @@ function foldRune(c: string): string {
   const pending = [c];
   for (let x = pending.pop(); x !== undefined; x = pending.pop()) {
     for (const variant of [x.toLowerCase(), x.toUpperCase()]) {
-      if ([...variant].length === 1 && !orbit.has(variant)) {
+      if (Array.from(variant).length === 1 && !orbit.has(variant)) {
         orbit.add(variant);
         pending.push(variant);
       }
@@ -637,8 +642,8 @@ interface JsonField {
 }
 
 // the JSON-visible fields of a struct, embedded structs inlined
-function jsonFields(type: StructType): JsonField[] {
-  const out: JsonField[] = [];
+function jsonFields(type: StructType): Array<JsonField> {
+  const out: Array<JsonField> = [];
   for (const field of type.fields) {
     const tag = field.tags?.json ?? "";
     const [tagName = "", ...options] = tag.split(",");
@@ -805,7 +810,7 @@ function unmarshalAny(value: JsonValue, current: unknown): unknown {
     return value;
   }
   if (typeof current === "number") {
-    if (!(value instanceof JsonNumber)) {
+    if (!isInstance(JsonNumber, value)) {
       throw cannot(value, "float64");
     }
     return toAny(value);
@@ -825,12 +830,12 @@ function unmarshalAny(value: JsonValue, current: unknown): unknown {
 const intRanges: Record<string, [bigint, bigint]> = {
   int: [-(2n ** 63n), 2n ** 63n - 1n],
   int8: [-128n, 127n],
-  int16: [-32768n, 32767n],
+  int16: [-32_768n, 32_767n],
   int32: [-(2n ** 31n), 2n ** 31n - 1n],
   int64: [-(2n ** 63n), 2n ** 63n - 1n],
   uint: [0n, 2n ** 64n - 1n],
   uint8: [0n, 255n],
-  uint16: [0n, 65535n],
+  uint16: [0n, 65_535n],
   uint32: [0n, 2n ** 32n - 1n],
   uint64: [0n, 2n ** 64n - 1n],
 };
@@ -861,7 +866,7 @@ function jsonFieldValue(
         return value;
       case "float32":
       case "float64": {
-        if (!(value instanceof JsonNumber)) {
+        if (!isInstance(JsonNumber, value)) {
           throw cannot(value, type);
         }
         const n = Number(value.literal);
@@ -871,7 +876,7 @@ function jsonFieldValue(
         return type === "float32" ? Math.fround(n) : n;
       }
       default: {
-        if (!(value instanceof JsonNumber) || !/^-?[0-9]+$/.test(value.literal)) {
+        if (!isInstance(JsonNumber, value) || !/^-?[0-9]+$/.test(value.literal)) {
           throw cannot(value, type);
         }
         const n = BigInt(value.literal);

@@ -16,11 +16,11 @@ export interface SchemaRow {
 }
 
 export interface PbDataDump {
-  dataSchema: SchemaRow[];
-  auxSchema: SchemaRow[];
-  migrations: { file: string; applied: number }[];
-  collections: { [key: string]: unknown }[];
-  params: { id: string }[];
+  dataSchema: Array<SchemaRow>;
+  auxSchema: Array<SchemaRow>;
+  migrations: Array<{ file: string; applied: number }>;
+  collections: Array<{ [key: string]: unknown }>;
+  params: Array<{ id: string }>;
 }
 
 function withDB<T>(path: string, fn: (db: Database) => T): T {
@@ -38,13 +38,13 @@ function hasTable(db: Database, name: string): boolean {
   );
 }
 
-export function schemaOf(path: string): SchemaRow[] {
+export function schemaOf(path: string): Array<SchemaRow> {
   return withDB(
     path,
     (db) =>
       db
         .query("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY rowid")
-        .all() as SchemaRow[],
+        .all() as Array<SchemaRow>,
   );
 }
 
@@ -54,27 +54,27 @@ export function dumpPbData(dataDir: string): PbDataDump {
   return withDB(dataPath, (db) => ({
     dataSchema: db
       .query("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY rowid")
-      .all() as SchemaRow[],
+      .all() as Array<SchemaRow>,
     auxSchema: existsSync(auxPath) ? schemaOf(auxPath) : [],
     migrations: hasTable(db, "_migrations")
-      ? (db.query("SELECT file, applied FROM _migrations ORDER BY rowid").all() as {
+      ? (db.query("SELECT file, applied FROM _migrations ORDER BY rowid").all() as Array<{
           file: string;
           applied: number;
-        }[])
+        }>)
       : [],
     collections: hasTable(db, "_collections")
-      ? (db.query("SELECT * FROM _collections ORDER BY rowid").all() as {
+      ? (db.query("SELECT * FROM _collections ORDER BY rowid").all() as Array<{
           [key: string]: unknown;
-        }[])
+        }>)
       : [],
     params: hasTable(db, "_params")
-      ? (db.query("SELECT id FROM _params ORDER BY rowid").all() as { id: string }[])
+      ? (db.query("SELECT id FROM _params ORDER BY rowid").all() as Array<{ id: string }>)
       : [],
   }));
 }
 
 // runs SQL on a pb_data file (test preparation)
-export function execSQL(path: string, ...statements: string[]): void {
+export function execSQL(path: string, ...statements: Array<string>): void {
   withDB(path, (db) => {
     for (const sql of statements) {
       db.run(sql);
@@ -85,7 +85,7 @@ export function execSQL(path: string, ...statements: string[]): void {
 // SQLite's own statistics table that upstream's SQLite build (with
 // SQLITE_ENABLE_STAT4) creates on PRAGMA optimize and Bun's does not
 // (docs/design/03-data-compatibility.md, "SQLite settings")
-export function withoutStat4(rows: SchemaRow[]): SchemaRow[] {
+export function withoutStat4(rows: Array<SchemaRow>): Array<SchemaRow> {
   return rows.filter((row) => row.name !== "sqlite_stat4");
 }
 
@@ -111,7 +111,7 @@ export function fileState(dir: string): Record<string, string> {
 // right after the last statement, without closing the database: the state
 // a crashed writer leaves (a hot -journal for an open DELETE-mode
 // transaction, or -wal/-shm with the committed WAL frames)
-export function crashSQL(path: string, ...statements: string[]): void {
+export function crashSQL(path: string, ...statements: Array<string>): void {
   const script = `
     const { Database } = require("bun:sqlite");
     const [path, statements] = JSON.parse(process.argv[1]);

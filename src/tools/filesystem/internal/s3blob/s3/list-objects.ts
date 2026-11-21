@@ -3,7 +3,8 @@
 // The response keeps the members the driver reads.
 
 import { parseRoot } from "@/tools/filesystem/internal/s3blob/s3/xml";
-import { childText, type XmlElement } from "@/tools/filesystem/internal/s3blob/s3/xml";
+import { childText } from "@/tools/filesystem/internal/s3blob/s3/xml";
+import type { XmlElement } from "@/tools/filesystem/internal/s3blob/s3/xml";
 import type { S3 } from "@/tools/filesystem/internal/s3blob/s3/s3";
 
 // ListParams defines optional parameters for the ListObject request.
@@ -20,14 +21,14 @@ export interface ListParams {
 // url.QueryEscape
 function queryEscape(s: string): string {
   return encodeURIComponent(s)
-    .replace(/[!'()*]/g, (c) => "%" + (c.codePointAt(0) as number).toString(16).toUpperCase())
+    .replaceAll(/[!'()*]/g, (c) => "%" + (c.codePointAt(0) as number).toString(16).toUpperCase())
     .replaceAll("%20", "+");
 }
 
 // Encode encodes the parameters in a properly formatted query string
 // (url.Values.Encode: sorted by key).
 export function encodeListParams(l: ListParams): string {
-  const query: [string, string][] = [["list-type", "2"]];
+  const query: Array<[string, string]> = [["list-type", "2"]];
 
   if ((l.continuationToken ?? "") !== "") {
     query.push(["continuation-token", l.continuationToken as string]);
@@ -67,8 +68,8 @@ export interface ListObjectContent {
 
 export interface ListObjectsResponse {
   nextContinuationToken: string;
-  commonPrefixes: string[];
-  contents: ListObjectContent[];
+  commonPrefixes: Array<string>;
+  contents: Array<ListObjectContent>;
 }
 
 // an xsd:dateTime in Unix nanoseconds (time.Time.UnmarshalText)

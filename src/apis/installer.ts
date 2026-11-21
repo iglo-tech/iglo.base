@@ -11,7 +11,8 @@ import type { App } from "@/app/app";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import { HashExp, NotExp } from "@/db/dbx/expression";
 import { isNoRowsError } from "@/db/dbx/rows";
-import { newRecord, type Record } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import { CollectionNameSuperusers, DefaultInstallerEmail } from "@/records/record-model-superusers";
 import { countRecords, findAuthRecordByEmail } from "@/records/record-query";
 import { saveRecord } from "@/records/record-save";
@@ -116,9 +117,9 @@ async function findOrCreateInstallerSuperuser(app: App): Promise<Record> {
 
   try {
     return findAuthRecordByEmail(app, col, DefaultInstallerEmail);
-  } catch (err) {
-    if (!isNoRowsError(err)) {
-      throw err;
+  } catch (error) {
+    if (!isNoRowsError(error)) {
+      throw error;
     }
   }
 

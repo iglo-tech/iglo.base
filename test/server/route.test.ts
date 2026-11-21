@@ -2,10 +2,11 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { Event } from "@/server/event";
+import type { Event } from "@/server/event";
 import { Route } from "@/server/route";
 
 // the handlers under test ignore their event argument, as the Go tests pass nil
+// oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
 const nilEvent = undefined as unknown as Event;
 
 describe("Route", () => {

@@ -1,10 +1,11 @@
 // Upstream: ozzo-validation v4.4.1 when.go
 
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 
 // When returns a validation rule that executes the given list of rules when
 // the condition is true.
-export function When(condition: boolean, ...rules: Rule[]): WhenRule {
+export function When(condition: boolean, ...rules: Array<Rule>): WhenRule {
   return new WhenRule(condition, rules, []);
 }
 
@@ -13,8 +14,8 @@ export function When(condition: boolean, ...rules: Rule[]): WhenRule {
 export class WhenRule implements Rule {
   constructor(
     private readonly condition: boolean,
-    private readonly rules: readonly Rule[],
-    private readonly elseRules: readonly Rule[],
+    private readonly rules: ReadonlyArray<Rule>,
+    private readonly elseRules: ReadonlyArray<Rule>,
   ) {}
 
   // Validate checks if the condition is true and if so, it validates the
@@ -28,7 +29,7 @@ export class WhenRule implements Rule {
 
   // Else returns a validation rule that executes the given list of rules
   // when the condition is false.
-  else(...rules: Rule[]): WhenRule {
+  else(...rules: Array<Rule>): WhenRule {
     return new WhenRule(this.condition, this.rules, rules);
   }
 }

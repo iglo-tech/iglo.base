@@ -14,21 +14,24 @@
 // SQLite errors are converted to the Go driver's text (driver-error.ts).
 
 import {
-  type CollectionsApp,
   collectionQuery,
   fieldApp,
   findCollectionByNameOrId,
   normalizeViewQueryId,
   runInAppTransaction,
 } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { Collection, newViewCollection } from "@/collections/collection-model";
-import { FieldsList, newFieldsList } from "@/collections/fields-list";
+import type { FieldsList } from "@/collections/fields-list";
+import { newFieldsList } from "@/collections/fields-list";
 import { equalFold, toLower, trim, trimSpace } from "@/collections/go-strings";
 import { withDriverErrors } from "@/collections/driver-error";
 import { HashExp, inExp } from "@/db/dbx/expression";
-import { deleteView, tableInfo, type TableInfoRow } from "@/db/table";
+import { deleteView, tableInfo } from "@/db/table";
+import type { TableInfoRow } from "@/db/table";
 import { BoolField } from "@/fields/bool";
-import { type Field, FieldNameId, goQuote, isMultiValuer } from "@/fields/field";
+import { FieldNameId, goQuote, isMultiValuer } from "@/fields/field";
+import type { Field } from "@/fields/field";
 import { JSONField } from "@/fields/json";
 import { NumberField } from "@/fields/number";
 import { RelationField } from "@/fields/relation";
@@ -72,7 +75,7 @@ export function saveView(
     // because missing tables or columns won't return an error
     try {
       withDriverErrors(() => tableInfo(txApp.databases, dangerousViewName));
-    } catch (err) {
+    } catch (error) {
       // manually cleanup previously created view in case the func
       // is called in a nested transaction and the error is discarded
       try {
@@ -81,7 +84,7 @@ export function saveView(
         // ignored, as upstream does
       }
 
-      throw err;
+      throw error;
     }
   });
 }
@@ -106,8 +109,8 @@ export function createViewFields(
   let suggestedFields: Map<string, QueryField>;
   try {
     suggestedFields = parseQueryToFields(app, dangerousSelectQuery);
-  } catch (err) {
-    return [result, toError(err)];
+  } catch (error) {
+    return [result, toError(error)];
   }
 
   // note wrap in a transaction in case the dangerousSelectQuery contains
@@ -135,8 +138,8 @@ export function createViewFields(
         );
       }
     });
-  } catch (err) {
-    return [result, toError(err)];
+  } catch (error) {
+    return [result, toError(error)];
   }
 
   return [result, null];
@@ -144,7 +147,7 @@ export function createViewFields(
 
 export interface DryRunViewResult {
   fields: FieldsList;
-  sample: Record[];
+  sample: Array<Record>;
 }
 
 // DryRunView executes the provided query by creating a temporary view
@@ -184,11 +187,11 @@ export function dryRunView(
   // apply the same normalization as in the collection view query
   try {
     dangerousSelectQuery = normalizeViewQueryId(app, dangerousSelectQuery);
-  } catch (err) {
-    throw wrapError("failed to normalize view query id", err);
+  } catch (error) {
+    throw wrapError("failed to normalize view query id", error);
   }
 
-  let records: Record[];
+  let records: Array<Record>;
   try {
     records = recordQuery(app, tempCollection)
       // note: the query is wrapped in a secondary SELECT as a rudimentary
@@ -196,8 +199,8 @@ export function dryRunView(
       .from("(SELECT * FROM (" + dangerousSelectQuery + ")) as " + tempName)
       .limit(sampleSize)
       .all<Record>(recordsTarget);
-  } catch (err) {
-    throw wrapError("failed to retrieve query records", err);
+  } catch (error) {
+    throw wrapError("failed to retrieve query records", error);
   }
 
   // warn for possible empty or duplicated record ids found in the sample
@@ -292,7 +295,7 @@ export function normalizeViewSelectQuery(dangerousSelectQuery: string): string {
 
   const tk = Tokenizer.fromString(dangerousSelectQuery);
   tk.setSeparators(";");
-  let queryParts: string[];
+  let queryParts: Array<string>;
   try {
     queryParts = tk.scanAll();
   } catch {
@@ -407,6 +410,7 @@ export function parseQueryToFields(
         case "bool":
           field = new BoolField({ name: col.alias });
           break;
+        case undefined:
       }
       if (field !== null) {
         set(col.alias, field);
@@ -484,9 +488,9 @@ export function parseQueryToFields(
 
 function findCollectionsByIdentifiers(
   app: CollectionsApp,
-  tables: readonly Identifier[],
+  tables: ReadonlyArray<Identifier>,
 ): Map<string, Collection> {
-  const names: unknown[] = [];
+  const names: Array<unknown> = [];
 
   for (const table of tables) {
     if (table.alias.includes("(")) {
@@ -518,26 +522,26 @@ function findCollectionsByIdentifiers(
   return result;
 }
 
-export function getQueryTableInfo(app: CollectionsApp, selectQuery: string): TableInfoRow[] {
+export function getQueryTableInfo(app: CollectionsApp, selectQuery: string): Array<TableInfoRow> {
   const tempView = "_temp_" + pseudorandomString(6);
 
-  let info: TableInfoRow[] = [];
+  let info: Array<TableInfoRow> = [];
 
   runInAppTransaction(app, (txApp) => {
     // create a temp view with the provided query
     saveView(txApp, tempView, selectQuery);
 
     // extract the generated view table info
-    const errs: unknown[] = [];
+    const errs: Array<unknown> = [];
     try {
       info = withDriverErrors(() => tableInfo(txApp.databases, tempView));
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
     try {
       withDriverErrors(() => deleteView(txApp.databases, tempView));
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
     if (errs.length > 0) {
       throw joinErrors(errs);
@@ -565,8 +569,8 @@ export interface Identifier {
 }
 
 export class IdentifiersParser {
-  columns: Identifier[] = [];
-  tables: Identifier[] = [];
+  columns: Array<Identifier> = [];
+  tables: Array<Identifier> = [];
 
   parse(selectQuery: string): void {
     let str = trim(trimSpace(selectQuery), ";");
@@ -646,13 +650,13 @@ export class IdentifiersParser {
   }
 }
 
-function extractIdentifiers(rawExpression: string): Identifier[] {
+function extractIdentifiers(rawExpression: string): Array<Identifier> {
   const rawTk = Tokenizer.fromString(rawExpression);
   rawTk.setSeparators(",");
 
   const rawIdentifiers = rawTk.scanAll();
 
-  const result: Identifier[] = [];
+  const result: Array<Identifier> = [];
 
   for (const rawIdentifier of rawIdentifiers) {
     const tk = Tokenizer.fromString(rawIdentifier);
@@ -666,7 +670,7 @@ function extractIdentifiers(rawExpression: string): Identifier[] {
   return result;
 }
 
-function identifierFromParts(parts: readonly string[]): Identifier {
+function identifierFromParts(parts: ReadonlyArray<string>): Identifier {
   const result: Identifier = { original: "", alias: "" };
 
   switch (parts.length) {
@@ -685,7 +689,7 @@ function identifierFromParts(parts: readonly string[]): Identifier {
     case 1: {
       const subParts = (parts[0] as string).split(".");
       result.original = parts[0] as string;
-      result.alias = subParts[subParts.length - 1] as string;
+      result.alias = subParts.at(-1) as string;
       break;
     }
     default:
@@ -702,7 +706,7 @@ function identifierFromParts(parts: readonly string[]): Identifier {
   return result;
 }
 
-function trimRawIdentifier(rawIdentifier: string, ...extraTrimChars: string[]): string {
+function trimRawIdentifier(rawIdentifier: string, ...extraTrimChars: Array<string>): string {
   let trimChars = '`"[];';
   if (extraTrimChars.length > 0) {
     trimChars += extraTrimChars.join("");
@@ -730,7 +734,7 @@ export function wrapError(prefix: string, err: unknown): Error {
 }
 
 // errors.Join: the messages separated by newlines
-export function joinErrors(errs: readonly unknown[]): Error {
+export function joinErrors(errs: ReadonlyArray<unknown>): Error {
   const list = errs.map(toError);
   if (list.length === 1) {
     return list[0] as Error;

@@ -31,7 +31,7 @@ const mfaId = "m".repeat(15);
 const pass = "123456";
 
 // several prepare steps in order
-function all(...steps: ((ctx: PrepareContext) => void)[]): (ctx: PrepareContext) => void {
+function all(...steps: Array<(ctx: PrepareContext) => void>): (ctx: PrepareContext) => void {
   return (ctx) => {
     for (const step of steps) {
       step(ctx);
@@ -91,11 +91,15 @@ function otpsCount(n: number): (ctx: AfterContext) => void {
 
 function userRow(dataDir: string): { verified: number; password: string; tokenKey: string } {
   return (
-    queryRows(dataDir, "SELECT verified, password, tokenKey FROM users WHERE id = ?", userId) as {
+    queryRows(
+      dataDir,
+      "SELECT verified, password, tokenKey FROM users WHERE id = ?",
+      userId,
+    ) as Array<{
       verified: number;
       password: string;
       tokenKey: string;
-    }[]
+    }>
   )[0] as { verified: number; password: string; tokenKey: string };
 }
 
@@ -122,7 +126,7 @@ async function passwordReset(ctx: AfterContext): Promise<void> {
   }
 }
 
-export function otpCases(): Scenario[] {
+export function otpCases(): Array<Scenario> {
   return [
     // the OTP request
     // -----------------------------------------------------------

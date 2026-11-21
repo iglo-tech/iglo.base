@@ -20,7 +20,8 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { executable, startServer } from "@test/support/executable";
-import { type Mailpit, startMailpit } from "@test/support/mailpit";
+import { startMailpit } from "@test/support/mailpit";
+import type { Mailpit } from "@test/support/mailpit";
 import { defaultLayout, requireTool } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
 
@@ -33,7 +34,7 @@ const userId = "4q1xlclmfloku33";
 const usersId = "_pb_users_auth_";
 
 type Kind = "upstream" | "igloBase";
-const kinds: Kind[] = ["upstream", "igloBase"];
+const kinds: Array<Kind> = ["upstream", "igloBase"];
 
 interface Server {
   kind: Kind;
@@ -47,7 +48,7 @@ interface Reply {
   json: { [key: string]: unknown };
 }
 
-const roots: string[] = [];
+const roots: Array<string> = [];
 const running = new Set<Server>();
 let mailpits: Record<Kind, Mailpit>;
 
@@ -135,9 +136,13 @@ async function awaitSentTo(server: Server, otpId: unknown): Promise<void> {
   }
   const until = Date.now() + 3000;
   while (Date.now() < until) {
-    const rows = queryRows(server.dataDir, "SELECT sentTo FROM _otps WHERE id = ?", otpId) as {
+    const rows = queryRows(
+      server.dataDir,
+      "SELECT sentTo FROM _otps WHERE id = ?",
+      otpId,
+    ) as Array<{
       sentTo: string;
-    }[];
+    }>;
     if (rows.length === 0 || rows[0]?.sentTo !== "") {
       return;
     }
@@ -149,7 +154,7 @@ const authWithOTP = async (
   server: Server,
   otpId: unknown,
   password: string,
-  extra: object = {},
+  extra: Record<string, unknown> = {},
   collection = "users",
 ): Promise<Reply> => {
   await awaitSentTo(server, otpId);
@@ -160,7 +165,11 @@ const authWithOTP = async (
   });
 };
 
-const login = (server: Server, extra: object = {}, collection = "users"): Promise<Reply> =>
+const login = (
+  server: Server,
+  extra: Record<string, unknown> = {},
+  collection = "users",
+): Promise<Reply> =>
   post(server, `/api/collections/${collection}/auth-with-password`, {
     identity: email,
     password: pw,
@@ -174,16 +183,16 @@ async function clear(m: Mailpit): Promise<void> {
   await fetch(`${m.apiUrl}/api/v1/messages`, { method: "DELETE" });
 }
 
-async function messageIds(m: Mailpit): Promise<string[]> {
+async function messageIds(m: Mailpit): Promise<Array<string>> {
   const list = (await fetch(`${m.apiUrl}/api/v1/messages`).then((res) => res.json())) as {
-    messages: { ID: string }[];
+    messages: Array<{ ID: string }>;
   };
   return list.messages.map((msg) => msg.ID);
 }
 
 // waits for n OTP messages and returns them raw, the newest first (a login
 // alert from a new origin can arrive between them)
-async function rawMessages(m: Mailpit, n: number): Promise<string[]> {
+async function rawMessages(m: Mailpit, n: number): Promise<Array<string>> {
   const until = Date.now() + 10_000;
   for (;;) {
     const ids = await messageIds(m);
@@ -205,7 +214,7 @@ async function rawMessages(m: Mailpit, n: number): Promise<string[]> {
 const otpPasswordRegex = /<strong>(\d+)<\/strong>/;
 
 function unfold(raw: string): string {
-  return raw.replace(/\r\n/g, "\n").replace(/=\n/g, "");
+  return raw.replaceAll("\r\n", "\n").replaceAll("=\n", "");
 }
 
 function mailedPassword(raw: string): string {
@@ -219,8 +228,8 @@ function mailedPassword(raw: string): string {
 
 // the raw message without what differs per send, as mail.test.ts
 function normalizeMail(raw: string): string {
-  let text = raw.replace(/\r\n/g, "\n");
-  text = text.replace(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
+  let text = raw.replaceAll("\r\n", "\n");
+  text = text.replaceAll(/(\n\s+for <[^>]*>;) [^\n]+/g, "$1 <received>");
   text = text.replace(/^Date: .*$/m, "Date: <date>");
   text = text.replace(/^(Message-I[Dd]): <[A-Za-z0-9]{15}@/m, "$1: <id@");
   const boundaries = [
@@ -229,10 +238,10 @@ function normalizeMail(raw: string): string {
   boundaries.forEach((b, i) => {
     text = text.replaceAll(b as string, `<boundary${i}>`);
   });
-  text = text.replace(/=\n/g, "");
+  text = text.replaceAll("=\n", "");
   return text
-    .replace(/<strong>\d+<\/strong>/g, "<strong>otp</strong>")
-    .replace(/\b\d{6,}\b/g, "otp");
+    .replaceAll(/<strong>\d+<\/strong>/g, "<strong>otp</strong>")
+    .replaceAll(/\b\d{6,}\b/g, "otp");
 }
 
 // -------------------------------------------------------------------
@@ -240,6 +249,7 @@ function normalizeMail(raw: string): string {
 
 // generated values replaced, for comparing two servers' replies
 function shape(reply: Reply): unknown {
+  // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
   const json = JSON.parse(JSON.stringify(reply.json)) as { [key: string]: unknown };
   for (const key of ["otpId", "mfaId", "token"]) {
     if (typeof json[key] === "string") {
@@ -260,7 +270,7 @@ async function bothFlows(
   prepare: (dataDir: string) => void,
   flow: (server: Server, mail: Mailpit, step: (reply: Reply) => Reply) => Promise<void>,
 ): Promise<void> {
-  const transcripts: unknown[][] = [];
+  const transcripts: Array<Array<unknown>> = [];
   for (const kind of kinds) {
     const mail = mailpits[kind];
     await clear(mail);
@@ -268,7 +278,7 @@ async function bothFlows(
     smtpTo(dataDir, mail.smtpPort);
     prepare(dataDir);
     const server = await start(kind, dataDir);
-    const transcript: unknown[] = [];
+    const transcript: Array<unknown> = [];
     try {
       await flow(server, mail, (reply) => {
         transcript.push(shape(reply));
@@ -279,7 +289,7 @@ async function bothFlows(
     }
     transcripts.push(transcript);
   }
-  expect(transcripts[1]).toEqual(transcripts[0] as unknown[]);
+  expect(transcripts[1]).toEqual(transcripts[0] as Array<unknown>);
 }
 
 const usersWithoutMFA = (dataDir: string): void => {
@@ -292,7 +302,7 @@ describe("the OTP email", () => {
   test(
     "the message of each server is the same, and its password signs in",
     async () => {
-      const messages: string[] = [];
+      const messages: Array<string> = [];
       await bothFlows(usersWithoutMFA, async (server, mail, step) => {
         const { json } = step(await requestOTP(server));
         const [raw = ""] = await rawMessages(mail, 1);
@@ -392,7 +402,7 @@ describe("the OTP email", () => {
               server.dataDir,
               "SELECT sentTo FROM _otps WHERE id = ?",
               reply.json["otpId"] as string,
-            ) as { sentTo: string }[];
+            ) as Array<{ sentTo: string }>;
             expect(row?.sentTo).toBe("");
           },
         );
@@ -428,7 +438,7 @@ describe("repeated requests", () => {
     "the eleventh request reuses the last issued OTP and sends nothing",
     async () => {
       await bothFlows(usersWithoutMFA, async (server, mail, step) => {
-        const ids: unknown[] = [];
+        const ids: Array<unknown> = [];
         for (let i = 0; i < 11; i++) {
           ids.push(step(await requestOTP(server)).json["otpId"]);
         }
@@ -605,7 +615,9 @@ describe("MFA", () => {
           const [rawA = ""] = await rawMessages(mail, 1);
           const b = step(await requestOTP(server));
           const [rawB = ""] = await rawMessages(mail, 2);
-          const passwords = await Promise.all([rawA, rawB].map(mailedPassword));
+          const passwords = await Promise.all(
+            [rawA, rawB].map((raw) => Promise.resolve(mailedPassword(raw))),
+          );
 
           const first = step(await authWithOTP(server, a.json["otpId"], passwords[0] as string));
           const second = step(

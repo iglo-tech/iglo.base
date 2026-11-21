@@ -16,10 +16,12 @@ import { bodyLimit } from "@/middlewares/body-limit";
 import { DefaultMaxBodySize } from "@/middlewares/middlewares";
 import { bytesReader, readAll, RereadableReadCloser } from "@/server/rereadable-read-closer";
 import { HttpRequest } from "@/server/request";
-import { ResponseWriter, type Mux } from "@/server/router";
+import { ResponseWriter } from "@/server/router";
+import type { Mux } from "@/server/router";
 import type { MapRef } from "@/server/unmarshal-request-data";
 
-import { openFixtureApp, type TestApp } from "@test/app/app";
+import { openFixtureApp } from "@test/app/app";
+import type { TestApp } from "@test/app/app";
 
 let testApp: TestApp;
 let mux: Mux;
@@ -83,13 +85,13 @@ async function send(url: string, body: string, lazyContentLength: boolean): Prom
 // a JSON object of n + 2 bytes (upstream's `"` + n bytes + `"`)
 const quoted = (n: number) => `{"a":"${"a".repeat(n - 6)}"}`;
 
-const scenarios: {
+const scenarios: Array<{
   name: string;
   url: string;
   body: () => string;
   lazy: boolean;
   status: number;
-}[] = [
+}> = [
   {
     name: "(eager content-length check) with body = default limit",
     url: "/a",

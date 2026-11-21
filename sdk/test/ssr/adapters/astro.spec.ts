@@ -7,7 +7,8 @@ import {
   ServerClient,
   SSR_NO_CACHE_HEADERS,
 } from "@sdk/ssr/index";
-import { createAstroAuth, type AstroAuth, type AstroContext } from "@sdk/ssr/astro";
+import { createAstroAuth } from "@sdk/ssr/astro";
+import type { AstroAuth, AstroContext } from "@sdk/ssr/astro";
 import type { AdapterOptions, AdapterRoutes } from "@sdk/ssr/adapter";
 import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import {
@@ -19,8 +20,8 @@ import {
   stubApi,
   superuserToken,
   testClock,
-  type Handler,
 } from "@sdk-test/ssr/browser-support";
+import type { Handler } from "@sdk-test/ssr/browser-support";
 
 const T0 = Math.floor(Date.now() / 1000);
 const clock = testClock(T0 * 1000);
@@ -59,7 +60,7 @@ async function adapter(
 ): Promise<AstroAuth> {
   const superuser = await createSuperuserClient({
     url: API,
-    token: superuserToken(T0 + 99999),
+    token: superuserToken(T0 + 99_999),
     fetch: api.fetch,
     clock,
   });
@@ -91,8 +92,8 @@ function makeContext(
     headers.set("cookie", jar.map((c) => `${c.name}=${encodeURIComponent(c.value)}`).join("; "));
   }
   const request = new Request(url, { method: init.method ?? "GET", headers, body: init.body });
-  const sets: CookieWrite[] = [];
-  const deletes: string[] = [];
+  const sets: Array<CookieWrite> = [];
+  const deletes: Array<string> = [];
   const context: AstroContext = {
     request,
     url,
@@ -115,7 +116,7 @@ function makeContext(
 
 /** The `next` of an app that answers `200 app` and records the contexts it saw. */
 function appNext(context: AstroContext) {
-  const seen: AstroContext[] = [];
+  const seen: Array<AstroContext> = [];
   const next = async (): Promise<Response> => {
     seen.push(context);
     return new Response("app", { status: 200 });

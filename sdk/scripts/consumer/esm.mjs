@@ -7,6 +7,23 @@ import PocketBase, {
   cookieParse,
 } from "@iglo.tech/iglo.base";
 const pb = new PocketBase("http://127.0.0.1:1");
+
+// The prototype-chain check of instanceof, without the operator (lint rule @nkzw/no-instanceof).
+function isInstanceOf(ctor, value) {
+  if (value === null || (typeof value !== "object" && typeof value !== "function")) {
+    return false;
+  }
+  for (
+    let proto = Reflect.getPrototypeOf(value);
+    proto !== null;
+    proto = Reflect.getPrototypeOf(proto)
+  ) {
+    if (proto === ctor.prototype) {
+      return true;
+    }
+  }
+  return false;
+}
 console.log(
   "esm",
   typeof PocketBase,
@@ -43,7 +60,7 @@ const serverClient = await createServerClient({
   url: "http://127.0.0.1:8090",
   cookies: { getAll: () => [] },
 });
-if (!(serverClient instanceof PocketBase)) {
+if (!isInstanceOf(PocketBase, serverClient)) {
   throw new Error("serverClient is not an instance of PocketBase");
 }
 console.log("instanceof PocketBase: ok");
@@ -51,12 +68,12 @@ console.log("instanceof PocketBase: ok");
 let verified = false;
 try {
   await serverClient.auth.verify();
-} catch (err) {
-  if (err instanceof ClientResponseError) {
+} catch (error) {
+  if (error instanceof ClientResponseError) {
     verified = true;
   } else {
     throw new Error("expected err instanceof ClientResponseError from @iglo.tech/iglo.base", {
-      cause: err,
+      cause: error,
     });
   }
 }
@@ -68,7 +85,7 @@ console.log("instanceof ClientResponseError: ok");
 // the browser subpath imports under Node too (it reads no browser global until it is asked to)
 import { createBrowserClient } from "@iglo.tech/iglo.base/ssr/browser";
 const browserPb = createBrowserClient({ url: "http://127.0.0.1:1", token: "" });
-if (!(browserPb instanceof PocketBase)) {
+if (!isInstanceOf(PocketBase, browserPb)) {
   throw new Error("browser client is not an instance of PocketBase");
 }
 console.log("ssr/browser instanceof PocketBase: ok", typeof browserPb.realtime.subscribe);

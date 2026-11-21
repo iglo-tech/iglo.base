@@ -68,7 +68,6 @@ export class BackupWorker {
     return new Promise((resolve, reject) => {
       this.#pending.set(id, { resolve, reject });
       // a Worker's postMessage has no target origin (that is window.postMessage)
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       this.#worker.postMessage({ ...request, id });
     });
   }

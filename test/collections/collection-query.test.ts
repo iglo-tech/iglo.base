@@ -31,7 +31,8 @@ import { isNoRowsError } from "@/db/dbx/rows";
 import { countRecords } from "@/records/record-query";
 import { nonzeroUniques } from "@/tools/list/list";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 let totalQueries = 0;
 let app: TestCollectionsApp;
@@ -78,7 +79,7 @@ test("TestReloadCachedCollections", () => {
 
   const cached = app.store.get(StoreKeyCachedCollections);
   expect(Array.isArray(cached)).toBe(true);
-  const cachedCollections = cached as { id: string }[];
+  const cachedCollections = cached as Array<{ id: string }>;
 
   const collections = findAllCollections(app);
 
@@ -93,7 +94,7 @@ test("TestReloadCachedCollections", () => {
 });
 
 describe("TestFindAllCollections", () => {
-  const scenarios: { collectionTypes: string[]; expectTotal: number }[] = [
+  const scenarios: Array<{ collectionTypes: Array<string>; expectTotal: number }> = [
     { collectionTypes: [], expectTotal: 16 }, // nil
     { collectionTypes: [], expectTotal: 16 },
     { collectionTypes: [""], expectTotal: 16 },
@@ -127,7 +128,7 @@ describe("TestFindAllCollections", () => {
   });
 });
 
-const nameOrIdScenarios: { nameOrId: string; expectError: boolean }[] = [
+const nameOrIdScenarios: Array<{ nameOrId: string; expectError: boolean }> = [
   { nameOrId: "", expectError: true },
   { nameOrId: "missing", expectError: true },
   { nameOrId: "wsmn24bux7wo113", expectError: false },
@@ -142,8 +143,8 @@ describe("TestFindCollectionByNameOrId", () => {
       let model = null;
       try {
         model = findCollectionByNameOrId(app, s.nameOrId);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== null).toBe(s.expectError);
@@ -178,8 +179,8 @@ function runFindCachedCollectionByNameOrId(withCache: boolean): void {
     let model = null;
     try {
       model = findCachedCollectionByNameOrId(app, s.nameOrId);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
 
     expect({ nameOrId: s.nameOrId, hasErr: err !== null }).toEqual({
@@ -271,8 +272,8 @@ function runFindCachedCollectionReferences(withCache: boolean): void {
 
 // collection name → its referencing field names
 function referenceNames(
-  refs: Map<{ name: string }, { getName(): string }[]>,
-): (string | string[])[][] {
+  refs: Map<{ name: string }, Array<{ getName(): string }>>,
+): Array<Array<string | Array<string>>> {
   return [...refs].map(([col, fields]) => [col.name, fields.map((f) => f.getName())]);
 }
 
@@ -295,7 +296,7 @@ describe("TestFindCachedCollectionReferences", () => {
 });
 
 describe("TestIsCollectionNameUnique", () => {
-  const scenarios: { name: string; excludeId: string; expected: boolean }[] = [
+  const scenarios: Array<{ name: string; excludeId: string; expected: boolean }> = [
     { name: "", excludeId: "", expected: false },
     { name: "demo1", excludeId: "", expected: false },
     { name: "Demo1", excludeId: "", expected: false },

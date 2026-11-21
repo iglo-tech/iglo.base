@@ -18,7 +18,8 @@ import {
   serveSite,
   writeMigrations,
 } from "@test/differential/migrations/support";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
 const root = mkdtempSync(join(tmpdir(), "iglo-base-migration-s3-"));
@@ -34,7 +35,7 @@ afterAll(async () => {
 });
 
 // the objects of one record (the two servers share the bucket)
-function storedFiles(recordId: string): string[] {
+function storedFiles(recordId: string): Array<string> {
   return walk(join(gw.posixRoot, gw.bucket)).filter(
     (p) => p.split("/")[1] === recordId && p.split("/").length === 3,
   );
@@ -54,7 +55,7 @@ describe("migration file clear on S3", () => {
           const made = await api(server, "POST", "/api/collections", {
             name: "docs",
             type: "base",
-            fields: [{ name: "file", type: "file", maxSelect: 1, maxSize: 1000000 }],
+            fields: [{ name: "file", type: "file", maxSelect: 1, maxSize: 1_000_000 }],
           });
           expect(made.status).toBe(200);
           const form = new FormData();

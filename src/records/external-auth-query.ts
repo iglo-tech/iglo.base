@@ -6,7 +6,8 @@
 // missing row, see isNoRows in src/records/record-save.ts).
 
 import type { Collection } from "@/collections/collection-model";
-import { type Expression, HashExp, not } from "@/db/dbx/expression";
+import { HashExp, not } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import { ExternalAuth } from "@/records/external-auth-model";
 import {
   CollectionNameExternalAuths,
@@ -14,12 +15,16 @@ import {
   findAllRefsByRecord,
 } from "@/records/record-auth-refs";
 import type { Record } from "@/records/record-model";
-import { recordQuery, recordsTarget, recordTarget, type RecordsApp } from "@/records/record-query";
+import { recordQuery, recordsTarget, recordTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
 import { run, runSync } from "@/records/record-save";
 
 // FindAllExternalAuthsByRecord returns all ExternalAuth models
 // linked to the provided auth record.
-export function findAllExternalAuthsByRecord(app: RecordsApp, authRecord: Record): ExternalAuth[] {
+export function findAllExternalAuthsByRecord(
+  app: RecordsApp,
+  authRecord: Record,
+): Array<ExternalAuth> {
   return findAllRefsByRecord(app, CollectionNameExternalAuths, authRecord).map(
     (r) => new ExternalAuth(r),
   );
@@ -30,7 +35,7 @@ export function findAllExternalAuthsByRecord(app: RecordsApp, authRecord: Record
 export function findAllExternalAuthsByCollection(
   app: RecordsApp,
   collection: Collection,
-): ExternalAuth[] {
+): Array<ExternalAuth> {
   return recordQuery(app, CollectionNameExternalAuths)
     .andWhere(new HashExp({ collectionRef: collection.id }))
     .orderBy("created DESC")

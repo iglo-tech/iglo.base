@@ -30,7 +30,7 @@ describe("TestURLFieldPrepareValue", () => {
   const f = new URLField();
   const record = new TestRecord(newBaseCollection("test"));
 
-  const scenarios: [unknown, string][] = [
+  const scenarios: Array<[unknown, string]> = [
     ["", ""],
     ["test", "test"],
     [false, "false"],
@@ -58,12 +58,12 @@ describe("TestURLFieldValidateValue", () => {
     return record;
   };
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     field: URLField;
     record: () => TestRecord;
     expectError: boolean;
-  }[] = [
+  }> = [
     {
       name: "invalid raw value",
       field: new URLField({ name: "test" }),
@@ -136,7 +136,7 @@ describe("TestURLFieldValidateSettings", () => {
   const app = noDBApp();
   const collection = newBaseCollection("test_collection");
 
-  const scenarios: { name: string; field: () => URLField; expectErrors: string[] }[] = [
+  const scenarios: Array<{ name: string; field: () => URLField; expectErrors: Array<string> }> = [
     {
       name: "zero minimal",
       field: () => new URLField({ id: "test", name: "test" }),

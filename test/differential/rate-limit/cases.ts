@@ -21,7 +21,7 @@
 
 import { insertOTPs, setMFA } from "@test/scenarios/record-auth-prepare";
 import { clientsToken, superuserToken, usersToken } from "@test/scenarios/record-crud";
-import { type RateLimitRuleData } from "@test/scenarios/prepare";
+import type { RateLimitRuleData } from "@test/scenarios/prepare";
 import type { PrepareContext } from "@test/scenarios/scenario";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 
@@ -43,16 +43,16 @@ export interface Step {
 
 export interface Case {
   name: string;
-  rules: RateLimitRuleData[];
-  excludedIPs?: string[];
+  rules: Array<RateLimitRuleData>;
+  excludedIPs?: Array<string>;
   // defaults to true
   enabled?: boolean;
-  superuserIPs?: string[];
-  trustedProxyHeaders?: string[];
+  superuserIPs?: Array<string>;
+  trustedProxyHeaders?: Array<string>;
   prepare?: (ctx: PrepareContext) => void;
   // window cases: the steps must land in the planned seconds
   timed?: boolean;
-  steps: Step[];
+  steps: Array<Step>;
 }
 
 export const tooManyRequestsBody = `{"data":{},"message":"Too Many Requests.","status":429}\n`;
@@ -87,14 +87,18 @@ function rule(label: string, maxRequests: number, audience = ""): RateLimitRuleD
 }
 
 function get(url: string, status: number, headers?: Record<string, string>): Step {
-  return { url, status, ...(headers ? { headers } : {}) };
+  const step: Step = { url, status };
+  if (headers) {
+    step.headers = headers;
+  }
+  return step;
 }
 
-function times(n: number, step: Step): Step[] {
+function times(n: number, step: Step): Array<Step> {
   return Array.from({ length: n }, () => step);
 }
 
-function batch(status: number, ...requests: unknown[]): Step {
+function batch(status: number, ...requests: Array<unknown>): Step {
   return { method: "POST", url: "/api/batch", body: { requests }, status };
 }
 
@@ -105,7 +109,11 @@ const createItem = (title: string, url = "/api/collections/demo2/records"): unkn
 });
 
 function post(url: string, body: unknown, status: number, headers?: Record<string, string>): Step {
-  return { method: "POST", url, body, status, ...(headers ? { headers } : {}) };
+  const step: Step = { method: "POST", url, body, status };
+  if (headers) {
+    step.headers = headers;
+  }
+  return step;
 }
 
 const passwordAuth = post(
@@ -149,7 +157,7 @@ const otpCapped: Step = {
   message: "Too many attempts, please try again later with a new OTP.",
 };
 
-export const cases: Case[] = [
+export const cases: Array<Case> = [
   // TestDefaultRateLimitMiddleware
   {
     name: "TestDefaultRateLimitMiddleware",

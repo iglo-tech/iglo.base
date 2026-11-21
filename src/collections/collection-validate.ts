@@ -11,10 +11,8 @@
 // A view's fields are generated from its query (createViewFields) and the
 // query is run (dryRunView) with view.ts.
 
-import {
-  type AuthOptionsValidator,
-  validateAuthOptions,
-} from "@/collections/collection-model-auth-options";
+import { validateAuthOptions } from "@/collections/collection-model-auth-options";
+import type { AuthOptionsValidator } from "@/collections/collection-model-auth-options";
 import {
   Collection,
   CollectionTypeAuth,
@@ -22,15 +20,10 @@ import {
   CollectionTypeView,
   newCollection,
 } from "@/collections/collection-model";
-import {
-  type ViewOptionsValidator,
-  validateViewOptions,
-} from "@/collections/collection-model-view-options";
-import {
-  type CollectionsApp,
-  fieldApp,
-  isCollectionNameUnique,
-} from "@/collections/collection-query";
+import { validateViewOptions } from "@/collections/collection-model-view-options";
+import type { ViewOptionsValidator } from "@/collections/collection-model-view-options";
+import { fieldApp, isCollectionNameUnique } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { FieldsList } from "@/collections/fields-list";
 import { RequestInfo } from "@/app/event-request";
 import { createViewFields, dryRunView } from "@/collections/view";
@@ -59,18 +52,21 @@ import { findSingleColumnUniqueIndex, parseIndex } from "@/tools/dbutils/index";
 import { existInSlice } from "@/tools/list/list";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
-import { Errors, NewError, type Error as ValidationError } from "@/validation/error";
+import { Errors, NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { In } from "@/validation/in";
 import { Length } from "@/validation/length";
 import { Match } from "@/validation/match";
 import { Nil } from "@/validation/absent";
 import { ErrRequired, Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { Equal } from "@/validators/equal";
 import { UniqueId } from "@/validators/db";
 import { ErrUnsupportedValueType, JoinValidationErrors } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 // core/db.go DefaultIdRegex
 const defaultIdRegex = lazyMustCompile(String.raw`^\w+$`);
@@ -88,10 +84,10 @@ export function validateCollection(app: CollectionsApp, collection: Collection):
     original = new Collection();
     try {
       modelQuery(app.databases, original).model(collection.lastSavedPK(), original);
-    } catch (err) {
+    } catch (error) {
       return new Error(
-        `failed to fetch old collection state: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
+        `failed to fetch old collection state: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -225,7 +221,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
 
     // ensure that the collection name doesn't collide with the id of any collection
     const dummyCollection = new Collection();
-    let found = false;
+    let found: boolean;
     try {
       modelQuery(this.app.databases, dummyCollection).model(v, dummyCollection);
       found = true;
@@ -291,7 +287,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   ensureNoFieldsTypeChange = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -315,12 +311,12 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkFieldDuplicates = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
-    const ids: string[] = [];
-    const names: string[] = [];
+    const ids: Array<string> = [];
+    const names: Array<string> = [];
 
     for (const [i, field] of value.toArray().entries()) {
       if (existInSlice(field.getId(), ids)) {
@@ -358,7 +354,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkFieldValidators = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -388,8 +384,8 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
     let err: unknown = null;
     try {
       dryRunView(this.app, v, 10);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
     if (err !== null) {
       let rawErr = err instanceof Error ? err.message : String(err);
@@ -406,7 +402,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkReservedAuthKeys = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -433,7 +429,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   checkMinFields = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -443,14 +439,14 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
 
     // all collections must have an "id" PK field
     const idField = value.getByName(FieldNameId);
-    if (!(idField instanceof TextField) || !idField.primaryKey) {
+    if (!isInstance(TextField, idField) || !idField.primaryKey) {
       return NewError("validation_missing_primary_key", `Missing or invalid "id" PK field.`);
     }
 
     switch (this.newC.type) {
       case CollectionTypeAuth: {
         const passwordField = value.getByName(FieldNamePassword);
-        if (!(passwordField instanceof PasswordField)) {
+        if (!isInstance(PasswordField, passwordField)) {
           return NewError(
             "validation_missing_password_field",
             `System "password" field is required.`,
@@ -461,7 +457,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const tokenKeyField = value.getByName(FieldNameTokenKey);
-        if (!(tokenKeyField instanceof TextField)) {
+        if (!isInstance(TextField, tokenKeyField)) {
           return NewError(
             "validation_missing_tokenKey_field",
             `System "tokenKey" field is required.`,
@@ -472,7 +468,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const emailField = value.getByName(FieldNameEmail);
-        if (!(emailField instanceof EmailField)) {
+        if (!isInstance(EmailField, emailField)) {
           return NewError("validation_missing_email_field", `System "email" field is required.`);
         }
         if (!emailField.system) {
@@ -480,7 +476,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const emailVisibilityField = value.getByName(FieldNameEmailVisibility);
-        if (!(emailVisibilityField instanceof BoolField)) {
+        if (!isInstance(BoolField, emailVisibilityField)) {
           return NewError(
             "validation_missing_emailVisibility_field",
             `System "emailVisibility" field is required.`,
@@ -491,7 +487,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
         }
 
         const verifiedField = value.getByName(FieldNameVerified);
-        if (!(verifiedField instanceof BoolField)) {
+        if (!isInstance(BoolField, verifiedField)) {
           return NewError(
             "validation_missing_verified_field",
             `System "verified" field is required.`,
@@ -509,7 +505,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   };
 
   ensureNoSystemFieldsChange = (value: unknown): Error | null => {
-    if (!(value instanceof FieldsList)) {
+    if (!isInstance(FieldsList, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -539,7 +535,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
     if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
       return ErrUnsupportedValueType;
     }
-    const names = value as string[];
+    const names = value;
 
     if (names.length === 0) {
       return null; // nothing to check
@@ -611,7 +607,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
   }
 
   checkIndexes = (value: unknown): Error | null => {
-    const indexes = Array.isArray(value) ? (value as string[]) : [];
+    const indexes = Array.isArray(value) ? (value as Array<string>) : [];
 
     if (this.newC.isView() && indexes.length > 0) {
       return NewError(
@@ -649,7 +645,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
       duplicatedNames.add(toLower(parsed.indexName));
 
       // ensure that the index name is not used in another collection
-      let usedTblName = "";
+      let usedTblName: string;
       try {
         const [tblName] = this.app.databases
           .concurrentDB()
@@ -816,8 +812,8 @@ function checkRuleExpr(
   const r = newRecordFieldResolver(app, collection, new RequestInfo(), true);
   try {
     filterBuildExpr(rule, r, r.filterOptions());
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return NewError("validation_invalid_rule", "Invalid rule. Raw error: " + message);
   }
 

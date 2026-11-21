@@ -2,10 +2,12 @@
 
 import { goQuote } from "@/fields/field";
 import { File } from "@/tools/filesystem/file";
-import { bytesToText, textToBytes, type GoInt } from "@/tools/types/go-json";
+import { bytesToText, textToBytes } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { NewError } from "@/validation/error";
 import type { RuleFunc } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
+import { isInstance } from "@/tools/types/is-instance";
 
 // UploadedFileSize checks whether the validated [File] size is no more
 // than the provided maxBytes.
@@ -18,7 +20,7 @@ export function UploadedFileSize(maxBytes: GoInt): RuleFunc {
     if (value === null) {
       return null; // nothing to validate (a nil *filesystem.File)
     }
-    if (!(value instanceof File)) {
+    if (!isInstance(File, value)) {
       return ErrUnsupportedValueType;
     }
 
@@ -43,12 +45,12 @@ export function UploadedFileSize(maxBytes: GoInt): RuleFunc {
 //
 //	const validMimeTypes = ["test/plain", "image/jpeg"];
 //	StructField("file", form.file, By(UploadedFileMimeType(validMimeTypes)))
-export function UploadedFileMimeType(validTypes: readonly string[] | null): RuleFunc {
+export function UploadedFileMimeType(validTypes: ReadonlyArray<string> | null): RuleFunc {
   return (value) => {
     if (value === null) {
       return null; // nothing to validate (a nil *filesystem.File)
     }
-    if (!(value instanceof File)) {
+    if (!isInstance(File, value)) {
       return ErrUnsupportedValueType;
     }
 

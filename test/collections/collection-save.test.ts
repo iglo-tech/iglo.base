@@ -14,23 +14,24 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  type Collection,
   newAuthCollection,
   newBaseCollection,
   newViewCollection,
 } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import {
   findCachedCollectionByNameOrId,
   findCollectionByNameOrId,
 } from "@/collections/collection-query";
 import { deleteCollection, saveCollection } from "@/collections/collection-save";
-import { FileField } from "@/fields/file";
-import { RelationField } from "@/fields/relation";
+import type { FileField } from "@/fields/file";
+import type { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
 import { hasTable, tableColumns, tableIndexes } from "@/db/table";
 import { parseIndex } from "@/tools/dbutils/index";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 function withApp(fn: (app: TestCollectionsApp) => void): void {
   const app = openTestApp();
@@ -45,8 +46,8 @@ function errorOf(fn: () => void): unknown {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 
@@ -65,12 +66,12 @@ describe("TestCollectionDelete", () => {
     });
   });
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collection: string;
     disableIntegrityChecks?: boolean;
     expectError: boolean;
-  }[] = [
+  }> = [
     { name: "unsaved", collection: "", expectError: true },
     { name: "system", collection: "_superusers", expectError: true },
     { name: "base with references", collection: "demo1", expectError: true },
@@ -141,12 +142,12 @@ describe("TestCollectionModelEventSync", () => {
 });
 
 describe("TestCollectionSaveModel", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collection: (app: TestCollectionsApp) => Collection;
     expectError: boolean;
-    expectColumns?: string[];
-  }[] = [
+    expectColumns?: Array<string>;
+  }> = [
     // trigger validators
     {
       name: "create - trigger validators",
@@ -387,7 +388,7 @@ describe("TestCollectionSaveViewWrapping", () => {
 
   // note: some of the queries use "limit 0" because the tested field value could be empty
   // which will trigger the extra sample records validation that are not important for this test
-  const scenarios: [name: string, query: string, expected: string][] = [
+  const scenarios: Array<[name: string, query: string, expected: string]> = [
     [
       "no wrapping - id field",
       "select id, bool from demo1",

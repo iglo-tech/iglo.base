@@ -27,20 +27,16 @@
 // request that carries user data: its session cookie, a cookie it writes, or a browser token it
 // mints (`setHeader` is called as soon as one of them happens).
 import type { SerializeOptions } from "@sdk/tools/cookie";
-import {
-  createRequestCookieAdapter,
-  SSR_NO_CACHE_HEADERS,
-  type CookieAdapter,
-} from "@sdk/ssr/index";
+import { createRequestCookieAdapter, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
+import type { CookieAdapter } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
   noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
-  type AdapterOptions,
-  type ResolvedAdapterOptions,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 
 /** The options of a cookie write, in the shape h3's `setCookie` takes. */
 export interface NuxtCookieOptions {
@@ -60,7 +56,7 @@ export interface NuxtEvent {
   /** The request target: the path and query, as h3's `event.path` has them. */
   path: string;
   /** The request headers, as Node has them (`event.node.req.headers`). */
-  headers: Record<string, string | string[] | undefined>;
+  headers: Record<string, string | Array<string> | undefined>;
   /** Nitro's per-request context: the middleware sets `pb` and `pbBrowserToken` on it. */
   context: Record<string, unknown>;
   /** Reads the request body as JSON. Only the popup route calls it. */
@@ -105,7 +101,7 @@ function nuxtOptions(options: SerializeOptions | undefined): NuxtCookieOptions {
   };
 }
 
-function headerValue(value: string | string[] | undefined): string | undefined {
+function headerValue(value: string | Array<string> | undefined): string | undefined {
   return Array.isArray(value) ? value.join(", ") : value;
 }
 

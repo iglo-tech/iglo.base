@@ -2,8 +2,10 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type Expr, exprIsZero, type ExprGroup, parse } from "@/search/fexpr/parser";
-import { SignAnyEq, type Token, TokenWS } from "@/search/fexpr/scanner";
+import { exprIsZero, parse } from "@/search/fexpr/parser";
+import type { Expr, ExprGroup } from "@/search/fexpr/parser";
+import { SignAnyEq, TokenWS } from "@/search/fexpr/scanner";
+import type { Token } from "@/search/fexpr/scanner";
 
 import { printGroups } from "@test/search/fexpr/go-print";
 
@@ -16,7 +18,7 @@ function expr(e: Partial<Expr>): Expr {
 }
 
 test("Expr.IsZero", () => {
-  const scenarios: [Expr, boolean][] = [
+  const scenarios: Array<[Expr, boolean]> = [
     [expr({}), true],
     [expr({ op: SignAnyEq }), false],
     [expr({ left: tok({ literal: "123" }) }), false],
@@ -30,7 +32,7 @@ test("Expr.IsZero", () => {
 });
 
 // [input, expected error, %v of the result]
-const scenarios: [string, boolean, string][] = [
+const scenarios: Array<[string, boolean, string]> = [
   ["> 1", true, "[]"],
   ["a >", true, "[]"],
   ["a > >", true, "[]"],
@@ -65,52 +67,92 @@ const scenarios: [string, boolean, string][] = [
   ["test = ''demo''", true, "[]"],
   ["test = `demo`", true, "[]"],
   // control and esc chars
-  ["demo='a\\b\\c\\d'", false, "[{{{<nil> identifier demo} = {<nil> text a\\b\\c\\d}} &&}]"],
-  ["demo='a\\n'", false, "[{{{<nil> identifier demo} = {<nil> text a\n}} &&}]"],
-  ["demo='a\\r'", false, "[{{{<nil> identifier demo} = {<nil> text a\r}} &&}]"],
-  ["demo='a\\t'", false, "[{{{<nil> identifier demo} = {<nil> text a\t}} &&}]"],
-  ["demo='a\\r\\n'", false, "[{{{<nil> identifier demo} = {<nil> text a\r\n}} &&}]"],
-  ["demo='a\\nb'", false, "[{{{<nil> identifier demo} = {<nil> text a\nb}} &&}]"],
-  ["demo='a\\tb'", false, "[{{{<nil> identifier demo} = {<nil> text a\tb}} &&}]"],
-  ["demo='te\\'st'", false, "[{{{<nil> identifier demo} = {<nil> text te'st}} &&}]"],
-  ["(demo='te\\'st')", false, "[{[{{{<nil> identifier demo} = {<nil> text te'st}} &&}] &&}]"],
-  ["demo='te\\\\'st'", true, "[]"],
-  ["(demo='te\\\\'st')", true, "[]"],
-  ['demo="te\\"st"', false, '[{{{<nil> identifier demo} = {<nil> text te"st}} &&}]'],
-  ['(demo="te\\"st")', false, '[{[{{{<nil> identifier demo} = {<nil> text te"st}} &&}] &&}]'],
-  ['demo="te\\\\\\"st"', false, '[{{{<nil> identifier demo} = {<nil> text te\\"st}} &&}]'],
-  ['demo="te\\\\"st"', true, "[]"],
-  ['demo="te\\\\\\\\"st"', true, "[]"],
-  ['(demo="te\\\\"st")', true, "[]"],
-  ['demo="te\\\'st"', false, "[{{{<nil> identifier demo} = {<nil> text te'st}} &&}]"],
-  ['(demo="te\\\'st")', false, "[{[{{{<nil> identifier demo} = {<nil> text te'st}} &&}] &&}]"],
-  ['demo="te\\\\\'st"', false, "[{{{<nil> identifier demo} = {<nil> text te\\'st}} &&}]"],
-  ['(demo="te\\\\\'st")', false, "[{[{{{<nil> identifier demo} = {<nil> text te\\'st}} &&}] &&}]"],
-  ['demo="te\\\\\\\'st"', false, "[{{{<nil> identifier demo} = {<nil> text te\\'st}} &&}]"],
-  ["demo = 'a\\\\'", false, "[{{{<nil> identifier demo} = {<nil> text a\\}} &&}]"],
-  ["(demo = 'a\\\\')", false, "[{[{{{<nil> identifier demo} = {<nil> text a\\}} &&}] &&}]"],
-  ["demo = 'a\\'\\\\'", false, "[{{{<nil> identifier demo} = {<nil> text a'\\}} &&}]"],
-  ["demo1 = 'a\\' && demo2 = 2", true, "[]"],
-  ["(demo1 = 'a\\' && demo2 = 2)", true, "[]"],
   [
-    "demo1 = 'a\\\\' && demo2 = 2",
+    String.raw`demo='a\b\c\d'`,
     false,
-    "[{{{<nil> identifier demo1} = {<nil> text a\\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}]",
+    String.raw`[{{{<nil> identifier demo} = {<nil> text a\b\c\d}} &&}]`,
+  ],
+  [String.raw`demo='a\n'`, false, "[{{{<nil> identifier demo} = {<nil> text a\n}} &&}]"],
+  [String.raw`demo='a\r'`, false, "[{{{<nil> identifier demo} = {<nil> text a\r}} &&}]"],
+  [String.raw`demo='a\t'`, false, "[{{{<nil> identifier demo} = {<nil> text a\t}} &&}]"],
+  [String.raw`demo='a\r\n'`, false, "[{{{<nil> identifier demo} = {<nil> text a\r\n}} &&}]"],
+  [String.raw`demo='a\nb'`, false, "[{{{<nil> identifier demo} = {<nil> text a\nb}} &&}]"],
+  [String.raw`demo='a\tb'`, false, "[{{{<nil> identifier demo} = {<nil> text a\tb}} &&}]"],
+  [String.raw`demo='te\'st'`, false, "[{{{<nil> identifier demo} = {<nil> text te'st}} &&}]"],
+  [
+    String.raw`(demo='te\'st')`,
+    false,
+    "[{[{{{<nil> identifier demo} = {<nil> text te'st}} &&}] &&}]",
+  ],
+  [String.raw`demo='te\\'st'`, true, "[]"],
+  [String.raw`(demo='te\\'st')`, true, "[]"],
+  [String.raw`demo="te\"st"`, false, '[{{{<nil> identifier demo} = {<nil> text te"st}} &&}]'],
+  [
+    String.raw`(demo="te\"st")`,
+    false,
+    '[{[{{{<nil> identifier demo} = {<nil> text te"st}} &&}] &&}]',
   ],
   [
-    "(demo1 = 'a\\\\' && demo2 = 2)",
+    String.raw`demo="te\\\"st"`,
     false,
-    "[{[{{{<nil> identifier demo1} = {<nil> text a\\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}] &&}]",
+    String.raw`[{{{<nil> identifier demo} = {<nil> text te\"st}} &&}]`,
+  ],
+  [String.raw`demo="te\\"st"`, true, "[]"],
+  [String.raw`demo="te\\\\"st"`, true, "[]"],
+  [String.raw`(demo="te\\"st")`, true, "[]"],
+  [String.raw`demo="te\'st"`, false, "[{{{<nil> identifier demo} = {<nil> text te'st}} &&}]"],
+  [
+    String.raw`(demo="te\'st")`,
+    false,
+    "[{[{{{<nil> identifier demo} = {<nil> text te'st}} &&}] &&}]",
   ],
   [
-    "demo1 = 'a\\\\\\\\' && demo2 = 2",
+    String.raw`demo="te\\'st"`,
     false,
-    "[{{{<nil> identifier demo1} = {<nil> text a\\\\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}]",
+    String.raw`[{{{<nil> identifier demo} = {<nil> text te\'st}} &&}]`,
   ],
   [
-    "(demo1 = 'a\\\\\\\\' && demo2 = 2)",
+    String.raw`(demo="te\\'st")`,
     false,
-    "[{[{{{<nil> identifier demo1} = {<nil> text a\\\\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}] &&}]",
+    String.raw`[{[{{{<nil> identifier demo} = {<nil> text te\'st}} &&}] &&}]`,
+  ],
+  [
+    String.raw`demo="te\\\'st"`,
+    false,
+    String.raw`[{{{<nil> identifier demo} = {<nil> text te\'st}} &&}]`,
+  ],
+  [String.raw`demo = 'a\\'`, false, String.raw`[{{{<nil> identifier demo} = {<nil> text a\}} &&}]`],
+  [
+    String.raw`(demo = 'a\\')`,
+    false,
+    String.raw`[{[{{{<nil> identifier demo} = {<nil> text a\}} &&}] &&}]`,
+  ],
+  [
+    String.raw`demo = 'a\'\\'`,
+    false,
+    String.raw`[{{{<nil> identifier demo} = {<nil> text a'\}} &&}]`,
+  ],
+  [String.raw`demo1 = 'a\' && demo2 = 2`, true, "[]"],
+  [String.raw`(demo1 = 'a\' && demo2 = 2)`, true, "[]"],
+  [
+    String.raw`demo1 = 'a\\' && demo2 = 2`,
+    false,
+    String.raw`[{{{<nil> identifier demo1} = {<nil> text a\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}]`,
+  ],
+  [
+    String.raw`(demo1 = 'a\\' && demo2 = 2)`,
+    false,
+    String.raw`[{[{{{<nil> identifier demo1} = {<nil> text a\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}] &&}]`,
+  ],
+  [
+    String.raw`demo1 = 'a\\\\' && demo2 = 2`,
+    false,
+    String.raw`[{{{<nil> identifier demo1} = {<nil> text a\\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}]`,
+  ],
+  [
+    String.raw`(demo1 = 'a\\\\' && demo2 = 2)`,
+    false,
+    String.raw`[{[{{{<nil> identifier demo1} = {<nil> text a\\}} &&} {{{<nil> identifier demo2} = {<nil> number 2}} &&}] &&}]`,
   ],
   // comments
   ["test = / demo", true, "[]"],
@@ -191,20 +233,20 @@ const scenarios: [string, boolean, string][] = [
   ],
   // https://github.com/pocketbase/pocketbase/issues/5017
   ["(a='\"')", false, '[{[{{{<nil> identifier a} = {<nil> text "}} &&}] &&}]'],
-  ["(a='\\'')", false, "[{[{{{<nil> identifier a} = {<nil> text '}} &&}] &&}]"],
+  [String.raw`(a='\'')`, false, "[{[{{{<nil> identifier a} = {<nil> text '}} &&}] &&}]"],
   ['(a="\'")', false, "[{[{{{<nil> identifier a} = {<nil> text '}} &&}] &&}]"],
-  ['(a="\\"")', false, '[{[{{{<nil> identifier a} = {<nil> text "}} &&}] &&}]'],
+  [String.raw`(a="\"")`, false, '[{[{{{<nil> identifier a} = {<nil> text "}} &&}] &&}]'],
 ];
 
 describe("Parse", () => {
   for (const [i, [input, expectedError, expectedPrint]] of scenarios.entries()) {
     test(`s${i}:${input}`, () => {
-      let v: ExprGroup[] | null = null;
+      let v: Array<ExprGroup> | null = null;
       let err: unknown;
       try {
         v = parse(input);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
       expect(err !== undefined).toBe(expectedError);
       expect(printGroups(v)).toBe(expectedPrint);

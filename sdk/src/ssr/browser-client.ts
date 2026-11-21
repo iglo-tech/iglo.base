@@ -5,7 +5,8 @@
 // and the realtime and collection services are the main entry's own.
 import Client from "@sdk/Client";
 import { ClientResponseError } from "@sdk/ClientResponseError";
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { cookieParse } from "@sdk/tools/cookie";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { Loose } from "@sdk/tools/loose";
@@ -25,7 +26,7 @@ const RENEW_BEFORE_EXPIRY_MS = 60_000;
 /** Successful renewals are at least this far apart, whatever the token's lifetime or the clocks say. */
 const MIN_RENEW_INTERVAL_MS = 30_000;
 /** Retry backoff after a network error or a 5xx: doubles from the base, capped. */
-const RETRY_BASE_MS = 1_000;
+const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30_000;
 /** Retries in a row before the client stops trying; the store is then cleared at the token's expiry. */
 const MAX_RETRIES = 10;
@@ -227,12 +228,12 @@ export class BrowserClient extends Client {
     try {
       await this._postHandOff(url, token);
       await this.renew();
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       // the popup token must not stay in page memory, whatever failed
       if (this.authStore.token === token) {
         this.authStore.clear();
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -252,8 +253,8 @@ export class BrowserClient extends Client {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ token }),
       });
-    } catch (err: unknown) {
-      throw networkError(url, err);
+    } catch (error: unknown) {
+      throw networkError(url, error);
     }
     if (!res.ok) {
       throw await responseError(url, res);
@@ -351,9 +352,9 @@ export class BrowserClient extends Client {
     let res: Response;
     try {
       res = await this._fetch(url, RENEW_REQUEST);
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       this._retryLaterIfSame(before);
-      throw networkError(url, err);
+      throw networkError(url, error);
     }
 
     if (res.status === 401) {
@@ -375,9 +376,9 @@ export class BrowserClient extends Client {
     let body: { token?: unknown; record?: unknown; serverTime?: unknown };
     try {
       body = (await res.json()) as { token?: unknown; record?: unknown; serverTime?: unknown };
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       this._retryLaterIfSame(before);
-      throw networkError(url, err);
+      throw networkError(url, error);
     }
     if (typeof body.token !== "string" || body.token === "") {
       throw new ClientResponseError({ url, status: res.status, data: body });

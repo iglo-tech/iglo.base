@@ -27,11 +27,12 @@ export async function recordAuthImpersonate(e: RequestEvent): Promise<HandlerRes
   let record: Record;
   try {
     record = findRecordById(e.app, collection, e.request.pathValue("id"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   const form: ImpersonateForm = { Duration: 0 };
+  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
   const bindErr = await e.bindBody(form as unknown as { [key: string]: unknown }, impersonateType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
@@ -46,8 +47,8 @@ export async function recordAuthImpersonate(e: RequestEvent): Promise<HandlerRes
     // time.Duration(form.Duration) * time.Second, with Go's int64 wrap
     const duration = BigInt.asIntN(64, BigInt(form.Duration) * 1_000_000_000n);
     token = newStaticAuthToken(record, duration, e.app.clock);
-  } catch (err) {
-    return e.internalServerError("Failed to generate static auth token", err);
+  } catch (error) {
+    return e.internalServerError("Failed to generate static auth token", error);
   }
 
   return recordAuthResponse(e, record, token, "", undefined);

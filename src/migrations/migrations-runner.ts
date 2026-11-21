@@ -41,7 +41,7 @@ export interface Migration {
 
 // MigrationsList.Register: the list stays sorted by file name, byte-wise
 // and stable.
-export function addMigration(list: Migration[], m: Migration): void {
+export function addMigration(list: Array<Migration>, m: Migration): void {
   list.push(m);
   list.sort((a, b) => Buffer.compare(Buffer.from(a.file), Buffer.from(b.file)));
 }
@@ -52,10 +52,10 @@ function txAppOf(app: App, txDatabases: Databases): App {
 
 // Up executes all unapplied migrations of the list, in one transaction on
 // data.db inside one on auxiliary.db. It returns the applied file names.
-export function up(app: App, list: readonly Migration[]): string[] {
+export function up(app: App, list: ReadonlyArray<Migration>): Array<string> {
   initMigrationsTable(app.databases);
 
-  const applied: string[] = [];
+  const applied: Array<string> = [];
 
   auxRunInTransaction(app.databases, (auxTxDatabases) => {
     runInTransaction(auxTxDatabases, (txDatabases) => {
@@ -71,15 +71,15 @@ export function up(app: App, list: readonly Migration[]): string[] {
         if (m.up !== null) {
           try {
             m.up(txApp);
-          } catch (err) {
-            throw wrapError(`failed to apply migration ${m.file}`, err);
+          } catch (error) {
+            throw wrapError(`failed to apply migration ${m.file}`, error);
           }
         }
 
         try {
           saveAppliedMigration(txDatabases, app.clock, m.file);
-        } catch (err) {
-          throw wrapError(`failed to save applied migration info for ${m.file}`, err);
+        } catch (error) {
+          throw wrapError(`failed to save applied migration info for ${m.file}`, error);
         }
 
         applied.push(m.file);
@@ -92,10 +92,14 @@ export function up(app: App, list: readonly Migration[]): string[] {
 
 // Down reverts the last toRevertCount applied migrations (in the order they
 // were applied). It returns the reverted file names.
-export function down(app: App, list: readonly Migration[], toRevertCount: number): string[] {
+export function down(
+  app: App,
+  list: ReadonlyArray<Migration>,
+  toRevertCount: number,
+): Array<string> {
   initMigrationsTable(app.databases);
 
-  const reverted: string[] = [];
+  const reverted: Array<string> = [];
 
   const names = lastAppliedMigrations(app.databases, list, toRevertCount);
 
@@ -126,16 +130,16 @@ export function down(app: App, list: readonly Migration[], toRevertCount: number
           if (m.down !== null) {
             try {
               m.down(txApp);
-            } catch (err) {
-              throw wrapError(`failed to revert migration ${m.file}`, err);
+            } catch (error) {
+              throw wrapError(`failed to revert migration ${m.file}`, error);
             }
           }
 
           if (m.system === undefined) {
             try {
               saveRevertedMigration(txDatabases, m.file);
-            } catch (err) {
-              throw wrapError(`failed to save reverted migration info for ${m.file}`, err);
+            } catch (error) {
+              throw wrapError(`failed to save reverted migration info for ${m.file}`, error);
             }
           }
 
@@ -152,7 +156,10 @@ export function down(app: App, list: readonly Migration[], toRevertCount: number
 // migrations that are not listed in the list. The TypeScript migrations of a
 // schema file (D40, S.5) are not in the list by design: their rows, the
 // `@schema/` ones, stay.
-export function removeMissingAppliedMigrations(app: Databases, list: readonly Migration[]): void {
+export function removeMissingAppliedMigrations(
+  app: Databases,
+  list: ReadonlyArray<Migration>,
+): void {
   const names = list.map((m) => m.file);
 
   app
@@ -172,9 +179,9 @@ export function removeMissingAppliedMigrations(app: Databases, list: readonly Mi
 
 export function lastAppliedMigrations(
   app: Databases,
-  list: readonly Migration[],
+  list: ReadonlyArray<Migration>,
   limit: number,
-): string[] {
+): Array<string> {
   const names = list.map((m) => m.file);
 
   return (
@@ -206,7 +213,7 @@ export function initMigrationsTable(app: Databases): void {
 // the recorded migration file names, in rowid order; none when the
 // migrations table does not exist (read only: the table is not created).
 // It takes a builder so the read-only open check can use it too.
-export function appliedMigrationFiles(db: Builder): string[] {
+export function appliedMigrationFiles(db: Builder): Array<string> {
   if (!builderHasTable(db, DefaultMigrationsTable)) {
     return [];
   }
@@ -262,10 +269,10 @@ export function builderHasTable(db: Builder, tableName: string): boolean {
       .limit(1)
       .row();
     return typeof exists === "number" && exists > 0;
-  } catch (err) {
-    if (isNoRowsError(err)) {
+  } catch (error) {
+    if (isNoRowsError(error)) {
       return false;
     }
-    throw err;
+    throw error;
   }
 }

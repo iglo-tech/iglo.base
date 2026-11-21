@@ -8,14 +8,14 @@ import { toLower, trimSpace } from "@/collections/go-strings";
 
 // a line of standard input, without waiting for more than the line
 function readLine(): string {
-  const bytes: number[] = [];
+  const bytes: Array<number> = [];
   const buffer = new Uint8Array(1);
   for (;;) {
-    let read = 0;
+    let read: number;
     try {
       read = readSync(0, buffer, 0, 1, null);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "EAGAIN") {
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EAGAIN") {
         Bun.sleepSync(10);
         continue;
       }

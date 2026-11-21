@@ -2,12 +2,8 @@
 import type { Loose, LooseObject } from "@sdk/tools/loose";
 import { BaseService } from "@sdk/services/BaseService";
 import { isFile, isFormData, convertFormDataToObject } from "@sdk/tools/formdata";
-import {
-  type SendOptions,
-  type RecordOptions,
-  normalizeUnknownQueryParams,
-  serializeQueryParams,
-} from "@sdk/tools/options";
+import { normalizeUnknownQueryParams, serializeQueryParams } from "@sdk/tools/options";
+import type { SendOptions, RecordOptions } from "@sdk/tools/options";
 
 export interface BatchRequest {
   method: string;
@@ -58,9 +54,9 @@ export class BatchService extends BaseService {
       });
 
       if (req.files) {
-        for (let key in req.files) {
+        for (const key in req.files) {
           const files = req.files[key] || [];
-          for (let file of files) {
+          for (const file of files) {
             formData.append("requests." + i + "." + key, file);
           }
         }
@@ -188,7 +184,7 @@ export class SubBatchService {
 
     // serialize query parameters
     // -----------------------------------------------------------
-    if (typeof options.query !== "undefined") {
+    if (options.query !== undefined) {
       const query = serializeQueryParams(options.query);
       if (query) {
         request.url += (request.url.includes("?") ? "&" : "?") + query;
@@ -223,7 +219,7 @@ export class SubBatchService {
           // only files
           // ---
           request.files[key] = request.files[key] || [];
-          for (let file of foundFiles) {
+          for (const file of foundFiles) {
             request.files[key].push(file);
           }
         } else {
@@ -241,7 +237,7 @@ export class SubBatchService {
             }
 
             request.files[fileKey] = request.files[fileKey] || [];
-            for (let file of foundFiles) {
+            for (const file of foundFiles) {
               request.files[fileKey]!.push(file);
             }
           }

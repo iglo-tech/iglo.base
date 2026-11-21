@@ -121,7 +121,7 @@ export interface Server {
 }
 
 async function spawnServer(
-  command: string[],
+  command: Array<string>,
   cwd: string,
   env: Record<string, string>,
   port: number,
@@ -166,7 +166,7 @@ async function spawnServer(
     async stop() {
       if (proc.exitCode === null) {
         proc.kill("SIGTERM");
-        const timer = setTimeout(() => proc.kill("SIGKILL"), 5_000);
+        const timer = setTimeout(() => proc.kill("SIGKILL"), 5000);
         await proc.exited;
         clearTimeout(timer);
       }
@@ -261,9 +261,13 @@ export function apiClient(url: string) {
     path: string,
     body?: unknown,
   ): Promise<{ status: number; json: unknown }> => {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (token) {
+      headers.authorization = token;
+    }
     const res = await fetch(url + path, {
       method,
-      headers: { "content-type": "application/json", ...(token ? { authorization: token } : {}) },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
@@ -291,7 +295,7 @@ export function apiClient(url: string) {
   };
 }
 
-export function percentile(sorted: number[], q: number): number {
+export function percentile(sorted: Array<number>, q: number): number {
   if (sorted.length === 0) {
     return Number.NaN;
   }

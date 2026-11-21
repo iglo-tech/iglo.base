@@ -19,9 +19,10 @@ import {
   setOwn,
   unmarshal,
 } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 // NewFieldsList creates a new FieldsList instance with the provided fields.
-export function newFieldsList(...fields: Field[]): FieldsList {
+export function newFieldsList(...fields: Array<Field>): FieldsList {
   const l = new FieldsList();
 
   l.add(...fields);
@@ -31,7 +32,7 @@ export function newFieldsList(...fields: Field[]): FieldsList {
 
 // FieldsList defines a Collection slice of fields.
 export class FieldsList implements FieldsListReader {
-  private list: Field[] = [];
+  private list: Array<Field> = [];
 
   [Symbol.iterator](): Iterator<Field> {
     return this.list[Symbol.iterator]();
@@ -48,17 +49,17 @@ export class FieldsList implements FieldsListReader {
   }
 
   // a copy of the underlying slice
-  toArray(): Field[] {
+  toArray(): Array<Field> {
     return [...this.list];
   }
 
   // the underlying slice, for a reader that does not change it
-  items(): readonly Field[] {
+  items(): ReadonlyArray<Field> {
     return this.list;
   }
 
   // l = fields: a slice assignment, without Add's id and name rules
-  setItems(fields: Field[]): void {
+  setItems(fields: Array<Field>): void {
     this.list = fields;
   }
 
@@ -73,7 +74,7 @@ export class FieldsList implements FieldsListReader {
   }
 
   // FieldNames returns a slice with the name of all list fields.
-  fieldNames(): string[] {
+  fieldNames(): Array<string> {
     return this.list.map((field) => field.getName());
   }
 
@@ -138,7 +139,7 @@ export class FieldsList implements FieldsListReader {
   //
   // In all cases, if any of the new fields don't have an explicit id it will auto generate a default one for them
   // (the id value doesn't really matter and it is mostly used as a stable identifier in case of a field rename).
-  add(...fields: Field[]): void {
+  add(...fields: Array<Field>): void {
     for (const f of fields) {
       this.addField(-1, f);
     }
@@ -149,7 +150,7 @@ export class FieldsList implements FieldsListReader {
   // If pos < 0, then this method acts the same as calling Add.
   //
   // If pos > FieldsList total items, then the specified fields are inserted/moved at the end of the list.
-  addAt(pos: number, ...fields: Field[]): void {
+  addAt(pos: number, ...fields: Array<Field>): void {
     const total = this.list.length;
 
     for (const [i, f] of fields.entries()) {
@@ -288,7 +289,7 @@ export class FieldsList implements FieldsListReader {
   }
 
   private marshalJSONWithPartial(): [string, unknown] {
-    const wrapper: Record<string, unknown>[] = [];
+    const wrapper: Array<Record<string, unknown>> = [];
 
     try {
       for (const f of this.list) {
@@ -301,14 +302,14 @@ export class FieldsList implements FieldsListReader {
 
         wrapper.push(obj);
       }
-    } catch (err) {
-      return ["", err];
+    } catch (error) {
+      return ["", error];
     }
 
     try {
       return [marshal(wrapper), null];
-    } catch (err) {
-      return [marshalPartial(err), err];
+    } catch (error) {
+      return [marshalPartial(error), error];
     }
   }
 
@@ -323,7 +324,7 @@ export class FieldsList implements FieldsListReader {
     let data: string;
     if (value === null || value === undefined) {
       data = "";
-    } else if (value instanceof Uint8Array || typeof value === "string") {
+    } else if (isInstance(Uint8Array, value) || typeof value === "string") {
       data = bytesToText(value);
     } else {
       throw new Error(`failed to unmarshal FieldsList value ${goQuote(String(value))}`);
@@ -370,11 +371,11 @@ function marshaledJSONtoFieldsList(rawJSON: string | Uint8Array): FieldsList {
     // (assuming that rawJSON is a single object)
     try {
       extractedFields.unmarshalJSON("[" + text + "]");
-    } catch (err) {
+    } catch (error) {
       throw new Error(
         "failed to unmarshal the provided JSON - expects array of objects or just single object: " +
-          (err instanceof Error ? err.message : String(err)),
-        { cause: err },
+          (error instanceof Error ? error.message : String(error)),
+        { cause: error },
       );
     }
   }
@@ -389,8 +390,8 @@ function fieldWithTypeUnmarshalJSON(data: string): Field {
   let type = "";
   try {
     unmarshalGoStruct(data, { type: (raw) => (type = decodeString(raw)) }, () => (type = ""));
-  } catch (err) {
-    throw new Error(`failed to unmarshal field type: ${errorText(err)}`, { cause: err });
+  } catch (error) {
+    throw new Error(`failed to unmarshal field type: ${errorText(error)}`, { cause: error });
   }
 
   const factory = fieldFactory(type);
@@ -403,8 +404,8 @@ function fieldWithTypeUnmarshalJSON(data: string): Field {
   // unmarshal the rest of the data into the created field
   try {
     field.unmarshalJSON(data);
-  } catch (err) {
-    throw new Error(`failed to unmarshal field: ${errorText(err)}`, { cause: err });
+  } catch (error) {
+    throw new Error(`failed to unmarshal field: ${errorText(error)}`, { cause: error });
   }
 
   return field;

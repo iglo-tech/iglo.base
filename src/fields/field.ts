@@ -38,14 +38,17 @@ import type { System } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
 import type { DateTime } from "@/tools/types/datetime";
-import { marshal, quote, type GoInt } from "@/tools/types/go-json";
+import { marshal, quote } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import { IsPrint } from "@/tools/unicode/letter";
-import { NewError, type Error as ValidationError } from "@/validation/error";
+import { NewError } from "@/validation/error";
+import type { Error as ValidationError } from "@/validation/error";
 import { Length } from "@/validation/length";
 import { Match } from "@/validation/match";
 import { NotIn } from "@/validation/not-in";
 import { Required } from "@/validation/required";
-import { By, type Rule } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
 import { ErrUnsupportedValueType } from "@/validators/validators";
 
 export const fieldNameRegex = lazyMustCompile(String.raw`^\w+$`);
@@ -65,7 +68,7 @@ export const FieldNamePassword = "password";
 
 // SystemDynamicFieldNames returns special internal field names that are
 // usually readonly.
-export const SystemDynamicFieldNames: readonly string[] = Object.freeze([
+export const SystemDynamicFieldNames: ReadonlyArray<string> = Object.freeze([
   FieldNameCollectionId,
   FieldNameCollectionName,
   FieldNameExpand,
@@ -352,7 +355,7 @@ export function DefaultFieldHelpValidationRule(value: unknown): Error | null {
     return ErrUnsupportedValueType;
   }
 
-  const rules: Rule[] = [Length(1, 300)];
+  const rules: Array<Rule> = [Length(1, 300)];
 
   for (const r of rules) {
     const err = r.validate(value);
@@ -371,7 +374,7 @@ export function DefaultFieldIdValidationRule(value: unknown): Error | null {
     return ErrUnsupportedValueType;
   }
 
-  const rules: Rule[] = [Required, Length(1, 100)];
+  const rules: Array<Rule> = [Required, Length(1, 100)];
 
   for (const r of rules) {
     const err = r.validate(value);
@@ -384,7 +387,13 @@ export function DefaultFieldIdValidationRule(value: unknown): Error | null {
 }
 
 // exclude special filter and system literals
-const excludeNames: unknown[] = ["null", "true", "false", "_rowid_", ...SystemDynamicFieldNames];
+const excludeNames: Array<unknown> = [
+  "null",
+  "true",
+  "false",
+  "_rowid_",
+  ...SystemDynamicFieldNames,
+];
 
 // DefaultFieldNameValidationRule performs base validation on a field name
 // value.
@@ -393,7 +402,7 @@ export function DefaultFieldNameValidationRule(value: unknown): Error | null {
     return ErrUnsupportedValueType;
   }
 
-  const rules: Rule[] = [
+  const rules: Array<Rule> = [
     Required,
     Length(1, 100),
     Match(fieldNameRegex),
@@ -434,7 +443,7 @@ export function noopSetter(_record: FieldRecord, _raw: unknown): void {
 // json.Marshal of a Go struct (json v2 defaults): the members in the
 // struct field order, without HTML escaping. Values are marshaled as Go
 // marshals them (go-json's marshal; a JSON marshaler's own text).
-export function marshalStruct(members: readonly (readonly [string, unknown])[]): string {
+export function marshalStruct(members: ReadonlyArray<readonly [string, unknown]>): string {
   const flags = { escapeForHTML: false, escapeForJS: false, allowInvalidUTF8: false };
   let out = "{";
   for (const [i, [name, value]] of members.entries()) {
@@ -450,10 +459,10 @@ export function goQuote(s: string): string {
   let out = '"';
   for (const ch of s) {
     const r = ch.codePointAt(0) as number;
-    if (r >= 0xd800 && r <= 0xdfff) {
+    if (r >= 0xd8_00 && r <= 0xdf_ff) {
       // an invalid byte (U+DC80+n stands for the byte 0x80+n)
-      if (r >= 0xdc80 && r <= 0xdcff) {
-        out += "\\x" + (r - 0xdc00).toString(16);
+      if (r >= 0xdc_80 && r <= 0xdc_ff) {
+        out += String.raw`\x` + (r - 0xdc_00).toString(16);
       } else {
         out += "\ufffd";
       }
@@ -461,10 +470,10 @@ export function goQuote(s: string): string {
     }
     switch (ch) {
       case '"':
-        out += '\\"';
+        out += String.raw`\"`;
         continue;
       case "\\":
-        out += "\\\\";
+        out += String.raw`\\`;
         continue;
     }
     if (IsPrint(r)) {
@@ -473,33 +482,33 @@ export function goQuote(s: string): string {
     }
     switch (ch) {
       case "\x07":
-        out += "\\a";
+        out += String.raw`\a`;
         break;
       case "\b":
-        out += "\\b";
+        out += String.raw`\b`;
         break;
       case "\f":
-        out += "\\f";
+        out += String.raw`\f`;
         break;
       case "\n":
-        out += "\\n";
+        out += String.raw`\n`;
         break;
       case "\r":
-        out += "\\r";
+        out += String.raw`\r`;
         break;
       case "\t":
-        out += "\\t";
+        out += String.raw`\t`;
         break;
       case "\v":
-        out += "\\v";
+        out += String.raw`\v`;
         break;
       default:
         if (r < 0x20 || r === 0x7f) {
-          out += "\\x" + r.toString(16).padStart(2, "0");
-        } else if (r < 0x10000) {
-          out += "\\u" + r.toString(16).padStart(4, "0");
+          out += String.raw`\x` + r.toString(16).padStart(2, "0");
+        } else if (r < 0x1_00_00) {
+          out += String.raw`\u` + r.toString(16).padStart(4, "0");
         } else {
-          out += "\\U" + r.toString(16).padStart(8, "0");
+          out += String.raw`\U` + r.toString(16).padStart(8, "0");
         }
     }
   }

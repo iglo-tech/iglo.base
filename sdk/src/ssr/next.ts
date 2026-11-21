@@ -13,12 +13,11 @@ import {
   resolveAdapterOptions,
   resumeSession,
   withMutableHeaders,
-  type AdapterOptions,
-  type RequestSession,
-  type ResolvedAdapterOptions,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, RequestSession, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 import { isHttpLocalUrl } from "@sdk/ssr/cookies";
-import { createRequestCookieAdapter, type CookieAdapter, type CookieToSet } from "@sdk/ssr/index";
+import { createRequestCookieAdapter } from "@sdk/ssr/index";
+import type { CookieAdapter, CookieToSet } from "@sdk/ssr/index";
 import type { SerializeOptions } from "@sdk/tools/cookie";
 
 /** The cookie security the middleware resolved, passed on to the page as `"1"` or `"0"`. */
@@ -102,12 +101,12 @@ function cookiePairs(header: string): Array<{ name: string; raw: string }> {
  * removed (an empty value) or added. Values are percent-encoded, as the browser would send them.
  * Cookies the session did not touch are kept as the browser sent them.
  */
-function cookieHeaderWith(header: string, written: CookieToSet[]): string {
+function cookieHeaderWith(header: string, written: Array<CookieToSet>): string {
   const changes = new Map<string, string | null>();
   for (const cookie of written) {
     changes.set(cookie.name, cookie.value === "" ? null : encodeURIComponent(cookie.value));
   }
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   const seen = new Set<string>();
   for (const pair of cookiePairs(header)) {
     if (!changes.has(pair.name)) {
@@ -132,7 +131,7 @@ function cookieHeaderWith(header: string, written: CookieToSet[]): string {
  * The headers the page's request is forwarded with. Any `x-iglo-base-*` header the client sent is
  * dropped first, so only the middleware's own copy of the flag reaches the page.
  */
-function forwardedHeaders(request: Request, written: CookieToSet[], secure: boolean): Headers {
+function forwardedHeaders(request: Request, written: Array<CookieToSet>, secure: boolean): Headers {
   const headers = new Headers();
   request.headers.forEach((value, name) => {
     if (!name.startsWith(ADAPTER_HEADER_PREFIX)) {
@@ -147,7 +146,7 @@ function forwardedHeaders(request: Request, written: CookieToSet[], secure: bool
 }
 
 /** A cookie store's writes, through its `set` (a read-only store has none, or it throws). */
-function storeWriter(cookies: NextCookieStore): (toSet: CookieToSet[]) => void {
+function storeWriter(cookies: NextCookieStore): (toSet: Array<CookieToSet>) => void {
   return (toSet) => {
     for (const cookie of toSet) {
       try {

@@ -12,6 +12,7 @@ import { DB, Errors, isPromiseLike } from "@/db/dbx/db";
 import { Tx } from "@/db/dbx/tx";
 import type { Builder } from "@/db/dbx/builder";
 import type { Databases } from "@/db/base";
+import { isInstance } from "@/tools/types/is-instance";
 
 // RunInTransaction wraps fn into a transaction for the regular app database.
 //
@@ -33,7 +34,7 @@ function runInTx(
   fn: (txApp: Databases) => void,
   isForAuxDB: boolean,
 ): void {
-  if (db instanceof Tx) {
+  if (isInstance(Tx, db)) {
     // run as part of the already existing transaction
     const result: unknown = fn(app);
     if (isPromiseLike(result)) {
@@ -44,7 +45,7 @@ function runInTx(
     return;
   }
 
-  if (!(db instanceof DB)) {
+  if (!isInstance(DB, db)) {
     throw new Error("failed to start transaction (unknown db type)");
   }
 
@@ -57,9 +58,9 @@ function runInTx(
       // returned so that transactional() can reject a promise
       return fn(txApp);
     });
-  } catch (err) {
+  } catch (error) {
     failed = true;
-    txErr = err;
+    txErr = error;
   }
 
   // execute all after event calls on transaction complete
@@ -78,7 +79,7 @@ function runInTx(
 
 // TxAppInfo represents an active transaction context associated to an existing app instance.
 export class TxAppInfo {
-  private afterFuncs: ((txErr: unknown) => void)[] = [];
+  private afterFuncs: Array<(txErr: unknown) => void> = [];
 
   constructor(
     readonly parent: Databases,
@@ -97,13 +98,13 @@ export class TxAppInfo {
 
   // note: can be called only once because TxAppInfo is cleared
   runAfterFuncs(txErr: unknown): Error | null {
-    const errs: unknown[] = [];
+    const errs: Array<unknown> = [];
 
     for (const call of this.afterFuncs) {
       try {
         call(txErr);
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
 

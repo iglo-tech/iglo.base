@@ -5,7 +5,8 @@ import type { Params, Row } from "@/db/dbx/query";
 import type { Log as BatchLog } from "@/logs/batch-handler";
 import { parseDateTime, DateTime } from "@/tools/types/datetime";
 import { marshal, setOwn } from "@/tools/types/go-json";
-import { type JSONMap, jsonMapMarshalJSON, scanJSONMap } from "@/tools/types/json-map";
+import { jsonMapMarshalJSON, scanJSONMap } from "@/tools/types/json-map";
+import type { JSONMap } from "@/tools/types/json-map";
 
 export const LogsTableName = "_logs";
 
@@ -79,7 +80,7 @@ export function logDBExport(id: string, log: BatchLog, maxDataSize: number): Par
 // text where that has the same four-digit year
 function formatLogTime(t: Date): string {
   const ms = t.getTime();
-  if (ms >= -30610224000000 && ms < 253402300800000) {
+  if (ms >= -30_610_224_000_000 && ms < 253_402_300_800_000) {
     // years 1000 to 9999
     const iso = t.toISOString();
     return iso.slice(0, 10) + " " + iso.slice(11);
@@ -153,8 +154,8 @@ class TruncatedDecoder {
     }
   }
 
-  private array(): unknown[] {
-    const arr: unknown[] = [];
+  private array(): Array<unknown> {
+    const arr: Array<unknown> = [];
     this.i++; // [
     for (;;) {
       if (this.s[this.i] === ",") {

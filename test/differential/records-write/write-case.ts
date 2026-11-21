@@ -17,5 +17,5 @@ export interface WriteCase {
   headers?: Record<string, string>;
   // more records to read back as a superuser after the write, besides the
   // written one
-  reads?: string[];
+  reads?: Array<string>;
 }

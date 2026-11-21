@@ -95,7 +95,7 @@ interface ThumbEntry {
 
 export interface Snapshot {
   // section name -> lines, in the order they compare
-  sections: Map<string, string[]>;
+  sections: Map<string, Array<string>>;
   // normalized thumbnail path -> what is compared
   thumbs: Map<string, ThumbEntry>;
 }
@@ -144,14 +144,14 @@ type ColumnRule = "timestamp" | "tokenKey" | "password" | "file" | "id";
 
 function columnRules(db: Database): Map<string, Map<string, ColumnRule>> {
   const out = new Map<string, Map<string, ColumnRule>>();
-  const rows = db.query("SELECT name, type, fields FROM _collections").all() as {
+  const rows = db.query("SELECT name, type, fields FROM _collections").all() as Array<{
     name: string;
     type: string;
     fields: string;
-  }[];
+  }>;
   for (const row of rows) {
     const columns = new Map<string, ColumnRule>();
-    for (const field of JSON.parse(row.fields) as FieldInfo[]) {
+    for (const field of JSON.parse(row.fields) as Array<FieldInfo>) {
       if (field.type === "autodate") {
         columns.set(field.name, "timestamp");
       } else if (field.type === "password") {
@@ -223,7 +223,7 @@ class Normalizer {
         }
         return cell;
       case "file":
-        for (const name of text.startsWith("[") ? (JSON.parse(text) as string[]) : [text]) {
+        for (const name of text.startsWith("[") ? (JSON.parse(text) as Array<string>) : [text]) {
           const m = fileName.exec(name);
           if (m === null || this.names.has(name) || this.inStart(name)) {
             continue;
@@ -245,7 +245,7 @@ class Normalizer {
 
   // second pass: every occurrence of a learned name
   replaceNames(text: string): string {
-    return text.replace(word, (w) => this.names.get(w) ?? w);
+    return text.replaceAll(word, (w) => this.names.get(w) ?? w);
   }
 
   storagePath(path: string): string {
@@ -287,8 +287,8 @@ function imageFormat(bytes: Uint8Array): string {
 }
 
 // relative paths under dir, sorted; a directory ends with "/"
-function walk(dir: string): string[] {
-  const out: string[] = [];
+function walk(dir: string): Array<string> {
+  const out: Array<string> = [];
   if (!existsSync(dir)) {
     return out;
   }
@@ -319,10 +319,10 @@ export function thumbPaths(dataDir: string): Set<string> {
   return new Set(walk(join(dataDir, "storage")).filter((p) => isThumb(p) && !p.endsWith("/")));
 }
 
-function schemaLines(db: Database): string[] {
+function schemaLines(db: Database): Array<string> {
   const rows = db
     .query("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY rowid")
-    .all() as { type: string; name: string; tbl_name: string; sql: string | null }[];
+    .all() as Array<{ type: string; name: string; tbl_name: string; sql: string | null }>;
   return rows
     .filter((r) => r.name !== "sqlite_stat4")
     .map((r) => `${r.type} ${r.name} ${r.tbl_name} ${r.sql}`);
@@ -338,9 +338,14 @@ function exactCell(cell: string, hex: string | null): string {
 }
 
 // the rows of a table, each cell as exactCell gives it
-function tableRows(db: Database, table: string): { columns: string[]; rows: string[][] } {
+function tableRows(
+  db: Database,
+  table: string,
+): { columns: Array<string>; rows: Array<Array<string>> } {
   const columns = (
-    db.query(`SELECT name FROM pragma_table_info(${quoted(table)})`).all() as { name: string }[]
+    db.query(`SELECT name FROM pragma_table_info(${quoted(table)})`).all() as Array<{
+      name: string;
+    }>
   ).map((c) => c.name);
   const select = ["quote(rowid)"];
   for (const column of columns.map(quoteIdent)) {
@@ -351,7 +356,7 @@ function tableRows(db: Database, table: string): { columns: string[]; rows: stri
   }
   const rows = db
     .query(`SELECT ${select.join(", ")} FROM ${quoteIdent(table)} ORDER BY rowid`)
-    .values() as (string | null)[][];
+    .values() as Array<Array<string | null>>;
   return {
     columns,
     rows: rows.map((row) => [
@@ -364,24 +369,26 @@ function tableRows(db: Database, table: string): { columns: string[]; rows: stri
 }
 
 function readDataDb(path: string, normalizer: Normalizer, options: SnapshotOptions) {
-  const sections = new Map<string, string[]>();
+  const sections = new Map<string, Array<string>>();
   const db = new Database(path);
   try {
     sections.set(
       "PRAGMA integrity_check",
-      (db.query("PRAGMA integrity_check").values() as string[][]).map((r) => r[0] as string),
+      (db.query("PRAGMA integrity_check").values() as Array<Array<string>>).map(
+        (r) => r[0] as string,
+      ),
     );
     sections.set("sqlite_schema", schemaLines(db));
 
     const rules = columnRules(db);
     const tables = (
-      db.query("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all() as {
+      db.query("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all() as Array<{
         name: string;
-      }[]
+      }>
     )
       .map((t) => t.name)
       .filter((name) => name !== "sqlite_stat4");
-    const dumps = new Map<string, string[][]>();
+    const dumps = new Map<string, Array<Array<string>>>();
     for (const table of tables) {
       const { columns, rows } = tableRows(db, table);
       const tableRules = rules.get(table);
@@ -399,10 +406,10 @@ function readDataDb(path: string, normalizer: Normalizer, options: SnapshotOptio
               out = settingsCell(out, options.encryptionKey);
             }
             if (table === "_collections") {
-              out = out.replace(secret, (m, open: string, value: string, close: string) =>
+              out = out.replaceAll(secret, (m, open: string, value: string, close: string) =>
                 options.start.contains(value) ? m : `${open}<secret>${close}`,
               );
-              out = out.replace(cloneId, (m, id: string) =>
+              out = out.replaceAll(cloneId, (m, id: string) =>
                 options.start.contains(id) ? m : `"id":"_clone_<random>"`,
               );
             }
@@ -424,7 +431,7 @@ function readDataDb(path: string, normalizer: Normalizer, options: SnapshotOptio
 }
 
 // the column's position in a `tableRows` row
-function columnIndex(columns: string[], name: string): number {
+function columnIndex(columns: Array<string>, name: string): number {
   return columns.indexOf(name) + 1;
 }
 
@@ -436,10 +443,10 @@ function settingsCell(cell: string, key: string | undefined): string {
   return cell.startsWith("X'") ? `plain ${Buffer.from(cell.slice(2, -1), "hex").toString()}` : cell;
 }
 
-function readAuxiliaryDb(path: string): string[] {
+function readAuxiliaryDb(path: string): Array<string> {
   const db = new Database(path);
   try {
-    const check = db.query("PRAGMA integrity_check").values() as string[][];
+    const check = db.query("PRAGMA integrity_check").values() as Array<Array<string>>;
     return [...check.map((r) => r[0] as string), ...schemaLines(db)];
   } finally {
     db.close();
@@ -448,7 +455,7 @@ function readAuxiliaryDb(path: string): string[] {
 
 function readStorage(dataDir: string, normalizer: Normalizer, options: SnapshotOptions) {
   const dir = join(dataDir, "storage");
-  const lines: string[] = [];
+  const lines: Array<string> = [];
   const thumbs = new Map<string, ThumbEntry>();
   for (const path of walk(dir)) {
     const normalized = normalizer.storagePath(path);
@@ -486,7 +493,7 @@ function readStorage(dataDir: string, normalizer: Normalizer, options: SnapshotO
 }
 
 // top-level names; the -wal and -shm files come and go with a connection
-function topLevel(dataDir: string): string[] {
+function topLevel(dataDir: string): Array<string> {
   return readdirSync(dataDir)
     .filter((name) => !name.endsWith("-wal") && !name.endsWith("-shm"))
     .toSorted();
@@ -517,8 +524,8 @@ function clip(line: string): string {
 
 // Every difference between a control and a subject snapshot, grouped by
 // section; empty when they agree.
-export function diffSnapshots(control: Snapshot, subject: Snapshot): string[] {
-  const out: string[] = [];
+export function diffSnapshots(control: Snapshot, subject: Snapshot): Array<string> {
+  const out: Array<string> = [];
   const names = new Set([...control.sections.keys(), ...subject.sections.keys()]);
   for (const name of names) {
     const a = control.sections.get(name);

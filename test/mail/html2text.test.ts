@@ -4,7 +4,7 @@ import { expect, test } from "bun:test";
 
 import { html2Text } from "@/mail/html2text";
 
-const scenarios: [html: string, expected: string][] = [
+const scenarios: Array<[html: string, expected: string]> = [
   ["", ""],
   ["ab  c", "ab c"],
   ["<!-- test html comment -->", ""],

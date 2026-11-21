@@ -39,29 +39,32 @@ import {
   internalCustomFieldKeyPrefix,
   marshalStruct,
   maxSafeJSONInt,
-  type DriverValuer,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type GetterFinder,
-  type GetterFunc,
   InterceptorActionAfterCreate,
   InterceptorActionAfterCreateError,
   InterceptorActionAfterUpdate,
   InterceptorActionAfterUpdateError,
-  type InterceptorApp,
-  type InterceptorRecord,
-  type MaxBodySizeCalculator,
-  type MultiValuer,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
+} from "@/fields/field";
+import type {
+  DriverValuer,
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  GetterFinder,
+  GetterFunc,
+  InterceptorApp,
+  InterceptorRecord,
+  MaxBodySizeCalculator,
+  MultiValuer,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
 } from "@/fields/field";
 import { joinErrors, wrapError } from "@/collections/view";
 import { isNotFound } from "@/tools/filesystem/blob/bucket";
 import { File } from "@/tools/filesystem/file";
-import { type System, ThumbSizeRegex } from "@/tools/filesystem/filesystem";
+import { ThumbSizeRegex } from "@/tools/filesystem/filesystem";
+import type { System } from "@/tools/filesystem/filesystem";
 import type { S3System } from "@/tools/filesystem/s3-system";
 import { toUniqueStringSlice } from "@/tools/list/list";
 import { lazyMustCompile } from "@/tools/regexp/regexp";
@@ -75,8 +78,8 @@ import {
   stringType,
   textToBytes,
   unmarshalStruct,
-  type GoInt,
 } from "@/tools/types/go-json";
+import type { GoInt } from "@/tools/types/go-json";
 import type { JSONArray } from "@/tools/types/json-array";
 import { Each } from "@/validation/each";
 import { NewError } from "@/validation/error";
@@ -88,6 +91,7 @@ import { ErrRequired } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import { UploadedFileMimeType, UploadedFileSize } from "@/validators/file";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeFile = "file";
 
@@ -186,7 +190,7 @@ export class FileField
   // MimeTypes specifies an optional list of the allowed file mime types.
   //
   // Leave it empty to disable the validator.
-  mimeTypes: string[] = [];
+  mimeTypes: Array<string> = [];
 
   // Thumbs specifies an optional list of the supported thumbs for image
   // based files.
@@ -199,7 +203,7 @@ export class FileField
   //   - WxHf (eg. 100x300f) - fit inside a WxH viewbox (without cropping)
   //   - 0xH  (eg. 0x300)    - resize to H height preserving the aspect ratio
   //   - Wx0  (eg. 100x0)    - resize to W width preserving the aspect ratio
-  thumbs: string[] = [];
+  thumbs: Array<string> = [];
 
   // Protected will require the users to provide a special file token to
   // access the file.
@@ -298,7 +302,7 @@ export class FileField
       return ["", null];
     }
 
-    return [this.getFileName(files[files.length - 1]), null];
+    return [this.getFileName(files.at(-1)), null];
   }
 
   // ValidateSettings implements [Field.ValidateSettings] interface method.
@@ -331,7 +335,7 @@ export class FileField
     // (new files must be File)
     // ---
     const oldExistingStrings = this.toSliceValue(this.getLatestOldValue(app, record));
-    const existingStrings: unknown[] = this.extractPlainStrings(files);
+    const existingStrings: Array<unknown> = this.extractPlainStrings(files);
     const addedStrings = this.excludeFiles(existingStrings, oldExistingStrings);
 
     if (addedStrings.length > 0) {
@@ -445,18 +449,18 @@ export class FileField
 
     try {
       yield actionFunc();
-    } catch (err) {
+    } catch (error) {
       let cleanupErr: unknown = null;
       try {
         yield* this.afterRecordExecuteFailure(app, record);
-      } catch (e) {
-        cleanupErr = e;
+      } catch (error_) {
+        cleanupErr = error_;
       }
       // errors.Join(err, cleanupErr): a joined error even when the cleanup
       // succeeded, which the request log's details show
       throw cleanupErr === null
-        ? new AggregateError([err], (err as Error).message)
-        : joinErrors([err, cleanupErr]);
+        ? new AggregateError([error], (error as Error).message)
+        : joinErrors([error, cleanupErr]);
     }
 
     this.rememberFilesToDelete(record, oldValue);
@@ -487,9 +491,9 @@ export class FileField
       // eventual consistent nature of some storage providers
       try {
         yield* this.deleteEmptyRecordDir(app, record);
-      } catch (err) {
+      } catch (error) {
         app.logger.warn("Failed to delete empty dir after new record commit failure", {
-          error: err,
+          error,
         });
       }
     }
@@ -554,7 +558,7 @@ export class FileField
     // replace the uploaded file objects with their plain string names
     const newValue = this.toSliceValue(record.getRaw(this.name));
     for (const [i, v] of newValue.entries()) {
-      if (v instanceof File) {
+      if (isInstance(File, v)) {
         if (v.preUpload !== null) {
           v.preUpload.saved = true;
         }
@@ -610,9 +614,9 @@ export class FileField
 
       try {
         yield fsys.delete(dir);
-      } catch (err) {
-        if (!isNotFound(err)) {
-          throw err;
+      } catch (error) {
+        if (!isNotFound(error)) {
+          throw error;
         }
       }
     } finally {
@@ -630,8 +634,10 @@ export class FileField
       return;
     }
 
-    const old: unknown[] = markedForDelete;
-    const nw: unknown[] = this.extractPlainStrings(this.toSliceValue(record.getRaw(this.name)));
+    const old: Array<unknown> = markedForDelete;
+    const nw: Array<unknown> = this.extractPlainStrings(
+      this.toSliceValue(record.getRaw(this.name)),
+    );
     const diff = this.excludeFiles(old, nw);
 
     const toDelete = diff.map((del) => this.getFileName(del));
@@ -653,8 +659,10 @@ export class FileField
   }
 
   private rememberFilesToDelete(record: InterceptorRecord, oldValue: unknown): void {
-    const old: unknown[] = this.extractPlainStrings(this.toSliceValue(oldValue));
-    const nw: unknown[] = this.extractPlainStrings(this.toSliceValue(record.getRaw(this.name)));
+    const old: Array<unknown> = this.extractPlainStrings(this.toSliceValue(oldValue));
+    const nw: Array<unknown> = this.extractPlainStrings(
+      this.toSliceValue(record.getRaw(this.name)),
+    );
     const diff = this.excludeFiles(old, nw);
 
     const toDelete = stringsOf(record.getRaw(deletedFilesPrefix + this.name));
@@ -681,8 +689,8 @@ export class FileField
     }
 
     const fsys = app.newFilesystem();
-    const failed: unknown[] = []; // list of upload errors
-    const succeeded: string[] = []; // list of uploaded file names
+    const failed: Array<unknown> = []; // list of upload errors
+    const succeeded: Array<string> = []; // list of uploaded file names
     try {
       for (const upload of uploads) {
         const path = record.baseFilesPath() + "/" + upload.name;
@@ -693,8 +701,8 @@ export class FileField
             yield fsys.uploadFile(upload, path);
           }
           succeeded.push(upload.name);
-        } catch (err) {
-          failed.push(wrapError(JSON.stringify(upload.name), err));
+        } catch (error) {
+          failed.push(wrapError(JSON.stringify(upload.name), error));
           break; // for now stop on the first error since we currently don't allow partial uploads
         }
       }
@@ -717,7 +725,7 @@ export class FileField
   private *deleteNewlyUploadedFiles(
     app: InterceptorApp,
     record: InterceptorRecord,
-  ): StorageSteps<[string[], unknown]> {
+  ): StorageSteps<[Array<string>, unknown]> {
     const uploaded = filesOf(record.getRaw(uploadedFilesPrefix + this.name));
     if (uploaded.length === 0) {
       return [[], null];
@@ -748,8 +756,8 @@ export class FileField
   private *deleteFilesByNamesList(
     app: InterceptorApp,
     record: InterceptorRecord,
-    filenames: string[],
-  ): StorageSteps<[string[], Error | null]> {
+    filenames: Array<string>,
+  ): StorageSteps<[Array<string>, Error | null]> {
     if (filenames.length === 0) {
       return [[], null]; // nothing to delete
     }
@@ -761,8 +769,8 @@ export class FileField
     let fsys: System | S3System;
     try {
       fsys = app.newFilesystem();
-    } catch (err) {
-      return [filenames, toError(err)];
+    } catch (error) {
+      return [filenames, toError(error)];
     }
 
     if (fsys.remote && app.isTransactional()) {
@@ -773,7 +781,7 @@ export class FileField
     }
 
     filenames = [...filenames];
-    const failures: unknown[] = [];
+    const failures: Array<unknown> = [];
 
     try {
       for (let i = filenames.length - 1; i >= 0; i--) {
@@ -787,8 +795,8 @@ export class FileField
         let deleteErr: unknown = null;
         try {
           yield fsys.delete(path);
-        } catch (err) {
-          deleteErr = err;
+        } catch (error) {
+          deleteErr = error;
         }
         if (deleteErr !== null && !isNotFound(deleteErr)) {
           // store the delete error
@@ -800,7 +808,7 @@ export class FileField
           // try to delete the related file thumbs (if any)
           const thumbsErr = (yield fsys.deletePrefix(
             record.baseFilesPath() + "/thumbs_" + filename + "/",
-          )) as unknown[];
+          )) as Array<unknown>;
           if (thumbsErr.length > 0) {
             app.logger.warn("Failed to delete file thumbs", { error: joinErrors(thumbsErr) });
           }
@@ -897,18 +905,18 @@ export class FileField
     }
 
     if (files.length > 0) {
-      return files[files.length - 1]; // the last selected
+      return files.at(-1); // the last selected
     }
 
     return "";
   }
 
-  private toSliceValue(raw: unknown): unknown[] {
-    let result: unknown[] = [];
+  private toSliceValue(raw: unknown): Array<unknown> {
+    let result: Array<unknown> = [];
 
     if (raw === null || raw === undefined) {
       // nothing to cast
-    } else if (raw instanceof File) {
+    } else if (isInstance(File, raw)) {
       result.push(raw);
     } else if (Array.isArray(raw)) {
       for (const v of raw) {
@@ -924,9 +932,9 @@ export class FileField
     return this.uniqueFiles(result);
   }
 
-  private uniqueFiles(files: unknown[]): unknown[] {
+  private uniqueFiles(files: Array<unknown>): Array<unknown> {
     const found = new Set<string>();
-    const result: unknown[] = [];
+    const result: Array<unknown> = [];
 
     for (const fv of files) {
       const name = this.getFileName(fv);
@@ -939,8 +947,8 @@ export class FileField
     return result;
   }
 
-  private extractPlainStrings(files: unknown[]): string[] {
-    const result: string[] = [];
+  private extractPlainStrings(files: Array<unknown>): Array<string> {
+    const result: Array<string> = [];
 
     for (const raw of files) {
       if (typeof raw === "string") {
@@ -951,11 +959,11 @@ export class FileField
     return result;
   }
 
-  private extractUploadableFiles(files: unknown[]): File[] {
-    const result: File[] = [];
+  private extractUploadableFiles(files: Array<unknown>): Array<File> {
+    const result: Array<File> = [];
 
     for (const raw of files) {
-      if (raw instanceof File) {
+      if (isInstance(File, raw)) {
         result.push(raw);
       }
     }
@@ -963,8 +971,8 @@ export class FileField
     return result;
   }
 
-  private excludeFiles(base: unknown[], toExclude: unknown[]): unknown[] {
-    const result: unknown[] = [];
+  private excludeFiles(base: Array<unknown>, toExclude: Array<unknown>): Array<unknown> {
+    const result: Array<unknown> = [];
 
     for (const fv of base) {
       const name = this.getFileName(fv);
@@ -982,7 +990,7 @@ export class FileField
     if (typeof file === "string") {
       return file;
     }
-    if (file instanceof File) {
+    if (isInstance(File, file)) {
       return file.name;
     }
     return "";
@@ -1019,8 +1027,8 @@ export class FileField
         help: (v) => (this.help = v as string),
         maxSize: (v) => (this.maxSize = v as GoInt),
         maxSelect: (v) => (this.maxSelect = v as GoInt),
-        mimeTypes: (v) => (this.mimeTypes = (v as string[] | undefined) ?? []),
-        thumbs: (v) => (this.thumbs = (v as string[] | undefined) ?? []),
+        mimeTypes: (v) => (this.mimeTypes = (v as Array<string> | undefined) ?? []),
+        thumbs: (v) => (this.thumbs = (v as Array<string> | undefined) ?? []),
         protected: (v) => (this.protected = v as boolean),
         required: (v) => (this.required = v as boolean),
       },
@@ -1068,7 +1076,7 @@ type StorageSteps<T> = Generator<unknown, T, unknown>;
 function drive<T>(steps: StorageSteps<T>): T | Promise<T> {
   let r = steps.next();
   while (r.done !== true) {
-    if (r.value instanceof Promise) {
+    if (isInstance(Promise, r.value)) {
       return driveAsync(steps, r.value);
     }
     r = steps.next(r.value);
@@ -1082,13 +1090,13 @@ async function driveAsync<T>(steps: StorageSteps<T>, pending: Promise<unknown>):
     let failed = false;
     try {
       input = await pending;
-    } catch (err) {
-      input = err;
+    } catch (error) {
+      input = error;
       failed = true;
     }
 
     let r = failed ? steps.throw(input) : steps.next(input);
-    while (r.done !== true && !(r.value instanceof Promise)) {
+    while (r.done !== true && !isInstance(Promise, r.value)) {
       r = steps.next(r.value);
     }
     if (r.done === true) {
@@ -1113,12 +1121,12 @@ function checkPreUpload(file: File, key: string): void {
 }
 
 // the files of a record value ([]*filesystem.File type assertion)
-function filesOf(raw: unknown): File[] {
-  return Array.isArray(raw) ? raw.filter((v): v is File => v instanceof File) : [];
+function filesOf(raw: unknown): Array<File> {
+  return Array.isArray(raw) ? raw.filter((v): v is File => isInstance(File, v)) : [];
 }
 
 // the strings of a record value ([]string type assertion)
-function stringsOf(raw: unknown): string[] {
+function stringsOf(raw: unknown): Array<string> {
   return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : [];
 }
 

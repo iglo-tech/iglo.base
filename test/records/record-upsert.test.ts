@@ -19,13 +19,15 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
-import { type DataMap, type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { DataMap, Record } from "@/records/record-model";
 import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
 import { RecordUpsert } from "@/records/record-upsert";
 import { NewFileFromBytes } from "@/tools/filesystem/file";
 import { marshal } from "@/tools/types/go-json";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { expectValidationErrors } from "@test/collections/validation";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
@@ -59,8 +61,8 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -68,7 +70,7 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
 function testFilesCount(app: UpsertApp, record: Record, count: number): void {
   const storageDir = join(app.dataDir, "storage", record.collection().id, record.id);
 
-  let entries: string[] = [];
+  let entries: Array<string> = [];
   try {
     entries = readdirSync(storageDir);
   } catch {
@@ -78,16 +80,16 @@ function testFilesCount(app: UpsertApp, record: Record, count: number): void {
 }
 
 describe("TestRecordUpsertLoad", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     data: DataMap;
     record: (app: UpsertApp) => Record;
     managerAccessLevel?: boolean;
     superuserAccessLevel?: boolean;
-    expected: string[];
-    notExpected?: string[];
+    expected: Array<string>;
+    notExpected?: Array<string>;
     file?: boolean;
-  }[] = [
+  }> = [
     {
       name: "base collection record",
       data: {
@@ -225,13 +227,13 @@ const users = (app: UpsertApp): Record => newRecord(findCollectionByNameOrId(app
 const userExisting = (app: UpsertApp): Record => findRecordById(app, "users", "4q1xlclmfloku33");
 
 describe("TestRecordUpsertSubmitValidations", () => {
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     record: (app: UpsertApp) => Record;
     data: DataMap;
     managerAccess?: boolean;
-    expectedErrors: string[];
-  }[] = [
+    expectedErrors: Array<string>;
+  }> = [
     // base
     {
       name: "new base collection record with empty data",

@@ -43,11 +43,13 @@ import {
 } from "@/app/filesystem";
 import { BackupWorker } from "@/backups/worker-client";
 import { auxDBFilename, dataDBFilename } from "@/db/base";
-import { type File, NewFileFromPath } from "@/tools/filesystem/file";
+import { NewFileFromPath } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import type { FilesystemWatcher, System } from "@/tools/filesystem/filesystem";
 import { S3System } from "@/tools/filesystem/s3-system";
 import { snakecase } from "@/tools/inflector/inflector";
 import { pseudorandomString } from "@/tools/security/random";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrBackupActive =
   "try again later - another backup/restore operation has already been started";
@@ -65,7 +67,7 @@ export function generateBackupName(app: App, prefix: string): string {
     .now()
     .toISOString()
     .replace(/\.\d+Z$/, "")
-    .replace(/\D/g, "");
+    .replaceAll(/\D/g, "");
 
   return `${prefix}${appName}_${time}.zip`;
 }
@@ -85,7 +87,7 @@ function maxHeldDescriptors(): number {
 }
 
 // the order of two walk positions: by path segment, as the walk goes
-function comparePaths(a: string[], b: string[]): number {
+function comparePaths(a: Array<string>, b: Array<string>): number {
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n; i++) {
     const x = a[i] as string;
@@ -109,11 +111,11 @@ class BackupTracker implements FilesystemWatcher {
   readonly held = new Map<string, string | number>();
   #heldDescriptors = 0;
   readonly #maxDescriptors = maxHeldDescriptors();
-  #position: string[] = [];
+  #position: Array<string> = [];
   #nextHeld = 0;
   #trackNewFiles = false;
 
-  constructor(app: App, logPrefix: string, heldDir: string, exclude: string[]) {
+  constructor(app: App, logPrefix: string, heldDir: string, exclude: Array<string>) {
     this.#app = app;
     this.#logPrefix = logPrefix;
     this.#heldDir = heldDir;
@@ -182,10 +184,10 @@ class BackupTracker implements FilesystemWatcher {
         return;
       }
       this.held.set(zipPath, this.#keep(localPath, heldPath, info.size));
-    } catch (err) {
-      if ((err as { code?: string }).code !== "ENOENT") {
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ENOENT") {
         this.#app.logger.warn(`${this.#logPrefix}failed to copy file in backup zip before delete`, {
-          error: err,
+          error,
           file: zipPath,
         });
       }
@@ -336,12 +338,14 @@ export async function uploadBackupFile(
   file: File,
   fileKey: string,
 ): Promise<void> {
-  if (fsys instanceof S3System) {
+  if (isInstance(S3System, fsys)) {
     await fsys.uploadFile(file, fileKey);
     return;
   }
   for (const _ of fsys.uploadFileSteps(file, fileKey)) {
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }
 
@@ -425,10 +429,10 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
     }
 
     await worker.call({ op: "zipClose" });
-  } catch (err) {
+  } catch (error) {
     // the worker's file handle outlives the worker
     await worker.call({ op: "zipAbort" }).catch(() => {});
-    throw err;
+    throw error;
   } finally {
     app.filesystem.watch(null);
     worker.close();
@@ -459,11 +463,11 @@ async function copyDirToZip(
   let entries;
   try {
     entries = await readdir(join(app.dataDir, dir), { withFileTypes: true });
-  } catch (err) {
-    if (isNotExist(err)) {
+  } catch (error) {
+    if (isNotExist(error)) {
       return;
     }
-    throw err;
+    throw error;
   }
   entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
@@ -488,11 +492,11 @@ async function copyDirToZip(
 
     try {
       await worker.call({ op: "zipAdd", localPath: join(app.dataDir, name), zipPath: name });
-    } catch (err) {
-      if (isNotExist(err)) {
+    } catch (error) {
+      if (isNotExist(error)) {
         continue; // it is held, if it was a tracked delete
       }
-      throw err;
+      throw error;
     }
 
     // deleted while the worker read it: the zip has it already

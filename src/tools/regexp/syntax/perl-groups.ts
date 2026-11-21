@@ -3,7 +3,7 @@
 
 export interface charGroup {
   sign: number;
-  class: readonly number[];
+  class: ReadonlyArray<number>;
 }
 
 // \d

@@ -82,8 +82,8 @@ const wideUpdate = (i: number) => ({
   j: { a: i },
 });
 
-const cascadeChildren = 1_000;
-const chainDepth = 1_000;
+const cascadeChildren = 1000;
+const chainDepth = 1000;
 const truncateRows = 10_000;
 
 const insertParent = `INSERT INTO cparents (id, name) VALUES ('p00000000000001', 'parent')`;
@@ -91,7 +91,7 @@ const insertChildren = `INSERT INTO cchildren (id, parent) WITH RECURSIVE c(x) A
 const insertChain = `INSERT INTO cchain (id, parent) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${chainDepth}) SELECT printf('n%014d', x), CASE x WHEN 1 THEN '' ELSE printf('n%014d', x - 1) END FROM c`;
 const insertTruncate = `INSERT INTO trunc (id, title) WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ${truncateRows}) SELECT printf('t%014d', x), 'title ' || x FROM c`;
 
-function median(values: number[]): number {
+function median(values: Array<number>): number {
   const s = values.toSorted((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 === 1
@@ -108,7 +108,7 @@ async function time(
 ): Promise<number> {
   await setup();
   await fn(-1); // warm-up
-  const times: number[] = [];
+  const times: Array<number> = [];
   for (let i = 0; i < runs; i++) {
     await setup();
     const start = performance.now();
@@ -130,16 +130,19 @@ try {
   }
 
   const upstream = await startUpstream({ dataDir });
-  const results: [string, string, number][] = [];
-  const wideIds: string[] = [];
+  const results: Array<[string, string, number]> = [];
+  const wideIds: Array<string> = [];
   try {
     let token = "";
     const call = async (method: string, path: string, body?: unknown): Promise<string> => {
-      const res = await fetch(`${upstream.url}${path}`, {
+      const init: RequestInit = {
         method,
         headers: { "content-type": "application/json", authorization: token },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      };
+      if (body !== undefined) {
+        init.body = JSON.stringify(body);
+      }
+      const res = await fetch(`${upstream.url}${path}`, init);
       const text = await res.text();
       if (res.status !== 200 && res.status !== 204) {
         throw new Error(`${method} ${path}: ${res.status} ${text}`);
@@ -199,61 +202,63 @@ try {
       fields: [{ name: "title", type: "text" }],
     });
 
-    results.push([
-      "create, 20 fields",
-      "POST /records",
-      await time(200, async (i) => {
-        const res = await call("POST", "/api/collections/wide/records", wideCreate(i));
-        wideIds.push((JSON.parse(res) as { id: string }).id);
-      }),
-    ]);
-    results.push([
-      "update, 20 fields (5 changed)",
-      "PATCH /records/{id}",
-      await time(200, async (i) => {
-        await call("PATCH", `/api/collections/wide/records/${wideIds[i + 1]}`, wideUpdate(i));
-      }),
-    ]);
-    results.push([
-      `delete with a cascade over ${cascadeChildren.toLocaleString("en")} records`,
-      "DELETE /records/{id}",
-      await time(
-        5,
-        async () => {
-          await call("DELETE", "/api/collections/cparents/records/p00000000000001");
-        },
-        async () => {
-          await call("POST", "/api/sql", { query: insertParent });
-          await call("POST", "/api/sql", { query: insertChildren });
-        },
-      ),
-    ]);
-    results.push([
-      `delete with a cascade down a chain of ${chainDepth.toLocaleString("en")} records`,
-      "DELETE /records/{id}",
-      await time(
-        5,
-        async () => {
-          await call("DELETE", "/api/collections/cchain/records/n00000000000001");
-        },
-        async () => {
-          await call("POST", "/api/sql", { query: insertChain });
-        },
-      ),
-    ]);
-    results.push([
-      `TruncateCollection, ${truncateRows.toLocaleString("en")} records`,
-      "DELETE /collections/{c}/truncate",
-      await time(
-        3,
-        async () => {
-          await call("DELETE", "/api/collections/trunc/truncate");
-        },
-        async () => {
-          await call("POST", "/api/sql", { query: insertTruncate });
-        },
-      ),
-    ]);
+    results.push(
+      [
+        "create, 20 fields",
+        "POST /records",
+        await time(200, async (i) => {
+          const res = await call("POST", "/api/collections/wide/records", wideCreate(i));
+          wideIds.push((JSON.parse(res) as { id: string }).id);
+        }),
+      ],
+      [
+        "update, 20 fields (5 changed)",
+        "PATCH /records/{id}",
+        await time(200, async (i) => {
+          await call("PATCH", `/api/collections/wide/records/${wideIds[i + 1]}`, wideUpdate(i));
+        }),
+      ],
+      [
+        `delete with a cascade over ${cascadeChildren.toLocaleString("en")} records`,
+        "DELETE /records/{id}",
+        await time(
+          5,
+          async () => {
+            await call("DELETE", "/api/collections/cparents/records/p00000000000001");
+          },
+          async () => {
+            await call("POST", "/api/sql", { query: insertParent });
+            await call("POST", "/api/sql", { query: insertChildren });
+          },
+        ),
+      ],
+      [
+        `delete with a cascade down a chain of ${chainDepth.toLocaleString("en")} records`,
+        "DELETE /records/{id}",
+        await time(
+          5,
+          async () => {
+            await call("DELETE", "/api/collections/cchain/records/n00000000000001");
+          },
+          async () => {
+            await call("POST", "/api/sql", { query: insertChain });
+          },
+        ),
+      ],
+      [
+        `TruncateCollection, ${truncateRows.toLocaleString("en")} records`,
+        "DELETE /collections/{c}/truncate",
+        await time(
+          3,
+          async () => {
+            await call("DELETE", "/api/collections/trunc/truncate");
+          },
+          async () => {
+            await call("POST", "/api/sql", { query: insertTruncate });
+          },
+        ),
+      ],
+    );
   } finally {
     await upstream.stop();
   }
@@ -266,10 +271,10 @@ try {
     const sql = (query: string) => {
       app.databases.nonconcurrentDB().newQuery(query).execute();
     };
-    const created: string[] = [];
+    const created: Array<string> = [];
     const wide = findCachedCollectionByNameOrId(app, "wide");
 
-    const iglo: number[] = [
+    const iglo: Array<number> = [
       await time(200, async (i) => {
         const record = newRecord(wide);
         record.load(wideCreate(i));

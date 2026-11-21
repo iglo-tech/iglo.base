@@ -38,7 +38,7 @@ function missingBrowserExport(output: string, name: string): boolean {
   return pattern.test(output);
 }
 
-function run(name: string, cmd: string[]): void {
+function run(name: string, cmd: Array<string>): void {
   const result = Bun.spawnSync(cmd, { cwd: tmp, stdout: "pipe", stderr: "pipe" });
   const out = (result.stdout.toString() + result.stderr.toString()).trim();
   if (result.exitCode === 0) {

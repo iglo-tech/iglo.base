@@ -37,6 +37,7 @@ export async function recordRequestVerification(e: RequestEvent): Promise<Handle
 
   const form: RecordRequestVerificationForm = { Email: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordRequestVerificationType,
   );
@@ -57,10 +58,10 @@ export async function recordRequestVerification(e: RequestEvent): Promise<Handle
   let record: Record;
   try {
     record = findAuthRecordByEmail(e.app, collection, form.Email);
-  } catch (err) {
+  } catch (error) {
     // eagerly write 204 response as a very basic measure against emails enumeration
     e.noContent(204);
-    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, err);
+    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, error);
   }
 
   const resendKey = getVerificationResendKey(record);
@@ -91,13 +92,13 @@ async function sendVerificationInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
-  token: object,
+  token: { [key: string]: unknown },
 ): Promise<void> {
   const app = e.app;
   try {
     await sendRecordVerification(app, record);
-  } catch (err) {
-    app.logger.error("Failed to send verification email", { error: err });
+  } catch (error) {
+    app.logger.error("Failed to send verification email", { error });
   }
 
   // the timer removes only its own entry: a confirm may have cleared the key

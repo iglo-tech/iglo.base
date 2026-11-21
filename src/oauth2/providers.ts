@@ -13,7 +13,7 @@
 import type { OAuth2ProviderConfig } from "@/collections/collection-model-auth-options";
 import { Apple } from "@/oauth2/apple";
 import { Bitbucket } from "@/oauth2/bitbucket";
-import { BaseProvider } from "@/oauth2/base-provider";
+import type { BaseProvider } from "@/oauth2/base-provider";
 import { Box } from "@/oauth2/box";
 import { Discord } from "@/oauth2/discord";
 import { Facebook } from "@/oauth2/facebook";
@@ -144,9 +144,9 @@ export function initProvider(config: OAuth2ProviderConfig): BaseProvider {
 export function buildAuthURL(
   p: BaseProvider,
   state: string,
-  ...opts: [key: string, value: string][]
+  ...opts: Array<[key: string, value: string]>
 ): string {
-  const v = new Map<string, string[]>([
+  const v = new Map<string, Array<string>>([
     ["response_type", ["code"]],
     ["client_id", [p.clientId]],
   ]);

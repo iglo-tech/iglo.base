@@ -42,49 +42,53 @@ import {
   RequestEvent,
   RequestEventKeyInfoContext,
   RequestInfoContextBatch,
-  type RequestInfo,
   snakecase,
 } from "@/app/event-request";
+import type { RequestInfo } from "@/app/event-request";
 import {
   collectResult,
-  type HandlerStep,
   recordCreate,
   recordDelete,
-  type RecordIO,
   recordUpdate,
   txRecordIO,
 } from "@/apis/record-crud";
+import type { HandlerStep, RecordIO } from "@/apis/record-crud";
 import { firstApiError } from "@/apis/record-helpers";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
 import { joinErrors } from "@/collections/view";
 import { runInTransaction } from "@/db/tx";
-import { FileField, FieldTypeFile } from "@/fields/file";
-import { preUploadFiles, type UploadTarget } from "@/files/pre-upload";
+import type { FileField } from "@/fields/file";
+import { FieldTypeFile } from "@/fields/file";
+import { preUploadFiles } from "@/files/pre-upload";
+import type { UploadTarget } from "@/files/pre-upload";
 import { applyBodyLimit } from "@/middlewares/body-limit";
 import { DefaultBodyLimitMiddlewareId } from "@/middlewares/middlewares";
 import { findRecordById } from "@/records/record-query";
 import { runSync } from "@/records/record-save";
-import { type ApiError, newInternalServerError, toApiError } from "@/server/error";
+import { newInternalServerError, toApiError } from "@/server/error";
+import type { ApiError } from "@/server/error";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { setOwn } from "@/server/json-decode";
 import { Form } from "@/server/multipart";
-import { HttpRequest, type Values } from "@/server/request";
+import { HttpRequest } from "@/server/request";
+import type { Values } from "@/server/request";
 import { bytesReader, RereadableReadCloser } from "@/server/rereadable-read-closer";
 import { ResponseWriter } from "@/server/router";
 import {
   JSONPayloadKey,
-  type MapRef,
   pointerTo,
   sliceOf,
   structOf,
-  type StructField,
   unmarshalRequestData,
 } from "@/server/unmarshal-request-data";
-import { type File, NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { MapRef, StructField } from "@/server/unmarshal-request-data";
+import { NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
 import { pseudorandomString } from "@/tools/security/random";
 import { toString } from "@/tools/types/cast";
-import { type JSONMarshaler, marshal } from "@/tools/types/go-json";
+import { marshal } from "@/tools/types/go-json";
+import type { JSONMarshaler } from "@/tools/types/go-json";
 import { Errors } from "@/validation/error";
 import { In } from "@/validation/in";
 import { Length } from "@/validation/length";
@@ -102,7 +106,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 const tags = (name: string): Record<string, string> => ({ form: name, json: name });
 
-const internalRequestFields: StructField[] = [
+const internalRequestFields: Array<StructField> = [
   // map[string]any and map[string]string, checked by internalRequestOf
   { name: "Body", type: "any", tags: tags("body") },
   { name: "Headers", type: "any", tags: tags("headers") },
@@ -121,7 +125,7 @@ const batchRequestsFormType = structOf([
 // core.InternalRequest
 export class InternalRequest {
   // the files uploaded for this item, by their key
-  readonly files = new Map<string, File[]>();
+  readonly files = new Map<string, Array<File>>();
 
   constructor(
     public body: Record<string, unknown>,
@@ -166,7 +170,7 @@ const fileKeyRegex = /^requests(?:\.(0|[1-9][0-9]*)|\[(0|[1-9][0-9]*)\])\.([^]*)
 
 async function loadUploadedFiles(
   e: RequestEvent,
-  requests: readonly (InternalRequest | null)[],
+  requests: ReadonlyArray<InternalRequest | null>,
 ): Promise<void> {
   for (const [key, headers] of e.request.multipartForm?.file ?? []) {
     const match = fileKeyRegex.exec(key);
@@ -229,13 +233,13 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     return e.badRequestError("Failed to read the submitted batch data.", bindErr);
   }
 
-  let requests: (InternalRequest | null)[];
+  let requests: Array<InternalRequest | null>;
   try {
-    requests = ((form["Requests"] ?? []) as (Record<string, unknown> | null)[]).map((raw) =>
+    requests = ((form["Requests"] ?? []) as Array<Record<string, unknown> | null>).map((raw) =>
       raw === null ? null : internalRequestOf(raw),
     );
-  } catch (err) {
-    return e.badRequestError("Failed to read the submitted batch data.", err);
+  } catch (error) {
+    return e.badRequestError("Failed to read the submitted batch data.", error);
   }
 
   // load uploaded files into each request item
@@ -244,8 +248,8 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
   if ((e.request.headers.get("Content-Type") ?? "").startsWith("multipart/form-data")) {
     try {
       await loadUploadedFiles(e, requests);
-    } catch (err) {
-      return e.badRequestError("Failed to read the submitted batch files data.", err);
+    } catch (error) {
+      return e.badRequestError("Failed to read the submitted batch files data.", error);
     }
   }
 
@@ -262,7 +266,7 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     return e.badRequestError("Invalid batch request data.", validationErr);
   }
 
-  const items: PreparedItem[] = [];
+  const items: Array<PreparedItem> = [];
   for (const ir of requests) {
     items.push(await prepareItem(e, ir as InternalRequest));
   }
@@ -273,15 +277,15 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
   }
 
   const uploads = await preUploadFiles(e.app, uploadTargets(e, items));
-  const afterTransaction: Promise<void>[] = [];
+  const afterTransaction: Array<Promise<void>> = [];
 
   let results: BatchResults;
   try {
     results = processBatch({ ...e.app, afterTransaction }, e, items, txTimeoutSeconds);
-  } catch (err) {
+  } catch (error) {
     await Promise.allSettled(afterTransaction);
     await uploads.finish(false);
-    return firstApiError(err, e.badRequestError("Batch transaction failed.", err));
+    return firstApiError(error, e.badRequestError("Batch transaction failed.", error));
   }
 
   await uploads.finish(true);
@@ -298,8 +302,8 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
 }
 
 // the files a batch stores before its transaction opens
-function uploadTargets(e: RequestEvent, items: readonly PreparedItem[]): UploadTarget[] {
-  const targets: UploadTarget[] = [];
+function uploadTargets(e: RequestEvent, items: ReadonlyArray<PreparedItem>): Array<UploadTarget> {
+  const targets: Array<UploadTarget> = [];
 
   for (const item of items) {
     const { action, ir, request, requestInfo } = item;
@@ -333,7 +337,7 @@ function uploadTargets(e: RequestEvent, items: readonly PreparedItem[]): UploadT
       continue;
     }
 
-    const files: File[] = [];
+    const files: Array<File> = [];
     for (const field of collection.fields) {
       if (field.type() !== FieldTypeFile) {
         continue;
@@ -375,7 +379,7 @@ interface BatchAction {
 // ValidBatchActions: Go's `.` is every character but "\n"
 //
 // Note: when adding new routes make sure that their middlewares are inlined!
-const validBatchActions: readonly [RegExp, boolean, HandlerFactory][] = [
+const validBatchActions: ReadonlyArray<[RegExp, boolean, HandlerFactory]> = [
   // "upsert" handler
   [
     /^PUT \/api\/collections\/(?<collection>[^/?]+)\/records(?<query>\?[^\n]*)?$/,
@@ -487,8 +491,8 @@ export async function prepareItem(
   let payload: string;
   try {
     payload = marshal(ir.body);
-  } catch (err) {
-    const requestErr = err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    const requestErr = error instanceof Error ? error : new Error(String(error));
     return { ir, action, infoContext, requestErr, request: null, requestInfo: noRequest };
   }
 
@@ -540,10 +544,10 @@ export function setItemBody(item: PreparedItem, body: Record<string, unknown>): 
   try {
     (request.form as Values).set(JSONPayloadKey, [marshal(body)]);
     const data: MapRef = { map: {} };
-    unmarshalRequestData(request.form as Values, data);
+    unmarshalRequestData(request.form, data);
     requestInfo.body = data.map;
-  } catch (err) {
-    item.requestErr = err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    item.requestErr = error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -592,7 +596,7 @@ interface BatchRequestResult {
 }
 
 class BatchResults implements JSONMarshaler {
-  constructor(readonly results: readonly BatchRequestResult[]) {}
+  constructor(readonly results: ReadonlyArray<BatchRequestResult>) {}
 
   marshalJSON(): string {
     const items = this.results.map(
@@ -610,10 +614,10 @@ const errBatchTimeout = new Error("batch transaction timeout");
 function processBatch(
   app: App,
   e: RequestEvent,
-  items: readonly PreparedItem[],
+  items: ReadonlyArray<PreparedItem>,
   timeoutSeconds: number,
 ): BatchResults {
-  const results: BatchRequestResult[] = [];
+  const results: Array<BatchRequestResult> = [];
 
   runInTransaction(app.databases, (txDatabases) => {
     const txApp: App = { ...app, databases: txDatabases };
@@ -623,8 +627,8 @@ function processBatch(
       let result: BatchRequestResult | Error;
       try {
         result = processInternalRequest(txApp, e, item);
-      } catch (err) {
-        e.app.logger.error("Batch item failed unexpectedly", { error: err });
+      } catch (error) {
+        e.app.logger.error("Batch item failed unexpectedly", { error });
         result = errBatchTimeout;
       }
       if (result === errBatchTimeout) {

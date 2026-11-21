@@ -21,7 +21,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { both, startPair, type Pair } from "@test/differential/serve/pair";
+import { both, startPair } from "@test/differential/serve/pair";
+import type { Pair } from "@test/differential/serve/pair";
 import { tempDir } from "@test/support/executable";
 import { rawRequest } from "@test/support/raw-http";
 
@@ -36,7 +37,7 @@ function pseudoRandom(n: number, seed: number): Uint8Array {
   const out = new Uint8Array(n);
   let x = seed;
   for (let i = 0; i < n; i++) {
-    x = (Math.imul(x, 1103515245) + 12345) >>> 0;
+    x = (Math.imul(x, 1_103_515_245) + 12_345) >>> 0;
     out[i] = x >>> 24;
   }
   return out;
@@ -50,7 +51,7 @@ beforeAll(async () => {
     mkdirSync(join(pub, d), { recursive: true });
   }
   mkdirSync(outside);
-  const files: [string, string | Uint8Array][] = [
+  const files: Array<[string, string | Uint8Array]> = [
     ["index.html", "<!doctype html><title>root index</title>"],
     ["test.txt", "test"],
     ["sub1/index.html", "sub1 index"],
@@ -94,7 +95,7 @@ beforeAll(async () => {
     ["a b.txt", "space"],
     ["a%20b.txt", "percent"],
     ["ünï.txt", "unicode"],
-    ["..\\x", "backslash name"],
+    [String.raw`..\x`, "backslash name"],
     // a large file of an inline type, streamed
     ["big.png", pseudoRandom(18 << 20, 7)],
     // a large download type (see above)
@@ -132,7 +133,7 @@ afterAll(async () => {
 
 type Req = [method: string, target: string, headers?: Record<string, string>];
 
-const requests: Req[] = [
+const requests: Array<Req> = [
   // files, index.html and directories
   ["GET", "/"],
   ["GET", "/index.html"],
@@ -229,7 +230,7 @@ const requests: Req[] = [
   ["GET", "/%252e%252e%252foutside/secret.txt"],
   ["GET", "/%2e%2e%5coutside%5csecret.txt"],
   ["GET", "/..%5c..%5coutside%5csecret.txt"],
-  ["GET", "/%2e%2e\\outside\\secret.txt"],
+  ["GET", String.raw`/%2e%2e\outside\secret.txt`],
   // ranges and conditional requests
   ["GET", "/test.txt", { Range: "bytes=1-2" }],
   ["GET", "/test.txt", { Range: "bytes=2-" }],
@@ -292,7 +293,7 @@ describe.each([
   }
 
   test("a large download type gets Bun's Content-Disposition (reported difference)", async () => {
-    for (const headers of [{}, { Range: "bytes=0-9" }] as Record<string, string>[]) {
+    for (const headers of [{}, { Range: "bytes=0-9" }] as Array<Record<string, string>>) {
       const { upstream, igloBase } = await both(pair(), "GET", "/big.zip", headers, [
         "content-disposition",
       ]);

@@ -2,15 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  BatchHandler,
-  LevelDebug,
-  LevelError,
-  LevelInfo,
-  LevelWarn,
-  type Log,
-  type LogRecord,
-} from "@/logs/batch-handler";
+import { BatchHandler, LevelDebug, LevelError, LevelInfo, LevelWarn } from "@/logs/batch-handler";
+import type { Log, LogRecord } from "@/logs/batch-handler";
 import { marshal } from "@/tools/types/go-json";
 import { Errors, NewError } from "@/validation/error";
 
@@ -24,7 +17,7 @@ function validationError(): Error {
   return NewError("validation_code", "validation_message");
 }
 
-function messages(logs: Log[]): string[] {
+function messages(logs: Array<Log>): Array<string> {
   return logs.map((l) => l.message);
 }
 
@@ -67,7 +60,7 @@ describe("BatchHandler", () => {
     const h2 = h1.withGroup("h2_group");
     const h3 = h2.withAttrs({ test2: 2 });
 
-    const scenarios: [BatchHandler, BatchHandler | undefined, string, number][] = [
+    const scenarios: Array<[BatchHandler, BatchHandler | undefined, string, number]> = [
       [h0, undefined, "", 0],
       [h1, h0, "", 1],
       [h2, h1, "h2_group", 0],
@@ -81,8 +74,8 @@ describe("BatchHandler", () => {
   });
 
   test("handle", () => {
-    const beforeLogs: Log[] = [];
-    let writeLogs: Log[] = [];
+    const beforeLogs: Array<Log> = [];
+    let writeLogs: Array<Log> = [];
     const h = new BatchHandler({
       batchSize: 3,
       beforeAddFunc: (log) => {
@@ -111,8 +104,8 @@ describe("BatchHandler", () => {
   });
 
   test("writeAll", () => {
-    const beforeLogs: Log[] = [];
-    let writeLogs: Log[] = [];
+    const beforeLogs: Array<Log> = [];
+    let writeLogs: Array<Log> = [];
     const h = new BatchHandler({
       batchSize: 3,
       beforeAddFunc: (log) => {
@@ -140,7 +133,7 @@ describe("BatchHandler", () => {
   });
 
   test("attrs format", () => {
-    const beforeLogs: Log[] = [];
+    const beforeLogs: Array<Log> = [];
     const h0 = new BatchHandler({
       beforeAddFunc: (log) => {
         beforeLogs.push(log);

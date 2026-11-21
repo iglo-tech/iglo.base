@@ -32,7 +32,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CollectionTypeAuth, CollectionTypeBase } from "@/collections/collection-model";
-import { type CollectionsApp, runInAppTransaction } from "@/collections/collection-query";
+import { runInAppTransaction } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import type { Builder } from "@/db/dbx/builder";
 import { newFromDB } from "@/db/dbx/db";
 import { HashExp } from "@/db/dbx/expression";
@@ -66,7 +67,7 @@ interface SystemMigration {
 }
 
 // SystemMigrations, sorted by file name as MigrationsList.Register sorts them
-export const systemMigrations: readonly SystemMigration[] = Object.freeze([
+export const systemMigrations: ReadonlyArray<SystemMigration> = Object.freeze([
   { file: "1640988000_aux_init.go", up: createLogsTable },
   { file: "1640988000_init.go", up: createInitSchema },
   { file: "1717233556_v0.23_migrate.go" },
@@ -77,7 +78,7 @@ export const systemMigrations: readonly SystemMigration[] = Object.freeze([
   { file: "1778828400_normalize_indexes.go", up: resaveNonSystemCollections },
 ]);
 
-export const systemMigrationFiles: readonly string[] = Object.freeze(
+export const systemMigrationFiles: ReadonlyArray<string> = Object.freeze(
   systemMigrations.map((m) => m.file),
 );
 
@@ -91,12 +92,12 @@ export function systemMigrationHasDown(file: string): boolean {
 }
 
 // the timestamp of the newest system migration (03-data-compatibility.md)
-const baselineTimestamp = 1778828400;
+const baselineTimestamp = 1_778_828_400;
 
 const auxInitFile = "1640988000_aux_init.go";
 
 // the data.db tables the baseline creates, besides `_migrations`
-const baselineTables: readonly string[] = Object.freeze([
+const baselineTables: ReadonlyArray<string> = Object.freeze([
   "_params",
   "_collections",
   CollectionNameMFAs,
@@ -108,7 +109,7 @@ const baselineTables: readonly string[] = Object.freeze([
 ]);
 
 // the system collections every v0.40.x/v0.41.0 pb_data has, with their type
-const systemCollections: readonly (readonly [string, string])[] = Object.freeze([
+const systemCollections: ReadonlyArray<readonly [string, string]> = Object.freeze([
   [CollectionNameMFAs, CollectionTypeBase],
   [CollectionNameOTPs, CollectionTypeBase],
   [CollectionNameExternalAuths, CollectionTypeBase],
@@ -132,7 +133,7 @@ export interface SystemMigrationsResult {
   // whether the baseline was created (a fresh install)
   readonly created: boolean;
   // the warnings to print once (newer migrations)
-  readonly warnings: readonly string[];
+  readonly warnings: ReadonlyArray<string>;
 }
 
 // RunSystemMigrations: creates the baseline on a fresh data.db, or checks
@@ -183,7 +184,7 @@ export function checkExistingDataDir(dataDir: string): void {
 
   const companions = companionSuffixes.filter((suffix) => existsSync(dataPath + suffix));
   if (companions.length === 0) {
-    const uri = `file:${encodeURI(dataPath).replace(/[?#]/g, encodeURIComponent)}?immutable=1`;
+    const uri = `file:${encodeURI(dataPath).replaceAll(/[?#]/g, encodeURIComponent)}?immutable=1`;
     checkDataDBFile(uri, constants.SQLITE_OPEN_READONLY | constants.SQLITE_OPEN_URI);
     return;
   }
@@ -214,7 +215,7 @@ export function checkExistingDataDir(dataDir: string): void {
   }
 }
 
-const companionSuffixes: readonly string[] = Object.freeze(["-journal", "-wal", "-shm"]);
+const companionSuffixes: ReadonlyArray<string> = Object.freeze(["-journal", "-wal", "-shm"]);
 
 function checkDataDBFile(filename: string, flags: number): void {
   const conn = new Database(filename, flags);
@@ -227,7 +228,7 @@ function checkDataDBFile(filename: string, flags: number): void {
   }
 }
 
-type DataDBCheck = "fresh" | "older" | { readonly applied: readonly string[] };
+type DataDBCheck = "fresh" | "older" | { readonly applied: ReadonlyArray<string> };
 
 // the open steps 1 and 2 decision, read only: a fresh data.db (no system
 // migration recorded and none of the baseline tables), older data, or
@@ -287,10 +288,10 @@ function createBaseline(app: CollectionsApp): void {
         if (m.up !== undefined) {
           try {
             m.up(txApp);
-          } catch (err) {
+          } catch (error) {
             throw new Error(
-              `failed to apply migration ${m.file}: ${err instanceof Error ? err.message : String(err)}`,
-              { cause: err },
+              `failed to apply migration ${m.file}: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error },
             );
           }
         }
@@ -316,10 +317,10 @@ function reapplyAuxInit(app: CollectionsApp): void {
       }
       try {
         createLogsTable(txApp);
-      } catch (err) {
+      } catch (error) {
         throw new Error(
-          `failed to apply migration ${auxInitFile}: ${err instanceof Error ? err.message : String(err)}`,
-          { cause: err },
+          `failed to apply migration ${auxInitFile}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
         );
       }
       saveApplied(txApp, auxInitFile);
@@ -330,10 +331,10 @@ function reapplyAuxInit(app: CollectionsApp): void {
 function saveApplied(txApp: CollectionsApp, file: string): void {
   try {
     saveAppliedMigration(txApp.databases, txApp.clock, file);
-  } catch (err) {
+  } catch (error) {
     throw new Error(
-      `failed to save applied migration info for ${file}: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
+      `failed to save applied migration info for ${file}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
 }

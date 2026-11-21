@@ -35,24 +35,15 @@ import { HashExp } from "@/db/dbx/expression";
 import { FieldNamePassword, goQuote } from "@/fields/field";
 import { isProviderName } from "@/oauth2/provider-names";
 import type { Record } from "@/records/record-model";
-import {
-  findAllRecords,
-  recordQuery,
-  recordsTarget,
-  type RecordsApp,
-} from "@/records/record-query";
-import {
-  call,
-  deleteStep,
-  inTransaction,
-  type Next,
-  runSync,
-  type Step,
-} from "@/records/record-save";
+import { findAllRecords, recordQuery, recordsTarget } from "@/records/record-query";
+import type { RecordsApp } from "@/records/record-query";
+import { call, deleteStep, inTransaction, runSync } from "@/records/record-save";
+import type { Next, Step } from "@/records/record-save";
 import { Errors, NewError } from "@/validation/error";
 import { ErrInInvalid } from "@/validation/in";
 import { Required } from "@/validation/required";
-import { By, type RuleFunc, Validate } from "@/validation/validation";
+import { By, Validate } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 export const CollectionNameExternalAuths = "_externalAuths";
 export const CollectionNameMFAs = "_mfas";
@@ -75,7 +66,7 @@ const refCollectionNames = [
 // provider check. Throws the validation Errors.
 export function validateRefs(app: RecordsApp, record: Record): void {
   const name = record.collection().name;
-  if (!(refCollectionNames as readonly string[]).includes(name)) {
+  if (!(refCollectionNames as ReadonlyArray<string>).includes(name)) {
     return;
   }
 
@@ -106,7 +97,7 @@ export function validateRefs(app: RecordsApp, record: Record): void {
 }
 
 // core/db.go validateCollectionId
-function validateCollectionId(app: RecordsApp, ...optTypes: string[]): RuleFunc {
+function validateCollectionId(app: RecordsApp, ...optTypes: Array<string>): RuleFunc {
   return (value) => {
     const id = typeof value === "string" ? value : "";
     if (id === "") {
@@ -146,7 +137,7 @@ function validateRecordId(app: RecordsApp, collectionNameOrId: string): RuleFunc
       return NewError("validation_invalid_collection", "Missing or invalid collection.");
     }
 
-    let exists = 0;
+    let exists: number;
     try {
       const [v] = app.databases
         .concurrentDB()
@@ -184,10 +175,10 @@ export function* mfasOnUpdate(app: RecordsApp, record: Record, next: Next): Step
   if (oldHash !== newHash) {
     try {
       yield* deleteAllRefsByRecord(app, CollectionNameMFAs, record);
-    } catch (err) {
+    } catch (error) {
       throw wrapError(
         `[${record.collection().name}] failed to delete all previous MFAs for record ${goQuote(record.id)}`,
-        err,
+        error,
       );
     }
   }
@@ -206,9 +197,9 @@ export function* authOriginsOnUpdate(app: RecordsApp, record: Record, next: Next
   if (oldHash !== newHash) {
     try {
       yield* deleteAllRefsByRecord(app, CollectionNameAuthOrigins, record);
-    } catch (err) {
+    } catch (error) {
       app.logger.warn("Failed to delete all previous auth origin fingerprints", {
-        error: err,
+        error,
         recordId: record.id,
         collectionId: record.collection().id,
       });
@@ -262,10 +253,10 @@ export function* otpsOnUpdateExecute(app: RecordsApp, record: Record, next: Next
   if (!original.isNew() && original.tokenKey() !== record.tokenKey()) {
     try {
       yield* deleteAllRefsByRecord(app, CollectionNameOTPs, record);
-    } catch (err) {
+    } catch (error) {
       throw wrapError(
         `[${record.collection().name}] failed to delete all previous OTPs for record ${goQuote(record.id)}`,
-        err,
+        error,
       );
     }
   }
@@ -379,7 +370,7 @@ export function findAllRefsByRecord(
   app: RecordsApp,
   collectionName: string,
   authRecord: Record,
-): Record[] {
+): Array<Record> {
   return recordQuery(app, collectionName)
     .andWhere(
       new HashExp({
@@ -403,12 +394,12 @@ export function* deleteAllRefsByRecord(
 ): Step {
   const models = findAllRefsByRecord(app, collectionName, authRecord);
 
-  const errs: unknown[] = [];
+  const errs: Array<unknown> = [];
   for (const m of models) {
     try {
       yield* deleteStep(app, m);
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
   }
   if (errs.length > 0) {

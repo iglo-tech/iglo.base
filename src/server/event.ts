@@ -22,36 +22,30 @@ import {
   newNotFoundError,
   newTooManyRequestsError,
   newUnauthorizedError,
-  type ApiError,
 } from "@/server/error";
-import { DefaultMaxMemory, type ReadCloser } from "@/server/buffer-with-file";
+import type { ApiError } from "@/server/error";
+import { DefaultMaxMemory } from "@/server/buffer-with-file";
+import type { ReadCloser } from "@/server/buffer-with-file";
 import {
   decodeFirstValue,
   decodeUTF8Bytes,
   hasInvalidUTF8,
   JsonEOFError,
   JsonSyntaxError,
-  type JsonValue,
 } from "@/server/json-decode";
+import type { JsonValue } from "@/server/json-decode";
 import type { HttpRequest } from "@/server/request";
 import { isRereader, readAll } from "@/server/rereadable-read-closer";
 import type { ResponseWriter } from "@/server/router";
-import {
-  unmarshalJSON,
-  unmarshalRequestData,
-  type MapRef,
-  type RequestData,
-  type StructType,
-} from "@/server/unmarshal-request-data";
+import { unmarshalJSON, unmarshalRequestData } from "@/server/unmarshal-request-data";
+import type { MapRef, RequestData, StructType } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
-import { File, NewFileFromMultipart } from "@/tools/filesystem/file";
+import type { File } from "@/tools/filesystem/file";
+import { NewFileFromMultipart } from "@/tools/filesystem/file";
 import { InvalidModifierDataError, PickPanic, pick } from "@/tools/picker/pick";
-import {
-  isJSONMarshaler,
-  isJSONUnmarshaler,
-  type JSONUnmarshaler,
-  marshal,
-} from "@/tools/types/go-json";
+import { isJSONMarshaler, isJSONUnmarshaler, marshal } from "@/tools/types/go-json";
+import type { JSONUnmarshaler } from "@/tools/types/go-json";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const ErrUnsupportedContentType = newBadRequestError("Unsupported Content-Type", undefined);
 export const ErrInvalidRedirectStatusCode = newInternalServerError(
@@ -115,7 +109,7 @@ export class Event extends Resolver {
   // and returns a slice with filesystem.File instances (if any).
   //
   // Fails with ErrMissingFile when the key has no files.
-  async findUploadedFiles(key: string): Promise<File[]> {
+  async findUploadedFiles(key: string): Promise<Array<File>> {
     if (this.request.multipartForm === undefined) {
       const err = await this.request.parseMultipartForm(DefaultMaxMemory);
       if (err) {
@@ -128,7 +122,7 @@ export class Event extends Resolver {
       throw ErrMissingFile;
     }
 
-    const result: File[] = [];
+    const result: Array<File> = [];
 
     for (const fh of files) {
       result.push(await NewFileFromMultipart(fh));
@@ -157,7 +151,7 @@ export class Event extends Resolver {
 
   // SetAll saves all items from m into the current event data store.
   setAll(m: Map<string, unknown> | Record<string, unknown>): void {
-    for (const [k, v] of m instanceof Map ? m : Object.entries(m)) {
+    for (const [k, v] of isInstance<Map<unknown, unknown>>(Map, m) ? m : Object.entries(m)) {
       this.set(k, v);
     }
   }
@@ -196,12 +190,12 @@ export class Event extends Resolver {
       try {
         data = pick(data, rawFields);
         picked = true;
-      } catch (err) {
-        if (err instanceof PickPanic) {
-          throw err; // a Go panic: the panic recovery middleware answers 500
+      } catch (error) {
+        if (isInstance(PickPanic, error)) {
+          throw error; // a Go panic: the panic recovery middleware answers 500
         }
-        if (!(err instanceof InvalidModifierDataError)) {
-          return err instanceof Error ? err : new Error(String(err));
+        if (!(error instanceof InvalidModifierDataError)) {
+          return error instanceof Error ? error : new Error(String(error));
         }
         // @todo ignore for now modifier data errors to avoid introducing
         // breaking changes but once the router is merged with core consider
@@ -226,8 +220,8 @@ export class Event extends Resolver {
       } else {
         body = JSON.stringify(data) ?? "null";
       }
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
 
     this.#setResponseHeaderIfEmpty(headerContentType, "application/json");
@@ -250,8 +244,8 @@ export class Event extends Resolver {
           return err;
         }
       }
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
     return undefined;
   }
@@ -397,8 +391,8 @@ export class Event extends Resolver {
         unmarshalXML(await readAll(this.request.body), dst as Record<string, unknown>, type);
         return undefined;
       }
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
 
     return ErrUnsupportedContentType;
@@ -477,10 +471,10 @@ function checkPrefix(prefix: Uint8Array): void {
   const text = decodeUTF8Bytes(prefix.subarray(0, k));
   try {
     decodeFirstValue(text);
-  } catch (err) {
+  } catch (error) {
     // an incomplete value is EOF; a syntax error is final
-    if (!(err instanceof JsonEOFError)) {
-      throw err;
+    if (!(error instanceof JsonEOFError)) {
+      throw error;
     }
   }
   // invalid UTF-8 outside strings is a syntax error above; within one,
@@ -673,7 +667,7 @@ export function expandIP(ip: string): string {
   if (!addr.includes(":")) {
     return "invalid IP";
   }
-  let groups: number[];
+  let groups: Array<number>;
   try {
     groups = parseIPv6(addr);
   } catch {
@@ -683,8 +677,8 @@ export function expandIP(ip: string): string {
   return zone ? `${expanded}%${zone}` : expanded;
 }
 
-function parseIPv6(addr: string): number[] {
-  let tail: number[] = [];
+function parseIPv6(addr: string): Array<number> {
+  let tail: Array<number> = [];
   let s = addr;
   // embedded IPv4 suffix
   const v4 = /:((?:\d{1,3}\.){3}\d{1,3})$/.exec(s);
@@ -703,7 +697,7 @@ function parseIPv6(addr: string): number[] {
     }
   }
   const double = s.indexOf("::");
-  let groups: number[];
+  let groups: Array<number>;
   if (double >= 0) {
     if (s.indexOf("::", double + 1) >= 0) {
       throw new Error("multiple ::");
@@ -724,7 +718,7 @@ function parseIPv6(addr: string): number[] {
   return groups;
 }
 
-function parseGroups(part: string): number[] {
+function parseGroups(part: string): Array<number> {
   if (part === "") {
     return [];
   }

@@ -7,7 +7,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { startServer, tempDir, type RunningServer } from "@test/support/executable";
+import { startServer, tempDir } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
 import { rawRequest } from "@test/support/raw-http";
 
 let server: RunningServer;

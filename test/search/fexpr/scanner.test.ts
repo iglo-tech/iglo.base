@@ -7,7 +7,7 @@ import { newScanner, TokenEOF } from "@/search/fexpr/scanner";
 import { printToken } from "@test/search/fexpr/go-print";
 
 // [text, [[expect error, %v of the token], ...]]
-const testScenarios: [string, [boolean, string][]][] = [
+const testScenarios: Array<[string, Array<[boolean, string]>]> = [
   // whitespace
   ["   ", [[false, "{<nil> whitespace    }"]]],
   [
@@ -108,10 +108,10 @@ const testScenarios: [string, [boolean, string][]][] = [
   ['""', [[false, "{<nil> text }"]]],
   ["''", [[false, "{<nil> text }"]]],
   ["'test'", [[false, "{<nil> text test}"]]],
-  ["'te\\'st'", [[false, "{<nil> text te'st}"]]],
-  ['"te\\"st"', [[false, '{<nil> text te"st}']]],
-  ['"tes@#,;!@#%^\'\\"t"', [[false, "{<nil> text tes@#,;!@#%^'\"t}"]]],
-  ["'tes@#,;!@#%^\\'\"t'", [[false, "{<nil> text tes@#,;!@#%^'\"t}"]]],
+  [String.raw`'te\'st'`, [[false, "{<nil> text te'st}"]]],
+  [String.raw`"te\"st"`, [[false, '{<nil> text te"st}']]],
+  [String.raw`"tes@#,;!@#%^'\"t"`, [[false, "{<nil> text tes@#,;!@#%^'\"t}"]]],
+  [String.raw`'tes@#,;!@#%^\'"t'`, [[false, "{<nil> text tes@#,;!@#%^'\"t}"]]],
   ['"test', [[true, '{<nil> text "test}']]],
   ["'test", [[true, "{<nil> text 'test}"]]],
   ["'АБЦ", [[true, "{<nil> text 'АБЦ}"]]],

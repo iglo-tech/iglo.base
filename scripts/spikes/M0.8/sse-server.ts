@@ -52,12 +52,14 @@ function send(client: Client, chunk: Uint8Array): void {
   }
 }
 
+const idleOptions: { idleTimeout?: number } = {};
+if (idleArg !== undefined && idleArg !== "default" && idleArg !== "per-request") {
+  idleOptions.idleTimeout = Number(idleArg);
+}
 const server: Bun.Server<undefined> = Bun.serve({
   hostname: "127.0.0.1",
   port: Number(portArg),
-  ...(idleArg === undefined || idleArg === "default" || idleArg === "per-request"
-    ? {}
-    : { idleTimeout: Number(idleArg) }),
+  ...idleOptions,
   fetch(req, srv): Response {
     const url = new URL(req.url);
     if (url.pathname === "/api/health") {

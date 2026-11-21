@@ -10,16 +10,17 @@ import type { ThumbRequestMessage, ThumbResponseMessage } from "@/files/thumb-po
 
 declare const self: Worker;
 
-self.addEventListener("message", async (event: MessageEvent<ThumbRequestMessage>) => {
-  const { id, input, contentType, size, maxPixels } = event.data;
-  let res: ThumbResponseMessage;
-  try {
-    const thumb = await createThumb(new Uint8Array(input), contentType, size, maxPixels);
-    res = { id, ok: true, bytes: thumb.bytes, contentType: thumb.contentType };
-  } catch (err) {
-    res = { id, ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
-  // a Worker's postMessage has no target origin (that is window.postMessage)
-  // oxlint-disable-next-line unicorn/require-post-message-target-origin
-  self.postMessage(res, res.ok ? [res.bytes.buffer as ArrayBuffer] : []);
+self.addEventListener("message", (event: MessageEvent<ThumbRequestMessage>) => {
+  void (async () => {
+    const { id, input, contentType, size, maxPixels } = event.data;
+    let res: ThumbResponseMessage;
+    try {
+      const thumb = await createThumb(new Uint8Array(input), contentType, size, maxPixels);
+      res = { id, ok: true, bytes: thumb.bytes, contentType: thumb.contentType };
+    } catch (error) {
+      res = { id, ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+    // a Worker's postMessage has no target origin (that is window.postMessage)
+    self.postMessage(res, res.ok ? [res.bytes.buffer as ArrayBuffer] : []);
+  })();
 });

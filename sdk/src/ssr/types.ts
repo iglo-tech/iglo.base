@@ -19,8 +19,8 @@ export interface CookieToSet {
 export type CookieValueMap = Record<string, string>;
 
 export interface CookieAdapter {
-  getAll: () => Cookie[] | Promise<Cookie[]> | CookieValueMap | Promise<CookieValueMap>;
-  setAll?: (cookies: CookieToSet[], headers?: Record<string, string>) => void | Promise<void>;
+  getAll: () => Array<Cookie> | Promise<Array<Cookie>> | CookieValueMap | Promise<CookieValueMap>;
+  setAll?: (cookies: Array<CookieToSet>, headers?: Record<string, string>) => void | Promise<void>;
   /**
    * Whether the app's own request is https (set by adapters that know the request).
    * The session cookie is `Secure` and `__Host-` prefixed unless this is false.
@@ -106,10 +106,10 @@ export interface CreateSuperuserClientOptions {
 
 export interface RequestCookieAdapter extends CookieAdapter {
   isSecure: boolean;
-  getAll: () => Cookie[];
-  setAll: (cookiesToSet: CookieToSet[], headers?: Record<string, string>) => void;
+  getAll: () => Array<Cookie>;
+  setAll: (cookiesToSet: Array<CookieToSet>, headers?: Record<string, string>) => void;
   applyToResponse: (response: Response) => Response;
-  readonly queuedCookies: CookieToSet[];
+  readonly queuedCookies: Array<CookieToSet>;
   readonly queuedHeaders: Record<string, string>;
 }
 

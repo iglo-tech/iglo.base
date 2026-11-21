@@ -26,14 +26,14 @@ if (!dataDir) {
 mkdirSync(dataDir, { recursive: true });
 await upsertSuperuser(dataDir, repoRoot, "bench@example.com", "1234567890");
 const server = await startUpstreamServer(dataDir, repoRoot);
-const names: string[] = [];
+const names: Array<string> = [];
 const ids: Record<string, string> = {};
 try {
   const api = apiClient(server.url);
   await api.loginSuperuser("bench@example.com", "1234567890");
   for (let i = 0; i < 20; i++) {
     const name = `coll${i}`;
-    const fields: Record<string, unknown>[] = [
+    const fields: Array<Record<string, unknown>> = [
       { name: "title", type: "text", required: true, max: 200 },
       { name: "body", type: "editor" },
       { name: "views", type: "number" },
@@ -41,18 +41,20 @@ try {
       { name: "kind", type: "select", values: ["a", "b", "c"], maxSelect: 1 },
       { name: "meta", type: "json" },
       { name: "due", type: "date" },
-      { name: "files", type: "file", maxSelect: 5, maxSize: 5242880 },
+      { name: "files", type: "file", maxSelect: 5, maxSize: 5_242_880 },
       { name: "created", type: "autodate", onCreate: true },
       { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ];
     if (i > 0) {
-      fields.push({
-        name: "parent",
-        type: "relation",
-        collectionId: ids[names[i - 1]!],
-        maxSelect: 1,
-      });
-      fields.push({ name: "refs", type: "relation", collectionId: ids[names[0]!], maxSelect: 10 });
+      fields.push(
+        {
+          name: "parent",
+          type: "relation",
+          collectionId: ids[names[i - 1]!],
+          maxSelect: 1,
+        },
+        { name: "refs", type: "relation", collectionId: ids[names[0]!], maxSelect: 10 },
+      );
     }
     const col = (await api.must("POST", "/api/collections", {
       name,
@@ -81,7 +83,7 @@ db.transaction(() => {
   for (let i = 0; i < 20; i++) {
     const name = names[i]!;
     const cols = (
-      db.query(`PRAGMA table_info(${name})`).all() as { name: string; type: string }[]
+      db.query(`PRAGMA table_info(${name})`).all() as Array<{ name: string; type: string }>
     ).map((c) => c.name);
     const ph = cols.map(() => "?").join(",");
     const stmt = db.prepare(

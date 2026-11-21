@@ -6,7 +6,8 @@ import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { type CliContext, runCli } from "@/cli/root";
+import { runCli } from "@/cli/root";
+import type { CliContext } from "@/cli/root";
 
 import { eventually, expiredRow, writeMFAs, writeOTPs } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
@@ -36,7 +37,7 @@ function expiredRows(dataDir: string): number {
   return count("data.db", "_otps") + count("data.db", "_mfas") + count("auxiliary.db", "_logs");
 }
 
-function context(args: string[], msBeforeMidnight: number, shutdown: AbortSignal): CliContext {
+function context(args: Array<string>, msBeforeMidnight: number, shutdown: AbortSignal): CliContext {
   const shift = midnight - msBeforeMidnight - Date.now();
   return {
     args,

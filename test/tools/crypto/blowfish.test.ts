@@ -6,7 +6,7 @@ import { KeySizeError, NewCipher, NewSaltedCipher } from "@/tools/crypto/blowfis
 
 // [key, in, out]
 // Test vector values are from https://www.schneier.com/code/vectors.txt.
-const encryptTests: [number[], number[], number[]][] = [
+const encryptTests: Array<[Array<number>, Array<number>, Array<number>]> = [
   [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
@@ -208,7 +208,7 @@ test("TestSaltedCipherKeyLength", () => {
 });
 
 // Test vectors generated with Blowfish from OpenSSH.
-const saltedVectors: number[][] = [
+const saltedVectors: Array<Array<number>> = [
   [0x0c, 0x82, 0x3b, 0x7b, 0x8d, 0x01, 0x4b, 0x7e],
   [0xd1, 0xe1, 0x93, 0xf0, 0x70, 0xa6, 0xdb, 0x12],
   [0xfc, 0x5e, 0xba, 0xde, 0xcb, 0xf8, 0x59, 0xad],

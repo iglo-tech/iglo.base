@@ -22,20 +22,16 @@
 
 import { join } from "node:path";
 
-import { defaultDBConnect, type DBConnectFunc, openReadOnly } from "@/db/connect";
+import { defaultDBConnect, openReadOnly } from "@/db/connect";
+import type { DBConnectFunc } from "@/db/connect";
 import type { Builder } from "@/db/dbx/builder";
-import { Errors, newFromDB, type DB } from "@/db/dbx/db";
+import { Errors, newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 import type { Tx } from "@/db/dbx/tx";
 import { DualDBBuilder } from "@/db/dual-builder";
 import { ReadPool } from "@/db/read-pool";
-import {
-  defaultAsyncSleep,
-  defaultNow,
-  defaultSleep,
-  type AsyncSleepFunc,
-  type NowFunc,
-  type SleepFunc,
-} from "@/db/retry";
+import { defaultAsyncSleep, defaultNow, defaultSleep } from "@/db/retry";
+import type { AsyncSleepFunc, NowFunc, SleepFunc } from "@/db/retry";
 import { TxAppInfo } from "@/db/tx";
 
 export const dataDBFilename = "data.db";
@@ -75,7 +71,7 @@ interface Shared {
   readonly pool: ReadPool | null;
   poolClosed: Promise<void>;
   // the distinct connections, closed once
-  readonly dbs: DB[];
+  readonly dbs: Array<DB>;
   readonly dataPath: string;
   readonly logSQL: ((ms: number, sql: string) => void) | null;
   // the read-only data.db connection of committedReads(), once opened
@@ -127,9 +123,9 @@ export class Databases {
     let auxDB: DB;
     try {
       auxDB = connect(auxPath);
-    } catch (err) {
+    } catch (error) {
       dataDB.close();
-      throw err;
+      throw error;
     }
     const auxNonconcurrentDB = auxDB.clone();
 
@@ -139,10 +135,10 @@ export class Databases {
     if (config.readWorkers !== undefined && config.readWorkers > 0) {
       try {
         pool = ReadPool.open(config.readWorkers);
-      } catch (err) {
+      } catch (error) {
         dataDB.close();
         auxDB.close();
-        throw err;
+        throw error;
       }
     }
     const concurrentDB = pool === null ? dataDB : dataDB.withReader(pool.reader(dataPath));
@@ -310,12 +306,12 @@ export class Databases {
     if (this.shared.pool !== null) {
       this.shared.poolClosed = this.shared.pool.close();
     }
-    const errs: unknown[] = [];
+    const errs: Array<unknown> = [];
     for (const db of this.shared.dbs) {
       try {
         db.close();
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
     if (errs.length > 0) {
@@ -349,7 +345,7 @@ export class Databases {
   }
 }
 
-const sqlLogReplacements: readonly { pattern: RegExp; replacement: string }[] = [
+const sqlLogReplacements: ReadonlyArray<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\[\[([^[\]{}.]+)\.([^[\]{}.]+)\]\]/g, replacement: "`$1`.`$2`" },
   { pattern: /\{\{([^[\]{}.]+)\.([^[\]{}.]+)\}\}/g, replacement: "`$1`.`$2`" },
   { pattern: /([^'"])?\{\{/g, replacement: "$1`" },

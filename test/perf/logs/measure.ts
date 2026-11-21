@@ -25,7 +25,7 @@ function status(pid: number): { rss: number; peak: number } {
 }
 
 async function load(url: string, ms: number): Promise<{ rps: number; p50: number; p99: number }> {
-  const latencies: number[] = [];
+  const latencies: Array<number> = [];
   const end = performance.now() + ms;
   const client = async (): Promise<void> => {
     while (performance.now() < end) {
@@ -47,7 +47,7 @@ async function load(url: string, ms: number): Promise<{ rps: number; p50: number
   };
 }
 
-function median(values: number[]): number {
+function median(values: Array<number>): number {
   return values.toSorted((a, b) => a - b)[Math.floor(values.length / 2)] ?? 0;
 }
 
@@ -108,7 +108,7 @@ async function measure(name: string, binary: string, port: number): Promise<void
   rmSync(root, { recursive: true, force: true });
 }
 
-let port = 18790;
+let port = 18_790;
 for (const arg of process.argv.slice(2)) {
   const [name, binary] = arg.split("=");
   await measure(name!, binary!, port++);

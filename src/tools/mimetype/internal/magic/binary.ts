@@ -66,9 +66,9 @@ export function CBOR(raw: Uint8Array, _limit: number): boolean {
 }
 
 // debug/macho's MagicFat, Magic32 and Magic64.
-const machoMagicFat = 0xcafebabe;
-const machoMagic32 = 0xfeedface;
-const machoMagic64 = 0xfeedfacf;
+const machoMagicFat = 0xca_fe_ba_be;
+const machoMagic32 = 0xfe_ed_fa_ce;
+const machoMagic64 = 0xfe_ed_fa_cf;
 
 // Java bytecode and Mach-O binaries share the same magic number.
 // More info here https://github.com/threatstack/libmagic/blob/master/magic/Magdir/cafebabe
@@ -105,10 +105,10 @@ export function MachO(raw: Uint8Array, _limit: number): boolean {
 
 // dbf type is dictated by the first byte.
 // prettier-ignore
-const dbfTypes = [
+const dbfTypes = new Set([
   0x02, 0x03, 0x04, 0x05, 0x30, 0x31, 0x32, 0x42, 0x62, 0x7B, 0x82,
   0x83, 0x87, 0x8A, 0x8B, 0x8E, 0xB3, 0xCB, 0xE5, 0xF5, 0xF4, 0xFB,
-];
+]);
 // Dbf matches a dBase file.
 // https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
 export function Dbf(raw: Uint8Array, _limit: number): boolean {
@@ -134,7 +134,7 @@ export function Dbf(raw: Uint8Array, _limit: number): boolean {
     return false;
   }
 
-  return dbfTypes.includes(raw[0] as number);
+  return dbfTypes.has(raw[0] as number);
 }
 
 function elfType(raw: Uint8Array, t: number): boolean {
@@ -253,23 +253,23 @@ export function TzIf(raw: Uint8Array, _limit: number): boolean {
 
 // python 1.0 through 3.7 signatures, magic/Magdir/python:13:190
 // prettier-ignore
-const pycMagic = [
-  0x02099900, 0x03099900, 0x892e0d0a, 0x04170d0a, 0x994e0d0a, 0xfcc40d0a,
-  0xfdc40d0a, 0x87c60d0a, 0x88c60d0a, 0x2aeb0d0a, 0x2beb0d0a, 0x2ded0d0a,
-  0x2eed0d0a, 0x3bf20d0a, 0x3cf20d0a, 0x45f20d0a, 0x59f20d0a, 0x63f20d0a,
-  0x6df20d0a, 0x6ef20d0a, 0x77f20d0a, 0x81f20d0a, 0x8bf20d0a, 0x8cf20d0a,
-  0x95f20d0a, 0x9ff20d0a, 0xa9f20d0a, 0xb3f20d0a, 0xb4f20d0a, 0xc7f20d0a,
-  0xd1f20d0a, 0xd2f20d0a, 0xdbf20d0a, 0xe5f20d0a, 0xeff20d0a, 0xf9f20d0a,
-  0x03f30d0a, 0x04f30d0a, 0x0af30d0a, 0xb80b0d0a, 0xc20b0d0a, 0xcc0b0d0a,
-  0xd60b0d0a, 0xe00b0d0a, 0xea0b0d0a, 0xf40b0d0a, 0xf50b0d0a, 0xff0b0d0a,
-  0x090c0d0a, 0x130c0d0a, 0x1d0c0d0a, 0x1f0c0d0a, 0x270c0d0a, 0x3b0c0d0a,
-  0x450c0d0a, 0x4f0c0d0a, 0x580c0d0a, 0x620c0d0a, 0x6c0c0d0a, 0x760c0d0a,
-  0x800c0d0a, 0x8a0c0d0a, 0x940c0d0a, 0x9e0c0d0a, 0xb20c0d0a, 0xbc0c0d0a,
-  0xc60c0d0a, 0xd00c0d0a, 0xda0c0d0a, 0xe40c0d0a, 0xee0c0d0a, 0xf80c0d0a,
-  0x020d0d0a, 0x0c0d0d0a, 0x160d0d0a, 0x170d0d0a, 0x200d0d0a, 0x210d0d0a,
-  0x2a0d0d0a, 0x2b0d0d0a, 0x2c0d0d0a, 0x2d0d0d0a, 0x2f0d0d0a, 0x300d0d0a,
-  0x310d0d0a, 0x320d0d0a, 0x330d0d0a, 0x3e0d0d0a, 0x3f0d0d0a,
-];
+const pycMagic = new Set([
+  0x02_09_99_00, 0x03_09_99_00, 0x89_2e_0d_0a, 0x04_17_0d_0a, 0x99_4e_0d_0a, 0xfc_c4_0d_0a,
+  0xfd_c4_0d_0a, 0x87_c6_0d_0a, 0x88_c6_0d_0a, 0x2a_eb_0d_0a, 0x2b_eb_0d_0a, 0x2d_ed_0d_0a,
+  0x2e_ed_0d_0a, 0x3b_f2_0d_0a, 0x3c_f2_0d_0a, 0x45_f2_0d_0a, 0x59_f2_0d_0a, 0x63_f2_0d_0a,
+  0x6d_f2_0d_0a, 0x6e_f2_0d_0a, 0x77_f2_0d_0a, 0x81_f2_0d_0a, 0x8b_f2_0d_0a, 0x8c_f2_0d_0a,
+  0x95_f2_0d_0a, 0x9f_f2_0d_0a, 0xa9_f2_0d_0a, 0xb3_f2_0d_0a, 0xb4_f2_0d_0a, 0xc7_f2_0d_0a,
+  0xd1_f2_0d_0a, 0xd2_f2_0d_0a, 0xdb_f2_0d_0a, 0xe5_f2_0d_0a, 0xef_f2_0d_0a, 0xf9_f2_0d_0a,
+  0x03_f3_0d_0a, 0x04_f3_0d_0a, 0x0a_f3_0d_0a, 0xb8_0b_0d_0a, 0xc2_0b_0d_0a, 0xcc_0b_0d_0a,
+  0xd6_0b_0d_0a, 0xe0_0b_0d_0a, 0xea_0b_0d_0a, 0xf4_0b_0d_0a, 0xf5_0b_0d_0a, 0xff_0b_0d_0a,
+  0x09_0c_0d_0a, 0x13_0c_0d_0a, 0x1d_0c_0d_0a, 0x1f_0c_0d_0a, 0x27_0c_0d_0a, 0x3b_0c_0d_0a,
+  0x45_0c_0d_0a, 0x4f_0c_0d_0a, 0x58_0c_0d_0a, 0x62_0c_0d_0a, 0x6c_0c_0d_0a, 0x76_0c_0d_0a,
+  0x80_0c_0d_0a, 0x8a_0c_0d_0a, 0x94_0c_0d_0a, 0x9e_0c_0d_0a, 0xb2_0c_0d_0a, 0xbc_0c_0d_0a,
+  0xc6_0c_0d_0a, 0xd0_0c_0d_0a, 0xda_0c_0d_0a, 0xe4_0c_0d_0a, 0xee_0c_0d_0a, 0xf8_0c_0d_0a,
+  0x02_0d_0d_0a, 0x0c_0d_0d_0a, 0x16_0d_0d_0a, 0x17_0d_0d_0a, 0x20_0d_0d_0a, 0x21_0d_0d_0a,
+  0x2a_0d_0d_0a, 0x2b_0d_0d_0a, 0x2c_0d_0d_0a, 0x2d_0d_0d_0a, 0x2f_0d_0d_0a, 0x30_0d_0d_0a,
+  0x31_0d_0d_0a, 0x32_0d_0d_0a, 0x33_0d_0d_0a, 0x3e_0d_0d_0a, 0x3f_0d_0d_0a,
+]);
 
 // Pyc matches a Python compiled file.
 // The signatures are sourced from libmagic v5.47
@@ -280,7 +280,7 @@ export function Pyc(raw: Uint8Array, _limit: number): boolean {
 
   const n = beUint32(raw, 0);
 
-  if (pycMagic.includes(n)) {
+  if (pycMagic.has(n)) {
     return true;
   }
 
@@ -308,5 +308,7 @@ export function Pcap(raw: Uint8Array, _limit: number): boolean {
   }
   const be = beUint32(raw, 0);
   const le = leUint32(raw, 0);
-  return be === 0xa1b2c3d4 || be === 0xa1b23c4d || le === 0xa1b2c3d4 || le === 0xa1b23c4d;
+  return (
+    be === 0xa1_b2_c3_d4 || be === 0xa1_b2_3c_4d || le === 0xa1_b2_c3_d4 || le === 0xa1_b2_3c_4d
+  );
 }

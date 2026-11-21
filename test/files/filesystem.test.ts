@@ -17,7 +17,8 @@ import { join } from "node:path";
 import { ThumbPool } from "@/files/thumb-pool";
 import { encodePng } from "@/files/png-raw";
 import { ResponseWriter } from "@/server/router";
-import { NewLocal, type System } from "@/tools/filesystem/filesystem";
+import { NewLocal } from "@/tools/filesystem/filesystem";
+import type { System } from "@/tools/filesystem/filesystem";
 import { detect } from "@/tools/mimetype/mimetype";
 
 import { newTestRequest } from "@test/support/router";
@@ -117,14 +118,14 @@ describe("TestFilesystemServe", () => {
   const csp = "default-src 'none'; media-src 'self'; style-src 'unsafe-inline'; sandbox";
   const cacheControl = "max-age=2592000, stale-while-revalidate=86400";
 
-  const scenarios: {
+  const scenarios: Array<{
     path: string;
     name: string;
     query?: string;
     headers?: Record<string, string>;
     expectError: boolean;
     expectHeaders?: () => Record<string, string>;
-  }[] = [
+  }> = [
     // missing
     { path: "missing.txt", name: "test_name.txt", expectError: true },
     // existing regular file
@@ -234,12 +235,16 @@ describe("TestFilesystemServe", () => {
         let res: Response | undefined;
         let err: unknown;
         try {
-          res = serve(fsys, s.path, s.name, {
-            ...(s.query ? { query: s.query } : {}),
-            ...(s.headers ? { preset: s.headers } : {}),
-          });
-        } catch (e) {
-          err = e;
+          const options: NonNullable<Parameters<typeof serve>[3]> = {};
+          if (s.query) {
+            options.query = s.query;
+          }
+          if (s.headers) {
+            options.preset = s.headers;
+          }
+          res = serve(fsys, s.path, s.name, options);
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(s.expectError);
         if (s.expectError) {
@@ -283,7 +288,7 @@ test("TestFilesystemServeMultiRange", async () => {
 });
 
 describe("TestFilesystemCreateThumb", () => {
-  const scenarios: [file: string, thumb: string, size: string, expectedMimeType: string][] = [
+  const scenarios: Array<[file: string, thumb: string, size: string, expectedMimeType: string]> = [
     // missing
     ["missing.txt", "thumb_test_missing", "100x100", ""],
     // non-image existing file
@@ -328,8 +333,8 @@ describe("TestFilesystemCreateThumb", () => {
         let err: unknown;
         try {
           await fsys.createThumb(file, thumb, size, pool);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(expectErr);
         if (expectErr) {
@@ -353,7 +358,7 @@ describe("TestFilesystemCreateThumb", () => {
 });
 
 describe("TestFilesystemCreateThumbWithMaxPixelsLimit", () => {
-  const scenarios: [name: string, maxPixels: number, expectErr: boolean][] = [
+  const scenarios: Array<[name: string, maxPixels: number, expectErr: boolean]> = [
     ["default limit", 0, false],
     ["below limit", 24, true],
     ["exact limit", 25, false],
@@ -370,8 +375,8 @@ describe("TestFilesystemCreateThumbWithMaxPixelsLimit", () => {
         let err: unknown;
         try {
           await fsys.createThumb("image.png", "thumb_WxH", "100x100", pool);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(expectErr);
         if (expectErr) {

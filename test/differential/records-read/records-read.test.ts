@@ -27,19 +27,16 @@ import { join } from "node:path";
 import { runUpstream } from "@test/differential/db/fixture";
 import { compareResponses, readStartingData } from "@test/differential/harness/compare";
 import { runDifferential } from "@test/differential/harness/run";
-import {
-  fixtureCases,
-  type Identity,
-  type ReadCase,
-} from "@test/differential/records-read/fixture-cases";
+import { fixtureCases } from "@test/differential/records-read/fixture-cases";
+import type { Identity, ReadCase } from "@test/differential/records-read/fixture-cases";
 import {
   freshCases,
-  type FreshIdentity,
   notes,
   notesCollection,
   ruleCases,
   ruleShapes,
 } from "@test/differential/records-read/fresh-cases";
+import type { FreshIdentity } from "@test/differential/records-read/fresh-cases";
 import {
   authUsers,
   collectionSteps,
@@ -58,9 +55,10 @@ import {
 } from "@test/scenarios/record-crud";
 import { send } from "@test/scenarios/runner";
 import type { Scenario } from "@test/scenarios/scenario";
-import type { ScenarioResponse } from "@test/scenarios/request";
-import { startServer, type RunningServer } from "@test/support/executable";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startServer } from "@test/support/executable";
+import type { RunningServer } from "@test/support/executable";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 interface ServerPair {
   dataDir: string;
@@ -68,8 +66,8 @@ interface ServerPair {
   igloBase: RunningServer;
 }
 
-const roots: string[] = [];
-const pairs: ServerPair[] = [];
+const roots: Array<string> = [];
+const pairs: Array<ServerPair> = [];
 
 async function startPair(sourceDir: string): Promise<ServerPair> {
   const root = mkdtempSync(join(tmpdir(), "iglo-base-records-read-"));
@@ -92,7 +90,7 @@ async function compareCase(
   pair: ServerPair,
   c: ReadCase,
   authorization: string,
-): Promise<{ status: number; differences: string[] }> {
+): Promise<{ status: number; differences: Array<string> }> {
   const headers: Record<string, string> = { ...c.headers };
   if (authorization !== "") {
     headers["Authorization"] = authorization;
@@ -108,7 +106,7 @@ async function compareCase(
     );
   }
   return {
-    status: (up as ScenarioResponse).status,
+    status: up.status,
     differences: compareResponses(up, ig, {
       start: readStartingData(pair.dataDir),
       request,
@@ -141,7 +139,7 @@ describe("fixture", () => {
   }, 60_000);
 
   for (const c of fixtureCases) {
-    for (const who of c.as ?? (Object.keys(fixtureTokens) as Identity[])) {
+    for (const who of c.as ?? (Object.keys(fixtureTokens) as Array<Identity>)) {
       test(`${c.name} (${who})`, async () => {
         const result = await compareCase(pair, c, fixtureTokens[who]);
         expect(result.differences).toEqual([]);
@@ -177,12 +175,16 @@ describe("fresh install", () => {
         body?: unknown,
         auth = tokens.get("superuser") ?? "",
       ) => {
+        const headers: Record<string, string> = {};
+        if (auth !== "") {
+          headers.authorization = auth;
+        }
+        if (body !== undefined) {
+          headers["content-type"] = "application/json";
+        }
         const res = await fetch(`${builder.url}${path}`, {
           method,
-          headers: {
-            ...(auth === "" ? {} : { authorization: auth }),
-            ...(body === undefined ? {} : { "content-type": "application/json" }),
-          },
+          headers,
           body: body === undefined ? undefined : JSON.stringify(body),
         });
         const text = await res.text();
@@ -206,7 +208,7 @@ describe("fresh install", () => {
       const collectionIds = new Map<string, string>();
       const readIds = async (): Promise<void> => {
         const list = (await api("GET", "/api/collections?perPage=200")) as {
-          items: { id: string; name: string }[];
+          items: Array<{ id: string; name: string }>;
         };
         for (const item of list.items) {
           collectionIds.set(item.name, item.id);
@@ -226,7 +228,7 @@ describe("fresh install", () => {
           await api("POST", "/api/collections", step.create(ids));
         } else if (step.addFields !== undefined) {
           const current = (await api("GET", `/api/collections/${step.addFields.collection}`)) as {
-            fields: object[];
+            fields: Array<object>;
           };
           await api("PATCH", `/api/collections/${step.addFields.collection}`, {
             fields: [...current.fields, ...step.addFields.fields(ids)],
@@ -279,7 +281,7 @@ describe("fresh install", () => {
     pair = await startPair(dataDir);
   }, 300_000);
 
-  const identities: FreshIdentity[] = ["guest", "alice", "bob", "carol", "superuser"];
+  const identities: Array<FreshIdentity> = ["guest", "alice", "bob", "carol", "superuser"];
   for (const c of [...ruleCases(), ...freshCases]) {
     for (const who of c.as ?? identities) {
       test(`${c.name} (${who})`, async () => {
@@ -294,9 +296,9 @@ describe("fresh install", () => {
   // lets someone view a record and refuses someone
   test("every rule shape has allowed and refused identities", () => {
     for (const s of ruleShapes) {
-      const views = [...statuses]
-        .filter(([name]) => name.startsWith(`${s.shape}: view own`))
-        .map(([, status]) => status);
+      const views = [...statuses].flatMap(([name, status]) =>
+        name.startsWith(`${s.shape}: view own`) ? [status] : [],
+      );
       expect(views).toContain(200);
       if (s.shape !== "empty") {
         expect(views.some((status) => status !== 200)).toBe(true);

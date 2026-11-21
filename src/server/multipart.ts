@@ -19,15 +19,8 @@
 // request ends, as net/http does after the handler (D27). A failed
 // ReadForm removes it at once.
 
-import {
-  copyBufferSize,
-  ErrUnexpectedEOF,
-  EOF,
-  BytesBuffer,
-  copy,
-  copyN,
-  type Reader as IoReader,
-} from "@/server/io";
+import { copyBufferSize, ErrUnexpectedEOF, EOF, BytesBuffer, copy, copyN } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 import { Reader as BufReader } from "@/server/bufio";
 import { Reader as QPReader } from "@/server/quotedprintable";
 import { parseMediaType } from "@/server/request";
@@ -42,7 +35,8 @@ import { closeSync, openSync, rmSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { goBase, type MultipartFileHeader } from "@/tools/filesystem/file";
+import { goBase } from "@/tools/filesystem/file";
+import type { MultipartFileHeader } from "@/tools/filesystem/file";
 
 // ErrMessageTooLarge is returned by ReadForm if the message form data is
 // too large to be processed.
@@ -60,7 +54,7 @@ const maxMIMEHeaderSize = 10 << 20;
 // the GODEBUG multipartmaxheaders default: the maximum number of header
 // entries NextPart will return, as well as the maximum combined total of
 // header entries Reader.ReadForm will return in FileHeaders
-const maxMIMEHeaders = 10000;
+const maxMIMEHeaders = 10_000;
 
 // the GODEBUG multipartmaxparts default: the maximum number of parts in a
 // form
@@ -139,7 +133,8 @@ export class Part implements IoReader {
 
   async populateHeaders(headerSizeLimit: number, headerLimit: number): Promise<unknown> {
     const r = new TextprotoReader(this.mr.bufReader);
-    let [header, err] = await readMIMEHeader(r, headerSizeLimit, headerLimit);
+    const [header, readErr] = await readMIMEHeader(r, headerSizeLimit, headerLimit);
+    let err = readErr;
     if (err === undefined) {
       this.header = header as MIMEHeader;
     }
@@ -187,7 +182,7 @@ async function newPart(
 // strings.EqualFold against an ASCII string: only ASCII letters fold to
 // the letters of "quoted-printable"
 function asciiEqualFold(s: string, ascii: string): boolean {
-  return s.length === ascii.length && s.replace(/[A-Z]/g, (c) => c.toLowerCase()) === ascii;
+  return s.length === ascii.length && s.replaceAll(/[A-Z]/g, (c) => c.toLowerCase()) === ascii;
 }
 
 // partReader implements io.Reader by reading raw bytes directly from the
@@ -385,8 +380,8 @@ function stickyErrorReader(r: IoReader): IoReader {
 // the part's FileName(); its Value parts are stored as strings. Both are
 // keyed by field name.
 export class Form {
-  value = new Map<string, string[]>();
-  file = new Map<string, FileHeader[]>();
+  value = new Map<string, Array<string>>();
+  file = new Map<string, Array<FileHeader>>();
 
   // RemoveAll removes any temporary files associated with a Form. Errors
   // other than a missing file are thrown (the first one).
@@ -397,9 +392,9 @@ export class Form {
         if (fh.tmpfile !== "") {
           try {
             rmSync(fh.tmpfile);
-          } catch (err) {
-            if ((err as { code?: string }).code !== "ENOENT" && first === undefined) {
-              first = err;
+          } catch (error) {
+            if ((error as { code?: string }).code !== "ENOENT" && first === undefined) {
+              first = error;
             }
           }
         }
@@ -435,11 +430,11 @@ function createTemp(): { fd: number; name: string } {
     const name = join(dir, "multipart-" + String(crypto.getRandomValues(new Uint32Array(1))[0]));
     try {
       return { fd: openSync(name, "wx+", 0o600), name };
-    } catch (err) {
-      if ((err as { code?: string }).code === "EEXIST" && tries < 10000) {
+    } catch (error) {
+      if ((error as { code?: string }).code === "EEXIST" && tries < 10_000) {
         continue;
       }
-      throw err;
+      throw error;
     }
   }
 }
@@ -619,15 +614,15 @@ export class Reader {
           return off;
         },
       );
-    } catch (err) {
-      result = [undefined, err];
+    } catch (error) {
+      result = [undefined, error];
     }
     if (file !== undefined) {
       try {
         closeSync(file.fd);
-      } catch (err) {
+      } catch (error) {
         if (result[1] === undefined) {
-          result = [undefined, err];
+          result = [undefined, error];
         }
       }
     }
@@ -776,7 +771,7 @@ export class Reader {
   }
 }
 
-function appendValue(values: Map<string, string[]>, key: string, value: string): void {
+function appendValue(values: Map<string, Array<string>>, key: string, value: string): void {
   const list = values.get(key);
   if (list) {
     list.push(value);

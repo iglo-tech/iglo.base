@@ -30,8 +30,8 @@ import {
   startIgloServer,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 const { values } = parseArgs({ options: { only: { type: "string", default: "" } } });
 const only = values.only === "" ? undefined : new Set(values.only.split(","));
@@ -45,9 +45,9 @@ interface Part {
   data: Uint8Array;
 }
 
-function multipart(parts: Part[]): Uint8Array {
+function multipart(parts: Array<Part>): Uint8Array {
   const enc = new TextEncoder();
-  const chunks: Uint8Array[] = [];
+  const chunks: Array<Uint8Array> = [];
   for (const p of parts) {
     const disp =
       p.filename === undefined
@@ -106,7 +106,7 @@ function rawRequest(
       const text = response.toString("latin1");
       const status = Number(/^HTTP\/1\.1 (\d{3})/.exec(text)?.[1] ?? 0);
       const at = text.indexOf("\r\n\r\n");
-      resolveResult({
+      const result: RawResult = {
         status,
         body: at >= 0 ? text.slice(at + 4, at + 4 + 300) : "",
         ms: performance.now() - started,
@@ -114,8 +114,11 @@ function rawRequest(
         bodyBytes: body.length,
         sent,
         received: response.length,
-        ...(error === undefined ? {} : { error }),
-      });
+      };
+      if (error !== undefined) {
+        result.error = error;
+      }
+      resolveResult(result);
     };
     const timer = setTimeout(() => finish("timeout"), 120_000);
     socket.on("data", (d: Buffer) => {
@@ -141,49 +144,53 @@ function rawRequest(
       clearTimeout(timer);
       finish();
     });
-    socket.on("connect", async () => {
-      const head =
-        `POST ${path} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n` +
-        `Content-Type: multipart/form-data; boundary=${boundary}\r\n` +
-        (chunked ? "Transfer-Encoding: chunked\r\n" : `Content-Length: ${body.length}\r\n`) +
-        "\r\n";
-      socket.write(head);
-      const slice = 64 * 1024;
-      for (let off = 0; off < body.length; off += slice) {
-        if (finished || sentAtResponse >= 0) {
-          return;
-        }
-        const part = body.subarray(off, Math.min(off + slice, body.length));
-        // one write per slice: a short-circuited write would break the framing
-        socket.write(
-          chunked
-            ? Buffer.concat([
-                Buffer.from(`${part.length.toString(16)}\r\n`),
-                part,
-                Buffer.from("\r\n"),
-              ])
-            : part,
-        );
-        sent += part.length;
-        // let the response (if any) be read before the next slice, also
-        // when the server keeps accepting the body
-        await new Promise((r) => setImmediate(r));
-        // checked after the yield: a "drain" during it is not missed
-        if (socket.writableNeedDrain && !finished) {
-          await new Promise<void>((r) => {
-            const done = (): void => {
-              socket.off("drain", done);
-              socket.off("close", done);
-              r();
-            };
-            socket.on("drain", done);
-            socket.on("close", done);
+    socket.on("connect", () => {
+      void (async () => {
+        const head =
+          `POST ${path} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n` +
+          `Content-Type: multipart/form-data; boundary=${boundary}\r\n` +
+          (chunked ? "Transfer-Encoding: chunked\r\n" : `Content-Length: ${body.length}\r\n`) +
+          "\r\n";
+        socket.write(head);
+        const slice = 64 * 1024;
+        for (let off = 0; off < body.length; off += slice) {
+          if (finished || sentAtResponse >= 0) {
+            return;
+          }
+          const part = body.subarray(off, Math.min(off + slice, body.length));
+          // one write per slice: a short-circuited write would break the framing
+          socket.write(
+            chunked
+              ? Buffer.concat([
+                  Buffer.from(`${part.length.toString(16)}\r\n`),
+                  part,
+                  Buffer.from("\r\n"),
+                ])
+              : part,
+          );
+          sent += part.length;
+          // let the response (if any) be read before the next slice, also
+          // when the server keeps accepting the body
+          await new Promise((r) => {
+            setImmediate(r);
           });
+          // checked after the yield: a "drain" during it is not missed
+          if (socket.writableNeedDrain && !finished) {
+            await new Promise<void>((r) => {
+              const done = (): void => {
+                socket.off("drain", done);
+                socket.off("close", done);
+                r();
+              };
+              socket.on("drain", done);
+              socket.on("close", done);
+            });
+          }
         }
-      }
-      if (chunked && !finished && sentAtResponse < 0) {
-        socket.write("0\r\n\r\n");
-      }
+        if (chunked && !finished && sentAtResponse < 0) {
+          socket.write("0\r\n\r\n");
+        }
+      })();
     });
   });
 }
@@ -197,12 +204,12 @@ interface Case {
   chunked: boolean;
   // sequential requests at concurrency 1; rounds of n at concurrency n
   repeat: number;
-  concurrency?: number[];
+  concurrency?: Array<number>;
 }
 
-function cases(): Case[] {
+function cases(): Array<Case> {
   const title: Part = { name: "title", data: new TextEncoder().encode("spike") };
-  const small = (count: number, size: number): Part[] => [
+  const small = (count: number, size: number): Array<Part> => [
     title,
     ...Array.from({ length: count }, (_, i) => ({
       name: `x${i}`,
@@ -331,10 +338,10 @@ try {
   console.log(hostFacts());
   const dataDir = join(spike.root, "pb_data");
   await build(dataDir, spike.root);
-  const rows: string[] = [];
-  const details: string[] = [];
+  const rows: Array<string> = [];
+  const details: Array<string> = [];
 
-  const sizes: string[] = [];
+  const sizes: Array<string> = [];
   for (const c of cases()) {
     if (only && !only.has(c.name)) {
       continue;
@@ -363,7 +370,7 @@ try {
           // on low memory: kill the server, which ends the requests in flight,
           // and start no further round
           sample = sampler(server.pid, () => process.kill(server.pid, "SIGKILL"));
-          const results: RawResult[] = [];
+          const results: Array<RawResult> = [];
           const rounds = concurrency === 1 ? c.repeat : Math.max(1, c.repeat - 1);
           for (let r = 0; r < rounds && !sample.lowMem; r++) {
             const batch = await Promise.all(

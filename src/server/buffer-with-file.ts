@@ -27,7 +27,7 @@ export interface ReadCloser {
 }
 
 export class BufferWithFile implements ReadCloser {
-  #buf: Uint8Array[] | undefined = [];
+  #buf: Array<Uint8Array> | undefined = [];
   #bufLen = 0;
   #file: { fd: number; dir: string; name: string } | undefined;
   #fileReadOffset = 0;

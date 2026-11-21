@@ -1,6 +1,8 @@
 // docs/design/13-ssr.md ("Session cookie", "Clients")
-import { BaseAuthStore, type AuthRecord } from "@sdk/stores/BaseAuthStore";
-import { cookieParse, cookieSerialize, type SerializeOptions } from "@sdk/tools/cookie";
+import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
+import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
+import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
+import type { SerializeOptions } from "@sdk/tools/cookie";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { Cookie, CookieToSet, CookieValueMap, RequestCookieAdapter } from "@sdk/ssr/types";
 
@@ -17,7 +19,7 @@ export const OAUTH2_COOKIE_KEY = "pb_oauth2";
 export const OAUTH2_COOKIE_MAX_AGE_SEC = 600;
 
 export function isLocalhost(hostname: string): boolean {
-  const clean = hostname.replace(/^\[|\]$/g, "").split(":")[0] ?? "";
+  const clean = hostname.replaceAll(/^\[|\]$/g, "").split(":")[0] ?? "";
   return clean === "localhost" || clean === "127.0.0.1" || clean === "::1";
 }
 
@@ -30,7 +32,9 @@ export function isHttpLocalUrl(urlStr: string): boolean {
   }
 }
 
-export function normalizeCookies(raw: Cookie[] | CookieValueMap | undefined | null): Cookie[] {
+export function normalizeCookies(
+  raw: Array<Cookie> | CookieValueMap | undefined | null,
+): Array<Cookie> {
   if (!raw) {
     return [];
   }
@@ -51,7 +55,7 @@ export function cookieWireName(baseName: string, secure: boolean): string {
  * a cookie for the parent domain under any name, but only the host itself can set a `__Host-` one.
  */
 export function findCookie(
-  cookies: Cookie[],
+  cookies: Array<Cookie>,
   baseName: string,
   secure: boolean,
 ): Cookie | undefined {
@@ -64,7 +68,7 @@ export function findCookie(
  * app named its cookie (`secure` may come from the app's settings), so both names count: the
  * guard checks more requests, never fewer. Reading a value is still `findCookie`'s job.
  */
-export function hasSessionCookieName(cookies: Cookie[], baseName: string): boolean {
+export function hasSessionCookieName(cookies: Array<Cookie>, baseName: string): boolean {
   return cookies.some((c) => c.name === `__Host-${baseName}` || c.name === baseName);
 }
 
@@ -200,7 +204,7 @@ function buildClearedCookies(
   baseName: string,
   secure: boolean,
   optionsFor: (cookieSecure: boolean) => SerializeOptions,
-): CookieToSet[] {
+): Array<CookieToSet> {
   const clear = (name: string, cookieSecure: boolean): CookieToSet => ({
     name,
     value: "",
@@ -214,7 +218,7 @@ function buildClearedCookies(
 }
 
 /** Expiring cookies for a session end. */
-export function buildClearedSessionCookies(settings: CookieSettings): CookieToSet[] {
+export function buildClearedSessionCookies(settings: CookieSettings): Array<CookieToSet> {
   return buildClearedCookies(
     settings.cookieName ?? DEFAULT_COOKIE_KEY,
     isSecureSession(settings),
@@ -244,7 +248,7 @@ export function buildOAuth2CookieToSet(value: string, settings: CookieSettings):
 }
 
 /** Expiring cookies for the temporary OAuth2 cookie, written with the same name rule. */
-export function buildClearedOAuth2Cookies(settings: CookieSettings): CookieToSet[] {
+export function buildClearedOAuth2Cookies(settings: CookieSettings): Array<CookieToSet> {
   return buildClearedCookies(OAUTH2_COOKIE_KEY, isSecureSession(settings), (cookieSecure) => ({
     path: "/",
     sameSite: "lax",
@@ -257,7 +261,7 @@ export function createRequestCookieAdapter(
   request: Request,
   options?: { secure?: boolean },
 ): RequestCookieAdapter {
-  const queuedCookies: CookieToSet[] = [];
+  const queuedCookies: Array<CookieToSet> = [];
   const queuedHeaders: Record<string, string> = {};
 
   const reqUrl = new URL(request.url);
@@ -266,7 +270,7 @@ export function createRequestCookieAdapter(
 
   return {
     isSecure,
-    getAll(): Cookie[] {
+    getAll(): Array<Cookie> {
       const cookieHeader = request.headers.get("cookie") || "";
       const parsed = cookieParse(cookieHeader);
       return Object.entries(parsed).map(([name, value]) => ({
@@ -274,7 +278,7 @@ export function createRequestCookieAdapter(
         value: typeof value === "string" ? value : String(value),
       }));
     },
-    setAll(cookiesToSet: CookieToSet[], headers?: Record<string, string>): void {
+    setAll(cookiesToSet: Array<CookieToSet>, headers?: Record<string, string>): void {
       for (const c of cookiesToSet) {
         queuedCookies.push(c);
       }
@@ -294,7 +298,7 @@ export function createRequestCookieAdapter(
       }
       return response;
     },
-    get queuedCookies(): CookieToSet[] {
+    get queuedCookies(): Array<CookieToSet> {
       return queuedCookies;
     },
     get queuedHeaders(): Record<string, string> {

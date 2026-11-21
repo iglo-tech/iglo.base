@@ -6,15 +6,10 @@
 import type { App } from "@/app/app";
 import { clearBootstrap } from "@/app/bootstrap";
 import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
-import {
-  argsMinusFirst,
-  FlagError,
-  parseFlags,
-  stripFlags,
-  type FlagSpec,
-  type FlagValue,
-} from "@/cli/flags";
-import { helpText, usageText, type CommandHelp } from "@/cli/help";
+import { argsMinusFirst, FlagError, parseFlags, stripFlags } from "@/cli/flags";
+import type { FlagSpec, FlagValue } from "@/cli/flags";
+import { helpText, usageText } from "@/cli/help";
+import type { CommandHelp } from "@/cli/help";
 import type { AppConfig, CliContext } from "@/cli/root";
 import { bootstrapApp } from "@/cli/serve";
 import { newOTP, saveOTP } from "@/records/otp-model";
@@ -43,7 +38,7 @@ interface Subcommand {
   name: string;
   example: string;
   short: string;
-  run(app: App, args: string[], ctx: CliContext): Promise<void>;
+  run(app: App, args: Array<string>, ctx: CliContext): Promise<void>;
 }
 
 function errorMessage(err: unknown): string {
@@ -63,7 +58,7 @@ function colored(ctx: CliContext, codes: string, text: string): void {
 export const green = (ctx: CliContext, text: string): void => colored(ctx, "32", `${text}\n`);
 const yellow = (ctx: CliContext, text: string): void => colored(ctx, "33", `${text}\n`);
 
-const subcommands: Subcommand[] = [
+const subcommands: Array<Subcommand> = [
   {
     name: "upsert",
     example: "superuser upsert test@example.com 1234567890",
@@ -81,9 +76,9 @@ const subcommands: Subcommand[] = [
       let superusersCol;
       try {
         superusersCol = findCachedCollectionByNameOrId(app, CollectionNameSuperusers);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(err)}`,
+          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(error)}`,
         );
       }
 
@@ -99,8 +94,8 @@ const subcommands: Subcommand[] = [
 
       try {
         await saveRecord(app, superuser);
-      } catch (err) {
-        throw new CommandError(`failed to upsert superuser account: ${errorMessage(err)}`);
+      } catch (error) {
+        throw new CommandError(`failed to upsert superuser account: ${errorMessage(error)}`);
       }
 
       green(ctx, `Successfully saved superuser ${goQuote(superuser.email())}!`);
@@ -123,9 +118,9 @@ const subcommands: Subcommand[] = [
       let superusersCol;
       try {
         superusersCol = findCachedCollectionByNameOrId(app, CollectionNameSuperusers);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(err)}`,
+          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(error)}`,
         );
       }
 
@@ -135,8 +130,8 @@ const subcommands: Subcommand[] = [
 
       try {
         await saveRecord(app, superuser);
-      } catch (err) {
-        throw new CommandError(`failed to create new superuser account: ${errorMessage(err)}`);
+      } catch (error) {
+        throw new CommandError(`failed to create new superuser account: ${errorMessage(error)}`);
       }
 
       green(ctx, `Successfully created new superuser ${goQuote(superuser.email())}!`);
@@ -167,9 +162,9 @@ const subcommands: Subcommand[] = [
 
       try {
         await saveRecord(app, superuser);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to change superuser ${goQuote(superuser.email())} password: ${errorMessage(err)}`,
+          `failed to change superuser ${goQuote(superuser.email())} password: ${errorMessage(error)}`,
         );
       }
 
@@ -196,9 +191,9 @@ const subcommands: Subcommand[] = [
 
       try {
         await deleteRecord(app, superuser);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to delete superuser ${goQuote(superuser.email())}: ${errorMessage(err)}`,
+          `failed to delete superuser ${goQuote(superuser.email())}: ${errorMessage(error)}`,
         );
       }
 
@@ -236,8 +231,8 @@ const subcommands: Subcommand[] = [
 
       try {
         await saveOTP(app, otp);
-      } catch (err) {
-        throw new CommandError(`failed to create OTP: ${errorMessage(err)}`);
+      } catch (error) {
+        throw new CommandError(`failed to create OTP: ${errorMessage(error)}`);
       }
 
       colored(
@@ -293,7 +288,7 @@ const bootstrapSkipFlags = new Set(["-h", "--help", "-v", "--version"]);
 // command line.
 export async function runSuperuserCommand(
   resolveConfig: (values: Map<string, FlagValue>) => AppConfig,
-  persistent: FlagSpec[],
+  persistent: Array<FlagSpec>,
   ctx: CliContext,
   name: string,
 ): Promise<void> {
@@ -335,11 +330,11 @@ export async function runSuperuserCommand(
       };
       try {
         parseFlags(rest, [...local, ...persistent], { allowUnknown: false });
-      } catch (err) {
-        if (err instanceof FlagError) {
-          throw new CommandError(err.message, usageText(help));
+      } catch (error) {
+        if (error instanceof FlagError) {
+          throw new CommandError(error.message, usageText(help));
         }
-        throw err;
+        throw error;
       }
       // a command without its own action prints its help
       ctx.out.stdout(helpText(help));
@@ -352,12 +347,12 @@ export async function runSuperuserCommand(
       parsed = parseFlags(argsMinusFirst(rest, sub.name, persistent), [...local, ...persistent], {
         allowUnknown: false,
       });
-    } catch (err) {
-      if (err instanceof FlagError) {
+    } catch (error) {
+      if (error instanceof FlagError) {
         // SilenceUsage: no usage for the subcommands' errors
-        throw new CommandError(err.message);
+        throw new CommandError(error.message);
       }
-      throw err;
+      throw error;
     }
     if (parsed.values.get("help") === true) {
       ctx.out.stdout(

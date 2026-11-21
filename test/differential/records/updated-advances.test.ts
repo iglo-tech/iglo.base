@@ -20,8 +20,8 @@ interface Rec {
   updated: string;
 }
 
-const roots: string[] = [];
-const stops: (() => Promise<unknown>)[] = [];
+const roots: Array<string> = [];
+const stops: Array<() => Promise<unknown>> = [];
 
 afterAll(async () => {
   await Promise.allSettled(stops.map((stop) => stop()));
@@ -30,7 +30,12 @@ afterAll(async () => {
   }
 });
 
-async function api(url: string, method: string, path: string, body?: object): Promise<Rec> {
+async function api(
+  url: string,
+  method: string,
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<Rec> {
   const res = await fetch(url + path, {
     method,
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },

@@ -27,9 +27,11 @@
 
 import type { Database, SQLQueryBindings } from "bun:sqlite";
 
-import { EmbeddedBuilder, type Builder } from "@/db/dbx/builder";
+import { EmbeddedBuilder } from "@/db/dbx/builder";
+import type { Builder } from "@/db/dbx/builder";
 import { execStatements, queryStatements, splitStatements } from "@/db/dbx/driver";
-import { Stmt, type ExecResult, type Executor } from "@/db/dbx/query";
+import { Stmt } from "@/db/dbx/query";
+import type { ExecResult, Executor } from "@/db/dbx/query";
 import type { Rows } from "@/db/dbx/rows";
 
 // sql.ErrTxDone
@@ -42,16 +44,16 @@ export class TxDoneError extends Error {
 
 export class TxExecutor implements Executor {
   done = false;
-  private readonly stmts: Stmt[] = [];
+  private readonly stmts: Array<Stmt> = [];
 
   constructor(readonly conn: Database) {}
 
-  exec(sql: string, args: SQLQueryBindings[]): ExecResult {
+  exec(sql: string, args: Array<SQLQueryBindings>): ExecResult {
     this.checkDone();
     return execStatements(this.conn, splitStatements(sql), args, null);
   }
 
-  query(sql: string, args: SQLQueryBindings[], own: boolean): Rows {
+  query(sql: string, args: Array<SQLQueryBindings>, own: boolean): Rows {
     this.checkDone();
     return queryStatements(this.conn, splitStatements(sql), args, null, own);
   }
@@ -103,7 +105,7 @@ export class Tx extends EmbeddedBuilder {
     this.end();
     try {
       this.tx.conn.run("COMMIT");
-    } catch (err) {
+    } catch (error) {
       if (this.tx.conn.inTransaction) {
         try {
           this.tx.conn.run("ROLLBACK");
@@ -111,7 +113,7 @@ export class Tx extends EmbeddedBuilder {
           // the commit error is the one to report
         }
       }
-      throw err;
+      throw error;
     }
   }
 

@@ -29,7 +29,7 @@ function withCopy<T>(fn: (dataDir: string) => T): T {
   }
 }
 
-function median(xs: number[]): number {
+function median(xs: Array<number>): number {
   const sorted = xs.toSorted((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)]!;
 }
@@ -44,14 +44,14 @@ function rate(n: number, ms: number): string {
   return `${Math.round((n / ms) * 1000).toLocaleString("en-US")} ops/s (${n} in ${ms.toFixed(0)} ms)`;
 }
 
-const results: [string, string][] = [];
+const results: Array<[string, string]> = [];
 function report(name: string, value: string): void {
   results.push([name, value]);
 }
 
 // open time of both fixture files (connect + pragmas), first open of a copy
 {
-  const samples: number[] = [];
+  const samples: Array<number> = [];
   for (let i = 0; i < 20; i++) {
     withCopy((dataDir) => {
       let app: Databases | null = null;
@@ -77,7 +77,7 @@ withCopy((dataDir) => {
       .execute();
 
     // single-row inserts, each its own implicit transaction
-    const autocommitN = 2_000;
+    const autocommitN = 2000;
     let ms = time(() => {
       for (let i = 0; i < autocommitN; i++) {
         app
@@ -133,19 +133,21 @@ withCopy((dataDir) => {
     report("single-row select by id, inside one transaction", rate(selectN, ms));
 
     // a 10,000-row select
-    const samples: number[] = [];
+    const samples: Array<number> = [];
     for (let i = 0; i < 20; i++) {
       samples.push(
         time(() => {
           const rows = app.db().select("id", "title", "n").from("bench").limit(10_000).all();
-          if (rows.length !== 10_000) throw new Error(`got ${rows.length} rows`);
+          if (rows.length !== 10_000) {
+            throw new Error(`got ${rows.length} rows`);
+          }
         }),
       );
     }
     report("10,000-row select (median of 20)", `${median(samples).toFixed(2)} ms`);
 
     // the same rows read withExactIntegers (no integer narrowing)
-    const exactSamples: number[] = [];
+    const exactSamples: Array<number> = [];
     for (let i = 0; i < 20; i++) {
       exactSamples.push(
         time(() => {
@@ -157,7 +159,9 @@ withCopy((dataDir) => {
             .build()
             .withExactIntegers()
             .all();
-          if (rows.length !== 10_000) throw new Error(`got ${rows.length} rows`);
+          if (rows.length !== 10_000) {
+            throw new Error(`got ${rows.length} rows`);
+          }
         }),
       );
     }

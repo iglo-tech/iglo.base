@@ -17,7 +17,7 @@ export interface RuleShape {
 }
 
 // list and view rule of each notes_<shape> collection
-export const ruleShapes: RuleShape[] = [
+export const ruleShapes: Array<RuleShape> = [
   { shape: "null", rule: null },
   { shape: "empty", rule: "" },
   { shape: "auth", rule: `@request.auth.id != ""` },
@@ -63,8 +63,8 @@ export function notesCollection(
 const e = encodeURIComponent;
 
 // the requests of the rules matrix, each sent as every FreshIdentity
-export function ruleCases(): ReadCase[] {
-  const cases: ReadCase[] = [];
+export function ruleCases(): Array<ReadCase> {
+  const cases: Array<ReadCase> = [];
   for (const s of ruleShapes) {
     const q = s.query ? `&${s.query}` : "";
     const base = `/api/collections/notes_${s.shape}/records`;
@@ -90,7 +90,7 @@ export function ruleCases(): ReadCase[] {
 
 // expand, fields, hidden fields and emailVisibility on the fresh data,
 // each sent as every FreshIdentity
-export const freshCases: ReadCase[] = [
+export const freshCases: Array<ReadCase> = [
   {
     name: "members (manageRule, emailVisibility)",
     url: "/api/collections/members/records?sort=id",

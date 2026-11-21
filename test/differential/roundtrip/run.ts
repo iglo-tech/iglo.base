@@ -16,33 +16,24 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runUpstream } from "@test/differential/db/fixture";
-import {
-  compareResponses,
-  Pairing,
-  readStartingData,
-  type StartingData,
-} from "@test/differential/harness/compare";
-import {
-  diffSnapshots,
-  takeSnapshot,
-  thumbPaths,
-  type Snapshot,
-} from "@test/differential/roundtrip/snapshot";
+import { compareResponses, Pairing, readStartingData } from "@test/differential/harness/compare";
+import type { StartingData } from "@test/differential/harness/compare";
+import { diffSnapshots, takeSnapshot, thumbPaths } from "@test/differential/roundtrip/snapshot";
+import type { Snapshot } from "@test/differential/roundtrip/snapshot";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 
 export type Kind = "upstream" | "iglo.base";
-export const subjectLegs: Kind[] = ["upstream", "iglo.base", "upstream"];
-export const controlLegs: Kind[] = ["upstream", "upstream", "upstream"];
+export const subjectLegs: Array<Kind> = ["upstream", "iglo.base", "upstream"];
+export const controlLegs: Array<Kind> = ["upstream", "upstream", "upstream"];
 
 export const encryptionEnv = "ROUNDTRIP_ENCRYPTION_KEY";
 export const encryptionKey = "roundtrip0encryption0key00000032";
 
 // A parsed response. Scenario code reads what the request it just sent must
 // have returned, and a missing member shows as a failed step.
-// oxlint-disable-next-line typescript/no-explicit-any
 type Json = any;
 
 export interface Recorded {
@@ -67,13 +58,13 @@ export interface RequestOptions {
 
 // what stays the same across a run's legs
 export class RunState {
-  readonly failures: string[] = [];
+  readonly failures: Array<string> = [];
   // tokens by name, issued by any leg
   readonly tokens = new Map<string, string>();
   // record ids the scenario left to the server
   readonly generatedIds = new Set<string>();
   // storage directories that must be gone before a server stops
-  readonly gone: string[] = [];
+  readonly gone: Array<string> = [];
   superuserToken: string;
 
   constructor(superuserToken: string) {
@@ -84,7 +75,7 @@ export class RunState {
 // An API client bound to one leg's server. A wrong status is a failure of the
 // run, which goes on: one difference should not hide the next.
 export class Client {
-  readonly recorded: Recorded[] = [];
+  readonly recorded: Array<Recorded> = [];
 
   constructor(
     readonly url: string,
@@ -162,22 +153,26 @@ export class Client {
       headers["Content-Type"] = "application/json";
       body = options.raw ?? JSON.stringify(options.json);
     }
-    const res = await fetch(this.url + path, {
-      method,
-      headers,
-      ...(body === undefined ? {} : { body }),
-    });
+    const init: RequestInit = { method, headers };
+    if (body !== undefined) {
+      init.body = body;
+    }
+    const res = await fetch(this.url + path, init);
     const response: ScenarioResponse = {
       status: res.status,
       headers: res.headers,
       body: new Uint8Array(await res.arrayBuffer()),
     };
+    const bodyField: Pick<Scenario, "body"> = {};
+    if (body !== undefined) {
+      bodyField.body = body;
+    }
     const request: Scenario = {
       name: path,
       method,
       url: path,
       headers,
-      ...(body === undefined ? {} : { body }),
+      ...bodyField,
       expectedStatus: 0,
     };
     this.recorded.push({ label: `${method} ${path}`, request, response, at: Date.now() });
@@ -190,7 +185,7 @@ export interface RoundTripScenario {
   leg(client: Client, leg: number): Promise<void>;
   // more GET paths for the sweep, with the name of the token to send them
   // with ("" for a guest); an unset token skips the read
-  reads?: (leg: number) => { path: string; token: string }[];
+  reads?: (leg: number) => Array<{ path: string; token: string }>;
 }
 
 interface SweepEntry {
@@ -209,7 +204,7 @@ interface Listed {
   id: string;
   name: string;
   type: string;
-  fields: { name: string; type: string }[];
+  fields: Array<{ name: string; type: string }>;
 }
 
 function parse(res: ScenarioResponse): Json {
@@ -225,8 +220,8 @@ async function sweep(
   client: Client,
   scenario: RoundTripScenario,
   leg: number,
-): Promise<SweepEntry[]> {
-  const out: SweepEntry[] = [];
+): Promise<Array<SweepEntry>> {
+  const out: Array<SweepEntry> = [];
   const read = async (key: string, path: string, token?: string): Promise<ScenarioResponse> => {
     const response = await client.send("GET", path, token === undefined ? {} : { token });
     out.push({ key, request: requestFor(path), response });
@@ -237,7 +232,7 @@ async function sweep(
   const collections = parse(await read("collections", "/api/collections?perPage=500&sort=name"));
   const fileToken = parse(await client.send("POST", "/api/files/token")).token as string;
 
-  for (const collection of collections.items as Listed[]) {
+  for (const collection of collections.items as Array<Listed>) {
     const sort = collection.type === "view" ? "id" : "@rowid";
     const relations = collection.fields.filter((f) => f.type === "relation").map((f) => f.name);
     const files = collection.fields.filter((f) => f.type === "file").map((f) => f.name);
@@ -248,11 +243,15 @@ async function sweep(
       if (res.status !== 200) {
         break;
       }
-      const list = parse(res) as { items: Record<string, unknown>[] };
+      const list = parse(res) as { items: Array<Record<string, unknown>> };
       for (const item of list.items) {
         for (const field of files) {
           const value = item[field];
-          const names = Array.isArray(value) ? (value as string[]) : value ? [value as string] : [];
+          const names = Array.isArray(value)
+            ? (value as Array<string>)
+            : value
+              ? [value as string]
+              : [];
           for (const name of names) {
             const file = `/api/files/${collection.id}/${item["id"]}/${name}`;
             await read(file, `${file}?token=${fileToken}`);
@@ -280,9 +279,13 @@ async function sweep(
 // the same pb_data: nothing is generated, all of it must be equal
 const nothingGenerated: StartingData = { contains: () => true };
 
-function compareSweeps(before: SweepEntry[], after: SweepEntry[], label: string): string[] {
-  const out: string[] = [];
-  const keys = (entries: SweepEntry[]) => entries.map((e) => e.key).join("\n");
+function compareSweeps(
+  before: Array<SweepEntry>,
+  after: Array<SweepEntry>,
+  label: string,
+): Array<string> {
+  const out: Array<string> = [];
+  const keys = (entries: Array<SweepEntry>) => entries.map((e) => e.key).join("\n");
   if (keys(before) !== keys(after)) {
     const a = new Set(before.map((e) => e.key));
     const b = new Set(after.map((e) => e.key));
@@ -308,7 +311,7 @@ function compareSweeps(before: SweepEntry[], after: SweepEntry[], label: string)
 function dbRows(path: string, sql: string): Set<string> {
   const db = new Database(path);
   try {
-    return new Set((db.query(sql).values() as unknown[][]).map((row) => row.join("\t")));
+    return new Set((db.query(sql).values() as Array<Array<unknown>>).map((row) => row.join("\t")));
   } finally {
     db.close();
   }
@@ -375,13 +378,13 @@ async function waitForDeletes(dataDir: string, state: RunState): Promise<void> {
 }
 
 export interface RunOptions {
-  legs: Kind[];
+  legs: Array<Kind>;
   // copied to the run's own pb_data; only read
   startDir: string;
   scenario: RoundTripScenario;
   superuserToken: string;
   // --encryptionEnv per leg
-  encrypted?: boolean[];
+  encrypted?: Array<boolean>;
 }
 
 export interface RunResult {
@@ -391,7 +394,7 @@ export interface RunResult {
   startedAt: string;
   state: RunState;
   // what each leg sent and got
-  recorded: Recorded[][];
+  recorded: Array<Array<Recorded>>;
   // thumbnails iglo.base generated, as stored paths
   igloThumbs: Set<string>;
   // the last leg's --encryptionEnv key
@@ -410,11 +413,11 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
   cpSync(options.startDir, dataDir, { recursive: true });
 
   const state = new RunState(options.superuserToken);
-  const recorded: Recorded[][] = [];
+  const recorded: Array<Array<Recorded>> = [];
   const igloThumbs = new Set<string>();
   const startedAt = storedTimestamp(new Date());
-  let lastSweep: SweepEntry[] | undefined;
-  let lastLogs: Set<string> | undefined;
+  let lastSweep: Array<SweepEntry> | undefined;
+  const logsPerLeg: Array<Set<string>> = [];
 
   for (const [leg, kind] of legs.entries()) {
     const thumbsBefore = thumbPaths(dataDir);
@@ -445,15 +448,20 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
 
     // `_logs`: only that auxiliary.db written by upstream stays intact (M5.5)
     const logs = readLogs(dataDir);
+    const lastLogs = logsPerLeg.at(-1);
     if (lastLogs !== undefined) {
       const lost = [...lastLogs].filter((row) => !logs.has(row));
       if (lost.length > 0) {
         state.failures.push(`leg ${leg + 1}: ${lost.length} rows of _logs changed: ${lost[0]}`);
       }
     }
-    lastLogs = logs;
+    logsPerLeg.push(logs);
   }
 
+  const encryptedField: { encryptionKey?: typeof encryptionKey } = {};
+  if (options.encrypted?.at(-1)) {
+    encryptedField.encryptionKey = encryptionKey;
+  }
   return {
     root,
     dataDir,
@@ -461,7 +469,7 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
     state,
     recorded,
     igloThumbs,
-    ...(options.encrypted?.at(-1) ? { encryptionKey } : {}),
+    ...encryptedField,
     remove: () => rmSync(root, { recursive: true, force: true }),
   };
 }
@@ -474,7 +482,7 @@ const anyTimestamp = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z/g;
 // server are replaced by their place in the run.
 function comparable(res: ScenarioResponse, run: RunResult): ScenarioResponse {
   let body = new TextDecoder().decode(res.body);
-  body = body.replace(anyTimestamp, (ts) =>
+  body = body.replaceAll(anyTimestamp, (ts) =>
     ts >= run.startedAt && ts < "2100" ? "2000-01-01 00:00:00.000Z" : ts,
   );
   [...run.state.generatedIds].forEach((id, i) => {
@@ -491,8 +499,8 @@ export function compareRecorded(
   control: RunResult,
   subject: RunResult,
   start: StartingData,
-): string[] {
-  const out: string[] = [];
+): Array<string> {
+  const out: Array<string> = [];
   for (const [leg, requests] of control.recorded.entries()) {
     const other = subject.recorded[leg] ?? [];
     if (requests.length !== other.length) {
@@ -532,13 +540,16 @@ export interface Start {
 }
 
 export function snapshotOf(run: RunResult, start: StartingData): Snapshot {
-  return takeSnapshot(run.dataDir, {
+  const options: Parameters<typeof takeSnapshot>[1] = {
     start,
     startedAt: run.startedAt,
     generatedIds: run.state.generatedIds,
     igloThumbs: run.igloThumbs,
-    ...(run.encryptionKey === undefined ? {} : { encryptionKey: run.encryptionKey }),
-  });
+  };
+  if (run.encryptionKey !== undefined) {
+    options.encryptionKey = run.encryptionKey;
+  }
+  return takeSnapshot(run.dataDir, options);
 }
 
 export interface Outcome {
@@ -547,7 +558,7 @@ export interface Outcome {
   controlSnapshot: Snapshot;
   subjectSnapshot: Snapshot;
   start: StartingData;
-  differences: string[];
+  differences: Array<string>;
 }
 
 // The control, then the subject, on copies of one start. A control that fails

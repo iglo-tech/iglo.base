@@ -16,10 +16,12 @@
 // The io.RuneReader methods, Copy, Expand, ExpandString, the iterator
 // methods and the text marshaling methods are left out.
 
-import { find, input, type program } from "@/tools/regexp/exec";
+import { find, input } from "@/tools/regexp/exec";
+import type { program } from "@/tools/regexp/exec";
 import { compileOnePass, onePassPrefix } from "@/tools/regexp/onepass";
 import { Compile } from "@/tools/regexp/syntax/compile";
-import { POSIX, Parse, Perl, type Flags } from "@/tools/regexp/syntax/parse";
+import { POSIX, Parse, Perl } from "@/tools/regexp/syntax/parse";
+import type { Flags } from "@/tools/regexp/syntax/parse";
 import {
   OpAlternate,
   OpAnyChar,
@@ -30,11 +32,12 @@ import {
   OpLiteral,
   OpPlus,
   OpRepeat,
-  type Regexp as syntaxRegexp,
 } from "@/tools/regexp/syntax/regexp";
+import type { Regexp as syntaxRegexp } from "@/tools/regexp/syntax/regexp";
 import { Simplify } from "@/tools/regexp/syntax/simplify";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
-import { Categories, Is, IsPrint, type RangeTable } from "@/tools/unicode/letter";
+import { Categories, Is, IsPrint } from "@/tools/unicode/letter";
+import type { RangeTable } from "@/tools/unicode/letter";
 import { DecodeRuneInString, RuneError, goString } from "@/tools/unicode/utf8";
 
 const encoder = new TextEncoder();
@@ -71,7 +74,7 @@ class text {
 
 interface Compiled {
   numSubexp: number;
-  subexpNames: string[];
+  subexpNames: Array<string>;
   prefixComplete: boolean; // prefix is the entire regexp
   p: program;
 }
@@ -139,7 +142,7 @@ export class Regexp {
     return (this.#c ?? this.#compiled()).numSubexp;
   }
 
-  get #subexpNames(): string[] {
+  get #subexpNames(): Array<string> {
     return (this.#c ?? this.#compiled()).subexpNames;
   }
 
@@ -194,7 +197,7 @@ export class Regexp {
   // so that if m is a match slice, the name for m[i] is SubexpNames()[i].
   // Since the Regexp as a whole cannot be named, names[0] is always
   // the empty string. The slice should not be modified.
-  subexpNames(): readonly string[] {
+  subexpNames(): ReadonlyArray<string> {
     return this.#subexpNames;
   }
 
@@ -235,7 +238,7 @@ export class Regexp {
   }
 
   // the find of regexp.go on a text
-  #find(t: text, pos: number, ncap: number): number[] | null {
+  #find(t: text, pos: number, ncap: number): Array<number> | null {
     return find(this.#p, new input(t.bytes), pos, ncap);
   }
 
@@ -244,7 +247,7 @@ export class Regexp {
   // For example, "(a){0}" turns into an empty program, so the
   // maximum capture in the program is 0 but we need to return
   // an expression for \1.  Pad appends -1s to the slice a as needed.
-  #pad(a: number[] | null): number[] | null {
+  #pad(a: Array<number> | null): Array<number> | null {
     if (a === null) {
       // No match.
       return null;
@@ -257,7 +260,7 @@ export class Regexp {
   }
 
   // matches yields the location of successive matches in the input text.
-  *#matches(t: text, max: number, ncap: number): Generator<number[]> {
+  *#matches(t: text, max: number, ncap: number): Generator<Array<number>> {
     if (max === 0) {
       return;
     }
@@ -289,7 +292,7 @@ export class Regexp {
       prevMatchEnd = matches[1] as number;
 
       if (accept) {
-        yield this.#pad(matches) as number[];
+        yield this.#pad(matches) as Array<number>;
         if (max > 0) {
           if (--max === 0) {
             return;
@@ -314,7 +317,7 @@ export class Regexp {
   // FindStringIndex returns the location of the leftmost match for re in s.
   // The match itself is at s[m[0]:m[1]] (byte offsets).
   // The return value is null for no match.
-  findStringIndex(s: string): number[] | null {
+  findStringIndex(s: string): Array<number> | null {
     const m = this.#find(new text(s), 0, 2);
     if (m === null) {
       return null;
@@ -325,13 +328,13 @@ export class Regexp {
   // FindStringSubmatch returns the first match for re in s, including submatches.
   // The overall match is s[0], the first submatch is s[1], and so on.
   // The return value is null for no match.
-  findStringSubmatch(s: string): string[] | null {
+  findStringSubmatch(s: string): Array<string> | null {
     const t = new text(s);
     const a = this.#find(t, 0, this.#p.prog.numCap);
     if (a === null) {
       return null;
     }
-    const ret: string[] = [];
+    const ret: Array<string> = [];
     for (let i = 0; i < 1 + this.#numSubexp; i++) {
       ret.push(
         2 * i < a.length && (a[2 * i] as number) >= 0
@@ -345,16 +348,16 @@ export class Regexp {
   // FindStringSubmatchIndex returns the first match for re in s, including submatches.
   // The overall match is s[m[0]:m[1]], the first submatch is s[m[2]:m[3]], and so on.
   // The return value is null for no match.
-  findStringSubmatchIndex(s: string): number[] | null {
+  findStringSubmatchIndex(s: string): Array<number> | null {
     return this.#pad(this.#find(new text(s), 0, this.#p.prog.numCap));
   }
 
   // FindAllString returns all the matches for re in s.
   // If n >= 0, FindAllString returns no more than n matches.
   // The return value is null for no match.
-  findAllString(s: string, n: number): string[] | null {
+  findAllString(s: string, n: number): Array<string> | null {
     const t = new text(s);
-    const out: string[] = [];
+    const out: Array<string> = [];
     for (const m of this.#matches(t, n, 2)) {
       out.push(t.slice(m[0] as number, m[1] as number));
     }
@@ -364,8 +367,8 @@ export class Regexp {
   // FindAllStringIndex returns the locations of all matches for re in s.
   // If n >= 0, FindAllStringIndex returns no more than n matches.
   // The return value is null for no match.
-  findAllStringIndex(s: string, n: number): number[][] | null {
-    const out: number[][] = [];
+  findAllStringIndex(s: string, n: number): Array<Array<number>> | null {
+    const out: Array<Array<number>> = [];
     for (const m of this.#matches(new text(s), n, 2)) {
       out.push([m[0] as number, m[1] as number]);
     }
@@ -378,11 +381,11 @@ export class Regexp {
   // m[1] is the first submatch, and so on.
   // If n >= 0, FindAllStringSubmatch returns no more than n matches.
   // The return value is null for no match.
-  findAllStringSubmatch(s: string, n: number): string[][] | null {
+  findAllStringSubmatch(s: string, n: number): Array<Array<string>> | null {
     const t = new text(s);
-    const out: string[][] = [];
+    const out: Array<Array<string>> = [];
     for (const m of this.#matches(t, n, this.#p.prog.numCap)) {
-      const sub: string[] = [];
+      const sub: Array<string> = [];
       for (let i = 0; i < m.length / 2; i++) {
         sub.push(
           (m[2 * i] as number) >= 0 ? t.slice(m[2 * i] as number, m[2 * i + 1] as number) : "",
@@ -399,8 +402,8 @@ export class Regexp {
   // the first submatch is s[m[2]:m[3]], and so on.
   // If n >= 0, FindAllStringSubmatchIndex returns no more than n matches.
   // The return value is null for no match.
-  findAllStringSubmatchIndex(s: string, n: number): number[][] | null {
-    const out: number[][] = [];
+  findAllStringSubmatchIndex(s: string, n: number): Array<Array<number>> | null {
+    const out: Array<Array<number>> = [];
     for (const m of this.#matches(new text(s), n, this.#p.prog.numCap)) {
       out.push(m.slice());
     }
@@ -441,7 +444,7 @@ export class Regexp {
     );
   }
 
-  #replaceAll(src: string, nmatch: number, repl: (t: text, m: number[]) => string): string {
+  #replaceAll(src: string, nmatch: number, repl: (t: text, m: Array<number>) => string): string {
     const t = new text(src);
     const i = new input(t.bytes);
     let lastMatchEnd = 0; // end position of the most recent match
@@ -493,7 +496,7 @@ export class Regexp {
 
   // expand of regexp.go: the template with $name and ${name} replaced by
   // the submatches of match in src.
-  #expand(template: string, src: text, m: readonly number[]): string {
+  #expand(template: string, src: text, m: ReadonlyArray<number>): string {
     let dst = "";
     while (template.length > 0) {
       const k = template.indexOf("$");
@@ -543,7 +546,7 @@ export class Regexp {
   //   - n > 0: at most n substrings; the last substring will be the unsplit remainder;
   //   - n == 0: the result is null (zero substrings);
   //   - n < 0: all substrings.
-  split(s: string, n: number): string[] | null {
+  split(s: string, n: number): Array<string> | null {
     if (n === 0) {
       return null;
     }
@@ -553,7 +556,7 @@ export class Regexp {
 
     const t = new text(s);
     const matches = this.findAllStringIndex(s, n) ?? [];
-    const strings: string[] = [];
+    const strings: Array<string> = [];
 
     let beg = 0;
     let end = 0;
@@ -630,16 +633,16 @@ function runeLen(r: number): number {
   if (r < 0x80) {
     return 1;
   }
-  if (r < 0x800) {
+  if (r < 0x8_00) {
     return 2;
   }
-  if (0xd800 <= r && r <= 0xdfff) {
+  if (0xd8_00 <= r && r <= 0xdf_ff) {
     return -1;
   }
-  if (r < 0x10000) {
+  if (r < 0x1_00_00) {
     return 3;
   }
-  if (r <= 0x10ffff) {
+  if (r <= 0x10_ff_ff) {
     return 4;
   }
   return -1;
@@ -788,7 +791,7 @@ function quote(s: string): string {
   for (let i = 0; i < s.length;) {
     const [r, width] = DecodeRuneInString(s.slice(i));
     if (isInvalidByte(s, i)) {
-      out += "\\x" + (s.charCodeAt(i) - 0xdc00).toString(16).padStart(2, "0");
+      out += String.raw`\x` + (s.charCodeAt(i) - 0xdc_00).toString(16).padStart(2, "0");
     } else if (r === 0x22 || r === 0x5c) {
       out += "\\" + String.fromCharCode(r);
     } else if (IsPrint(r)) {
@@ -805,33 +808,33 @@ function quote(s: string): string {
 // form)
 function isInvalidByte(s: string, i: number): boolean {
   const c = s.charCodeAt(i);
-  return c >= 0xdc80 && c <= 0xdcff;
+  return c >= 0xdc_80 && c <= 0xdc_ff;
 }
 
 function escapeRune(r: number): string {
   switch (r) {
     case 0x07:
-      return "\\a";
+      return String.raw`\a`;
     case 0x08:
-      return "\\b";
+      return String.raw`\b`;
     case 0x0c:
-      return "\\f";
+      return String.raw`\f`;
     case 0x0a:
-      return "\\n";
+      return String.raw`\n`;
     case 0x0d:
-      return "\\r";
+      return String.raw`\r`;
     case 0x09:
-      return "\\t";
+      return String.raw`\t`;
     case 0x0b:
-      return "\\v";
+      return String.raw`\v`;
   }
   if (r < 0x20 || r === 0x7f) {
-    return "\\x" + r.toString(16).padStart(2, "0");
+    return String.raw`\x` + r.toString(16).padStart(2, "0");
   }
-  if (r < 0x10000) {
-    return "\\u" + r.toString(16).padStart(4, "0");
+  if (r < 0x1_00_00) {
+    return String.raw`\u` + r.toString(16).padStart(4, "0");
   }
-  return "\\U" + r.toString(16).padStart(8, "0");
+  return String.raw`\U` + r.toString(16).padStart(8, "0");
 }
 
 function canBackquote(s: string): boolean {
@@ -842,7 +845,7 @@ function canBackquote(s: string): boolean {
     const [r, width] = DecodeRuneInString(s.slice(i));
     i += width;
     if (r > 0x7f) {
-      if (r === 0xfeff) {
+      if (r === 0xfe_ff) {
         return false;
       }
       continue;

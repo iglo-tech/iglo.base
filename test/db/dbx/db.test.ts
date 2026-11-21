@@ -31,7 +31,8 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 
-import { DB, Errors, newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
+import { Errors, newFromDB } from "@/db/dbx/db";
 import { TxDoneError } from "@/db/dbx/tx";
 import { getDB, getPreparedDB } from "@test/db/support";
 
@@ -89,7 +90,7 @@ test("TestDB_QuoteColumnName", () => {
 });
 
 test("TestDB_ProcessSQL", () => {
-  const tests: { tag: string; sql: string; sqlite: string; params: string[] }[] = [
+  const tests: Array<{ tag: string; sql: string; sqlite: string; params: Array<string> }> = [
     {
       tag: "normal case",
       sql: "INSERT INTO employee (id, name, age) VALUES ({:id}, {:name}, {:age})",
@@ -179,9 +180,9 @@ describe("TestDB_Transactional", () => {
         tx.newQuery("DELETE FROM item WHERE id=2").execute();
         try {
           tx.newQuery("DELETE FROM items WHERE id=2").execute();
-        } catch (err) {
+        } catch (error) {
           tx.rollback();
-          throw err;
+          throw error;
         }
       }),
     ).toThrow("no such table: items");
@@ -252,10 +253,11 @@ describe("TestDB_Transactional", () => {
   test("a function returning a promise is rolled back", () => {
     const db = getPreparedDB();
     expect(() =>
-      db.transactional(((tx: Parameters<Parameters<DB["transactional"]>[0]>[0]) => {
+      // oxlint-disable-next-line typescript/no-misused-promises -- the transactional callback ignores its result; the test returns a resolved promise like the async callers
+      db.transactional((tx: Parameters<Parameters<DB["transactional"]>[0]>[0]) => {
         tx.newQuery("DELETE FROM item WHERE id=2").execute();
         return Promise.resolve();
-      }) as never),
+      }),
     ).toThrow("transaction function must be synchronous");
     expect(db.newQuery("SELECT name FROM item WHERE id=2").row()).toEqual(["Go in Action"]);
   });

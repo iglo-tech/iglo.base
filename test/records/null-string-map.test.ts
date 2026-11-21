@@ -15,7 +15,7 @@ import type { JSONRaw } from "@/tools/types/json-raw";
 import { getDB } from "@test/db/support";
 
 // stored SQL literal -> [typeof, the json field's JSON]
-const cases: [string, string, string][] = [
+const cases: Array<[string, string, string]> = [
   ["1234567", "integer", "1234567"],
   ["-1000000", "integer", "-1000000"],
   ["999999", "integer", "999999"],

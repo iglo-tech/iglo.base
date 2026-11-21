@@ -40,6 +40,7 @@ export async function recordRequestPasswordReset(e: RequestEvent): Promise<Handl
 
   const form: RecordRequestPasswordResetForm = { Email: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordRequestPasswordResetType,
   );
@@ -60,10 +61,10 @@ export async function recordRequestPasswordReset(e: RequestEvent): Promise<Handl
   let record: Record;
   try {
     record = findAuthRecordByEmail(e.app, collection, form.Email);
-  } catch (err) {
+  } catch (error) {
     // eagerly write 204 response as a very basic measure against emails enumeration
     e.noContent(204);
-    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, err);
+    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, error);
   }
 
   const resendKey = getPasswordResetResendKey(record);
@@ -89,13 +90,13 @@ async function sendPasswordResetInBackground(
   e: RequestEvent,
   record: Record,
   resendKey: string,
-  token: object,
+  token: { [key: string]: unknown },
 ): Promise<void> {
   const app = e.app;
   try {
     await sendRecordPasswordReset(app, record);
-  } catch (err) {
-    app.logger.error("Failed to send password reset email", { error: err });
+  } catch (error) {
+    app.logger.error("Failed to send password reset email", { error });
     // a failed send keeps no throttle (as upstream, which sets the key after the send)
     if (app.store.get(resendKey) === token) {
       app.store.remove(resendKey);

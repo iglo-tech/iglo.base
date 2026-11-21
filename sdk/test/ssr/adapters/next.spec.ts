@@ -6,7 +6,8 @@ import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
 import { immutableResponse } from "@sdk-test/ssr/immutable-response";
 import { createSessionCache, SSR_NO_CACHE_HEADERS } from "@sdk/ssr/index";
-import { createNextAuth, type NextAuthOptions, type NextCookieStore } from "@sdk/ssr/next";
+import { createNextAuth } from "@sdk/ssr/next";
+import type { NextAuthOptions, NextCookieStore } from "@sdk/ssr/next";
 import { getTokenPayload } from "@sdk/tools/jwt";
 
 const API = "http://127.0.0.1:8090";
@@ -96,7 +97,7 @@ function fakeIglo(): Fetch {
  * middleware passes on.
  */
 function setup(overrides: Partial<NextAuthOptions> = {}) {
-  const forwarded: Headers[] = [];
+  const forwarded: Array<Headers> = [];
   const auth = createNextAuth({
     url: API,
     origin: APP,
@@ -389,8 +390,8 @@ describe("createNextAuth: middleware", () => {
       ),
     ]);
 
-    expect(sessionTokenOf(cookieLine(responses[0]!, "__Host-pb_auth"))).toBe(token("u1", 2));
-    expect(sessionTokenOf(cookieLine(responses[1]!, "__Host-pb_auth"))).toBe(token("u2", 2));
+    expect(sessionTokenOf(cookieLine(responses[0], "__Host-pb_auth"))).toBe(token("u1", 2));
+    expect(sessionTokenOf(cookieLine(responses[1], "__Host-pb_auth"))).toBe(token("u2", 2));
     const users = forwarded
       .map(forwardedUser)
       .map((user) => `${String(user.tokenId)}/${String(user.recordId)}`);
@@ -484,6 +485,6 @@ describe("createNextAuth: no-cache headers and runtime", () => {
   });
 
   test("the browser stub names the Node.js runtime for a bundle that loads the server-only module", async () => {
-    await expect(import("@sdk/ssr/browser")).rejects.toThrow(/Node\.js runtime/);
+    await Promise.resolve(expect(import("@sdk/ssr/browser")).rejects.toThrow(/Node\.js runtime/));
   });
 });

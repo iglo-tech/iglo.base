@@ -2,7 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { type Moment, newMoment, newSchedule, type Schedule } from "@/tools/cron/schedule";
+import { newMoment, newSchedule } from "@/tools/cron/schedule";
+import type { Moment, Schedule } from "@/tools/cron/schedule";
 
 // the Go JSON of a map[int]struct{}: keys sorted as strings
 function slots(set: Set<number>): string {
@@ -27,7 +28,7 @@ test("TestNewMoment", () => {
   expect(m).toEqual({ minute: 20, hour: 15, day: 9, month: 5, dayOfWeek: 2 });
 });
 
-const newScheduleScenarios: [string, boolean, string][] = [
+const newScheduleScenarios: Array<[string, boolean, string]> = [
   ["invalid", true, ""],
   ["* * * *", true, ""],
   ["* * * * * *", true, ""],
@@ -171,8 +172,8 @@ describe("TestNewSchedule", () => {
       let error: unknown;
       try {
         schedule = newSchedule(cronExpr);
-      } catch (err) {
-        error = err;
+      } catch (error_) {
+        error = error_;
       }
       expect(error !== undefined).toBe(expectError);
       if (schedule === undefined) {
@@ -183,7 +184,7 @@ describe("TestNewSchedule", () => {
   }
 });
 
-const isDueScenarios: [string, Moment, boolean][] = [
+const isDueScenarios: Array<[string, Moment, boolean]> = [
   ["* * * * *", { minute: 0, hour: 0, day: 0, month: 0, dayOfWeek: 0 }, false],
   ["* * * * *", { minute: 1, hour: 1, day: 1, month: 1, dayOfWeek: 1 }, true],
   ["5 * * * *", { minute: 1, hour: 1, day: 1, month: 1, dayOfWeek: 1 }, false],

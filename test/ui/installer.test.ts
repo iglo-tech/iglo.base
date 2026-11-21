@@ -73,7 +73,7 @@ describe("installer", () => {
         const list = await fetch(`${server.url}/api/collections/_superusers/records?fields=email`, {
           headers: { Authorization: authToken },
         });
-        expect(((await list.json()) as { items: unknown[] }).items).toEqual([
+        expect(((await list.json()) as { items: Array<unknown> }).items).toEqual([
           { email: "first@example.com" },
         ]);
 

@@ -6,6 +6,7 @@
 //
 // The tokens are upstream's fixture tokens (test/fixtures/pocketbase,
 // expiring in 2050): test data, not credentials.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
@@ -26,7 +27,7 @@ export function setLogsSettings(dataDir: string, logs: Record<string, unknown>):
     const row = db.query("SELECT value FROM _params WHERE id = 'settings'").get() as {
       value: string | Uint8Array;
     };
-    const isBlob = row.value instanceof Uint8Array;
+    const isBlob = isInstance(Uint8Array, row.value);
     const text = isBlob ? new TextDecoder().decode(row.value as Uint8Array) : (row.value as string);
     const settings = JSON.parse(text) as { logs: Record<string, unknown> };
     Object.assign(settings.logs, logs);
@@ -82,7 +83,7 @@ async function expectNoLogs({ url }: AfterContext): Promise<void> {
   }
 }
 
-function guarded(method: string, url: string): Scenario[] {
+function guarded(method: string, url: string): Array<Scenario> {
   return [
     {
       name: "unauthorized",

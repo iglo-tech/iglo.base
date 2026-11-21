@@ -25,23 +25,17 @@
 
 import { encodeGif } from "@/files/gif-encode";
 import {
-  type ByteSource,
   checkJpegComplete,
   decodeConfig,
   gifFirstFrame,
   orientImage,
   readOrientation,
-  type Size,
 } from "@/files/image-config";
-import {
-  cropRect,
-  resize,
-  thumbFormat,
-  thumbGeometry,
-  thumbPlan,
-  type ThumbSize,
-} from "@/files/imaging";
-import { decodePng, encodePng, type Raw } from "@/files/png-raw";
+import type { ByteSource, Size } from "@/files/image-config";
+import { cropRect, resize, thumbFormat, thumbGeometry, thumbPlan } from "@/files/imaging";
+import type { ThumbSize } from "@/files/imaging";
+import { decodePng, encodePng } from "@/files/png-raw";
+import type { Raw } from "@/files/png-raw";
 
 export interface Thumb {
   bytes: Uint8Array;
@@ -75,8 +69,8 @@ export function checkSource(src: Uint8Array | ByteSource, maxPixels: number): Si
   let config;
   try {
     config = decodeConfig(src);
-  } catch (err) {
-    throw new Error(`image headers decoding failed: ${(err as Error).message}`, { cause: err });
+  } catch (error) {
+    throw new Error(`image headers decoding failed: ${(error as Error).message}`, { cause: error });
   }
   if (config.width * config.height > maxPixels) {
     throw new Error(

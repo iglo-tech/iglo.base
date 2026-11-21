@@ -30,6 +30,7 @@
 // "batch" step is upstream's POST /api/batch (enabled in upstream's
 // settings for the test) and iglo.base's creates in one transaction
 // (saveRecordSync in runInAppTransaction); only its success is modeled.
+import { isInstance } from "@/tools/types/is-instance";
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -47,22 +48,20 @@ import {
 } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { FieldNameExpand } from "@/fields/field";
-import { type DataMap, type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { DataMap, Record } from "@/records/record-model";
 import { findRecordById } from "@/records/record-query";
 import { deleteRecord, saveRecord, saveRecordSync } from "@/records/record-save";
 import { ApiError, newBadRequestError, newNotFoundError } from "@/server/error";
 import { decodeValue, toAny } from "@/server/json-decode";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
-import {
-  type Step,
-  collections,
-  steps,
-  tables,
-  volatileColumns,
-} from "@test/differential/records/save-cases";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { collections, steps, tables, volatileColumns } from "@test/differential/records/save-cases";
+import type { Step } from "@test/differential/records/save-cases";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // the hooks start and stop upstream
 const hookTimeout = 120_000;
@@ -109,11 +108,14 @@ async function request(
   path: string,
   body?: string,
 ): Promise<{ status: number; text: string }> {
-  const res = await fetch(`${s.url}${path}`, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json", authorization: token },
-    ...(body === undefined ? {} : { body }),
-  });
+  };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const res = await fetch(`${s.url}${path}`, init);
   return { status: res.status, text: await res.text() };
 }
 
@@ -350,11 +352,11 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
   let collection;
   try {
     collection = findCachedCollectionByNameOrId(model(), step.collection);
-  } catch (err) {
+  } catch (error) {
     return apiError(
       step.kind === "truncate"
-        ? newNotFoundError("", err)
-        : newNotFoundError("Missing collection context.", err),
+        ? newNotFoundError("", error)
+        : newNotFoundError("Missing collection context.", error),
     );
   }
 
@@ -369,11 +371,11 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
     }
     try {
       truncateCollection(model(), collection);
-    } catch (err) {
+    } catch (error) {
       return apiError(
         newBadRequestError(
           "Failed to truncate collection (most likely due to required cascade delete record references).",
-          err,
+          error,
         ),
       );
     }
@@ -389,8 +391,8 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
     formLoad(record, record.replaceModifiers(requestBody(step.body)));
     try {
       await saveRecord(model(), record);
-    } catch (err) {
-      return apiError(firstApiError(err) ?? newBadRequestError("Failed to create record", err));
+    } catch (error) {
+      return apiError(firstApiError(error) ?? newBadRequestError("Failed to create record", error));
     }
     return { status: 200, body: "", id: record.id };
   }
@@ -398,28 +400,30 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
   let record: Record;
   try {
     record = findRecordById(model(), collection, resolve(step.id));
-  } catch (err) {
-    return apiError(newNotFoundError("", err));
+  } catch (error) {
+    return apiError(newNotFoundError("", error));
   }
 
   if (step.kind === "update") {
     formLoad(record, record.replaceModifiers(requestBody(step.body)));
     try {
       await saveRecord(model(), record);
-    } catch (err) {
-      return apiError(firstApiError(err) ?? newBadRequestError("Failed to update record.", err));
+    } catch (error) {
+      return apiError(
+        firstApiError(error) ?? newBadRequestError("Failed to update record.", error),
+      );
     }
     return { status: 200, body: "" };
   }
 
   try {
     await deleteRecord(model(), record);
-  } catch (err) {
+  } catch (error) {
     return apiError(
-      firstApiError(err) ??
+      firstApiError(error) ??
         newBadRequestError(
           "Failed to delete record. Make sure that the record is not part of a required relation reference.",
-          err,
+          error,
         ),
     );
   }
@@ -436,16 +440,16 @@ type Snapshot = Map<string, Map<string, Row>>; // table -> id -> row
 function snapshot(db: Database): Snapshot {
   const result: Snapshot = new Map();
   for (const table of tables) {
-    const columns = (db.query(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map(
-      (c) => c.name,
-    );
+    const columns = (
+      db.query(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>
+    ).map((c) => c.name);
     const select = columns.map((c) => `typeof("${c}"), "${c}"`).join(", ");
     const rows = new Map<string, Row>();
     for (const values of db.query(`SELECT ${select} FROM "${table}"`).values()) {
       const row: Row = {};
       for (const [i, c] of columns.entries()) {
         let v = values[2 * i + 1];
-        if (v instanceof Uint8Array) {
+        if (isInstance(Uint8Array, v)) {
           v = "0x" + Buffer.from(v).toString("hex");
         } else if (typeof v === "bigint") {
           v = `${v}n`;
@@ -468,7 +472,7 @@ function normalize(
   current: Snapshot,
   previous: Snapshot | null,
   aliases: Map<string, string>,
-): { [table: string]: Row[] } {
+): { [table: string]: Array<Row> } {
   const alias = (v: unknown): unknown => {
     if (typeof v !== "string") {
       return v;
@@ -480,10 +484,10 @@ function normalize(
     return s;
   };
 
-  const out: { [table: string]: Row[] } = {};
+  const out: { [table: string]: Array<Row> } = {};
   for (const [table, rows] of current) {
     const prevRows = previous?.get(table);
-    const list: Row[] = [];
+    const list: Array<Row> = [];
     for (const [id, row] of rows) {
       const prevRow = prevRows?.get(id);
       const norm: Row = {};
@@ -547,7 +551,7 @@ describe("record save and delete", () => {
   let igloPrev: Snapshot | null = null;
   const upstreamAliases = new Map<string, string>();
   const igloAliases = new Map<string, string>();
-  const outcomes: { upstream: Outcome; iglo: Outcome }[] = [];
+  const outcomes: Array<{ upstream: Outcome; iglo: Outcome }> = [];
 
   beforeAll(() => {
     upstreamDB = new Database(join(upstreamDir, "data.db"), { safeIntegers: true });

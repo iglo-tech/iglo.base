@@ -16,7 +16,7 @@ import { bytesToText } from "@/tools/types/go-json";
 export interface XmlElement {
   name: string;
   text: string;
-  children: XmlElement[];
+  children: Array<XmlElement>;
 }
 
 function syntaxError(line: number, message: string): Error {
@@ -32,14 +32,14 @@ const entities = new Map([
 ]);
 
 function decodeEntities(text: string, lineAt: () => number): string {
-  return text.replace(/&([^;&<]*)(;?)/g, (whole, name: string, semi: string) => {
+  return text.replaceAll(/&([^;&<]*)(;?)/g, (whole, name: string, semi: string) => {
     if (semi === "") {
       throw syntaxError(lineAt(), "invalid character entity & (no semicolon)");
     }
     const code = /^#x([0-9a-fA-F]+)$/.exec(name)?.[1] ?? /^#([0-9]+)$/.exec(name)?.[1];
     if (code !== undefined) {
       const n = Number.parseInt(code, name[1] === "x" ? 16 : 10);
-      if (n > 0x10ffff) {
+      if (n > 0x10_ff_ff) {
         throw syntaxError(lineAt(), `invalid character entity ${whole}`);
       }
       return String.fromCodePoint(n);
@@ -62,7 +62,7 @@ function localName(name: string): string {
 // read, as Unmarshal does, so what follows it may be anything (an HTML page).
 export function parseXml(raw: Uint8Array | string, expected?: string): XmlElement {
   const s = bytesToText(raw);
-  const stack: (XmlElement & { rawName: string })[] = [];
+  const stack: Array<XmlElement & { rawName: string }> = [];
   let pos = 0;
   const line = (): number => s.slice(0, pos).split("\n").length;
   const unexpectedEOF = (): Error =>
@@ -166,7 +166,7 @@ export function childText(element: XmlElement, name: string): string {
 
 // xml.EscapeText
 export function escapeText(s: string): string {
-  return s.replace(/[&<>'"\t\n\r]/g, (c) => {
+  return s.replaceAll(/[&<>'"\t\n\r]/g, (c) => {
     switch (c) {
       case "&":
         return "&amp;";

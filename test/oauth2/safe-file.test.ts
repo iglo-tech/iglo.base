@@ -69,8 +69,8 @@ const pngPixel = Buffer.from(
   "base64",
 );
 
-let hits: string[] = [];
-let hosts: string[] = [];
+let hits: Array<string> = [];
+let hosts: Array<string> = [];
 
 function serve(fetch: (req: Request) => Response | Promise<Response>) {
   return Bun.serve({ hostname: "127.0.0.1", port: 0, fetch });
@@ -178,37 +178,45 @@ describe("isAllowedAddress", () => {
 describe("safeFileFromURL", () => {
   test("refuses a loopback server with the production check", async () => {
     hits = [];
-    await expect(safeFileFromURL(`${base}/avatar.png`)).rejects.toThrow("disallowed");
+    await Promise.resolve(
+      expect(safeFileFromURL(`${base}/avatar.png`)).rejects.toThrow("disallowed"),
+    );
     expect(hits).toEqual([]);
   });
 
   test("refuses a name that resolves to a private address", async () => {
     hits = [];
-    await expect(
-      safeFileFromURL(`http://public.test:${server.port}/avatar.png`, {
-        lookupAddresses: () => Promise.resolve(["127.0.0.1"]),
-      }),
-    ).rejects.toThrow("disallowed");
+    await Promise.resolve(
+      expect(
+        safeFileFromURL(`http://public.test:${server.port}/avatar.png`, {
+          lookupAddresses: () => Promise.resolve(["127.0.0.1"]),
+        }),
+      ).rejects.toThrow("disallowed"),
+    );
     expect(hits).toEqual([]);
   });
 
   test("refuses localhost, resolved for real", async () => {
-    await expect(safeFileFromURL(`http://localhost:${server.port}/avatar.png`)).rejects.toThrow(
-      "disallowed",
+    await Promise.resolve(
+      expect(safeFileFromURL(`http://localhost:${server.port}/avatar.png`)).rejects.toThrow(
+        "disallowed",
+      ),
     );
   });
 
   test("refuses IP literals in their other spellings", async () => {
     hits = [];
     for (const host of ["2130706433", "0x7f.1", "127.1", "[::1]", "[::ffff:127.0.0.1]"]) {
-      await expect(safeFileFromURL(`http://${host}:${server.port}/a.png`)).rejects.toThrow();
+      await Promise.resolve(
+        expect(safeFileFromURL(`http://${host}:${server.port}/a.png`)).rejects.toThrow(),
+      );
     }
     expect(hits).toEqual([]);
   });
 
   test("connects to the checked address, with the name in the Host header", async () => {
     hosts = [];
-    const checked: string[] = [];
+    const checked: Array<string> = [];
     const file = await safeFileFromURL(`http://public.test:${server.port}/avatar.png`, {
       lookupAddresses: () => Promise.resolve(["127.0.0.1"]),
       isAllowedAddress: (address) => {
@@ -252,35 +260,43 @@ describe("safeFileFromURL", () => {
   test("refuses a redirect to a private address", async () => {
     hits = [];
     const target = encodeURIComponent("http://127.0.0.2/internal");
-    await expect(
-      safeFileFromURL(`${base}/to?url=${target}`, {
-        isAllowedAddress: (address) => address === "127.0.0.1",
-      }),
-    ).rejects.toThrow("disallowed");
+    await Promise.resolve(
+      expect(
+        safeFileFromURL(`${base}/to?url=${target}`, {
+          isAllowedAddress: (address) => address === "127.0.0.1",
+        }),
+      ).rejects.toThrow("disallowed"),
+    );
     expect(hits).toEqual(["/to"]);
   });
 
   test("refuses a redirect to a name that resolves to a private address", async () => {
     const target = encodeURIComponent("http://internal.test/secret");
-    await expect(
-      safeFileFromURL(`${base}/to?url=${target}`, {
-        isAllowedAddress: (address) => address === "127.0.0.1",
-        lookupAddresses: () => Promise.resolve(["10.1.2.3"]),
-      }),
-    ).rejects.toThrow("disallowed");
+    await Promise.resolve(
+      expect(
+        safeFileFromURL(`${base}/to?url=${target}`, {
+          isAllowedAddress: (address) => address === "127.0.0.1",
+          lookupAddresses: () => Promise.resolve(["10.1.2.3"]),
+        }),
+      ).rejects.toThrow("disallowed"),
+    );
   });
 
   test("refuses a redirect to another scheme", async () => {
     for (const url of ["file:///etc/passwd", "ftp://example.com/a"]) {
-      await expect(
-        safeFileFromURL(`${base}/to?url=${encodeURIComponent(url)}`, anyAddress),
-      ).rejects.toThrow("unsupported protocol scheme");
+      await Promise.resolve(
+        expect(
+          safeFileFromURL(`${base}/to?url=${encodeURIComponent(url)}`, anyAddress),
+        ).rejects.toThrow("unsupported protocol scheme"),
+      );
     }
   });
 
   test("refuses another scheme", async () => {
-    await expect(safeFileFromURL("file:///etc/passwd", anyAddress)).rejects.toThrow(
-      "unsupported protocol scheme",
+    await Promise.resolve(
+      expect(safeFileFromURL("file:///etc/passwd", anyAddress)).rejects.toThrow(
+        "unsupported protocol scheme",
+      ),
     );
   });
 
@@ -293,8 +309,10 @@ describe("safeFileFromURL", () => {
 
   test("stops at the 10th redirect", async () => {
     hits = [];
-    await expect(safeFileFromURL(`${base}/hops/10`, anyAddress)).rejects.toThrow(
-      "stopped after 10 redirects",
+    await Promise.resolve(
+      expect(safeFileFromURL(`${base}/hops/10`, anyAddress)).rejects.toThrow(
+        "stopped after 10 redirects",
+      ),
     );
     expect(hits.length).toBe(10);
   });
@@ -316,22 +334,26 @@ describe("safeFileFromURL", () => {
 
   for (const status of [400, 404, 500]) {
     test(`fails on status ${status}`, async () => {
-      await expect(safeFileFromURL(`${base}/status?status=${status}`, anyAddress)).rejects.toThrow(
-        `(${status})`,
+      await Promise.resolve(
+        expect(safeFileFromURL(`${base}/status?status=${status}`, anyAddress)).rejects.toThrow(
+          `(${status})`,
+        ),
       );
     });
   }
 
   test("fails on an empty body", async () => {
-    await expect(safeFileFromURL(`${base}/empty`, anyAddress)).rejects.toThrow(
-      "cannot create an empty file",
+    await Promise.resolve(
+      expect(safeFileFromURL(`${base}/empty`, anyAddress)).rejects.toThrow(
+        "cannot create an empty file",
+      ),
     );
   });
 
   test("gives up after the timeout", async () => {
-    await expect(
-      safeFileFromURL(`${base}/slow`, { ...anyAddress, timeoutMs: 50 }),
-    ).rejects.toThrow();
+    await Promise.resolve(
+      expect(safeFileFromURL(`${base}/slow`, { ...anyAddress, timeoutMs: 50 })).rejects.toThrow(),
+    );
   });
 
   test("the deadline covers a slow name resolution, and no request starts after it", async () => {
@@ -348,7 +370,9 @@ describe("safeFileFromURL", () => {
     // cannot decide the outcome: the call must reject while the lookup is
     // still pending, and nothing may be requested once it ends
     let release!: () => void;
-    const gate = new Promise<void>((resolve) => (release = resolve));
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     let lookupEnded = false;
     const call = safeFileFromURL(`http://slow.test:${counting.port}/a.png`, {
       ...anyAddress,
@@ -373,13 +397,15 @@ describe("safeFileFromURL", () => {
   });
 
   test("the deadline covers a name resolution that never ends", async () => {
-    await expect(
-      safeFileFromURL("http://never.test/a.png", {
-        ...anyAddress,
-        timeoutMs: 20,
-        lookupAddresses: () => new Promise<string[]>(() => {}),
-      }),
-    ).rejects.toThrow();
+    await Promise.resolve(
+      expect(
+        safeFileFromURL("http://never.test/a.png", {
+          ...anyAddress,
+          timeoutMs: 20,
+          lookupAddresses: () => new Promise<Array<string>>(() => {}),
+        }),
+      ).rejects.toThrow(),
+    );
   });
 
   test("keeps only DefaultMaxBodySize of the body", async () => {
@@ -394,7 +420,7 @@ describe("safeFileFromURL", () => {
   });
 });
 
-const lookupAddresses = (): Promise<string[]> => Promise.resolve(["127.0.0.1"]);
+const lookupAddresses = (): Promise<Array<string>> => Promise.resolve(["127.0.0.1"]);
 
 describe("safeFileFromURL over TLS", () => {
   const tlsServer = Bun.serve({
@@ -416,21 +442,25 @@ describe("safeFileFromURL over TLS", () => {
   });
 
   test("refuses a certificate of another name", async () => {
-    await expect(
-      safeFileFromURL(`https://other.test:${tlsServer.port}/avatar.png`, {
-        ...anyAddress,
-        lookupAddresses,
-        ca: testCert,
-      }),
-    ).rejects.toThrow();
+    await Promise.resolve(
+      expect(
+        safeFileFromURL(`https://other.test:${tlsServer.port}/avatar.png`, {
+          ...anyAddress,
+          lookupAddresses,
+          ca: testCert,
+        }),
+      ).rejects.toThrow(),
+    );
   });
 
   test("refuses an untrusted certificate", async () => {
-    await expect(
-      safeFileFromURL(`https://public.test:${tlsServer.port}/avatar.png`, {
-        ...anyAddress,
-        lookupAddresses,
-      }),
-    ).rejects.toThrow();
+    await Promise.resolve(
+      expect(
+        safeFileFromURL(`https://public.test:${tlsServer.port}/avatar.png`, {
+          ...anyAddress,
+          lookupAddresses,
+        }),
+      ).rejects.toThrow(),
+    );
   });
 });

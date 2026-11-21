@@ -2,11 +2,12 @@
 import type { Loose } from "@sdk/tools/loose";
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import { BaseService } from "@sdk/services/BaseService";
-import { type SendOptions, normalizeUnknownQueryParams } from "@sdk/tools/options";
+import { normalizeUnknownQueryParams } from "@sdk/tools/options";
+import type { SendOptions } from "@sdk/tools/options";
 
 interface promiseCallbacks {
-  resolve: Function;
-  reject: Function;
+  resolve: (value?: void) => void;
+  reject: (reason?: unknown) => void;
 }
 
 type Subscriptions = { [key: string]: Array<EventListener> };
@@ -20,7 +21,7 @@ export class RealtimeService extends BaseService {
   private subscriptions: Subscriptions = {};
   private lastSentSubscriptions: Array<string> = [];
   private connectTimeoutId?: ReturnType<typeof setTimeout>;
-  private maxConnectTimeout: number = 15000;
+  private maxConnectTimeout: number = 15_000;
   private reconnectTimeoutId?: ReturnType<typeof setTimeout>;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = Infinity;
@@ -89,7 +90,9 @@ export class RealtimeService extends BaseService {
       let data;
       try {
         data = JSON.parse(msgEvent?.data);
-      } catch {}
+      } catch {
+        // not JSON: the callback gets an empty object
+      }
 
       callback(data || {});
     };
@@ -172,12 +175,12 @@ export class RealtimeService extends BaseService {
     } else {
       // remove all listeners related to the topic
       const subs = this.getSubscriptionsByTopic(topic);
-      for (let key in subs) {
+      for (const key in subs) {
         if (!this.hasSubscriptionListeners(key)) {
           continue; // already unsubscribed
         }
 
-        for (let listener of this.subscriptions[key]!) {
+        for (const listener of this.subscriptions[key]!) {
           this.eventSource?.removeEventListener(key, listener);
         }
         delete this.subscriptions[key];
@@ -197,14 +200,14 @@ export class RealtimeService extends BaseService {
    */
   async unsubscribeByPrefix(keyPrefix: string): Promise<void> {
     let hasAtleastOneTopic = false;
-    for (let key in this.subscriptions) {
+    for (const key in this.subscriptions) {
       // "?" so that it can be used as end delimiter for the prefix
       if (!(key + "?").startsWith(keyPrefix)) {
         continue;
       }
 
       hasAtleastOneTopic = true;
-      for (let listener of this.subscriptions[key]!) {
+      for (const listener of this.subscriptions[key]!) {
         this.eventSource?.removeEventListener(key, listener);
       }
       delete this.subscriptions[key];
@@ -228,7 +231,7 @@ export class RealtimeService extends BaseService {
    */
   async unsubscribeByTopicAndListener(topic: string, listener: EventListener): Promise<void> {
     const subs = this.getSubscriptionsByTopic(topic);
-    for (let key in subs) {
+    for (const key in subs) {
       if (!Array.isArray(this.subscriptions[key]) || !this.subscriptions[key].length) {
         continue; // already unsubscribed
       }
@@ -240,8 +243,7 @@ export class RealtimeService extends BaseService {
         }
 
         exist = true; // has at least one matching listener
-        delete this.subscriptions[key][i]; // removes the function reference
-        this.subscriptions[key].splice(i, 1); // reindex the array
+        this.subscriptions[key].splice(i, 1); // removes the function reference and reindexes the array
         this.eventSource?.removeEventListener(key, listener);
       }
       if (!exist) {
@@ -266,7 +268,7 @@ export class RealtimeService extends BaseService {
     }
 
     // check for at least one non-empty subscription
-    for (let key in this.subscriptions) {
+    for (const key in this.subscriptions) {
       if (this.subscriptions[key]?.length) {
         return true;
       }
@@ -280,7 +282,9 @@ export class RealtimeService extends BaseService {
       this.pendingSubmits.push({ resolve, reject });
 
       if (this.pendingSubmits.length == 1) {
-        queueMicrotask(() => this.finalizePendingSubscriptions());
+        queueMicrotask(() => {
+          void this.finalizePendingSubscriptions();
+        });
       }
     });
   }
@@ -299,13 +303,13 @@ export class RealtimeService extends BaseService {
     try {
       await this.sendSubscriptions();
 
-      for (let p of pending) {
+      for (const p of pending) {
         p.resolve();
       }
-    } catch (err) {
-      for (let p of pending) {
+    } catch (error) {
+      for (const p of pending) {
         // oxlint-disable-next-line no-unused-expressions -- upstream ternary dispatch for promise resolution
-        err ? p.reject(err) : p.resolve();
+        error ? p.reject(error) : p.resolve();
       }
     } finally {
       this.isProcessingPendingSubmits = false;
@@ -327,7 +331,7 @@ export class RealtimeService extends BaseService {
     // "?" so that it can be used as end delimiter for the topic
     topic = topic.includes("?") ? topic : topic + "?";
 
-    for (let key in this.subscriptions) {
+    for (const key in this.subscriptions) {
       if ((key + "?").startsWith(topic)) {
         result[key] = this.subscriptions[key]!;
       }
@@ -339,7 +343,7 @@ export class RealtimeService extends BaseService {
   private getNonEmptySubscriptionKeys(): Array<string> {
     const result: Array<string> = [];
 
-    for (let key in this.subscriptions) {
+    for (const key in this.subscriptions) {
       if (this.subscriptions[key]!.length) {
         result.push(key);
       }
@@ -383,21 +387,24 @@ export class RealtimeService extends BaseService {
     this.addAllSubscriptionListeners();
     this.lastSentSubscriptions = this.getNonEmptySubscriptionKeys();
 
-    return this.client
-      .send("/api/realtime", {
-        method: "POST",
-        body: {
-          clientId: this.clientId,
-          subscriptions: this.lastSentSubscriptions,
-        },
-        requestKey: this.getSubscriptionsCancelKey(),
-      })
-      .catch((err) => {
-        if (err?.isAbort) {
-          return; // silently ignore aborted pending requests
-        }
-        throw err;
-      });
+    return (
+      this.client
+        .send("/api/realtime", {
+          method: "POST",
+          body: {
+            clientId: this.clientId,
+            subscriptions: this.lastSentSubscriptions,
+          },
+          requestKey: this.getSubscriptionsCancelKey(),
+        })
+        // oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- the rejection value is read as an Error or ClientResponseError; unknown needs a cast that the rule forbids
+        .catch((error) => {
+          if (error?.isAbort) {
+            return; // silently ignore aborted pending requests
+          }
+          throw error;
+        })
+    );
   }
 
   private addAllSubscriptionListeners(): void {
@@ -407,8 +414,8 @@ export class RealtimeService extends BaseService {
 
     this.removeAllSubscriptionListeners();
 
-    for (let key in this.subscriptions) {
-      for (let listener of this.subscriptions[key]!) {
+    for (const key in this.subscriptions) {
+      for (const listener of this.subscriptions[key]!) {
         this.eventSource.addEventListener(key, listener);
       }
     }
@@ -419,8 +426,8 @@ export class RealtimeService extends BaseService {
       return;
     }
 
-    for (let key in this.subscriptions) {
-      for (let listener of this.subscriptions[key]!) {
+    for (const key in this.subscriptions) {
+      for (const listener of this.subscriptions[key]!) {
         this.eventSource.removeEventListener(key, listener);
       }
     }
@@ -462,7 +469,6 @@ export class RealtimeService extends BaseService {
 
     this.eventSource = new EventSource(this.client.buildURL("/api/realtime"));
 
-    // oxlint-disable-next-line unicorn/prefer-add-event-listener -- EventSource.onerror matches upstream assignment
     this.eventSource.onerror = () => {
       if (isCurrent()) {
         this.connectErrorHandler(new Error("Failed to establish realtime connection."));
@@ -473,7 +479,7 @@ export class RealtimeService extends BaseService {
       if (!isCurrent()) {
         return;
       }
-      const msgEvent = e as MessageEvent;
+      const msgEvent = e;
       this.clientId = msgEvent?.lastEventId;
       this.lastSentSubscriptions = [];
 
@@ -507,7 +513,7 @@ export class RealtimeService extends BaseService {
           }
 
           // resolve connect promises
-          for (let p of this.pendingConnects) {
+          for (const p of this.pendingConnects) {
             p.resolve();
           }
 
@@ -519,8 +525,8 @@ export class RealtimeService extends BaseService {
 
           // propagate the PB_CONNECT event
           const connectSubs = this.getSubscriptionsByTopic("PB_CONNECT");
-          for (let key in connectSubs) {
-            for (let listener of connectSubs[key]!) {
+          for (const key in connectSubs) {
+            for (const listener of connectSubs[key]!) {
               listener(e);
             }
           }
@@ -532,13 +538,13 @@ export class RealtimeService extends BaseService {
             await this.submitSubscriptions();
           }
         })
-        .catch((err) => {
+        .catch((error: unknown) => {
           if (!isCurrent()) {
             return; // a closed connection's failure is not the current one's
           }
           this.clientId = "";
           this.lastSentSubscriptions = [];
-          this.connectErrorHandler(err);
+          this.connectErrorHandler(error);
         });
     });
   }
@@ -553,7 +559,7 @@ export class RealtimeService extends BaseService {
       // was previously connected but the max reconnection limit has been reached
       this.reconnectAttempts > this.maxReconnectAttempts
     ) {
-      for (let p of this.pendingConnects) {
+      for (const p of this.pendingConnects) {
         p.reject(new ClientResponseError(err));
       }
       this.pendingConnects = [];
@@ -615,7 +621,7 @@ export class RealtimeService extends BaseService {
       // this is done to avoid unnecessary throwing errors in case
       // unsubscribe is called before the pending connect promises complete
       // (see https://github.com/pocketbase/pocketbase/discussions/2897#discussioncomment-6423818)
-      for (let p of this.pendingConnects) {
+      for (const p of this.pendingConnects) {
         p.resolve();
       }
       this.pendingConnects = [];

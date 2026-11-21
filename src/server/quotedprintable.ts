@@ -2,7 +2,8 @@
 // quoted-printable decoder (RFC 2045) that mime/multipart's NextPart puts
 // in front of a part with "Content-Transfer-Encoding: quoted-printable".
 
-import { ErrUnexpectedEOF, EOF, type Reader as IoReader } from "@/server/io";
+import { ErrUnexpectedEOF, EOF } from "@/server/io";
+import type { Reader as IoReader } from "@/server/io";
 import { Reader as BufReader } from "@/server/bufio";
 import { goQuote } from "@/server/textproto";
 
@@ -39,14 +40,14 @@ export class Reader implements IoReader {
         this.#rerr = rerr;
 
         // Does the line end in CRLF instead of just LF?
-        const hasLF = wholeLine.length > 0 && wholeLine[wholeLine.length - 1] === 0x0a;
-        const hasCR = hasLF && wholeLine.length > 1 && wholeLine[wholeLine.length - 2] === 0x0d;
+        const hasLF = wholeLine.length > 0 && wholeLine.at(-1) === 0x0a;
+        const hasCR = hasLF && wholeLine.length > 1 && wholeLine.at(-2) === 0x0d;
         let end = wholeLine.length;
         while (end > 0 && isQPDiscardWhitespace(wholeLine[end - 1] as number)) {
           end--;
         }
         let line = wholeLine.subarray(0, end);
-        if (line.length > 0 && line[line.length - 1] === 0x3d) {
+        if (line.length > 0 && line.at(-1) === 0x3d) {
           // rightStripped: what follows the "=", without leading LWSP
           let rs = end;
           while (rs < wholeLine.length && (wholeLine[rs] === 0x20 || wholeLine[rs] === 0x09)) {

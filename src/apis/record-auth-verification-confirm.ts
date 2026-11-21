@@ -26,7 +26,8 @@ import { toString } from "@/tools/types/cast";
 import { NewError } from "@/validation/error";
 import { Required } from "@/validation/required";
 import { Field, ValidateStruct } from "@/validation/struct";
-import { By, type RuleFunc } from "@/validation/validation";
+import { By } from "@/validation/validation";
+import type { RuleFunc } from "@/validation/validation";
 
 export async function recordConfirmVerification(e: RequestEvent): Promise<HandlerResult> {
   const collection = findAuthCollection(e);
@@ -40,6 +41,7 @@ export async function recordConfirmVerification(e: RequestEvent): Promise<Handle
 
   const form: RecordConfirmVerificationForm = { Token: "" };
   const bindErr = await e.bindBody(
+    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
     form as unknown as { [key: string]: unknown },
     recordConfirmVerificationType,
   );
@@ -60,8 +62,8 @@ export async function recordConfirmVerification(e: RequestEvent): Promise<Handle
   let record: Record;
   try {
     record = findAuthRecordByToken(e.app, form.Token, TokenTypeVerification);
-  } catch (err) {
-    return e.badRequestError("Invalid or expired verification token.", err);
+  } catch (error) {
+    return e.badRequestError("Invalid or expired verification token.", error);
   }
 
   const wasVerified = record.verified();
@@ -79,10 +81,10 @@ export async function recordConfirmVerification(e: RequestEvent): Promise<Handle
 
     try {
       await saveRecord(e.app, record);
-    } catch (err) {
+    } catch (error) {
       return firstApiError(
-        err,
-        e.badRequestError("An error occurred while saving the verified state.", err),
+        error,
+        e.badRequestError("An error occurred while saving the verified state.", error),
       );
     }
   }

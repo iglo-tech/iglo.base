@@ -20,7 +20,8 @@ import { RelationField } from "@/fields/relation";
 import { SelectField } from "@/fields/select";
 import { TextField } from "@/fields/text";
 import { URLField } from "@/fields/url";
-import { type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import { DateTime } from "@/tools/types/datetime";
 import { marshal } from "@/tools/types/go-json";
 import { marshal as marshalBefore } from "@test/tools/types/go-json-before-m71c";
@@ -28,11 +29,11 @@ import { marshal as marshalBefore } from "@test/tools/types/go-json-before-m71c"
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -40,7 +41,7 @@ const strings = [
   "",
   "plain",
   "Zażółć gęślą jaźń 日本語 😀",
-  'quote " backslash \\ slash /',
+  String.raw`quote " backslash \ slash /`,
   "ctrl \u0000\u0001\u001f\t\n\r\b\f",
   "<b>&amp;</b>",
   "sep    ",
@@ -54,8 +55,8 @@ const jsonTexts = [
   "12345678901234567890",
   '{"b":1, "a" : [1, 2 ,3]}',
   '{"10":1,"2":2,"a":3}',
-  '[ 1 , {"x" : "\\u00e9\\/"} ]',
-  '"\\u0041"',
+  String.raw`[ 1 , {"x" : "\u00e9\/"} ]`,
+  String.raw`"\u0041"`,
   "1.50",
   '{"a":1,"a":2}',
   '{"k":"ünï","e":"\\n\\u0001"}',
@@ -63,7 +64,7 @@ const jsonTexts = [
   "",
 ];
 
-function pick<T>(r: () => number, items: T[]): T {
+function pick<T>(r: () => number, items: Array<T>): T {
   return items[Math.floor(r() * items.length)] as T;
 }
 
@@ -91,7 +92,7 @@ function fill(r: () => number, rec: Record): void {
   rec.id = "rec" + Math.floor(r() * 1e6);
   rec.set("title", pick(r, strings));
   rec.set("secret", pick(r, strings));
-  rec.set("n", pick(r, [0, -1, 1.5, 1e21, 1e-7, -0, 2 ** 53, 123456789.123]));
+  rec.set("n", pick(r, [0, -1, 1.5, 1e21, 1e-7, -0, 2 ** 53, 123_456_789.123]));
   rec.set("flag", r() < 0.5);
   rec.set("meta", pick(r, jsonTexts));
   rec.set("tags", r() < 0.5 ? [] : ["a", "c"]);
@@ -122,8 +123,8 @@ function fill(r: () => number, rec: Record): void {
 function outcome(fn: () => string): string {
   try {
     return "ok:" + fn();
-  } catch (err) {
-    return "err:" + (err as Error).message;
+  } catch (error) {
+    return "err:" + (error as Error).message;
   }
 }
 
@@ -149,7 +150,7 @@ describe("Record.marshalJSON", () => {
         const inner = newRecord(buildCollection(r, false));
         fill(r, inner);
         expand["rel1"] = inner;
-        const items: Record[] = [];
+        const items: Array<Record> = [];
         for (let j = 0; j < Math.floor(r() * 3); j++) {
           const it = newRecord(buildCollection(r, false));
           fill(r, it);

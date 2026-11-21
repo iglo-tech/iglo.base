@@ -12,13 +12,15 @@
 import type { Clock } from "@/app/clock";
 import { equalFold, toLower } from "@/collections/go-strings";
 import type { DB } from "@/db/dbx/db";
-import { and, enclose, type Expression, newExp, not } from "@/db/dbx/expression";
-import { assignOwn, Float64, type Params, setOwn } from "@/db/dbx/query";
+import { and, enclose, newExp, not } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
+import { assignOwn, Float64, setOwn } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
 import { goQuote } from "@/fields/field";
-import { type Expr, type ExprGroup, ErrEmpty, parse } from "@/search/fexpr/parser";
+import { ErrEmpty, parse } from "@/search/fexpr/parser";
+import type { Expr, ExprGroup } from "@/search/fexpr/parser";
 import {
   JoinOr,
-  type SignOp,
   SignAnyEq,
   SignAnyGt,
   SignAnyGte,
@@ -35,30 +37,33 @@ import {
   SignLte,
   SignNeq,
   SignNlike,
-  type Token,
   TokenFunction,
   TokenIdentifier,
   TokenNumber,
   TokenText,
 } from "@/search/fexpr/scanner";
+import type { SignOp, Token } from "@/search/fexpr/scanner";
 import { identifierMacros } from "@/search/identifier-macros";
 import type { MultiMatchSubquery } from "@/search/multi-match-subquery";
 import { DefaultFilterExprLimit, ErrFilterExprLimit } from "@/search/provider";
 import {
   derefResult,
-  type FieldResolver,
   NilPointerPanic,
   NullFallbackAuto,
   NullFallbackDisabled,
   NullFallbackEnforced,
-  type NullFallbackPreference,
-  type ResolverResult,
+} from "@/search/simple-field-resolver";
+import type {
+  FieldResolver,
+  NullFallbackPreference,
+  ResolverResult,
 } from "@/search/simple-field-resolver";
 import { TokenFunctions } from "@/search/token-functions";
 import { pseudorandomString } from "@/tools/security/random";
 import { toFloat64, toString, toStringE } from "@/tools/types/cast";
 import { marshal } from "@/tools/types/go-json";
 import { Store } from "@/tools/store/store";
+import { isInstance } from "@/tools/types/is-instance";
 
 // FilterData is a filter expression string following the `fexpr` package grammar.
 //
@@ -75,7 +80,7 @@ export type FilterData = string;
 // ParsedFilterCache holds previously parsed filter data expressions
 // (upstream's package-level parsedFilterData store).
 export class ParsedFilterCache {
-  readonly store = new Store<string, ExprGroup[]>();
+  readonly store = new Store<string, Array<ExprGroup>>();
 }
 
 export interface FilterBuildOptions {
@@ -96,7 +101,7 @@ export function filterBuildExpr(
   f: FilterData,
   fieldResolver: FieldResolver,
   options: FilterBuildOptions,
-  ...placeholderReplacements: Params[]
+  ...placeholderReplacements: Array<Params>
 ): Expression {
   return filterBuildExprWithLimit(
     f,
@@ -116,13 +121,13 @@ export function filterBuildExprWithLimit(
   fieldResolver: FieldResolver,
   maxExpressions: number,
   options: FilterBuildOptions,
-  ...placeholderReplacements: Params[]
+  ...placeholderReplacements: Array<Params>
 ): Expression {
   let raw = f;
 
   // replace the placeholder params in the raw string filter
   if (placeholderReplacements.length > 0) {
-    const replacements: [string, string][] = [];
+    const replacements: Array<[string, string]> = [];
 
     for (const p of placeholderReplacements) {
       for (const [key, value] of Object.entries(p)) {
@@ -139,7 +144,7 @@ export function filterBuildExprWithLimit(
   const cache = options.cache ?? null;
   const [cached, ok] = cache?.store.getOk(cacheKey) ?? [undefined, false];
   if (ok) {
-    return buildParsedFilterExpr(cached as ExprGroup[], fieldResolver, state);
+    return buildParsedFilterExpr(cached as Array<ExprGroup>, fieldResolver, state);
   }
 
   // depending on the users demand we may allow empty expressions
@@ -165,13 +170,17 @@ function placeholderReplacement(key: string, value: unknown): string {
     case "number":
     case "bigint":
       return toString(value);
+    case "function":
+    case "object":
+    case "string":
+    case "symbol":
   }
   if (value === null) {
     return "null";
   }
 
   let casted: string;
-  if (value instanceof Date) {
+  if (isInstance(Date, value)) {
     // time.Time is a fmt.Stringer (a Date is a UTC time.Time here)
     casted = timeString(value);
   } else {
@@ -181,10 +190,10 @@ function placeholderReplacement(key: string, value: unknown): string {
       // try to json serialize as fallback
       try {
         casted = marshal(value);
-      } catch (err) {
+      } catch (error) {
         throw new Error(
-          `failed to serialize param ${goQuote(key)}: ${err instanceof Error ? err.message : String(err)}`,
-          { cause: err },
+          `failed to serialize param ${goQuote(key)}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
         );
       }
     }
@@ -205,7 +214,7 @@ function timeString(d: Date): string {
 // strings.NewReplacer(oldnew...).Replace(s): at each position the first
 // pair (in argument order) whose old string matches is replaced, matches do
 // not overlap, and text that matches nothing is copied.
-function replaceAll(s: string, oldnew: readonly [string, string][]): string {
+function replaceAll(s: string, oldnew: ReadonlyArray<[string, string]>): string {
   let out = "";
   let i = 0;
   while (i < s.length) {
@@ -228,7 +237,7 @@ interface BuildState {
 }
 
 function buildParsedFilterExpr(
-  data: readonly ExprGroup[],
+  data: ReadonlyArray<ExprGroup>,
   fieldResolver: FieldResolver,
   state: BuildState,
 ): Expression {
@@ -305,11 +314,11 @@ function tryResolveToken(
 ): [ResolverResult | null, unknown] {
   try {
     return [resolveToken(token, fieldResolver, state), undefined];
-  } catch (err) {
-    if (err instanceof NilPointerPanic) {
-      throw err;
+  } catch (error) {
+    if (isInstance(NilPointerPanic, error)) {
+      throw error;
     }
-    return [null, err];
+    return [null, error];
   }
 }
 
@@ -423,7 +432,7 @@ function buildResolversExpr(left: ResolverResult, op: SignOp, right: ResolverRes
   return expr;
 }
 
-const normalizedIdentifiers: readonly [string, string][] = [
+const normalizedIdentifiers: ReadonlyArray<[string, string]> = [
   // if `null` field is missing, treat `null` identifier as NULL token
   ["null", "NULL"],
   // if `true` field is missing, treat `true` identifier as TRUE token
@@ -461,8 +470,8 @@ function resolveToken(
       let err: unknown;
       try {
         result = fieldResolver.resolve(token.literal);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
       if (err !== undefined || result === null || result.identifier === "") {
         for (const [k, v] of normalizedIdentifiers) {
@@ -664,7 +673,7 @@ function isAnyMatchOp(op: SignOp): boolean {
 
 // mergeParams returns new dbx.Params where each provided params item
 // is merged in the order they are specified.
-export function mergeParams(...params: (Params | null | undefined)[]): Params {
+export function mergeParams(...params: Array<Params | null | undefined>): Params {
   const result: Params = {};
 
   for (const p of params) {
@@ -684,7 +693,7 @@ function wrapLikeParams(params: Params | null | undefined): Params {
   const result: Params = {};
 
   for (const [k, v] of Object.entries(params ?? {})) {
-    let vStr = toString(v instanceof Float64 ? v.value : v);
+    let vStr = toString(isInstance(Float64, v) ? v.value : v);
     if (!containsUnescapedChar(vStr, "%")) {
       // note: this is done to minimize the breaking changes and to preserve the original autoescape behavior
       vStr = escapeUnescapedChars(vStr, "\\", "%", "_");
@@ -698,14 +707,14 @@ function wrapLikeParams(params: Params | null | undefined): Params {
 
 // []rune(str): the code points, with each invalid UTF-8 byte (a lone
 // surrogate) as U+FFFD
-function runes(str: string): string[] {
+function runes(str: string): Array<string> {
   return Array.from(str, (ch) => (ch.length === 1 && /[\ud800-\udfff]/.test(ch) ? "�" : ch));
 }
 
-function escapeUnescapedChars(str: string, ...escapeChars: string[]): string {
+function escapeUnescapedChars(str: string, ...escapeChars: Array<string>): string {
   const rs = runes(str);
   const total = rs.length;
-  const result: string[] = [];
+  const result: Array<string> = [];
 
   let match = false;
 
@@ -774,7 +783,7 @@ class OpExpr implements Expression {
 // concatExpr defines an expression that concatenates multiple
 // other expressions with a specified separator.
 class ConcatExpr implements Expression {
-  readonly parts: Expression[] = [];
+  readonly parts: Array<Expression> = [];
 
   constructor(private readonly separator: string) {}
 
@@ -786,7 +795,7 @@ class ConcatExpr implements Expression {
       return "";
     }
 
-    const stringParts: string[] = [];
+    const stringParts: Array<string> = [];
 
     for (const p of this.parts) {
       const sql = p.build(db, params);

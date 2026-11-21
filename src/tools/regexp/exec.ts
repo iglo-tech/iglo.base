@@ -12,7 +12,8 @@
 // per Regexp: a machine is in use only during one find, and a callback such
 // as replaceAllStringFunc's can run the same Regexp again.
 
-import { onePassNext, type onePassProg } from "@/tools/regexp/onepass";
+import { onePassNext } from "@/tools/regexp/onepass";
+import type { onePassProg } from "@/tools/regexp/onepass";
 import {
   EmptyBeginLine,
   EmptyBeginText,
@@ -21,7 +22,6 @@ import {
   EmptyImpossible,
   EmptyNoWordBoundary,
   EmptyWordBoundary,
-  Inst,
   InstAlt,
   InstAltMatch,
   InstCapture,
@@ -34,11 +34,10 @@ import {
   InstRuneAny,
   InstRuneAnyNotNL,
   IsWordChar,
-  type EmptyOp,
-  type Prog,
 } from "@/tools/regexp/syntax/prog";
+import type { EmptyOp, Prog, Inst } from "@/tools/regexp/syntax/prog";
 
-const RuneError = 0xfffd;
+const RuneError = 0xff_fd;
 export const endOfText = -1;
 
 // The compiled state of a Regexp that find uses (the unexported fields of
@@ -53,7 +52,7 @@ export interface program {
   cond: EmptyOp; // empty-width conditions required at start of match
   minInputLen: number; // minimum length of the input in bytes
   longest: boolean; // whether regexp prefers leftmost-longest match
-  machines: machine[]; // free machines
+  machines: Array<machine>; // free machines
 }
 
 // DecodeRune at b[pos], packed as (rune+1)*8 + width; endOfText (packed as
@@ -256,7 +255,7 @@ export function flagMatch(op: EmptyOp, r1: number, r2: number): boolean {
 class queue {
   sparse: Uint32Array;
   pcs: Uint32Array;
-  ts: (thread | null)[];
+  ts: Array<thread | null>;
   size = 0; // len(dense)
 
   constructor(n: number) {
@@ -272,7 +271,7 @@ class queue {
 class thread {
   constructor(
     public inst: Inst,
-    public cap: number[],
+    public cap: Array<number>,
   ) {}
 }
 
@@ -281,11 +280,11 @@ export class machine {
   p: Prog; // compiled program
   q0: queue; // two queues for runq, nextq
   q1: queue;
-  pool: thread[] = []; // pool of available threads
+  pool: Array<thread> = []; // pool of available threads
   matched = false; // whether a match was found
-  matchcap: number[] = []; // capture information for the match
-  addStack: number[] = []; // add's pending pcs and capture restores
-  addSaved: (thread | null)[] = []; // add's threads to resume after a Capture
+  matchcap: Array<number> = []; // capture information for the match
+  addStack: Array<number> = []; // add's pending pcs and capture restores
+  addSaved: Array<thread | null> = []; // add's threads to resume after a Capture
 
   constructor(p: Prog) {
     this.p = p;
@@ -329,9 +328,9 @@ export class machine {
     this.matchcap.fill(-1);
     let runq = this.q0;
     let nextq = this.q1;
-    let r = endOfText;
+    let r: number;
     let r1 = endOfText;
-    let width = 0;
+    let width: number;
     let width1 = 0;
     let p = i.step(pos);
     r = packedRune(p);
@@ -514,7 +513,7 @@ export class machine {
     q: queue,
     pc: number,
     pos: number,
-    cap: number[],
+    cap: Array<number>,
     cond1: number,
     cond2: number,
     t: thread | null,
@@ -606,7 +605,7 @@ export class machine {
 // negative, and the cap value it restores sits below the index.
 const addRestore = -1;
 
-function copy(dst: number[], src: readonly number[]): void {
+function copy(dst: Array<number>, src: ReadonlyArray<number>): void {
   const n = Math.min(dst.length, src.length);
   for (let k = 0; k < n; k++) {
     dst[k] = src[k] as number;
@@ -614,7 +613,7 @@ function copy(dst: number[], src: readonly number[]): void {
 }
 
 // doOnePass implements r.find using the one-pass execution engine.
-function doOnePass(re: program, i: input, pos: number, ncap: number): number[] | null {
+function doOnePass(re: program, i: input, pos: number, ncap: number): Array<number> | null {
   const startCond = re.cond;
   if (startCond === EmptyImpossible) {
     // impossible
@@ -625,9 +624,9 @@ function doOnePass(re: program, i: input, pos: number, ncap: number): number[] |
   const matchcap = Array.from({ length: ncap }, () => -1);
   let matched = false;
 
-  let r = endOfText;
+  let r: number;
   let r1 = endOfText;
-  let width = 0;
+  let width: number;
   let width1 = 0;
   let p = i.step(pos);
   r = packedRune(p);
@@ -740,7 +739,7 @@ function doOnePass(re: program, i: input, pos: number, ncap: number): number[] |
 // of its subexpressions (ncap of them).
 //
 // null is returned if no matches are found and non-null if matches are found.
-export function find(re: program, i: input, pos: number, ncap: number): number[] | null {
+export function find(re: program, i: input, pos: number, ncap: number): Array<number> | null {
   if (i.bytes.length < re.minInputLen) {
     return null;
   }

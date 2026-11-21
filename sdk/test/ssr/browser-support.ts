@@ -62,7 +62,7 @@ export function json(clock: TestClock, status: number, body: unknown, headers?: 
  * is recorded in `calls`.
  */
 export function stubApi(clock: TestClock, routes: Record<string, Handler>) {
-  const calls: Call[] = [];
+  const calls: Array<Call> = [];
   const fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input instanceof Request ? input.url : input));
     const method = (init?.method ?? "GET").toUpperCase();
@@ -135,7 +135,7 @@ export function fakeTimers(clock: TestClock) {
       clock.now = target;
     },
     /** Delays (ms from now) of the timers still pending, in the order they were set. */
-    delays(): number[] {
+    delays(): Array<number> {
       return [...pending.values()].map((t) => t.due - clock.now);
     },
     get count(): number {
@@ -147,6 +147,8 @@ export function fakeTimers(clock: TestClock) {
 /** Lets pending promise callbacks and Response body reads settle (no timers involved). */
 export async function settle(): Promise<void> {
   for (let i = 0; i < 5; i++) {
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
   }
 }

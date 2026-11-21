@@ -10,21 +10,25 @@ import {
   internalCustomFieldKeyPrefix,
   marshalStruct,
   noopSetter,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
-  type RecordInterceptor,
-  type SetterFinder,
-  type SetterFunc,
 } from "@/fields/field";
-import { type DateTime, nowDateTime, parseDateTime } from "@/tools/types/datetime";
+import type {
+  Field,
+  FieldApp,
+  FieldCollection,
+  FieldRecord,
+  RecordInterceptor,
+  SetterFinder,
+  SetterFunc,
+} from "@/fields/field";
+import { nowDateTime, parseDateTime } from "@/tools/types/datetime";
+import type { DateTime } from "@/tools/types/datetime";
 import { boolType, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { Required } from "@/validation/required";
 import { Field as StructField, ValidateStruct } from "@/validation/struct";
 import { By } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { Equal } from "@/validators/equal";
+import { isInstance } from "@/tools/types/is-instance";
 
 export const FieldTypeAutodate = "autodate";
 
@@ -146,7 +150,7 @@ export class AutodateField implements Field, SetterFinder, RecordInterceptor {
     }
     if (oldCollection !== null) {
       const oldField = oldCollection.fields.getById(this.id);
-      if (oldField instanceof AutodateField) {
+      if (isInstance(AutodateField, oldField)) {
         oldOnCreate = oldField.onCreate;
         oldOnUpdate = oldField.onUpdate;
       }
@@ -275,7 +279,7 @@ export type AutodateFieldSettings = Pick<
 // runs after when the action succeeds, after the action's promise when it
 // is async
 function afterAction(result: void | Promise<void>, after: () => void): void | Promise<void> {
-  if (result instanceof Promise) {
+  if (isInstance(Promise, result)) {
     return result.then(after);
   }
   after();

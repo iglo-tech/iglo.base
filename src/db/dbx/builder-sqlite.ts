@@ -25,8 +25,10 @@
 import { BaseBuilder } from "@/db/dbx/builder";
 import type { DB } from "@/db/dbx/db";
 import { ModelQuery } from "@/db/dbx/model-query";
-import { assignOwn, type Executor, type Params, type Query } from "@/db/dbx/query";
-import { BaseQueryBuilder, type QueryBuilder, type UnionInfo } from "@/db/dbx/query-builder";
+import { assignOwn } from "@/db/dbx/query";
+import type { Executor, Params, Query } from "@/db/dbx/query";
+import { BaseQueryBuilder } from "@/db/dbx/query-builder";
+import type { QueryBuilder, UnionInfo } from "@/db/dbx/query-builder";
 import { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 
@@ -35,7 +37,7 @@ export class SqliteQueryBuilder extends BaseQueryBuilder {
   // BuildUnion generates a UNION clause from the given union information.
   //
   // This is similar to BaseQueryBuilder.BuildUnion but without the parenthesis wrapping.
-  override buildUnion(unions: UnionInfo[], params: Params): string {
+  override buildUnion(unions: Array<UnionInfo>, params: Params): string {
     if (unions.length === 0) {
       return "";
     }
@@ -86,7 +88,7 @@ export class SqliteBuilder extends BaseBuilder {
   // Select returns a new SelectQuery object that can be used to build a SELECT statement.
   // The parameters to this method should be the list column names to be selected.
   // A column name may have an optional alias name. For example, Select("id", "my_name AS name").
-  select(...cols: string[]): SelectQuery {
+  select(...cols: Array<string>): SelectQuery {
     return new SelectQuery(this).select(...cols);
   }
 
@@ -136,7 +138,7 @@ export class SqliteBuilder extends BaseBuilder {
   }
 
   // AddPrimaryKey creates a Query that can be used to specify primary key(s) for a table.
-  override addPrimaryKey(_table: string, _name: string, ..._cols: string[]): Query {
+  override addPrimaryKey(_table: string, _name: string, ..._cols: Array<string>): Query {
     return this.failedQuery("SQLite does not support adding primary key");
   }
 
@@ -149,10 +151,10 @@ export class SqliteBuilder extends BaseBuilder {
   override addForeignKey(
     _table: string,
     _name: string,
-    _cols: string[],
-    _refCols: string[],
+    _cols: Array<string>,
+    _refCols: Array<string>,
     _refTable: string,
-    ..._options: string[]
+    ..._options: Array<string>
   ): Query {
     return this.failedQuery("SQLite does not support adding foreign keys");
   }

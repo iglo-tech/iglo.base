@@ -29,7 +29,10 @@ function copyOf(source: string): string {
 }
 
 // the pulled file, parsed, after validating it against the published schema
-async function pull(dataDir: string, ...extra: string[]): Promise<{ text: string; file: object }> {
+async function pull(
+  dataDir: string,
+  ...extra: Array<string>
+): Promise<{ text: string; file: Record<string, unknown> }> {
   const result = await run(["--dir", dataDir, "schema", "pull", ...extra]);
   // the only standard error a pull writes is the notes of the OAuth2 providers
   // (the variables to set; never a value, D40)
@@ -40,10 +43,10 @@ async function pull(dataDir: string, ...extra: string[]): Promise<{ text: string
       .join("\n"),
   ).toBe("");
   expect(result.exitCode).toBe(0);
-  return { text: result.stdout, file: JSON.parse(result.stdout) as object };
+  return { text: result.stdout, file: JSON.parse(result.stdout) as Record<string, unknown> };
 }
 
-function assertValid(file: object): void {
+function assertValid(file: Record<string, unknown>): void {
   const ok = validate(file);
   expect(validate.errors ?? []).toEqual([]);
   expect(ok).toBe(true);
@@ -56,8 +59,8 @@ interface ApiCollection {
   name: string;
   type: string;
   system: boolean;
-  fields?: Record<string, unknown>[];
-  indexes?: string[];
+  fields?: Array<Record<string, unknown>>;
+  indexes?: Array<string>;
   viewQuery?: string;
   oauth2?: { providers?: unknown; [key: string]: unknown };
   [key: string]: unknown;
@@ -79,18 +82,18 @@ const ruleNames: Record<string, string> = {
 // src/schema/implied.ts). Only the backticks are taken out: the text must be
 // upstream's otherwise, so a COLLATE or a sort order makes it an explicit index.
 function impliedIndex(table: string, statement: string): boolean {
-  const text = statement.replace(/`/g, "");
+  const text = statement.replaceAll("`", "");
   return (
     new RegExp(`^CREATE UNIQUE INDEX \\S+ ON ${table} \\(tokenKey\\)$`).test(text) ||
     new RegExp(`^CREATE UNIQUE INDEX \\S+ ON ${table} \\(email\\) WHERE email != ''$`).test(text)
   );
 }
 
-function explicitIndexes(item: ApiCollection): string[] {
+function explicitIndexes(item: ApiCollection): Array<string> {
   return (item.indexes ?? []).filter((statement) => !impliedIndex(item.name, statement));
 }
 
-function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
+function normalize(apiCollections: Array<ApiCollection>): Array<SchemaCollection> {
   const names = new Map(apiCollections.map((item) => [item.id, item.name]));
   return apiCollections
     .map((item): SchemaCollection => {
@@ -116,26 +119,19 @@ function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
         }
       }
       if (isObject(options.oauth2)) {
-        const { providers: _providers, ...rest } = options.oauth2 as Record<string, unknown>;
+        const { providers: _providers, ...rest } = options.oauth2;
         options.oauth2 = rest;
       }
-      const fields: SchemaField[] =
+      const fields: Array<SchemaField> =
         item.type === "view"
           ? []
           : (item.fields ?? []).map((field) => {
-              const {
-                id: _id,
-                name,
-                type,
-                system,
-                collectionId,
-                ...rest
-              } = field as Record<string, unknown>;
+              const { id: _id, name, type, system, collectionId, ...rest } = field;
               const fieldOptions: Record<string, unknown> = { ...rest };
               if (collectionId !== undefined) {
                 fieldOptions.collection = names.get(collectionId as string) ?? "";
               }
-              return { name, type, system, options: fieldOptions } as unknown as SchemaField;
+              return { name, type, system, options: fieldOptions } as SchemaField;
             });
       const collection = {
         name: item.name,
@@ -145,7 +141,7 @@ function normalize(apiCollections: ApiCollection[]): SchemaCollection[] {
         indexes: explicitIndexes(item),
         fields,
         options,
-      } as unknown as SchemaCollection;
+      } as SchemaCollection;
       if (item.type === "view") {
         collection.query = item.viewQuery;
       }
@@ -169,7 +165,7 @@ function readBack(text: string): SchemaDescription {
 
 // the description's collections without the extra keys the file does not
 // hold (the pull writes none, so none is there)
-function comparable(collections: SchemaCollection[]): SchemaCollection[] {
+function comparable(collections: Array<SchemaCollection>): Array<SchemaCollection> {
   return collections.map((item) => {
     // the API's view has no providers (their secrets are redacted); the file's
     // providers are checked in test/cli/schema-providers.test.ts
@@ -178,7 +174,7 @@ function comparable(collections: SchemaCollection[]): SchemaCollection[] {
       ...rest,
       fields: rest.fields.map((field) => {
         const { description: _d, tsType: _t, ...fieldRest } = field;
-        return fieldRest as SchemaField;
+        return fieldRest;
       }),
     };
   });
@@ -328,7 +324,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      const items = (listed.json as { items: ApiCollection[] }).items;
+      const items = (listed.json as { items: Array<ApiCollection> }).items;
       expect(comparable(description.collections)).toEqual(normalize(items));
     });
   });
@@ -339,7 +335,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const list = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
-        items: ApiCollection[];
+        items: Array<ApiCollection>;
       };
       const users = list.items.find((item) => item.name === "users");
       expect(users).toBeDefined();
@@ -385,7 +381,7 @@ describe("schema command", () => {
             mimeTypes: ["image/png"],
             thumbs: ["100x100"],
             protected: true,
-            maxSize: 1000000,
+            maxSize: 1_000_000,
           },
           { name: "secret_code", type: "password", min: 8, cost: 10 },
         ],
@@ -436,7 +432,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      const items = (listed.json as { items: ApiCollection[] }).items;
+      const items = (listed.json as { items: Array<ApiCollection> }).items;
       expect(comparable(readBack(first.text).collections)).toEqual(normalize(items));
       // the file holds no id: not of a collection, not of a field, not in an index name
       for (const item of items) {
@@ -452,7 +448,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
-        items: ApiCollection[];
+        items: Array<ApiCollection>;
       };
       const everything = listed.items.find((item) => item.name === "everything");
       const fields = everything?.fields ?? [];
@@ -469,7 +465,7 @@ describe("schema command", () => {
       (after.file as { collections: Record<string, { fields: object }> }).collections.everything!
         .fields,
     );
-    expect(names[names.length - 1]).toBe("title");
+    expect(names.at(-1)).toBe("title");
     expect(names.indexOf("body")).toBeLessThan(names.indexOf("title"));
     expect(after.text).not.toBe(first.text);
     expect((await pull(dataDir)).text).toBe(after.text);
@@ -480,7 +476,7 @@ describe("schema command", () => {
     const result = await run(["--dir", dataDir, "schema", "pull", "--dev"]);
     expect(result.exitCode).toBe(0);
     // stdout parses as the file: no log line or SQL statement is in it
-    const file = JSON.parse(result.stdout) as object;
+    const file = JSON.parse(result.stdout) as Record<string, unknown>;
     assertValid(file);
     expect(result.stderr).toContain("SELECT");
     expect(result.stderr).not.toContain("$schema");
@@ -502,7 +498,7 @@ describe("schema command", () => {
 
     const pulled = await run(["--dir", dataDir, "--migrationsDir", migrations, "schema", "pull"]);
     expect(pulled.exitCode).toBe(0);
-    assertValid(JSON.parse(pulled.stdout) as object);
+    assertValid(JSON.parse(pulled.stdout) as Record<string, unknown>);
     expect(pulled.stderr).toContain("migration output");
   });
 
@@ -534,7 +530,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const items = (await api(url, token, "GET", "/api/collections?perPage=500")).json as {
-        items: ApiCollection[];
+        items: Array<ApiCollection>;
       };
       const auths = items.items.filter((item) => item.type === "auth");
       expect(auths.length).toBeGreaterThan(0);
@@ -623,7 +619,7 @@ describe("schema command", () => {
 
     const { file, text } = await pull(dataDir);
     assertValid(file);
-    const collections = (file as { collections: Record<string, { indexes?: string[] }> })
+    const collections = (file as { collections: Record<string, { indexes?: Array<string> }> })
       .collections;
     expect(collections.plain_auth?.indexes).toBeUndefined();
     expect(collections.nocase_auth?.indexes).toEqual([
@@ -647,7 +643,7 @@ describe("schema command", () => {
     await withServer(dataDir, async (url) => {
       const token = await login(url);
       const listed = await api(url, token, "GET", "/api/collections?perPage=500");
-      const items = (listed.json as { items: ApiCollection[] }).items;
+      const items = (listed.json as { items: Array<ApiCollection> }).items;
       expect(comparable(readBack(text).collections)).toEqual(normalize(items));
     });
     // and the file pulled again is the same

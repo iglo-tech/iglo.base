@@ -19,8 +19,9 @@
 // indexes upstream adds to an auth collection are implied too
 // (src/schema/implied.ts), so the defaults hold no index.
 
-import { type CollectionType, type SchemaCollection, type SchemaField } from "@/schema/types";
-import { type Collection, newCollection } from "@/collections/collection-model";
+import type { CollectionType, SchemaCollection, SchemaField } from "@/schema/types";
+import { newCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { fieldFactory } from "@/fields/fields";
 import { defaultCollections } from "@/migrations/baseline";
 import {
@@ -30,11 +31,12 @@ import {
   CollectionNameOTPs,
 } from "@/records/record-auth-refs";
 import { CollectionNameSuperusers } from "@/records/record-model-superusers";
-import { describeCollectionModel, describeFieldJSON, type NameOf } from "@/schema/describe";
+import { describeCollectionModel, describeFieldJSON } from "@/schema/describe";
+import type { NameOf } from "@/schema/describe";
 import type { SchemaObject } from "@/schema/types";
 
 // the system collections a file may leave out (they are never dropped, D40)
-export const systemCollectionNames: readonly string[] = Object.freeze([
+export const systemCollectionNames: ReadonlyArray<string> = Object.freeze([
   CollectionNameSuperusers,
   CollectionNameExternalAuths,
   CollectionNameMFAs,

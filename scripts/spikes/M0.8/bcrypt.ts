@@ -31,8 +31,8 @@ import {
   startIgloServer,
   startUpstreamServer,
   upsertSuperuser,
-  type Server,
 } from "@/../scripts/spikes/M0.8/common";
+import type { Server } from "@/../scripts/spikes/M0.8/common";
 
 const enc = new TextEncoder();
 const bytes = (s: string): number => enc.encode(s).length;
@@ -42,12 +42,12 @@ interface PasswordCase {
   password: string;
   // other passwords to try against the same hash, with the expected
   // result (true: signs in)
-  variants: [string, string, boolean][];
+  variants: Array<[string, string, boolean]>;
 }
 
 const ascii71 = "a".repeat(35) + "B".repeat(35) + "c";
 const z36 = "ż".repeat(36); // 36 characters, 72 bytes
-const cases: PasswordCase[] = [
+const cases: Array<PasswordCase> = [
   {
     name: "ascii",
     password: "1234567890",
@@ -110,7 +110,7 @@ interface Check {
   iglo?: string;
 }
 
-const checks: Check[] = [];
+const checks: Array<Check> = [];
 const rows = new Map<string, Check>();
 
 function record(label: string, target: "upstream" | "iglo", result: string): void {
@@ -142,10 +142,10 @@ function hashes(dataDir: string): Map<string, string> {
   try {
     const out = new Map<string, string>();
     for (const c of ["u10", "u12"]) {
-      for (const row of db.query(`SELECT email, password FROM ${c}`).all() as {
+      for (const row of db.query(`SELECT email, password FROM ${c}`).all() as Array<{
         email: string;
         password: string;
-      }[]) {
+      }>) {
         out.set(`${c}/${row.email}`, row.password);
       }
     }
@@ -229,7 +229,7 @@ try {
         const list = (await api.must(
           "GET",
           `/api/collections/${col}/records?filter=${encodeURIComponent(`email="${email(c, by)}"`)}`,
-        )) as { items: { id: string }[] };
+        )) as { items: Array<{ id: string }> };
         const id = list.items[0]?.id;
         if (!id) {
           continue;
@@ -271,7 +271,7 @@ try {
           ],
         });
         const col = (await api.must("GET", `/api/collections/u${cost}`)) as {
-          fields: { name: string; cost?: number }[];
+          fields: Array<{ name: string; cost?: number }>;
         };
         console.log(
           `u${cost} password field cost: ${col.fields.find((f) => f.name === "password")?.cost}`,
@@ -345,12 +345,12 @@ try {
 
   // 4. sign-in time per cost (the same user, 10 sign-ins after 2 warm-ups,
   // then 8 at once)
-  const timing: string[] = [];
+  const timing: Array<string> = [];
   for (const target of ["upstream", "iglo"] as const) {
     const server = await start(target);
     try {
       for (const col of ["u10", "u12"]) {
-        const ms: number[] = [];
+        const ms: Array<number> = [];
         for (let i = 0; i < 12; i++) {
           const t0 = performance.now();
           const r = await signIn(
@@ -370,9 +370,9 @@ try {
 
         // 8 sign-ins at once, 3 rounds, with /api/health requests (one
         // after the other) while they run
-        const conc: number[] = [];
-        const health: number[] = [];
-        const walls: number[] = [];
+        const conc: Array<number> = [];
+        const health: Array<number> = [];
+        const walls: Array<number> = [];
         for (let round = 0; round < 3; round++) {
           const state = { running: true };
           const probe = (async () => {
@@ -446,7 +446,7 @@ try {
   }
 
   // expected results of the variants
-  const mismatches: string[] = [];
+  const mismatches: Array<string> = [];
   for (const col of ["u10", "u12"]) {
     for (const c of cases) {
       for (const [label, variant, expected] of c.variants) {

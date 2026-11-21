@@ -23,6 +23,7 @@ import { availableParallelism } from "node:os";
 import type { Thumb } from "@/files/create-thumb";
 import type { ThumbSize } from "@/files/imaging";
 import { toInt64 } from "@/records/cast";
+import { isInstance } from "@/tools/types/is-instance";
 
 export interface ThumbRequestMessage {
   id: number;
@@ -87,10 +88,10 @@ export class ThumbPool {
   readonly #pending = new Map<string, Promise<void>>();
   // thumbGenSem
   #free: number;
-  readonly #waiters: Waiter[] = [];
+  readonly #waiters: Array<Waiter> = [];
   // renders waiting for a worker (all maxWorkers are busy)
-  readonly #queue: Job[] = [];
-  readonly #slots: Slot[] = [];
+  readonly #queue: Array<Job> = [];
+  readonly #slots: Array<Slot> = [];
   #nextId = 1;
   #closed = false;
 
@@ -153,7 +154,7 @@ export class ThumbPool {
     const buffer =
       input.byteOffset === 0 &&
       input.byteLength === input.buffer.byteLength &&
-      input.buffer instanceof ArrayBuffer
+      isInstance(ArrayBuffer, input.buffer)
         ? input.buffer
         : input.slice().buffer;
     return new Promise((resolve, reject) => {
@@ -187,7 +188,6 @@ export class ThumbPool {
       slot.job = job;
       slot.worker.ref();
       // a Worker's postMessage has no target origin (that is window.postMessage)
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       slot.worker.postMessage(job.message, [job.message.input]);
     }
   }

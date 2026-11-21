@@ -88,10 +88,11 @@ function trimChars(s: string, cutset: string): string {
 // the input (io.EOF in Go).
 function readParseTest(r: LineReader): ParseTestCase | null {
   const ta: ParseTestCase = { text: "", want: "", context: "", scripting: true };
-  let { line, eof } = r.readSlice();
-  if (eof) {
+  const first = r.readSlice();
+  if (first.eof) {
     return null;
   }
+  let line = first.line;
   let b = "";
 
   // Read the HTML.
@@ -157,13 +158,13 @@ function readParseTest(r: LineReader): ParseTestCase | null {
   }
   let inQuote = false;
   for (;;) {
-    ({ line, eof } = r.readSlice());
+    line = r.readSlice().line;
     const trimmed = trimChars(line, "| \n");
     if (trimmed.length > 0) {
       if (line[0] === "|" && trimmed[0] === '"') {
         inQuote = true;
       }
-      if (trimmed[trimmed.length - 1] === '"' && !(line[0] === "|" && trimmed.length === 1)) {
+      if (trimmed.at(-1) === '"' && !(line[0] === "|" && trimmed.length === 1)) {
         inQuote = false;
       }
     }
@@ -177,8 +178,8 @@ function readParseTest(r: LineReader): ParseTestCase | null {
 }
 
 function compareCodePoints(a: string, b: string): number {
-  const x = [...a];
-  const y = [...b];
+  const x = Array.from(a);
+  const y = Array.from(b);
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
     const cx = x[i]!.codePointAt(0)!;
     const cy = y[i]!.codePointAt(0)!;
@@ -451,20 +452,20 @@ function testParseCase(
     }
 
     return null;
-  } catch (e) {
-    return e instanceof Error ? e.message : String(e);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
 }
 
 // Load the cases of each directory once, in the order the Go test visits them.
-function loadCases(): { file: string; index: number; test: ParseTestCase }[] {
-  const cases: { file: string; index: number; test: ParseTestCase }[] = [];
+function loadCases(): Array<{ file: string; index: number; test: ParseTestCase }> {
+  const cases: Array<{ file: string; index: number; test: ParseTestCase }> = [];
   for (const dir of testDataDirs) {
     const files = [
       ...new Bun.Glob("*.dat").scanSync({ cwd: `${import.meta.dir}/${dir}` }),
     ].toSorted();
     for (const file of files) {
-      const text = readFileSync(`${import.meta.dir}/${dir}${file}`, "utf8") as string;
+      const text = readFileSync(`${import.meta.dir}/${dir}${file}`, "utf8");
       const r = new LineReader(text);
       for (let i = 0; ; i++) {
         const ta = readParseTest(r);

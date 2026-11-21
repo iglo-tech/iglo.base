@@ -38,10 +38,12 @@ import { ParsedFilterCache } from "@/search/filter";
 import { newProvider } from "@/search/provider";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 
-import { openDataDir, type TestCollectionsApp } from "@test/collections/app";
+import { openDataDir } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
-import { startUpstream, type UpstreamServer } from "@test/support/upstream";
+import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 const superEmail = "search@example.com";
 const superPassword = "1234567890";
@@ -55,7 +57,7 @@ const clock: Clock = { now: () => new Date() };
 
 // base, auth and view collections; the names exercise `~` escaping (a_b
 // against axb) and case-insensitive LIKE
-const collections: object[] = [
+const collections: Array<object> = [
   { name: "posts", type: "base" },
   { name: "posts_archive", type: "base" },
   { name: "a_b", type: "base" },
@@ -93,7 +95,7 @@ function exprs(n: number): string {
 }
 
 // [name, raw query string, compare ids as a set (random order)]
-const cases: [string, string, boolean?][] = [
+const cases: Array<[string, string, boolean?]> = [
   ["no params", ""],
   // operators
   ["eq", f("name = 'posts'")],
@@ -101,14 +103,14 @@ const cases: [string, string, boolean?][] = [
   ["like", f("name ~ 'post'")],
   ["not like", f("name !~ 'post'")],
   ["like escapes _", f("name ~ 'a_b'")],
-  ["like with an escaped _", f("name ~ 'a\\_b'")],
+  ["like with an escaped _", f(String.raw`name ~ 'a\_b'`)],
   ["like with a wildcard", f("name ~ 'po%'")],
   ["like with a leading wildcard", f("name ~ '%s'")],
   ["like with % and _", f("name ~ '%_%'")],
   ["like with only _", f("name ~ '_'")],
   ["like is case-insensitive", f("name ~ 'GAM'")],
   ["like empty", f("id ~ ''")],
-  ["like with a backslash", f("name ~ '\\\\'")],
+  ["like with a backslash", f(String.raw`name ~ '\\'`)],
   ["gt", f("name > 'm'")],
   ["gte and lte", f("name >= 'posts' && name <= 'z'")],
   ["lt", f("name < 'b'")],
@@ -128,7 +130,7 @@ const cases: [string, string, boolean?][] = [
   ["any eq number", f("name ?= 5")],
   ["any neq number", f("name ?!= 5")],
   ["double quotes", f(`name = "posts"`)],
-  ["escaped quote", f("name = 'po\\'sts'")],
+  ["escaped quote", f(String.raw`name = 'po\'sts'`)],
   // bools, null, empty
   ["system true", f("system = true")],
   ["system false", f("system = false")],
@@ -242,7 +244,7 @@ const textValues = ["1", "1.0", "5", "5.0", "5.5", "10", "-1", "-1.0", "0", "0.0
 const r = (filter: string): string => q({ filter, perPage: "100" });
 
 // [name, raw query string] against the texts records; ids compared as a set
-const recordCases: [string, string][] = [
+const recordCases: Array<[string, string]> = [
   ["eq 1", r("value = 1")],
   ["eq 1.0", r("value = 1.0")],
   ["eq 5.5", r("value = 5.5")],
@@ -278,7 +280,7 @@ interface Outcome {
 }
 
 function listBody(
-  ids: string[],
+  ids: Array<string>,
   page: unknown,
   perPage: unknown,
   totalItems: unknown,
@@ -297,8 +299,8 @@ function listBody(
 const upstreamOutcomes = new Map<string, Outcome>();
 
 // an upstream list body
-function upstreamList(name: string): { ids: string[] } {
-  return upstreamOutcomes.get(name)?.body as { ids: string[] };
+function upstreamList(name: string): { ids: Array<string> } {
+  return upstreamOutcomes.get(name)?.body as { ids: Array<string> };
 }
 // the raw query strings as fetch sent them
 const sentQueries = new Map<string, string>();
@@ -341,7 +343,7 @@ beforeAll(async () => {
     expect(res.status).toBe(200);
   }
 
-  const all: (readonly [string, string, boolean | undefined, string])[] = [
+  const all: Array<readonly [string, string, boolean | undefined, string]> = [
     ...cases.map(([name, raw, asSet]) => [name, raw, asSet, "collections"] as const),
     ...recordCases.map(
       ([name, raw]) => ["records " + name, raw, true, "collections/texts/records"] as const,
@@ -353,8 +355,8 @@ beforeAll(async () => {
     res = await fetch(url, { headers: { authorization: token } });
     // the body is parsed with integers kept as text (page can be past 2^53)
     const text = await res.text();
-    const json = JSON.parse(text.replace(/:(-?\d+)([,}])/g, ':"$1"$2')) as {
-      items?: { id: string }[];
+    const json = JSON.parse(text.replaceAll(/:(-?\d+)([,}])/g, ':"$1"$2')) as {
+      items?: Array<{ id: string }>;
       page?: string;
       perPage?: string;
       totalItems?: string;
@@ -428,8 +430,8 @@ async function igloOutcome(
         asSet,
       ),
     };
-  } catch (err) {
-    const apiErr = newBadRequestError("", err);
+  } catch (error) {
+    const apiErr = newBadRequestError("", error);
     return {
       status: apiErr.status,
       body: JSON.parse(JSON.stringify(apiErr.toJSON()), (_k, v: unknown) =>
@@ -457,8 +459,8 @@ describe("collections list", () => {
         const app = openDataDir(copyDir, clock, () => {}, undefined, queryTimeout);
         const cache = new ParsedFilterCache();
         try {
-          const mismatches: unknown[] = [];
-          const all: (readonly [string, boolean, boolean])[] = [
+          const mismatches: Array<unknown> = [];
+          const all: Array<readonly [string, boolean, boolean]> = [
             ...cases.map(([name, , asSet]) => [name, asSet === true, false] as const),
             ...recordCases.map(([name]) => ["records " + name, true, true] as const),
           ];

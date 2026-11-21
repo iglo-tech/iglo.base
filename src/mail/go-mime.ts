@@ -81,7 +81,7 @@ function bEncode(e: WordEncoder, charset: string, s: Uint8Array): string {
   let out = "";
   let currentLen = 0;
   let last = 0;
-  let n = 0;
+  let n: number;
   for (let i = 0; i < s.length; i += n) {
     n = runeLen(s[i] as number);
 
@@ -105,7 +105,7 @@ function qEncode(e: WordEncoder, charset: string, s: Uint8Array): string {
   // If the charset is UTF-8, it must not split runes between words
   let out = "";
   let currentLen = 0;
-  let n = 0;
+  let n: number;
   for (let i = 0; i < s.length; i += n) {
     const b = s[i] as number;
     // Multi-byte characters must not be split across encoded-words.
@@ -338,7 +338,7 @@ function isAtext(r: number, dot: boolean): boolean {
     return dot;
   }
   // RFC 5322 3.2.3. specials
-  if ('()<>[]:;@\\,"'.includes(String.fromCodePoint(r))) {
+  if (String.raw`()<>[]:;@\,"`.includes(String.fromCodePoint(r))) {
     return false;
   }
   return isVchar(r);
@@ -416,7 +416,7 @@ export function writeHeader(h: Header): string {
       // handler, so just drop invalid headers instead.
       continue;
     }
-    const v = trimString((h.get(key) as string).replace(/[\r\n]/g, " "));
+    const v = trimString((h.get(key) as string).replaceAll(/[\r\n]/g, " "));
     out += key + ": " + v + "\r\n";
   }
   return out;
@@ -477,7 +477,7 @@ function validHeaderFieldByte(c: number): boolean {
 // textproto.TrimString returns s without leading and trailing ASCII space
 // (space, tab, CR and LF).
 function trimString(s: string): string {
-  return s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+  return s.replaceAll(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
 }
 
 // -------------------------------------------------------------------
@@ -505,11 +505,11 @@ export function quote(s: string): string {
 }
 
 const quoteEscapes: { [r: number]: string } = {
-  0x07: "\\a",
-  0x08: "\\b",
-  0x0c: "\\f",
-  0x0a: "\\n",
-  0x0d: "\\r",
-  0x09: "\\t",
-  0x0b: "\\v",
+  0x07: String.raw`\a`,
+  0x08: String.raw`\b`,
+  0x0c: String.raw`\f`,
+  0x0a: String.raw`\n`,
+  0x0d: String.raw`\r`,
+  0x09: String.raw`\t`,
+  0x0b: String.raw`\v`,
 };

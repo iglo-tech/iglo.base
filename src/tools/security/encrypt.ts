@@ -6,7 +6,8 @@
 // aes.NewCipher it may be 16, 24 or 32 bytes (AES-128/192/256), upstream
 // uses 32 (AES-256).
 
-import { type CipherGCM, createCipheriv } from "node:crypto";
+import { createCipheriv } from "node:crypto";
+import type { CipherGCM } from "node:crypto";
 
 import { StdEncoding } from "@/tools/security/base64";
 
@@ -76,7 +77,7 @@ export async function decrypt(cipherText: string, key: string): Promise<Uint8Arr
         cipherBytes.slice(nonceSize),
       ),
     );
-  } catch (err) {
-    throw new Error("cipher: message authentication failed", { cause: err });
+  } catch (error) {
+    throw new Error("cipher: message authentication failed", { cause: error });
   }
 }

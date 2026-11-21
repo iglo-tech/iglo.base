@@ -11,16 +11,16 @@
 //
 // Typed structurally: nothing here imports `astro`.
 import type { SerializeOptions } from "@sdk/tools/cookie";
-import { createRequestCookieAdapter, type CookieAdapter } from "@sdk/ssr/index";
+import { createRequestCookieAdapter } from "@sdk/ssr/index";
+import type { CookieAdapter } from "@sdk/ssr/index";
 import {
   csrfRejection,
   handleRoute,
   noStorePolicy,
   resolveAdapterOptions,
   resumeSession,
-  type AdapterOptions,
-  type ResolvedAdapterOptions,
 } from "@sdk/ssr/adapter";
+import type { AdapterOptions, ResolvedAdapterOptions } from "@sdk/ssr/adapter";
 
 export interface AstroCookieStore {
   get(name: string): { value: string } | undefined;

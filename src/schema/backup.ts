@@ -29,12 +29,12 @@ const bytesPerMiB = 1024 * 1024;
 // the time as the backup name carries it: 20261113T172429.123Z (the ISO time
 // without its separators, so it still sorts by time)
 export function preSchemaBackupName(now: Date): string {
-  return `${preSchemaPrefix}${now.toISOString().replace(/[-:]/g, "")}.zip`;
+  return `${preSchemaPrefix}${now.toISOString().replaceAll(/[-:]/g, "")}.zip`;
 }
 
 // the names of the pre-schema backups in the backups storage, sorted by name
 // (which is the time, so the newest sorts last)
-async function listPreSchema(app: App): Promise<string[]> {
+async function listPreSchema(app: App): Promise<Array<string>> {
   const fsys = app.filesystem.newBackupsFilesystem();
   try {
     const files = await fsys.list(preSchemaPrefix);
@@ -79,7 +79,7 @@ function errorText(err: unknown): string {
 // The disk-space failure says how much room the backup needs, the size of the
 // data it copies, and how much is free.
 function noSpaceMessage(app: App): string {
-  let needed = "";
+  let needed: string;
   try {
     needed = `${(dataSize(app.dataDir) / bytesPerMiB).toFixed(1)} MiB`;
   } catch {
@@ -111,21 +111,21 @@ export async function makePreSchemaBackup(app: App): Promise<string> {
       time = new Date(time.getTime() + 1);
       name = preSchemaBackupName(time);
     }
-  } catch (err) {
+  } catch (error) {
     throw new Error(
-      `the pre-schema backup could not be named, so the schema is not applied: ${errorText(err)}`,
-      { cause: err },
+      `the pre-schema backup could not be named, so the schema is not applied: ${errorText(error)}`,
+      { cause: error },
     );
   }
   try {
     await createBackup(app, name);
-  } catch (err) {
-    if (isNoSpace(err)) {
-      throw new Error(noSpaceMessage(app), { cause: err });
+  } catch (error) {
+    if (isNoSpace(error)) {
+      throw new Error(noSpaceMessage(app), { cause: error });
     }
     throw new Error(
-      `the pre-schema backup ${name} failed, so the schema is not applied: ${errorText(err)}`,
-      { cause: err },
+      `the pre-schema backup ${name} failed, so the schema is not applied: ${errorText(error)}`,
+      { cause: error },
     );
   }
   return name;
@@ -142,17 +142,17 @@ export async function prunePreSchemaBackups(app: App): Promise<void> {
       for (const key of keys.toReversed().slice(preSchemaKeep)) {
         try {
           await fsys.delete(key);
-        } catch (err) {
+        } catch (error) {
           app.logger.error("[schema] failed to remove an old pre-schema backup", {
             key,
-            error: err,
+            error,
           });
         }
       }
     } finally {
       fsys.close();
     }
-  } catch (err) {
-    app.logger.error("[schema] failed to prune the pre-schema backups", { error: err });
+  } catch (error) {
+    app.logger.error("[schema] failed to prune the pre-schema backups", { error });
   }
 }

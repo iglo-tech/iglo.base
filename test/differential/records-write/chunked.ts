@@ -13,13 +13,13 @@ import { connect } from "node:net";
 
 import type { ScenarioResponse } from "@test/scenarios/request";
 
-export type ChunkedBody = [text: string, count: number][];
+export type ChunkedBody = Array<[text: string, count: number]>;
 
 const chunkSize = 64 * 1024;
 
 // the body's bytes in chunks of chunkSize
 function* chunks(body: ChunkedBody): Generator<Buffer> {
-  let pending: Buffer[] = [];
+  let pending: Array<Buffer> = [];
   let pendingLength = 0;
   for (const [text, count] of body) {
     const piece = Buffer.from(text);
@@ -66,7 +66,7 @@ export function sendChunked(
 
   return new Promise((resolve, reject) => {
     const socket = connect({ host: hostname, port: Number(port) });
-    const received: Buffer[] = [];
+    const received: Array<Buffer> = [];
     let answered = false;
     const timer = setTimeout(
       () => socket.destroy(new Error(`${method} ${url}: timed out`)),
@@ -149,7 +149,7 @@ function parseResponse(raw: Buffer): ScenarioResponse | undefined {
   }
   let rest = raw.subarray(split + 4);
   if (headers.get("transfer-encoding")?.toLowerCase() === "chunked") {
-    const parts: Buffer[] = [];
+    const parts: Array<Buffer> = [];
     let pos = 0;
     for (;;) {
       const lineEnd = rest.indexOf("\r\n", pos);

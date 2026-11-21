@@ -54,7 +54,7 @@ export function secureIntN(max: number): number {
     return 0;
   }
   const bits = 32 - Math.clz32(max - 1);
-  const mask = bits === 32 ? 0xffffffff : (1 << bits) - 1;
+  const mask = bits === 32 ? 0xff_ff_ff_ff : (1 << bits) - 1;
   const buf = new Uint32Array(1);
   for (;;) {
     crypto.getRandomValues(buf);

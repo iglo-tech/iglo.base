@@ -18,7 +18,8 @@
 // (src/tools/crypto/blowfish.ts), and compared in constant time.
 
 import { goQuote } from "@/fields/field";
-import { ExpandKey, NewSaltedCipher, type Cipher } from "@/tools/crypto/blowfish";
+import { ExpandKey, NewSaltedCipher } from "@/tools/crypto/blowfish";
+import type { Cipher } from "@/tools/crypto/blowfish";
 import { Encoding } from "@/tools/security/base64";
 import { constantTimeCompare } from "@/tools/security/crypto";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
@@ -178,8 +179,8 @@ function prepareCompare(
   let p: Hashed;
   try {
     p = newFromHash(hashedPassword);
-  } catch (err) {
-    return { result: err as Error };
+  } catch (error) {
+    return { result: error as Error };
   }
 
   // a salt with bytes outside the alphabet ('\r', '\n' or invalid data):
@@ -189,8 +190,8 @@ function prepareCompare(
     let otherHash: Uint8Array;
     try {
       otherHash = bcrypt(password, p.cost, p.salt);
-    } catch (err) {
-      return { result: err as Error };
+    } catch (error) {
+      return { result: error as Error };
     }
 
     const otherP: Hashed = { ...p, hash: otherHash };
@@ -380,7 +381,7 @@ export function base64Decode(src: Uint8Array): Uint8Array {
 }
 
 const decodeMap = new Int8Array(256).fill(-1);
-for (const [i, ch] of [...alphabet].entries()) {
+for (const [i, ch] of Array.from(alphabet).entries()) {
   decodeMap[ch.charCodeAt(0)] = i;
 }
 

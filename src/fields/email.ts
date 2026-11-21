@@ -5,11 +5,8 @@ import {
   DefaultFieldIdValidationRule,
   DefaultFieldNameValidationRule,
   marshalStruct,
-  type Field,
-  type FieldApp,
-  type FieldCollection,
-  type FieldRecord,
 } from "@/fields/field";
+import type { Field, FieldApp, FieldCollection, FieldRecord } from "@/fields/field";
 import { toString as castToString } from "@/tools/types/cast";
 import { boolType, sliceOf, stringType, unmarshalStruct } from "@/tools/types/go-json";
 import { Domain, EmailFormat } from "@/validation/is/rules";
@@ -60,13 +57,13 @@ export class EmailField implements Field {
   // This validator can be set only if OnlyDomains is empty.
   //
   // (Go's nil slice is an empty array: json v2 marshals both as [].)
-  exceptDomains: string[] = [];
+  exceptDomains: Array<string> = [];
 
   // OnlyDomains will require the email domain to be included in the listed
   // ones.
   //
   // This validator can be set only if ExceptDomains is empty.
-  onlyDomains: string[] = [];
+  onlyDomains: Array<string> = [];
 
   // Required will require the field value to be non-empty email string.
   required = false;
@@ -211,8 +208,8 @@ export class EmailField implements Field {
         hidden: (v) => (this.hidden = v as boolean),
         presentable: (v) => (this.presentable = v as boolean),
         help: (v) => (this.help = v as string),
-        exceptDomains: (v) => (this.exceptDomains = (v as string[] | undefined) ?? []),
-        onlyDomains: (v) => (this.onlyDomains = (v as string[] | undefined) ?? []),
+        exceptDomains: (v) => (this.exceptDomains = (v as Array<string> | undefined) ?? []),
+        onlyDomains: (v) => (this.onlyDomains = (v as Array<string> | undefined) ?? []),
         required: (v) => (this.required = v as boolean),
       },
       {

@@ -5,11 +5,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  newAuthCollection,
-  newBaseCollection,
-  type Collection,
-} from "@/collections/collection-model";
+import { newAuthCollection, newBaseCollection } from "@/collections/collection-model";
+import type { Collection } from "@/collections/collection-model";
 import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections/collection-query";
 import { saveCollection } from "@/collections/collection-save";
 import { syncRecordTableSchema } from "@/collections/collection-record-table-sync";
@@ -17,19 +14,20 @@ import { HashExp, newExp } from "@/db/dbx/expression";
 import { hasTable, tableColumns, tableIndexes, tableInfo } from "@/db/table";
 import { EmailField } from "@/fields/email";
 import { SelectField } from "@/fields/select";
-import { FileField } from "@/fields/file";
-import { RelationField } from "@/fields/relation";
+import type { FileField } from "@/fields/file";
+import type { RelationField } from "@/fields/relation";
 import { TextField } from "@/fields/text";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
 function errorOf(fn: () => unknown): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -62,13 +60,13 @@ describe("TestSyncRecordTableSchema", () => {
       authCol.fields.add(new TextField({ name: "test" }));
       authCol.addIndex("idx_auth_test", false, "email, id", "");
 
-      const scenarios: {
+      const scenarios: Array<{
         name: string;
         newCollection: Collection;
         oldCollection: Collection | null;
-        expectedColumns: string[];
+        expectedColumns: Array<string>;
         expectedIndexesCount: number;
-      }[] = [
+      }> = [
         {
           name: "new base collection",
           newCollection: baseCol,
@@ -94,14 +92,14 @@ describe("TestSyncRecordTableSchema", () => {
         {
           name: "no changes",
           newCollection: oldCollection,
-          oldCollection: oldCollection,
+          oldCollection,
           expectedColumns: ["id", "created", "updated", "title", "active"],
           expectedIndexesCount: 3,
         },
         {
           name: "renamed table, deleted column, renamed columnd and new column",
           newCollection: updatedCollection,
-          oldCollection: oldCollection,
+          oldCollection,
           expectedColumns: ["id", "created", "updated", "title_renamed", "new_field"],
           expectedIndexesCount: 1,
         },
@@ -220,7 +218,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
         "new_multiple",
       ];
 
-      const fieldsScenarios: { recordId: string; expected: Record<string, string> }[] = [
+      const fieldsScenarios: Array<{ recordId: string; expected: Record<string, string> }> = [
         {
           recordId: "imy661ixudk5izi",
           expected: {

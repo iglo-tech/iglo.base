@@ -3,15 +3,13 @@
 import { describe, expect, test } from "bun:test";
 
 import type { Clock } from "@/app/clock";
-import { type DB, newFromDB } from "@/db/dbx/db";
+import { newFromDB } from "@/db/dbx/db";
+import type { DB } from "@/db/dbx/db";
 import type { Expression } from "@/db/dbx/expression";
-import { Float64, type Params } from "@/db/dbx/query";
-import {
-  type FilterData,
-  filterBuildExpr,
-  filterBuildExprWithLimit,
-  ParsedFilterCache,
-} from "@/search/filter";
+import { Float64 } from "@/db/dbx/query";
+import type { Params } from "@/db/dbx/query";
+import { filterBuildExpr, filterBuildExprWithLimit, ParsedFilterCache } from "@/search/filter";
+import type { FilterData } from "@/search/filter";
 import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 import { Database } from "bun:sqlite";
 
@@ -24,7 +22,7 @@ function newDB(): DB {
 // the SQL dbx logs for `SELECT * WHERE expr` (with the params inlined)
 function loggedSelect(expr: Expression): string {
   const db = newDB();
-  const calledQueries: string[] = [];
+  const calledQueries: Array<string> = [];
   db.queryLogFunc = (_ms, sql) => calledQueries.push(sql);
   db.execLogFunc = (_ms, sql) => calledQueries.push(sql);
   try {
@@ -38,8 +36,8 @@ function loggedSelect(expr: Expression): string {
 
 // regexp.QuoteMeta, then TEST as \w+
 function expectPatternRegex(expectPattern: string): RegExp {
-  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, "\\$&");
-  return new RegExp("^" + quoted.replaceAll("TEST", "\\w+") + "$");
+  const quoted = expectPattern.replaceAll(/[\\.+*?()|[\]{}^$]/g, String.raw`\$&`);
+  return new RegExp("^" + quoted.replaceAll("TEST", String.raw`\w+`) + "$");
 }
 
 describe("FilterData.BuildExpr", () => {
@@ -47,12 +45,12 @@ describe("FilterData.BuildExpr", () => {
     "test1",
     "test2",
     "test3",
-    "^test4_\\w+$",
-    "^test5\\.[\\w\\.\\:]*\\w+$",
+    String.raw`^test4_\w+$`,
+    String.raw`^test5\.[\w\.\:]*\w+$`,
   );
 
   // [name, filterData, expectError, expectPattern]
-  const scenarios: [string, FilterData, boolean, string][] = [
+  const scenarios: Array<[string, FilterData, boolean, string]> = [
     ["empty", "", true, ""],
     ["invalid format", "(test1 > 1", true, ""],
     ["invalid operator", "test1 + 123", true, ""],
@@ -63,37 +61,37 @@ describe("FilterData.BuildExpr", () => {
       "like with 2 columns",
       "test1 ~ test2",
       false,
-      "[[test1]] LIKE ('%' || [[test2]] || '%') ESCAPE '\\'",
+      String.raw`[[test1]] LIKE ('%' || [[test2]] || '%') ESCAPE '\'`,
     ],
     [
       "like with right column operand",
       "'lorem' ~ test1",
       false,
-      "{:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\\'",
+      String.raw`{:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\'`,
     ],
     [
       "like with left column operand and text as right operand",
       "test1 ~ 'lorem'",
       false,
-      "[[test1]] LIKE {:TEST} ESCAPE '\\'",
+      String.raw`[[test1]] LIKE {:TEST} ESCAPE '\'`,
     ],
     [
       "not like with 2 columns",
       "test1 !~ test2",
       false,
-      "[[test1]] NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\\'",
+      String.raw`[[test1]] NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\'`,
     ],
     [
       "not like with right column operand",
       "'lorem' !~ test1",
       false,
-      "{:TEST} NOT LIKE ('%' || [[test1]] || '%') ESCAPE '\\'",
+      String.raw`{:TEST} NOT LIKE ('%' || [[test1]] || '%') ESCAPE '\'`,
     ],
     [
       "like with left column operand and text as right operand",
       "test1 !~ 'lorem'",
       false,
-      "[[test1]] NOT LIKE {:TEST} ESCAPE '\\'",
+      String.raw`[[test1]] NOT LIKE {:TEST} ESCAPE '\'`,
     ],
     [
       "nested json no coalesce",
@@ -111,7 +109,7 @@ describe("FilterData.BuildExpr", () => {
       "complex expression",
       "((test1 > 1) || (test2 != 2)) && test3 ~ '%%example' && test4_sub = null",
       false,
-      "(([[test1]] > {:TEST} OR [[test2]] IS NOT {:TEST}) AND [[test3]] LIKE {:TEST} ESCAPE '\\' AND ([[test4_sub]] = '' OR [[test4_sub]] IS NULL))",
+      String.raw`(([[test1]] > {:TEST} OR [[test2]] IS NOT {:TEST}) AND [[test3]] LIKE {:TEST} ESCAPE '\' AND ([[test4_sub]] = '' OR [[test4_sub]] IS NULL))`,
     ],
     [
       "combination of special literals (null, true, false)",
@@ -123,7 +121,7 @@ describe("FilterData.BuildExpr", () => {
       "all operators",
       "(test1 = test2 || test2 != test3) && (test2 ~ 'example' || test2 !~ '%%abc') && 'switch1%%' ~ test1 && 'switch2' !~ test2 && test3 > 1 && test3 >= 0 && test3 <= 4 && 2 < 5",
       false,
-      "((COALESCE([[test1]], '') = COALESCE([[test2]], '') OR COALESCE([[test2]], '') IS NOT COALESCE([[test3]], '')) AND ([[test2]] LIKE {:TEST} ESCAPE '\\' OR [[test2]] NOT LIKE {:TEST} ESCAPE '\\') AND {:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\\' AND {:TEST} NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\\' AND [[test3]] > {:TEST} AND [[test3]] >= {:TEST} AND [[test3]] <= {:TEST} AND {:TEST} < {:TEST})",
+      String.raw`((COALESCE([[test1]], '') = COALESCE([[test2]], '') OR COALESCE([[test2]], '') IS NOT COALESCE([[test3]], '')) AND ([[test2]] LIKE {:TEST} ESCAPE '\' OR [[test2]] NOT LIKE {:TEST} ESCAPE '\') AND {:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\' AND {:TEST} NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\' AND [[test3]] > {:TEST} AND [[test3]] >= {:TEST} AND [[test3]] <= {:TEST} AND {:TEST} < {:TEST})`,
     ],
     [
       "geoDistance function",
@@ -139,8 +137,8 @@ describe("FilterData.BuildExpr", () => {
       let err: unknown;
       try {
         expr = filterBuildExpr(filterData, resolver, { clock });
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== undefined).toBe(expectError);
@@ -157,7 +155,7 @@ describe("FilterData.BuildExpr", () => {
 test("FilterData.BuildExpr with params", () => {
   const date = new Date(Date.UTC(2023, 0, 1));
 
-  const resolver = newSimpleFieldResolver("^test\\w+$");
+  const resolver = newSimpleFieldResolver(String.raw`^test\w+$`);
 
   const filter: FilterData = `
 		test1 = {:test1} ||
@@ -176,7 +174,7 @@ test("FilterData.BuildExpr with params", () => {
 		test13 = {:test13}
 	`;
 
-  const replacements: Params[] = [
+  const replacements: Array<Params> = [
     { test1: true },
     { test2: false },
     { test3: 123.456 },
@@ -225,10 +223,10 @@ describe("FilterData.BuildExpr with params fallback error", () => {
 });
 
 describe("FilterData.BuildExprWithLimit", () => {
-  const resolver = newSimpleFieldResolver("^\\w+$");
+  const resolver = newSimpleFieldResolver(String.raw`^\w+$`);
 
   // [limit, filter, expectError]
-  const scenarios: [number, FilterData, boolean][] = [
+  const scenarios: Array<[number, FilterData, boolean]> = [
     [1, "1 = 1", false],
     [0, "1 = 1", true], // new cache entry should be created
     [2, "1 = 1 || 1 = 1", false],
@@ -248,8 +246,8 @@ describe("FilterData.BuildExprWithLimit", () => {
         let err: unknown;
         try {
           filterBuildExprWithLimit(filter, resolver, limit, options);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(expectError);
       }
@@ -258,7 +256,7 @@ describe("FilterData.BuildExprWithLimit", () => {
 });
 
 test("Like params wrapping", () => {
-  const resolver = newSimpleFieldResolver("^test\\w+$");
+  const resolver = newSimpleFieldResolver(String.raw`^test\w+$`);
 
   const filter: FilterData = `
 		test1 ~ {:p1} ||
@@ -276,7 +274,7 @@ test("Like params wrapping", () => {
 		test13 ~ {:p13}
 	`;
 
-  const replacements: Params[] = [
+  const replacements: Array<Params> = [
     { p1: String.raw`abc` },
     { p2: String.raw`ab%c` },
     { p3: String.raw`ab\%c` },
@@ -304,7 +302,7 @@ test("Like params wrapping", () => {
 describe("bound param types", () => {
   const resolver = newSimpleFieldResolver("test1");
 
-  function boundParams(filter: FilterData): unknown[] {
+  function boundParams(filter: FilterData): Array<unknown> {
     const params: Params = {};
     filterBuildExpr(filter, resolver, { clock }).build(newDB(), params);
     return Object.values(params);
@@ -346,7 +344,7 @@ describe("number tokens against a TEXT column", () => {
   const resolver = newSimpleFieldResolver("test1");
   const values = ["1", "1.0", "10", "5", "5.5", "a"];
 
-  function matching(filter: FilterData): string[] {
+  function matching(filter: FilterData): Array<string> {
     const db = newDB();
     db.newQuery("CREATE TABLE t (test1 TEXT)").execute();
     for (const v of values) {
@@ -356,7 +354,7 @@ describe("number tokens against a TEXT column", () => {
     return db.select("test1").from("t").where(expr).orderBy("test1").column<string>();
   }
 
-  const scenarios: [FilterData, string[]][] = [
+  const scenarios: Array<[FilterData, Array<string>]> = [
     ["test1 = 1", ["1.0"]],
     ["test1 = 1.0", ["1.0"]],
     ["test1 = 5.5", ["5.5"]],

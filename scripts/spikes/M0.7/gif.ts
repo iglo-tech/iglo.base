@@ -36,12 +36,12 @@ const palette16 = (() => {
       const v = plan9[i * 3 + c] as number;
       out[i * 4 + c] = v | (v << 8);
     }
-    out[i * 4 + 3] = 0xffff;
+    out[i * 4 + 3] = 0xff_ff;
   }
   return out;
 })();
 
-const clamp16 = (i: number): number => (i < 0 ? 0 : i > 0xffff ? 0xffff : i);
+const clamp16 = (i: number): number => (i < 0 ? 0 : i > 0xff_ff ? 0xff_ff : i);
 
 // uint32 (d*d) >> 2 with d = x - y in [-0xffff, 0xffff]
 const sqDiff = (x: number, y: number): number => {
@@ -72,7 +72,7 @@ export function quantizePlan9(pix: Uint8Array, width: number, height: number): U
       ea = clamp16(ea + Math.trunc((curr[q + 3] as number) / 16));
 
       let best = 0;
-      let bestSum = 0xffffffff;
+      let bestSum = 0xff_ff_ff_ff;
       for (let i = 0; i < 256; i++) {
         const p = i * 4;
         const sum =
@@ -116,13 +116,15 @@ export function quantizePlan9(pix: Uint8Array, width: number, height: number): U
 class ByteSink {
   private buf = new Uint8Array(4096);
   length = 0;
-  push(b: number): void {
-    if (this.length === this.buf.length) {
-      const grown = new Uint8Array(this.buf.length * 2);
-      grown.set(this.buf);
-      this.buf = grown;
+  push(...bytes: Array<number>): void {
+    for (const b of bytes) {
+      if (this.length === this.buf.length) {
+        const grown = new Uint8Array(this.buf.length * 2);
+        grown.set(this.buf);
+        this.buf = grown;
+      }
+      this.buf[this.length++] = b;
     }
-    this.buf[this.length++] = b;
   }
   pushAll(bytes: ArrayLike<number>): void {
     for (let i = 0; i < bytes.length; i++) {
@@ -147,8 +149,8 @@ function lzwBlocks(out: ByteSink, data: Uint8Array, litWidth: number): void {
   const block = new Uint8Array(256);
   const blockByte = (c: number): void => {
     block[0] = (block[0] as number) + 1;
-    block[block[0] as number] = c;
-    if ((block[0] as number) === 255) {
+    block[block[0]] = c;
+    if (block[0] === 255) {
       out.pushAll(block);
       block[0] = 0;
     }
@@ -243,9 +245,7 @@ export function encodeGif(pix: Uint8Array, width: number, height: number): Uint8
   out.u16(width);
   out.u16(height);
   // global color table of 2^(1+7) entries, background 0, aspect 0
-  out.push(0x80 | 7);
-  out.push(0);
-  out.push(0);
+  out.push(0x80 | 7, 0, 0);
   out.pushAll(plan9);
   // image descriptor, no local color table (the palette is the global one)
   out.push(0x2c);
@@ -253,8 +253,7 @@ export function encodeGif(pix: Uint8Array, width: number, height: number): Uint8
   out.u16(0);
   out.u16(width);
   out.u16(height);
-  out.push(0);
-  out.push(8);
+  out.push(0, 8);
   lzwBlocks(out, indexes, 8);
   out.push(0x3b);
   return out.bytes();

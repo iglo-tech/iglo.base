@@ -65,7 +65,7 @@ export interface CollectionCase {
   body: string;
 }
 
-export const collectionCases: CollectionCase[] = [
+export const collectionCases: Array<CollectionCase> = [
   {
     name: "base_all",
     body: `{"name":"base_all","type":"base","fields":${allFields}}`,
@@ -240,7 +240,7 @@ export interface OAuth2UpdateCase {
   name: string;
   providers: string;
   update: string;
-  pkce: (boolean | null)[];
+  pkce: Array<boolean | null>;
 }
 
 const pkceOriginals = `[
@@ -249,7 +249,7 @@ const pkceOriginals = `[
   {"name":"gitlab","clientId":"gl","clientSecret":"gl-secret"}
 ]`;
 
-export const oauth2UpdateCases: OAuth2UpdateCase[] = [
+export const oauth2UpdateCases: Array<OAuth2UpdateCase> = [
   {
     name: "auth_pkce_repro",
     providers: `[{"name":"google","clientId":"client","clientSecret":"secret","pkce":true}]`,

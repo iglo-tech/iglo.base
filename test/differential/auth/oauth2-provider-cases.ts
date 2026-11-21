@@ -74,7 +74,7 @@ export function appleSecretPrivateKey(): string {
   return privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 }
 
-export const providerCases: ProviderCase[] = [
+export const providerCases: Array<ProviderCase> = [
   // apple
   {
     name: "apple: a missing id_token",
@@ -454,7 +454,12 @@ export const providerCases: ProviderCase[] = [
   {
     name: "google: a numeric sub",
     provider: "google",
-    user: { sub: 109876543213, name: "Google User", email: "google@example.com", ...verifiedEmail },
+    user: {
+      sub: 109_876_543_213,
+      name: "Google User",
+      email: "google@example.com",
+      ...verifiedEmail,
+    },
     status: 400,
   },
 
@@ -494,7 +499,7 @@ export const providerCases: ProviderCase[] = [
     name: "kakao: a valid and verified email",
     provider: "kakao",
     user: {
-      id: 1234567890,
+      id: 1_234_567_890,
       properties: { nickname: "kakao_nick", profile_image: "https://kakao.example/profile.png" },
       kakao_account: { email: "kakao@example.com", is_email_valid: true, is_email_verified: true },
     },
@@ -505,7 +510,7 @@ export const providerCases: ProviderCase[] = [
     name: "kakao: a valid email that is not verified",
     provider: "kakao",
     user: {
-      id: 1234567891,
+      id: 1_234_567_891,
       properties: { nickname: "kakao_nick" },
       kakao_account: { email: "kakao@example.com", is_email_valid: true, is_email_verified: false },
     },
@@ -515,7 +520,7 @@ export const providerCases: ProviderCase[] = [
   {
     name: "kakao: no kakao_account",
     provider: "kakao",
-    user: { id: 1234567892, properties: { nickname: "kakao_nick" } },
+    user: { id: 1_234_567_892, properties: { nickname: "kakao_nick" } },
     status: 200,
     email: "",
   },
@@ -869,7 +874,7 @@ export const providerCases: ProviderCase[] = [
     name: "strava: an athlete",
     provider: "strava",
     user: {
-      id: 123456,
+      id: 123_456,
       firstname: "Strava",
       lastname: "Athlete",
       username: "strava_athlete",
@@ -952,7 +957,7 @@ export const providerCases: ProviderCase[] = [
     user: {
       response: [
         {
-          id: 210700286,
+          id: 210_700_286,
           first_name: "Pavel",
           last_name: "Durov",
           screen_name: "durov",
@@ -967,7 +972,7 @@ export const providerCases: ProviderCase[] = [
     name: "vk: no email in the token response",
     provider: "vk",
     user: {
-      response: [{ id: 210700287, first_name: "Vk", last_name: "User", screen_name: "vk_user" }],
+      response: [{ id: 210_700_287, first_name: "Vk", last_name: "User", screen_name: "vk_user" }],
     },
     status: 200,
     email: "",

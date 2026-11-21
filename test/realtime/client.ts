@@ -4,7 +4,8 @@
 // use another loopback source address (127.0.0.2), which is how the
 // "different IP" scenario reaches the server without trusted proxy headers.
 
-import { connect, type Socket } from "node:net";
+import { connect } from "node:net";
+import type { Socket } from "node:net";
 
 export interface SseEvent {
   id: string;
@@ -51,7 +52,7 @@ export function request(
       port: Number(port),
       localAddress: options.localAddress ?? "127.0.0.1",
     });
-    const chunks: Buffer[] = [];
+    const chunks: Array<Buffer> = [];
     socket.setTimeout(10_000, () => socket.destroy(new Error("request timed out")));
     socket.on("connect", () => socket.write(head + body));
     socket.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -68,8 +69,8 @@ export function request(
           headers: parsed.headers,
           body: parsed.body.toString("utf8"),
         });
-      } catch (err) {
-        reject(err as Error);
+      } catch (error) {
+        reject(error);
       }
     });
   });
@@ -94,12 +95,12 @@ export function jsonRequest(
 
 // An open GET /api/realtime stream.
 export class RealtimeStream {
-  readonly events: SseEvent[] = [];
+  readonly events: Array<SseEvent> = [];
   closed = false;
   #parser = new ResponseParser();
   #decoder = new TextDecoder();
   #text = "";
-  #waiters: (() => void)[] = [];
+  #waiters: Array<() => void> = [];
   #socket: Socket;
 
   private constructor(socket: Socket) {
@@ -165,7 +166,7 @@ export class RealtimeStream {
   }
 
   // Waits until check(events) is true; throws after timeoutMs.
-  async waitFor(check: (events: SseEvent[]) => boolean, timeoutMs = 3000): Promise<void> {
+  async waitFor(check: (events: Array<SseEvent>) => boolean, timeoutMs = 3000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (!check(this.events)) {
       if (this.closed) {
@@ -186,7 +187,7 @@ export class RealtimeStream {
   }
 
   // The events after PB_CONNECT once no new one arrived for quietMs.
-  async settle(quietMs = 300): Promise<SseEvent[]> {
+  async settle(quietMs = 300): Promise<Array<SseEvent>> {
     let count = -1;
     while (count !== this.events.length) {
       count = this.events.length;
@@ -287,7 +288,7 @@ class ResponseParser {
       if (lineEnd === -1) {
         return;
       }
-      const size = parseInt(this.#buf.subarray(0, lineEnd).toString("latin1"), 16);
+      const size = Number.parseInt(this.#buf.subarray(0, lineEnd).toString("latin1"), 16);
       if (Number.isNaN(size) || this.#buf.length < lineEnd + 2 + size + 2) {
         return;
       }

@@ -29,21 +29,21 @@
 // branches of the One/All hooks (custom Go structs that embed a Record; a
 // library API) and the non-pointer *[]Record slice (Go only).
 
-import {
-  type CollectionsApp,
-  findCachedCollectionByNameOrId,
-} from "@/collections/collection-query";
+import { findCachedCollectionByNameOrId } from "@/collections/collection-query";
+import type { CollectionsApp } from "@/collections/collection-query";
 import { Collection } from "@/collections/collection-model";
 import { equalFold } from "@/collections/go-strings";
 import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { wrapError } from "@/collections/view";
-import { type Expression, HashExp, inExp, newExp } from "@/db/dbx/expression";
+import { HashExp, inExp, newExp } from "@/db/dbx/expression";
+import type { Expression } from "@/db/dbx/expression";
 import type { Row } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { defaultMaxLockRetries, execLockRetry, execLockRetryAsync } from "@/db/retry";
 import { FieldNameEmail, goQuote } from "@/fields/field";
-import { type Record, newRecordFromRow, newRecordsFromRows } from "@/records/record-model";
+import { newRecordFromRow, newRecordsFromRows } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import {
   TokenClaimCollectionId,
   TokenClaimId,
@@ -58,6 +58,7 @@ import { findSingleColumnUniqueIndex } from "@/tools/dbutils/index";
 import { columnify } from "@/tools/inflector/inflector";
 import { existInSlice, toInterfaceSlice } from "@/tools/list/list";
 import { parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
+import { isInstance } from "@/tools/types/is-instance";
 
 // The app members the record queries use (core/app.go).
 export type RecordsApp = CollectionsApp;
@@ -106,8 +107,8 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   try {
     collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
     tableName = collection.name;
-  } catch (err) {
-    collectionErr = err;
+  } catch (error) {
+    collectionErr = error;
   }
   if (tableName === "") {
     // update with some fake table name for easier debugging
@@ -143,8 +144,8 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
         retryAsync(built, async () => {
           try {
             await op();
-          } catch (err) {
-            throw driverError(err);
+          } catch (error) {
+            throw driverError(error);
           }
         }),
       )
@@ -168,8 +169,11 @@ function resolveRecordOneHook(collection: Collection, op: (dst: unknown) => unkn
   return newRecordFromRow(collection, data);
 }
 
-function resolveRecordAllHook(collection: Collection, op: (dst: unknown) => unknown[]): Record[] {
-  const data = op(undefined) as Row[];
+function resolveRecordAllHook(
+  collection: Collection,
+  op: (dst: unknown) => Array<unknown>,
+): Array<Record> {
+  const data = op(undefined) as Array<Row>;
   return newRecordsFromRows(collection, data);
 }
 
@@ -177,7 +181,7 @@ export function getCollectionByModelOrIdentifier(
   app: RecordsApp,
   collectionModelOrIdentifier: unknown,
 ): Collection {
-  if (collectionModelOrIdentifier instanceof Collection) {
+  if (isInstance(Collection, collectionModelOrIdentifier)) {
     return collectionModelOrIdentifier;
   }
   if (typeof collectionModelOrIdentifier === "string") {
@@ -193,7 +197,7 @@ export function findRecordById(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
   recordId: string,
-  ...optFilters: RecordQueryFilter[]
+  ...optFilters: Array<RecordQueryFilter>
 ): Record {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
 
@@ -217,9 +221,9 @@ export function findRecordById(
 export function findRecordsByIds(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
-  recordIds: readonly string[],
-  ...optFilters: RecordQueryFilter[]
-): Record[] {
+  recordIds: ReadonlyArray<string>,
+  ...optFilters: Array<RecordQueryFilter>
+): Array<Record> {
   const collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
 
   const query = recordQuery(app, collection).andWhere(
@@ -254,8 +258,8 @@ export function findRecordsByIds(
 export function findAllRecords(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
-  ...exprs: (Expression | null | undefined)[]
-): Record[] {
+  ...exprs: Array<Expression | null | undefined>
+): Array<Record> {
   const query = recordQuery(app, collectionModelOrIdentifier);
 
   for (const expr of exprs) {
@@ -293,7 +297,7 @@ export function findFirstRecordByData(
 export function countRecords(
   app: RecordsApp,
   collectionModelOrIdentifier: CollectionModelOrIdentifier,
-  ...exprs: (Expression | null | undefined)[]
+  ...exprs: Array<Expression | null | undefined>
 ): number {
   const q = recordQuery(app, collectionModelOrIdentifier).select("count(*)");
 
@@ -306,7 +310,7 @@ export function countRecords(
 
   const [total] = q.row();
 
-  return Number(total as bigint);
+  return Number(total);
 }
 
 // FindAuthRecordByToken finds the auth record associated with the provided JWT
@@ -318,7 +322,7 @@ export function countRecords(
 export function findAuthRecordByToken(
   app: RecordsApp,
   token: string,
-  ...validTypes: string[]
+  ...validTypes: Array<string>
 ): Record {
   if (token === "") {
     throw new Error("missing token");
@@ -396,8 +400,8 @@ export function findAuthRecordByEmail(
   let collection: Collection;
   try {
     collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
-  } catch (err) {
-    throw wrapError("failed to fetch auth collection", err);
+  } catch (error) {
+    throw wrapError("failed to fetch auth collection", error);
   }
 
   if (!collection.isAuth()) {

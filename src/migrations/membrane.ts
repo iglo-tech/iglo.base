@@ -29,33 +29,38 @@ import { BoundValue, Float64 } from "@/db/dbx/query";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { bytesToText, textToBytes } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
+import { isInstance } from "@/tools/types/is-instance";
 
 // returned by an adapter's get for a name it does not handle
 export const pass = Symbol("pass");
 
 export interface Adapter {
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   get?(target: object, key: string, m: Membrane): unknown;
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   set?(target: object, key: string, value: unknown, m: Membrane): boolean | typeof pass;
   // what Object.keys and `in` see, for a struct that is not a JS object
-  keys?(target: object, m: Membrane): readonly string[];
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
+  keys?(target: object, m: Membrane): ReadonlyArray<string>;
   // the migration file's object, when it is not a Proxy of the target
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   create?(target: object, m: Membrane): object;
 }
 
 // A slice a struct holds: Array methods and index writes reach the struct.
 export interface SliceSource {
-  read(): readonly unknown[];
-  write(next: unknown[]): void;
+  read(): ReadonlyArray<unknown>;
+  write(next: Array<unknown>): void;
   fromGo?(item: unknown): unknown;
   toGo?(item: unknown): unknown;
   // goja refuses an item of another Go type: a sloppy `list[0] = v` is
   // ignored and a push throws, as for a refused Proxy set
   accepts?(item: unknown): boolean;
   // the Go methods of the slice type
-  methods?: { keys: readonly string[]; get(key: string): unknown };
+  methods?: { keys: ReadonlyArray<string>; get(key: string): unknown };
 }
 
-type AnyFunction = (...args: unknown[]) => unknown;
+type AnyFunction = (...args: Array<unknown>) => unknown;
 
 interface VmIntrinsics {
   GoError: new (message: string) => Error & { value: unknown };
@@ -63,7 +68,7 @@ interface VmIntrinsics {
   parse(text: string): unknown;
   objectPrototype: object;
   object(): Record<string, unknown>;
-  array(): unknown[];
+  array(): Array<unknown>;
 }
 
 const intrinsicsSource = `(function () {
@@ -86,8 +91,11 @@ export class Membrane {
   readonly #bytes = new WeakMap<object, "bytes" | "raw">();
   readonly #slices = new WeakMap<object, SliceSource>();
   // set once, before the first value crosses
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   adapterFor: (target: object) => Adapter | undefined = () => undefined;
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   readonly #unbox: (target: object) => object;
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   readonly #box: (target: object) => object;
   readonly vm: VmIntrinsics;
 
@@ -95,7 +103,9 @@ export class Membrane {
   // Go assignment (*v = *record) replaces; unbox is its way back.
   constructor(
     context: vm.Context,
+    // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
     unbox: (target: object) => object,
+    // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
     box: (target: object) => object = (target) => target,
   ) {
     this.vm = vm.runInContext(intrinsicsSource, context) as VmIntrinsics;
@@ -118,6 +128,7 @@ export class Membrane {
   }
 
   // Marks proxy as the migration file's view of target.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   register(target: object, proxy: object, box: object = target): object {
     this.#proxies.set(target, proxy);
     this.#targets.set(proxy, box);
@@ -135,16 +146,16 @@ export class Membrane {
         if (v === null || this.#targets.has(v) || this.#bytes.has(v) || this.#slices.has(v)) {
           return v;
         }
-        if (v instanceof BoundValue) {
+        if (isInstance(BoundValue, v)) {
           return this.toVm(v.go);
         }
-        if (v instanceof Float64) {
+        if (isInstance(Float64, v)) {
           return v.value;
         }
-        if (v instanceof Uint8Array && !Buffer.isBuffer(v)) {
+        if (isInstance(Uint8Array, v) && !Buffer.isBuffer(v)) {
           return this.#newBytes(v, "bytes");
         }
-        if (v instanceof JSONRaw) {
+        if (isInstance(JSONRaw, v)) {
           return this.#newRaw(v);
         }
         if (Array.isArray(v)) {
@@ -154,7 +165,7 @@ export class Membrane {
           }
           return copy;
         }
-        if (v instanceof Map) {
+        if (isInstance(Map, v)) {
           return this.#mapObject(v);
         }
         return this.#proxies.get(v) ?? this.#newProxy(v);
@@ -180,15 +191,15 @@ export class Membrane {
     const target = this.#targets.get(v);
     if (target !== undefined) {
       const host = this.#unbox(target);
-      if (host instanceof GoJSONArray) {
+      if (isInstance(GoJSONArray, host)) {
         return [...host.items];
       }
-      return host instanceof GoJSONMap ? host.data : host;
+      return isInstance(GoJSONMap, host) ? host.data : host;
     }
 
     const bytes = this.#bytes.get(v);
     if (bytes !== undefined) {
-      const data = bytesOf(v as unknown[]);
+      const data = bytesOf(v as Array<unknown>);
       return bytes === "bytes" ? data : new JSONRaw(bytesToText(data));
     }
 
@@ -198,12 +209,12 @@ export class Membrane {
     }
 
     // what crosses unwrapped: Buffer
-    if (v instanceof Uint8Array) {
+    if (isInstance(Uint8Array, v)) {
       return v;
     }
 
     if (Array.isArray(v)) {
-      return Array.from(v as unknown[], (item) => this.toHost(item));
+      return Array.from(v as Array<unknown>, (item) => this.toHost(item));
     }
 
     switch (Object.prototype.toString.call(v)) {
@@ -241,10 +252,10 @@ export class Membrane {
       return textToBytes(v);
     }
     const host = this.toHost(v);
-    if (host instanceof Uint8Array) {
+    if (isInstance(Uint8Array, host)) {
       return host;
     }
-    if (host instanceof JSONRaw) {
+    if (isInstance(JSONRaw, host)) {
       return textToBytes(host.bytes());
     }
     return Array.isArray(host) ? bytesOf(host) : undefined;
@@ -256,11 +267,11 @@ export class Membrane {
   guard<T>(fn: () => T): T {
     try {
       return fn();
-    } catch (err) {
-      if (err instanceof Error) {
-        throw this.goError(driverError(err) as Error);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw this.goError(driverError(error) as Error);
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -279,7 +290,8 @@ export class Membrane {
   // The array a migration file sees for a slice a struct holds. Its target
   // is a VM array, so it is an array to the file and the Array methods run
   // on this Proxy, through the traps below; callbacks get the fromGo view.
-  sliceView(source: SliceSource, host?: object): unknown[] {
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
+  sliceView(source: SliceSource, host?: object): Array<unknown> {
     const fromGo = source.fromGo ?? ((item: unknown) => this.toVm(item));
     const toGo = source.toGo ?? ((item: unknown) => this.toHost(item));
 
@@ -298,6 +310,7 @@ export class Membrane {
         if ((key as unknown) === "toString" && source.methods?.keys.includes("string") === true) {
           return source.methods.get("string");
         }
+        // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
         return Reflect.get(t, key, receiver) as unknown;
       },
       set: (_t, key, value) =>
@@ -368,7 +381,9 @@ export class Membrane {
   }
 
   // The named member of an internal object, as a migration file sees it.
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   member(target: object, key: string | symbol): unknown {
+    // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
     const value: unknown = Reflect.get(target, key, target);
 
     if (typeof key === "string" && key === "toJSON" && value === undefined) {
@@ -391,7 +406,7 @@ export class Membrane {
     return this.toVm(value);
   }
 
-  #newBytes(data: Uint8Array, kind: "bytes" | "raw"): unknown[] {
+  #newBytes(data: Uint8Array, kind: "bytes" | "raw"): Array<unknown> {
     const array = this.vm.array();
     for (const byte of data) {
       array.push(byte);
@@ -401,7 +416,7 @@ export class Membrane {
   }
 
   // types.JSONRaw: a byte slice with the Go methods of its type
-  #newRaw(raw: JSONRaw): unknown[] {
+  #newRaw(raw: JSONRaw): Array<unknown> {
     const array = this.#newBytes(textToBytes(raw.bytes()), "raw");
     const current = (): JSONRaw => this.toHost(array) as JSONRaw;
     const replace = (next: JSONRaw): void => {
@@ -410,7 +425,7 @@ export class Membrane {
         array.push(byte);
       }
     };
-    const methods: Record<string, (...args: unknown[]) => unknown> = {
+    const methods: Record<string, (...args: Array<unknown>) => unknown> = {
       string: () => current().string(),
       toString: () => current().string(),
       marshalJSON: () => this.toVm(textToBytes(current().marshalJSON())),
@@ -449,6 +464,7 @@ export class Membrane {
     return object;
   }
 
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #newProxy(target: object): object {
     const adapter = this.adapterFor(target);
 
@@ -458,7 +474,7 @@ export class Membrane {
 
     const box = this.#box(target);
 
-    const proxy = new Proxy(box, {
+    const handler: ProxyHandler<object> = {
       get: (t, key) =>
         this.guard(() => {
           const host = this.#unbox(t);
@@ -481,8 +497,11 @@ export class Membrane {
           }
           return Reflect.set(host, key, this.toHost(value), host);
         }),
-      ...(adapter?.keys === undefined ? {} : this.#keyTraps(adapter)),
-    });
+    };
+    if (adapter?.keys !== undefined) {
+      Object.assign(handler, this.#keyTraps(adapter));
+    }
+    const proxy = new Proxy(box, handler);
 
     if (box !== target) {
       this.#proxies.set(box, proxy);
@@ -511,6 +530,7 @@ export class Membrane {
     };
   }
 
+  // oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
   #wrapFunction(fn: AnyFunction, self: object | undefined): AnyFunction {
     return (...args) =>
       this.guard(() =>
@@ -545,6 +565,6 @@ export function toInteger(v: unknown): number {
 }
 
 // goja converts each element to a Go uint8
-function bytesOf(items: readonly unknown[]): Uint8Array {
+function bytesOf(items: ReadonlyArray<unknown>): Uint8Array {
   return Uint8Array.from(items, (item) => toInteger(item) & 0xff);
 }

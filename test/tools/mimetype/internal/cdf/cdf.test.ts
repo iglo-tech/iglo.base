@@ -9,10 +9,10 @@ import {
   CDFTypeMsg,
   CDFTypePpt,
   CDFTypeXls,
-  type CDFType,
   detect,
   summaryAppName,
 } from "@/tools/mimetype/internal/cdf/cdf";
+import type { CDFType } from "@/tools/mimetype/internal/cdf/cdf";
 import { bytesToText } from "@/tools/types/go-json";
 import { raw } from "@test/tools/mimetype/go-literal";
 
@@ -68,7 +68,7 @@ function copyInto(dst: Uint8Array, src: Uint8Array): void {
   dst.set(src.subarray(0, Math.min(dst.length, src.length)));
 }
 
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Array<Uint8Array>): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let off = 0;
   for (const p of parts) {
@@ -85,7 +85,7 @@ function testHeader(
   firstDirSec: number,
   firstSSAT: number,
   minStdStream: number,
-  masterSAT: number[] | null,
+  masterSAT: Array<number> | null,
 ): Uint8Array {
   const h = new Uint8Array(512);
   h.set(cdfMagic, 0);
@@ -94,7 +94,7 @@ function testHeader(
   put32(h, 48, firstDirSec);
   put32(h, 56, minStdStream);
   put32(h, 60, firstSSAT);
-  put32(h, 68, 0xfffffffe); // no extra master SAT sectors
+  put32(h, 68, 0xff_ff_ff_fe); // no extra master SAT sectors
   put32(h, 72, 0);
   for (let i = 0; i < masterSATSize; i++) {
     const v = masterSAT !== null && i < masterSAT.length ? (masterSAT[i] ?? -1) : -1;
@@ -105,7 +105,7 @@ function testHeader(
 
 // idSector encodes ids as a secSize-byte sector of little-endian int32s,
 // padding with -1 (free).
-function idSector(secSize: number, ids: number[] = []): Uint8Array {
+function idSector(secSize: number, ids: Array<number> = []): Uint8Array {
   const s = new Uint8Array(secSize);
   for (let i = 0; i < secSize / 4; i++) {
     put32(s, 4 * i, i < ids.length ? (ids[i] ?? -1) : -1);
@@ -211,7 +211,7 @@ function makeCDF(
   rootUUID: Uint8Array | null,
   summaryName: string,
   summary: Uint8Array | null,
-  ...extras: entrySpec[]
+  ...extras: Array<entrySpec>
 ): Uint8Array {
   if (summary !== null && summary.length > secSize) {
     throw new Error("summary stream larger than one sector");
@@ -256,7 +256,7 @@ describe("TestDetectInvalidInput", () => {
     Uint8Array.of(0x00), // one-byte sector 0 — too small for even one int32
   );
 
-  const tests: { name: string; data: Uint8Array }[] = [
+  const tests: Array<{ name: string; data: Uint8Array }> = [
     { name: "nil", data: Uint8Array.of() },
     { name: "short", data: Uint8Array.of(0xd0, 0xcf, 0x11, 0xe0) },
     { name: "bad magic", data: new Uint8Array(512) },
@@ -280,7 +280,7 @@ test("TestDetectMSIRootCLSID", () => {
 });
 
 describe("TestDetectFromAppName", () => {
-  const tests: { app: string; want: CDFType }[] = [
+  const tests: Array<{ app: string; want: CDFType }> = [
     { app: "Microsoft Office Word", want: CDFTypeDoc },
     { app: "Microsoft Excel", want: CDFTypeXls },
     { app: "Microsoft Powerpoint", want: CDFTypePpt },
@@ -310,7 +310,7 @@ describe("TestDetectFromAppName", () => {
 // the application name does not match, so detection relies on the names of
 // the other directory entries.
 describe("TestDetectFromSiblingNames", () => {
-  const tests: { sibling: string; want: CDFType }[] = [
+  const tests: Array<{ sibling: string; want: CDFType }> = [
     { sibling: "Book", want: CDFTypeXls },
     { sibling: "Workbook", want: CDFTypeXls },
     { sibling: "WordDocument", want: CDFTypeDoc },
@@ -337,7 +337,7 @@ describe("TestDetectFromSiblingNames", () => {
 // TestDetectFromSectionNames exercises the final fallback in Detect: no
 // summary stream at all, detection relies on distinctive directory entries.
 describe("TestDetectFromSectionNames", () => {
-  const tests: { entry: entrySpec; want: CDFType }[] = [
+  const tests: Array<{ entry: entrySpec; want: CDFType }> = [
     { entry: { name: "EncryptedPackage", typ: dirTypeUserStream }, want: CDFTypeGeneric },
     { entry: { name: "EncryptedSummary", typ: dirTypeUserStream }, want: CDFTypeGeneric },
     { entry: { name: "Book", typ: dirTypeUserStream }, want: CDFTypeXls },
@@ -369,9 +369,9 @@ describe("TestDetectFromSectionNames", () => {
 test("TestDetectMasterSATExtension", () => {
   const msatSec = 109; // master SAT extension sector
   const extSATSec = 110; // SAT sector referenced from the extension
-  const dirSec = 13952; // first sector mapped by extSATSec (109*128)
-  const rootSec = 13953;
-  const summarySec = 13954;
+  const dirSec = 13_952; // first sector mapped by extSATSec (109*128)
+  const rootSec = 13_953;
+  const summarySec = 13_954;
   const nSectors = summarySec + 1;
   const summary = summaryStream("Microsoft Excel", false);
 
@@ -381,7 +381,7 @@ test("TestDetectMasterSATExtension", () => {
     return data.subarray(off, off + testSecSize);
   };
 
-  const masterSAT: number[] = [];
+  const masterSAT: Array<number> = [];
   for (let i = 0; i < masterSATSize; i++) {
     masterSAT.push(i); // SAT occupies sectors 0..108
   }
@@ -393,7 +393,7 @@ test("TestDetectMasterSATExtension", () => {
   for (let i = 0; i < masterSATSize; i++) {
     copyInto(sector(i), idSector(testSecSize));
   }
-  const satIDs: number[] = [];
+  const satIDs: Array<number> = [];
   for (let i = 0; i < testSecSize / 4; i++) {
     satIDs.push(-1);
   }
@@ -434,7 +434,7 @@ test("TestDetectShortStreamSummary", () => {
 
   // sector 0: SAT, sector 1: dir, sector 2: short-sector pool, sector 3: SSAT
   const nShort = Math.floor((summary.length + 63) / 64);
-  const ssat: number[] = [];
+  const ssat: Array<number> = [];
   for (let i = 0; i < nShort - 1; i++) {
     ssat.push(i + 1);
   }
@@ -483,7 +483,7 @@ test("TestDetectShortStreamMultiSectorSSAT", () => {
   );
 
   // SAT layout: SAT itself, dir, chained SST sectors, two SSAT sectors.
-  const sat: number[] = [];
+  const sat: Array<number> = [];
   for (let i = 0; i < perSec; i++) {
     sat.push(-1);
   }
@@ -505,7 +505,7 @@ test("TestDetectShortStreamMultiSectorSSAT", () => {
   // Second SSAT sector: chain short-sector 128 → 129 → end, so a correct
   // reader can recover the summary stream from the pool.
   const nShort = Math.floor((summary.length + shortSecSz - 1) / shortSecSz);
-  const ssatB: number[] = [];
+  const ssatB: Array<number> = [];
   for (let i = 0; i < perSec; i++) {
     ssatB.push(-1);
   }
@@ -567,7 +567,7 @@ describe("TestDetectFragmentedDirChain", () => {
 // CDF files use a sector size of either 512 (secP2 9) or 4096 (secP2 12); both
 // are exercised here.
 describe("TestBuildSATTruncatedMSATNoPanic", () => {
-  const tests: { name: string; secP2: number; secSize: number }[] = [
+  const tests: Array<{ name: string; secP2: number; secSize: number }> = [
     { name: "sector 512", secP2: 9, secSize: 512 },
     { name: "sector 4096", secP2: 12, secSize: 4096 },
   ];
@@ -580,9 +580,9 @@ describe("TestBuildSATTruncatedMSATNoPanic", () => {
       data.set(cdfMagic, 0);
       put16(data, 30, tc.secP2);
       put16(data, 32, 6); // shortP2
-      put32(data, 48, 0xffffffff); // firstDirSec = -1
+      put32(data, 48, 0xff_ff_ff_ff); // firstDirSec = -1
       put32(data, 56, 4096); // minStdStream
-      put32(data, 60, 0xffffffff); // firstSSAT = -1
+      put32(data, 60, 0xff_ff_ff_ff); // firstSSAT = -1
       put32(data, 68, 0); // firstMSAT = sector 0
       put32(data, 72, 1); // nMSAT = 1
       // masterSAT[0] points past EOF so the header loop breaks
@@ -590,7 +590,7 @@ describe("TestBuildSATTruncatedMSATNoPanic", () => {
       // extension loop.
       put32(data, 76, 100);
       for (let i = 1; i < masterSATSize; i++) {
-        put32(data, 76 + 4 * i, 0xffffffff);
+        put32(data, 76 + 4 * i, 0xff_ff_ff_ff);
       }
       // data[secSize:secSize+4] = 0 -> msa = [0], a non-negative secid so
       // the loop keeps going and then dereferences msa[1].
@@ -617,13 +617,13 @@ test("TestCyclicChainBounded", () => {
   put16(data, 32, 6); // shortP2
   put32(data, 48, 1); // firstDirSec = sector 1
   put32(data, 56, 4096); // minStdStream
-  put32(data, 60, 0xffffffff); // firstSSAT = -1
-  put32(data, 68, 0xffffffff); // firstMSAT = -1
+  put32(data, 60, 0xff_ff_ff_ff); // firstSSAT = -1
+  put32(data, 68, 0xff_ff_ff_ff); // firstMSAT = -1
   put32(data, 72, 0); // nMSAT = 0
   // masterSAT[0] = sector 0 holds the SAT; the rest are unused (-1).
   put32(data, 76, 0);
   for (let i = 1; i < masterSATSize; i++) {
-    put32(data, 76 + 4 * i, 0xffffffff);
+    put32(data, 76 + 4 * i, 0xff_ff_ff_ff);
   }
   // SAT lives in sector 0 (file offset secSize). Make sat[1] = 1 so the
   // directory chain starting at sector 1 loops forever.
@@ -638,7 +638,7 @@ test("TestCyclicChainBounded", () => {
 // 386-specific: int(sdOff) is negative there, so the bounds check is bypassed
 // and stream[sdOff:] would panic.
 describe("TestSummaryAppNameNoPanic", () => {
-  const tests: { name: string; stream: () => Uint8Array; want: string }[] = [
+  const tests: Array<{ name: string; stream: () => Uint8Array; want: string }> = [
     {
       // A well-formed stream with NameOfApplication = "Word".
       name: "valid app name",
@@ -668,7 +668,7 @@ describe("TestSummaryAppNameNoPanic", () => {
         put32(sec, 0, 16); // shLen
         put32(sec, 4, 1); // nProps
         put32(sec, 8, propIDNameOfApplication);
-        put32(sec, 12, 0xffffffff); // off; off+8 wraps to 7
+        put32(sec, 12, 0xff_ff_ff_ff); // off; off+8 wraps to 7
         return stream;
       },
       want: "",
@@ -686,7 +686,7 @@ describe("TestSummaryAppNameNoPanic", () => {
         put32(sec, 8, propIDNameOfApplication);
         put32(sec, 12, 16); // off -> value at section[16:]
         put32(sec, 16, typeStringWide); // step = 2
-        put32(sec, 20, 0xffffffff); // slen; slen*2 overflows uint32
+        put32(sec, 20, 0xff_ff_ff_ff); // slen; slen*2 overflows uint32
         return stream;
       },
       want: "",
@@ -697,7 +697,7 @@ describe("TestSummaryAppNameNoPanic", () => {
       name: "sdOff negative on 386",
       stream: () => {
         const stream = new Uint8Array(64);
-        put32(stream, sectionDeclOffset + 16, 0x80000000); // sdOff > MaxInt32
+        put32(stream, sectionDeclOffset + 16, 0x80_00_00_00); // sdOff > MaxInt32
         return stream;
       },
       want: "",
@@ -772,7 +772,7 @@ function buildQuadraticCDF(n: number): Uint8Array {
   put32(data, 48, 4); // firstDirSec
   put32(data, 56, 4096); // minStdStream
   put32(data, 60, 6); // firstSSAT
-  put32(data, 68, 0xfffffffe); // firstMSAT: none
+  put32(data, 68, 0xff_ff_ff_fe); // firstMSAT: none
   put32(data, 72, 0); // nMSAT
   for (let i = 0; i < masterSATSize; i++) {
     put32(data, 76 + 4 * i, -1);
@@ -787,7 +787,7 @@ function buildQuadraticCDF(n: number): Uint8Array {
     put32(data, sat + 4 * i, -1);
   }
   put32(data, sat + 4 * 4, 5); // SAT[4] = 5
-  put32(data, sat + 4 * 5, 0xfffffffe); // SAT[5] = ENDOFCHAIN
+  put32(data, sat + 4 * 5, 0xff_ff_ff_fe); // SAT[5] = ENDOFCHAIN
   put32(data, sat + 4 * 6, 6); // SAT[6] = 6 (self-loop)
 
   // Directory entry 0: Root Entry, short-stream pool at sector 6, child = 1.

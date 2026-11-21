@@ -1,6 +1,6 @@
 // Upstream: Go go1.27.2 src/regexp/syntax/simplify_test.go (simplifyTests), converted case for case.
 
-export const simplifyTests: { regexp: string; simple: string }[] = [
+export const simplifyTests: Array<{ regexp: string; simple: string }> = [
   // Already-simple constructs
   { regexp: "a", simple: "a" },
   { regexp: "ab", simple: "ab" },
@@ -18,30 +18,30 @@ export const simplifyTests: { regexp: string; simple: string }[] = [
   // Posix character classes
   { regexp: "[[:alnum:]]", simple: "[0-9A-Za-z]" },
   { regexp: "[[:alpha:]]", simple: "[A-Za-z]" },
-  { regexp: "[[:blank:]]", simple: "[\\t ]" },
-  { regexp: "[[:cntrl:]]", simple: "[\\x00-\\x1f\\x7f]" },
+  { regexp: "[[:blank:]]", simple: String.raw`[\t ]` },
+  { regexp: "[[:cntrl:]]", simple: String.raw`[\x00-\x1f\x7f]` },
   { regexp: "[[:digit:]]", simple: "[0-9]" },
   { regexp: "[[:graph:]]", simple: "[!-~]" },
   { regexp: "[[:lower:]]", simple: "[a-z]" },
   { regexp: "[[:print:]]", simple: "[ -~]" },
   { regexp: "[[:punct:]]", simple: "[!-/:-@\\[-`\\{-~]" },
-  { regexp: "[[:space:]]", simple: "[\\t-\\r ]" },
+  { regexp: "[[:space:]]", simple: String.raw`[\t-\r ]` },
   { regexp: "[[:upper:]]", simple: "[A-Z]" },
   { regexp: "[[:xdigit:]]", simple: "[0-9A-Fa-f]" },
 
   // Perl character classes
-  { regexp: "\\d", simple: "[0-9]" },
-  { regexp: "\\s", simple: "[\\t\\n\\f\\r ]" },
-  { regexp: "\\w", simple: "[0-9A-Z_a-z]" },
-  { regexp: "\\D", simple: "[^0-9]" },
-  { regexp: "\\S", simple: "[^\\t\\n\\f\\r ]" },
-  { regexp: "\\W", simple: "[^0-9A-Z_a-z]" },
-  { regexp: "[\\d]", simple: "[0-9]" },
-  { regexp: "[\\s]", simple: "[\\t\\n\\f\\r ]" },
-  { regexp: "[\\w]", simple: "[0-9A-Z_a-z]" },
-  { regexp: "[\\D]", simple: "[^0-9]" },
-  { regexp: "[\\S]", simple: "[^\\t\\n\\f\\r ]" },
-  { regexp: "[\\W]", simple: "[^0-9A-Z_a-z]" },
+  { regexp: String.raw`\d`, simple: "[0-9]" },
+  { regexp: String.raw`\s`, simple: String.raw`[\t\n\f\r ]` },
+  { regexp: String.raw`\w`, simple: "[0-9A-Z_a-z]" },
+  { regexp: String.raw`\D`, simple: "[^0-9]" },
+  { regexp: String.raw`\S`, simple: String.raw`[^\t\n\f\r ]` },
+  { regexp: String.raw`\W`, simple: "[^0-9A-Z_a-z]" },
+  { regexp: String.raw`[\d]`, simple: "[0-9]" },
+  { regexp: String.raw`[\s]`, simple: String.raw`[\t\n\f\r ]` },
+  { regexp: String.raw`[\w]`, simple: "[0-9A-Z_a-z]" },
+  { regexp: String.raw`[\D]`, simple: "[^0-9]" },
+  { regexp: String.raw`[\S]`, simple: String.raw`[^\t\n\f\r ]` },
+  { regexp: String.raw`[\W]`, simple: "[^0-9A-Z_a-z]" },
 
   // Posix repetitions
   { regexp: "a{1}", simple: "a" },
@@ -86,7 +86,7 @@ export const simplifyTests: { regexp: string; simple: string }[] = [
   { regexp: "[a-zA-Z0-9 -~]", simple: "[ -~]" },
 
   // Empty character classes
-  { regexp: "[^[:cntrl:][:^cntrl:]]", simple: "[^\\x00-\\x{10FFFF}]" },
+  { regexp: "[^[:cntrl:][:^cntrl:]]", simple: String.raw`[^\x00-\x{10FFFF}]` },
 
   // Full character classes
   { regexp: "[[:cntrl:][:^cntrl:]]", simple: "(?s:.)" },
@@ -98,13 +98,13 @@ export const simplifyTests: { regexp: string; simple: string }[] = [
   { regexp: "(?i)[a]", simple: "(?i:A)" },
   { regexp: "(?i)K", simple: "(?i:K)" },
   { regexp: "(?i)k", simple: "(?i:K)" },
-  { regexp: "(?i)\\x{212a}", simple: "(?i:K)" },
+  { regexp: String.raw`(?i)\x{212a}`, simple: "(?i:K)" },
   { regexp: "(?i)[K]", simple: "[Kk\u212A]" },
   { regexp: "(?i)[k]", simple: "[Kk\u212A]" },
-  { regexp: "(?i)[\\x{212a}]", simple: "[Kk\u212A]" },
+  { regexp: String.raw`(?i)[\x{212a}]`, simple: "[Kk\u212A]" },
   { regexp: "(?i)[a-z]", simple: "[A-Za-z\u017F\u212A]" },
-  { regexp: "(?i)[\\x00-\\x{FFFD}]", simple: "[\\x00-\uFFFD]" },
-  { regexp: "(?i)[\\x00-\\x{10FFFF}]", simple: "(?s:.)" },
+  { regexp: String.raw`(?i)[\x00-\x{FFFD}]`, simple: "[\\x00-\uFFFD]" },
+  { regexp: String.raw`(?i)[\x00-\x{10FFFF}]`, simple: "(?s:.)" },
 
   // Empty string as a regular expression.
   // The empty string must be preserved inside parens in order

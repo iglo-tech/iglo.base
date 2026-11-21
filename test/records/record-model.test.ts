@@ -18,7 +18,8 @@ import { SelectField } from "@/fields/select";
 import { TextField } from "@/fields/text";
 import { BoolField } from "@/fields/bool";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
-import { type Record, newRecord } from "@/records/record-model";
+import { newRecord } from "@/records/record-model";
+import type { Record } from "@/records/record-model";
 import { NewFileFromBytes } from "@/tools/filesystem/file";
 import { toString as castToString } from "@/tools/types/cast";
 import { DateTime } from "@/tools/types/datetime";
@@ -31,11 +32,12 @@ import {
   marshal,
   sliceOf,
   stringType,
-  type GoType,
 } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 import { JSONRaw } from "@/tools/types/json-raw";
 
-import { openTestApp, type TestCollectionsApp } from "@test/collections/app";
+import { openTestApp } from "@test/collections/app";
+import type { TestCollectionsApp } from "@test/collections/app";
 import { findAuthRecordByEmail, findRecordById } from "@/records/record-query";
 
 // mockField (core/record_model_test.go): a text field with a custom
@@ -349,7 +351,7 @@ describe("RecordMergeExpandNilCheck", () => {
   const collection = newBaseCollection("test");
   collection.id = "_pbc_123";
 
-  const scenarios: [string, { [key: string]: unknown } | null, string][] = [
+  const scenarios: Array<[string, { [key: string]: unknown } | null, string]> = [
     ["nil expand", null, `{"collectionId":"_pbc_123","collectionName":"test","id":""}`],
     ["empty expand", {}, `{"collectionId":"_pbc_123","collectionName":"test","id":""}`],
     [
@@ -451,7 +453,7 @@ describe("RecordSetGet", () => {
   record.set("unknown", 789n);
 
   test("GetRaw", () => {
-    const expected: [string, unknown][] = [
+    const expected: Array<[string, unknown]> = [
       ["text1", "123"],
       ["text2", 456n],
       ["mock1", "1"],
@@ -466,7 +468,7 @@ describe("RecordSetGet", () => {
   });
 
   test("Get", () => {
-    const expected: [string, unknown][] = [
+    const expected: Array<[string, unknown]> = [
       ["text1", "123"],
       ["text2", 456n],
       ["mock1", "1"],
@@ -495,7 +497,7 @@ test("RecordLoad", () => {
 // runs a typed getter table on a custom ("test") key
 function getterTable<T>(
   name: string,
-  scenarios: [unknown, T][],
+  scenarios: Array<[unknown, T]>,
   getter: (record: Record) => unknown,
   check: (result: unknown, expected: T) => void = (result, expected) =>
     expect(result).toEqual(expected),
@@ -620,7 +622,7 @@ getterTable<number>(
       ["test", zeroTime],
       [["true"], zeroTime],
       [{ test: 1n }, zeroTime],
-      [1641024040n, DateTime.fromDate(testTime)],
+      [1_641_024_040n, DateTime.fromDate(testTime)],
       ["2022-01-01 08:00:40.000", DateTime.fromDate(testTime)],
       [nowTime, DateTime.fromDate(nowTime)],
     ],
@@ -629,7 +631,7 @@ getterTable<number>(
   );
 }
 
-getterTable<string[]>(
+getterTable<Array<string>>(
   "RecordGetStringSlice",
   [
     [null, []],
@@ -651,7 +653,7 @@ getterTable<string[]>(
     ],
   ],
   (r) => r.getStringSlice("test"),
-  (result, expected) => expect((result as string[]).toSorted()).toEqual(expected.toSorted()),
+  (result, expected) => expect((result as Array<string>).toSorted()).toEqual(expected.toSorted()),
 );
 
 getterTable<string>(
@@ -686,7 +688,7 @@ describe("RecordGetUnsavedFiles", () => {
     record.set("files+", [f1, f2]);
   });
 
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", "null"],
     ["title", "null"],
     [
@@ -723,7 +725,7 @@ describe("RecordUnmarshalJSONField", () => {
   const testSlice = sliceOf(intType);
   const testMap = mapOf(anyType);
 
-  const scenarios: [unknown, GoType, boolean, string][] = [
+  const scenarios: Array<[unknown, GoType, boolean, string]> = [
     [null, testPointer, false, `null`],
     [null, testStr, false, `""`],
     ["", testStr, false, `""`],
@@ -771,7 +773,7 @@ describe("RecordFindFileFieldByFile", () => {
   m.set("field2", "test.png");
   m.set("field3", ["test1.png", "test2.png"]);
 
-  const scenarios: [string, string][] = [
+  const scenarios: Array<[string, string]> = [
     ["", ""],
     ["test", ""],
     ["test2", ""],
@@ -787,7 +789,7 @@ describe("RecordFindFileFieldByFile", () => {
   }
 });
 
-function dbExportFields(): Field[] {
+function dbExportFields(): Array<Field> {
   return [
     new TextField({ name: "field1" }),
     new FileField({ name: "field2", maxSelect: 1, maxSize: 1 }),
@@ -845,7 +847,11 @@ describe("RecordDBExport", () => {
 });
 
 describe("RecordIgnoreUnchangedFields", () => {
-  let scenarios: { ignoreUnchangedFields: boolean; record: Record; expected: string[] }[] = [];
+  let scenarios: Array<{
+    ignoreUnchangedFields: boolean;
+    record: Record;
+    expected: Array<string>;
+  }> = [];
 
   beforeAll(() => {
     const col = findCollectionByNameOrId(app, "demo3");
@@ -888,7 +894,7 @@ describe("RecordIgnoreUnchangedFields", () => {
   }
 });
 
-function publicExportFields(): Field[] {
+function publicExportFields(): Array<Field> {
   return [
     new TextField({ name: "field1" }),
     new FileField({ name: "field2", maxSelect: 1, maxSize: 1 }),
@@ -908,15 +914,15 @@ describe("RecordPublicExportAndMarshalJSON", () => {
   colAuth.id = "_pbc_auth_123";
   colAuth.fields.add(...publicExportFields());
 
-  const scenarios: {
+  const scenarios: Array<{
     name: string;
     collection: typeof colBase;
     ignoreEmailVisibility: boolean;
     withCustomData: boolean;
-    hideFields: string[];
-    unhideFields: string[];
+    hideFields: Array<string>;
+    unhideFields: Array<string>;
     expectedJSON: string;
-  }[] = [
+  }> = [
     // base
     {
       name: "[base] no extra flags",
@@ -1089,7 +1095,7 @@ test("RecordReplaceModifiers", () => {
   const collection = newBaseCollection("test");
   collection.fields.add(new MockField({ name: "mock" }), new NumberField({ name: "number" }));
 
-  const originalData: [string, unknown][] = [
+  const originalData: Array<[string, unknown]> = [
     ["mock", "a"],
     ["number", 2.1],
   ];

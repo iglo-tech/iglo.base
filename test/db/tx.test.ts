@@ -6,7 +6,8 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { dataDBFilename, type Databases } from "@/db/base";
+import { dataDBFilename } from "@/db/base";
+import type { Databases } from "@/db/base";
 import { Errors } from "@/db/dbx/db";
 import { auxSaveNoValidate, deleteModel, modelQuery, saveNoValidate } from "@/db/db";
 import { auxRunInTransaction, runInTransaction } from "@/db/tx";
@@ -21,7 +22,7 @@ function insertDemo(app: Databases, id: string): Demo {
   return m;
 }
 
-function demoIds(app: Databases): string[] {
+function demoIds(app: Databases): Array<string> {
   return app.concurrentDB().newQuery("SELECT id FROM demo ORDER BY id").column<string>();
 }
 
@@ -152,7 +153,7 @@ describe("transactions", () => {
 
   test("OnComplete callbacks run after the commit with a null error", () => {
     const { app } = openTempDatabases();
-    const calls: unknown[] = [];
+    const calls: Array<unknown> = [];
     runInTransaction(app, (txApp) => {
       txApp.txInfo()!.onComplete((txErr) => {
         calls.push(txErr);
@@ -183,8 +184,8 @@ describe("transactions", () => {
         });
         throw new Error("tx");
       });
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
     expect(err).toBeInstanceOf(Errors);
     expect((err as Errors).message).toBe("tx\ntransaction afterFunc errors: after");

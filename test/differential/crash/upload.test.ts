@@ -19,14 +19,14 @@ import {
   verifyAfterKill,
   waitFor,
   walk,
-  type Kind,
-  type Target,
 } from "@test/differential/crash/harness";
+import type { Kind, Target } from "@test/differential/crash/harness";
 import { superuserToken } from "@test/scenarios/cron";
-import { startVersitygw, type Versitygw } from "@test/support/versitygw";
+import { startVersitygw } from "@test/support/versitygw";
+import type { Versitygw } from "@test/support/versitygw";
 
 const timeout = 120_000;
-const roots: string[] = [];
+const roots: Array<string> = [];
 let gw: Versitygw;
 
 beforeAll(async () => {
@@ -47,7 +47,7 @@ const boundary = "----crashtestboundary";
 function uploadRequest(): { head: string; body: Buffer } {
   const file = Buffer.alloc(bodySize);
   for (let i = 0; i < file.length; i += 4) {
-    file.writeUInt32LE((i * 2654435761) >>> 0, i);
+    file.writeUInt32LE((i * 2_654_435_761) >>> 0, i);
   }
   const body = Buffer.concat([
     Buffer.from(
@@ -95,10 +95,10 @@ function startUpload(url: string, bytes: number): Upload {
       void (async () => {
         const all = Buffer.concat([Buffer.from(head), body]);
         const limit = Math.min(all.length, head.length + bytes);
-        for (let at = 0; at < limit; at += 65536) {
-          await new Promise<void>((done) =>
-            socket.write(all.subarray(at, Math.min(at + 65536, limit)), () => done()),
-          );
+        for (let at = 0; at < limit; at += 65_536) {
+          await new Promise<void>((done) => {
+            socket.write(all.subarray(at, Math.min(at + 65_536, limit)), () => done());
+          });
         }
         resolve();
       })();
@@ -111,7 +111,7 @@ function startUpload(url: string, bytes: number): Upload {
 type Storage = "local" | "s3";
 type Point = "partial-body" | "stored" | "answered";
 
-const points: Point[] = ["partial-body", "stored", "answered"];
+const points: Array<Point> = ["partial-body", "stored", "answered"];
 
 // Runs the upload against a server of kind and kills it at the point.
 async function crashedUpload(kind: Kind, storage: Storage, point: Point): Promise<string> {
@@ -124,7 +124,7 @@ async function crashedUpload(kind: Kind, storage: Storage, point: Point): Promis
   const collection = (await (await api(server, "GET", `/api/collections/${demo1}`)).json()) as {
     id: string;
   };
-  const objects = (): string[] =>
+  const objects = (): Array<string> =>
     storage === "s3"
       ? walk(join(gw.posixRoot, gw.bucket)).filter((p) => /big/.test(p))
       : walk(join(dataDir, "storage", collection.id)).filter((p) => /big/.test(p));

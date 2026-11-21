@@ -25,7 +25,8 @@ const errDuplicateParamName = new MediaTypeError("mime: duplicate parameter name
 
 // checkMediaTypeDisposition
 function checkMediaTypeDisposition(s: string): MediaTypeError | null {
-  let [typ, rest] = consumeToken(s);
+  const [typ, restAfterType] = consumeToken(s);
+  let rest = restAfterType;
   if (typ === "") {
     return errNoMediaType;
   }
@@ -294,7 +295,7 @@ function percentHexUnescape(s: string): string | null {
   let t = "";
   for (let i = 0; i < s.length;) {
     if (s[i] === "%") {
-      t += String.fromCharCode(parseInt(s.slice(i + 1, i + 3), 16));
+      t += String.fromCharCode(Number.parseInt(s.slice(i + 1, i + 3), 16));
       i += 3;
     } else {
       t += s[i];
@@ -308,7 +309,7 @@ function ishex(c: number): boolean {
   return (0x30 <= c && c <= 0x39) || (0x61 <= c && c <= 0x66) || (0x41 <= c && c <= 0x46);
 }
 
-const tspecials = '()<>@,;:\\"/[]?=';
+const tspecials = String.raw`()<>@,;:\"/[]?=`;
 
 // isTSpecial reports whether c is in 'tspecials' as defined by RFC
 // 1521 and RFC 2045.
@@ -331,9 +332,9 @@ function toLower(s: string): string {
     const c = ch.codePointAt(0) as number;
     if (c >= 0x41 && c <= 0x5a) {
       out += String.fromCharCode(c + 0x20);
-    } else if (c === 0x130) {
+    } else if (c === 0x1_30) {
       out += "i";
-    } else if (c === 0x212a) {
+    } else if (c === 0x21_2a) {
       out += "k";
     } else {
       out += ch;

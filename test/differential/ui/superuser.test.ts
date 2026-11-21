@@ -18,7 +18,7 @@ import { defaultLayout, requireTool } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 
-const sequence: string[][] = [
+const sequence: Array<Array<string>> = [
   [],
   ["--help"],
   ["bogus"],
@@ -57,9 +57,9 @@ const removedFlagLine = /^ {6}--(hooksDir|hooksPool|hooksWatch)(\[=true\|false\]
 
 function normalize(text: string, bin: string): string {
   return text
-    .replace(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
-    .replace(removedFlagLine, "")
-    .replace(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
+    .replaceAll(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} /gm, "TIME ")
+    .replaceAll(removedFlagLine, "")
+    .replaceAll(/(--(dir|publicDir) string +.*\(default )".*"\)/g, '$1"DEFAULT")')
     .replaceAll(`${bin} superuser`, "BIN superuser");
 }
 
@@ -67,7 +67,7 @@ async function runAll(
   binary: string,
   bin: string,
   dataDir: string,
-): Promise<{ args: string[]; exitCode: number; stdout: string; stderr: string }[]> {
+): Promise<Array<{ args: Array<string>; exitCode: number; stdout: string; stderr: string }>> {
   const results = [];
   for (const args of sequence) {
     const proc = Bun.spawn([binary, "--dir", dataDir, "superuser", ...args], {
@@ -123,7 +123,7 @@ async function state(dataDir: string): Promise<unknown> {
     });
     return {
       logins,
-      superusers: ((await list.json()) as { items: unknown[] }).items,
+      superusers: ((await list.json()) as { items: Array<unknown> }).items,
       superuserIPs: ((await settings.json()) as { superuserIPs: unknown }).superuserIPs,
     };
   } finally {

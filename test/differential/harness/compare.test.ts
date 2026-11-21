@@ -2,12 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 
-import {
-  compareResponses,
-  Pairing,
-  tokenExpSlack,
-  type Context,
-} from "@test/differential/harness/compare";
+import { compareResponses, Pairing, tokenExpSlack } from "@test/differential/harness/compare";
+import type { Context } from "@test/differential/harness/compare";
 import type { ScenarioResponse } from "@test/scenarios/request";
 
 const fixtureId = "wsmn24bux7wo113";
@@ -21,7 +17,7 @@ const authClaims = (over: Record<string, unknown> = {}) => ({
   type: "auth",
   collectionId: "ccccccccccccccc",
   refreshable: true,
-  exp: 2000000000,
+  exp: 2_000_000_000,
   ...over,
 });
 
@@ -37,7 +33,7 @@ function diff(
   upstream: ScenarioResponse,
   igloBase: ScenarioResponse,
   request: Context["request"] = { url: "/api/collections/demo2/records" },
-): string[] {
+): Array<string> {
   return compareResponses(upstream, igloBase, {
     start: { contains: (text) => [fixtureId, "achvryl401bhse3", fixtureTime].includes(text) },
     request,
@@ -50,7 +46,7 @@ const writeContext = (url = "/api/batch"): Context => ({
 });
 const updatedBody = (updated: string) => res(`{"id":"sdkbatchfile001","updated":"${updated}"}`);
 // a batch response with the create and the update of one record
-const batchBody = (...updated: string[]) =>
+const batchBody = (...updated: Array<string>) =>
   res(
     JSON.stringify(
       updated.map((value) => ({ status: 200, body: { id: "sdkbatchfile001", updated: value } })),
@@ -95,11 +91,11 @@ describe("bodies", () => {
     expect(diff(res('{"n":"1"}'), res('{"n":1}'))).toEqual([
       'body n: different kinds: upstream "1", iglo.base 1',
     ]);
-    expect(diff(res('{"s":"\\u0041"}'), res('{"s":"A"}'))).toEqual([
-      'body: same JSON, different bytes at character 6: upstream "{\\"s\\":\\"\\\\u0041\\"}", iglo.base "{\\"s\\":\\"A\\"}"',
+    expect(diff(res(String.raw`{"s":"\u0041"}`), res('{"s":"A"}'))).toEqual([
+      String.raw`body: same JSON, different bytes at character 6: upstream "{\"s\":\"\\u0041\"}", iglo.base "{\"s\":\"A\"}"`,
     ]);
     expect(diff(res('{"a":1}'), res('{ "a":1}'))).toEqual([
-      'body: same JSON, different bytes at character 1: upstream "{\\"a\\":1}", iglo.base "{ \\"a\\":1}"',
+      String.raw`body: same JSON, different bytes at character 1: upstream "{\"a\":1}", iglo.base "{ \"a\":1}"`,
     ]);
   });
 
@@ -112,7 +108,7 @@ describe("bodies", () => {
         res('{"items":[{"json":[1, 2, 3]}],"page":1}'),
       ),
     ).toEqual([
-      'body: same JSON, different bytes at character 21: upstream "\\"items\\":[{\\"json\\":[1,2,3]}],\\"page\\":1}", iglo.base "\\"items\\":[{\\"json\\":[1, 2, 3]}],\\"page\\":1}"',
+      String.raw`body: same JSON, different bytes at character 21: upstream "\"items\":[{\"json\":[1,2,3]}],\"page\":1}", iglo.base "\"items\":[{\"json\":[1, 2, 3]}],\"page\":1}"`,
     ]);
     expect(diff(res('{"json":{"b":1,"a":2}}'), res('{"json":{"a":2,"b":1}}'))).toEqual([
       'body json: members [b, a] vs [a, b]: upstream {"b":1,"a":2}, iglo.base {"a":2,"b":1}',
@@ -193,7 +189,7 @@ describe("generated values", () => {
   // seconds), iglo.base's may not be, or the other way round
   describe("tokens are decoded and their claims compared", () => {
     const start = { contains: (v: string) => ["ccccccccccccccc", "fixture0000000x"].includes(v) };
-    const checkWith = (pairing: Pairing, up: string, ig: string): string[] =>
+    const checkWith = (pairing: Pairing, up: string, ig: string): Array<string> =>
       compareResponses(
         res(`{"token":"${up}"}`),
         res(`{"token":"${ig}"}`),
@@ -205,14 +201,14 @@ describe("generated values", () => {
     test("the same claims pass whatever the signature and a whole-second exp variation", () => {
       const pairing = new Pairing();
       const up = jwt(authClaims(user("a")));
-      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2000000001 })))).toEqual(
+      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2_000_000_001 })))).toEqual(
         [],
       );
       // the same-second sign-in: upstream's equal tokens against two of ours
-      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2000000002 })))).toEqual(
+      expect(checkWith(pairing, up, jwt(authClaims({ ...user("b"), exp: 2_000_000_002 })))).toEqual(
         [],
       );
-      expect(check(jwt(authClaims({ exp: 2000000003 })), jwt(authClaims()))).toEqual([]);
+      expect(check(jwt(authClaims({ exp: 2_000_000_003 })), jwt(authClaims()))).toEqual([]);
     });
 
     test("a different type, collectionId, refreshable, header or id is a difference", () => {
@@ -227,15 +223,19 @@ describe("generated values", () => {
 
     test("an exp beyond the bound is a difference", () => {
       const up = jwt(authClaims());
-      expect(check(up, jwt(authClaims({ exp: 2000000000 + tokenExpSlack + 1 })))).not.toEqual([]);
-      expect(check(up, jwt(authClaims({ exp: 2000000000 - tokenExpSlack - 1 })))).not.toEqual([]);
+      expect(check(up, jwt(authClaims({ exp: 2_000_000_000 + tokenExpSlack + 1 })))).not.toEqual(
+        [],
+      );
+      expect(check(up, jwt(authClaims({ exp: 2_000_000_000 - tokenExpSlack - 1 })))).not.toEqual(
+        [],
+      );
       expect(check(up, jwt(authClaims({ exp: "2000000000" })))).not.toEqual([]);
     });
 
     test("exp follows the clock offset of legs that run one after the other", () => {
       const offset = new Pairing({ clockOffset: 13 });
       const up = jwt(authClaims());
-      expect(checkWith(offset, up, jwt(authClaims({ exp: 2000000013 })))).toEqual([]);
+      expect(checkWith(offset, up, jwt(authClaims({ exp: 2_000_000_013 })))).toEqual([]);
       expect(checkWith(new Pairing({ clockOffset: 13 }), up, jwt(authClaims()))).not.toEqual([]);
     });
 
@@ -587,7 +587,7 @@ describe("council round 2", () => {
     expect(
       diff(res('{"id":"aaaaaaaaaaaaaaa"}', plain), res('{"id":"bbbbbbbbbbbbbbb"}', plain), { url }),
     ).toEqual([
-      'body: upstream "{\\"id\\":\\"aaaaaaaaaaaaaaa\\"}", iglo.base "{\\"id\\":\\"bbbbbbbbbbbbbbb\\"}"',
+      String.raw`body: upstream "{\"id\":\"aaaaaaaaaaaaaaa\"}", iglo.base "{\"id\":\"bbbbbbbbbbbbbbb\"}"`,
     ]);
     expect(
       diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), { url }),
@@ -595,7 +595,7 @@ describe("council round 2", () => {
   });
 
   test("a value sent with JSON string escapes compares exactly", () => {
-    const body = '{"id":"\\u0061aaaaaaaaaaaaaa","title":"review"}';
+    const body = String.raw`{"id":"\u0061aaaaaaaaaaaaaa","title":"review"}`;
     expect(
       diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), {
         url: "/api/collections/demo2/records",
@@ -618,7 +618,7 @@ describe("council round 3", () => {
     expect(
       diff(
         res(`{"token":"${jwt(authClaims({ type: "file" }))}"}`),
-        res(`{"token":"${jwt(authClaims({ type: "file", exp: 2000000001 }))}"}`),
+        res(`{"token":"${jwt(authClaims({ type: "file", exp: 2_000_000_001 }))}"}`),
         { url: "/api/files/token" },
       ),
     ).toEqual([]);
@@ -641,7 +641,7 @@ describe("council round 3", () => {
       "--b0",
       'Content-Disposition: form-data; name="@jsonPayload"',
       "",
-      '{"id":"\\u0061aaaaaaaaaaaaaa"}',
+      String.raw`{"id":"\u0061aaaaaaaaaaaaaa"}`,
       "--b0--",
       "",
     ].join("\r\n");

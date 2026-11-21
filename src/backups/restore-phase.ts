@@ -51,7 +51,7 @@ import { moveDirContent } from "@/tools/osutils/dir";
 
 export type RestorePhase = "moving-old" | "moving-new" | "swapped" | "reverted";
 
-const phases: readonly string[] = ["moving-old", "moving-new", "swapped", "reverted"];
+const phases: ReadonlySet<string> = new Set(["moving-old", "moving-new", "swapped", "reverted"]);
 
 // default root dir entries to exclude from the backup restore
 export const restoreExclude = [
@@ -126,19 +126,19 @@ export function setRestorePhase(
 interface PhaseRecord {
   // undefined: no marker, or one this code does not know
   phase: RestorePhase | undefined;
-  unknown: string[];
+  unknown: Array<string>;
 }
 
 function readPhase(tempDir: string): PhaseRecord {
-  const found: RestorePhase[] = [];
-  const unknown: string[] = [];
+  const found: Array<RestorePhase> = [];
+  const unknown: Array<string> = [];
   for (const name of readdirSync(tempDir)) {
     if (name === restorePhaseFile) {
       // a plain file: not what this code writes
       unknown.push(name);
     } else if (name.startsWith(restorePhaseFile + ".")) {
       const value = name.slice(restorePhaseFile.length + 1);
-      if (phases.includes(value)) {
+      if (phases.has(value)) {
         found.push(value as RestorePhase);
       } else {
         unknown.push(name);
@@ -166,7 +166,7 @@ function nonEmpty(dir: string): boolean {
   }
 }
 
-function oldDirs(tempDir: string): string[] {
+function oldDirs(tempDir: string): Array<string> {
   return readdirSync(tempDir)
     .filter((n) => n.startsWith(oldDirPrefix))
     .map((n) => join(tempDir, n));
@@ -233,13 +233,13 @@ export function recoverInterruptedRestore(dataDir: string): void {
 
   try {
     rollbackRestore(dataDir, tempDir);
-  } catch (err) {
+  } catch (error) {
     // a pb_data that is neither the old nor the new one must not be opened
     throw new Error(
       `failed to roll back the interrupted restore (the old data is in ${
         holding.length > 0 ? holding.join(", ") : tempDir
-      } and in ${dataDir}): ` + (err instanceof Error ? err.message : String(err)),
-      { cause: err },
+      } and in ${dataDir}): ` + (error instanceof Error ? error.message : String(error)),
+      { cause: error },
     );
   }
 }

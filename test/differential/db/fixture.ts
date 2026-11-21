@@ -50,7 +50,7 @@ export interface UpstreamRun {
 }
 
 // runs the reference binary with the given arguments in cwd
-export async function runUpstream(args: string[], cwd: string): Promise<UpstreamRun> {
+export async function runUpstream(args: Array<string>, cwd: string): Promise<UpstreamRun> {
   const proc = Bun.spawn([requireTool("pocketbase"), ...args], {
     cwd,
     stdout: "pipe",
@@ -92,13 +92,16 @@ export async function serveUpstream(copy: FixtureCopy): Promise<UpstreamServer> 
 
 // runs a query through upstream's superuser SQL API (apis/sql.go) and
 // returns its rows (values as text)
-export async function upstreamSQL(server: UpstreamServer, query: string): Promise<unknown[][]> {
+export async function upstreamSQL(
+  server: UpstreamServer,
+  query: string,
+): Promise<Array<Array<unknown>>> {
   const res = await fetch(`${server.url}/api/sql`, {
     method: "POST",
     headers: { Authorization: superuserToken, "Content-Type": "application/json" },
     body: JSON.stringify({ query }),
   });
-  const body = (await res.json()) as { rows?: unknown[][] };
+  const body = (await res.json()) as { rows?: Array<Array<unknown>> };
   if (res.status !== 200 || !body.rows) {
     throw new Error(`POST /api/sql ${query}: ${res.status} ${JSON.stringify(body)}`);
   }

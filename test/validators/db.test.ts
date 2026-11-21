@@ -26,7 +26,7 @@ describe("TestUniqueId", () => {
     app?.close();
   });
 
-  const scenarios: [id: string, tableName: string, expectError: boolean][] = [
+  const scenarios: Array<[id: string, tableName: string, expectError: boolean]> = [
     ["", "", false],
     ["test", "", true],
     ["wsmn24bux7wo113", "_collections", true],
@@ -43,13 +43,15 @@ describe("TestUniqueId", () => {
 });
 
 describe("TestNormalizeUniqueIndexError", () => {
-  const scenarios: [
-    name: string,
-    err: Error | null,
-    table: string,
-    names: string[],
-    expectedKeys: string[] | null,
-  ][] = [
+  const scenarios: Array<
+    [
+      name: string,
+      err: Error | null,
+      table: string,
+      names: Array<string>,
+      expectedKeys: Array<string> | null,
+    ]
+  > = [
     ["nil error (no changes)", null, "test", ["a", "b"], null],
     ["non-unique index error (no changes)", new Error("abc"), "test", ["a", "b"], null],
     [

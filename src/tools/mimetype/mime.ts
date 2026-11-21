@@ -16,19 +16,19 @@ import { parseMediaType } from "@/tools/mimetype/mediatype";
 // of the MIME type, the extension and the parent file format.
 export class MIME {
   mime: string;
-  aliases: readonly string[] = [];
+  aliases: ReadonlyArray<string> = [];
   ext: string;
   // detector receives the raw input and a limit for the number of bytes it is
   // allowed to check. It returns whether the input matches a signature or not.
   detector: Detector | null;
-  children: readonly MIME[];
+  children: ReadonlyArray<MIME>;
   parentNode: MIME | null = null;
 
   constructor(
     mime: string,
     extension: string,
     detector: Detector | null,
-    children: readonly MIME[] = [],
+    children: ReadonlyArray<MIME> = [],
   ) {
     this.mime = mime;
     this.ext = extension;
@@ -94,7 +94,7 @@ export class MIME {
     return false;
   }
 
-  alias(...aliases: string[]): MIME {
+  alias(...aliases: Array<string>): MIME {
     this.aliases = aliases;
     return this;
   }
@@ -123,8 +123,8 @@ export class MIME {
   }
 
   // flatten transforms an hierarchy of MIMEs into a slice of MIMEs.
-  flatten(): MIME[] {
-    const out: MIME[] = [this];
+  flatten(): Array<MIME> {
+    const out: Array<MIME> = [this];
     for (const c of this.children) {
       out.push(...c.flatten());
     }
@@ -136,7 +136,7 @@ export class MIME {
   // For example, application/json would return json>txt>root.
   hierarchy(): string {
     let h = "";
-    const chain: MIME[] = [this];
+    const chain: Array<MIME> = [this];
     for (let p = this.parent(); p !== null; p = p.parent()) {
       chain.push(p);
     }
@@ -208,7 +208,7 @@ export function newMIME(
   mime: string,
   extension: string,
   detector: Detector,
-  ...children: MIME[]
+  ...children: Array<MIME>
 ): MIME {
   const m = new MIME(mime, extension, detector, children);
 

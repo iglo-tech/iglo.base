@@ -1,6 +1,6 @@
 // Upstream: Go go1.27.2 src/regexp/syntax/prog_test.go (compileTests), converted case for case.
 
-export const compileTests: { regexp: string; prog: string }[] = [
+export const compileTests: Array<{ regexp: string; prog: string }> = [
   {
     regexp: "a",
     prog: ["  0\tfail", '  1*\trune1 "a" -> 2', "  2\tmatch", ""].join("\n"),

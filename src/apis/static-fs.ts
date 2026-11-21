@@ -30,13 +30,10 @@ import { open } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { StaticFS as EmbeddedFS } from "@/apis/ui-pack";
-import {
-  type HttpRange,
-  maxBufferedRangesSize,
-  type ServedFile,
-  typeByExtension,
-} from "@/server/serve-content";
+import { maxBufferedRangesSize, typeByExtension } from "@/server/serve-content";
+import type { HttpRange, ServedFile } from "@/server/serve-content";
 import { detectContentType } from "@/server/sniff";
+import { isInstance } from "@/tools/types/is-instance";
 
 // core.LocalTempDirName
 const localTempDirName = ".pb_temp_to_delete";
@@ -194,7 +191,7 @@ function diskFile(path: string, size: number, tempRoot: string): ServedFile {
 async function spool(
   path: string,
   tempRoot: string,
-  parts: (Uint8Array | HttpRange)[],
+  parts: Array<Uint8Array | HttpRange>,
 ): Promise<{ blob: Blob; remove: () => void }> {
   const tempDir = join(tempRoot, localTempDirName);
   mkdirSync(tempDir, { recursive: true });
@@ -207,7 +204,7 @@ async function spool(
     try {
       const buf = new Uint8Array(spoolChunk);
       for (const part of parts) {
-        if (part instanceof Uint8Array) {
+        if (isInstance(Uint8Array, part)) {
           await dst.write(part);
           continue;
         }
@@ -224,10 +221,10 @@ async function spool(
     } finally {
       await src.close();
     }
-  } catch (err) {
+  } catch (error) {
     await dst.close();
     remove();
-    throw err;
+    throw error;
   }
   await dst.close();
   return { blob: Bun.file(out), remove };

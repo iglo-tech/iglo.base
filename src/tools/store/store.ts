@@ -8,7 +8,8 @@
 // which matches Go's == for the comparable key types used (strings and
 // numbers). Get returns undefined where Go returns T's zero value.
 
-import { type GoType, anyType, marshal, unmarshalMapInto } from "@/tools/types/go-json";
+import { anyType, marshal, unmarshalMapInto } from "@/tools/types/go-json";
+import type { GoType } from "@/tools/types/go-json";
 
 // The number of removals after which the map is copied, so the old one can
 // be garbage collected (Go maps never shrink; kept to mirror upstream).
@@ -74,12 +75,12 @@ export class Store<K, T> {
   }
 
   // Keys returns all of the store keys.
-  keys(): K[] {
+  keys(): Array<K> {
     return [...this.data.keys()];
   }
 
   // Values returns all of the store values.
-  values(): T[] {
+  values(): Array<T> {
     return [...this.data.values()];
   }
 

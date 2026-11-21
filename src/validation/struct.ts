@@ -12,14 +12,16 @@
 // here.
 
 import { Errors, InternalError } from "@/validation/error";
-import { Validate, type Rule } from "@/validation/validation";
+import { Validate } from "@/validation/validation";
+import type { Rule } from "@/validation/validation";
+import { isInstance } from "@/tools/types/is-instance";
 
 // FieldRules represents a rule set associated with a struct field.
 export class FieldRules {
   constructor(
     readonly name: string,
     readonly value: unknown,
-    readonly rules: readonly Rule[],
+    readonly rules: ReadonlyArray<Rule>,
     readonly anonymous = false,
   ) {}
 }
@@ -35,7 +37,7 @@ export class FieldRules {
 //	// value: the length must be between 5 and 10.
 //
 // An error will be returned if validation fails.
-export function ValidateStruct(...fields: FieldRules[]): Error | null {
+export function ValidateStruct(...fields: Array<FieldRules>): Error | null {
   const errs = new Errors();
 
   for (const fr of fields) {
@@ -44,7 +46,7 @@ export function ValidateStruct(...fields: FieldRules[]): Error | null {
       if (err instanceof InternalError) {
         return err;
       }
-      if (fr.anonymous && err instanceof Errors) {
+      if (fr.anonymous && isInstance(Errors, err)) {
         // merge errors from anonymous struct field
         for (const [name, value] of Object.entries(err.errors)) {
           errs.errors[name] = value;
@@ -63,12 +65,12 @@ export function ValidateStruct(...fields: FieldRules[]): Error | null {
 
 // Field specifies a struct field (its error name and value) and the
 // corresponding validation rules.
-export function Field(name: string, value: unknown, ...rules: Rule[]): FieldRules {
+export function Field(name: string, value: unknown, ...rules: Array<Rule>): FieldRules {
   return new FieldRules(name, value, rules);
 }
 
 // Embedded specifies an embedded (anonymous) struct field: its Errors are
 // merged into the struct's; any other error is reported under name.
-export function Embedded(name: string, value: unknown, ...rules: Rule[]): FieldRules {
+export function Embedded(name: string, value: unknown, ...rules: Array<Rule>): FieldRules {
   return new FieldRules(name, value, rules, true);
 }

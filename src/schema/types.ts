@@ -15,7 +15,7 @@ export const collectionTypes = ["base", "auth", "view"] as const;
 export type CollectionType = (typeof collectionTypes)[number];
 
 // a JSON value, with plain objects only
-export type SchemaValue = null | boolean | number | string | SchemaValue[] | SchemaObject;
+export type SchemaValue = null | boolean | number | string | Array<SchemaValue> | SchemaObject;
 
 export interface SchemaObject {
   [key: string]: SchemaValue;
@@ -46,9 +46,9 @@ export interface SchemaCollection {
   rules: Record<string, string | null>;
   // the SELECT query of a view collection
   query?: string;
-  indexes: string[];
+  indexes: Array<string>;
   // a view's fields come from its query, so a view has none here
-  fields: SchemaField[];
+  fields: Array<SchemaField>;
   // the auth options of an auth collection (passwordAuth, oauth2, ...); none
   // for the other types
   options: SchemaObject;
@@ -56,12 +56,12 @@ export interface SchemaCollection {
   // stay). In a file's description the secrets are environment references;
   // in the apply they are the values read from the environment, and in the
   // database description the stored values (src/schema/providers.ts)
-  providers?: SchemaObject[];
+  providers?: Array<SchemaObject>;
 }
 
 export interface SchemaDescription {
   // sorted by name
-  collections: SchemaCollection[];
+  collections: Array<SchemaCollection>;
 }
 
 // The extra keys of a schema file, read back by the writer so a pull keeps

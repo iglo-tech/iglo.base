@@ -55,7 +55,7 @@ test("Fields holds upstream's field types", () => {
 
 // SetterFinder, GetterFinder, DriverValuer, MultiValuer,
 // MaxBodySizeCalculator, RecordInterceptor
-const implemented = (f: Parameters<typeof isSetterFinder>[0]): boolean[] => [
+const implemented = (f: Parameters<typeof isSetterFinder>[0]): Array<boolean> => [
   isSetterFinder(f),
   isGetterFinder(f),
   isDriverValuer(f),
@@ -74,7 +74,7 @@ test("the optional interfaces upstream's fields implement", () => {
 });
 
 describe("goQuote (strconv.Quote)", () => {
-  const cases: [string, string][] = [
+  const cases: Array<[string, string]> = [
     ["", `""`],
     ["abc", `"abc"`],
     [`a"b\\c`, `"a\\"b\\\\c"`],
