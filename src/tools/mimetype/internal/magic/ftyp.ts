@@ -118,8 +118,8 @@ export function Dvb(raw: Uint8Array, _limit: number): boolean {
 
 const ftypQt = lit("ftypqt  ");
 const ftypMoov = lit("ftypmoov");
-const basicAtomTypes = sigs("moov\x00", "mdat\x00", "free\x00", "skip\x00", "pnot\x00");
-const wide = lit("\x00\x00\x00\x08wide");
+const basicAtomTypes = sigs("moov\u0000", "mdat\u0000", "free\u0000", "skip\u0000", "pnot\u0000");
+const wide = lit("\u0000\u0000\u0000\u0008wide");
 
 // QuickTime matches a QuickTime File Format file.
 // https://www.loc.gov/preservation/digital/formats/fdd/fdd000052.shtml

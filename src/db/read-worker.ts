@@ -80,8 +80,8 @@ self.addEventListener("message", (event: MessageEvent<ReadRequestMessage | "clos
     // the column names once and an array per row (rowsFromValues on the other side)
     const value = req.mode === "all" ? allTable(rows) : readRows(rows, req.mode);
     res = { id: req.id, ok: true, value };
-  } catch (err) {
-    res = { id: req.id, ok: false, error: serializeError(err) };
+  } catch (error) {
+    res = { id: req.id, ok: false, error: serializeError(error) };
   }
   postMessage(res);
 });

@@ -242,7 +242,7 @@ test("NewFileFromMultipart drops the directory parts as filepath.Base", async ()
     ["c.txt/", "c.txt"],
     ["/", "/"],
     ["//", "/"],
-    ["a\\b.txt", "a\\b.txt"], // not a separator on Unix
+    [String.raw`a\b.txt`, String.raw`a\b.txt`], // not a separator on Unix
     ["", ""],
   ];
   for (const [name, original] of cases) {

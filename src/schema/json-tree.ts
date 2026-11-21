@@ -175,7 +175,7 @@ class Parser {
         case "u": {
           const hex = this.text.slice(this.pos, this.pos + 4);
           if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
-            throw this.error("invalid \\u escape", this.pos - 2);
+            throw this.error(String.raw`invalid \u escape`, this.pos - 2);
           }
           out += String.fromCharCode(Number.parseInt(hex, 16));
           this.pos += 4;

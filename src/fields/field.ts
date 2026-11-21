@@ -462,7 +462,7 @@ export function goQuote(s: string): string {
     if (r >= 0xd8_00 && r <= 0xdf_ff) {
       // an invalid byte (U+DC80+n stands for the byte 0x80+n)
       if (r >= 0xdc_80 && r <= 0xdc_ff) {
-        out += "\\x" + (r - 0xdc_00).toString(16);
+        out += String.raw`\x` + (r - 0xdc_00).toString(16);
       } else {
         out += "\ufffd";
       }
@@ -470,10 +470,10 @@ export function goQuote(s: string): string {
     }
     switch (ch) {
       case '"':
-        out += '\\"';
+        out += String.raw`\"`;
         continue;
       case "\\":
-        out += "\\\\";
+        out += String.raw`\\`;
         continue;
     }
     if (IsPrint(r)) {
@@ -481,34 +481,34 @@ export function goQuote(s: string): string {
       continue;
     }
     switch (ch) {
-      case "\x07":
-        out += "\\a";
+      case "\u0007":
+        out += String.raw`\a`;
         break;
       case "\b":
-        out += "\\b";
+        out += String.raw`\b`;
         break;
       case "\f":
-        out += "\\f";
+        out += String.raw`\f`;
         break;
       case "\n":
-        out += "\\n";
+        out += String.raw`\n`;
         break;
       case "\r":
-        out += "\\r";
+        out += String.raw`\r`;
         break;
       case "\t":
-        out += "\\t";
+        out += String.raw`\t`;
         break;
       case "\v":
-        out += "\\v";
+        out += String.raw`\v`;
         break;
       default:
         if (r < 0x20 || r === 0x7f) {
-          out += "\\x" + r.toString(16).padStart(2, "0");
+          out += String.raw`\x` + r.toString(16).padStart(2, "0");
         } else if (r < 0x1_00_00) {
-          out += "\\u" + r.toString(16).padStart(4, "0");
+          out += String.raw`\u` + r.toString(16).padStart(4, "0");
         } else {
-          out += "\\U" + r.toString(16).padStart(8, "0");
+          out += String.raw`\U` + r.toString(16).padStart(8, "0");
         }
     }
   }

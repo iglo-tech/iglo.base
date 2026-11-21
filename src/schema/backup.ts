@@ -111,21 +111,21 @@ export async function makePreSchemaBackup(app: App): Promise<string> {
       time = new Date(time.getTime() + 1);
       name = preSchemaBackupName(time);
     }
-  } catch (err) {
+  } catch (error) {
     throw new Error(
-      `the pre-schema backup could not be named, so the schema is not applied: ${errorText(err)}`,
-      { cause: err },
+      `the pre-schema backup could not be named, so the schema is not applied: ${errorText(error)}`,
+      { cause: error },
     );
   }
   try {
     await createBackup(app, name);
-  } catch (err) {
-    if (isNoSpace(err)) {
-      throw new Error(noSpaceMessage(app), { cause: err });
+  } catch (error) {
+    if (isNoSpace(error)) {
+      throw new Error(noSpaceMessage(app), { cause: error });
     }
     throw new Error(
-      `the pre-schema backup ${name} failed, so the schema is not applied: ${errorText(err)}`,
-      { cause: err },
+      `the pre-schema backup ${name} failed, so the schema is not applied: ${errorText(error)}`,
+      { cause: error },
     );
   }
   return name;
@@ -142,17 +142,17 @@ export async function prunePreSchemaBackups(app: App): Promise<void> {
       for (const key of keys.toReversed().slice(preSchemaKeep)) {
         try {
           await fsys.delete(key);
-        } catch (err) {
+        } catch (error) {
           app.logger.error("[schema] failed to remove an old pre-schema backup", {
             key,
-            error: err,
+            error: error,
           });
         }
       }
     } finally {
       fsys.close();
     }
-  } catch (err) {
-    app.logger.error("[schema] failed to prune the pre-schema backups", { error: err });
+  } catch (error) {
+    app.logger.error("[schema] failed to prune the pre-schema backups", { error: error });
   }
 }

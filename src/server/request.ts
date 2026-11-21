@@ -305,7 +305,7 @@ function trimLeftSpace(s: string): string {
   return s.slice((spaceRun.exec(s)?.[0] ?? "").length);
 }
 
-const tspecials = '()<>@,;:\\"/[]?=';
+const tspecials = String.raw`()<>@,;:\"/[]?=`;
 function isTokenChar(c: string): boolean {
   const code = c.charCodeAt(0);
   return code > 0x20 && code < 0x7f && !tspecials.includes(c);

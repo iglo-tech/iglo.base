@@ -69,8 +69,8 @@ export function request(
           headers: parsed.headers,
           body: parsed.body.toString("utf8"),
         });
-      } catch (err) {
-        reject(err as Error);
+      } catch (error) {
+        reject(error as Error);
       }
     });
   });

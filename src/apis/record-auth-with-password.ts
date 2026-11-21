@@ -70,8 +70,8 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
     foundErr = null;
     try {
       foundRecord = findRecordByIdentityField(e.app, collection, field, form.Identity);
-    } catch (err) {
-      foundErr = err;
+    } catch (error) {
+      foundErr = error;
     }
   };
 

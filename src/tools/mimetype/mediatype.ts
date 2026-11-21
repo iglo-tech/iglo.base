@@ -308,7 +308,7 @@ function ishex(c: number): boolean {
   return (0x30 <= c && c <= 0x39) || (0x61 <= c && c <= 0x66) || (0x41 <= c && c <= 0x46);
 }
 
-const tspecials = '()<>@,;:\\"/[]?=';
+const tspecials = String.raw`()<>@,;:\"/[]?=`;
 
 // isTSpecial reports whether c is in 'tspecials' as defined by RFC
 // 1521 and RFC 2045.

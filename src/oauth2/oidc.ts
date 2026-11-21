@@ -150,8 +150,10 @@ export class OIDC extends BaseProvider {
     if (jwksURL !== "") {
       try {
         await validateTokenSignature(this.signal, idToken, jwksURL, this.clock);
-      } catch (err) {
-        throw new Error(`id_token validation failed: ${(err as Error).message}`, { cause: err });
+      } catch (error) {
+        throw new Error(`id_token validation failed: ${(error as Error).message}`, {
+          cause: error,
+        });
       }
     }
 

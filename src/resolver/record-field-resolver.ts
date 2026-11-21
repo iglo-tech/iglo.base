@@ -210,10 +210,10 @@ export class RecordFieldResolver implements FieldResolver {
     let expr: Expression;
     try {
       expr = filterBuildExpr("id='' || (\n" + c.listRule + "\n)", cloneR, this.filterOptions());
-    } catch (err) {
+    } catch (error) {
       throw wrapResolverError(
         `failed to build ${goQuote(c.name)} ListRule join subquery filter expression`,
-        err,
+        error,
       );
     }
 
@@ -275,9 +275,9 @@ export class RecordFieldResolver implements FieldResolver {
     let extractErr: unknown = null;
     try {
       resultVal = extractNestedVal(this.staticRequestInfo, ...path);
-    } catch (err) {
-      extractErr = err;
-      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error: err });
+    } catch (error) {
+      extractErr = error;
+      this.app.logger.debug("resolveStaticRequestField graceful fallback", { error: error });
       resultVal = null;
     }
 
@@ -476,10 +476,10 @@ export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unkn
     let raw: unknown;
     try {
       raw = unmarshal(rawData.bytes(), anyType);
-    } catch (err) {
+    } catch (error) {
       throw wrapResolverError(
         "failed to unmarshal raw JSON in order extract nested value from",
-        err,
+        error,
       );
     }
     return extractNestedVal(raw, ...keys);

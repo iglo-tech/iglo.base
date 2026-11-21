@@ -123,12 +123,12 @@ export function realtimeRecordAfterUpdate(app: RecordsApp, record: Record): void
 export function realtimeRecordDelete(app: RecordsApp, record: Record): void {
   try {
     dryCacheRecordDelete(app, record);
-  } catch (err) {
+  } catch (error) {
     // the delete goes on (upstream only logs the error)
     app.logger.debug("Failed to dry cache record delete", {
       id: record.id,
       collectionName: record.collection().name,
-      error: err,
+      error: error,
     });
   }
 }
@@ -667,8 +667,8 @@ function recordData(
   if (rawFields !== "") {
     try {
       encodedRecord = marshal(pick(record, rawFields));
-    } catch (err) {
-      onPickError(err);
+    } catch (error) {
+      onPickError(error);
     }
   }
 

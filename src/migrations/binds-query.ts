@@ -313,9 +313,9 @@ export class QueryModels {
     let record: RecordModel;
     try {
       record = q.one<RecordModel>(recordTarget);
-    } catch (err) {
-      if (!(err instanceof NotRecordQueryError)) {
-        throw err;
+    } catch (error) {
+      if (!(error instanceof NotRecordQueryError)) {
+        throw error;
       }
       const row = q.one<Row>();
       slot.record.id = String(row.id ?? "");
@@ -630,8 +630,8 @@ function scanValue(
         const array = GoJSONArray.of([]);
         array.scan(value);
         return m.toVm(array);
-      } catch (err) {
-        throw scanError((err as Error).message);
+      } catch (error) {
+        throw scanError((error as Error).message);
       }
     case "object":
       try {
@@ -639,14 +639,14 @@ function scanValue(
         const map = field.nullable ? new GoJSONMap() : goMapOf(m, current);
         map.scan(value);
         return m.toVm(map);
-      } catch (err) {
-        throw scanError((err as Error).message);
+      } catch (error) {
+        throw scanError((error as Error).message);
       }
     case "go":
       try {
         return m.toVmJSON(scanJSONMap(value));
-      } catch (err) {
-        throw scanError((err as Error).message);
+      } catch (error) {
+        throw scanError((error as Error).message);
       }
   }
 }

@@ -458,7 +458,7 @@ export const recordSteps: Array<RecordStep> = [
     collection: "posts",
     body: {
       id: rid("p8"),
-      title: "with 'quote' \\ back",
+      title: String.raw`with 'quote' \ back`,
       views: 12,
       published: true,
       author: m("alice"),

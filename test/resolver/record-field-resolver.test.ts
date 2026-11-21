@@ -29,8 +29,8 @@ import type { TestCollectionsApp } from "@test/collections/app";
 
 // regexp.QuoteMeta, then TEST as \w+
 function expectPatternRegex(expectPattern: string): RegExp {
-  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, "\\$&");
-  return new RegExp("^" + quoted.replaceAll("TEST", "\\w+") + "$");
+  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, String.raw`\$&`);
+  return new RegExp("^" + quoted.replaceAll("TEST", String.raw`\w+`) + "$");
 }
 
 // a bound value as Go would hold it (Float64 is a Go float64)
@@ -654,16 +654,16 @@ describe("TestRecordFieldResolverUpdateQuery", () => {
       let buildErr: unknown = null;
       try {
         expr = filterBuildExpr(s.rule, r, { clock: app.clock });
-      } catch (err) {
-        buildErr = err;
+      } catch (error) {
+        buildErr = error;
       }
       expect({ hasErr: buildErr !== null, buildErr }).toMatchObject({ hasErr: expectError });
 
       let updateErr: unknown = null;
       try {
         r.updateQuery(query);
-      } catch (err) {
-        updateErr = err;
+      } catch (error) {
+        updateErr = error;
       }
       if (updateErr !== null && expectError) {
         throw new Error(`UpdateQuery failed: ${String(updateErr)}`);
@@ -809,8 +809,8 @@ describe("TestRecordFieldResolverResolveCollectionFields", () => {
       let err: unknown = null;
       try {
         result = r.resolve(fieldName);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect({ hasErr: err !== null, err }).toMatchObject({ hasErr: expectError });
@@ -934,8 +934,8 @@ describe("TestRecordFieldResolverResolveStaticRequestInfoFields", () => {
       let err: unknown = null;
       try {
         result = r.resolve(fieldName);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect({ hasErr: err !== null, err }).toMatchObject({ hasErr: expectError });

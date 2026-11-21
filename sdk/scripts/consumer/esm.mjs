@@ -51,12 +51,12 @@ console.log("instanceof PocketBase: ok");
 let verified = false;
 try {
   await serverClient.auth.verify();
-} catch (err) {
-  if (err instanceof ClientResponseError) {
+} catch (error) {
+  if (error instanceof ClientResponseError) {
     verified = true;
   } else {
     throw new Error("expected err instanceof ClientResponseError from @iglo.tech/iglo.base", {
-      cause: err,
+      cause: error,
     });
   }
 }

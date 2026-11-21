@@ -172,8 +172,8 @@ export class S3 implements S3Config {
     let resp: Response;
     try {
       resp = await fetch(req.url, init);
-    } catch (err) {
-      throw goRequestError(req.method, req.url, err, req.signal);
+    } catch (error) {
+      throw goRequestError(req.method, req.url, error, req.signal);
     }
 
     if (resp.status < 400) {
@@ -184,8 +184,8 @@ export class S3 implements S3Config {
 
     try {
       respErr.raw = new Uint8Array(await resp.arrayBuffer());
-    } catch (err) {
-      throw joinErrors(goRequestError(req.method, req.url, err, req.signal), respErr);
+    } catch (error) {
+      throw joinErrors(goRequestError(req.method, req.url, error, req.signal), respErr);
     }
 
     if (respErr.raw.length > 0) {
@@ -197,8 +197,8 @@ export class S3 implements S3Config {
         if (Number.isSafeInteger(status)) {
           respErr.status = status;
         }
-      } catch (err) {
-        throw joinErrors(err, respErr);
+      } catch (error) {
+        throw joinErrors(error, respErr);
       }
     }
 

@@ -338,7 +338,7 @@ function isAtext(r: number, dot: boolean): boolean {
     return dot;
   }
   // RFC 5322 3.2.3. specials
-  if ('()<>[]:;@\\,"'.includes(String.fromCodePoint(r))) {
+  if (String.raw`()<>[]:;@\,"`.includes(String.fromCodePoint(r))) {
     return false;
   }
   return isVchar(r);
@@ -505,11 +505,11 @@ export function quote(s: string): string {
 }
 
 const quoteEscapes: { [r: number]: string } = {
-  0x07: "\\a",
-  0x08: "\\b",
-  0x0c: "\\f",
-  0x0a: "\\n",
-  0x0d: "\\r",
-  0x09: "\\t",
-  0x0b: "\\v",
+  0x07: String.raw`\a`,
+  0x08: String.raw`\b`,
+  0x0c: String.raw`\f`,
+  0x0a: String.raw`\n`,
+  0x0d: String.raw`\r`,
+  0x09: String.raw`\t`,
+  0x0b: String.raw`\v`,
 };

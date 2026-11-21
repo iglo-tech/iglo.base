@@ -144,7 +144,7 @@ describe("superusers record checks", () => {
     const last = findRecordById(app, CollectionNameSuperusers, all[0] as string);
     const err = await deleteRecord(app, last).then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     expect(err).toBeInstanceOf(ApiError);
     expect((err as ApiError).toJSON()).toEqual({

@@ -821,34 +821,34 @@ function quoteRune(r: number): string {
   }
   switch (r) {
     case 0x27:
-      return "'\\''";
+      return String.raw`'\''`;
     case 0x5c:
-      return "'\\\\'";
+      return String.raw`'\\'`;
   }
   if (IsPrint(r)) {
     return "'" + String.fromCodePoint(r) + "'";
   }
   switch (r) {
     case 0x07:
-      return "'\\a'";
+      return String.raw`'\a'`;
     case 0x08:
-      return "'\\b'";
+      return String.raw`'\b'`;
     case 0x0c:
-      return "'\\f'";
+      return String.raw`'\f'`;
     case 0x0a:
-      return "'\\n'";
+      return String.raw`'\n'`;
     case 0x0d:
-      return "'\\r'";
+      return String.raw`'\r'`;
     case 0x09:
-      return "'\\t'";
+      return String.raw`'\t'`;
     case 0x0b:
-      return "'\\v'";
+      return String.raw`'\v'`;
   }
   if (r < 0x20 || r === 0x7f) {
-    return "'\\x" + r.toString(16).padStart(2, "0") + "'";
+    return String.raw`'\x` + r.toString(16).padStart(2, "0") + "'";
   }
   if (r < 0x1_00_00) {
-    return "'\\u" + r.toString(16).padStart(4, "0") + "'";
+    return String.raw`'\u` + r.toString(16).padStart(4, "0") + "'";
   }
-  return "'\\U" + r.toString(16).padStart(8, "0") + "'";
+  return String.raw`'\U` + r.toString(16).padStart(8, "0") + "'";
 }

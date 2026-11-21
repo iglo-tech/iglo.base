@@ -313,11 +313,11 @@ export class ServerClient extends Client {
         pending.redirectURL,
       );
       return { ok: true, redirectTo, auth };
-    } catch (err: unknown) {
-      if (err instanceof ClientResponseError) {
-        return fail(err);
+    } catch (error: unknown) {
+      if (error instanceof ClientResponseError) {
+        return fail(error);
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -415,14 +415,14 @@ export class ServerClient extends Client {
         token: res?.token || token,
         record: (res?.record as AuthRecord) ?? this.authStore.record,
       };
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       if (
-        err instanceof ClientResponseError &&
-        (err.status === 401 || err.status === 403 || err.status === 404)
+        error instanceof ClientResponseError &&
+        (error.status === 401 || error.status === 403 || error.status === 404)
       ) {
-        return { kind: "revoked", error: err };
+        return { kind: "revoked", error: error };
       }
-      return { kind: "transient", error: err };
+      return { kind: "transient", error: error };
     }
   }
 

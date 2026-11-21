@@ -93,8 +93,8 @@ export class NotifyWatcher implements Notifier {
 
     try {
       mkdirSync(this.dir, { recursive: true });
-    } catch (err) {
-      this.#warnWatchFailure(new Error("failed to create a notify dir: " + messageOf(err)));
+    } catch (error) {
+      this.#warnWatchFailure(new Error("failed to create a notify dir: " + messageOf(error)));
       return;
     }
 
@@ -120,9 +120,9 @@ export class NotifyWatcher implements Notifier {
       this.#watcher.on("error", () => {
         // upstream only prints it with --dev
       });
-    } catch (err) {
+    } catch (error) {
       this.#watcher = null;
-      this.#warnWatchFailure(new Error("unable to watch notify dir: " + messageOf(err)));
+      this.#warnWatchFailure(new Error("unable to watch notify dir: " + messageOf(error)));
     }
   }
 
@@ -170,8 +170,8 @@ export class NotifyWatcher implements Notifier {
     }
     try {
       writeFileSync(file, "", { mode: 0o644 });
-    } catch (err) {
-      this.#logger.warn("Failed to write watcher file", { error: err, file });
+    } catch (error) {
+      this.#logger.warn("Failed to write watcher file", { error: error, file });
     }
     try {
       rmSync(file, { force: true });
@@ -211,16 +211,16 @@ export class NotifyWatcher implements Notifier {
         this.#logger.debug("Reloading settings after notify event");
         try {
           await reload.settings();
-        } catch (err) {
-          this.#logger.warn("Failed to reload app settings after notify", { error: err });
+        } catch (error) {
+          this.#logger.warn("Failed to reload app settings after notify", { error: error });
         }
       }
       if (collections && !this.#closed) {
         this.#logger.debug("Reloading cached collections after notify event");
         try {
           reload.collections();
-        } catch (err) {
-          this.#logger.warn("Failed to reload cached collections after notify", { error: err });
+        } catch (error) {
+          this.#logger.warn("Failed to reload cached collections after notify", { error: error });
         }
       }
     }

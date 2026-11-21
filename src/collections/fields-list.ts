@@ -301,14 +301,14 @@ export class FieldsList implements FieldsListReader {
 
         wrapper.push(obj);
       }
-    } catch (err) {
-      return ["", err];
+    } catch (error) {
+      return ["", error];
     }
 
     try {
       return [marshal(wrapper), null];
-    } catch (err) {
-      return [marshalPartial(err), err];
+    } catch (error) {
+      return [marshalPartial(error), error];
     }
   }
 
@@ -370,11 +370,11 @@ function marshaledJSONtoFieldsList(rawJSON: string | Uint8Array): FieldsList {
     // (assuming that rawJSON is a single object)
     try {
       extractedFields.unmarshalJSON("[" + text + "]");
-    } catch (err) {
+    } catch (error) {
       throw new Error(
         "failed to unmarshal the provided JSON - expects array of objects or just single object: " +
-          (err instanceof Error ? err.message : String(err)),
-        { cause: err },
+          (error instanceof Error ? error.message : String(error)),
+        { cause: error },
       );
     }
   }
@@ -389,8 +389,8 @@ function fieldWithTypeUnmarshalJSON(data: string): Field {
   let type = "";
   try {
     unmarshalGoStruct(data, { type: (raw) => (type = decodeString(raw)) }, () => (type = ""));
-  } catch (err) {
-    throw new Error(`failed to unmarshal field type: ${errorText(err)}`, { cause: err });
+  } catch (error) {
+    throw new Error(`failed to unmarshal field type: ${errorText(error)}`, { cause: error });
   }
 
   const factory = fieldFactory(type);
@@ -403,8 +403,8 @@ function fieldWithTypeUnmarshalJSON(data: string): Field {
   // unmarshal the rest of the data into the created field
   try {
     field.unmarshalJSON(data);
-  } catch (err) {
-    throw new Error(`failed to unmarshal field: ${errorText(err)}`, { cause: err });
+  } catch (error) {
+    throw new Error(`failed to unmarshal field: ${errorText(error)}`, { cause: error });
   }
 
   return field;

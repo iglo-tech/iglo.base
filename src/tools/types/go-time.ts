@@ -754,11 +754,11 @@ export function parse(layout: string, value: string): ParsedTime {
           break;
         }
       }
-    } catch (err) {
-      if (err instanceof BadValue) {
+    } catch (error) {
+      if (error instanceof BadValue) {
         throw new ParseError(alayout, avalue);
       }
-      throw err;
+      throw error;
     }
     if (rangeErr !== "") {
       throw new ParseError(alayout, avalue, ": " + rangeErr + " out of range");

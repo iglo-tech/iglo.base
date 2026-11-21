@@ -167,8 +167,8 @@ async function build(): Promise<Map<string, string>> {
         (size / 2 ** 20).toFixed(1),
         c === "none" ? "" : ((size - base) / 2 ** 20).toFixed(2),
       ]);
-    } catch (err) {
-      rows.push([c, "build failed", String(err).split("\n").slice(1, 3).join(" ")]);
+    } catch (error) {
+      rows.push([c, "build failed", String(error).split("\n").slice(1, 3).join(" ")]);
     }
   }
   table(["build", "executable MiB", "added MiB"], rows);
@@ -848,8 +848,8 @@ async function perf(bins: Map<string, string>, u: Upstream): Promise<void> {
               if (i === 0 && conc === 1) {
                 upstreamThumbs.set(`${b.name} ${size}`, t.bytes);
               }
-            } catch (err) {
-              note = String(err);
+            } catch (error) {
+              note = String(error);
             }
           }),
         );

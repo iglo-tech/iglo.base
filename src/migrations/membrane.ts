@@ -256,11 +256,11 @@ export class Membrane {
   guard<T>(fn: () => T): T {
     try {
       return fn();
-    } catch (err) {
-      if (err instanceof Error) {
-        throw this.goError(driverError(err) as Error);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw this.goError(driverError(error) as Error);
       }
-      throw err;
+      throw error;
     }
   }
 

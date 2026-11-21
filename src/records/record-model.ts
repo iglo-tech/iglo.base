@@ -1000,8 +1000,8 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
       sep = ",";
       try {
         out += ":" + encodeValue(value, recordFlags, 1);
-      } catch (err) {
-        throw withPartial(err, out, ":");
+      } catch (error) {
+        throw withPartial(error, out, ":");
       }
     }
 

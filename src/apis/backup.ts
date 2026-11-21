@@ -52,17 +52,17 @@ async function backupsList(e: RequestEvent): Promise<Error | undefined> {
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
-  } catch (err) {
-    return e.badRequestError("Failed to load backups filesystem.", err);
+  } catch (error) {
+    return e.badRequestError("Failed to load backups filesystem.", error);
   }
 
   try {
     let backups;
     try {
       backups = await fsys.list("");
-    } catch (err) {
+    } catch (error) {
       return e.badRequestError(
-        "Failed to retrieve backup items. Raw error: \n" + errorText(err),
+        "Failed to retrieve backup items. Raw error: \n" + errorText(error),
         null,
       );
     }
@@ -86,8 +86,8 @@ async function backupDownload(e: RequestEvent): Promise<Error | undefined> {
   let authRecord: Record;
   try {
     authRecord = findAuthRecordByToken(e.app, fileToken, TokenTypeFile);
-  } catch (err) {
-    return e.forbiddenError("Insufficient permissions to access the resource.", err);
+  } catch (error) {
+    return e.forbiddenError("Insufficient permissions to access the resource.", error);
   }
   if (!authRecord.isSuperuser()) {
     return e.forbiddenError("Insufficient permissions to access the resource.", null);
@@ -101,8 +101,8 @@ async function backupDownload(e: RequestEvent): Promise<Error | undefined> {
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(downloadTimeoutMs));
-  } catch (err) {
-    return e.internalServerError("Failed to load backups filesystem.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to load backups filesystem.", error);
   }
 
   try {
@@ -115,9 +115,9 @@ async function backupDownload(e: RequestEvent): Promise<Error | undefined> {
         key,
         goBase(key), // without the path prefix (if any)
       );
-    } catch (err) {
+    } catch (error) {
       // the router's ToApiError: only a local missing file is fs.ErrNotExist
-      return fsys instanceof S3System ? e.badRequestError("", err) : e.notFoundError("", err);
+      return fsys instanceof S3System ? e.badRequestError("", error) : e.notFoundError("", error);
     }
 
     return undefined;
@@ -132,8 +132,8 @@ async function backupDelete(e: RequestEvent): Promise<Error | undefined> {
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
-  } catch (err) {
-    return e.internalServerError("Failed to load backups filesystem.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to load backups filesystem.", error);
   }
 
   try {
@@ -145,9 +145,9 @@ async function backupDelete(e: RequestEvent): Promise<Error | undefined> {
 
     try {
       await fsys.delete(key);
-    } catch (err) {
+    } catch (error) {
       return e.badRequestError(
-        "Invalid or already deleted backup file. Raw error: \n" + errorText(err),
+        "Invalid or already deleted backup file. Raw error: \n" + errorText(error),
         null,
       );
     }
@@ -173,8 +173,8 @@ async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem(AbortSignal.timeout(listTimeoutMs));
-  } catch (err) {
-    return e.internalServerError("Failed to load backups filesystem.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to load backups filesystem.", error);
   }
 
   try {
@@ -182,8 +182,8 @@ async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
     let existsErr: unknown = null;
     try {
       exists = await fsys.exists(key);
-    } catch (err) {
-      existsErr = err;
+    } catch (error) {
+      existsErr = error;
     }
     if (!exists) {
       return e.badRequestError("Missing or invalid backup file.", existsErr);
@@ -195,8 +195,8 @@ async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
   const { app } = e;
 
   setTimeout(() => {
-    restoreBackup(app, key).catch((err: unknown) => {
-      app.logger.error("Failed to restore backup", { key, error: err });
+    restoreBackup(app, key).catch((error: unknown) => {
+      app.logger.error("Failed to restore backup", { key, error: error });
     });
   }, restoreDelayMs);
 

@@ -554,8 +554,8 @@ async function igloList(
         totalPages: result.totalPages,
       },
     };
-  } catch (err) {
-    return apiErrorOutcome(err);
+  } catch (error) {
+    return apiErrorOutcome(error);
   }
 }
 
@@ -595,8 +595,8 @@ function errorOf(fn: () => unknown): unknown {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 
@@ -743,8 +743,8 @@ describe("rules matrix", () => {
             let asyncErr: unknown = null;
             try {
               asyncResult = await canAccessRecordAsync(app, record, viewInfo, rules.viewRule);
-            } catch (err) {
-              asyncErr = err;
+            } catch (error) {
+              asyncErr = error;
             }
             if (syncErr !== null || asyncErr !== null || syncResult !== asyncResult) {
               mismatches.push({ case: key, id, syncErr, asyncErr, syncResult, asyncResult });

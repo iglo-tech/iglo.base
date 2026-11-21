@@ -287,8 +287,8 @@ export function readHead(reader: FileReader): Uint8Array | Error {
   let r: ReadCloser;
   try {
     r = reader.open();
-  } catch (err) {
-    return toError(err);
+  } catch (error) {
+    return toError(error);
   }
   try {
     const buf = new Uint8Array(defaultLimit);
@@ -301,8 +301,8 @@ export function readHead(reader: FileReader): Uint8Array | Error {
       n += read;
     }
     return buf.subarray(0, n);
-  } catch (err) {
-    return toError(err);
+  } catch (error) {
+    return toError(error);
   } finally {
     try {
       r.close();

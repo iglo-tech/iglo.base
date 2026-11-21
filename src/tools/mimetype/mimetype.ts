@@ -50,8 +50,8 @@ export async function detectReader(r: Blob): Promise<[MIME, Error | null]> {
   let input: Uint8Array;
   try {
     input = new Uint8Array(await r.slice(0, l).arrayBuffer());
-  } catch (err) {
-    return [errMIME, err instanceof Error ? err : new Error(String(err))];
+  } catch (error) {
+    return [errMIME, error instanceof Error ? error : new Error(String(error))];
   }
 
   return [root.match(input, l, root), null];

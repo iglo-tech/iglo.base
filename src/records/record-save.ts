@@ -223,8 +223,8 @@ async function runAsync(state: RunState, pending: Promise<unknown>): Promise<voi
     try {
       state.input = await pending;
       state.failed = false;
-    } catch (err) {
-      state.input = err;
+    } catch (error) {
+      state.input = error;
       state.failed = true;
     }
     for (;;) {
@@ -249,13 +249,13 @@ function advance(state: RunState): Promise<unknown> | null | undefined {
   let res: IteratorResult<unknown, void>;
   try {
     res = state.failed ? step.throw(state.input) : step.next(state.input);
-  } catch (err) {
+  } catch (error) {
     stack.pop();
     if (stack.length === 0) {
-      throw err;
+      throw error;
     }
     // the calling step gets the error
-    state.input = err;
+    state.input = error;
     state.failed = true;
     return undefined;
   }
@@ -515,10 +515,10 @@ function* createStep(app: RecordsApp, record: Record, withValidations: boolean):
         ),
       );
     });
-  } catch (saveErr) {
+  } catch (error) {
     record.markAsNew(); // reset "new" state
 
-    yield* afterError(app, record, InterceptorActionAfterCreateError, saveErr);
+    yield* afterError(app, record, InterceptorActionAfterCreateError, error);
   }
 
   yield* afterSuccess(app, record, InterceptorActionAfterCreate, InterceptorActionAfterCreateError);
@@ -548,8 +548,8 @@ function* updateStep(app: RecordsApp, record: Record, withValidations: boolean):
         }),
       ),
     );
-  } catch (saveErr) {
-    yield* afterError(app, record, InterceptorActionAfterUpdateError, saveErr);
+  } catch (error) {
+    yield* afterError(app, record, InterceptorActionAfterUpdateError, error);
   }
 
   yield* afterSuccess(app, record, InterceptorActionAfterUpdate, InterceptorActionAfterUpdateError);
@@ -583,8 +583,8 @@ function* afterError(
 ): Generator<unknown, never, unknown> {
   try {
     yield* callFieldInterceptors(app, record, errorAction, noop);
-  } catch (hookErr) {
-    throw joinErrors([actionErr, hookErr]);
+  } catch (error) {
+    throw joinErrors([actionErr, error]);
   }
   throw actionErr;
 }
@@ -650,9 +650,9 @@ function* afterSuccess(
         app.afterTransaction.push(result);
         return;
       }
-      result.catch((err: unknown) => {
+      result.catch((error: unknown) => {
         app.logger.error(`Record ${successAction} interceptors failed after the transaction`, {
-          error: err,
+          error: error,
         });
       });
     }
@@ -718,7 +718,7 @@ function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: st
     } else if (successAction === InterceptorActionAfterDelete) {
       realtimeRecordAfterDelete(app, record);
     }
-  } catch (err) {
+  } catch (error) {
     const action =
       successAction === InterceptorActionAfterCreate
         ? "create"
@@ -728,7 +728,7 @@ function realtimeAfterSuccess(app: RecordsApp, record: Record, successAction: st
     app.logger.debug(`Failed to broadcast record ${action}`, {
       id: record.id,
       collectionName: record.collection().name,
-      error: err,
+      error: error,
     });
   }
 }
@@ -765,8 +765,8 @@ function* onRecordSaveExecute(app: RecordsApp, record: Record, next: Next): Step
     let authCollections: Array<Collection>;
     try {
       authCollections = withDriverErrors(() => findAllCollections(app, CollectionTypeAuth));
-    } catch (err) {
-      throw wrapError("unable to fetch the auth collections for cross-id unique check", err);
+    } catch (error) {
+      throw wrapError("unable to fetch the auth collections for cross-id unique check", error);
     }
     for (const c of authCollections) {
       if (collection.id === c.id) {
@@ -788,8 +788,12 @@ function* onRecordSaveExecute(app: RecordsApp, record: Record, next: Next): Step
 
   try {
     yield* next(app);
-  } catch (err) {
-    throw NormalizeUniqueIndexError(toError(err), collection.name, collection.fields.fieldNames());
+  } catch (error) {
+    throw NormalizeUniqueIndexError(
+      toError(error),
+      collection.name,
+      collection.fields.fieldNames(),
+    );
   }
 }
 
@@ -830,9 +834,9 @@ export function* deleteStep(app: RecordsApp, record: Record): Step {
         );
       });
     });
-  } catch (deleteErr) {
+  } catch (error) {
     realtimeRecordAfterDeleteError(app, record);
-    yield* afterError(app, record, InterceptorActionAfterDeleteError, deleteErr);
+    yield* afterError(app, record, InterceptorActionAfterDeleteError, error);
   }
 
   yield* afterSuccess(app, record, InterceptorActionAfterDelete, InterceptorActionAfterDeleteError);
@@ -949,11 +953,11 @@ function* deleteRefRecords(
     let refRecord: Record;
     try {
       refRecord = findRecordById(app, refCollection, refId);
-    } catch (err) {
-      if (isNoRows(err)) {
+    } catch (error) {
+      if (isNoRows(error)) {
         continue; // already deleted
       }
-      throw err;
+      throw error;
     }
 
     const ids = refRecord.getStringSlice(relField.name);
@@ -996,9 +1000,9 @@ export function deleteTruncatedRecords(app: RecordsApp, records: ReadonlyArray<R
   for (const record of records) {
     try {
       deleteRecordSync(app, record);
-    } catch (err) {
-      if (!isNoRows(err)) {
-        throw err;
+    } catch (error) {
+      if (!isNoRows(error)) {
+        throw error;
       }
     }
   }

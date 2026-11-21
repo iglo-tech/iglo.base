@@ -185,10 +185,10 @@ function placeholderReplacement(key: string, value: unknown): string {
       // try to json serialize as fallback
       try {
         casted = marshal(value);
-      } catch (err) {
+      } catch (error) {
         throw new Error(
-          `failed to serialize param ${goQuote(key)}: ${err instanceof Error ? err.message : String(err)}`,
-          { cause: err },
+          `failed to serialize param ${goQuote(key)}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
         );
       }
     }
@@ -309,11 +309,11 @@ function tryResolveToken(
 ): [ResolverResult | null, unknown] {
   try {
     return [resolveToken(token, fieldResolver, state), undefined];
-  } catch (err) {
-    if (err instanceof NilPointerPanic) {
-      throw err;
+  } catch (error) {
+    if (error instanceof NilPointerPanic) {
+      throw error;
     }
-    return [null, err];
+    return [null, error];
   }
 }
 
@@ -465,8 +465,8 @@ function resolveToken(
       let err: unknown;
       try {
         result = fieldResolver.resolve(token.literal);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
       if (err !== undefined || result === null || result.identifier === "") {
         for (const [k, v] of normalizedIdentifiers) {

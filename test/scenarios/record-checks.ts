@@ -198,8 +198,8 @@ export function rowHas(table: string, id: string, columns: { [key: string]: unkn
     }
     try {
       expectFields(`${table}/${id}`, rows[0] as { [key: string]: unknown }, columns);
-    } catch (err) {
-      return Promise.reject(err as Error);
+    } catch (error) {
+      return Promise.reject(error as Error);
     }
     return Promise.resolve();
   };

@@ -22,8 +22,8 @@ export async function backupUpload(e: RequestEvent): Promise<Error | undefined> 
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 
   try {
@@ -44,8 +44,8 @@ export async function backupUpload(e: RequestEvent): Promise<Error | undefined> 
 
     try {
       await uploadBackupFile(fsys, file, file.originalName);
-    } catch (err) {
-      return e.badRequestError("Failed to upload backup.", err);
+    } catch (error) {
+      return e.badRequestError("Failed to upload backup.", error);
     }
 
     // we don't retrieve the generated backup file because it may not be

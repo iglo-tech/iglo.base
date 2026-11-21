@@ -142,7 +142,7 @@ export function testRE2(file: string, lines: Iterable<string>, every = 1): re2Re
       }
       const text = input[0] as string;
       input = input.slice(1);
-      if (!isSingleBytes(text) && re.re.string().includes("\\B")) {
+      if (!isSingleBytes(text) && re.re.string().includes(String.raw`\B`)) {
         // RE2's \B considers every byte position,
         // so it sees 'not word boundary' in the
         // middle of UTF-8 sequences. This package

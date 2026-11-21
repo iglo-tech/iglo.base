@@ -260,9 +260,9 @@ export class System {
 
     try {
       w.write(content);
-    } catch (err) {
+    } catch (error) {
       w.cancel();
-      throw err;
+      throw error;
     }
 
     w.close();
@@ -376,8 +376,8 @@ export class System {
       let obj: ListObject | null;
       try {
         obj = iter.next();
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
         break;
       }
       if (obj === null) {
@@ -392,8 +392,8 @@ export class System {
             dirsMap.add(obj.key.slice(0, slashIdx));
           }
         }
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
       }
 
       if (++deleted % deletePageSize === 0) {
@@ -516,10 +516,10 @@ export class System {
       } finally {
         await src.close();
       }
-    } catch (err) {
+    } catch (error) {
       await out.close();
       remove();
-      throw err;
+      throw error;
     }
     await out.close();
     return { blob: Bun.file(path), remove };
@@ -563,9 +563,9 @@ export class System {
     // thumb encode (aka. upload)
     try {
       w.write(thumb.bytes);
-    } catch (err) {
+    } catch (error) {
       w.cancel();
-      throw err;
+      throw error;
     }
 
     // check for close errors to ensure that the thumb was really saved

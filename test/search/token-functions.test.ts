@@ -58,8 +58,8 @@ function runScenario(s: Scenario, fn: TokenFunctionResolver): void {
   let err: unknown;
   try {
     result = fn(s.resolver, ...s.args);
-  } catch (e) {
-    err = e;
+  } catch (error) {
+    err = error;
   }
   expect(err !== undefined).toBe(s.expectErr);
   compareResults(s.result, result);

@@ -183,8 +183,8 @@ async function request(url: URL, signal: AbortSignal, opts: SafeFileOptions): Pr
 
     try {
       return await fetch(target, init);
-    } catch (err) {
-      lastErr = err;
+    } catch (error) {
+      lastErr = error;
       if (signal.aborted) {
         break;
       }

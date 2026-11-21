@@ -179,8 +179,8 @@ function prepareCompare(
   let p: Hashed;
   try {
     p = newFromHash(hashedPassword);
-  } catch (err) {
-    return { result: err as Error };
+  } catch (error) {
+    return { result: error as Error };
   }
 
   // a salt with bytes outside the alphabet ('\r', '\n' or invalid data):
@@ -190,8 +190,8 @@ function prepareCompare(
     let otherHash: Uint8Array;
     try {
       otherHash = bcrypt(password, p.cost, p.salt);
-    } catch (err) {
-      return { result: err as Error };
+    } catch (error) {
+      return { result: error as Error };
     }
 
     const otherP: Hashed = { ...p, hash: otherHash };

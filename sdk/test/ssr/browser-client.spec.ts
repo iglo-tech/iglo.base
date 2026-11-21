@@ -278,7 +278,7 @@ describe("createBrowserClient", () => {
     const { ft, pb, api } = harness((c) => ({ [RENEW]: failing(c, 401) }));
     const error = await pb.renew().then(
       () => undefined,
-      (err: unknown) => err,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(ClientResponseError);
     expect((error as ClientResponseError).status).toBe(401);
@@ -356,7 +356,7 @@ describe("createBrowserClient", () => {
     const { pb, clock, ft } = harness(() => ({ [RENEW]: () => held }));
     const other = authToken(Math.floor(START / 1000) + 900, "u2");
 
-    const pending = pb.renew().catch((err: unknown) => err);
+    const pending = pb.renew().catch((error: unknown) => error);
     pb.authStore.save(other, record("u2")); // another user signs in while the renewal is out
     answer(json(clock, 503, { status: 503, message: "down", data: {} }));
     await pending;
@@ -375,9 +375,9 @@ describe("createBrowserClient", () => {
     const { pb, api } = harness(() => ({ [RENEW]: () => held }));
     const other = authToken(Math.floor(START / 1000) + 900, "u2");
 
-    const first = pb.renew().catch((err: unknown) => err);
+    const first = pb.renew().catch((error: unknown) => error);
     pb.authStore.save(other, record("u2"));
-    const second = pb.renew().catch((err: unknown) => err);
+    const second = pb.renew().catch((error: unknown) => error);
     expect(callsTo(api.calls, "POST", "/api/session/renew")).toHaveLength(2);
 
     answer(new Response(null, { status: 401 }));
@@ -456,7 +456,7 @@ describe("createBrowserClient", () => {
     });
     const error = await pb.handOff().then(
       () => undefined,
-      (err: unknown) => err,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(ClientResponseError);
     expect((error as ClientResponseError).status).toBe(0);

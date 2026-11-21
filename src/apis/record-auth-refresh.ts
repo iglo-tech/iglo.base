@@ -24,15 +24,15 @@ export async function recordAuthRefresh(e: RequestEvent): Promise<HandlerResult>
   let claims: MapClaims;
   try {
     claims = parseUnverifiedJWT(token, e.app.clock);
-  } catch (err) {
+  } catch (error) {
     // upstream reads the claims parsed before the error
-    claims = err instanceof JWTError ? err.claims : {};
+    claims = error instanceof JWTError ? error.claims : {};
   }
   if (Object.hasOwn(claims, TokenClaimRefreshable) && toBool(claims[TokenClaimRefreshable])) {
     try {
       token = newAuthToken(record, e.app.clock);
-    } catch (err) {
-      return e.internalServerError("Failed to refresh auth token.", err);
+    } catch (error) {
+      return e.internalServerError("Failed to refresh auth token.", error);
     }
   }
 

@@ -63,8 +63,8 @@ export async function recordRequestEmailChange(e: RequestEvent): Promise<Handler
   // the OnRecordRequestEmailChangeRequest default action
   try {
     await sendRecordChangeEmail(e.app, record, form.NewEmail);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to request email change.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to request email change.", error));
   }
 
   return e.noContent(204);

@@ -94,7 +94,7 @@ describe("router", () => {
     ["GET", "/api/health/.", "/api/health/", 307],
     ["GET", "/./api/health", "/api/health", 307],
     ["GET", "/x/%2e%2e/api/health", "/api/health", 404],
-    ["GET", "/api\\health", "/api/health", 404],
+    ["GET", String.raw`/api\health`, "/api/health", 404],
   ];
   for (const [method, target, resolved, upstreamStatus] of dotSegments) {
     test(`${method} ${target} (D22: answered as ${resolved})`, async () => {

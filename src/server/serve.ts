@@ -117,8 +117,8 @@ async function listenHost(host: string): Promise<string> {
   let addresses: Array<{ address: string; family: number }>;
   try {
     addresses = await lookup(host, { all: true, verbatim: true });
-  } catch (err) {
-    throw new Error(`listen tcp: lookup ${host}: no such host`, { cause: err });
+  } catch (error) {
+    throw new Error(`listen tcp: lookup ${host}: no such host`, { cause: error });
   }
   const chosen = addresses.find((a) => a.family === 4) ?? addresses[0];
   if (!chosen) {
@@ -278,14 +278,14 @@ export async function handleRequest(
           if (response) {
             resolve(response);
           }
-        } catch (err) {
+        } catch (error) {
           // a status Bun cannot send (outside 200-599)
-          reject(err);
+          reject(error);
         }
       },
-      (err: unknown) => {
+      (error: unknown) => {
         // a panic that no middleware recovered
-        const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
         app.logger.debug(`http: panic serving ${req.remoteAddr}: ${message}`);
         try {
           // runs the afterResponse cleanups; its response is not sent
@@ -297,7 +297,7 @@ export async function handleRequest(
           // the panic is the error that is reported
         } finally {
           // the request settles even if finish throws (an invalid status)
-          reject(err);
+          reject(error);
         }
       },
     );
@@ -305,8 +305,8 @@ export async function handleRequest(
 }
 
 function startBanner(out: Output, baseURL: string, hasDashboard: boolean): void {
-  const bold = (text: string): string => (out.color ? `\x1b[1;32m${text}\x1b[0m` : text);
-  const cyan = (text: string): string => (out.color ? `\x1b[36m${text}\x1b[0m` : text);
+  const bold = (text: string): string => (out.color ? `\u001b[1;32m${text}\u001b[0m` : text);
+  const cyan = (text: string): string => (out.color ? `\u001b[36m${text}\u001b[0m` : text);
   out.stdout(bold(`${logTime(out.now())} Server started at ${cyan(baseURL)}\n`));
   if (hasDashboard) {
     out.stdout(`> Dashboard: ${cyan(`${baseURL}/_/`)}\n`);
@@ -413,11 +413,11 @@ export async function serve(
           bunServer.timeout(request, 0),
         ),
     });
-  } catch (err) {
-    if ((err as { code?: string }).code === "EADDRINUSE") {
-      throw new Error(`listen tcp ${mainAddr}: bind: address already in use`, { cause: err });
+  } catch (error) {
+    if ((error as { code?: string }).code === "EADDRINUSE") {
+      throw new Error(`listen tcp ${mainAddr}: bind: address already in use`, { cause: error });
     }
-    throw err;
+    throw error;
   }
 
   const baseURL = `http://${serverAddrToHost(mainAddr)}`;
@@ -434,8 +434,8 @@ export async function serve(
       stdout: out.stdout,
       color: out.color,
     });
-  } catch (err) {
-    app.logger.warn("Failed to initialize installer", { error: err });
+  } catch (error) {
+    app.logger.warn("Failed to initialize installer", { error: error });
   }
 
   if (!shutdown.aborted) {

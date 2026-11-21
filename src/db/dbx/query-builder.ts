@@ -71,7 +71,7 @@ export interface QueryBuilder {
 }
 
 // Go's \s (RE2): no \v and no Unicode spaces
-const space = "[\\t\\n\\f\\r ]";
+const space = String.raw`[\t\n\f\r ]`;
 
 // the regexp for columns and tables.
 const selectRegex = new RegExp(`(?:${space}+as${space}+|${space}+)([\\w\\-_.]+)$`, "i");

@@ -310,8 +310,8 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
       if (!collection.isNew()) {
         try {
           oldCollection = app.findCachedCollectionByNameOrId(collection.id);
-        } catch (err) {
-          return err as Error;
+        } catch (error) {
+          return error as Error;
         }
       }
 

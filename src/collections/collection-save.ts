@@ -110,9 +110,9 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
         withDriverErrors(() => deleteModel(refApp.databases, collectionRow(collection)));
       });
     });
-  } catch (err) {
+  } catch (error) {
     onErrorReloadCachedCollections(app);
-    throw err;
+    throw error;
   }
 
   afterTransactionError(app, () => {});
@@ -150,8 +150,8 @@ export function deleteCollection(app: CollectionsApp, collection: Collection): v
 export function loadCollectionsCache(app: CollectionsApp): void {
   try {
     withDriverErrors(() => reloadCachedCollections(app));
-  } catch (err) {
-    throw wrapError("failed to load collections cache", err);
+  } catch (error) {
+    throw wrapError("failed to load collections cache", error);
   }
 }
 
@@ -178,8 +178,8 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
     if (!isNew && app.settings !== undefined) {
       try {
         oldName = findCachedCollectionByNameOrId(app, collection.id).name;
-      } catch (err) {
-        throw wrapError("failed to retrieve old cached collection", err);
+      } catch (error) {
+        throw wrapError("failed to retrieve old cached collection", error);
       }
     }
 
@@ -215,12 +215,12 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
     }
 
     realtimeCollectionUpdate(app, collection, cachedAuth);
-  } catch (err) {
+  } catch (error) {
     if (isNew) {
       collection.markAsNew(); // reset "new" state
     }
     onErrorReloadCachedCollections(app);
-    throw err;
+    throw error;
   }
 
   // OnCollectionAfterCreateSuccess/UpdateSuccess' notify (priority 999)
@@ -255,9 +255,9 @@ function afterTransactionError(app: CollectionsApp, onError: () => void): void {
 function onErrorReloadCachedCollections(app: CollectionsApp): void {
   try {
     reloadCachedCollections(app);
-  } catch (err) {
+  } catch (error) {
     app.logger.warn("Failed to reload collections cache after collection change error", {
-      error: driverError(err),
+      error: driverError(error),
     });
   }
 }
@@ -265,8 +265,8 @@ function onErrorReloadCachedCollections(app: CollectionsApp): void {
 function reloadCachedCollectionsOrWarn(app: CollectionsApp): void {
   try {
     reloadCachedCollections(app);
-  } catch (err) {
-    app.logger.warn("Failed to reload collections cache", { error: driverError(err) });
+  } catch (error) {
+    app.logger.warn("Failed to reload collections cache", { error: driverError(error) });
   }
 }
 
@@ -378,8 +378,8 @@ function onCollectionSaveExecute(
         // wrap view query if necessary
         try {
           query = normalizeViewQueryId(txApp, query);
-        } catch (normalizeErr) {
-          throw wrapError("failed to normalize view query id", normalizeErr);
+        } catch (error) {
+          throw wrapError("failed to normalize view query id", error);
         }
 
         // (re)create the view
@@ -403,12 +403,12 @@ function onCollectionSaveExecute(
     // (only log the error to allow users to adjust the problematic view queries from the UI)
     try {
       resaveViewsWithChangedFields(app, collection.id);
-    } catch (depViewsErr) {
+    } catch (error) {
       app.logger.warn(
         "Dependent view collection(s) may need to be updated after " +
           collection.name +
           " collection change",
-        { error: depViewsErr },
+        { error: error },
       );
     }
   } finally {
@@ -435,8 +435,8 @@ function onCollectionDeleteExecute(
         references = withDriverErrors(() =>
           findCollectionReferences(app, collection, collection.id),
         );
-      } catch (err) {
-        throw wrapError(`[${collection.name}] failed to check collection references`, err);
+      } catch (error) {
+        throw wrapError(`[${collection.name}] failed to check collection references`, error);
       }
       if (references.size > 0) {
         const names = [...references.keys()].map((ref) => ref.name);
@@ -458,10 +458,10 @@ function onCollectionDeleteExecute(
         // trigger views resave to check for dependencies
         try {
           resaveViewsWithChangedFields(txApp, collection.id);
-        } catch (err) {
+        } catch (error) {
           throw wrapError(
             `[${collection.name}] failed to delete due to existing view dependency`,
-            err,
+            error,
           );
         }
       }

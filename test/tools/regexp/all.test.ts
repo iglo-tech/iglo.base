@@ -34,8 +34,8 @@ describe("Compile", () => {
     let error: unknown;
     try {
       compile(re);
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(RegexpSyntaxError);
     expect((error as Error).message).toContain(err);

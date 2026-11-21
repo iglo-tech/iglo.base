@@ -351,7 +351,7 @@ describe("raw settings", () => {
       try {
         collection = newBaseCollection(name);
         collection.fields.add(rawField(field));
-      } catch (err) {
+      } catch (error) {
         // BindBody fails: upstream answers before validating
         const res = await request("POST", "/api/collections", body);
         expect({ status: res.status, body: res.text }).toEqual({
@@ -359,7 +359,7 @@ describe("raw settings", () => {
           body: marshal(
             newBadRequestError(
               "Failed to load the submitted data due to invalid formatting.",
-              err,
+              error,
             ).toJSON(),
           ),
         });

@@ -175,15 +175,15 @@ export function authStoreModels(): void {
 export function clientResponseErrorTypes(): void {
   try {
     throw new ClientResponseError({ status: 400 });
-  } catch (err) {
-    if (err instanceof ClientResponseError) {
-      type _Status = Expect<Equal<typeof err.status, number>>;
-      type _Url = Expect<Equal<typeof err.url, string>>;
-      type _Abort = Expect<Equal<typeof err.isAbort, boolean>>;
-      type _Data = Expect<Equal<typeof err.data, typeof err.response>>;
+  } catch (error) {
+    if (error instanceof ClientResponseError) {
+      type _Status = Expect<Equal<typeof error.status, number>>;
+      type _Url = Expect<Equal<typeof error.url, string>>;
+      type _Abort = Expect<Equal<typeof error.isAbort, boolean>>;
+      type _Data = Expect<Equal<typeof error.data, typeof error.response>>;
       // the response bag stays readable without casts
-      const message: string = err.response.message;
-      const field: string = err.data.data.email.message;
+      const message: string = error.response.message;
+      const field: string = error.data.data.email.message;
       void [message, field];
     }
   }

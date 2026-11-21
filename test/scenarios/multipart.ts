@@ -47,5 +47,5 @@ export function multipart(
 
 // mime/multipart escapeQuotes
 function escapeQuotes(s: string): string {
-  return s.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return s.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
 }

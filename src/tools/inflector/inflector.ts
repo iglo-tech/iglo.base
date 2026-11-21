@@ -14,8 +14,7 @@ const columnifyRemoveRegex = /[^\w.*\-_@#]+/g;
 const snakecaseSplitRegex = /[\W_]+/;
 
 // unicode.IsSpace
-const goSpace =
-  "\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
+const goSpace = String.raw`\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000`;
 const trimSpaceRegex = new RegExp(`^[${goSpace}]+|[${goSpace}]+$`, "g");
 
 const letterRegex = /^\p{L}$/u;

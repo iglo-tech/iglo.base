@@ -53,8 +53,8 @@ function fileToken(e: RequestEvent): HandlerResult {
   let token: string;
   try {
     token = newFileToken(e.auth, e.app.clock);
-  } catch (err) {
-    return e.internalServerError("Failed to generate file token", err);
+  } catch (error) {
+    return e.internalServerError("Failed to generate file token", error);
   }
 
   // execAfterSuccessTx: the handler never runs in a transaction here
@@ -81,8 +81,8 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
       .andWhere(new HashExp({ [collection.name + ".id"]: recordId }))
       .limit(1)
       .oneAsync<Record>(recordTarget);
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   const filename = e.request.pathValue("filename");
@@ -139,11 +139,11 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     let fileRecord: Record;
     try {
       fileRecord = findRecordByViewFile(e.app, collection.id, fileField.getName(), filename);
-    } catch (err) {
+    } catch (error) {
       return e.notFoundError(
         "",
-        new Error(`failed to fetch view file field record: ${(err as Error).message}`, {
-          cause: err,
+        new Error(`failed to fetch view file field record: ${(error as Error).message}`, {
+          cause: error,
         }),
       );
     }
@@ -153,8 +153,8 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
   let fsys: System | S3System;
   try {
     fsys = e.app.filesystem.newFilesystem();
-  } catch (err) {
-    return e.internalServerError("Filesystem initialization failure.", err);
+  } catch (error) {
+    return e.internalServerError("Filesystem initialization failure.", error);
   }
 
   // S3 may take longer than the server's idle timeout to answer
@@ -199,9 +199,9 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
         if (!exists) {
           try {
             await createThumb(e.app, fsys, originalPath, servedPath, thumbSize);
-          } catch (err) {
+          } catch (error) {
             e.app.logger.warn(`Fallback to original - failed to create thumb ${servedName}`, {
-              error: err,
+              error: error,
               original: originalPath,
               thumb: servedPath,
             });
@@ -222,8 +222,8 @@ async function download(e: RequestEvent): Promise<HandlerResult> {
     // execAfterSuccessTx: the handler never runs in a transaction here
     try {
       await fsys.serve(e.response, e.request, servedPath, servedName);
-    } catch (err) {
-      return e.notFoundError("", err);
+    } catch (error) {
+      return e.notFoundError("", error);
     }
 
     return undefined;

@@ -60,7 +60,7 @@ export class Pairing {
 }
 
 function escapeRegExp(s: string): string {
-  return s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+  return s.replace(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
 }
 
 // tools/filesystem/file.go normalizeName: a stored name is the cleaned base
@@ -211,7 +211,7 @@ export function resolveJSON(v: unknown, side: Side): unknown {
 }
 
 function escapeQuotes(s: string): string {
-  return s.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return s.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
 }
 
 export function multipartBody(parts: Array<Part>, boundary: string, side: Side): Uint8Array {

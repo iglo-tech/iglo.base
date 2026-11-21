@@ -114,7 +114,7 @@ describe("TestTextFieldValidateValue", () => {
       expectError: false,
     },
     {
-      name: "special forbidden character \\ (non-primaryKey)",
+      name: String.raw`special forbidden character \ (non-primaryKey)`,
       field: new TextField({ name: "test", primaryKey: false }),
       record: withValue("abc\\"),
       expectError: false,
@@ -144,7 +144,7 @@ describe("TestTextFieldValidateValue", () => {
       expectError: true,
     },
     {
-      name: "special forbidden character \\ (primaryKey)",
+      name: String.raw`special forbidden character \ (primaryKey)`,
       field: new TextField({ name: "test", primaryKey: true }),
       record: withValue("abc\\"),
       expectError: true,

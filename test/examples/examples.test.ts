@@ -385,10 +385,10 @@ for (const app of EXAMPLE_APPS as ReadonlyArray<ExampleApp>) {
               }
               const running = await startApp(app, env);
               try {
-                await drive(running, pb, mode.readable).catch((err: unknown) => {
+                await drive(running, pb, mode.readable).catch((error: unknown) => {
                   throw new Error(
-                    `${err instanceof Error ? err.message : String(err)}\n--- ${app.name} output:\n${running.output()}`,
-                    { cause: err },
+                    `${error instanceof Error ? error.message : String(error)}\n--- ${app.name} output:\n${running.output()}`,
+                    { cause: error },
                   );
                 });
               } finally {
@@ -417,10 +417,10 @@ for (const app of EXAMPLE_APPS as ReadonlyArray<ExampleApp>) {
             PB_SUPERUSER_PASSWORD: SUPERUSER.password,
           });
           try {
-            await realtimeInBrowser(running, pb).catch((err: unknown) => {
+            await realtimeInBrowser(running, pb).catch((error: unknown) => {
               throw new Error(
-                `${err instanceof Error ? err.message : String(err)}\n--- ${app.name} output:\n${running.output()}`,
-                { cause: err },
+                `${error instanceof Error ? error.message : String(error)}\n--- ${app.name} output:\n${running.output()}`,
+                { cause: error },
               );
             });
           } finally {

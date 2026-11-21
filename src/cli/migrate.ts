@@ -76,8 +76,8 @@ function migrateCreate(
   // save the migration file
   try {
     writeFileSync(resultFilePath, template ?? jsBlankTemplate(), { mode: 0o644 });
-  } catch (err) {
-    throw wrapError(`failed to save migration file ${goQuote(resultFilePath)}`, err);
+  } catch (error) {
+    throw wrapError(`failed to save migration file ${goQuote(resultFilePath)}`, error);
   }
 
   ctx.out.stdout(`Successfully created file ${goQuote(resultFilePath)}\n`);
@@ -90,8 +90,8 @@ function migrateCollections(app: App, dir: string, args: Array<string>, ctx: Cli
     collections = collectionQuery(app)
       .orderBy("created ASC")
       .all<Collection>(() => new Collection());
-  } catch (err) {
-    throw wrapError("failed to fetch migrations list", err);
+  } catch (error) {
+    throw wrapError("failed to fetch migrations list", error);
   }
 
   migrateCreate(dir, jsSnapshotTemplate(collections), ["collections_snapshot", ...args], ctx);
@@ -174,8 +174,8 @@ async function runAndWaitForFileDeletes(
   let runErr: unknown = null;
   try {
     run({ ...app, afterTransaction }, list, args, ctx);
-  } catch (err) {
-    runErr = err;
+  } catch (error) {
+    runErr = error;
   }
   const failures = (await Promise.allSettled(afterTransaction)).flatMap((r) =>
     r.status === "rejected" ? [r.reason as unknown] : [],
@@ -210,11 +210,11 @@ export async function runMigrateCommand(
       [helpFlag, ...persistent],
       { allowUnknown: false },
     );
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CommandError(err.message);
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CommandError(error.message);
     }
-    throw err;
+    throw error;
   }
 
   if (parsed.values.get("help") === true) {

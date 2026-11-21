@@ -54,8 +54,10 @@ export class Gitea extends BaseProvider {
 
     try {
       user.email = await fetchVerifiedPrimaryEmail(this, token, this.userInfoURL + "/emails");
-    } catch (err) {
-      throw new Error(`failed to fetch primary email: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`failed to fetch primary email: ${(error as Error).message}`, {
+        cause: error,
+      });
     }
 
     return user;

@@ -541,7 +541,7 @@ export const validateCases: Array<ValidateCase> = [
     body: (ctx) => ({
       name: "c_fields15",
       fields: [
-        { name: "t", type: "text", min: 1, max: 10, pattern: "^\\w+$" },
+        { name: "t", type: "text", min: 1, max: 10, pattern: String.raw`^\w+$` },
         { name: "n", type: "number", min: 0, max: 10, onlyInt: true },
         { name: "b", type: "bool" },
         { name: "e", type: "email", onlyDomains: ["example.com"] },

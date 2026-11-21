@@ -25,7 +25,14 @@ export function bindLogsApi(_app: App, rg: RouterGroup<RequestEvent>): void {
   sub.GET("/{id}", logsView);
 }
 
-const logFilterFields = ["id", "created", "level", "message", "data", "^data\\.[\\w\\.\\:]*\\w+$"];
+const logFilterFields = [
+  "id",
+  "created",
+  "level",
+  "message",
+  "data",
+  String.raw`^data\.[\w\.\:]*\w+$`,
+];
 
 async function logsList(e: RequestEvent): Promise<HandlerResult> {
   const fieldResolver = newSimpleFieldResolver(...logFilterFields);
@@ -35,8 +42,8 @@ async function logsList(e: RequestEvent): Promise<HandlerResult> {
     result = await newProvider(fieldResolver, { clock: e.app.clock })
       .query(logQuery(e.app))
       .parseAndExec<Log>(encodeValues(e.request.query()), () => new Log());
-  } catch (err) {
-    return e.badRequestError("", err);
+  } catch (error) {
+    return e.badRequestError("", error);
   }
 
   return e.json(200, result);
@@ -51,16 +58,16 @@ async function logsStatsHandler(e: RequestEvent): Promise<HandlerResult> {
   if (filter !== "") {
     try {
       expr = filterBuildExpr(filter, fieldResolver, { clock: e.app.clock });
-    } catch (err) {
-      return e.badRequestError("Invalid filter format.", err);
+    } catch (error) {
+      return e.badRequestError("Invalid filter format.", error);
     }
   }
 
   let stats;
   try {
     stats = await logsStats(e.app, expr);
-  } catch (err) {
-    return e.badRequestError("Failed to generate logs stats.", err);
+  } catch (error) {
+    return e.badRequestError("Failed to generate logs stats.", error);
   }
 
   return e.json(200, stats);
@@ -75,8 +82,8 @@ async function logsView(e: RequestEvent): Promise<HandlerResult> {
   let log: Log;
   try {
     log = await findLogById(e.app, id);
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   return e.json(200, log);
@@ -86,15 +93,15 @@ function logsTruncate(e: RequestEvent): HandlerResult {
   // delete all rows directly (aka. no model hooks will be fired)
   try {
     e.app.databases.auxNonconcurrentDB().delete(LogsTableName, null).execute();
-  } catch (err) {
-    return e.internalServerError("Failed to truncate all logs.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to truncate all logs.", error);
   }
 
   // try to free the unused disk space
   try {
     auxVacuum(e.app.databases);
-  } catch (err) {
-    e.app.logger.warn("Failed to VACUUM aux database", { error: err });
+  } catch (error) {
+    e.app.logger.warn("Failed to VACUUM aux database", { error: error });
   }
 
   return e.noContent(204);

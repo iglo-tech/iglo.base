@@ -37,8 +37,8 @@ const optionSets: Array<MarshalOptions> = [
 function outcome(fn: () => string, partial: (e: unknown) => string): string {
   try {
     return "ok:" + fn();
-  } catch (err) {
-    return "err:" + (err as Error).message + "|" + partial(err);
+  } catch (error) {
+    return "err:" + (error as Error).message + "|" + partial(error);
   }
 }
 
@@ -54,7 +54,7 @@ const pieces = [
   "Zażółć gęślą jaźń",
   "日本語",
   "😀 emoji",
-  'quote " and \\ backslash',
+  String.raw`quote " and \ backslash`,
   "tab\t nl\n cr\r bs\b ff\f",
   "\u0000\u0001\u001f\u007f",
   "<tag> & more",
@@ -111,13 +111,13 @@ function randomJSONText(r: () => number, depth = 0): string {
         case 1:
           // escapes in the other spellings
           return JSON.stringify(raw)
-            .replaceAll("/", "\\/")
-            .replaceAll("é", "\\u00e9")
-            .replaceAll("\\n", "\\u000A");
+            .replaceAll("/", String.raw`\/`)
+            .replaceAll("é", String.raw`\u00e9`)
+            .replaceAll(String.raw`\n`, String.raw`\u000A`);
         case 2:
           return '"' + raw.replaceAll('"', "").replaceAll("\\", "") + '"';
         case 3:
-          return '"\\u001F\\u001f\\u0007\\u007f\\u00e9\\ud83d\\ude00\\ud800"';
+          return String.raw`"\u001F\u001f\u0007\u007f\u00e9\ud83d\ude00\ud800"`;
         default:
           return JSON.stringify(raw);
       }
@@ -133,7 +133,7 @@ function randomJSONText(r: () => number, depth = 0): string {
     default: {
       const n = Math.floor(r() * 4);
       const items: Array<string> = [];
-      const names = ["a", "b", "1", "10", "2", "a", "é", "😀", "\\u0041", "\\/"];
+      const names = ["a", "b", "1", "10", "2", "a", "é", "😀", String.raw`\u0041`, String.raw`\/`];
       for (let i = 0; i < n; i++) {
         const name =
           r() < 0.7
@@ -194,7 +194,7 @@ describe("a marshaler's text", () => {
       "0",
       "-1.5e3",
       '"a"',
-      '"\\u0001\\"\\\\\\n"',
+      String.raw`"\u0001\"\\\n"`,
       '"日本語😀"',
       '{"a":[1,2,{"b":null}],"c":"d"}',
       "[]",
@@ -209,11 +209,11 @@ describe("a marshaler's text", () => {
       "1 ",
       '{"a": 1}',
       "[1, 2]",
-      '"\\/"',
-      '"\\u00e9"',
-      '"\\u001F"',
-      '"\\u0008"',
-      '"\\ud800"',
+      String.raw`"\/"`,
+      String.raw`"\u00e9"`,
+      String.raw`"\u001F"`,
+      String.raw`"\u0008"`,
+      String.raw`"\ud800"`,
       '"\ud800"',
       "01",
       "1.",

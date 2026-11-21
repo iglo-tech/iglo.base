@@ -251,8 +251,11 @@ describe("SSR differential", () => {
       let dataCallRejected = false;
       try {
         await pbData.collection("users").getOne(user.id);
-      } catch (err: unknown) {
-        if (err instanceof ClientResponseError && (err.status === 404 || err.status === 401)) {
+      } catch (error: unknown) {
+        if (
+          error instanceof ClientResponseError &&
+          (error.status === 404 || error.status === 401)
+        ) {
           dataCallRejected = true;
         }
       }

@@ -279,8 +279,8 @@ class Recording implements SdkEnv {
     let error: unknown;
     try {
       value = await fn();
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     this.steps.push({
       label,
@@ -298,8 +298,8 @@ class Recording implements SdkEnv {
     let error: unknown;
     try {
       await fn();
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     this.steps.push({
       label,
@@ -329,8 +329,8 @@ class Recording implements SdkEnv {
     let error: unknown;
     try {
       await fn();
-    } catch (e) {
-      error = e;
+    } catch (error_) {
+      error = error_;
     }
     this.#current.splice(before);
     if (!(error instanceof ClientResponseError)) {

@@ -36,8 +36,8 @@ function loggedSelect(expr: Expression): string {
 
 // regexp.QuoteMeta, then TEST as \w+
 function expectPatternRegex(expectPattern: string): RegExp {
-  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, "\\$&");
-  return new RegExp("^" + quoted.replaceAll("TEST", "\\w+") + "$");
+  const quoted = expectPattern.replace(/[\\.+*?()|[\]{}^$]/g, String.raw`\$&`);
+  return new RegExp("^" + quoted.replaceAll("TEST", String.raw`\w+`) + "$");
 }
 
 describe("FilterData.BuildExpr", () => {
@@ -45,8 +45,8 @@ describe("FilterData.BuildExpr", () => {
     "test1",
     "test2",
     "test3",
-    "^test4_\\w+$",
-    "^test5\\.[\\w\\.\\:]*\\w+$",
+    String.raw`^test4_\w+$`,
+    String.raw`^test5\.[\w\.\:]*\w+$`,
   );
 
   // [name, filterData, expectError, expectPattern]
@@ -61,37 +61,37 @@ describe("FilterData.BuildExpr", () => {
       "like with 2 columns",
       "test1 ~ test2",
       false,
-      "[[test1]] LIKE ('%' || [[test2]] || '%') ESCAPE '\\'",
+      String.raw`[[test1]] LIKE ('%' || [[test2]] || '%') ESCAPE '\'`,
     ],
     [
       "like with right column operand",
       "'lorem' ~ test1",
       false,
-      "{:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\\'",
+      String.raw`{:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\'`,
     ],
     [
       "like with left column operand and text as right operand",
       "test1 ~ 'lorem'",
       false,
-      "[[test1]] LIKE {:TEST} ESCAPE '\\'",
+      String.raw`[[test1]] LIKE {:TEST} ESCAPE '\'`,
     ],
     [
       "not like with 2 columns",
       "test1 !~ test2",
       false,
-      "[[test1]] NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\\'",
+      String.raw`[[test1]] NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\'`,
     ],
     [
       "not like with right column operand",
       "'lorem' !~ test1",
       false,
-      "{:TEST} NOT LIKE ('%' || [[test1]] || '%') ESCAPE '\\'",
+      String.raw`{:TEST} NOT LIKE ('%' || [[test1]] || '%') ESCAPE '\'`,
     ],
     [
       "like with left column operand and text as right operand",
       "test1 !~ 'lorem'",
       false,
-      "[[test1]] NOT LIKE {:TEST} ESCAPE '\\'",
+      String.raw`[[test1]] NOT LIKE {:TEST} ESCAPE '\'`,
     ],
     [
       "nested json no coalesce",
@@ -109,7 +109,7 @@ describe("FilterData.BuildExpr", () => {
       "complex expression",
       "((test1 > 1) || (test2 != 2)) && test3 ~ '%%example' && test4_sub = null",
       false,
-      "(([[test1]] > {:TEST} OR [[test2]] IS NOT {:TEST}) AND [[test3]] LIKE {:TEST} ESCAPE '\\' AND ([[test4_sub]] = '' OR [[test4_sub]] IS NULL))",
+      String.raw`(([[test1]] > {:TEST} OR [[test2]] IS NOT {:TEST}) AND [[test3]] LIKE {:TEST} ESCAPE '\' AND ([[test4_sub]] = '' OR [[test4_sub]] IS NULL))`,
     ],
     [
       "combination of special literals (null, true, false)",
@@ -121,7 +121,7 @@ describe("FilterData.BuildExpr", () => {
       "all operators",
       "(test1 = test2 || test2 != test3) && (test2 ~ 'example' || test2 !~ '%%abc') && 'switch1%%' ~ test1 && 'switch2' !~ test2 && test3 > 1 && test3 >= 0 && test3 <= 4 && 2 < 5",
       false,
-      "((COALESCE([[test1]], '') = COALESCE([[test2]], '') OR COALESCE([[test2]], '') IS NOT COALESCE([[test3]], '')) AND ([[test2]] LIKE {:TEST} ESCAPE '\\' OR [[test2]] NOT LIKE {:TEST} ESCAPE '\\') AND {:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\\' AND {:TEST} NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\\' AND [[test3]] > {:TEST} AND [[test3]] >= {:TEST} AND [[test3]] <= {:TEST} AND {:TEST} < {:TEST})",
+      String.raw`((COALESCE([[test1]], '') = COALESCE([[test2]], '') OR COALESCE([[test2]], '') IS NOT COALESCE([[test3]], '')) AND ([[test2]] LIKE {:TEST} ESCAPE '\' OR [[test2]] NOT LIKE {:TEST} ESCAPE '\') AND {:TEST} LIKE ('%' || [[test1]] || '%') ESCAPE '\' AND {:TEST} NOT LIKE ('%' || [[test2]] || '%') ESCAPE '\' AND [[test3]] > {:TEST} AND [[test3]] >= {:TEST} AND [[test3]] <= {:TEST} AND {:TEST} < {:TEST})`,
     ],
     [
       "geoDistance function",
@@ -137,8 +137,8 @@ describe("FilterData.BuildExpr", () => {
       let err: unknown;
       try {
         expr = filterBuildExpr(filterData, resolver, { clock });
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== undefined).toBe(expectError);
@@ -155,7 +155,7 @@ describe("FilterData.BuildExpr", () => {
 test("FilterData.BuildExpr with params", () => {
   const date = new Date(Date.UTC(2023, 0, 1));
 
-  const resolver = newSimpleFieldResolver("^test\\w+$");
+  const resolver = newSimpleFieldResolver(String.raw`^test\w+$`);
 
   const filter: FilterData = `
 		test1 = {:test1} ||
@@ -223,7 +223,7 @@ describe("FilterData.BuildExpr with params fallback error", () => {
 });
 
 describe("FilterData.BuildExprWithLimit", () => {
-  const resolver = newSimpleFieldResolver("^\\w+$");
+  const resolver = newSimpleFieldResolver(String.raw`^\w+$`);
 
   // [limit, filter, expectError]
   const scenarios: Array<[number, FilterData, boolean]> = [
@@ -246,8 +246,8 @@ describe("FilterData.BuildExprWithLimit", () => {
         let err: unknown;
         try {
           filterBuildExprWithLimit(filter, resolver, limit, options);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(expectError);
       }
@@ -256,7 +256,7 @@ describe("FilterData.BuildExprWithLimit", () => {
 });
 
 test("Like params wrapping", () => {
-  const resolver = newSimpleFieldResolver("^test\\w+$");
+  const resolver = newSimpleFieldResolver(String.raw`^test\w+$`);
 
   const filter: FilterData = `
 		test1 ~ {:p1} ||

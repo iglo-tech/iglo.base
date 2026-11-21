@@ -38,7 +38,7 @@ async function failureOf(status: number, body: string): Promise<unknown> {
     () => {
       throw new Error("expected the request to fail");
     },
-    (err: unknown) => err,
+    (error: unknown) => error,
   );
 }
 

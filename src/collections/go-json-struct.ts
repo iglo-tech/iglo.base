@@ -136,11 +136,11 @@ function isNull(raw: string): boolean {
 function checkSyntax(text: string): void {
   try {
     unmarshalStruct(text, {}, {}, () => {});
-  } catch (err) {
-    if (err instanceof JSONSemanticError) {
+  } catch (error) {
+    if (error instanceof JSONSemanticError) {
       return; // valid JSON, not an object
     }
-    throw err;
+    throw error;
   }
 }
 

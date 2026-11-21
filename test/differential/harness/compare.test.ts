@@ -91,11 +91,11 @@ describe("bodies", () => {
     expect(diff(res('{"n":"1"}'), res('{"n":1}'))).toEqual([
       'body n: different kinds: upstream "1", iglo.base 1',
     ]);
-    expect(diff(res('{"s":"\\u0041"}'), res('{"s":"A"}'))).toEqual([
-      'body: same JSON, different bytes at character 6: upstream "{\\"s\\":\\"\\\\u0041\\"}", iglo.base "{\\"s\\":\\"A\\"}"',
+    expect(diff(res(String.raw`{"s":"\u0041"}`), res('{"s":"A"}'))).toEqual([
+      String.raw`body: same JSON, different bytes at character 6: upstream "{\"s\":\"\\u0041\"}", iglo.base "{\"s\":\"A\"}"`,
     ]);
     expect(diff(res('{"a":1}'), res('{ "a":1}'))).toEqual([
-      'body: same JSON, different bytes at character 1: upstream "{\\"a\\":1}", iglo.base "{ \\"a\\":1}"',
+      String.raw`body: same JSON, different bytes at character 1: upstream "{\"a\":1}", iglo.base "{ \"a\":1}"`,
     ]);
   });
 
@@ -108,7 +108,7 @@ describe("bodies", () => {
         res('{"items":[{"json":[1, 2, 3]}],"page":1}'),
       ),
     ).toEqual([
-      'body: same JSON, different bytes at character 21: upstream "\\"items\\":[{\\"json\\":[1,2,3]}],\\"page\\":1}", iglo.base "\\"items\\":[{\\"json\\":[1, 2, 3]}],\\"page\\":1}"',
+      String.raw`body: same JSON, different bytes at character 21: upstream "\"items\":[{\"json\":[1,2,3]}],\"page\":1}", iglo.base "\"items\":[{\"json\":[1, 2, 3]}],\"page\":1}"`,
     ]);
     expect(diff(res('{"json":{"b":1,"a":2}}'), res('{"json":{"a":2,"b":1}}'))).toEqual([
       'body json: members [b, a] vs [a, b]: upstream {"b":1,"a":2}, iglo.base {"a":2,"b":1}',
@@ -587,7 +587,7 @@ describe("council round 2", () => {
     expect(
       diff(res('{"id":"aaaaaaaaaaaaaaa"}', plain), res('{"id":"bbbbbbbbbbbbbbb"}', plain), { url }),
     ).toEqual([
-      'body: upstream "{\\"id\\":\\"aaaaaaaaaaaaaaa\\"}", iglo.base "{\\"id\\":\\"bbbbbbbbbbbbbbb\\"}"',
+      String.raw`body: upstream "{\"id\":\"aaaaaaaaaaaaaaa\"}", iglo.base "{\"id\":\"bbbbbbbbbbbbbbb\"}"`,
     ]);
     expect(
       diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), { url }),
@@ -595,7 +595,7 @@ describe("council round 2", () => {
   });
 
   test("a value sent with JSON string escapes compares exactly", () => {
-    const body = '{"id":"\\u0061aaaaaaaaaaaaaa","title":"review"}';
+    const body = String.raw`{"id":"\u0061aaaaaaaaaaaaaa","title":"review"}`;
     expect(
       diff(res('{"id":"aaaaaaaaaaaaaaa"}'), res('{"id":"bbbbbbbbbbbbbbb"}'), {
         url: "/api/collections/demo2/records",
@@ -641,7 +641,7 @@ describe("council round 3", () => {
       "--b0",
       'Content-Disposition: form-data; name="@jsonPayload"',
       "",
-      '{"id":"\\u0061aaaaaaaaaaaaaa"}',
+      String.raw`{"id":"\u0061aaaaaaaaaaaaaa"}`,
       "--b0--",
       "",
     ].join("\r\n");

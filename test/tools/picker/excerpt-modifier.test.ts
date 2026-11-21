@@ -20,8 +20,8 @@ test.each<[string, Array<string>, boolean]>([
   let err: unknown;
   try {
     m = newExcerptModifier(...args);
-  } catch (e) {
-    err = e;
+  } catch (error) {
+    err = error;
   }
 
   expect(err !== undefined).toBe(expectError);

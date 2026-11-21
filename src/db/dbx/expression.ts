@@ -89,11 +89,11 @@ export function notIn(col: string, ...values: Array<unknown>): Expression {
 // are the corresponding escaped versions.
 export const defaultLikeEscape: ReadonlyArray<string> = Object.freeze([
   "\\",
-  "\\\\",
+  String.raw`\\`,
   "%",
-  "\\%",
+  String.raw`\%`,
   "_",
-  "\\_",
+  String.raw`\_`,
 ]);
 
 // Like generates a LIKE expression for the specified column and the possible strings that the column should be like.

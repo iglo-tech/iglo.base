@@ -64,11 +64,11 @@ export class AsyncListIterator {
 
       try {
         this.#page = await this.#b.drv.listPaged(this.#opts, this.#b.signal);
-      } catch (err) {
-        if (errorsIs(err, errEOF)) {
+      } catch (error) {
+        if (errorsIs(error, errEOF)) {
           return null;
         }
-        throw wrapError(this.#b.drv, err, "");
+        throw wrapError(this.#b.drv, error, "");
       }
       this.#nextIdx = 0;
     }
@@ -113,8 +113,8 @@ export class AsyncBucket {
     let a: Attributes;
     try {
       a = await this.drv.attributes(key, this.signal);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
 
     let md: Map<string, string> | null = null;
@@ -134,11 +134,11 @@ export class AsyncBucket {
     try {
       await this.attributes(key);
       return true;
-    } catch (err) {
-      if (isNotFound(err)) {
+    } catch (error) {
+      if (isNotFound(error)) {
         return false;
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -155,8 +155,8 @@ export class AsyncBucket {
     let dr: AsyncDriverReader;
     try {
       dr = await this.drv.newRangeReader(key, offset, length, this.signal);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
 
     return { ...dr.attributes(), body: dr.body };
@@ -169,8 +169,8 @@ export class AsyncBucket {
 
     try {
       await this.drv.upload(key, contentType, payload, { ...opts, metadata }, this.signal);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
   }
 
@@ -185,8 +185,8 @@ export class AsyncBucket {
 
     try {
       await this.drv.copy(dstKey, srcKey, this.signal);
-    } catch (err) {
-      throw wrapError(this.drv, err, `${srcKey} -> ${dstKey}`);
+    } catch (error) {
+      throw wrapError(this.drv, error, `${srcKey} -> ${dstKey}`);
     }
   }
 
@@ -198,8 +198,8 @@ export class AsyncBucket {
 
     try {
       await this.drv.delete(key, this.signal);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
   }
 

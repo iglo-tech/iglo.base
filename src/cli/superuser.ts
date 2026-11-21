@@ -51,7 +51,7 @@ function invalidEmail(email: string | undefined): boolean {
 
 // fatih/color output: the color codes wrap the whole text, newline included
 function colored(ctx: CliContext, codes: string, text: string): void {
-  ctx.out.stdout(ctx.out.color ? `\x1b[${codes}m${text}\x1b[0m` : text);
+  ctx.out.stdout(ctx.out.color ? `\u001b[${codes}m${text}\u001b[0m` : text);
 }
 
 // color.Green / color.Yellow append a newline to the format
@@ -76,9 +76,9 @@ const subcommands: Array<Subcommand> = [
       let superusersCol;
       try {
         superusersCol = findCachedCollectionByNameOrId(app, CollectionNameSuperusers);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(err)}`,
+          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(error)}`,
         );
       }
 
@@ -94,8 +94,8 @@ const subcommands: Array<Subcommand> = [
 
       try {
         await saveRecord(app, superuser);
-      } catch (err) {
-        throw new CommandError(`failed to upsert superuser account: ${errorMessage(err)}`);
+      } catch (error) {
+        throw new CommandError(`failed to upsert superuser account: ${errorMessage(error)}`);
       }
 
       green(ctx, `Successfully saved superuser ${goQuote(superuser.email())}!`);
@@ -118,9 +118,9 @@ const subcommands: Array<Subcommand> = [
       let superusersCol;
       try {
         superusersCol = findCachedCollectionByNameOrId(app, CollectionNameSuperusers);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(err)}`,
+          `failed to fetch ${goQuote(CollectionNameSuperusers)} collection: ${errorMessage(error)}`,
         );
       }
 
@@ -130,8 +130,8 @@ const subcommands: Array<Subcommand> = [
 
       try {
         await saveRecord(app, superuser);
-      } catch (err) {
-        throw new CommandError(`failed to create new superuser account: ${errorMessage(err)}`);
+      } catch (error) {
+        throw new CommandError(`failed to create new superuser account: ${errorMessage(error)}`);
       }
 
       green(ctx, `Successfully created new superuser ${goQuote(superuser.email())}!`);
@@ -162,9 +162,9 @@ const subcommands: Array<Subcommand> = [
 
       try {
         await saveRecord(app, superuser);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to change superuser ${goQuote(superuser.email())} password: ${errorMessage(err)}`,
+          `failed to change superuser ${goQuote(superuser.email())} password: ${errorMessage(error)}`,
         );
       }
 
@@ -191,9 +191,9 @@ const subcommands: Array<Subcommand> = [
 
       try {
         await deleteRecord(app, superuser);
-      } catch (err) {
+      } catch (error) {
         throw new CommandError(
-          `failed to delete superuser ${goQuote(superuser.email())}: ${errorMessage(err)}`,
+          `failed to delete superuser ${goQuote(superuser.email())}: ${errorMessage(error)}`,
         );
       }
 
@@ -231,8 +231,8 @@ const subcommands: Array<Subcommand> = [
 
       try {
         await saveOTP(app, otp);
-      } catch (err) {
-        throw new CommandError(`failed to create OTP: ${errorMessage(err)}`);
+      } catch (error) {
+        throw new CommandError(`failed to create OTP: ${errorMessage(error)}`);
       }
 
       colored(
@@ -262,7 +262,7 @@ const subcommands: Array<Subcommand> = [
       } else {
         // Println: the text is colored, the newline is not
         ctx.out.stdout(
-          `${ctx.out.color ? "\x1b[42;30mSuccessfully updated SuperuserIPs setting:\x1b[0m" : "Successfully updated SuperuserIPs setting:"}\n`,
+          `${ctx.out.color ? "\u001b[42;30mSuccessfully updated SuperuserIPs setting:\u001b[0m" : "Successfully updated SuperuserIPs setting:"}\n`,
         );
         const superuserIPs = app.settings.settings.SuperuserIPs ?? [];
         superuserIPs.forEach((ip, i) => {
@@ -330,11 +330,11 @@ export async function runSuperuserCommand(
       };
       try {
         parseFlags(rest, [...local, ...persistent], { allowUnknown: false });
-      } catch (err) {
-        if (err instanceof FlagError) {
-          throw new CommandError(err.message, usageText(help));
+      } catch (error) {
+        if (error instanceof FlagError) {
+          throw new CommandError(error.message, usageText(help));
         }
-        throw err;
+        throw error;
       }
       // a command without its own action prints its help
       ctx.out.stdout(helpText(help));
@@ -347,12 +347,12 @@ export async function runSuperuserCommand(
       parsed = parseFlags(argsMinusFirst(rest, sub.name, persistent), [...local, ...persistent], {
         allowUnknown: false,
       });
-    } catch (err) {
-      if (err instanceof FlagError) {
+    } catch (error) {
+      if (error instanceof FlagError) {
         // SilenceUsage: no usage for the subcommands' errors
-        throw new CommandError(err.message);
+        throw new CommandError(error.message);
       }
-      throw err;
+      throw error;
     }
     if (parsed.values.get("help") === true) {
       ctx.out.stdout(

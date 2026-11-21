@@ -175,10 +175,10 @@ export function* mfasOnUpdate(app: RecordsApp, record: Record, next: Next): Step
   if (oldHash !== newHash) {
     try {
       yield* deleteAllRefsByRecord(app, CollectionNameMFAs, record);
-    } catch (err) {
+    } catch (error) {
       throw wrapError(
         `[${record.collection().name}] failed to delete all previous MFAs for record ${goQuote(record.id)}`,
-        err,
+        error,
       );
     }
   }
@@ -197,9 +197,9 @@ export function* authOriginsOnUpdate(app: RecordsApp, record: Record, next: Next
   if (oldHash !== newHash) {
     try {
       yield* deleteAllRefsByRecord(app, CollectionNameAuthOrigins, record);
-    } catch (err) {
+    } catch (error) {
       app.logger.warn("Failed to delete all previous auth origin fingerprints", {
-        error: err,
+        error: error,
         recordId: record.id,
         collectionId: record.collection().id,
       });
@@ -253,10 +253,10 @@ export function* otpsOnUpdateExecute(app: RecordsApp, record: Record, next: Next
   if (!original.isNew() && original.tokenKey() !== record.tokenKey()) {
     try {
       yield* deleteAllRefsByRecord(app, CollectionNameOTPs, record);
-    } catch (err) {
+    } catch (error) {
       throw wrapError(
         `[${record.collection().name}] failed to delete all previous OTPs for record ${goQuote(record.id)}`,
-        err,
+        error,
       );
     }
   }
@@ -398,8 +398,8 @@ export function* deleteAllRefsByRecord(
   for (const m of models) {
     try {
       yield* deleteStep(app, m);
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
   }
   if (errs.length > 0) {

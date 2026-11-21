@@ -16,8 +16,8 @@ self.addEventListener("message", async (event: MessageEvent<ThumbRequestMessage>
   try {
     const thumb = await createThumb(new Uint8Array(input), contentType, size, maxPixels);
     res = { id, ok: true, bytes: thumb.bytes, contentType: thumb.contentType };
-  } catch (err) {
-    res = { id, ok: false, error: err instanceof Error ? err.message : String(err) };
+  } catch (error) {
+    res = { id, ok: false, error: error instanceof Error ? error.message : String(error) };
   }
   // a Worker's postMessage has no target origin (that is window.postMessage)
   self.postMessage(res, res.ok ? [res.bytes.buffer as ArrayBuffer] : []);

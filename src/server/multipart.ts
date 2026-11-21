@@ -391,9 +391,9 @@ export class Form {
         if (fh.tmpfile !== "") {
           try {
             rmSync(fh.tmpfile);
-          } catch (err) {
-            if ((err as { code?: string }).code !== "ENOENT" && first === undefined) {
-              first = err;
+          } catch (error) {
+            if ((error as { code?: string }).code !== "ENOENT" && first === undefined) {
+              first = error;
             }
           }
         }
@@ -429,11 +429,11 @@ function createTemp(): { fd: number; name: string } {
     const name = join(dir, "multipart-" + String(crypto.getRandomValues(new Uint32Array(1))[0]));
     try {
       return { fd: openSync(name, "wx+", 0o600), name };
-    } catch (err) {
-      if ((err as { code?: string }).code === "EEXIST" && tries < 10_000) {
+    } catch (error) {
+      if ((error as { code?: string }).code === "EEXIST" && tries < 10_000) {
         continue;
       }
-      throw err;
+      throw error;
     }
   }
 }
@@ -613,15 +613,15 @@ export class Reader {
           return off;
         },
       );
-    } catch (err) {
-      result = [undefined, err];
+    } catch (error) {
+      result = [undefined, error];
     }
     if (file !== undefined) {
       try {
         closeSync(file.fd);
-      } catch (err) {
+      } catch (error) {
         if (result[1] === undefined) {
-          result = [undefined, err];
+          result = [undefined, error];
         }
       }
     }

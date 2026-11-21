@@ -14,8 +14,8 @@ function readLine(): string {
     let read = 0;
     try {
       read = readSync(0, buffer, 0, 1, null);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "EAGAIN") {
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EAGAIN") {
         Bun.sleepSync(10);
         continue;
       }

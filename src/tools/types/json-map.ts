@@ -40,8 +40,8 @@ export function jsonMapMarshalJSON(m: JSONMap<unknown> | undefined): string {
 export function jsonMapString(m: JSONMap<unknown> | undefined): string {
   try {
     return jsonMapMarshalJSON(m);
-  } catch (err) {
-    return marshalPartial(err);
+  } catch (error) {
+    return marshalPartial(error);
   }
 }
 
@@ -75,10 +75,10 @@ export function scanJSONMap<T = unknown>(
   }
   try {
     return (unmarshalMapInto(data, elem, into) as JSONMap<T> | undefined) ?? {};
-  } catch (err) {
+  } catch (error) {
     for (const key of Object.keys(into)) {
       delete into[key];
     }
-    throw err;
+    throw error;
   }
 }

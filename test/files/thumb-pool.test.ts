@@ -18,8 +18,8 @@ async function rejection(p: Promise<unknown>): Promise<string> {
   try {
     await p;
     return "";
-  } catch (err) {
-    return err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
 }
 

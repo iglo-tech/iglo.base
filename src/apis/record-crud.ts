@@ -146,9 +146,9 @@ function enrichRecordSync(e: RequestEvent, info: RequestInfo, record: Record): u
         throw joinErrors([...failed].map(([key, err]) => wrapError(key, err)));
       }
     }
-  } catch (err) {
+  } catch (error) {
     // not critical
-    e.app.logger.warn("failed to apply default enriching", { error: err });
+    e.app.logger.warn("failed to apply default enriching", { error: error });
   }
 
   return undefined;
@@ -208,8 +208,8 @@ async function recordsList(
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   const rateLimitErr = checkCollectionRateLimit(e, collection, "list");
@@ -248,8 +248,8 @@ async function recordsList(
         fieldsResolver.filterOptions(),
       );
       query.andWhere(expr);
-    } catch (err) {
-      return asError(err);
+    } catch (error) {
+      return asError(error);
     }
 
     // will be applied by the search provider right before executing the query
@@ -272,8 +272,8 @@ async function recordsList(
       encodeValues(e.request.query()),
       recordsTarget,
     );
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("", error));
   }
 
   const enrichErr = await enrichRecords(e, result.items);
@@ -335,8 +335,8 @@ async function recordView(e: RequestEvent): Promise<HandlerResult> {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   const rateLimitErr = checkCollectionRateLimit(e, collection, "view");
@@ -382,9 +382,9 @@ async function recordView(e: RequestEvent): Promise<HandlerResult> {
     );
     ruleFunc(q);
     record = await q.limit(1).oneAsync<Record>(recordTarget);
-  } catch (fetchErr) {
+  } catch (error) {
     // upstream passes the (nil) RequestInfo error first: always a 404
-    return firstApiError(undefined, e.notFoundError("", fetchErr));
+    return firstApiError(undefined, e.notFoundError("", error));
   }
 
   const enrichErr = await enrichRecord(e, record);
@@ -404,8 +404,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   if (collection.isView()) {
@@ -432,8 +432,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
   let data: DataMap | null;
   try {
     data = yield* recordDataFromRequest(e, record, io);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to read the submitted data.", error));
   }
 
   // set a random password for the OAuth2 ignoring its plain password validators
@@ -485,10 +485,10 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
     let dummyExport: Params;
     try {
       dummyExport = dummyRecord.dbExport();
-    } catch (err) {
+    } catch (error) {
       return e.badRequestError(
         "Failed to create record",
-        new Error(`dummy DBExport error: ${errorMessage(err)}`, { cause: err }),
+        new Error(`dummy DBExport error: ${errorMessage(error)}`, { cause: error }),
       );
     }
 
@@ -537,21 +537,21 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
           resolver.filterOptions(),
         );
         ruleQuery.andWhere(expr);
-      } catch (err) {
+      } catch (error) {
         return e.badRequestError(
           "Failed to create record",
-          new Error(`create rule build expression failure: ${errorMessage(err)}`, {
-            cause: err,
+          new Error(`create rule build expression failure: ${errorMessage(error)}`, {
+            cause: error,
           }),
         );
       }
 
       try {
         resolver.updateQuery(ruleQuery);
-      } catch (err) {
+      } catch (error) {
         return e.badRequestError(
           "Failed to create record",
-          new Error(`create rule update query failure: ${errorMessage(err)}`, { cause: err }),
+          new Error(`create rule update query failure: ${errorMessage(error)}`, { cause: error }),
         );
       }
 
@@ -560,8 +560,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
       try {
         const row = (yield io.row(ruleQuery.limit(1))) as Array<unknown>;
         exists = Number(row[0] ?? 0);
-      } catch (err) {
-        ruleErr = err;
+      } catch (error) {
+        ruleErr = error;
       }
       if (ruleErr !== null || exists === 0) {
         return e.badRequestError(
@@ -594,8 +594,8 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
 
   try {
     yield io.submit(form);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to create record", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to create record", error));
   }
 
   const enrichErr = (yield io.enrich(e, record)) as Error | undefined;
@@ -611,8 +611,8 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   if (collection.isView()) {
@@ -647,15 +647,15 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
   let record: Record;
   try {
     record = (yield findRecordByIdIO(e.app, collection, recordId, null, io)) as Record;
-  } catch (err) {
-    return firstApiError(err, e.notFoundError("", err));
+  } catch (error) {
+    return firstApiError(error, e.notFoundError("", error));
   }
 
   let data: DataMap | null;
   try {
     data = yield* recordDataFromRequest(e, record, io);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to read the submitted data.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to read the submitted data.", error));
   }
 
   // replace modifiers fields so that the resolved value is always
@@ -677,8 +677,8 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
   // refetch with access checks
   try {
     record = (yield findRecordByIdIO(e.app, collection, recordId, ruleFunc, io)) as Record;
-  } catch (err) {
-    return firstApiError(err, e.notFoundError("", err));
+  } catch (error) {
+    return firstApiError(error, e.notFoundError("", error));
   }
 
   const form = new RecordUpsert(e.app, record);
@@ -705,8 +705,8 @@ export function* recordUpdate(e: RequestEvent, io: RecordIO): HandlerStep {
 
   try {
     yield io.submit(form);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to update record.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to update record.", error));
   }
 
   const enrichErr = (yield io.enrich(e, record)) as Error | undefined;
@@ -722,8 +722,8 @@ export function* recordDelete(e: RequestEvent, io: RecordIO): HandlerStep {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("Missing collection context.", err);
+  } catch (error) {
+    return e.notFoundError("Missing collection context.", error);
   }
 
   if (collection.isView()) {
@@ -768,19 +768,19 @@ export function* recordDelete(e: RequestEvent, io: RecordIO): HandlerStep {
   let record: Record;
   try {
     record = (yield findRecordByIdIO(e.app, collection, recordId, ruleFunc, io)) as Record;
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   // the default OnRecordDeleteRequest action
   try {
     yield io.deleteRecord(e, record);
-  } catch (err) {
+  } catch (error) {
     return firstApiError(
-      err,
+      error,
       e.badRequestError(
         "Failed to delete record. Make sure that the record is not part of a required relation reference.",
-        err,
+        error,
       ),
     );
   }
@@ -906,9 +906,9 @@ function* extractUploadedFiles(
       let files: Array<File> = [];
       try {
         files = (yield io.uploadedFiles(re, k)) as Array<File>;
-      } catch (err) {
-        if (err !== ErrMissingFile) {
-          throw err;
+      } catch (error) {
+        if (error !== ErrMissingFile) {
+          throw error;
         }
       }
       if (files.length > 0) {
@@ -949,9 +949,9 @@ function* hasAuthManageAccess(
   try {
     const expr = filterBuildExpr(manageRule, resolver, resolver.filterOptions());
     query.andWhere(expr);
-  } catch (err) {
+  } catch (error) {
     app.logger.error("Manage rule build expression error", {
-      error: err,
+      error: error,
       collectionId: collection.id,
     });
     return false;

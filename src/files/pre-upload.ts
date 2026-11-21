@@ -61,8 +61,8 @@ export class PreUploads {
     let fsys;
     try {
       fsys = this.#app.filesystem.newFilesystem();
-    } catch (err) {
-      this.#logFailure(leftover, err);
+    } catch (error) {
+      this.#logFailure(leftover, error);
       return;
     }
 
@@ -72,8 +72,8 @@ export class PreUploads {
         file.preUpload = null;
         try {
           await fsys.delete(key);
-        } catch (err) {
-          this.#logFailure([file], err);
+        } catch (error) {
+          this.#logFailure([file], error);
         }
       }
     } finally {
@@ -133,8 +133,8 @@ export async function preUploadFiles(
   let fsys;
   try {
     fsys = app.filesystem.newFilesystem();
-  } catch (err) {
-    failure = err;
+  } catch (error) {
+    failure = error;
   }
 
   try {
@@ -155,9 +155,9 @@ export async function preUploadFiles(
         stored.push(file);
         try {
           await fsys.uploadFile(file, key);
-        } catch (err) {
-          preUpload.error = err;
-          failure = err;
+        } catch (error) {
+          preUpload.error = error;
+          failure = error;
         }
       }
     }

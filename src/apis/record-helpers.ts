@@ -96,8 +96,8 @@ export async function recordAuthResponseWithNewToken(
   let token: string;
   try {
     token = newAuthToken(authRecord, e.app.clock);
-  } catch (err) {
-    return e.internalServerError("Failed to create auth token.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to create auth token.", error);
   }
 
   return recordAuthResponse(e, authRecord, token, authMethod, meta);
@@ -133,8 +133,8 @@ export async function recordAuthResponse(
       originalRequestInfo,
       authRecord.collection().authRule,
     );
-  } catch (err) {
-    accessErr = err;
+  } catch (error) {
+    accessErr = error;
   }
   if (!ok) {
     return firstApiError(
@@ -198,8 +198,8 @@ export async function recordAuthResponse(
   if (authMethod !== "" && authRecord.collection().authAlert.enabled) {
     try {
       await authAlert(e, authRecord);
-    } catch (err) {
-      e.app.logger.warn("[recordAuthResponse] Failed to send login alert", { error: err });
+    } catch (error) {
+      e.app.logger.warn("[recordAuthResponse] Failed to send login alert", { error: error });
     }
   }
 
@@ -252,9 +252,9 @@ async function wantsMFA(e: RequestEvent, record: Record): Promise<boolean> {
   let exists: unknown = 0;
   try {
     [exists] = await query.andWhere(expr).limit(1).rowAsync();
-  } catch (err) {
-    if (!isNoRows(err)) {
-      throw err;
+  } catch (error) {
+    if (!isNoRows(error)) {
+      throw error;
     }
   }
 
@@ -281,12 +281,12 @@ async function checkMFA(
   let ok: boolean;
   try {
     ok = await wantsMFA(e, authRecord);
-  } catch (err) {
+  } catch (error) {
     return [
       "",
       e.badRequestError(
         "Failed to authenticate.",
-        new Error(`MFA rule failure: ${errorMessage(err)}`, { cause: err }),
+        new Error(`MFA rule failure: ${errorMessage(error)}`, { cause: error }),
       ),
     ];
   }
@@ -315,8 +315,11 @@ async function checkMFA(
     mfa.setMethod(currentAuthMethod);
     try {
       await saveMFA(e.app, mfa);
-    } catch (err) {
-      return ["", firstApiError(err, e.internalServerError("Failed to create MFA record", err))];
+    } catch (error) {
+      return [
+        "",
+        firstApiError(error, e.internalServerError("Failed to create MFA record", error)),
+      ];
     }
 
     return [mfa.id, undefined];
@@ -328,16 +331,16 @@ async function checkMFA(
   let findErr: unknown;
   try {
     mfa = findMFAById(e.app, mfaId);
-  } catch (err) {
-    findErr = err;
+  } catch (error) {
+    findErr = error;
   }
   const deleteFoundMFA = async (): Promise<void> => {
     // try to delete the expired mfa
     if (mfa !== undefined) {
       try {
         await deleteMFA(e.app, mfa);
-      } catch (err) {
-        e.app.logger.warn("Failed to delete expired MFA record", { error: err, mfaId: mfa.id });
+      } catch (error) {
+        e.app.logger.warn("Failed to delete expired MFA record", { error: error, mfaId: mfa.id });
       }
     }
   };
@@ -360,8 +363,8 @@ async function checkMFA(
   // consume the session without yielding: it can complete a second factor only once
   try {
     consumeMFASync(e.app, mfa);
-  } catch (err) {
-    return ["", e.badRequestError("Invalid or expired MFA session.", err)];
+  } catch (error) {
+    return ["", e.badRequestError("Invalid or expired MFA session.", error)];
   }
 
   return ["", undefined];
@@ -407,9 +410,9 @@ export async function enrichRecords(
 
   try {
     await defaultEnrichRecords(e.app, info, records, ...expands);
-  } catch (err) {
+  } catch (error) {
     // not critical
-    e.app.logger.warn("failed to apply default enriching", { error: err });
+    e.app.logger.warn("failed to apply default enriching", { error: error });
   }
 
   return undefined;
@@ -423,8 +426,8 @@ async function defaultEnrichRecords(
 ): Promise<void> {
   try {
     await autoResolveRecordsFlags(app, records, requestInfo);
-  } catch (err) {
-    throw new Error(`failed to resolve records flags: ${errorMessage(err)}`, { cause: err });
+  } catch (error) {
+    throw new Error(`failed to resolve records flags: ${errorMessage(error)}`, { cause: error });
   }
 
   if (expands.length > 0) {
@@ -452,10 +455,10 @@ export function expandFetch(app: App, originalRequestInfo: RequestInfo): ExpandF
 
     try {
       await autoResolveRecordsFlags(app, records, requestInfoPtr);
-    } catch (err) {
+    } catch (error) {
       // non-critical error
       app.logger.warn("Failed to apply autoResolveRecordsFlags for the expanded records", {
-        error: err,
+        error: error,
       });
     }
 
@@ -474,10 +477,10 @@ export function expandFetchSync(app: App, originalRequestInfo: RequestInfo): Exp
 
     try {
       autoResolveRecordsFlagsSync(app, records, requestInfoPtr);
-    } catch (err) {
+    } catch (error) {
       // non-critical error
       app.logger.warn("Failed to apply autoResolveRecordsFlags for the expanded records", {
-        error: err,
+        error: error,
       });
     }
 
@@ -740,7 +743,7 @@ async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
     const err = await Promise.race([
       sendRecordAuthAlert(e.app, authRecord, alertInfo).then(
         () => undefined,
-        (sendErr: unknown) => (sendErr instanceof Error ? sendErr : new Error(String(sendErr))),
+        (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
       ),
       timeout,
     ]);
@@ -757,10 +760,10 @@ async function authAlert(e: RequestEvent, authRecord: Record): Promise<void> {
       const origin = origins[i] as AuthOrigin;
       try {
         await deleteAuthOrigin(e.app, origin);
-      } catch (err) {
+      } catch (error) {
         // treat as non-critical error, just log for now
         e.app.logger.warn("Failed to delete old AuthOrigin record", {
-          error: err,
+          error: error,
           authOriginId: origin.id,
         });
       }

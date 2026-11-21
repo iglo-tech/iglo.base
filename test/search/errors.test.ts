@@ -19,8 +19,8 @@ const clock: Clock = { now: () => new Date(0) };
 function errorOf(fn: () => unknown): Error | undefined {
   try {
     fn();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
   return undefined;
 }

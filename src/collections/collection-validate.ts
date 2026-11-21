@@ -83,10 +83,10 @@ export function validateCollection(app: CollectionsApp, collection: Collection):
     original = new Collection();
     try {
       modelQuery(app.databases, original).model(collection.lastSavedPK(), original);
-    } catch (err) {
+    } catch (error) {
       return new Error(
-        `failed to fetch old collection state: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
+        `failed to fetch old collection state: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -383,8 +383,8 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
     let err: unknown = null;
     try {
       dryRunView(this.app, v, 10);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
     if (err !== null) {
       let rawErr = err instanceof Error ? err.message : String(err);
@@ -811,8 +811,8 @@ function checkRuleExpr(
   const r = newRecordFieldResolver(app, collection, new RequestInfo(), true);
   try {
     filterBuildExpr(rule, r, r.filterOptions());
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return NewError("validation_invalid_rule", "Invalid rule. Raw error: " + message);
   }
 

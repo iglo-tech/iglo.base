@@ -214,7 +214,7 @@ class cdf {
   rootStorageUUID = new Uint8Array(16);
 
   detect(): CDFType {
-    for (const name of ["\x05SummaryInformation", "\x05DocumentSummaryInformation"]) {
+    for (const name of ["\u0005SummaryInformation", "\u0005DocumentSummaryInformation"]) {
       const [t, ok] = this.detectFromSummary(lit(name));
       if (ok) {
         return t;

@@ -239,8 +239,8 @@ describe("TestFilesystemServe", () => {
             ...(s.query ? { query: s.query } : {}),
             ...(s.headers ? { preset: s.headers } : {}),
           });
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(s.expectError);
         if (s.expectError) {
@@ -329,8 +329,8 @@ describe("TestFilesystemCreateThumb", () => {
         let err: unknown;
         try {
           await fsys.createThumb(file, thumb, size, pool);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(expectErr);
         if (expectErr) {
@@ -371,8 +371,8 @@ describe("TestFilesystemCreateThumbWithMaxPixelsLimit", () => {
         let err: unknown;
         try {
           await fsys.createThumb("image.png", "thumb_WxH", "100x100", pool);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err !== undefined).toBe(expectErr);
         if (expectErr) {

@@ -791,7 +791,7 @@ describe("errors", () => {
         { code: "validation_match_invalid", message: "must be in a valid format", params: "{}" },
       ],
       [
-        "a\\b",
+        String.raw`a\b`,
         { code: "validation_match_invalid", message: "must be in a valid format", params: "{}" },
       ],
       [

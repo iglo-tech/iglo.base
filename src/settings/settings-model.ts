@@ -781,8 +781,8 @@ function checkCronExpression(value: unknown): Error | null {
 
   try {
     newSchedule(v);
-  } catch (err) {
-    return NewError("validation_invalid_cron", (err as Error).message);
+  } catch (error) {
+    return NewError("validation_invalid_cron", (error as Error).message);
   }
 
   return null;

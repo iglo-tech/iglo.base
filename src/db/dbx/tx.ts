@@ -105,7 +105,7 @@ export class Tx extends EmbeddedBuilder {
     this.end();
     try {
       this.tx.conn.run("COMMIT");
-    } catch (err) {
+    } catch (error) {
       if (this.tx.conn.inTransaction) {
         try {
           this.tx.conn.run("ROLLBACK");
@@ -113,7 +113,7 @@ export class Tx extends EmbeddedBuilder {
           // the commit error is the one to report
         }
       }
-      throw err;
+      throw error;
     }
   }
 

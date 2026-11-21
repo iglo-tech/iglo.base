@@ -98,20 +98,20 @@ export class Uploader {
 
     try {
       await this.#multipartInit();
-    } catch (err) {
-      throw wrapf("multipart init error: ", err);
+    } catch (error) {
+      throw wrapf("multipart init error: ", error);
     }
 
     try {
       await this.#multipartUpload();
-    } catch (err) {
-      throw joinErrors(await this.#multipartAbort(), wrapf("multipart upload error: ", err));
+    } catch (error) {
+      throw joinErrors(await this.#multipartAbort(), wrapf("multipart upload error: ", error));
     }
 
     try {
       await this.#multipartComplete();
-    } catch (err) {
-      throw joinErrors(await this.#multipartAbort(), wrapf("multipart complete error: ", err));
+    } catch (error) {
+      throw joinErrors(await this.#multipartAbort(), wrapf("multipart complete error: ", error));
     }
   }
 
@@ -172,8 +172,8 @@ export class Uploader {
       });
       await resp.arrayBuffer();
       return null;
-    } catch (err) {
-      return err;
+    } catch (error) {
+      return error;
     }
   }
 
@@ -246,9 +246,9 @@ export class Uploader {
           }
           const [part, num] = next;
           this.#uploadedParts.push(await this.#uploadPart(num, part));
-        } catch (err) {
+        } catch (error) {
           failed = true;
-          throw err;
+          throw error;
         }
       }
     };

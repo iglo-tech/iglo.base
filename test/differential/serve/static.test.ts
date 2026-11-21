@@ -80,7 +80,7 @@ beforeAll(async () => {
     ["l.wasm", "x"],
     ["m.xml", "<a/>"],
     ["n.svg", "<svg/>"],
-    ["o.zip", "PK\x03\x04"],
+    ["o.zip", "PK\u0003\u0004"],
     ["p.pdf", "%PDF"],
     ["q.unknownext", "text"],
     ["r.tar.gz", "x"],
@@ -95,7 +95,7 @@ beforeAll(async () => {
     ["a b.txt", "space"],
     ["a%20b.txt", "percent"],
     ["ünï.txt", "unicode"],
-    ["..\\x", "backslash name"],
+    [String.raw`..\x`, "backslash name"],
     // a large file of an inline type, streamed
     ["big.png", pseudoRandom(18 << 20, 7)],
     // a large download type (see above)
@@ -230,7 +230,7 @@ const requests: Array<Req> = [
   ["GET", "/%252e%252e%252foutside/secret.txt"],
   ["GET", "/%2e%2e%5coutside%5csecret.txt"],
   ["GET", "/..%5c..%5coutside%5csecret.txt"],
-  ["GET", "/%2e%2e\\outside\\secret.txt"],
+  ["GET", String.raw`/%2e%2e\outside\secret.txt`],
   // ranges and conditional requests
   ["GET", "/test.txt", { Range: "bytes=1-2" }],
   ["GET", "/test.txt", { Range: "bytes=2-" }],

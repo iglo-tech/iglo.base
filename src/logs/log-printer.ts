@@ -12,7 +12,7 @@ function paint(color: boolean, code: string, text: string): string {
     return text;
   }
   const end = code.startsWith("1;") ? "22;0" : "0";
-  return `\x1b[${code}m${text}\x1b[${end}m`;
+  return `\u001b[${code}m${text}\u001b[${end}m`;
 }
 
 // fmt's %v of a decoded JSON value, or of an error kept as a JSON marshaler

@@ -102,9 +102,9 @@ export function findOAuth2RedirectClient(
   let client: Client;
   try {
     client = app.subscriptionsBroker.clientById(state);
-  } catch (err) {
+  } catch (error) {
     app.logger.warn("Missing or invalid OAuth2 subscription client", {
-      error: err,
+      error: error,
       clientId: state,
     });
     return undefined;
@@ -231,13 +231,13 @@ function realtimeConnect(e: RequestEvent, timers: RealtimeTimers): HandlerResult
     }
     try {
       m.writeSSE((chunk) => controller.enqueue(chunk), client.id());
-    } catch (err) {
+    } catch (error) {
       // the client went away
       closed(
         m === connectMessage
           ? "Realtime connection closed (failed to deliver PB_CONNECT)"
           : "Realtime connection closed (failed to deliver message)",
-        { error: err },
+        { error: error },
       );
       return false;
     }
@@ -336,8 +336,8 @@ async function realtimeSetSubscriptions(e: RequestEvent): Promise<HandlerResult>
   let client: Client;
   try {
     client = e.app.subscriptionsBroker.clientById(form.ClientId);
-  } catch (err) {
-    return e.notFoundError("Missing or invalid client id.", err);
+  } catch (error) {
+    return e.notFoundError("Missing or invalid client id.", error);
   }
 
   // for now allow only guest->auth upgrades and any other auth change is forbidden

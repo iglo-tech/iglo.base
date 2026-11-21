@@ -36,8 +36,8 @@ export function bodyReader(body: ReadCloser): Reader {
           return [n, err];
         }
         return [n, eof ? EOF : undefined];
-      } catch (err) {
-        return [0, err];
+      } catch (error) {
+        return [0, error];
       }
     },
   };

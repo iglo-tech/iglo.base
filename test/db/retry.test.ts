@@ -49,8 +49,8 @@ describe("TestBaseLockRetry", () => {
           s.failUntilAttempt + 2,
           noSleep,
         );
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(lastAttempt).toBe(s.expectedAttempts);

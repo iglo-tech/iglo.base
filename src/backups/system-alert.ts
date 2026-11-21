@@ -88,8 +88,8 @@ export async function sendSystemAlertToAllSuperusers(
   for (const superuser of superusers) {
     try {
       await sendSystemAlert(app, superuser, subject, details);
-    } catch (err) {
-      alertErrors.push(err);
+    } catch (error) {
+      alertErrors.push(error);
     }
   }
 

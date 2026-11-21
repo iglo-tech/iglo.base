@@ -35,8 +35,8 @@ test("SortField.BuildExpr", () => {
     let err: unknown;
     try {
       result = sortFieldBuildExpr(sortField, resolver);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
 
     expect([sortField.name, err !== undefined]).toEqual([sortField.name, expectError]);

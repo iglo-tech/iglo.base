@@ -22,8 +22,8 @@ function errorOf(fn: () => unknown): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 

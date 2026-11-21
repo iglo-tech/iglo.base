@@ -39,8 +39,8 @@ export function rawRequest(
     socket.on("close", () => {
       try {
         resolve(parseResponse(Buffer.concat(chunks).toString("latin1"), method));
-      } catch (err) {
-        reject(err as Error);
+      } catch (error) {
+        reject(error as Error);
       }
     });
   });

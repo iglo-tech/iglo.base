@@ -448,18 +448,18 @@ export class FileField
 
     try {
       yield actionFunc();
-    } catch (err) {
+    } catch (error) {
       let cleanupErr: unknown = null;
       try {
         yield* this.afterRecordExecuteFailure(app, record);
-      } catch (e) {
-        cleanupErr = e;
+      } catch (error_) {
+        cleanupErr = error_;
       }
       // errors.Join(err, cleanupErr): a joined error even when the cleanup
       // succeeded, which the request log's details show
       throw cleanupErr === null
-        ? new AggregateError([err], (err as Error).message)
-        : joinErrors([err, cleanupErr]);
+        ? new AggregateError([error], (error as Error).message)
+        : joinErrors([error, cleanupErr]);
     }
 
     this.rememberFilesToDelete(record, oldValue);
@@ -490,9 +490,9 @@ export class FileField
       // eventual consistent nature of some storage providers
       try {
         yield* this.deleteEmptyRecordDir(app, record);
-      } catch (err) {
+      } catch (error) {
         app.logger.warn("Failed to delete empty dir after new record commit failure", {
-          error: err,
+          error: error,
         });
       }
     }
@@ -613,9 +613,9 @@ export class FileField
 
       try {
         yield fsys.delete(dir);
-      } catch (err) {
-        if (!isNotFound(err)) {
-          throw err;
+      } catch (error) {
+        if (!isNotFound(error)) {
+          throw error;
         }
       }
     } finally {
@@ -700,8 +700,8 @@ export class FileField
             yield fsys.uploadFile(upload, path);
           }
           succeeded.push(upload.name);
-        } catch (err) {
-          failed.push(wrapError(JSON.stringify(upload.name), err));
+        } catch (error) {
+          failed.push(wrapError(JSON.stringify(upload.name), error));
           break; // for now stop on the first error since we currently don't allow partial uploads
         }
       }
@@ -768,8 +768,8 @@ export class FileField
     let fsys: System | S3System;
     try {
       fsys = app.newFilesystem();
-    } catch (err) {
-      return [filenames, toError(err)];
+    } catch (error) {
+      return [filenames, toError(error)];
     }
 
     if (fsys.remote && app.isTransactional()) {
@@ -794,8 +794,8 @@ export class FileField
         let deleteErr: unknown = null;
         try {
           yield fsys.delete(path);
-        } catch (err) {
-          deleteErr = err;
+        } catch (error) {
+          deleteErr = error;
         }
         if (deleteErr !== null && !isNotFound(deleteErr)) {
           // store the delete error
@@ -1089,8 +1089,8 @@ async function driveAsync<T>(steps: StorageSteps<T>, pending: Promise<unknown>):
     let failed = false;
     try {
       input = await pending;
-    } catch (err) {
-      input = err;
+    } catch (error) {
+      input = error;
       failed = true;
     }
 

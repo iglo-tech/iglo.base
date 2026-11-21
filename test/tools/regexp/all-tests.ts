@@ -12,12 +12,12 @@ export const goodRe: Array<string> = [
   "a*|b*",
   "(a*|b)(c*|d)",
   "[a-z]",
-  "[a-abc-c\\-\\]\\[]",
+  String.raw`[a-abc-c\-\]\[]`,
   "[a-z]+",
   "[abc]",
   "[^1234]",
-  "[^\\n]",
-  "\\!\\\\",
+  String.raw`[^\n]`,
+  String.raw`\!\\`,
 ];
 
 export const badRe: Array<{ re: string; err: string }> = [
@@ -31,8 +31,8 @@ export const badRe: Array<{ re: string; err: string }> = [
   { re: "abc\\", err: "trailing backslash at end of expression" },
   { re: "a**", err: "invalid nested repetition operator: `**`" },
   { re: "a*+", err: "invalid nested repetition operator: `*+`" },
-  { re: "\\x", err: "invalid escape sequence: `\\x`" },
-  { re: "\\pL".repeat(27_000), err: "expression too large" },
+  { re: String.raw`\x`, err: "invalid escape sequence: `\\x`" },
+  { re: String.raw`\pL`.repeat(27_000), err: "expression too large" },
 ];
 
 export interface ReplaceTest {
@@ -233,14 +233,19 @@ export interface MetaTest {
 export const metaTests: Array<MetaTest> = [
   { pattern: "", output: "", literal: "", isLiteral: true },
   { pattern: "foo", output: "foo", literal: "foo", isLiteral: true },
-  { pattern: "日本語+", output: "日本語\\+", literal: "日本語", isLiteral: false },
+  { pattern: "日本語+", output: String.raw`日本語\+`, literal: "日本語", isLiteral: false },
   // has meta but no operator
-  { pattern: "foo\\.\\$", output: "foo\\\\\\.\\\\\\$", literal: "foo.$", isLiteral: true },
-  // has escaped operators and real operators
-  { pattern: "foo.\\$", output: "foo\\.\\\\\\$", literal: "foo", isLiteral: false },
   {
-    pattern: "!@#$%^&*()_+-=[{]}\\|,<.>/?~",
-    output: "!@#\\$%\\^&\\*\\(\\)_\\+-=\\[\\{\\]\\}\\\\\\|,<\\.>/\\?~",
+    pattern: String.raw`foo\.\$`,
+    output: String.raw`foo\\\.\\\$`,
+    literal: "foo.$",
+    isLiteral: true,
+  },
+  // has escaped operators and real operators
+  { pattern: String.raw`foo.\$`, output: String.raw`foo\.\\\$`, literal: "foo", isLiteral: false },
+  {
+    pattern: String.raw`!@#$%^&*()_+-=[{]}\|,<.>/?~`,
+    output: String.raw`!@#\$%\^&\*\(\)_\+-=\[\{\]\}\\\|,<\.>/\?~`,
     literal: "!@#",
     isLiteral: false,
   },
@@ -257,8 +262,8 @@ export const literalPrefixTests: Array<MetaTest> = [
   { pattern: "^^0$$", output: "", literal: "", isLiteral: false },
   { pattern: "^$^$", output: "", literal: "", isLiteral: false },
   { pattern: "$$0^^", output: "", literal: "", isLiteral: false },
-  { pattern: "a\\x{fffd}b", output: "", literal: "a", isLiteral: false },
-  { pattern: "\\x{fffd}b", output: "", literal: "", isLiteral: false },
+  { pattern: String.raw`a\x{fffd}b`, output: "", literal: "a", isLiteral: false },
+  { pattern: String.raw`\x{fffd}b`, output: "", literal: "", isLiteral: false },
   { pattern: "�", output: "", literal: "", isLiteral: false },
 ];
 
@@ -343,7 +348,7 @@ export const subexpCases: Array<SubexpCase> = [
     ],
   },
   {
-    input: "(.*)(\\(ab)(.*)a",
+    input: String.raw`(.*)(\(ab)(.*)a`,
     num: 3,
     names: ["", "", "", ""],
     indices: [
@@ -352,7 +357,7 @@ export const subexpCases: Array<SubexpCase> = [
     ],
   },
   {
-    input: "(.*)(\\(a\\)b)(.*)a",
+    input: String.raw`(.*)(\(a\)b)(.*)a`,
     num: 3,
     names: ["", "", "", ""],
     indices: [

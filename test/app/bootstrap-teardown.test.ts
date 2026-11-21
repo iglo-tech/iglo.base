@@ -65,7 +65,7 @@ test("clearBootstrap names every failing step in its error message", async () =>
 
   const err = await clearBootstrap(app).then(
     () => undefined,
-    (e: Error) => e,
+    (error: Error) => error,
   );
   expect(err?.message).toBe("cron did not stop\nthumbs did not close");
   expect(walFiles(dataDir)).toEqual([]);

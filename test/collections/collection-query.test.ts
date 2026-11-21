@@ -143,8 +143,8 @@ describe("TestFindCollectionByNameOrId", () => {
       let model = null;
       try {
         model = findCollectionByNameOrId(app, s.nameOrId);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== null).toBe(s.expectError);
@@ -179,8 +179,8 @@ function runFindCachedCollectionByNameOrId(withCache: boolean): void {
     let model = null;
     try {
       model = findCachedCollectionByNameOrId(app, s.nameOrId);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
 
     expect({ nameOrId: s.nameOrId, hasErr: err !== null }).toEqual({

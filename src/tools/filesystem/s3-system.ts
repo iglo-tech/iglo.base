@@ -165,8 +165,8 @@ export class S3System {
       let obj: ListObject | null;
       try {
         obj = await iter.next();
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
         break;
       }
       if (obj === null) {
@@ -181,8 +181,8 @@ export class S3System {
             dirsMap.add(obj.key.slice(0, slashIdx));
           }
         }
-      } catch (err) {
-        failed.push(err);
+      } catch (error) {
+        failed.push(error);
       }
     }
     // ---
@@ -233,10 +233,10 @@ export class S3System {
     const out = await open(path, "wx", 0o600);
     try {
       await this.#copyRange(fileKey, 0, -1, out);
-    } catch (err) {
+    } catch (error) {
       await out.close();
       rmSync(path, { force: true });
-      throw err;
+      throw error;
     }
     await out.close();
   }
@@ -267,7 +267,7 @@ export class S3System {
         { size: attrs.size, spool: (parts) => this.#spool(fileKey, parts) },
         attrs.modTime,
       );
-    } catch (err) {
+    } catch (error) {
       // nothing is sent yet: the caller answers with an API error, as for a
       // refused GET upstream
       for (const key of Array.from(res.header.keys())) {
@@ -276,7 +276,7 @@ export class S3System {
       for (const [key, value] of headers) {
         res.header.append(key, value);
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -336,10 +336,10 @@ export class S3System {
           await this.#copyRange(fileKey, part.start, part.length, out);
         }
       }
-    } catch (err) {
+    } catch (error) {
       await out.close();
       remove();
-      throw err;
+      throw error;
     }
     await out.close();
     return { blob: Bun.file(path), remove };

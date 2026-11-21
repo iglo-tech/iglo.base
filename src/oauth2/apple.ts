@@ -98,8 +98,8 @@ export class Apple extends BaseProvider {
     // (see also https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)
     try {
       await validateTokenSignature(this.signal, idToken, this.jwksURL, this.clock);
-    } catch (err) {
-      throw new Error(`id_token validation failed: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`id_token validation failed: ${(error as Error).message}`, { cause: error });
     }
 
     return claims;
@@ -124,8 +124,8 @@ function validateAppleClaims(claims: MapClaims, clock: Clock, audience: string):
       audience,
       parserPrefix: false,
     });
-  } catch (err) {
-    errors.push((err as Error).message);
+  } catch (error) {
+    errors.push((error as Error).message);
   }
 
   if (claims["iss"] !== appleIssuer) {

@@ -284,7 +284,7 @@ export function Tcl(raw: Uint8Array, _limit: number): boolean {
   return shebang(raw, ...tclSigs);
 }
 
-const rtfSig = lit("{\\rtf");
+const rtfSig = lit(String.raw`{\rtf`);
 // Rtf matches a Rich Text Format file.
 export function Rtf(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, rtfSig);

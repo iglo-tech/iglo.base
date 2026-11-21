@@ -125,8 +125,8 @@ export function convertFormDataToObject(formData: FormData): Record<string, unkn
         if (typeof parsed === "object" && parsed !== null) {
           Object.assign(result, parsed);
         }
-      } catch (err) {
-        console.warn("@jsonPayload error:", err);
+      } catch (error) {
+        console.warn("@jsonPayload error:", error);
       }
     } else {
       if (typeof result[k] !== "undefined") {

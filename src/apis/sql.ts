@@ -77,10 +77,10 @@ async function runSQL(e: RequestEvent): Promise<HandlerResult> {
   let result: RunSQLResult;
   try {
     result = executeQuery(e.app, form.Query, runSQLMaxRows);
-  } catch (err) {
-    const text = err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    const text = error instanceof Error ? error.message : String(error);
     return firstApiError(
-      err,
+      error,
       e.badRequestError("Failed to execute query. Raw error:\n" + text, null),
     );
   }
@@ -208,8 +208,8 @@ function timedQuery(
 function withDriverError<T>(fn: () => T): T {
   try {
     return fn();
-  } catch (err) {
-    throw driverError(err);
+  } catch (error) {
+    throw driverError(error);
   }
 }
 

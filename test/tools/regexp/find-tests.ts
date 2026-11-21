@@ -95,7 +95,7 @@ export const findTests: Array<FindTest> = [
   { pat: "[a-z]+", text: "abcd", max: -1, matches: [[0, 4]] },
   { pat: "[^a-z]+", text: "ab1234cd", max: -1, matches: [[2, 6]] },
   {
-    pat: "[a\\-\\]z]+",
+    pat: String.raw`[a\-\]z]+`,
     text: "az]-bcz",
     max: -1,
     matches: [
@@ -103,7 +103,7 @@ export const findTests: Array<FindTest> = [
       [6, 7],
     ],
   },
-  { pat: "[^\\n]+", text: "abcd\n", max: -1, matches: [[0, 4]] },
+  { pat: String.raw`[^\n]+`, text: "abcd\n", max: -1, matches: [[0, 4]] },
   { pat: "[日本語]+", text: "日本語日本語", max: -1, matches: [[0, 18]] },
   { pat: "日本語+", text: "日本語", max: -1, matches: [[0, 9]] },
   { pat: "日本語+", text: "日本語語語語", max: -1, matches: [[0, 18]] },
@@ -116,8 +116,13 @@ export const findTests: Array<FindTest> = [
   { pat: "(([^xyz]*)(d))", text: "abcd", max: -1, matches: [[0, 4, 0, 4, 0, 3, 3, 4]] },
   { pat: "((a|b|c)*(d))", text: "abcd", max: -1, matches: [[0, 4, 0, 4, 2, 3, 3, 4]] },
   { pat: "(((a|b|c)*)(d))", text: "abcd", max: -1, matches: [[0, 4, 0, 4, 0, 3, 2, 3, 3, 4]] },
-  { pat: "\\a\\f\\n\\r\\t\\v", text: "\x07\x0c\n\r\t\x0b", max: -1, matches: [[0, 6]] },
-  { pat: "[\\a\\f\\n\\r\\t\\v]+", text: "\x07\x0c\n\r\t\x0b", max: -1, matches: [[0, 6]] },
+  { pat: String.raw`\a\f\n\r\t\v`, text: "\u0007\u000c\n\r\t\u000b", max: -1, matches: [[0, 6]] },
+  {
+    pat: String.raw`[\a\f\n\r\t\v]+`,
+    text: "\u0007\u000c\n\r\t\u000b",
+    max: -1,
+    matches: [[0, 6]],
+  },
 
   { pat: "a*(|(b))c*", text: "aacc", max: -1, matches: [[0, 4, 2, 2, -1, -1]] },
   { pat: "(.*).*", text: "ab", max: -1, matches: [[0, 2, 0, 2]] },
@@ -192,7 +197,7 @@ export const findTests: Array<FindTest> = [
   { pat: "(?s)(?:(?:^).)", text: "\n", max: -1, matches: [[0, 1]] },
   { pat: "(?:(?:^).)", text: "\n", max: -1, matches: null },
   {
-    pat: "\\b",
+    pat: String.raw`\b`,
     text: "x",
     max: -1,
     matches: [
@@ -201,7 +206,7 @@ export const findTests: Array<FindTest> = [
     ],
   },
   {
-    pat: "\\b",
+    pat: String.raw`\b`,
     text: "xx",
     max: -1,
     matches: [
@@ -210,7 +215,7 @@ export const findTests: Array<FindTest> = [
     ],
   },
   {
-    pat: "\\b",
+    pat: String.raw`\b`,
     text: "x y",
     max: -1,
     matches: [
@@ -221,7 +226,7 @@ export const findTests: Array<FindTest> = [
     ],
   },
   {
-    pat: "\\b",
+    pat: String.raw`\b`,
     text: "xx yy",
     max: -1,
     matches: [
@@ -231,11 +236,11 @@ export const findTests: Array<FindTest> = [
       [5, 5],
     ],
   },
-  { pat: "\\B", text: "x", max: -1, matches: null },
-  { pat: "\\B", text: "xx", max: -1, matches: [[1, 1]] },
-  { pat: "\\B", text: "x y", max: -1, matches: null },
+  { pat: String.raw`\B`, text: "x", max: -1, matches: null },
+  { pat: String.raw`\B`, text: "xx", max: -1, matches: [[1, 1]] },
+  { pat: String.raw`\B`, text: "x y", max: -1, matches: null },
   {
-    pat: "\\B",
+    pat: String.raw`\B`,
     text: "xx yy",
     max: -1,
     matches: [
@@ -257,24 +262,24 @@ export const findTests: Array<FindTest> = [
   { pat: "0[aA]|0A", text: "0a", max: -1, matches: [[0, 2]] },
 
   // RE2 tests
-  { pat: "[^\\S\\s]", text: "abcd", max: -1, matches: null },
-  { pat: "[^\\S[:space:]]", text: "abcd", max: -1, matches: null },
-  { pat: "[^\\D\\d]", text: "abcd", max: -1, matches: null },
-  { pat: "[^\\D[:digit:]]", text: "abcd", max: -1, matches: null },
-  { pat: "(?i)\\W", text: "x", max: -1, matches: null },
-  { pat: "(?i)\\W", text: "k", max: -1, matches: null },
-  { pat: "(?i)\\W", text: "s", max: -1, matches: null },
+  { pat: String.raw`[^\S\s]`, text: "abcd", max: -1, matches: null },
+  { pat: String.raw`[^\S[:space:]]`, text: "abcd", max: -1, matches: null },
+  { pat: String.raw`[^\D\d]`, text: "abcd", max: -1, matches: null },
+  { pat: String.raw`[^\D[:digit:]]`, text: "abcd", max: -1, matches: null },
+  { pat: String.raw`(?i)\W`, text: "x", max: -1, matches: null },
+  { pat: String.raw`(?i)\W`, text: "k", max: -1, matches: null },
+  { pat: String.raw`(?i)\W`, text: "s", max: -1, matches: null },
 
   // can backslash-escape any punctuation
   {
-    pat: "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\{\\|\\}\\~",
-    text: "!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}~",
+    pat: String.raw`\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\{\|\}\~`,
+    text: String.raw`!"#$%&'()*+,-./:;<=>?@[\]^_{|}~`,
     max: -1,
     matches: [[0, 31]],
   },
   {
-    pat: "[\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\{\\|\\}\\~]+",
-    text: "!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}~",
+    pat: String.raw`[\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\{\|\}\~]+`,
+    text: String.raw`!"#$%&'()*+,-./:;<=>?@[\]^_{|}~`,
     max: -1,
     matches: [[0, 31]],
   },
@@ -284,9 +289,9 @@ export const findTests: Array<FindTest> = [
   { pat: "�", text: "\udcff", max: -1, matches: [[0, 1]] },
   { pat: "�", text: "hello\udcffworld", max: -1, matches: [[5, 6]] },
   { pat: ".*", text: "hello\udcffworld", max: -1, matches: [[0, 11]] },
-  { pat: "\\x{fffd}", text: "\udcc2\x00", max: -1, matches: [[0, 1]] },
+  { pat: String.raw`\x{fffd}`, text: "\udcc2\u0000", max: -1, matches: [[0, 1]] },
   { pat: "[�]", text: "\udcff", max: -1, matches: [[0, 1]] },
-  { pat: "[\\x{fffd}]", text: "\udcc2\x00", max: -1, matches: [[0, 1]] },
+  { pat: String.raw`[\x{fffd}]`, text: "\udcc2\u0000", max: -1, matches: [[0, 1]] },
 
   // long set of matches (longer than startSize)
   {

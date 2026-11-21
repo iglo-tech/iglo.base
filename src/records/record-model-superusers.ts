@@ -49,8 +49,8 @@ export function* superusersOnDelete(app: RecordsApp, record: Record, next: Next)
     let total: number;
     try {
       total = countRecords(txApp, CollectionNameSuperusers);
-    } catch (err) {
-      throw wrapError("failed to fetch total superusers count", err);
+    } catch (error) {
+      throw wrapError("failed to fetch total superusers count", error);
     }
 
     if (total === 1) {
@@ -96,9 +96,9 @@ function* superusersSaveExecute(
         CollectionNameSuperusers,
         DefaultInstallerEmail,
       );
-    } catch (err) {
-      if (!isNoRows(err)) {
-        app.logger.warn("Failed to fetch installer superuser", { error: err });
+    } catch (error) {
+      if (!isNoRows(error)) {
+        app.logger.warn("Failed to fetch installer superuser", { error: error });
       }
       // else already deleted
       return;
@@ -106,8 +106,8 @@ function* superusersSaveExecute(
 
     try {
       yield* deleteStep(app, installer);
-    } catch (err) {
-      app.logger.warn("Failed to delete installer superuser", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to delete installer superuser", { error: error });
     }
   }
 }

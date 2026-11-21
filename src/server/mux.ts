@@ -855,8 +855,8 @@ export class ServeMux<H> {
     let pat: Pattern;
     try {
       pat = parsePattern(patstr);
-    } catch (err) {
-      throw new Error(`parsing ${goQuote(patstr)}: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`parsing ${goQuote(patstr)}: ${(error as Error).message}`, { cause: error });
     }
     // Check for conflict.
     for (const pat2 of this.#patterns) {

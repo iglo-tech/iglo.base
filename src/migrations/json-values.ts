@@ -92,9 +92,9 @@ export class GoJSONArray {
   scan(value: unknown): void {
     try {
       this.items = scanJSONArray(value, this.elem);
-    } catch (err) {
+    } catch (error) {
       this.items = [];
-      throw err;
+      throw error;
     }
   }
 }

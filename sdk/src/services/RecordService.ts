@@ -651,8 +651,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
                 );
 
                 resolve(authData);
-              } catch (err) {
-                reject(new ClientResponseError(err));
+              } catch (error) {
+                reject(new ClientResponseError(error));
               }
 
               cleanup();
@@ -680,20 +680,20 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
               };
 
             await urlCallback(url);
-          } catch (err) {
+          } catch (error) {
             // reset the cancelController listener in case the request key is reused
             if (cancelController?.signal?.onabort) {
               cancelController.signal.onabort = null;
             }
 
             cleanup();
-            reject(new ClientResponseError(err));
+            reject(new ClientResponseError(error));
           }
         });
       })
-      .catch((err) => {
+      .catch((error) => {
         cleanup();
-        throw err; // rethrow
+        throw error; // rethrow
       }) as Promise<RecordAuthResponse<T>>;
   }
 

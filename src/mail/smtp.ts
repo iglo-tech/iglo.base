@@ -182,8 +182,8 @@ export class SMTPClient implements Mailer {
         conn.send({ from: yak.fromAddr, to: yak.getToAddrs() }, Buffer.from(yak.buildMime()), done),
       );
       conn.quit();
-    } catch (err) {
-      throw await goError(err, c.host, c.port);
+    } catch (error) {
+      throw await goError(error, c.host, c.port);
     } finally {
       conn.close();
     }

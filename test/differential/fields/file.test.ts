@@ -220,7 +220,7 @@ describe("settings", () => {
       try {
         collection = newBaseCollection(name);
         collection.fields.add(modelField(raw));
-      } catch (err) {
+      } catch (error) {
         // BindBody fails: upstream answers before validating
         const res = await request("POST", "/api/collections", body);
         expect({ status: res.status, body: res.text }).toEqual({
@@ -228,7 +228,7 @@ describe("settings", () => {
           body: marshal(
             newBadRequestError(
               "Failed to load the submitted data due to invalid formatting.",
-              err,
+              error,
             ).toJSON(),
           ),
         });
@@ -287,7 +287,7 @@ const markerRandom: RandomSource = (length) => {
 
 // a regexp for upstream's text of a model text with markers
 function namePattern(modelText: string): RegExp {
-  let pattern = modelText.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  let pattern = modelText.replace(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`);
   for (const marker of markers) {
     if (pattern.includes(marker)) {
       pattern = pattern.replaceAll(marker, "[a-z0-9]{10}");

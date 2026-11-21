@@ -57,9 +57,9 @@ function openWithPragmas(conn: Database): Database {
     for (const pragma of connectPragmas) {
       conn.run(`PRAGMA ${pragma}`);
     }
-  } catch (err) {
+  } catch (error) {
     conn.close();
-    throw err;
+    throw error;
   }
   return conn;
 }

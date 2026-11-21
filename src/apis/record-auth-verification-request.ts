@@ -57,10 +57,10 @@ export async function recordRequestVerification(e: RequestEvent): Promise<Handle
   let record: Record;
   try {
     record = findAuthRecordByEmail(e.app, collection, form.Email);
-  } catch (err) {
+  } catch (error) {
     // eagerly write 204 response as a very basic measure against emails enumeration
     e.noContent(204);
-    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, err);
+    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, error);
   }
 
   const resendKey = getVerificationResendKey(record);
@@ -96,8 +96,8 @@ async function sendVerificationInBackground(
   const app = e.app;
   try {
     await sendRecordVerification(app, record);
-  } catch (err) {
-    app.logger.error("Failed to send verification email", { error: err });
+  } catch (error) {
+    app.logger.error("Failed to send verification email", { error: error });
   }
 
   // the timer removes only its own entry: a confirm may have cleared the key

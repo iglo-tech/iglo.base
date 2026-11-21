@@ -39,9 +39,9 @@ export async function automigrateOnCollectionChange(
     if (!collection.isNew()) {
       try {
         old = findCollectionByNameOrId(app, collection.id);
-      } catch (findErr) {
+      } catch (error) {
         // the body changed the id: the router answers sql.ErrNoRows with a 404
-        return findErr instanceof NoRowsError ? ErrNoRows : (findErr as Error);
+        return error instanceof NoRowsError ? ErrNoRows : (error as Error);
       }
     }
 
@@ -53,16 +53,16 @@ export async function automigrateOnCollectionChange(
     let newCollection: Collection | null = null;
     try {
       newCollection = findCollectionByNameOrId(app, collection.id);
-    } catch (findErr) {
-      if (!(findErr instanceof NoRowsError)) {
-        throw findErr;
+    } catch (error) {
+      if (!(error instanceof NoRowsError)) {
+        throw error;
       }
     }
 
     writeMigration(app, dir, newCollection, old);
     return undefined;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -83,11 +83,11 @@ function writeMigration(
   let template: string;
   try {
     template = jsDiffTemplate(newCollection, old);
-  } catch (err) {
-    if (err === ErrEmptyTemplate) {
+  } catch (error) {
+    if (error === ErrEmptyTemplate) {
       return; // no changes
     }
-    throw wrapError("failed to resolve template", err);
+    throw wrapError("failed to resolve template", error);
   }
 
   let action: string;
@@ -118,14 +118,14 @@ function writeMigration(
     // ensure that the local migrations dir exist
     try {
       mkdirSync(dir, { recursive: true });
-    } catch (err) {
-      throw wrapError("failed to create migration dir", err);
+    } catch (error) {
+      throw wrapError("failed to create migration dir", error);
     }
 
     try {
       writeFileSync(filePath, template, { mode: 0o644 });
-    } catch (err) {
-      throw wrapError("failed to save automigrate file", err);
+    } catch (error) {
+      throw wrapError("failed to save automigrate file", error);
     }
   });
 }

@@ -96,12 +96,12 @@ self.addEventListener("message", async (event: MessageEvent<BackupRequest>) => {
   let res: BackupResponse;
   try {
     res = { id, ok: true, value: await handle(event.data) };
-  } catch (err) {
+  } catch (error) {
     res = {
       id,
       ok: false,
-      message: err instanceof Error ? err.message : String(err),
-      code: (err as { code?: string } | null)?.code ?? null,
+      message: error instanceof Error ? error.message : String(error),
+      code: (error as { code?: string } | null)?.code ?? null,
     };
   }
   // a Worker's postMessage has no target origin (that is window.postMessage)

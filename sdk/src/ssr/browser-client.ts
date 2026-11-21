@@ -228,12 +228,12 @@ export class BrowserClient extends Client {
     try {
       await this._postHandOff(url, token);
       await this.renew();
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       // the popup token must not stay in page memory, whatever failed
       if (this.authStore.token === token) {
         this.authStore.clear();
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -253,8 +253,8 @@ export class BrowserClient extends Client {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ token }),
       });
-    } catch (err: unknown) {
-      throw networkError(url, err);
+    } catch (error: unknown) {
+      throw networkError(url, error);
     }
     if (!res.ok) {
       throw await responseError(url, res);
@@ -352,9 +352,9 @@ export class BrowserClient extends Client {
     let res: Response;
     try {
       res = await this._fetch(url, RENEW_REQUEST);
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       this._retryLaterIfSame(before);
-      throw networkError(url, err);
+      throw networkError(url, error);
     }
 
     if (res.status === 401) {
@@ -376,9 +376,9 @@ export class BrowserClient extends Client {
     let body: { token?: unknown; record?: unknown; serverTime?: unknown };
     try {
       body = (await res.json()) as { token?: unknown; record?: unknown; serverTime?: unknown };
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       this._retryLaterIfSame(before);
-      throw networkError(url, err);
+      throw networkError(url, error);
     }
     if (typeof body.token !== "string" || body.token === "") {
       throw new ClientResponseError({ url, status: res.status, data: body });

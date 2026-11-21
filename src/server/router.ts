@@ -186,8 +186,8 @@ export class ResponseWriter {
             try {
               controller.enqueue(new Uint8Array(await (await whole).arrayBuffer()));
               controller.close();
-            } catch (err) {
-              controller.error(err);
+            } catch (error) {
+              controller.error(error);
             }
           },
         });

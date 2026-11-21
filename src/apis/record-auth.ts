@@ -95,8 +95,8 @@ export function findAuthCollection(e: RequestEvent): Collection | ApiError {
   let err: unknown = null;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (findErr) {
-    err = findErr;
+  } catch (error) {
+    err = error;
   }
 
   if (collection === undefined || !collection.isAuth()) {

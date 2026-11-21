@@ -9,7 +9,7 @@ import type { Node } from "@/tools/html/node";
 export const whitespace = " \t\r\n\f";
 
 // whitespaceOrNUL is whitespace plus NUL.
-export const whitespaceOrNUL = whitespace + "\x00";
+export const whitespaceOrNUL = whitespace + "\u0000";
 
 // Section 12.2.4.2 of the HTML5 specification says "The following elements
 // have varying levels of special parsing rules".

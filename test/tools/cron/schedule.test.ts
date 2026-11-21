@@ -172,8 +172,8 @@ describe("TestNewSchedule", () => {
       let error: unknown;
       try {
         schedule = newSchedule(cronExpr);
-      } catch (err) {
-        error = err;
+      } catch (error_) {
+        error = error_;
       }
       expect(error !== undefined).toBe(expectError);
       if (schedule === undefined) {

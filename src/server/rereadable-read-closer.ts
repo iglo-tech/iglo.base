@@ -68,8 +68,8 @@ export class RereadableReadCloser implements ReadCloser, Rereader {
     // eagerly close the old reader to prevent accumulating too much memory or temp files
     try {
       this.#reader.close();
-    } catch (err) {
-      this.#closeErrors.push(err);
+    } catch (error) {
+      this.#closeErrors.push(error);
     }
 
     this.#reader = this.#copy;
@@ -82,15 +82,15 @@ export class RereadableReadCloser implements ReadCloser, Rereader {
     if (this.#copy) {
       try {
         this.#copy.close();
-      } catch (err) {
-        this.#closeErrors.push(err);
+      } catch (error) {
+        this.#closeErrors.push(error);
       }
     }
 
     try {
       this.#reader.close();
-    } catch (err) {
-      this.#closeErrors.push(err);
+    } catch (error) {
+      this.#closeErrors.push(error);
     }
 
     if (this.#closeErrors.length > 0) {

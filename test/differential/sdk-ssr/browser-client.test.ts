@@ -348,8 +348,8 @@ describe("browser client", () => {
       let failure: unknown;
       try {
         await pb.renew();
-      } catch (err) {
-        failure = err;
+      } catch (error) {
+        failure = error;
       }
       expect(failure).toBeInstanceOf(ClientResponseError);
       expect((failure as ClientResponseError).status).toBe(401);

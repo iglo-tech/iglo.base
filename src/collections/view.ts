@@ -75,7 +75,7 @@ export function saveView(
     // because missing tables or columns won't return an error
     try {
       withDriverErrors(() => tableInfo(txApp.databases, dangerousViewName));
-    } catch (err) {
+    } catch (error) {
       // manually cleanup previously created view in case the func
       // is called in a nested transaction and the error is discarded
       try {
@@ -84,7 +84,7 @@ export function saveView(
         // ignored, as upstream does
       }
 
-      throw err;
+      throw error;
     }
   });
 }
@@ -109,8 +109,8 @@ export function createViewFields(
   let suggestedFields: Map<string, QueryField>;
   try {
     suggestedFields = parseQueryToFields(app, dangerousSelectQuery);
-  } catch (err) {
-    return [result, toError(err)];
+  } catch (error) {
+    return [result, toError(error)];
   }
 
   // note wrap in a transaction in case the dangerousSelectQuery contains
@@ -138,8 +138,8 @@ export function createViewFields(
         );
       }
     });
-  } catch (err) {
-    return [result, toError(err)];
+  } catch (error) {
+    return [result, toError(error)];
   }
 
   return [result, null];
@@ -187,8 +187,8 @@ export function dryRunView(
   // apply the same normalization as in the collection view query
   try {
     dangerousSelectQuery = normalizeViewQueryId(app, dangerousSelectQuery);
-  } catch (err) {
-    throw wrapError("failed to normalize view query id", err);
+  } catch (error) {
+    throw wrapError("failed to normalize view query id", error);
   }
 
   let records: Array<Record>;
@@ -199,8 +199,8 @@ export function dryRunView(
       .from("(SELECT * FROM (" + dangerousSelectQuery + ")) as " + tempName)
       .limit(sampleSize)
       .all<Record>(recordsTarget);
-  } catch (err) {
-    throw wrapError("failed to retrieve query records", err);
+  } catch (error) {
+    throw wrapError("failed to retrieve query records", error);
   }
 
   // warn for possible empty or duplicated record ids found in the sample
@@ -534,13 +534,13 @@ export function getQueryTableInfo(app: CollectionsApp, selectQuery: string): Arr
     const errs: Array<unknown> = [];
     try {
       info = withDriverErrors(() => tableInfo(txApp.databases, tempView));
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
     try {
       withDriverErrors(() => deleteView(txApp.databases, tempView));
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
     if (errs.length > 0) {
       throw joinErrors(errs);

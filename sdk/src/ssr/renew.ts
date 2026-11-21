@@ -79,11 +79,11 @@ export async function handleBrowserTokenRenew(
   try {
     client = await createServerClient({ ...options, cookies });
     await client.auth.verify();
-  } catch (err: unknown) {
-    if (!(err instanceof ClientResponseError)) {
-      throw err;
+  } catch (error: unknown) {
+    if (!(error instanceof ClientResponseError)) {
+      throw error;
     }
-    if (err.status === 401 || err.status === 403 || err.status === 404) {
+    if (error.status === 401 || error.status === 403 || error.status === 404) {
       return withCookies(errorResponse(401, "The session is not valid."), cookies);
     }
     return errorResponse(503, "The session could not be checked. Try again.");
@@ -92,11 +92,11 @@ export async function handleBrowserTokenRenew(
   let minted: BrowserToken | null;
   try {
     minted = await mintBrowserToken(client, superuser, { duration });
-  } catch (err: unknown) {
-    if (!(err instanceof ClientResponseError)) {
-      throw err; // a programming error, not a sign-in problem
+  } catch (error: unknown) {
+    if (!(error instanceof ClientResponseError)) {
+      throw error; // a programming error, not a sign-in problem
     }
-    if (err.status === 404) {
+    if (error.status === 404) {
       // impersonate found no such record (deleted since the check): the session is over.
       // Clearing the client's auth store clears the session cookie through the adapter.
       client.authStore.clear();

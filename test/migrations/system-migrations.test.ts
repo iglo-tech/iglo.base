@@ -60,8 +60,8 @@ async function openError(dataDir: string): Promise<unknown> {
       logger: testLogger(),
       readWorkers: 0,
     });
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
   return undefined;
 }

@@ -56,8 +56,8 @@ export async function backupCreate(e: RequestEvent): Promise<Error | undefined> 
 
   try {
     await createBackup(e.app, form.Name);
-  } catch (err) {
-    return e.badRequestError("Failed to create backup.", err);
+  } catch (error) {
+    return e.badRequestError("Failed to create backup.", error);
   }
 
   // we don't retrieve the generated backup file because it may not be
@@ -92,8 +92,8 @@ async function checkUniqueName(e: RequestEvent, v: string): Promise<Error | null
   let fsys;
   try {
     fsys = e.app.filesystem.newBackupsFilesystem();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 
   try {

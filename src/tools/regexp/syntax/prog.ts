@@ -365,33 +365,33 @@ function quoteToASCII(runes: ReadonlyArray<number>): string {
     } else {
       switch (r) {
         case 0x07:
-          out += "\\a";
+          out += String.raw`\a`;
           break;
         case 0x08:
-          out += "\\b";
+          out += String.raw`\b`;
           break;
         case 0x0c:
-          out += "\\f";
+          out += String.raw`\f`;
           break;
         case 0x0a:
-          out += "\\n";
+          out += String.raw`\n`;
           break;
         case 0x0d:
-          out += "\\r";
+          out += String.raw`\r`;
           break;
         case 0x09:
-          out += "\\t";
+          out += String.raw`\t`;
           break;
         case 0x0b:
-          out += "\\v";
+          out += String.raw`\v`;
           break;
         default:
           if (r < 0x20 || r === 0x7f) {
-            out += "\\x" + r.toString(16).padStart(2, "0");
+            out += String.raw`\x` + r.toString(16).padStart(2, "0");
           } else if (r < 0x1_00_00) {
-            out += "\\u" + r.toString(16).padStart(4, "0");
+            out += String.raw`\u` + r.toString(16).padStart(4, "0");
           } else {
-            out += "\\U" + r.toString(16).padStart(8, "0");
+            out += String.raw`\U` + r.toString(16).padStart(8, "0");
           }
       }
     }

@@ -413,11 +413,11 @@ function canonicalMIMEHeaderKeyString(s: string): string {
 }
 
 const quoteEscapes = new Map<number, string>([
-  [0x22, '\\"'],
-  [0x5c, "\\\\"],
-  [0x0a, "\\n"],
-  [0x0d, "\\r"],
-  [0x09, "\\t"],
+  [0x22, String.raw`\"`],
+  [0x5c, String.raw`\\`],
+  [0x0a, String.raw`\n`],
+  [0x0d, String.raw`\r`],
+  [0x09, String.raw`\t`],
 ]);
 
 // Go's %q of a byte slice, for error texts (which no response shows):

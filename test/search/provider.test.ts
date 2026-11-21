@@ -97,8 +97,8 @@ function sortOf(n: number): Array<SortField> {
 async function execError(p: Provider): Promise<unknown> {
   try {
     await p.exec();
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
   return undefined;
 }
@@ -388,8 +388,8 @@ describe("Provider.Parse", () => {
         let err: unknown;
         try {
           p.parse(query);
-        } catch (e) {
-          err = e;
+        } catch (error) {
+          err = error;
         }
         expect(err === undefined ? undefined : (err as Error).message).toBe(expectError);
 
@@ -603,8 +603,8 @@ describe("Provider.Exec non-empty query", () => {
       let err: unknown;
       try {
         result = await p.exec();
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== undefined).toBe(expectError);
@@ -809,8 +809,8 @@ describe("Provider.ParseAndExec", () => {
       let err: unknown;
       try {
         result = await provider.parseAndExec(queryString);
-      } catch (e) {
-        err = e;
+      } catch (error) {
+        err = error;
       }
 
       expect(err !== undefined).toBe(expectError);

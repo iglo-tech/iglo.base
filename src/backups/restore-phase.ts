@@ -233,13 +233,13 @@ export function recoverInterruptedRestore(dataDir: string): void {
 
   try {
     rollbackRestore(dataDir, tempDir);
-  } catch (err) {
+  } catch (error) {
     // a pb_data that is neither the old nor the new one must not be opened
     throw new Error(
       `failed to roll back the interrupted restore (the old data is in ${
         holding.length > 0 ? holding.join(", ") : tempDir
-      } and in ${dataDir}): ` + (err instanceof Error ? err.message : String(err)),
-      { cause: err },
+      } and in ${dataDir}): ` + (error instanceof Error ? error.message : String(error)),
+      { cause: error },
     );
   }
 }

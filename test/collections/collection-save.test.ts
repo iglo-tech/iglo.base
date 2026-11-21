@@ -46,8 +46,8 @@ function errorOf(fn: () => void): unknown {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
 }
 

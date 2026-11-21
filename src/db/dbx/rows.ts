@@ -195,9 +195,9 @@ export class Rows implements Iterable<Array<unknown>> {
   prefetch(): boolean {
     try {
       this.ahead = this.open().next();
-    } catch (err) {
+    } catch (error) {
       this.close();
-      throw err;
+      throw error;
     }
     return this.ahead.done !== true;
   }
@@ -338,9 +338,9 @@ export class Rows implements Iterable<Array<unknown>> {
     let next: IteratorResult<unknown>;
     try {
       next = this.guard(() => this.ahead ?? this.open().next());
-    } catch (err) {
+    } catch (error) {
       this.close();
-      throw err;
+      throw error;
     }
     this.ahead = null;
     if (next.done === true) {
@@ -367,11 +367,11 @@ export class Rows implements Iterable<Array<unknown>> {
     let result: T;
     try {
       result = read();
-    } catch (err) {
+    } catch (error) {
       if (deadline.expired()) {
         throw new DeadlineExceededError();
       }
-      throw err;
+      throw error;
     }
     deadline.check();
     return result;

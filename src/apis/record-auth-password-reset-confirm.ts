@@ -54,8 +54,11 @@ export async function recordConfirmPasswordReset(e: RequestEvent): Promise<Handl
   let authRecord: Record;
   try {
     authRecord = findAuthRecordByToken(e.app, form.Token, TokenTypePasswordReset);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Invalid or expired password reset token.", err));
+  } catch (error) {
+    return firstApiError(
+      error,
+      e.badRequestError("Invalid or expired password reset token.", error),
+    );
   }
 
   // the OnRecordConfirmPasswordResetRequest default action
@@ -68,8 +71,8 @@ export async function recordConfirmPasswordReset(e: RequestEvent): Promise<Handl
 
   try {
     await saveRecord(e.app, authRecord);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to set new password.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to set new password.", error));
   }
 
   e.app.store.remove(getPasswordResetResendKey(authRecord));

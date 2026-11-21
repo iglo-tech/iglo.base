@@ -16,11 +16,11 @@ export function create(src: string, dest: string, ...skipPaths: Array<string>): 
 
   try {
     zipAddDir(zw, src, "", skipPaths);
-  } catch (err) {
+  } catch (error) {
     // try to cleanup at least the created zip file
     zw.abort();
     rmSync(dest, { force: true });
-    throw err;
+    throw error;
   }
 
   zw.close();

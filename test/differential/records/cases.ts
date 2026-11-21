@@ -120,7 +120,7 @@ const titles = [
   "hello",
   "ünïcødé 漢字 🎉",
   "a".repeat(20),
-  'q"\\</>&',
+  String.raw`q"\</>&`,
   "\u2028x\u2029",
   "line\nbreak",
   "  trimmed?  ",

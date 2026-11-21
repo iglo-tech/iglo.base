@@ -44,9 +44,9 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
     const before = collectionNames(e.app);
     importCollections(e.app, imported, form.DeleteMissing);
     e.app.collectionsChanged?.(importChanges(before, collectionNames(e.app), imported));
-  } catch (importErr) {
+  } catch (error) {
     // validation failure
-    const validationErrors = errorsAs(importErr, Errors);
+    const validationErrors = errorsAs(error, Errors);
     if (validationErrors) {
       return e.badRequestError("Failed to import collections.", validationErrors);
     }
@@ -58,7 +58,7 @@ export async function collectionsImport(e: RequestEvent): Promise<Error | undefi
         collections: NewError(
           "validation_collections_import_failure",
           "Failed to import the collections configuration. Raw error:\n" +
-            (importErr instanceof Error ? importErr.message : String(importErr)),
+            (error instanceof Error ? error.message : String(error)),
         ),
       }),
     );

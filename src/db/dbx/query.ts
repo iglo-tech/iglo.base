@@ -448,8 +448,8 @@ export class Query {
   prepare(): this {
     try {
       this.stmt = this.executor.prepare(this.rawSql);
-    } catch (err) {
-      this.lastError = err;
+    } catch (error) {
+      this.lastError = error;
     }
     return this;
   }
@@ -504,9 +504,9 @@ export class Query {
         result = this.stmt.exec(args);
       }
       return result;
-    } catch (e) {
-      err = e;
-      throw e;
+    } catch (error) {
+      err = error;
+      throw error;
     } finally {
       this.execLogFunc?.(performance.now() - start, this.logSQL(), result, err);
     }
@@ -650,9 +650,9 @@ export class Query {
     try {
       const sql = this.realSql() ?? this.rawSql;
       return await reader.read(sql, args, mode, deadline, this.exactIntegers);
-    } catch (e) {
-      err = e;
-      throw e;
+    } catch (error) {
+      err = error;
+      throw error;
     } finally {
       this.queryLogFunc?.(performance.now() - start, this.logSQL(), err);
     }
@@ -675,8 +675,8 @@ export class Query {
             ? this.stmt.query(args)
             : this.executor.query(this.rawSql, args, own);
       return rows.withDeadline(deadline).withExactIntegers(this.exactIntegers);
-    } catch (e) {
-      err = !this.ctxCanceled && deadline?.expired() === true ? new DeadlineExceededError() : e;
+    } catch (error) {
+      err = !this.ctxCanceled && deadline?.expired() === true ? new DeadlineExceededError() : error;
       throw err;
     } finally {
       this.queryLogFunc?.(performance.now() - start, this.logSQL(), err);

@@ -45,11 +45,11 @@ function writeBatch(conn: Database, rows: LogWorkerRequest & { type: "write" }):
         let prepareErr: unknown = null;
         try {
           insert = conn.query(insertSQL);
-        } catch (err) {
-          if (isLockError(err)) {
-            throw err;
+        } catch (error) {
+          if (isLockError(error)) {
+            throw error;
           }
-          prepareErr = err;
+          prepareErr = error;
         }
         try {
           for (const row of rows.rows) {
@@ -58,11 +58,11 @@ function writeBatch(conn: Database, rows: LogWorkerRequest & { type: "write" }):
                 throw prepareErr;
               }
               insert.run(...row);
-            } catch (err) {
-              if (isLockError(err)) {
-                throw err;
+            } catch (error) {
+              if (isLockError(error)) {
+                throw error;
               }
-              errors?.postMessage({ text: `Failed to write log ${row[3]} ${String(err)}` });
+              errors?.postMessage({ text: `Failed to write log ${row[3]} ${String(error)}` });
             }
           }
         } finally {
@@ -70,16 +70,16 @@ function writeBatch(conn: Database, rows: LogWorkerRequest & { type: "write" }):
         }
         conn.run("COMMIT");
         return;
-      } catch (err) {
+      } catch (error) {
         try {
           conn.run("ROLLBACK");
         } catch {
           // nothing open
         }
-        throw err;
+        throw error;
       }
-    } catch (err) {
-      if (!isLockError(err) || attempt > defaultMaxLockRetries) {
+    } catch (error) {
+      if (!isLockError(error) || attempt > defaultMaxLockRetries) {
         return;
       }
       Bun.sleepSync(getDefaultRetryInterval(attempt));

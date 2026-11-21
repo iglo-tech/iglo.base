@@ -41,7 +41,7 @@ const strings = [
   "",
   "plain",
   "Zażółć gęślą jaźń 日本語 😀",
-  'quote " backslash \\ slash /',
+  String.raw`quote " backslash \ slash /`,
   "ctrl \u0000\u0001\u001f\t\n\r\b\f",
   "<b>&amp;</b>",
   "sep    ",
@@ -55,11 +55,11 @@ const jsonTexts = [
   "12345678901234567890",
   '{"b":1, "a" : [1, 2 ,3]}',
   '{"10":1,"2":2,"a":3}',
-  '[ 1 , {"x" : "\\u00e9\\/"} ]',
-  '"\\u0041"',
+  String.raw`[ 1 , {"x" : "\u00e9\/"} ]`,
+  String.raw`"\u0041"`,
   "1.50",
   '{"a":1,"a":2}',
-  '{"k":"ünï","e":"\\n\\u0001"}',
+  String.raw`{"k":"ünï","e":"\n\u0001"}`,
   "true",
   "",
 ];
@@ -123,8 +123,8 @@ function fill(r: () => number, rec: Record): void {
 function outcome(fn: () => string): string {
   try {
     return "ok:" + fn();
-  } catch (err) {
-    return "err:" + (err as Error).message;
+  } catch (error) {
+    return "err:" + (error as Error).message;
   }
 }
 

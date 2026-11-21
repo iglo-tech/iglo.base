@@ -32,8 +32,8 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: Array<
     for (const [oldPath, newPath] of moved) {
       try {
         renameSync(newPath, oldPath);
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
 
@@ -41,8 +41,8 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: Array<
     if (manuallyCreatedDestDir && errs.length === 0) {
       try {
         rmdirSync(dest);
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
 
@@ -59,9 +59,9 @@ export function moveDirContent(src: string, dest: string, ...rootExclude: Array<
 
     try {
       renameSync(oldPath, newPath);
-    } catch (err) {
-      const errs = [...tryRollback(), err];
-      throw errs.length > 1 ? new AggregateError(errs, errs.map(String).join("\n")) : err;
+    } catch (error) {
+      const errs = [...tryRollback(), error];
+      throw errs.length > 1 ? new AggregateError(errs, errs.map(String).join("\n")) : error;
     }
 
     moved.set(oldPath, newPath);

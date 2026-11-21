@@ -30,9 +30,9 @@ function denyPostsList(fetchMock: FetchMock): void {
 async function failureOf(call: Promise<unknown>): Promise<ClientResponseError> {
   try {
     await call;
-  } catch (err) {
-    if (err instanceof ClientResponseError) return err;
-    throw err;
+  } catch (error) {
+    if (error instanceof ClientResponseError) return error;
+    throw error;
   }
   throw new Error("the call should have failed with a 401");
 }
@@ -755,9 +755,9 @@ describe("SSR Core", () => {
       let threw401 = false;
       try {
         await client.collection("_superusers").getFullList();
-      } catch (err: any) {
+      } catch (error: any) {
         threw401 = true;
-        expect(err.status).toBe(401);
+        expect(error.status).toBe(401);
       }
       expect(threw401).toBe(true);
 

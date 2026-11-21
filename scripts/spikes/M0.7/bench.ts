@@ -66,10 +66,10 @@ await Promise.all(
     for (let job = queue.shift(); job; job = queue.shift()) {
       const current = job;
       results.push(
-        await call<JobResult>(w, current).catch((err: unknown) => ({
+        await call<JobResult>(w, current).catch((error: unknown) => ({
           id: current.id,
           ms: 0,
-          error: `worker error: ${String(err)}`,
+          error: `worker error: ${String(error)}`,
         })),
       );
     }

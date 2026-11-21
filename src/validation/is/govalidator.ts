@@ -118,8 +118,8 @@ export function IsHexcolor(str: string): boolean {
 export function IsJSON(str: string): boolean {
   try {
     unmarshal(str, anyType, { legacy: true });
-  } catch (err) {
-    return !(err instanceof JSONSyntaxError);
+  } catch (error) {
+    return !(error instanceof JSONSyntaxError);
   }
   return true;
 }

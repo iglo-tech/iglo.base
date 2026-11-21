@@ -172,8 +172,8 @@ export class JSONField implements Field, MaxBodySizeCalculator {
 
     try {
       return [parseJSONRaw(raw), null];
-    } catch (err) {
-      return [new JSONRaw(), err as Error];
+    } catch (error) {
+      return [new JSONRaw(), error as Error];
     }
   }
 

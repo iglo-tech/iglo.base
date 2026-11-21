@@ -210,9 +210,9 @@ function goQuote(value: string): string {
 }
 
 const shortEscapes: Record<string, string> = {
-  "\b": "\\b",
-  "\f": "\\f",
-  "\n": "\\n",
-  "\r": "\\r",
-  "\t": "\\t",
+  "\b": String.raw`\b`,
+  "\f": String.raw`\f`,
+  "\n": String.raw`\n`,
+  "\r": String.raw`\r`,
+  "\t": String.raw`\t`,
 };

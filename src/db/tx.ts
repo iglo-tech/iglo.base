@@ -57,9 +57,9 @@ function runInTx(
       // returned so that transactional() can reject a promise
       return fn(txApp);
     });
-  } catch (err) {
+  } catch (error) {
     failed = true;
-    txErr = err;
+    txErr = error;
   }
 
   // execute all after event calls on transaction complete
@@ -102,8 +102,8 @@ export class TxAppInfo {
     for (const call of this.afterFuncs) {
       try {
         call(txErr);
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
 

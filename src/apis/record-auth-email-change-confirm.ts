@@ -81,8 +81,8 @@ export async function recordConfirmEmailChange(e: RequestEvent): Promise<Handler
 
   try {
     await saveRecord(e.app, authRecord);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to confirm email change.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to confirm email change.", error));
   }
 
   return e.noContent(204);

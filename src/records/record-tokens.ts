@@ -35,11 +35,11 @@ export const ErrMissingSigningKey = new Error("missing or invalid signing key");
 export function parseUnverifiedClaims(token: string, clock: Clock): MapClaims {
   try {
     return parseUnverifiedJWT(token, clock);
-  } catch (err) {
-    if (err instanceof JWTError) {
-      return err.claims;
+  } catch (error) {
+    if (error instanceof JWTError) {
+      return error.claims;
     }
-    throw err;
+    throw error;
   }
 }
 

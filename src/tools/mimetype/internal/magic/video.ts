@@ -2,7 +2,7 @@
 
 import { equal, hasPrefix, index, lit } from "@/tools/mimetype/go-bytes";
 
-const flvSig = lit("\x46\x4C\x56\x01");
+const flvSig = lit("\u0046\u004C\u0056\u0001");
 // Flv matches a Flash video file.
 export function Flv(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, flvSig);
@@ -49,7 +49,7 @@ export function Mkv(raw: Uint8Array, _limit: number): boolean {
   return isMatroskaFileTypeMatched(raw, matroska);
 }
 
-const ebmlSig = lit("\x1A\x45\xDF\xA3");
+const ebmlSig = lit("\u001A\u0045\u00DF\u00A3");
 // isMatroskaFileTypeMatched is used for webm and mkv file matching.
 // It checks for .Eß£ sequence. If the sequence is found,
 // then it means it is Matroska media container, including WebM.
@@ -62,7 +62,7 @@ function isMatroskaFileTypeMatched(input: Uint8Array, flType: Uint8Array): boole
   return false;
 }
 
-const docTypeID = lit("\x42\x82");
+const docTypeID = lit("\u0042\u0082");
 // isFileTypeNamePresent accepts the matroska input data stream and searches
 // for the given file type in the stream. Return whether a match is found.
 // The logic of search is: find first instance of \x42\x82 and then

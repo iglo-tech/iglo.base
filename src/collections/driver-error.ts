@@ -84,7 +84,7 @@ export function driverError(err: unknown): unknown {
 export function withDriverErrors<T>(fn: () => T): T {
   try {
     return fn();
-  } catch (err) {
-    throw driverError(err);
+  } catch (error) {
+    throw driverError(error);
   }
 }

@@ -225,11 +225,11 @@ describe("Client", () => {
       const first = pb
         .collection("demo2")
         .getList(1, 1)
-        .catch((e: unknown) => e);
+        .catch((error: unknown) => error);
       const second = pb
         .collection("demo2")
         .getList(1, 1)
-        .catch((e: unknown) => e);
+        .catch((error: unknown) => error);
       return { first: await first, second: Object.keys((await second) as object) };
     });
     pb.autoCancellation(false);

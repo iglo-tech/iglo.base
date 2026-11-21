@@ -284,7 +284,7 @@ test.each([
   "Foo\r\nBar\r\n",
   "Foo\rBar",
   "Foo\rBar\r",
-  "\x00\x01\x02\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10",
+  "\u0000\u0001\u0002\u0009\u000a\u000b\u000c\u000d\u000e\u000f\u0010",
 ])("TestVariousTextLineEndings: text %#", async (expectedBody) => {
   const body =
     "--BOUNDARY\r\n" +

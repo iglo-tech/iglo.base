@@ -59,14 +59,14 @@ export function serve(createThumb: CreateThumb): void {
         contentType: thumb.contentType,
         bytes: thumb.bytes.length,
       } satisfies JobResult);
-    } catch (err) {
+    } catch (error) {
       postMessage({
         id: job.id,
         ms: performance.now() - started,
         error:
-          err instanceof Error
-            ? String(err)
-            : `${typeof err}: ${JSON.stringify(err) ?? String(err)}`,
+          error instanceof Error
+            ? String(error)
+            : `${typeof error}: ${JSON.stringify(error) ?? String(error)}`,
       } satisfies JobResult);
     }
   });

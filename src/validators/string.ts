@@ -25,8 +25,8 @@ export function IsRegex(value: unknown): Error | null {
 
   try {
     compile(value);
-  } catch (err) {
-    return NewError("validation_invalid_regex", (err as Error).message);
+  } catch (error) {
+    return NewError("validation_invalid_regex", (error as Error).message);
   }
 
   return null;

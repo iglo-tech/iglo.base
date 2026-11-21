@@ -130,8 +130,8 @@ function useTestFs(): () => { readonly dir: string; readonly fsys: System } {
 function thrownBy(fn: () => unknown): unknown {
   try {
     fn();
-  } catch (err) {
-    return err;
+  } catch (error) {
+    return error;
   }
   throw new Error("expected the call to throw");
 }

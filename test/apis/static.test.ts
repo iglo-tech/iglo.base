@@ -126,13 +126,13 @@ describe("TestStatic", () => {
   // extra directory traversal checks
   const dtp = [
     "/../",
-    "\\../",
+    String.raw`\../`,
     "../",
     "../../",
     "..\\",
     "..\\..\\",
     "../..\\",
-    "..\\..//",
+    String.raw`..\..//`,
     "%2e%2e%2f",
     "%2e%2e%2f%2e%2e%2f",
     "%2e%2e/",

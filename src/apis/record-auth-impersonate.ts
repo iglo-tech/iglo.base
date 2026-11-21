@@ -27,8 +27,8 @@ export async function recordAuthImpersonate(e: RequestEvent): Promise<HandlerRes
   let record: Record;
   try {
     record = findRecordById(e.app, collection, e.request.pathValue("id"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   const form: ImpersonateForm = { Duration: 0 };
@@ -46,8 +46,8 @@ export async function recordAuthImpersonate(e: RequestEvent): Promise<HandlerRes
     // time.Duration(form.Duration) * time.Second, with Go's int64 wrap
     const duration = BigInt.asIntN(64, BigInt(form.Duration) * 1_000_000_000n);
     token = newStaticAuthToken(record, duration, e.app.clock);
-  } catch (err) {
-    return e.internalServerError("Failed to generate static auth token", err);
+  } catch (error) {
+    return e.internalServerError("Failed to generate static auth token", error);
   }
 
   return recordAuthResponse(e, record, token, "", undefined);

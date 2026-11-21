@@ -69,8 +69,8 @@ export function checkSource(src: Uint8Array | ByteSource, maxPixels: number): Si
   let config;
   try {
     config = decodeConfig(src);
-  } catch (err) {
-    throw new Error(`image headers decoding failed: ${(err as Error).message}`, { cause: err });
+  } catch (error) {
+    throw new Error(`image headers decoding failed: ${(error as Error).message}`, { cause: error });
   }
   if (config.width * config.height > maxPixels) {
     throw new Error(

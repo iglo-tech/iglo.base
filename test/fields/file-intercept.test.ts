@@ -44,8 +44,8 @@ function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 }
 
@@ -53,8 +53,8 @@ async function errorOfAsync(p: Promise<void>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
 }
 

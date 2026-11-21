@@ -277,9 +277,9 @@ export function queryStatements(
       let rows: Rows;
       try {
         rows = new Rows(conn, stmt, part.sql, bindArgs(stmt, args), true);
-      } catch (err) {
+      } catch (error) {
         stmt.finalize();
-        throw err;
+        throw error;
       }
       if (rows.prefetch()) {
         result?.close();
@@ -293,9 +293,9 @@ export function queryStatements(
         rows.close();
       }
     }
-  } catch (err) {
+  } catch (error) {
     result?.close();
-    throw err;
+    throw error;
   }
   return result ?? Rows.empty();
 }

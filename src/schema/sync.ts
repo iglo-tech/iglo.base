@@ -123,8 +123,8 @@ export class SchemaSync {
         };
       }
       this.writeTypes(app, result.text);
-    } catch (err) {
-      log(`schema: writing ${basename(schemaPath)} failed: ${messageOf(err)}`);
+    } catch (error) {
+      log(`schema: writing ${basename(schemaPath)} failed: ${messageOf(error)}`);
     }
   }
 
@@ -164,8 +164,8 @@ export class SchemaSync {
     let text: string;
     try {
       text = readFileSync(schemaPath, "utf8");
-    } catch (err) {
-      log(`schema: cannot read ${basename(schemaPath)}: ${messageOf(err)}`);
+    } catch (error) {
+      log(`schema: cannot read ${basename(schemaPath)}: ${messageOf(error)}`);
       return;
     }
     const schema = hashOf(text);
@@ -202,11 +202,12 @@ export class SchemaSync {
           log(`schema: ${line}`);
         }
       }
-    } catch (err) {
+    } catch (error) {
       // the report (or the file's problem, or a variable that is not set)
       // goes to the terminal; the database is unchanged
       this.failed = failedState;
-      const detail = err instanceof SchemaApplyError ? formatReport(err.report) : messageOf(err);
+      const detail =
+        error instanceof SchemaApplyError ? formatReport(error.report) : messageOf(error);
       for (const line of detail.split("\n")) {
         log(`schema: ${line}`);
       }
@@ -238,8 +239,8 @@ export class SchemaSync {
       try {
         const watcher = watch(dir, (_event, name) => this.onEvent(dir, name));
         this.watches.set(dir, { watcher, ino });
-      } catch (err) {
-        log(`schema: cannot watch ${dir}: ${messageOf(err)}`);
+      } catch (error) {
+        log(`schema: cannot watch ${dir}: ${messageOf(error)}`);
       }
     }
   }
@@ -284,8 +285,8 @@ export class SchemaSync {
         return;
       }
       writeFileSync(typesPath, types);
-    } catch (err) {
-      log(`schema: writing the types failed: ${messageOf(err)}`);
+    } catch (error) {
+      log(`schema: writing the types failed: ${messageOf(error)}`);
     }
   }
 

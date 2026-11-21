@@ -288,10 +288,10 @@ function createBaseline(app: CollectionsApp): void {
         if (m.up !== undefined) {
           try {
             m.up(txApp);
-          } catch (err) {
+          } catch (error) {
             throw new Error(
-              `failed to apply migration ${m.file}: ${err instanceof Error ? err.message : String(err)}`,
-              { cause: err },
+              `failed to apply migration ${m.file}: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error },
             );
           }
         }
@@ -317,10 +317,10 @@ function reapplyAuxInit(app: CollectionsApp): void {
       }
       try {
         createLogsTable(txApp);
-      } catch (err) {
+      } catch (error) {
         throw new Error(
-          `failed to apply migration ${auxInitFile}: ${err instanceof Error ? err.message : String(err)}`,
-          { cause: err },
+          `failed to apply migration ${auxInitFile}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
         );
       }
       saveApplied(txApp, auxInitFile);
@@ -331,10 +331,10 @@ function reapplyAuxInit(app: CollectionsApp): void {
 function saveApplied(txApp: CollectionsApp, file: string): void {
   try {
     saveAppliedMigration(txApp.databases, txApp.clock, file);
-  } catch (err) {
+  } catch (error) {
     throw new Error(
-      `failed to save applied migration info for ${file}: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
+      `failed to save applied migration info for ${file}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
 }

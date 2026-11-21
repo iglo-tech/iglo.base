@@ -238,8 +238,8 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
     requests = ((form["Requests"] ?? []) as Array<Record<string, unknown> | null>).map((raw) =>
       raw === null ? null : internalRequestOf(raw),
     );
-  } catch (err) {
-    return e.badRequestError("Failed to read the submitted batch data.", err);
+  } catch (error) {
+    return e.badRequestError("Failed to read the submitted batch data.", error);
   }
 
   // load uploaded files into each request item
@@ -248,8 +248,8 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
   if ((e.request.headers.get("Content-Type") ?? "").startsWith("multipart/form-data")) {
     try {
       await loadUploadedFiles(e, requests);
-    } catch (err) {
-      return e.badRequestError("Failed to read the submitted batch files data.", err);
+    } catch (error) {
+      return e.badRequestError("Failed to read the submitted batch files data.", error);
     }
   }
 
@@ -282,10 +282,10 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
   let results: BatchResults;
   try {
     results = processBatch({ ...e.app, afterTransaction }, e, items, txTimeoutSeconds);
-  } catch (err) {
+  } catch (error) {
     await Promise.allSettled(afterTransaction);
     await uploads.finish(false);
-    return firstApiError(err, e.badRequestError("Batch transaction failed.", err));
+    return firstApiError(error, e.badRequestError("Batch transaction failed.", error));
   }
 
   await uploads.finish(true);
@@ -424,7 +424,7 @@ const invalidEscapeRegex = /%(?![0-9a-fA-F]{2})/;
 // control characters and for bad escapes outside of the query
 function parseItemURL(url: string): { escapedPath: string; rawQuery: string } | Error {
   // oxlint-disable-next-line no-control-regex
-  if (/[\x00-\x1f\x7f]/.test(url)) {
+  if (/[\u0000-\u001f\u007f]/.test(url)) {
     return new Error("net/url: invalid control character in URL");
   }
 
@@ -491,8 +491,8 @@ export async function prepareItem(
   let payload: string;
   try {
     payload = marshal(ir.body);
-  } catch (err) {
-    const requestErr = err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    const requestErr = error instanceof Error ? error : new Error(String(error));
     return { ir, action, infoContext, requestErr, request: null, requestInfo: noRequest };
   }
 
@@ -546,8 +546,8 @@ export function setItemBody(item: PreparedItem, body: Record<string, unknown>): 
     const data: MapRef = { map: {} };
     unmarshalRequestData(request.form as Values, data);
     requestInfo.body = data.map;
-  } catch (err) {
-    item.requestErr = err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    item.requestErr = error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -627,8 +627,8 @@ function processBatch(
       let result: BatchRequestResult | Error;
       try {
         result = processInternalRequest(txApp, e, item);
-      } catch (err) {
-        e.app.logger.error("Batch item failed unexpectedly", { error: err });
+      } catch (error) {
+        e.app.logger.error("Batch item failed unexpectedly", { error: error });
         result = errBatchTimeout;
       }
       if (result === errBatchTimeout) {

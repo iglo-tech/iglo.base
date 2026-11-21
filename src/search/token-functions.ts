@@ -34,11 +34,11 @@ function resolveArg(
 ): ResolverResult | null {
   try {
     return argTokenResolverFunc(arg);
-  } catch (err) {
-    if (err instanceof NilPointerPanic) {
-      throw err;
+  } catch (error) {
+    if (error instanceof NilPointerPanic) {
+      throw error;
     }
-    throw new Error(`${message}: ${errorText(err)}`, { cause: err });
+    throw new Error(`${message}: ${errorText(error)}`, { cause: error });
   }
 }
 

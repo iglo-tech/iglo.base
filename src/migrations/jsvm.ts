@@ -50,16 +50,16 @@ export function registerMigrations(config: JsvmConfig): Array<Migration> {
   let files: Array<[string, string]>;
   try {
     files = filesContent(config.migrationsDir);
-  } catch (err) {
-    throw new PanicError(`registerMigrations: ${(err as Error).message}`);
+  } catch (error) {
+    throw new PanicError(`registerMigrations: ${(error as Error).message}`);
   }
 
   for (const [file, content] of files) {
     try {
       runFile(config, file, content, list);
-    } catch (err) {
+    } catch (error) {
       throw new PanicError(
-        `registerMigrations: failed to run migration ${file}: ${describeError(err, config.cwd)}`,
+        `registerMigrations: failed to run migration ${file}: ${describeError(error, config.cwd)}`,
       );
     }
   }
@@ -73,11 +73,11 @@ function filesContent(dirPath: string): Array<[string, string]> {
   let entries;
   try {
     entries = readdirSync(dirPath, { withFileTypes: true });
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
     }
-    throw err;
+    throw error;
   }
 
   return entries
@@ -111,8 +111,8 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Array<
     return (txApp) => {
       try {
         runMigrationFunc(fn, txApp, m);
-      } catch (err) {
-        throw normalizeException(err, m, config.cwd);
+      } catch (error) {
+        throw normalizeException(error, m, config.cwd);
       }
     };
   };
@@ -128,8 +128,8 @@ function runFile(config: JsvmConfig, file: string, content: string, list: Array<
   let script: vm.Script;
   try {
     script = new vm.Script(content, { filename });
-  } catch (err) {
-    throw new SyntaxError(`SyntaxError: ${filename}: ${(err as Error).message}`);
+  } catch (error) {
+    throw new SyntaxError(`SyntaxError: ${filename}: ${(error as Error).message}`);
   }
   script.runInContext(context);
 }

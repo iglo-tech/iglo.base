@@ -90,8 +90,8 @@ export function collectionPathRateLimit(
           e.app,
           e.request.pathValue(collectionPathParam),
         );
-      } catch (err) {
-        return e.notFoundError("Missing or invalid collection context.", err);
+      } catch (error) {
+        return e.notFoundError("Missing or invalid collection context.", error);
       }
 
       const err = checkCollectionRateLimit(e, collection, ...baseTags);

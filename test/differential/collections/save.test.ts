@@ -206,8 +206,8 @@ function modelSave(target: string | undefined, body: string): Outcome {
   } else {
     try {
       collection = findCollectionByNameOrId(model(), target);
-    } catch (err) {
-      return apiError(newNotFoundError("", err));
+    } catch (error) {
+      return apiError(newNotFoundError("", error));
     }
   }
 
@@ -216,16 +216,16 @@ function modelSave(target: string | undefined, body: string): Outcome {
 
   try {
     saveCollection(model(), collection);
-  } catch (err) {
+  } catch (error) {
     const action = target === undefined ? "create" : "update";
     // validation failure
-    if (err instanceof Errors) {
-      return apiError(newBadRequestError(`Failed to ${action} collection.`, err));
+    if (error instanceof Errors) {
+      return apiError(newBadRequestError(`Failed to ${action} collection.`, error));
     }
     // other generic db error
     return apiError(
       newBadRequestError(
-        `Failed to ${action} collection. Raw error: \n${err instanceof Error ? err.message : String(err)}`,
+        `Failed to ${action} collection. Raw error: \n${error instanceof Error ? error.message : String(error)}`,
         null,
       ),
     );
@@ -239,13 +239,13 @@ function modelDelete(target: string): Outcome {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(model(), target);
-  } catch (err) {
-    return apiError(newNotFoundError("", err));
+  } catch (error) {
+    return apiError(newNotFoundError("", error));
   }
 
   try {
     deleteCollection(model(), collection);
-  } catch (err) {
+  } catch (error) {
     let msg = "Failed to delete collection";
 
     // check fo references
@@ -260,7 +260,7 @@ function modelDelete(target: string): Outcome {
         " probably due to existing reference in " + [...refs.keys()].map((r) => r.name).join(", ");
     }
 
-    return apiError(newBadRequestError(msg, err));
+    return apiError(newBadRequestError(msg, error));
   }
 
   return { status: 204, body: "" };
@@ -277,10 +277,10 @@ function modelImport(body: string): Outcome {
 
   try {
     importCollections(model(), data, form.deleteMissing === true);
-  } catch (err) {
+  } catch (error) {
     // validation failure
-    if (err instanceof Errors) {
-      return apiError(newBadRequestError("Failed to import collections.", err));
+    if (error instanceof Errors) {
+      return apiError(newBadRequestError("Failed to import collections.", error));
     }
 
     // generic/db failure
@@ -291,7 +291,7 @@ function modelImport(body: string): Outcome {
           collections: NewError(
             "validation_collections_import_failure",
             "Failed to import the collections configuration. Raw error:\n" +
-              (err instanceof Error ? err.message : String(err)),
+              (error instanceof Error ? error.message : String(error)),
           ),
         }),
       ),

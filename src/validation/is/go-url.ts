@@ -326,8 +326,8 @@ function parseHost(scheme: string, host: string): string {
     let is4: boolean;
     try {
       is4 = ParseAddr(unescapedHostname).is4;
-    } catch (err) {
-      throw new URLError(`invalid host: ${(err as Error).message}`);
+    } catch (error) {
+      throw new URLError(`invalid host: ${(error as Error).message}`);
     }
     if (is4) {
       throw new URLError("invalid IP-literal");

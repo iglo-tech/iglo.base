@@ -92,8 +92,8 @@ async function startFails(site: Site, extra: Array<string> = []): Promise<string
   try {
     const server = await serveWith(site, extra);
     await server.stop();
-  } catch (err) {
-    return err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
   throw new Error("the server started, but the apply was expected to fail");
 }

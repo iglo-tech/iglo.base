@@ -159,8 +159,8 @@ test.each<[string, () => unknown, string, boolean, string]>([
   let err: unknown;
   try {
     result = pick(data(), fields, modifiers);
-  } catch (e) {
-    err = e;
+  } catch (error) {
+    err = error;
   }
 
   expect(err !== undefined).toBe(expectError);

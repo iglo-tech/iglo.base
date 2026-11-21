@@ -166,8 +166,8 @@ export class ListIterator {
       // Loading a new page.
       try {
         this.#page = this.#b.drv.listPaged(this.#opts);
-      } catch (err) {
-        throw wrapError(this.#b.drv, err, "");
+      } catch (error) {
+        throw wrapError(this.#b.drv, error, "");
       }
       this.#nextIdx = 0;
     }
@@ -249,8 +249,8 @@ export class Bucket {
     let a: Attributes;
     try {
       a = this.drv.attributes(key);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
 
     let md: Map<string, string> | null = null;
@@ -270,11 +270,11 @@ export class Bucket {
     try {
       this.attributes(key);
       return true;
-    } catch (err) {
-      if (isNotFound(err)) {
+    } catch (error) {
+      if (isNotFound(error)) {
         return false;
       }
-      throw err;
+      throw error;
     }
   }
 
@@ -300,8 +300,8 @@ export class Bucket {
     let dr: DriverReader;
     try {
       dr = this.drv.newRangeReader(key, offset, length);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
 
     const attrs: ReaderAttributes = dr.attributes();
@@ -310,8 +310,8 @@ export class Bucket {
       read(p: Uint8Array): number {
         try {
           return dr.read(p);
-        } catch (err) {
-          throw wrapError(drv, err, key);
+        } catch (error) {
+          throw wrapError(drv, error, key);
         }
       },
       close(): void {
@@ -337,8 +337,8 @@ export class Bucket {
         contentLanguage: opts.contentLanguage ?? "",
         metadata: md,
       });
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
 
     const drv = this.drv;
@@ -346,15 +346,15 @@ export class Bucket {
       write(p: Uint8Array): void {
         try {
           dw.write(p);
-        } catch (err) {
-          throw wrapError(drv, err, key);
+        } catch (error) {
+          throw wrapError(drv, error, key);
         }
       },
       close(): void {
         try {
           dw.close();
-        } catch (err) {
-          throw wrapError(drv, err, key);
+        } catch (error) {
+          throw wrapError(drv, error, key);
         }
       },
       cancel(): void {
@@ -378,8 +378,8 @@ export class Bucket {
 
     try {
       this.drv.copy(dstKey, srcKey);
-    } catch (err) {
-      throw wrapError(this.drv, err, `${srcKey} -> ${dstKey}`);
+    } catch (error) {
+      throw wrapError(this.drv, error, `${srcKey} -> ${dstKey}`);
     }
   }
 
@@ -394,8 +394,8 @@ export class Bucket {
 
     try {
       this.drv.delete(key);
-    } catch (err) {
-      throw wrapError(this.drv, err, key);
+    } catch (error) {
+      throw wrapError(this.drv, error, key);
     }
   }
 
@@ -465,7 +465,7 @@ export function checkWriterOptions(
 // mime.FormatMediaType
 
 // tspecials: the characters that need quoting in parameter values
-const tspecials = '()<>@,;:\\"/[]?=';
+const tspecials = String.raw`()<>@,;:\"/[]?=`;
 
 function isTokenChar(c: number): boolean {
   return c > 0x20 && c < 0x7f && !tspecials.includes(String.fromCharCode(c));

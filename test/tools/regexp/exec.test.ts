@@ -55,7 +55,7 @@ describe("RE2", () => {
   }, 600_000);
 });
 
-const notab = compilePOSIX("[^\\t]+");
+const notab = compilePOSIX(String.raw`[^\t]+`);
 
 describe("Fowler", () => {
   for (const file of ["basic.dat", "nullsubexpr.dat", "repetition.dat"]) {

@@ -123,9 +123,9 @@ export class Databases {
     let auxDB: DB;
     try {
       auxDB = connect(auxPath);
-    } catch (err) {
+    } catch (error) {
       dataDB.close();
-      throw err;
+      throw error;
     }
     const auxNonconcurrentDB = auxDB.clone();
 
@@ -135,10 +135,10 @@ export class Databases {
     if (config.readWorkers !== undefined && config.readWorkers > 0) {
       try {
         pool = ReadPool.open(config.readWorkers);
-      } catch (err) {
+      } catch (error) {
         dataDB.close();
         auxDB.close();
-        throw err;
+        throw error;
       }
     }
     const concurrentDB = pool === null ? dataDB : dataDB.withReader(pool.reader(dataPath));
@@ -310,8 +310,8 @@ export class Databases {
     for (const db of this.shared.dbs) {
       try {
         db.close();
-      } catch (err) {
-        errs.push(err);
+      } catch (error) {
+        errs.push(error);
       }
     }
     if (errs.length > 0) {

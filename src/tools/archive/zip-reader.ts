@@ -129,9 +129,9 @@ export class ZipReader {
     try {
       this.#size = fstatSync(this.#fd).size;
       this.#init();
-    } catch (err) {
+    } catch (error) {
       closeSync(this.#fd);
-      throw err;
+      throw error;
     }
   }
 
@@ -455,8 +455,8 @@ export class ZipReader {
       }
       try {
         sink(chunk);
-      } catch (err) {
-        sinkErr = err;
+      } catch (error) {
+        sinkErr = error;
         inflate.destroy();
       }
     });
@@ -487,9 +487,9 @@ export class ZipReader {
       }
       inflate.end();
       await ended;
-    } catch (err) {
+    } catch (error) {
       inflate.destroy();
-      throw sinkErr ?? err;
+      throw sinkErr ?? error;
     }
     if (sinkErr !== undefined) {
       throw sinkErr;

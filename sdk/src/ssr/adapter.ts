@@ -394,16 +394,20 @@ export async function handleRoute(
         redirectTo: searchParams.get("redirectTo") ?? "/",
       });
       return redirectWithCookies(location, cookies);
-    } catch (err: unknown) {
-      if (err instanceof OAuth2Error) {
+    } catch (error: unknown) {
+      if (error instanceof OAuth2Error) {
         const status =
-          err.kind === "unknown-provider" ? 404 : err.kind === "unsupported-provider" ? 400 : 500;
-        return jsonError(status, err.message);
+          error.kind === "unknown-provider"
+            ? 404
+            : error.kind === "unsupported-provider"
+              ? 400
+              : 500;
+        return jsonError(status, error.message);
       }
-      if (err instanceof ClientResponseError) {
+      if (error instanceof ClientResponseError) {
         return jsonError(502, "iglo.base refused the OAuth2 start.");
       }
-      throw err;
+      throw error;
     }
   }
 

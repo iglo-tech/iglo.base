@@ -64,8 +64,8 @@ export function dynamicCollectionBodyLimit(collectionPathParam = ""): Handler<Re
           e.app,
           e.request.pathValue(collectionPathParam),
         );
-      } catch (err) {
-        return e.notFoundError("Missing or invalid collection context.", err);
+      } catch (error) {
+        return e.notFoundError("Missing or invalid collection context.", error);
       }
 
       let limitBytes = BigInt(DefaultMaxBodySize);
@@ -144,9 +144,9 @@ class MaxBytesReader implements ReadCloser, Rereader {
     let result: ReadResult;
     try {
       result = await this.#reader.read(b);
-    } catch (err) {
-      this.#stickyErr = err;
-      throw err;
+    } catch (error) {
+      this.#stickyErr = error;
+      throw error;
     }
 
     if (BigInt(result.n) <= this.#remaining) {

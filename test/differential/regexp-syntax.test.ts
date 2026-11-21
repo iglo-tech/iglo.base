@@ -36,38 +36,44 @@ const invalidPatterns = [
   "abc)", // unexpected paren
   "x[a-z", // missing bracket
   "*", // missing repeat argument
-  "\\Q\\E*",
+  String.raw`\Q\E*`,
   "a**", // nested repeat
   "x{2}{3}",
   "x{1001}", // repeat over 1000
   "x{2,1}",
   "((a{100}){100})", // nested repeats over 1000
-  "\\8", // bad escape
-  "\\xZZ",
-  "\\x{110000}",
+  String.raw`\8`, // bad escape
+  String.raw`\xZZ`,
+  String.raw`\x{110000}`,
   "abc\\", // trailing backslash
   "[z-a]", // bad class range
-  "\\p{Foo}",
+  String.raw`\p{Foo}`,
   "[[:foo:]]",
   "(?P<x y>a)", // invalid named capture
   "(?<>a)",
   "(?P<name",
   "(?z)", // bad Perl flag
   "(?i-)",
-  "\\C", // any byte
+  String.raw`\C`, // any byte
   "(".repeat(1000) + ")".repeat(1000), // nesting depth
   "^abc", // OpBeginText
   "abc$", // OpEndText
-  "a\\z",
-  "\\bfoo", // OpWordBoundary
-  "\\Bfoo", // OpNoWordBoundary
+  String.raw`a\z`,
+  String.raw`\bfoo`, // OpWordBoundary
+  String.raw`\Bfoo`, // OpNoWordBoundary
   "(?m)^a", // OpBeginLine
   "a(?m)$", // OpEndLine
   "a(?:)b", // OpEmptyMatch
 ];
 
 // patterns both accept
-const validPatterns = ["[a-z]{5}", "\\p{Greek}{3}", "(?i)abc", "[^a-zA-Z]{5,30}", "\\w+_abc"];
+const validPatterns = [
+  "[a-z]{5}",
+  String.raw`\p{Greek}{3}`,
+  "(?i)abc",
+  "[^a-zA-Z]{5,30}",
+  String.raw`\w+_abc`,
+];
 
 let upstream: UpstreamServer;
 let root: string;

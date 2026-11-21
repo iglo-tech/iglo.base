@@ -279,8 +279,8 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
               .limit(1)
               .row();
             exists = Number(row[0] ?? 0);
-          } catch (err) {
-            failed = !isNoRowsError(err);
+          } catch (error) {
+            failed = !isNoRowsError(error);
           }
           if (exists > 0 || failed) {
             return NewError(
@@ -432,8 +432,8 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
       let generated: string;
       try {
         generated = randomStringByRegex(v);
-      } catch (err) {
-        return NewError("validation_invalid_autogenerate_pattern", (err as Error).message);
+      } catch (error) {
+        return NewError("validation_invalid_autogenerate_pattern", (error as Error).message);
       }
 
       // (loosely) check whether the generated pattern satisfies the current
@@ -464,10 +464,10 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
           let v: string;
           try {
             v = randomStringByRegex(this.autogeneratePattern);
-          } catch (err) {
+          } catch (error) {
             throw new Error(
-              `failed to autogenerate ${goQuote(this.name)} value: ${(err as Error).message}`,
-              { cause: err },
+              `failed to autogenerate ${goQuote(this.name)} value: ${(error as Error).message}`,
+              { cause: error },
             );
           }
           record.setRaw(this.name, v);

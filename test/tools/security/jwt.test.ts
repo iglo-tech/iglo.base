@@ -18,8 +18,8 @@ const clock = clockAt(Date.UTC(2026, 9, 28, 12, 0, 0));
 function parseUnverified(token: string): [MapClaims, boolean] {
   try {
     return [parseUnverifiedJWT(token, clock), false];
-  } catch (err) {
-    return [(err as { claims?: MapClaims }).claims ?? {}, true];
+  } catch (error) {
+    return [(error as { claims?: MapClaims }).claims ?? {}, true];
   }
 }
 

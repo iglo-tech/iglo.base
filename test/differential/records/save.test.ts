@@ -348,11 +348,11 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
   let collection;
   try {
     collection = findCachedCollectionByNameOrId(model(), step.collection);
-  } catch (err) {
+  } catch (error) {
     return apiError(
       step.kind === "truncate"
-        ? newNotFoundError("", err)
-        : newNotFoundError("Missing collection context.", err),
+        ? newNotFoundError("", error)
+        : newNotFoundError("Missing collection context.", error),
     );
   }
 
@@ -367,11 +367,11 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
     }
     try {
       truncateCollection(model(), collection);
-    } catch (err) {
+    } catch (error) {
       return apiError(
         newBadRequestError(
           "Failed to truncate collection (most likely due to required cascade delete record references).",
-          err,
+          error,
         ),
       );
     }
@@ -387,8 +387,8 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
     formLoad(record, record.replaceModifiers(requestBody(step.body)));
     try {
       await saveRecord(model(), record);
-    } catch (err) {
-      return apiError(firstApiError(err) ?? newBadRequestError("Failed to create record", err));
+    } catch (error) {
+      return apiError(firstApiError(error) ?? newBadRequestError("Failed to create record", error));
     }
     return { status: 200, body: "", id: record.id };
   }
@@ -396,28 +396,30 @@ async function modelStep(step: Step, resolve: (id: string) => string): Promise<O
   let record: Record;
   try {
     record = findRecordById(model(), collection, resolve(step.id));
-  } catch (err) {
-    return apiError(newNotFoundError("", err));
+  } catch (error) {
+    return apiError(newNotFoundError("", error));
   }
 
   if (step.kind === "update") {
     formLoad(record, record.replaceModifiers(requestBody(step.body)));
     try {
       await saveRecord(model(), record);
-    } catch (err) {
-      return apiError(firstApiError(err) ?? newBadRequestError("Failed to update record.", err));
+    } catch (error) {
+      return apiError(
+        firstApiError(error) ?? newBadRequestError("Failed to update record.", error),
+      );
     }
     return { status: 200, body: "" };
   }
 
   try {
     await deleteRecord(model(), record);
-  } catch (err) {
+  } catch (error) {
     return apiError(
-      firstApiError(err) ??
+      firstApiError(error) ??
         newBadRequestError(
           "Failed to delete record. Make sure that the record is not part of a required relation reference.",
-          err,
+          error,
         ),
     );
   }

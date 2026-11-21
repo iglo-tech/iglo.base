@@ -119,9 +119,9 @@ export class GeoPointField implements Field {
     const point = new GeoPoint();
     try {
       point.scan(raw);
-    } catch (err) {
+    } catch (error) {
       // a failed scan may have changed the point already, as in Go
-      return [point, err as Error];
+      return [point, error as Error];
     }
     return [point, null];
   }

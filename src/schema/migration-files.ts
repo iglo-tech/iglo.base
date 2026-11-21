@@ -166,8 +166,8 @@ async function loadMigration(path: string, file: string): Promise<SchemaMigratio
   let exported: unknown;
   try {
     exported = (await importMigration(path)).default;
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
     throw new MigrationFileError(
       `the migration file ${file} does not load:\n  ${reason.replaceAll("\n", "\n  ")}`,
     );

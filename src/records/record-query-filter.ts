@@ -88,8 +88,8 @@ export function findRecordsByFilterAsync(
   let q: SelectQuery;
   try {
     q = recordsByFilterQuery(app, collectionModelOrIdentifier, filter, sort, limit, offset, params);
-  } catch (err) {
-    return Promise.reject(err);
+  } catch (error) {
+    return Promise.reject(error);
   }
   return q.allAsync<Record>(recordsTarget);
 }
@@ -139,8 +139,8 @@ function recordsByFilterQuery(
     let expr;
     try {
       expr = filterBuildExpr(filter, resolver, resolver.filterOptions(), ...params);
-    } catch (err) {
-      throw wrapResolverError("invalid filter expression", err);
+    } catch (error) {
+      throw wrapResolverError("invalid filter expression", error);
     }
     q.andWhere(expr);
   }
@@ -249,9 +249,9 @@ export function canAccessRecord(
   let exists: unknown = 0;
   try {
     [exists] = query.row();
-  } catch (err) {
-    if (!isNoRowsCause(err)) {
-      throw err;
+  } catch (error) {
+    if (!isNoRowsCause(error)) {
+      throw error;
     }
   }
 
@@ -273,9 +273,9 @@ export async function canAccessRecordAsync(
   let exists: unknown = 0;
   try {
     [exists] = await query.rowAsync();
-  } catch (err) {
-    if (!isNoRowsCause(err)) {
-      throw err;
+  } catch (error) {
+    if (!isNoRowsCause(error)) {
+      throw error;
     }
   }
 

@@ -417,7 +417,7 @@ export const cases: Array<FileCase> = [
     method: "POST",
     collection: "fmulti",
     ref: "n6",
-    parts: [file("docs", 'a "quoted" \\ name.txt', "q")],
+    parts: [file("docs", String.raw`a "quoted" \ name.txt`, "q")],
   },
   {
     name: "name: an empty file",

@@ -101,11 +101,11 @@ export function pick(
     } else {
       pickParsedFields(decoded, parsedFields);
     }
-  } catch (err) {
-    if (err instanceof PickPanic) {
-      throw err;
+  } catch (error) {
+    if (error instanceof PickPanic) {
+      throw error;
     }
-    throw new InvalidModifierDataError(err);
+    throw new InvalidModifierDataError(error);
   }
 
   return decoded;

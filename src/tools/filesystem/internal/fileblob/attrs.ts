@@ -61,13 +61,13 @@ export function setAttrs(path: string, xa: xattrs): void {
     while (off < data.length) {
       off += writeSync(fd, data, off, data.length - off);
     }
-  } catch (err) {
+  } catch (error) {
     try {
       closeSync(fd);
     } finally {
       rmSync(name, { force: true });
     }
-    throw err;
+    throw error;
   }
 
   closeSync(fd);
@@ -80,12 +80,12 @@ export function getAttrs(path: string): xattrs {
   let data: Uint8Array;
   try {
     data = readFileSync(path + attrsExt);
-  } catch (err) {
-    if ((err as { code?: string }).code === "ENOENT") {
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") {
       // Handle gracefully for non-existent .attr files.
       return { ...emptyAttrs(), contentType: "application/octet-stream" };
     }
-    throw err;
+    throw error;
   }
 
   return unmarshalAttrs(data);
@@ -138,29 +138,29 @@ export function quote(s: string): string {
     }
     switch (c) {
       case 0x22:
-        out += '\\"';
+        out += String.raw`\"`;
         continue;
       case 0x5c:
-        out += "\\\\";
+        out += String.raw`\\`;
         continue;
       case 0x08:
-        out += "\\b";
+        out += String.raw`\b`;
         continue;
       case 0x09:
-        out += "\\t";
+        out += String.raw`\t`;
         continue;
       case 0x0a:
-        out += "\\n";
+        out += String.raw`\n`;
         continue;
       case 0x0c:
-        out += "\\f";
+        out += String.raw`\f`;
         continue;
       case 0x0d:
-        out += "\\r";
+        out += String.raw`\r`;
         continue;
     }
     if (c < 0x20) {
-      out += "\\u00" + hex.charAt(c >> 4) + hex.charAt(c & 0xf);
+      out += String.raw`\u00` + hex.charAt(c >> 4) + hex.charAt(c & 0xf);
       continue;
     }
     out += s.charAt(i);

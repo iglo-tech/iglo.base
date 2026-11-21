@@ -31,13 +31,13 @@ describe("goNormalizedBody (jsontext Encoder.WriteValue)", () => {
   });
 
   test("rewrites strings in their shortest escaping", () => {
-    expect(normalized('"\\u0041\\/\\u00e9\\u003c&>\\ud83d\\ude00"')).toBe(
+    expect(normalized(String.raw`"\u0041\/\u00e9\u003c&>\ud83d\ude00"`)).toBe(
       '"A/\u00e9<&>\u{1f600}"\n',
     );
-    expect(normalized('"\\u0008\\u000a\\u001f\\u007f\\"\\\\"')).toBe(
+    expect(normalized(String.raw`"\u0008\u000a\u001f\u007f\"\\"`)).toBe(
       '"\\b\\n\\u001f\u007f\\"\\\\"\n',
     );
-    expect(normalized('"\\ud800"')).toBe('"\ufffd"\n');
+    expect(normalized(String.raw`"\ud800"`)).toBe('"\ufffd"\n');
   });
 
   test("leaves bodies jsontext rejects unchanged", () => {

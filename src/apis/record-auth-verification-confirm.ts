@@ -61,8 +61,8 @@ export async function recordConfirmVerification(e: RequestEvent): Promise<Handle
   let record: Record;
   try {
     record = findAuthRecordByToken(e.app, form.Token, TokenTypeVerification);
-  } catch (err) {
-    return e.badRequestError("Invalid or expired verification token.", err);
+  } catch (error) {
+    return e.badRequestError("Invalid or expired verification token.", error);
   }
 
   const wasVerified = record.verified();
@@ -80,10 +80,10 @@ export async function recordConfirmVerification(e: RequestEvent): Promise<Handle
 
     try {
       await saveRecord(e.app, record);
-    } catch (err) {
+    } catch (error) {
       return firstApiError(
-        err,
-        e.badRequestError("An error occurred while saving the verified state.", err),
+        error,
+        e.badRequestError("An error occurred while saving the verified state.", error),
       );
     }
   }

@@ -406,10 +406,10 @@ describe("the printer", () => {
 
   test("colors, as upstream on a terminal", () => {
     expect(formatLog(log(8, { type: "request", error: "Failed.", details: null }), true)).toBe(
-      "\x1b[1;31mERROR \x1b[22;0m\x1b[31mPOST /api/x\x1b[0m\n\x1b[91m└─ Failed.\x1b[0m\n",
+      "\u001b[1;31mERROR \u001b[22;0m\u001b[31mPOST /api/x\u001b[0m\n\u001b[91m└─ Failed.\u001b[0m\n",
     );
     expect(formatLog(log(0, {}), true)).toBe(
-      "\x1b[1;37mINFO \x1b[22;0m\x1b[37mPOST /api/x\x1b[0m\n",
+      "\u001b[1;37mINFO \u001b[22;0m\u001b[37mPOST /api/x\u001b[0m\n",
     );
   });
 

@@ -128,10 +128,10 @@ async function bucketObjects(target: Target): Promise<Map<string, RawObject>> {
         metadata: JSON.stringify([...(attrs.metadata ?? [])]),
         bytes: readFileSync(join(gw.posixRoot, target.bucket, object.key)),
       });
-    } catch (err) {
+    } catch (error) {
       // deleted in the background since the list
-      if (!isNotFound(err) && (err as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw err;
+      if (!isNotFound(error) && (error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
       }
     }
   }

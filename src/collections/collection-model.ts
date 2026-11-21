@@ -406,9 +406,9 @@ export class Collection
     if (has("indexes")) {
       try {
         this.indexes = scanJSONArray<string>(row.indexes, stringType);
-      } catch (err) {
+      } catch (error) {
         this.indexes = [];
-        throw err;
+        throw error;
       }
     }
     if (has("created")) {

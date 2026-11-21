@@ -774,18 +774,18 @@ export function serveContent(
   let ranges: Array<HttpRange>;
   try {
     ranges = parseRange(rangeReq, size);
-  } catch (err) {
-    if (err === errNoOverlap && size === 0) {
+  } catch (error) {
+    if (error === errNoOverlap && size === 0) {
       // Some clients add a Range header to all requests to
       // limit the size of the response. If the file is empty,
       // ignore the range header and respond with a 200 rather
       // than a 416.
       ranges = [];
     } else {
-      if (err === errNoOverlap) {
+      if (error === errNoOverlap) {
         w.header.set("Content-Range", `bytes */${size}`);
       }
-      serveError(w, (err as Error).message, 416);
+      serveError(w, (error as Error).message, 416);
       return;
     }
   }

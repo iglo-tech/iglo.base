@@ -512,8 +512,8 @@ describe("record queries on a copy of upstream's data.db", () => {
           let found: RecordModel | null = null;
           try {
             found = findAuthRecordByEmail(app, collection, e);
-          } catch (err) {
-            expect(err).toBeInstanceOf(NoRowsError);
+          } catch (error) {
+            expect(error).toBeInstanceOf(NoRowsError);
           }
           expect({ collection, email: e, found: found !== null }).toEqual({
             collection,

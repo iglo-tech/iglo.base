@@ -281,25 +281,25 @@ const parseTests: Array<parseTest> = [
   [".", "dot{}"],
   ["^", "bol{}"],
   ["$", "eol{}"],
-  ["\\|", "lit{|}"],
-  ["\\(", "lit{(}"],
-  ["\\)", "lit{)}"],
-  ["\\*", "lit{*}"],
-  ["\\+", "lit{+}"],
-  ["\\?", "lit{?}"],
+  [String.raw`\|`, "lit{|}"],
+  [String.raw`\(`, "lit{(}"],
+  [String.raw`\)`, "lit{)}"],
+  [String.raw`\*`, "lit{*}"],
+  [String.raw`\+`, "lit{+}"],
+  [String.raw`\?`, "lit{?}"],
   ["{", "lit{{}"],
   ["}", "lit{}}"],
-  ["\\.", "lit{.}"],
-  ["\\^", "lit{^}"],
-  ["\\$", "lit{$}"],
-  ["\\\\", "lit{\\}"],
+  [String.raw`\.`, "lit{.}"],
+  [String.raw`\^`, "lit{^}"],
+  [String.raw`\$`, "lit{$}"],
+  [String.raw`\\`, String.raw`lit{\}`],
   ["[ace]", "cc{0x61 0x63 0x65}"],
   ["[abc]", "cc{0x61-0x63}"],
   ["[a-z]", "cc{0x61-0x7a}"],
   ["[a]", "lit{a}"],
-  ["\\-", "lit{-}"],
+  [String.raw`\-`, "lit{-}"],
   ["-", "lit{-}"],
-  ["\\_", "lit{_}"],
+  [String.raw`\_`, "lit{_}"],
   ["abc", "str{abc}"],
   ["abc|def", "alt{str{abc}str{def}}"],
   ["abc|def|ghi", "alt{str{abc}str{def}str{ghi}}"],
@@ -313,48 +313,51 @@ const parseTests: Array<parseTest> = [
   ["(?i)[a-z]", "cc{0x41-0x5a 0x61-0x7a 0x17f 0x212a}"],
   ["(?i)[^[:lower:]]", "cc{0x0-0x40 0x5b-0x60 0x7b-0x17e 0x180-0x2129 0x212b-0x10ffff}"],
   ["(?i)[[:^lower:]]", "cc{0x0-0x40 0x5b-0x60 0x7b-0x17e 0x180-0x2129 0x212b-0x10ffff}"],
-  ["\\d", "cc{0x30-0x39}"],
-  ["\\D", "cc{0x0-0x2f 0x3a-0x10ffff}"],
-  ["\\s", "cc{0x9-0xa 0xc-0xd 0x20}"],
-  ["\\S", "cc{0x0-0x8 0xb 0xe-0x1f 0x21-0x10ffff}"],
-  ["\\w", "cc{0x30-0x39 0x41-0x5a 0x5f 0x61-0x7a}"],
-  ["\\W", "cc{0x0-0x2f 0x3a-0x40 0x5b-0x5e 0x60 0x7b-0x10ffff}"],
-  ["(?i)\\w", "cc{0x30-0x39 0x41-0x5a 0x5f 0x61-0x7a 0x17f 0x212a}"],
-  ["(?i)\\W", "cc{0x0-0x2f 0x3a-0x40 0x5b-0x5e 0x60 0x7b-0x17e 0x180-0x2129 0x212b-0x10ffff}"],
-  ["[^\\\\]", "cc{0x0-0x5b 0x5d-0x10ffff}"],
+  [String.raw`\d`, "cc{0x30-0x39}"],
+  [String.raw`\D`, "cc{0x0-0x2f 0x3a-0x10ffff}"],
+  [String.raw`\s`, "cc{0x9-0xa 0xc-0xd 0x20}"],
+  [String.raw`\S`, "cc{0x0-0x8 0xb 0xe-0x1f 0x21-0x10ffff}"],
+  [String.raw`\w`, "cc{0x30-0x39 0x41-0x5a 0x5f 0x61-0x7a}"],
+  [String.raw`\W`, "cc{0x0-0x2f 0x3a-0x40 0x5b-0x5e 0x60 0x7b-0x10ffff}"],
+  [String.raw`(?i)\w`, "cc{0x30-0x39 0x41-0x5a 0x5f 0x61-0x7a 0x17f 0x212a}"],
+  [
+    String.raw`(?i)\W`,
+    "cc{0x0-0x2f 0x3a-0x40 0x5b-0x5e 0x60 0x7b-0x17e 0x180-0x2129 0x212b-0x10ffff}",
+  ],
+  [String.raw`[^\\]`, "cc{0x0-0x5b 0x5d-0x10ffff}"],
   //	{ `\C`, `byte{}` },  // probably never
 
   // Unicode, negatives, and a double negative.
-  ["\\p{Braille}", "cc{0x2800-0x28ff}"],
-  ["\\P{Braille}", "cc{0x0-0x27ff 0x2900-0x10ffff}"],
-  ["\\p{^Braille}", "cc{0x0-0x27ff 0x2900-0x10ffff}"],
-  ["\\P{^Braille}", "cc{0x2800-0x28ff}"],
-  ["\\pZ", "cc{0x20 0xa0 0x1680 0x2000-0x200a 0x2028-0x2029 0x202f 0x205f 0x3000}"],
-  ["[\\p{Braille}]", "cc{0x2800-0x28ff}"],
-  ["[\\P{Braille}]", "cc{0x0-0x27ff 0x2900-0x10ffff}"],
-  ["[\\p{^Braille}]", "cc{0x0-0x27ff 0x2900-0x10ffff}"],
-  ["[\\P{^Braille}]", "cc{0x2800-0x28ff}"],
-  ["[\\pZ]", "cc{0x20 0xa0 0x1680 0x2000-0x200a 0x2028-0x2029 0x202f 0x205f 0x3000}"],
-  ["\\p{Lu}", mkCharClass(isUpper)],
-  ["\\p{Uppercase_Letter}", mkCharClass(isUpper)],
-  ["\\p{upper case-let ter}", mkCharClass(isUpper)],
-  ["\\p{__upper case-let ter}", mkCharClass(isUpper)],
-  ["\\p{Canadian_Aboriginal}", mkCharClass((r) => In(r, script("Canadian_Aboriginal")))],
-  ["[\\p{Lu}]", mkCharClass(isUpper)],
-  ["(?i)[\\p{Lu}]", mkCharClass(isUpperFold)],
-  ["\\p{Any}", "dot{}"],
-  ["\\p{^Any}", "cc{}"],
-  ["(?i)\\p{ascii}", "cc{0x0-0x7f 0x17f 0x212a}"],
-  ["\\p{Assigned}", mkCharClass((r) => !In(r, category("Cn")))],
-  ["\\p{^Assigned}", mkCharClass((r) => In(r, category("Cn")))],
+  [String.raw`\p{Braille}`, "cc{0x2800-0x28ff}"],
+  [String.raw`\P{Braille}`, "cc{0x0-0x27ff 0x2900-0x10ffff}"],
+  [String.raw`\p{^Braille}`, "cc{0x0-0x27ff 0x2900-0x10ffff}"],
+  [String.raw`\P{^Braille}`, "cc{0x2800-0x28ff}"],
+  [String.raw`\pZ`, "cc{0x20 0xa0 0x1680 0x2000-0x200a 0x2028-0x2029 0x202f 0x205f 0x3000}"],
+  [String.raw`[\p{Braille}]`, "cc{0x2800-0x28ff}"],
+  [String.raw`[\P{Braille}]`, "cc{0x0-0x27ff 0x2900-0x10ffff}"],
+  [String.raw`[\p{^Braille}]`, "cc{0x0-0x27ff 0x2900-0x10ffff}"],
+  [String.raw`[\P{^Braille}]`, "cc{0x2800-0x28ff}"],
+  [String.raw`[\pZ]`, "cc{0x20 0xa0 0x1680 0x2000-0x200a 0x2028-0x2029 0x202f 0x205f 0x3000}"],
+  [String.raw`\p{Lu}`, mkCharClass(isUpper)],
+  [String.raw`\p{Uppercase_Letter}`, mkCharClass(isUpper)],
+  [String.raw`\p{upper case-let ter}`, mkCharClass(isUpper)],
+  [String.raw`\p{__upper case-let ter}`, mkCharClass(isUpper)],
+  [String.raw`\p{Canadian_Aboriginal}`, mkCharClass((r) => In(r, script("Canadian_Aboriginal")))],
+  [String.raw`[\p{Lu}]`, mkCharClass(isUpper)],
+  [String.raw`(?i)[\p{Lu}]`, mkCharClass(isUpperFold)],
+  [String.raw`\p{Any}`, "dot{}"],
+  [String.raw`\p{^Any}`, "cc{}"],
+  [String.raw`(?i)\p{ascii}`, "cc{0x0-0x7f 0x17f 0x212a}"],
+  [String.raw`\p{Assigned}`, mkCharClass((r) => !In(r, category("Cn")))],
+  [String.raw`\p{^Assigned}`, mkCharClass((r) => In(r, category("Cn")))],
 
   // Hex, octal.
-  ["[\\012-\\234]\\141", "cat{cc{0xa-0x9c}lit{a}}"],
-  ["[\\x{41}-\\x7a]\\x61", "cat{cc{0x41-0x7a}lit{a}}"],
+  [String.raw`[\012-\234]\141`, "cat{cc{0xa-0x9c}lit{a}}"],
+  [String.raw`[\x{41}-\x7a]\x61`, "cat{cc{0x41-0x7a}lit{a}}"],
 
   // More interesting regular expressions.
   ["a{,2}", "str{a{,2}}"],
-  ["\\.\\^\\$\\\\", "str{.^$\\}"],
+  [String.raw`\.\^\$\\`, String.raw`str{.^$\}`],
   ["[a-zABC]", "cc{0x41-0x43 0x61-0x7a}"],
   ["[^a]", "cc{0x0-0x60 0x62-0x10ffff}"],
   ["[α-ε☺]", "cc{0x3b1-0x3b5 0x263a}"], // utf-8
@@ -378,21 +381,21 @@ const parseTests: Array<parseTest> = [
   ["(?:[abc]|A|Z)", "cc{0x41 0x5a 0x61-0x63}"],
 
   // Test Perl quoted literals
-  ["\\Q+|*?{[\\E", "str{+|*?{[}"],
-  ["\\Q+\\E+", "plus{lit{+}}"],
-  ["\\Qab\\E+", "cat{lit{a}plus{lit{b}}}"],
-  ["\\Q\\\\E", "lit{\\}"],
-  ["\\Q\\\\\\E", "str{\\\\}"],
+  [String.raw`\Q+|*?{[\E`, "str{+|*?{[}"],
+  [String.raw`\Q+\E+`, "plus{lit{+}}"],
+  [String.raw`\Qab\E+`, "cat{lit{a}plus{lit{b}}}"],
+  [String.raw`\Q\\E`, String.raw`lit{\}`],
+  [String.raw`\Q\\\E`, String.raw`str{\\}`],
 
   // Test Perl \A and \z
   ["(?m)^", "bol{}"],
   ["(?m)$", "eol{}"],
   ["(?-m)^", "bot{}"],
   ["(?-m)$", "eot{}"],
-  ["(?m)\\A", "bot{}"],
-  ["(?m)\\z", "eot{\\z}"],
-  ["(?-m)\\A", "bot{}"],
-  ["(?-m)\\z", "eot{\\z}"],
+  [String.raw`(?m)\A`, "bot{}"],
+  [String.raw`(?m)\z`, String.raw`eot{\z}`],
+  [String.raw`(?-m)\A`, "bot{}"],
+  [String.raw`(?-m)\z`, String.raw`eot{\z}`],
 
   // Test named captures
   ["(?P<name>a)", "cap{name:lit{a}}"],
@@ -400,7 +403,7 @@ const parseTests: Array<parseTest> = [
 
   // Case-folded literals
   ["[Aa]", "litfold{A}"],
-  ["[\\x{100}\\x{101}]", "litfold{Ā}"],
+  [String.raw`[\x{100}\x{101}]`, "litfold{Ā}"],
   ["[Δδ]", "litfold{Δ}"],
 
   // Strings
@@ -428,7 +431,7 @@ const parseTests: Array<parseTest> = [
   ["(?-s).", "dnl{}"],
   ["(?:(?:^).)", "cat{bol{}dot{}}"],
   ["(?-s)(?:(?:^).)", "cat{bol{}dnl{}}"],
-  ["[\\s\\S]a", "cat{cc{0x0-0x10ffff}lit{a}}"],
+  [String.raw`[\s\S]a`, "cat{cc{0x0-0x10ffff}lit{a}}"],
 
   // RE2 prefix_tests
   ["abc|abd", "cat{str{ab}cc{0x63-0x64}}"],
@@ -467,20 +470,22 @@ const foldcaseTests: Array<parseTest> = [
   ["[[:lower:]]", "cc{0x41-0x5a 0x61-0x7a 0x17f 0x212a}"],
 ];
 
-const literalTests: Array<parseTest> = [["(|)^$.[*+?]{5,10},\\", "str{(|)^$.[*+?]{5,10},\\}"]];
+const literalTests: Array<parseTest> = [
+  ["(|)^$.[*+?]{5,10},\\", String.raw`str{(|)^$.[*+?]{5,10},\}`],
+];
 
 const matchnlTests: Array<parseTest> = [
   [".", "dot{}"],
   ["\n", "lit{\n}"],
   ["[^a]", "cc{0x0-0x60 0x62-0x10ffff}"],
-  ["[a\\n]", "cc{0xa 0x61}"],
+  [String.raw`[a\n]`, "cc{0xa 0x61}"],
 ];
 
 const nomatchnlTests: Array<parseTest> = [
   [".", "dnl{}"],
   ["\n", "lit{\n}"],
   ["[^a]", "cc{0x0-0x9 0xb-0x60 0x62-0x10ffff}"],
-  ["[a\\n]", "cc{0xa 0x61}"],
+  [String.raw`[a\n]`, "cc{0xa 0x61}"],
 ];
 
 const invalidRegexps: Array<string | Uint8Array> = [
@@ -503,10 +508,10 @@ const invalidRegexps: Array<string | Uint8Array> = [
   "x{9876543210}",
   "x{2,1}",
   "x{1,9876543210}",
-  goBytes("\xff"), // Invalid UTF-8
-  goBytes("[\xff]"),
-  goBytes("[\\\xff]"),
-  goBytes("\\\xff"),
+  goBytes("\u00ff"), // Invalid UTF-8
+  goBytes("[\u00ff]"),
+  goBytes("[\\\u00ff]"),
+  goBytes("\\\u00ff"),
   "(?P<name>a",
   "(?P<name>",
   "(?P<name",
@@ -519,7 +524,7 @@ const invalidRegexps: Array<string | Uint8Array> = [
   "(?<>a)",
   "[a-Z]",
   "(?i)[a-Z]",
-  "\\Q\\E*",
+  String.raw`\Q\E*`,
   "a{100000}", // too much repetition
   "a{100000,}", // too much repetition
   "((((((((((x{2}){2}){2}){2}){2}){2}){2}){2}){2}){2})", // too much repetition
@@ -527,17 +532,17 @@ const invalidRegexps: Array<string | Uint8Array> = [
   "(?:".repeat(1000) + ")*".repeat(1000), // too deep
   "(" + "(xx?)".repeat(1000) + "){1000}", // too long
   "(xx?){1000}".repeat(1000), // too long
-  "\\pL".repeat(27_000), // too many runes
+  String.raw`\pL`.repeat(27_000), // too many runes
 ];
 
 const onlyPerl: Array<string | Uint8Array> = [
   "[a-b-c]",
-  "\\Qabc\\E",
-  "\\Q*+?{[\\E",
-  "\\Q\\\\E",
-  "\\Q\\\\\\E",
-  "\\Q\\\\\\\\E",
-  "\\Q\\\\\\\\\\E",
+  String.raw`\Qabc\E`,
+  String.raw`\Q*+?{[\E`,
+  String.raw`\Q\\E`,
+  String.raw`\Q\\\E`,
+  String.raw`\Q\\\\E`,
+  String.raw`\Q\\\\\E`,
   "(?:a)",
   "(?P<name>a)",
 ];
@@ -576,8 +581,8 @@ const badRe: Array<[re: string, err: string]> = [
   ["abc\\", "trailing backslash at end of expression"],
   ["a**", "invalid nested repetition operator: `**`"],
   ["a*+", "invalid nested repetition operator: `*+`"],
-  ["\\x", "invalid escape sequence: `\\x`"],
-  ["\\pL".repeat(27_000), "expression too large"],
+  [String.raw`\x`, "invalid escape sequence: `\\x`"],
+  [String.raw`\pL`.repeat(27_000), "expression too large"],
 ];
 
 describe("TestParseSimple", () => {

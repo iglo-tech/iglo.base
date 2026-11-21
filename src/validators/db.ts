@@ -29,8 +29,8 @@ export function UniqueId(db: Builder, tableName: string): RuleFunc {
         .limit(1)
         .row();
       foundId = row[0] === null || row[0] === undefined ? "" : String(row[0]);
-    } catch (err) {
-      failed = !isNoRowsError(err);
+    } catch (error) {
+      failed = !isNoRowsError(error);
     }
 
     if (failed || foundId !== "") {

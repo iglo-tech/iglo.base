@@ -262,8 +262,8 @@ export function ParsePrefix(s: string): Prefix {
   let ip: Addr;
   try {
     ip = ParseAddr(s.slice(0, i));
-  } catch (err) {
-    throw new ParsePrefixError(s, (err as Error).message);
+  } catch (error) {
+    throw new ParsePrefixError(s, (error as Error).message);
   }
   // IPv6 zones are not allowed: https://go.dev/issue/51899
   if (!ip.is4 && ip.zone !== "") {

@@ -60,10 +60,10 @@ export async function recordRequestPasswordReset(e: RequestEvent): Promise<Handl
   let record: Record;
   try {
     record = findAuthRecordByEmail(e.app, collection, form.Email);
-  } catch (err) {
+  } catch (error) {
     // eagerly write 204 response as a very basic measure against emails enumeration
     e.noContent(204);
-    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, err);
+    return wrapError(`failed to fetch ${collection.name} record with email ${form.Email}`, error);
   }
 
   const resendKey = getPasswordResetResendKey(record);
@@ -94,8 +94,8 @@ async function sendPasswordResetInBackground(
   const app = e.app;
   try {
     await sendRecordPasswordReset(app, record);
-  } catch (err) {
-    app.logger.error("Failed to send password reset email", { error: err });
+  } catch (error) {
+    app.logger.error("Failed to send password reset email", { error: error });
     // a failed send keeps no throttle (as upstream, which sets the key after the send)
     if (app.store.get(resendKey) === token) {
       app.store.remove(resendKey);

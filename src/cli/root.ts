@@ -364,11 +364,11 @@ async function execute(ctx: CliContext): Promise<number> {
   let parsed;
   try {
     parsed = parseFlags(ctx.args, local, { allowUnknown: true });
-  } catch (err) {
-    if (err instanceof FlagError) {
-      throw new CliError(err.message, usageText(help));
+  } catch (error) {
+    if (error instanceof FlagError) {
+      throw new CliError(error.message, usageText(help));
     }
-    throw err;
+    throw error;
   }
   if (parsed.values.get("help") !== true && parsed.values.get("version") === true) {
     ctx.out.stdout(`${name} version ${version}\n`);
@@ -386,16 +386,16 @@ function exitUnset(): never {
 export async function runCli(ctx: CliContext): Promise<number> {
   try {
     return await execute(ctx);
-  } catch (err) {
-    if (err instanceof PanicError) {
-      ctx.out.stderr(`panic: ${err.message}\n`);
+  } catch (error) {
+    if (error instanceof PanicError) {
+      ctx.out.stderr(`panic: ${error.message}\n`);
       return 2;
     }
-    if ((err instanceof CliError || err instanceof CommandError) && err.usage) {
-      ctx.out.stderr(`${err.usage}\n`);
+    if ((error instanceof CliError || error instanceof CommandError) && error.usage) {
+      ctx.out.stderr(`${error.usage}\n`);
     }
     // log.Fatal
-    const message = err instanceof Error ? err.message : String(err);
+    const message = error instanceof Error ? error.message : String(error);
     ctx.out.stderr(`${logTime(ctx.out.now())} ${message}${message.endsWith("\n") ? "" : "\n"}`);
     return 1;
   }

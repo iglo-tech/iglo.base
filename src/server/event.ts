@@ -189,12 +189,12 @@ export class Event extends Resolver {
       try {
         data = pick(data, rawFields);
         picked = true;
-      } catch (err) {
-        if (err instanceof PickPanic) {
-          throw err; // a Go panic: the panic recovery middleware answers 500
+      } catch (error) {
+        if (error instanceof PickPanic) {
+          throw error; // a Go panic: the panic recovery middleware answers 500
         }
-        if (!(err instanceof InvalidModifierDataError)) {
-          return err instanceof Error ? err : new Error(String(err));
+        if (!(error instanceof InvalidModifierDataError)) {
+          return error instanceof Error ? error : new Error(String(error));
         }
         // @todo ignore for now modifier data errors to avoid introducing
         // breaking changes but once the router is merged with core consider
@@ -219,8 +219,8 @@ export class Event extends Resolver {
       } else {
         body = JSON.stringify(data) ?? "null";
       }
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
 
     this.#setResponseHeaderIfEmpty(headerContentType, "application/json");
@@ -243,8 +243,8 @@ export class Event extends Resolver {
           return err;
         }
       }
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
     return undefined;
   }
@@ -390,8 +390,8 @@ export class Event extends Resolver {
         unmarshalXML(await readAll(this.request.body), dst as Record<string, unknown>, type);
         return undefined;
       }
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
 
     return ErrUnsupportedContentType;
@@ -470,10 +470,10 @@ function checkPrefix(prefix: Uint8Array): void {
   const text = decodeUTF8Bytes(prefix.subarray(0, k));
   try {
     decodeFirstValue(text);
-  } catch (err) {
+  } catch (error) {
     // an incomplete value is EOF; a syntax error is final
-    if (!(err instanceof JsonEOFError)) {
-      throw err;
+    if (!(error instanceof JsonEOFError)) {
+      throw error;
     }
   }
   // invalid UTF-8 outside strings is a syntax error above; within one,

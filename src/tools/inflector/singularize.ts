@@ -21,7 +21,7 @@ const singularRules: Array<[string, string]> = [
   ["(s)tatuses$", "$1tatus"],
   ["(f)eet$", "$1oot"],
   ["(t)eeth$", "$1ooth"],
-  ["^([^\\n]*)(menu)s$", "$1$2"],
+  [String.raw`^([^\n]*)(menu)s$`, "$1$2"],
   ["(quiz)zes$", "$1"],
   ["(matr)ices$", "$1ix"],
   ["(vert|ind)ices$", "$1ex"],
@@ -54,7 +54,7 @@ const singularRules: Array<[string, string]> = [
   ["(n)etherlands$", "$1etherlands"],
   ["eaus$", "eau"],
   ["(currenc)ies$", "$1y"],
-  ["^([^\\n]*us)$", "$1"],
+  [String.raw`^([^\n]*us)$`, "$1"],
   ["s$", ""],
 ];
 

@@ -24,8 +24,8 @@ function errorOf(fn: () => unknown): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -924,9 +924,9 @@ describe("TestDryRunView", () => {
       let result: ReturnType<typeof dryRunView>;
       try {
         result = dryRunView(app, s.query, s.sampleSize);
-      } catch (err) {
+      } catch (error) {
         if (!s.expectError) {
-          throw err;
+          throw error;
         }
         return;
       }

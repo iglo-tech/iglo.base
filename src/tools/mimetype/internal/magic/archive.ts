@@ -72,7 +72,7 @@ export function Warc(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, warc10) || hasPrefix(raw, warc11);
 }
 
-const cabSig = lit("MSCF\x00\x00\x00\x00");
+const cabSig = lit("MSCF\u0000\u0000\u0000\u0000");
 // Cab matches a Microsoft Cabinet archive file.
 export function Cab(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, cabSig);
@@ -97,8 +97,8 @@ export function RPM(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, rpmSig) || hasPrefix(raw, drpmSig);
 }
 
-const rar15 = lit("Rar!\x1A\x07\x00");
-const rar50 = lit("Rar!\x1A\x07\x01\x00");
+const rar15 = lit("Rar!\u001A\u0007\u0000");
+const rar50 = lit("Rar!\u001A\u0007\u0001\u0000");
 // RAR matches a RAR archive file.
 export function RAR(raw: Uint8Array, _limit: number): boolean {
   return hasPrefix(raw, rar15) || hasPrefix(raw, rar50);
@@ -160,7 +160,7 @@ export function Cpio(raw: Uint8Array, _limit: number): boolean {
   );
 }
 
-const gpkg = lit("/gpkg-1\x00");
+const gpkg = lit("/gpkg-1\u0000");
 // Tar matches a (t)ape (ar)chive file.
 // Tar files are divided into 512 bytes records. First record contains a 257
 // bytes header padded with NUL.
@@ -213,7 +213,7 @@ export function tarParseOctal(b: Uint8Array): number {
   // Because unused fields are filled with NULs, we need to skip leading NULs.
   // Fields may also be padded with spaces or NULs.
   // So we remove leading and trailing NULs and spaces to be sure.
-  b = trim(b, " \x00");
+  b = trim(b, " \u0000");
 
   if (b.length === 0) {
     return -1;

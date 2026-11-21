@@ -65,8 +65,8 @@ async function errorOf(p: Promise<unknown>): Promise<Error | null> {
   try {
     await p;
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 

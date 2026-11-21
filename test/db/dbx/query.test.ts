@@ -722,8 +722,8 @@ describe("rows() has a statement of its own", () => {
 function canceledError(fn: () => unknown): Error {
   try {
     fn();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
   throw new Error("expected the call to throw");
 }
@@ -803,7 +803,7 @@ describe("a cancelled query", () => {
     ]) {
       const err = await run().then(
         () => null,
-        (e: unknown) => e,
+        (error: unknown) => error,
       );
       expectCanceled(err);
     }

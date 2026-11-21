@@ -234,11 +234,11 @@ async function doTokenRoundTrip(c: TokenConfig, init: RequestInit): Promise<Toke
     let tj: TokenJSON;
     try {
       tj = decodeTokenJSON(body);
-    } catch (err) {
+    } catch (error) {
       if (failureStatus) {
         throw retrieveError();
       }
-      throw new Error(`oauth2: cannot parse json: ${(err as Error).message}`, { cause: err });
+      throw new Error(`oauth2: cannot parse json: ${(error as Error).message}`, { cause: error });
     }
     errorCode = tj.error;
     token = new Token({

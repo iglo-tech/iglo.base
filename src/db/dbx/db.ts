@@ -162,25 +162,25 @@ export class DB extends EmbeddedBuilder {
         Promise.resolve(result).catch(() => {});
         throw new Error("transaction function must be synchronous (it returned a promise)");
       }
-    } catch (err) {
+    } catch (error) {
       try {
         tx.rollback();
-      } catch (err2) {
-        if (err2 instanceof TxDoneError) {
-          throw err;
+      } catch (error_) {
+        if (error_ instanceof TxDoneError) {
+          throw error;
         }
-        throw new Errors([err, err2]);
+        throw new Errors([error, error_]);
       }
-      throw err;
+      throw error;
     }
 
     try {
       tx.commit();
-    } catch (err) {
-      if (err instanceof TxDoneError) {
+    } catch (error) {
+      if (error instanceof TxDoneError) {
         return;
       }
-      throw err;
+      throw error;
     }
   }
 

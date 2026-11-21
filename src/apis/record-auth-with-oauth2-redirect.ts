@@ -85,9 +85,9 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
         oauth2RedirectAppleNameStoreKeyPrefix + data.Code,
         data.AppleUser,
       );
-    } catch (err) {
+    } catch (error) {
       // non-critical error
-      e.app.logger.warn("Failed to parse and load Apple Redirect name data", { error: err });
+      e.app.logger.warn("Failed to parse and load Apple Redirect name data", { error: error });
     }
   }
 
@@ -99,8 +99,8 @@ export async function oauth2SubscriptionRedirect(e: RequestEvent): Promise<Handl
       encodedData += `,"error":${marshal(data.Error)}`;
     }
     encodedData += "}";
-  } catch (err) {
-    e.app.logger.warn("Failed to marshalize OAuth2 redirect data", { error: err });
+  } catch (error) {
+    e.app.logger.warn("Failed to marshalize OAuth2 redirect data", { error: error });
     client.unsubscribe(oauth2SubscriptionTopic);
     return failureRedirect(e);
   }

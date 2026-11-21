@@ -103,9 +103,9 @@ class GzipResponseWriter extends ResponseWriter {
         } else {
           gzipped = Promise.resolve(new Blob([Bun.gzipSync(new Uint8Array(raw))]));
         }
-      } catch (err) {
+      } catch (error) {
         // the failure of the body reaches the server through the inner writer
-        gzipped = Promise.reject(err);
+        gzipped = Promise.reject(error);
         gzipped.catch(() => {});
       }
     }

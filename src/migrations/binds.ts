@@ -1092,8 +1092,8 @@ function decryptSync(cipherText: string, key: string): string {
       decipher.final(),
     ]);
     return decoder.decode(plain);
-  } catch (err) {
-    throw new Error("cipher: message authentication failed", { cause: err });
+  } catch (error) {
+    throw new Error("cipher: message authentication failed", { cause: error });
   }
 }
 
@@ -1163,10 +1163,10 @@ const goErrnoTexts: Readonly<Record<string, string>> = {
 function osCall<T>(op: string, name: string, fn: () => T): T {
   try {
     return fn();
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code ?? "";
-    throw new Error(`${op} ${name}: ${goErrnoTexts[code] ?? (err as Error).message}`, {
-      cause: err,
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? "";
+    throw new Error(`${op} ${name}: ${goErrnoTexts[code] ?? (error as Error).message}`, {
+      cause: error,
     });
   }
 }

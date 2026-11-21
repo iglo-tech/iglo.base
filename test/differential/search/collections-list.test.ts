@@ -103,14 +103,14 @@ const cases: Array<[string, string, boolean?]> = [
   ["like", f("name ~ 'post'")],
   ["not like", f("name !~ 'post'")],
   ["like escapes _", f("name ~ 'a_b'")],
-  ["like with an escaped _", f("name ~ 'a\\_b'")],
+  ["like with an escaped _", f(String.raw`name ~ 'a\_b'`)],
   ["like with a wildcard", f("name ~ 'po%'")],
   ["like with a leading wildcard", f("name ~ '%s'")],
   ["like with % and _", f("name ~ '%_%'")],
   ["like with only _", f("name ~ '_'")],
   ["like is case-insensitive", f("name ~ 'GAM'")],
   ["like empty", f("id ~ ''")],
-  ["like with a backslash", f("name ~ '\\\\'")],
+  ["like with a backslash", f(String.raw`name ~ '\\'`)],
   ["gt", f("name > 'm'")],
   ["gte and lte", f("name >= 'posts' && name <= 'z'")],
   ["lt", f("name < 'b'")],
@@ -130,7 +130,7 @@ const cases: Array<[string, string, boolean?]> = [
   ["any eq number", f("name ?= 5")],
   ["any neq number", f("name ?!= 5")],
   ["double quotes", f(`name = "posts"`)],
-  ["escaped quote", f("name = 'po\\'sts'")],
+  ["escaped quote", f(String.raw`name = 'po\'sts'`)],
   // bools, null, empty
   ["system true", f("system = true")],
   ["system false", f("system = false")],
@@ -430,8 +430,8 @@ async function igloOutcome(
         asSet,
       ),
     };
-  } catch (err) {
-    const apiErr = newBadRequestError("", err);
+  } catch (error) {
+    const apiErr = newBadRequestError("", error);
     return {
       status: apiErr.status,
       body: JSON.parse(JSON.stringify(apiErr.toJSON()), (_k, v: unknown) =>

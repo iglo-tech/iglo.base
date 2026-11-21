@@ -217,9 +217,9 @@ describe("safeRedirectPath", () => {
     ["/", "/"],
     ["////", "/"],
     ["//test", "/test"],
-    ["\\\\test", "/test"],
-    ["/\\test", "/test"],
-    ["\\/test", "/test"],
+    [String.raw`\\test`, "/test"],
+    [String.raw`/\test`, "/test"],
+    [String.raw`\/test`, "/test"],
     ["/test", "/test"],
     ["/a/b/c", "/a/b/c"],
   ];

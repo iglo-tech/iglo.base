@@ -140,11 +140,11 @@ export function newMigrationHelpers(app: App): MigrationHelpers {
     findById(collection, id) {
       try {
         return rowOf(findRecordById(app, collection, id));
-      } catch (err) {
-        if (isNoRowsError(err)) {
+      } catch (error) {
+        if (isNoRowsError(error)) {
           return null;
         }
-        throw err;
+        throw error;
       }
     },
 

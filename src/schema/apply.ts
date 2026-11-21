@@ -301,11 +301,11 @@ function runTransaction(
       });
     });
     report.committed = mode === "apply" && reportIsOK(report);
-  } catch (err) {
-    if (err instanceof SaveFailed) {
-      report.problems.push(saveProblem(err));
-    } else if (!(err instanceof StopApply) && !(err instanceof RollBack)) {
-      report.problems.push({ where: "schema", message: messageOf(err) });
+  } catch (error) {
+    if (error instanceof SaveFailed) {
+      report.problems.push(saveProblem(error));
+    } else if (!(error instanceof StopApply) && !(error instanceof RollBack)) {
+      report.problems.push({ where: "schema", message: messageOf(error) });
     }
   } finally {
     try {
@@ -346,8 +346,8 @@ function messageOf(err: unknown): string {
 function saveAs(app: App, collection: Collection, name: string): void {
   try {
     saveCollection(app, collection);
-  } catch (err) {
-    throw new SaveFailed(name, err);
+  } catch (error) {
+    throw new SaveFailed(name, error);
   }
 }
 
@@ -471,8 +471,8 @@ function applyInTransaction(
   for (const name of readByRemoved.toReversed()) {
     try {
       saveViewSQL(app, name, storedModel(app, name).viewQuery);
-    } catch (err) {
-      throw new SaveFailed(name, err);
+    } catch (error) {
+      throw new SaveFailed(name, error);
     }
   }
   for (const name of removedViews) {
@@ -896,8 +896,10 @@ function runSchemaMigrations(
       let result: unknown;
       try {
         result = migration.up(newMigrationHelpers(app));
-      } catch (err) {
-        throw new Error(`migration ${migration.file} failed: ${messageOf(err)}`, { cause: err });
+      } catch (error) {
+        throw new Error(`migration ${migration.file} failed: ${messageOf(error)}`, {
+          cause: error,
+        });
       }
       if (isThenable(result)) {
         // the promise is only observed here, so its rejection is not unhandled
@@ -1246,8 +1248,8 @@ function narrow(
 function storedModel(app: App, name: string): Collection {
   try {
     return findCollectionByNameOrId(app, name);
-  } catch (err) {
-    throw new SaveFailed(name, err);
+  } catch (error) {
+    throw new SaveFailed(name, error);
   }
 }
 
@@ -1256,8 +1258,8 @@ function removeCollection(app: App, name: string): void {
   const model = storedModel(app, name);
   try {
     deleteCollection(app, model);
-  } catch (err) {
-    throw new SaveFailed(name, err);
+  } catch (error) {
+    throw new SaveFailed(name, error);
   }
 }
 
@@ -1274,8 +1276,8 @@ function removeCollections(app: App, names: ReadonlyArray<string>): void {
     const free = models.findIndex((model) => {
       try {
         return findCollectionReferences(app, model, model.id).size === 0;
-      } catch (err) {
-        throw new SaveFailed(model.name, err);
+      } catch (error) {
+        throw new SaveFailed(model.name, error);
       }
     });
     if (free >= 0) {

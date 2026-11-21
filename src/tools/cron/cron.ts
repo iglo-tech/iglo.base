@@ -113,8 +113,8 @@ export class Cron {
     let schedule: Schedule;
     try {
       schedule = newSchedule(cronExpr);
-    } catch (err) {
-      throw new Error(`failed to add new cron job: ${(err as Error).message}`, { cause: err });
+    } catch (error) {
+      throw new Error(`failed to add new cron job: ${(error as Error).message}`, { cause: error });
     }
 
     // remove previous (if any)
@@ -216,8 +216,8 @@ export class Cron {
       setImmediate(resolve);
     })
       .then(() => job.run())
-      .catch((err: unknown) => {
-        this.#logPanic(err);
+      .catch((error: unknown) => {
+        this.#logPanic(error);
       })
       .finally(() => {
         this.#running.delete(running);

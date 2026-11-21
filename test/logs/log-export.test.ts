@@ -92,8 +92,8 @@ test("logDBExport equals the M7.1b export", () => {
       const run = (f: typeof logDBExport): string => {
         try {
           return JSON.stringify(f("id", log, max));
-        } catch (err) {
-          return "err:" + (err as Error).message;
+        } catch (error) {
+          return "err:" + (error as Error).message;
         }
       };
       expect(run(logDBExport)).toBe(run(logDBExportBefore));

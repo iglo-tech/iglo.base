@@ -220,10 +220,10 @@ async function spool(
     } finally {
       await src.close();
     }
-  } catch (err) {
+  } catch (error) {
     await dst.close();
     remove();
-    throw err;
+    throw error;
   }
   await dst.close();
   return { blob: Bun.file(out), remove };

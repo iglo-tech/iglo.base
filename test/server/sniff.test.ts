@@ -72,10 +72,10 @@ for (const [label, input] of htmlTags) {
 }
 
 // Leading whitespace is skipped: tab, LF, form feed, CR and space.
-check("html: leading tab/LF/FF/CR/space", " \t\r\n\x0c<html>", HTML);
+check("html: leading tab/LF/FF/CR/space", " \t\r\n\u000c<html>", HTML);
 check("html: leading whitespace before <p>", "\n\n  <p>x", HTML);
 // Vertical tab is not whitespace in the sniffing algorithm; it is a binary byte.
-check("html: VT before tag is not skipped", "\x0b<html>", BINARY);
+check("html: VT before tag is not skipped", "\u000b<html>", BINARY);
 
 // Tag-terminating byte is required and must be ' ' or '>'.
 check("html: no terminating byte at end of data", "<html", TEXT);
@@ -102,113 +102,125 @@ check("postscript: %!PS-Adobe-", "%!PS-Adobe-3.0", "application/postscript");
 check("postscript: too short", "%!PS-Adobe", TEXT);
 
 // UTF BOMs are masked: only the listed bytes are compared.
-check("bom: UTF-16BE", "\xFE\xFF\x00\x41", "text/plain; charset=utf-16be");
+check("bom: UTF-16BE", "\u00FE\u00FF\u0000\u0041", "text/plain; charset=utf-16be");
 check(
   "bom: UTF-16BE, masked zero bytes ignore data",
-  "\xFE\xFF\x12\x34",
+  "\u00FE\u00FF\u0012\u0034",
   "text/plain; charset=utf-16be",
 );
-check("bom: UTF-16BE needs four bytes", "\xFE\xFF\x00", BINARY);
-check("bom: UTF-16LE", "\xFF\xFE\x00\x00", "text/plain; charset=utf-16le");
-check("bom: UTF-16LE needs four bytes", "\xFF\xFE\x00", BINARY);
-check("bom: UTF-8 with masked fourth byte", "\xEF\xBB\xBF\x00", TEXT);
-check("bom: UTF-8 three bytes falls to text fallback", "\xEF\xBB\xBF", TEXT);
+check("bom: UTF-16BE needs four bytes", "\u00FE\u00FF\u0000", BINARY);
+check("bom: UTF-16LE", "\u00FF\u00FE\u0000\u0000", "text/plain; charset=utf-16le");
+check("bom: UTF-16LE needs four bytes", "\u00FF\u00FE\u0000", BINARY);
+check("bom: UTF-8 with masked fourth byte", "\u00EF\u00BB\u00BF\u0000", TEXT);
+check("bom: UTF-8 three bytes falls to text fallback", "\u00EF\u00BB\u00BF", TEXT);
 
 // Image types.
-check("image: ICO", "\x00\x00\x01\x00", "image/x-icon");
-check("image: CUR", "\x00\x00\x02\x00", "image/x-icon");
+check("image: ICO", "\u0000\u0000\u0001\u0000", "image/x-icon");
+check("image: CUR", "\u0000\u0000\u0002\u0000", "image/x-icon");
 check("image: BMP", "BM", "image/bmp");
 check("image: GIF87a", "GIF87a", "image/gif");
-check("image: GIF89a with trailing binary", "GIF89a" + "\x00".repeat(600), "image/gif");
-check("image: WebP", "RIFF\x00\x00\x00\x00WEBPVP8 ", "image/webp");
-check("image: WebP with non-zero size field", "RIFF\x12\x34\x56\x78WEBPVP8L", "image/webp");
-check("image: RIFF with wrong WebP tail is binary", "RIFF\x00\x00\x00\x00WEBPXX", BINARY);
-check("image: PNG", "\x89PNG\x0D\x0A\x1A\x0A", "image/png");
-check("image: JPEG", "\xFF\xD8\xFF", "image/jpeg");
-check("image: JPEG with more bytes", "\xFF\xD8\xFF\xE0\x00\x10", "image/jpeg");
+check("image: GIF89a with trailing binary", "GIF89a" + "\u0000".repeat(600), "image/gif");
+check("image: WebP", "RIFF\u0000\u0000\u0000\u0000WEBPVP8 ", "image/webp");
+check("image: WebP with non-zero size field", "RIFF\u0012\u0034\u0056\u0078WEBPVP8L", "image/webp");
+check("image: RIFF with wrong WebP tail is binary", "RIFF\u0000\u0000\u0000\u0000WEBPXX", BINARY);
+check("image: PNG", "\u0089PNG\u000D\u000A\u001A\u000A", "image/png");
+check("image: JPEG", "\u00FF\u00D8\u00FF", "image/jpeg");
+check("image: JPEG with more bytes", "\u00FF\u00D8\u00FF\u00E0\u0000\u0010", "image/jpeg");
 
 // Audio and video: pattern ordering as in the spec.
-check("av: AIFF", "FORM\x00\x00\x00\x00AIFFCOMM", "audio/aiff");
-check("av: ID3 (mpeg)", "ID3\x03\x00", "audio/mpeg");
-check("av: Ogg", "OggS\x00\x02", "application/ogg");
-check("av: Ogg needs NUL at offset 4", "OggS\x01", BINARY);
-check("av: MIDI", "MThd\x00\x00\x00\x06\x00\x01", "audio/midi");
-check("av: MIDI header too short", "MThd\x00\x00\x00", BINARY);
-check("av: AVI", "RIFF\x00\x00\x00\x00AVI LIST", "video/avi");
-check("av: WAVE", "RIFF\x00\x00\x00\x00WAVEfmt ", "audio/wave");
-check("av: WebM", "\x1A\x45\xDF\xA3\x01", "video/webm");
+check("av: AIFF", "FORM\u0000\u0000\u0000\u0000AIFFCOMM", "audio/aiff");
+check("av: ID3 (mpeg)", "ID3\u0003\u0000", "audio/mpeg");
+check("av: Ogg", "OggS\u0000\u0002", "application/ogg");
+check("av: Ogg needs NUL at offset 4", "OggS\u0001", BINARY);
+check("av: MIDI", "MThd\u0000\u0000\u0000\u0006\u0000\u0001", "audio/midi");
+check("av: MIDI header too short", "MThd\u0000\u0000\u0000", BINARY);
+check("av: AVI", "RIFF\u0000\u0000\u0000\u0000AVI LIST", "video/avi");
+check("av: WAVE", "RIFF\u0000\u0000\u0000\u0000WAVEfmt ", "audio/wave");
+check("av: WebM", "\u001A\u0045\u00DF\u00A3\u0001", "video/webm");
 
 // mp4: ftyp box with "mp4" as a brand, skipping the version field at offset 12.
 // Box size is the big-endian uint32 at offset 0; it must be a multiple of 4
 // and no larger than the data.
 check(
   "mp4: mp41 in compatible brands",
-  "\x00\x00\x00\x18ftypisom\x00\x00\x00\x01mp41isom",
+  "\u0000\u0000\u0000\u0018ftypisom\u0000\u0000\u0000\u0001mp41isom",
   "video/mp4",
 );
-check("mp4: mp42 as major brand", "\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00", "video/mp4");
-check("mp4: mp4 only in version field is ignored", "\x00\x00\x00\x10ftypisommp4 ", BINARY);
-check("mp4: box size larger than data", "\x00\x00\x00\x1Aftypisom\x00\x00\x00\x01mp41isom", BINARY);
 check(
-  "mp4: box size not a multiple of 4",
-  "\x00\x00\x00\x16ftypisom\x00\x00\x00\x01mp41isom",
+  "mp4: mp42 as major brand",
+  "\u0000\u0000\u0000\u0010ftypmp42\u0000\u0000\u0000\u0000",
+  "video/mp4",
+);
+check("mp4: mp4 only in version field is ignored", "\u0000\u0000\u0000\u0010ftypisommp4 ", BINARY);
+check(
+  "mp4: box size larger than data",
+  "\u0000\u0000\u0000\u001Aftypisom\u0000\u0000\u0000\u0001mp41isom",
   BINARY,
 );
-check("mp4: box type is not ftyp", "\x00\x00\x00\x10freeisom\x00\x00\x00\x00mp41", BINARY);
-check("mp4: zero box size", "\x00\x00\x00\x00ftypmp41", BINARY);
-check("mp4: under 12 bytes", "\x00\x00\x00\x08ftyp", BINARY);
+check(
+  "mp4: box size not a multiple of 4",
+  "\u0000\u0000\u0000\u0016ftypisom\u0000\u0000\u0000\u0001mp41isom",
+  BINARY,
+);
+check(
+  "mp4: box type is not ftyp",
+  "\u0000\u0000\u0000\u0010freeisom\u0000\u0000\u0000\u0000mp41",
+  BINARY,
+);
+check("mp4: zero box size", "\u0000\u0000\u0000\u0000ftypmp41", BINARY);
+check("mp4: under 12 bytes", "\u0000\u0000\u0000\u0008ftyp", BINARY);
 
 // Fonts.
 check(
   "font: EOT (34 NULs then LP)",
-  "\x00".repeat(34) + "LP\x00\x00",
+  "\u0000".repeat(34) + "LP\u0000\u0000",
   "application/vnd.ms-fontobject",
 );
-check("font: EOT with wrong trailer is binary", "\x00".repeat(34) + "LQ", BINARY);
-check("font: TrueType", "\x00\x01\x00\x00\x00", "font/ttf");
-check("font: OpenType CFF", "OTTO\x00", "font/otf");
-check("font: TrueType collection", "ttcf\x00", "font/collection");
-check("font: WOFF", "wOFF\x00", "font/woff");
-check("font: WOFF2", "wOF2\x00", "font/woff2");
+check("font: EOT with wrong trailer is binary", "\u0000".repeat(34) + "LQ", BINARY);
+check("font: TrueType", "\u0000\u0001\u0000\u0000\u0000", "font/ttf");
+check("font: OpenType CFF", "OTTO\u0000", "font/otf");
+check("font: TrueType collection", "ttcf\u0000", "font/collection");
+check("font: WOFF", "wOFF\u0000", "font/woff");
+check("font: WOFF2", "wOF2\u0000", "font/woff2");
 
 // Archives and wasm.
-check("archive: gzip", "\x1F\x8B\x08\x00", "application/x-gzip");
-check("archive: zip", "PK\x03\x04\x14", "application/zip");
-check("archive: RAR v1.5-v4.0", "Rar!\x1A\x07\x00", "application/x-rar-compressed");
-check("archive: RAR v5+", "Rar!\x1A\x07\x01\x00", "application/x-rar-compressed");
-check("archive: RAR prefix only is binary", "Rar!\x1A\x07\x01", BINARY);
-check("wasm: magic", "\x00asm\x01\x00\x00\x00", "application/wasm");
+check("archive: gzip", "\u001F\u008B\u0008\u0000", "application/x-gzip");
+check("archive: zip", "PK\u0003\u0004\u0014", "application/zip");
+check("archive: RAR v1.5-v4.0", "Rar!\u001A\u0007\u0000", "application/x-rar-compressed");
+check("archive: RAR v5+", "Rar!\u001A\u0007\u0001\u0000", "application/x-rar-compressed");
+check("archive: RAR prefix only is binary", "Rar!\u001A\u0007\u0001", BINARY);
+check("wasm: magic", "\u0000asm\u0001\u0000\u0000\u0000", "application/wasm");
 
 // Text fallback versus binary control bytes.
 check("text: ASCII words", "hello, world\n", TEXT);
-check("text: tab, LF, form feed, CR, space", "\x09\x0A\x0C\x0D\x20", TEXT);
-check("text: ESC (0x1B) is allowed", "\x1B", TEXT);
-check("text: DEL (0x7F) is allowed", "\x7F", TEXT);
-check("text: UTF-8 bytes are allowed", "\xC3\xA9", TEXT);
-check("binary: NUL", "\x00", BINARY);
-check("binary: BS (0x08)", "\x08", BINARY);
-check("binary: VT (0x0B)", "\x0B", BINARY);
-check("binary: SO (0x0E)", "\x0E", BINARY);
-check("binary: SUB (0x1A)", "\x1A", BINARY);
-check("binary: FS (0x1C)", "\x1C", BINARY);
-check("binary: US (0x1F)", "\x1F", BINARY);
-check("binary: NUL inside text", "hello\x00world", BINARY);
+check("text: tab, LF, form feed, CR, space", "\u0009\u000A\u000C\u000D\u0020", TEXT);
+check("text: ESC (0x1B) is allowed", "\u001B", TEXT);
+check("text: DEL (0x7F) is allowed", "\u007F", TEXT);
+check("text: UTF-8 bytes are allowed", "\u00C3\u00A9", TEXT);
+check("binary: NUL", "\u0000", BINARY);
+check("binary: BS (0x08)", "\u0008", BINARY);
+check("binary: VT (0x0B)", "\u000B", BINARY);
+check("binary: SO (0x0E)", "\u000E", BINARY);
+check("binary: SUB (0x1A)", "\u001A", BINARY);
+check("binary: FS (0x1C)", "\u001C", BINARY);
+check("binary: US (0x1F)", "\u001F", BINARY);
+check("binary: NUL inside text", "hello\u0000world", BINARY);
 
 // The algorithm looks at no more than the first 512 bytes.
-check("limit: NUL at index 511 is seen", "a".repeat(511) + "\x00", BINARY);
-check("limit: NUL at index 512 is ignored", "a".repeat(512) + "\x00", TEXT);
-check("limit: NUL far past the window is ignored", "a".repeat(600) + "\x00", TEXT);
+check("limit: NUL at index 511 is seen", "a".repeat(511) + "\u0000", BINARY);
+check("limit: NUL at index 512 is ignored", "a".repeat(512) + "\u0000", TEXT);
+check("limit: NUL far past the window is ignored", "a".repeat(600) + "\u0000", TEXT);
 check("limit: html tag ends at index 511", " ".repeat(506) + "<html>", HTML);
 check("limit: html terminator at index 512 is not seen", " ".repeat(507) + "<html>", TEXT);
 check("limit: html start beyond window", " ".repeat(600) + "<html>", TEXT);
 check(
   "limit: signature inside window with bytes after",
-  "GIF89a" + "\x00".repeat(600),
+  "GIF89a" + "\u0000".repeat(600),
   "image/gif",
 );
 
 // The input may be a view into a larger buffer.
 test("view: subarray with non-zero byteOffset", () => {
-  const backing = b("\x00\x00\x00\x00GIF89a");
+  const backing = b("\u0000\u0000\u0000\u0000GIF89a");
   expect(detectContentType(backing.subarray(4))).toBe("image/gif");
 });

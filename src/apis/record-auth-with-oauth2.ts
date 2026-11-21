@@ -153,10 +153,10 @@ export async function recordAuthWithOAuth2(
   let provider: BaseProvider;
   try {
     provider = (options.initProvider ?? initProvider)(providerConfig);
-  } catch (err) {
+  } catch (error) {
     return firstApiError(
-      err,
-      e.internalServerError("Failed to init provider " + form.Provider, err),
+      error,
+      e.internalServerError("Failed to init provider " + form.Provider, error),
     );
   }
 
@@ -174,16 +174,16 @@ export async function recordAuthWithOAuth2(
   let token: Token;
   try {
     token = await provider.fetchToken(form.Code, opts);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to fetch OAuth2 token.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to fetch OAuth2 token.", error));
   }
 
   // fetch external auth user
   let authUser: AuthUser;
   try {
     authUser = await provider.fetchAuthUser(token);
-  } catch (err) {
-    return firstApiError(err, e.badRequestError("Failed to fetch OAuth2 user.", err));
+  } catch (error) {
+    return firstApiError(error, e.badRequestError("Failed to fetch OAuth2 user.", error));
   }
 
   // Apple currently returns the user's name only as part of the first redirect data response
@@ -212,17 +212,17 @@ export async function recordAuthWithOAuth2(
         providerId: authUser.id,
       }),
     );
-  } catch (err) {
-    if (!isNoRows(err)) {
-      return e.internalServerError("Failed OAuth2 relation check.", err);
+  } catch (error) {
+    if (!isNoRows(error)) {
+      return e.internalServerError("Failed OAuth2 relation check.", error);
     }
   }
 
   if (externalAuthRel !== undefined) {
     try {
       authRecord = findRecordById(e.app, collection, externalAuthRel.recordRef());
-    } catch (err) {
-      return err as Error;
+    } catch (error) {
+      return error as Error;
     }
   } else if (fallbackAuthRecord !== undefined) {
     // fallback to the logged auth record (if any)
@@ -231,9 +231,9 @@ export async function recordAuthWithOAuth2(
     // look for an existing auth record by the external auth record's email
     try {
       authRecord = findAuthRecordByEmail(e.app, collection.id, authUser.email);
-    } catch (err) {
-      if (!isNoRows(err)) {
-        return e.internalServerError("Failed OAuth2 auth record check.", err);
+    } catch (error) {
+      if (!isNoRows(error)) {
+        return e.internalServerError("Failed OAuth2 auth record check.", error);
       }
     }
   }
@@ -272,9 +272,9 @@ export async function recordAuthWithOAuth2(
 
   try {
     oauth2Submit(e, submit, externalAuthRel);
-  } catch (err) {
+  } catch (error) {
     await uploads.finish(false);
-    return firstApiError(err, e.badRequestError("Failed to authenticate.", err));
+    return firstApiError(error, e.badRequestError("Failed to authenticate.", error));
   }
 
   await uploads.finish(true);
@@ -283,8 +283,8 @@ export async function recordAuthWithOAuth2(
   let meta: { [key: string]: unknown };
   try {
     meta = authUser.toMeta();
-  } catch (err) {
-    return err as Error;
+  } catch (error) {
+    return error as Error;
   }
   meta["isNew"] = submit.isNewRecord;
 
@@ -486,8 +486,8 @@ async function downloadAvatar(
     const file = await safeFileFromURL(url, options);
     // the internal request's multipart part, named after the file's normalized name
     return await NewFileFromBytes(await file.reader.bytes(), file.name);
-  } catch (err) {
-    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error: err });
+  } catch (error) {
+    e.app.logger.warn("Failed to retrieve OAuth2 avatar", { error: error });
     return undefined;
   }
 }
@@ -578,8 +578,8 @@ function oauth2Submit(
 
       try {
         saveExternalAuthSync(txApp, rel);
-      } catch (err) {
-        throw new Error(`failed to save linked rel: ${(err as Error).message}`, { cause: err });
+      } catch (error) {
+        throw new Error(`failed to save linked rel: ${(error as Error).message}`, { cause: error });
       }
     }
   });

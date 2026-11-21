@@ -68,11 +68,11 @@ function findSettingsParam(app: App): Param | null {
       .select("{{" + paramsTable + "}}.*")
       .from(paramsTable)
       .model(paramsKeySettings, param);
-  } catch (err) {
-    if (isNoRowsError(err)) {
+  } catch (error) {
+    if (isNoRowsError(error)) {
       return null;
     }
-    throw err;
+    throw error;
   }
   return param;
 }
@@ -128,8 +128,8 @@ async function loadParam(s: Settings, app: App, value: Uint8Array | string | nul
   let plainDecodeErr: unknown;
   try {
     unmarshalSettings(raw, s);
-  } catch (err) {
-    plainDecodeErr = err;
+  } catch (error) {
+    plainDecodeErr = error;
   }
 
   // failed, try to decrypt

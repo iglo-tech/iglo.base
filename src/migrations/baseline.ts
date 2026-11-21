@@ -89,8 +89,8 @@ export function resaveNonSystemCollections(txApp: CollectionsApp): void {
 function step(prefix: string, fn: () => void): void {
   try {
     fn();
-  } catch (err) {
-    throw wrapError(prefix, err);
+  } catch (error) {
+    throw wrapError(prefix, error);
   }
 }
 

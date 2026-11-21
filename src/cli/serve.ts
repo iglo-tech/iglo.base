@@ -116,7 +116,8 @@ export async function bootstrapApp(
     logColor: ctx.out.color,
     getenv: ctx.getenv,
     // color.HiBlack, as upstream's dev mode prints the statements
-    devSQLLog: (line) => ctx.out.stdout(ctx.out.color ? `\x1b[90m${line}\x1b[0m\n` : `${line}\n`),
+    devSQLLog: (line) =>
+      ctx.out.stdout(ctx.out.color ? `\u001b[90m${line}\u001b[0m\n` : `${line}\n`),
     warn: (message) => ctx.out.stderr(`${logTime(ctx.out.now())} WARN ${message}\n`),
     automigrateDir: app.automigrate ? app.migrationsDir : undefined,
     restart,
@@ -292,15 +293,15 @@ export async function runServeCommand(
       try {
         ctx.restart();
         continue;
-      } catch (err) {
-        failure = err;
+      } catch (error) {
+        failure = error;
       }
     }
     for (const pending of restarts.toReversed()) {
       try {
         pending.revert();
-      } catch (err) {
-        pending.failed(err);
+      } catch (error) {
+        pending.failed(error);
         continue;
       }
       pending.failed(failure);
@@ -315,10 +316,10 @@ export async function runServeCommand(
 function readSchemaFile(path: string, given: string): string {
   try {
     return readFileSync(path, "utf8");
-  } catch (err) {
+  } catch (error) {
     throw new Error(
-      `cannot read the schema file ${JSON.stringify(given)}: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
+      `cannot read the schema file ${JSON.stringify(given)}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
 }

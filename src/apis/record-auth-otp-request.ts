@@ -57,10 +57,10 @@ export async function recordRequestOTP(e: RequestEvent): Promise<HandlerResult> 
   let record: Record | undefined;
   try {
     record = findAuthRecordByEmail(e.app, collection, form.Email);
-  } catch (err) {
+  } catch (error) {
     // ignore not found errors to allow custom record find implementations
-    if (!isNoRows(err)) {
-      return e.internalServerError("", err);
+    if (!isNoRows(error)) {
+      return e.internalServerError("", error);
     }
   }
 
@@ -83,10 +83,10 @@ export async function recordRequestOTP(e: RequestEvent): Promise<HandlerResult> 
     let otps: Array<OTP>;
     try {
       otps = findAllOTPsByRecord(e.app, record);
-    } catch (err) {
+    } catch (error) {
       return firstApiError(
-        err,
-        e.internalServerError("Failed to fetch previous record OTPs.", err),
+        error,
+        e.internalServerError("Failed to fetch previous record OTPs.", error),
       );
     }
 
@@ -117,8 +117,8 @@ export async function recordRequestOTP(e: RequestEvent): Promise<HandlerResult> 
     otp.setPassword(password);
     try {
       await saveOTP(e.app, otp);
-    } catch (err) {
-      return err instanceof Error ? err : new Error(String(err));
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
     }
 
     // send OTP email
@@ -139,12 +139,12 @@ async function sendOTPInBackground(
   const app = e.app;
   try {
     await sendRecordOTP(app, record, otp.id, password);
-  } catch (sendErr) {
-    const errs = [sendErr];
+  } catch (error) {
+    const errs = [error];
     try {
       await deleteOTP(app, otp);
-    } catch (deleteErr) {
-      errs.push(deleteErr);
+    } catch (error) {
+      errs.push(error);
     }
     app.logger.error("Failed to send OTP email", { error: joinErrors(errs) });
   }

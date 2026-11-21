@@ -53,8 +53,8 @@ function errorOf(fn: () => unknown): Error | null {
   try {
     fn();
     return null;
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -72,8 +72,8 @@ function expectCanceled(err: unknown, message: string): void {
 function resultOf<T>(fn: () => T): [T | null, Error | null] {
   try {
     return [fn(), null];
-  } catch (err) {
-    return [null, err instanceof Error ? err : new Error(String(err))];
+  } catch (error) {
+    return [null, error instanceof Error ? error : new Error(String(error))];
   }
 }
 
@@ -236,7 +236,7 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
     ]) {
       const err = await run().then(
         () => null,
-        (e: unknown) => e,
+        (error: unknown) => error,
       );
       expect((err as Error).message).toStartWith("context canceled; failed query: ");
       expect((err as Error).cause).toBeInstanceOf(ContextCanceledError);

@@ -290,8 +290,8 @@ function lookup(app: TestCollectionsApp, token: string, ...types: Array<string>)
   try {
     const record = findAuthRecordByToken(app, token, ...types);
     return `${record.collection().name}/${record.id}`;
-  } catch (err) {
-    return `error: ${(err as Error).message}`;
+  } catch (error) {
+    return `error: ${(error as Error).message}`;
   }
 }
 

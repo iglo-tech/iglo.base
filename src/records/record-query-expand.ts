@@ -120,8 +120,8 @@ function* expandRecordsSteps(
   for (const expand of normalized) {
     try {
       yield* expandRecordsPath(app, records, expand, fetch, sync, 1);
-    } catch (err) {
-      failed.set(expand, err instanceof Error ? err : new Error(String(err)));
+    } catch (error) {
+      failed.set(expand, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -140,8 +140,8 @@ async function driveAsync<T>(steps: ExpandStep<T>): Promise<T> {
     try {
       input = await res.value;
       failed = false;
-    } catch (err) {
-      input = err;
+    } catch (error) {
+      input = error;
       failed = true;
     }
   }

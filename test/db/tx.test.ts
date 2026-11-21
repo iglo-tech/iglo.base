@@ -184,8 +184,8 @@ describe("transactions", () => {
         });
         throw new Error("tx");
       });
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
     expect(err).toBeInstanceOf(Errors);
     expect((err as Errors).message).toBe("tx\ntransaction afterFunc errors: after");

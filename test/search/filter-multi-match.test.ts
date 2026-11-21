@@ -76,7 +76,7 @@ test("many vs many", () => {
 
 test("any-of operators skip the multi-match subquery", () => {
   expect(build("a.x ?= 'v' && a.x ?~ b.y").sql).toBe(
-    "([[a.x]] = {:p0} AND [[a.x]] LIKE ('%' || [[b.y]] || '%') ESCAPE '\\')",
+    String.raw`([[a.x]] = {:p0} AND [[a.x]] LIKE ('%' || [[b.y]] || '%') ESCAPE '\')`,
   );
 });
 

@@ -669,7 +669,7 @@ const scenarios: Array<Scenario> = [
     collection: () => {
       const c = newBaseCollection("new_auth");
       c.fields = newFieldsList(
-        new TextField({ name: "id", primaryKey: true, required: true, pattern: "\\w+" }),
+        new TextField({ name: "id", primaryKey: true, required: true, pattern: String.raw`\w+` }),
       );
       return c;
     },
@@ -680,7 +680,7 @@ const scenarios: Array<Scenario> = [
     collection: () => {
       const c = newBaseCollection("new_auth");
       c.fields = newFieldsList(
-        new TextField({ name: "id", primaryKey: true, required: true, pattern: "\\w+" }),
+        new TextField({ name: "id", primaryKey: true, required: true, pattern: String.raw`\w+` }),
         new TextField({ id: "f1", name: "Test" }), // case-insensitive
         new BoolField({ id: "f2", name: "test" }),
       );

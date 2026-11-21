@@ -165,8 +165,8 @@ function encodeValue(value: unknown, flags: EncodeFlags, depth: number): string 
       try {
         const item = encodeValue(value[i], flags, depth + 1);
         out += (i > 0 ? "," : "") + item;
-      } catch (err) {
-        throw withPartial(err, out, i > 0 ? "," : "");
+      } catch (error) {
+        throw withPartial(error, out, i > 0 ? "," : "");
       }
     }
     return out + "]";
@@ -216,8 +216,8 @@ function encodeObject(
     out += (i > 0 ? "," : "") + quoted;
     try {
       out += ":" + encodeValue(value, flags, depth + 1);
-    } catch (err) {
-      throw withPartial(err, out, ":");
+    } catch (error) {
+      throw withPartial(error, out, ":");
     }
   }
   return out + "}";
@@ -287,26 +287,26 @@ export function quote(
 function escapeASCII(c: number): string {
   switch (c) {
     case 0x22:
-      return '\\"';
+      return String.raw`\"`;
     case 0x5c:
-      return "\\\\";
+      return String.raw`\\`;
     case 0x08:
-      return "\\b";
+      return String.raw`\b`;
     case 0x0c:
-      return "\\f";
+      return String.raw`\f`;
     case 0x0a:
-      return "\\n";
+      return String.raw`\n`;
     case 0x0d:
-      return "\\r";
+      return String.raw`\r`;
     case 0x09:
-      return "\\t";
+      return String.raw`\t`;
     default:
       return escapeUTF16(c);
   }
 }
 
 function escapeUTF16(c: number): string {
-  return "\\u" + c.toString(16).padStart(4, "0");
+  return String.raw`\u` + c.toString(16).padStart(4, "0");
 }
 
 function formatRFC3339Nano(d: Date): string {
@@ -931,11 +931,11 @@ export function unmarshalStruct(
       }
       try {
         set(convert(value, t, undefined, p.legacy));
-      } catch (err) {
+      } catch (error) {
         if (!p.legacy) {
-          throw err;
+          throw error;
         }
-        firstError ??= err;
+        firstError ??= error;
       }
     });
     p.end();
@@ -974,12 +974,12 @@ export function unmarshalSlicePartial(
       p.array(1, (node) => {
         try {
           out.push(convert(node, elem, undefined, p.legacy));
-        } catch (err) {
+        } catch (error) {
           out.push(convert(null, elem, undefined, p.legacy));
           if (!p.legacy) {
-            throw err;
+            throw error;
           }
-          firstError ??= err;
+          firstError ??= error;
         }
       });
     } else {
@@ -989,8 +989,8 @@ export function unmarshalSlicePartial(
       }
     }
     p.end();
-  } catch (err) {
-    firstError ??= err;
+  } catch (error) {
+    firstError ??= error;
   }
   return [result, firstError];
 }
@@ -1100,9 +1100,9 @@ function convertObject(
       // whatever its type
       try {
         setOwn(target, name, convert(value, elem, undefined, legacy));
-      } catch (err) {
+      } catch (error) {
         // v1: a semantic error does not stop the remaining members
-        firstError ??= err;
+        firstError ??= error;
       }
       continue;
     }

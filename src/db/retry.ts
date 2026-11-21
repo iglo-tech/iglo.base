@@ -47,8 +47,8 @@ export function execLockRetry(
     const reset = withTimeout(q, timeout, now);
     try {
       baseLockRetry(() => op(), maxRetries, sleep);
-    } catch (err) {
-      throw failedQueryError(q, err);
+    } catch (error) {
+      throw failedQueryError(q, error);
     } finally {
       reset();
     }
@@ -66,8 +66,8 @@ export function execLockRetryAsync(
     const reset = withTimeout(q, timeout, now);
     try {
       await baseLockRetryAsync(() => op(), maxRetries, sleep);
-    } catch (err) {
-      throw failedQueryError(q, err);
+    } catch (error) {
+      throw failedQueryError(q, error);
     } finally {
       reset();
     }
@@ -101,9 +101,9 @@ export function baseLockRetry(
     try {
       op(attempt);
       return;
-    } catch (err) {
-      if (attempt > maxRetries || !isLockError(err)) {
-        throw err;
+    } catch (error) {
+      if (attempt > maxRetries || !isLockError(error)) {
+        throw error;
       }
       // wait and retry
       sleep(getDefaultRetryInterval(attempt));
@@ -120,9 +120,9 @@ export async function baseLockRetryAsync(
     try {
       await op(attempt);
       return;
-    } catch (err) {
-      if (attempt > maxRetries || !isLockError(err)) {
-        throw err;
+    } catch (error) {
+      if (attempt > maxRetries || !isLockError(error)) {
+        throw error;
       }
       // wait and retry
       await sleep(getDefaultRetryInterval(attempt));

@@ -99,8 +99,8 @@ async function collectionsList(e: RequestEvent): Promise<Error | undefined> {
     result = await newProvider(fieldResolver, { clock: e.app.clock })
       .query(collectionQuery(e.app))
       .parseAndExec<Collection>(encodeValues(e.request.query()), () => new Collection());
-  } catch (err) {
-    return e.badRequestError("", err);
+  } catch (error) {
+    return e.badRequestError("", error);
   }
 
   return e.json(200, result);
@@ -110,8 +110,8 @@ function collectionView(e: RequestEvent): HandlerResult {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   return e.json(200, collection);
@@ -196,8 +196,8 @@ async function bindCollectionBody(
       decodeValue(payload);
       collection.unmarshalJSON(payload);
     }
-  } catch (err) {
-    return err instanceof Error ? err : new Error(String(err));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 
   return undefined;
@@ -237,15 +237,18 @@ async function collectionCreate(e: RequestEvent): Promise<Error | undefined> {
   return automigrateOnCollectionChange(e.app, collection, () => {
     try {
       saveCollection(e.app, collection);
-    } catch (err) {
+    } catch (error) {
       // validation failure
-      const validationErrors = errorsAs(err, Errors);
+      const validationErrors = errorsAs(error, Errors);
       if (validationErrors) {
         return e.badRequestError("Failed to create collection.", validationErrors);
       }
 
       // other generic db error
-      return e.badRequestError(`Failed to create collection. Raw error: \n${errorText(err)}`, null);
+      return e.badRequestError(
+        `Failed to create collection. Raw error: \n${errorText(error)}`,
+        null,
+      );
     }
     e.app.collectionsChanged?.([collection.name]);
 
@@ -260,8 +263,8 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
   let collection: Collection;
   try {
     collection = findCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   const bindErr = await bindCollectionBody(e, collection);
@@ -275,15 +278,18 @@ async function collectionUpdate(e: RequestEvent): Promise<Error | undefined> {
   return automigrateOnCollectionChange(e.app, collection, () => {
     try {
       saveCollection(e.app, collection);
-    } catch (err) {
+    } catch (error) {
       // validation failure
-      const validationErrors = errorsAs(err, Errors);
+      const validationErrors = errorsAs(error, Errors);
       if (validationErrors) {
         return e.badRequestError("Failed to update collection.", validationErrors);
       }
 
       // other generic db error
-      return e.badRequestError(`Failed to update collection. Raw error: \n${errorText(err)}`, null);
+      return e.badRequestError(
+        `Failed to update collection. Raw error: \n${errorText(error)}`,
+        null,
+      );
     }
     e.app.collectionsChanged?.([collection.name]);
 
@@ -298,14 +304,14 @@ function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResu
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   return automigrateOnCollectionChange(e.app, collection, () => {
     try {
       deleteCollection(e.app, collection);
-    } catch (err) {
+    } catch (error) {
       let msg = "Failed to delete collection";
 
       // check fo references
@@ -320,7 +326,7 @@ function collectionDelete(e: RequestEvent): Promise<HandlerResult> | HandlerResu
         msg += " probably due to existing reference in " + names.join(", ");
       }
 
-      return e.badRequestError(msg, err);
+      return e.badRequestError(msg, error);
     }
     e.app.collectionsChanged?.([collection.name]);
 
@@ -332,8 +338,8 @@ function collectionTruncate(e: RequestEvent): HandlerResult {
   let collection: Collection;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));
-  } catch (err) {
-    return e.notFoundError("", err);
+  } catch (error) {
+    return e.notFoundError("", error);
   }
 
   if (collection.isView()) {
@@ -345,10 +351,10 @@ function collectionTruncate(e: RequestEvent): HandlerResult {
 
   try {
     truncateCollection(e.app, collection);
-  } catch (err) {
+  } catch (error) {
     return e.badRequestError(
       "Failed to truncate collection (most likely due to required cascade delete record references).",
-      err,
+      error,
     );
   }
 
@@ -459,10 +465,10 @@ async function collectionDryRunView(e: RequestEvent): Promise<Error | undefined>
   let result;
   try {
     result = dryRunView(e.app, form.Query, 10);
-  } catch (err) {
+  } catch (error) {
     return firstApiError(
-      err,
-      e.badRequestError(`Invalid view query. Raw error: \n${errorText(err)}`, null),
+      error,
+      e.badRequestError(`Invalid view query. Raw error: \n${errorText(error)}`, null),
     );
   }
 

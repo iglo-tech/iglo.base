@@ -259,9 +259,9 @@ export function toFloat64E(i: unknown): number {
       }
       try {
         return parseGoFloat(i, 64);
-      } catch (err) {
+      } catch (error) {
         throw new CastError(
-          `unable to cast ${JSON.stringify(i)} of type string to float64: ${(err as Error).message}`,
+          `unable to cast ${JSON.stringify(i)} of type string to float64: ${(error as Error).message}`,
         );
       }
   }

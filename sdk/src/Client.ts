@@ -25,7 +25,7 @@ type RegExpWithEscape = { escape?: (str: string) => string };
 if (!(RegExp as RegExpWithEscape).escape) {
   // https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript#answer-3561711
   (RegExp as RegExpWithEscape).escape = function (str: string): string {
-    return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
+    return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, String.raw`\$&`);
   };
 }
 
@@ -462,16 +462,16 @@ export default class Client {
 
         try {
           data = await response.json();
-        } catch (err) {
+        } catch (error) {
           // @todo map against the response content type
           // all api responses are expected to return json
           // with exception of the realtime events and 204
           if (
             options.signal?.aborted ||
-            (err as ErrorLike | undefined)?.name == "AbortError" ||
-            (err as ErrorLike | undefined)?.message == "Aborted"
+            (error as ErrorLike | undefined)?.name == "AbortError" ||
+            (error as ErrorLike | undefined)?.message == "Aborted"
           ) {
-            throw err;
+            throw error;
           }
         }
 
@@ -489,16 +489,16 @@ export default class Client {
 
         return data as T;
       })
-      .catch((err) => {
+      .catch((error) => {
         // wrap to normalize all errors
-        throw new ClientResponseError(err);
+        throw new ClientResponseError(error);
       })
-      .catch((err: ClientResponseError) => {
-        if (this.enableAutoClearAuthStore && err.status == 401) {
+      .catch((error: ClientResponseError) => {
+        if (this.enableAutoClearAuthStore && error.status == 401) {
           this.authStore.clear();
         }
 
-        throw err;
+        throw error;
       });
   }
 

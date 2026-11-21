@@ -423,8 +423,8 @@ export function resaveViewsWithChangedFields(
 
       try {
         check();
-      } catch (err) {
-        const cause = err instanceof Error ? err : new Error(String(err));
+      } catch (error) {
+        const cause = error instanceof Error ? error : new Error(String(error));
         collectionErrors.push(new Error(`[${collection.name}] ${cause.message}`, { cause }));
       }
     }

@@ -202,7 +202,7 @@ const authMethodsURL: Rule = (upstream, at) => {
     return undefined;
   }
   const source = upstream.value
-    .replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&")
+    .replace(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`)
     .replace(/((?:\\\?|&)state=)[A-Za-z0-9]{30}(?=&|$)/, "$1[A-Za-z0-9]{30}")
     .replace(/((?:\\\?|&)code_challenge=)[A-Za-z0-9_-]{43}(?=&|$)/, "$1[A-Za-z0-9_-]{43}");
   return { name: "authURL", pattern: new RegExp(`^${source}$`) };
@@ -210,7 +210,7 @@ const authMethodsURL: Rule = (upstream, at) => {
 
 // a literal text in a regular expression
 function escapeRegExp(s: string): string {
-  return s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+  return s.replace(/[\\^$.*+?()[\]{}|/]/g, String.raw`\$&`);
 }
 
 // tools/filesystem/file.go normalizeName: an uploaded file's stored name

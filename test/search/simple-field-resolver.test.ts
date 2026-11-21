@@ -37,7 +37,12 @@ test("SimpleFieldResolver.UpdateQuery", () => {
 });
 
 test("SimpleFieldResolver.Resolve", () => {
-  const r = newSimpleFieldResolver("test", "^test_regex\\d+$", "Test columnify!", "data.test");
+  const r = newSimpleFieldResolver(
+    "test",
+    String.raw`^test_regex\d+$`,
+    "Test columnify!",
+    "data.test",
+  );
 
   // [fieldName, expectError, expectName]
   const scenarios: Array<[string, boolean, string]> = [
@@ -57,8 +62,8 @@ test("SimpleFieldResolver.Resolve", () => {
     let err: unknown;
     try {
       result = r.resolve(fieldName);
-    } catch (e) {
-      err = e;
+    } catch (error) {
+      err = error;
     }
 
     expect([i, err !== undefined]).toEqual([i, expectError]);
@@ -72,7 +77,7 @@ test("SimpleFieldResolver.Resolve", () => {
 });
 
 test("SimpleFieldResolver.Resolve json paths and errors", () => {
-  const r = newSimpleFieldResolver("^\\w+[\\w\\.]*$");
+  const r = newSimpleFieldResolver(String.raw`^\w+[\w\.]*$`);
 
   expect(r.resolve("data.a.0.b").identifier).toBe("JSON_EXTRACT([[data]], '$.a[0].b')");
   // strconv.Atoi accepts a sign and leading zeros, not digits past int64

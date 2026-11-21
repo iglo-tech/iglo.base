@@ -280,7 +280,7 @@ test("a cancelled select query fails every resolver before its SQL runs", async 
   ]) {
     const err = await run().then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     expect(err).toBeInstanceOf(ContextCanceledError);
   }

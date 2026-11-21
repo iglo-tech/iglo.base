@@ -451,8 +451,8 @@ function testParseCase(
     }
 
     return null;
-  } catch (e) {
-    return e instanceof Error ? e.message : String(e);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
 }
 

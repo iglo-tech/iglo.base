@@ -1720,7 +1720,7 @@ function parse(s: string, flags: Flags): Regexp {
               // \Q ... \E: the ... is always literals
               let lit: string;
               const rest = t.slice(2);
-              const end = rest.indexOf("\\E");
+              const end = rest.indexOf(String.raw`\E`);
               if (end < 0) {
                 lit = rest;
                 t = "";

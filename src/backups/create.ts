@@ -183,10 +183,10 @@ class BackupTracker implements FilesystemWatcher {
         return;
       }
       this.held.set(zipPath, this.#keep(localPath, heldPath, info.size));
-    } catch (err) {
-      if ((err as { code?: string }).code !== "ENOENT") {
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ENOENT") {
         this.#app.logger.warn(`${this.#logPrefix}failed to copy file in backup zip before delete`, {
-          error: err,
+          error: error,
           file: zipPath,
         });
       }
@@ -426,10 +426,10 @@ async function createZip(app: App, name: string, tempZipPath: string): Promise<v
     }
 
     await worker.call({ op: "zipClose" });
-  } catch (err) {
+  } catch (error) {
     // the worker's file handle outlives the worker
     await worker.call({ op: "zipAbort" }).catch(() => {});
-    throw err;
+    throw error;
   } finally {
     app.filesystem.watch(null);
     worker.close();
@@ -460,11 +460,11 @@ async function copyDirToZip(
   let entries;
   try {
     entries = await readdir(join(app.dataDir, dir), { withFileTypes: true });
-  } catch (err) {
-    if (isNotExist(err)) {
+  } catch (error) {
+    if (isNotExist(error)) {
       return;
     }
-    throw err;
+    throw error;
   }
   entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
@@ -489,11 +489,11 @@ async function copyDirToZip(
 
     try {
       await worker.call({ op: "zipAdd", localPath: join(app.dataDir, name), zipPath: name });
-    } catch (err) {
-      if (isNotExist(err)) {
+    } catch (error) {
+      if (isNotExist(error)) {
         continue; // it is held, if it was a tracked delete
       }
-      throw err;
+      throw error;
     }
 
     // deleted while the worker read it: the zip has it already

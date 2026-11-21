@@ -123,7 +123,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     await reloadSettings(app);
 
     loadAutobackupJob(app);
-  } catch (err) {
+  } catch (error) {
     // the read workers must not outlive a failed bootstrap
     try {
       logger.close();
@@ -135,7 +135,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<App> {
     } catch {
       // the bootstrap error is the one reported
     }
-    throw err;
+    throw error;
   }
 
   // try to cleanup the pb_data temp directory (if any)
@@ -168,8 +168,8 @@ export async function clearBootstrap(app: App): Promise<void> {
   const step = async (fn: () => void | Promise<void>): Promise<void> => {
     try {
       await fn();
-    } catch (err) {
-      errs.push(err);
+    } catch (error) {
+      errs.push(error);
     }
   };
 

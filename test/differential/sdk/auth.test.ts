@@ -162,7 +162,7 @@ describe("auth records and stores", () => {
         const slow = pb
           .collection("demo2")
           .getList(1, 1, { requestKey: "k" })
-          .catch((e: unknown) => e);
+          .catch((error: unknown) => error);
         pb.cancelRequest("k");
         return slow;
       });
@@ -171,7 +171,7 @@ describe("auth records and stores", () => {
           pb
             .collection("demo2")
             .getList(n, 1, { requestKey: `k${n}` })
-            .catch((e: unknown) => e),
+            .catch((error: unknown) => error),
         );
         pb.cancelAllRequests();
         return Promise.all(many);

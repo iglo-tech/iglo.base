@@ -28,8 +28,8 @@ export function jsonArrayMarshalJSON(m: ReadonlyArray<unknown> | undefined): str
 export function jsonArrayString(m: ReadonlyArray<unknown> | undefined): string {
   try {
     return jsonArrayMarshalJSON(m);
-  } catch (err) {
-    return marshalPartial(err);
+  } catch (error) {
+    return marshalPartial(error);
   }
 }
 

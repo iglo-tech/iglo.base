@@ -106,8 +106,8 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   try {
     collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
     tableName = collection.name;
-  } catch (err) {
-    collectionErr = err;
+  } catch (error) {
+    collectionErr = error;
   }
   if (tableName === "") {
     // update with some fake table name for easier debugging
@@ -143,8 +143,8 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
         retryAsync(built, async () => {
           try {
             await op();
-          } catch (err) {
-            throw driverError(err);
+          } catch (error) {
+            throw driverError(error);
           }
         }),
       )
@@ -399,8 +399,8 @@ export function findAuthRecordByEmail(
   let collection: Collection;
   try {
     collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
-  } catch (err) {
-    throw wrapError("failed to fetch auth collection", err);
+  } catch (error) {
+    throw wrapError("failed to fetch auth collection", error);
   }
 
   if (!collection.isAuth()) {

@@ -198,8 +198,8 @@ export function Marc(raw: Uint8Array, _limit: number): boolean {
   return contains(raw.subarray(0, Math.min(2048, raw.length)), marcTerminator);
 }
 
-const glb2 = lit("\x67\x6C\x54\x46\x02\x00\x00\x00");
-const glb1 = lit("\x67\x6C\x54\x46\x01\x00\x00\x00");
+const glb2 = lit("\u0067\u006C\u0054\u0046\u0002\u0000\u0000\u0000");
+const glb1 = lit("\u0067\u006C\u0054\u0046\u0001\u0000\u0000\u0000");
 // GLB matches a glTF model format file.
 // GLB is the binary file format representation of 3D models saved in
 // the GL transmission Format (glTF).

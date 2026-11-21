@@ -144,7 +144,7 @@ describe("loadParam errors", () => {
         dataDir: app.dataDir,
         encryptionEnv: "PB_TEST_KEY",
         getenv: () => randomString(32),
-      }).catch((err: unknown) => err);
+      }).catch((error: unknown) => error);
       expect((wrong as Error).message).toBe("cipher: message authentication failed");
     } finally {
       await app.cleanup();

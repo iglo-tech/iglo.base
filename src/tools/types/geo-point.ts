@@ -26,8 +26,8 @@ export class GeoPoint implements JSONMarshaler {
   string(): string {
     try {
       return this.marshalJSON();
-    } catch (err) {
-      return marshalPartial(err);
+    } catch (error) {
+      return marshalPartial(error);
     }
   }
 
@@ -49,9 +49,9 @@ export class GeoPoint implements JSONMarshaler {
       }
       try {
         out += ":" + formatFloat(n);
-      } catch (err) {
-        (err as { partial?: string }).partial = out;
-        throw err;
+      } catch (error) {
+        (error as { partial?: string }).partial = out;
+        throw error;
       }
     }
     return out + "}";
@@ -91,18 +91,18 @@ export class GeoPoint implements JSONMarshaler {
         let raw: string;
         try {
           raw = marshal(value);
-        } catch (err) {
-          throw new Error(`unable to marshalize value for scanning: ${(err as Error).message}`, {
-            cause: err,
+        } catch (error) {
+          throw new Error(`unable to marshalize value for scanning: ${(error as Error).message}`, {
+            cause: error,
           });
         }
         this.unmarshal(raw);
       }
-    } catch (err) {
+    } catch (error) {
       throw new Error(
-        `[GeoPoint] unable to scan value ${String(value)}: ${(err as Error).message}`,
+        `[GeoPoint] unable to scan value ${String(value)}: ${(error as Error).message}`,
         {
-          cause: err,
+          cause: error,
         },
       );
     }

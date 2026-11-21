@@ -75,7 +75,7 @@ describe("JSONRawMarshalJSON", () => {
 describe("JSONRawUnmarshalJSON", () => {
   const scenarios: Array<[Uint8Array | null, string]> = [
     [null, `null`],
-    [new Uint8Array([0, 1, 2]), "\x00\x01\x02"],
+    [new Uint8Array([0, 1, 2]), "\u0000\u0001\u0002"],
     [bytes("123"), "123"],
     [bytes("test"), "test"],
     [bytes(`{"test":123}`), `{"test":123}`],

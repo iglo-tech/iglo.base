@@ -303,10 +303,10 @@ export class RealtimeService extends BaseService {
       for (let p of pending) {
         p.resolve();
       }
-    } catch (err) {
+    } catch (error) {
       for (let p of pending) {
         // oxlint-disable-next-line no-unused-expressions -- upstream ternary dispatch for promise resolution
-        err ? p.reject(err) : p.resolve();
+        error ? p.reject(error) : p.resolve();
       }
     } finally {
       this.isProcessingPendingSubmits = false;
@@ -393,11 +393,11 @@ export class RealtimeService extends BaseService {
         },
         requestKey: this.getSubscriptionsCancelKey(),
       })
-      .catch((err) => {
-        if (err?.isAbort) {
+      .catch((error) => {
+        if (error?.isAbort) {
           return; // silently ignore aborted pending requests
         }
-        throw err;
+        throw error;
       });
   }
 
@@ -532,13 +532,13 @@ export class RealtimeService extends BaseService {
             await this.submitSubscriptions();
           }
         })
-        .catch((err) => {
+        .catch((error) => {
           if (!isCurrent()) {
             return; // a closed connection's failure is not the current one's
           }
           this.clientId = "";
           this.lastSentSubscriptions = [];
-          this.connectErrorHandler(err);
+          this.connectErrorHandler(error);
         });
     });
   }

@@ -80,11 +80,11 @@ export function readSchema(text: string): SchemaReadResult {
   let root: JSONNode;
   try {
     root = parseJSONTree(text);
-  } catch (err) {
-    if (err instanceof JSONSyntaxError) {
-      return { ok: false, errors: [{ path: "$", message: `not valid JSON: ${err.message}` }] };
+  } catch (error) {
+    if (error instanceof JSONSyntaxError) {
+      return { ok: false, errors: [{ path: "$", message: `not valid JSON: ${error.message}` }] };
     }
-    throw err;
+    throw error;
   }
   const reader = new Reader();
   const schema = reader.document(root);

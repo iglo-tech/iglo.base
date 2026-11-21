@@ -180,9 +180,9 @@ describe("TestDB_Transactional", () => {
         tx.newQuery("DELETE FROM item WHERE id=2").execute();
         try {
           tx.newQuery("DELETE FROM items WHERE id=2").execute();
-        } catch (err) {
+        } catch (error) {
           tx.rollback();
-          throw err;
+          throw error;
         }
       }),
     ).toThrow("no such table: items");

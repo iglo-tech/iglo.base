@@ -64,8 +64,8 @@ function settingsList(e: RequestEvent): HandlerResult {
   let clone: Settings;
   try {
     clone = e.app.settings.clone();
-  } catch (err) {
-    return e.internalServerError("", err);
+  } catch (error) {
+    return e.internalServerError("", error);
   }
 
   return e.json(200, clone);
@@ -79,8 +79,8 @@ async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
   try {
     // OldSettings (a clone too) is only read by the update hook
     newSettings = e.app.settings.clone();
-  } catch (err) {
-    return e.badRequestError("", err);
+  } catch (error) {
+    return e.badRequestError("", error);
   }
 
   const data = newSettings.settings;
@@ -97,15 +97,15 @@ async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
 
   try {
     await saveSettings(e.app, newSettings);
-  } catch (err) {
-    return e.badRequestError("An error occurred while saving the new settings.", err);
+  } catch (error) {
+    return e.badRequestError("An error occurred while saving the new settings.", error);
   }
 
   let appSettings: Settings;
   try {
     appSettings = e.app.settings.clone();
-  } catch (err) {
-    return e.internalServerError("Failed to clone app settings.", err);
+  } catch (error) {
+    return e.internalServerError("Failed to clone app settings.", error);
   }
 
   return e.json(200, appSettings);
@@ -161,8 +161,8 @@ async function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Promise
       s3Config.ForcePathStyle,
       join(app.dataDir, LocalTempDirName),
     );
-  } catch (initErr) {
-    return wrapf("failed to initialize the S3 filesystem: ", initErr);
+  } catch (error) {
+    return wrapf("failed to initialize the S3 filesystem: ", error);
   }
 
   try {
@@ -172,8 +172,8 @@ async function submitTestS3Filesystem(app: App, form: TestS3Filesystem): Promise
     // try to upload a test file
     try {
       await fsys.upload(new TextEncoder().encode("test"), testFileKey);
-    } catch (uploadErr) {
-      return wrapf("failed to upload a test file: ", uploadErr);
+    } catch (error) {
+      return wrapf("failed to upload a test file: ", error);
     }
 
     // test prefix deletion (ensures that both bucket list and delete works)
@@ -332,8 +332,8 @@ async function submitTestEmailSend(app: App, form: TestEmailSend): Promise<Error
       default:
         return new Error("unknown template " + form.Template);
     }
-  } catch (sendErr) {
-    return sendErr instanceof Error ? sendErr : new Error(String(sendErr));
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 
   return null;
@@ -427,8 +427,8 @@ function submitAppleClientSecretCreate(
       clock,
     );
     return [secret, null];
-  } catch (signErr) {
-    return ["", signErr as Error];
+  } catch (error) {
+    return ["", error as Error];
   }
 }
 

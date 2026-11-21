@@ -71,15 +71,15 @@ export function up(app: App, list: ReadonlyArray<Migration>): Array<string> {
         if (m.up !== null) {
           try {
             m.up(txApp);
-          } catch (err) {
-            throw wrapError(`failed to apply migration ${m.file}`, err);
+          } catch (error) {
+            throw wrapError(`failed to apply migration ${m.file}`, error);
           }
         }
 
         try {
           saveAppliedMigration(txDatabases, app.clock, m.file);
-        } catch (err) {
-          throw wrapError(`failed to save applied migration info for ${m.file}`, err);
+        } catch (error) {
+          throw wrapError(`failed to save applied migration info for ${m.file}`, error);
         }
 
         applied.push(m.file);
@@ -130,16 +130,16 @@ export function down(
           if (m.down !== null) {
             try {
               m.down(txApp);
-            } catch (err) {
-              throw wrapError(`failed to revert migration ${m.file}`, err);
+            } catch (error) {
+              throw wrapError(`failed to revert migration ${m.file}`, error);
             }
           }
 
           if (m.system === undefined) {
             try {
               saveRevertedMigration(txDatabases, m.file);
-            } catch (err) {
-              throw wrapError(`failed to save reverted migration info for ${m.file}`, err);
+            } catch (error) {
+              throw wrapError(`failed to save reverted migration info for ${m.file}`, error);
             }
           }
 
@@ -269,10 +269,10 @@ export function builderHasTable(db: Builder, tableName: string): boolean {
       .limit(1)
       .row();
     return typeof exists === "number" && exists > 0;
-  } catch (err) {
-    if (isNoRowsError(err)) {
+  } catch (error) {
+    if (isNoRowsError(error)) {
       return false;
     }
-    throw err;
+    throw error;
   }
 }

@@ -80,9 +80,9 @@ export function importCollections(
     let existing: Collection | null = null;
     try {
       existing = withDriverErrors(() => findCollectionByNameOrId(app, identifier));
-    } catch (err) {
-      if (!(err instanceof NoRowsError)) {
-        throw err;
+    } catch (error) {
+      if (!(error instanceof NoRowsError)) {
+        throw error;
       }
     }
 
@@ -174,8 +174,8 @@ export function importCollections(
     for (const imported of importedCollections) {
       try {
         saveCollectionNoValidate(txApp, imported);
-      } catch (err) {
-        throw wrapError(`failed to save collection ${goQuote(imported.name)}`, err);
+      } catch (error) {
+        throw wrapError(`failed to save collection ${goQuote(imported.name)}`, error);
       }
     }
 

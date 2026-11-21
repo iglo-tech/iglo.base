@@ -109,10 +109,10 @@ async function crashedRestore(kind: Kind, storage: Storage, point: Point): Promi
   // than the name claims must not pass as this point
   try {
     await waitFor(`the restore point ${point}`, () => seen(), 20_000);
-  } catch (err) {
+  } catch (error) {
     await server.kill();
     await request;
-    throw err;
+    throw error;
   }
   await server.kill();
   await request;
@@ -248,7 +248,7 @@ describe("crash: restore directory states", () => {
         checkDatabases(after);
         expect(await readState("upstream", after)).toBe(igloState);
 
-        const upstreamState = await readState("upstream", copy).catch((e) => `fails: ${e}`);
+        const upstreamState = await readState("upstream", copy).catch((error) => `fails: ${error}`);
         console.warn(
           `${label}: iglo ${igloState}, upstream on the same directory ${upstreamState}`,
         );

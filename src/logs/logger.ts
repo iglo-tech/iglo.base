@@ -239,8 +239,8 @@ export class Logger implements AppLogger {
             String(row.message),
             String(row.data),
           ]);
-        } catch (err) {
-          stderrLog(`Failed to write log ${log.message} ${String(err)}`);
+        } catch (error) {
+          stderrLog(`Failed to write log ${log.message} ${String(error)}`);
         }
       }
       if (this.#suspended) {
@@ -260,8 +260,8 @@ export class Logger implements AppLogger {
           try {
             const row = logDBExport(generateDefaultRandomId(), log, Number(settings.MaxDataSize));
             insert.bind(row).execute();
-          } catch (err) {
-            stderrLog(`Failed to write log ${log.message} ${String(err)}`);
+          } catch (error) {
+            stderrLog(`Failed to write log ${log.message} ${String(error)}`);
           }
         }
         insert.close();
@@ -294,16 +294,16 @@ export function logsSettingsReloaded(
   });
   try {
     app.databases.auxNonconcurrentDB().delete(LogsTableName, expr).execute();
-  } catch (err) {
-    app.logger.warn("Failed to cleanup old logs", { error: err });
+  } catch (error) {
+    app.logger.warn("Failed to cleanup old logs", { error: error });
   }
 
   // no logs are allowed -> try to reclaim preserved disk space after the previous delete operation
   if (Number(logs.MaxDays) === 0) {
     try {
       auxVacuum(app.databases);
-    } catch (err) {
-      app.logger.warn("Failed to VACUUM aux database", { error: err });
+    } catch (error) {
+      app.logger.warn("Failed to VACUUM aux database", { error: error });
     }
   }
 }

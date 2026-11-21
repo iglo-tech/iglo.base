@@ -78,8 +78,8 @@ export function cors(
     }
 
     let pattern = quoteMeta(origin);
-    pattern = pattern.replaceAll("\\*", ".*");
-    pattern = pattern.replaceAll("\\?", ".");
+    pattern = pattern.replaceAll(String.raw`\*`, ".*");
+    pattern = pattern.replaceAll(String.raw`\?`, ".");
     pattern = "^" + pattern + "$";
 
     try {

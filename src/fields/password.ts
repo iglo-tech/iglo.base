@@ -339,8 +339,8 @@ export class PasswordField
         const bytes = textToBytes(fv.plain);
         const c = checkGenerate(bytes, cost);
         fv.startHash(bytes, c, generateFromPasswordAsync(bytes, c));
-      } catch (err) {
-        fv.lastError = err as Error;
+      } catch (error) {
+        fv.lastError = error as Error;
       }
     }
 
@@ -455,9 +455,9 @@ export class PasswordFieldValue {
           this.#pending = null;
         }
       },
-      (err) => {
+      (error) => {
         if (this.#pending === pending) {
-          this.lastError = err as Error;
+          this.lastError = error as Error;
           this.#pending = null;
         }
       },
@@ -478,8 +478,8 @@ export class PasswordFieldValue {
     this.#pending = null;
     try {
       this.#hash = generateFromPassword(this.#pendingPlain, this.#pendingCost);
-    } catch (err) {
-      this.lastError = err as Error;
+    } catch (error) {
+      this.lastError = error as Error;
     }
   }
 
