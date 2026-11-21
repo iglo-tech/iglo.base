@@ -30,7 +30,9 @@ test("a request shows up in the logs list and its entry opens", async () => {
     const res = await fx.api(`/api/logs?filter=${encodeURIComponent(`data.url="${path}"`)}`);
     const items = ((await res.json()) as { items: Array<{ id: string }> }).items;
     id = items[0]?.id ?? "";
-    if (id === "") await Bun.sleep(250);
+    if (id === "") {
+      await Bun.sleep(250);
+    }
   }
   expect(id).not.toBe("");
 

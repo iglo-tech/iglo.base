@@ -35,8 +35,12 @@ class Demo1 extends BaseModel {
 
   override dbScan(row: Row): void {
     super.dbScan(row);
-    if ("text" in row) this.text = String(row.text);
-    if ("json" in row) this.json = row.json;
+    if ("text" in row) {
+      this.text = String(row.text);
+    }
+    if ("json" in row) {
+      this.json = row.json;
+    }
   }
 }
 

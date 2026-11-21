@@ -43,7 +43,9 @@ try {
     );
     for (;;) {
       try {
-        if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) break;
+        if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) {
+          break;
+        }
       } catch {}
       await Bun.sleep(2);
     }
@@ -51,7 +53,9 @@ try {
     proc.kill("SIGTERM");
     await proc.exited;
     const ru = proc.resourceUsage();
-    if (ru) cpus.push(Number(ru.cpuTime.user + ru.cpuTime.system) / 1000);
+    if (ru) {
+      cpus.push(Number(ru.cpuTime.user + ru.cpuTime.system) / 1000);
+    }
     rmSync(join(root, `d${i}`), { recursive: true, force: true });
   }
 } finally {

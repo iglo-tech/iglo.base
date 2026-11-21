@@ -49,7 +49,9 @@ class Superuser extends BaseModel {
 
   override dbScan(row: Row): void {
     super.dbScan(row);
-    if ("email" in row) this.email = String(row.email);
+    if ("email" in row) {
+      this.email = String(row.email);
+    }
   }
 }
 
@@ -81,8 +83,12 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  for (const app of apps) app.close();
-  for (const copy of copies) copy.remove();
+  for (const app of apps) {
+    app.close();
+  }
+  for (const copy of copies) {
+    copy.remove();
+  }
   // the fixture itself is never written
   expect(fixtureChecksums()).toEqual(checksumsBefore);
 });

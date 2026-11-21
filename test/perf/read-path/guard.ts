@@ -25,18 +25,23 @@ app
   )
   .execute();
 runInTransaction(app, (tx) => {
-  for (let i = 0; i < 1000; i++)
+  for (let i = 0; i < 1000; i++) {
     tx.db()
       .insert("demo", { id: `id${i}`, title: `t${i}`, n: i })
       .execute();
+  }
 });
 function run(name: string, f: () => unknown) {
-  for (let i = 0; i < 5000; i++) f();
+  for (let i = 0; i < 5000; i++) {
+    f();
+  }
   const res: Array<number> = [];
   for (let r = 0; r < 5; r++) {
     const n = 30_000;
     const t = performance.now();
-    for (let i = 0; i < n; i++) f();
+    for (let i = 0; i < n; i++) {
+      f();
+    }
     res.push(((performance.now() - t) * 1000) / n);
   }
   res.sort((a, b) => a - b);

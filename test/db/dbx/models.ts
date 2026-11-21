@@ -61,11 +61,21 @@ export class Customer implements StructModel, PostScanner {
   }
 
   dbScan(row: Row): void {
-    if ("id" in row) this.id = num(row.id) ?? 0;
-    if ("email" in row) this.email = str(row.email) ?? "";
-    if ("status" in row) this.status = num(row.status) ?? 0;
-    if ("name" in row) this.name = str(row.name) ?? "";
-    if ("address" in row) this.address = str(row.address);
+    if ("id" in row) {
+      this.id = num(row.id) ?? 0;
+    }
+    if ("email" in row) {
+      this.email = str(row.email) ?? "";
+    }
+    if ("status" in row) {
+      this.status = num(row.status) ?? 0;
+    }
+    if ("name" in row) {
+      this.name = str(row.name) ?? "";
+    }
+    if ("address" in row) {
+      this.address = str(row.address);
+    }
   }
 
   postScan(): void {
@@ -100,11 +110,21 @@ export class CustomerPtr implements StructModel {
   }
 
   dbScan(row: Row): void {
-    if ("id" in row) this.id = num(row.id);
-    if ("email" in row) this.email = str(row.email);
-    if ("status" in row) this.status = num(row.status);
-    if ("name" in row) this.name = str(row.name) ?? "";
-    if ("address" in row) this.address = str(row.address);
+    if ("id" in row) {
+      this.id = num(row.id);
+    }
+    if ("email" in row) {
+      this.email = str(row.email);
+    }
+    if ("status" in row) {
+      this.status = num(row.status);
+    }
+    if ("name" in row) {
+      this.name = str(row.name) ?? "";
+    }
+    if ("address" in row) {
+      this.address = str(row.address);
+    }
   }
 }
 
@@ -122,8 +142,12 @@ export class Item implements StructModel {
   }
 
   dbScan(row: Row): void {
-    if ("id2" in row) this.id2 = num(row.id2) ?? 0;
-    if ("name" in row) this.name = str(row.name) ?? "";
+    if ("id2" in row) {
+      this.id2 = num(row.id2) ?? 0;
+    }
+    if ("name" in row) {
+      this.name = str(row.name) ?? "";
+    }
   }
 }
 
@@ -143,9 +167,17 @@ export class User implements StructModel {
   }
 
   dbScan(row: Row): void {
-    if ("id" in row) this.id = num(row.id) ?? 0;
-    if ("email" in row) this.email = str(row.email) ?? "";
-    if ("created" in row) this.created = str(row.created) ?? "";
-    if ("updated" in row) this.updated = str(row.updated);
+    if ("id" in row) {
+      this.id = num(row.id) ?? 0;
+    }
+    if ("email" in row) {
+      this.email = str(row.email) ?? "";
+    }
+    if ("created" in row) {
+      this.created = str(row.created) ?? "";
+    }
+    if ("updated" in row) {
+      this.updated = str(row.updated);
+    }
   }
 }

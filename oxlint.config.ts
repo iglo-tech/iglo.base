@@ -59,7 +59,6 @@ export default defineConfig({
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
         "@nkzw/no-instanceof": "off",
-        curly: "off",
         "import/no-namespace": "off",
         "no-case-declarations": "off",
         "no-console": "off",

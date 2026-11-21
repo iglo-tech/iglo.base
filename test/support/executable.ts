@@ -128,14 +128,18 @@ function markerOwner(port: number): number {
 // call for a port that was never claimed here, or twice.
 export function releasePort(port: number): void {
   claimedHere.delete(port);
-  if (markerOwner(port) !== process.pid) return;
+  if (markerOwner(port) !== process.pid) {
+    return;
+  }
   try {
     unlinkSync(markerPath(port));
   } catch {}
 }
 
 process.on("exit", () => {
-  for (const port of claimedHere) releasePort(port);
+  for (const port of claimedHere) {
+    releasePort(port);
+  }
 });
 
 // Replaces the marker of a dead or expired claim with ours. rename is atomic,
@@ -163,7 +167,9 @@ function claim(port: number): boolean {
     claimedHere.add(port);
     return true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+      throw error;
+    }
   }
   const owner = markerOwner(port);
   let expired = false;
@@ -172,8 +178,12 @@ function claim(port: number): boolean {
   } catch {
     return false;
   }
-  if (owner !== 0 && pidAlive(owner) && !expired) return false;
-  if (!takeOver(port)) return false;
+  if (owner !== 0 && pidAlive(owner) && !expired) {
+    return false;
+  }
+  if (!takeOver(port)) {
+    return false;
+  }
   claimedHere.add(port);
   return true;
 }
@@ -181,7 +191,9 @@ function claim(port: number): boolean {
 export async function freePort(): Promise<number> {
   for (let attempt = 0; attempt < 200; attempt++) {
     const port = portRange.from + Math.floor(Math.random() * (portRange.to - portRange.from));
-    if (!claim(port)) continue;
+    if (!claim(port)) {
+      continue;
+    }
     try {
       const listener = Bun.listen({ hostname: "127.0.0.1", port, socket: { data() {} } });
       listener.stop(true);

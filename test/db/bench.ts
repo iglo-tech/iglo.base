@@ -138,7 +138,9 @@ withCopy((dataDir) => {
       samples.push(
         time(() => {
           const rows = app.db().select("id", "title", "n").from("bench").limit(10_000).all();
-          if (rows.length !== 10_000) throw new Error(`got ${rows.length} rows`);
+          if (rows.length !== 10_000) {
+            throw new Error(`got ${rows.length} rows`);
+          }
         }),
       );
     }
@@ -157,7 +159,9 @@ withCopy((dataDir) => {
             .build()
             .withExactIntegers()
             .all();
-          if (rows.length !== 10_000) throw new Error(`got ${rows.length} rows`);
+          if (rows.length !== 10_000) {
+            throw new Error(`got ${rows.length} rows`);
+          }
         }),
       );
     }

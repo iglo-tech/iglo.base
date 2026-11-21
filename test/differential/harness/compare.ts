@@ -431,9 +431,13 @@ export class Pairing {
     this.seen.add(scope);
     if (draws && again && previous && sameMillisecond(previous, upstream, igloBase)) {
       const oldIg = this.forward.get(up);
-      if (oldIg !== undefined) this.backward.delete(oldIg);
+      if (oldIg !== undefined) {
+        this.backward.delete(oldIg);
+      }
       const oldUp = this.backward.get(ig);
-      if (oldUp !== undefined) this.forward.delete(oldUp);
+      if (oldUp !== undefined) {
+        this.forward.delete(oldUp);
+      }
       this.forward.delete(up);
       this.backward.delete(ig);
     }
@@ -614,7 +618,9 @@ function decodeToken(
         const json = Buffer.from(part, "base64url").toString("utf8");
         return JSON.parse(json) as unknown;
       });
-    if (typeof claims !== "object" || claims === null || Array.isArray(claims)) return undefined;
+    if (typeof claims !== "object" || claims === null || Array.isArray(claims)) {
+      return undefined;
+    }
     return { header, claims: claims as Record<string, unknown> };
   } catch {
     return undefined;

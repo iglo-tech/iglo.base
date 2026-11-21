@@ -19,7 +19,9 @@ export class Demo extends BaseModel {
 
   override dbScan(row: Row): void {
     super.dbScan(row);
-    if ("title" in row) this.title = String(row.title);
+    if ("title" in row) {
+      this.title = String(row.title);
+    }
   }
 }
 
@@ -45,6 +47,8 @@ export class Log extends BaseModel {
 
   override dbScan(row: Row): void {
     super.dbScan(row);
-    if ("message" in row) this.message = String(row.message);
+    if ("message" in row) {
+      this.message = String(row.message);
+    }
   }
 }

@@ -58,10 +58,14 @@ for (let done = 0; done < total; done += batch) {
   conn.transaction(() => {
     for (let i = done; i < Math.min(total, done + batch); i++) {
       let id = "";
-      for (let j = 0; j < 15; j++) id += alphabet[Math.floor(rand() * alphabet.length)];
+      for (let j = 0; j < 15; j++) {
+        id += alphabet[Math.floor(rand() * alphabet.length)];
+      }
       const created = new Date(start + i * 30_000).toISOString().replace("T", " ");
       let body = "";
-      while (body.length < 200) body += words[Math.floor(rand() * words.length)] + " ";
+      while (body.length < 200) {
+        body += words[Math.floor(rand() * words.length)] + " ";
+      }
       ins.run(
         id,
         created,

@@ -52,8 +52,14 @@ export const assert = {
 };
 
 function sizeOf(value: unknown): number {
-  if (typeof value === "string" || Array.isArray(value)) return value.length;
-  if (value instanceof Map || value instanceof Set) return value.size;
-  if (value !== null && typeof value === "object") return Object.keys(value).length;
+  if (typeof value === "string" || Array.isArray(value)) {
+    return value.length;
+  }
+  if (value instanceof Map || value instanceof Set) {
+    return value.size;
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.keys(value).length;
+  }
   throw new TypeError("expected a string, array, Map, Set or object");
 }

@@ -561,8 +561,12 @@ describe("generated rowids are kept exactly", () => {
     }
 
     dbScan(row: Row): void {
-      if ("id" in row) this.id = row.id as number | bigint;
-      if ("v" in row) this.v = String(row.v);
+      if ("id" in row) {
+        this.id = row.id as number | bigint;
+      }
+      if ("v" in row) {
+        this.v = String(row.v);
+      }
     }
   }
 

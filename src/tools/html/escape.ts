@@ -57,12 +57,24 @@ const replacementChar = 0xff_fd;
 // runeLen is utf8.RuneLen: the number of bytes needed to encode r, or -1 if r
 // is not a valid rune.
 function runeLen(r: number): number {
-  if (r < 0) return -1;
-  if (r < 0x80) return 1;
-  if (r < 0x8_00) return 2;
-  if (0xd8_00 <= r && r <= 0xdf_ff) return -1;
-  if (r < 0x1_00_00) return 3;
-  if (r <= 0x10_ff_ff) return 4;
+  if (r < 0) {
+    return -1;
+  }
+  if (r < 0x80) {
+    return 1;
+  }
+  if (r < 0x8_00) {
+    return 2;
+  }
+  if (0xd8_00 <= r && r <= 0xdf_ff) {
+    return -1;
+  }
+  if (r < 0x1_00_00) {
+    return 3;
+  }
+  if (r <= 0x10_ff_ff) {
+    return 4;
+  }
   return -1;
 }
 

@@ -63,7 +63,9 @@ async function client(): Promise<void> {
     ["1m", values.big],
   ];
   for (const [dataset, source] of datasets) {
-    if (source === undefined) continue;
+    if (source === undefined) {
+      continue;
+    }
     const dir = copyDataset(dataset, source, values.scratch!);
     try {
       for (const workers of modes) {
@@ -135,7 +137,9 @@ async function load(url: string, name: string, ms: number) {
       const t = performance.now();
       const res = await fetch(`${url}/q/${name}`);
       await res.text();
-      if (!res.ok) throw new Error(`${name}: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`${name}: ${res.status}`);
+      }
       q.push(performance.now() - t);
     }
   });

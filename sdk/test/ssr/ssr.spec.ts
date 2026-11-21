@@ -31,7 +31,9 @@ async function failureOf(call: Promise<unknown>): Promise<ClientResponseError> {
   try {
     await call;
   } catch (error) {
-    if (error instanceof ClientResponseError) return error;
+    if (error instanceof ClientResponseError) {
+      return error;
+    }
     throw error;
   }
   throw new Error("the call should have failed with a 401");

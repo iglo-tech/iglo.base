@@ -119,7 +119,9 @@ export function openTarget(dataset: Dataset, dir: string, workers: number): Targ
 }
 
 export function percentile(sorted: Array<number>, p: number): number {
-  if (sorted.length === 0) return Number.NaN;
+  if (sorted.length === 0) {
+    return Number.NaN;
+  }
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]!;
 }
 

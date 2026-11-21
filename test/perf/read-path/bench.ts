@@ -84,7 +84,9 @@ const datasets: Array<[Dataset, string | undefined]> = [
   ["1m", values.big],
 ];
 for (const [dataset, source] of datasets) {
-  if (source === undefined) continue;
+  if (source === undefined) {
+    continue;
+  }
   const dir = copyDataset(dataset, source, scratch);
   try {
     for (const workers of modes) {
